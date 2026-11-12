@@ -17,10 +17,10 @@ import { useToastManager } from "../../ui/Layers";
 import {
   ApplicationArgumentReset,
   ApplicationCatalog,
+  ApplicationEditorDrawer,
   ApplicationFields,
   ApplicationRemoval,
 } from "../../ui/launcher/Applications";
-import { WindowDialog } from "../../ui/WindowDialog";
 import { useProfileEditorState } from "./editor-state";
 import { launcherKey, useLauncherSnapshot } from "./state";
 
@@ -333,55 +333,44 @@ export function Applications() {
   return (
     <>
       {editor ? (
-        <WindowDialog.Root
-          open
-          onOpenChange={(open) => {
-            if (!open && !pending) {
+        <ApplicationEditorDrawer
+          pending={pending}
+          onClose={() => {
+            setEditor(undefined);
+            setSelected(null);
+            setError(undefined);
+          }}
+          returnFocus={() =>
+            editorOrigin.current?.isConnected ? editorOrigin.current : false
+          }
+        >
+          <ApplicationFields
+            value={editor}
+            selected={selected}
+            pending={pending}
+            error={error}
+            official={catalog.apps.some(
+              (app) => app.id === editor.draft.id && !app.removable,
+            )}
+            onChange={(draft) => setEditor({ ...editor, draft })}
+            onPick={() => void pick()}
+            onDiscovery={() => {
+              setSelected(null);
+              setEditor({
+                ...editor,
+                draft: { ...editor.draft, useDiscovery: true },
+              });
+            }}
+            onSave={() => save()}
+            onCancel={() => {
               setEditor(undefined);
               setSelected(null);
               setError(undefined);
-            }
-          }}
-        >
-          <WindowDialog.Portal>
-            <WindowDialog.Backdrop className="v-backdrop" />
-            <WindowDialog.Popup
-              className="v-launcher-app-drawer"
-              aria-label={text.editor}
-              aria-describedby={undefined}
-              finalFocus={() =>
-                editorOrigin.current?.isConnected ? editorOrigin.current : false
-              }
-            >
-              <ApplicationFields
-                value={editor}
-                selected={selected}
-                pending={pending}
-                error={error}
-                official={catalog.apps.some(
-                  (app) => app.id === editor.draft.id && !app.removable,
-                )}
-                onChange={(draft) => setEditor({ ...editor, draft })}
-                onPick={() => void pick()}
-                onDiscovery={() => {
-                  setSelected(null);
-                  setEditor({
-                    ...editor,
-                    draft: { ...editor.draft, useDiscovery: true },
-                  });
-                }}
-                onSave={() => save()}
-                onCancel={() => {
-                  setEditor(undefined);
-                  setSelected(null);
-                  setError(undefined);
-                }}
-                onRetry={again}
-                onDiscard={discard}
-              />
-            </WindowDialog.Popup>
-          </WindowDialog.Portal>
-        </WindowDialog.Root>
+            }}
+            onRetry={again}
+            onDiscard={discard}
+          />{" "}
+        </ApplicationEditorDrawer>
       ) : null}
       <ApplicationCatalog
         value={catalog}

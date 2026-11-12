@@ -2,14 +2,14 @@
 
 ## Auditoría y decisión
 
-| Capa | Implementación | Antes | Ahora |
-| --- | --- | --- | --- |
-| Ficha | `ui/CalendarDetail.tsx` | Base UI no modal con backdrop | `WindowDialog`, ámbito de pantalla |
-| Avisos | `ui/CalendarAlertsDialog.tsx` | Base UI no modal con backdrop | `WindowDialog`, ámbito de pantalla |
-| ICS | `ui/CalendarIcsDialog.tsx` | Base UI no modal con backdrop | `WindowDialog`, ámbito de pantalla |
-| Ampliar Día | `ui/CalendarDayView.tsx` | Base UI no modal con backdrop | `WindowDialog`, ámbito de pantalla |
-| Ampliar Semana | `ui/CalendarWeekView.tsx` | Base UI no modal con backdrop | `WindowDialog`, ámbito de pantalla |
-| Ampliar Mes | `ui/CalendarMonthView.tsx` | Base UI no modal con backdrop | `WindowDialog`, ámbito de pantalla |
+| Capa                   | Implementación                      | Antes                                              | Ahora                                                       |
+| ---------------------- | ----------------------------------- | -------------------------------------------------- | ----------------------------------------------------------- |
+| Ficha                  | `ui/CalendarDetail.tsx`             | Base UI no modal con backdrop                      | `WindowDialog`, ámbito de pantalla                          |
+| Avisos                 | `ui/CalendarAlertsDialog.tsx`       | Base UI no modal con backdrop                      | `WindowDialog`, ámbito de pantalla                          |
+| ICS                    | `ui/CalendarIcsDialog.tsx`          | Base UI no modal con backdrop                      | `WindowDialog`, ámbito de pantalla                          |
+| Ampliar Día            | `ui/CalendarDayView.tsx`            | Base UI no modal con backdrop                      | `WindowDialog`, ámbito de pantalla                          |
+| Ampliar Semana         | `ui/CalendarWeekView.tsx`           | Base UI no modal con backdrop                      | `WindowDialog`, ámbito de pantalla                          |
+| Ampliar Mes            | `ui/CalendarMonthView.tsx`          | Base UI no modal con backdrop                      | `WindowDialog`, ámbito de pantalla                          |
 | Editor de aplicaciones | `screens/launcher/Applications.tsx` | Sustituía el catálogo; sin Escape ni ciclo de foco | Cajón de 480 px, catálogo conservado detrás, `WindowDialog` |
 
 Las seis capas del Calendario ya tapaban con backdrop el contenido situado bajo

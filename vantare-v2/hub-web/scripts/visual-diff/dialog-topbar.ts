@@ -239,6 +239,23 @@ scenes["dialog-topbar-app-remove"] = {
     );
   },
 };
+scenes["dialog-topbar-app-edit"] = {
+  mock: "launcher-aplicaciones",
+  async prepare(page) {
+    await page.getByRole("button", { name: "Launcher", exact: true }).click();
+    await page.getByRole("tab", { name: "Aplicaciones", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Editar OBS Studio", exact: true })
+      .click();
+    await page
+      .getByRole("region", {
+        name: "Aplicación · borrador sin guardar",
+        exact: true,
+      })
+      .waitFor();
+    await page.mouse.move(600, 890);
+  },
+};
 scenes["dialog-topbar-studio-remove"] = {
   mock: "studio-base",
   async prepare(page) {

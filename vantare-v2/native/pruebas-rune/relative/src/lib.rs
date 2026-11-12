@@ -249,10 +249,6 @@ mod tests {
     fn reorder_preserves_bindings_for_each_car() {
         let mut snapshot = scene();
         let mut runtime = runtime(&snapshot);
-        let shape_changed = !presentation::same_structure(&self.board, &board);
-        for (live, value) in self.labels.iter().zip(presentation::labels(&board)) {
-            live.set(value);
-        }
         let old: BTreeMap<_, _> = runtime
             .state
             .slots

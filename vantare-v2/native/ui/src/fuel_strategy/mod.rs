@@ -1,7 +1,7 @@
 //! Fuel y stint: una proyección y un historial; un pintor y Motion activos.
+use crate::app::{Paint, Wake};
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;
-use crate::app::{Paint, Wake};
 use std::sync::Arc;
 use std::time::Instant;
 use vantare_domain::{Snapshot, format::Preferences, fuel_strategy};
@@ -10,9 +10,6 @@ mod contract_tests;
 mod eficiencia;
 pub(crate) mod vantare;
 pub use vantare_domain::widget_settings::fuel_strategy::Settings;
-
-
-
 
 enum Presentation {
     Eficiencia {
@@ -204,7 +201,6 @@ impl Widget {
 }
 
 trait SettingsPresentation {
-
     fn content(&self) -> fuel_strategy::Config;
     #[cfg(test)]
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> eficiencia::Labels;
@@ -226,7 +222,6 @@ impl SettingsPresentation for Settings {
     }
 }
 impl crate::widget_settings::WorkshopSettings for Settings {
-
     fn workshop_defaults(look: crate::look::Look) -> Self {
         let mut s = Self::for_look(look);
         if look == crate::look::Look::Vantare {
@@ -236,7 +231,6 @@ impl crate::widget_settings::WorkshopSettings for Settings {
     }
 }
 impl crate::widget_settings::SettingsDemand for Settings {
-
     fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
             Cars, Flags, FuelEstimate, FuelLevel, LapCount, LapsRemaining, PitStatus, SessionInfo,

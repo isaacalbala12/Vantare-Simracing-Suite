@@ -15,9 +15,6 @@ use vantare_domain::{Snapshot, delta, format::Preferences};
 
 pub use vantare_domain::widget_settings::delta::Settings;
 
-
-
-
 enum Presentation {
     Eficiencia {
         visual: Arc<eficiencia::Labels>,
@@ -208,10 +205,7 @@ impl Widget {
     }
 }
 
-
-
 trait SettingsPresentation {
-
     fn reference(&self) -> delta::Reference;
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> delta::Board;
 }
@@ -228,7 +222,6 @@ impl SettingsPresentation for Settings {
     }
 }
 impl crate::widget_settings::WorkshopSettings for Settings {
-
     fn workshop_defaults(look: crate::look::Look) -> Self {
         let mut s = Self::for_look(look);
         if look == crate::look::Look::Vantare {
@@ -238,7 +231,6 @@ impl crate::widget_settings::WorkshopSettings for Settings {
     }
 }
 impl crate::widget_settings::SettingsDemand for Settings {
-
     fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{Cars, Flags, LapProgress, PitStatus, Positions, Sectors};
         use vantare_ipc::Signal::{Delta, LapCount, LapTimes};

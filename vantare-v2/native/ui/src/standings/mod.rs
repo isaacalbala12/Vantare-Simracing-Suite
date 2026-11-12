@@ -207,12 +207,6 @@ pub fn session_preset(session: Session) -> Vec<options::ColumnSetting> {
     columns
 }
 
-
-
-
-
-
-
 /// Un Board y un Motion activo; los pintores no poseen historial.
 pub(crate) struct Widget {
     /// Ajustes completos (tres pestañas) y los efectivos de `session`.
@@ -492,10 +486,7 @@ impl std::ops::Deref for Widget {
     }
 }
 
-
 trait SettingsPresentation {
-
-
     fn config(&self) -> Config;
     fn content(&self) -> standings::Content;
 }
@@ -578,8 +569,6 @@ impl SettingsPresentation for Settings {
     }
 }
 trait SessionColumns {
-
-
     fn legacy_columns(&self) -> Vec<options::ColumnSetting>;
 
     fn session_columns_slot(
@@ -621,7 +610,6 @@ impl SessionColumns for Settings {
     }
 }
 pub trait SessionSettings {
-
     /// Ejemplo nativo del inspector con los presets de sesión.
     #[cfg(feature = "parity-capture")]
     fn apply_session_preview(&mut self);
@@ -688,7 +676,6 @@ impl SessionSettings for Settings {
     }
 }
 impl crate::widget_settings::WorkshopSettings for Settings {
-
     fn workshop_defaults(look: crate::look::Look) -> Self {
         let mut s = Self::for_look(look);
         s.brand_visible = Some(true);
@@ -708,7 +695,6 @@ impl crate::widget_settings::WorkshopSettings for Settings {
     }
 }
 impl crate::widget_settings::SettingsDemand for Settings {
-
     fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
             ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,

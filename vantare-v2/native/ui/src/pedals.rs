@@ -4,11 +4,11 @@
 //! 2 px); con el ajuste histórico de 8 px el ancho es 120 px. El Look Vantare
 //! (`pedals/vantare.rs`, #1566) pinta el mismo ViewModel en columnas más juntas.
 
+use crate::efficiency::preview::PaintWindow as Window;
 #[cfg(test)]
 use crate::look::WorkshopLook as _;
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;
-use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
 use vantare_domain::pedals::ViewModel;
 
@@ -28,9 +28,9 @@ const PAD_BOTTOM: f32 = 10.0;
 const COLUMN_W: f32 = 28.0;
 /// Separación por defecto entre barras: casi pegadas.
 pub use vantare_domain::widget_settings::pedals::DEFAULT_GAP;
+pub use vantare_domain::widget_settings::pedals::GAP_MAX;
 /// Rango del ajuste en Studio: de pegadas (0) a más aire que el 8 original.
 pub use vantare_domain::widget_settings::pedals::GAP_MIN;
-pub use vantare_domain::widget_settings::pedals::GAP_MAX;
 const TRACK_W: f32 = 14.0;
 const LABEL_H: f32 = 11.0;
 const VALUE_H: f32 = 11.0;
@@ -191,9 +191,6 @@ use vantare_domain::{Snapshot, format::Preferences};
 
 pub use vantare_domain::widget_settings::pedals::Settings;
 
-
-
-
 /// Solo existe el pintor activo; el ViewModel es común a los dos Looks.
 enum Presentation {
     Eficiencia,
@@ -338,10 +335,7 @@ impl Widget {
     }
 }
 
-
-
 trait SettingsPresentation {
-
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
 }
 impl SettingsPresentation for Settings {
@@ -352,8 +346,6 @@ impl SettingsPresentation for Settings {
     }
 }
 impl crate::widget_settings::WorkshopSettings for Settings {
-
-
     fn workshop_defaults(look: crate::look::Look) -> Self {
         Self {
             brand_visible: (look == crate::look::Look::Vantare).then_some(true),
@@ -362,7 +354,6 @@ impl crate::widget_settings::WorkshopSettings for Settings {
     }
 }
 impl crate::widget_settings::SettingsDemand for Settings {
-
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{Clutch, Pedals, PitStatus, Powertrain};

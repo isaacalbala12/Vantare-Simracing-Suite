@@ -1,0 +1,170 @@
+[
+  [
+    {
+      "kind": "standings",
+      "designSystem": "vantare",
+      "contentVersion": 0,
+      "style": "neo",
+      "accent": "red",
+      "rowCount": 20,
+      "columns": null,
+      "classScope": "player-class",
+      "classificationMode": "normal",
+      "playerWindow": false,
+      "windowAround": 4,
+      "showSessionHeader": true,
+      "templateId": "signature",
+      "headerFirst": "none",
+      "headerSecond": "none",
+      "showSessionFooter": true,
+      "footerFirst": "track",
+      "footerSecond": "estimatedLaps",
+      "showBrand": false
+    },
+    {
+      "kind": "pedals",
+      "designSystem": "eficiencia",
+      "style": "neo",
+      "accent": "red",
+      "transparentBackground": false,
+      "showBrakePeak": true,
+      "gap": 2.0
+    }
+  ],
+  [
+    {
+      "kind": "standings",
+      "designSystem": "vantare",
+      "contentVersion": 0,
+      "style": "neo",
+      "accent": "red",
+      "rowCount": 20,
+      "columns": null,
+      "classScope": "player-class",
+      "classificationMode": "normal",
+      "playerWindow": false,
+      "windowAround": 4,
+      "showSessionHeader": false,
+      "templateId": "broadcast",
+      "headerFirst": "none",
+      "headerSecond": "none",
+      "showSessionFooter": true,
+      "footerFirst": "track",
+      "footerSecond": "estimatedLaps",
+      "showBrand": true
+    },
+    {
+      "kind": "delta",
+      "designSystem": "vantare",
+      "contentVersion": 0,
+      "style": "neo",
+      "accent": "red",
+      "size": "pill",
+      "reference": "best",
+      "showBar": true,
+      "showSectors": true,
+      "templateId": "capsule"
+    },
+    {
+      "kind": "pedals",
+      "designSystem": "eficiencia",
+      "style": "neo",
+      "accent": "red",
+      "transparentBackground": true,
+      "showBrakePeak": true,
+      "gap": 2.0
+    }
+  ],
+  [
+    {
+      "kind": "relative",
+      "designSystem": "eficiencia",
+      "contentVersion": 1,
+      "style": "neutro",
+      "accent": "green",
+      "columns": [
+        {
+          "id": "driver",
+          "metricId": "driver",
+          "enabled": true,
+          "widthPreset": "lg",
+          "format": {
+            "mode": "short",
+            "maxChars": 12,
+            "display": null,
+            "decimals": null
+          },
+          "style": {
+            "align": "left"
+          }
+        }
+      ],
+      "rangeAhead": 4,
+      "rangeBehind": 2,
+      "classScope": "all",
+      "includePlayer": false,
+      "rowHeightMode": "normal",
+      "footerSlots": [
+        "clock"
+      ]
+    },
+    {
+      "kind": "relative",
+      "designSystem": "vantare",
+      "contentVersion": 0,
+      "style": "neo",
+      "accent": "red",
+      "columns": null,
+      "rangeAhead": 3,
+      "rangeBehind": 3,
+      "classScope": "sameClass",
+      "includePlayer": true,
+      "rowHeightMode": "compact",
+      "footerSlots": []
+    },
+    {
+      "kind": "fuel-strategy",
+      "designSystem": "eficiencia",
+      "style": "neutro",
+      "accent": "amber",
+      "size": "expanded",
+      "brandVisible": false,
+      "contentVersion": 1,
+      "historyRows": 4,
+      "showProjection": false,
+      "source": "fuel",
+      "units": "gallons"
+    },
+    {
+      "kind": "fuel-strategy",
+      "designSystem": "vantare",
+      "style": "neo",
+      "accent": "red",
+      "size": "standard",
+      "contentVersion": 0,
+      "historyRows": 4,
+      "showProjection": true,
+      "source": "fuel",
+      "units": "liters"
+    },
+    {
+      "kind": "pedals",
+      "designSystem": "vantare",
+      "style": "neutro",
+      "accent": "white",
+      "brandVisible": true,
+      "transparentBackground": true,
+      "showBrakePeak": false,
+      "gap": 7.5
+    },
+    {
+      "kind": "pedals",
+      "designSystem": "eficiencia",
+      "style": "neo",
+      "accent": "red",
+      "transparentBackground": false,
+      "showBrakePeak": true,
+      "gap": 2.0
+    }
+  ]
+]

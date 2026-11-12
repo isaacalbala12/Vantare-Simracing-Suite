@@ -4,7 +4,6 @@ use super::model::{Align, Column, Metric, NameMode, Preset};
 pub use vantare_domain::widget_settings::columns::{ColumnSetting, Format, Style};
 
 pub(crate) trait ColumnPresentation {
-
     fn column(&self) -> Option<Column>;
 }
 impl ColumnPresentation for ColumnSetting {
@@ -56,7 +55,6 @@ pub trait ColumnFormat {
     fn driver_name(&self, value: &str) -> String;
 }
 impl ColumnFormat for ColumnSetting {
-
     fn relative_width(&self) -> f32 {
         match self.width_preset.as_str() {
             "xs" => 20.0,

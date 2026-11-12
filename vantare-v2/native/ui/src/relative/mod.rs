@@ -1,9 +1,9 @@
 //! Relative común: un Board y Motion activos, con pintores por Look.
 
 #[cfg(test)]
-use crate::widget_settings::SettingsDemand as _;
-#[cfg(test)]
 use crate::standings::options::ColumnFormat as _;
+#[cfg(test)]
+use crate::widget_settings::SettingsDemand as _;
 #[cfg(test)]
 mod contract_tests;
 mod eficiencia;
@@ -119,8 +119,6 @@ pub fn shift_column(
 ) -> bool {
     crate::vantare::columns::shift_column(columns, metric, step, MOVABLE)
 }
-
-
 
 /// Board y Motion activos comunes: los pintores solo reciben datos proyectados.
 pub(crate) struct Widget {
@@ -327,10 +325,7 @@ impl std::ops::Deref for Widget {
     }
 }
 
-
-
 trait SettingsPresentation {
-
     fn content(&self) -> relative::Content;
     fn slot_count(&self) -> usize;
     fn size(&self) -> (f32, f32);
@@ -352,7 +347,6 @@ impl SettingsPresentation for Settings {
     }
 }
 impl crate::widget_settings::WorkshopSettings for Settings {
-
     fn workshop_defaults(look: crate::look::Look) -> Self {
         let mut s = Self::for_look(look);
         match look {
@@ -369,7 +363,6 @@ impl crate::widget_settings::WorkshopSettings for Settings {
     }
 }
 impl crate::widget_settings::SettingsDemand for Settings {
-
     fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
             LapTimes, PitStatus, Positions, Relative, SessionClock, SessionInfo, TrackName, Weather,

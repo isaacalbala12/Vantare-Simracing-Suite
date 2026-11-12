@@ -126,7 +126,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const media = matchMedia("(prefers-color-scheme: dark)");
     const refresh = () => applySettings(view);
     media.addEventListener("change", refresh);
-    return () => media.removeEventListener("change", refresh);
+    if (!window.vantare) window.addEventListener("resize", refresh);
+    return () => {
+      media.removeEventListener("change", refresh);
+      window.removeEventListener("resize", refresh);
+    };
   }, [query.data]);
   function run(
     action: { patch: SettingsPatch } | { retry: true } | { discard: true },

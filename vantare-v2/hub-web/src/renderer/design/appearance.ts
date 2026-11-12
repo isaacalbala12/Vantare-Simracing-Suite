@@ -3,6 +3,7 @@ import type {
   AppearanceSettings,
   SettingsView,
 } from "../../contract/generated/contract";
+import { effectiveZoom } from "../../window-zoom";
 
 const sans = {
   inter: 'Inter, "Segoe UI Variable", "Segoe UI", sans-serif',
@@ -78,7 +79,10 @@ export function applyAppearance(
     "--surface-panel",
     alpha(colors["surface-panel"], appearance.glassOpacity / 80),
   );
-  if (!window.vantare) root.style.zoom = String(zoom / 100);
+  if (!window.vantare)
+    root.style.zoom = String(
+      effectiveZoom(zoom, window.outerWidth, window.outerHeight) / 100,
+    );
 }
 export function applySettings(view: SettingsView) {
   applyAppearance(view.appearance, view.general.density, view.zoom);

@@ -53,6 +53,9 @@ type Guard = Parameters<Client["setCloseGuard"]>[0];
 const caches: QueryClient[] = [];
 const connections = new Set<Client>();
 beforeEach(() => {
+  // Native-size window: jsdom's 1024px default cannot reach 100/110/125%.
+  vi.stubGlobal("outerWidth", 1920);
+  vi.stubGlobal("outerHeight", 1080);
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
     addEventListener() {},
@@ -168,6 +171,32 @@ function Outside() {
 }
 
 describe("SettingsState through createMockHost and a real MessageChannel", () => {
+  it("changes only effective zoom on resize and restores the saved request without a write", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-base", <General />);
+    await loaded(hook);
+    const saved = hook.result.current.view?.zoom;
+    act(() => {
+      vi.stubGlobal("outerWidth", 1000);
+      vi.stubGlobal("outerHeight", 600);
+      fireEvent(window, new Event("resize"));
+    });
+    expect(document.documentElement.style.zoom).toBe("0.9");
+    expect(hook.result.current.view?.zoom).toBe(saved);
+    act(() => {
+      vi.stubGlobal("outerWidth", 1920);
+      vi.stubGlobal("outerHeight", 1080);
+      fireEvent(window, new Event("resize"));
+    });
+    expect(document.documentElement.style.zoom).toBe(
+      String((saved ?? 100) / 100),
+    );
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "settings.update",
+      ),
+    ).toHaveLength(0);
+  });
   it("retries only the losing intent and preserves the winner", async () => {
     const hook = mount("ajustes-conflicto");
     await conflict(hook);

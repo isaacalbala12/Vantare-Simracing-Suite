@@ -9,12 +9,18 @@ import {
 } from "react";
 import type { Request, StudioView } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
+import { useUi } from "../../app/UiState";
 import { HostFailure } from "../../bridge/client";
 import { studioText as t } from "../../i18n/studio";
+import { initialStudioSelection } from "./selection";
 
 type StudioRequest = Extract<Request, { method: `studio.${string}` }>;
 function useStateValue() {
   const { client } = useHost();
+  const remembered = useUi((state) => state.studioLastSelected);
+  const remember = useUi((state) => state.rememberStudio);
+  const lastSelected = useRef(remembered);
+  lastSelected.current = remembered;
   const [view, setView] = useState<StudioView>(),
     [selected, setSelected] = useState<string | null>(null),
     [added, setAdded] = useState<{
@@ -43,12 +49,20 @@ function useStateValue() {
     setView(value);
     if (!opened.current) {
       opened.current = true;
-      if (value.instances.length) setSelected(value.instances[0].id);
+      setSelected(initialStudioSelection(value, lastSelected.current));
     }
   }, []);
+  useEffect(() => {
+    if (selected) remember(selected);
+  }, [selected, remember]);
   const execute = useCallback(
     async (request: StudioRequest) => {
       if (!client || busy.current) return;
+      if (
+        request.method === "studio.instance" ||
+        request.method === "studio.visibility"
+      )
+        remember(request.id);
       busy.current = true;
       setPending(true);
       setFailure(undefined);
@@ -109,7 +123,7 @@ function useStateValue() {
         if (alive.current) setPending(false);
       }
     },
-    [client, update],
+    [client, update, remember],
   );
   useEffect(() => {
     alive.current = true;

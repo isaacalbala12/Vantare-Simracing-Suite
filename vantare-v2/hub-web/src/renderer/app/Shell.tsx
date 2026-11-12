@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import {
-  type CoreStatus,
   defaultZoom,
   type LauncherView,
   type Palette,
@@ -9,7 +8,7 @@ import {
 } from "../../contract/generated/contract";
 import { zoomStep } from "../../window-zoom";
 import { Icon } from "../assets/icons/Icon";
-import { HostFailure } from "../bridge/client";
+
 import { accountText } from "../i18n/account.es";
 import { commandsText } from "../i18n/commands.es";
 import { paletteNames, t } from "../i18n/es";
@@ -31,7 +30,7 @@ import {
 } from "../ui/Frame";
 import { hubShortcut, isZoomAction } from "../ui/hub-shortcuts";
 import { initials } from "../ui/initials";
-import { ToastViewport, useToastManager } from "../ui/Layers";
+import { ToastViewport } from "../ui/Layers";
 import { SaveWarnings } from "../ui/SaveWarnings";
 import {
   ActionGroup,
@@ -44,6 +43,7 @@ import { currentZoomLimit, useWindowZoomLimit } from "../ui/window-zoom";
 import { useAccountSession } from "./AccountSession";
 import { useAccount } from "./AccountState";
 import { coreKey, offline, useHost } from "./Host";
+import { launcherAccess, useLauncherLaunch } from "./LauncherLaunch";
 import { isSection, lock, navigation, visible } from "./navigation";
 import { profileCommands } from "./profile-commands";
 import { RegisteredScreen } from "./ScreenRegistry";
@@ -62,18 +62,7 @@ function ShellContent() {
   const zoomLimit = useWindowZoomLimit();
   const host = useHost();
   const query = useQueryClient();
-  const toast = useToastManager();
   const settings = useSettings();
-  const favoritePending = useRef(false);
-  const profilePending = useRef(false);
-  const [profileWaiting, setProfileWaiting] = useState(false);
-  const alive = useRef(true);
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-    };
-  }, []);
   const editBlocked =
     !settings.view ||
     settings.pending ||
@@ -98,8 +87,10 @@ function ShellContent() {
       if (message.kind === "event" && message.event.topic === "launcher")
         query.setQueryData(["launcher"], message.event.value);
     });
+    const unsubscribe = host.client?.subscribe("launcher");
     return () => {
       off?.();
+      unsubscribe?.();
     };
   }, [host.client, query]);
   // QA identity stays separate from both account data and the editable pilot draft.
@@ -113,8 +104,7 @@ function ShellContent() {
       ? (account.photo ?? undefined)
       : undefined;
   const ui = useUi((state) => state);
-  // Read the existing launcher snapshot for the expanded frame. The screen owns
-  // its subscription; this reader never unsubscribes it or writes a profile.
+  // The frame retains its subscription across screen changes.
   const {
     data: launcher,
     isFetching: launcherLoading,
@@ -139,6 +129,11 @@ function ShellContent() {
     if (ui.commandsOpen && host.client && !core.live)
       void refreshLauncher({ cancelRefetch: false });
   }, [ui.commandsOpen, host.client, core.live, refreshLauncher]);
+  const {
+    launchFavorite,
+    launchProfile,
+    pending: profileWaiting,
+  } = useLauncherLaunch(core, launcher);
   const isUpcoming = (section: Section) =>
     section === "strategy" || section === "engineer";
   const items = navigation(core.access).map((item) =>
@@ -175,112 +170,6 @@ function ShellContent() {
       (visible(section, core.access) && !lock(section, core.access))
     )
       ui.navigate(section);
-  }
-  function launchWarning(message: string) {
-    ui.navigate("launcher");
-    toast.add({ title: message, type: "warn" });
-  }
-  function launchAccess(status: CoreStatus) {
-    return (
-      lock("launcher", status.access) ??
-      (status.rights !== "connected"
-        ? commandsText.accessUnavailable
-        : undefined)
-    );
-  }
-  async function launchFavorite() {
-    const latestCore = query.getQueryData<CoreStatus>(coreKey) ?? core;
-    const current = query.getQueryData<LauncherView>(["launcher"]) ?? launcher;
-    const reason = !host.client
-      ? commandsText.failed
-      : (launchAccess(latestCore) ??
-        (latestCore.live
-          ? commandsText.live
-          : favoritePending.current || profilePending.current
-            ? commandsText.pending
-            : current?.running
-              ? commandsText.running
-              : undefined));
-    if (reason || !host.client) {
-      launchWarning(reason ?? commandsText.failed);
-      return;
-    }
-    favoritePending.current = true;
-    try {
-      const reply = await host.client.request({ method: "launcher.favorite" });
-      if (!alive.current || reply.method !== "launcher.favorite") return;
-      ui.navigate("launcher");
-      toast.add({
-        title: reply.accepted
-          ? t("shell.favoriteSent")
-          : t("shell.profileNeeded"),
-      });
-    } catch {
-      if (alive.current) launchWarning(t("shell.favoriteFailed"));
-    } finally {
-      favoritePending.current = false;
-    }
-  }
-  async function launchProfile(profile: string, baseRevision: string) {
-    const latestCore = query.getQueryData<CoreStatus>(coreKey) ?? core;
-    const current = query.getQueryData<LauncherView>(["launcher"]) ?? launcher;
-    const selected = current?.profiles.find((item) => item.id === profile);
-    if (
-      !current ||
-      current.revision !== baseRevision ||
-      !selected?.launchable
-    ) {
-      launchWarning(commandsText.changed);
-      return;
-    }
-    const reason = !host.client
-      ? commandsText.failed
-      : (launchAccess(latestCore) ??
-        (latestCore.live
-          ? commandsText.live
-          : query.getQueryState(["launcher"])?.fetchStatus === "fetching"
-            ? commandsText.loading
-            : query.getQueryState(["launcher"])?.status === "error"
-              ? commandsText.readFailed
-              : profilePending.current || favoritePending.current
-                ? commandsText.pending
-                : current.scanning
-                  ? commandsText.scanning
-                  : !current.resident
-                    ? commandsText.noResident
-                    : current.running
-                      ? commandsText.running
-                      : undefined));
-    if (reason || !host.client) {
-      launchWarning(reason ?? commandsText.failed);
-      return;
-    }
-    profilePending.current = true;
-    setProfileWaiting(true);
-    try {
-      const reply = await host.client.request({
-        method: "launcher.launch",
-        profile,
-        baseRevision,
-      });
-      if (!alive.current) return;
-      if (reply.method === "launcher.launch" && reply.accepted) {
-        ui.navigate("launcher");
-        toast.add({ title: commandsText.sent });
-      } else launchWarning(commandsText.failed);
-    } catch (failure) {
-      if (!alive.current) return;
-      if (
-        failure instanceof HostFailure &&
-        failure.detail.kind === "launcherConflict"
-      ) {
-        query.setQueryData(["launcher"], failure.detail.current);
-        launchWarning(commandsText.changed);
-      } else launchWarning(commandsText.failed);
-    } finally {
-      profilePending.current = false;
-      if (alive.current) setProfileWaiting(false);
-    }
   }
   function zoom(direction: -1 | 0 | 1) {
     if (
@@ -353,7 +242,7 @@ function ShellContent() {
     ? shellText.simulatorConnected
     : shellText.waitingSimulator;
   const launchBlocked =
-    launchAccess(core) ??
+    launcherAccess(core) ??
     (core.live
       ? commandsText.live
       : launcherFailed
@@ -616,13 +505,9 @@ function ShellContent() {
                       variant="ghost"
                       className="v-sidebar-profile"
                       key={profile.id}
-                      aria-label={shellText.openProfile(profile.name)}
+                      aria-label={shellText.launchProfile(profile.name)}
                       onClick={() => {
-                        query.setQueryData(
-                          ["launcher", "selection"],
-                          profile.id,
-                        );
-                        navigate("launcher");
+                        void launchProfile(profile.id, launcher.revision);
                       }}
                     >
                       <span className="v-sidebar-profile-dot" />

@@ -387,3 +387,39 @@ for (const [scene, widget] of [
     },
   };
 }
+
+studioScenes["studio-a-estructura"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page.getByRole("button", { name: /^Relative, / }).click();
+    await page.getByRole("switch", { name: "Visible", exact: true }).click();
+    await page.getByRole("button", { name: /^Relative, Oculto/ }).waitFor();
+    await page.getByRole("button", { name: /^Fuel y stint, / }).click();
+    for (const name of ["Mostrar en práctica", "Mostrar en qualy"]) {
+      const toggle = page.getByRole("switch", { name, exact: true });
+      await toggle.click();
+      await page
+        .getByRole("switch", { name, exact: true, checked: false })
+        .waitFor();
+      assert.equal(await toggle.getAttribute("aria-checked"), "false");
+    }
+    await page.getByRole("button", { name: /^Delta, / }).click();
+    const opacity = page.getByRole("slider", { name: "Opacidad", exact: true });
+    await opacity.focus();
+    for (let value = 99; value >= 85; value--) {
+      await page.keyboard.press("ArrowLeft");
+      await page
+        .getByRole("button", {
+          name: new RegExp(`^Delta, Visible · ${value} %`),
+        })
+        .waitFor();
+    }
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    await page
+      .getByRole("combobox", { name: "Formato Delta", exact: true })
+      .click();
+    await page.getByRole("option", { name: "Barra", exact: true }).click();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+  },
+};

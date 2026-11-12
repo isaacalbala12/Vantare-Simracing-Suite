@@ -74,7 +74,13 @@ async function start() {
     return;
   }
   let window: BrowserWindow | undefined;
+  let windowReady = false;
+  let activateWhenReady = false;
   app.on("second-instance", () => {
+    if (!windowReady) {
+      activateWhenReady = true;
+      return;
+    }
     if (!window || window.isDestroyed()) return;
     if (window.isMinimized()) window.restore();
     window.focus();
@@ -480,7 +486,8 @@ async function start() {
   );
   window.once("ready-to-show", () => {
     if (currentWindow.isDestroyed()) return;
-    if (hello.window.minimized) {
+    windowReady = true;
+    if (hello.window.minimized && !activateWhenReady) {
       // On Windows minimize() shows a hidden window in its minimized state.
       // Suppress activation during that transition; restore taskbar/focusability
       // afterwards so a later user activation works normally.

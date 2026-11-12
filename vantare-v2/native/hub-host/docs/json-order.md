@@ -11,7 +11,7 @@ f32 y cambiar sus bytes. Se conserva el camino nativo de serialización.
 | --- | --- | --- |
 | Calendario, `config::State::write_config_document` | `to_vec_pretty(&doc.value)` heredaba el orden del Map: fuente al leer o declaración del struct en `alerts_save` | `sort_all_objects()` antes de serializar; ordena objetos recursivamente, conserva arrays y valores |
 | Launcher, `apps::edit` y `editor::save` → `Store::replace` | Los structs son estables, pero los Values dentro de `wails_import.launcher` cambiaban de orden. El BTreeMap exterior no ordena sus objetos anidados | Ambos límites ordenan únicamente esos Values antes de llamar al mismo store/CAS nativo. El crate launcher queda intacto |
-| Altas del kit, `settings::layout::onboarding::apply` | Construye un Value con `json!`, incluidos los settings de widget-defaults, antes de capturarlo en Fields. El orden anidado podía depender del Map; hoy el asset ya viene ordenado | Ordenación recursiva del Value antes de capturarlo. No cambia los defaults ni el formato compacto previo |
+| Altas del kit, `settings::layout::onboarding::apply` | Construye un Value con `json!`, incluidos los settings de widget-defaults, antes de capturarlo en Fields. El orden anidado podía depender del Map; hoy el asset ya viene ordenado | Defaults ordenados recursivamente, garantizados por un test que inspecciona el orden real del asset para todos los WidgetKind. Fields ordena el nivel superior; no se añade una ordenación redundante |
 
 Calendario concentra en ese único límite `utc_set`, `follow_set`,
 `notify_week_set` y `alerts_save`. Preferencias admite miembros desconocidos y los
@@ -40,8 +40,8 @@ nueva ni se alteran comandos o argumentos.
 | Presentación en Studio/Onboarding | Contador u64, texto fijo o eliminación del fichero; ningún objeto dinámico |
 
 Los informes locales se proyectan desde structs (o BTreeMap tipados).
-Diagnostics::prepare construye un Value para el JSON de copia; no escribe un
-fichero y su orden de previsualización queda fuera de esta garantía de disco.
+Diagnostics::prepare ordena recursivamente el Value de copia igual que Triage;
+ambas previsualizaciones conservan los mismos valores y ahora tienen orden estable.
 Triage ya ordena su Value con sort_all_objects antes de crear su previsualización.
 Tampoco es un escritor local de documentos.
 Los guardados delegados a Services no pasan por un serializador de disco del
@@ -51,6 +51,8 @@ anfitrión. No se cambia ese protocolo ni ningún crate de núcleo.
 
 `fixtures/writer-bytes/` fija los bytes de Calendario, ambos caminos del Launcher,
 Ajustes y su espejo, Studio opaco, Studio tipado con gap 2.7 y el kit de Onboarding.
+Se añaden el guard del asset completo, arrays anidados del adaptador y el orden
+del diagnóstico de copia.
 Son expectativas explícitas: no se actualizan desde el código bajo prueba.
 Las listas conservan su orden; se prueba un objeto desconocido dentro de una
 lista y objetos RawValue con claves z/a y espacios que no deben reordenarse.
@@ -68,3 +70,9 @@ se acordó en #2140. No se activa qa-e2e ni bindings del anfitrión.
 `VANTARE_EXPECT_JSON_ORDER` exige que cada job use realmente su representación
 esperada. Los mismos oráculos se ejecutan también en los tests ordinarios del
 workspace, con la representación que tenga su grafo.
+
+Calendario conserva una diferencia deliberada de formato con GPUI: el host
+escribe avisos en orden alfabético (`autoLaunch, bands, channels, leadMin,
+notifyWeek, slots`), mientras GPUI usa el orden del struct (`leadMin, bands,
+slots, channels, autoLaunch, notifyWeek`). Ambos leen el formato del otro y
+ninguno reescribe un documento solo por su formato.

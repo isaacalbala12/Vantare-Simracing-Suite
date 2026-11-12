@@ -69,6 +69,10 @@ fn writer_bytes_calendar_alerts_use_the_same_order_on_both_write_paths() {
     let view = state
         .alerts_save(&alerts, view.alerts_revision.as_deref().unwrap())
         .unwrap();
+    assert_eq!(
+        std::fs::read(root.path.join("calendar-alerts.json")).unwrap(),
+        include_bytes!("../fixtures/writer-bytes/calendar-alerts-save.json")
+    );
     state
         .notify_week_set(false, view.alerts_revision.as_deref().unwrap())
         .unwrap();

@@ -51,3 +51,63 @@ mod tests {
         assert!(get("unknown").is_none());
     }
 }
+
+#[cfg(test)]
+mod writer_bytes_order {
+    use super::*;
+    use serde::de::{MapAccess, Visitor};
+
+    struct Object(Vec<(String, Box<RawValue>)>);
+    impl<'de> Deserialize<'de> for Object {
+        fn deserialize<D: serde::Deserializer<'de>>(input: D) -> Result<Self, D::Error> {
+            struct Entries;
+            impl<'de> Visitor<'de> for Entries {
+                type Value = Object;
+                fn expecting(&self, output: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    output.write_str("an object in source order")
+                }
+                fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> Result<Object, M::Error> {
+                    let mut entries = Vec::new();
+                    while let Some(entry) = map.next_entry()? {
+                        entries.push(entry);
+                    }
+                    Ok(Object(entries))
+                }
+            }
+            input.deserialize_map(Entries)
+        }
+    }
+    fn sorted(raw: &RawValue) -> bool {
+        match raw.get().trim_start().as_bytes()[0] {
+            b'{' => {
+                let object: Object = serde_json::from_str(raw.get()).unwrap();
+                object.0.windows(2).all(|pair| pair[0].0 < pair[1].0)
+                    && object.0.iter().all(|(_, child)| sorted(child))
+            }
+            b'[' => {
+                let children: Vec<Box<RawValue>> = serde_json::from_str(raw.get()).unwrap();
+                children.iter().all(|child| sorted(child))
+            }
+            _ => true,
+        }
+    }
+    #[test]
+    fn writer_bytes_widget_defaults_have_sorted_keys_at_every_depth_for_every_kind() {
+        use crate::studio::WidgetKind;
+        let document: Document = serde_json::from_str(SOURCE).unwrap();
+        let kinds: std::collections::BTreeSet<_> = WidgetKind::CATALOG
+            .iter()
+            .copied()
+            .chain(std::iter::once(WidgetKind::CarDamageNumbers))
+            .map(WidgetKind::id)
+            .collect();
+        assert_eq!(kinds, document.widgets.keys().map(String::as_str).collect());
+        for kind in kinds {
+            assert!(sorted(&get(kind).unwrap().settings), "{kind}");
+        }
+        // RawValue/Visitor observes source order even without preserve_order.
+        for source in [r#"{"z":1,"a":2}"#, r#"{"a":[{"z":1,"a":2}]}"#] {
+            assert!(!sorted(&RawValue::from_string(source.into()).unwrap()));
+        }
+    }
+}

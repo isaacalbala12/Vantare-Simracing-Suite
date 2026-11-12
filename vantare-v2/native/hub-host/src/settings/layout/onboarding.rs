@@ -144,8 +144,7 @@ pub(crate) fn apply(
         ids.insert(id.clone());
         let defaults = crate::widget_defaults::get(kind.key()).ok_or(HostError::Protected)?;
         let (x, y) = kind.position();
-        let mut value = serde_json::json!({"id":id,"x":x,"y":y,"visible":true,"opacity":1.0,"settings":defaults.settings});
-        value.sort_all_objects();
+        let value = serde_json::json!({"id":id,"x":x,"y":y,"visible":true,"opacity":1.0,"settings":defaults.settings});
         let item: Fields =
             serde_json::from_str(&value.to_string()).map_err(|_| HostError::Protected)?;
         items.push(item);

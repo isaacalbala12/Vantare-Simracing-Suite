@@ -1,0 +1,36 @@
+{
+  "autoLaunch": false,
+  "bands": [
+    {
+      "days": "weekdays",
+      "from": 60,
+      "mode": "first",
+      "seriesId": "qa2",
+      "to": 120
+    },
+    {
+      "days": "all",
+      "from": 0,
+      "mode": "each",
+      "seriesId": "qa1",
+      "to": 1440
+    }
+  ],
+  "channels": {
+    "inTrack": true,
+    "sound": false,
+    "windows": true
+  },
+  "leadMin": 15,
+  "notifyWeek": true,
+  "slots": [
+    {
+      "at": 3600,
+      "seriesId": "qa2"
+    },
+    {
+      "at": 0,
+      "seriesId": "qa1"
+    }
+  ]
+}

@@ -11,7 +11,9 @@ fn encode(value: &impl serde::Serialize) -> Result<Box<RawValue>, HostError> {
 // their original RawValue bytes, including inside format/style objects.
 fn known_object(old: Option<&RawValue>, new: &Value) -> Result<Box<RawValue>, HostError> {
     let Value::Object(object) = new else {
-        return encode(new);
+        let mut value = new.clone();
+        value.sort_all_objects();
+        return encode(&value);
     };
     let mut fields: Fields = old.map_or(Ok(Fields::default()), |raw| {
         serde_json::from_str(raw.get()).map_err(|_| HostError::Protected)
@@ -468,5 +470,21 @@ mod final_review_tests {
             json!({"kind":"standings","rowCount":30})
         ));
         assert_eq!(fields.0["settings"].get(), original);
+    }
+}
+
+#[cfg(test)]
+mod writer_bytes_array_tests {
+    use super::*;
+    #[test]
+    fn writer_bytes_known_arrays_order_nested_objects_without_mutating_the_input() {
+        let value: Value = serde_json::from_str(r#"[{"z":2,"a":1},[{"z":4,"a":3}]]"#).unwrap();
+        let before = serde_json::to_string(&value).unwrap();
+        let encoded = known_object(None, &value).unwrap();
+        assert_eq!(
+            encoded.get().as_bytes(),
+            include_bytes!("../../../fixtures/writer-bytes/studio-known-array.json")
+        );
+        assert_eq!(serde_json::to_string(&value).unwrap(), before);
     }
 }

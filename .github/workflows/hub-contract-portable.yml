@@ -2,7 +2,7 @@ name: Hub contract portable
 on:
   pull_request:
     branches: [nightly]
-    paths: ['vantare-v2/native/hub-host/**', 'vantare-v2/native/ipc/**', 'vantare-v2/native/services/**', '.github/workflows/hub-contract-portable.yml']
+    paths: ['vantare-v2/native/hub-host/**', 'vantare-v2/native/launcher/**', 'vantare-v2/native/domain/**', 'vantare-v2/native/ipc/**', 'vantare-v2/native/services/**', '.github/workflows/hub-contract-portable.yml']
   workflow_dispatch:
 permissions:
   contents: read

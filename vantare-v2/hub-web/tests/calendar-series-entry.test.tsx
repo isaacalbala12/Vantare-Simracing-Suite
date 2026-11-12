@@ -111,13 +111,18 @@ vi.mock("../src/renderer/ui/CalendarFrame", () => ({
   CalendarFrame: ({
     children,
     onAlerts,
+    onExport,
   }: {
     children: ReactNode;
     onAlerts: () => void;
+    onExport: () => void;
   }) => (
     <>
       <button type="button" onClick={onAlerts}>
         Avisos
+      </button>
+      <button type="button" onClick={onExport}>
+        Exportar ICS
       </button>
       {children}
     </>
@@ -381,4 +386,30 @@ it("opens the ICS dialog from the real detail drawer and returns to it on cancel
     screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
   ).toBeNull();
   await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
+it("keeps only one calendar dialog open when switching between alerts and ICS", () => {
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  expect(
+    screen.getByRole("dialog", { name: "Avisos" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
+  expect(
+    screen.queryByRole("dialog", { name: "Avisos" }),
+  ).toBeNull();
+  expect(
+    screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  expect(
+    screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeNull();
+  expect(
+    screen.getByRole("dialog", { name: "Avisos" }),
+  ).toBeTruthy();
 });

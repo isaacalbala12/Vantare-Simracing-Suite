@@ -65,10 +65,13 @@ export default function CalendarEntry() {
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+    setIcsOpen(false);
     setAlertsOpen(true);
   };
   const returnAlertsFocus = () =>
-    alertsOrigin.current?.isConnected ? alertsOrigin.current : false;
+    !icsOpen && alertsOrigin.current?.isConnected
+      ? alertsOrigin.current
+      : false;
   const [activeTab, setActiveTab] = useState("upcoming");
   const [calendarSpan, setCalendarSpan] = useState("week");
   const liveFilters = useRef<CalendarLiveFilters>({
@@ -143,10 +146,11 @@ export default function CalendarEntry() {
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+    setAlertsOpen(false);
     setIcsOpen(true);
   };
   const returnIcsFocus = () =>
-    icsOrigin.current?.isConnected ? icsOrigin.current : false;
+    !alertsOpen && icsOrigin.current?.isConnected ? icsOrigin.current : false;
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
@@ -560,7 +564,7 @@ export default function CalendarEntry() {
           busy={preferences.busy}
           onClose={() => {
             // The modal temporarily owns focus; keep its source drawer mounted.
-            if (!icsOpen) closeDetail();
+            if (!icsOpen && !alertsOpen) closeDetail();
           }}
           returnFocus={returnDetailFocus}
           onSerie={(id) => {

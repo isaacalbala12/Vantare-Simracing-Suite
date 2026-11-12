@@ -57,6 +57,36 @@ async function checkCalendarExportProviders(page: Page) {
   }
 }
 
+async function assertCalendarMineControls(page: Page) {
+  const chip = page
+    .locator(".v-calendar-mine-slots button:not([data-alert])")
+    .first();
+  const visibleBorder = await chip.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return (
+      Number.parseFloat(style.borderTopWidth) >= 1 &&
+      style.borderTopStyle === "solid" &&
+      style.borderTopColor !== "rgba(0, 0, 0, 0)"
+    );
+  });
+  if (!visibleBorder)
+    throw new Error("Calendar mine time chip has no visible border");
+  const clock = page.locator(".v-calendar-mine-launch-pending").first();
+  if (
+    !(await clock.isDisabled()) ||
+    !(await clock.getAttribute("aria-describedby"))
+  )
+    throw new Error("Calendar scheduled launch lacks its disabled explanation");
+  if (
+    (await clock.evaluate((node) =>
+      Number.parseFloat(getComputedStyle(node).opacity),
+    )) !== 0.45
+  )
+    throw new Error(
+      "Calendar scheduled launch differs from Upcoming disabled opacity",
+    );
+}
+
 async function checkExpandedCalendarWeek(page: Page) {
   await page
     .getByRole("button", { name: "Pantalla completa", exact: true })
@@ -163,6 +193,7 @@ export const calendarScenes: Record<string, VisualScene> = {
         .getByRole("heading", { name: "Tu semana", exact: true })
         .waitFor();
       await page.getByText("4 carreras", { exact: true }).waitFor();
+      await assertCalendarMineControls(page);
       await page.mouse.move(600, 890);
     },
   },
@@ -277,6 +308,7 @@ export const calendarScenes: Record<string, VisualScene> = {
         .getByRole("heading", { name: "Tu semana", exact: true })
         .waitFor();
       await page.getByText("4 carreras", { exact: true }).waitFor();
+      await assertCalendarMineControls(page);
       await page.mouse.move(600, 890);
     },
   },

@@ -56,9 +56,10 @@ Los documentos de prueba no contienen rutas ejecutables, cuentas ni datos reales
 
 El workflow existente `hub-contract-portable.yml` añade dos jobs Windows:
 
-- `sorted`: `cargo test --locked --no-default-features -p vantare-hub-host --lib writer_bytes`.
+- `sorted`: `cargo test --locked -p vantare-hub-host --lib writer_bytes`.
 - `insertion`: lo mismo con `--features serde_json/preserve_order`.
 
+Se usan los defaults reales del anfitrión; no se desactivan features por CLI.
 No se selecciona runtime ni el workspace. La feature bindings de domain que
 activan las dependencias de desarrollo sigue siendo exclusiva de tests, como
 se acordó en #2140. No se activa qa-e2e ni bindings del anfitrión.

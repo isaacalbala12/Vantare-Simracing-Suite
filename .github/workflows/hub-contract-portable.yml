@@ -61,5 +61,5 @@ jobs:
           if ('${{ matrix.order }}' -eq 'insertion') {
             $extra = @('--features', 'serde_json/preserve_order')
           }
-          cargo test --locked --no-default-features -p vantare-hub-host --lib writer_bytes @extra
+          cargo test --locked -p vantare-hub-host --lib writer_bytes @extra
           if ($LASTEXITCODE) { exit $LASTEXITCODE }

@@ -30,7 +30,10 @@
   justify-content: space-between;
   padding: 2px 4px 0;
 }
-.v-focus-layout-name > strong {
+.v-focus-layout-name :where(div) strong {
+  display: block;
+  line-height: 1.1;
+  margin-top: 2px;
   font-family: var(--font-display);
   font-size: 21px;
   font-weight: 700;
@@ -45,6 +48,8 @@
   color: var(--err);
 }
 .v-focus-list-heading {
+  display: flex;
+  justify-content: space-between;
   color: var(--text-caption);
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -187,7 +192,7 @@
 }
 .v-focus-header {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 14px;
   flex: none;
@@ -229,7 +234,7 @@
 .v-focus-actions {
   display: flex;
   gap: 8px;
-  padding-top: 18px;
+  padding-top: 0;
   flex: none;
 }
 .v-focus-stage {
@@ -363,7 +368,7 @@
   .v-focus-strip {
     width: 72px;
   }
-  .v-focus-layout-name > strong,
+  .v-focus-layout-name > div,
   .v-focus-row-name,
   .v-focus-list-heading,
   .v-focus-save,
@@ -395,4 +400,16 @@
 
 .v-studio-focus-layout[data-missing="true"] {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.v-focus-layout-name small {
+  color: var(--text-caption);
+  font: 10.5px var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+.v-focus-list-heading > span + span {
+  text-transform: none;
+  letter-spacing: normal;
+  font-family: inherit;
 }

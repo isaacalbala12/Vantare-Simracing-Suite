@@ -18,7 +18,10 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
   return (
     <aside className="v-focus-strip" aria-label={t.layoutLabel}>
       <header className="v-focus-layout-name">
-        <strong>{t.local}</strong>
+        <div>
+          <small>{t.layoutLabel}</small>
+          <strong>{t.local}</strong>
+        </div>
         <IconButton label={t.localHelp} size="sm" variant="ghost">
           <Icon name="info" />
         </IconButton>
@@ -35,7 +38,16 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                 : t.loading}
       </div>
       <div className="v-focus-list-heading">
-        {view?.state === "ready" && t.overlaysCount(view.instances.length)}
+        {view?.state === "ready" && (
+          <>
+            <span>{t.overlaysCount(view.instances.length)}</span>
+            <span>
+              {t.visibleCount(
+                view.instances.filter((item) => item.visible).length,
+              )}
+            </span>
+          </>
+        )}
       </div>
       {view && view.instances.length >= 9 && (
         <fieldset className="v-focus-filters" aria-label={t.filterLabel}>

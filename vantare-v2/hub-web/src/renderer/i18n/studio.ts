@@ -1,5 +1,6 @@
 export const studioText = {
   layoutLabel: "Layout",
+  visibleCount: (n: number) => `${n} ${n === 1 ? "visible" : "visibles"}`,
   overlaysCount: (n: number) => `Overlays · ${n}`,
   more: "Más",
   moreLabel: "Más acciones",

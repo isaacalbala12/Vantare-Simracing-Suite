@@ -170,7 +170,11 @@ export function CalendarMineView({
                 const s = entry.series,
                   at = entry.starts[0];
                 return (
-                  <div className="v-calendar-mine-row" key={s.id}>
+                  <div
+                    className="v-calendar-mine-row"
+                    data-first={launch || undefined}
+                    key={s.id}
+                  >
                     <div className="v-calendar-mine-at">
                       <strong>{clock(at, utc)}</strong>
                       {at - now < 6 * 60 * 60_000 && (
@@ -188,16 +192,24 @@ export function CalendarMineView({
                     >
                       <strong>{s.name}</strong>
                       <p>
-                        <b data-tier={s.tier}>
+                        <b
+                          data-tier={
+                            s.eventKind === "special" || s.tier === "weekly"
+                              ? "event"
+                              : s.tier
+                          }
+                        >
                           {s.eventKind === "special"
                             ? calendarText.specialty
                             : (calendarText.tiers[
                                 s.tier as keyof typeof calendarText.tiers
                               ] ?? s.tier)}
                         </b>
-                        {s.track.split(" (")[0]}
-                        {text.separator}
-                        {text.race(calendarText.minutes(raceMinutes(s)))}
+                        <span>
+                          {s.track.split(" (")[0]}
+                          {text.separator}
+                          {text.race(calendarText.minutes(raceMinutes(s)))}
+                        </span>
                       </p>
                     </div>
                     <div className="v-calendar-mine-slots">
@@ -258,33 +270,35 @@ export function CalendarMineView({
                         </>
                       )}
                     </div>
-                    {launch ? (
-                      <Button
-                        variant="primary"
-                        onClick={onLaunch}
-                        disabled={!canLaunch}
-                      >
-                        <Icon name="play" />
-                        {text.launch}
-                      </Button>
-                    ) : (
+                    <div className="v-calendar-mine-actions">
+                      {launch ? (
+                        <Button
+                          variant="primary"
+                          onClick={onLaunch}
+                          disabled={!canLaunch}
+                        >
+                          <Icon name="play" />
+                          {text.launch}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          aria-label={text.alert}
+                          disabled={!onAlert}
+                          onClick={() => onAlert?.(s.id, at)}
+                        >
+                          <Icon name="clock" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
-                        aria-label={text.alert}
-                        disabled={!onAlert}
-                        onClick={() => onAlert?.(s.id, at)}
+                        aria-label={text.detail}
+                        disabled={!onDetail}
+                        onClick={() => onDetail?.(s.id, at)}
                       >
-                        <Icon name="clock" />
+                        <Icon name="info" />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      aria-label={text.detail}
-                      disabled={!onDetail}
-                      onClick={() => onDetail?.(s.id, at)}
-                    >
-                      <Icon name="info" />
-                    </Button>
+                    </div>
                   </div>
                 );
               })}

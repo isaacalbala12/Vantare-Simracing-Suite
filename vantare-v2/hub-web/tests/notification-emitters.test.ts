@@ -559,3 +559,36 @@ it("an accepted launch confirms recovery but choosing a missing favorite does no
   expect(h.records()).toHaveLength(2);
   h.connection.dispose();
 });
+it("repeated healthy resident photos do not declare a failed launch recovered", () => {
+  const h = harness();
+  h.preferences(true);
+  h.resident({});
+  h.observe({
+    phase: "done",
+    id: 1,
+    method: "launcher.launch",
+    error: { kind: "io" },
+  });
+  h.store.getState().read();
+  h.resident({});
+  h.resident({});
+  h.observe({
+    phase: "done",
+    id: 2,
+    method: "launcher.launch",
+    error: { kind: "io" },
+  });
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0].unread).toBe(false);
+  h.resident({ online: false });
+  h.resident({});
+  h.observe({
+    phase: "done",
+    id: 3,
+    method: "launcher.launch",
+    error: { kind: "io" },
+  });
+  expect(h.records()).toHaveLength(2);
+  expect(h.records()[0].unread).toBe(true);
+  h.connection.dispose();
+});

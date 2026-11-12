@@ -64,7 +64,11 @@ export function connectEmitters(
       if (value.error && !resident?.error) pendingResidentError = true;
       if (!value.error) {
         pendingResidentError = false;
-        launcherFailure = false;
+        if (
+          resident &&
+          (!resident.online || resident.protected || resident.error)
+        )
+          launcherFailure = false;
       }
     }
     resident = value;

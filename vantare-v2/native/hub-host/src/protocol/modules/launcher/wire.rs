@@ -83,6 +83,14 @@ pub enum Request {
         #[serde(rename = "baseRevision")]
         base_revision: String,
     },
+    #[serde(rename = "launcher.launchChecked")]
+    LauncherLaunchChecked {
+        profile: String,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+        #[serde(rename = "armedGeneration")]
+        armed_generation: String,
+    },
     #[serde(rename = "launcher.favorite")]
     LauncherFavorite {},
 }
@@ -152,6 +160,10 @@ pub enum Reply {
     },
     #[serde(rename = "launcher.launch")]
     LauncherLaunch { accepted: bool },
+    #[serde(rename = "launcher.launchChecked")]
+    LauncherLaunchChecked {
+        value: crate::launcher::checked::LaunchQueued,
+    },
     #[serde(rename = "launcher.favorite")]
     LauncherFavorite { accepted: bool },
 }

@@ -6,6 +6,12 @@ use ts_rs::TS;
 use vantare_ipc::launcher as mailbox;
 #[path = "document_cache.rs"]
 mod document_cache;
+#[path = "execution.rs"]
+mod execution;
+pub use execution::{
+    ResidentCancellation, ResidentEventKind, ResidentExecution, ResidentExecutionEvent,
+    ResidentFailure, ResidentOutcome, ResidentReceipt, ResidentRejection,
+};
 
 pub const DECISION_ID_MAX: usize = 20;
 pub const DECISION_ID_PATTERN: &str = "^(0|[1-9][0-9]*)$";
@@ -102,6 +108,7 @@ pub struct ResidentQuestion {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[allow(clippy::struct_excessive_bools)] // Independent document, freshness, execution and error observations.
 pub struct ResidentView {
+    pub execution: Option<ResidentExecution>,
     pub protected: bool,
     pub online: bool,
     pub running: bool,
@@ -178,6 +185,10 @@ impl State {
         }
         let status = mailbox::read_status(&self.path);
         let mut view = ResidentView {
+            execution: status
+                .as_ref()
+                .and_then(|s| s.extension.as_ref())
+                .map(Into::into),
             online: status.is_some(),
             running: status.as_ref().is_some_and(|s| s.running),
             error: status.as_ref().is_some_and(|s| s.error.is_some()),

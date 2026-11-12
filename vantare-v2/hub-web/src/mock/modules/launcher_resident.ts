@@ -9,6 +9,7 @@ export function create(context: MockContext): MockHandler {
     running: false,
     error: false,
     decision: null,
+    execution: null,
     registrations: [],
   };
   if (context.sceneName === "launcher-decision") {

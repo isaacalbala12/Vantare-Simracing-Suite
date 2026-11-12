@@ -270,6 +270,7 @@ impl Core {
         self.observe_account_generation(self.rights.account_observation().map(|o| o.generation));
         self.observe_authority(access.clone());
         CoreStatus {
+            account_generation: self.account_generation.clone().map(Into::into),
             photos: if self.photos.connection().incompatible() {
                 LinkState::Incompatible
             } else if self

@@ -15,6 +15,7 @@ import { ResidentInbox } from "../src/renderer/ui/launcher/ResidentInbox";
 import { WindowButtons } from "../src/renderer/ui/WindowButtons";
 
 const view: ResidentView = {
+  execution: null,
   protected: false,
   online: true,
   running: true,

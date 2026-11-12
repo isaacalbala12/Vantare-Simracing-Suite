@@ -30,8 +30,8 @@
     },
     {
       "error": {
-        "expected": 30,
-        "found": 31,
+        "expected": 31,
+        "found": 32,
         "kind": "incompatible"
       },
       "id": 1,
@@ -69,7 +69,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 30,
+      "version": 31,
       "window": {
         "height": 900,
         "minimized": false,
@@ -98,6 +98,7 @@
             "tester": false,
             "verified": false
           },
+          "accountGeneration": null,
           "live": false,
           "photos": "connected",
           "rights": "connected",
@@ -117,6 +118,7 @@
             "tester": false,
             "verified": false
           },
+          "accountGeneration": null,
           "live": false,
           "photos": "connected",
           "rights": "connected",
@@ -139,6 +141,7 @@
             "tester": false,
             "verified": false
           },
+          "accountGeneration": null,
           "live": false,
           "photos": "incompatible",
           "rights": "incompatible",
@@ -158,6 +161,7 @@
             "tester": false,
             "verified": false
           },
+          "accountGeneration": null,
           "live": false,
           "photos": "incompatible",
           "rights": "incompatible",
@@ -180,6 +184,7 @@
             "tester": false,
             "verified": false
           },
+          "accountGeneration": null,
           "live": false,
           "photos": "unavailable",
           "rights": "unavailable",
@@ -199,6 +204,7 @@
             "tester": false,
             "verified": false
           },
+          "accountGeneration": null,
           "live": false,
           "photos": "unavailable",
           "rights": "unavailable",
@@ -241,7 +247,7 @@
     },
     {
       "kind": "hello",
-      "version": 30
+      "version": 31
     },
     {
       "kind": "ready"

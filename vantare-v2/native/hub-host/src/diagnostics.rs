@@ -123,6 +123,7 @@ mod tests {
     #[test]
     fn report_core_projection_and_keys_are_exact_even_with_every_capability_set() {
         let core = CoreStatus {
+            account_generation: None,
             photos: crate::protocol::LinkState::Connected,
             rights: crate::protocol::LinkState::Incompatible,
             services: crate::protocol::LinkState::Unavailable,

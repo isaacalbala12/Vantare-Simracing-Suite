@@ -16,6 +16,9 @@ fn sort_imported_settings(document: &mut Document) {
     }
 }
 
+#[path = "launcher_checked.rs"]
+pub mod checked;
+
 pub const ID_LIMIT: usize = 256;
 pub const PROFILE_LIMIT: usize = 128;
 pub const APP_LIMIT: usize = 256;

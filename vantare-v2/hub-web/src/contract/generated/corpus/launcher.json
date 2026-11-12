@@ -202,6 +202,17 @@
       }
     },
     {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.launchChecked",
+        "value": {
+          "kind": "queued",
+          "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
       "error": {
         "current": {
           "apps": [],
@@ -512,6 +523,16 @@
           ]
         },
         "method": "launcher.profile.save"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "armedGeneration": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "launcher.launchChecked",
+        "profile": "creator"
       }
     },
     {

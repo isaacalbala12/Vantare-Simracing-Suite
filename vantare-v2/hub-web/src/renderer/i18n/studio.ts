@@ -1,4 +1,25 @@
 export const studioText = {
+  appearanceUnavailable:
+    "No se pueden leer los ajustes de apariencia de este widget.",
+  appearancePreviewNote:
+    "Los cambios se guardan para el overlay en pista. Esta miniatura es ilustrativa y no previsualiza su apariencia.",
+  lookEficiencia: "Eficiencia",
+  lookVantare: "Vantare",
+  styleNeo: "Neo",
+  styleNeutral: "Neutro",
+  widgetLook: "Look",
+  widgetStyle: "Estilo del widget",
+  widgetAccent: "Acento del widget",
+  widgetBrand: "Marca",
+  accentRed: "Rojo",
+  accentAmber: "Ámbar",
+  accentGreen: "Verde",
+  accentWhite: "Blanco",
+  brandAuto: "Automática",
+  brandShown: "Visible",
+  brandHidden: "Oculta",
+  brandReadOnly:
+    "Solo lectura. Cambiar la marca está pendiente de la decisión sobre licencias.",
   title: "OVERLAYS STUDIO",
   layout: "Layout activo",
   local: "Layout local",

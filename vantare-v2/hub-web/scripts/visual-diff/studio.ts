@@ -290,3 +290,19 @@ studioScenes["studio-eliminado"] = {
     );
   },
 };
+
+// Common Appearance controls; the image is deliberately a static illustration.
+studioScenes["studio-apariencia"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    await page.getByRole("combobox", { name: "Look", exact: true }).waitFor();
+    await page
+      .getByText(
+        "Solo lectura. Cambiar la marca está pendiente de la decisión sobre licencias.",
+        { exact: true },
+      )
+      .waitFor();
+  },
+};

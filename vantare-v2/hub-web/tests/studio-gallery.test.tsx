@@ -693,4 +693,31 @@ describe("Studio gallery", () => {
     );
     expect(document.activeElement).toBe(slider);
   });
+  it("opens Appearance by keyboard and saves an accent through the existing CAS contract", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const user = userEvent.setup();
+    await screen.findByRole("slider", { name: t.opacity });
+    await tabTo(user, screen.getByRole("tab", { name: t.track }));
+    await user.keyboard("{ArrowLeft}");
+    const appearance = screen.getByRole("tab", { name: t.appearance });
+    expect(appearance.getAttribute("aria-selected")).toBe("true");
+    await user.click(screen.getByRole("combobox", { name: t.widgetAccent }));
+    await user.click(
+      await screen.findByRole("option", { name: t.accentGreen }),
+    );
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.some(
+          ([request]) =>
+            request.method === "studio.instance" &&
+            request.patch.field === "settings" &&
+            request.patch.value.kind === "standings" &&
+            request.patch.value.accent === "green",
+        ),
+      ).toBe(true),
+    );
+    const control = screen.getByRole("combobox", { name: t.widgetAccent });
+    await waitFor(() => expect(control.textContent).toContain(t.accentGreen));
+  });
 });

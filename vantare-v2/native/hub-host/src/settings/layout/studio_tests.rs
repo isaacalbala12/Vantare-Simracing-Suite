@@ -946,11 +946,11 @@ fn design_system_patch_matches_native_set_look_for_all_families_and_legacy() {
         let mut state = State::new(path.clone());
         let before = state.view(access);
         assert_eq!(before.state, StudioState::Ready, "{}", case["name"]);
-        let patch =
+        let update =
             serde_json::from_value(serde_json::json!({"kind":kind,"designSystem":look})).unwrap();
         let saved = state
             .edit(
-                Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(patch))),
+                Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(update))),
                 &before.revision,
                 access,
             )

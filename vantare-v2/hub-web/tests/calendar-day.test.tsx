@@ -20,7 +20,7 @@ const alerts = {
   autoLaunch: false,
   notifyWeek: true,
 };
-it("preserves a manually scrolled position across clock ticks and routes view changes", () => {
+it("preserves a manually scrolled position across clock ticks and routes view changes", async () => {
   const span = vi.fn(),
     full = vi.fn();
   const props = {
@@ -46,6 +46,19 @@ it("preserves a manually scrolled position across clock ticks and routes view ch
   expect(span).toHaveBeenCalledWith("week");
   fireEvent.click(screen.getByRole("button", { name: text.full }));
   expect(full).toHaveBeenCalledOnce();
+  const expanded = screen.getByRole("dialog", { name: text.calendar });
+  const expandedScroll = expanded.querySelector<HTMLDivElement>(
+    ".v-calendar-day-scroll",
+  );
+  if (!expandedScroll) throw new Error("Missing expanded scroller");
+  expect(expandedScroll.scrollTop).toBe(42);
+  expandedScroll.scrollTop = 58;
+  fireEvent.click(screen.getByRole("button", { name: text.exitFull }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(container.querySelector(".v-calendar-day-scroll")).toHaveProperty(
+    "scrollTop",
+    58,
+  );
 });
 it("shows the empty favorites state without replacing the date controls", () => {
   render(

@@ -42,7 +42,10 @@ export function CalendarDayView({
   const [full, setFull] = useState(false);
   const fullToggle = useRef<HTMLButtonElement>(null);
   const previousFull = useRef(false);
+  const savedScroll = useRef<number | undefined>(undefined);
   useLayoutEffect(() => {
+    if (scroll.current && savedScroll.current !== undefined)
+      scroll.current.scrollTop = savedScroll.current;
     if (previousFull.current && !full)
       fullToggle.current?.focus({ preventScroll: true });
     previousFull.current = full;
@@ -54,6 +57,10 @@ export function CalendarDayView({
   const selected = chosen ?? Math.max(today, 0);
   const scroll = useRef<HTMLDivElement>(null);
   const scrolled = useRef("");
+  const changeFull = (next: boolean) => {
+    savedScroll.current = scroll.current?.scrollTop;
+    setFull(next);
+  };
   const at = dates[selected],
     hours = dayHours(at, utc),
     until = civilDay(at, 1, utc);
@@ -115,7 +122,7 @@ export function CalendarDayView({
           aria-label={full ? text.exitFull : text.full}
           aria-pressed={full}
           onClick={() => {
-            setFull(!full);
+            changeFull(!full);
             onFull?.();
           }}
         >
@@ -270,7 +277,7 @@ export function CalendarDayView({
     </section>
   );
   return (
-    <BaseDialog.Root modal={false} open={full} onOpenChange={setFull}>
+    <BaseDialog.Root modal={false} open={full} onOpenChange={changeFull}>
       {full ? (
         <BaseDialog.Portal>
           <BaseDialog.Backdrop className="v-calendar-day-full-backdrop" />

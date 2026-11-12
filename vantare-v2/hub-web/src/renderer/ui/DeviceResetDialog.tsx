@@ -1,8 +1,8 @@
-import { AlertDialog } from "@base-ui/react/alert-dialog";
 import type { RefObject } from "react";
 import { accountText as text } from "../i18n/account.es";
 import { Button } from "./Button";
 import { ActionGroup } from "./ShellLayout";
+import { WindowAlertDialog as AlertDialog } from "./WindowDialog";
 export function DeviceResetDialog({
   open,
   disabled,

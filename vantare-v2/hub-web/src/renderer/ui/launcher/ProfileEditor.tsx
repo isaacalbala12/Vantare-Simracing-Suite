@@ -1,4 +1,3 @@
-import { AlertDialog as BaseAlertDialog } from "@base-ui/react/alert-dialog";
 import type {
   LauncherApp,
   ProfileDraft,
@@ -18,6 +17,7 @@ import { Button } from "../Button";
 import { Callout, Keycap } from "../Data";
 import { Checkbox, Input, Select, Switch, Textarea } from "../Forms";
 import { Tooltip } from "../Layers";
+import { WindowAlertDialog as BaseAlertDialog } from "../WindowDialog";
 import { AppMark, Circuit } from "./Profiles";
 import "./editor.css";
 export function ProfileEditorFields({

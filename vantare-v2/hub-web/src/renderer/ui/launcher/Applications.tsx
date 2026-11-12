@@ -1,5 +1,3 @@
-import { AlertDialog } from "@base-ui/react/alert-dialog";
-import { Dialog } from "@base-ui/react/dialog";
 import type {
   AppDraft,
   AppEditor,
@@ -13,6 +11,10 @@ import { Button, IconButton } from "../Button";
 import { Callout } from "../Data";
 import { Input } from "../Forms";
 import { Tooltip } from "../Layers";
+import {
+  WindowAlertDialog as AlertDialog,
+  WindowDialog as Dialog,
+} from "../WindowDialog";
 import { AppMark } from "./Profiles";
 import "./applications.css";
 

@@ -107,6 +107,7 @@ export function Select({
         {label}
       </label>
       <BaseSelect.Root
+        modal={false}
         items={options}
         value={value}
         onValueChange={(v) => {

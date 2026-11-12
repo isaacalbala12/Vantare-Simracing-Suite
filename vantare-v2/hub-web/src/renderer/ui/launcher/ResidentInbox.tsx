@@ -1,10 +1,10 @@
-import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useId, useState } from "react";
 import type { ResidentView } from "../../../contract/generated/contract";
 import { residentText as t } from "../../i18n/launcher-resident";
 import { Button } from "../Button";
 import { Callout } from "../Data";
 import { Tooltip } from "../Layers";
+import { WindowDialog as Dialog } from "../WindowDialog";
 import "./resident.css";
 export function ResidentInbox({ view }: { view?: ResidentView }) {
   const explanation = useId();
@@ -28,6 +28,7 @@ export function ResidentInbox({ view }: { view?: ResidentView }) {
         />
       )}
       <Dialog.Root
+        scope="notice"
         modal={false}
         open={open}
         onOpenChange={(value) => {

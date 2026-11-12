@@ -1,8 +1,8 @@
-import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useRef } from "react";
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Button } from "../Button";
+import { WindowDialog as Dialog } from "../WindowDialog";
 import { widgetName } from "./Widgets";
 export function RemoveWidget() {
   const state = useStudio(),

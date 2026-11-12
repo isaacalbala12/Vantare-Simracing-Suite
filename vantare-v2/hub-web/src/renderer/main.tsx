@@ -17,6 +17,7 @@ import { ReportsProvider } from "./screens/testing/ReportsState";
 import { Callout, Skeleton } from "./ui/Data";
 import { ToastProvider, ToastViewport, TooltipProvider } from "./ui/Layers";
 import { ContentStack } from "./ui/ShellLayout";
+import { WindowDialogProvider } from "./ui/WindowDialog";
 import "./design/base.css";
 import "./ui/ui.css";
 
@@ -84,7 +85,9 @@ function App() {
           <CSPProvider disableStyleElements>
             <TooltipProvider delay={400}>
               <ToastProvider>
-                <Content />
+                <WindowDialogProvider>
+                  <Content />
+                </WindowDialogProvider>
               </ToastProvider>
             </TooltipProvider>
           </CSPProvider>

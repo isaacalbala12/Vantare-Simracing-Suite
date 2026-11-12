@@ -1,11 +1,13 @@
-import { AlertDialog as BaseAlertDialog } from "@base-ui/react/alert-dialog";
-import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { Popover as BasePopover } from "@base-ui/react/popover";
 import { Toast as BaseToast } from "@base-ui/react/toast";
 import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
 import { type HTMLAttributes, isValidElement, type ReactNode } from "react";
 import { Icon } from "../assets/icons/Icon";
+import {
+  WindowAlertDialog as BaseAlertDialog,
+  WindowDialog as BaseDialog,
+} from "./WindowDialog";
 export function Tooltip({
   label,
   children,
@@ -132,7 +134,7 @@ export function Popover({
   onOpenChange?: (open: boolean) => void;
 }) {
   return (
-    <BasePopover.Root open={open} onOpenChange={onOpenChange}>
+    <BasePopover.Root modal={false} open={open} onOpenChange={onOpenChange}>
       <BasePopover.Trigger
         aria-label={label}
         className="v-button v-button--ghost"
@@ -162,7 +164,7 @@ export function Menu({
   }[];
 }) {
   return (
-    <BaseMenu.Root>
+    <BaseMenu.Root modal={false}>
       <BaseMenu.Trigger className="v-button">{label}</BaseMenu.Trigger>
       <BaseMenu.Portal>
         <BaseMenu.Positioner className="v-positioner" sideOffset={6}>

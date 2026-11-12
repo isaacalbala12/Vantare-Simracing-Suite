@@ -3,7 +3,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Locator, Page } from "playwright-core";
 import { until } from "../wait-for.ts";
+import { accessScenes } from "./access.ts";
 import { launcherScenes } from "./launcher.ts";
+import { onboardingScenes } from "./onboarding.ts";
 import { privacyScenes } from "./privacy.ts";
 import type { VisualScene } from "./scenes.ts";
 import { studioScenes } from "./studio.ts";
@@ -166,7 +168,7 @@ for (const action of ["Eliminar", "Duplicar"]) {
       await page.getByRole("dialog").waitFor();
     },
     async cleanup(page) {
-      await check(page, id, undefined);
+      await check(page, id, page.locator(".v-launcher-profile").first());
       await page.keyboard.press("Escape");
     },
   };
@@ -181,14 +183,14 @@ scenes["dialog-topbar-launcher-discard"] = {
     await page
       .getByRole("textbox", { name: "Nombre", exact: true })
       .fill("Perfil QA sin guardar");
-    await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await page.keyboard.press("Escape");
     await page.getByRole("alertdialog").waitFor();
   },
   async cleanup(page) {
     await check(
       page,
       "launcher-discard",
-      page.getByRole("button", { name: "Cancelar", exact: true }),
+      page.getByRole("textbox", { name: "Nombre", exact: true }),
     );
   },
 };
@@ -333,3 +335,39 @@ scenes["dialog-topbar-resident"] = {
   },
 };
 export const dialogTopbarScenes = scenes;
+scenes["dialog-topbar-context-menu"] = {
+  mock: "launcher-base",
+  async prepare(page) {
+    await launcher(page);
+    await page.locator(".v-launcher-profile").first().focus();
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menu").waitFor();
+  },
+  async cleanup(page) {
+    await record(page, "context-menu");
+    if (process.env.VANTARE_DIALOG_AUDIT_PHASE !== "after") return;
+    const card = page.locator(".v-launcher-profile").first();
+    await page.keyboard.press("Escape");
+    await page.getByRole("menu").waitFor({ state: "hidden" });
+    await until(
+      async () => card.evaluate((node) => node === document.activeElement),
+      5000,
+      "context menu returns focus",
+    );
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menu").waitFor();
+    await check(page, "context-menu", undefined, false);
+  },
+};
+scenes["dialog-topbar-access"] = {
+  ...accessScenes["acceso-base"],
+  async cleanup(page) {
+    await check(page, "access", undefined, false);
+  },
+};
+scenes["dialog-topbar-onboarding"] = {
+  ...onboardingScenes["onboarding-0"],
+  async cleanup(page) {
+    await check(page, "onboarding", undefined, false);
+  },
+};

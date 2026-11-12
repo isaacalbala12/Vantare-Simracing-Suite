@@ -1,9 +1,9 @@
-import { Dialog } from "@base-ui/react/dialog";
 import { useRef, useState } from "react";
 import { privacyGateText as text } from "../i18n/privacy-gate.es";
 import { Button } from "./Button";
 import { Checkbox } from "./Forms";
 import { TrackedCaps } from "./TrackedCaps";
+import { WindowDialog as Dialog } from "./WindowDialog";
 export function PrivacyQuestion({
   usage,
   checked,
@@ -26,6 +26,7 @@ export function PrivacyQuestion({
   return (
     <div ref={setContainer} className="v-privacy-question-anchor">
       <Dialog.Root
+        scope="gate"
         open
         modal={false}
         disablePointerDismissal

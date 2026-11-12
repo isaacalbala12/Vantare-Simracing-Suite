@@ -21,7 +21,6 @@ enum Data {
 }
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
-#[cfg_attr(any(test, feature = "bindings"), ts(transparent))]
 #[serde(transparent)]
 pub struct WidgetSettings(#[cfg_attr(any(test, feature = "bindings"), ts(inline))] Data);
 // Data is private and immutable. Construction always normalizes the only float,

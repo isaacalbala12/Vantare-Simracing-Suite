@@ -191,19 +191,6 @@
 .v-performance .v-frequency-table [data-current] {
   background: color-mix(in srgb, var(--accent-bright) 7.843137%, transparent);
 }
-/* GPUI's shadow blur is sigma; CSS's blur radius is twice sigma. */
-.v-performance .v-performance-card,
-.v-performance .v-performance-level {
-  box-shadow:
-    inset 0 1px 0 var(--neo-light),
-    var(--shadow-account);
-}
-:root:not([data-palette="vantare"]) .v-performance .v-performance-card,
-:root:not([data-palette="vantare"]) .v-performance .v-performance-level {
-  box-shadow:
-    inset 0 1px 0 var(--neo-light),
-    var(--shadow-account-classic);
-}
 .v-performance-pill {
   display: inline-flex;
   align-items: center;

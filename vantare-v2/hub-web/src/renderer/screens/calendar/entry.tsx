@@ -209,7 +209,7 @@ export default function CalendarEntry() {
     preferences.config?.documents.alerts ??
     (preferences.failure ? "unavailable" : "loading");
   const noticeTest = useCalendarNoticeTest(
-    alertsOpen && state.allowed && alertsState === "ready" && windowsEnabled,
+    alertsOpen && state.allowed && alertsState === "ready",
   );
   const alertsValid = isCalendarAlerts(alerts);
   const preferencesFailure = preferences.failure ? (

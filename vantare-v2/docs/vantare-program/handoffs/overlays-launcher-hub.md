@@ -1,3 +1,17 @@
+## VANTA-141 · Pieza 5 compilada, sin ejecutar GPUI
+
+B-GPUI d15993da3 y B-fast 56cb2c701 compilaron Release por cola -j2,
+con demanda real 33 ms, registro sent y una ventana con 1/4/10 Relative.
+Nueve archivos de fuentes comparados por SHA256: idénticos en GPUI/fast/Rune.
+Tamaños 16.547.840 y 17.800.192 bytes; builds finales incrementales 3m03s y
+1m11s (espera de cola aparte), procedencia incrustada y dumpbin preservados.
+No hay pruebas gráficas ni latencias reales. CI y PC pendientes.
+El parche fast reproduce exactamente native del SHA compilado partiendo de
+745bd52b8; validado con índice Git aislado. Así no se mezcla su divergencia
+histórica de 1.413 archivos en este PR de medición contra nightly.
+Pieza 6 carga D3D11 también compiló por cola, /O2 /MT, sin ejecutarla.
+Kit incompleto, ningún merge ni release.
+
 ## VANTA-141 · Corrección de cadencia y pérdidas (Isaac)
 
 La campaña principal conserva la demanda Relative de 33 ms. `origin`

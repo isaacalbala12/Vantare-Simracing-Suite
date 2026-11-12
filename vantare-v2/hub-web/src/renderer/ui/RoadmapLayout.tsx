@@ -5,6 +5,7 @@ import type {
 } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { roadmap as text } from "../i18n/roadmap";
+import { Tooltip } from "./Layers";
 import { TrackedCaps } from "./TrackedCaps";
 import "./roadmap.css";
 
@@ -59,7 +60,9 @@ export function RoadmapLayout({
       <strong>{text.current}</strong>
       {current ? (
         <>
-          <h2 title={current.title}>{current.title}</h2>
+          <h2>
+            <Tooltip label={current.title}>{current.title}</Tooltip>
+          </h2>
           <p className="v-roadmap-current-body">{current.body}</p>
         </>
       ) : (

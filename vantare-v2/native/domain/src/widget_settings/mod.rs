@@ -1,4 +1,16 @@
 //! Pure persisted settings used by widgets and document editors.
+pub const TABLE_SIZES: &[&str] = &[TABLE_SIZE_COMPACT, TABLE_SIZE_STANDARD, TABLE_SIZE_EXPANDED];
+pub const FOOTER_KEYS: &[&str] = &[
+    FOOTER_TIME,
+    FOOTER_LAP,
+    FOOTER_POSITION,
+    FOOTER_GAP,
+    FOOTER_BEST_LAP,
+    FOOTER_LAST_LAP,
+    FOOTER_TRACK,
+    FOOTER_AMBIENT,
+    FOOTER_WIND,
+];
 pub const FOOTER_ITEMS_MAX: usize = 9;
 pub const TABLE_SIZE_COMPACT: &str = "compact";
 pub const TABLE_SIZE_STANDARD: &str = "standard";

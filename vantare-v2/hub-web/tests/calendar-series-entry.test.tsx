@@ -14,6 +14,9 @@ const model = vi.hoisted(() => ({
   now: 0,
   failure: undefined as string | undefined,
   reload: vi.fn(),
+  canAlerts: true,
+  alert: vi.fn(),
+  band: vi.fn(),
 }));
 vi.mock("../src/renderer/app/Host", () => ({
   useHost: () => ({ hello: { demo: false } }),
@@ -33,6 +36,9 @@ vi.mock("../src/renderer/screens/calendar/CalendarPreferences", () => ({
   useCalendarPreferences: () => ({
     canFollow: true,
     canUtc: true,
+    canAlerts: model.canAlerts,
+    alert: model.alert,
+    band: model.band,
     follow: vi.fn(),
     utc: vi.fn(),
   }),
@@ -129,6 +135,9 @@ beforeEach(() => {
   };
   model.failure = undefined;
   model.reload.mockClear();
+  model.alert.mockClear();
+  model.band.mockClear();
+  model.canAlerts = true;
 });
 afterEach(cleanup);
 it("uses the last checked stamp and restores focus to the source series on return", () => {
@@ -230,4 +239,34 @@ it("returns from a series departure drawer to the exact departure button", async
   fireEvent.click(trigger);
   fireEvent.click(screen.getByRole("button", { name: "Cerrar (Esc)" }));
   await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
+it("connects the series band and global lead controls to typed alert intents", () => {
+  render(<CalendarEntry />);
+  fireEvent.click(screen.getByRole("button", { name: "Open daily" }));
+  fireEvent.click(
+    screen.getByRole("switch", { name: "Avisar por franja horaria" }),
+  );
+  expect(model.band).toHaveBeenCalledWith(fixture.series[0].id, {
+    seriesId: fixture.series[0].id,
+    from: 1200,
+    to: 1380,
+    days: "all",
+    mode: "each",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "15′" }));
+  expect(model.alert).toHaveBeenCalledWith({ kind: "lead", value: 15 });
+});
+it("keeps series alert controls read-only when the document cannot be saved", () => {
+  model.canAlerts = false;
+  render(<CalendarEntry />);
+  fireEvent.click(screen.getByRole("button", { name: "Open daily" }));
+  const toggle = screen.getByRole("switch", {
+    name: "Avisar por franja horaria",
+  });
+  expect(toggle.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(toggle);
+  fireEvent.click(screen.getByRole("button", { name: "15′" }));
+  expect(model.band).not.toHaveBeenCalled();
+  expect(model.alert).not.toHaveBeenCalled();
 });

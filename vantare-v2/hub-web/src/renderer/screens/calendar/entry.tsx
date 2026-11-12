@@ -416,6 +416,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
+                onSerie={openSerie}
                 onToggleSlot={toggleSlot}
                 onDetail={openDetail}
                 onSerie={openSerie}

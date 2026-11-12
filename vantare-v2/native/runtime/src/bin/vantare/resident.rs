@@ -17,6 +17,9 @@ use std::{
     thread,
     time::Duration,
 };
+use vantare_ipc::launcher::execution::{
+    ChainFailure, ChainOutcome, EventKind, ExecutionStatus, RunId,
+};
 use vantare_ipc::launcher::{Decision, Registration, Request, Status, request_path, status_path};
 
 pub struct Resident {
@@ -121,11 +124,12 @@ impl Resident {
                     thread::sleep(Duration::from_millis(50));
                 }
                 owner.clear_hotkeys();
-                if let Some(mut chain) = owner.chain.take()
-                    && let Err(error) = chain.shutdown()
-                {
-                    let _written =
-                        writeln!(std::io::stderr(), "cerrar Launcher residente: {error}");
+                if let Some(mut chain) = owner.chain.take() {
+                    if let Err(error) = chain.shutdown() {
+                        let _written =
+                            writeln!(std::io::stderr(), "cerrar Launcher residente: {error}");
+                    }
+                    owner.finish_run(&mut chain);
                 }
                 if let Ok(mut processes) = owner.processes.lock() {
                     for profile in &owner.document.profiles {
@@ -172,6 +176,7 @@ struct Owner {
     hotkeys: Vec<(i32, String)>,
     status: Status,
     chain: Option<Chain>,
+    active_run: Option<RunId>,
     decision_serial: u64,
     chain_decision: Option<u64>,
     processes: launcher::processes::Shared,
@@ -186,8 +191,15 @@ impl Owner {
             bytes: None,
             document: Document::default(),
             hotkeys: vec![],
-            status: Status::default(),
+            status: Status {
+                extension: vantare_services::random_id()
+                    .ok()
+                    .and_then(|value| value.try_into().ok())
+                    .map(ExecutionStatus::new),
+                ..Status::default()
+            },
             chain: None,
+            active_run: None,
             decision_serial: vantare_ipc::launcher::now_ms(),
             chain_decision: None,
             processes: Arc::new(Mutex::new(launcher::processes::Processes::default())),
@@ -353,6 +365,14 @@ impl Owner {
         ) {
             Ok(chain) => {
                 self.status.error = None;
+                self.active_run = self
+                    .status
+                    .extension
+                    .as_mut()
+                    .and_then(ExecutionStatus::begin);
+                if self.active_run.is_none() {
+                    self.status.extension = None;
+                }
                 self.chain = Some(chain);
             }
             Err(error) => self.status.error = Some(error),
@@ -441,12 +461,29 @@ impl Owner {
             if let Err(error) = chain.shutdown() {
                 self.status.error = Some(error);
             }
+            self.finish_run(&mut chain);
             self.status.decision = None;
             self.chain_decision = None;
             changed = true;
         }
         if changed {
             self.publish();
+        }
+    }
+
+    fn finish_run(&mut self, chain: &mut Chain) {
+        if let Some(run) = self.active_run.take() {
+            let outcome = chain.finish().unwrap_or(ChainOutcome::Failed {
+                reason: ChainFailure::Internal,
+            });
+            let recorded = self
+                .status
+                .extension
+                .as_mut()
+                .and_then(|extension| extension.record(EventKind::Finished { run, outcome }));
+            if recorded.is_none() {
+                self.status.extension = None;
+            }
         }
     }
 
@@ -459,7 +496,7 @@ impl Owner {
 
     fn write_status(&self) {
         let path = status_path(&self.path);
-        let result = serde_json::to_vec(&self.status)
+        let result = vantare_ipc::launcher::status_bytes(&self.status)
             .map_err(|error| error.to_string())
             .and_then(|bytes| {
                 let current = if path.exists() {
@@ -480,6 +517,64 @@ mod tests {
     use super::*;
     use std::{fs, sync::mpsc};
 
+    #[test]
+    fn finished_execution_is_published_once_and_restart_has_another_instance() {
+        let base =
+            PathBuf::from(std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("isolated QA root"));
+        let root = base.join(format!(
+            "terminal-resident-{}",
+            vantare_services::random_id().unwrap()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let settings = root.join("launcher.json");
+        let mut owner = Owner::new(settings.clone(), false);
+        let mut profile = launcher::Profile::new("qa".into(), "QA".into());
+        profile.steps.push(launcher::Step {
+            app_id: "obs".into(),
+            delay_seconds: 0,
+            args_override: None,
+        });
+        profile.max_retries = 0;
+        profile.first_step_delay = 0;
+        let mut chain = Chain::start(
+            Document::default(),
+            profile,
+            |_| Discovery::default(),
+            Arc::clone(&owner.processes),
+            None,
+            &settings,
+        )
+        .unwrap();
+        // The empty discovery cannot resolve an executable. No app or system scan occurs.
+        while chain.progress.recv().unwrap().step.is_some() {}
+        chain.shutdown().unwrap();
+        owner.active_run = owner
+            .status
+            .extension
+            .as_mut()
+            .and_then(ExecutionStatus::begin);
+        let instance = owner.status.extension.as_ref().unwrap().instance.clone();
+        owner.chain = Some(chain);
+        owner.progress();
+        let first = owner.status.extension.clone().unwrap();
+        assert_eq!(first.events.len(), 2);
+        assert!(matches!(
+            first.events[1].kind,
+            EventKind::Finished {
+                outcome: ChainOutcome::Failed {
+                    reason: ChainFailure::StepFailed
+                },
+                ..
+            }
+        ));
+        owner.progress();
+        owner.publish();
+        assert_eq!(owner.status.extension.as_ref(), Some(&first));
+        assert!(!owner.status.running);
+        let restarted = Owner::new(settings, false);
+        assert_ne!(restarted.status.extension.unwrap().instance, instance);
+        fs::remove_dir_all(root).unwrap();
+    }
     #[test]
     fn future_launcher_document_is_rejected_without_rewriting_it() {
         let dir = std::env::temp_dir().join(format!(

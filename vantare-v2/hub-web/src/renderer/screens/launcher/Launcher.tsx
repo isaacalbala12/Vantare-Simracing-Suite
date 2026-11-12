@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { LauncherProfile } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
+import { useLauncherRequest } from "../../app/LauncherRequest";
 import { HostFailure } from "../../bridge/client";
 import { launcherText as text } from "../../i18n/launcher";
 import { Button } from "../../ui/Button";
@@ -38,6 +39,7 @@ function failureText(failure: unknown): string {
 export function Launcher() {
   const { client } = useHost();
   const action = useProfileAction();
+  const launchRequest = useLauncherRequest();
   const [removing, setRemoving] = useState<LauncherProfile>();
   const [duplicating, setDuplicating] = useState<LauncherProfile>();
   const editor = useProfileEditorState();
@@ -126,13 +128,20 @@ export function Launcher() {
     }
   }
   async function launch(profile: LauncherProfile) {
-    if (!client || !view || busy.current || !profile.launchable) return;
+    if (
+      !client ||
+      !view ||
+      busy.current ||
+      launchRequest.busy() ||
+      !profile.launchable
+    )
+      return;
     busy.current = true;
     setPending(true);
     setAccepted(false);
     setError(undefined);
     try {
-      const reply = await client.request({
+      const reply = await launchRequest.request({
         method: "launcher.launch",
         profile: profile.id,
         baseRevision: view.revision,
@@ -211,7 +220,7 @@ export function Launcher() {
       <LauncherProfiles
         view={view}
         selected={selected}
-        pending={pending || action.pending}
+        pending={pending || action.pending || launchRequest.pending}
         error={error}
         accepted={accepted}
         onAction={profileAction}

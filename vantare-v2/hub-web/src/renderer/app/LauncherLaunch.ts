@@ -9,6 +9,7 @@ import { commandsText as text } from "../i18n/commands.es";
 import { t } from "../i18n/es";
 import { useToastManager } from "../ui/Layers";
 import { coreKey, useHost } from "./Host";
+import { useLauncherRequest } from "./LauncherRequest";
 import { lock } from "./navigation";
 import { useUi } from "./UiState";
 
@@ -25,6 +26,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
     cache = useQueryClient(),
     toast = useToastManager();
   const navigate = useUi((ui) => ui.navigate);
+  const launchRequest = useLauncherRequest();
   const pending = useRef(false),
     alive = useRef(true);
   const [waiting, setWaiting] = useState(false);
@@ -45,7 +47,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
     const selected = current?.profiles.find((item) => item.id === profile);
     const changed =
       profile !== undefined &&
-      (!current || current.revision !== baseRevision || !selected?.launchable);
+      (!current || current.revision !== baseRevision || !selected);
     const reason = changed
       ? text.changed
       : document.querySelector("dialog[open]")
@@ -53,7 +55,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
         : (launcherAccess(status) ??
           (status.live
             ? text.live
-            : pending.current
+            : pending.current || launchRequest.busy()
               ? text.pending
               : current?.running
                 ? text.running
@@ -69,7 +71,9 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
                           ? text.noResident
                           : !selected?.apps.length
                             ? text.noSteps
-                            : undefined
+                            : !selected.launchable
+                              ? t("shell.favoriteFailed")
+                              : undefined
                   : undefined));
     if (reason || !client) {
       warn(reason ?? text.failed);
@@ -78,7 +82,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
     pending.current = true;
     setWaiting(true);
     try {
-      const reply = await client.request(
+      const reply = await launchRequest.request(
         profile !== undefined && baseRevision !== undefined
           ? { method: "launcher.launch", profile, baseRevision }
           : { method: "launcher.favorite" },
@@ -91,7 +95,8 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
         warn(text.failed);
         return;
       }
-      if (profile) cache.setQueryData(["launcher", "selection"], profile);
+      if (profile && reply.accepted)
+        cache.setQueryData(["launcher", "selection"], profile);
       navigate("launcher");
       if (profile) {
         if (reply.accepted) toast.add({ title: text.sent });

@@ -11,7 +11,7 @@ latencia hasta pantalla: el cruce requiere el CSV original de PresentMon.
 Rune usará el mismo registrador, activado por la misma feature.
 
 Cada proceso abre un archivo nuevo con `VANTARE_LATENCY_FILE` y lo escribe
-solo al cerrar. Máximo 65.536 registros; desbordamiento o ausencia de pie
+solo al cerrar. Máximo 131.072 registros; desbordamiento o ausencia de pie
 anulan la ronda. No activar la traza durante las 4 h de aguante: la campaña
 larga usa el muestreador de memoria y salud sin acumular fotos en RAM.
 

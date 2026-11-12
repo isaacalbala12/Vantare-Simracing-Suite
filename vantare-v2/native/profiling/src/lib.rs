@@ -362,9 +362,11 @@ pub mod latency;
 
 /// No-op eliminado por el compilador fuera de la medición.
 #[inline]
-pub fn latency_submit(_window: u64) {
+pub fn latency_submit(window: u64) {
     #[cfg(feature = "medir-latencia")]
-    latency::submit(_window);
+    latency::submit(window);
+    #[cfg(not(feature = "medir-latencia"))]
+    let _ = window;
 }
 
 #[cfg(test)]

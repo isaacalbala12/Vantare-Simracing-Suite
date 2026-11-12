@@ -5,7 +5,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 
-const LIMIT: usize = 65_536;
+const LIMIT: usize = 131_072;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Stamp {

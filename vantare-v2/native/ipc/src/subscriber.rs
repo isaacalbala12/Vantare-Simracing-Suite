@@ -169,6 +169,13 @@ impl Subscriber {
         match self.latest.wait(self.seen, timeout) {
             Wait::Value(snapshot, generation) => {
                 self.seen = generation;
+                #[cfg(feature = "medir-latencia")]
+                vantare_profiling::latency::mark(
+                    "received",
+                    snapshot.snapshot.epoch,
+                    snapshot.snapshot.sequence,
+                    0,
+                );
                 Some((*snapshot).clone())
             }
             Wait::Timeout | Wait::Closed => None,
@@ -277,12 +284,7 @@ fn session(
                 if revision.is_newer(*cursor) {
                     let decoded = Snapshot::try_from(dto)?;
                     #[cfg(feature = "medir-latencia")]
-                    vantare_profiling::latency::mark(
-                        "received",
-                        decoded.epoch,
-                        decoded.sequence,
-                        0,
-                    );
+                    vantare_profiling::latency::mark("decoded", decoded.epoch, decoded.sequence, 0);
                     connection.received();
                     latest.put(Arc::new(Photo::full(Arc::new(decoded))));
                     *cursor = Some(revision);
@@ -318,12 +320,7 @@ fn session(
                     snapshot.restore(previous.as_ref(), &requested, &delivered)?;
                     let decoded = Snapshot::try_from(&snapshot)?;
                     #[cfg(feature = "medir-latencia")]
-                    vantare_profiling::latency::mark(
-                        "received",
-                        decoded.epoch,
-                        decoded.sequence,
-                        0,
-                    );
+                    vantare_profiling::latency::mark("decoded", decoded.epoch, decoded.sequence, 0);
                     connection.received();
                     previous = Some(snapshot);
                     latest.put(Arc::new(Photo {
@@ -342,6 +339,70 @@ fn session(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "medir-latencia")]
+    #[test]
+    fn measurement_counts_delivered_photos_instead_of_hiding_latest_slot_loss() {
+        use crate::Publisher;
+        let epoch = vantare_profiling::clock().expect("reloj de prueba");
+        let path = std::env::temp_dir().join(format!(
+            "vantare-latency-{}-{epoch}.csv",
+            std::process::id()
+        ));
+        let session = vantare_profiling::latency::Session::open(&path).expect("traza nueva");
+        let name = format!("vantare-latency-loss-{}", std::process::id());
+        let mut publisher = Publisher::new(&name, |_| true).expect("publicador");
+        let mut subscriber = Subscriber::connect(&name, |_| true).expect("suscriptor");
+        let mut generation = 0;
+        for sequence in 1..=3 {
+            publisher
+                .publish(Arc::new(Snapshot {
+                    epoch,
+                    sequence,
+                    ..Snapshot::default()
+                }))
+                .expect("foto");
+            match subscriber.latest.wait(generation, Duration::from_secs(3)) {
+                Wait::Value(photo, next) => {
+                    assert_eq!(photo.snapshot.sequence, sequence);
+                    generation = next;
+                }
+                _ => panic!("la foto debe llegar al transporte antes de publicar la siguiente"),
+            }
+        }
+        assert_eq!(
+            subscriber
+                .next(Duration::ZERO)
+                .expect("ultima foto")
+                .sequence,
+            3
+        );
+        drop(subscriber);
+        drop(publisher);
+        session.finish().expect("cierre completo");
+        let trace = std::fs::read_to_string(&path).expect("CSV");
+        let sequences = |phase| {
+            trace
+                .lines()
+                .filter_map(|line| {
+                    let cells: Vec<_> = line.split(',').collect();
+                    if cells.len() == 5 && cells[0] == phase && cells[2] == epoch.to_string() {
+                        Some(cells[3].parse::<u64>().expect("secuencia"))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(sequences("origin"), [1, 2, 3]);
+        assert_eq!(sequences("decoded"), [1, 2, 3]);
+        assert_eq!(
+            sequences("received"),
+            [3],
+            "el contador debe ver que el consumidor perdio dos fotos"
+        );
+        std::fs::remove_file(&path).expect("retirar solo el fichero de esta prueba");
+    }
 
     #[test]
     fn mismatch_survives_retries_until_a_compatible_photo_arrives() {

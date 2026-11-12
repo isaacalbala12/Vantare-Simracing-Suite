@@ -1,6 +1,9 @@
 #[path = "notice.rs"]
 mod notice;
-pub use notice::{CalendarNotice, NOTICE_TTL_MS, NOTICE_HISTORY_LIMIT, NOTICE_PRESENTATION_LIMIT, NOTICE_BATCH_LIMIT, NOTICE_TEST_INTERVAL_MS};
+pub use notice::{
+    CalendarNotice, NOTICE_BATCH_LIMIT, NOTICE_HISTORY_LIMIT, NOTICE_PRESENTATION_LIMIT,
+    NOTICE_TEST_INTERVAL_MS, NOTICE_TTL_MS,
+};
 #[path = "agenda.rs"]
 mod agenda;
 #[path = "feed.rs"]
@@ -489,4 +492,3 @@ impl State {
 #[cfg(test)]
 #[path = "model_tests.rs"]
 mod tests;
-

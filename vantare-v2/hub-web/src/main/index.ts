@@ -26,9 +26,8 @@ import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, testNotification } from "./appearance";
-import { calendarNoticeSession } from "./calendar-notices";
-import { presentSystemNotice } from "./system-notifications";
 import { calendarExportSession } from "./calendar-export";
+import { calendarNoticeSession } from "./calendar-notices";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
@@ -45,6 +44,7 @@ import {
   requireDataDirectory,
   webPreferences,
 } from "./security";
+import { presentSystemNotice } from "./system-notifications";
 import { bindWindowControls } from "./window-controls";
 
 const openPublicPage = externalPages((url) => shell.openExternal(url));
@@ -159,7 +159,12 @@ async function start() {
   let disconnect: (() => void) | undefined;
   const calendarNotices = calendarNoticeSession(presentSystemNotice);
   const removeHostFailure = host.listen((message) => {
-    if (message.kind === "event" && message.event.topic === "calendarNotice" && !currentWindow.isDestroyed()) calendarNotices.receive(message.event.value);
+    if (
+      message.kind === "event" &&
+      message.event.topic === "calendarNotice" &&
+      !currentWindow.isDestroyed()
+    )
+      calendarNotices.receive(message.event.value);
     if (
       message.kind === "response" &&
       (message.result.method === "settings.get" ||

@@ -9,6 +9,8 @@ import {
   type CalendarView,
   calendarDefaultAlerts,
   calendarEmptyRevision,
+  calendarNoticeTestIntervalMs,
+  calendarNoticeTtlMs,
   calendarRevisionLength,
   calendarSeriesLimit,
   calendarStartsLimit,
@@ -134,13 +136,42 @@ export function create(context: MockContext): MockHandler {
     });
     switch (request.method) {
       case "calendar.noticeTest": {
-        if (context.core.rights !== "connected") return {kind:"failure",id,error:{kind:"denied"}};
-        if (config.documents.alerts !== "ready") return {kind:"failure",id,error:{kind:config.documents.alerts === "protected" ? "protected" : "coreUnavailable"}};
-        const now=clock();
-        if (now-lastNoticeTest<5000) return {kind:"failure",id,error:{kind:"busy"}};
-        lastNoticeTest=now;
-        context.emit?.({kind:"event",event:{topic:"calendarNotice",value:{kind:"test",id:next(),requestId:id,issuedAt:now,expiresAt:now+60000,silent:!config.alerts.channels.sound || context.core.live}}});
-        return {kind:"response",id,result:{method:request.method,accepted:true}};
+        if (context.core.rights !== "connected")
+          return { kind: "failure", id, error: { kind: "denied" } };
+        if (config.documents.alerts !== "ready")
+          return {
+            kind: "failure",
+            id,
+            error: {
+              kind:
+                config.documents.alerts === "protected"
+                  ? "protected"
+                  : "coreUnavailable",
+            },
+          };
+        const now = clock();
+        if (now - lastNoticeTest < calendarNoticeTestIntervalMs)
+          return { kind: "failure", id, error: { kind: "busy" } };
+        lastNoticeTest = now;
+        context.emit?.({
+          kind: "event",
+          event: {
+            topic: "calendarNotice",
+            value: {
+              kind: "test",
+              id: next(),
+              requestId: id,
+              issuedAt: now,
+              expiresAt: now + calendarNoticeTtlMs,
+              silent: !config.alerts.channels.sound || context.core.live,
+            },
+          },
+        });
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, accepted: true },
+        };
       }
 
       case "calendar.icsPrepare": {

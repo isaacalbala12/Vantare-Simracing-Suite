@@ -84,7 +84,7 @@ pub(super) struct Scheduler {
     test_sequence: u64,
 }
 fn valid_clock(now: i64) -> bool {
-    now >= 0 && now <= super::TIMESTAMP_LIMIT * 1000 - NOTICE_TTL_MS
+    (0..=super::TIMESTAMP_LIMIT * 1000 - NOTICE_TTL_MS).contains(&now)
 }
 fn known_week(view: &CalendarView, now: i64) -> Option<i64> {
     [&view.official, &view.previous, &view.fallback]
@@ -139,12 +139,12 @@ impl Scheduler {
         &mut self,
         view: &CalendarView,
         alerts: &CalendarAlerts,
-        now: i64,
-        clock: Instant,
+        time: (i64, Instant),
         enabled: bool,
         in_track: bool,
         zone: &Z,
     ) -> Vec<CalendarNotice> {
+        let (now, clock) = time;
         let changed = self.last_enabled != enabled || self.last_track != in_track;
         self.last_enabled = enabled;
         self.last_track = in_track;
@@ -266,8 +266,7 @@ impl State {
         self.notices.tick(
             &self.view,
             &self.config_view.alerts,
-            now,
-            clock,
+            (now, clock),
             safe,
             in_track,
             &Local,

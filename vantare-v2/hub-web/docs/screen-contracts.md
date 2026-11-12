@@ -432,3 +432,44 @@ no reutiliza la clasificación diaria de los avisos. El fixture
 `calendar-ics-gpui.json` se mantiene desde el ejemplo y test del propio crate
 GPUI, con el corpus compartido y la publicación real de octubre. El anfitrión
 solo consume los valores esperados; no enlaza GPUI ni cruza crates con `#[path]`.
+
+## Calendario: avisos de escritorio con el Hub abierto (wire v28)
+
+El tick existente del anfitrión replica `Alerts::due` (GPUI
+`native/hub/src/calendar/alerts.rs:266`): salida futura, disparo en `(since, now]`,
+antelación del documento, causa de franja/tanda y zona local. La primera lectura
+no recupera avisos pasados. Las franjas se callan en pista; una tanda explícita
+puede avisar, siempre en silencio en pista. Fuera de pista, `channels.sound`
+controla el sonido del sistema, sin reproductor ni dependencia adicional.
+Calendar no depende de `general.toasts`, como el GPUI.
+
+`calendarNotice` es un evento privado host→main, unión cerrada `start|week|test`
+con `deny_unknown_fields`. No acepta texto, URL, ruta ni fecha del renderer.
+Main lo consume antes del puerto del renderer y presenta texto localizado con
+la API `Notification`; no ejecuta acciones al pulsarlo. El presentador es reutilizable
+por otras fuentes, pero este PR no conecta Launcher, actualizaciones ni informes.
+
+Solo se emite con cuenta verificada, no bloqueada, derecho Calendar y vínculo de
+derechos conectado, documento de avisos legible, horario vigente y canal Windows.
+El reloj y el instante monotónico son inyectables. La deduplicación dura hasta
+la salida/final de semana y está acotada; no hay cola persistente ni hilos nuevos.
+La presentación caduca en 60 s y main deduplica una segunda vez. El cierre del
+Hub detiene el tick. Los avisos ya entregados al sistema pueden permanecer allí.
+No existe garantía de que Windows muestre o reproduzca sonido: depende del SO.
+
+`calendar.noticeTest {}` solo genera un ejemplo fijo, con los mismos derechos,
+documento legible y un límite de una prueba cada 5 s. No requiere horario ni que
+el canal esté marcado: prueba el canal, como el GPUI. Main proyecta `accepted`
+a partir del resultado real de invocar el presentador, sin afirmar que el usuario
+lo haya visto. El evento precede a la respuesta; una presentación ausente o
+rechazada da `accepted:false`. Nunca se envían notificaciones reales en tests.
+
+La nueva semana se anuncia una vez tras observar que la publicación vigente
+avanza, con `notifyWeek` y Windows habilitados. Abrir el Hub por primera vez no
+anuncia retrospectivamente la semana. El lanzamiento automático sigue pendiente
+de #2089 y no cambia en este contrato. Las casillas siguen con la explicación de
+«aún no» hasta el PR de activación posterior a la revisión del emisor.
+
+Límites de entrega: hasta 256 avisos por tick y 16 384 claves vivas en el anfitrión;
+main conserva hasta 1 024 claves dentro del TTL. Un exceso se descarta, no se
+acumula para otro arranque. No se modifica el feed en pista ni su consumidor.

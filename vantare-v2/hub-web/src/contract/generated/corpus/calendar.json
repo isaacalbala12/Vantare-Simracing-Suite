@@ -916,6 +916,60 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "accepted": true,
+        "method": "calendar.noticeTest"
+      }
+    },
+    {
+      "event": {
+        "topic": "calendarNotice",
+        "value": {
+          "at": 1791489600000,
+          "expiresAt": 1791489060000,
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "issuedAt": 1791489000000,
+          "kind": "start",
+          "raceMinutes": 100,
+          "series": "WEC Weekly",
+          "silent": true,
+          "track": "Sebring"
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "topic": "calendarNotice",
+        "value": {
+          "expiresAt": 1791849660000,
+          "from": 1791849600000,
+          "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "issuedAt": 1791849600000,
+          "kind": "week",
+          "silent": false,
+          "until": 1792454400000
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "topic": "calendarNotice",
+        "value": {
+          "expiresAt": 1791489060000,
+          "id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "issuedAt": 1791489000000,
+          "kind": "test",
+          "requestId": 1,
+          "silent": true
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "calendar.icsPrepare",
         "value": {
           "calendar": "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
@@ -1053,6 +1107,13 @@
         },
         "expectedRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
         "method": "calendar.alertsSave"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "calendar.noticeTest"
       }
     },
     {

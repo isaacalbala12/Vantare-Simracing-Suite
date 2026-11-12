@@ -391,3 +391,125 @@ fn calendar_ics_is_denied_before_reading_and_export_paths_are_main_only() {
     );
     assert_eq!(session.core.requests, 0);
 }
+
+#[test]
+fn calendar_notice_test_is_closed_guarded_and_rate_limited_without_core_calls() {
+    for (verified, calendar, blocked, connected) in [
+        (false, true, false, true),
+        (true, false, false, true),
+        (true, true, true, true),
+        (true, true, false, false),
+    ] {
+        let fixture = Fixture::new();
+        let mut session = fixture.session();
+        session.current.access.verified = verified;
+        session.current.access.calendar = calendar;
+        session.current.access.blocked = blocked;
+        session.current.rights = if connected {
+            protocol::LinkState::Connected
+        } else {
+            protocol::LinkState::Unavailable
+        };
+        let mut pipe = Pipe::new(Vec::new());
+        session
+            .request(&mut pipe, 70, &Request::CalendarNoticeTest {})
+            .unwrap();
+        assert_eq!(
+            response(&mut pipe),
+            HostToUi::Failure {
+                id: 70,
+                error: HostError::Denied
+            }
+        );
+        assert_eq!(session.core.requests, 0);
+    }
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    session.current.rights = protocol::LinkState::Connected;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, 71, &Request::CalendarNoticeTest {})
+        .unwrap();
+    pipe.set_position(0);
+    let mut reader = frame::Reader::default();
+    assert!(matches!(
+        reader.next::<HostToUi>(&mut pipe).unwrap().unwrap(),
+        HostToUi::Event {
+            event: Event::CalendarNotice {
+                value: crate::calendar::CalendarNotice::Test { request_id: 71, .. }
+            }
+        }
+    ));
+    assert_eq!(
+        reader.next::<HostToUi>(&mut pipe).unwrap().unwrap(),
+        HostToUi::Response {
+            id: 71,
+            result: Reply::CalendarNoticeTest { accepted: true }
+        }
+    );
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, 72, &Request::CalendarNoticeTest {})
+        .unwrap();
+    assert_eq!(
+        response(&mut pipe),
+        HostToUi::Failure {
+            id: 72,
+            error: HostError::Busy
+        }
+    );
+    assert_eq!(session.core.requests, 0);
+    assert!(
+        serde_json::from_value::<Request>(
+            serde_json::json!({"method":"calendar.noticeTest","title":"injected"})
+        )
+        .is_err()
+    );
+}
+#[test]
+fn calendar_notice_test_does_not_ignore_protected_alerts() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    session.current.rights = protocol::LinkState::Connected;
+    let path = fixture.0.join("hub/calendar-alerts.json");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, b"not JSON").unwrap();
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, 73, &Request::CalendarNoticeTest {})
+        .unwrap();
+    assert_eq!(
+        response(&mut pipe),
+        HostToUi::Failure {
+            id: 73,
+            error: HostError::Protected
+        }
+    );
+}
+
+#[test]
+fn calendar_notice_tick_stops_on_disconnect_and_protected_document() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    session.current.rights = protocol::LinkState::Connected;
+    let path = fixture.0.join("layout.json");
+    session.calendar_state = crate::calendar::State::new(fixture.0.join("hub")).with_layout(path);
+    let mut pipe = Pipe::new(Vec::new());
+    let clock = Instant::now();
+    super::calendar_tick::tick_with_clock(&mut session, &mut pipe, 1_000, clock).unwrap();
+    session.current.rights = protocol::LinkState::Unavailable;
+    super::calendar_tick::tick_with_clock(
+        &mut session,
+        &mut pipe,
+        2_000,
+        clock + Duration::from_secs(1),
+    )
+    .unwrap();
+    assert!(pipe.get_ref().is_empty());
+}

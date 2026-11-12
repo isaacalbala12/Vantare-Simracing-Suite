@@ -37,14 +37,13 @@ fn initial_tick_does_not_replay_and_clock_rollback_does_not_duplicate() {
     let mut s = Scheduler::default();
     let clock = Instant::now();
     assert!(
-        s.tick(&view, &alerts, now - 1000, clock, true, false, &Utc)
+        s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc)
             .is_empty()
     );
     let notices = s.tick(
         &view,
         &alerts,
-        now,
-        clock + Duration::from_secs(1),
+        (now, clock + Duration::from_secs(1)),
         true,
         false,
         &Utc,
@@ -57,8 +56,7 @@ fn initial_tick_does_not_replay_and_clock_rollback_does_not_duplicate() {
         s.tick(
             &view,
             &alerts,
-            now - 1000,
-            clock + Duration::from_secs(2),
+            (now - 1000, clock + Duration::from_secs(2)),
             true,
             false,
             &Utc
@@ -69,8 +67,7 @@ fn initial_tick_does_not_replay_and_clock_rollback_does_not_duplicate() {
         s.tick(
             &view,
             &alerts,
-            now,
-            clock + Duration::from_secs(3),
+            (now, clock + Duration::from_secs(3)),
             true,
             false,
             &Utc
@@ -83,13 +80,13 @@ fn loss_of_authority_resets_the_due_window_without_replaying() {
     let (view, alerts, now) = setup();
     let mut s = Scheduler::default();
     let clock = Instant::now();
-    s.tick(&view, &alerts, now - 1000, clock, true, false, &Utc);
+    s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc);
     assert!(
-        s.tick(&view, &alerts, now, clock, false, false, &Utc)
+        s.tick(&view, &alerts, (now, clock), false, false, &Utc)
             .is_empty()
     );
     assert!(
-        s.tick(&view, &alerts, now + 1000, clock, true, false, &Utc)
+        s.tick(&view, &alerts, (now + 1000, clock), true, false, &Utc)
             .is_empty()
     );
 }
@@ -99,13 +96,12 @@ fn windows_channel_and_valid_current_schedule_are_required() {
     let clock = Instant::now();
     alerts.channels.windows = false;
     let mut s = Scheduler::default();
-    s.tick(&view, &alerts, now - 1000, clock, true, false, &Utc);
+    s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc);
     assert!(
         s.tick(
             &view,
             &alerts,
-            now,
-            clock + Duration::from_secs(1),
+            (now, clock + Duration::from_secs(1)),
             true,
             false,
             &Utc
@@ -115,13 +111,12 @@ fn windows_channel_and_valid_current_schedule_are_required() {
     alerts.channels.windows = true;
     view.previous = view.official.take();
     let mut s = Scheduler::default();
-    s.tick(&view, &alerts, now - 1000, clock, true, false, &Utc);
+    s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc);
     assert!(
         s.tick(
             &view,
             &alerts,
-            now,
-            clock + Duration::from_secs(1),
+            (now, clock + Duration::from_secs(1)),
             true,
             false,
             &Utc
@@ -139,18 +134,17 @@ fn explicit_weekly_slot_is_silent_in_track_but_uses_sound_outside() {
     alerts.bands.clear();
     alerts.slots = vec![CalendarSlot {
         series_id: "qa".into(),
-        at: now + 600_000,
+        at: (now + 600_000) / 1000,
     }];
     alerts.channels.sound = true;
     for in_track in [false, true] {
         let mut s = Scheduler::default();
         let clock = Instant::now();
-        s.tick(&view, &alerts, now - 1000, clock, true, in_track, &Utc);
+        s.tick(&view, &alerts, (now - 1000, clock), true, in_track, &Utc);
         let events = s.tick(
             &view,
             &alerts,
-            now,
-            clock + Duration::from_secs(1),
+            (now, clock + Duration::from_secs(1)),
             true,
             in_track,
             &Utc,
@@ -192,7 +186,7 @@ fn new_week_requires_observed_transition_and_only_emits_once() {
     alerts.notify_week = true;
     let mut s = Scheduler::default();
     let clock = Instant::now();
-    s.tick(&view, &alerts, now, clock, true, false, &Utc);
+    s.tick(&view, &alerts, (now, clock), true, false, &Utc);
     let schedule = view.official.as_mut().unwrap();
     schedule.valid_from = "2026-11-16T00:00:00Z".into();
     schedule.valid_until = "2026-11-23T00:00:00Z".into();
@@ -200,8 +194,7 @@ fn new_week_requires_observed_transition_and_only_emits_once() {
     let events = s.tick(
         &view,
         &alerts,
-        next,
-        clock + Duration::from_secs(1),
+        (next, clock + Duration::from_secs(1)),
         true,
         false,
         &Utc,
@@ -211,12 +204,62 @@ fn new_week_requires_observed_transition_and_only_emits_once() {
         s.tick(
             &view,
             &alerts,
-            next + 1000,
-            clock + Duration::from_secs(2),
+            (next + 1000, clock + Duration::from_secs(2)),
             true,
             false,
             &Utc
         )
         .is_empty()
     );
+}
+#[test]
+fn bands_use_injected_local_zone_days_and_first_departure() {
+    let (view, mut alerts, now) = setup();
+    let schedule = view.official.as_ref().unwrap();
+    let zone = chrono::FixedOffset::east_opt(2 * 3600).unwrap();
+    alerts.bands[0].from = 15 * 60;
+    alerts.bands[0].to = 16 * 60;
+    alerts.bands[0].days = CalendarDays::Weekdays;
+    alerts.bands[0].mode = CalendarBandMode::First;
+    assert_eq!(
+        due_in(schedule, &alerts, now, now - 1, false, &zone).len(),
+        1
+    );
+    assert!(due_in(schedule, &alerts, now, now - 1, false, &Utc).is_empty());
+    alerts.bands[0].days = CalendarDays::Weekend;
+    assert!(due_in(schedule, &alerts, now, now - 1, false, &zone).is_empty());
+}
+#[test]
+fn history_is_bounded_and_test_notice_silence_is_explicit() {
+    let mut scheduler = Scheduler::default();
+    for n in 0..NOTICE_HISTORY_LIMIT {
+        assert!(scheduler.accept(&n.to_string(), 1000));
+    }
+    assert!(!scheduler.accept("overflow", 1000));
+    assert!(!scheduler.accept("0", 1000));
+    let clock = Instant::now();
+    assert!(matches!(
+        scheduler.test(1, 0, clock, true).unwrap(),
+        CalendarNotice::Test { silent: true, .. }
+    ));
+}
+#[test]
+fn protected_or_unavailable_documents_cannot_emit_default_notifications() {
+    for document in [
+        CalendarDocumentState::Protected,
+        CalendarDocumentState::Unavailable,
+    ] {
+        let (view, alerts, now) = setup();
+        let mut state = State::new(std::path::PathBuf::new());
+        state.view = view;
+        state.config_view.alerts = alerts;
+        state.config_view.documents.alerts = document;
+        let clock = Instant::now();
+        assert!(state.notice_tick(now - 1000, clock, true, false).is_empty());
+        assert!(
+            state
+                .notice_tick(now, clock + Duration::from_secs(1), true, false)
+                .is_empty()
+        );
+    }
 }

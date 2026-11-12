@@ -1,4 +1,3 @@
-import { isCalendarNotice } from "../calendar-notice-validation";
 import {
   duration,
   isCalendarRevision,
@@ -12,6 +11,7 @@ import {
   isCalendarConfig,
 } from "../calendar-config-validation";
 import { isCalendarHistory } from "../calendar-history-validation";
+import { isCalendarNotice } from "../calendar-notice-validation";
 import {
   calendarDateLimit,
   calendarIcsLimit,
@@ -255,7 +255,8 @@ export function isRequest(v: Record<string, unknown>) {
   }
 }
 export function isReply(v: Record<string, unknown>) {
-  if (v.method === "calendar.noticeTest") return exact(v,["method","accepted"]) && typeof v.accepted === "boolean";
+  if (v.method === "calendar.noticeTest")
+    return exact(v, ["method", "accepted"]) && typeof v.accepted === "boolean";
   if (v.method === "calendar.icsExport")
     return (
       exact(v, ["method", "status"]) &&
@@ -290,4 +291,7 @@ export const isError = (v: Record<string, unknown>) =>
     : v.kind === "calendarConflict" &&
       exact(v, ["kind", "current"]) &&
       isCalendarConfig(v.current);
-export const isEvent = (v: Record<string, unknown>) => v.topic === "calendarNotice" && exact(v,["topic","value"]) && isCalendarNotice(v.value);
+export const isEvent = (v: Record<string, unknown>) =>
+  v.topic === "calendarNotice" &&
+  exact(v, ["topic", "value"]) &&
+  isCalendarNotice(v.value);

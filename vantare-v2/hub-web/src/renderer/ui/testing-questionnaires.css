@@ -73,7 +73,14 @@
   );
   opacity: 1;
 }
-.v-shell-main > [role="tabpanel"]:has(.v-testing-questionnaires),
+.v-shell-main > .v-content-stack:has(.v-testing-questionnaires) {
+  height: 100%;
+  min-height: 0;
+}
+.v-shell-main [role="tabpanel"]:has(.v-testing-questionnaires) {
+  flex: 1;
+  min-height: 0;
+}
 .v-testing:has(> .v-testing-questionnaires) {
   height: 100%;
 }

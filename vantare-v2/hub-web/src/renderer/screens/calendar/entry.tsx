@@ -19,6 +19,7 @@ import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
 import { calendarIcsText } from "../../i18n/calendarIcs";
+import { useCalendarQARuns } from "../../qa/calendar-runs";
 import { Button } from "../../ui/Button";
 import { CalendarAlertsDialog } from "../../ui/CalendarAlertsDialog";
 import { CalendarBandControls } from "../../ui/CalendarBandControls";
@@ -47,7 +48,6 @@ import { useCalendarHistory } from "./CalendarHistory";
 import { useCalendarIcs } from "./CalendarIcsState";
 import { useCalendarLauncher } from "./CalendarLauncher";
 import { useCalendarPreferences } from "./CalendarPreferences";
-import { useCalendarQARuns } from "./CalendarQARuns";
 import { useCalendar } from "./CalendarState";
 import { publication } from "./schedule";
 

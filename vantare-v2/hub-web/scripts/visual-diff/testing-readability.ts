@@ -58,3 +58,20 @@ export async function settingsTabsStyle(page: Page) {
     };
   });
 }
+
+/** D01: a selected answer stays at the foot while the list absorbs free height. */
+export async function assertQuestionnaireUsesFreeHeight(page: Page) {
+  const root = page.locator(".v-testing-questionnaires");
+  const list = await root.locator(":scope > section").first().boundingBox();
+  const form = await root.locator(":scope > section").last().boundingBox();
+  const viewportHeight = await page.evaluate(() => innerHeight);
+  if (
+    !list ||
+    !form ||
+    list.height < 200 ||
+    Math.abs(form.y + form.height - (viewportHeight - 18)) > 2
+  )
+    throw new Error(
+      "Questionnaire list lost free height or answer form left the footer",
+    );
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { CalendarRun } from "./CalendarRun";
+import type { CalendarRun } from "../screens/calendar/CalendarRun";
 
 declare const __VANTARE_RENDERER_MOCK__: boolean;
 // The frozen GPUI has no production run reader. Its capture bank alone seeds runs.
@@ -14,7 +14,7 @@ export function useCalendarQARuns(enabled: boolean) {
       __VANTARE_RENDERER_MOCK__ &&
       enabled
     )
-      void import("../../../mock/calendar-runs").then((fixture) => {
+      void import("../../mock/calendar-runs").then((fixture) => {
         if (active) setRuns(fixture.calendarRuns);
       });
     return () => {

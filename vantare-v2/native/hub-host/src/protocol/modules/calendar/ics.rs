@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use std::fmt::Write;
 
 pub const ICS_LIMIT: usize = crate::frame::LIMIT / 4;
+#[cfg(any(test, feature = "bindings"))]
 pub const ICS_PREPARED_MAX_AGE_MS: u32 = 30 * 60 * 1000;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Scope {

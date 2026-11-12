@@ -409,3 +409,24 @@ si el sistema de archivos no admite enlaces duros. No publica suscripciones,
 URLs ni conexiones a Google, Apple o Microsoft. El límite de ICS es un cuarto
 del frame para que su JSON y la vista previa quepan en el protocolo.
 La versión v25 sigue al contrato de avisos (v24).
+
+### ICS: propiedad y caducidad de la respuesta de descarga
+
+La respuesta tardía de `calendar.icsExport` la emite **main**, como en
+`report.localExport`, tras el diálogo nativo; no procede del módulo calendar.
+Los derechos se comprueban al preparar en el anfitrión y **no se recomprueban
+al exportar** esa instantánea en main. Su hash y la conexión deben seguir válidos.
+La preparación caduca a los 30 minutos o al final de la publicación; se comprueba
+al iniciar la exportación, nunca después de la espera en el diálogo.
+
+Sin extensión se añade `.ics`. Otra extensión produce el error cerrado
+`calendarExportExtension`. UNC, rutas relativas, ADS, dispositivos reservados y
+rutas excesivas se rechazan. Un destino existente siempre da `conflict`, incluso
+si el diálogo de Windows había preguntado por sobrescribir: hay que elegir otro
+nombre. No se cambia esa decisión de producto.
+
+La selección de series replica `Series::every().is_some()` de GPUI para ICS;
+no reutiliza la clasificación diaria de los avisos. El fixture
+`calendar-ics-gpui.json` se mantiene desde el ejemplo y test del propio crate
+GPUI, con el corpus compartido y la publicación real de octubre. El anfitrión
+solo consume los valores esperados; no enlaza GPUI ni cruza crates con `#[path]`.

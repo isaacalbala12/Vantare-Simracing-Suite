@@ -26,6 +26,7 @@ const escapeText = (text: string) =>
     .replaceAll("\\", "\\\\")
     .replaceAll(";", "\\;")
     .replaceAll(",", "\\,")
+    .replaceAll("\r", "")
     .replaceAll("\n", "\\n");
 function line(text: string) {
   let out = "",

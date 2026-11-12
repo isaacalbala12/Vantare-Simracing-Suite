@@ -10,10 +10,8 @@ import { UiProvider } from "../src/renderer/app/UiState";
 import type { Client } from "../src/renderer/bridge/client";
 import { NotificationsPopover } from "../src/renderer/screens/notifications/NotificationsPopover";
 import { NotificationsRail } from "../src/renderer/screens/notifications/NotificationsRail";
-import {
-  NotificationsProvider,
-  useNotifications,
-} from "../src/renderer/screens/notifications/NotificationsState";
+import { useNotifications } from "../src/renderer/screens/notifications/NotificationsState";
+import { NotificationsProvider } from "./notifications-provider";
 
 afterEach(() => {
   cleanup();

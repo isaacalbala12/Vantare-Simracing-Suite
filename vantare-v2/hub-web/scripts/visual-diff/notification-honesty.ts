@@ -1,6 +1,7 @@
 import type { VisualScene } from "./scenes.ts";
 export const notificationHonestyScenes: Record<string, VisualScene> = {
-  "ajustes-avisos-pendientes": {
+  // Override the standard General scene with enabled-preference assertions.
+  "ajustes-aplicacion": {
     mock: "ajustes-con-diseno",
     async prepare(page) {
       await page
@@ -14,10 +15,12 @@ export const notificationHonestyScenes: Record<string, VisualScene> = {
       for (const label of ["Avisos de actualización", "Avisos del Launcher"]) {
         const control = page.getByRole("switch", { name: label, exact: true });
         if (
-          (await control.getAttribute("aria-disabled")) !== "true" ||
+          !(await control.isEnabled()) ||
           !(await control.getAttribute("aria-description"))
         )
-          throw new Error(`Unavailable preference lacks explanation: ${label}`);
+          throw new Error(
+            `Internal notification preference unavailable or unexplained: ${label}`,
+          );
       }
     },
   },

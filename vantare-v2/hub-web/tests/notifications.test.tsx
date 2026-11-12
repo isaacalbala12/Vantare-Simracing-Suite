@@ -15,13 +15,14 @@ import type { AccessView, HostToUi } from "../src/contract/generated/contract";
 import { notificationHistoryLimit } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
 import { isHostMessage } from "../src/contract/validation";
+import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
 import * as host from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
-import type { Client } from "../src/renderer/bridge/client";
+import type { Client, RequestObservation } from "../src/renderer/bridge/client";
 import {
   type Center,
   dateGroup,
@@ -31,11 +32,12 @@ import {
 } from "../src/renderer/screens/notifications/center";
 import { Notifications } from "../src/renderer/screens/notifications/Notifications";
 import {
+  NotificationsProvider as ActualNotificationsProvider,
   createNotifications,
-  NotificationsProvider,
   useNotifications,
 } from "../src/renderer/screens/notifications/NotificationsState";
 import { NotificationsLayout } from "../src/renderer/ui/NotificationsLayout";
+import { NotificationsProvider } from "./notifications-provider";
 
 afterEach(() => {
   cleanup();
@@ -187,7 +189,12 @@ it("observes only explicit unexpected failures and test replies, deduplicating b
     return unsubscribe;
   });
   vi.spyOn(host, "useHost").mockReturnValue({
-    client: { listen } as unknown as Client,
+    client: {
+      listen,
+      observeRequests: () => () => {},
+      subscribe: () => () => {},
+      request: async () => undefined,
+    } as unknown as Client,
   });
   const { result, unmount } = renderHook(() => useNotifications(), {
     wrapper: NotificationsProvider,
@@ -246,7 +253,7 @@ it("observes only explicit unexpected failures and test replies, deduplicating b
     text: "La notificación de prueba falló.",
   });
   unmount();
-  expect(unsubscribe).toHaveBeenCalledOnce();
+  expect(unsubscribe).toHaveBeenCalledTimes(2);
 });
 function NoticeSeed({ input }: { input: NoticeInput }) {
   const add = useNotifications().add;
@@ -422,4 +429,152 @@ it("routes a report notice to the report list rather than the default tester sum
   await userEvent.click(screen.getByRole("button", { name: "Ver informes" }));
   expect(screen.getByLabelText("Sección actual").textContent).toBe("testing");
   expect(screen.getByLabelText("Lista solicitada").textContent).toBe("true");
+});
+
+it("the provider consumes an observed launcher failure without duplicating a generic Hub error", () => {
+  const listeners = new Set<(message: HostToUi) => void>();
+  let observe: ((event: RequestObservation) => void) | undefined;
+  const client = {
+    listen: (fn: (message: HostToUi) => void) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+    observeRequests: (fn: typeof observe) => {
+      observe = fn;
+      return () => {};
+    },
+    subscribe: () => () => {},
+    request: async () => undefined,
+  };
+  vi.spyOn(host, "useHost").mockReturnValue({
+    client: client as unknown as Client,
+  });
+  const hook = renderHook(useNotifications, { wrapper: NotificationsProvider });
+  const settings = (corpus.host as HostToUi[]).find(
+    (m) => m.kind === "response" && m.result.method === "settings.get",
+  );
+  if (
+    settings?.kind !== "response" ||
+    settings.result.method !== "settings.get" ||
+    !observe
+  )
+    throw new Error("missing emitter fixture");
+  const settingsValue = settings.result.value;
+  act(() => {
+    for (const receive of listeners)
+      receive({
+        ...settings,
+        result: {
+          method: "settings.get",
+          value: {
+            ...settingsValue,
+            protected: false,
+            general: { ...settingsValue.general, launcher: true },
+          },
+        },
+      });
+  });
+  act(() => {
+    observe?.({ phase: "start", id: 71, method: "launcher.launch" });
+    observe?.({
+      phase: "done",
+      id: 71,
+      method: "launcher.launch",
+      error: { kind: "io" },
+    });
+    for (const receive of listeners)
+      receive({ kind: "failure", id: 71, error: { kind: "io" } });
+  });
+  expect(hook.result.current.records).toHaveLength(1);
+  expect(hook.result.current.records[0].source).toBe("launcher");
+});
+
+it("conservatively clears report notices on every account publication, including an incidental same-account one", async () => {
+  const listeners = new Set<(message: HostToUi) => void>();
+  let observe: ((event: RequestObservation) => void) | undefined;
+  const accountMessage = (corpus.host as HostToUi[]).find(
+    (m) => m.kind === "response" && m.result.method === "account.get",
+  );
+  if (
+    accountMessage?.kind !== "response" ||
+    accountMessage.result.method !== "account.get"
+  )
+    throw new Error("missing account fixture");
+  const value = {
+    ...accountMessage.result.value,
+    session: "signedIn" as const,
+    gate: "none" as const,
+    verified: true,
+    blocked: false,
+  };
+  const client = {
+    listen: (fn: (message: HostToUi) => void) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+    observeRequests: (fn: typeof observe) => {
+      observe = fn;
+      return () => {};
+    },
+    subscribe: () => () => {},
+    request: async (request: { method: string }) =>
+      request.method === "account.get"
+        ? { method: "account.get", value }
+        : undefined,
+  };
+  vi.spyOn(host, "useHost").mockReturnValue({
+    client: client as unknown as Client,
+  });
+  const hook = renderHook(
+    () => ({ center: useNotifications(), account: useAccount() }),
+    {
+      wrapper: ({ children }) => (
+        <AccountProvider>
+          <ActualNotificationsProvider>{children}</ActualNotificationsProvider>
+        </AccountProvider>
+      ),
+    },
+  );
+  await waitFor(() =>
+    expect(hook.result.current.account.value?.session).toBe("signedIn"),
+  );
+  const participation = {
+    reports: [
+      {
+        id: "report_A",
+        title: "local",
+        state: "accepted",
+        notice: true,
+        credit: false,
+        fixedVersion: null,
+        updatedAt: null,
+      },
+    ],
+    questionnaires: [],
+  };
+  act(() => {
+    observe?.({ phase: "start", id: 81, method: "testing.refresh" });
+    observe?.({
+      phase: "done",
+      id: 81,
+      method: "testing.refresh",
+      reply: { method: "testing.refresh", value: participation },
+    });
+  });
+  expect(hook.result.current.center.records).toHaveLength(1);
+  act(() => {
+    observe?.({ phase: "start", id: 82, method: "testing.refresh" });
+    for (const receive of listeners)
+      receive({ kind: "event", event: { topic: "account", value } });
+  });
+  expect(hook.result.current.center.records).toEqual([]);
+  act(() => {
+    observe?.({
+      phase: "done",
+      id: 82,
+      method: "testing.refresh",
+      reply: { method: "testing.refresh", value: participation },
+    });
+  });
+  expect(hook.result.current.center.records).toEqual([]);
 });

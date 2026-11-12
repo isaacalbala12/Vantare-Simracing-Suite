@@ -52,6 +52,10 @@ function useReportsState() {
   const clearTriage = useRef<(() => void) | undefined>(undefined);
   const triageHasText = useRef<(() => boolean) | undefined>(undefined);
   const [sessionDiscarded, setSessionDiscarded] = useState(false);
+  const dismissSessionDiscarded = useCallback(
+    () => setSessionDiscarded(false),
+    [],
+  );
   const toast = useToastManager();
   const { data: core = offline } = useQuery({
     queryKey: coreKey,
@@ -364,6 +368,7 @@ function useReportsState() {
   }, [client, core.access.verified, core.access.blocked, invalidate]);
   useEffect(() => () => cancellation.current.abort(), []);
   function edit(patch: Partial<ReportFields>) {
+    setSessionDiscarded(false);
     closePermit.current = undefined;
     attempt.current = undefined;
     failedRequest.current = undefined;
@@ -375,6 +380,7 @@ function useReportsState() {
     setReceipt(undefined);
   }
   function editLocal(patch: Partial<typeof localNotes>) {
+    setSessionDiscarded(false);
     state.current.localNotes = { ...state.current.localNotes, ...patch };
     setLocalNotes(state.current.localNotes);
     attempt.current = undefined;
@@ -444,6 +450,7 @@ function useReportsState() {
     const reply = await request({ method: "draft.discard" });
     if (reply.method !== "draft.discard")
       throw new Error("unexpected report reply");
+    dismissSessionDiscarded();
     setScreenshots(reply.value.screenshots);
     setDraftExists(reply.value.exists);
     setFields(reply.value.fields);
@@ -617,6 +624,7 @@ function useReportsState() {
   triageHasText.current = triage.hasLocalText;
   return {
     sessionDiscarded,
+    dismissSessionDiscarded,
     sessionGeneration: session.generation,
     sessionConfirmed: session.confirmed,
     triage,

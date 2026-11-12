@@ -16,7 +16,28 @@ export class HostFailure extends Error {
     super(detail.kind);
   }
 }
+export type RequestObservation = {
+  id: number;
+  method: Request["method"];
+} & ({ phase: "start" } | { phase: "done"; reply?: Reply; error?: HostError });
 export class Client {
+  private requestListeners = new Set<(event: RequestObservation) => void>();
+  private subscriptions = new Map<Topic, number>();
+  observeRequests(receive: (event: RequestObservation) => void) {
+    this.requestListeners.add(receive);
+    return () => {
+      this.requestListeners.delete(receive);
+    };
+  }
+  private observed(event: RequestObservation) {
+    for (const receive of this.requestListeners) {
+      try {
+        receive(event);
+      } catch {
+        /* Observers must never own request settlement. */
+      }
+    }
+  }
   private sequence = 0;
   private closing = false;
   private closeAnswered = false;
@@ -33,6 +54,7 @@ export class Client {
   private pending = new Map<
     number,
     {
+      method: Request["method"];
       resolve: (reply: Reply) => void;
       reject: (error: HostFailure) => void;
       timer: ReturnType<typeof setTimeout> | undefined;
@@ -51,6 +73,14 @@ export class Client {
         if (request) {
           clearTimeout(request.timer);
           this.pending.delete(data.id);
+          this.observed({
+            id: data.id,
+            method: request.method,
+            phase: "done",
+            ...(data.kind === "response"
+              ? { reply: data.result }
+              : { error: data.error }),
+          });
           if (data.kind === "response") request.resolve(data.result);
           else request.reject(new HostFailure(data.error));
         }
@@ -205,10 +235,17 @@ export class Client {
           ? undefined
           : setTimeout(() => {
               this.pending.delete(id);
+              this.observed({
+                id,
+                method: request.method,
+                phase: "done",
+                error: { kind: "coreUnavailable" },
+              });
               this.answerWhenIdle();
               reject(new HostFailure({ kind: "coreUnavailable" }));
             }, deadline);
-      this.pending.set(id, { resolve, reject, timer });
+      this.pending.set(id, { method: request.method, resolve, reject, timer });
+      this.observed({ id, method: request.method, phase: "start" });
       this.send({ kind: "request", id, request });
       onSent?.();
     });
@@ -217,8 +254,20 @@ export class Client {
     this.send({ kind: "request", id: 0, request: { method: "window.close" } });
   }
   subscribe(topic: Topic) {
-    this.send({ kind: "subscribe", topic });
-    return () => this.send({ kind: "unsubscribe", topic });
+    const count = this.subscriptions.get(topic) ?? 0;
+    this.subscriptions.set(topic, count + 1);
+    if (count === 0) this.send({ kind: "subscribe", topic });
+    let active = true;
+    return () => {
+      if (!active) return;
+      active = false;
+      const remaining = (this.subscriptions.get(topic) ?? 1) - 1;
+      if (remaining > 0) this.subscriptions.set(topic, remaining);
+      else {
+        this.subscriptions.delete(topic);
+        this.send({ kind: "unsubscribe", topic });
+      }
+    };
   }
   start() {
     this.bootstrap?.();
@@ -233,6 +282,8 @@ export class Client {
     }
     this.pending.clear();
     this.listeners.clear();
+    this.requestListeners.clear();
+    this.subscriptions.clear();
     this.extraGuards.clear();
     this.vetoListeners.clear();
     this.closeListeners.clear();

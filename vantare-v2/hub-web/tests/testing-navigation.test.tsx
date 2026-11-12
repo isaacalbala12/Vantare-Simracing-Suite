@@ -197,84 +197,105 @@ it("opens the report list from an external notice, consumes the target and permi
   await screen.findByRole("heading", { name: "Mis informes" });
 });
 
-it("keeps a visible discard notice through reloads, incidental account updates and tab changes", async () => {
-  window.history.replaceState(null, "", "/?escena=testing-tester-reports");
-  const listeners = new Set<(message: HostToUi) => void>();
-  const listen = Client.prototype.listen;
-  vi.spyOn(Client.prototype, "listen").mockImplementation(function (
-    this: Client,
-    fn,
-  ) {
-    listeners.add(fn);
-    const stop = listen.call(this, fn);
-    return () => {
-      listeners.delete(fn);
-      return stop();
-    };
-  });
-  let reports: ReturnType<typeof useReports> | undefined;
-  // Same production entry and providers as mount; the probe only exposes actions for this regression.
-  render(
-    <QueryClientProvider client={cache}>
-      <HostProvider>
-        <ToastProvider>
-          <AccountProvider>
-            <ReportsProvider>
-              <UiProvider>
-                <SectionChromeProvider>
-                  <SectionTabsSlot />
-                  <TestingEntry />
-                  <ReportProbe
-                    read={(value) => {
-                      reports = value;
-                    }}
-                  />
-                </SectionChromeProvider>
-              </UiProvider>
-            </ReportsProvider>
-          </AccountProvider>
-        </ToastProvider>
-      </HostProvider>
-    </QueryClientProvider>,
-  );
-  await waitFor(() => expect(reports?.available).toBe(true));
-  await act(async () => {
-    await reports?.load();
-  });
-  act(() => reports?.editLocal({ title: "UNSAVED_PRIVATE_NOTE_A" }));
-  const sample = (corpus.host as HostToUi[]).find(
-    (m) => m.kind === "response" && m.result.method === "account.get",
-  );
-  if (sample?.kind !== "response" || sample.result.method !== "account.get")
-    throw new Error("missing account fixture");
-  const event: HostToUi = {
-    kind: "event",
-    event: {
-      topic: "account",
-      value: {
-        ...sample.result.value,
-        session: "signedIn",
-        gate: "none",
-        verified: true,
-        blocked: false,
+it.each(["edit", "local", "discard", "close"] as const)(
+  "keeps the discard notice until the user resumes or closes the report (%s)",
+  async (action) => {
+    window.history.replaceState(null, "", "/?escena=testing-tester-reports");
+    const listeners = new Set<(message: HostToUi) => void>();
+    const listen = Client.prototype.listen;
+    vi.spyOn(Client.prototype, "listen").mockImplementation(function (
+      this: Client,
+      fn,
+    ) {
+      listeners.add(fn);
+      const stop = listen.call(this, fn);
+      return () => {
+        listeners.delete(fn);
+        return stop();
+      };
+    });
+    let reports: ReturnType<typeof useReports> | undefined;
+    // Same production entry and providers as mount; the probe only exposes actions for this regression.
+    const tree = (showEntry = true) => (
+      <QueryClientProvider client={cache}>
+        <HostProvider>
+          <ToastProvider>
+            <AccountProvider>
+              <ReportsProvider>
+                <UiProvider>
+                  <SectionChromeProvider>
+                    <SectionTabsSlot />
+                    {showEntry && <TestingEntry />}
+                    <ReportProbe
+                      read={(value) => {
+                        reports = value;
+                      }}
+                    />
+                  </SectionChromeProvider>
+                </UiProvider>
+              </ReportsProvider>
+            </AccountProvider>
+          </ToastProvider>
+        </HostProvider>
+      </QueryClientProvider>
+    );
+    const mounted = render(tree());
+    await waitFor(() => expect(reports?.available).toBe(true));
+    await act(async () => {
+      await reports?.load();
+    });
+    act(() => reports?.editLocal({ title: "UNSAVED_PRIVATE_NOTE_A" }));
+    const sample = (corpus.host as HostToUi[]).find(
+      (m) => m.kind === "response" && m.result.method === "account.get",
+    );
+    if (sample?.kind !== "response" || sample.result.method !== "account.get")
+      throw new Error("missing account fixture");
+    const event: HostToUi = {
+      kind: "event",
+      event: {
+        topic: "account",
+        value: {
+          ...sample.result.value,
+          session: "signedIn",
+          gate: "none",
+          verified: true,
+          blocked: false,
+        },
       },
-    },
-  };
-  act(() => {
-    for (const receive of listeners) receive(event);
-  });
-  const warning =
-    "La sesión ha cambiado y el informe sin guardar se ha descartado";
-  expect(await screen.findByText(warning)).toBeTruthy();
-  expect(screen.queryByText("UNSAVED_PRIVATE_NOTE_A")).toBeNull();
-  await act(async () => {
-    await reports?.load();
-    await reports?.refresh();
-  });
-  act(() => {
-    for (const receive of listeners) receive(event);
-  });
-  fireEvent.click(screen.getByRole("tab", { name: "Cuestionarios" }));
-  expect(screen.getByText(warning)).toBeTruthy();
-  expect(reports?.sessionDiscarded).toBe(true);
-});
+    };
+    act(() => {
+      for (const receive of listeners) receive(event);
+    });
+    const warning =
+      "La sesión ha cambiado y el informe sin guardar se ha descartado";
+    expect(await screen.findByText(warning)).toBeTruthy();
+    expect(screen.queryByText("UNSAVED_PRIVATE_NOTE_A")).toBeNull();
+    await act(async () => {
+      await reports?.load();
+      await reports?.refresh();
+    });
+    act(() => {
+      for (const receive of listeners) receive(event);
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Cuestionarios" }));
+    expect(screen.getByText(warning)).toBeTruthy();
+    expect(reports?.sessionDiscarded).toBe(true);
+    await act(async () => {
+      await reports?.load();
+    });
+    if (action === "edit")
+      act(() => reports?.edit({ actionText: "Nuevo informe" }));
+    else if (action === "local")
+      act(() => reports?.editLocal({ title: "Nueva nota" }));
+    else if (action === "discard")
+      await act(async () => {
+        await reports?.discard();
+      });
+    else {
+      mounted.rerender(tree(false));
+      mounted.rerender(tree());
+    }
+    expect(reports?.sessionDiscarded).toBe(false);
+    expect(screen.queryByText(warning)).toBeNull();
+  },
+);

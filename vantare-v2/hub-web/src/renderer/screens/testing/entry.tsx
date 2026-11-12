@@ -14,8 +14,16 @@ import { TestingRail } from "./TestingRail";
 import { useTestingTabs } from "./TestingTabs";
 
 export default function TestingEntry() {
-  const { access, participation, refresh, available, busy, sessionDiscarded } =
-    useReports();
+  const {
+    access,
+    participation,
+    refresh,
+    available,
+    busy,
+    sessionDiscarded,
+    dismissSessionDiscarded,
+  } = useReports();
+  useEffect(() => () => dismissSessionDiscarded(), [dismissSessionDiscarded]);
   const requested = useUi((state) => state.testingReportsRequested);
   const consume = useUi((state) => state.consumeTestingReports);
   // GPUI's rail uses its loaded-contribution count for both captions.

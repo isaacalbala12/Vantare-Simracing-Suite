@@ -158,8 +158,12 @@ export function ReportComposerView(p: Props) {
           </Button>
         </div>
         {p.preview && (
-          <div className="v-testing-report-preview">
+          <section
+            className="v-testing-report-preview"
+            aria-label={text.preview}
+          >
             <strong>{text.preview}</strong>
+            <TestingFinePrint>{`${text.screenshots} · ${p.preview.screenshots.length}/${reportScreenshotLimits.count}`}</TestingFinePrint>
             {p.preview.retry && (
               <TestingFinePrint>{text.retryOriginal}</TestingFinePrint>
             )}
@@ -175,7 +179,7 @@ export function ReportComposerView(p: Props) {
               disabled={p.requestBlocked || p.dirty}
               onCheckedChange={p.onConsent}
             />
-          </div>
+          </section>
         )}
         <div className="v-testing-report-final-actions">
           <Button

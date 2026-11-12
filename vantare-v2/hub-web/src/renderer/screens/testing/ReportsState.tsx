@@ -382,6 +382,8 @@ function useReportsState() {
     )
       return;
     removingScreenshot.current = true;
+    setPreview(undefined);
+    setConsent(false);
     try {
       const fields = structuredClone(state.current.fields);
       if (!isReportFields(fields)) {
@@ -416,13 +418,19 @@ function useReportsState() {
       reply.method === "report.prepare" ||
       reply.method === "report.retryPrepare"
     ) {
-      setScreenshots(reply.value.screenshots);
       setPreview(reply.value);
       setConsent(false);
     }
   }
   async function send() {
-    if (sending.current || !preview || !consent || dirty) return;
+    if (
+      sending.current ||
+      removingScreenshot.current ||
+      !preview ||
+      !consent ||
+      dirty
+    )
+      return;
     sending.current = true;
     const epoch = generation.current;
     try {

@@ -400,3 +400,86 @@ it("can review a pending host attempt after draft loading failed and still recov
     screen.getByRole("button", { name: text.send }).hasAttribute("disabled"),
   ).toBe(true);
 });
+
+it("keeps draft images separate from an original pending preview and revokes it before removal", async () => {
+  const original = Client.prototype.request;
+  const fields = {
+    module: "hub" as const,
+    actionText: "Nota local",
+    expectedText: "Panel",
+    observedText: "Vacío",
+    contextText: "",
+  };
+  const image = {
+    id: "c".repeat(64),
+    jpeg: "/9j/",
+    width: 1,
+    height: 1,
+    byteSize: 3,
+  };
+  let completeRemoval!: (reply: Reply) => void;
+  const calls = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(async function (this: Client, request): Promise<Reply> {
+      if (request.method === "draft.load" || request.method === "draft.save")
+        return {
+          method: request.method,
+          value: {
+            legacy: "none",
+            fields,
+            exists: true,
+            screenshots: [image],
+            message: "",
+          },
+        };
+      if (request.method === "report.retryPrepare")
+        return {
+          method: "report.retryPrepare",
+          value: {
+            id: "a".repeat(64),
+            digest: "b".repeat(64),
+            fields,
+            appVersion: "QA",
+            osVersion: "Windows",
+            channel: "nightly",
+            retry: true,
+            screenshots: [],
+          },
+        };
+      if (request.method === "report.removeScreenshot")
+        return new Promise((resolve) => {
+          completeRemoval = resolve;
+        });
+      return original.call(this, request);
+    });
+  await mount();
+  fireEvent.click(screen.getByRole("button", { name: text.pending }));
+  expect(await screen.findByText(text.retryOriginal)).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Capturas · 1/3" })).toBeTruthy();
+  expect(screen.getByText("Capturas · 0/3")).toBeTruthy();
+  fireEvent.click(screen.getByRole("checkbox", { name: text.consent }));
+  fireEvent.click(screen.getByRole("button", { name: text.removeScreenshot }));
+  await waitFor(() => expect(completeRemoval).toBeTypeOf("function"));
+  expect(screen.queryByRole("region", { name: text.preview })).toBeNull();
+  expect(screen.queryByRole("checkbox", { name: text.consent })).toBeNull();
+  expect(screen.getByRole("heading", { name: "Capturas · 1/3" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: text.send }));
+  expect(
+    calls.mock.calls.some(([request]) => request.method === "report.send"),
+  ).toBe(false);
+  await act(async () =>
+    completeRemoval({
+      method: "report.removeScreenshot",
+      value: {
+        legacy: "none",
+        fields,
+        exists: true,
+        screenshots: [],
+        message: "",
+      },
+    }),
+  );
+  expect(
+    await screen.findByRole("heading", { name: "Capturas · 0/3" }),
+  ).toBeTruthy();
+});

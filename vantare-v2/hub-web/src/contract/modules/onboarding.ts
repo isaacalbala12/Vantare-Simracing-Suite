@@ -48,6 +48,7 @@ export function isOnboarding(v: unknown): boolean {
       (typeof v.equipment.gpu === "string" &&
         v.equipment.gpu.trim().length > 0 &&
         v.equipment.gpu.length <= onboardingGpuUtf16Limit &&
+        !/\p{Cc}/u.test(v.equipment.gpu) &&
         !/[\uD800-\uDFFF]/u.test(v.equipment.gpu))) &&
     (v.equipment.cores === null ||
       (integer(v.equipment.cores) &&

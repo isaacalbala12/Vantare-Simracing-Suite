@@ -56,6 +56,10 @@ pub(crate) fn corpus() -> serde_json::Value {
         settings_revision: "0".repeat(64),
         private_session: false,
     };
+    let mut named = value.clone();
+    named.equipment.gpu = Some("NVIDIA GeForce RTX 3070".into());
+    let mut astral = value.clone();
+    astral.equipment.gpu = Some("🏎".repeat(crate::onboarding::GPU_UTF16_LIMIT / 2));
     let host: Vec<HostToUi> = vec![
         sample_response(Reply::OnboardingGet {
             value: value.clone(),
@@ -63,6 +67,8 @@ pub(crate) fn corpus() -> serde_json::Value {
         sample_response(Reply::OnboardingFinish {
             value: value.clone(),
         }),
+        sample_response(Reply::OnboardingGet { value: named }),
+        sample_response(Reply::OnboardingGet { value: astral }),
         sample_response(Reply::OnboardingSkipPrivate { accepted: false }),
         sample_response(Reply::OnboardingPrices { accepted: false }),
         HostToUi::Failure {

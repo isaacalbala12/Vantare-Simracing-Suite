@@ -220,29 +220,46 @@ pub struct Finish {
 pub struct State {
     pub layout: std::path::PathBuf,
     pub equipment: Equipment,
+    detect: fn() -> Equipment,
+    detected: bool,
     pub private: PrivateExit,
 }
 impl State {
     pub fn new(layout: std::path::PathBuf) -> Self {
+        // Protocol tests always inject inert equipment, including corpus sessions.
+        #[cfg(test)]
+        let detect = Equipment::default;
+        #[cfg(not(test))]
+        let detect = Equipment::detect;
+        Self::with_detector(layout, detect)
+    }
+    pub(crate) fn with_detector(layout: std::path::PathBuf, detect: fn() -> Equipment) -> Self {
         Self {
             layout,
-            equipment: Equipment::detect(),
+            equipment: Equipment::default(),
+            detect,
+            detected: false,
             private: PrivateExit::default(),
         }
     }
     pub fn view(
-        &self,
+        &mut self,
         settings: &crate::settings::SettingsView,
         simulators: [bool; 2],
         scanning: bool,
     ) -> OnboardingView {
+        let pending = !settings.general.onboarding_completed && !self.private.active();
+        if pending && !self.detected {
+            self.equipment = (self.detect)();
+            self.detected = true;
+        }
         #[cfg(windows)]
         let (layout_ready, layout_revision) =
             crate::settings::Settings::onboarding_layout(&self.layout);
         #[cfg(not(windows))]
         let (layout_ready, layout_revision) = (false, None);
         OnboardingView {
-            pending: !settings.general.onboarding_completed && !self.private.active(),
+            pending,
             simulators,
             scanning,
             equipment: self.equipment.clone(),

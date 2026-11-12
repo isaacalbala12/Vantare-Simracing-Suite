@@ -214,7 +214,7 @@ fn gpu_name() -> Option<String> {
         }
         // SAFETY: GetDesc1 completó la estructura; ningún campo tiene representaciones inválidas.
         let description = unsafe { description.assume_init() };
-        if let Some(name) = super::gpu_label(description.flags, &description.name).ok()? {
+        if let Some(name) = super::gpu_label(description.flags, &description.name) {
             return Some(name);
         }
     }

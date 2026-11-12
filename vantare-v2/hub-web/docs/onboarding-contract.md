@@ -27,3 +27,10 @@ EnumAdapters1 (hasta 32), GetDesc1 y primer adaptador no software con nombre no
 vacío. El búfer contiene 128 unidades UTF-16, termina en NUL y recorta los extremos.
 No salen identificadores de adaptador, números de serie, rutas ni memoria de vídeo.
 No requiere GPUI, vantare-ui ni una dependencia Cargo nueva; enlaza DXGI del SDK.
+
+La detección del equipo se retrasa hasta la primera vista del Onboarding pendiente
+(y se conserva durante la sesión); crear el protocolo o servir un asistente ya
+completado no enumera adaptadores. Los tests del protocolo inyectan equipo inerte.
+A diferencia del GPUI congelado, un nombre DXGI con UTF-16 inválido se omite y se
+continúa con el adaptador siguiente. Los controles se eliminan antes del recorte;
+el validador del renderer los rechaza.

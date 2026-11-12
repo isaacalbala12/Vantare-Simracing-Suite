@@ -384,6 +384,9 @@ it("bounds the GPU name by the native DXGI UTF-16 buffer and rejects identifiers
     "x".repeat(onboardingGpuUtf16Limit + 1),
     "🏎".repeat(onboardingGpuUtf16Limit / 2 + 1),
     "\ud800",
+    "RTX\n3070",
+    "RTX\u007f3070",
+    "RTX\u00853070",
     42,
   ])
     expect(

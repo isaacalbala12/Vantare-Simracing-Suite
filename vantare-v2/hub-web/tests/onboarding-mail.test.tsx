@@ -54,6 +54,37 @@ const writes = () =>
     ([request]) => request.method === "mail.set",
   );
 
+it("does not read optional mail with allowed access but an unconfirmed session", async () => {
+  session.confirm({
+    session: "pending",
+    gate: "none",
+    blocked: false,
+  } as AccountView);
+  const hook = renderHook(() => useOnboardingMail(true, true));
+  await act(async () => {});
+  expect(fake.client.request).not.toHaveBeenCalled();
+  expect(hook.result.current.mail.available).toBe(false);
+});
+
+it("reports an unconfirmed session at Finish as failed without writing mail", async () => {
+  const hook = renderHook(() => useOnboardingMail(true, true));
+  await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
+  act(() => hook.result.current.mail.onChange?.(true));
+  act(() =>
+    session.confirm({
+      session: "pending",
+      gate: "none",
+      blocked: false,
+    } as AccountView),
+  );
+  await act(async () =>
+    expect(await hook.result.current.commitMail()).toBe("failed"),
+  );
+  expect(hook.result.current.mail.message).toContain("Correos sin confirmar");
+  expect(hook.result.current.mail.unconfirmed).toBe(true);
+  expect(writes()).toHaveLength(0);
+});
+
 it("clears the saved consent and staged intent on A to B without losing allowed", async () => {
   const hook = renderHook(() => useOnboardingMail(true, true));
   await waitFor(() => expect(hook.result.current.mail.available).toBe(true));

@@ -14,6 +14,7 @@ import {
   type ReportFields,
   type ReportPreviewView,
   type ReportReceiptView,
+  type ReportScreenshot,
   type Request,
   reportAutosaveMs,
   reportModules,
@@ -51,6 +52,9 @@ function useReportsState() {
   const [fields, setFields] = useState(empty);
   const [saved, setSaved] = useState(JSON.stringify(fields));
   const [loaded, setLoaded] = useState(false);
+  const [draftExists, setDraftExists] = useState(false);
+  const [screenshots, setScreenshots] = useState<ReportScreenshot[]>([]);
+  const removingScreenshot = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
@@ -151,6 +155,8 @@ function useReportsState() {
     setFields(fields);
     setSaved(JSON.stringify(reply.value.fields));
     setLoaded(true);
+    setScreenshots(reply.value.screenshots);
+    setDraftExists(reply.value.exists);
     setMessage(reply.value.message);
     setLegacy(reply.value.legacy);
   }
@@ -169,6 +175,8 @@ function useReportsState() {
     const reply = await request({ method: "draft.save", fields });
     if (reply.method !== "draft.save")
       throw new Error("unexpected report reply");
+    setScreenshots(reply.value.screenshots);
+    setDraftExists(reply.value.exists);
     setMessage(reply.value.message);
     setLegacy(reply.value.legacy);
     state.current.saved = JSON.stringify(fields);
@@ -267,6 +275,8 @@ function useReportsState() {
     setFields(empty());
     setSaved(JSON.stringify(empty()));
     setLoaded(false);
+    setDraftExists(false);
+    setScreenshots([]);
     setPreview(undefined);
     setReceipt(undefined);
     setConsent(false);
@@ -357,11 +367,40 @@ function useReportsState() {
     const reply = await request({ method: "draft.discard" });
     if (reply.method !== "draft.discard")
       throw new Error("unexpected report reply");
+    setScreenshots(reply.value.screenshots);
+    setDraftExists(reply.value.exists);
     setFields(reply.value.fields);
     setSaved(JSON.stringify(reply.value.fields));
     setLegacy(reply.value.legacy);
     setPreview(undefined);
     setConsent(false);
+  }
+  async function removeScreenshot(id: string) {
+    if (
+      removingScreenshot.current ||
+      !screenshots.some((shot) => shot.id === id)
+    )
+      return;
+    removingScreenshot.current = true;
+    try {
+      const fields = structuredClone(state.current.fields);
+      const reply = await request({
+        method: "report.removeScreenshot",
+        id,
+        fields,
+      });
+      if (reply.method !== "report.removeScreenshot")
+        throw new Error("unexpected screenshot reply");
+      setSaved(JSON.stringify(reply.value.fields));
+      state.current.saved = JSON.stringify(reply.value.fields);
+      setScreenshots(reply.value.screenshots);
+      setDraftExists(reply.value.exists);
+      setMessage(reply.value.message);
+      setPreview(undefined);
+      setConsent(false);
+    } finally {
+      removingScreenshot.current = false;
+    }
   }
   async function prepare(retry = false) {
     await save();
@@ -372,6 +411,7 @@ function useReportsState() {
       reply.method === "report.prepare" ||
       reply.method === "report.retryPrepare"
     ) {
+      setScreenshots(reply.value.screenshots);
       setPreview(reply.value);
       setConsent(false);
     }
@@ -403,6 +443,8 @@ function useReportsState() {
       );
       setPreview(undefined);
       if (reply.value.draftState === "cleared") {
+        setScreenshots([]);
+        setDraftExists(false);
         if (JSON.stringify(state.current.fields) === sentFields)
           setFields(empty());
         setSaved(JSON.stringify(empty()));
@@ -488,6 +530,9 @@ function useReportsState() {
     fields,
     edit,
     loaded,
+    draftExists,
+    screenshots,
+    removeScreenshot,
     available,
     busy,
     dirty,

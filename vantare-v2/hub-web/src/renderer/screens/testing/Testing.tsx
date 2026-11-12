@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { reportModules } from "../../../contract/generated/contract";
 import { testingSummaryText } from "../../i18n/testing-summary";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
 import { DiscardReportDialog } from "../../ui/DiscardReportDialog";
-import { Checkbox, Input, Select, Textarea } from "../../ui/Forms";
+import { Checkbox, Input, Textarea } from "../../ui/Forms";
 import { SessionReportReceipts } from "../../ui/SessionReportReceipts";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import {
@@ -18,6 +17,7 @@ import {
 } from "../../ui/TestingLayout";
 import { testingText as text } from "./es";
 import { LocalDiagnostic } from "./LocalDiagnostic";
+import { ReportComposer } from "./ReportComposer";
 import { useReports } from "./ReportsState";
 import { TriageEditor } from "./TriageEditor";
 
@@ -187,89 +187,7 @@ export function Reports({
           </TestingCard>
         </>
       ) : (
-        <TestingComposeCard title={text.compose}>
-          <Select
-            label={text.module}
-            value={state.fields.module}
-            options={reportModules.map(([value, label]) => ({ value, label }))}
-            disabled={blocked}
-            onChange={(module) => state.edit({ module })}
-          />
-          <Input
-            label={text.action}
-            value={state.fields.actionText}
-            disabled={blocked}
-            onChange={(event) =>
-              state.edit({ actionText: event.currentTarget.value })
-            }
-          />
-          <Textarea
-            label={text.observed}
-            value={state.fields.observedText}
-            disabled={blocked}
-            onChange={(event) =>
-              state.edit({ observedText: event.currentTarget.value })
-            }
-          />
-          <TestingFieldPair>
-            <Textarea
-              label={text.expected}
-              value={state.fields.expectedText}
-              disabled={blocked}
-              onChange={(event) =>
-                state.edit({ expectedText: event.currentTarget.value })
-              }
-            />
-            <Textarea
-              label={text.context}
-              value={state.fields.contextText}
-              disabled={blocked}
-              onChange={(event) =>
-                state.edit({ contextText: event.currentTarget.value })
-              }
-            />
-          </TestingFieldPair>
-          <ActionGroup>
-            <Button
-              disabled={blocked || !loaded}
-              onClick={() => run(state.dirty ? state.save : state.prepare)}
-            >
-              {state.dirty ? text.save : text.prepare}
-            </Button>
-            <Button disabled={blocked} onClick={() => setDiscardOpen(true)}>
-              {text.discard}
-            </Button>
-          </ActionGroup>
-          {state.preview && (
-            <ContentStack>
-              <strong>{text.preview}</strong>
-              <p>{`${text.module}: ${reportModules.find(([id]) => id === state.preview?.fields.module)?.[1] ?? state.preview.fields.module}`}</p>
-              <p>{state.preview.fields.actionText}</p>
-              <p>{state.preview.fields.expectedText}</p>
-              <p>{state.preview.fields.observedText}</p>
-              <p>{state.preview.fields.contextText}</p>
-              <TestingFinePrint>{`${state.preview.channel} · ${state.preview.appVersion} · ${state.preview.osVersion}`}</TestingFinePrint>
-              <Checkbox
-                label={text.consent}
-                checked={state.consent}
-                onCheckedChange={state.setConsent}
-              />
-              <Button
-                variant="primary"
-                disabled={blocked || !state.consent || state.dirty}
-                onClick={() => run(state.send)}
-              >
-                {text.send}
-              </Button>
-            </ContentStack>
-          )}
-          <Button
-            disabled={blocked}
-            onClick={() => run(() => state.prepare(true))}
-          >
-            {text.retryPrepare}
-          </Button>
-        </TestingComposeCard>
+        <ReportComposer onDiscard={() => setDiscardOpen(true)} />
       )}
       {state.receipt && (
         <Callout title={text.received}>

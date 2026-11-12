@@ -1,0 +1,138 @@
+.v-testing-report {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.v-testing-report-draft-actions,
+.v-testing-report-kind {
+  display: flex;
+  gap: 8px;
+}
+.v-testing-report-kind {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  gap: 4px;
+}
+.v-testing-report-kind .v-button[aria-pressed="true"] {
+  background: var(--surface-3);
+}
+.v-testing-report > .v-testing-card {
+  box-shadow:
+    inset 0 1px var(--neo-light),
+    var(--shadow-account);
+}
+.v-testing-report .v-field {
+  gap: 8px;
+  min-width: 0;
+}
+.v-testing-report .v-field label {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 17px;
+}
+.v-testing-report .v-input {
+  width: 100%;
+  box-shadow: inset 0 1px 4px var(--button-shadow);
+}
+.v-testing-report input {
+  height: 38px;
+}
+.v-testing-report textarea {
+  resize: none;
+}
+.v-testing-report > .v-testing-card > .v-field textarea {
+  height: 64px;
+  min-height: 64px;
+}
+.v-testing-report-module {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.v-testing-report-module > .v-field {
+  flex: 1;
+}
+.v-testing-report-pair {
+  display: flex;
+  gap: 16px;
+}
+.v-testing-report-pair > .v-field {
+  flex: 1;
+}
+.v-testing-report .v-testing-report-pair > .v-field textarea {
+  height: 48px;
+  min-height: 48px;
+}
+.v-testing-report-inline-action {
+  display: flex;
+  justify-content: flex-end;
+}
+.v-testing-report-screenshots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.v-testing-report-screenshots h3 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  font-weight: 650;
+}
+.v-testing-report-images {
+  display: flex;
+  gap: 10px;
+}
+.v-testing-report-images > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+.v-testing-report-images img {
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+}
+.v-testing-report-metadata {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.v-testing-report .v-testing-report-metadata .v-testing-fine-print {
+  font-size: 11px;
+  line-height: 16px;
+}
+.v-testing-report-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-testing-report-final-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.v-testing-report .v-testing-report-send.v-button--primary {
+  height: 38px;
+  border-radius: 10px;
+  border-color: transparent;
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+  box-shadow:
+    inset 0 1px var(--button-highlight),
+    0 1px 4px var(--button-shadow);
+}
+.v-testing-report .v-testing-report-send.v-button--primary:disabled {
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+  border-color: transparent;
+  opacity: var(--disabled-opacity);
+}

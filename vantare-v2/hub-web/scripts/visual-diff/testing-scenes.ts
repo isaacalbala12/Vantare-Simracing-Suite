@@ -163,6 +163,10 @@ export const testingScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Nuevo informe", exact: true })
         .waitFor();
+      await page
+        .getByRole("button", { name: "Cargar borrador", exact: true })
+        .waitFor();
+      await page.getByText("Capturas · 0/3", { exact: true }).waitFor();
       await page.mouse.move(600, 890);
     },
   },

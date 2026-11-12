@@ -1,3 +1,4 @@
+import { calendarNoticeTestIntervalMs } from "../../contract/generated/calendar";
 export const calendarAlertsText = {
   reading: "Leyendo tus avisos…",
   protected: "Tus avisos están protegidos; no se ha modificado nada.",
@@ -51,7 +52,7 @@ export const calendarAlertsText = {
     "Prueba solicitada a Windows. Su configuración decide si se muestra o suena.",
   testUnavailable:
     "La prueba no está disponible o el sistema no ha aceptado la solicitud.",
-  testBusy: "Espera cinco segundos antes de volver a probar el aviso.",
+  testBusy: `Espera ${calendarNoticeTestIntervalMs / 1000} segundos antes de volver a probar el aviso.`,
   testFailure:
     "No se pudo solicitar la prueba. Comprueba la conexión, tus derechos y el documento de avisos.",
   edit: "Editar",

@@ -22,7 +22,7 @@ export const calendarDetailText = {
   alert: "Avisarme de esta salida",
   alertAt: (s: string) => `Aviso configurado para las ${s}`,
   alertHelp: (n: number) =>
-    `${n} min antes en Windows y el calendario (.ics), con el Hub abierto y según tus canales. El overlay conserva sus propios umbrales.`,
+    `Windows: ${n} min antes, con el Hub abierto y el canal activo. El recordatorio .ics usa esa antelación; el overlay conserva sus umbrales.`,
   rules: "Reglas",
   format: "Formato",
   team: "Equipos",

@@ -39,7 +39,46 @@ function week(expanded: boolean): VisualScene {
     },
   };
 }
+function weeklyDetail(expanded: boolean): VisualScene {
+  return {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes[
+        expanded ? "calendario-ficha-desplegada" : "calendario-ficha-contraida"
+      ].prepare(page);
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Cerrar (Esc)", exact: true })
+        .click();
+      await page.getByRole("dialog").waitFor({ state: "detached" });
+      await page
+        .locator(".v-calendar-live-row")
+        .filter({ hasText: "WEC Weekly" })
+        .getByRole("button", { name: "20:00", exact: true })
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("heading", { name: "WEC Weekly", exact: true })
+        .waitFor();
+      await page.getByText(/Windows: 10 min antes/u).waitFor();
+      const accessible = await page
+        .locator(".v-window-controls")
+        .evaluate((controls) =>
+          Array.from(controls.querySelectorAll("button")).every((button) => {
+            const r = button.getBoundingClientRect();
+            return button.contains(
+              document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2),
+            );
+          }),
+        );
+      if (!accessible) throw Error("Weekly detail covers window controls");
+      await page.mouse.move(600, 890);
+    },
+  };
+}
 export const calendarNoticeScenes: Record<string, VisualScene> = {
+  "calendario-emisor-ficha-semanal-contraida": weeklyDetail(false),
+  "calendario-emisor-ficha-semanal-desplegada": weeklyDetail(true),
   "calendario-emisor-avisos-contraida": alerts(false),
   "calendario-emisor-avisos-desplegada": alerts(true),
   "calendario-emisor-semana-contraida": week(false),

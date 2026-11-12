@@ -81,9 +81,10 @@ export function CommandPalette({
         <Dialog.Popup
           className="v-command-palette"
           finalFocus={() =>
-            committed.current
-              ? (document.querySelector<HTMLElement>(".v-shell-main") ?? true)
-              : true
+            // Base UI resolves an element to its first tabbable child. A
+            // destination's loading screen may replace that child; focus the
+            // stable main explicitly after close instead.
+            !committed.current
           }
           initialFocus={(event) => {
             if (event !== "touch")

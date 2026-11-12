@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import type { Page } from "playwright-core";
+import { commandScenes } from "./visual-diff/commands.ts";
 import { until } from "./wait-for.ts";
 
-export async function checkCommandPalette(owner: Page, base: string) {
+export async function checkCommandPalette(
+  owner: Page,
+  base: string,
+  evidence?: string,
+) {
   const page = await owner.context().newPage();
   try {
     await page.addInitScript(() => {
@@ -106,6 +113,20 @@ export async function checkCommandPalette(owner: Page, base: string) {
       1,
     );
     await page.keyboard.press("Escape");
+    if (evidence) {
+      await mkdir(evidence, { recursive: true });
+      for (const scheme of ["dark", "light"]) {
+        for (const [scene, adapter] of Object.entries(commandScenes)) {
+          await page.goto(`${base}?escena=visual-${scheme}:${adapter.mock}`);
+          await adapter.prepare(page);
+          await page.evaluate(() => document.fonts.ready);
+          await page.screenshot({
+            path: join(evidence, `${scene}-${scheme}.png`),
+            animations: "disabled",
+          });
+        }
+      }
+    }
   } finally {
     await page.close();
   }
@@ -121,7 +142,11 @@ if (import.meta.main) {
       viewport: { width: 1440, height: 900 },
     });
     const page = await context.newPage();
-    await checkCommandPalette(page, server.resolvedUrls?.local[0] ?? "");
+    await checkCommandPalette(
+      page,
+      server.resolvedUrls?.local[0] ?? "",
+      process.argv[2],
+    );
   } finally {
     await browser.close();
     await new Promise<void>((resolve, reject) =>

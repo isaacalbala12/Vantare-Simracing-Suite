@@ -245,3 +245,94 @@ it("blocks Ctrl L on a non-editable palette row, with a positive normal-screen c
   await waitFor(() => expect(calls()).toHaveLength(1));
   expect(calls()[0][0].method).toBe("launcher.favorite");
 });
+
+it.each(["strategy", "engineer"])(
+  "keeps the upcoming %s presentation navigable, including the Pro catalog label",
+  async (id) => {
+    await mount();
+    act(() =>
+      cache.setQueryData(["frame", "account"], {
+        session: "signedIn",
+        name: "QA",
+        photo: null,
+        plan: { kind: "founders" },
+      }),
+    );
+    await waitFor(() =>
+      expect(driver.commands.find((row) => row.id === id)?.meta).toBe(
+        text.included,
+      ),
+    );
+    const row = driver.commands.find((item) => item.id === id);
+    expect(row?.disabled).toBe(false);
+    expect(
+      driver.commands.some((item) => item.label === "Guardar perfil"),
+    ).toBe(false);
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("combobox"),
+      id === "strategy" ? text.strategy : text.engineer,
+    );
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(
+        document
+          .querySelector('.v-sidebar [aria-current="page"]')
+          ?.getAttribute("aria-label"),
+      ).toBe(id === "strategy" ? "Strategy" : "Engineer"),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        document.querySelector(".v-shell-main"),
+      ),
+    );
+  },
+);
+
+it("shows a failed profile refresh and blocks stale launch commands", async () => {
+  await mount();
+  const user = userEvent.setup();
+  await user.keyboard("{Escape}");
+  const original = Client.prototype.request;
+  vi.spyOn(Client.prototype, "request").mockImplementation(async function (
+    this: Client,
+    request,
+  ) {
+    if (request.method === "launcher.get")
+      throw new HostFailure({ kind: "coreUnavailable" });
+    return original.call(this, request);
+  });
+  fireEvent.keyDown(document.body, { key: "k", ctrlKey: true });
+  expect((await screen.findAllByText(text.readFailed)).length).toBeGreaterThan(
+    0,
+  );
+  expect(
+    driver.commands
+      .filter((row) => row.id.startsWith("launch-profile:"))
+      .every((row) => row.disabled),
+  ).toBe(true);
+});
+
+it("warns and opens Launcher when the favorite shortcut loses verified access", async () => {
+  await mount();
+  await userEvent.setup().keyboard("{Escape}");
+  const core = structuredClone(cache.getQueryData<CoreStatus>(coreKey));
+  if (!core) throw new Error("Missing core");
+  core.access.verified = false;
+  const spy = vi.spyOn(Client.prototype, "request");
+  act(() => cache.setQueryData(coreKey, core));
+  fireEvent.keyDown(document.body, { key: "l", ctrlKey: true });
+  expect(
+    spy.mock.calls.filter(
+      ([request]) => request.method === "launcher.favorite",
+    ),
+  ).toHaveLength(0);
+  await waitFor(() =>
+    expect(
+      document
+        .querySelector('.v-sidebar [aria-current="page"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Launcher"),
+  );
+  expect(document.querySelector(".v-toast")).toBeTruthy();
+});

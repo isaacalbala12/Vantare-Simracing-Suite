@@ -19,13 +19,15 @@ export const pilotScenes: Record<string, VisualScene> = {
           { exact: true },
         )
         .waitFor();
-      await page.waitForFunction(
-        () =>
-          (
-            document.querySelector(
-              'input[aria-label="Nombre público"]',
-            ) as HTMLInputElement | null
-          )?.value !== "Nota QA sin guardar",
+      const name = page.getByRole("textbox", {
+        name: "Nombre público",
+        exact: true,
+      });
+      await name.waitFor();
+      await until(
+        async () => (await name.inputValue()) !== "Nota QA sin guardar",
+        2000,
+        "fresh pilot after session boundary",
       );
     },
   },

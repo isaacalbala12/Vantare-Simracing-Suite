@@ -79,7 +79,6 @@
 }
 .v-ob-column {
   position: relative;
-  z-index: 1;
   flex: 0 0 calc(600 * var(--ob-unit));
   display: flex;
   align-items: center;

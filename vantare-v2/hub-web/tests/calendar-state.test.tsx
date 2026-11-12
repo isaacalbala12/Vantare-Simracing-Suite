@@ -10,7 +10,10 @@ import { HostFailure } from "../src/renderer/bridge/client";
 import { useCalendar } from "../src/renderer/screens/calendar/CalendarState";
 
 const host = vi.hoisted(() => ({
-  client: { request: vi.fn(), listen: vi.fn(() => () => {}) },
+  client: {
+    request: vi.fn(),
+    listen: vi.fn((_listener: (message: HostToUi) => void) => () => {}),
+  },
 }));
 vi.mock("../src/renderer/app/Host", async (original) => ({
   ...(await original<typeof import("../src/renderer/app/Host")>()),
@@ -22,7 +25,10 @@ afterEach(() => {
   vi.useRealTimers();
   for (const cache of caches) cache.clear();
   caches.length = 0;
-  host.client = { request: vi.fn(), listen: vi.fn(() => () => {}) };
+  host.client = {
+    request: vi.fn(),
+    listen: vi.fn((_listener: (message: HostToUi) => void) => () => {}),
+  };
 });
 function mount(allowed = true, connected = false) {
   const core = structuredClone(coreFixture) as CoreStatus;
@@ -115,7 +121,7 @@ it("ignores a reply from the previous client after reconnecting", async () => {
   const hook = mount(),
     next = { ...calendarReference(), following: [] };
   host.client = {
-    listen: vi.fn(() => () => {}),
+    listen: vi.fn((_listener: (message: HostToUi) => void) => () => {}),
     request: vi
       .fn()
       .mockResolvedValue({ method: "calendar.load", value: next }),

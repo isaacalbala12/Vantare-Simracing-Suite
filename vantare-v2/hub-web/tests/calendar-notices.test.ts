@@ -375,6 +375,7 @@ it.each([
   { mockRequested: false, mockAllowed: true, qa: false, doubled: false },
   { mockRequested: true, mockAllowed: true, qa: false, doubled: true },
   { mockRequested: false, mockAllowed: true, qa: true, doubled: true },
+  { mockRequested: false, mockAllowed: false, qa: true, doubled: true },
 ])(
   "wires both notification paths to the trusted bootstrap presenter: %j",
   (mode) => {
@@ -420,4 +421,19 @@ it("formats local midnight as 00:00 with the h23 hour cycle", () => {
       at - 600000,
     ).title,
   ).toBe("QA sale a las 00:00");
+});
+
+import calendarCorpus from "../src/contract/generated/corpus/calendar.json";
+import { isEvent } from "../src/contract/modules/calendar";
+
+it("keeps background refresh errors and fields closed", () => {
+  const message = (calendarCorpus.host as unknown as HostToUi[]).find(
+    (value) =>
+      value.kind === "event" && value.event.topic === "calendarRefreshed",
+  );
+  if (message?.kind !== "event" || message.event.topic !== "calendarRefreshed")
+    throw Error("missing background refresh corpus");
+  expect(isEvent(message.event)).toBe(true);
+  expect(isEvent({ ...message.event, error: "arbitrary" })).toBe(false);
+  expect(isEvent({ ...message.event, message: "free text" })).toBe(false);
 });

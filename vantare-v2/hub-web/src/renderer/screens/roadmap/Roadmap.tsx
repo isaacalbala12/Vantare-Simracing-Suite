@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { RoadmapPublication } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
@@ -38,7 +38,17 @@ export function Roadmap() {
       );
     });
   }, [client, cache]);
-  const [view, setView] = useState("board");
+  const viewKey = ["ui", "roadmap", "view"] as const;
+  const { data: view } = useQuery({
+    queryKey: viewKey,
+    initialData: "board",
+    enabled: false,
+    gcTime: Infinity,
+  });
+  function setView(next: string) {
+    if (["board", "circuit", "season"].includes(next))
+      cache.setQueryData(viewKey, next);
+  }
   return (
     <>
       <SectionChrome

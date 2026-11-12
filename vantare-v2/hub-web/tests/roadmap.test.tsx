@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -17,6 +17,8 @@ import {
 import type { Client } from "../src/renderer/bridge/client";
 import { pollRoadmap } from "../src/renderer/screens/roadmap/poll";
 import { Roadmap } from "../src/renderer/screens/roadmap/Roadmap";
+import { TooltipProvider } from "../src/renderer/ui/Layers";
+import { RoadmapLayout } from "../src/renderer/ui/RoadmapLayout";
 
 afterEach(() => {
   cleanup();
@@ -248,4 +250,59 @@ it("does not claim to have a saved publication when the cache is absent", async 
   );
   expect(await screen.findByText("Sin publicación disponible")).toBeTruthy();
   expect(screen.queryByText("Última publicación guardada")).toBeNull();
+});
+
+it("keeps the selected tab across section unmounts within the same Hub session", async () => {
+  const user = userEvent.setup();
+  const cache = new QueryClient();
+  const mount = () =>
+    render(
+      <QueryClientProvider client={cache}>
+        <SectionChromeProvider>
+          <SectionTabsSlot />
+          <Roadmap />
+        </SectionChromeProvider>
+      </QueryClientProvider>,
+    );
+  const first = mount();
+  await user.click(screen.getByRole("tab", { name: "Temporada" }));
+  first.unmount();
+  const second = mount();
+  expect(
+    screen
+      .getByRole("tab", { name: "Temporada" })
+      .getAttribute("aria-selected"),
+  ).toBe("true");
+  second.unmount();
+  cache.clear();
+});
+it("reveals the full current title in the shared tooltip and supplies its body", async () => {
+  const user = userEvent.setup();
+  const value = publication();
+  if (!value?.items[0]) throw Error("missing fixture");
+  const title = "Hito muy largo ".repeat(20);
+  value.items = [
+    {
+      ...value.items[0],
+      section: "now",
+      title,
+      body: "Detalle completo del hito",
+    },
+  ];
+  render(
+    <TooltipProvider delay={0}>
+      <RoadmapLayout publication={value} status="Publicado" view="circuit" />
+    </TooltipProvider>,
+  );
+  const heading = screen.getByRole("heading", { name: title.trim() });
+  await user.hover(within(heading).getByText(title.trim()));
+  expect(
+    (await screen.findByText(title.trim(), { selector: ".v-tooltip" }))
+      .textContent,
+  ).toBe(title);
+  expect(
+    within(screen.getByRole("region", { name: "En qué estamos" })).getByText(
+      "Detalle completo del hito",
+    ).className,
+  ).toBe("v-roadmap-current-body");
 });

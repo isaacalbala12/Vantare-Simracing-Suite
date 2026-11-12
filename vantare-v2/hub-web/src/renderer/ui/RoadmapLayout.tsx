@@ -5,6 +5,7 @@ import type {
 } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { roadmap as text } from "../i18n/roadmap";
+import { Tooltip } from "./Layers";
 import { TrackedCaps } from "./TrackedCaps";
 import "./roadmap.css";
 
@@ -53,11 +54,17 @@ export function RoadmapLayout({
   status: string;
   view: string;
 }) {
+  const current = items(p, "now")[0];
   const hero = (
-    <section className="v-roadmap-hero">
+    <section className="v-roadmap-hero" aria-label={text.current}>
       <strong>{text.current}</strong>
-      {items(p, "now")[0] ? (
-        <h2>{items(p, "now")[0].title}</h2>
+      {current ? (
+        <>
+          <h2>
+            <Tooltip label={current.title}>{current.title}</Tooltip>
+          </h2>
+          <p className="v-roadmap-current-body">{current.body}</p>
+        </>
       ) : (
         <p>{text.noCurrent}</p>
       )}

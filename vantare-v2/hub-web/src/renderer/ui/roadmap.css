@@ -86,8 +86,27 @@
     var(--grad-hero-wash), var(--grad-hero);
 }
 .v-roadmap-hero h2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
   font: 600 26px / 30px var(--font-display);
   color: var(--text-1);
+}
+.v-roadmap-current-body {
+  display: none;
+}
+.v-roadmap-hero h2 .v-tooltip-trigger {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+/* GPUI orbit/adapt.rs: Density::A starts at a logical window height of 1000. */
+@media (min-height: 1000px) {
+  .v-roadmap-current-body {
+    display: block;
+  }
 }
 .v-roadmap-counts {
   display: flex;

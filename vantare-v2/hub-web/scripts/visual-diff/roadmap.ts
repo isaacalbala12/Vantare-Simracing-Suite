@@ -1,6 +1,40 @@
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import type { VisualScene } from "./scenes.ts";
 export const roadmapScenes: Record<string, VisualScene> = {
+  "roadmap-publicado": {
+    mock: "roadmap-published",
+    async prepare(page) {
+      await page.getByRole("button", { name: "Roadmap", exact: true }).click();
+      await page.getByRole("tab", { name: "Circuito", exact: true }).click();
+      await page.locator(".v-roadmap-hero h2").waitFor();
+    },
+    async cleanup(page) {
+      await page.setViewportSize({ width: 1800, height: 1100 });
+      try {
+        assert.equal(
+          await page.locator(".v-roadmap-current-body").isVisible(),
+          true,
+        );
+        await page.locator(".v-roadmap-hero .v-tooltip-trigger").hover();
+        await page.locator(".v-tooltip").waitFor();
+        const output = process.env.VANTARE_HUB_EVIDENCE;
+        if (output) {
+          await mkdir(output, { recursive: true });
+          const scheme = await page.evaluate(
+            () => document.documentElement.dataset.scheme,
+          );
+          // Supplementary CDP image, not the 1440x900 HWND reference comparison.
+          await page.screenshot({
+            path: join(output, `roadmap-amplio-${scheme}.png`),
+          });
+        }
+      } finally {
+        await page.setViewportSize({ width: 1440, height: 900 });
+      }
+    },
+  },
   "roadmap-tablero": {
     mock: "roadmap-base",
     async prepare(page) {

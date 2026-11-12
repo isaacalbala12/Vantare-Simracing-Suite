@@ -823,7 +823,15 @@ mod tests {
             let after = config.core.args.clone();
             assert_eq!(core_photo(&mut config).unwrap(), photo);
             assert_eq!(config.core.args, after);
-            assert_eq!(config.core.args.iter().filter(|arg| *arg == "--pipe").count(), 1);
+            assert_eq!(
+                config
+                    .core
+                    .args
+                    .iter()
+                    .filter(|arg| *arg == "--pipe")
+                    .count(),
+                1
+            );
         }
     }
 

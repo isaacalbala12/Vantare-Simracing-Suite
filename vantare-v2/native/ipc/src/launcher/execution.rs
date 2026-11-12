@@ -78,9 +78,17 @@ pub enum ChainOutcome {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum EventKind {
-    Started { run: RunId },
-    Received { request: super::RequestId, receipt: super::checked::LaunchReceipt },
-    Finished { run: RunId, outcome: ChainOutcome },
+    Started {
+        run: RunId,
+    },
+    Received {
+        request: super::RequestId,
+        receipt: super::checked::LaunchReceipt,
+    },
+    Finished {
+        run: RunId,
+        outcome: ChainOutcome,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -126,14 +134,18 @@ impl ExecutionStatus {
         Some(run)
     }
     pub fn contains_request(&self, request: &super::RequestId) -> bool {
-        self.events.iter().any(|event| matches!(&event.kind,
-            EventKind::Received { request: observed, .. } if observed == request))
+        self.events.iter().any(|event| {
+            matches!(&event.kind,
+            EventKind::Received { request: observed, .. } if observed == request)
+        })
     }
     pub fn accept(&mut self, request: super::RequestId) -> Option<RunId> {
         let run = self.next()?;
         run.0.checked_add(1)?;
-        self.record(EventKind::Received { request,
-            receipt: super::checked::LaunchReceipt::Accepted { run } })?;
+        self.record(EventKind::Received {
+            request,
+            receipt: super::checked::LaunchReceipt::Accepted { run },
+        })?;
         Some(run)
     }
     pub fn can_start(&self) -> bool {

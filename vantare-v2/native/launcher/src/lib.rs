@@ -2,13 +2,13 @@
 #![deny(unsafe_code)]
 
 pub mod chain;
-pub mod snapshot;
 pub mod discovery;
 pub mod legacy;
 pub mod policy;
 pub mod processes;
 #[cfg(windows)]
 pub(crate) mod shortcuts;
+pub mod snapshot;
 pub mod triggers;
 #[cfg(windows)]
 #[allow(unsafe_code)] // Frontera Win32 documentada, igual que antes de compartir el motor.

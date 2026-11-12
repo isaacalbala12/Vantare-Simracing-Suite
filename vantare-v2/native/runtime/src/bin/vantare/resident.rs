@@ -92,14 +92,20 @@ impl Resident {
         first.map_or(Ok(()), |error| Err(std::io::Error::other(error)))
     }
 
-    pub fn start(path: PathBuf, profile: Option<String>, startup: bool,
-        authority: vantare_ipc::account_session::AuthorityLink) -> std::io::Result<Self> {
+    pub fn start(
+        path: PathBuf,
+        profile: Option<String>,
+        startup: bool,
+        authority: vantare_ipc::account_session::AuthorityLink,
+    ) -> std::io::Result<Self> {
         let stop = Arc::new(AtomicBool::new(false));
         let cancellation = stop.clone();
         let mut owner = Owner::new(path, startup);
         owner.authority = Some(authority);
         if let Some(extension) = &mut owner.status.extension {
-            extension.capabilities.push(vantare_ipc::launcher::execution::Capability::RevisionCheckedLaunch);
+            extension
+                .capabilities
+                .push(vantare_ipc::launcher::execution::Capability::RevisionCheckedLaunch);
         }
         let processes = Arc::clone(&owner.processes);
         let close_on_exit = Arc::clone(&owner.close_on_exit);

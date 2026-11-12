@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 
 pub const VERSION: u32 = 2;
 pub const MAX_STATUS_BYTES: usize = 128 * 1024;
-pub mod execution;
 pub mod checked;
+pub mod execution;
 pub use checked::{LaunchChecked, RequestId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

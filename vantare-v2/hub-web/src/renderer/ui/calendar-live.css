@@ -832,3 +832,17 @@
 .v-calendar-grid-line[data-hour] {
   background: var(--line-2);
 }
+
+.v-calendar-live-head {
+  grid-template-columns: 34px minmax(250px, 1fr) 104px 92px minmax(240px, 1fr);
+}
+.v-calendar-live-head > span:last-child {
+  font-size: 10.5px;
+}
+.v-calendar-timeline-axis::after {
+  top: 22px;
+  bottom: auto;
+  left: calc(10% - 3px);
+  width: 8px;
+  height: 8px;
+}

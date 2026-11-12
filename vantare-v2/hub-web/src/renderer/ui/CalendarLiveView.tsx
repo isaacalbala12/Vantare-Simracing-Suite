@@ -230,7 +230,11 @@ export function CalendarLiveView({
               <i
                 key={at}
                 className="v-calendar-grid-line"
-                data-hour={new Date(at).getUTCMinutes() === 0 || undefined}
+                data-hour={
+                  (utc
+                    ? new Date(at).getUTCMinutes()
+                    : new Date(at).getMinutes()) === 0 || undefined
+                }
                 aria-hidden="true"
                 style={{
                   left: `${(100 * (at - lineFrom)) / (lineUntil - lineFrom)}%`,

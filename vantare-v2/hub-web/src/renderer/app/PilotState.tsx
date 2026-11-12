@@ -4,8 +4,10 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { PilotFields, PilotView } from "../../contract/generated/contract";
 import { isPilotFields } from "../../contract/pilot-validation";
@@ -14,9 +16,14 @@ import {
   encodePilotPhoto,
   openPilotPhoto,
 } from "../screens/settings/pilot-photo";
+import { useAccountSession } from "./AccountSession";
 import { useHost } from "./Host";
 
 interface State {
+  available: boolean;
+  sessionGeneration: number;
+  sessionDiscarded: boolean;
+  dismissSessionDiscarded(): void;
   photo?: { image: ImageBitmap; crop: PhotoCrop };
   photoBusy: boolean;
   photoError: boolean;
@@ -45,6 +52,20 @@ export function usePilot() {
 }
 export function PilotProvider({ children }: { children: ReactNode }) {
   const { client } = useHost();
+  const session = useAccountSession();
+  const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  const epoch = useRef(0);
+  const active = useRef(true);
+  const hasChanges = useRef(false);
+  const [sessionDiscarded, setSessionDiscarded] = useState(false);
+  const dismissSessionDiscarded = useCallback(
+    () => setSessionDiscarded(false),
+    [],
+  );
+  const currentSession = () =>
+    active.current &&
+    session.getSnapshot().ready &&
+    session.getSnapshot().generation === snapshot.generation;
   const [photo, setPhoto] = useState<{ image: ImageBitmap; crop: PhotoCrop }>();
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState(false);
@@ -69,10 +90,17 @@ export function PilotProvider({ children }: { children: ReactNode }) {
     setPhotoError(false);
   }, []);
   async function choosePhoto(file: File) {
-    if (saving.current || photoLoading.current || photoResource.current) return;
+    if (
+      !currentSession() ||
+      saving.current ||
+      photoLoading.current ||
+      photoResource.current
+    )
+      return;
     const generation = ++photoGeneration.current;
     photoLoading.current = true;
     unsaved.current = true;
+    hasChanges.current = true;
     setPhotoBusy(true);
     setPhotoError(false);
     setLastSaved(false);
@@ -94,7 +122,7 @@ export function PilotProvider({ children }: { children: ReactNode }) {
     }
   }
   function applyPhoto() {
-    if (!photo || saving.current) return;
+    if (!currentSession() || !photo || saving.current) return;
     try {
       const value = encodePilotPhoto(photo.image, photo.crop);
       setDraft((current) => current && { ...current, photo: value });
@@ -119,17 +147,46 @@ export function PilotProvider({ children }: { children: ReactNode }) {
       JSON.stringify(view.fields) !== JSON.stringify(draft));
   const unsaved = useRef(false);
   unsaved.current = dirty || busy;
+  hasChanges.current = dirty;
   const operation = useRef<Promise<void> | undefined>(undefined);
+  const invalidate = useCallback(() => {
+    epoch.current++;
+    if (hasChanges.current) setSessionDiscarded(true);
+    cancelPhoto();
+    saving.current = false;
+    operation.current = undefined;
+    unsaved.current = false;
+    hasChanges.current = false;
+    setView(undefined);
+    setDraft(undefined);
+    setBusy(false);
+    setError(false);
+    setLastSaved(false);
+    setCloseVeto(false);
+  }, [cancelPhoto]);
+  useLayoutEffect(() => {
+    active.current = !!client;
+    let observed = session.getSnapshot().generation;
+    invalidate();
+    const stop = session.subscribe(() => {
+      const next = session.getSnapshot();
+      if (next.generation !== observed || !next.ready) {
+        observed = next.generation;
+        invalidate();
+      }
+    });
+    return () => {
+      active.current = false;
+      epoch.current++;
+      stop();
+      cancelPhoto();
+    };
+  }, [client, session, invalidate, cancelPhoto]);
   useEffect(() => {
     if (!client) return;
     return client.addCloseGuard(async (reason) => {
       if (reason === "live") {
-        cancelPhoto();
-        setDraft(undefined);
-        setView(undefined);
-        setError(false);
-        setCloseVeto(false);
-        setLastSaved(false);
+        invalidate();
         return true;
       }
       await operation.current;
@@ -137,31 +194,38 @@ export function PilotProvider({ children }: { children: ReactNode }) {
       setCloseVeto(true);
       return false;
     });
-  }, [client, cancelPhoto]);
-  async function run(action: () => Promise<void>) {
-    if (saving.current) return;
+  }, [client, invalidate]);
+  async function run(action: (current: () => boolean) => Promise<void>) {
+    if (!currentSession() || saving.current) return;
+    const started = epoch.current;
+    const current = () => currentSession() && epoch.current === started;
     saving.current = true;
     setBusy(true);
     setError(false);
-    operation.current = action()
+    operation.current = action(current)
       .catch(() => {
+        if (!current()) return;
         setError(true);
         setLastSaved(false);
       })
       .finally(() => {
+        if (!current()) return;
         saving.current = false;
         setBusy(false);
       });
     await operation.current;
   }
   async function load() {
+    if (!currentSession()) return;
     cancelPhoto();
-    await run(async () => {
+    await run(async (current) => {
       const reply = await client?.request({ method: "pilot.load" });
+      if (!current()) return;
       if (reply?.method !== "pilot.load") throw new Error("pilot unavailable");
       setView(reply.value);
       setDraft(structuredClone(reply.value.fields));
       unsaved.current = false;
+      hasChanges.current = false;
       setCloseVeto(false);
       setLastSaved(false);
     });
@@ -176,16 +240,18 @@ export function PilotProvider({ children }: { children: ReactNode }) {
     )
       return;
     const fields = structuredClone(draft);
-    await run(async () => {
+    await run(async (current) => {
       const reply = await client?.request({
         method: "pilot.save",
         fields,
         baseRevision: view.revision,
       });
+      if (!current()) return;
       if (reply?.method !== "pilot.save") throw new Error("pilot not saved");
       setView(reply.value);
       setDraft(structuredClone(reply.value.fields));
       unsaved.current = false;
+      hasChanges.current = false;
       setLastSaved(true);
       setCloseVeto(false);
     });
@@ -201,8 +267,9 @@ export function PilotProvider({ children }: { children: ReactNode }) {
       return;
     const base = structuredClone(view.fields);
     const intent = structuredClone(draft);
-    await run(async () => {
+    await run(async (current) => {
       const latest = await client?.request({ method: "pilot.load" });
+      if (!current()) return;
       if (latest?.method !== "pilot.load") throw new Error("pilot unavailable");
       const fields = structuredClone(latest.value.fields);
       const apply = <K extends keyof PilotFields>(key: K) => {
@@ -217,10 +284,12 @@ export function PilotProvider({ children }: { children: ReactNode }) {
         fields,
         baseRevision: latest.value.revision,
       });
+      if (!current()) return;
       if (saved?.method !== "pilot.save") throw new Error("pilot not saved");
       setView(saved.value);
       setDraft(structuredClone(saved.value.fields));
       unsaved.current = false;
+      hasChanges.current = false;
       setLastSaved(true);
       setCloseVeto(false);
     });
@@ -228,6 +297,10 @@ export function PilotProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider
       value={{
+        available: snapshot.ready,
+        sessionGeneration: snapshot.generation,
+        sessionDiscarded,
+        dismissSessionDiscarded,
         photo,
         photoBusy,
         photoError,
@@ -235,7 +308,7 @@ export function PilotProvider({ children }: { children: ReactNode }) {
         cancelPhoto,
         applyPhoto,
         cropPhoto: (crop) => {
-          if (!saving.current)
+          if (currentSession() && !saving.current)
             setPhoto(
               (current) =>
                 current && {
@@ -255,6 +328,8 @@ export function PilotProvider({ children }: { children: ReactNode }) {
         save,
         retry,
         discard: () => {
+          if (!currentSession()) return;
+          dismissSessionDiscarded();
           cancelPhoto();
           setDraft(view && structuredClone(view.fields));
           setError(false);
@@ -262,7 +337,9 @@ export function PilotProvider({ children }: { children: ReactNode }) {
           setCloseVeto(false);
         },
         edit: (fields) => {
-          if (!saving.current) {
+          if (currentSession() && !saving.current) {
+            dismissSessionDiscarded();
+            hasChanges.current = true;
             setLastSaved(false);
             setDraft((current) =>
               typeof fields === "function"

@@ -65,10 +65,10 @@ impl Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         self.shared.stop.store(true, Ordering::Release);
-        if let Some(worker) = self.worker.take() {
-            if worker.join().is_err() {
-                eprintln!("VANTARE_IPC_READER_PANIC");
-            }
+        if let Some(worker) = self.worker.take()
+            && worker.join().is_err()
+        {
+            eprintln!("VANTARE_IPC_READER_PANIC");
         }
     }
 }
@@ -242,11 +242,11 @@ fn main() -> std::process::ExitCode {
         }
     };
     let result = application();
-    if let Some(session) = session {
-        if let Err(error) = session.finish() {
-            eprintln!("cerrar traza: {error}");
-            return std::process::ExitCode::from(2);
-        }
+    if let Some(session) = session
+        && let Err(error) = session.finish()
+    {
+        eprintln!("cerrar traza: {error}");
+        return std::process::ExitCode::from(2);
     }
     result.map_or_else(
         |error| {

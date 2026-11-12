@@ -9,6 +9,7 @@ export const calendarDayText = {
   all: "Todas",
   favorites: "Favoritas",
   full: "Pantalla completa",
+  exitFull: "Salir de pantalla completa (Esc)",
   count: (n: number) => `${n} salidas`,
   emptyTitle: "Ninguna favorita todavía",
   emptyHelp: "Marca series con la estrella o quita el filtro.",

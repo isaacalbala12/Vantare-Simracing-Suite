@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import { calendarDayText as text } from "../src/renderer/i18n/calendarDay";
@@ -98,3 +104,43 @@ it("paints bands in local hours even in UTC and disables undelivered actions", (
     true,
   );
 });
+
+it.each(["escape", "button"])(
+  "keeps window controls and restores focus on expanded day %s exit",
+  async (mode) => {
+    render(
+      <>
+        <div className="v-window-controls">
+          <button type="button">Cerrar ventana QA</button>
+        </div>
+        <CalendarDayView
+          schedule={fixture}
+          alerts={alerts}
+          following={[]}
+          now={Date.parse("2026-07-02T12:00:00Z")}
+          utc
+          limit={1000}
+          onSpan={() => {}}
+        />
+      </>,
+    );
+    const trigger = screen.getByRole("button", { name: text.full });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: text.calendar });
+    const control = screen.getByRole("button", { name: "Cerrar ventana QA" });
+    control.focus();
+    expect(document.activeElement).toBe(control);
+    expect(control.closest('[inert], [aria-hidden="true"]')).toBeNull();
+    dialog.focus();
+    if (mode === "escape")
+      fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+    else fireEvent.click(screen.getByRole("button", { name: text.exitFull }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: text.full }),
+      ),
+    );
+  },
+);

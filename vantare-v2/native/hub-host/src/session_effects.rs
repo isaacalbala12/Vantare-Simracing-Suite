@@ -30,6 +30,16 @@ pub(super) fn settings_response(
     }
     frame::write(pipe, &message)
 }
+/// Pending close reasons only advance: Window < Restart < Live/owner EOF.
+/// The two highest reasons are equivalent; neither resets an existing forced close.
+pub(super) fn close_can_advance(current: Option<CloseReason>, next: CloseReason) -> bool {
+    let rank = |reason| match reason {
+        CloseReason::Window => 0,
+        CloseReason::Restart => 1,
+        CloseReason::Live | CloseReason::ControlEof => 2,
+    };
+    current.is_none_or(|current| rank(next) > rank(current))
+}
 pub(super) fn finish_session(exit_code: u8, cancel: impl FnOnce() -> io::Result<()>) -> u8 {
     let _ = cancel();
     exit_code
@@ -100,8 +110,19 @@ impl Session {
         result
     }
     pub(super) fn request_close(&mut self, pipe: &mut Pipe, reason: CloseReason) -> io::Result<()> {
+        self.request_close_at(pipe, reason, Instant::now())
+    }
+    pub(super) fn request_close_at(
+        &mut self,
+        pipe: &mut Pipe,
+        reason: CloseReason,
+        now: Instant,
+    ) -> io::Result<()> {
+        if !close_can_advance(self.closing.map(|(reason, _)| reason), reason) {
+            return Ok(());
+        }
         self.cancel_deferred(pipe)?;
-        self.closing = Some((reason, Instant::now()));
+        self.closing = Some((reason, now));
         frame::write(pipe, &HostToUi::CloseRequested { reason })
     }
     pub(super) fn respond_service(

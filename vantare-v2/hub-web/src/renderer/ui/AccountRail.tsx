@@ -37,7 +37,7 @@ export function AccountRail({ value, pending, demo, act }: AccountPanelProps) {
     [text.channel, value.channel],
   ];
   return (
-    <div className="v-account-rail">
+    <div className="v-account-rail" data-demo={demo || undefined}>
       <RailBlock title={text.sessionTitle} icon="key">
         <span className="v-account-meta">{text.yourSession}</span>
         <dl>

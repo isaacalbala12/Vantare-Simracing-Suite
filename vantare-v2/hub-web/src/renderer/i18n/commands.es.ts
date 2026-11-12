@@ -23,6 +23,8 @@ export const commandsText = {
   accountMeta: "Sesión, plan y dispositivos",
   workshopMeta: "Widgets y escenas",
   notificationsMeta: "Avisos del Hub",
+  save: "Guardar perfil",
+  saveUnavailable: "Overlays Studio · Guarda desde cada editor",
   meta: {
     home: "Tu resumen",
     studio: "Editor",

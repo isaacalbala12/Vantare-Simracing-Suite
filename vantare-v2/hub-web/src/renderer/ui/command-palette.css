@@ -43,7 +43,7 @@
   padding: 0;
   background: transparent;
   color: var(--text-1);
-  font: 400 16px var(--font-sans);
+  font: 400 17px var(--font-sans);
   outline: none;
 }
 .v-command-search input::placeholder {
@@ -115,13 +115,6 @@
   height: 13px;
   color: var(--text-caption);
   flex-shrink: 0;
-}
-.v-command-empty {
-  padding: 10px 22px;
-  color: var(--text-3);
-}
-.v-command-empty:empty {
-  padding: 0;
 }
 .v-command-footer {
   min-height: 44px;

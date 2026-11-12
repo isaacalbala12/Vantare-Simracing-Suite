@@ -442,6 +442,16 @@ function ShellContent() {
                     run: () => navigate(item.id),
                   })),
                   {
+                    // GPUI's global save persists Strategy/Workshop drafts.
+                    // Both are read-only here; no equivalent global wire method exists.
+                    id: "save",
+                    label: commandsText.save,
+                    icon: "v-studio",
+                    meta: commandsText.saveUnavailable,
+                    disabled: true,
+                    run: () => {},
+                  },
+                  {
                     id: "theme",
                     label: t("shell.toggleTheme"),
                     icon: "v-palette",

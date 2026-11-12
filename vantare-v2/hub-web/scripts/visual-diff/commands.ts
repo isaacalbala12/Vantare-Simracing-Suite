@@ -18,6 +18,8 @@ export const commandScenes: Record<string, VisualScene> = Object.fromEntries(
           if (scene === "shell-paleta-busqueda") await search.fill("Studio");
           if (scene === "shell-paleta-vacia")
             await search.fill("zz-no-resultados");
+          // The GPUI reference HWND is unfocused: capture the same state, without a caret.
+          await search.evaluate((node) => (node as HTMLInputElement).blur());
           await page.mouse.move(1300, 850);
         },
       },

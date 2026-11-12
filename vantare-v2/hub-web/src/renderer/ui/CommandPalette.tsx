@@ -131,7 +131,7 @@ export function CommandPalette({
                 </Fragment>
               )}
             </Combobox.List>
-            <Combobox.Empty className="v-command-empty">{empty}</Combobox.Empty>
+            <Combobox.Empty className="v-sr-only">{empty}</Combobox.Empty>
           </Combobox.Root>
           <footer className="v-command-footer">
             <span>{text.navigate}</span>

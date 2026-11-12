@@ -156,13 +156,14 @@ pub(super) fn apply(
     // Raw serialization is essential: to_value(f32) widens the number to f64.
     let normalized: Fields =
         serde_json::from_str(projected.raw()?.get()).map_err(|_| HostError::Io)?;
+    let original = Fields(stored.0.clone());
     for key in WidgetSettings::keys(kind) {
         let Some(raw) = normalized.0.get(&key) else {
             stored.0.remove(&key);
             continue;
         };
         let value = if ["columns", "practiceColumns", "qualifyingColumns"].contains(&key.as_str()) {
-            normalized_columns(&stored, &key, &next[&key])?
+            normalized_columns(&original, &key, &next[&key])?
         } else {
             raw.clone()
         };
@@ -395,5 +396,77 @@ mod review_tests {
         assert_eq!(actual["columns"].as_array().unwrap().len(), 2);
         assert_eq!(actual["columns"][0]["id"], "g");
         assert_eq!(actual["columns"][1]["format"]["maxChars"], 0);
+    }
+}
+
+#[cfg(test)]
+mod final_review_tests {
+    use super::*;
+    use serde_json::json;
+    fn update(fields: &mut Fields, value: Value) -> bool {
+        apply(
+            fields,
+            &serde_json::from_value(value).unwrap(),
+            Some(CatalogAccess::Pro),
+        )
+        .unwrap()
+    }
+    #[test]
+    fn simultaneous_main_removal_and_session_creation_preserves_original_unknown_members() {
+        let mut fields: Fields = serde_json::from_value(json!({"settings":{
+            "kind":"standings","contentVersion":1,"columns":[
+                {"id":"saved","metricId":"driverName","vendor":{"keep":17},"format":{"mode":"surname","future":42}}
+            ]
+        }})).unwrap();
+        assert!(update(
+            &mut fields,
+            json!({"kind":"standings","columns":[],"practiceColumns":[{"metric":"driverName"}]})
+        ));
+        let saved: Value = serde_json::from_str(fields.0["settings"].get()).unwrap();
+        assert_eq!(saved["columns"], json!([]));
+        assert_eq!(saved["practiceColumns"][0]["id"], "saved");
+        assert_eq!(saved["practiceColumns"][0]["vendor"]["keep"], 17);
+        assert_eq!(saved["practiceColumns"][0]["format"]["future"], 42);
+        assert_eq!(saved["practiceColumns"][0]["format"]["mode"], "surname");
+    }
+    #[test]
+    fn real_change_removes_native_omissions_and_explicit_nulls() {
+        for settings in [
+            json!({"kind":"delta","transparentBackground":false,"brandVisible":null}),
+            json!({"kind":"standings","contentVersion":1,"practiceColumns":null,"qualifyingColumns":null,"footerSlots":null,"brandVisible":null}),
+        ] {
+            let mut fields: Fields = serde_json::from_value(json!({"settings":settings})).unwrap();
+            assert!(update(
+                &mut fields,
+                json!({"kind":settings["kind"],"accent":"white"})
+            ));
+            let saved: Value = serde_json::from_str(fields.0["settings"].get()).unwrap();
+            for key in [
+                "transparentBackground",
+                "brandVisible",
+                "practiceColumns",
+                "qualifyingColumns",
+                "footerSlots",
+            ] {
+                assert!(saved.get(key).is_none(), "{key}: {saved}");
+            }
+        }
+    }
+    #[test]
+    fn requesting_the_normalized_value_does_not_rewrite_unnormalized_storage() {
+        let original = r#"{"kind":"standings","contentVersion":1,"rowCount":99,"private":  1.00}"#;
+        let mut fields: Fields = serde_json::from_value(
+            json!({"settings":serde_json::from_str::<Value>(original).unwrap()}),
+        )
+        .unwrap();
+        fields.0.insert(
+            "settings".into(),
+            RawValue::from_string(original.into()).unwrap(),
+        );
+        assert!(!update(
+            &mut fields,
+            json!({"kind":"standings","rowCount":30})
+        ));
+        assert_eq!(fields.0["settings"].get(), original);
     }
 }

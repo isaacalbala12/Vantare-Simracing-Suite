@@ -727,12 +727,14 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
         } else {
             fixture.to_owned()
         };
+        let mut processed = 0;
         for index in 0..document["instances"].as_array().unwrap().len() {
             let settings = &document["instances"][index]["settings"];
             let kind: WidgetKind = serde_json::from_value(settings["kind"].clone()).unwrap();
             if !crate::studio::WidgetSettings::supports(kind) {
                 continue;
             }
+            processed += 1;
             let root = crate::test_support::Root::new();
             let path = root.path.join("layout.json");
             std::fs::write(&path, &input).unwrap();
@@ -793,6 +795,7 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
             actual["instances"][index]["settings"] = settings.clone();
             assert_eq!(actual, document);
         }
+        assert!(processed > 0, "fixture must exercise the writer");
     }
 }
 #[test]

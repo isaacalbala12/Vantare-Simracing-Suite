@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
+import { applyWidgetSettings } from "../src/mock/modules/studio";
 
 type Host = ReturnType<typeof createMockHost>;
 const send = (host: Host, method: string, fields = {}) =>
@@ -272,4 +273,74 @@ it("session columns inherit main formatting when an override is absent", () => {
     ],
     qualifyingColumns: [{ widthPreset: "lg", format: { mode: "surname" } }],
   });
+});
+
+it("simultaneous main and session patches inherit from the original snapshot", () => {
+  for (const reverse of [false, true]) {
+    const host = createMockHost("studio-base");
+    send(host, "studio.instance", {
+      id: "widget-1",
+      baseRevision: view(host).revision,
+      patch: {
+        field: "settings",
+        value: {
+          kind: "standings",
+          columns: [
+            {
+              metric: "driverName",
+              widthPreset: "lg",
+              format: { mode: "surname" },
+            },
+          ],
+          practiceColumns: null,
+        },
+      },
+    });
+    const value = reverse
+      ? {
+          kind: "standings",
+          practiceColumns: [{ metric: "driverName" }],
+          columns: [],
+        }
+      : {
+          kind: "standings",
+          columns: [],
+          practiceColumns: [{ metric: "driverName" }],
+        };
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: view(host).revision,
+        patch: { field: "settings", value },
+      }),
+    ).toMatchObject({ kind: "response" });
+    expect(view(host).instances[0].settings).toMatchObject({
+      columns: [],
+      practiceColumns: [
+        {
+          metricId: "driverName",
+          widthPreset: "lg",
+          format: { mode: "surname" },
+        },
+      ],
+    });
+  }
+});
+it("mock rejects new column IDs that collide without changing the original", () => {
+  const settings = structuredClone(
+    view(createMockHost("studio-base")).instances[0].settings,
+  );
+  if (settings?.kind !== "standings" || !settings.columns?.length)
+    throw new Error("Expected table settings");
+  settings.columns = [
+    { ...settings.columns[0], id: "gap", metricId: "driverName" },
+  ];
+  const before = structuredClone(settings);
+  expect(
+    applyWidgetSettings(settings, {
+      kind: "standings",
+      columns: [{ metric: "gap" }],
+    }),
+  ).toBeNull();
+  expect(settings).toEqual(before);
 });

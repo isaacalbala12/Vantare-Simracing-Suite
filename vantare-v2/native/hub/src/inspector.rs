@@ -132,11 +132,11 @@ fn number(
     }
 }
 const METRICS: &[(&str, &str)] = &[
-    ("Ninguna", widget::standings::STANDINGS_FOOTER_METRICS[0]),
-    ("Circuito", widget::standings::STANDINGS_FOOTER_METRICS[1]),
+    ("Ninguna", widget::standings::STANDINGS_INFO_NONE),
+    ("Circuito", widget::standings::STANDINGS_INFO_TRACK),
     (
         "Vueltas estimadas",
-        widget::standings::STANDINGS_FOOTER_METRICS[2],
+        widget::standings::STANDINGS_INFO_ESTIMATED_LAPS,
     ),
 ];
 

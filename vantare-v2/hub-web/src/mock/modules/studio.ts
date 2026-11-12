@@ -204,6 +204,7 @@ export function create(context: MockContext): MockHandler {
               item.settings,
               request.patch.value,
             );
+            if (!next) return fail("denied");
             if (JSON.stringify(next) === JSON.stringify(item.settings))
               return {
                 kind: "response",
@@ -258,10 +259,11 @@ export function create(context: MockContext): MockHandler {
   };
 }
 
-function applyWidgetSettings(
+export function applyWidgetSettings(
   current: NonNullable<OverlayInstance["settings"]>,
   patch: import("../../contract/generated/studio").WidgetSettingsPatch,
-): NonNullable<OverlayInstance["settings"]> {
+): NonNullable<OverlayInstance["settings"]> | null {
+  const original = current as unknown as Record<string, unknown>;
   const result = structuredClone(current) as unknown as Record<string, unknown>;
   for (const [key, value] of Object.entries(patch)) {
     if (
@@ -269,10 +271,20 @@ function applyWidgetSettings(
       Array.isArray(value)
     ) {
       const inherited =
-        key !== "columns" && result[key] == null ? result.columns : result[key];
+        key !== "columns" && original[key] == null
+          ? original.columns
+          : original[key];
       const previous = Array.isArray(inherited)
         ? (inherited as Record<string, unknown>[])
         : [];
+      if (
+        value.some(
+          (entry) =>
+            !previous.some((column) => column.metricId === entry.metric) &&
+            previous.some((column) => column.id === entry.metric),
+        )
+      )
+        return null;
       result[key] = value.map((entry) => {
         const { metric, ...fields } = entry;
         const old = previous.find((c) => c.metricId === metric) ?? {

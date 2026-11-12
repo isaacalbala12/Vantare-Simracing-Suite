@@ -53,3 +53,8 @@ Las entradas de transporte malformadas cortan la sesión durante la decodificaci
 según el patrón existente del anfitrión. El renderer y el proceso principal validan
 antes de enviarlas. `brandVisible` sigue solo lectura; GPUI sí permite elegir
 Marca auto/show/hide, diferencia pendiente de decisión de Isaac.
+
+Al guardar un cambio real se eliminan los campos conocidos que domain omite,
+como valores por defecto con skip_serializing_if y opcionales nulos.
+Un parche que solicita exactamente el valor ya normalizado no escribe aunque
+el documento almacenado todavía contenga un valor sin normalizar.

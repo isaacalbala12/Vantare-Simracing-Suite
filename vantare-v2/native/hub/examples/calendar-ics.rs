@@ -15,8 +15,10 @@ pub(crate) mod calendar {
 use chrono::Duration;
 use serde_json::{Value, json};
 fn rows(name: &str, document: &Value, late: bool) -> Vec<Value> {
-    let schedule = model::Schedule::parse(&serde_json::to_vec(document).unwrap()).unwrap();
-    let (from, until) = schedule.window().unwrap();
+    let schedule =
+        model::Schedule::parse(&serde_json::to_vec(document).expect("serialize schedule fixture"))
+            .expect("valid schedule fixture");
+    let (from, until) = schedule.window().expect("fixture publication window");
     let now = if late {
         until - Duration::hours(4)
     } else {
@@ -37,15 +39,21 @@ fn rows(name: &str, document: &Value, late: bool) -> Vec<Value> {
                         mode: alerts::Mode::Each,
                     }),
                 )
-                .unwrap();
+                .expect("valid full-day fixture band");
         } else if series.kind() != model::Kind::Daily {
-            if let Some(at) = schedule.starts(series, now, until).unwrap().first() {
-                alerts.toggle_slot(&series.id, *at).unwrap();
+            if let Some(at) = schedule
+                .starts(series, now, until)
+                .expect("bounded fixture starts")
+                .first()
+            {
+                alerts
+                    .toggle_slot(&series.id, *at)
+                    .expect("valid fixture slot");
             }
         }
     }
     [("favs", ics::Scope::Favs), ("events", ics::Scope::Events), ("all", ics::Scope::All)].into_iter().map(|(scope, kind)| {
-        let entries = ics::entries(&schedule, &following, &alerts, ics::Options { scope: kind, alarm: false }, now).unwrap();
+        let entries = ics::entries(&schedule, &following, &alerts, ics::Options { scope: kind, alarm: false }, now).expect("bounded fixture ICS entries");
         let preview: Vec<_> = entries.iter().take(4).map(|e| json!({"seriesId":e.series_id,"start":e.start.timestamp_millis(),"end":e.end.timestamp_millis(),"summary":e.summary,"track":e.track})).collect();
         let uids: Vec<_> = entries.iter().map(|e| format!("{}-{}@vantare", e.series_id, e.start.timestamp())).collect();
         json!({"name":name,"late":late,"scope":scope,"now":now.timestamp_millis(),"following":following,"alerts":alerts,"total":entries.len(),"preview":preview,"uids":uids})
@@ -56,19 +64,21 @@ pub(crate) fn value() -> Value {
         || std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
         std::path::PathBuf::from,
     );
-    let cases: Value =
-        serde_json::from_slice(&std::fs::read(root.join("fixtures/calendar/cases.json")).unwrap())
-            .unwrap();
+    let cases: Value = serde_json::from_slice(
+        &std::fs::read(root.join("fixtures/calendar/cases.json"))
+            .expect("read shared calendar fixtures"),
+    )
+    .expect("parse shared calendar fixtures");
     let mut out = Vec::new();
     for case in cases
         .as_array()
-        .unwrap()
+        .expect("calendar fixture array")
         .iter()
         .filter(|c| c["valid"] == true)
     {
         for late in [false, true] {
             out.extend(rows(
-                case["name"].as_str().unwrap(),
+                case["name"].as_str().expect("fixture name"),
                 &case["document"],
                 late,
             ));
@@ -76,9 +86,9 @@ pub(crate) fn value() -> Value {
     }
     let october: Value = serde_json::from_slice(
         &std::fs::read(root.join("native/hub/reference/fixtures/calendar-lmu-2026-10-06.json"))
-            .unwrap(),
+            .expect("read October calendar fixture"),
     )
-    .unwrap();
+    .expect("parse October calendar fixture");
     for late in [false, true] {
         out.extend(rows("october-2026", &october, late));
     }

@@ -7,6 +7,6 @@ fn host_ics_fixture_matches_actual_gpui_entries_for_every_scope() {
     let expected: serde_json::Value = serde_json::from_slice(include_bytes!(
         "../../../hub-web/fixtures/calendar-ics-gpui.json"
     ))
-    .unwrap();
+    .expect("valid generated ICS fixture");
     assert_eq!(exporter::value(), expected);
 }

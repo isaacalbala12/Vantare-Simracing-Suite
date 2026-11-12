@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
@@ -9,6 +10,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
 import { testingDiscardText as dialog } from "../src/renderer/i18n/testing-discard";
@@ -50,9 +52,11 @@ it.each(["editor", "error"] as const)(
       <QueryClientProvider client={cache}>
         <HostProvider>
           <ToastProvider>
-            <ReportsProvider>
-              <Reports />
-            </ReportsProvider>
+            <AccountProvider>
+              <ReportsProvider>
+                <Reports />
+              </ReportsProvider>
+            </AccountProvider>
           </ToastProvider>
         </HostProvider>
       </QueryClientProvider>,

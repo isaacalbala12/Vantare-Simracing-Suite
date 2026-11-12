@@ -5,8 +5,10 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   type HostError,
@@ -21,6 +23,7 @@ import {
   type TestingView,
 } from "../../../contract/generated/contract";
 import { isReportFields } from "../../../contract/testing-validation";
+import { useAccountSession } from "../../app/AccountSession";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import { Button } from "../../ui/Button";
@@ -40,6 +43,13 @@ const empty = (): ReportFields => ({
 });
 function useReportsState() {
   const { client } = useHost();
+  const accountSession = useAccountSession();
+  const session = useSyncExternalStore(
+    accountSession.subscribe,
+    accountSession.getSnapshot,
+  );
+  const observedGeneration = useRef(session.generation);
+  const clearTriage = useRef<(() => void) | undefined>(undefined);
   const toast = useToastManager();
   const { data: core = offline } = useQuery({
     queryKey: coreKey,
@@ -47,6 +57,7 @@ function useReportsState() {
     enabled: false,
   });
   const available =
+    session.confirmed &&
     core.access.verified &&
     !core.access.blocked &&
     core.services === "connected";
@@ -263,17 +274,23 @@ function useReportsState() {
       document.removeEventListener("visibilitychange", hidden);
     };
   }, []);
-  useEffect(() => {
-    if (
-      identity.current === client &&
-      core.access.verified &&
-      !core.access.blocked
-    )
-      return;
+  const invalidate = useCallback(() => {
     cancellation.current.abort();
     cancellation.current = new AbortController();
-    identity.current = client;
+
     generation.current++;
+    state.current = {
+      fields: empty(),
+      saved: JSON.stringify(empty()),
+      loaded: false,
+      available: false,
+    };
+    queue.current = Promise.resolve();
+    inflight.current = undefined;
+    attempt.current = undefined;
+    removingScreenshot.current = false;
+    clearTriage.current?.();
+    setFailure(undefined);
     sending.current = false;
     answering.current = false;
     setAnswerDraft({ score: 3, note: "" });
@@ -297,7 +314,28 @@ function useReportsState() {
     setLegacy("none");
     setMessage("");
     setError(false);
-  }, [client, core.access.verified, core.access.blocked]);
+  }, []);
+  useLayoutEffect(() => {
+    const observe = () => {
+      const next = accountSession.getSnapshot();
+      if (observedGeneration.current !== next.generation || !next.confirmed) {
+        observedGeneration.current = next.generation;
+        invalidate();
+      }
+    };
+    observe();
+    return accountSession.subscribe(observe);
+  }, [accountSession, invalidate]);
+  useLayoutEffect(() => {
+    if (
+      identity.current !== client ||
+      !core.access.verified ||
+      core.access.blocked
+    ) {
+      identity.current = client;
+      invalidate();
+    }
+  }, [client, core.access.verified, core.access.blocked, invalidate]);
   useEffect(() => () => cancellation.current.abort(), []);
   function edit(patch: Partial<ReportFields>) {
     closePermit.current = undefined;
@@ -421,7 +459,9 @@ function useReportsState() {
     }
   }
   async function prepare(retry = false) {
+    const epoch = generation.current;
     await save();
+    if (epoch !== generation.current) throw new Error("report session changed");
     const reply = await request({
       method: retry ? "report.retryPrepare" : "report.prepare",
     });
@@ -516,7 +556,11 @@ function useReportsState() {
 
   const triage = useTriageState({
     session: client,
-    allowed: core.access.verified && !core.access.blocked && core.access.tester,
+    allowed:
+      session.confirmed &&
+      core.access.verified &&
+      !core.access.blocked &&
+      core.access.tester,
     available,
     async prepare(selection) {
       const reply = await request({
@@ -540,7 +584,10 @@ function useReportsState() {
       setParticipationLoaded(true);
     },
   });
+  clearTriage.current = triage.reset;
   return {
+    sessionGeneration: session.generation,
+    sessionConfirmed: session.confirmed,
     triage,
     access: core.access,
     closeBlocked,

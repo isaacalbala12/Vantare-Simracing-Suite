@@ -9,8 +9,8 @@ import { testingRequest } from "./TestingRequests";
 
 export function LocalDiagnostic() {
   const { client } = useHost();
-  const { fields, access } = useReports();
-  const allowed = access.verified && !access.blocked;
+  const { fields, access, sessionConfirmed } = useReports();
+  const allowed = sessionConfirmed && access.verified && !access.blocked;
   const [view, setView] = useState<LocalReportView>();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string>(text.initialStatus);

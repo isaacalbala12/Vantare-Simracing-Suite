@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   cleanup,
@@ -8,6 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { HostProvider } from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
@@ -49,15 +51,17 @@ async function mount() {
     <QueryClientProvider client={cache}>
       <HostProvider>
         <ToastProvider>
-          <ReportsProvider>
-            <UiProvider>
-              <SectionChromeProvider>
-                <SectionTabsSlot />
-                <TestingEntry />
-                <OpenReports />
-              </SectionChromeProvider>
-            </UiProvider>
-          </ReportsProvider>
+          <AccountProvider>
+            <ReportsProvider>
+              <UiProvider>
+                <SectionChromeProvider>
+                  <SectionTabsSlot />
+                  <TestingEntry />
+                  <OpenReports />
+                </SectionChromeProvider>
+              </UiProvider>
+            </ReportsProvider>
+          </AccountProvider>
         </ToastProvider>
       </HostProvider>
     </QueryClientProvider>,

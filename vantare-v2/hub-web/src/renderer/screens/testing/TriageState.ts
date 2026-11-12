@@ -39,11 +39,8 @@ export function useTriageState({
     setPreview(undefined);
     setConsent(false);
   }, []);
-  useEffect(() => {
-    if (identity.current === session && previousAllowed.current === allowed)
-      return;
-    identity.current = session;
-    previousAllowed.current = allowed;
+  const reset = useCallback(() => {
+    current.current = { allowed: false, available: false };
     generation.current++;
     running.current = false;
     setPending(false);
@@ -51,7 +48,14 @@ export function useTriageState({
     setBody("");
     setItems([...triageItems]);
     invalidate();
-  }, [session, allowed, invalidate]);
+  }, [invalidate]);
+  useEffect(() => {
+    if (identity.current === session && previousAllowed.current === allowed)
+      return;
+    identity.current = session;
+    previousAllowed.current = allowed;
+    reset();
+  }, [session, allowed, reset]);
   useEffect(() => {
     if (!available) invalidate();
   }, [available, invalidate]);
@@ -138,6 +142,7 @@ export function useTriageState({
     }
   }
   return {
+    reset,
     title,
     body,
     items,

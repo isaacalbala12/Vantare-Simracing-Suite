@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
@@ -17,6 +18,7 @@ import {
   reportAutosaveMs,
   reportFieldLimits,
 } from "../src/contract/generated/contract";
+import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { closeUnsavedReportText as closeDialog } from "../src/renderer/i18n/testing-discard";
@@ -70,20 +72,29 @@ async function mount(scene = "testing-reports") {
     client = this;
     return original.call(this, value);
   });
-  const hook = renderHook(useReports, {
-    wrapper: ({ children }) => (
-      <QueryClientProvider client={cache}>
-        <HostProvider>
-          <ToastProvider>
-            <ReportsProvider>
-              {children}
-              <ToastViewport closeLabel="Cerrar" />
-            </ReportsProvider>
-          </ToastProvider>
-        </HostProvider>
-      </QueryClientProvider>
-    ),
-  });
+  let account: ReturnType<typeof useAccount> | undefined;
+  const hook = renderHook(
+    () => {
+      account = useAccount();
+      return useReports();
+    },
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={cache}>
+          <HostProvider>
+            <ToastProvider>
+              <AccountProvider>
+                <ReportsProvider>
+                  {children}
+                  <ToastViewport closeLabel="Cerrar" />
+                </ReportsProvider>
+              </AccountProvider>
+            </ToastProvider>
+          </HostProvider>
+        </QueryClientProvider>
+      ),
+    },
+  );
   await waitFor(() => expect(hook.result.current.available).toBe(true));
   await act(async () => {
     await hook.result.current.load();
@@ -92,6 +103,10 @@ async function mount(scene = "testing-reports") {
   return {
     ...hook,
     cache,
+    account: () => {
+      if (!account) throw new Error("missing account");
+      return account;
+    },
     host: peer,
     connection: client,
     close: (reason: CloseReason): Promise<boolean> => {
@@ -658,4 +673,260 @@ it("keeps deduplicated session receipts across edits without retaining private p
   expect(JSON.stringify(hook.result.current.sessionReceipts)).not.toMatch(
     /EXPECT_PRIVATE|OBSERVED_PRIVATE|CONTEXT_PRIVATE/,
   );
+});
+
+async function seedSessionA(hook: Awaited<ReturnType<typeof mount>>) {
+  act(() =>
+    hook.result.current.edit({
+      actionText: "PRIVATE_A",
+      expectedText: "Esperado",
+      observedText: "Resultado",
+      contextText: "LOCAL_CONTEXT_A",
+    }),
+  );
+  await act(async () => {
+    await hook.result.current.prepare();
+  });
+  act(() => hook.result.current.setConsent(true));
+  await act(async () => {
+    await hook.result.current.send();
+    await hook.result.current.refresh();
+  });
+  act(() => {
+    hook.result.current.edit({
+      actionText: "PRIVATE_DRAFT_A",
+      expectedText: "Esperado",
+      observedText: "Resultado",
+    });
+    hook.result.current.editLocal({
+      title: "LOCAL_NOTE_A",
+      body: "LOCAL_BODY_A",
+    });
+    hook.result.current.triage.editTitle("TRIAGE_A");
+    hook.result.current.triage.editBody("TRIAGE_BODY_A");
+    hook.result.current.triage.accept(true);
+  });
+  await act(async () => {
+    await hook.result.current.prepare();
+    await hook.result.current.triage.prepareReport();
+  });
+  const draftFields = structuredClone(hook.result.current.fields);
+  const originalLoad = Client.prototype.request;
+  const draft = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(function (this: Client, request) {
+      return request.method === "draft.load"
+        ? Promise.resolve({
+            method: "draft.load",
+            value: {
+              fields: draftFields,
+              legacy: "none",
+              exists: true,
+              screenshots: [
+                {
+                  id: "c".repeat(64),
+                  jpeg: "/9j/",
+                  width: 1,
+                  height: 1,
+                  byteSize: 3,
+                },
+              ],
+              message: "",
+            },
+          } as Reply)
+        : originalLoad.call(this, request);
+    });
+  await act(async () => {
+    await hook.result.current.load();
+  });
+  draft.mockRestore();
+  await act(async () => {
+    await hook.result.current.prepare();
+  });
+  expect(hook.result.current.screenshots).toHaveLength(1);
+  act(() => {
+    hook.result.current.setConsent(true);
+    hook.result.current.triage.accept(true);
+    hook.result.current.setAnswerDraft({
+      id: "question_A",
+      score: 4,
+      note: "QUESTION_NOTE_A",
+    });
+  });
+  expect(hook.result.current.sessionReceipts.length).toBeGreaterThan(0);
+  expect(hook.result.current.preview).toBeDefined();
+}
+function expectSessionEmpty(hook: Awaited<ReturnType<typeof mount>>) {
+  expect(hook.result.current.fields.actionText).toBe("");
+  expect(hook.result.current.localNotes).toEqual({ title: "", body: "" });
+  expect(hook.result.current.loaded).toBe(false);
+  expect(hook.result.current.screenshots).toEqual([]);
+  expect(hook.result.current.preview).toBeUndefined();
+  expect(hook.result.current.consent).toBe(false);
+  expect(hook.result.current.receipt).toBeUndefined();
+  expect(hook.result.current.sessionReceipts).toEqual([]);
+  expect(hook.result.current.participation).toEqual({
+    reports: [],
+    questionnaires: [],
+  });
+  expect(hook.result.current.participationLoaded).toBe(false);
+  expect(hook.result.current.answerDraft).toEqual({ score: 3, note: "" });
+  expect(hook.result.current.triage.title).toBe("");
+  expect(hook.result.current.triage.body).toBe("");
+  expect(hook.result.current.triage.preview).toBeUndefined();
+  expect(hook.result.current.triage.consent).toBe(false);
+}
+it.each([
+  "account.begin",
+  "account.logout",
+  "account.cancel",
+  "account.email",
+] as const)(
+  "%s synchronously clears A before dispatch without verified=false",
+  async (method) => {
+    const hook = await mount("testing-tester-reports");
+    await seedSessionA(hook);
+    const before = hook.cache.getQueryData<CoreStatus>(coreKey);
+    if (!before) throw new Error("missing core");
+    let deliver: ((value: Reply) => void) | undefined;
+    const aborted = vi.spyOn(AbortController.prototype, "abort");
+    const original = Client.prototype.request;
+    vi.spyOn(Client.prototype, "request").mockImplementation(function (
+      this: Client,
+      request,
+    ) {
+      if (request.method === method) {
+        // Abort is synchronous, before the access request reaches the transport.
+        expect(aborted).toHaveBeenCalled();
+        return new Promise((resolve) => {
+          deliver = resolve;
+        });
+      }
+      return original.call(this, request);
+    });
+    let transition: Promise<void> | undefined;
+    act(() => {
+      transition = hook
+        .account()
+        .act(
+          method === "account.email"
+            ? { method, action: { action: "open", mode: "signInCode" } }
+            : { method },
+        );
+    });
+    expectSessionEmpty(hook);
+    expect(hook.result.current.available).toBe(false);
+    expect(hook.cache.getQueryData<CoreStatus>(coreKey)?.access.verified).toBe(
+      true,
+    );
+    const value = hook.account().value;
+    if (!deliver || !value) throw new Error("missing transition");
+    await act(async () => {
+      deliver?.({
+        method,
+        value: {
+          ...value,
+          session: "signedIn",
+          gate: "none",
+          name: "Account B",
+        },
+      });
+      await transition;
+    });
+    expectSessionEmpty(hook);
+    expect(hook.result.current.available).toBe(true);
+  },
+);
+it("a new account topic clears A even when the core rights never change", async () => {
+  const hook = await mount("testing-tester-reports");
+  await seedSessionA(hook);
+  const account = hook.account().value;
+  if (!account) throw new Error("missing account");
+  await act(async () => {
+    hook.host.postMessage({
+      kind: "event",
+      event: {
+        topic: "account",
+        value: {
+          ...account,
+          name: "Account B",
+          gate: "none",
+          session: "signedIn",
+        },
+      },
+    });
+  });
+  await waitFor(() => expect(hook.result.current.preview).toBeUndefined());
+  expectSessionEmpty(hook);
+  expect(hook.result.current.available).toBe(true);
+  expect(hook.cache.getQueryData<CoreStatus>(coreKey)?.access.verified).toBe(
+    true,
+  );
+});
+it.each([
+  "report.prepare",
+  "report.send",
+  "testing.refresh",
+  "triage.prepare",
+] as const)(
+  "discards delayed %s from A after a confirmed B topic",
+  async (method) => {
+    const hook = await mount("testing-tester-reports");
+    await seedSessionA(hook);
+    let deliver: (() => void) | undefined;
+    const original = Client.prototype.request;
+    vi.spyOn(Client.prototype, "request").mockImplementation(async function (
+      this: Client,
+      request,
+    ) {
+      const reply = await original.call(this, request);
+      if (request.method === method)
+        await new Promise<void>((resolve) => {
+          deliver = resolve;
+        });
+      return reply;
+    });
+    let pending: Promise<unknown> | undefined;
+    act(() => {
+      pending = (
+        method === "report.prepare"
+          ? hook.result.current.prepare()
+          : method === "report.send"
+            ? hook.result.current.send()
+            : method === "triage.prepare"
+              ? hook.result.current.triage.prepareReport()
+              : hook.result.current.refresh()
+      ).catch((error) => error);
+    });
+    await waitFor(() => expect(deliver).toBeDefined());
+    const account = hook.account().value;
+    if (!account) throw new Error("missing account");
+    await act(async () => {
+      hook.host.postMessage({
+        kind: "event",
+        event: {
+          topic: "account",
+          value: { ...account, name: "B", session: "signedIn", gate: "none" },
+        },
+      });
+    });
+    await waitFor(() => expect(hook.result.current.preview).toBeUndefined());
+    await act(async () => {
+      deliver?.();
+      await pending;
+    });
+    expectSessionEmpty(hook);
+    expect(hook.result.current.busy).toBe(false);
+    expect(hook.result.current.triage.pending).toBe(false);
+  },
+);
+
+it("normal logout clears reports and keeps remote actions disabled until a confirmed session", async () => {
+  const hook = await mount("testing-tester-reports");
+  await seedSessionA(hook);
+  await act(async () => {
+    await hook.account().act({ method: "account.logout" });
+  });
+  expectSessionEmpty(hook);
+  expect(hook.result.current.available).toBe(false);
 });

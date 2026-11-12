@@ -123,7 +123,21 @@ export function create(context: MockContext): MockHandler {
     id: number,
     kind: "busy" | "accountInvalid" | "coreUnavailable" | "denied",
   ) => ({ kind: "failure" as const, id, error: { kind } });
+  let initializedTestingSession = false;
   return (value) => {
+    // Testing fixtures finish configuring the shared core after handlers are created.
+    if (
+      !initializedTestingSession &&
+      context.sceneName.startsWith("testing-")
+    ) {
+      initializedTestingSession = true;
+      current = {
+        ...current,
+        session: context.core.access.verified ? "signedIn" : "signedOut",
+        verified: context.core.access.verified,
+        blocked: context.core.access.blocked,
+      };
+    }
     if (value.kind === "subscribe" && value.topic === "account") {
       return {
         kind: "event",

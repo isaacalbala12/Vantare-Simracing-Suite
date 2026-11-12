@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
@@ -14,6 +15,7 @@ import {
   type Reply,
   reportFieldLimits,
 } from "../src/contract/generated/contract";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { reportText as text } from "../src/renderer/i18n/testing-report";
@@ -57,10 +59,12 @@ function renderReport() {
     <QueryClientProvider client={cache}>
       <HostProvider>
         <ToastProvider>
-          <ReportsProvider>
-            <DraftReady />
-            <Reports view="compose" />
-          </ReportsProvider>
+          <AccountProvider>
+            <ReportsProvider>
+              <DraftReady />
+              <Reports view="compose" />
+            </ReportsProvider>
+          </AccountProvider>
         </ToastProvider>
       </HostProvider>
     </QueryClientProvider>,

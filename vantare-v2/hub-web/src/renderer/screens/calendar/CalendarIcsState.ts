@@ -20,6 +20,8 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   const [isExporting, setExporting] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
   const [status, setStatus] = useState<CalendarIcsStatus>();
+  const [confirmationId, setConfirmationId] = useState<string>();
+  const confirmation = useRef<string | undefined>(undefined);
   const prepared = useRef<CalendarIcsView | undefined>(undefined);
   const epoch = useRef(0),
     exporting = useRef(false),
@@ -28,6 +30,8 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   useEffect(() => {
     const generation = ++epoch.current;
     prepared.current = undefined;
+    confirmation.current = undefined;
+    setConfirmationId(undefined);
     setView(undefined);
     setFailure(undefined);
     setBusy(exporting.current);
@@ -70,6 +74,18 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     const snapshot = prepared.current;
     if (!client || !authority.current || !snapshot || busy || exporting.current)
       return false;
+    return await exportRequest({ method: "calendar.icsExport", preparedHash: snapshot.preparedHash });
+  }
+  async function replace(replace: boolean) {
+    const id = confirmation.current;
+    if (!client || !authority.current || !id || exporting.current) return false;
+    confirmation.current = undefined;
+    setConfirmationId(undefined);
+    return await exportRequest({ method: "calendar.icsReplace", confirmationId: id, replace });
+  }
+  async function exportRequest(request: Extract<import("../../../contract/generated/contract").Request, {method: "calendar.icsExport" | "calendar.icsReplace"}>) {
+    if (!client) return false;
+    const owner = client;
     exporting.current = true;
     setExporting(true);
     prepared.current = undefined;
@@ -77,17 +93,18 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     setFailure(undefined);
     setStatus(undefined);
     try {
-      const reply = await client.request({
-        method: "calendar.icsExport",
-        preparedHash: snapshot.preparedHash,
-      });
+      const reply = await owner.request(request);
+      if (!authority.current) return false;
       setView(undefined);
-      if (reply.method !== "calendar.icsExport") {
+      if (reply.method !== request.method || (reply.method !== "calendar.icsExport" && reply.method !== "calendar.icsReplace")) {
         setFailure("rejected");
         return false;
       }
       setStatus(reply.status);
-      if (reply.status !== "saved")
+      if (reply.status === "replacementRequired") {
+        confirmation.current = reply.confirmationId;
+        setConfirmationId(reply.confirmationId);
+      } else if (reply.status !== "saved")
         setOptions((value) => ({ ...value, attempt: value.attempt + 1 }));
       return reply.status === "saved";
     } catch (error: unknown) {
@@ -108,12 +125,14 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     view: allowed && open ? view : undefined,
     busy,
     exporting: isExporting,
-    canClose: () => !exporting.current,
+    canClose: () => !exporting.current && !confirmation.current,
+    confirmationId: allowed && open ? confirmationId : undefined,
+    replace,
     failure,
     status,
     download,
     setScope(value: CalendarIcsScope) {
-      if (!exporting.current) {
+      if (!exporting.current && !confirmation.current) {
         prepared.current = undefined;
         setView(undefined);
         setStatus(undefined);
@@ -121,7 +140,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
       }
     },
     setAlarm(value: boolean) {
-      if (!exporting.current) {
+      if (!exporting.current && !confirmation.current) {
         prepared.current = undefined;
         setView(undefined);
         setStatus(undefined);
@@ -129,7 +148,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
       }
     },
     retry() {
-      if (!busy && !exporting.current)
+      if (!busy && !exporting.current && !confirmation.current)
         setOptions((value) => ({ ...value, attempt: value.attempt + 1 }));
     },
   };

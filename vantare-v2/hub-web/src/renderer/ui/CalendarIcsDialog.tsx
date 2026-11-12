@@ -12,7 +12,7 @@ import { Icon } from "../assets/icons/Icon";
 import { calendarIcsText as text } from "../i18n/calendarIcs";
 import { Button, IconButton } from "./Button";
 import { clock } from "./calendarDate";
-import { WindowDialog as Dialog } from "./WindowDialog";
+import { WindowDialog as Dialog, WindowAlertDialog as AlertDialog } from "./WindowDialog";
 import "../assets/calendar-ics.css";
 import "./calendar-ics.css";
 
@@ -26,6 +26,8 @@ type Props = {
   exporting?: boolean;
   failure?: HostError["kind"];
   status?: CalendarIcsStatus;
+  confirmationId?: string;
+  onReplace?: (replace: boolean) => void;
   onScope: (scope: CalendarIcsScope) => void;
   onAlarm: (value: boolean) => void;
   onRetry: () => void;
@@ -37,7 +39,7 @@ export function CalendarIcsDialog(p: Props) {
   const id = useId();
   const download = useRef<HTMLButtonElement>(null);
   const close = () => {
-    if (!p.exporting) p.onClose();
+    if (!p.exporting && !p.confirmationId) p.onClose();
   };
   const day = (at: number) =>
     new Intl.DateTimeFormat("es", {
@@ -48,6 +50,7 @@ export function CalendarIcsDialog(p: Props) {
       .format(at)
       .replaceAll(".", "");
   return (
+    <>
     <Dialog.Root
       modal={false}
       open
@@ -231,5 +234,19 @@ export function CalendarIcsDialog(p: Props) {
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
+    {p.confirmationId && <AlertDialog.Root open onOpenChange={(open) => { if (!open && !p.exporting) p.onReplace?.(false); }}>
+      <AlertDialog.Portal>
+        <AlertDialog.Backdrop className="v-backdrop" />
+        <AlertDialog.Popup className="v-dialog" finalFocus={() => download.current ?? false}>
+          <AlertDialog.Title>{text.replaceTitle}</AlertDialog.Title>
+          <AlertDialog.Description>{text.replaceDescription}</AlertDialog.Description>
+          <div className="v-actions">
+            <Button aria-disabled={p.exporting} onClick={() => { if (!p.exporting) p.onReplace?.(false); }}>{text.cancel}</Button>
+            <Button variant="primary" aria-disabled={p.exporting} onClick={() => { if (!p.exporting) p.onReplace?.(true); }}>{text.replaceConfirm}</Button>
+          </div>
+        </AlertDialog.Popup>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>}
+    </>
   );
 }

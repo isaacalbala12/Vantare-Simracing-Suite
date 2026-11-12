@@ -376,10 +376,13 @@ async function start() {
       }
       if (
         data.kind === "request" &&
-        data.request.method === "calendar.icsExport"
+        (data.request.method === "calendar.icsExport" || data.request.method === "calendar.icsReplace")
       ) {
-        void calendarExport
-          .export(data.request.preparedHash)
+        const method = data.request.method;
+        const result = data.request.method === "calendar.icsExport"
+          ? calendarExport.export(data.request.preparedHash)
+          : calendarExport.replace(data.request.confirmationId, data.request.replace);
+        void result
           .then((outcome) => {
             if (!portAlive) return;
             port1.postMessage(
@@ -389,8 +392,8 @@ async function start() {
                     kind: "response",
                     id: data.id,
                     result: {
-                      method: "calendar.icsExport",
-                      status: outcome.status,
+                      method,
+                      ...outcome,
                     },
                   },
             );

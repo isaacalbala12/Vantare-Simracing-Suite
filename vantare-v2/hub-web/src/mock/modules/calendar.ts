@@ -207,6 +207,8 @@ export function create(context: MockContext): MockHandler {
               result: { method: request.method, value: prepared },
             };
       }
+      case "calendar.icsReplace":
+        return { kind: "failure", id, error: { kind: "rejected" } };
       case "calendar.icsExport":
         if (icsHash === undefined || request.preparedHash !== icsHash)
           return { kind: "failure", id, error: { kind: "rejected" } };

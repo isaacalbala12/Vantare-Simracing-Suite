@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -43,8 +43,22 @@ assert.ok(
 );
 const dimensions = size === "1280" ? [1280, 720] : [1440, 900];
 const require = createRequire(import.meta.url);
-const executable: unknown = require("electron");
-assert.equal(typeof executable, "string");
+// Resolve without requiring electron/index.js: that module silently installs a
+// missing binary. Capture tooling must only use an already installed runtime.
+const electronRoot = dirname(require.resolve("electron"));
+const binaryName = (
+  await readFile(join(electronRoot, "path.txt"), "utf8")
+).trim();
+assert.equal(
+  binaryName,
+  "electron.exe",
+  "An installed Windows Electron is required",
+);
+const executable = join(electronRoot, "dist", binaryName);
+assert.ok(
+  (await stat(executable)).isFile(),
+  "Install Electron before capturing",
+);
 const productVersion = JSON.parse(
   await readFile(join(dirname(current), "browser.json"), "utf8"),
 );
@@ -58,7 +72,7 @@ await mkdir(profile, { recursive: true });
 const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE;
 const child = spawn(
-  executable as string,
+  executable,
   [
     resolve("scripts/studio-reference/main.cjs"),
     prototype,
@@ -169,7 +183,10 @@ try {
     dimensions,
     "Prototype window dimensions differ",
   );
-  await page.locator(".win").screenshot({
+  // A hidden QA window does not run the animation frames used by locator
+  // stability checks. Capture its rendered pixels at the verified window bounds.
+  await page.screenshot({
+    clip: rectangle,
     path: join(output, "reference.png"),
     animations: "disabled",
   });
@@ -224,7 +241,10 @@ try {
     "prototype viewer exit",
   ).catch(() => {
     forcedKill = true;
-    child.kill();
+    if (child.pid)
+      execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+        windowsHide: true,
+      });
   });
   await browser?.close().catch(() => {});
   await writeFile(

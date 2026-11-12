@@ -39,6 +39,7 @@
 }
 .v-testing-report input {
   height: 38px;
+  min-height: 38px;
 }
 .v-testing-report textarea {
   resize: none;

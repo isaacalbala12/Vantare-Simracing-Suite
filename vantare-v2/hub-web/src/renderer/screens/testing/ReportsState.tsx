@@ -384,6 +384,11 @@ function useReportsState() {
     removingScreenshot.current = true;
     try {
       const fields = structuredClone(state.current.fields);
+      if (!isReportFields(fields)) {
+        setError(true);
+        setFailure("rejected");
+        throw new HostFailure({ kind: "rejected" });
+      }
       const reply = await request({
         method: "report.removeScreenshot",
         id,
@@ -479,6 +484,8 @@ function useReportsState() {
         return save();
       case "testing.refresh":
         return refresh();
+      case "report.removeScreenshot":
+        return removeScreenshot(failed.id);
       case "report.prepare":
         return prepare();
       case "report.retryPrepare":

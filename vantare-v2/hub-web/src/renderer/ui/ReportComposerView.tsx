@@ -130,7 +130,7 @@ export function ReportComposerView(p: Props) {
                   />
                   <TestingFinePrint>{`${shot.width} × ${shot.height} · ${Math.ceil(shot.byteSize / 1024)} KiB`}</TestingFinePrint>
                   <Button
-                    disabled={p.requestBlocked}
+                    disabled={p.saveBlocked}
                     onClick={() => p.onRemove(shot.id)}
                   >
                     {text.removeScreenshot}

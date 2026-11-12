@@ -12,6 +12,7 @@ export function create(context: MockContext): MockHandler {
       tester: sceneName.startsWith("testing-tester"),
       calendar: [
         "testing-tester-reference",
+        "testing-tester-report-reference",
         "testing-tester-questionnaires-reference",
         "testing-tester-community-reference",
       ].includes(sceneName)

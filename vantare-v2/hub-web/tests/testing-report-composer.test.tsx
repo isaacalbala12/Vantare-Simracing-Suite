@@ -319,7 +319,7 @@ it("keeps a legacy image on failure, then removes it once with the current local
   fireEvent.click(screen.getByRole("button", { name: text.removeScreenshot }));
   expect(await screen.findByText(text.failed, { exact: true })).toBeTruthy();
   expect(screen.getByText("Capturas · 1/3")).toBeTruthy();
-  const remove = screen.getByRole("button", { name: text.removeScreenshot });
+  const remove = screen.getByRole("button", { name: text.retry });
   fireEvent.click(remove);
   fireEvent.click(remove);
   expect(await screen.findByText("Capturas · 0/3")).toBeTruthy();

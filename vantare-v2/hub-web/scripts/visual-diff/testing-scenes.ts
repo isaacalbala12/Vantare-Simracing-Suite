@@ -150,7 +150,7 @@ export const testingScenes: Record<string, VisualScene> = {
     },
   },
   "testing-center-informe": {
-    mock: "testing-tester-reference",
+    mock: "testing-tester-report-reference",
     async prepare(page) {
       await page
         .getByRole("navigation", { name: "Navegación principal" })
@@ -165,6 +165,7 @@ export const testingScenes: Record<string, VisualScene> = {
         .waitFor();
       await page
         .getByRole("button", { name: "Cargar borrador", exact: true })
+        .and(page.locator(":enabled"))
         .waitFor();
       await page.getByText("Capturas · 0/3", { exact: true }).waitFor();
       await page.mouse.move(600, 890);

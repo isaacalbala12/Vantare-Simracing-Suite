@@ -277,3 +277,22 @@ fn optional_extension_cannot_push_a_legal_legacy_frame_over_the_old_size_limit()
     let old: frozen::Status = serde_json::from_slice(&published).unwrap();
     assert!(old.running);
 }
+
+#[test]
+fn checked_receipt_is_tolerated_by_the_frozen_terminal_reader_without_hiding_status() {
+    let mut value = status();
+    let mut ring = extension();
+    ring.capabilities.push(Capability::RevisionCheckedLaunch);
+    ring.accept("a".repeat(32).try_into().unwrap()).unwrap();
+    value.extension = Some(ring);
+    let bytes = launcher::status_bytes(&value).unwrap();
+    let previous: frozen::Extended = serde_json::from_slice(&bytes).unwrap();
+    assert!(previous.extension.is_none());
+    let legacy: frozen::Status = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(
+        serde_json::to_vec(&previous.legacy).unwrap(),
+        serde_json::to_vec(&legacy).unwrap()
+    );
+    assert_eq!(previous.legacy.running, value.running);
+    assert_eq!(previous.legacy.progress, value.progress);
+}

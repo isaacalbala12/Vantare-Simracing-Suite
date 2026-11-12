@@ -233,6 +233,54 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page.mouse.move(600, 890);
     },
   },
+  "calendario-ics-reemplazar": {
+    mock: "calendar-ics-replace-reference",
+    async prepare(page) {
+      await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "true")
+        await sidebar.click();
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Calendario", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Añadir a mi calendario", exact: true })
+        .click();
+      await page
+        .getByText("Vista previa · 75 eventos esta semana", { exact: true })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Descargar .ics", exact: true })
+        .click();
+      await page
+        .getByRole("alertdialog", { name: "¿Reemplazar?", exact: true })
+        .waitFor();
+      await assertDetailWindowControls(page);
+      await page.mouse.move(600, 890);
+    },
+    async cleanup(page) {
+      const question = page.getByRole("alertdialog", { name: "¿Reemplazar?" });
+      await page.keyboard.press("Escape");
+      await question.waitFor({ state: "hidden" });
+      await page.waitForFunction(() =>
+        document.activeElement?.textContent?.includes("Descargar .ics"),
+      );
+      await page.getByRole("button", { name: "Descargar .ics" }).click();
+      await question.waitFor();
+      await question
+        .getByRole("button", { name: "Reemplazar", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Añadir a mi calendario" })
+        .waitFor({ state: "hidden" });
+      await page.getByText("Calendario guardado.", { exact: true }).waitFor();
+      await assertDetailWindowControls(page);
+    },
+  },
   "calendario-ics-contraida": {
     mock: "calendar-live-reference",
     async prepare(page) {

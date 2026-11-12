@@ -1,6 +1,10 @@
 import type { Request } from "../../../contract/generated/contract";
 import { testingBusyRetry } from "../../../contract/generated/contract";
-import { type Client, HostFailure } from "../../bridge/client";
+import {
+  type Client,
+  HostFailure,
+  ReportCloseDiscarded,
+} from "../../bridge/client";
 
 function pause(signal: AbortSignal) {
   return new Promise<void>((resolve, reject) => {
@@ -31,6 +35,7 @@ export async function testingRequest(
       return reply;
     } catch (error) {
       if (
+        error instanceof ReportCloseDiscarded ||
         !(error instanceof HostFailure) ||
         error.detail.kind !== "busy" ||
         attempt >= testingBusyRetry.attempts

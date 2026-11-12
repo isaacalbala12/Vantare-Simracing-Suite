@@ -73,7 +73,9 @@ export default function CalendarEntry() {
       ? calendarAlertsText.windowsUnavailable
       : settings.view
         ? calendarAlertsText.windowsDisabled
-        : calendarAlertsText.windowsLoading;
+        : settings.loading
+          ? calendarAlertsText.windowsLoading
+          : calendarAlertsText.windowsUnavailable;
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alertsOrigin = useRef<HTMLElement | null>(null);
   const openAlerts = () => {
@@ -681,7 +683,17 @@ export default function CalendarEntry() {
           busy={ics.busy}
           exporting={ics.exporting}
           failure={ics.failure}
+          confirmationFailed={ics.confirmationFailed}
           status={ics.status}
+          confirmationId={ics.confirmationId}
+          onReplace={(replace) => {
+            void ics.replace(replace).then((saved) => {
+              if (saved) {
+                setIcsOpen(false);
+                toast.add({ title: calendarIcsText.saved, type: "ok" });
+              }
+            });
+          }}
           onScope={ics.setScope}
           onAlarm={ics.setAlarm}
           onRetry={ics.retry}

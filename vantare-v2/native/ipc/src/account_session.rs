@@ -75,16 +75,34 @@ pub fn request_cancelled(
     link: &AuthorityLink,
     stop: &std::sync::Arc<crate::transport::Event>,
 ) -> io::Result<Option<AccountObservation>> {
-    let mut pipe = crate::transport::connect(
-        &link.pipe,
-        std::sync::Arc::clone(stop),
-        std::time::Duration::from_millis(150),
-    )?;
+    request_with_deadline(link, stop, std::time::Duration::from_millis(150))
+}
+
+/// Bounded consume-time observation. One RPC, no retries, no mutator nonce.
+#[cfg(any(windows, unix))]
+pub fn read_account_session(
+    link: &AuthorityLink,
+    timeout: std::time::Duration,
+) -> io::Result<Option<AccountObservation>> {
+    let stop = std::sync::Arc::new(crate::transport::Event::new()?);
+    request_with_deadline(link, &stop, timeout)
+}
+#[cfg(any(windows, unix))]
+fn request_with_deadline(
+    link: &AuthorityLink,
+    stop: &std::sync::Arc<crate::transport::Event>,
+    timeout: std::time::Duration,
+) -> io::Result<Option<AccountObservation>> {
+    let until = std::time::Instant::now()
+        .checked_add(timeout)
+        .ok_or(io::ErrorKind::InvalidInput)?;
+    let pipe = crate::transport::connect(&link.pipe, std::sync::Arc::clone(stop), timeout)?;
     if !pipe.server_peer()?.is_image(&link.image) {
         return Err(io::ErrorKind::PermissionDenied.into());
     }
+    let mut io = Deadline { pipe, until };
     control::write(
-        &mut pipe,
+        &mut io,
         &control::Request {
             version: control::VERSION,
             sequence: 1,
@@ -92,8 +110,42 @@ pub fn request_cancelled(
             command: control::Command::ReadAccountSession {},
         },
     )?;
-    let response: ControlResponse = control::read(&mut pipe)?;
+    let response: ControlResponse = control::read(&mut io)?;
     response.validate(control::wall_ms()?)
+}
+#[cfg(any(windows, unix))]
+struct Deadline {
+    pipe: crate::transport::Pipe,
+    until: std::time::Instant,
+}
+#[cfg(any(windows, unix))]
+impl Deadline {
+    fn remaining(&mut self) -> io::Result<()> {
+        let remaining = self
+            .until
+            .checked_duration_since(std::time::Instant::now())
+            .filter(|remaining| !remaining.is_zero())
+            .ok_or(io::ErrorKind::TimedOut)?;
+        self.pipe.set_timeout(remaining);
+        Ok(())
+    }
+}
+#[cfg(any(windows, unix))]
+impl std::io::Read for Deadline {
+    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        self.remaining()?;
+        self.pipe.read(bytes)
+    }
+}
+#[cfg(any(windows, unix))]
+impl std::io::Write for Deadline {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        self.remaining()?;
+        self.pipe.write(bytes)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.pipe.flush()
+    }
 }
 
 #[cfg(test)]

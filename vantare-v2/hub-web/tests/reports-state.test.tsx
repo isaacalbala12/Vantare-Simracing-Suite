@@ -21,8 +21,10 @@ import {
 import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
-import { closeUnsavedReportText as closeDialog } from "../src/renderer/i18n/testing-discard";
-import { testingText as text } from "../src/renderer/screens/testing/es";
+import {
+  closeUnsavedReportText as closeDialog,
+  closeReportSaveFailureText as failureDialog,
+} from "../src/renderer/i18n/testing-discard";
 import {
   ReportsProvider,
   useReports,
@@ -111,19 +113,16 @@ async function mount(scene = "testing-reports") {
     connection: client,
     close: (reason: CloseReason): Promise<boolean> => {
       if (!client || !peer) throw new Error("missing report port");
-      const connected = client;
+      const hostPeer = peer;
       return new Promise((resolve) => {
-        const send = connected.send.bind(connected);
-        const capture = vi
-          .spyOn(connected, "send")
-          .mockImplementation((value) => {
-            send(value);
-            if (value.kind === "closeAnswer") {
-              capture.mockRestore();
-              resolve(value.allow);
-            }
-          });
-        peer?.postMessage({ kind: "closeRequested", reason });
+        const receive = ({ data }: MessageEvent) => {
+          if (data.kind === "closeAnswer") {
+            hostPeer.removeEventListener("message", receive);
+            resolve(data.allow);
+          }
+        };
+        hostPeer.addEventListener("message", receive);
+        hostPeer.postMessage({ kind: "closeRequested", reason });
       });
     },
   };
@@ -227,6 +226,11 @@ describe("protected report draft behavior", () => {
     });
     expect(hook.result.current.fields.actionText).toBe("Conservar esta nota");
     expect(hook.result.current.error).toBe(true);
+    const core = hook.cache.getQueryData<CoreStatus>(coreKey);
+    if (!core) throw new Error("missing core");
+    act(() =>
+      hook.cache.setQueryData(coreKey, { ...core, services: "unavailable" }),
+    );
     let allow = true;
     await act(async () => {
       allow = await hook.close("window");
@@ -236,34 +240,50 @@ describe("protected report draft behavior", () => {
     await act(async () => {
       allow = await hook.close("restart");
     });
-    expect(allow).toBe(false);
+    expect(allow).toBe(true);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     await act(async () => {
       allow = await hook.close("live");
     });
     expect(allow).toBe(true);
   });
-  it("receives closeRequested through the real port, never saves in the guard, and flushes on blur", async () => {
+  it("flushes the unsaved edit through closeRequested on the real port", async () => {
     const hook = await mount();
     act(() =>
       hook.result.current.edit({ actionText: "Último cambio antes de cerrar" }),
     );
     const requests = vi.spyOn(Client.prototype, "request");
-    let allow = true;
+    const sent = vi.spyOn(hook.connection, "send");
     await act(async () => {
-      allow = await hook.close("window");
+      expect(await hook.close("window")).toBe(true);
     });
-    expect(allow).toBe(false);
     expect(requests).not.toHaveBeenCalled();
-    expect(screen.getByText(text.closeUnsaved)).toBeDefined();
-    expect(hook.result.current.message).toContain("sin guardar");
+    expect(sent.mock.calls.filter(([m]) => m.kind === "request")).toMatchObject(
+      [
+        [
+          {
+            kind: "request",
+            request: {
+              method: "draft.save",
+              fields: { actionText: "Último cambio antes de cerrar" },
+            },
+          },
+        ],
+      ],
+    );
+    expect(hook.result.current.dirty).toBe(false);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+  it("still flushes on blur before any close negotiation", async () => {
+    const hook = await mount();
+    act(() =>
+      hook.result.current.edit({ actionText: "Edición al perder foco" }),
+    );
     act(() => window.dispatchEvent(new Event("blur")));
     await waitFor(() => expect(hook.result.current.dirty).toBe(false));
-    requests.mockClear();
     await act(async () => {
-      allow = await hook.close("restart");
+      expect(await hook.close("window")).toBe(true);
     });
-    expect(allow).toBe(true);
-    expect(requests).not.toHaveBeenCalled();
   });
   it("keeps local contribution notes out of the protected fields and later structured preview", async () => {
     const hook = await mount();
@@ -470,7 +490,7 @@ it("waits for an already dispatched save before answering close through the port
   expect(hook.result.current.dirty).toBe(false);
 });
 
-async function failedCloseDraft() {
+async function failedCloseDraft(dismiss = true) {
   const hook = await mount();
   act(() =>
     hook.result.current.edit({ actionText: "Borrador protegido anterior" }),
@@ -507,12 +527,14 @@ async function failedCloseDraft() {
   act(() =>
     hook.cache.setQueryData(coreKey, { ...core, services: "unavailable" }),
   );
+  await waitFor(() => expect(hook.result.current.available).toBe(false));
   let allowed = true;
   await act(async () => {
     allowed = await hook.close("window");
   });
   expect(allowed).toBe(false);
   requests.mockClear();
+  if (dismiss) act(() => hook.result.current.dismissCloseSaveFailure());
   return { hook, requests };
 }
 it("clears the unsaved-close permission even if an earlier guard throws before the report guard runs", async () => {
@@ -520,7 +542,7 @@ it("clears the unsaved-close permission even if an earlier guard throws before t
   hook.connection.setCloseGuard(() => {
     throw new Error("another section veto");
   });
-  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  act(() => hook.result.current.askCloseWithoutSave());
   const popup = await screen.findByRole("alertdialog", {
     name: closeDialog.title,
   });
@@ -542,7 +564,7 @@ it("clears the unsaved-close permission even if an earlier guard throws before t
 it("clears a confirmed permission when control EOF bypasses the report close guard", async () => {
   const { hook, requests } = await failedCloseDraft();
   vi.spyOn(hook.connection, "closeWindow").mockImplementation(() => {});
-  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  act(() => hook.result.current.askCloseWithoutSave());
   const popup = await screen.findByRole("alertdialog", {
     name: closeDialog.title,
   });
@@ -552,15 +574,15 @@ it("clears a confirmed permission when control EOF bypasses the report close gua
   await act(async () => {
     expect(await hook.close("controlEof")).toBe(true);
   });
-  await act(async () => {
-    expect(await hook.close("window")).toBe(false);
-  });
+  expect(hook.result.current.closeConfirmation).toBe(false);
+  expect(hook.result.current.closeSaveFailed).toBe(false);
+  expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(requests).not.toHaveBeenCalled();
 });
 it("offers a confirmed exit after persistent save failure without changing the protected draft", async () => {
   const { hook, requests } = await failedCloseDraft();
   const sent = vi.spyOn(hook.connection, "send");
-  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  act(() => hook.result.current.askCloseWithoutSave());
   let popup = await screen.findByRole("alertdialog", {
     name: closeDialog.title,
   });
@@ -572,7 +594,7 @@ it("offers a confirmed exit after persistent save failure without changing the p
   );
   expect(hook.result.current.dirty).toBe(true);
   expect(sent).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  act(() => hook.result.current.askCloseWithoutSave());
   popup = await screen.findByRole("alertdialog", { name: closeDialog.title });
   fireEvent.click(
     within(popup).getByRole("button", { name: closeDialog.confirm }),
@@ -596,7 +618,7 @@ it("does not override another section's veto or retain permission for a later cl
   const { hook, requests } = await failedCloseDraft();
   const release = hook.connection.addCloseGuard(() => false);
   const sent = vi.spyOn(hook.connection, "send");
-  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  act(() => hook.result.current.askCloseWithoutSave());
   const popup = await screen.findByRole("alertdialog", {
     name: closeDialog.title,
   });
@@ -624,18 +646,19 @@ it("does not override another section's veto or retain permission for a later cl
 });
 
 it("closes normally if a veto notice is clicked after the draft was saved", async () => {
-  const hook = await mount();
+  const { hook, requests } = await failedCloseDraft();
+  requests.mockRestore();
+  const core = hook.cache.getQueryData<CoreStatus>(coreKey);
+  if (!core) throw new Error("missing core");
   act(() =>
-    hook.result.current.edit({ actionText: "Guardado después del aviso" }),
+    hook.cache.setQueryData(coreKey, { ...core, services: "connected" }),
   );
-  await act(async () => {
-    expect(await hook.close("window")).toBe(false);
-  });
+  await waitFor(() => expect(hook.result.current.available).toBe(true));
   await act(async () => {
     await hook.result.current.save();
   });
   const sent = vi.spyOn(hook.connection, "send");
-  fireEvent.click(screen.getByRole("button", { name: text.closeWithoutSave }));
+  act(() => hook.result.current.askCloseWithoutSave());
   await waitFor(() =>
     expect(
       sent.mock.calls.some(
@@ -1125,4 +1148,212 @@ it("a recovery get from A cannot overwrite a newer published B session", async (
   });
   expect(hook.account().value?.name).toBe("B");
   expect(hook.result.current.available).toBe(true);
+});
+
+it("retries from the GPUI failure dialog and closes only after saving", async () => {
+  const hook = await mount(),
+    port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  let first = true;
+  port.onmessage = (event) => {
+    if (
+      first &&
+      event.data.kind === "request" &&
+      event.data.request.method === "draft.save"
+    ) {
+      first = false;
+      port.postMessage({
+        kind: "failure",
+        id: event.data.id,
+        error: { kind: "io" },
+      });
+    } else receive.call(port, event);
+  };
+  act(() => hook.result.current.edit({ actionText: "Reintento de cierre" }));
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+  });
+  const dialog = await screen.findByRole("alertdialog", {
+    name: failureDialog.title,
+  });
+  expect(hook.result.current.dirty).toBe(true);
+  const settled = new Promise<boolean>((resolve) => {
+    const off = hook.connection.onCloseSettled((_, allow) => {
+      off();
+      resolve(allow);
+    });
+  });
+  await act(async () => {
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: failureDialog.cancel }),
+    );
+    expect(await settled).toBe(true);
+  });
+  expect(hook.result.current.dirty).toBe(false);
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});
+it("confirms leaving without saving from the failure dialog itself", async () => {
+  const { hook, requests } = await failedCloseDraft(false);
+  const dialog = await screen.findByRole("alertdialog", {
+    name: failureDialog.title,
+  });
+  const sent = vi.spyOn(hook.connection, "send");
+  const settled = new Promise<boolean>((resolve) => {
+    const off = hook.connection.onCloseSettled((_, allow) => {
+      off();
+      resolve(allow);
+    });
+  });
+  await act(async () => {
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: failureDialog.confirm }),
+    );
+    expect(await settled).toBe(true);
+  });
+  expect(requests).not.toHaveBeenCalled();
+  expect(sent.mock.calls.filter(([m]) => m.kind === "request")).toEqual([
+    [{ kind: "request", id: 0, request: { method: "window.close" } }],
+  ]);
+  expect(hook.result.current.dirty).toBe(true);
+  expect(hook.result.current.fields.actionText).toBe(
+    "Último texto todavía sin guardar",
+  );
+});
+it("abandons the close preparation on session invalidation before dispatching another save", async () => {
+  const hook = await mount("testing-tester-reports"),
+    port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  let held: MessageEvent | undefined;
+  const saves: unknown[] = [];
+  port.onmessage = (event) => {
+    if (
+      event.data.kind === "request" &&
+      event.data.request.method === "draft.save"
+    ) {
+      saves.push(event.data.request.fields);
+      held = event;
+    } else receive.call(port, event);
+  };
+  act(() => hook.result.current.edit({ actionText: "ANTERIOR_A" }));
+  let saving!: Promise<unknown>;
+  act(() => {
+    saving = hook.result.current.save().catch(() => {});
+  });
+  await waitFor(() => expect(held).toBeDefined());
+  const requested = new Promise<void>((resolve) => {
+    const off = hook.connection.listen((m) => {
+      if (m.kind === "closeRequested") {
+        off();
+        resolve();
+      }
+    });
+  });
+  const closing = hook.close("window");
+  await requested;
+  const account = hook.account().value;
+  if (!account) throw Error("missing account");
+  await act(async () => {
+    hook.host.postMessage({
+      kind: "event",
+      event: {
+        topic: "account",
+        value: { ...account, name: "B", session: "signedIn", gate: "none" },
+      },
+    });
+    expect(await closing).toBe(true);
+  });
+  expect(hook.result.current.fields.actionText).toBe("");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  await act(async () => {
+    if (held) receive.call(port, held);
+    await saving;
+  });
+  expect(saves).toHaveLength(1);
+  expect(hook.result.current.fields.actionText).toBe("");
+});
+
+it("closes a clean report immediately while testing.refresh is still in flight, without a false unsaved dialog", async () => {
+  const hook = await mount("testing-tester-reports");
+  const port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  let held: MessageEvent | undefined;
+  port.onmessage = (event) => {
+    if (
+      event.data.kind === "request" &&
+      event.data.request.method === "testing.refresh"
+    )
+      held = event;
+    else receive.call(port, event);
+  };
+  let refresh!: Promise<unknown>;
+  act(() => {
+    refresh = hook.result.current.refresh().catch(() => {});
+  });
+  await waitFor(() => expect(held).toBeDefined());
+  expect(hook.result.current.dirty).toBe(false);
+  await act(async () => {
+    expect(await hook.close("window")).toBe(true);
+  });
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  await refresh;
+});
+
+it("keeps a clean Testing screen free of a fake Busy retry when another screen vetoes X", async () => {
+  const hook = await mount("testing-tester-reports");
+  hook.connection.addCloseGuard(() => false);
+  const port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  let held: MessageEvent | undefined;
+  port.onmessage = (event) => {
+    if (
+      event.data.kind === "request" &&
+      event.data.request.method === "testing.refresh"
+    )
+      held = event;
+    else receive.call(port, event);
+  };
+  let refresh!: Promise<unknown>;
+  act(() => {
+    refresh = hook.result.current.refresh().catch(() => {});
+  });
+  await waitFor(() => expect(held).toBeDefined());
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+    await refresh;
+  });
+  expect(hook.result.current.failure).toBeUndefined();
+  expect(hook.result.current.error).toBe(false);
+  expect(hook.result.current.busy).toBe(false);
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  await act(async () => {
+    if (held) receive.call(port, held);
+  });
+  expect(hook.result.current.failure).toBeUndefined();
+});
+it("still explains an actual core Busy response to Testing", async () => {
+  const hook = await mount("testing-tester-reports");
+  const port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  port.onmessage = (event) => {
+    if (
+      event.data.kind === "request" &&
+      event.data.request.method === "testing.refresh"
+    )
+      port.postMessage({
+        kind: "failure",
+        id: event.data.id,
+        error: { kind: "busy" },
+      });
+    else receive.call(port, event);
+  };
+  await act(async () => {
+    await hook.result.current.refresh().catch(() => {});
+  });
+  expect(hook.result.current.failure).toBe("busy");
+  expect(hook.result.current.error).toBe(true);
 });

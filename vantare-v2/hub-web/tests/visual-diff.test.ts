@@ -96,6 +96,25 @@ describe("visual comparison", () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
+  it("checks the requested dimensions without weakening the default size", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "studio small capture "));
+    const bytes = PNG.sync.write(png(1280, 720));
+    const options = {
+      scene: "studio-a-ilustraciones",
+      scheme: "dark",
+      destination: directory,
+      capture: async () => bytes,
+    };
+    try {
+      await expect(captureUncompared(options)).rejects.toThrow();
+      await expect(
+        captureUncompared({ ...options, dimensions: [1280, 720] }),
+      ).resolves.toMatchObject({ status: "captured-without-comparison" });
+      expect(readFileSync(join(directory, "current.png"))).toEqual(bytes);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
   it("captures without metrics or a diff when a reference is explicitly invalid", () => {
     const directory = mkdtempSync(join(tmpdir(), "invalid reference "));
     try {

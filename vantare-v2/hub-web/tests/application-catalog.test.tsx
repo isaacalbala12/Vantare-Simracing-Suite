@@ -2,6 +2,7 @@
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -91,6 +92,57 @@ function mount(scene = "launcher-aplicaciones") {
 }
 
 describe("application catalog", () => {
+  it("allows restart when the application editor has no unsaved changes", async () => {
+    const registrations = vi.spyOn(Client.prototype, "addCloseGuard");
+    mount();
+    fireEvent.click(
+      await screen.findByRole("button", { name: text.edit("OBS Studio") }),
+    );
+    await screen.findByRole("dialog", { name: text.editor });
+    const guard = registrations.mock.calls.at(-1)?.[0];
+    if (!guard) throw new Error("missing application close guard");
+    await act(async () => {
+      expect(await guard("restart")).toBe(true);
+    });
+    expect(screen.queryByText(text.unsaved)).toBeNull();
+  });
+  it.each(["window", "restart"] as const)(
+    "vetoes %s with a visible warning and preserves application edits",
+    async (reason) => {
+      const registrations = vi.spyOn(Client.prototype, "addCloseGuard");
+      const requests = vi.spyOn(Client.prototype, "request");
+      mount();
+      fireEvent.click(
+        await screen.findByRole("button", { name: text.edit("OBS Studio") }),
+      );
+      const dialog = await screen.findByRole("dialog", { name: text.editor });
+      fireEvent.change(
+        within(dialog).getByRole("textbox", { name: text.name }),
+        {
+          target: { value: "Cambios que deben conservarse" },
+        },
+      );
+      const guard = registrations.mock.calls.at(-1)?.[0];
+      if (!guard) throw new Error("missing application close guard");
+      await act(async () => {
+        expect(await guard(reason)).toBe(false);
+      });
+      expect(await screen.findByText(text.unsaved)).toBeTruthy();
+      expect(
+        (
+          within(dialog).getByRole("textbox", {
+            name: text.name,
+          }) as HTMLInputElement
+        ).value,
+      ).toBe("Cambios que deben conservarse");
+      expect(dialog.isConnected).toBe(true);
+      expect(
+        requests.mock.calls.some(
+          ([request]) => request.method === "launcher.app.save",
+        ),
+      ).toBe(false);
+    },
+  );
   it("restores the catalog search when the editor origin disappears", async () => {
     mount();
     const trigger = await screen.findByRole("button", {

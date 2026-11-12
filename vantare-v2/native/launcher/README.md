@@ -89,3 +89,8 @@ al Status v2, con instancia por arranque y secuencias decimales exactas. Leer no
 consume. Extensión futura/dañada se descarta sin perder el Status legacy; si
 su adición excede el marco legal anterior, se omite entera. No hay ACK,
 persistencia ni agenda. Un hueco o un reinicio no demuestra éxito.
+
+`snapshot::read_checked` lee bytes una vez con el lector tipado, verifica su
+SHA-256 completo y devuelve Document/Profile por valor. Un error, versión
+protegida, perfil ausente/vacío o revisión distinta rechaza sin recargar el Store,
+reparar archivos ni volver al documento cacheado. El motor ejecuta esa instantánea.

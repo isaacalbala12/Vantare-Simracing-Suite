@@ -307,6 +307,20 @@ studioScenes["studio-apariencia"] = {
   },
 };
 
+studioScenes["studio-a-ilustraciones"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page.getByRole("button", { name: "Delta", exact: true }).click();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    await page
+      .getByRole("combobox", { name: "Formato Delta", exact: true })
+      .click();
+    await page.getByRole("option", { name: "Barra", exact: true }).click();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+  },
+};
+
 studioScenes["studio-fondo-delta"] = {
   mock: "studio-base",
   async prepare(page) {

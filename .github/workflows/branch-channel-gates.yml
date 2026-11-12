@@ -285,9 +285,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
-  native_build:
-    name: Build native validation archive
-    timeout-minutes: 45
+  native_lint:
+    name: Lint native workspace
+    timeout-minutes: 30
     if: needs.policy.outputs.native != 'false'
     needs: policy
     runs-on: windows-latest
@@ -315,7 +315,6 @@ jobs:
             if ($LASTEXITCODE) { throw "Worker tooling: $test failed" }
           }
       - name: Classify changed automatic scope
-        if: needs.policy.outputs.native != 'false'
         working-directory: ${{ github.workspace }}
         shell: bash
         env:
@@ -337,7 +336,6 @@ jobs:
             --enforce-testing-center-scope
 
       - name: Reject retired automatic UI scope
-        if: needs.policy.outputs.native != 'false'
         run: |
           $scope = Get-Content "$env:RUNNER_TEMP/testing-center-changed-scope.json" -Raw | ConvertFrom-Json
           if (-not $scope.eligible -or $scope.lint_paths.Count -gt 0 -or $scope.visual_required) {
@@ -345,33 +343,64 @@ jobs:
           }
 
       - name: Verify explicit Supabase deploy surface
-        if: needs.policy.outputs.native != 'false'
         run: ../supabase/functions/scripts/verify-deploy-surface.ps1
 
       - name: Test Windows runner hooks and static CRT
-        if: needs.policy.outputs.native != 'false'
         run: |
           python -m unittest discover -s ../tools/ci-runners -v
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/build-crt-tests.ps1 -EvidenceDirectory "$env:RUNNER_TEMP/build-crt"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-      # El binario solo cambia al subir la versión: se guarda en caché y se
-      # evita recompilarlo (342–430 s por trabajo aquí; 174–226 s en Linux).
-      - name: Native format and blocking gates
-        if: needs.policy.outputs.native != 'false'
+      # El lint no espera al archivo de tests: corre en su propio runner
+      # mientras `native_build` compila los binarios de test.
+      - name: Native format and lint
         working-directory: ${{ env.VANTARE_DIR }}/native
         shell: pwsh
         env:
           # Compilación con los 4 vCPU del runner hosted (16 GB); gates.ps1 lo
           # aplica a -j y a --build-jobs (#1654 ronda 2).
           CARGO_BUILD_JOBS: '4'
-          # Cuatro hilos de test (el runner tiene 4 vCPU). Los 7 tests con
-          # plazos de reloj duros de 1-3 s (ipc, launcher y runtime) llevan
-          # threads-required en .config/nextest.toml: corren solos y primero, así
-          # que no dependen de la CPU que quede. Si aparecen intermitentes,
-          # volver a 2 y anotarlo en el cuaderno de #1654.
-          NEXTEST_TEST_THREADS: '4'
+        run: |
+          $base = @()
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request' -and $env:GITHUB_BASE_REF -eq 'nightly') {
+            $sha = & git rev-parse 'HEAD^1'
+            if ($LASTEXITCODE) { throw 'Missing pull request diff base' }
+            $base = @('-DiffBase', $sha)
+          }
+          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base -LintOnly
+          if ($LASTEXITCODE) { throw 'Native lint failed' }
+
+      - name: Verify retained fixtures and references
+        run: python native/retirement/verify.py
+
+  native_build:
+    name: Build native validation archive
+    timeout-minutes: 45
+    if: needs.policy.outputs.native != 'false'
+    needs: policy
+    runs-on: windows-latest
+    env:
+      VANTARE_CI_TARGET: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '4'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/native-build-setup
+      # Solo compila tests: fmt/clippy/legacy/captura corren en `native_lint`.
+      - name: Native test archive for the changed scope
+        working-directory: ${{ env.VANTARE_DIR }}/native
+        shell: pwsh
+        env:
+          CARGO_BUILD_JOBS: '4'
           # Decisión del clasificador de rutas (trabajo `policy`). Vacío o
           # distinto de «false» ⇒ corre el corpus: fail-closed.
           TELEMETRIA_SCOPE: ${{ needs.policy.outputs.telemetria }}
@@ -384,11 +413,9 @@ jobs:
           }
           $telemetry = @()
           if ($env:TELEMETRIA_SCOPE -ne 'false') { $telemetry = @('-Telemetry') }
-          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry
-          if ($LASTEXITCODE) { throw 'Native blocking gates failed' }
+          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry -ArchiveOnly
+          if ($LASTEXITCODE) { throw 'Native test archive failed' }
 
-      - name: Verify retained fixtures and references
-        run: python native/retirement/verify.py
       - name: Share one compiled test archive
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -402,7 +429,7 @@ jobs:
           retention-days: 1
 
   native_tests:
-    name: Run native ${{ matrix.suite }}
+    name: Run native ${{ matrix.label }}
     timeout-minutes: 20
     needs: [policy, native_build]
     if: needs.policy.outputs.native != 'false'
@@ -410,7 +437,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [test, telemetria]
+        # La suite general se reparte en dos shards disjuntos y exhaustivos
+        # (`hash:1/2` + `hash:2/2`); telemetría conserva una sola ejecución
+        # porque ya cabe en la ruta crítica. La cobertura no cambia.
+        include:
+          - suite: test
+            label: test 1/2
+            partition: hash:1/2
+          - suite: test
+            label: test 2/2
+            partition: hash:2/2
+          - suite: telemetria
+            label: telemetria
+            partition: ''
     defaults:
       run:
         shell: pwsh
@@ -439,7 +478,7 @@ jobs:
           name: native-tests-${{ github.sha }}
           path: ${{ runner.temp }}/vantare-test-archive
       - name: Run compiled tests without rebuilding
-        run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite '${{ matrix.suite }}'
+        run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite '${{ matrix.suite }}' -Partition '${{ matrix.partition }}'
 
   native_lifecycle_build:
     name: Build lifecycle overlays in parallel
@@ -631,7 +670,7 @@ jobs:
   product:
     name: Validate Vantare blocking gates
     timeout-minutes: 5
-    needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]
+    needs: [policy, native_lint, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]
     if: always()
     runs-on: ubuntu-latest
     steps:

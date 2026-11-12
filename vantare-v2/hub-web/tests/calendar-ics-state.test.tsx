@@ -227,3 +227,123 @@ it.each(["closed", "rights", "client"] as const)(
     expect(hook.result.current.canClose()).toBe(true);
   },
 );
+
+it("requires confirmation, rotates a changed destination id and serializes double confirmation", async () => {
+  host.client.request.mockResolvedValueOnce(reply).mockResolvedValueOnce({
+    method: "calendar.icsExport",
+    status: "replacementRequired",
+    confirmationId: "b".repeat(64),
+  });
+  const hook = renderHook(() => useCalendarIcs(true, true));
+  await act(async () => {});
+  await act(async () => {
+    expect(await hook.result.current.download()).toBe(false);
+  });
+  expect(hook.result.current.confirmationId).toBe("b".repeat(64));
+  expect(hook.result.current.canClose()).toBe(false);
+  let finish!: (v: unknown) => void;
+  host.client.request.mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  );
+  let pending!: Promise<boolean>;
+  act(() => {
+    pending = hook.result.current.replace(true);
+    void hook.result.current.replace(true);
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(3);
+  expect(host.client.request).toHaveBeenLastCalledWith({
+    method: "calendar.icsReplace",
+    confirmationId: "b".repeat(64),
+    replace: true,
+  });
+  await act(async () => {
+    finish({
+      method: "calendar.icsReplace",
+      status: "replacementRequired",
+      confirmationId: "c".repeat(64),
+    });
+    await pending;
+  });
+  expect(hook.result.current.confirmationId).toBe("c".repeat(64));
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.icsReplace",
+    status: "saved",
+  });
+  await act(async () => {
+    expect(await hook.result.current.replace(true)).toBe(true);
+  });
+  expect(host.client.request).toHaveBeenLastCalledWith({
+    method: "calendar.icsReplace",
+    confirmationId: "c".repeat(64),
+    replace: true,
+  });
+  expect(hook.result.current.confirmationId).toBeUndefined();
+});
+it("cancels replacement with its existing id and prepares again without writing", async () => {
+  host.client.request
+    .mockResolvedValueOnce(reply)
+    .mockResolvedValueOnce({
+      method: "calendar.icsExport",
+      status: "replacementRequired",
+      confirmationId: "b".repeat(64),
+    })
+    .mockResolvedValueOnce({
+      method: "calendar.icsReplace",
+      status: "cancelled",
+    })
+    .mockResolvedValueOnce(reply);
+  const hook = renderHook(() => useCalendarIcs(true, true));
+  await act(async () => {});
+  await act(async () => {
+    await hook.result.current.download();
+  });
+  await act(async () => {
+    expect(await hook.result.current.replace(false)).toBe(false);
+  });
+  expect(host.client.request).toHaveBeenNthCalledWith(3, {
+    method: "calendar.icsReplace",
+    confirmationId: "b".repeat(64),
+    replace: false,
+  });
+  expect(hook.result.current.view).toEqual(value);
+});
+it("drops a late replacement question after the session or access changed", async () => {
+  let finish!: (v: unknown) => void;
+  host.client.request.mockResolvedValueOnce(reply).mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  );
+  const hook = renderHook(({ allowed }) => useCalendarIcs(true, allowed), {
+    initialProps: { allowed: true },
+  });
+  await act(async () => {});
+  let pending!: Promise<boolean>;
+  act(() => {
+    pending = hook.result.current.download();
+  });
+  hook.rerender({ allowed: false });
+  hook.rerender({ allowed: true });
+  await act(async () => {
+    finish({
+      method: "calendar.icsExport",
+      status: "replacementRequired",
+      confirmationId: "b".repeat(64),
+    });
+    await pending;
+  });
+  expect(hook.result.current.confirmationId).toBeUndefined();
+  expect(hook.result.current.failure).toBe("rejected");
+  host.client.request.mockResolvedValueOnce(reply);
+  act(() => hook.result.current.retry());
+  await act(async () => {});
+  expect(hook.result.current.view).toEqual(value);
+  await act(async () => {
+    await hook.result.current.replace(true);
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(3);
+});

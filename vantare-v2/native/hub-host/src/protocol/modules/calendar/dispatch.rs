@@ -19,7 +19,9 @@ fn local(
                     value: Box::new(value),
                 }),
         ),
-        Request::CalendarIcsExport { .. } => Some(Err(HostError::Unsupported)),
+        Request::CalendarIcsExport { .. } | Request::CalendarIcsReplace { .. } => {
+            Some(Err(HostError::Unsupported))
+        }
         Request::CalendarHistoryLoad {} => Some(Ok(Reply::CalendarHistoryLoad {
             value: Box::new(state.history()),
         })),

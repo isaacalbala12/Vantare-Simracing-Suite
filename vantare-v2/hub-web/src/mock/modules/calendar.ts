@@ -9,6 +9,7 @@ import {
   type CalendarView,
   calendarDefaultAlerts,
   calendarEmptyRevision,
+  calendarIcsConfirmationMaxAgeMs,
   calendarNoticeTestIntervalMs,
   calendarNoticeTtlMs,
   calendarRevisionLength,
@@ -45,6 +46,12 @@ function alertValue(alerts: CalendarAlerts) {
   ]);
 }
 export function create(context: MockContext): MockHandler {
+  const liveReference =
+    context.sceneName === "calendar-live-reference" ||
+    context.sceneName === "calendar-ics-replace-reference";
+  let replacementId: string | undefined;
+  let replacementAt = 0;
+  let replacementSequence = 0;
   const value: CalendarView = {
     official: null,
     fallback: null,
@@ -78,14 +85,11 @@ export function create(context: MockContext): MockHandler {
     context.core.access.calendar = true;
     context.core.access.blocked = false;
   }
-  if (
-    context.sceneName === "calendar-reference" ||
-    context.sceneName === "calendar-live-reference"
-  ) {
+  if (context.sceneName === "calendar-reference" || liveReference) {
     context.core.access.verified = true;
     context.core.access.blocked = false;
     context.core.access.calendar = true;
-    if (context.sceneName === "calendar-live-reference") {
+    if (liveReference) {
       context.core.rights = "connected";
       Object.assign(value, calendarReference());
       Object.assign(history, calendarHistoryReference());
@@ -114,10 +118,7 @@ export function create(context: MockContext): MockHandler {
     alertsRevision: calendarEmptyRevision,
     documents: { prefs: "ready", following: "ready", alerts: "ready" },
   };
-  if (
-    context.sceneName === "calendar-live-reference" ||
-    context.sceneName === "calendar-notice-reference"
-  )
+  if (liveReference || context.sceneName === "calendar-notice-reference")
     config.alerts = structuredClone(alertsReference) as CalendarAlerts;
   config.utc = value.utc;
   config.following = [...value.following];
@@ -128,8 +129,7 @@ export function create(context: MockContext): MockHandler {
   // uses the bank date; ordinary mocks and production keep the actual clock.
   const clock = () =>
     context.visual &&
-    (context.sceneName === "calendar-live-reference" ||
-      context.sceneName === "calendar-notice-reference")
+    (liveReference || context.sceneName === "calendar-notice-reference")
       ? calendarReferenceNow
       : Date.now();
   let lastNoticeTest = -Infinity;
@@ -196,6 +196,7 @@ export function create(context: MockContext): MockHandler {
       }
 
       case "calendar.icsPrepare": {
+        replacementId = undefined;
         icsHash = undefined;
         const prepared = mockCalendarIcs(
           value,
@@ -213,10 +214,43 @@ export function create(context: MockContext): MockHandler {
               result: { method: request.method, value: prepared },
             };
       }
+      case "calendar.icsReplace": {
+        if (
+          !replacementId ||
+          request.confirmationId !== replacementId ||
+          clock() < replacementAt ||
+          clock() - replacementAt >= calendarIcsConfirmationMaxAgeMs
+        )
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        replacementId = undefined;
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            status: request.replace ? "saved" : "cancelled",
+          },
+        };
+      }
       case "calendar.icsExport":
         if (icsHash === undefined || request.preparedHash !== icsHash)
           return { kind: "failure", id, error: { kind: "rejected" } };
         icsHash = undefined;
+        if (context.sceneName === "calendar-ics-replace-reference") {
+          replacementId = (++replacementSequence)
+            .toString(16)
+            .padStart(calendarRevisionLength, "0");
+          replacementAt = clock();
+          return {
+            kind: "response",
+            id,
+            result: {
+              method: request.method,
+              status: "replacementRequired",
+              confirmationId: replacementId,
+            },
+          };
+        }
         return {
           kind: "response",
           id,

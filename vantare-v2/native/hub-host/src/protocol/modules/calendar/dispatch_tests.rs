@@ -359,6 +359,10 @@ fn calendar_ics_is_denied_before_reading_and_export_paths_are_main_only() {
         Request::CalendarIcsExport {
             prepared_hash: "a".repeat(64),
         },
+        Request::CalendarIcsReplace {
+            confirmation_id: "b".repeat(64),
+            replace: true,
+        },
     ] {
         let mut pipe = Pipe::new(Vec::new());
         session.request(&mut pipe, 41, &request).unwrap();
@@ -952,4 +956,83 @@ fn calendar_test_follows_general_live_without_changing_calendar_channels() {
             assert_eq!(session.core.requests, 0);
         }
     }
+}
+
+#[test]
+fn calendar_general_off_then_on_never_catches_up_a_departure_from_the_disabled_interval() {
+    let fixture = Fixture::new();
+    let base = fixture.0.join("hub");
+    std::fs::create_dir_all(&base).unwrap();
+    std::fs::write(base.join("official-schedule.json"), br#"{"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#).unwrap();
+    let mut alerts = crate::calendar::CalendarAlerts::default();
+    alerts.bands.push(crate::calendar::CalendarBand {
+        series_id: "qa".into(),
+        from: 0,
+        to: 1440,
+        days: crate::calendar::CalendarDays::All,
+        mode: crate::calendar::CalendarBandMode::Each,
+    });
+    std::fs::write(
+        base.join("calendar-alerts.json"),
+        serde_json::to_vec(&alerts).unwrap(),
+    )
+    .unwrap();
+    let mut session = fixture.session();
+    session.handshaken = true;
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    session.current.rights = protocol::LinkState::Connected;
+    session.calendar_state = crate::calendar::State::new(base);
+    let at = chrono::DateTime::parse_from_rfc3339("2026-11-12T12:50:00Z")
+        .unwrap()
+        .timestamp_millis();
+    let clock = Instant::now();
+    let mut pipe = Pipe::new(Vec::new());
+    set_calendar_windows(&mut session, true);
+    super::calendar_tick::tick_with_clock(&mut session, &mut pipe, at - 2000, clock).unwrap();
+    set_calendar_windows(&mut session, false);
+    super::calendar_tick::tick_with_clock(
+        &mut session,
+        &mut pipe,
+        at - 1000,
+        clock + Duration::from_secs(1),
+    )
+    .unwrap();
+    assert!(pipe.get_ref().is_empty());
+    set_calendar_windows(&mut session, true);
+    super::calendar_tick::tick_with_clock(
+        &mut session,
+        &mut pipe,
+        at + 1000,
+        clock + Duration::from_secs(3),
+    )
+    .unwrap();
+    assert!(
+        pipe.get_ref().is_empty(),
+        "reenabling must not publish the departure that became due while off"
+    );
+    super::calendar_tick::tick_with_clock(
+        &mut session,
+        &mut pipe,
+        at + 3_599_000,
+        clock + Duration::from_secs(3601),
+    )
+    .unwrap();
+    assert!(pipe.get_ref().is_empty());
+    super::calendar_tick::tick_with_clock(
+        &mut session,
+        &mut pipe,
+        at + 3_600_000,
+        clock + Duration::from_secs(3602),
+    )
+    .unwrap();
+    assert!(matches!(
+        response(&mut pipe),
+        HostToUi::Event {
+            event: Event::CalendarNotice {
+                value: crate::calendar::CalendarNotice::Start { .. }
+            }
+        }
+    ));
+    assert_eq!(session.core.requests, 0);
 }

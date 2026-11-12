@@ -224,3 +224,20 @@ No concede derechos ni persiste entre reinicios. Ausencia/fallo retira la
 observación; un núcleo antiguo se consulta una vez por época y conserva Read.
 `AuthorityLink` solo contiene pipe e imagen, nunca el nonce mutador.
 Los DTO congelados en tests verifican los bytes legacy de control y Services.
+
+## Lanzamiento comprobado (opt-in)
+
+`launch-v2` fija request aleatorio, instancia del residente, ID de perfil, SHA-256
+completo de launcher.json y generación capturada al armar. El residente consume
+una vez el buzón, deduplica mientras el recibo siga en el anillo y comprueba la
+instantánea y cuenta/política al aceptar. `launch-v1`, control v7 y Services v20
+mantienen sus sobres. Solo RevisionCheckedLaunch permite usar el camino nuevo;
+no hay fallback. Received(Accepted/Rejected) y Finished comparten el anillo de 32;
+hueco o reinicio implica Unknown, nunca éxito supuesto.
+
+La consulta al aceptar usa un único RPC con plazo total monotónico de unos
+750 ms, también ante lecturas parciales. No usa connect_ready, retries, nonce ni
+un hilo nuevo. El Feed opt-in conserva su caché por época contra autoridades
+antiguas; consumir una petición no inicia un sondeo ni un bucle de diagnóstico.
+
+Los rechazos launch-v2 también consumen huecos del único anillo de 32 eventos. La lectura no consume; una ráfaga de rechazos puede desalojar recibos o terminales. Sin recibo retenido (también tras reinicio o descarte sin extensión) significa **Unknown**, nunca éxito. El anfitrión debe conservar esta semántica.

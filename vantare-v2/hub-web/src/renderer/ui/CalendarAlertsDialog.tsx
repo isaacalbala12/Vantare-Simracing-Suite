@@ -19,6 +19,10 @@ import type { CalendarAlertChange } from "../screens/calendar/AlertChange";
 import { daily, nextStart, raceMinutes } from "../screens/calendar/rows";
 import { relativeDay } from "../screens/calendar/series";
 import { Button, IconButton } from "./Button";
+import {
+  type AlertsDocumentState,
+  CalendarAlertsStatus,
+} from "./CalendarAlertsStatus";
 import { civilDay, clock } from "./calendarDate";
 import { Segmented, Switch } from "./Forms";
 import { Tooltip } from "./Layers";
@@ -30,6 +34,8 @@ const hm = (n: number) =>
   `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
 type Props = {
   schedule: CalendarSchedule | null;
+  alertsState?: AlertsDocumentState;
+  returnFocus?: () => HTMLElement | false;
   alerts: CalendarAlerts;
   following: readonly string[];
   now: number;
@@ -47,9 +53,15 @@ export function CalendarAlertsDialog(p: Props) {
   const [editing, setEditing] = useState<string>();
   const name = (id: string) =>
     p.schedule?.series.find((s) => s.id === id)?.name ?? text.missing(id);
-  const disabled = !p.canEdit || p.busy;
+  const disabled = !p.canEdit;
+  const ready = (p.alertsState ?? "ready") === "ready";
+  const legacy = !isCalendarAlerts(p.alerts);
+  const change = (value: CalendarAlertChange) => {
+    if (!p.busy && !disabled) p.onChange(value);
+  };
   return (
     <Dialog.Root
+      modal={false}
       open
       onOpenChange={(open) => {
         if (!open) p.onClose();
@@ -60,6 +72,7 @@ export function CalendarAlertsDialog(p: Props) {
         <Dialog.Popup
           className="v-calendar v-calendar-alerts"
           aria-describedby={undefined}
+          finalFocus={p.returnFocus ?? true}
         >
           <header>
             <div>
@@ -72,211 +85,225 @@ export function CalendarAlertsDialog(p: Props) {
           </header>
           <div className="v-calendar-alerts-body">
             {p.failure}
-            {!isCalendarAlerts(p.alerts) && <p role="status">{text.legacy}</p>}
-            <div className="v-calendar-alerts-columns">
-              <section>
-                <Caption>{text.lead}</Caption>
-                <Segmented
-                  label={text.lead}
-                  value={String(p.alerts.leadMin)}
-                  disabled={disabled}
-                  options={calendarAlertLeads.map((n) => ({
-                    value: String(n),
-                    label: text.minute(n),
-                  }))}
-                  onChange={(value) => {
-                    const next = calendarAlertLeads.find(
-                      (n) => String(n) === value,
-                    );
-                    if (next !== undefined)
-                      p.onChange({ kind: "lead", value: next });
-                  }}
-                />
-                <Caption>{text.where}</Caption>
-                {(
-                  [
-                    ["windows", text.windows, text.windowsHint],
-                    ["inTrack", text.track, text.trackHint],
-                    ["sound", text.sound, text.soundHint],
-                  ] as const
-                ).map(([channel, label, hint]) => (
-                  <Channel
-                    key={channel}
-                    label={label}
-                    hint={hint}
-                    value={p.alerts.channels[channel]}
-                    disabled={disabled}
-                    onChange={(value) =>
-                      p.onChange({
-                        kind: "channel",
-                        channel: channel as keyof CalendarChannels,
-                        value,
-                      })
-                    }
+            <CalendarAlertsStatus state={p.alertsState ?? "ready"} />
+            {ready && legacy && <p role="status">{text.duplicates}</p>}
+            {p.busy && <p role="status">{text.saving}</p>}
+            {ready && (
+              <div className="v-calendar-alerts-columns">
+                <section>
+                  <Caption>{text.lead}</Caption>
+                  <Segmented
+                    label={text.lead}
+                    value={String(p.alerts.leadMin)}
+                    disabled={disabled || legacy}
+                    pending={p.busy}
+                    options={calendarAlertLeads.map((n) => ({
+                      value: String(n),
+                      label: text.minute(n),
+                    }))}
+                    onChange={(value) => {
+                      const next = calendarAlertLeads.find(
+                        (n) => String(n) === value,
+                      );
+                      if (next !== undefined)
+                        change({ kind: "lead", value: next });
+                    }}
                   />
-                ))}
-                <Caption>{text.when}</Caption>
-                <Tooltip label={calendarText.launchPending}>
-                  <div className="v-calendar-alerts-auto">
-                    <Switch
-                      hideLabel
-                      label={text.auto(p.profile ?? text.defaultProfile)}
-                      checked={p.alerts.autoLaunch}
-                      disabled={disabled || !p.alerts.autoLaunch}
-                      onCheckedChange={(value) => {
-                        if (!value) p.onChange({ kind: "autoLaunchOff" });
-                      }}
+                  <Caption>{text.where}</Caption>
+                  {(
+                    [
+                      ["windows", text.windows, text.windowsHint],
+                      ["inTrack", text.track, text.trackHint],
+                      ["sound", text.sound, text.soundHint],
+                    ] as const
+                  ).map(([channel, label, hint]) => (
+                    <Channel
+                      key={channel}
+                      label={label}
+                      hint={hint}
+                      value={p.alerts.channels[channel]}
+                      disabled={disabled || legacy}
+                      pending={p.busy}
+                      onChange={(value) =>
+                        change({
+                          kind: "channel",
+                          channel: channel as keyof CalendarChannels,
+                          value,
+                        })
+                      }
                     />
-                    <div>
-                      <strong>
-                        {text.auto(p.profile ?? text.defaultProfile)}
-                      </strong>
-                      <p>
-                        {p.alerts.autoLaunch
-                          ? text.autoLegacyHint
-                          : text.autoHint}
-                      </p>
-                    </div>
-                  </div>
-                </Tooltip>
-                <Caption>{text.what}</Caption>
-                <div className="v-calendar-alerts-help">
-                  <b>{text.daily}</b>
-                  <p>{text.dailyHelp}</p>
-                  <b>{text.events}</b> {text.eventsHelp}
-                </div>
-              </section>
-              <section>
-                <Caption>{text.sample}</Caption>
-                <Preview {...p} />
-                <Caption
-                  hint={text.count(
-                    p.alerts.bands.length,
-                    p.alerts.slots.length,
-                  )}
-                >
-                  {text.yours}
-                </Caption>
-                <div className="v-calendar-alerts-list">
-                  {p.alerts.bands
-                    .filter(
-                      (band, index, all) =>
-                        all.findIndex(
-                          (candidate) => candidate.seriesId === band.seriesId,
-                        ) === index,
-                    )
-                    .map((band) => (
-                      <BandRow
-                        key={band.seriesId}
-                        band={band}
-                        name={name(band.seriesId)}
-                        canEdit={
-                          !disabled &&
-                          !!p.schedule?.series.some(
-                            (s) => s.id === band.seriesId && daily(s),
-                          )
-                        }
-                        canRemove={!disabled}
-                        editing={editing === band.seriesId}
-                        onEdit={() =>
-                          setEditing(
-                            editing === band.seriesId
-                              ? undefined
-                              : band.seriesId,
-                          )
-                        }
-                        onChange={p.onChange}
+                  ))}
+                  <Caption>{text.when}</Caption>
+                  <Tooltip label={calendarText.launchPending}>
+                    <div className="v-calendar-alerts-auto">
+                      <Switch
+                        hideLabel
+                        label={text.auto(p.profile ?? text.defaultProfile)}
+                        checked={p.alerts.autoLaunch}
+                        disabled={disabled || !p.alerts.autoLaunch || legacy}
+                        pending={p.busy}
+                        onCheckedChange={(value) => {
+                          if (!value) change({ kind: "autoLaunchOff" });
+                        }}
                       />
-                    ))}
-                  {p.alerts.slots
-                    .filter(
-                      (slot, index, all) =>
-                        all.findIndex(
-                          (candidate) =>
-                            candidate.seriesId === slot.seriesId &&
-                            candidate.at === slot.at,
-                        ) === index,
-                    )
-                    .map((slot) => (
-                      <div
-                        className="v-calendar-alerts-item"
-                        key={`${slot.seriesId}:${slot.at}`}
-                      >
-                        <i />
-                        <div>
-                          <strong>{name(slot.seriesId)}</strong>
-                          <p>
-                            {Number.isFinite(new Date(slot.at * 1000).getTime())
-                              ? text.slot(
-                                  relativeDay(
-                                    civilDay(slot.at * 1000, 0, p.utc),
-                                    p.now,
-                                    p.utc,
-                                  ),
-                                  clock(slot.at * 1000, p.utc),
-                                  clock(
-                                    slot.at * 1000 - p.alerts.leadMin * 60_000,
-                                    p.utc,
-                                  ),
-                                )
-                              : text.invalidSlot}
-                          </p>
+                      <div>
+                        <strong>
+                          {text.auto(p.profile ?? text.defaultProfile)}
+                        </strong>
+                        <p>
+                          {p.alerts.autoLaunch
+                            ? text.autoLegacyHint
+                            : text.autoHint}
+                        </p>
+                      </div>
+                    </div>
+                  </Tooltip>
+                  <Caption>{text.what}</Caption>
+                  <div className="v-calendar-alerts-help">
+                    <b>{text.daily}</b>
+                    <p>{text.dailyHelp}</p>
+                    <b>{text.events}</b> {text.eventsHelp}
+                  </div>
+                </section>
+                <section>
+                  <Caption>{text.sample}</Caption>
+                  <Preview {...p} />
+                  <Caption
+                    hint={text.count(
+                      p.alerts.bands.length,
+                      p.alerts.slots.length,
+                    )}
+                  >
+                    {text.yours}
+                  </Caption>
+                  <div className="v-calendar-alerts-list">
+                    {p.alerts.bands
+                      .filter(
+                        (band, index, all) =>
+                          all.findIndex(
+                            (candidate) => candidate.seriesId === band.seriesId,
+                          ) === index,
+                      )
+                      .map((band) => (
+                        <BandRow
+                          key={band.seriesId}
+                          band={band}
+                          name={name(band.seriesId)}
+                          canEdit={
+                            !disabled &&
+                            !!p.schedule?.series.some(
+                              (s) => s.id === band.seriesId && daily(s),
+                            )
+                          }
+                          canRemove={!disabled}
+                          pending={p.busy}
+                          editing={editing === band.seriesId}
+                          onEdit={() =>
+                            setEditing(
+                              editing === band.seriesId
+                                ? undefined
+                                : band.seriesId,
+                            )
+                          }
+                          onChange={change}
+                        />
+                      ))}
+                    {p.alerts.slots
+                      .filter(
+                        (slot, index, all) =>
+                          all.findIndex(
+                            (candidate) =>
+                              candidate.seriesId === slot.seriesId &&
+                              candidate.at === slot.at,
+                          ) === index,
+                      )
+                      .map((slot) => (
+                        <div
+                          className="v-calendar-alerts-item"
+                          key={`${slot.seriesId}:${slot.at}`}
+                        >
+                          <i />
+                          <div>
+                            <strong>{name(slot.seriesId)}</strong>
+                            <p>
+                              {Number.isFinite(
+                                new Date(slot.at * 1000).getTime(),
+                              )
+                                ? text.slot(
+                                    relativeDay(
+                                      civilDay(slot.at * 1000, 0, p.utc),
+                                      p.now,
+                                      p.utc,
+                                    ),
+                                    clock(slot.at * 1000, p.utc),
+                                    clock(
+                                      slot.at * 1000 -
+                                        p.alerts.leadMin * 60_000,
+                                      p.utc,
+                                    ),
+                                  )
+                                : text.invalidSlot}
+                            </p>
+                          </div>
+                          <IconButton
+                            label={text.removeSlot}
+                            variant="ghost"
+                            disabled={disabled}
+                            aria-disabled={p.busy || disabled}
+                            onClick={() =>
+                              change({
+                                kind: "slot",
+                                id: slot.seriesId,
+                                at: slot.at,
+                                enabled: false,
+                              })
+                            }
+                          >
+                            <Icon name="x" />
+                          </IconButton>
                         </div>
-                        <IconButton
-                          label={text.removeSlot}
-                          variant="ghost"
-                          disabled={disabled}
-                          onClick={() =>
-                            p.onChange({
-                              kind: "slot",
-                              id: slot.seriesId,
-                              at: slot.at,
-                              enabled: false,
-                            })
-                          }
-                        >
-                          <Icon name="x" />
-                        </IconButton>
-                      </div>
-                    ))}
-                  {p.schedule?.series
-                    .filter(
-                      (s) =>
-                        daily(s) &&
-                        p.following.includes(s.id) &&
-                        !p.alerts.bands.some((b) => b.seriesId === s.id),
-                    )
-                    .map((s) => (
-                      <div className="v-calendar-alerts-add" key={s.id}>
-                        <span>{s.name}</span>
-                        <Button
-                          size="sm"
-                          disabled={disabled}
-                          onClick={() =>
-                            p.onChange({
-                              kind: "band",
-                              id: s.id,
-                              enabled: true,
-                              patch: {},
-                            })
-                          }
-                        >
-                          {text.add}
-                        </Button>
-                      </div>
-                    ))}
-                  {!p.alerts.bands.length && !p.alerts.slots.length && (
-                    <p className="v-calendar-alerts-empty">{text.empty}</p>
-                  )}
-                </div>
-              </section>
-            </div>
+                      ))}
+                    {p.schedule?.series
+                      .filter(
+                        (s) =>
+                          daily(s) &&
+                          p.following.includes(s.id) &&
+                          !p.alerts.bands.some((b) => b.seriesId === s.id),
+                      )
+                      .map((s) => (
+                        <div className="v-calendar-alerts-add" key={s.id}>
+                          <span>{s.name}</span>
+                          <Button
+                            size="sm"
+                            disabled={disabled}
+                            aria-disabled={p.busy || disabled}
+                            onClick={() =>
+                              change({
+                                kind: "band",
+                                id: s.id,
+                                enabled: true,
+                                patch: {},
+                              })
+                            }
+                          >
+                            {text.add}
+                          </Button>
+                        </div>
+                      ))}
+                    {!p.alerts.bands.length && !p.alerts.slots.length && (
+                      <p className="v-calendar-alerts-empty">{text.empty}</p>
+                    )}
+                  </div>
+                </section>
+              </div>
+            )}
           </div>
           <footer>
             <Tooltip label={text.testPending}>
               <span>
                 <Button
                   disabled={!p.onTest}
+                  focusableWhenDisabled
                   onClick={p.onTest}
                   aria-description={!p.onTest ? text.testPending : undefined}
                 >
@@ -284,7 +311,13 @@ export function CalendarAlertsDialog(p: Props) {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="primary" disabled={p.busy} onClick={p.onClose}>
+            <Button
+              variant="primary"
+              aria-disabled={p.busy}
+              onClick={() => {
+                if (!p.busy) p.onClose();
+              }}
+            >
               {text.save}
             </Button>
           </footer>
@@ -306,12 +339,14 @@ function Channel({
   hint,
   value,
   disabled,
+  pending,
   onChange,
 }: {
   label: string;
   hint: string;
   value: boolean;
   disabled: boolean;
+  pending: boolean;
   onChange: (value: boolean) => void;
 }) {
   const id = useId();
@@ -329,7 +364,11 @@ function Channel({
         className="v-checkbox"
         checked={value}
         disabled={disabled}
-        onCheckedChange={onChange}
+        aria-disabled={disabled || pending}
+        aria-busy={pending}
+        onCheckedChange={(value) => {
+          if (!pending) onChange(value);
+        }}
       >
         <BaseCheckbox.Indicator>
           <Icon name="check" />
@@ -347,6 +386,7 @@ function BandRow({
   name,
   canEdit,
   canRemove,
+  pending,
   editing,
   onEdit,
   onChange,
@@ -355,6 +395,7 @@ function BandRow({
   name: string;
   canEdit: boolean;
   canRemove: boolean;
+  pending: boolean;
   editing: boolean;
   onEdit: () => void;
   onChange: (change: CalendarAlertChange) => void;
@@ -387,6 +428,7 @@ function BandRow({
           label={text.removeBand}
           variant="ghost"
           disabled={!canRemove}
+          aria-disabled={pending || !canRemove}
           onClick={() =>
             onChange({
               kind: "band",
@@ -413,6 +455,9 @@ function BandRow({
                 key={`${move.edge}:${move.delta}`}
                 size="sm"
                 disabled={!canEdit || !valid || next === band[move.edge]}
+                aria-disabled={
+                  pending || !canEdit || !valid || next === band[move.edge]
+                }
                 aria-label={`${move.edge === "from" ? text.starts : text.ends}: ${hm(next)}`}
                 onClick={() =>
                   onChange({
@@ -430,6 +475,7 @@ function BandRow({
           <Button
             size="sm"
             disabled={!canEdit}
+            aria-disabled={pending || !canEdit}
             onClick={() =>
               onChange({
                 kind: "band",
@@ -443,11 +489,12 @@ function BandRow({
               })
             }
           >
-            {bandText.daysLong[band.days]}
+            {bandText.days[band.days]}
           </Button>
           <Button
             size="sm"
             disabled={!canEdit}
+            aria-disabled={pending || !canEdit}
             onClick={() =>
               onChange({
                 kind: "band",

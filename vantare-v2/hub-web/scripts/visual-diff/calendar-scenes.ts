@@ -349,6 +349,7 @@ export const calendarScenes: Record<string, VisualScene> = {
         .getByRole("dialog")
         .getByRole("heading", { name: "Avisos", exact: true })
         .waitFor();
+      await assertDetailWindowControls(page);
       await page.mouse.move(600, 890);
     },
   },
@@ -364,6 +365,7 @@ export const calendarScenes: Record<string, VisualScene> = {
         .getByRole("dialog")
         .getByRole("heading", { name: "Avisos", exact: true })
         .waitFor();
+      await assertDetailWindowControls(page);
       await page.mouse.move(600, 890);
     },
   },

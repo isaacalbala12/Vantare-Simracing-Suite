@@ -103,14 +103,18 @@ it("blocks protected and pending writes, and leaves the unavailable test inactiv
   for (const node of screen.getAllByRole("checkbox")) fireEvent.click(node);
   fireEvent.click(screen.getByRole("button", { name: "15 min" }));
   expect(props.onChange).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: text.test })).toHaveProperty(
-    "disabled",
-    true,
-  );
-  expect(screen.getByRole("button", { name: text.save })).toHaveProperty(
-    "disabled",
-    true,
-  );
+  expect(
+    screen
+      .getByRole("button", { name: text.test })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  expect(
+    screen
+      .getByRole("button", { name: text.save })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: text.save }));
+  expect(props.onClose).not.toHaveBeenCalled();
 });
 it("adds a missing favorite band by intent without overwriting a concurrent winner", () => {
   show({ ...props, alerts: { ...props.alerts, bands: [] } });
@@ -129,7 +133,7 @@ it("shows legacy duplicate alerts safely and lets the user remove an unrepresent
   const alerts = { ...props.alerts, bands: [band, band], slots: [slot, slot] };
   const before = JSON.stringify(alerts);
   show({ ...props, alerts });
-  expect(screen.getByText(text.legacy)).toBeTruthy();
+  expect(screen.getByText(text.duplicates)).toBeTruthy();
   expect(screen.getByText(text.invalidSlot)).toBeTruthy();
   expect(screen.getAllByRole("button", { name: text.removeSlot })).toHaveLength(
     1,
@@ -142,4 +146,48 @@ it("shows legacy duplicate alerts safely and lets the user remove an unrepresent
     enabled: false,
   });
   expect(JSON.stringify(alerts)).toBe(before);
+});
+
+it("preserves the focused checkbox while saving and reports its blocked second click", () => {
+  const result = show();
+  const checkbox = screen.getByRole("checkbox", { name: text.sound });
+  checkbox.focus();
+  fireEvent.click(checkbox);
+  expect(props.onChange).toHaveBeenCalledOnce();
+  result.rerender(
+    <TooltipProvider>
+      <CalendarAlertsDialog {...props} busy />
+    </TooltipProvider>,
+  );
+  expect(document.activeElement).toBe(checkbox);
+  expect(checkbox.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(checkbox);
+  expect(props.onChange).toHaveBeenCalledOnce();
+  expect(screen.getByRole("status").textContent).toBe(text.saving);
+});
+it("blocks global edits for legacy duplicates but allows their removal", () => {
+  const band = props.alerts.bands[0];
+  show({ ...props, alerts: { ...props.alerts, bands: [band, band] } });
+  fireEvent.click(screen.getByRole("button", { name: "15 min" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: text.sound }));
+  expect(props.onChange).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: text.removeBand }));
+  expect(props.onChange).toHaveBeenCalledOnce();
+});
+it("keeps retired series visible and removable when the publication disappears", () => {
+  const result = show();
+  result.rerender(
+    <TooltipProvider>
+      <CalendarAlertsDialog {...props} schedule={null} />
+    </TooltipProvider>,
+  );
+  expect(
+    screen.getByText(text.missing(props.alerts.bands[0].seriesId)),
+  ).toBeTruthy();
+  expect(screen.getByRole("button", { name: text.edit })).toHaveProperty(
+    "disabled",
+    true,
+  );
+  fireEvent.click(screen.getByRole("button", { name: text.removeBand }));
+  expect(props.onChange).toHaveBeenCalledOnce();
 });

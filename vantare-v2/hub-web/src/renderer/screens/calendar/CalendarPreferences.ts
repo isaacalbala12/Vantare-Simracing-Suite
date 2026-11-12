@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isCalendarAlerts } from "../../../contract/calendar-config-validation";
 import type {
   CalendarBand,
   CalendarConfigView,
+} from "../../../contract/generated/calendar";
+import {
+  calendarBandsLimit,
+  calendarSlotsLimit,
 } from "../../../contract/generated/calendar";
 import type { HostError, Request } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
@@ -12,6 +17,11 @@ import {
   type CalendarAlertChange,
 } from "./AlertChange";
 
+export type CalendarPreferenceFailure =
+  | HostError["kind"]
+  | "bandsLimit"
+  | "slotsLimit"
+  | "duplicates";
 type Intent =
   | { kind: "utc"; value: boolean }
   | { kind: "notifyWeek"; value: boolean }
@@ -21,7 +31,8 @@ export function useCalendarPreferences(allowed: boolean) {
   const { client } = useHost();
   const [config, setConfig] = useState<CalendarConfigView>();
   const [busy, setBusy] = useState(false),
-    [failure, setFailure] = useState<HostError["kind"]>();
+    [failure, setFailure] = useState<CalendarPreferenceFailure>();
+  const [failureIntent, setFailureIntent] = useState<Intent["kind"]>();
   const current = useRef<CalendarConfigView | undefined>(undefined),
     intent = useRef<Intent | undefined>(undefined),
     generation = useRef(0),
@@ -34,6 +45,7 @@ export function useCalendarPreferences(allowed: boolean) {
       const epoch = generation.current,
         snapshot = current.current;
       if (action && !snapshot) return;
+      setFailureIntent(action?.kind);
       let request: Request = { method: "calendar.configLoad" };
       if (action && snapshot) {
         const document =
@@ -69,13 +81,34 @@ export function useCalendarPreferences(allowed: boolean) {
             enabled: action.value,
             expectedRevision: revision,
           };
-        else if (action.kind === "alerts")
+        else if (action.kind === "alerts") {
+          const removal =
+            action.change.kind === "clear" ||
+            ((action.change.kind === "band" || action.change.kind === "slot") &&
+              !action.change.enabled);
+          if (!isCalendarAlerts(snapshot.alerts) && !removal) {
+            setFailure("duplicates");
+            return;
+          }
+          const alerts = applyAlertChange(snapshot.alerts, action.change);
+          if (alerts.bands.length > calendarBandsLimit) {
+            setFailure("bandsLimit");
+            return;
+          }
+          if (alerts.slots.length > calendarSlotsLimit) {
+            setFailure("slotsLimit");
+            return;
+          }
+          if (!isCalendarAlerts(alerts)) {
+            setFailure("duplicates");
+            return;
+          }
           request = {
             method: "calendar.alertsSave",
-            alerts: applyAlertChange(snapshot.alerts, action.change),
+            alerts,
             expectedRevision: revision,
           };
-        else
+        } else
           request = {
             method: "calendar.followSet",
             seriesId: action.id,
@@ -101,6 +134,8 @@ export function useCalendarPreferences(allowed: boolean) {
           throw new HostFailure({ kind: "rejected" });
         current.current = reply.value;
         setConfig(reply.value);
+        setFailure(undefined);
+        setFailureIntent(undefined);
         intent.current = undefined;
       } catch (error) {
         if (epoch !== generation.current || !access.current) return;
@@ -128,6 +163,7 @@ export function useCalendarPreferences(allowed: boolean) {
     setConfig(undefined);
     setBusy(false);
     setFailure(undefined);
+    setFailureIntent(undefined);
     if (allowed) void apply();
     return () => {
       generation.current++;
@@ -137,6 +173,12 @@ export function useCalendarPreferences(allowed: boolean) {
     config,
     busy,
     failure,
+    failureIntent,
+    canRetry:
+      failure !== "calendarConflict" &&
+      failure !== "bandsLimit" &&
+      failure !== "slotsLimit" &&
+      failure !== "duplicates",
     canUtc:
       allowed &&
       !busy &&
@@ -144,7 +186,6 @@ export function useCalendarPreferences(allowed: boolean) {
       config.prefsRevision !== null,
     canAlerts:
       allowed &&
-      !busy &&
       config?.documents.alerts === "ready" &&
       config.alertsRevision !== null,
     canNotifyWeek:
@@ -170,10 +211,14 @@ export function useCalendarPreferences(allowed: boolean) {
           change: bandChange(current.current.alerts, id, value),
         });
     },
-    retry: () => apply(intent.current),
+    retry: () =>
+      failure === "calendarConflict"
+        ? Promise.resolve()
+        : apply(intent.current),
     discard: () => {
       intent.current = undefined;
       setFailure(undefined);
+      setFailureIntent(undefined);
     },
   };
 }

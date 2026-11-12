@@ -8,6 +8,10 @@ import { calendarText as text } from "../i18n/calendar";
 import { upcomingAlerts } from "../screens/calendar/rows";
 import { Button } from "./Button";
 import {
+  type AlertsDocumentState,
+  CalendarAlertsStatus,
+} from "./CalendarAlertsStatus";
+import {
   civilDay,
   clock,
   datePart,
@@ -39,6 +43,7 @@ export function CalendarRail({
   health,
   now,
   alerts,
+  alertsState = "ready",
   limit,
   nextPublication,
   onUtc,
@@ -51,6 +56,7 @@ export function CalendarRail({
   health: CalendarHealth;
   now: number;
   alerts?: CalendarAlerts;
+  alertsState?: AlertsDocumentState;
   limit: number;
   nextPublication: number;
   onUtc: (utc: boolean) => void;
@@ -158,9 +164,15 @@ export function CalendarRail({
       <section>
         <div className="v-calendar-rail-heading">
           <Caption name={text.yours} icon="bell" />
-          <span>{alerts ? text.leadBefore(alerts.leadMin) : text.before}</span>
+          {alertsState === "ready" && (
+            <span>
+              {alerts ? text.leadBefore(alerts.leadMin) : text.before}
+            </span>
+          )}
         </div>
-        {pending.length ? (
+        {alertsState !== "ready" ? (
+          <CalendarAlertsStatus state={alertsState} />
+        ) : pending.length ? (
           pending.map((item) => (
             <div
               className="v-calendar-alert-item"

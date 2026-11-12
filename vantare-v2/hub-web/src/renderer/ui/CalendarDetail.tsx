@@ -14,6 +14,7 @@ import {
 } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText } from "../i18n/calendar";
+import { calendarAlertsText } from "../i18n/calendarAlerts";
 import { calendarDetailText as text } from "../i18n/calendarDetail";
 import { calendarSeriesText as st } from "../i18n/calendarSeries";
 import type { CalendarRun } from "../screens/calendar/CalendarRun";
@@ -21,6 +22,10 @@ import { detailDepartures, detailPhases } from "../screens/calendar/detail";
 import { daily } from "../screens/calendar/rows";
 import { seriesHistory, seriesRules } from "../screens/calendar/series";
 import { Button, IconButton } from "./Button";
+import {
+  type AlertsDocumentState,
+  CalendarAlertsStatus,
+} from "./CalendarAlertsStatus";
 import { CalendarBandControls } from "./CalendarBandControls";
 import { clock, datePart } from "./calendarDate";
 import { zoneLabel } from "./calendarZone";
@@ -38,6 +43,8 @@ type Props = {
   utc: boolean;
   limit: number;
   alerts: CalendarAlerts;
+  alertsState?: AlertsDocumentState;
+  alertsValid?: boolean;
   following: readonly string[];
   runs: readonly CalendarRun[];
   profile?: string;
@@ -270,7 +277,11 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
             onCheckedChange={(value) => p.onFollow(s.id, value)}
           />
         </div>
-        {isDaily ? (
+        {(p.alertsState ?? "ready") !== "ready" ? (
+          <CalendarAlertsStatus state={p.alertsState ?? "loading"} />
+        ) : p.alertsValid === false ? (
+          <p role="status">{calendarAlertsText.duplicates}</p>
+        ) : isDaily ? (
           <CalendarBandControls
             seriesId={s.id}
             band={band}
@@ -289,6 +300,7 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
             stepMinutes={30}
             dayMinutes={calendarDayMinutes}
             busy={!!p.busy}
+            valid={p.alertsValid}
             onBand={p.onBand ? (value) => p.onBand?.(s.id, value) : undefined}
             onLead={p.onLead}
           />
@@ -300,9 +312,13 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
             <Icon name={slotOn ? "bell-fill" : "bell"} />
             <Button
               variant="ghost"
-              disabled={!p.onSlot || at === undefined || at < now || p.busy}
+              disabled={!p.onSlot || at === undefined || at < now}
+              aria-disabled={
+                p.busy || !p.onSlot || at === undefined || at < now
+              }
               onClick={() => {
-                if (at !== undefined) p.onSlot?.(s.id, at, !slotOn);
+                if (at !== undefined && at >= now && !p.busy)
+                  p.onSlot?.(s.id, at, !slotOn);
               }}
             >
               <strong>
@@ -315,14 +331,15 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
             <Segmented
               label={text.before}
               value={String(alerts.leadMin)}
-              disabled={!p.onLead || p.busy}
+              disabled={!p.onLead}
+              pending={p.busy}
               options={calendarAlertLeads.map((n) => ({
                 value: String(n),
                 label: `${n}′`,
               }))}
               onChange={(value) => {
                 const n = calendarAlertLeads.find((n) => String(n) === value);
-                if (n !== undefined) p.onLead?.(n);
+                if (n !== undefined && !p.busy) p.onLead?.(n);
               }}
             />
           </div>

@@ -82,5 +82,20 @@ export function applyAlertChange(
       break;
     }
   }
+  if (
+    change.kind === "clear" ||
+    ((change.kind === "band" || change.kind === "slot") && !change.enabled)
+  ) {
+    next.bands = next.bands.filter(
+      (band, i, all) =>
+        all.findIndex((b) => b.seriesId === band.seriesId) === i,
+    );
+    next.slots = next.slots.filter(
+      (slot, i, all) =>
+        all.findIndex(
+          (s) => s.seriesId === slot.seriesId && s.at === slot.at,
+        ) === i,
+    );
+  }
   return next;
 }

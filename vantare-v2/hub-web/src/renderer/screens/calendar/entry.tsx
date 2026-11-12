@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { isCalendarAlerts } from "../../../contract/calendar-config-validation";
 import {
   calendarAlertLeads,
   calendarBandModes,
@@ -30,6 +31,7 @@ import {
 } from "../../ui/CalendarLiveView";
 import { CalendarMineView } from "../../ui/CalendarMineView";
 import { CalendarMonthView } from "../../ui/CalendarMonthView";
+import { CalendarPreferencesFailure } from "../../ui/CalendarPreferencesFailure";
 import { type CalendarHealth, CalendarRail } from "../../ui/CalendarRail";
 import { CalendarSeriesView } from "../../ui/CalendarSeriesView";
 import { CalendarUpcomingView } from "../../ui/CalendarUpcomingView";
@@ -55,6 +57,16 @@ function nextPublication(now: number) {
 
 export default function CalendarEntry() {
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const alertsOrigin = useRef<HTMLElement | null>(null);
+  const openAlerts = () => {
+    alertsOrigin.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setAlertsOpen(true);
+  };
+  const returnAlertsFocus = () =>
+    alertsOrigin.current?.isConnected ? alertsOrigin.current : false;
   const [activeTab, setActiveTab] = useState("upcoming");
   const [calendarSpan, setCalendarSpan] = useState("week");
   const liveFilters = useRef<CalendarLiveFilters>({
@@ -160,6 +172,18 @@ export default function CalendarEntry() {
     slots: [],
     channels: { ...calendarDefaultAlerts.channels },
   };
+  const alertsState =
+    preferences.config?.documents.alerts ??
+    (preferences.failure ? "unavailable" : "loading");
+  const alertsValid = isCalendarAlerts(alerts);
+  const preferencesFailure = preferences.failure ? (
+    <CalendarPreferencesFailure
+      failure={preferences.failure}
+      canRetry={preferences.canRetry}
+      onRetry={() => void preferences.retry()}
+      onDiscard={preferences.discard}
+    />
+  ) : undefined;
   const toggleSlot = preferences.canAlerts
     ? (id: string, at: number) =>
         void preferences.alert({
@@ -238,9 +262,10 @@ export default function CalendarEntry() {
               health={health}
               now={state.now}
               alerts={alerts}
+              alertsState={alertsState}
               limit={calendarStartsLimit}
               nextPublication={nextPublication(state.now)}
-              onAlerts={() => setAlertsOpen(true)}
+              onAlerts={openAlerts}
               onUtc={(utc) => void preferences.utc(utc)}
               utcDisabled={!preferences.canUtc}
             />
@@ -252,6 +277,8 @@ export default function CalendarEntry() {
           <p role="status">{text.noAccess}</p>
         ) : selectedSerie && schedule && view ? (
           <CalendarSeriesView
+            alertsState={alertsState}
+            alertsValid={alertsValid}
             onDetail={openDetail}
             schedule={schedule}
             seriesId={selectedSerie}
@@ -299,17 +326,7 @@ export default function CalendarEntry() {
                     <Button onClick={history.reload}>{text.retry}</Button>
                   </div>
                 )}
-                {preferences.failure && (
-                  <div role="alert">
-                    <p>{text.preferencesFailed}</p>
-                    <Button onClick={() => void preferences.retry()}>
-                      {text.retry}
-                    </Button>
-                    <Button onClick={preferences.discard}>
-                      {text.discardChange}
-                    </Button>
-                  </div>
-                )}
+                {preferencesFailure}
                 {launcher.failure && <p role="alert">{text.launchFailed}</p>}
               </>
             }
@@ -347,12 +364,13 @@ export default function CalendarEntry() {
                     : undefined
                 }
                 busy={preferences.busy}
+                valid={alertsValid}
               />
             }
           />
         ) : (
           <CalendarFrame
-            onAlerts={() => setAlertsOpen(true)}
+            onAlerts={openAlerts}
             subtitle={subtitle}
             count={alerts.bands.length + alerts.slots.length}
             busy={state.busy}
@@ -381,21 +399,7 @@ export default function CalendarEntry() {
                 </Button>
               </div>
             )}
-            {preferences.failure && (
-              <div role="alert">
-                <p>
-                  {preferences.failure === "calendarScheduleUnavailable"
-                    ? text.scheduleRequired
-                    : text.preferencesFailed}
-                </p>
-                <Button onClick={() => void preferences.retry()}>
-                  {text.retry}
-                </Button>
-                <Button onClick={preferences.discard}>
-                  {text.discardChange}
-                </Button>
-              </div>
-            )}
+            {preferencesFailure}
             {launcher.failure && <p role="alert">{text.launchFailed}</p>}
             {!state.loaded && !view ? (
               <p role="status">{text.loading}</p>
@@ -524,6 +528,8 @@ export default function CalendarEntry() {
           utc={view.utc}
           limit={calendarStartsLimit}
           alerts={alerts}
+          alertsState={alertsState}
+          alertsValid={alertsValid}
           following={view.following}
           runs={runs}
           profile={launcher.profile?.name}
@@ -563,9 +569,9 @@ export default function CalendarEntry() {
           failure={
             launcher.failure ? (
               <p role="alert">{text.launchFailed}</p>
-            ) : preferences.failure ? (
-              <p role="alert">{text.preferencesFailed}</p>
-            ) : undefined
+            ) : (
+              preferencesFailure
+            )
           }
         />
       )}
@@ -573,6 +579,8 @@ export default function CalendarEntry() {
         <CalendarAlertsDialog
           schedule={schedule}
           alerts={alerts}
+          alertsState={alertsState}
+          returnFocus={returnAlertsFocus}
           following={view?.following ?? []}
           now={state.now}
           utc={view?.utc ?? false}
@@ -583,21 +591,9 @@ export default function CalendarEntry() {
           onChange={(change) => void preferences.alert(change)}
           onClose={() => setAlertsOpen(false)}
           failure={
-            preferences.failure ? (
-              <div role="alert">
-                <p>
-                  {preferences.failure === "calendarScheduleUnavailable"
-                    ? text.scheduleRequired
-                    : text.preferencesFailed}
-                </p>
-                <Button onClick={() => void preferences.retry()}>
-                  {text.retry}
-                </Button>
-                <Button onClick={preferences.discard}>
-                  {text.discardChange}
-                </Button>
-              </div>
-            ) : undefined
+            preferences.failureIntent === "alerts"
+              ? preferencesFailure
+              : undefined
           }
         />
       )}

@@ -1,4 +1,15 @@
 export const calendarAlertsText = {
+  reading: "Leyendo tus avisos…",
+  protected: "Tus avisos están protegidos; no se ha modificado nada.",
+  unavailable: "Tus avisos no se han podido leer; no se ha modificado nada.",
+  saving: "Guardando avisos; espera a que termine para cambiar otro control.",
+  conflict: "Se ha actualizado desde otro sitio; revisa y repite el cambio.",
+  duplicates:
+    "Quita primero los avisos antiguos o duplicados antes de cambiar antelación o canales.",
+  bandsLimit: (n: number) =>
+    `Puedes guardar hasta ${n} franjas. Quita una antes de añadir otra.`,
+  slotsLimit: (n: number) =>
+    `Puedes guardar hasta ${n} tandas. Quita una antes de añadir otra.`,
   defaultProfile: "Perfil",
   title: "Avisos",
   subtitle: "Te avisamos antes de que salga la carrera que elijas.",

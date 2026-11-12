@@ -137,3 +137,27 @@ it("replaces legacy duplicate bands only for the explicitly edited series", () =
   );
   expect(current.bands).toHaveLength(3);
 });
+
+it("removes an identity and normalizes the remaining inherited duplicate bands and slots", () => {
+  const initial = structuredClone(calendarDefaultAlerts);
+  initial.bands = [
+    { seriesId: "remove", from: 0, to: 60, days: "all", mode: "each" },
+    { seriesId: "keep", from: 0, to: 60, days: "all", mode: "each" },
+    { seriesId: "keep", from: 0, to: 60, days: "all", mode: "each" },
+  ];
+  initial.slots = [
+    { seriesId: "event", at: 1000 },
+    { seriesId: "event", at: 1000 },
+  ];
+  const next = applyAlertChange(initial, {
+    kind: "band",
+    id: "remove",
+    enabled: false,
+    patch: {},
+  });
+  expect(next.bands.map((b) => b.seriesId)).toEqual(["keep"]);
+  expect(next.slots).toEqual([{ seriesId: "event", at: 1000 }]);
+  expect(next.channels).toEqual(initial.channels);
+  expect(next.autoLaunch).toBe(initial.autoLaunch);
+  expect(next.notifyWeek).toBe(initial.notifyWeek);
+});

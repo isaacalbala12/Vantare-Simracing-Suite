@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import type { CalendarView } from "../src/contract/generated/calendar";
+import { calendarDefaultAlerts } from "../src/contract/generated/calendar";
 import CalendarEntry from "../src/renderer/screens/calendar/entry";
 import { clock } from "../src/renderer/ui/calendarDate";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
@@ -14,6 +15,7 @@ const model = vi.hoisted(() => ({
   now: 0,
   failure: undefined as string | undefined,
   reload: vi.fn(),
+  alertsState: "ready" as "ready" | "protected" | "unavailable",
   canAlerts: true,
   alert: vi.fn(),
   band: vi.fn(),
@@ -37,6 +39,12 @@ vi.mock("../src/renderer/screens/calendar/CalendarPreferences", () => ({
     canFollow: true,
     canUtc: true,
     canAlerts: model.canAlerts,
+    config: {
+      documents: { alerts: model.alertsState },
+      alerts: calendarDefaultAlerts,
+      following: [],
+      utc: true,
+    },
     alert: model.alert,
     band: model.band,
     follow: vi.fn(),
@@ -138,6 +146,7 @@ beforeEach(() => {
   model.alert.mockClear();
   model.band.mockClear();
   model.canAlerts = true;
+  model.alertsState = "ready";
 });
 afterEach(cleanup);
 it("uses the last checked stamp and restores focus to the source series on return", () => {

@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { isCalendarAlerts } from "../src/contract/calendar-config-validation";
+import {
+  calendarBandsLimit,
+  calendarSlotsLimit,
+} from "../src/contract/generated/calendar";
 import { HostFailure } from "../src/renderer/bridge/client";
 import { useCalendarPreferences } from "../src/renderer/screens/calendar/CalendarPreferences";
 
@@ -27,7 +32,7 @@ const config: import("../src/contract/generated/calendar").CalendarConfigView =
     },
     alertsRevision: "c".repeat(64),
   };
-it("uses the observed revision and retries a conflict only after an explicit action", async () => {
+it("uses the observed revision and requires a new control action after a conflict", async () => {
   host.client.request.mockResolvedValueOnce({
     method: "calendar.configLoad",
     value: config,
@@ -55,6 +60,10 @@ it("uses the observed revision and retries a conflict only after an explicit act
   });
   await act(async () => {
     await hook.result.current.retry();
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    await hook.result.current.utc(true);
   });
   expect(host.client.request).toHaveBeenLastCalledWith({
     method: "calendar.utcSet",
@@ -159,7 +168,7 @@ it("protects a damaged document without blocking another document, then reloads 
   expect(hook.result.current.failure).toBeUndefined();
 });
 
-it("retries a band conflict over the winner without replacing its other preferences", async () => {
+it("requires a fresh band action after conflict and preserves the winner preferences", async () => {
   const initial = structuredClone(config);
   initial.alerts.bands = [
     { seriesId: "qa", from: 1200, to: 1380, days: "all", mode: "each" },
@@ -174,6 +183,8 @@ it("retries a band conflict over the winner without replacing its other preferen
   winner.alertsRevision = "d".repeat(64);
   winner.alerts.bands[0].to = 1410;
   winner.alerts.channels.sound = true;
+  winner.alerts.autoLaunch = true;
+  winner.alerts.notifyWeek = false;
   host.client.request.mockRejectedValueOnce(
     new HostFailure({ kind: "calendarConflict", current: winner }),
   );
@@ -194,11 +205,134 @@ it("retries a band conflict over the winner without replacing its other preferen
   await act(async () => {
     await hook.result.current.retry();
   });
+  expect(host.client.request).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    await hook.result.current.band("qa", {
+      ...winner.alerts.bands[0],
+      from: 1230,
+    });
+  });
   expect(host.client.request).toHaveBeenLastCalledWith({
     method: "calendar.alertsSave",
     alerts: saved.alerts,
     expectedRevision: winner.alertsRevision,
   });
   expect(hook.result.current.config?.alerts.channels.sound).toBe(true);
+  expect(hook.result.current.config?.alerts.autoLaunch).toBe(true);
+  expect(hook.result.current.config?.alerts.notifyWeek).toBe(false);
   expect(hook.result.current.failure).toBeUndefined();
+});
+
+it.each(["band", "slot"] as const)(
+  "explains the %s cap before sending a write",
+  async (kind) => {
+    const full = structuredClone(config);
+    full.alerts.bands =
+      kind === "band"
+        ? Array.from({ length: calendarBandsLimit }, (_, i) => ({
+            seriesId: `qa${i}`,
+            from: 0,
+            to: 1440,
+            days: "all" as const,
+            mode: "each" as const,
+          }))
+        : [];
+    full.alerts.slots =
+      kind === "slot"
+        ? Array.from({ length: calendarSlotsLimit }, (_, i) => ({
+            seriesId: `qa${i}`,
+            at: 1000 + i,
+          }))
+        : [];
+    expect(isCalendarAlerts(full.alerts)).toBe(true);
+    host.client.request.mockResolvedValueOnce({
+      method: "calendar.configLoad",
+      value: full,
+    });
+    const hook = renderHook(() => useCalendarPreferences(true));
+    await act(async () => {});
+    await act(async () => {
+      await hook.result.current.alert(
+        kind === "band"
+          ? { kind: "band", id: "extra", enabled: true, patch: {} }
+          : { kind: "slot", id: "extra", at: 9999, enabled: true },
+      );
+    });
+    expect(host.client.request).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.failure).toBe(
+      kind === "band" ? "bandsLimit" : "slotsLimit",
+    );
+    expect(hook.result.current.failureIntent).toBe("alerts");
+  },
+);
+it("keeps alarm controls available while a pending write is marked busy and blocks double submission", async () => {
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.configLoad",
+    value: config,
+  });
+  const hook = renderHook(() => useCalendarPreferences(true));
+  await act(async () => {});
+  let finish!: (value: unknown) => void;
+  host.client.request.mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  );
+  let pending!: Promise<void>;
+  act(() => {
+    pending = hook.result.current.alert({ kind: "lead", value: 15 });
+  });
+  expect(hook.result.current.canAlerts).toBe(true);
+  expect(hook.result.current.busy).toBe(true);
+  await act(async () => {
+    await hook.result.current.alert({ kind: "lead", value: 30 });
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(2);
+  await act(async () => {
+    finish({
+      method: "calendar.alertsSave",
+      value: { ...config, alerts: { ...config.alerts, leadMin: 15 } },
+    });
+    await pending;
+  });
+  expect(hook.result.current.config?.alerts.leadMin).toBe(15);
+});
+it("ignores a late alert write after access loss and keeps the next session's document", async () => {
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.configLoad",
+    value: config,
+  });
+  const hook = renderHook(({ allowed }) => useCalendarPreferences(allowed), {
+    initialProps: { allowed: true },
+  });
+  await act(async () => {});
+  let finish!: (value: unknown) => void;
+  host.client.request.mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        finish = r;
+      }),
+  );
+  let pending!: Promise<void>;
+  act(() => {
+    pending = hook.result.current.alert({ kind: "lead", value: 15 });
+  });
+  hook.rerender({ allowed: false });
+  const fresh = { ...config, alertsRevision: "f".repeat(64) };
+  host.client.request.mockResolvedValueOnce({
+    method: "calendar.configLoad",
+    value: fresh,
+  });
+  hook.rerender({ allowed: true });
+  await act(async () => {});
+  await act(async () => {
+    finish({
+      method: "calendar.alertsSave",
+      value: { ...config, alerts: { ...config.alerts, leadMin: 15 } },
+    });
+    await pending;
+  });
+  expect(hook.result.current.config).toEqual(fresh);
+  expect(hook.result.current.busy).toBe(false);
 });

@@ -191,8 +191,10 @@ export function CalendarEventsView({
                             data-next={at === next || undefined}
                             data-alert={alerted || undefined}
                             aria-pressed={alerted}
-                            disabled={!onToggleSlot}
-                            onClick={() => onToggleSlot?.(series.id, at)}
+                            disabled={!onToggleSlot || at < now}
+                            onClick={() => {
+                              if (at >= now) onToggleSlot?.(series.id, at);
+                            }}
                           >
                             {alerted && (
                               <span className="v-calendar-event-slot-icon">

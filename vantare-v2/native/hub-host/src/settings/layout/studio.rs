@@ -545,6 +545,10 @@ pub(crate) fn track(
 #[cfg(test)]
 #[path = "studio_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "studio_fuel_content_tests.rs"]
+mod fuel_content_tests;
 #[cfg(test)]
 #[path = "table_preset_tests.rs"]
 mod table_preset_tests;

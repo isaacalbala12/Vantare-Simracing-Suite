@@ -586,3 +586,150 @@ it.each(["standings", "relative", "delta", "pedals"] as const)(
     expect(screen.queryByRole("combobox", { name: t.fuelFormat })).toBeNull();
   },
 );
+
+function legacyItem(kind: "standings" | "delta", templateId?: string) {
+  const item = instance(kind);
+  if (
+    !item.settings ||
+    (item.settings.kind !== "standings" && item.settings.kind !== "delta")
+  )
+    throw new Error("Missing template widget");
+  item.settings.designSystem = "eficiencia";
+  if (templateId !== undefined) item.settings.templateId = templateId;
+  return item;
+}
+it.each([
+  ["standings", "broadcast", "signature", t.designSignature],
+  ["standings", "signature", "broadcast", t.designBroadcast],
+  ["delta", "capsule", "instrument", t.designInstrument],
+  ["delta", "instrument", "capsule", t.designCapsule],
+] as const)(
+  "sends only the %s template %s → %s",
+  async (kind, initial, templateId, label) => {
+    mount(legacyItem(kind, initial));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: t.widgetDesign }));
+    await user.click(await screen.findByRole("option", { name: label }));
+    expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+      method: "studio.instance",
+      id: "widget-1",
+      baseRevision: state.view.revision,
+      patch: { field: "settings", value: { kind, templateId } },
+    });
+  },
+);
+it.each(["standings", "delta"] as const)(
+  "keeps the saved %s design before Look and Brand",
+  (kind) => {
+    mount(legacyItem(kind, kind === "standings" ? "broadcast" : "capsule"));
+    const control = screen.getByRole("combobox", { name: t.widgetDesign });
+    expect(control.textContent).toContain(
+      kind === "standings" ? t.designBroadcast : t.designCapsule,
+    );
+    expect(
+      Boolean(
+        control.compareDocumentPosition(
+          screen.getByRole("combobox", { name: t.widgetLook }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+    if (kind === "standings")
+      expect(
+        Boolean(
+          control.compareDocumentPosition(screen.getByText(t.widgetBrand)) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ).toBe(true);
+  },
+);
+it("chooses Broadcast using the keyboard", async () => {
+  mount(legacyItem("standings", "signature"));
+  const user = userEvent.setup();
+  await user.tab();
+  const control = screen.getByRole("combobox", { name: t.widgetDesign });
+  expect(document.activeElement).toBe(control);
+  await user.keyboard("{ArrowDown}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { selected: true })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{End}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { name: t.designBroadcast })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{Enter}");
+  expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+    method: "studio.instance",
+    id: "widget-1",
+    baseRevision: state.view.revision,
+    patch: {
+      field: "settings",
+      value: { kind: "standings", templateId: "broadcast" },
+    },
+  });
+});
+it.each(["standings", "delta"] as const)(
+  "does not offer the legacy design in Vantare %s",
+  (kind) => {
+    mount(instance(kind));
+    expect(screen.queryByRole("combobox", { name: t.widgetDesign })).toBeNull();
+  },
+);
+it.each(["relative", "pedals", "fuel-strategy"] as const)(
+  "does not invent a legacy design for %s",
+  (kind) => {
+    const item = instance(kind);
+    if (!item.settings) throw new Error("Missing widget");
+    item.settings.designSystem = "eficiencia";
+    mount(item);
+    expect(screen.queryByRole("combobox", { name: t.widgetDesign })).toBeNull();
+  },
+);
+it.each([
+  ["standings", "locked"],
+  ["standings", "unverified"],
+  ["delta", "locked"],
+  ["delta", "unverified"],
+] as const)("disables %s design when %s", async (kind, reason) => {
+  const item = legacyItem(kind);
+  item.locked = reason === "locked";
+  if (reason === "unverified") state.view.plan = "unverified";
+  mount(item);
+  const control = screen.getByRole("combobox", { name: t.widgetDesign });
+  expect(control.hasAttribute("disabled")).toBe(true);
+  expect(control.getAttribute("aria-busy")).toBeNull();
+  await userEvent.setup().click(control);
+  expect(screen.queryByRole("option")).toBeNull();
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it("retains design focus while saving without sending another patch", async () => {
+  const item = legacyItem("delta", "instrument");
+  const mounted = mount(item);
+  const user = userEvent.setup();
+  await user.tab();
+  const control = screen.getByRole("combobox", { name: t.widgetDesign });
+  expect(document.activeElement).toBe(control);
+  state.pending = true;
+  mounted.rerender(
+    <CSPProvider disableStyleElements>
+      <AppearanceInspector item={item} />
+    </CSPProvider>,
+  );
+  expect(document.activeElement).toBe(control);
+  expect(control.hasAttribute("disabled")).toBe(false);
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  await user.click(control);
+  await user.click(
+    await screen.findByRole("option", { name: t.designCapsule }),
+  );
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it("does not present a default design from a protected layout", () => {
+  state.view.state = "protected";
+  mount(legacyItem("standings"));
+  expect(screen.queryByRole("combobox", { name: t.widgetDesign })).toBeNull();
+  expect(screen.getByText(t.appearanceUnavailable)).toBeTruthy();
+});

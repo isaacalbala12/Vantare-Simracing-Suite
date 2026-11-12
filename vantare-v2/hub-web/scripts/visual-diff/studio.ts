@@ -350,3 +350,26 @@ studioScenes["studio-formato-fuel"] = {
       .waitFor();
   },
 };
+
+for (const [scene, widget] of [
+  ["studio-diseno-standings", "Standings"],
+  ["studio-diseno-delta", "Delta"],
+] as const) {
+  studioScenes[scene] = {
+    mock: "studio-base",
+    async prepare(page) {
+      await studioScenes["studio-base"].prepare(page);
+      await page.getByRole("button", { name: widget, exact: true }).click();
+      await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+      await page.getByRole("combobox", { name: "Look", exact: true }).click();
+      await page
+        .getByRole("option", { name: "Eficiencia", exact: true })
+        .click();
+      await page
+        .getByRole("combobox", { name: "Diseño", exact: true })
+        .waitFor();
+      // Global Ctrl+B intentionally ignores events from a combobox.
+      await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    },
+  };
+}

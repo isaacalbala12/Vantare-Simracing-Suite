@@ -267,3 +267,11 @@ it.each(["protected", "unavailable"] as const)(
     expect(screen.queryByRole("checkbox", { name: text.windows })).toBeNull();
   },
 );
+it("previews the delivered text and offers no fictional OS actions", () => {
+  show();
+  const preview = screen.getByRole("region", { name: text.previewLabel });
+  expect(preview.textContent).toContain("en 10 min");
+  for (const label of [text.launch, text.detail, text.snooze])
+    expect(screen.queryByText(label, { exact: true })).toBeNull();
+  expect(screen.getByText(text.previewScope)).toBeTruthy();
+});

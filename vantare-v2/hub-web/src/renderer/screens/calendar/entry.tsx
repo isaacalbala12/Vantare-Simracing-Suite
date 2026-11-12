@@ -537,6 +537,7 @@ export default function CalendarEntry() {
                 following={view?.following.length ?? 0}
                 limit={calendarStartsLimit}
                 notifyWeek={alerts.notifyWeek}
+                alertsState={alertsState}
                 notifyDisabled={
                   !state.allowed ||
                   alertsState !== "ready" ||

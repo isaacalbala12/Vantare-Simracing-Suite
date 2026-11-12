@@ -10,12 +10,16 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
       mock: `onboarding-${step}`,
       async prepare(page: Page) {
         await page.emulateMedia({ reducedMotion: "reduce" });
-        const catalog = new URL(page.url());
-        catalog.searchParams.set("escena", "specimen");
-        await page.goto(catalog.href);
-        await page
-          .getByRole("button", { name: "Configuración inicial", exact: true })
-          .click();
+        // Step 6 must retain the actual first-run fixture, with undecided
+        // consent. Specimen represents an existing user who declined it.
+        if (step !== 6) {
+          const catalog = new URL(page.url());
+          catalog.searchParams.set("escena", "specimen");
+          await page.goto(catalog.href);
+          await page
+            .getByRole("button", { name: "Configuración inicial", exact: true })
+            .click();
+        }
         await page.getByRole("heading", { name: /LO QUE NECESITAS/ }).waitFor();
         if (step >= 1)
           await page
@@ -48,6 +52,17 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
           await page
             .getByRole("button", { name: "Terminar", exact: true })
             .click();
+        if (step === 6)
+          assert.equal(
+            await page
+              .getByRole("switch", {
+                name: "Enviar informes de fallos",
+                exact: true,
+              })
+              .getAttribute("aria-checked"),
+            "true",
+            "First-run crash-report choice must be shown on, without writing it",
+          );
         const primary = page.getByRole("button", {
           name:
             step === 7

@@ -4,6 +4,13 @@ import type { Page } from "playwright-core";
 import { onboardingScenes } from "./onboarding.ts";
 import type { VisualScene } from "./scenes.ts";
 
+function normalizedColor(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/, "#$1$1$2$2$3$3");
+}
+
 async function audit(page: Page, context: "settings" | "onboarding") {
   const selector =
     context === "settings" ? ".v-appearance-groups" : ".v-ob-look";
@@ -35,8 +42,8 @@ async function audit(page: Page, context: "settings" | "onboarding") {
         ? colors["accent-fill"]
         : colors.accent;
     assert.equal(
-      sample.accent.toLowerCase(),
-      expected.toLowerCase(),
+      normalizedColor(sample.accent),
+      normalizedColor(expected),
       `${context}/${sample.palette}/${sample.scheme}`,
     );
   }

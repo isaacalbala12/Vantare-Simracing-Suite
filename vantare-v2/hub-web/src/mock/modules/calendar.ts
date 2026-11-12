@@ -91,6 +91,15 @@ export function create(context: MockContext): MockHandler {
       Object.assign(history, calendarHistoryReference());
     } else value.official = structuredClone(fixture);
   }
+  if (context.sceneName === "calendar-notice-reference") {
+    context.core.access.verified = true;
+    context.core.access.blocked = false;
+    context.core.access.calendar = true;
+    context.core.rights = "connected";
+    context.core.services = "connected";
+    Object.assign(value, calendarReference());
+    Object.assign(history, calendarHistoryReference());
+  }
   const config: CalendarConfigView = {
     utc: false,
     prefsRevision: calendarEmptyRevision,
@@ -105,7 +114,10 @@ export function create(context: MockContext): MockHandler {
     alertsRevision: calendarEmptyRevision,
     documents: { prefs: "ready", following: "ready", alerts: "ready" },
   };
-  if (context.sceneName === "calendar-live-reference")
+  if (
+    context.sceneName === "calendar-live-reference" ||
+    context.sceneName === "calendar-notice-reference"
+  )
     config.alerts = structuredClone(alertsReference) as CalendarAlerts;
   config.utc = value.utc;
   config.following = [...value.following];
@@ -115,7 +127,9 @@ export function create(context: MockContext): MockHandler {
   // Main and renderer have separate clocks. Only this fixed visual QA scene
   // uses the bank date; ordinary mocks and production keep the actual clock.
   const clock = () =>
-    context.visual && context.sceneName === "calendar-live-reference"
+    context.visual &&
+    (context.sceneName === "calendar-live-reference" ||
+      context.sceneName === "calendar-notice-reference")
       ? calendarReferenceNow
       : Date.now();
   let lastNoticeTest = -Infinity;

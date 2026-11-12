@@ -336,3 +336,17 @@ studioScenes["studio-formato-delta"] = {
     await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
   },
 };
+
+studioScenes["studio-formato-fuel"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page
+      .getByRole("button", { name: "Fuel y stint", exact: true })
+      .click();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    await page
+      .getByRole("combobox", { name: "Formato Fuel y stint", exact: true })
+      .waitFor();
+  },
+};

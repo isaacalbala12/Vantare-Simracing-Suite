@@ -1,4 +1,4 @@
-//! Fixed byte oracles, run in CI with both serde_json map representations.
+//! Fixed byte oracles, run in CI with both `serde_json` map representations.
 use crate::{calendar, launcher, test_support::Root};
 use std::collections::BTreeMap;
 use vantare_launcher::{Document, Profile, Step, discovery, legacy, policy};

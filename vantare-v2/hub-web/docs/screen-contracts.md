@@ -449,7 +449,7 @@ Main lo consume antes del puerto del renderer y presenta texto localizado con
 la API `Notification`; no ejecuta acciones al pulsarlo. El presentador es reutilizable
 por otras fuentes, pero este PR no conecta Launcher, actualizaciones ni informes.
 
-Solo se emite con cuenta verificada, no bloqueada, derecho Calendar y vínculo de
+Solo se emite tras aceptar el protocolo, con cuenta verificada, no bloqueada, derecho Calendar y vínculo de
 derechos conectado, documento de avisos legible, horario vigente y canal Windows.
 El reloj y el instante monotónico son inyectables. La deduplicación dura hasta
 la salida/final de semana y está acotada; no hay cola persistente ni hilos nuevos.

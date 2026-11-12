@@ -334,3 +334,35 @@ it("keeps the main-process test clock independent of the visual bank date", () =
   expect(event.event.value.issuedAt).toBeGreaterThanOrEqual(before);
   expect(event.event.value.expiresAt).toBeGreaterThan(Date.now());
 });
+
+import settingsCorpus from "../src/contract/generated/corpus/settings.json";
+import { testNotification } from "../src/main/appearance";
+
+it("keeps Calendar independent of general.toasts while preserving the settings test gate", () => {
+  vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+  const sample = (settingsCorpus.host as unknown as HostToUi[]).find(
+    (m) => m.kind === "response" && m.result.method === "settings.get",
+  );
+  if (sample?.kind !== "response" || sample.result.method !== "settings.get")
+    throw Error("missing settings view");
+  const settings = structuredClone(sample.result.value);
+  settings.general.toasts = false;
+  expect(testNotification(settings)).toBe(false);
+  expect(electron.show).not.toHaveBeenCalled();
+  const session = calendarNoticeSession(presentSystemNotice, () => 1000);
+  session.receive({
+    kind: "start",
+    id: "d".repeat(64),
+    issuedAt: 1000,
+    expiresAt: 61000,
+    at: 601000,
+    series: "QA",
+    track: "Spa",
+    raceMinutes: 30,
+    silent: true,
+  });
+  expect(electron.show).toHaveBeenCalledOnce();
+  settings.general.toasts = true;
+  expect(testNotification(settings)).toBe(true);
+  expect(electron.show).toHaveBeenCalledTimes(2);
+});

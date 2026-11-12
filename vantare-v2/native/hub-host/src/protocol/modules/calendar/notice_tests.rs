@@ -264,3 +264,34 @@ fn protected_or_unavailable_documents_cannot_emit_default_notifications() {
         );
     }
 }
+#[test]
+fn expired_fallback_does_not_hide_an_advancing_current_official_week() {
+    let (mut view, mut alerts, _) = setup();
+    alerts.bands.clear();
+    alerts.notify_week = true;
+    view.official.as_mut().unwrap().valid_until = "2026-11-23T00:00:00Z".into();
+    let mut fallback = view.official.clone().unwrap();
+    fallback.valid_from = "2026-11-16T00:00:00Z".into();
+    fallback.valid_until = "2026-11-17T00:00:00Z".into();
+    view.fallback = Some(fallback);
+    let now = date_millis("2026-11-18T12:00:00Z").unwrap();
+    let clock = Instant::now();
+    let mut s = Scheduler::default();
+    assert!(
+        s.tick(&view, &alerts, (now, clock), true, false, &Utc)
+            .is_empty()
+    );
+    view.official.as_mut().unwrap().valid_from = "2026-11-16T00:00:00Z".into();
+    assert!(matches!(
+        s.tick(
+            &view,
+            &alerts,
+            (now + 1000, clock + Duration::from_secs(1)),
+            true,
+            false,
+            &Utc
+        )
+        .as_slice(),
+        [CalendarNotice::Week { .. }]
+    ));
+}

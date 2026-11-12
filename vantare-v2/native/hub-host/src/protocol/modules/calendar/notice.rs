@@ -162,15 +162,20 @@ impl Scheduler {
             return vec![];
         }
         self.seen.retain(|_, end| *end >= now);
+        let current = agenda::current(view, now);
         let since = self.since.replace(now);
         let previous_week = self.week;
-        if let Some(week) = known_week(view, now) {
+        if let Some(week) = current
+            .as_ref()
+            .and_then(|schedule| date_millis(&schedule.valid_from))
+            .or_else(|| known_week(view, now))
+        {
             self.week = Some(self.week.map_or(week, |old| old.max(week)));
         }
         let Some(since) = since.filter(|since| *since <= now) else {
             return vec![];
         };
-        let Some(schedule) = agenda::current(view, now) else {
+        let Some(schedule) = current else {
             return vec![];
         };
         if !alerts.channels.windows {

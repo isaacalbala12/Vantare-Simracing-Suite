@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "piece": 1,
+  "source_sha": "53050828b3a843c3e32d3eeb62d07f4d13fb7c55",
+  "rune_sha": "d5338988a7c1b3377adb60853815b6d0843dae7c",
+  "rust": "1.99.1",
+  "minimum_rust_tested": false,
+  "host": {
+    "os": "macOS 26.6.2",
+    "arch": "arm64",
+    "ram_gib": 16
+  },
+  "target": "x86_64-pc-windows-msvc",
+  "profile": {
+    "opt_level": 3,
+    "lto": false,
+    "codegen_units": 16,
+    "debug": false,
+    "incremental": false,
+    "jobs": 4,
+    "sccache": false
+  },
+  "packages_windows_normal": 185,
+  "packages_including_hello": 186,
+  "packages_lock_all_platforms": 433,
+  "clean_cargo_timing_s": 92.77,
+  "incremental_changed_text_cargo_timing_s": 10.9,
+  "guard_elapsed_s": {
+    "clean": 94.43677979198401,
+    "incremental_changed_text": 12.136436917004175
+  },
+  "timing_note": "Cargo UNIT_DATA max(start+duration). Guard wall times include startup and up to 2 s polling overhead in this first guard version.",
+  "exe": {
+    "bytes": 26580480,
+    "sha256": "ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb",
+    "required_redistributable": "VCRUNTIME140.dll"
+  },
+  "checks": {
+    "windows_release": true,
+    "runtime_native_passed": 1,
+    "runtime_native_failed": 0,
+    "clippy_windows_all_targets": true,
+    "fmt": true,
+    "gui_executed": false
+  },
+  "pending": [
+    "Run on Isaac gaming PC",
+    "Final variant comparison",
+    "Other pieces 2-11"
+  ]
+}

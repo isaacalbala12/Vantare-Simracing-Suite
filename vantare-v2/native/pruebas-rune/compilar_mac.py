@@ -91,7 +91,10 @@ def main():
                     reason = "disk_approaching_15_gib"
                     stop_group(process)
                     break
-                time.sleep(2)
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    pass
         except KeyboardInterrupt:
             reason = "cancelled_by_operator"
             if process is not None:

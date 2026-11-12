@@ -21,8 +21,15 @@ Windows / 24,19 GiB test nativo. Dumpbin exige incluir VCRUNTIME140.dll.
 Piezas 2+3: checkpoint 2837d460e, preparado en el Mac, sin build/replay aun.
 Analizador: 12 casos sinteticos en desarrollo; no hay mediciones de producto.
 Evidencia: D:/VantareServer/evidence/rune-vs-gpui/CONSTRUCCION.md.
-Kit incompleto; sin PR, CI, merge, promocion o release. Siguiente: fmt/Clippy,
-medidas limpia/incremental del esqueleto, PR draft pieza 1 y replay real.
+Pieza 1 lista para PR draft: fmt y Clippy Windows --all-targets -D warnings PASS.
+Cargo timings del Mac: limpio 92,77 s / incremental cambiando texto 10,90 s;
+SDK y fuentes ya descargados, sccache desactivado, cuatro jobs. Las medidas
+94,44 / 12,14 s del supervisor incluyen arranque y hasta dos segundos de
+sondeo, por eso se conservan aparte. Datos versionados en pruebas-rune/medidas.
+Binario final fuente 53050828b, SHA256
+ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
+Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
+Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
 
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 

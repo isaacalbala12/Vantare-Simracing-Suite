@@ -22,6 +22,7 @@
 use self::options::ColumnPresentation as _;
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;
+use vantare_domain::widget_settings::columns as column_keys;
 #[cfg(test)]
 mod contract_tests;
 mod eficiencia;
@@ -80,57 +81,65 @@ pub fn shift_column(columns: &mut Vec<options::ColumnSetting>, metric: &str, ste
 #[must_use]
 pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
     let (driver, on): (&str, &[&str]) = match name {
-        "compact" => ("sm", &["position", "driverNumber", "driverName", "gap"]),
-        "expanded" => (
-            "lg",
+        "compact" => (
+            column_keys::COLUMN_WIDTH_SM,
             &[
-                "position",
-                "positionsGained",
-                "driverNumber",
-                "driverName",
-                "vehicle",
-                "tireCompound",
-                "pit",
-                "sectors",
-                "lastLap",
-                "bestLap",
-                "gap",
+                column_keys::COLUMN_METRIC_POSITION,
+                column_keys::COLUMN_METRIC_DRIVER_NUMBER,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_GAP,
+            ],
+        ),
+        "expanded" => (
+            column_keys::COLUMN_WIDTH_LG,
+            &[
+                column_keys::COLUMN_METRIC_POSITION,
+                column_keys::COLUMN_METRIC_POSITIONS_GAINED,
+                column_keys::COLUMN_METRIC_DRIVER_NUMBER,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_VEHICLE,
+                column_keys::COLUMN_METRIC_TIRE_COMPOUND,
+                column_keys::COLUMN_METRIC_PIT,
+                column_keys::COLUMN_METRIC_SECTORS,
+                column_keys::COLUMN_METRIC_LAST_LAP,
+                column_keys::COLUMN_METRIC_BEST_LAP,
+                column_keys::COLUMN_METRIC_GAP,
             ],
         ),
         _ => (
-            "md",
+            column_keys::COLUMN_WIDTH_MD,
             &[
-                "position",
-                "positionsGained",
-                "driverName",
-                "vehicle",
-                "gap",
+                column_keys::COLUMN_METRIC_POSITION,
+                column_keys::COLUMN_METRIC_POSITIONS_GAINED,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_VEHICLE,
+                column_keys::COLUMN_METRIC_GAP,
             ],
         ),
     };
     [
-        "position",
-        "positionsGained",
-        "driverNumber",
-        "driverName",
-        "vehicle",
-        "tireCompound",
-        "pit",
-        "sectors",
-        "lastLap",
-        "bestLap",
-        "interval",
-        "gap",
+        column_keys::COLUMN_METRIC_POSITION,
+        column_keys::COLUMN_METRIC_POSITIONS_GAINED,
+        column_keys::COLUMN_METRIC_DRIVER_NUMBER,
+        column_keys::COLUMN_METRIC_DRIVER_NAME,
+        column_keys::COLUMN_METRIC_VEHICLE,
+        column_keys::COLUMN_METRIC_TIRE_COMPOUND,
+        column_keys::COLUMN_METRIC_PIT,
+        column_keys::COLUMN_METRIC_SECTORS,
+        column_keys::COLUMN_METRIC_LAST_LAP,
+        column_keys::COLUMN_METRIC_BEST_LAP,
+        column_keys::COLUMN_METRIC_INTERVAL,
+        column_keys::COLUMN_METRIC_GAP,
     ]
     .iter()
     .map(|metric| options::ColumnSetting {
         id: (*metric).into(),
         metric_id: (*metric).into(),
         enabled: on.contains(metric),
-        width_preset: if *metric == "driverName" {
+        width_preset: if *metric == column_keys::COLUMN_METRIC_DRIVER_NAME {
             driver.into()
         } else {
-            "auto".into()
+            column_keys::COLUMN_WIDTH_AUTO.into()
         },
         ..options::ColumnSetting::default()
     })

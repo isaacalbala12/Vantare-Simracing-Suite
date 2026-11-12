@@ -1,5 +1,6 @@
 //! Chrome del Workshop; el widget sigue siendo el Overlay productivo.
 use super::*;
+use vantare_domain::widget_settings as widget;
 
 impl Workshop {
     /// Grupos Aspecto (estilo y acento) y Marca de los widgets Vantare.
@@ -580,11 +581,30 @@ impl Render for Workshop {
                     .child(Self::segments(
                         Control::Setting("classScope"),
                         &current("classScope"),
-                        &[("all", "Todas las clases"), ("sameClass", "Mi clase")],
+                        &[
+                            (widget::relative::RELATIVE_SCOPE_ALL, "Todas las clases"),
+                            (widget::relative::RELATIVE_SCOPE_SAME_CLASS, "Mi clase"),
+                        ],
                         cx,
                     ))
-                    .child(self.setting("rangeAhead", "Delante", numbers(0..=8), cx))
-                    .child(self.setting("rangeBehind", "Detrás", numbers(0..=8), cx))
+                    .child(self.setting(
+                        "rangeAhead",
+                        "Delante",
+                        numbers(
+                            widget::relative::RELATIVE_RANGE_MIN
+                                ..=widget::relative::RELATIVE_RANGE_MAX,
+                        ),
+                        cx,
+                    ))
+                    .child(self.setting(
+                        "rangeBehind",
+                        "Detrás",
+                        numbers(
+                            widget::relative::RELATIVE_RANGE_MIN
+                                ..=widget::relative::RELATIVE_RANGE_MAX,
+                        ),
+                        cx,
+                    ))
             } else {
                 group("Modo").child(Self::segments(
                     Control::Setting("classificationMode"),
@@ -597,7 +617,10 @@ impl Render for Workshop {
                 modes = modes.child(div().mt(px(6.0)).child(Self::segments(
                     Control::Setting("classScope"),
                     &current("classScope"),
-                    &[("player-class", "Mi clase"), ("all-classes", "Todas")],
+                    &[
+                        (widget::standings::STANDINGS_SCOPE_PLAYER_CLASS, "Mi clase"),
+                        (widget::standings::STANDINGS_SCOPE_ALL_CLASSES, "Todas"),
+                    ],
                     cx,
                 )));
             }
@@ -693,7 +716,15 @@ impl Render for Workshop {
                 .child(
                     group(if relative { "Nombre" } else { "Filas y nombre" })
                         .when(!relative, |g| {
-                            g.child(self.setting("rowCount", "Filas", numbers(1..=30), cx))
+                            g.child(self.setting(
+                                "rowCount",
+                                "Filas",
+                                numbers(
+                                    widget::standings::STANDINGS_ROWS_MIN
+                                        ..=widget::standings::STANDINGS_ROWS_MAX,
+                                ),
+                                cx,
+                            ))
                         })
                         .child(self.picker(
                             Control::Name,
@@ -738,7 +769,15 @@ impl Render for Workshop {
                 )))
                 .child(
                     group("Filas")
-                        .child(self.setting("rowCount", "Pilotos totales", numbers(1..=30), cx))
+                        .child(self.setting(
+                            "rowCount",
+                            "Pilotos totales",
+                            numbers(
+                                widget::standings::STANDINGS_ROWS_MIN
+                                    ..=widget::standings::STANDINGS_ROWS_MAX,
+                            ),
+                            cx,
+                        ))
                         .child(self.setting(
                             "playerWindow",
                             "Ventana del jugador",
@@ -755,8 +794,24 @@ impl Render for Workshop {
         } else if self.kind == Kind::Relative {
             panel = panel.child(
                 group("Ventana")
-                    .child(self.setting("rangeAhead", "Delante", numbers(0..=8), cx))
-                    .child(self.setting("rangeBehind", "Detrás", numbers(0..=8), cx)),
+                    .child(self.setting(
+                        "rangeAhead",
+                        "Delante",
+                        numbers(
+                            widget::relative::RELATIVE_RANGE_MIN
+                                ..=widget::relative::RELATIVE_RANGE_MAX,
+                        ),
+                        cx,
+                    ))
+                    .child(self.setting(
+                        "rangeBehind",
+                        "Detrás",
+                        numbers(
+                            widget::relative::RELATIVE_RANGE_MIN
+                                ..=widget::relative::RELATIVE_RANGE_MAX,
+                        ),
+                        cx,
+                    )),
             );
         } else if self.kind == Kind::Delta {
             panel = panel.child(group("Estilo").child(self.setting(
@@ -836,15 +891,15 @@ impl Render for Workshop {
                 .child(
                     group("Pie de datos").children(
                         [
-                            ("time", "Tiempo"),
-                            ("lap", "Vuelta"),
-                            ("position", "Posición"),
-                            ("gap", "Diferencia"),
-                            ("bestLap", "Mejor vuelta"),
-                            ("lastLap", "Última vuelta"),
-                            ("track", "Pista"),
-                            ("ambient", "Aire"),
-                            ("wind", "Viento"),
+                            (widget::FOOTER_TIME, "Tiempo"),
+                            (widget::FOOTER_LAP, "Vuelta"),
+                            (widget::FOOTER_POSITION, "Posición"),
+                            (widget::FOOTER_GAP, "Diferencia"),
+                            (widget::FOOTER_BEST_LAP, "Mejor vuelta"),
+                            (widget::FOOTER_LAST_LAP, "Última vuelta"),
+                            (widget::FOOTER_TRACK, "Pista"),
+                            (widget::FOOTER_AMBIENT, "Aire"),
+                            (widget::FOOTER_WIND, "Viento"),
                         ]
                         .into_iter()
                         .map(|(id, label)| {
@@ -870,7 +925,14 @@ impl Render for Workshop {
                         options(&[("false", "Con panel"), ("true", "Transparente")]),
                         cx,
                     ))
-                    .child(self.setting("gap", "Separación (px)", numbers(0..=12), cx)),
+                    .child(self.setting(
+                        "gap",
+                        "Separación (px)",
+                        numbers(
+                            widget::pedals::GAP_MIN as usize..=widget::pedals::GAP_MAX as usize,
+                        ),
+                        cx,
+                    )),
             );
         } else if self.kind == Kind::FastestLap {
             panel = panel.child(

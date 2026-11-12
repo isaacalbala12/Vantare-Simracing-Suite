@@ -1,4 +1,17 @@
 //! Pure persisted settings used by widgets and document editors.
+pub const FOOTER_ITEMS_MAX: usize = 9;
+pub const TABLE_SIZE_COMPACT: &str = "compact";
+pub const TABLE_SIZE_STANDARD: &str = "standard";
+pub const TABLE_SIZE_EXPANDED: &str = "expanded";
+pub const FOOTER_TIME: &str = "time";
+pub const FOOTER_LAP: &str = "lap";
+pub const FOOTER_POSITION: &str = "position";
+pub const FOOTER_GAP: &str = "gap";
+pub const FOOTER_BEST_LAP: &str = "bestLap";
+pub const FOOTER_LAST_LAP: &str = "lastLap";
+pub const FOOTER_TRACK: &str = "track";
+pub const FOOTER_AMBIENT: &str = "ambient";
+pub const FOOTER_WIND: &str = "wind";
 pub mod columns;
 pub mod delta;
 pub mod fuel_strategy;

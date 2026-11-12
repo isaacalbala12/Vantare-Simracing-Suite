@@ -1,6 +1,11 @@
 //! Stored widget settings; extracted without changing serialization or normalization.
+pub const FUEL_HISTORY_MIN: u8 = 1;
+pub const FUEL_HISTORY_MAX: u8 = 8;
+pub const FUEL_HISTORY_STEP: u8 = 1;
 use crate::fuel_strategy;
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
+#[cfg_attr(feature = "bindings", ts(rename = "FuelStrategyWidgetSettings"))]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
@@ -34,7 +39,7 @@ impl Settings {
             design_system,
             style: crate::look::Tone::Neo,
             accent: crate::look::Accent::Red,
-            size: "standard".into(),
+            size: super::TABLE_SIZE_STANDARD.into(),
             brand_visible: None,
             content_version: 1,
             history_rows: fuel_strategy::Config::default().history_rows,
@@ -70,7 +75,7 @@ impl Settings {
             history_rows: if legacy_rich {
                 4
             } else {
-                self.history_rows.clamp(1, 8)
+                self.history_rows.clamp(FUEL_HISTORY_MIN, FUEL_HISTORY_MAX)
             },
             show_projection: if legacy_rich {
                 true
@@ -85,8 +90,8 @@ impl Settings {
             .into(),
             units: "liters".into(),
             size: match self.size.as_str() {
-                "compact" | "expanded" => self.size.clone(),
-                _ => "standard".into(),
+                super::TABLE_SIZE_COMPACT | super::TABLE_SIZE_EXPANDED => self.size.clone(),
+                _ => super::TABLE_SIZE_STANDARD.into(),
             },
             ..self.clone()
         }

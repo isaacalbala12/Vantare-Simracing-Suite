@@ -1,5 +1,14 @@
 //! Stored widget settings; extracted without changing serialization or normalization.
+pub const RELATIVE_RANGE_MAX: usize = 8;
+pub const RELATIVE_RANGE_MIN: usize = 0;
+pub const RELATIVE_RANGE_STEP: usize = 1;
+/// Only when content version is zero and the design system is Eficiencia (legacy).
+pub const RELATIVE_LEGACY_EFICIENCIA_COLUMNS_MAX: usize = 7;
+pub const RELATIVE_SCOPE_ALL: &str = "all";
+pub const RELATIVE_SCOPE_SAME_CLASS: &str = "sameClass";
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
+#[cfg_attr(feature = "bindings", ts(rename = "RelativeWidgetSettings"))]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
@@ -39,7 +48,7 @@ impl Settings {
             columns: None,
             range_ahead: 3,
             range_behind: 3,
-            class_scope: "sameClass".into(),
+            class_scope: RELATIVE_SCOPE_SAME_CLASS.into(),
             include_player: true,
             row_height_mode: "compact".into(),
             footer_slots: Vec::new(),
@@ -77,23 +86,23 @@ impl Settings {
     #[must_use]
     pub fn normalized(&self) -> Self {
         let mut value = self.clone();
-        value.range_ahead = value.range_ahead.min(8);
-        value.range_behind = value.range_behind.min(8);
+        value.range_ahead = value.range_ahead.min(RELATIVE_RANGE_MAX);
+        value.range_behind = value.range_behind.min(RELATIVE_RANGE_MAX);
         value.include_player = true;
         if value.content_version == 0 && value.design_system == crate::look::Look::Vantare {
-            value.class_scope = "sameClass".into();
-        } else if value.class_scope != "sameClass" {
-            value.class_scope = "all".into();
+            value.class_scope = RELATIVE_SCOPE_SAME_CLASS.into();
+        } else if value.class_scope != RELATIVE_SCOPE_SAME_CLASS {
+            value.class_scope = RELATIVE_SCOPE_ALL.into();
         }
         if value.row_height_mode != "fill" {
             value.row_height_mode = "compact".into();
         }
-        value.footer_slots.truncate(9);
+        value.footer_slots.truncate(super::FOOTER_ITEMS_MAX);
         if value.content_version == 0
             && value.design_system == crate::look::Look::Eficiencia
             && let Some(columns) = &mut value.columns
         {
-            columns.truncate(7);
+            columns.truncate(RELATIVE_LEGACY_EFICIENCIA_COLUMNS_MAX);
             columns.retain(|c| {
                 [
                     "position",

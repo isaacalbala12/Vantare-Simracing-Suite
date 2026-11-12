@@ -1,5 +1,15 @@
 //! Stored widget settings; extracted without changing serialization or normalization.
+pub const DELTA_SIZE_PILL: &str = "pill";
+pub const DELTA_SIZE_BAR: &str = "bar";
+pub const DELTA_SIZE_EXPANDED: &str = "expanded";
+pub const DELTA_REFERENCE_BEST: &str = "best";
+pub const DELTA_REFERENCE_OPTIMAL: &str = "optimal";
+pub const DELTA_REFERENCE_LEADER: &str = "leader";
+pub const DELTA_TEMPLATE_INSTRUMENT: &str = "instrument";
+pub const DELTA_TEMPLATE_CAPSULE: &str = "capsule";
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
+#[cfg_attr(feature = "bindings", ts(rename = "DeltaWidgetSettings"))]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
@@ -38,13 +48,13 @@ impl Settings {
             content_version: 1,
             style: crate::look::Tone::Neo,
             accent: crate::look::Accent::Red,
-            size: "pill".into(),
-            reference: "best".into(),
+            size: DELTA_SIZE_PILL.into(),
+            reference: DELTA_REFERENCE_BEST.into(),
             show_bar: true,
             show_sectors: true,
             transparent_background: false,
             brand_visible: None,
-            template_id: "instrument".into(),
+            template_id: DELTA_TEMPLATE_INSTRUMENT.into(),
         }
     }
 }
@@ -75,25 +85,25 @@ impl Settings {
     pub fn normalized(&self) -> Self {
         Self {
             content_version: 1,
-            template_id: if self.template_id == "capsule" {
-                "capsule"
+            template_id: if self.template_id == DELTA_TEMPLATE_CAPSULE {
+                DELTA_TEMPLATE_CAPSULE
             } else {
-                "instrument"
+                DELTA_TEMPLATE_INSTRUMENT
             }
             .into(),
             size: match self.size.as_str() {
-                "bar" | "expanded" => self.size.clone(),
-                _ => "pill".into(),
+                DELTA_SIZE_BAR | DELTA_SIZE_EXPANDED => self.size.clone(),
+                _ => DELTA_SIZE_PILL.into(),
             },
             reference: match if self.content_version == 0
                 && self.design_system == crate::look::Look::Eficiencia
             {
-                "best"
+                DELTA_REFERENCE_BEST
             } else {
                 self.reference.as_str()
             } {
-                "optimal" | "leader" => self.reference.clone(),
-                _ => "best".into(),
+                DELTA_REFERENCE_OPTIMAL | DELTA_REFERENCE_LEADER => self.reference.clone(),
+                _ => DELTA_REFERENCE_BEST.into(),
             },
             ..self.clone()
         }

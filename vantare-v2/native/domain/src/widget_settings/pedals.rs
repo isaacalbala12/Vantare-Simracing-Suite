@@ -1,4 +1,5 @@
 //! Stored widget settings; extracted without changing serialization or normalization.
+pub const GAP_STEP: f32 = 1.0;
 pub const GAP_MAX: f32 = 12.0;
 
 pub const GAP_MIN: f32 = 0.0;
@@ -6,6 +7,8 @@ pub const GAP_MIN: f32 = 0.0;
 pub const DEFAULT_GAP: f32 = 2.0;
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
+#[cfg_attr(feature = "bindings", ts(rename = "PedalsWidgetSettings"))]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     /// Look: los layouts anteriores a #1566 no lo guardan y siguen en Eficiencia.

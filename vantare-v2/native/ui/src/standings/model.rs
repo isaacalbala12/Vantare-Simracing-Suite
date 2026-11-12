@@ -6,6 +6,7 @@
 use vantare_domain::format::Language;
 #[cfg(test)]
 use vantare_domain::format::Preferences;
+use vantare_domain::widget_settings::columns as keys;
 #[cfg(test)]
 use vantare_domain::{Capability, SourceState, standings};
 
@@ -74,10 +75,10 @@ pub(crate) enum NameMode {
 impl NameMode {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Full => "full",
-            Self::Initial => "initial",
-            Self::Surname => "surname",
-            Self::Truncate => "truncate",
+            Self::Full => keys::COLUMN_NAME_FULL,
+            Self::Initial => keys::COLUMN_NAME_INITIAL,
+            Self::Surname => keys::COLUMN_NAME_SURNAME,
+            Self::Truncate => keys::COLUMN_NAME_TRUNCATE,
         }
     }
 }

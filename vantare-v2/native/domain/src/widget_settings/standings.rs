@@ -1,7 +1,42 @@
 //! Stored widget settings; extracted without changing serialization or normalization.
+pub const STANDINGS_ROWS_MIN: usize = 1;
+pub const STANDINGS_ROWS_MAX: usize = 30;
+pub const STANDINGS_ROWS_STEP: usize = 1;
+pub const STANDINGS_COLUMNS_MAX: usize = 12;
+pub const STANDINGS_CLASSIFICATION_NORMAL: &str = "normal";
+pub const STANDINGS_CLASSIFICATION_MULTICLASS: &str = "multiclass";
+pub const STANDINGS_TEMPLATE_SIGNATURE: &str = "signature";
+pub const STANDINGS_TEMPLATE_BROADCAST: &str = "broadcast";
+pub const STANDINGS_TEMPLATES: &[&str] =
+    &[STANDINGS_TEMPLATE_SIGNATURE, STANDINGS_TEMPLATE_BROADCAST];
+pub const STANDINGS_SCOPE_PLAYER_CLASS: &str = "player-class";
+pub const STANDINGS_SCOPE_ALL_CLASSES: &str = "all-classes";
+pub const STANDINGS_WINDOW_AROUND: &[usize] = &[0, 2, 4, 6, 8];
+pub const STANDINGS_INFO_NONE: &str = "none";
+pub const STANDINGS_INFO_TRACK_TEMPERATURE: &str = "trackTemperature";
+pub const STANDINGS_INFO_AIR_TEMPERATURE: &str = "airTemperature";
+pub const STANDINGS_INFO_ESTIMATED_LAPS: &str = "estimatedLaps";
+pub const STANDINGS_INFO_TOTAL_LAPS: &str = "totalLaps";
+pub const STANDINGS_INFO_TRACK: &str = "track";
+pub const STANDINGS_INFO_REMAINING: &str = "remaining";
+pub const STANDINGS_INFO_RAIN: &str = "rain";
+pub const STANDINGS_INFO_WETNESS: &str = "wetness";
+pub const STANDINGS_INFORMATION_KEYS: &[&str] = &[
+    STANDINGS_INFO_NONE,
+    STANDINGS_INFO_TRACK_TEMPERATURE,
+    STANDINGS_INFO_AIR_TEMPERATURE,
+    STANDINGS_INFO_ESTIMATED_LAPS,
+    STANDINGS_INFO_TOTAL_LAPS,
+    STANDINGS_INFO_TRACK,
+    STANDINGS_INFO_REMAINING,
+    STANDINGS_INFO_RAIN,
+    STANDINGS_INFO_WETNESS,
+];
 use super::columns as options;
 use super::look::{Accent, Look, Tone};
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
+#[cfg_attr(feature = "bindings", ts(rename = "StandingsWidgetSettings"))]
 #[serde(default, rename_all = "camelCase")]
 #[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
 pub struct Settings {
@@ -56,17 +91,17 @@ impl Settings {
             columns: None,
             practice_columns: None,
             qualifying_columns: None,
-            class_scope: "player-class".into(),
-            classification_mode: "normal".into(),
+            class_scope: STANDINGS_SCOPE_PLAYER_CLASS.into(),
+            classification_mode: STANDINGS_CLASSIFICATION_NORMAL.into(),
             player_window: false,
             window_around: 4,
             show_session_header: true,
-            template_id: "signature".into(),
-            header_first: "none".into(),
-            header_second: "none".into(),
+            template_id: STANDINGS_TEMPLATE_SIGNATURE.into(),
+            header_first: STANDINGS_INFO_NONE.into(),
+            header_second: STANDINGS_INFO_NONE.into(),
             show_session_footer: true,
-            footer_first: "track".into(),
-            footer_second: "estimatedLaps".into(),
+            footer_first: STANDINGS_INFO_TRACK.into(),
+            footer_second: STANDINGS_INFO_ESTIMATED_LAPS.into(),
             show_brand: false,
             brand_visible: None,
             footer_slots: None,
@@ -93,23 +128,26 @@ impl Settings {
     #[must_use]
     pub fn normalized(&self) -> Self {
         let mut settings = self.clone();
-        settings.row_count = settings.row_count.clamp(1, 30);
-        if settings.class_scope != "all-classes" {
-            settings.class_scope = "player-class".into();
+        settings.row_count = settings
+            .row_count
+            .clamp(STANDINGS_ROWS_MIN, STANDINGS_ROWS_MAX);
+        if settings.class_scope != STANDINGS_SCOPE_ALL_CLASSES {
+            settings.class_scope = STANDINGS_SCOPE_PLAYER_CLASS.into();
         }
-        if settings.classification_mode != "multiclass" {
-            settings.classification_mode = "normal".into();
+        if settings.classification_mode != STANDINGS_CLASSIFICATION_MULTICLASS {
+            settings.classification_mode = STANDINGS_CLASSIFICATION_NORMAL.into();
         }
         if settings.content_version == 0 && settings.design_system == Look::Vantare {
-            settings.class_scope = if settings.classification_mode == "multiclass" {
-                "all-classes"
-            } else {
-                "player-class"
-            }
-            .into();
+            settings.class_scope =
+                if settings.classification_mode == STANDINGS_CLASSIFICATION_MULTICLASS {
+                    STANDINGS_SCOPE_ALL_CLASSES
+                } else {
+                    STANDINGS_SCOPE_PLAYER_CLASS
+                }
+                .into();
         }
         settings.content_version = 1;
-        if ![0, 2, 4, 6, 8].contains(&settings.window_around) {
+        if !STANDINGS_WINDOW_AROUND.contains(&settings.window_around) {
             settings.window_around = 4;
         }
         for columns in [
@@ -120,31 +158,21 @@ impl Settings {
         .into_iter()
         .flatten()
         {
-            columns.truncate(12);
+            columns.truncate(STANDINGS_COLUMNS_MAX);
         }
         if let Some(slots) = &mut settings.footer_slots {
-            slots.truncate(9);
+            slots.truncate(super::FOOTER_ITEMS_MAX);
         }
 
-        if !["signature", "broadcast"].contains(&settings.template_id.as_str()) {
-            settings.template_id = "signature".into();
+        if !STANDINGS_TEMPLATES.contains(&settings.template_id.as_str()) {
+            settings.template_id = STANDINGS_TEMPLATE_SIGNATURE.into();
         }
-        let choices = [
-            "none",
-            "trackTemperature",
-            "airTemperature",
-            "estimatedLaps",
-            "totalLaps",
-            "track",
-            "remaining",
-            "rain",
-            "wetness",
-        ];
+        let choices = STANDINGS_INFORMATION_KEYS;
         for (value, fallback) in [
-            (&mut settings.header_first, "none"),
-            (&mut settings.header_second, "none"),
-            (&mut settings.footer_first, "track"),
-            (&mut settings.footer_second, "estimatedLaps"),
+            (&mut settings.header_first, STANDINGS_INFO_NONE),
+            (&mut settings.header_second, STANDINGS_INFO_NONE),
+            (&mut settings.footer_first, STANDINGS_INFO_TRACK),
+            (&mut settings.footer_second, STANDINGS_INFO_ESTIMATED_LAPS),
         ] {
             if !choices.contains(&value.as_str()) {
                 *value = fallback.into();

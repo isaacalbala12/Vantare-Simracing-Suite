@@ -330,8 +330,8 @@ pub(crate) fn track_window<'a>(
     same_class: bool,
     other_class: bool,
 ) -> Vec<Option<&'a Car>> {
-    let ahead_count = ahead_count.min(8);
-    let behind_count = behind_count.min(8);
+    let ahead_count = ahead_count.min(crate::widget_settings::relative::RELATIVE_RANGE_MAX);
+    let behind_count = behind_count.min(crate::widget_settings::relative::RELATIVE_RANGE_MAX);
     let mut slots = vec![None; ahead_count + behind_count + 1];
     let Some(anchor) = anchor else {
         return slots;
@@ -585,8 +585,12 @@ fn window_rows(
     race: bool,
     traffic_car: &impl Fn(&Car) -> bool,
 ) -> Vec<Option<std::sync::Arc<Row>>> {
-    let ahead = content.range_ahead.min(8);
-    let behind = content.range_behind.min(8);
+    let ahead = content
+        .range_ahead
+        .min(crate::widget_settings::relative::RELATIVE_RANGE_MAX);
+    let behind = content
+        .range_behind
+        .min(crate::widget_settings::relative::RELATIVE_RANGE_MAX);
     let same_class = content.same_class;
     let mut slots = player.map_or_else(
         || vec![None; ahead + behind + 1],

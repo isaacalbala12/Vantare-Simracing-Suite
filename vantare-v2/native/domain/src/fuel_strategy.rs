@@ -468,7 +468,10 @@ impl Board {
             .iter()
             .enumerate()
             .rev()
-            .take(usize::from(self.content.history_rows.clamp(1, 8)))
+            .take(usize::from(self.content.history_rows.clamp(
+                crate::widget_settings::fuel_strategy::FUEL_HISTORY_MIN,
+                crate::widget_settings::fuel_strategy::FUEL_HISTORY_MAX,
+            )))
             .filter(|(_, row)| row.consumed.is_some() && self.status.is_none())
     }
     pub fn positive_history(&self) -> impl Iterator<Item = f64> + '_ {

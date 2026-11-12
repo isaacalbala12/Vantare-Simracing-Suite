@@ -194,12 +194,15 @@ impl Options {
                 Mode::PlayerClass
             },
             cols: Cols::from_settings(&columns),
-            rows: settings.row_count.clamp(1, 30),
+            rows: settings.row_count.clamp(
+                vantare_domain::widget_settings::standings::STANDINGS_ROWS_MIN,
+                vantare_domain::widget_settings::standings::STANDINGS_ROWS_MAX,
+            ),
             name_mode: driver.map(|c| c.format.mode.clone()).unwrap_or_default(),
             name_max: driver
                 .and_then(|c| c.format.max_chars)
                 .unwrap_or(16)
-                .min(64),
+                .min(vantare_domain::widget_settings::columns::MAX_CHARS_LIMIT),
             brand: settings.brand_visible == Some(true),
         }
     }

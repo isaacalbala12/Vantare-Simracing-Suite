@@ -14,7 +14,7 @@ path = "src/main.rs"
 [features]
 # Opt-in local driver; never enabled by distribution.
 qa-e2e = ["vantare-installer/test-installer"]
-bindings = ["dep:ts-rs"]
+bindings = ["dep:ts-rs", "vantare-domain/bindings"]
 
 [dependencies]
 vantare-domain.workspace = true

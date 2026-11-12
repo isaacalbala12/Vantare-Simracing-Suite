@@ -135,7 +135,7 @@
   align-items: center;
   justify-content: flex-end;
   padding-right: 8px;
-  font: 600 11.5px / 14px var(--font-mono);
+  font: 700 11.5px / 14px var(--font-mono);
   color: var(--text-2);
 }
 .v-calendar-day-hour > strong[data-now] {
@@ -168,12 +168,12 @@
 .v-calendar-day-hour button[data-next] {
   border-color: var(--text-1);
   color: var(--text-1);
-  font-weight: 600;
+  font-weight: 700;
 }
 .v-calendar-day-hour button[data-alert] {
   background: var(--accent);
   color: var(--text-on-accent);
-  font-weight: 600;
+  font-weight: 700;
 }
 .v-calendar-day-now {
   position: absolute;
@@ -349,4 +349,17 @@
   width: 12px;
   height: 12px;
   color: var(--accent);
+}
+
+.v-calendar-day-head {
+  min-height: 87px;
+}
+.v-calendar-day footer {
+  min-height: 40px;
+}
+.v-calendar-day footer i {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.v-calendar-day footer :is(.v-calendar-day-next, .v-calendar-day-alert) {
+  font-weight: 700;
 }

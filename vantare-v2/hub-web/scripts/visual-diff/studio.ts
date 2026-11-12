@@ -306,3 +306,15 @@ studioScenes["studio-apariencia"] = {
       .waitFor();
   },
 };
+
+studioScenes["studio-fondo-delta"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page.getByRole("button", { name: "Delta", exact: true }).click();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    await page
+      .getByRole("switch", { name: "Fondo transparente", exact: true })
+      .waitFor();
+  },
+};

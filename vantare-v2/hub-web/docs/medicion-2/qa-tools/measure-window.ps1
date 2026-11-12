@@ -88,10 +88,16 @@ function Get-CpuSnapshot([int[]]$Family) {
     foreach($id in $Family){if(-not $result.ContainsKey($id)){throw "CPU counter missing for measured PID $id"}}
     return $result
 }
+function Assert-QuietTurn([string]$Phase) {
+    $builds=@(Get-Process -Name cargo,rustc,cl,link -ErrorAction SilentlyContinue | Select-Object Id,ProcessName)
+    @{at=(Get-Date -Format o);phase=$Phase;builds=$builds} | ConvertTo-Json -Depth 4 -Compress | Add-Content -LiteralPath (Join-Path $configuration.evidence 'quiet-checks.jsonl')
+    if($builds.Count){throw 'Compilation appeared during reserved measurement; exclude the entire series'}
+}
 for($iteration=0;$iteration -lt $configuration.runs;$iteration++) {
     $applications=@($configuration.apps)
     if($iteration % 2){[array]::Reverse($applications)}
     foreach($application in $applications) {
+        Assert-QuietTurn 'before-launch'
         @{phase='before';app=$application.name;iteration=$iteration} | ConvertTo-Json -Compress | Write-Output
         $launch=[Console]::ReadLine() | ConvertFrom-Json
         if($launch.command -ne 'launch'){throw 'Missing launch acknowledgement'}
@@ -113,6 +119,7 @@ for($iteration=0;$iteration -lt $configuration.runs;$iteration++) {
                 $window=[FirstHubMeasure]::Visible($process.Id)
                 if(-not $window){Start-Sleep -Milliseconds 5}
             }
+            Assert-QuietTurn 'window-visible'
             $visibleMs=$clock.Elapsed.TotalMilliseconds
             [FirstHubMeasure]::Resize($window)
             if(-not [FirstHubMeasure]::Responsive($window)){throw 'Window did not answer WM_NULL'}
@@ -137,12 +144,14 @@ for($iteration=0;$iteration -lt $configuration.runs;$iteration++) {
                     @{phase='navigate';app=$application.name;iteration=$iteration;section=$section} | ConvertTo-Json -Compress | Write-Output
                     if([Console]::ReadLine() -ne 'ready'){throw 'Missing navigation acknowledgement'}
                 }
+                Assert-QuietTurn ('before-idle-'+$section)
                 Start-Sleep -Seconds 3 # Fixed idle settling interval, not a readiness condition.
                 $family=[FirstHubMeasure]::Family($process.Id)
                 $metrics=@();$private=0L;$working=0L
                 foreach($id in $family){$item=Get-Process -Id $id -ErrorAction Stop;$private+=$item.PrivateMemorySize64;$working+=$item.WorkingSet64;$meta=Get-CimInstance Win32_Process -Filter ("ProcessId = "+$id);$role=if($item.ProcessName -eq 'vantare-hub'){'host'}else{'main'};$subtype=$null;if($meta.CommandLine -match '--type=([^\s"]+)'){$role=$Matches[1]};if($meta.CommandLine -match '--utility-sub-type=([^\s"]+)'){$subtype=$Matches[1]};$privateResident=(Get-CimInstance Win32_PerfRawData_PerfProc_Process -Filter ("IDProcess = "+$id) -Property WorkingSetPrivate).WorkingSetPrivate;$metrics+=@{pid=$id;parentPid=$meta.ParentProcessId;role=$role;utilitySubtype=$subtype;name=$item.ProcessName;privateBytes=$item.PrivateMemorySize64;workingSetBytes=$item.WorkingSet64;privateWorkingSetBytes=[long]$privateResident}}
                 $cpuBefore=Get-CpuSnapshot $family
                 Start-Sleep -Seconds 5 # Defined idle CPU observation interval.
+                Assert-QuietTurn ('after-idle-'+$section)
                 $cpuAfter=Get-CpuSnapshot $family
                 $cpu=0.0;$cpuMilliseconds=0.0
                 foreach($metric in $metrics){
@@ -167,6 +176,7 @@ for($iteration=0;$iteration -lt $configuration.runs;$iteration++) {
                     Save-Window $window (Join-Path $configuration.evidence "$($application.name)-fluency-$iteration.png")
                 } elseif($next -ne 'next') {throw 'Missing sample acknowledgement'}
             }
+            Assert-QuietTurn 'before-close'
             $process.StandardInput.Close()
             if(-not $process.WaitForExit(10000)){throw 'Controlled close deadline'}
             # Closing a Job Object terminates children asynchronously. Wait on

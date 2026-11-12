@@ -24,6 +24,17 @@ try {
         Start-Sleep -Seconds 60
         $reservation.buildsBefore=@(Get-CimInstance Win32_Process -Filter "Name='cargo.exe' OR Name='rustc.exe' OR Name='cl.exe' OR Name='link.exe'" | Select-Object ProcessId,Name)
     }
+    # A previous build can hand off between cargo processes; require a whole
+    # quiet minute, not a single empty process snapshot, before the first run.
+    $quietSince=Get-Date
+    while(((Get-Date)-$quietSince).TotalSeconds -lt 60) {
+        Start-Sleep -Seconds 5
+        $builds=@(Get-Process -Name cargo,rustc,cl,link -ErrorAction SilentlyContinue)
+        if($builds.Count){$quietSince=Get-Date}
+        $owner=Get-Content -LiteralPath 'D:/VantareServer/qa/captura.lock/owner.json' -Raw|ConvertFrom-Json
+        if($owner.nonce -ne $lease.nonce){throw 'Measurement reservation lost'}
+        (Get-Item -LiteralPath 'D:/VantareServer/qa/captura.lock').LastWriteTime=Get-Date
+    }
     $reservation.started=Get-Date -Format o
     $reservation | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $reservationPath
     $env:VANTARE_MEASURE_RESERVATION_FILE=$reservationPath

@@ -88,8 +88,13 @@ function harness() {
         },
       },
     });
-  const report = (id: number, state = "accepted", notice = true) => {
-    observe({ phase: "start", id, method: "testing.refresh" });
+  const report = (
+    id: number,
+    state = "accepted",
+    notice = true,
+    method: "testing.refresh" | "triage.send" = "testing.refresh",
+  ) => {
+    observe({ phase: "start", id, method });
     const value: TestingView = {
       reports: [
         {
@@ -107,8 +112,8 @@ function harness() {
     observe({
       phase: "done",
       id,
-      method: "testing.refresh",
-      reply: { method: "testing.refresh", value },
+      method,
+      reply: { method, value },
     });
     return value;
   };
@@ -335,3 +340,277 @@ it("only an access generation clears report notices, not an unconfirmed status b
   expect(h.records()[0].unread).toBe(true);
   h.connection.dispose();
 });
+
+it("does not deliver a report response while the same generation is unconfirmed", () => {
+  const h = harness();
+  h.login();
+  const value = h.report(1);
+  h.store.getState().clear();
+  h.observe({ phase: "start", id: 2, method: "testing.refresh" });
+  const before = h.session.getSnapshot().generation;
+  h.session.confirm({
+    ...(fixture("account.get") as AccountView),
+    session: "pending",
+    gate: "checking",
+  });
+  expect(h.session.getSnapshot().generation).toBe(before);
+  h.observe({
+    phase: "done",
+    id: 2,
+    method: "testing.refresh",
+    reply: {
+      method: "testing.refresh",
+      value: {
+        ...value,
+        reports: value.reports.map((r) => ({ ...r, id: "report2" })),
+      },
+    },
+  });
+  expect(h.records()).toEqual([]);
+  h.connection.dispose();
+});
+
+it("does not adopt a request started unconfirmed after confirmation in the same generation", () => {
+  const h = harness();
+  const value = fixture("testing.refresh") as TestingView;
+  const report = {
+    ...value,
+    reports: [
+      {
+        id: "unconfirmed",
+        title: "local",
+        state: "accepted",
+        notice: true,
+        credit: false,
+        fixedVersion: null,
+        updatedAt: null,
+      },
+    ],
+  };
+  h.observe({ phase: "start", id: 1, method: "testing.refresh" });
+  const before = h.session.getSnapshot().generation;
+  h.login();
+  expect(h.session.getSnapshot().generation).toBe(before);
+  h.observe({
+    phase: "done",
+    id: 1,
+    method: "testing.refresh",
+    reply: { method: "testing.refresh", value: report },
+  });
+  expect(h.records()).toEqual([]);
+  h.report(2);
+  expect(h.records()).toHaveLength(1);
+  h.connection.dispose();
+});
+
+it("forgets a recovered resident error before preferences arrive", () => {
+  const h = harness();
+  h.resident({ error: true });
+  h.resident({ error: false });
+  h.preferences(true);
+  expect(h.records()).toEqual([]);
+  h.resident({ error: true });
+  expect(h.records()).toHaveLength(1);
+  h.connection.dispose();
+});
+
+it.each([{ online: false }, { protected: true }])(
+  "does not notify an error from an unavailable resident: %o",
+  (patch) => {
+    const h = harness();
+    h.preferences(true);
+    h.resident({ ...patch, error: true });
+    expect(h.records()).toEqual([]);
+    h.connection.dispose();
+  },
+);
+
+it("does not trust enabled preferences in a protected settings document", () => {
+  const h = harness();
+  const value = fixture("settings.get") as SettingsView;
+  h.response({
+    method: "settings.get",
+    value: {
+      ...value,
+      protected: true,
+      general: { ...value.general, launcher: true, updates: true },
+    },
+  });
+  h.resident({ error: true });
+  expect(h.records()).toEqual([]);
+  h.preferences(true);
+  expect(h.records()).toHaveLength(1);
+  h.connection.dispose();
+});
+
+it.each(["pending", "rejected", "submitted"])(
+  "does not turn report state %s into acceptance",
+  (state) => {
+    const h = harness();
+    h.login();
+    h.report(1, state);
+    expect(h.records()).toEqual([]);
+    h.connection.dispose();
+  },
+);
+
+it("emits an accepted report from triage.send", () => {
+  const h = harness();
+  h.login();
+  h.report(1, "accepted", true, "triage.send");
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0].dedupeKey).toBe("report:report1:accepted");
+  h.connection.dispose();
+});
+
+it("keeps an unacknowledged report unread on repeated refreshes", () => {
+  const h = harness();
+  h.login();
+  h.report(1);
+  h.report(2);
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0].unread).toBe(true);
+  h.report(3, "accepted", false);
+  expect(h.records()[0].unread).toBe(false);
+  h.connection.dispose();
+});
+
+it.each([true, false])(
+  "refreshes emitter preferences directly from settings.update conflict: enabled=%s",
+  (enabled) => {
+    const h = harness();
+    h.preferences(!enabled);
+    const settings = fixture("settings.get") as SettingsView;
+    h.observe({
+      phase: "done",
+      id: 1,
+      method: "settings.update",
+      error: {
+        kind: "conflict",
+        current: {
+          ...settings,
+          protected: false,
+          general: { ...settings.general, launcher: enabled, updates: enabled },
+        },
+      },
+    });
+    h.resident({ error: true });
+    expect(h.records()).toHaveLength(enabled ? 1 : 0);
+    h.connection.dispose();
+  },
+);
+
+it("notifies failed launch attempts once per outage and still owns each generic failure", () => {
+  const h = harness();
+  h.preferences(true);
+  const fail = (id: number) =>
+    h.observe({
+      phase: "done",
+      id,
+      method: "launcher.launch",
+      error: { kind: "io" },
+    });
+  fail(1);
+  h.store.getState().read();
+  fail(2);
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0].unread).toBe(false);
+  expect(h.connection.ownsFailure(1)).toBe(true);
+  expect(h.connection.ownsFailure(2)).toBe(true);
+  h.resident({ online: false });
+  fail(3);
+  h.resident({ protected: true });
+  fail(4);
+  expect(h.records()).toHaveLength(1);
+  h.resident({});
+  fail(5);
+  expect(h.records()).toHaveLength(2);
+  expect(h.records()[0].unread).toBe(true);
+  expect(h.records()[1].unread).toBe(false);
+  h.connection.dispose();
+});
+
+it("an accepted launch confirms recovery but choosing a missing favorite does not", () => {
+  const h = harness();
+  h.preferences(true);
+  const fail = (id: number) =>
+    h.observe({
+      phase: "done",
+      id,
+      method: "launcher.favorite",
+      error: { kind: "io" },
+    });
+  fail(1);
+  h.observe({
+    phase: "done",
+    id: 2,
+    method: "launcher.favorite",
+    reply: { method: "launcher.favorite", accepted: false },
+  });
+  fail(3);
+  expect(h.records()).toHaveLength(1);
+  h.observe({
+    phase: "done",
+    id: 4,
+    method: "launcher.favorite",
+    reply: { method: "launcher.favorite", accepted: true },
+  });
+  fail(5);
+  expect(h.records()).toHaveLength(2);
+  h.connection.dispose();
+});
+it("repeated healthy resident photos do not declare a failed launch recovered", () => {
+  const h = harness();
+  h.preferences(true);
+  h.resident({});
+  h.observe({
+    phase: "done",
+    id: 1,
+    method: "launcher.launch",
+    error: { kind: "io" },
+  });
+  h.store.getState().read();
+  h.resident({});
+  h.resident({});
+  h.observe({
+    phase: "done",
+    id: 2,
+    method: "launcher.launch",
+    error: { kind: "io" },
+  });
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0].unread).toBe(false);
+  h.resident({ online: false });
+  h.resident({});
+  h.observe({
+    phase: "done",
+    id: 3,
+    method: "launcher.launch",
+    error: { kind: "io" },
+  });
+  expect(h.records()).toHaveLength(2);
+  expect(h.records()[0].unread).toBe(true);
+  h.connection.dispose();
+});
+it.each(["disabled", "loading"])(
+  "does not consume a launch failure episode while preferences are %s",
+  (state) => {
+    const h = harness();
+    if (state === "disabled") h.preferences(false);
+    const fail = (id: number) =>
+      h.observe({
+        phase: "done",
+        id,
+        method: "launcher.launch",
+        error: { kind: "io" },
+      });
+    fail(1);
+    expect(h.records()).toHaveLength(0);
+    h.preferences(true);
+    fail(2);
+    expect(h.records()).toHaveLength(1);
+    fail(3);
+    expect(h.records()).toHaveLength(1);
+    h.connection.dispose();
+  },
+);

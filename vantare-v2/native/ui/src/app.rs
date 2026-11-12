@@ -150,6 +150,8 @@ pub struct Overlay {
     session: Option<crate::session::Session>,
     #[cfg(feature = "paint-stats")]
     profile_photo: Option<(u64, u64)>,
+    #[cfg(feature = "medir-latencia")]
+    latency_photo: Option<(u64, u64)>,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
     #[cfg(feature = "parity-capture")]
     pub(crate) backdrop: Option<gpui::Hsla>,
@@ -253,6 +255,8 @@ impl Overlay {
             session: None,
             #[cfg(feature = "paint-stats")]
             profile_photo: None,
+            #[cfg(feature = "medir-latencia")]
+            latency_photo: None,
             #[cfg(feature = "parity-capture")]
             backdrop: None,
         }
@@ -386,6 +390,10 @@ impl Overlay {
             return;
         }
         let changed = self.project_snapshot(snapshot);
+        #[cfg(feature = "medir-latencia")]
+        if changed {
+            self.latency_photo = Some((snapshot.epoch, snapshot.sequence));
+        }
         #[cfg(feature = "paint-stats")]
         drop(project_span);
         if changed {
@@ -518,6 +526,8 @@ impl Render for Overlay {
         let profile_photo = self.profile_photo.take();
         #[cfg(feature = "parity-capture")]
         let backdrop = self.backdrop;
+        #[cfg(feature = "medir-latencia")]
+        let latency_photo = self.latency_photo.take();
         let element = canvas(
             |_, _, _| (),
             move |bounds, (), window, cx| {
@@ -525,6 +535,12 @@ impl Render for Overlay {
                 let _span = crate::profiling::begin(crate::profiling::Stage::Paint);
                 #[cfg(feature = "paint-stats")]
                 crate::stats::paint(kind);
+                #[cfg(feature = "medir-latencia")]
+                if let Some((epoch, sequence)) = latency_photo
+                    && let Some(hwnd) = overlay::hwnd_of(window)
+                {
+                    vantare_profiling::latency::painted(hwnd as u64, epoch, sequence);
+                }
                 let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
                 text::with_origin(origin, || {
                     let mut window = PaintWindow::new(window, bounds.origin, scale, scale_y);

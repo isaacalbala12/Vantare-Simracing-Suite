@@ -108,7 +108,7 @@ fn snapshot_feed(
     Ok((snapshots?, connection))
 }
 
-fn main() -> ExitCode {
+fn application_main() -> ExitCode {
     if product::print_version() {
         return ExitCode::SUCCESS;
     }
@@ -229,6 +229,41 @@ fn parent_shutdown(controlled: bool) -> std::io::Result<Option<flume::Receiver<(
             }
         })?;
     Ok(Some(receive))
+}
+
+fn main() -> ExitCode {
+    #[cfg(feature = "medir-latencia")]
+    eprintln!(concat!(
+        "VANTARE_LATENCY_BUILD;sha=",
+        env!("VANTARE_MEASUREMENT_SHA"),
+        ";dirty=",
+        env!("VANTARE_MEASUREMENT_DIRTY"),
+        ";profile=",
+        env!("VANTARE_MEASUREMENT_PROFILE"),
+        ";opt-level=",
+        env!("VANTARE_MEASUREMENT_OPT_LEVEL"),
+        ";features=",
+        env!("VANTARE_MEASUREMENT_FEATURES"),
+        ";lto=false;codegen-units=16;incremental=false"
+    ));
+
+    #[cfg(feature = "medir-latencia")]
+    let session = match vantare_profiling::latency::Session::from_env() {
+        Ok(session) => session,
+        Err(error) => {
+            eprintln!("latencia: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let result = application_main();
+    #[cfg(feature = "medir-latencia")]
+    if let Some(session) = session
+        && let Err(error) = session.finish()
+    {
+        eprintln!("latencia: {error}");
+        return ExitCode::FAILURE;
+    }
+    result
 }
 
 #[cfg(test)]

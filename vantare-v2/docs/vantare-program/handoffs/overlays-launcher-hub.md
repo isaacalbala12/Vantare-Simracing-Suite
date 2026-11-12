@@ -1,3 +1,28 @@
+## VANTA-141 · Kit Rune/GPUI en construcción (12-nov-2026)
+
+[#2213](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2213),
+area:overlays-runtime / Project Vantare / Plane **En curso** verificado.
+Worker F: piezas 1–11 de INFORME-FABLE.md, secciones 8–9.5.
+Base origin/nightly b71e65cbf87b138ea5b3dbaf471f7797fc9c0bc9.
+Worktrees propios D:/VantareServer/worktrees/isa-2213-esqueleto y
+isa-2213-replay-latencia; ramas vantareapp/isa-2213-<parte>.
+
+Pieza 1: workspace independiente native/pruebas-rune. Rune y sus cuatro
+parches fijados a d5338988a7c1b3377adb60853815b6d0843dae7c. Rust 1.99.1
+instalado y verificado; native/rust-toolchain.toml intacto. Árbol Windows:
+185 dependencias normales, 186 con hola; lock multiplataforma: 433 paquetes.
+El reinicio confirmado por Isaac cortó el build inicial. Logs conservados,
+sin atribuirle un tiempo limpio completado. Reanudado por la misma cola,
+-j 2 y sccache=0, usando la raíz de targets aislada documentada en D:.
+Aún sin exe ni test Runtime verificado. Piezas 2+3 preparadas localmente;
+3 tests Python sintéticos PASS, compilación y replay real pendientes.
+
+Parada gráfica completa: ningún ejecutable gráfico ni tooling headless Rune
+lanzado. Kit no listo; sin PR/CI, merge, promoción o release verificados.
+Evidencia por pieza: D:/VantareServer/evidence/rune-vs-gpui/CONSTRUCCION.md.
+Siguiente: confirmar build de hola, test Runtime, tiempos/tamaño y PR draft;
+después cerrar piezas 2+3. La prueba física corresponde al PC de Isaac.
+
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 
 [#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995),

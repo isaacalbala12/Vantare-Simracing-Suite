@@ -276,6 +276,13 @@ fn session(
                 };
                 if revision.is_newer(*cursor) {
                     let decoded = Snapshot::try_from(dto)?;
+                    #[cfg(feature = "medir-latencia")]
+                    vantare_profiling::latency::mark(
+                        "received",
+                        decoded.epoch,
+                        decoded.sequence,
+                        0,
+                    );
                     connection.received();
                     latest.put(Arc::new(Photo::full(Arc::new(decoded))));
                     *cursor = Some(revision);
@@ -310,6 +317,13 @@ fn session(
                     }
                     snapshot.restore(previous.as_ref(), &requested, &delivered)?;
                     let decoded = Snapshot::try_from(&snapshot)?;
+                    #[cfg(feature = "medir-latencia")]
+                    vantare_profiling::latency::mark(
+                        "received",
+                        decoded.epoch,
+                        decoded.sequence,
+                        0,
+                    );
                     connection.received();
                     previous = Some(snapshot);
                     latest.put(Arc::new(Photo {

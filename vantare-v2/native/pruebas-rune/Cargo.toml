@@ -1,0 +1,10 @@
+[workspace]
+resolver = "3"
+members = ["contador"]
+
+[profile.release]
+opt-level = 3
+lto = false
+codegen-units = 16
+incremental = false
+debug = false

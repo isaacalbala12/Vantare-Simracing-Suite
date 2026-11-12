@@ -86,6 +86,8 @@ impl Publisher {
             return Err(Error::NotNewer);
         }
         self.last = Some(revision);
+        #[cfg(feature = "medir-latencia")]
+        vantare_profiling::latency::mark("origin", snapshot.epoch, snapshot.sequence, 0);
         self.shared.latest.put(snapshot);
         Ok(())
     }

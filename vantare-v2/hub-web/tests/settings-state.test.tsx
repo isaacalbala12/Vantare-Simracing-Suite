@@ -14,7 +14,11 @@ import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountProvider } from "../src/renderer/app/AccountState";
-import { HostProvider, useHost } from "../src/renderer/app/Host";
+import type {
+  CoreStatus,
+  LauncherView,
+} from "../src/contract/generated/contract";
+import { coreKey, HostProvider, useHost } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import {
   SectionRailSlot,
@@ -27,7 +31,7 @@ import {
 import { Shell } from "../src/renderer/app/Shell";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { WindowControls } from "../src/renderer/app/WindowControls";
-import { Client } from "../src/renderer/bridge/client";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { appearanceText } from "../src/renderer/i18n/appearance.es";
 import { t } from "../src/renderer/i18n/es";
 import { privacyText } from "../src/renderer/i18n/privacy.es";
@@ -137,7 +141,9 @@ function deferred() {
   });
   return { promise, release };
 }
-function hold(method: "settings.update" | "launcher.favorite") {
+function hold(
+  method: "settings.update" | "launcher.favorite" | "launcher.launch",
+) {
   const gate = deferred();
   const request = Client.prototype.request;
   const spy = vi
@@ -270,6 +276,176 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
         ([value]) => value.method === "settings.update",
       ),
     ).toHaveLength(0);
+  });
+  it("rechecks the revision of a painted sidebar button before sending", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    const button = (
+      await screen.findAllByRole("button", { name: /^Lanzar perfil/ })
+    )[0];
+    const cache = caches.at(-1),
+      view = structuredClone(cache?.getQueryData<LauncherView>(["launcher"]));
+    if (!cache || !view) throw new Error("Missing snapshot");
+    view.revision = "f".repeat(64);
+    act(() => {
+      cache.setQueryData(["launcher"], view);
+      fireEvent.click(button);
+    });
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "launcher.launch",
+      ),
+    ).toHaveLength(0);
+    await waitFor(() =>
+      expect(document.querySelector(".v-toast")).toBeTruthy(),
+    );
+  });
+  it("accepts the host's conflicting snapshot without retrying a sidebar launch", async () => {
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    const button = (
+      await screen.findAllByRole("button", { name: /^Lanzar perfil/ })
+    )[0];
+    const cache = caches.at(-1),
+      current = structuredClone(
+        cache?.getQueryData<LauncherView>(["launcher"]),
+      );
+    if (!cache || !current) throw new Error("Missing snapshot");
+    current.revision = "e".repeat(64);
+    const original = Client.prototype.request;
+    const request = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, value) {
+        if (value.method === "launcher.launch")
+          throw new HostFailure({ kind: "launcherConflict", current });
+        if (value.method === "launcher.get")
+          return { method: "launcher.get", value: current };
+        return original.call(this, value);
+      });
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(cache.getQueryData<LauncherView>(["launcher"])?.revision).toBe(
+        current.revision,
+      ),
+    );
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "launcher.launch",
+      ),
+    ).toHaveLength(1);
+    expect(document.querySelector(".v-toast")).toBeTruthy();
+  });
+  it("launches a sidebar profile with its read revision, with one pending guard shared by Ctrl L", async () => {
+    const pending = hold("launcher.launch");
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    const button = (
+      await screen.findAllByRole("button", { name: /^Lanzar perfil/ })
+    )[0];
+    const view = caches.at(-1)?.getQueryData<LauncherView>(["launcher"]);
+    if (!view) throw new Error("Missing launcher snapshot");
+    fireEvent.click(button);
+    fireEvent.click(button);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
+    expect(pending.calls()).toBe(1);
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "launcher.favorite",
+      ),
+    ).toHaveLength(0);
+    expect(
+      request.mock.calls.find(
+        ([value]) => value.method === "launcher.launch",
+      )?.[0],
+    ).toEqual({
+      method: "launcher.launch",
+      profile: view.profiles[0].id,
+      baseRevision: view.revision,
+    });
+    await act(async () => pending.release());
+  });
+  it.each(["live", "unverified", "blocked", "running", "gate"])(
+    "does not send sidebar launches with %s",
+    async (reason) => {
+      const request = vi.spyOn(Client.prototype, "request");
+      const hook = mount("launcher-ready", <Shell />);
+      await loaded(hook);
+      fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+      const button = (
+        await screen.findAllByRole("button", { name: /^Lanzar perfil/ })
+      )[0];
+      const cache = caches.at(-1),
+        core = structuredClone(cache?.getQueryData<CoreStatus>(coreKey)),
+        view = structuredClone(cache?.getQueryData<LauncherView>(["launcher"]));
+      if (!cache || !core || !view) throw new Error("Missing snapshots");
+      if (reason === "live") core.live = true;
+      if (reason === "unverified") core.access.verified = false;
+      if (reason === "blocked") core.access.blocked = true;
+      if (reason === "running") view.running = true;
+      const gate = document.createElement("dialog");
+      if (reason === "gate") {
+        gate.open = true;
+        document.body.append(gate);
+      }
+      try {
+        act(() => {
+          cache.setQueryData(coreKey, core);
+          cache.setQueryData(["launcher"], view);
+          fireEvent.click(button);
+        });
+        expect(
+          request.mock.calls.filter(
+            ([value]) => value.method === "launcher.launch",
+          ),
+        ).toHaveLength(0);
+        await waitFor(() =>
+          expect(document.querySelector(".v-toast")).toBeTruthy(),
+        );
+      } finally {
+        gate.remove();
+      }
+    },
+  );
+  it("keeps the rail list and count updated after leaving Launcher without duplicate wire watches", async () => {
+    const wire = vi.spyOn(MessagePort.prototype, "postMessage");
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    await screen.findAllByRole("button", { name: /^Lanzar perfil/ });
+    const count = (kind: string) =>
+      wire.mock.calls.filter(
+        ([message]) => message.kind === kind && message.topic === "launcher",
+      ).length;
+    expect(count("subscribe")).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Launcher" }));
+    await screen.findAllByRole("button", { name: /Nuevo perfil/ });
+    fireEvent.click(screen.getByRole("button", { name: "Ajustes" }));
+    await screen.findByRole("heading", { name: "General" });
+    expect(count("subscribe")).toBe(1);
+    expect(count("unsubscribe")).toBe(0);
+    const client = [...connections][0],
+      view = caches.at(-1)?.getQueryData<LauncherView>(["launcher"]);
+    if (!client || !view) throw new Error("Missing connection/snapshot");
+    await act(async () => {
+      await client.request({
+        method: "launcher.profile.duplicate",
+        id: view.profiles[0].id,
+        baseRevision: view.revision,
+      });
+    });
+    await waitFor(() =>
+      expect(document.querySelectorAll(".v-sidebar-profile")).toHaveLength(
+        view.profiles.length + 1,
+      ),
+    );
+    expect(document.querySelector(".v-nav-count")?.textContent).toBe(
+      String(view.profiles.length + 1),
+    );
   });
   it("retries only the losing intent and preserves the winner", async () => {
     const hook = mount("ajustes-conflicto");

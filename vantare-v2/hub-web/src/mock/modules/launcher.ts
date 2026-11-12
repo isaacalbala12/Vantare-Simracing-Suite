@@ -128,14 +128,21 @@ export function create(context: MockContext): MockHandler {
     { profile: string; revision: string; appId: string; customized: boolean }
   >();
   let reservedProfile: string | undefined;
+  let subscribed = false;
   return (value: UiToHost): HostToUi | null | undefined => {
     const application = appReply(value);
     if (application !== undefined) return application;
-    if (value.kind === "subscribe" && value.topic === "launcher")
+    if (value.kind === "unsubscribe" && value.topic === "launcher") {
+      subscribed = false;
+      return null;
+    }
+    if (value.kind === "subscribe" && value.topic === "launcher") {
+      subscribed = true;
       return {
         kind: "event",
         event: { topic: "launcher", value: structuredClone(launcher) },
       };
+    }
     if (value.kind !== "request") return undefined;
     const { id, request } = value;
     if (
@@ -146,7 +153,14 @@ export function create(context: MockContext): MockHandler {
     )
       launcher.revision = "1".repeat(64);
     const profileAction = profileActionReply(id, request, launcher, drafts);
-    if (profileAction) return profileAction;
+    if (profileAction) {
+      if (subscribed && profileAction.kind === "response")
+        context.emit?.({
+          kind: "event",
+          event: { topic: "launcher", value: structuredClone(launcher) },
+        });
+      return profileAction;
+    }
     switch (request.method) {
       case "launcher.profile.get": {
         profileRead = undefined;

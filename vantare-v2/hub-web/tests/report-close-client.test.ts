@@ -351,3 +351,28 @@ it("Restart cancels only report preparation and still honors every other screen 
     h.sent.mock.calls.filter(([message]) => message.kind === "closeAnswer"),
   ).toHaveLength(1);
 });
+
+it("settles abandoned clean Testing waits even if another screen vetoes the close", async () => {
+  const h = setup(),
+    observed = vi.fn();
+  h.client.observeRequests(observed);
+  h.client.addCloseGuard(() => false);
+  const pending = h.client
+    .request({ method: "testing.refresh" })
+    .catch((error) => error);
+  const request = await h.next();
+  if (request.kind !== "request") throw Error("missing refresh");
+  h.client.setReportClosePreparation({
+    prepare: async () => "discard",
+    failed: vi.fn(),
+  });
+  h.post({ kind: "closeRequested", reason: "window" });
+  expect(await h.next()).toEqual({ kind: "closeAnswer", allow: false });
+  expect(await pending).toEqual(new HostFailure({ kind: "busy" }));
+  expect(observed).toHaveBeenCalledWith({
+    id: request.id,
+    method: "testing.refresh",
+    phase: "done",
+    error: { kind: "busy" },
+  });
+});

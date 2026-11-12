@@ -246,6 +246,12 @@ export class Client {
                 clearTimeout(pending.timer);
                 pending.dispose?.();
                 this.pending.delete(id);
+                this.observed({
+                  id,
+                  method: pending.method,
+                  phase: "done",
+                  error: { kind: "busy" },
+                });
                 pending.reject(new HostFailure({ kind: "busy" }));
               }
             }

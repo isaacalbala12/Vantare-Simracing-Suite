@@ -35,7 +35,7 @@ function Swatch({
 }) {
   return (
     <span
-      className="v-ob-look-swatch"
+      className="v-ob-look-swatch v-palette-preview-colors"
       data-palette={palette}
       data-scheme={scheme}
       aria-hidden="true"

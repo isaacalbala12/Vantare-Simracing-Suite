@@ -359,3 +359,16 @@
   font-weight: 600;
   border-color: var(--line-1);
 }
+
+/* These Skin::resolve palettes derive accent and accent_fill from the same
+   Carmine brand field. The readable UI accent is brighter; previews use brand.
+   Scope to dark swatches so the four matching palettes and light samples stay intact. */
+.v-palette-preview-colors[data-scheme="dark"]:is(
+  [data-palette="rose"],
+  [data-palette="grove"],
+  [data-palette="ocean"],
+  [data-palette="ember"],
+  [data-palette="iris"]
+) {
+  --accent: var(--accent-fill);
+}

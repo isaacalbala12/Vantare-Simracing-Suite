@@ -493,7 +493,14 @@ fn calendar_notice_test_does_not_ignore_protected_alerts() {
 
 #[test]
 fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() {
-    for blocked in ["none", "rights", "calendar", "blocked", "document"] {
+    for blocked in [
+        "none",
+        "rights",
+        "calendar",
+        "blocked",
+        "document",
+        "handshake",
+    ] {
         let fixture = Fixture::new();
         let base = fixture.0.join("hub");
         std::fs::create_dir_all(&base).unwrap();
@@ -512,6 +519,7 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         )
         .unwrap();
         let mut session = fixture.session();
+        session.handshaken = true;
         session.current.access.verified = true;
         session.current.access.calendar = true;
         session.current.rights = protocol::LinkState::Connected;
@@ -525,6 +533,7 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         super::calendar_tick::tick_with_clock(&mut session, &mut pipe, now - 1000, clock).unwrap();
         assert!(pipe.get_ref().is_empty());
         match blocked {
+            "handshake" => session.handshaken = false,
             "rights" => session.current.rights = protocol::LinkState::Unavailable,
             "calendar" => session.current.access.calendar = false,
             "blocked" => session.current.access.blocked = true,

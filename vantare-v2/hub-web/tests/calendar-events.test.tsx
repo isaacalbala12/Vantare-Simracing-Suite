@@ -142,3 +142,71 @@ it("keeps revoked launch and favorite actions disabled and does not invent missi
   expect(follow).not.toHaveBeenCalled();
   expect(launch).not.toHaveBeenCalled();
 });
+
+it("never toggles the alert of a departed slot even when the callback is available", () => {
+  const source = calendarReference().official;
+  if (!source) throw new Error("schedule missing");
+  const weekly = source.series.find((s) => s.id === "weekly-wec-weekly");
+  if (!weekly) throw new Error("weekly series missing");
+  const series = {
+    ...weekly,
+    recurrence: {
+      kind: "weekly-slots",
+      intervalMinutes: 0,
+      days: ["Thu"],
+      timesUTC: ["00:00", "02:00", "20:00", "22:00"],
+    },
+  };
+  const onToggleSlot = vi.fn();
+  render(
+    <CalendarEventsView
+      schedule={{ ...source, series: [series] }}
+      alerts={alerts as CalendarAlerts}
+      following={[]}
+      now={Date.parse("2026-10-08T21:00:00Z")}
+      utc
+      limit={1000}
+      onFollow={vi.fn()}
+      onLaunch={vi.fn()}
+      onToggleSlot={onToggleSlot}
+    />,
+  );
+  const passed = [
+    ...document.querySelectorAll<HTMLButtonElement>("button[data-gone]"),
+  ];
+  expect(passed.length).toBeGreaterThan(0);
+  for (const button of passed) {
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+  }
+  expect(onToggleSlot).not.toHaveBeenCalled();
+});
+
+it("marks a pending event alert without removing focus or submitting a second change", () => {
+  const view = calendarReference();
+  if (!view.official) throw new Error("schedule missing");
+  const onToggleSlot = vi.fn();
+  const props = {
+    schedule: view.official,
+    alerts: alerts as CalendarAlerts,
+    following: view.following,
+    now: Date.parse("2026-10-08T17:47:13Z"),
+    utc: true,
+    limit: 1000,
+    onFollow: vi.fn(),
+    onLaunch: vi.fn(),
+    onToggleSlot,
+  };
+  const result = render(<CalendarEventsView {...props} />);
+  const button = within(
+    screen.getByRole("article", { name: "WEC Weekly" }),
+  ).getByRole("button", { name: /^18:00\s*siguiente$/u });
+  button.focus();
+  fireEvent.click(button);
+  expect(onToggleSlot).toHaveBeenCalledOnce();
+  result.rerender(<CalendarEventsView {...props} alertsBusy />);
+  expect(document.activeElement).toBe(button);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(button);
+  expect(onToggleSlot).toHaveBeenCalledOnce();
+});

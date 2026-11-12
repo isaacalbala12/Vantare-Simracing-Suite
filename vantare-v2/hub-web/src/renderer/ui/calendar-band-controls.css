@@ -72,3 +72,7 @@
   display: flex;
   align-items: center;
 }
+
+.v-calendar-band-row:last-child > span:nth-of-type(2) {
+  margin-left: auto;
+}

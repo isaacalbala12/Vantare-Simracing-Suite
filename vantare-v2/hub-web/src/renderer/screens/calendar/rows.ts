@@ -3,8 +3,8 @@ import type {
   CalendarSchedule,
   CalendarSeries,
 } from "../../../contract/generated/calendar";
-import { civilDay } from "../../ui/calendarDate";
-import { starts } from "./schedule";
+import { civilDay } from "../../ui/calendarDate.ts";
+import { starts } from "./schedule.ts";
 
 const minute = 60_000;
 export function daily(series: CalendarSeries) {

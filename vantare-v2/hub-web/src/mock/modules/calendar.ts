@@ -20,6 +20,7 @@ import { mockCalendarIcs } from "../calendar-ics";
 import {
   calendarHistoryReference,
   calendarReference,
+  calendarReferenceNow,
 } from "../calendar-reference";
 import type { MockContext, MockHandler } from "../context";
 
@@ -108,6 +109,12 @@ export function create(context: MockContext): MockHandler {
   let counter = 1;
   const next = () =>
     String((counter++).toString(16)).padStart(calendarRevisionLength, "0");
+  // Main and renderer have separate clocks. Only this fixed visual QA scene
+  // uses the bank date; ordinary mocks and production keep the actual clock.
+  const clock = () =>
+    context.visual && context.sceneName === "calendar-live-reference"
+      ? calendarReferenceNow
+      : Date.now();
   let icsHash: string | undefined;
   return (message: UiToHost): HostToUi | undefined => {
     if (
@@ -132,7 +139,7 @@ export function create(context: MockContext): MockHandler {
           config,
           request.scope,
           request.alarm,
-          Date.now(),
+          clock(),
         );
         if (typeof prepared !== "string") icsHash = prepared.preparedHash;
         return typeof prepared === "string"
@@ -186,7 +193,7 @@ export function create(context: MockContext): MockHandler {
         if (alertValue(proposed) === alertValue(old)) break;
         if (proposed.autoLaunch && !old.autoLaunch)
           return { kind: "failure", id, error: { kind: "rejected" } };
-        const now = Date.now();
+        const now = clock();
         const active = [value.official, value.fallback].filter(
           (schedule): schedule is CalendarSchedule =>
             !!schedule &&
@@ -277,7 +284,7 @@ export function create(context: MockContext): MockHandler {
         if (config.following.includes(request.seriesId) === request.followed)
           break;
         if (request.followed) {
-          const now = Date.now(),
+          const now = clock(),
             active = [value.official, value.fallback].filter(
               (s) =>
                 s &&

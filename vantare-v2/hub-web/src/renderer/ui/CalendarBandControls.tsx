@@ -4,6 +4,7 @@ import type {
   CalendarDays,
 } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
+import { calendarAlertsText } from "../i18n/calendarAlerts";
 import { calendarBandText as text } from "../i18n/calendarBands";
 import { shiftBand } from "../screens/calendar/bands";
 import { Button } from "./Button";
@@ -23,6 +24,7 @@ export function CalendarBandControls({
   busy,
   onBand,
   onLead,
+  valid = true,
 }: {
   seriesId: string;
   band: CalendarBand | undefined;
@@ -35,14 +37,17 @@ export function CalendarBandControls({
   stepMinutes: number;
   dayMinutes: number;
   busy: boolean;
+  valid?: boolean;
   onBand?: (band: CalendarBand | undefined) => void;
   onLead?: (lead: number) => void;
 }) {
+  if (!valid) return <p role="status">{calendarAlertsText.duplicates}</p>;
   const shown = band ?? { ...defaultBand, seriesId },
     hhmm = (n: number) =>
       `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
   return (
     <div className="v-calendar-band-box" data-enabled={!!band || undefined}>
+      {busy && <p role="status">{calendarAlertsText.saving}</p>}
       <div className="v-calendar-band-title">
         <Icon name={band ? "bell-fill" : "bell"} />
         <div>
@@ -64,18 +69,22 @@ export function CalendarBandControls({
           hideLabel
           label={text.toggle}
           checked={!!band}
-          disabled={busy || !onBand}
-          onCheckedChange={(value) => onBand?.(value ? shown : undefined)}
+          pending={busy}
+          disabled={!onBand}
+          onCheckedChange={(value) => {
+            if (!busy) onBand?.(value ? shown : undefined);
+          }}
         />
       </div>
       <div className="v-calendar-band-row">
         <span>{text.from}</span>
         <Button
           className="v-calendar-band-time"
-          aria-label={text.start}
-          disabled={busy || !onBand}
+          aria-disabled={busy || !onBand}
+          aria-label={text.startAt(hhmm(shown.from))}
+          disabled={!onBand}
           onClick={() =>
-            onBand?.(shiftBand(shown, false, stepMinutes, dayMinutes))
+            !busy && onBand?.(shiftBand(shown, false, stepMinutes, dayMinutes))
           }
         >
           {hhmm(shown.from)}
@@ -83,21 +92,23 @@ export function CalendarBandControls({
         <span>{text.to}</span>
         <Button
           className="v-calendar-band-time"
-          aria-label={text.end}
-          disabled={busy || !onBand}
+          aria-disabled={busy || !onBand}
+          aria-label={text.endAt(hhmm(shown.to))}
+          disabled={!onBand}
           onClick={() =>
-            onBand?.(shiftBand(shown, true, stepMinutes, dayMinutes))
+            !busy && onBand?.(shiftBand(shown, true, stepMinutes, dayMinutes))
           }
         >
           {hhmm(shown.to)}
         </Button>
         <Segmented
-          disabled={busy || !onBand}
-          label={text.toggle}
+          disabled={!onBand}
+          pending={busy}
+          label={text.daysLabel}
           value={shown.days}
           onChange={(value) => {
             const day = days.find((day) => day === value);
-            if (day) onBand?.({ ...shown, days: day });
+            if (day && !busy) onBand?.({ ...shown, days: day });
           }}
           options={days.map((value) => ({ value, label: text.days[value] }))}
         />
@@ -105,23 +116,25 @@ export function CalendarBandControls({
       <div className="v-calendar-band-row">
         <span>{text.notify}</span>
         <Segmented
-          disabled={busy || !onBand}
+          disabled={!onBand}
+          pending={busy}
           label={text.notify}
           value={shown.mode}
           onChange={(value) => {
             const mode = modes.find((mode) => mode === value);
-            if (mode) onBand?.({ ...shown, mode });
+            if (mode && !busy) onBand?.({ ...shown, mode });
           }}
           options={modes.map((value) => ({ value, label: text.modes[value] }))}
         />
         <span>{text.before}</span>
         <Segmented
-          disabled={busy || !onLead}
+          disabled={!onLead}
+          pending={busy}
           label={text.before}
           value={String(lead)}
           onChange={(value) => {
             const next = leads.find((lead) => String(lead) === value);
-            if (next !== undefined) onLead?.(next);
+            if (next !== undefined && !busy) onLead?.(next);
           }}
           options={leads.map((value) => ({
             value: String(value),

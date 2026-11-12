@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import type { CalendarView } from "../src/contract/generated/calendar";
+import { calendarDefaultAlerts } from "../src/contract/generated/calendar";
 import CalendarEntry from "../src/renderer/screens/calendar/entry";
 import { clock } from "../src/renderer/ui/calendarDate";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
@@ -13,7 +20,18 @@ const model = vi.hoisted(() => ({
   view: undefined as CalendarView | undefined,
   now: 0,
   failure: undefined as string | undefined,
+  preferenceFailure: undefined as
+    | "coreUnavailable"
+    | "calendarConflict"
+    | "calendarScheduleUnavailable"
+    | undefined,
+  preferenceIntent: undefined as "utc" | "alerts" | undefined,
+  discard: vi.fn(),
   reload: vi.fn(),
+  alertsState: "ready" as "ready" | "protected" | "unavailable",
+  canAlerts: true,
+  alert: vi.fn(),
+  band: vi.fn(),
 }));
 vi.mock("../src/renderer/app/Host", () => ({
   useHost: () => ({ hello: { demo: false } }),
@@ -33,6 +51,20 @@ vi.mock("../src/renderer/screens/calendar/CalendarPreferences", () => ({
   useCalendarPreferences: () => ({
     canFollow: true,
     canUtc: true,
+    canAlerts: model.canAlerts,
+    failure: model.preferenceFailure,
+    failureIntent: model.preferenceIntent,
+    canRetry: false,
+    retry: vi.fn(),
+    discard: model.discard,
+    config: {
+      documents: { alerts: model.alertsState },
+      alerts: calendarDefaultAlerts,
+      following: [],
+      utc: true,
+    },
+    alert: model.alert,
+    band: model.band,
     follow: vi.fn(),
     utc: vi.fn(),
   }),
@@ -76,7 +108,20 @@ vi.mock("../src/renderer/app/SectionChrome", () => ({
   SectionPanel: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("../src/renderer/ui/CalendarFrame", () => ({
-  CalendarFrame: ({ children }: { children: ReactNode }) => children,
+  CalendarFrame: ({
+    children,
+    onAlerts,
+  }: {
+    children: ReactNode;
+    onAlerts: () => void;
+  }) => (
+    <>
+      <button type="button" onClick={onAlerts}>
+        Avisos
+      </button>
+      {children}
+    </>
+  ),
 }));
 vi.mock("../src/renderer/ui/CalendarRail", () => ({
   CalendarRail: () => null,
@@ -128,7 +173,14 @@ beforeEach(() => {
     invalidCache: false,
   };
   model.failure = undefined;
+  model.preferenceFailure = undefined;
+  model.preferenceIntent = undefined;
+  model.discard.mockClear();
   model.reload.mockClear();
+  model.alert.mockClear();
+  model.band.mockClear();
+  model.canAlerts = true;
+  model.alertsState = "ready";
 });
 afterEach(cleanup);
 it("uses the last checked stamp and restores focus to the source series on return", () => {
@@ -230,4 +282,81 @@ it("returns from a series departure drawer to the exact departure button", async
   fireEvent.click(trigger);
   fireEvent.click(screen.getByRole("button", { name: "Cerrar (Esc)" }));
   await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
+it("connects the series band and global lead controls to typed alert intents", () => {
+  render(<CalendarEntry />);
+  fireEvent.click(screen.getByRole("button", { name: "Open daily" }));
+  fireEvent.click(
+    screen.getByRole("switch", { name: "Avisar por franja horaria" }),
+  );
+  expect(model.band).toHaveBeenCalledWith(fixture.series[0].id, {
+    seriesId: fixture.series[0].id,
+    from: 1200,
+    to: 1380,
+    days: "all",
+    mode: "each",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "15′" }));
+  expect(model.alert).toHaveBeenCalledWith({ kind: "lead", value: 15 });
+});
+it("keeps series alert controls read-only when the document cannot be saved", () => {
+  model.canAlerts = false;
+  render(<CalendarEntry />);
+  fireEvent.click(screen.getByRole("button", { name: "Open daily" }));
+  const toggle = screen.getByRole("switch", {
+    name: "Avisar por franja horaria",
+  });
+  expect(toggle.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(toggle);
+  fireEvent.click(screen.getByRole("button", { name: "15′" }));
+  expect(model.band).not.toHaveBeenCalled();
+  expect(model.alert).not.toHaveBeenCalled();
+});
+
+it("connects alert edits from the actual drawer to the same typed preferences", () => {
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ficha" }));
+  fireEvent.click(
+    screen.getByRole("switch", { name: "Avisar por franja horaria" }),
+  );
+  expect(model.band).toHaveBeenCalledWith(fixture.series[0].id, {
+    seriesId: fixture.series[0].id,
+    from: 1200,
+    to: 1380,
+    days: "all",
+    mode: "each",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "15′" }));
+  expect(model.alert).toHaveBeenCalledWith({ kind: "lead", value: 15 });
+});
+
+it("keeps unrelated UTC errors outside Avisos and explains its own conflict without a blind retry", () => {
+  model.preferenceFailure = "coreUnavailable";
+  model.preferenceIntent = "utc";
+  const result = render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).queryByRole("alert")).toBeNull();
+  model.preferenceFailure = "calendarConflict";
+  model.preferenceIntent = "alerts";
+  result.rerender(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  expect(within(dialog).getByRole("alert").textContent).toContain(
+    "Se ha actualizado desde otro sitio; revisa y repite",
+  );
+  expect(
+    within(dialog).queryByRole("button", { name: "Reintentar" }),
+  ).toBeNull();
 });

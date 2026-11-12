@@ -12,7 +12,8 @@ export const calendarText = {
     `Semana LMU · ${week} · ${count} series · ${perHour} salidas por hora`,
   preferencesFailed:
     "No se pudo guardar la preferencia. El último valor confirmado se conserva.",
-  scheduleRequired: "Descarga un horario vigente antes de seguir una serie.",
+  scheduleRequired:
+    "Descarga un horario vigente antes de añadir una serie o un aviso.",
   launchFailed: "No se pudo lanzar el perfil. Comprueba su estado en Launcher.",
   discardChange: "Descartar cambio",
   separator: " · ",

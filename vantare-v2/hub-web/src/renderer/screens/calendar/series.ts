@@ -1,8 +1,8 @@
 import type { CalendarSeries } from "../../../contract/generated/calendar";
-import { calendarText } from "../../i18n/calendar";
-import { calendarSeriesText as text } from "../../i18n/calendarSeries";
-import { civilDay, datePart } from "../../ui/calendarDate";
-import { leadMinutes, raceMinutes } from "./rows";
+import { calendarText } from "../../i18n/calendar.ts";
+import { calendarSeriesText as text } from "../../i18n/calendarSeries.ts";
+import { civilDay, datePart } from "../../ui/calendarDate.ts";
+import { leadMinutes, raceMinutes } from "./rows.ts";
 
 export type { CalendarRun } from "./CalendarRun";
 

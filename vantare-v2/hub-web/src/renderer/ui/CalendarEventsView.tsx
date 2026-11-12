@@ -25,6 +25,7 @@ export function CalendarEventsView({
   onSerie,
   onDetail,
   onToggleSlot,
+  alertsBusy = false,
   onLaunch,
   onExport,
 }: {
@@ -41,6 +42,7 @@ export function CalendarEventsView({
   onSerie?: (id: string) => void;
   onDetail?: (id: string) => void;
   onToggleSlot?: (id: string, at: number) => void;
+  alertsBusy?: boolean;
   onLaunch: () => void;
   onExport?: () => void;
 }) {
@@ -191,8 +193,14 @@ export function CalendarEventsView({
                             data-next={at === next || undefined}
                             data-alert={alerted || undefined}
                             aria-pressed={alerted}
-                            disabled={!onToggleSlot}
-                            onClick={() => onToggleSlot?.(series.id, at)}
+                            disabled={!onToggleSlot || at < now}
+                            aria-disabled={
+                              alertsBusy || !onToggleSlot || at < now
+                            }
+                            onClick={() => {
+                              if (at >= now && !alertsBusy)
+                                onToggleSlot?.(series.id, at);
+                            }}
                           >
                             {alerted && (
                               <span className="v-calendar-event-slot-icon">

@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { isCalendarAlerts } from "../../../contract/calendar-config-validation";
 import {
   calendarAlertLeads,
   calendarBandModes,
@@ -18,6 +19,7 @@ import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
 import { Button } from "../../ui/Button";
+import { CalendarAlertsDialog } from "../../ui/CalendarAlertsDialog";
 import { CalendarBandControls } from "../../ui/CalendarBandControls";
 import { CalendarDayView } from "../../ui/CalendarDayView";
 import { CalendarDetail } from "../../ui/CalendarDetail";
@@ -29,6 +31,7 @@ import {
 } from "../../ui/CalendarLiveView";
 import { CalendarMineView } from "../../ui/CalendarMineView";
 import { CalendarMonthView } from "../../ui/CalendarMonthView";
+import { CalendarPreferencesFailure } from "../../ui/CalendarPreferencesFailure";
 import { type CalendarHealth, CalendarRail } from "../../ui/CalendarRail";
 import { CalendarSeriesView } from "../../ui/CalendarSeriesView";
 import { CalendarUpcomingView } from "../../ui/CalendarUpcomingView";
@@ -53,6 +56,17 @@ function nextPublication(now: number) {
 }
 
 export default function CalendarEntry() {
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const alertsOrigin = useRef<HTMLElement | null>(null);
+  const openAlerts = () => {
+    alertsOrigin.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setAlertsOpen(true);
+  };
+  const returnAlertsFocus = () =>
+    alertsOrigin.current?.isConnected ? alertsOrigin.current : false;
   const [activeTab, setActiveTab] = useState("upcoming");
   const [calendarSpan, setCalendarSpan] = useState("week");
   const liveFilters = useRef<CalendarLiveFilters>({
@@ -125,6 +139,7 @@ export default function CalendarEntry() {
     launcher = useCalendarLauncher(state.allowed);
   useEffect(() => {
     if (!state.allowed) {
+      setAlertsOpen(false);
       setSelectedSerie(undefined);
       setDetail(undefined);
       liveFilters.current = {
@@ -157,6 +172,29 @@ export default function CalendarEntry() {
     slots: [],
     channels: { ...calendarDefaultAlerts.channels },
   };
+  const alertsState =
+    preferences.config?.documents.alerts ??
+    (preferences.failure ? "unavailable" : "loading");
+  const alertsValid = isCalendarAlerts(alerts);
+  const preferencesFailure = preferences.failure ? (
+    <CalendarPreferencesFailure
+      failure={preferences.failure}
+      canRetry={preferences.canRetry}
+      onRetry={() => void preferences.retry()}
+      onDiscard={preferences.discard}
+    />
+  ) : undefined;
+  const toggleSlot = preferences.canAlerts
+    ? (id: string, at: number) =>
+        void preferences.alert({
+          kind: "slot",
+          id,
+          at: Math.trunc(at / 1000),
+          enabled: !alerts.slots.some(
+            (slot) => slot.seriesId === id && slot.at * 1000 === at,
+          ),
+        })
+    : undefined;
   const history = useCalendarHistory(
     state.allowed && !!selectedSerie,
     schedule?.validFrom ?? "",
@@ -224,8 +262,10 @@ export default function CalendarEntry() {
               health={health}
               now={state.now}
               alerts={alerts}
+              alertsState={alertsState}
               limit={calendarStartsLimit}
               nextPublication={nextPublication(state.now)}
+              onAlerts={openAlerts}
               onUtc={(utc) => void preferences.utc(utc)}
               utcDisabled={!preferences.canUtc}
             />
@@ -237,6 +277,9 @@ export default function CalendarEntry() {
           <p role="status">{text.noAccess}</p>
         ) : selectedSerie && schedule && view ? (
           <CalendarSeriesView
+            alertsBusy={preferences.busy}
+            alertsState={alertsState}
+            alertsValid={alertsValid}
             onDetail={openDetail}
             schedule={schedule}
             seriesId={selectedSerie}
@@ -269,6 +312,7 @@ export default function CalendarEntry() {
               setSelectedSerie(undefined);
             }}
             onSeries={openSerie}
+            onSlot={toggleSlot}
             canFollow={preferences.canFollow}
             canLaunch={launcher.canLaunch}
             onFollow={(followed) =>
@@ -283,17 +327,7 @@ export default function CalendarEntry() {
                     <Button onClick={history.reload}>{text.retry}</Button>
                   </div>
                 )}
-                {preferences.failure && (
-                  <div role="alert">
-                    <p>{text.preferencesFailed}</p>
-                    <Button onClick={() => void preferences.retry()}>
-                      {text.retry}
-                    </Button>
-                    <Button onClick={preferences.discard}>
-                      {text.discardChange}
-                    </Button>
-                  </div>
-                )}
+                {preferencesFailure}
                 {launcher.failure && <p role="alert">{text.launchFailed}</p>}
               </>
             }
@@ -320,12 +354,24 @@ export default function CalendarEntry() {
                 modes={calendarBandModes}
                 stepMinutes={30}
                 dayMinutes={calendarDayMinutes}
-                busy
+                onBand={
+                  preferences.canAlerts
+                    ? (value) => void preferences.band(selectedSerie, value)
+                    : undefined
+                }
+                onLead={
+                  preferences.canAlerts
+                    ? (value) => void preferences.alert({ kind: "lead", value })
+                    : undefined
+                }
+                busy={preferences.busy}
+                valid={alertsValid}
               />
             }
           />
         ) : (
           <CalendarFrame
+            onAlerts={openAlerts}
             subtitle={subtitle}
             count={alerts.bands.length + alerts.slots.length}
             busy={state.busy}
@@ -354,21 +400,7 @@ export default function CalendarEntry() {
                 </Button>
               </div>
             )}
-            {preferences.failure && (
-              <div role="alert">
-                <p>
-                  {preferences.failure === "calendarScheduleUnavailable"
-                    ? text.scheduleRequired
-                    : text.preferencesFailed}
-                </p>
-                <Button onClick={() => void preferences.retry()}>
-                  {text.retry}
-                </Button>
-                <Button onClick={preferences.discard}>
-                  {text.discardChange}
-                </Button>
-              </div>
-            )}
+            {preferencesFailure}
             {launcher.failure && <p role="alert">{text.launchFailed}</p>}
             {!state.loaded && !view ? (
               <p role="status">{text.loading}</p>
@@ -389,8 +421,10 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
-                onDetail={openDetail}
+                alertsBusy={preferences.busy}
                 onSerie={openSerie}
+                onToggleSlot={toggleSlot}
+                onDetail={openDetail}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -496,6 +530,8 @@ export default function CalendarEntry() {
           utc={view.utc}
           limit={calendarStartsLimit}
           alerts={alerts}
+          alertsState={alertsState}
+          alertsValid={alertsValid}
           following={view.following}
           runs={runs}
           profile={launcher.profile?.name}
@@ -509,14 +545,57 @@ export default function CalendarEntry() {
             setDetail(undefined);
             openSerie(id);
           }}
+          onBand={
+            preferences.canAlerts
+              ? (id, value) => void preferences.band(id, value)
+              : undefined
+          }
+          onLead={
+            preferences.canAlerts
+              ? (value) => void preferences.alert({ kind: "lead", value })
+              : undefined
+          }
+          onSlot={
+            preferences.canAlerts
+              ? (id, at, enabled) =>
+                  void preferences.alert({
+                    kind: "slot",
+                    id,
+                    at: Math.trunc(at / 1000),
+                    enabled,
+                  })
+              : undefined
+          }
           onFollow={(id, enabled) => void preferences.follow(id, enabled)}
           onLaunch={() => void launcher.launch()}
           failure={
             launcher.failure ? (
               <p role="alert">{text.launchFailed}</p>
-            ) : preferences.failure ? (
-              <p role="alert">{text.preferencesFailed}</p>
-            ) : undefined
+            ) : (
+              preferencesFailure
+            )
+          }
+        />
+      )}
+      {alertsOpen && state.allowed && (
+        <CalendarAlertsDialog
+          schedule={schedule}
+          alerts={alerts}
+          alertsState={alertsState}
+          returnFocus={returnAlertsFocus}
+          following={view?.following ?? []}
+          now={state.now}
+          utc={view?.utc ?? false}
+          limit={calendarStartsLimit}
+          profile={launcher.profile?.name}
+          canEdit={preferences.canAlerts}
+          busy={preferences.busy}
+          onChange={(change) => void preferences.alert(change)}
+          onClose={() => setAlertsOpen(false)}
+          failure={
+            preferences.failureIntent === "alerts"
+              ? preferencesFailure
+              : undefined
           }
         />
       )}

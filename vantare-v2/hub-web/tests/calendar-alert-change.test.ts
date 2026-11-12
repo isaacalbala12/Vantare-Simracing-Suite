@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { isCalendarAlerts } from "../src/contract/calendar-config-validation";
 import {
   type CalendarAlerts,
   calendarDefaultAlerts,
@@ -94,4 +95,76 @@ it("keeps channels when clearing alerts and only allows switching auto launch of
   expect(applyAlertChange(cleared, { kind: "lead", value: 15 }).leadMin).toBe(
     15,
   );
+});
+
+it("replaces legacy duplicate bands only for the explicitly edited series", () => {
+  const current = {
+    ...defaults(),
+    bands: [
+      {
+        seriesId: "daily",
+        from: 1200,
+        to: 1380,
+        days: "all" as const,
+        mode: "each" as const,
+      },
+      {
+        seriesId: "daily",
+        from: 1260,
+        to: 1410,
+        days: "weekdays" as const,
+        mode: "first" as const,
+      },
+      {
+        seriesId: "other",
+        from: 900,
+        to: 1000,
+        days: "all" as const,
+        mode: "each" as const,
+      },
+    ],
+  };
+  const result = applyAlertChange(current, {
+    kind: "band",
+    id: "daily",
+    enabled: true,
+    patch: { from: 1230 },
+  });
+  expect(result.bands.filter((b) => b.seriesId === "daily")).toEqual([
+    { ...current.bands[0], from: 1230 },
+  ]);
+  expect(result.bands.find((b) => b.seriesId === "other")).toEqual(
+    current.bands[2],
+  );
+  expect(current.bands).toHaveLength(3);
+});
+
+it("removes an identity and normalizes the remaining inherited duplicate bands and slots", () => {
+  const initial: CalendarAlerts = {
+    ...calendarDefaultAlerts,
+    bands: [],
+    slots: [],
+    channels: { ...calendarDefaultAlerts.channels },
+  };
+  initial.bands = [
+    { seriesId: "remove", from: 0, to: 60, days: "all", mode: "each" },
+    { seriesId: "keep", from: 0, to: 60, days: "all", mode: "each" },
+    { seriesId: "keep", from: 0, to: 60, days: "all", mode: "each" },
+  ];
+  initial.slots = [
+    { seriesId: "event", at: 1000 },
+    { seriesId: "event", at: 1000 },
+  ];
+  const next = applyAlertChange(initial, {
+    kind: "band",
+    id: "remove",
+    enabled: false,
+    patch: {},
+  });
+  expect(next.bands.map((b) => b.seriesId)).toEqual(["keep"]);
+  expect(next.slots).toEqual([{ seriesId: "event", at: 1000 }]);
+  expect(isCalendarAlerts(next)).toBe(true);
+  expect(next.channels).toEqual(initial.channels);
+  expect(next.autoLaunch).toBe(initial.autoLaunch);
+  expect(next.notifyWeek).toBe(initial.notifyWeek);
 });

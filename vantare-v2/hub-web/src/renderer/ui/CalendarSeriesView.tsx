@@ -11,6 +11,7 @@ import type {
 } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText } from "../i18n/calendar";
+import { calendarAlertsText } from "../i18n/calendarAlerts";
 import { calendarSeriesText as text } from "../i18n/calendarSeries";
 import { bandCovers } from "../screens/calendar/bands";
 import {
@@ -28,6 +29,10 @@ import {
   slotGroups,
 } from "../screens/calendar/series";
 import { Button } from "./Button";
+import {
+  type AlertsDocumentState,
+  CalendarAlertsStatus,
+} from "./CalendarAlertsStatus";
 import {
   civilDay,
   clock,
@@ -56,6 +61,9 @@ export function CalendarSeriesView({
   schedule,
   seriesId,
   alerts,
+  alertsState = "ready",
+  alertsValid = true,
+  alertsBusy = false,
   utc,
   now,
   limit,
@@ -80,6 +88,9 @@ export function CalendarSeriesView({
   schedule: CalendarSchedule;
   seriesId: string;
   alerts: CalendarAlerts;
+  alertsState?: AlertsDocumentState;
+  alertsValid?: boolean;
+  alertsBusy?: boolean;
   utc: boolean;
   now: number;
   limit: number;
@@ -355,7 +366,10 @@ export function CalendarSeriesView({
                   <Departure
                     key={at}
                     next={at === first}
-                    alert={alertAt(schedule, series, at, alerts, limit)}
+                    alert={
+                      alertsState === "ready" &&
+                      alertAt(schedule, series, at, alerts, limit)
+                    }
                     onClick={
                       onDetail ? () => onDetail(seriesId, at) : undefined
                     }
@@ -378,8 +392,12 @@ export function CalendarSeriesView({
                       <Departure
                         key={at}
                         past={at < now}
-                        alert={alertAt(schedule, series, at, alerts, limit)}
+                        alert={
+                          alertsState === "ready" &&
+                          alertAt(schedule, series, at, alerts, limit)
+                        }
                         next={at === first}
+                        pending={alertsBusy}
                         onClick={
                           onSlot && at >= now
                             ? () => onSlot(seriesId, at)
@@ -477,7 +495,11 @@ export function CalendarSeriesView({
         <div className="v-calendar-serie-right">
           <section className="v-calendar-serie-card">
             <Heading title={text.alerts} />
-            {isDaily ? (
+            {alertsState !== "ready" ? (
+              <CalendarAlertsStatus state={alertsState} />
+            ) : !alertsValid ? (
+              <p role="status">{calendarAlertsText.duplicates}</p>
+            ) : isDaily ? (
               alertControls
             ) : (
               <div className="v-calendar-serie-slot-help">
@@ -531,12 +553,14 @@ function Departure({
   next,
   alert,
   past,
+  pending = false,
   onClick,
 }: {
   children: ReactNode;
   next: boolean;
   alert: boolean;
   past?: boolean;
+  pending?: boolean;
   onClick?: () => void;
 }) {
   const attrs = {
@@ -545,7 +569,13 @@ function Departure({
     "data-past": past || undefined,
   };
   return onClick ? (
-    <Button {...attrs} onClick={onClick}>
+    <Button
+      {...attrs}
+      aria-disabled={pending}
+      onClick={() => {
+        if (!pending) onClick();
+      }}
+    >
       {children}
     </Button>
   ) : (

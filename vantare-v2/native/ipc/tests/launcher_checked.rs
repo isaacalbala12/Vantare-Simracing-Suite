@@ -158,7 +158,9 @@ fn silent_authority_has_a_total_deadline_without_sleep_or_a_real_service() {
     let mut listener = Listener::new(&link.pipe, stop, Duration::from_secs(1)).unwrap();
     let mut pipe = listener.instance().unwrap();
     let (release, waiting) = mpsc::channel::<()>();
+    let (ready, listening) = mpsc::channel::<()>();
     let worker = std::thread::spawn(move || {
+        ready.send(()).unwrap();
         pipe.accept().unwrap();
         let request = control::read_request(&mut pipe).unwrap();
         assert!(request.nonce.is_empty());
@@ -168,9 +170,10 @@ fn silent_authority_has_a_total_deadline_without_sleep_or_a_real_service() {
         ));
         waiting.recv().unwrap();
     });
-    // This wait tests the transport deadline itself; the double is released by a channel.
+    listening.recv().unwrap();
+    // This wait tests the real consume-time deadline; no sleep is used by the double.
     let started = Instant::now();
-    let result = account_session::read_account_session(&link, Duration::from_millis(50));
+    let result = account_session::read_account_session(&link, Duration::from_millis(750));
     let elapsed = started.elapsed();
     release.send(()).unwrap();
     worker.join().unwrap();

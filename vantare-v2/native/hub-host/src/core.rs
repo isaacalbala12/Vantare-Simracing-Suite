@@ -473,6 +473,32 @@ mod tests {
         }
     }
     #[test]
+    fn launch_permission_matches_the_host_projection_for_grace_no_credential_and_live() {
+        for state in [
+            control::AccessState::Active,
+            control::AccessState::Grace,
+            control::AccessState::NoCredential,
+            control::AccessState::Revoked,
+        ] {
+            for live in [false, true] {
+                let mut observed = policy(state);
+                observed.live = live;
+                if state == control::AccessState::Grace {
+                    observed.signed_until_ms = Some(999);
+                    observed.grace_until_ms = Some(2000);
+                }
+                for now in [1000, 2000, 3000] {
+                    let projected = access_view(&observed, now);
+                    assert_eq!(
+                        observed.permits_launch(now),
+                        projected.verified && !projected.blocked && !observed.live
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn missing_and_denied_credentials_never_expose_capabilities() {
         assert_eq!(
             access_view(&policy(control::AccessState::NoCredential), 1000),

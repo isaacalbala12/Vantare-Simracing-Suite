@@ -36,7 +36,7 @@ const pipe=`vantare-measure-${randomBytes(16).toString('hex')}`;
 const peers=[],samples=[],profiles={};
 let driver,browser,activeProfile;
 const originalToolHash=await hashFile(join(code,'scripts/measure.ps1'));
-const toolHashes=Object.fromEntries(await Promise.all(['measure.mjs','measure-window.ps1','fluency.mjs','image-proof.mjs','measurement-qa.mjs'].map(async name=>[name,await hashFile(join(root,'tools',name))])));
+const toolHashes=Object.fromEntries(await Promise.all(['measure.mjs','measure.ps1','capture-lock.ps1','measure-window.ps1','fluency.mjs','image-proof.mjs','measurement-qa.mjs'].map(async name=>[name,await hashFile(join(root,'tools',name))])));
 const toolSource=execFileSync('git',['rev-parse','HEAD'],{cwd:code,encoding:'utf8',windowsHide:true}).trim();
 try{
   for(const [name,role] of [['vantare-core.exe','rights'],['vantare.exe','services']]){
@@ -54,7 +54,7 @@ try{
   const configuration={runs,evidence:output,apps};
   const config=owned(join(root,`config-${trial}.json`));
   await writeFile(config,JSON.stringify(configuration)); // QA-only ephemeral bootstrap; never log this file.
-  await writeFile(join(output,'provenance.json'),JSON.stringify({...prepared,experiment,runs,trial,toolHashes,toolSource,nodeVersion:process.version,sourceMeasureWrapperSha256:originalToolHash,os:release(),logicalCpus:cpus().length,totalMemory:totalmem(),freeMemory:freemem(),initialOrder:apps.map(item=>item.name),method:'Five alternated same-package baseline/variant launches, fresh profiles, Settings then Home, no own compilation, natural OS caches'},null,2));
+  await writeFile(join(output,'provenance.json'),JSON.stringify({...prepared,experiment,runs,trial,toolHashes,toolSource,reservationFile:process.env.VANTARE_MEASURE_RESERVATION_FILE??null,nodeVersion:process.version,sourceMeasureWrapperSha256:originalToolHash,os:release(),logicalCpus:cpus().length,totalMemory:totalmem(),freeMemory:freemem(),initialOrder:apps.map(item=>item.name),method:'Five alternated same-package baseline/variant launches, fresh profiles, Settings then Home, no own compilation, natural OS caches'},null,2));
   driver=spawn('pwsh',['-NoProfile','-MTA','-File',join(root,'tools/measure-window.ps1'),'-Config',config],{env,windowsHide:true,stdio:['pipe','pipe','pipe']});
   let stderr='';driver.stderr.on('data',chunk=>{stderr+=chunk;});
   const done=new Promise((accept,reject)=>{driver.once('exit',accept);driver.once('error',reject);});

@@ -2,7 +2,7 @@ param([ValidateSet('hardware-off','hardware-off-no-gpu','renderer-limit','media-
 $ErrorActionPreference='Stop'
 # Same global ownership wrapper as hub-web/scripts/measure.ps1. The driver and
 # experiment data are confined to QA; no product script is modified.
-. 'D:/VantareServer/worktrees/isa-1995-medicion-2/vantare-v2/hub-web/scripts/capture-lock.ps1'
+. (Join-Path $PSScriptRoot 'capture-lock.ps1')
 $env:VANTARE_MEASURE_EXPERIMENT=$Experiment
 $env:VANTARE_MEASURE_RUNS=[string]$Runs
 $env:TEMP='D:/VantareServer/qa/isa-1995-measure-2/tmp'
@@ -13,8 +13,20 @@ $reservationPath=Join-Path 'D:/VantareServer/evidence/hub-web/medicion-2' ("rese
 $reservation=@{started=(Get-Date -Format o);experiment=$Experiment;runs=$Runs;buildsBefore=@();buildsAfter=@();completed=$false}
 try {
     $reservation.buildsBefore=@(Get-CimInstance Win32_Process -Filter "Name='cargo.exe' OR Name='rustc.exe' OR Name='cl.exe' OR Name='link.exe'" | Select-Object ProcessId,Name)
-    if($reservation.buildsBefore.Count){throw 'Compilation already running: measurement not started'}
+    $reservation.reservedAt=$reservation.started
+    $reservation.buildsAtReservation=$reservation.buildsBefore
     $reservation | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $reservationPath
+    while($reservation.buildsBefore.Count) {
+        Write-Output "$(Get-Date -Format o) reservation held; waiting for existing compilation"
+        $owner=Get-Content -LiteralPath 'D:/VantareServer/qa/captura.lock/owner.json' -Raw|ConvertFrom-Json
+        if($owner.nonce -ne $lease.nonce){throw 'Measurement reservation lost'}
+        (Get-Item -LiteralPath 'D:/VantareServer/qa/captura.lock').LastWriteTime=Get-Date
+        Start-Sleep -Seconds 60
+        $reservation.buildsBefore=@(Get-CimInstance Win32_Process -Filter "Name='cargo.exe' OR Name='rustc.exe' OR Name='cl.exe' OR Name='link.exe'" | Select-Object ProcessId,Name)
+    }
+    $reservation.started=Get-Date -Format o
+    $reservation | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $reservationPath
+    $env:VANTARE_MEASURE_RESERVATION_FILE=$reservationPath
     & node --experimental-strip-types (Join-Path $PSScriptRoot 'measure.mjs')
     $result=$LASTEXITCODE
     $reservation.buildsAfter=@(Get-CimInstance Win32_Process -Filter "Name='cargo.exe' OR Name='rustc.exe' OR Name='cl.exe' OR Name='link.exe'" | Select-Object ProcessId,Name)

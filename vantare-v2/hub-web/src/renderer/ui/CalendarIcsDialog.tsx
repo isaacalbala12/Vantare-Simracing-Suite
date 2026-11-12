@@ -102,7 +102,8 @@ export function CalendarIcsDialog(p: Props) {
                         className="v-radio"
                         id={`${id}-${scope.id}`}
                         value={scope.id}
-                        disabled={p.busy}
+                        aria-disabled={p.busy}
+                        aria-busy={p.busy}
                         aria-labelledby={`${id}-${scope.id}-label`}
                       >
                         <Radio.Indicator className="v-radio-indicator" />
@@ -125,8 +126,11 @@ export function CalendarIcsDialog(p: Props) {
                     id={`${id}-alarm`}
                     className="v-checkbox"
                     checked={p.alarm}
-                    disabled={p.busy}
-                    onCheckedChange={(checked) => p.onAlarm(checked)}
+                    aria-disabled={p.busy}
+                    aria-busy={p.busy}
+                    onCheckedChange={(checked) => {
+                      if (!p.busy) p.onAlarm(checked);
+                    }}
                     aria-labelledby={`${id}-alarm-label`}
                   >
                     <Checkbox.Indicator>
@@ -155,7 +159,7 @@ export function CalendarIcsDialog(p: Props) {
                   </span>
                 </div>
                 <h3 className="v-calendar-ics-preview-title">
-                  {text.preview(p.view?.total ?? 0)}
+                  {p.view ? text.preview(p.view.total) : text.previewPending}
                 </h3>
                 {p.busy && !p.view ? (
                   <p role="status" className="v-muted">
@@ -186,8 +190,12 @@ export function CalendarIcsDialog(p: Props) {
             <Button
               size="sm"
               variant="primary"
-              disabled={!p.view || p.busy}
-              onClick={p.onDownload}
+              aria-disabled={!p.view || p.busy}
+              aria-busy={p.busy}
+              aria-description={text.expiry}
+              onClick={() => {
+                if (p.view && !p.busy) p.onDownload();
+              }}
             >
               {text.download}
             </Button>

@@ -33,6 +33,8 @@ export const calendarIcsText = {
   fileHint: "Una sola vez; no se actualiza.",
   preview: (n: number) =>
     `Vista previa · ${n} evento${n === 1 ? "" : "s"} esta semana`,
+  previewPending: "Vista previa",
+  expiry: `La preparación caduca a los ${calendarIcsPreparedMaxAgeMs / 60_000} min o al terminar el horario.`,
   day: (label: string) => `${label} · `,
   destination: "Elige dónde guardar el archivo .ics.",
   cancel: "Cancelar",

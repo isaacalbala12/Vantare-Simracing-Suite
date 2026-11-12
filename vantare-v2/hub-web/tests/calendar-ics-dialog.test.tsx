@@ -39,7 +39,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 function show(p: Parameters<typeof CalendarIcsDialog>[0] = props) {
-  render(
+  return render(
     <TooltipProvider>
       <CalendarIcsDialog {...p} />
     </TooltipProvider>,
@@ -64,10 +64,11 @@ it("prevents export without a preview and exposes explicit retry and cancel", ()
   expect(screen.getByRole("alert").textContent).toContain(
     text.error("calendarExportTooLarge"),
   );
-  expect(screen.getByRole("button", { name: text.download })).toHaveProperty(
-    "disabled",
-    true,
-  );
+  expect(
+    screen
+      .getByRole("button", { name: text.download })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
   fireEvent.click(screen.getByRole("button", { name: text.retry }));
   expect(props.onRetry).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("button", { name: text.cancel }));
@@ -79,10 +80,11 @@ it("keeps the conflict explanation readable and freezes options while busy", () 
   expect(screen.getByText(text.conflict)).toBeTruthy();
   for (const radio of screen.getAllByRole("radio"))
     expect(radio.getAttribute("aria-disabled")).toBe("true");
-  expect(screen.getByRole("button", { name: text.download })).toHaveProperty(
-    "disabled",
-    true,
-  );
+  expect(
+    screen
+      .getByRole("button", { name: text.download })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
 });
 
 it.each(["calendarExportExtension", "rejected"] as const)(
@@ -92,11 +94,33 @@ it.each(["calendarExportExtension", "rejected"] as const)(
     expect(screen.getByRole("alert").textContent).toContain(
       text.error(failure),
     );
-    expect(screen.getByRole("button", { name: text.download })).toHaveProperty(
-      "disabled",
-      true,
-    );
+    expect(
+      screen
+        .getByRole("button", { name: text.download })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: text.retry }));
     expect(props.onRetry).toHaveBeenCalledOnce();
   },
 );
+
+it("keeps an option focused while preparing and blocks repeated changes", () => {
+  const result = show();
+  const option = screen.getByRole("radio", { name: text.scopes[0].label });
+  option.focus();
+  result.rerender(
+    <TooltipProvider>
+      <CalendarIcsDialog {...props} busy view={undefined} />
+    </TooltipProvider>,
+  );
+  expect(document.activeElement).toBe(option);
+  expect(option.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(screen.getByRole("radio", { name: text.scopes[1].label }));
+  fireEvent.click(screen.getByRole("checkbox", { name: text.alarm }));
+  fireEvent.click(screen.getByRole("button", { name: text.download }));
+  expect(props.onScope).not.toHaveBeenCalled();
+  expect(props.onAlarm).not.toHaveBeenCalled();
+  expect(props.onDownload).not.toHaveBeenCalled();
+  expect(screen.queryByText(text.preview(0))).toBeNull();
+  expect(screen.getByText(text.previewPending)).toBeTruthy();
+});

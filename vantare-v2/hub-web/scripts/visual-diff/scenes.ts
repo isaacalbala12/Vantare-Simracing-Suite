@@ -1,4 +1,5 @@
 import type { Page } from "playwright-core";
+import { privacyText } from "../../src/renderer/i18n/privacy.es.ts";
 import { accessScenes } from "./access.ts";
 import { accountScenes } from "./account.ts";
 import { calendarScenes } from "./calendar-scenes.ts";
@@ -55,6 +56,32 @@ export const visualScenes: Record<string, VisualScene> = {
         async prepare(page: Page) {
           await page.getByRole("tab", { name: tab, exact: true }).click();
           await page.getByRole("tabpanel").waitFor();
+          if (scene === "ajustes-privacidad") {
+            await page
+              .getByText(privacyText.optional, { exact: true })
+              .waitFor();
+            for (const name of [
+              privacyText.enable,
+              privacyText.refresh,
+              "Política de privacidad",
+            ]) {
+              const control = page.getByRole("button", { name, exact: true });
+              if (
+                !(await control.isEnabled()) ||
+                (await control.getAttribute("aria-disabled")) === "true" ||
+                !(await control.isVisible())
+              )
+                throw new Error(
+                  `Privacy action unavailable in signed-in QA: ${name}`,
+                );
+              if (
+                (await control.evaluate(
+                  (node) => getComputedStyle(node).opacity,
+                )) !== "1"
+              )
+                throw new Error(`Privacy action unexpectedly dimmed: ${name}`);
+            }
+          }
         },
       },
     ]),

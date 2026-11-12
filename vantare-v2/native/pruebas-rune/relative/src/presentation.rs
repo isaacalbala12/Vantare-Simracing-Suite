@@ -53,6 +53,41 @@ fn class_color(name: &str) -> Color {
         .unwrap();
     hex(entry["dot"].as_str().unwrap())
 }
+pub fn timing() -> motion::Timing {
+    let value = |key: &str| {
+        std::time::Duration::from_secs_f64(tokens()["motion"][key].as_f64().unwrap() / 1000.0)
+    };
+    motion::Timing {
+        reorder: value("reorder_ms"),
+        fade: value("fade_ms"),
+        flash: value("flash_ms"),
+    }
+}
+pub fn pulse_parameters() -> (f32, f32) {
+    (
+        tokens()["relative"]["pulse_ms"].as_f64().unwrap() as f32 / 1000.0,
+        tokens()["relative"]["pulse_alpha"].as_f64().unwrap() as f32,
+    )
+}
+pub fn flash_color(kind: motion::Flash) -> Color {
+    color(
+        "colors",
+        match kind {
+            motion::Flash::Gain | motion::Flash::PersonalBest => "flash_gain",
+            motion::Flash::Loss => "flash_loss",
+            motion::Flash::Lead => "leader",
+            motion::Flash::Best => "purple",
+            motion::Flash::Pit => "box_fill",
+        },
+    )
+}
+pub fn rows_y(board: &Board) -> f32 {
+    if board.banner.is_some() && !waiting(board) {
+        53.0
+    } else {
+        33.0
+    }
+}
 fn font(family: &'static str, size: f32, weight: f32) -> TextStyle {
     TextStyle {
         family: Family::Named(family),
@@ -172,12 +207,16 @@ fn car_row(state: &Relative, index: usize) -> El {
         return root.key(format!("empty-{index}"));
     };
     let data = state.board.slots[index].as_ref().unwrap();
-    root = root.key(format!("car-{}", live.id.0));
+    root = root
+        .key(format!("car-{}", live.id.0))
+        .live_offset(&live.offset)
+        .live_opacity(&live.opacity);
     if data.is_player {
         let accent = color("accents", "red");
         root = root.child(
             el().size(WIDTH - 12.0, ROW_HEIGHT)
                 .radius(6.0)
+                .live_opacity(&live.player_opacity)
                 .linear_gradient(
                     std::f32::consts::FRAC_PI_2,
                     [(0.0, accent.alpha(0.32)), (1.0, accent.alpha(0.06))],
@@ -185,6 +224,19 @@ fn car_row(state: &Relative, index: usize) -> El {
                 .pin(Some(6.0), Some(0.0), None, None),
         );
     }
+    root = root
+        .child(
+            el().size(WIDTH - 12.0, ROW_HEIGHT)
+                .radius(6.0)
+                .live_fill(&live.pulse)
+                .pin(Some(6.0), Some(0.0), None, None),
+        )
+        .child(
+            el().size(WIDTH - 12.0, ROW_HEIGHT)
+                .radius(6.0)
+                .live_fill(&live.flash)
+                .pin(Some(6.0), Some(0.0), None, None),
+        );
     root = root.child(
         el().size(7.0, 7.0)
             .radius(3.5)

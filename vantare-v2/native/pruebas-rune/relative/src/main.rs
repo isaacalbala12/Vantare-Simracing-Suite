@@ -81,16 +81,29 @@ struct Mosaic {
 fn setup(state: &mut Mosaic, waker: rune::Waker) {
     *state.shared.waker.lock().unwrap() = Some(waker);
 }
-fn poll(state: &mut Mosaic, _time: f64, _tx: &mut Tx) -> bool {
+fn poll(state: &mut Mosaic, _time: f64, tx: &mut Tx) -> bool {
     let photo = state.shared.latest.lock().unwrap().take();
-    let Some(photo) = photo else { return false };
-    state.photo = Some((photo.epoch, photo.sequence));
+    let now = std::time::Instant::now();
     let mut structural = false;
+    if let Some(photo) = photo {
+        state.photo = Some((photo.epoch, photo.sequence));
+        for relative in &mut state.copies {
+            structural |= relative.ingest_at(&photo, now);
+        }
+    }
+    let mut animate = false;
     for relative in &mut state.copies {
-        structural |= relative.ingest(&photo);
+        animate |= relative.animate(now);
+    }
+    if animate {
+        tx.wake_after(Duration::ZERO);
+    }
+    if structural {
+        tx.instant();
     }
     structural
 }
+
 fn view(state: &Mosaic, _cx: &mut Cx<Mosaic>) -> El {
     let columns = match state.copies.len() {
         1 => 1,

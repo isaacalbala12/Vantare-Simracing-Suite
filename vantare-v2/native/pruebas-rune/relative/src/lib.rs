@@ -1,5 +1,6 @@
 //! Relative: the product projection owns all formatting and ordering.
-use rune::{Cx, El, LiveText};
+use rune::{Color, Cx, El, Live, LiveText};
+use std::time::{Duration, Instant};
 use std::{cell::Cell, collections::BTreeMap, sync::Arc};
 use vantare_domain::{
     CarId, Snapshot,
@@ -10,17 +11,44 @@ use vantare_domain::{
 pub const WIDTH: f32 = 420.0;
 pub const ROW_HEIGHT: f32 = 24.0;
 pub const HEIGHT: f32 = 265.0;
+pub mod motion;
 pub mod presentation;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Wake {
+    Frame,
+    Idle,
+    At(Duration),
+}
 
 pub struct RowLive {
     pub id: CarId,
     pub cells: [LiveText; 4],
+    pub offset: Live<[f32; 2]>,
+    pub opacity: Live<f32>,
+    pub pulse: Live<Color>,
+    pub flash: Live<Color>,
+    pub player_opacity: Live<f32>,
 }
 impl RowLive {
     fn new(row: &Row) -> Self {
         Self {
             id: row.id,
             cells: values(row).map(LiveText::new),
+            offset: Live::new([0.0, 0.0]),
+            opacity: Live::new(1.0),
+            pulse: Live::new(Color {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            }),
+            flash: Live::new(Color {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+                a: 0.0,
+            }),
+            player_opacity: Live::new(1.0),
         }
     }
     fn update(&self, row: &Row) {
@@ -74,6 +102,10 @@ pub struct Relative {
     prefs: Preferences,
     content: relative::Content,
     pub labels: [LiveText; 4],
+    movement: motion::Motion,
+    epoch: Option<u64>,
+    started: Instant,
+    now: Instant,
 }
 impl Default for Relative {
     fn default() -> Self {
@@ -90,12 +122,20 @@ impl Relative {
             slots,
             views: Cell::new(0),
             labels,
+            movement: motion::Motion::default(),
+            epoch: None,
+            started: Instant::now(),
+            now: Instant::now(),
             prefs,
             content,
         }
     }
     /// True only when the keyed row structure changes; text uses LiveText.
     pub fn ingest(&mut self, snapshot: &Snapshot) -> bool {
+        self.ingest_at(snapshot, self.now)
+    }
+    pub fn ingest_at(&mut self, snapshot: &Snapshot, now: Instant) -> bool {
+        self.now = now;
         let board =
             relative::project_cached(snapshot, self.prefs, self.content, &[], Some(&self.board));
         if Arc::ptr_eq(&self.board, &board) {
@@ -135,8 +175,76 @@ impl Relative {
             .iter()
             .map(|row| row.as_ref().map(|r| r.id))
             .collect();
+        if self.epoch != Some(snapshot.epoch) {
+            self.movement = motion::Motion::default();
+            self.epoch = Some(snapshot.epoch);
+        }
+        let top = presentation::rows_y(&board);
+        let samples: Vec<_> = board
+            .slots
+            .iter()
+            .enumerate()
+            .filter_map(|(index, row)| {
+                row.as_ref().map(|row| motion::Sample {
+                    id: row.id,
+                    y: top + index as f32 * ROW_HEIGHT,
+                    position: match row.side {
+                        relative::Side::Ahead => 2,
+                        relative::Side::Player => 1,
+                        relative::Side::Behind => 0,
+                    },
+                    fastest: false,
+                    in_pits: row.in_pits,
+                    leader: false,
+                })
+            })
+            .collect();
+        self.movement.update(&samples, presentation::timing(), now);
         self.board = board;
+        self.animate(now);
         before != after || shape_changed
+    }
+    /// Same pure motion curves and durations as GPUI, applied to retained Rune values.
+    pub fn animate(&mut self, now: Instant) -> bool {
+        self.now = now;
+        let timing = presentation::timing();
+        let mut active = self.movement.wake(timing, now) == Wake::Frame;
+        let (period, alpha) = presentation::pulse_parameters();
+        let phase = now.saturating_duration_since(self.started).as_secs_f32() / period;
+        let pulse = 0.5 - 0.5 * (phase * std::f32::consts::TAU).cos();
+        for (slot, data) in self.slots.iter().zip(&self.board.slots) {
+            let (Some(slot), Some(data)) = (slot, data) else {
+                continue;
+            };
+            let pose = self.movement.pose(data.id, timing, now);
+            slot.offset.set([0.0, pose.offset]);
+            slot.opacity.set(pose.alpha);
+            let pulsing =
+                data.fast_traffic && self.board.banner != Some(relative::Banner::FullCourseYellow);
+            active |= pulsing;
+            slot.pulse.set(
+                presentation::flash_color(motion::Flash::Loss).alpha(if pulsing {
+                    alpha * pulse
+                } else {
+                    0.0
+                }),
+            );
+            let (color, strength) = pose.flash.map_or(
+                (
+                    Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 0.0,
+                    },
+                    0.0,
+                ),
+                |(kind, strength)| (presentation::flash_color(kind), strength),
+            );
+            slot.flash.set(color.alpha(strength));
+            slot.player_opacity.set(1.0 - strength);
+        }
+        active
     }
 }
 

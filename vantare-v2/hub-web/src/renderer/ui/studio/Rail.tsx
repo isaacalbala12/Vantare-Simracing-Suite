@@ -96,7 +96,15 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
                         {t.content}
                       </Tabs.Tab>
                     </DisabledHint>
-                    <Tabs.Tab value="appearance">{t.appearance}</Tabs.Tab>
+                    {selected.settings ? (
+                      <Tabs.Tab value="appearance">{t.appearance}</Tabs.Tab>
+                    ) : (
+                      <DisabledHint label={t.soonTooltip}>
+                        <Tabs.Tab value="appearance" disabled>
+                          {t.appearance}
+                        </Tabs.Tab>
+                      </DisabledHint>
+                    )}
                     <Tabs.Tab value="track">{t.track}</Tabs.Tab>
                   </Tabs.List>
                   <Tabs.Panel value="appearance">

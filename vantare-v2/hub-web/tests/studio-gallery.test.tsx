@@ -720,4 +720,75 @@ describe("Studio gallery", () => {
     const control = screen.getByRole("combobox", { name: t.widgetAccent });
     await waitFor(() => expect(control.textContent).toContain(t.accentGreen));
   });
+  it("returns to En pista on selecting another widget", async () => {
+    mount();
+    const user = userEvent.setup();
+    await screen.findByRole("slider", { name: t.opacity });
+    await user.click(screen.getByRole("tab", { name: t.appearance }));
+    await user.click(screen.getByRole("button", { name: "Delta" }));
+    expect(
+      screen.getByRole("tab", { name: t.track }).getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(screen.queryByRole("combobox", { name: t.widgetLook })).toBeNull();
+  });
+  it("keeps Appearance unavailable for untyped widgets", async () => {
+    mount();
+    const user = userEvent.setup();
+    await screen.findByRole("slider", { name: t.opacity });
+    await user.click(screen.getByRole("button", { name: t.addShort }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Añadir .*Radar/i }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Radar" }));
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("tab", { name: t.appearance })
+          .getAttribute("aria-disabled"),
+      ).toBe("true"),
+    );
+    expect(screen.queryByText(t.appearanceUnavailable)).toBeNull();
+  });
+  it("shows the fresh appearance after a revision conflict and can discard the failed patch", async () => {
+    mount();
+    const user = userEvent.setup();
+    await screen.findByRole("slider", { name: t.opacity });
+    await user.click(screen.getByRole("tab", { name: t.appearance }));
+    const original = Client.prototype.request;
+    vi.spyOn(Client.prototype, "request").mockImplementation(async function (
+      this: Client,
+      request,
+      onSent,
+    ) {
+      if (
+        request.method === "studio.instance" &&
+        request.patch.field === "settings"
+      ) {
+        const fresh = await original.call(this, { method: "studio.get" });
+        if (fresh.method !== "studio.get" || !fresh.value.instances[0].settings)
+          throw new Error("Missing view");
+        fresh.value.revision = "f".repeat(64);
+        fresh.value.instances[0].settings.accent = "white";
+        throw new HostFailure({ kind: "studioConflict", current: fresh.value });
+      }
+      return original.call(this, request, onSent);
+    });
+    await user.click(screen.getByRole("combobox", { name: t.widgetAccent }));
+    await user.click(
+      await screen.findByRole("option", { name: t.accentGreen }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("combobox", { name: t.widgetAccent }).textContent,
+      ).toContain(t.accentWhite),
+    );
+    expect(
+      within(screen.getByRole("alert")).getByText(t.conflict),
+    ).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: t.discard }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.getByRole("combobox", { name: t.widgetAccent }).textContent,
+    ).toContain(t.accentWhite);
+  });
 });

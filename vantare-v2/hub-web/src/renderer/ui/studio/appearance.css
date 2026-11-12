@@ -20,3 +20,8 @@
   width: 100%;
   min-width: 0;
 }
+
+.v-studio-appearance dl,
+.v-studio-appearance dd {
+  margin: 0;
+}

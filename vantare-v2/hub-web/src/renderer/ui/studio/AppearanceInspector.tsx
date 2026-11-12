@@ -14,7 +14,8 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
   if (view?.state !== "ready" || !item.settings)
     return <p className="v-muted">{t.appearanceUnavailable}</p>;
   const settings = item.settings;
-  const blocked = state.pending || item.locked || view.plan === "unverified";
+  const disabled = item.locked || view.plan === "unverified";
+  const blocked = state.pending || disabled;
   const patch = (value: WidgetSettingsPatch) => {
     if (blocked) return;
     void state.execute({
@@ -26,11 +27,31 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
   };
   return (
     <div className="v-studio-inspector-fields v-studio-appearance">
-      <p className="v-muted">{t.appearancePreviewNote}</p>
+      <p className="v-muted">
+        {disabled
+          ? view.plan === "unverified"
+            ? t.verifyWidget
+            : t.lockedWidget
+          : t.appearancePreviewNote}
+      </p>
+      {settings.kind === "standings" && (
+        <dl className="v-field">
+          <dt>{t.widgetBrand}</dt>
+          <dd>
+            {settings.brandVisible === undefined
+              ? t.brandAuto
+              : settings.brandVisible
+                ? t.brandShown
+                : t.brandHidden}
+          </dd>
+          <dd className="v-muted">{t.brandReadOnly}</dd>
+        </dl>
+      )}
       <Select
         label={t.widgetLook}
         value={settings.designSystem}
-        pending={blocked}
+        disabled={disabled}
+        pending={state.pending}
         options={[
           { value: "eficiencia", label: t.lookEficiencia },
           { value: "vantare", label: t.lookVantare },
@@ -45,7 +66,8 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
           <Select
             label={t.widgetStyle}
             value={settings.style}
-            pending={blocked}
+            disabled={disabled}
+            pending={state.pending}
             options={[
               { value: "neo", label: t.styleNeo },
               { value: "neutro", label: t.styleNeutral },
@@ -58,7 +80,8 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
           <Select
             label={t.widgetAccent}
             value={settings.accent}
-            pending={blocked}
+            disabled={disabled}
+            pending={state.pending}
             options={[
               { value: "red", label: t.accentRed },
               { value: "amber", label: t.accentAmber },
@@ -77,17 +100,6 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
           />
         </>
       )}
-      <div className="v-field">
-        <span>{t.widgetBrand}</span>
-        <output>
-          {settings.brandVisible === undefined
-            ? t.brandAuto
-            : settings.brandVisible
-              ? t.brandShown
-              : t.brandHidden}
-        </output>
-        <p className="v-muted">{t.brandReadOnly}</p>
-      </div>
     </div>
   );
 }

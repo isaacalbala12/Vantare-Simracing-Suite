@@ -1,3 +1,4 @@
+import { calendarLaunchMock } from "../calendar-launch";
 import alertsReference from "../../../fixtures/calendar-alerts-reference.json";
 import fixture from "../../../fixtures/calendar-demo.json";
 import { isCalendarAlerts } from "../../contract/calendar-config-validation";
@@ -48,6 +49,7 @@ function alertValue(alerts: CalendarAlerts) {
 export function create(context: MockContext): MockHandler {
   const liveReference =
     context.sceneName === "calendar-live-reference" ||
+    context.sceneName === "calendar-launch-reference" ||
     context.sceneName === "calendar-ics-replace-reference";
   let replacementId: string | undefined;
   let replacementAt = 0;
@@ -134,7 +136,10 @@ export function create(context: MockContext): MockHandler {
       : Date.now();
   let lastNoticeTest = -Infinity;
   let icsHash: string | undefined;
+  const launch=calendarLaunchMock(context,()=>config,clock);
   return (message: UiToHost): HostToUi | undefined => {
+    const launchReply=launch(message);
+    if(launchReply!==undefined)return launchReply;
     if (
       message.kind !== "request" ||
       !message.request.method.startsWith("calendar.")

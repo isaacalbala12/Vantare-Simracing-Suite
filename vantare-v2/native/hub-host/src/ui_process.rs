@@ -234,7 +234,13 @@ impl Session {
         if let Some(confirmation) = &self.confirmation {
             confirmation.check_confirmation()?;
         }
-        if args.controlled && crate::control_stdin::closed() && self.closing.is_none() {
+        if args.controlled
+            && crate::control_stdin::closed()
+            && session_effects::close_can_advance(
+                self.closing.map(|(reason, _)| reason),
+                CloseReason::ControlEof,
+            )
+        {
             self.request_close(pipe, CloseReason::ControlEof)?;
         }
         self.current = self.core.status();
@@ -246,7 +252,12 @@ impl Session {
         for tick in SCREEN_TICKS {
             tick(self, pipe)?;
         }
-        if entered_live(self.last.as_ref(), &self.current) && self.closing.is_none() {
+        if entered_live(self.last.as_ref(), &self.current)
+            && session_effects::close_can_advance(
+                self.closing.map(|(reason, _)| reason),
+                CloseReason::Live,
+            )
+        {
             self.request_close(pipe, CloseReason::Live)?;
         }
         if self.last.as_ref() != Some(&self.current)

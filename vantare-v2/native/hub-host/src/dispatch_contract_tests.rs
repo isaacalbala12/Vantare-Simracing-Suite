@@ -301,3 +301,6 @@ fn resident_subscription_and_live_gates_do_not_read_or_emit_implicitly() {
     assert_eq!(session.launcher_resident_state.io_counts(), counts);
     assert!(pipe.get_ref().is_empty());
 }
+
+#[path = "close_priority_tests.rs"]
+mod close_priority_tests;

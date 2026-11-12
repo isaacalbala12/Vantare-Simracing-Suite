@@ -20,6 +20,7 @@ foreach($case in $statistics.results) {
     $closed=@($samples|Where-Object phase -eq 'closed')
     Assert-Measurement ($closed.Count -eq 10) 'Ten controlled closes required'
     Assert-Measurement (@($closed|Where-Object {@($_.survivors).Count -ne 0}).Count -eq 0) 'A valid series left survivors'
+    Assert-Measurement (@($closed|Where-Object {$_.stderr -match 'Hub host failed'}).Count -eq 0) 'Host failure reported in a supposedly valid series'
     $checks=@()
     foreach($app in @('baseline','variant')) {
         $visible=@($samples|Where-Object {$_.phase -eq 'visible' -and $_.app -eq $app}|Sort-Object iteration)

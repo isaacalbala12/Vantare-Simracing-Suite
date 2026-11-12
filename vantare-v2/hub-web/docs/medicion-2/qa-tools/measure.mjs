@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {spawn,execFileSync} from 'node:child_process';
 import {cp,mkdir,readFile,unlink,writeFile,stat} from 'node:fs/promises';
 import {join} from 'node:path';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {createInterface} from 'node:readline';
 import {cpus,freemem,totalmem,release} from 'node:os';
 import {root,evidence,code,sourceGeneration,require,json,owned,experiments,until,hashFile} from './common.mjs';
@@ -13,6 +13,21 @@ async function deadline(promise,label,milliseconds=15000){
   let timer;
   try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(`Deadline: ${label}`)),milliseconds);})]);}
   finally{clearTimeout(timer);}
+}
+async function acknowledgeStartup(token){
+  const expected=Buffer.from(token,'utf8');
+  try{
+    await until(async()=>{
+      const received=await readFile(join(root,'hub-ready')).catch(error=>{if(error.code==='ENOENT')return null;throw error;});
+      if(!received)return false;
+      try{
+        assert.equal(received.length,expected.length,'QA startup nonce length differs');
+        assert.ok(timingSafeEqual(received,expected),'QA startup nonce does not match this host');
+        return true;
+      }finally{received.fill(0);}
+    },15000,'Native hub-ready before supervisor acknowledgment');
+    await unlink(join(root,'boot-pending.json'));
+  }finally{expected.fill(0);}
 }
 const experiment=process.env.VANTARE_MEASURE_EXPERIMENT;
 assert.ok(experiments.includes(experiment),'Closed experiment selection required');
@@ -74,6 +89,7 @@ try{
       const args=[...application.arguments];args[args.indexOf('--data-dir')+1]=profile;
       driver.stdin.write(JSON.stringify({command:'launch',arguments:args,environment:application.environment})+'\n');
     }else if(event.phase==='visible'){
+      await acknowledgeStartup(apps.find(app=>app.name===event.app).environment.VANTARE_BOOT_TOKEN);
       let endpoint='';
       await until(async()=>{const log=await readFile(join(activeProfile,'hub-ui-qa.log'),'utf8').catch(()=> '');endpoint=log.match(/DevTools listening on (ws:\/\/[^\s]+)/)?.[1]??'';return !!endpoint;},15000,'QA debugger endpoint');
       browser=await chromium.connectOverCDP(endpoint);
@@ -127,6 +143,7 @@ try{
       await writeFile(join(output,`${event.app}-fluency-${event.iteration}.json`),JSON.stringify({event,...exercise},null,2));
       driver.stdin.write('next\n');
     }else if(event.phase==='closed'){
+      assert.equal(event.exitCode,0,'Controlled host close must exit cleanly');
       assert.deepEqual(event.survivors,[],'Hub left descendants alive');
       await browser?.close().catch(()=>{});browser=undefined;
       const profile=profiles[`${event.app}-${event.iteration}`];

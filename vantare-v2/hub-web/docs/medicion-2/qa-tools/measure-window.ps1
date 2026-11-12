@@ -183,7 +183,7 @@ for($iteration=0;$iteration -lt $configuration.runs;$iteration++) {
                     # It completed before the handle could be opened.
                 } finally { if($null -ne $child){$child.Dispose()} }
             }
-            @{phase='closed';app=$application.name;iteration=$iteration;descendantWaitMs=$closeClock.Elapsed.TotalMilliseconds;stderr=$stderr.GetAwaiter().GetResult();survivors=@([FirstHubMeasure]::Family($process.Id))} | ConvertTo-Json -Compress | Write-Output
+            @{phase='closed';app=$application.name;iteration=$iteration;exitCode=$process.ExitCode;descendantWaitMs=$closeClock.Elapsed.TotalMilliseconds;stderr=$stderr.GetAwaiter().GetResult();survivors=@([FirstHubMeasure]::Family($process.Id))} | ConvertTo-Json -Compress | Write-Output
         } catch {
             if($window -and -not $process.HasExited) { Save-Window $window (Join-Path $configuration.evidence "$($application.name)-unavailable-$iteration.png") }
             throw

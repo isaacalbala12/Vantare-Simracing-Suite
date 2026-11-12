@@ -28,6 +28,7 @@ export const calendarAlertsText = {
   track: "En pista, si ya estás conduciendo",
   trackHint: "Un aviso discreto en tus overlays, sin sonido.",
   sound: "Sonido",
+  soundRequiresWindows: "Requiere la notificación de Windows",
   soundHint: "Sonido de los avisos de Windows, solo fuera del simulador.",
   deliveryScope:
     "Con el Hub abierto, recibes avisos según tus canales. En pista, las franjas se callan y las tandas explícitas pueden avisar en silencio.",
@@ -45,7 +46,7 @@ export const calendarAlertsText = {
   save: "Guardar",
   test: "Probar aviso",
   testHint:
-    "Solicita un ejemplo fijo de aviso con el Hub abierto. Requiere derechos vigentes y avisos legibles.",
+    "Solicita un ejemplo fijo de aviso con el Hub abierto, también con el canal Windows apagado. Requiere derechos vigentes y avisos legibles.",
   testSending: "Solicitando el aviso de prueba…",
   testAccepted: "Aviso de prueba solicitado.",
   testUnavailable:

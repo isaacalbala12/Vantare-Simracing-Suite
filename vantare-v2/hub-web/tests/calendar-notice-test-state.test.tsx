@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { calendarNoticeTestIntervalMs } from "../src/contract/generated/calendar";
 import { HostFailure } from "../src/renderer/bridge/client";
 import { useCalendarNoticeTest } from "../src/renderer/screens/calendar/CalendarNoticeTest";
 
@@ -8,6 +9,7 @@ const host = vi.hoisted(() => ({ client: { request: vi.fn() } }));
 vi.mock("../src/renderer/app/Host", () => ({ useHost: () => host }));
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   host.client = { request: vi.fn() };
 });
 it.each([true, false])(
@@ -53,7 +55,7 @@ it("ignores duplicate clicks in the same render", async () => {
   });
   expect(hook.result.current.status).toBe("accepted");
 });
-it.each(["busy", "denied", "coreUnavailable", "protected"] as const)(
+it.each(["denied", "coreUnavailable", "protected"] as const)(
   "shows the closed %s failure",
   async (kind) => {
     host.client.request.mockRejectedValue(new HostFailure({ kind }));
@@ -115,4 +117,49 @@ it("keeps the new client result when the old client resolves later", async () =>
     await pending;
   });
   expect(hook.result.current.status).toBe("unavailable");
+});
+
+it("keeps the test in cooldown for the generated interval with an injected monotonic clock", async () => {
+  vi.useFakeTimers();
+  const clock = {
+    now: () => performance.now(),
+    set: (callback: () => void, ms: number) => setTimeout(callback, ms),
+    clear: (timer: ReturnType<typeof setTimeout>) => clearTimeout(timer),
+  };
+  host.client.request.mockResolvedValue({
+    method: "calendar.noticeTest",
+    accepted: true,
+  });
+  const hook = renderHook(() => useCalendarNoticeTest(true, clock));
+  await act(async () => {
+    await hook.result.current.test();
+  });
+  expect(hook.result.current.cooldown).toBe(true);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(calendarNoticeTestIntervalMs - 1);
+    await hook.result.current.test();
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  expect(hook.result.current.cooldown).toBe(false);
+  await act(async () => {
+    await hook.result.current.test();
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(2);
+});
+it("turns a host rate-limit reply into cooldown rather than an error", async () => {
+  vi.useFakeTimers();
+  host.client.request.mockRejectedValue(new HostFailure({ kind: "busy" }));
+  const hook = renderHook(() => useCalendarNoticeTest(true));
+  await act(async () => {
+    await hook.result.current.test();
+  });
+  expect(hook.result.current.failure).toBeUndefined();
+  expect(hook.result.current.cooldown).toBe(true);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(calendarNoticeTestIntervalMs);
+  });
+  expect(hook.result.current.cooldown).toBe(false);
 });

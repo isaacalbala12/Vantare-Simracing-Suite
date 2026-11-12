@@ -20,7 +20,7 @@ import CalendarEntry from "../src/renderer/screens/calendar/entry";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
 const render = (ui: ReactNode) => renderTree(ui, { wrapper: ToastProvider });
-const api = vi.hoisted(() => ({ request: vi.fn() }));
+const api = vi.hoisted(() => ({ request: vi.fn(), expired: false }));
 vi.mock("../src/renderer/app/Host", () => ({
   useHost: () => ({ client: api, hello: { demo: false } }),
 }));
@@ -30,11 +30,13 @@ vi.mock("../src/renderer/screens/calendar/CalendarState", () => ({
     connected: true,
     loaded: true,
     busy: false,
-    now: Date.parse(fixture.validFrom) + 12 * 3600000,
+    now:
+      Date.parse(api.expired ? fixture.validUntil : fixture.validFrom) +
+      12 * 3600000,
     view: {
-      official: fixture,
+      official: api.expired ? null : fixture,
       fallback: null,
-      previous: null,
+      previous: api.expired ? fixture : null,
       following: [],
       utc: true,
       checked: 0,
@@ -90,6 +92,7 @@ vi.mock("../src/renderer/ui/CalendarLiveView", () => ({
 afterEach(() => {
   cleanup();
   api.request.mockReset();
+  api.expired = false;
 });
 function content() {
   return (
@@ -195,6 +198,11 @@ it.each([true, false])(
     expect(
       screen.getByText(accepted ? text.testAccepted : text.testUnavailable),
     ).toBeTruthy();
+    const button = screen.getByRole("button", { name: text.test });
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(button);
+    expect(api.request).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
   },
 );
 
@@ -258,25 +266,71 @@ it("persists desktop channels with the observed revision and blocks duplicate wr
   });
   expect(windows.getAttribute("aria-checked")).toBe("false");
   fireEvent.click(screen.getByRole("checkbox", { name: text.sound }));
+  expect(api.request).toHaveBeenCalledTimes(2);
+  fireEvent.click(windows);
   await act(async () => {});
+  const second = {
+    ...config.alerts,
+    channels: { ...config.alerts.channels, windows: true },
+  };
   expect(api.request.mock.calls.at(-1)?.[0]).toEqual({
     method: "calendar.alertsSave",
     expectedRevision: "d".repeat(64),
-    alerts: {
-      ...config.alerts,
-      channels: { ...config.alerts.channels, sound: true },
-    },
+    alerts: second,
   });
   await act(async () => {
     finish({
       method: "calendar.alertsSave",
-      value: {
-        ...config,
-        alerts: {
-          ...config.alerts,
-          channels: { ...config.alerts.channels, sound: true },
-        },
-      },
+      value: { ...config, alerts: second },
     });
   });
 });
+
+it.each([false, true])(
+  "wires the new-week switch from saved=%s with the alerts revision",
+  async (saved) => {
+    api.expired = true;
+    const config: CalendarConfigView = {
+      utc: true,
+      prefsRevision: "a".repeat(64),
+      following: [],
+      followingRevision: "b".repeat(64),
+      alerts: {
+        ...calendarDefaultAlerts,
+        bands: [],
+        slots: [],
+        channels: { ...calendarDefaultAlerts.channels },
+        notifyWeek: saved,
+      },
+      alertsRevision: "c".repeat(64),
+      documents: { prefs: "ready", following: "ready", alerts: "ready" },
+    };
+    api.request.mockImplementation(async (request) =>
+      request.method === "calendar.notifyWeekSet"
+        ? {
+            method: request.method,
+            value: {
+              ...config,
+              alerts: { ...config.alerts, notifyWeek: request.enabled },
+            },
+          }
+        : { method: "calendar.configLoad", value: config },
+    );
+    render(content());
+    await act(async () => {});
+    const control = screen.getByRole("switch", { name: "Avisarme al llegar" });
+    expect(control.getAttribute("aria-checked")).toBe(String(saved));
+    await act(async () => {
+      fireEvent.click(control);
+    });
+    expect(api.request.mock.calls.map(([request]) => request)).toEqual([
+      { method: "calendar.configLoad" },
+      {
+        method: "calendar.notifyWeekSet",
+        enabled: !saved,
+        expectedRevision: config.alertsRevision,
+      },
+    ]);
+    expect(control.getAttribute("aria-checked")).toBe(String(!saved));
+  },
+);

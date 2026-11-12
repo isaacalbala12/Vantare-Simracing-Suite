@@ -25,3 +25,7 @@
 .v-studio-appearance dd {
   margin: 0;
 }
+
+.v-studio-appearance .v-switch-field {
+  justify-content: space-between;
+}

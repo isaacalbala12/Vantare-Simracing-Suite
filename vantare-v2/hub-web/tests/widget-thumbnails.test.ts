@@ -51,7 +51,10 @@ describe("thumbnail assets and deferred recipe", () => {
       } else
         expect(
           existsSync(
-            resolve("src/renderer/assets/widgets", `${item.kind}.svg`),
+            resolve(
+              "src/renderer/assets/widgets/illustrations",
+              `${item.kind}.svg`,
+            ),
           ),
           item.kind,
         ).toBe(true);

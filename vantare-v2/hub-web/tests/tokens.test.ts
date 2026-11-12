@@ -92,4 +92,44 @@ describe("exported Vantare tokens", () => {
       ),
     ).toBe(result.theme);
   });
+  it("defines the Studio illustration roles in all eighteen themes with readable ink", () => {
+    for (const [palette, schemes] of Object.entries(tokens.themes)) {
+      for (const [scheme, values] of Object.entries(schemes)) {
+        for (const role of [
+          "edge",
+          "ill-ground",
+          "ill-grid",
+          "ill-panel",
+          "ill-edge",
+          "ill-ink",
+          "ill-ink-2",
+          "ill-row",
+          "ill-hi",
+          "ill-good",
+          "ill-bad",
+          "ill-warn",
+          "ill-info",
+          "ill-best",
+          "ill-shadow",
+        ]) {
+          expect(tokens.semantic).toContain(role);
+          expect(values[role], `${palette}/${scheme}/${role}`).toBeTruthy();
+        }
+        expect(
+          contrast(values["ill-ink"], values["ill-panel"]),
+        ).toBeGreaterThanOrEqual(3);
+        expect(values.edge).toBe(
+          scheme === "dark" ? values["line-2"] : `${values["text-1"]}17`,
+        );
+        for (const role of tokens.semantic.filter(
+          (role) => role.startsWith("ill-") && !["ill-ground"].includes(role),
+        ))
+          expect(values[role]).toBe(tokens.themes.vantare[scheme][role]);
+      }
+    }
+    expect(tokens.themes.vantare.light["ill-ground"]).toBe(
+      "radial-gradient(120% 90% at 50% 0%, #f6f3f4 0%, #ddd6d8 75%)",
+    );
+    expect(render(tokens).theme).not.toContain("--color-ill-ground:");
+  });
 });

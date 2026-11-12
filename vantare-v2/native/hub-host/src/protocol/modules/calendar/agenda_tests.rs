@@ -199,10 +199,14 @@ fn pure_host_agenda_matches_generated_frozen_gpui_oracle() {
     .unwrap();
     assert_eq!(
         oracle["sources"]["model"],
-        vantare_services::content_hash(include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../hub/src/calendar/model.rs"
-        )))
+        vantare_services::content_hash(
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../hub/src/calendar/model.rs"
+            ))
+            .replace("\r\n", "\n")
+            .as_bytes()
+        )
     );
     let cases_oracle = oracle["cases"].as_array().unwrap();
     assert!(cases_oracle.len() >= 30);

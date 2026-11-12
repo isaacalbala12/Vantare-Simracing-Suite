@@ -60,10 +60,14 @@ un residente ni promete avisos con el Hub cerrado. Los avisos de Windows, ICS y
 el mantenimiento del historial de publicaciones son entregas independientes.
 
 La equivalencia se comprueba con `calendar-agenda-gpui.json`, generado por
-`cargo run -p vantare-hub-host --example calendar-gpui-oracle` dentro de la cola.
-El ejemplo ejecuta los módulos puros congelados del GPUI (modelo, avisos y reloj),
+`python hub-web/scripts/calendar-gpui-oracle.py` dentro de la cola.
+La herramienta copia los módulos puros congelados del GPUI (modelo, avisos y reloj)
+a un crate temporal bajo la raíz QA; nunca los importa desde hub-host,
 sin depender del crate GPUI, compilar su interfaz ni modificar sus fuentes.
-Incluye hashes de esos tres módulos, el corpus compartido, la publicación de
+Usa offline las mismas tres bibliotecas y versiones fijadas del lock nativo, sin
+cambiar dependencias ni locks del repositorio. Ejecuta además la función canónica
+del gate de límites entre crates en un test std aislado, sin compilar el Hub.
+Incluye hashes normalizados a LF de esos tres módulos, el corpus compartido, la publicación de
 octubre, franjas First/Each, tandas semanales y desfases sobre un intervalo de
 37 minutos. La zona observada al generar queda como offset inyectado en cada
 caso; los saltos de medianoche y la hora repetida se cubren además con zona

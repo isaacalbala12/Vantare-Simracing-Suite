@@ -1,20 +1,11 @@
 //! Generates portable expected agenda values from the frozen GPUI pure model.
-//! No GPUI crate, interface build, services, or new dependencies.
+//! Copied into a temporary QA crate by calendar-gpui-oracle.py; never linked by hub-host.
 #[allow(dead_code, clippy::all, clippy::pedantic)]
-#[path = "../../hub/src/calendar/alerts.rs"]
 mod alerts;
 #[allow(dead_code, clippy::all, clippy::pedantic)]
-#[path = "../../hub/src/calendar/clock.rs"]
 mod clock;
 #[allow(dead_code, clippy::all, clippy::pedantic)]
-#[path = "../../hub/src/calendar/model.rs"]
 mod model;
-#[cfg(test)]
-mod calendar {
-    pub(crate) mod model {
-        pub(crate) use crate::model::{Schedule, timestamp};
-    }
-}
 use chrono::{Duration, Local, Offset, TimeZone};
 use serde_json::{Value, json};
 fn sample(source: &str, case: &str, document: &Value, index: usize, first: bool) -> Value {
@@ -67,8 +58,12 @@ fn sample(source: &str, case: &str, document: &Value, index: usize, first: bool)
     json!({"source":source,"case":case,"seriesId":series.id,"intervalMinutes":raw["recurrence"]["intervalMinutes"].as_u64().unwrap_or(0),"startOffsetMinute":raw["startOffsetMinute"].as_i64().unwrap_or(0),"from":from.timestamp_millis(),"until":until.timestamp_millis(),"offsetSeconds":Local.from_utc_datetime(&from.naive_utc()).offset().fix().local_minus_utc(),"alerts":alerts,"starts":starts.iter().map(chrono::DateTime::timestamp_millis).collect::<Vec<_>>(),"causes":causes})
 }
 fn main() {
-    let cases: Value = serde_json::from_str(include_str!("../../../fixtures/calendar/cases.json"))
-        .expect("frozen GPUI oracle fixture");
+    let root =
+        std::path::PathBuf::from(std::env::var_os("VANTARE_ORACLE_ROOT").expect("oracle root"));
+    let cases: Value = serde_json::from_str(
+        &std::fs::read_to_string(root.join("fixtures/calendar/cases.json")).expect("shared corpus"),
+    )
+    .expect("frozen GPUI oracle fixture");
     let mut rows = Vec::new();
     for case in cases
         .as_array()
@@ -86,10 +81,13 @@ fn main() {
             ));
         }
     }
-    let october: Value = serde_json::from_str(include_str!(
-        "../../hub/reference/fixtures/calendar-lmu-2026-10-06.json"
-    ))
-    .expect("frozen GPUI oracle fixture");
+    let october: Value = serde_json::from_str(
+        &std::fs::read_to_string(
+            root.join("native/hub/reference/fixtures/calendar-lmu-2026-10-06.json"),
+        )
+        .expect("October corpus"),
+    )
+    .expect("October JSON");
     for index in 0..october["series"]
         .as_array()
         .expect("frozen GPUI oracle fixture")
@@ -107,9 +105,11 @@ fn main() {
             rows.push(sample("october", "interval-37", &modified, 0, first));
         }
     }
-    let output = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../hub-web/fixtures/calendar-agenda-gpui.json");
-    let sources = json!({"model":vantare_services::content_hash(include_bytes!("../../hub/src/calendar/model.rs")),"alerts":vantare_services::content_hash(include_bytes!("../../hub/src/calendar/alerts.rs")),"clock":vantare_services::content_hash(include_bytes!("../../hub/src/calendar/clock.rs"))});
+    let output = root.join("hub-web/fixtures/calendar-agenda-gpui.json");
+    let sources: Value = serde_json::from_str(
+        &std::env::var("VANTARE_ORACLE_SOURCE_HASHES").expect("oracle source hashes"),
+    )
+    .expect("oracle hashes JSON");
     let text = format!(
         "{{\n  \"sources\": {},\n  \"cases\": [\n{}\n  ]\n}}\n",
         serde_json::to_string(&sources).expect("oracle sources"),

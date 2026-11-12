@@ -124,7 +124,7 @@ function harness() {
     records: () => store.getState().records,
   };
 }
-it("uses saved preferences, deduplicates ready/error transitions and cleans subscriptions", () => {
+it("uses saved preferences, deduplicates errors and never infers success from idle", () => {
   const h = harness();
   h.resident({ running: true });
   h.resident({});
@@ -135,13 +135,13 @@ it("uses saved preferences, deduplicates ready/error transitions and cleans subs
   h.preferences(true);
   h.resident({ running: true });
   h.resident({});
+  expect(h.records()).toEqual([]);
+  h.resident({ error: true });
   expect(h.records()).toHaveLength(1);
   h.store.getState().read();
-  h.resident({});
+  h.resident({ error: true });
+  expect(h.records()).toHaveLength(1);
   expect(h.records()[0].unread).toBe(false);
-  h.resident({ error: true });
-  h.resident({ error: true });
-  expect(h.records()).toHaveLength(2);
   h.connection.dispose();
   expect(h.client.subscribe.mock.results[0].value).toHaveBeenCalled();
 });

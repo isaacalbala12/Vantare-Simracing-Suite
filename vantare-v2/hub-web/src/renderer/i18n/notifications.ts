@@ -44,9 +44,9 @@ export const notices = {
   busy: "Vantare está ocupado.",
   failure: "No se pudo completar la acción.",
   launchFailed: "Error del Launcher",
+  residentFailure:
+    "El residente del Launcher comunica un error. Revísalo en Launcher.",
   launchFailure: "No se pudo completar el lanzamiento. Revisa el Launcher.",
-  launchReady: "Aplicaciones listas",
-  launchReadyBody: "El Launcher ha terminado de preparar las aplicaciones.",
   updateReady: "Actualización lista",
   updateReadyBody: (version: string) =>
     `La actualización ${version} está preparada.`,

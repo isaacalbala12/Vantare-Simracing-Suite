@@ -40,35 +40,22 @@ export function connectEmitters(client: Client, sink: Sink) {
     if (!ready && reportReady) reset();
     reportReady = ready;
   }
-  function launcherFailed() {
+  function launcherFailed(residentError = false) {
     if (preferences?.launcher)
       sink.add({
         source: "launcher",
         severity: "error",
         dedupeKey: "launcher.failed",
         title: text.launchFailed,
-        text: text.launchFailure,
+        text: residentError ? text.residentFailure : text.launchFailure,
         action: "launcher",
       });
   }
   function execution(value: ResidentView) {
     if (value.online && !value.protected) {
-      if (value.error && !resident?.error) launcherFailed();
-      else if (
-        resident?.running &&
-        !value.running &&
-        !value.error &&
-        !value.decision &&
-        preferences?.launcher
-      )
-        sink.add({
-          source: "launcher",
-          severity: "info",
-          dedupeKey: "launcher.ready",
-          title: text.launchReady,
-          text: text.launchReadyBody,
-          action: "launcher",
-        });
+      if (value.error && !resident?.error) launcherFailed(true);
+      // Idle is not an outcome: cancellation and step failures also reach it.
+      // A ready notice requires a typed terminal result not present in this DTO.
     }
     resident = value;
   }

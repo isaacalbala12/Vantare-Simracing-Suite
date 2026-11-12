@@ -20,6 +20,10 @@ function alerts(expanded: boolean): VisualScene {
           ? "calendario-avisos-desplegada"
           : "calendario-avisos-contraida"
       ].prepare(page);
+      const preview = page.locator(".v-calendar-alerts-toast");
+      await preview
+        .getByText("Vantare · Calendario", { exact: true })
+        .waitFor();
       for (const name of ["Notificación de Windows", "Sonido"]) {
         const control = page.getByRole("checkbox", { name, exact: true });
         if ((await control.getAttribute("aria-disabled")) === "true")

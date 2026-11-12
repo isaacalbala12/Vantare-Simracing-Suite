@@ -25,8 +25,12 @@ const PICTURES: &[&[u8]] = &[
     include_bytes!("../assets/roadmap.svg"),
     include_bytes!("../assets/testing.svg"),
     include_bytes!("../assets/circuit.svg"),
+    include_bytes!("../assets/calendar.svg"),
+    include_bytes!("../assets/strategy.svg"),
+    include_bytes!("../assets/engineer.svg"),
+    include_bytes!("../assets/palette.svg"),
 ];
-pub const NAV: [&str; 5] = ["Inicio", "Launcher", "Studio", "Roadmap", "Testing Center"];
+pub const NAV: [&str; 8] = ["Inicio", "Launcher", "Studio", "Roadmap", "Testing Center"];
 struct Assets {
     _cache: ImageCache,
     images: Vec<Image>,
@@ -45,7 +49,7 @@ pub fn setup(s: &mut State, wake: rune::Waker) {
             cache.svg(
                 *bytes,
                 [
-                    190.0, 40.0, 136.0, 136.0, 136.0, 454.0, 24.0, 24.0, 24.0, 24.0, 24.0, 580.0,
+                    190.0, 40.0, 136.0, 136.0, 136.0, 454.0, 24.0, 24.0, 24.0, 24.0, 24.0, 580.0, 24.0,24.0,24.0,24.0,
                 ][index],
                 1.0,
             )
@@ -176,7 +180,7 @@ fn home(s: &State) -> El {
         .min_w(0.0)
         .min_h(500.0)
         .child(preview)
-        .child(label("Layout local", 22.0, 650.0))
+        .child(row().center_y().child(label("Layout local", 22.0, 650.0).grow(1.0)).child(button("Vista previa",false)))
         .child(label("Esperando simulador", 12.0, 400.0))
         .child(
             row()
@@ -197,7 +201,7 @@ fn home(s: &State) -> El {
                 .child(button("Editar overlay", false))
                 .child(button("Detener", false)),
         );
-    let mut activity = card("ACTIVIDAD", "activity-card")
+    let mut activity = card("ACTIVIDAD", "activity-card").child(label("VER TODO",10.0,400.0))
         .grow(1.0)
         .min_w(0.0)
         .min_h(500.0);
@@ -327,10 +331,14 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                 } else {
                     "bg-sidebar"
                 }))
-                .child(picture(s, 6 + index, 24.0, 24.0).pin(Some(12.0), Some(8.0), None, None))
+                .child(picture(s, if index < 5 {6+index} else {7+index}, 24.0, 24.0).pin(Some(12.0), Some(8.0), None, None))
                 .on_press(move |s: &mut State| s.section = index),
         );
     }
+    sidebar=sidebar.child(el().grow(1.0))
+        .child(picture(s,15,24.0,24.0).label("Cambiar tema"))
+        .child(label("Ajustes",10.0,400.0))
+        .child(label("IA",13.0,600.0).label("Isaac"));
     let content = if s.section == 0 {
         home(s)
     } else {

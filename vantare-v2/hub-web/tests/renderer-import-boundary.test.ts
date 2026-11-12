@@ -4,6 +4,10 @@ import { parse } from "@babel/parser";
 import { expect, it } from "vitest";
 
 const mockRoot = resolve("src/mock").toLowerCase();
+const qaRoot = resolve("src/renderer/qa").toLowerCase();
+const appExceptions: Record<string, readonly string[]> = {
+  "src/renderer/app/Shell.tsx": ["../qa/entry"],
+};
 function mockDependencies(source: string, file: string): string[] {
   const imports: string[] = [];
   const ast = parse(source, {
@@ -15,7 +19,12 @@ function mockDependencies(source: string, file: string): string[] {
     const node = value as Record<string, unknown>;
     if (node.type !== "StringLiteral" || typeof node.value !== "string") return;
     const target = resolve(dirname(file), node.value).toLowerCase();
-    if (target === mockRoot || target.startsWith(mockRoot + sep))
+    if (
+      target === mockRoot ||
+      target.startsWith(mockRoot + sep) ||
+      target === qaRoot ||
+      target.startsWith(qaRoot + sep)
+    )
       imports.push(node.value);
   }
   function visit(value: unknown): void {
@@ -88,12 +97,33 @@ it("rejects mock build branches while ignoring their mention in comments and str
 });
 it("keeps product screens and UI independent of src/mock and mock build branches", () => {
   const violations: string[] = [];
-  for (const folder of ["src/renderer/screens", "src/renderer/ui"])
+  for (const folder of [
+    "src/renderer/screens",
+    "src/renderer/ui",
+    "src/renderer/app",
+  ])
     for (const file of sources(folder))
       for (const specifier of mockDependencies(
         readFileSync(file, "utf8"),
         file,
-      ))
-        violations.push(`${relative(process.cwd(), file)}: ${specifier}`);
+      )) {
+        const name = relative(process.cwd(), file).replaceAll("\\", "/");
+        // Existing screen-owned seams remain explicit, never a folder exemption.
+        const exceptions =
+          appExceptions[name] ??
+          (
+            {
+              "src/renderer/screens/calendar/entry.tsx": [
+                "../../qa/calendar-runs",
+              ],
+              "src/renderer/screens/notifications/NotificationsState.tsx": [
+                "../../qa/notifications-scene",
+              ],
+            } as Record<string, string[]>
+          )[name] ??
+          [];
+        if (!exceptions.includes(specifier))
+          violations.push(`${name}: ${specifier}`);
+      }
   expect(violations).toEqual([]);
 });

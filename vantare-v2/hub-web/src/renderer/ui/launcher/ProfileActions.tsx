@@ -66,8 +66,6 @@ export function ProfileCardActions({
       }}
     >
       {cloneElement(children, {
-        "aria-haspopup": "menu",
-        "aria-expanded": open,
         "aria-controls": open ? popupId : undefined,
         onContextMenu: (event) => {
           children.props.onContextMenu?.(event);
@@ -85,6 +83,7 @@ export function ProfileCardActions({
             (event.key === "F10" && event.shiftKey)
           ) {
             event.preventDefault();
+            event.stopPropagation();
             keyboard.current = true;
             origin.current = event.currentTarget;
             const rect = event.currentTarget.getBoundingClientRect();
@@ -139,6 +138,7 @@ export function RemoveProfileDialog({
   return (
     <Dialog.Root
       open={name !== undefined}
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open && !pending) onCancel();
       }}

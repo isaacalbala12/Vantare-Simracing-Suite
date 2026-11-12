@@ -24,12 +24,19 @@ it("omits mock modules and frozen Hub fixtures from the production renderer", as
     }
   }
   expect(code).toContain("Host preload unavailable");
+  for (const marker of [
+    "DialogAuditFixtures",
+    "dialog-audit",
+    "dialog-fixture",
+  ])
+    expect(code).not.toContain(marker);
   expect(modules.length).toBeGreaterThan(0);
   expect(
     modules.some(
       (id) =>
         id.includes("/src/mock/") ||
-        id.includes("/native/hub/reference/fixtures/"),
+        id.includes("/native/hub/reference/fixtures/") ||
+        /DialogAuditFixtures|dialog-audit/.test(id),
     ),
   ).toBe(false);
 }, 15000);

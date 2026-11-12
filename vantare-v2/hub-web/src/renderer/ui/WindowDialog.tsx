@@ -97,6 +97,7 @@ function Backdrop(props: Base.Backdrop.Props) {
         props.onPointerDown?.(event);
         if (
           !event.defaultPrevented &&
+          event.button === 0 &&
           mode.scope === "screen" &&
           mode.outsideDismiss &&
           event.target === event.currentTarget

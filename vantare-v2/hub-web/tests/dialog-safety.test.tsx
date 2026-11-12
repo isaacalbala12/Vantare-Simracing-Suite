@@ -21,6 +21,167 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 describe("partial-window modality", () => {
+  it("allows AltGr and composing Escape, blocks only registered shortcuts and toggles the top palette", () => {
+    document.body.innerHTML =
+      '<div id="popup" tabindex="-1"><input data-command-palette /></div>';
+    const popup = document.getElementById("popup");
+    if (!popup) throw new Error("Missing popup");
+    const safety = dialogSafety(document),
+      stop = safety.listen(),
+      close = vi.fn();
+    const release = safety.register({ node: popup, close });
+    try {
+      for (const key of ["@", "#", "\\", "[", "]", "{", "}", "|", "~"]) {
+        const event = new KeyboardEvent("keydown", {
+          key,
+          ctrlKey: true,
+          altKey: true,
+          bubbles: true,
+          cancelable: true,
+        });
+        popup.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(false);
+      }
+      const alt = new KeyboardEvent("keydown", {
+        key: "l",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(alt, "getModifierState", {
+        value: (key: string) => key === "AltGraph",
+      });
+      popup.dispatchEvent(alt);
+      expect(alt.defaultPrevented).toBe(false);
+      fireEvent.keyDown(popup, { key: "Escape", isComposing: true });
+      expect(close).not.toHaveBeenCalled();
+      const other = new KeyboardEvent("keydown", {
+        key: "j",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      popup.dispatchEvent(other);
+      expect(other.defaultPrevented).toBe(false);
+      fireEvent.keyDown(popup, { key: "k", ctrlKey: true });
+      expect(close).toHaveBeenCalledOnce();
+    } finally {
+      release();
+      stop();
+    }
+  });
+  it("keeps notices and header actions inert, leaves toast actions available, and restores everything", async () => {
+    document.body.innerHTML =
+      '<header class="v-titlebar"><div><button>Bell</button><button role="tab">Tab</button></div><div class="v-window-controls"><button>Min</button></div></header><main class="v-shell-body"></main><div class="v-toast-viewport"><button>Retry</button></div><div id="popup" tabindex="-1"><button>Cancel</button></div>';
+    const popup = document.getElementById("popup");
+    if (!popup) throw new Error("Missing popup");
+    const safety = dialogSafety(document),
+      stop = safety.listen();
+    const release = safety.register({ node: popup, close: () => {} });
+    const notice = document.createElement("div");
+    notice.dataset.windowDialog = "notice";
+    document.body.append(notice);
+    await waitFor(() => expect(notice.hasAttribute("inert")).toBe(true));
+    const retry = document.querySelector<HTMLButtonElement>(
+      ".v-toast-viewport button",
+    );
+    retry?.focus();
+    expect(document.activeElement).toBe(retry);
+    const headerActions = document.querySelector(".v-titlebar > div");
+    expect(headerActions?.hasAttribute("inert")).toBe(true);
+    const click = vi.fn();
+    for (const action of headerActions?.querySelectorAll("button") ?? []) {
+      action.addEventListener("click", click);
+      fireEvent.click(action);
+    }
+    expect(click).not.toHaveBeenCalled();
+    release();
+    stop();
+    expect(notice.hasAttribute("inert")).toBe(false);
+    expect(headerActions?.hasAttribute("inert")).toBe(false);
+  });
+  it("only dismisses on left backdrop clicks and cleans inert when unmounted open", async () => {
+    const tree = render(
+      <WindowDialogProvider>
+        <main className="v-shell-body">
+          <WindowDialog.Root defaultOpen>
+            <WindowDialog.Portal>
+              <WindowDialog.Backdrop data-testid="backdrop" />
+              <WindowDialog.Popup>
+                <WindowDialog.Title>Test</WindowDialog.Title>
+                <WindowDialog.Description>Local</WindowDialog.Description>
+                <button type="button">Cancel</button>
+              </WindowDialog.Popup>
+            </WindowDialog.Portal>
+          </WindowDialog.Root>
+        </main>
+      </WindowDialogProvider>,
+    );
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.pointerDown(screen.getByTestId("backdrop"), { button: 2 });
+    expect(dialog.isConnected).toBe(true);
+    const main = document.querySelector(".v-shell-body");
+    tree.unmount();
+    expect(main?.hasAttribute("inert")).toBe(false);
+    const second = render(
+      <WindowDialogProvider>
+        <WindowDialog.Root defaultOpen>
+          <WindowDialog.Portal>
+            <WindowDialog.Backdrop data-testid="backdrop" />
+            <WindowDialog.Popup>
+              <WindowDialog.Title>Test</WindowDialog.Title>
+              <WindowDialog.Description>Local</WindowDialog.Description>
+            </WindowDialog.Popup>
+          </WindowDialog.Portal>
+        </WindowDialog.Root>
+      </WindowDialogProvider>,
+    );
+    fireEvent.pointerDown(screen.getByTestId("backdrop"), { button: 0 });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    second.unmount();
+  });
+  it("restores focus and inert through two real nested WindowDialogs", async () => {
+    const user = userEvent.setup();
+    render(
+      <WindowDialogProvider>
+        <main className="v-shell-body">
+          <WindowDialog.Root>
+            <WindowDialog.Trigger>Outer</WindowDialog.Trigger>
+            <WindowDialog.Portal>
+              <WindowDialog.Popup>
+                <WindowDialog.Title>Outer dialog</WindowDialog.Title>
+                <WindowDialog.Description>First</WindowDialog.Description>
+                <WindowDialog.Root>
+                  <WindowDialog.Trigger>Inner</WindowDialog.Trigger>
+                  <WindowDialog.Portal>
+                    <WindowDialog.Popup>
+                      <WindowDialog.Title>Inner dialog</WindowDialog.Title>
+                      <WindowDialog.Description>
+                        Second
+                      </WindowDialog.Description>
+                      <WindowDialog.Close>Cancel inner</WindowDialog.Close>
+                    </WindowDialog.Popup>
+                  </WindowDialog.Portal>
+                </WindowDialog.Root>
+              </WindowDialog.Popup>
+            </WindowDialog.Portal>
+          </WindowDialog.Root>
+        </main>
+      </WindowDialogProvider>,
+    );
+    const origin = screen.getByRole("button", { name: "Outer" });
+    await user.click(origin);
+    const innerTrigger = await screen.findByRole("button", { name: "Inner" });
+    const outer = screen.getByRole("dialog", { name: "Outer dialog" });
+    await user.click(innerTrigger);
+    await screen.findByRole("dialog", { name: "Inner dialog" });
+    expect(outer.hasAttribute("inert")).toBe(true);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(document.activeElement).toBe(innerTrigger));
+    expect(outer.hasAttribute("inert")).toBe(false);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(document.activeElement).toBe(origin));
+  });
   it("yields focus, Escape and keyboard input to Access without closing the retained editor", () => {
     document.body.innerHTML =
       '<main class="v-shell-body"></main><div id="editor" tabindex="-1"><input /></div><dialog open><input id="login" /><button>Gate close</button></dialog>';

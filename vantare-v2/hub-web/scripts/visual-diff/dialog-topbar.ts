@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Locator, Page } from "playwright-core";
+import { checkProfileContextKeys } from "../check-dialog-safety.ts";
 import { checkNativeAccessLayer } from "../check-native-access-layer.ts";
 import { until } from "../wait-for.ts";
 import { accessScenes } from "./access.ts";
@@ -400,6 +401,9 @@ scenes["dialog-topbar-context-menu"] = {
   async cleanup(page) {
     await record(page, "context-menu");
     if (process.env.VANTARE_DIALOG_AUDIT_PHASE !== "after") return;
+    await checkProfileContextKeys(page);
+    await page.keyboard.press("Shift+F10");
+    await page.getByRole("menu").waitFor();
     const card = page.locator(".v-launcher-profile").first();
     const items = page.getByRole("menuitem");
     await items.first().focus();
@@ -437,5 +441,23 @@ scenes["dialog-topbar-onboarding"] = {
   ...onboardingScenes["onboarding-0"],
   async cleanup(page) {
     await check(page, "onboarding", undefined, false);
+  },
+};
+scenes["dialog-topbar-resident-covered"] = {
+  mock: "launcher-decision",
+  async prepare(page) {
+    await launcherScenes["launcher-decision"].prepare(page);
+    await page.keyboard.press("Control+k");
+    await page.locator('[data-window-dialog="screen"]').waitFor();
+  },
+  async cleanup(page) {
+    if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after")
+      assert.ok(
+        await page
+          .locator('[data-window-dialog="notice"]')
+          .evaluate((node) => node.hasAttribute("inert")),
+      );
+    await check(page, "resident-covered");
+    await page.keyboard.press("Escape");
   },
 };

@@ -1,6 +1,9 @@
+import { dialogShortcut, hubKeys } from "./hub-shortcuts";
+
 type Entry = { node: HTMLElement; close: () => void };
 const controls = ".v-window-controls";
 const floating = ".v-positioner";
+const toast = ".v-toast-viewport";
 const focusable =
   'button:not(:disabled),a[href],input:not(:disabled):not([type="hidden"]),textarea:not(:disabled),select:not(:disabled),[tabindex]';
 
@@ -23,13 +26,14 @@ export function dialogSafety(doc: Document) {
     );
   const allowed = (node: Element) =>
     !!top()?.node.contains(node) ||
+    !!node.closest(toast) ||
     (!!node.closest(controls) && !node.closest("[inert]")) ||
     portals().some((portal) => portal.contains(node));
   function refresh() {
     const targets = new Set<HTMLElement>();
     if (top()) {
       for (const node of doc.querySelectorAll<HTMLElement>(
-        ".v-shell-body,.v-sidebar",
+        ".v-shell-body,.v-sidebar,.v-titlebar > :not(.v-window-controls),[data-window-dialog=notice]",
       ))
         if (!node.contains(top()?.node ?? null)) targets.add(node);
       for (const entry of entries.slice(0, -1)) targets.add(entry.node);
@@ -49,9 +53,10 @@ export function dialogSafety(doc: Document) {
   }
   function targets() {
     const roots = [
-      ...doc.querySelectorAll<HTMLElement>(controls),
       top()?.node,
       ...portals(),
+      ...doc.querySelectorAll<HTMLElement>(toast),
+      ...doc.querySelectorAll<HTMLElement>(controls),
     ].filter((node): node is HTMLElement => !!node && usable(node));
     return [
       ...new Set(
@@ -62,11 +67,11 @@ export function dialogSafety(doc: Document) {
     ].filter((node) => node.tabIndex >= 0 && usable(node));
   }
   function focus() {
-    (targets()[0] ?? top()?.node)?.focus({ preventScroll: true });
+    (top()?.node ?? targets()[0])?.focus({ preventScroll: true });
   }
   function key(event: KeyboardEvent) {
     const active = top();
-    if (!active || covered()) return;
+    if (!active || covered() || event.isComposing) return;
     if (event.key === "Tab") {
       const nodes = targets(),
         index = nodes.indexOf(doc.activeElement as HTMLElement);
@@ -93,25 +98,12 @@ export function dialogSafety(doc: Document) {
       active.close();
       return;
     }
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      ![
-        "a",
-        "c",
-        "v",
-        "x",
-        "z",
-        "y",
-        "home",
-        "end",
-        "arrowleft",
-        "arrowright",
-        "arrowup",
-        "arrowdown",
-        "backspace",
-        "delete",
-      ].includes(event.key.toLowerCase())
-    ) {
+    if (dialogShortcut(event)) {
+      if (
+        event.key.toLowerCase() === hubKeys.commands &&
+        active.node.querySelector("[data-command-palette]")
+      )
+        active.close();
       event.preventDefault();
       event.stopImmediatePropagation();
     }
@@ -140,7 +132,8 @@ export function dialogSafety(doc: Document) {
     }
   }
   function escapeBubble(event: KeyboardEvent) {
-    if (top() && !covered() && event.key === "Escape") event.stopPropagation();
+    if (top() && !covered() && !event.isComposing && event.key === "Escape")
+      event.stopPropagation();
   }
   return {
     register(entry: Entry) {
@@ -157,12 +150,17 @@ export function dialogSafety(doc: Document) {
       };
     },
     listen() {
+      const observer = new MutationObserver(() => {
+        if (top()) refresh();
+      });
+      observer.observe(doc.body, { childList: true, subtree: true });
       doc.defaultView?.addEventListener("keydown", key, true);
       doc.addEventListener("keydown", escapeBubble);
       doc.addEventListener("focusin", focusIn, true);
       doc.addEventListener("pointerdown", pointer, true);
       doc.addEventListener("click", pointer, true);
       return () => {
+        observer.disconnect();
         doc.defaultView?.removeEventListener("keydown", key, true);
         doc.removeEventListener("keydown", escapeBubble);
         doc.removeEventListener("focusin", focusIn, true);

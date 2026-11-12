@@ -26,10 +26,10 @@ export function ShellLayout({
           <div className="v-shell-body">
             <div className="v-content-column">
               <main className="v-shell-main">{children}</main>
-              <div className="v-shell-toast-anchor">{toasts}</div>
             </div>
             <SectionRailVisibility>{rail}</SectionRailVisibility>
           </div>
+          <div className="v-shell-toast-anchor">{toasts}</div>
         </div>
       </div>
     </SectionChromeProvider>

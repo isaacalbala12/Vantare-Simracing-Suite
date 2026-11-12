@@ -464,6 +464,9 @@ textarea.v-input:read-only {
   z-index: var(--z-modal);
   background: color-mix(in srgb, var(--bg-window) 75%, transparent);
 }
+[data-window-dialog="notice"][inert] {
+  opacity: var(--disabled-opacity);
+}
 .v-dialog {
   position: fixed;
   top: calc(var(--topbar-h) + (100vh - var(--topbar-h)) / 2);

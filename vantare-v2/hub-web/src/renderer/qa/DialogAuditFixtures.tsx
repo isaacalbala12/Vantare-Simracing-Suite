@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { dialogAuditText as text } from "../i18n/dialog-audit";
 import { Button } from "../ui/Button";
 import {
   CloseUnsavedReportDialog,
@@ -8,6 +7,7 @@ import {
 import { AlertDialog } from "../ui/Layers";
 import { ApplicationArgumentReset } from "../ui/launcher/Applications";
 import { ArgumentLossDialog } from "../ui/launcher/ProfileEditor";
+import { dialogAuditText as text } from "./dialog-audit-text";
 import "./dialog-audit.css";
 
 /** QA-only: exercise the real confirmation without invoking an OS file picker. */

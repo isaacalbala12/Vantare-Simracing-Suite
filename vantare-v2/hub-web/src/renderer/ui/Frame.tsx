@@ -290,7 +290,11 @@ export function CommandPalette({
         }}
         inline
       >
-        <Combobox.Input className="v-input" aria-label={title} />
+        <Combobox.Input
+          data-command-palette=""
+          className="v-input"
+          aria-label={title}
+        />
         <Combobox.Empty className="v-muted">{empty}</Combobox.Empty>
         <Combobox.List>
           {(item: (typeof commands)[number]) => (

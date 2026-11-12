@@ -50,4 +50,16 @@ No se cambia contrato, src/main, preload, CSP, dependencias o Calendario. Studio
 
 El acceso nativo suspende temporalmente los listeners de la modalidad de pantalla: Escape, Tab y el foco pertenecen a la puerta, y el editor inferior permanece abierto. Lo cubren una prueba de regresión y el chequeo existente checkNativeAccessLayer en Chromium de CI.
 
-Los recortes [oscuro](barras-dark.png) y [claro](barras-light.png) muestran las veinte barras en el orden de RESULTADOS.md: antes a la izquierda, después a la derecha. El [informe](RESULTADOS.md) enlaza los 80 PNG completos y [los recibos](resultados.json) fijan sus hashes. Las capturas parten de c1ee50e45 y el candidato posterior está rebasado sobre 9da5f330e; la corrección adicional para ceder al diálogo nativo no cambia su aspecto.
+Los recortes [oscuro](D:/VantareServer/evidence/hub-web/dialog-topbar/barras-dark.png) y [claro](D:/VantareServer/evidence/hub-web/dialog-topbar/barras-light.png) muestran las veinte barras en el orden de RESULTADOS.md: antes a la izquierda, después a la derecha. El [informe](RESULTADOS.md) enlaza los 80 PNG completos y [los recibos](D:/VantareServer/evidence/hub-web/dialog-topbar/resultados.json) fijan sus hashes. Las capturas parten de c1ee50e45 y el candidato posterior está rebasado sobre 9da5f330e; la corrección adicional para ceder al diálogo nativo no cambia su aspecto.
+
+## Arreglos de revisión
+
+AltGr (AltGraph o Ctrl+Alt) no se bloquea; solo los atajos registrados en hub-shortcuts.ts, compartidos con Shell/editor/Studio, y los comandos nativos de imprimir/recargar. Ctrl K cierra únicamente la paleta superior. Escape durante composición no actúa. El foco de rescate prefiere el diálogo y Tab llega a los controles al final.
+
+Los hijos de la barra, salvo WindowControls, quedan inertes; el encabezado sigue siendo una zona de arrastre. El viewport de toasts vive fuera de la zona inerte y sus acciones siguen accesibles. Un buzón de lectura bajo la confirmación queda inerte y atenuado, incluso si llega después de abrirla. El backdrop solo admite clic izquierdo; la confirmación destructiva del perfil exige Cancelar/Escape o una decisión explícita.
+
+Select no modal global en Forms.tsx es intencionado: su backdrop interno no debe bloquear los controles de ventana. Dentro de un diálogo sigue bajo la modalidad de pantalla común y Escape cierra primero la lista. Fuera de él conserva el comportamiento de un desplegable no modal.
+
+La entrada única de QA es src/renderer/qa/entry.tsx. Shell solo compone RendererQa; las fixtures, textos y CSS de auditoría viven en qa/. El guard AST de imports cubre app con una lista cerrada y la prueba de bundle rechaza los tres marcadores de auditoría. El guard de diálogos analiza imports/JSX con Babel y admite solo AccessBoundary para dialog/showModal; comprueba también cero px y los cuatro bordes en CSS.
+
+El job web existente llama checkDialogSafety en Chromium: borrado de perfil con Tab, clics reales sobre fondo inerte y Ctrl L sin petición de lanzamiento; AltGr simulado escribiendo @ en Ctrl K; Escape anidado en Select. ContextMenu y Mayús F10 se prueban con pulsaciones reales y la acción nativa cancelada. No se añaden dependencias ni se altera el workflow.

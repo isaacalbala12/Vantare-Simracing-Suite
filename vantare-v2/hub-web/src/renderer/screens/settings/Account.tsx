@@ -30,27 +30,52 @@ export function Account() {
   const { client } = useHost();
   const { photo, photoBusy, photoError } = state;
   const photoInput = useRef<HTMLInputElement>(null);
-  const attempted = useRef(false);
+  const attempted = useRef<number | undefined>(undefined);
+  const { dismissSessionDiscarded } = state;
+  useEffect(() => () => dismissSessionDiscarded(), [dismissSessionDiscarded]);
   useEffect(() => {
-    if (client && !attempted.current && !state.view) {
-      attempted.current = true;
+    if (!state.available) {
+      attempted.current = undefined;
+      return;
+    }
+    if (
+      client &&
+      state.available &&
+      attempted.current !== state.sessionGeneration &&
+      !state.view
+    ) {
+      attempted.current = state.sessionGeneration;
       void state.load();
     }
-  }, [client, state.view, state.load]);
+  }, [
+    client,
+    state.available,
+    state.sessionGeneration,
+    state.view,
+    state.load,
+  ]);
   const draft = state.draft;
+  const sessionNotice = state.sessionDiscarded && (
+    <Callout tone="warn" title={text.sessionDiscarded} />
+  );
   if (!draft)
-    return state.busy || !state.error ? (
-      <Skeleton label={t("settings.loading")} />
-    ) : (
-      <Callout
-        tone="warn"
-        title={t("pilot.unavailable")}
-        actions={
-          <Button onClick={() => void state.load()}>
-            {t("settings.reload")}
-          </Button>
-        }
-      />
+    return (
+      <>
+        {sessionNotice}
+        {state.busy || !state.error ? (
+          <Skeleton label={t("settings.loading")} />
+        ) : (
+          <Callout
+            tone="warn"
+            title={t("pilot.unavailable")}
+            actions={
+              <Button onClick={() => void state.load()}>
+                {t("settings.reload")}
+              </Button>
+            }
+          />
+        )}
+      </>
     );
   const valid =
     isPilotFields(draft) &&
@@ -66,6 +91,7 @@ export function Account() {
   }
   return (
     <PilotLayout preview={<PilotPreview fields={draft} />}>
+      {sessionNotice}
       <SettingGroup number={1} title={text.photoGroup} surface={false}>
         <PilotCard>
           <PilotPhoto fields={draft}>

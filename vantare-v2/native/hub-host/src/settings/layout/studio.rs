@@ -545,6 +545,9 @@ pub(crate) fn track(
 #[cfg(test)]
 #[path = "studio_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "table_preset_tests.rs"]
+mod table_preset_tests;
 
 fn add(
     opened: &mut Open,

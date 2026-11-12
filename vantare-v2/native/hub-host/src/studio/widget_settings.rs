@@ -380,6 +380,7 @@ pub struct WidgetColumnPatch {
     pub style: Option<WidgetColumnStylePatch>,
 }
 patch!(StandingsWidgetPatch {
+    table_preset: TableSize => "some",
     design_system: native::look::Look => "closed",
     style: native::look::Tone => "closed",
     accent: native::look::Accent => "closed",
@@ -399,6 +400,7 @@ patch!(StandingsWidgetPatch {
     footer_slots: Option<Vec<FooterKey>> => "some",
 });
 patch!(RelativeWidgetPatch {
+    table_preset: TableSize => "some",
     design_system: native::look::Look => "closed",
     style: native::look::Tone => "closed",
     accent: native::look::Accent => "closed",
@@ -447,6 +449,13 @@ pub enum WidgetSettingsPatch {
     FuelStrategy(FuelStrategyWidgetPatch),
 }
 impl WidgetSettingsPatch {
+    pub(crate) fn table_preset(&self) -> Option<&str> {
+        match self {
+            Self::Standings(patch) => patch.table_preset.as_ref().map(TableSize::as_str),
+            Self::Relative(patch) => patch.table_preset.as_ref().map(TableSize::as_str),
+            _ => None,
+        }
+    }
     pub fn kind(&self) -> WidgetKind {
         match self {
             Self::Standings(_) => WidgetKind::Standings,
@@ -519,6 +528,15 @@ pub(crate) fn fits_view(view: &super::StudioView) -> bool {
 }
 
 impl WidgetSettingsPatch {
+    fn validate_table_preset(&self) -> Result<(), HostError> {
+        // A recipe is exclusive: serialization retains even explicit null fields.
+        let value = serde_json::to_value(self).map_err(|_| HostError::Io)?;
+        if value.as_object().is_none_or(|fields| fields.len() != 2) {
+            Err(HostError::Denied)
+        } else {
+            Ok(())
+        }
+    }
     pub(crate) fn validate(&self) -> Result<(), HostError> {
         fn range(value: Option<usize>, min: usize, max: usize) -> Result<(), HostError> {
             if value.is_some_and(|v| !(min..=max).contains(&v)) {
@@ -571,6 +589,9 @@ impl WidgetSettingsPatch {
             } else {
                 Ok(())
             }
+        }
+        if self.table_preset().is_some() {
+            return self.validate_table_preset();
         }
         match self {
             Self::Standings(p) => {

@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type {
   PrivacyPatch,
   PrivacyView,
 } from "../../../contract/generated/contract";
+import { useAccountSession } from "../../app/AccountSession";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import { t } from "../../i18n/es";
@@ -21,6 +28,11 @@ import { ActionGroup } from "../../ui/ShellLayout";
 const key = ["privacy"] as const;
 export function Privacy() {
   const { client } = useHost();
+  const session = useAccountSession();
+  const { generation, confirmed } = useSyncExternalStore(
+    session.subscribe,
+    session.getSnapshot,
+  );
   const cache = useQueryClient();
   const [mailIntent, setMailIntent] = useState<boolean>();
   const [mailRequested, setMailRequested] = useState(false);
@@ -104,30 +116,72 @@ export function Privacy() {
       });
   }
   const mail = useQuery({
-    queryKey: ["mail", core.services],
-    enabled: !!client && core.services === "connected",
+    queryKey: ["mail", generation, confirmed, core.services],
+    enabled: !!client && confirmed && core.services === "connected",
+    gcTime: 0,
     retry: false,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const reply = await client?.request({ method: "mail.get" });
+      if (
+        signal.aborted ||
+        session.getSnapshot().generation !== generation ||
+        !session.getSnapshot().confirmed
+      )
+        throw new HostFailure({ kind: "coreUnavailable" });
       if (reply?.method !== "mail.get") throw new Error("mail unavailable");
       return reply.value;
     },
   });
   const changeMail = useMutation({
-    mutationFn: async (consent: boolean) => {
+    mutationFn: async ({
+      consent,
+      generation: started,
+    }: {
+      consent: boolean;
+      generation: number;
+    }) => {
+      if (
+        !session.getSnapshot().confirmed ||
+        session.getSnapshot().generation !== started
+      )
+        throw new HostFailure({ kind: "coreUnavailable" });
       const reply = await client?.request({
         method: "mail.set",
         consent,
         source: "settings",
       });
+      if (
+        !session.getSnapshot().confirmed ||
+        session.getSnapshot().generation !== started
+      )
+        throw new HostFailure({ kind: "coreUnavailable" });
       if (reply?.method !== "mail.set") throw new HostFailure({ kind: "io" });
       return reply.value;
     },
-    onSuccess: (value) => {
-      cache.setQueryData(["mail", core.services], value);
+    onSuccess: (value, started) => {
+      if (
+        !session.getSnapshot().confirmed ||
+        session.getSnapshot().generation !== started.generation
+      )
+        return;
+      cache.setQueryData(
+        ["mail", started.generation, true, core.services],
+        value,
+      );
       setMailIntent(undefined);
     },
   });
+  useLayoutEffect(() => {
+    setMailIntent(undefined);
+    setMailRequested(false);
+    mailBusy.current = false;
+    changeMail.reset();
+    return () =>
+      cache.removeQueries({
+        queryKey: ["mail", generation, confirmed, core.services],
+        exact: true,
+      });
+  }, [cache, generation, confirmed, core.services, changeMail.reset]);
   const policy = useMutation({
     mutationFn: async () => {
       const reply = await client?.request({ method: "privacy.policy" });
@@ -136,22 +190,31 @@ export function Privacy() {
     },
   });
   function runMail(value: boolean) {
-    if (mailBusy.current || mail.isFetching) return;
+    if (
+      !session.getSnapshot().confirmed ||
+      session.getSnapshot().generation !== generation ||
+      mailBusy.current ||
+      mail.isFetching
+    )
+      return;
     mailBusy.current = true;
     setMailIntent(value);
     void changeMail
-      .mutateAsync(value)
+      .mutateAsync({ consent: value, generation })
       .catch(() => {})
       .finally(() => {
-        mailBusy.current = false;
+        if (session.getSnapshot().generation === generation)
+          mailBusy.current = false;
       });
   }
   function refreshMail() {
-    if (mailBusy.current || mail.isFetching) return;
+    if (!session.getSnapshot().confirmed || mailBusy.current || mail.isFetching)
+      return;
     mailBusy.current = true;
     setMailRequested(true);
     void mail.refetch().finally(() => {
-      mailBusy.current = false;
+      if (session.getSnapshot().generation === generation)
+        mailBusy.current = false;
     });
   }
   if (query.isPending) return <Skeleton label={t("settings.loading")} />;
@@ -263,16 +326,16 @@ export function Privacy() {
         message={
           changeMail.isPending
             ? text.saving
-            : mail.data
+            : confirmed && mail.data
               ? text.optional
               : core.services === "connected"
                 ? text.signIn
                 : t("privacy.mailUnavailable")
         }
-        consent={mail.data?.consent ?? false}
+        consent={confirmed ? (mail.data?.consent ?? false) : false}
         intent={mailIntent}
         pending={changeMail.isPending || mail.isFetching}
-        available={core.services === "connected"}
+        available={confirmed && core.services === "connected"}
         onChange={runMail}
         onRefresh={refreshMail}
       />

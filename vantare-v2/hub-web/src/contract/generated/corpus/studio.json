@@ -3136,6 +3136,50 @@
   ],
   "invalidSettings": [
     {
+      "kind": "standings",
+      "tablePreset": "unknown"
+    },
+    {
+      "kind": "relative",
+      "tablePreset": null
+    },
+    {
+      "kind": "relative",
+      "tablePreset": 1
+    },
+    {
+      "kind": "delta",
+      "tablePreset": "standard"
+    },
+    {
+      "kind": "pedals",
+      "tablePreset": "standard"
+    },
+    {
+      "kind": "fuel-strategy",
+      "tablePreset": "standard"
+    },
+    {
+      "columns": null,
+      "kind": "standings",
+      "tablePreset": "compact"
+    },
+    {
+      "kind": "standings",
+      "style": "neo",
+      "tablePreset": "compact"
+    },
+    {
+      "kind": "relative",
+      "rangeAhead": 2,
+      "tablePreset": "compact"
+    },
+    {
+      "columns": [],
+      "kind": "relative",
+      "tablePreset": "compact"
+    },
+    {
       "brandVisible": false,
       "kind": "delta"
     },
@@ -3257,6 +3301,38 @@
       "request": {
         "method": "studio.track",
         "show": false
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "settings",
+          "value": {
+            "kind": "standings",
+            "tablePreset": "compact"
+          }
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "settings",
+          "value": {
+            "kind": "relative",
+            "tablePreset": "expanded"
+          }
+        }
       }
     },
     {

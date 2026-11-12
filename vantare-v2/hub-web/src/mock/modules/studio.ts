@@ -1,3 +1,4 @@
+import tablePresets from "../../../../native/hub-host/data/table-presets.json";
 import type {
   HostToUi,
   OverlayInstance,
@@ -263,6 +264,43 @@ export function applyWidgetSettings(
   current: NonNullable<OverlayInstance["settings"]>,
   patch: import("../../contract/generated/studio").WidgetSettingsPatch,
 ): NonNullable<OverlayInstance["settings"]> | null {
+  if ("tablePreset" in patch) {
+    if (
+      Object.keys(patch).length !== 2 ||
+      (current.kind !== "standings" && current.kind !== "relative") ||
+      current.kind !== patch.kind ||
+      current.designSystem !== "vantare"
+    )
+      return null;
+    const result = structuredClone(current) as unknown as Record<
+      string,
+      unknown
+    >;
+    const recipes = tablePresets.recipes[current.kind];
+    const size = patch.tablePreset;
+    if (!size) return null;
+    const selected = recipes[size];
+    if (!selected) return null;
+    if (current.kind === "standings") {
+      for (const key of ["practiceColumns", "qualifyingColumns"]) {
+        if (result[key] == null)
+          result[key] = structuredClone(result.columns ?? recipes.standard);
+      }
+    }
+    const previous = Array.isArray(result.columns)
+      ? (result.columns as Record<string, unknown>[])
+      : [];
+    result.columns = selected.map((column) => {
+      const old = previous.find((entry) => entry.metricId === column.metricId);
+      return {
+        ...old,
+        ...column,
+        format: { ...(old?.format as object), ...column.format },
+        style: { ...(old?.style as object), ...column.style },
+      };
+    });
+    return result as unknown as NonNullable<OverlayInstance["settings"]>;
+  }
   const original = current as unknown as Record<string, unknown>;
   const result = structuredClone(current) as unknown as Record<string, unknown>;
   for (const [key, value] of Object.entries(patch)) {

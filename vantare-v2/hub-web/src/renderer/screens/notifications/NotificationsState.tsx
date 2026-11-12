@@ -69,6 +69,7 @@ export function createNotifications() {
 const Context = createContext<
   ReturnType<typeof createNotifications> | undefined
 >(undefined);
+// Mount under AccountProvider: report notices share its synchronous access generation.
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createNotifications);
   const { client } = useHost();

@@ -41,19 +41,24 @@ export function calendarNoticeText(value: CalendarNotice, now: number) {
         title: `Ya está el horario de la semana ${week(value.from)}`,
         body: "Tus favoritas y tus avisos pasan solos a la semana nueva.",
       };
-    case "start": {
-      const time = new Intl.DateTimeFormat("es-ES", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-      }).format(new Date(value.at));
-      const minutes = Math.floor(
-        (Math.max(0, Math.floor((value.at - now) / 1000)) + 59) / 60,
-      );
-      return {
-        title: `${value.series} sale a las ${time}`,
-        body: `${value.track.split(" (")[0]} · carrera ${duration(value.raceMinutes)} · en ${minutes} min`,
-      };
-    }
+    case "start":
+      return calendarStartNoticeText(value, now);
   }
+}
+export function calendarStartNoticeText(
+  value: { series: string; track: string; at: number; raceMinutes: number },
+  now: number,
+) {
+  const time = new Intl.DateTimeFormat("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(value.at));
+  const minutes = Math.floor(
+    (Math.max(0, Math.floor((value.at - now) / 1000)) + 59) / 60,
+  );
+  return {
+    title: `${value.series} sale a las ${time}`,
+    body: `${value.track.split(" (")[0]} · carrera ${duration(value.raceMinutes)} · en ${minutes} min`,
+  };
 }

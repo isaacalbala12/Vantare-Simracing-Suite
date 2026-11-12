@@ -133,7 +133,11 @@ export function create(context: MockContext): MockHandler {
       }
       case "mail.get":
         // Settings parity shows a verified session with its email choice loaded.
-        if (context.visual && sceneName !== "ajustes-con-diseno")
+        if (
+          context.visual &&
+          sceneName !== "ajustes-con-diseno" &&
+          sceneName !== "onboarding-cuenta-sesion"
+        )
           return { kind: "failure", id, error: { kind: "denied" } };
         return core.services === "connected"
           ? {

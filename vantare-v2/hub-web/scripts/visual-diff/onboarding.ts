@@ -103,6 +103,23 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
     },
   ]),
 );
+onboardingScenes["onboarding-correo"] = {
+  mock: "onboarding-cuenta-sesion",
+  async prepare(page) {
+    await onboardingScenes["onboarding-6"].prepare(page);
+    const mail = page.getByRole("switch", {
+      name: "Recibir novedades y ofertas por correo",
+    });
+    await mail.waitFor();
+    assert.equal(await mail.isEnabled(), true);
+    assert.equal(await mail.isChecked(), false);
+    await mail.click();
+    assert.equal(await mail.isChecked(), true);
+    await page
+      .getByText("Tu elección se guardará al pulsar Terminar.", { exact: true })
+      .waitFor();
+  },
+};
 
 // Additional account states have no matching frozen GPUI bank scene: capture
 // them without percentages, preserving onboarding-3 as the comparable guest.

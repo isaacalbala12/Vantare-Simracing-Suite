@@ -1,3 +1,12 @@
+## VANTA-141 / #2213 · correcciones de método autorizadas por Isaac
+
+- Fuentes: conservar Inter, Rajdhani y Space Mono por celda, con los mismos ficheros que el Relative productivo.
+- Anfitrión: una capa por monitor con 1/4/10 Relative; los umbrales principales son para una ventana con 10 Relative a 60 Hz. Corrige las N ventanas del informe Fable, sin cambiar los valores de los umbrales.
+- Cadencia: conservar 33 ms del Relative. Contar envíos efectivos por pipe frente a recepciones para anular pérdidas; guardar todas las publicaciones para la latencia. Cada foto sin limitar es un estrés opcional separado.
+- Servidor reanudado tras CHKDSK: GPUI/fast por cola Release -j 2, con comprobación de captura.lock también después de esperar turno. Nunca ejecutar gráficos. Rune sigue en Mac, Release sin debug pesado y suelo absoluto 15 GiB.
+- Una primera B-Rune Windows compila en Mac; se completan curvas del pintor y análisis. Mosaicos GPUI/fast preparados; GPUI está compilando. Carga y muestreador tienen fuentes y pruebas de agregación, aún sin entrega terminada.
+- Piezas 1 (#2222) y 2+3 (#2224) siguen draft sin integrar; CI anterior verde. Se actualiza 2+3 para contar sent/received. Kit completo pendiente; ninguna latencia ni gráfica verificadas en el servidor.
+
 ## VANTA-141 / #2213 - worker F, 12-nov-2026
 
 - Pieza 1: PR draft #2222, HEAD 842f440b19d084489860104c38f7cbafecd0c4ad, CI completa verde; sin integrar ni publicar.

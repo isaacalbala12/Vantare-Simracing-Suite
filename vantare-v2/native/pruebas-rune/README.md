@@ -30,3 +30,17 @@ procedencia. `python -m unittest discover -s native/pruebas-rune -p test_latenci
 verifica formato, pérdidas, reloj hasta pantalla y rechazo de cruces ambiguos.
 
 No hay evidencia de pantalla ni medición comparativa en estos tests sintéticos.
+
+## Cadencia real: corrección acordada con Isaac
+
+El Relative conserva su demanda de 33 ms en GPUI, fast y Rune. `origin` marca
+cada publicación interna; `sent` marca únicamente una foto escrita por completo
+en el pipe; `received` se registra al entregarla al consumidor del Subscriber.
+La ronda se anula si las identidades de `sent` y `received` difieren. Las
+omisiones deliberadas por cadencia no son pérdidas de transporte. Todo envío
+debe corresponder a una publicación de origen, que se conserva para la latencia.
+
+El contador usa esa misma demanda por defecto. `--cada-foto` solicita todas
+solo como prueba de estrés separada: sus resultados nunca se mezclan con la
+campaña principal. El resultado anterior de 3.840/3.840 corresponde a ese modo
+sin limitación, no a la nueva campaña con la cadencia real.

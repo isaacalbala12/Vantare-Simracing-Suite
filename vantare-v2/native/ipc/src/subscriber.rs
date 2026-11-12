@@ -395,6 +395,7 @@ mod tests {
                 .collect::<Vec<_>>()
         };
         assert_eq!(sequences("origin"), [1, 2, 3]);
+        assert_eq!(sequences("sent"), [1, 2, 3]);
         assert_eq!(sequences("decoded"), [1, 2, 3]);
         assert_eq!(
             sequences("received"),

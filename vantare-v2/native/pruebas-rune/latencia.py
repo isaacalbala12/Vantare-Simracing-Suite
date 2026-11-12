@@ -34,10 +34,11 @@ def complete_replay(origin_rows, received_rows):
             raise ValueError("fotos ausentes o repetidas")
         return result
     origin = identities(origin_rows, "origin")
+    sent = identities(origin_rows, "sent")
     received = identities(received_rows, "received")
-    if origin != received:
+    if sent != received or not set(sent).issubset(origin):
         raise ValueError("fotos emitidas y recibidas distintas: ronda anulada")
-    return len(origin)
+    return len(sent)
 
 
 def cross_display(origin_rows, submissions, presents, frequency, tolerance_ms=2.0):

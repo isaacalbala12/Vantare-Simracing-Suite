@@ -4,9 +4,25 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    eprintln!(concat!(
+        "VANTARE_COUNT_BUILD;sha=",
+        env!("VANTARE_COUNT_SHA"),
+        ";dirty=",
+        env!("VANTARE_COUNT_DIRTY"),
+        ";rust=",
+        env!("VANTARE_COUNT_RUST"),
+        ";profile=",
+        env!("VANTARE_COUNT_PROFILE"),
+        ";opt-level=",
+        env!("VANTARE_COUNT_OPT_LEVEL"),
+        ";debug=",
+        env!("VANTARE_COUNT_DEBUG"),
+        ";lto=false;codegen-units=16;medir-latencia=true"
+    ));
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    if args.len() != 3 {
-        return Err("uso: contador <vantare-core.exe> <corpus.tar.gz> <directorio nuevo>".into());
+    let stress = args.len() == 4 && args[3] == "--cada-foto";
+    if args.len() != 3 && !stress {
+        return Err("uso: contador <vantare-core.exe> <corpus.tar.gz> <directorio nuevo> [--cada-foto: estres separado]".into());
     }
     let core = Path::new(&args[0]).canonicalize()?;
     let corpus = Path::new(&args[1]).canonicalize()?;
@@ -18,7 +34,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let trusted = core.clone();
     let mut subscriber = vantare_ipc::Subscriber::connect_requested(
         &pipe,
-        vantare_ipc::Demand::all(),
+        if stress {
+            vantare_ipc::Demand::all()
+        } else {
+            vantare_ipc::relative_measurement_demand()
+        },
         move |peer| peer.is_image(&trusted),
     )?;
     let mut child = Command::new(&core)
@@ -76,25 +96,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &std::fs::read_to_string(output.join("origin.csv"))?,
         "origin",
     )?;
+    let sent = identities(&std::fs::read_to_string(output.join("origin.csv"))?, "sent")?;
     let received = identities(
         &std::fs::read_to_string(output.join("received.csv"))?,
         "received",
     )?;
-    if origins.is_empty() || origins != received {
-        return Err(format!(
-            "ronda inválida: {} fotos emitidas, {} recibidas; identidades distintas",
+    validate_delivery(&origins, &sent, &received)?;
+    std::fs::write(
+        output.join("VALIDA.txt"),
+        format!(
+            "{} fotos enviadas por pipe y recibidas; {} publicaciones de origen; modo {}\n",
+            sent.len(),
             origins.len(),
+            if stress {
+                "estres-cada-foto"
+            } else {
+                "relative-33ms"
+            }
+        ),
+    )?;
+    Ok(())
+}
+
+fn validate_delivery(
+    origin: &[(u64, u64)],
+    sent: &[(u64, u64)],
+    received: &[(u64, u64)],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let origins: std::collections::BTreeSet<_> = origin.iter().copied().collect();
+    if origin.is_empty()
+        || sent.is_empty()
+        || sent != received
+        || sent.iter().any(|id| !origins.contains(id))
+    {
+        return Err(format!(
+            "ronda invalida: {} publicaciones, {} enviadas por pipe, {} recibidas",
+            origin.len(),
+            sent.len(),
             received.len()
         )
         .into());
     }
-    std::fs::write(
-        output.join("VALIDA.txt"),
-        format!(
-            "{} fotos emitidas y recibidas, sin pérdidas\n",
-            origins.len()
-        ),
-    )?;
     Ok(())
 }
 
@@ -149,6 +191,22 @@ fn identities(text: &str, phase: &str) -> Result<Vec<(u64, u64)>, Box<dyn std::e
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cadence_omissions_are_not_loss_but_a_missing_sent_photo_is() {
+        assert!(
+            validate_delivery(
+                &[(1, 1), (1, 2), (1, 3)],
+                &[(1, 1), (1, 3)],
+                &[(1, 1), (1, 3)]
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_delivery(&[(1, 1), (1, 2), (1, 3)], &[(1, 1), (1, 3)], &[(1, 3)]).is_err()
+        );
+        assert!(validate_delivery(&[(1, 1)], &[(1, 2)], &[(1, 2)]).is_err());
+    }
 
     #[test]
     fn rejects_truncated_overflowing_and_duplicate_traces() {

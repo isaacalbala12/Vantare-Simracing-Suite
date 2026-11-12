@@ -1,3 +1,15 @@
+## VANTA-141 · Cruce Rune conservador (en construcción)
+
+Pieza 9+11: cruce puro de encoded con PresentMon normalizado, una ventana y
+una cadena; exige exactamente un Present entre marcas consecutivas. Guarda
+todos los frames y separa la primera imagen mostrada por foto para latencia.
+Descartados sin tiempo inventado. Seis pruebas sintéticas PASS; no demuestra
+corrección física ni resultados del motor. Rune fijado d5338988 overlay/draw.rs
+codifica compositor antes de submit_and_present; overlay/frame.rs Windows
+presenta sin hilo adicional. Prewarm y fotos de calentamiento quedan fuera.
+El cruce se anula ante ambigüedad, traza sin cierre o relojes incompatibles.
+Integración con la campaña y PC pendiente; kit incompleto.
+
 ## VANTA-141 · Planificador y umbrales corregidos por Isaac
 
 La campaña compara una sola ventana por monitor con 1, 4 o 10 Relative.

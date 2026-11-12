@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
-  type AccountView,
   type CoreStatus,
   defaultZoom,
   type LauncherView,
@@ -40,6 +39,8 @@ import {
 } from "../ui/ShellLayout";
 import { TrackedCaps } from "../ui/TrackedCaps";
 import { zoomLevels } from "../ui/ZoomControl";
+import { useAccountSession } from "./AccountSession";
+import { useAccount } from "./AccountState";
 import { coreKey, offline, useHost } from "./Host";
 import { isSection, lock, navigation, visible } from "./navigation";
 import { profileCommands } from "./profile-commands";
@@ -80,35 +81,17 @@ function ShellContent() {
     queryFn: async () => offline,
     enabled: false,
   });
-  const { data: account } = useQuery<
-    Pick<AccountView, "name" | "photo" | "session" | "plan">
-  >({
-    queryKey: ["frame", "account"],
-    enabled: !!host.client && !core.live,
-    queryFn: async () => {
-      if (!host.client) throw new Error("Host unavailable");
-      const reply = await host.client.request({ method: "account.get" });
-      if (reply.method !== "account.get")
-        throw new Error("Unexpected account reply");
-      return {
-        name: reply.value.name,
-        photo: reply.value.photo,
-        session: reply.value.session,
-        plan: reply.value.plan,
-      };
-    },
-  });
+  // AccountProvider already sequences reads against publications and access intents.
+  // A second cache here could let an old GET overwrite the new account's identity.
+  const session = useAccountSession();
+  const { confirmed } = useSyncExternalStore(
+    session.subscribe,
+    session.getSnapshot,
+  );
+  const { value } = useAccount();
+  const account = confirmed ? value : undefined;
   useEffect(() => {
     const off = host.client?.listen((message) => {
-      if (message.kind === "event" && message.event.topic === "account") {
-        const { name, photo, session, plan } = message.event.value;
-        query.setQueryData(["frame", "account"], {
-          name,
-          photo,
-          session,
-          plan,
-        });
-      }
       if (message.kind === "event" && message.event.topic === "launcher")
         query.setQueryData(["launcher"], message.event.value);
     });

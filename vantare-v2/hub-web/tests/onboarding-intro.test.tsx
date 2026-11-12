@@ -441,6 +441,51 @@ function respond(scene: string, recommended?: PerformanceLevel) {
     return reply.result;
   });
 }
+it.each([
+  { decided: false, saved: false, checked: true },
+  { decided: true, saved: false, checked: false },
+  { decided: true, saved: true, checked: true },
+])(
+  "shows crashes=$checked for saved=$saved, decided=$decided without persisting on exit",
+  async ({ decided, saved, checked }) => {
+    respond("onboarding-sin-diseno");
+    const request = fake.request.getMockImplementation();
+    if (!request) throw Error("Missing onboarding host");
+    fake.request.mockImplementation(async (input: Request) => {
+      const reply = await request(input);
+      return reply.method === "privacy.get"
+        ? {
+            ...reply,
+            value: { ...reply.value, crashes: saved, crashesDecided: decided },
+          }
+        : reply;
+    });
+    const view = mount(true, true);
+    const start = await screen.findByRole("button", { name: "Empezar" });
+    await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(start);
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    const finish = screen.getByRole("button", { name: "Terminar" });
+    await waitFor(() => expect(finish.hasAttribute("disabled")).toBe(false));
+    expect(
+      screen
+        .getByRole("switch", { name: "Enviar informes de fallos" })
+        .getAttribute("aria-checked"),
+    ).toBe(String(checked));
+    view.unmount();
+    expect(
+      fake.request.mock.calls.filter(([input]) =>
+        ["privacy.update", "mail.set", "onboarding.finish"].includes(
+          input.method,
+        ),
+      ),
+    ).toHaveLength(0);
+  },
+);
 it("preserves choices through consent and finishes an absent layout once on double click", async () => {
   respond("onboarding-sin-diseno");
   const commitMail = vi.fn(async () => "ok" as const);

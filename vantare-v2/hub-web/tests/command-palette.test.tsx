@@ -33,6 +33,17 @@ function Harness({ commands }: { commands: PaletteCommand[] }) {
 function mount(commands: PaletteCommand[]) {
   render(<Harness commands={commands} />);
 }
+it("highlights the first command immediately and executes Enter without typing", async () => {
+  const run = vi.fn();
+  mount([{ id: "home", label: "Inicio", group: "navigation", run }]);
+  await waitFor(() =>
+    expect(screen.getByRole("option").hasAttribute("data-highlighted")).toBe(
+      true,
+    ),
+  );
+  await userEvent.setup().keyboard("{Enter}");
+  expect(run).toHaveBeenCalledOnce();
+});
 it("groups icons, metadata and shortcuts, filters by metadata and executes only once with Enter", async () => {
   const run = vi.fn();
   const user = userEvent.setup();

@@ -47,7 +47,7 @@
   outline: none;
 }
 .v-command-search input::placeholder {
-  color: var(--text-3);
+  color: var(--text-caption);
   opacity: 1;
 }
 .v-command-results {
@@ -60,7 +60,8 @@
   padding: 9px 12px;
   color: var(--text-caption);
   font-size: 10.5px;
-  font-weight: 850;
+  /* GPUI asks for the unregistered Inter W850 face at face_weight(400). */
+  font-weight: 400;
   letter-spacing: 1.365px;
 }
 .v-command-row {
@@ -77,6 +78,9 @@
     color-mix(in srgb, var(--accent-bright) 14%, transparent),
     color-mix(in srgb, var(--accent-bright) 2.5%, transparent)
   );
+}
+.v-command-row[data-disabled] {
+  opacity: 1;
 }
 .v-command-icon {
   width: 36px;
@@ -115,6 +119,9 @@
 .v-command-empty {
   padding: 10px 22px;
   color: var(--text-3);
+}
+.v-command-empty:empty {
+  padding: 0;
 }
 .v-command-footer {
   min-height: 44px;

@@ -16,6 +16,13 @@ export type PaletteCommand = {
   disabled?: boolean;
   run: () => void;
 };
+// Base UI 1.9 implements "always" in AriaCombobox and passes it through Root,
+// but Root's public declaration still narrows this property to boolean. Keep
+// the compatibility cast here; Chromium checks initial highlight and Enter.
+const highlightOnOpen = { autoHighlight: "always" } as unknown as Pick<
+  Combobox.Root.Props<PaletteCommand>,
+  "autoHighlight"
+>;
 export function CommandPalette({
   title,
   description,
@@ -75,7 +82,8 @@ export function CommandPalette({
             filter={null}
             inputValue={query}
             onInputValueChange={setQuery}
-            autoHighlight
+            {...highlightOnOpen}
+            defaultOpen
             itemToStringLabel={(item) => item.label}
             itemToStringValue={(item) => item.id}
             isItemEqualToValue={(a, b) => a.id === b.id}

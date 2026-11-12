@@ -27,6 +27,15 @@ export async function checkCommandPalette(owner: Page, base: string) {
     await page.locator('.v-search input[type="search"]').waitFor();
     await page.keyboard.press("Control+k");
     const search = page.locator("[data-command-palette]");
+    await until(
+      async () =>
+        (await page
+          .getByRole("option")
+          .first()
+          .getAttribute("data-highlighted")) !== null,
+      5000,
+      "First command highlighted on opening",
+    );
     await search.fill("Lanzar Pro");
     const profile = page.getByRole("option", { name: /Lanzar Pro/ });
     await profile.waitFor();

@@ -142,3 +142,6 @@ pub mod performance;
 
 #[cfg(all(windows, feature = "parity-capture"))]
 pub mod benchmark;
+
+#[cfg(feature = "medir-latencia")]
+pub use app::run_relative_measurement;

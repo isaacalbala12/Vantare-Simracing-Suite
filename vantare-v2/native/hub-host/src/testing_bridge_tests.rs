@@ -127,7 +127,7 @@ fn session_testing_roundtrips_remove_prepare_and_send_and_ignores_late_ids() {
             .send((id, Ok(reply)))
             .expect("matching response");
         session
-            .tick(&args(&root.path), &mut pipe)
+            .tick(&args(&root.path), &mut pipe, Instant::now(), || false)
             .expect("complete");
         let value = serde_json::to_value(next(&mut peer)).expect("wire reply");
         assert_eq!(value["id"], id);

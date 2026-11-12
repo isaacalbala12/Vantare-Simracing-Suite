@@ -1020,17 +1020,19 @@ describe("pilot editor over the simulated host", () => {
   });
 });
 
-function RestartVeto() {
+function RestartVeto({ guard }: { guard: () => boolean }) {
   const { client } = useHost();
-  useEffect(() => client?.addCloseGuard(() => false), [client]);
+  useEffect(() => client?.addCloseGuard(guard), [client, guard]);
   return null;
 }
 describe("restart feedback", () => {
-  it("announces a veto and makes restart available again without a timer", async () => {
+  it("shows a vetoed restart instead of discarding another screen edit", async () => {
+    const guard = vi.fn(() => false);
+    const sent = vi.spyOn(Client.prototype, "send");
     mount(
       "actualizacion-lista",
       <>
-        <RestartVeto />
+        <RestartVeto guard={guard} />
         <Updates />
       </>,
     );
@@ -1041,11 +1043,13 @@ describe("restart feedback", () => {
     await screen.findByText(t("updates.restartVeto"));
     await waitFor(() =>
       expect(
-        screen
-          .getByRole("button", { name: t("updates.restart") })
-          .getAttribute("aria-disabled"),
-      ).not.toBe("true"),
+        sent.mock.calls.some(
+          ([message]) => message.kind === "closeAnswer" && !message.allow,
+        ),
+      ).toBe(true),
     );
+    expect(guard).toHaveBeenCalledWith("restart");
+    expect(screen.getByText(t("updates.restartVeto"))).toBeTruthy();
   });
   it("shows closing after accepted restart until the real window closes", async () => {
     mount("actualizacion-lista", <Updates />);

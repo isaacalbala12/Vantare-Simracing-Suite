@@ -209,14 +209,6 @@ fn accept_ui(
         }
     }
 }
-fn entered_live(previous: Option<&protocol::CoreStatus>, current: &protocol::CoreStatus) -> bool {
-    previous.is_some_and(|previous| {
-        previous.rights == protocol::LinkState::Connected
-            && current.rights == protocol::LinkState::Connected
-            && !previous.live
-            && current.live
-    })
-}
 
 include!(concat!(env!("OUT_DIR"), "/session.rs"));
 #[cfg_attr(
@@ -229,53 +221,16 @@ include!(concat!(env!("OUT_DIR"), "/session.rs"));
 #[path = "session_effects.rs"]
 mod session_effects;
 use session_effects::settings_response;
+#[cfg_attr(
+    test,
+    allow(
+        clippy::duplicate_mod,
+        reason = "tests exercise the production tick with isolated IO"
+    )
+)]
+#[path = "ui_tick.rs"]
+mod ui_tick;
 impl Session {
-    fn tick(&mut self, args: &Args, pipe: &mut Pipe) -> io::Result<bool> {
-        if let Some(confirmation) = &self.confirmation {
-            confirmation.check_confirmation()?;
-        }
-        if args.controlled && crate::control_stdin::closed() && self.closing.is_none() {
-            self.request_close(pipe, CloseReason::ControlEof)?;
-        }
-        self.current = self.core.status();
-        if let Some((id, result)) = self.core.reply() {
-            let result = self.service_reply(id, result);
-            self.respond_service(pipe, id, result)?;
-        }
-        self.expire_deferred(pipe, Instant::now())?;
-        for tick in SCREEN_TICKS {
-            tick(self, pipe)?;
-        }
-        if entered_live(self.last.as_ref(), &self.current) && self.closing.is_none() {
-            self.request_close(pipe, CloseReason::Live)?;
-        }
-        if self.last.as_ref() != Some(&self.current)
-            && self
-                .last_event
-                .is_none_or(|time| time.elapsed() >= Duration::from_millis(100))
-        {
-            self.last_event = Some(Instant::now());
-            if self.subscriptions.contains(&Topic::Core) {
-                self.send_core(pipe)?;
-            }
-            if self.subscriptions.contains(&Topic::SimStatus) {
-                frame::write(
-                    pipe,
-                    &HostToUi::Event {
-                        event: Event::SimStatus {
-                            live: self.current.live,
-                        },
-                    },
-                )?;
-            }
-            self.last = Some(self.current.clone());
-        }
-        Ok(self.closing.is_none_or(|(reason, time)| {
-            !matches!(reason, CloseReason::ControlEof | CloseReason::Live)
-                || time.elapsed() <= Duration::from_secs(2)
-        }))
-    }
-
     fn receive(&mut self, pipe: &mut Pipe, message: &UiToHost) -> io::Result<bool> {
         match message {
             UiToHost::Hello { version } => {
@@ -392,7 +347,14 @@ pub fn run(args: &Args) -> io::Result<u8> {
     frame::write(&mut pipe, &protocol::hello(&session.settings.view())?)?;
     #[cfg(feature = "qa-e2e")]
     qa_phase(args, "hello-sent")?;
-    while child.0.try_wait()?.is_none() && session.tick(args, &mut pipe)? {
+    while child.0.try_wait()?.is_none()
+        && session.tick(
+            args,
+            &mut pipe,
+            Instant::now(),
+            crate::control_stdin::closed,
+        )?
+    {
         if let Some(message) = reader.next::<UiToHost>(&mut pipe)?
             && !session.receive(&mut pipe, &message)?
         {
@@ -427,11 +389,14 @@ mod tests {
             live: true,
             ..waiting.clone()
         };
-        assert!(entered_live(Some(&waiting), &live));
-        assert!(!entered_live(None, &live));
-        assert!(!entered_live(Some(&protocol::CoreStatus::default()), &live));
-        assert!(!entered_live(Some(&live), &live));
-        assert!(!entered_live(Some(&live), &waiting));
+        assert!(ui_tick::entered_live(Some(&waiting), &live));
+        assert!(!ui_tick::entered_live(None, &live));
+        assert!(!ui_tick::entered_live(
+            Some(&protocol::CoreStatus::default()),
+            &live
+        ));
+        assert!(!ui_tick::entered_live(Some(&live), &live));
+        assert!(!ui_tick::entered_live(Some(&live), &waiting));
     }
     #[test]
     fn bootstrap_token_is_exact_and_never_accepted_by_kind_only() {

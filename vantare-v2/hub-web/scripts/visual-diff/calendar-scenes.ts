@@ -246,6 +246,24 @@ export const calendarScenes: Record<string, VisualScene> = {
       await assertDetailWindowControls(page);
       await page.mouse.move(600, 890);
     },
+    async cleanup(page) {
+      const question = page.getByRole("alertdialog", { name: "¿Reemplazar?" });
+      await page.keyboard.press("Escape");
+      await question.waitFor({ state: "hidden" });
+      await page.waitForFunction(() =>
+        document.activeElement?.textContent?.includes("Descargar .ics"),
+      );
+      await page.getByRole("button", { name: "Descargar .ics" }).click();
+      await question.waitFor();
+      await question
+        .getByRole("button", { name: "Reemplazar", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Añadir a mi calendario" })
+        .waitFor({ state: "hidden" });
+      await page.getByText("Calendario guardado.", { exact: true }).waitFor();
+      await assertDetailWindowControls(page);
+    },
   },
   "calendario-ics-contraida": {
     mock: "calendar-live-reference",

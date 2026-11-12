@@ -475,9 +475,19 @@ async function start() {
     },
   );
   window.once("ready-to-show", () => {
-    window?.show();
+    if (currentWindow.isDestroyed()) return;
+    if (hello.window.minimized) {
+      // On Windows minimize() shows a hidden window in its minimized state.
+      // Suppress activation during that transition; restore taskbar/focusability
+      // afterwards so a later user activation works normally.
+      currentWindow.setFocusable(false);
+      try {
+        currentWindow.minimize();
+      } finally {
+        if (!currentWindow.isDestroyed()) currentWindow.setFocusable(true);
+      }
+    } else currentWindow.show();
     if (compatible) host.send({ kind: "ready" });
-    if (hello.window.minimized) window?.minimize();
   });
   if (devUrl) await window.loadURL(devUrl);
   else await window.loadURL("app://hub/");

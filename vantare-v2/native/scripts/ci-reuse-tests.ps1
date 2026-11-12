@@ -1,7 +1,16 @@
 # Execution only: never invoke Cargo's compiler or acquire a build slot here.
-param([Parameter(Mandatory)][ValidateSet('test', 'telemetria', 'lifecycle')][string]$Suite)
+param(
+    [Parameter(Mandatory)][ValidateSet('test', 'telemetria', 'lifecycle')][string]$Suite,
+    # Partición de nextest (`hash:1/2`, `count:2/3`, `slice:1/3`). Vacía = todo.
+    # Las particiones son disjuntas y exhaustivas: 1/2 + 2/2 = la suite completa.
+    [string]$Partition = ''
+)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if ($Partition -and $Partition -notmatch '^(hash|count|slice):[0-9]+/[0-9]+$') {
+    throw 'Partición de nextest inválida.'
+}
+if ($Suite -eq 'lifecycle' -and $Partition) { throw 'lifecycle no acepta particiones.' }
 $target = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'vantare-targets/ci'))
 $download = (Join-Path $env:RUNNER_TEMP 'vantare-test-archive')
 $native = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
@@ -81,7 +90,8 @@ try {
         }
         $env:CARGO_TARGET_DIR = $target
         $profile = if ($Suite -eq 'telemetria') { 'telemetria' } else { 'default' }
-        & cargo-nextest nextest run --binaries-metadata (Join-Path $target 'nextest/binaries-metadata.json') --cargo-metadata (Join-Path $target 'nextest/cargo-metadata.json') --profile $profile
+        $partitionArgs = if ($Partition) { @('--partition', $Partition) } else { @() }
+        & cargo-nextest nextest run --binaries-metadata (Join-Path $target 'nextest/binaries-metadata.json') --cargo-metadata (Join-Path $target 'nextest/cargo-metadata.json') --profile $profile @partitionArgs
     }
     if ($LASTEXITCODE) { throw "Suite $Suite falló (código $LASTEXITCODE)." }
 } finally { Pop-Location }

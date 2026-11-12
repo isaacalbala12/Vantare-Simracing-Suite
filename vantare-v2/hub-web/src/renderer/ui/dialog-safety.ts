@@ -148,7 +148,7 @@ export function dialogSafety(doc: Document) {
     register(entry: Entry) {
       if (!entries.length)
         for (const node of doc.querySelectorAll<HTMLElement>(floating))
-          oldFloating.add(node);
+          if (!node.contains(entry.node)) oldFloating.add(node);
       entries.push(entry);
       refresh();
       return () => {

@@ -118,7 +118,9 @@ export function CalendarAlertsDialog(p: Props) {
                     }}
                   />
                   <Caption>{text.where}</Caption>
-                  <p role="status">{text.deliveryScope}</p>
+                  <p role="status">
+                    {p.windowsDisabledReason ?? text.deliveryScope}
+                  </p>
                   {(
                     [
                       ["windows", text.windows, text.windowsHint],
@@ -190,9 +192,13 @@ export function CalendarAlertsDialog(p: Props) {
                   </div>
                 </section>
                 <section>
-                  <Caption>{text.sample}</Caption>
-                  <p>{text.previewScope}</p>
-                  <Preview {...p} />
+                  {!p.windowsDisabledReason && (
+                    <>
+                      <Caption>{text.sample}</Caption>
+                      <p>{text.previewScope}</p>
+                      <Preview {...p} />
+                    </>
+                  )}
                   <Caption
                     hint={text.count(
                       p.alerts.bands.length,

@@ -631,21 +631,20 @@ export default function CalendarEntry() {
             alertsState === "ready" ? () => void noticeTest.test() : undefined
           }
           testBusy={noticeTest.busy}
+          testCooling={noticeTest.cooldown}
           testFeedback={
             noticeTest.busy ? (
               <p role="status">{calendarAlertsText.testSending}</p>
             ) : noticeTest.failure ? (
-              <p role="alert">
-                {noticeTest.failure === "busy"
-                  ? calendarAlertsText.testBusy
-                  : calendarAlertsText.testFailure}
-              </p>
+              <p role="alert">{calendarAlertsText.testFailure}</p>
             ) : noticeTest.status ? (
               <p role="status">
                 {noticeTest.status === "accepted"
                   ? calendarAlertsText.testAccepted
                   : calendarAlertsText.testUnavailable}
               </p>
+            ) : noticeTest.cooldown ? (
+              <p role="status">{calendarAlertsText.testBusy}</p>
             ) : undefined
           }
           failure={

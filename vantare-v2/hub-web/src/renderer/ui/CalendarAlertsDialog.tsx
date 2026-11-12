@@ -49,6 +49,7 @@ type Props = {
   onClose: () => void;
   onTest?: () => void;
   testBusy?: boolean;
+  testCooling?: boolean;
   testFeedback?: ReactNode;
   failure?: ReactNode;
 };
@@ -127,11 +128,21 @@ export function CalendarAlertsDialog(p: Props) {
                     <Channel
                       key={channel}
                       label={label}
-                      hint={hint}
+                      hint={
+                        channel === "sound" && !p.alerts.channels.windows
+                          ? text.soundRequiresWindows
+                          : hint
+                      }
                       value={p.alerts.channels[channel]}
-                      disabled={disabled || legacy}
+                      disabled={
+                        disabled ||
+                        legacy ||
+                        (channel === "sound" && !p.alerts.channels.windows)
+                      }
                       pending={p.busy}
                       onChange={(value) => {
+                        if (channel === "sound" && !p.alerts.channels.windows)
+                          return;
                         change({
                           kind: "channel",
                           channel: channel as keyof CalendarChannels,
@@ -315,10 +326,13 @@ export function CalendarAlertsDialog(p: Props) {
                 <Button
                   disabled={!p.onTest || !ready}
                   focusableWhenDisabled
-                  aria-disabled={!p.onTest || !ready || p.testBusy || p.busy}
+                  aria-disabled={
+                    !p.onTest || !ready || p.testBusy || p.testCooling || p.busy
+                  }
                   aria-busy={p.testBusy || undefined}
                   onClick={() => {
-                    if (!p.testBusy && !p.busy && ready) p.onTest?.();
+                    if (!p.testBusy && !p.testCooling && !p.busy && ready)
+                      p.onTest?.();
                   }}
                   aria-describedby={testHint}
                 >

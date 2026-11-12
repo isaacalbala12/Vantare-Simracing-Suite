@@ -216,13 +216,20 @@ it.each([false, true])(
     ] as const) {
       const node = screen.getByRole("checkbox", { name: label });
       expect(node.getAttribute("aria-checked")).toBe(String(saved));
-      expect(node.getAttribute("aria-disabled")).not.toBe("true");
-      fireEvent.click(node);
-      expect(props.onChange).toHaveBeenLastCalledWith({
-        kind: "channel",
-        channel,
-        value: !saved,
-      });
+      if (channel === "sound" && !saved) {
+        expect(node.getAttribute("aria-disabled")).toBe("true");
+        const calls = props.onChange.mock.calls.length;
+        fireEvent.click(node);
+        expect(props.onChange).toHaveBeenCalledTimes(calls);
+      } else {
+        expect(node.getAttribute("aria-disabled")).not.toBe("true");
+        fireEvent.click(node);
+        expect(props.onChange).toHaveBeenLastCalledWith({
+          kind: "channel",
+          channel,
+          value: !saved,
+        });
+      }
     }
     expect(JSON.stringify(alerts)).toBe(before);
   },
@@ -279,4 +286,35 @@ it("previews the delivered text and offers no fictional OS actions", () => {
   for (const label of [text.launch, text.detail, text.snooze])
     expect(screen.queryByText(label, { exact: true })).toBeNull();
   expect(screen.getByText(text.previewScope)).toBeTruthy();
+});
+
+it("keeps saved sound checked but inoperative with an accessible reason while Windows is off", () => {
+  const alerts = {
+    ...props.alerts,
+    channels: { ...props.alerts.channels, windows: false, sound: true },
+  };
+  const onTest = vi.fn();
+  show({ ...props, alerts, onTest });
+  const sound = screen.getByRole("checkbox", { name: text.sound });
+  expect(sound.getAttribute("aria-disabled")).toBe("true");
+  expect(sound.getAttribute("aria-checked")).toBe("true");
+  expect(
+    document.getElementById(sound.getAttribute("aria-describedby") ?? "")
+      ?.textContent,
+  ).toBe(text.soundRequiresWindows);
+  fireEvent.click(sound);
+  expect(props.onChange).not.toHaveBeenCalled();
+  expect(alerts.channels.sound).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: text.test }));
+  expect(onTest).toHaveBeenCalledOnce();
+});
+it("keeps the test focusable and inoperative during cooldown", () => {
+  const onTest = vi.fn();
+  show({ ...props, onTest, testCooling: true });
+  const button = screen.getByRole("button", { name: text.test });
+  button.focus();
+  expect(document.activeElement).toBe(button);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(button);
+  expect(onTest).not.toHaveBeenCalled();
 });

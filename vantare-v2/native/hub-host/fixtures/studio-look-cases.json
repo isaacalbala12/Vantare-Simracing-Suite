@@ -1,0 +1,176 @@
+[
+  {
+    "name": "standings-vantare-v1",
+    "look": "eficiencia",
+    "settings": {
+      "kind": "standings",
+      "contentVersion": 1,
+      "designSystem": "vantare",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "standings-eficiencia-v1",
+    "look": "vantare",
+    "settings": {
+      "kind": "standings",
+      "contentVersion": 1,
+      "designSystem": "eficiencia",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "relative-vantare-v1",
+    "look": "eficiencia",
+    "settings": {
+      "kind": "relative",
+      "contentVersion": 1,
+      "designSystem": "vantare",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "relative-eficiencia-v1",
+    "look": "vantare",
+    "settings": {
+      "kind": "relative",
+      "contentVersion": 1,
+      "designSystem": "eficiencia",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "delta-vantare-v1",
+    "look": "eficiencia",
+    "settings": {
+      "kind": "delta",
+      "contentVersion": 1,
+      "designSystem": "vantare",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "delta-eficiencia-v1",
+    "look": "vantare",
+    "settings": {
+      "kind": "delta",
+      "contentVersion": 1,
+      "designSystem": "eficiencia",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "pedals-vantare-v1",
+    "look": "eficiencia",
+    "settings": {
+      "kind": "pedals",
+      "contentVersion": 1,
+      "designSystem": "vantare",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "pedals-eficiencia-v1",
+    "look": "vantare",
+    "settings": {
+      "kind": "pedals",
+      "contentVersion": 1,
+      "designSystem": "eficiencia",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "fuel-strategy-vantare-v1",
+    "look": "eficiencia",
+    "settings": {
+      "kind": "fuel-strategy",
+      "contentVersion": 1,
+      "designSystem": "vantare",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "fuel-strategy-eficiencia-v1",
+    "look": "vantare",
+    "settings": {
+      "kind": "fuel-strategy",
+      "contentVersion": 1,
+      "designSystem": "eficiencia",
+      "style": "neutro",
+      "accent": "green"
+    }
+  },
+  {
+    "name": "delta-legacy-optimal",
+    "look": "vantare",
+    "settings": {
+      "kind": "delta",
+      "designSystem": "eficiencia",
+      "reference": "optimal"
+    }
+  },
+  {
+    "name": "standings-legacy-multiclass",
+    "look": "eficiencia",
+    "settings": {
+      "kind": "standings",
+      "designSystem": "vantare",
+      "classificationMode": "multiclass"
+    }
+  },
+  {
+    "name": "relative-legacy-nine-columns",
+    "look": "vantare",
+    "settings": {
+      "kind": "relative",
+      "designSystem": "eficiencia",
+      "columns": [
+        {
+          "id": "0",
+          "metricId": "position"
+        },
+        {
+          "id": "1",
+          "metricId": "carNumber"
+        },
+        {
+          "id": "2",
+          "metricId": "driverName"
+        },
+        {
+          "id": "3",
+          "metricId": "vehicle"
+        },
+        {
+          "id": "4",
+          "metricId": "lapDelta"
+        },
+        {
+          "id": "5",
+          "metricId": "driverRating"
+        },
+        {
+          "id": "6",
+          "metricId": "safetyRating"
+        },
+        {
+          "id": "7",
+          "metricId": "trend"
+        },
+        {
+          "id": "8",
+          "metricId": "gap"
+        }
+      ]
+    }
+  }
+]

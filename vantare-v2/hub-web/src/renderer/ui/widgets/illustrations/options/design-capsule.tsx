@@ -9,7 +9,10 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"89"}
         height={"55"}
         rx={"2"}
-        style={{ fill: "#0f0f10", stroke: "#ffffff26" }}
+        style={{
+          fill: "var(--ill-classic-panel)",
+          stroke: "var(--ill-classic-edge)",
+        }}
       />
       <rect
         x={"5"}
@@ -17,16 +20,21 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"80"}
         height={"8"}
         rx={"4"}
-        style={{ fill: "#ffffff12" }}
+        style={{ fill: "var(--ill-classic-row-soft)" }}
       />
-      <circle cx={"10"} cy={"9"} r={"2.2"} style={{ fill: "#e5e5e5" }} />
+      <circle
+        cx={"10"}
+        cy={"9"}
+        r={"2.2"}
+        style={{ fill: "var(--ill-classic-ink)" }}
+      />
       <rect
         x={"16"}
         y={"7.6"}
         width={"38"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#e5e5e5" }}
+        style={{ fill: "var(--ill-classic-ink)" }}
       />
       <rect
         x={"66"}
@@ -34,7 +42,7 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"14"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#9a9a9a" }}
+        style={{ fill: "var(--ill-classic-ink-secondary)" }}
       />
       <rect
         x={"5"}
@@ -42,16 +50,21 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"80"}
         height={"8"}
         rx={"4"}
-        style={{ fill: "#ffffff12" }}
+        style={{ fill: "var(--ill-classic-row-soft)" }}
       />
-      <circle cx={"10"} cy={"19"} r={"2.2"} style={{ fill: "#e5e5e5" }} />
+      <circle
+        cx={"10"}
+        cy={"19"}
+        r={"2.2"}
+        style={{ fill: "var(--ill-classic-ink)" }}
+      />
       <rect
         x={"16"}
         y={"17.6"}
         width={"35"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#e5e5e5" }}
+        style={{ fill: "var(--ill-classic-ink)" }}
       />
       <rect
         x={"66"}
@@ -59,7 +72,7 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"14"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#9a9a9a" }}
+        style={{ fill: "var(--ill-classic-ink-secondary)" }}
       />
       <rect
         x={"5"}
@@ -67,16 +80,21 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"80"}
         height={"8"}
         rx={"4"}
-        style={{ fill: "#ffffff26" }}
+        style={{ fill: "var(--ill-classic-edge)" }}
       />
-      <circle cx={"10"} cy={"29"} r={"2.2"} style={{ fill: "#e5e5e5" }} />
+      <circle
+        cx={"10"}
+        cy={"29"}
+        r={"2.2"}
+        style={{ fill: "var(--ill-classic-ink)" }}
+      />
       <rect
         x={"16"}
         y={"27.6"}
         width={"32"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#e5e5e5" }}
+        style={{ fill: "var(--ill-classic-ink)" }}
       />
       <rect
         x={"66"}
@@ -84,7 +102,7 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"14"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#9a9a9a" }}
+        style={{ fill: "var(--ill-classic-ink-secondary)" }}
       />
       <rect
         x={"5"}
@@ -92,16 +110,21 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"80"}
         height={"8"}
         rx={"4"}
-        style={{ fill: "#ffffff12" }}
+        style={{ fill: "var(--ill-classic-row-soft)" }}
       />
-      <circle cx={"10"} cy={"39"} r={"2.2"} style={{ fill: "#e5e5e5" }} />
+      <circle
+        cx={"10"}
+        cy={"39"}
+        r={"2.2"}
+        style={{ fill: "var(--ill-classic-ink)" }}
+      />
       <rect
         x={"16"}
         y={"37.6"}
         width={"29"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#e5e5e5" }}
+        style={{ fill: "var(--ill-classic-ink)" }}
       />
       <rect
         x={"66"}
@@ -109,7 +132,7 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"14"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#9a9a9a" }}
+        style={{ fill: "var(--ill-classic-ink-secondary)" }}
       />
       <rect
         x={"5"}
@@ -117,16 +140,21 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"80"}
         height={"8"}
         rx={"4"}
-        style={{ fill: "#ffffff12" }}
+        style={{ fill: "var(--ill-classic-row-soft)" }}
       />
-      <circle cx={"10"} cy={"49"} r={"2.2"} style={{ fill: "#e5e5e5" }} />
+      <circle
+        cx={"10"}
+        cy={"49"}
+        r={"2.2"}
+        style={{ fill: "var(--ill-classic-ink)" }}
+      />
       <rect
         x={"16"}
         y={"47.6"}
         width={"26"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#e5e5e5" }}
+        style={{ fill: "var(--ill-classic-ink)" }}
       />
       <rect
         x={"66"}
@@ -134,7 +162,7 @@ export function DesignCapsuleIllustration(props: IllustrationProps) {
         width={"14"}
         height={"3"}
         rx={"1.5"}
-        style={{ fill: "#9a9a9a" }}
+        style={{ fill: "var(--ill-classic-ink-secondary)" }}
       />
     </svg>
   );

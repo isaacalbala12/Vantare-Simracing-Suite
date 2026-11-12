@@ -13,6 +13,9 @@ CONTRACT = (ROOT / "src/contract/generated/studio.ts").read_text(encoding="utf-8
 TOKENS = set(json.loads((ROOT / "design/tokens.json").read_text(encoding="utf-8"))["semantic"])
 
 
+# Fixed legacy artwork colors, registered for every Hub palette and theme.
+ART_COLORS = {'#0f0f10': 'ill-classic-panel', '#1d4fd8': 'ill-classic-broadcast-header', '#e5e5e5': 'ill-classic-ink', '#fff': 'ill-white', '#ffffff06': 'ill-classic-row-muted', '#ffffff14': 'ill-classic-row', '#ffffff26': 'ill-classic-edge', '#9a9a9a': 'ill-classic-ink-secondary', '#ffffff12': 'ill-classic-row-soft', '#4ade80': 'ill-classic-good', '#8a8a8a': 'ill-classic-axis', '#9c9c9c': 'ill-classic-tick', '#d6d6d6': 'ill-classic-value', '#ffffff30': 'ill-classic-mark', '#7d7d7d': 'ill-classic-ink-muted', '#b3121b': 'ill-classic-player', '#d0d0d0': 'ill-classic-label', '#2e2e30': 'ill-classic-placeholder', '#a8a8a8': 'ill-classic-text', '#c9c9c9': 'ill-classic-line'}
+
 def constant(name):
     match = re.search(rf"export const {name} = (.*?) as const;", CONTRACT, re.S)
     if not match:
@@ -43,6 +46,10 @@ def element(node, root=False):
                     continue
                 key, item = declaration.split(":", 1)
                 item = re.sub(r"var\((--[a-z0-9-]+),[^)]+\)", r"var(\1)", item)
+                if item in ART_COLORS:
+                    item = "var(--" + ART_COLORS[item] + ")"
+                if "#" in item:
+                    raise ValueError(f"Unregistered artwork color: {item}")
                 for role in re.findall(r"var\(--([a-z0-9-]+)\)", item):
                     if role not in TOKENS:
                         raise ValueError(f"Unregistered illustration token: {role}")

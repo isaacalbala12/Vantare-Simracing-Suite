@@ -6,6 +6,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import tokens from "../design/tokens.json";
 import {
   studioKinds,
   studioWidgetOptions,
@@ -57,7 +58,15 @@ function geometry(node: Element): unknown {
               let value = declaration
                 .slice(colon + 1)
                 .trim()
-                .replace(/var\((--[a-z0-9-]+),[^)]+\)/g, "var($1)");
+                .replace(/var\((--[a-z0-9-]+),[^)]+\)/g, "var($1)")
+                .replace(
+                  /var\(--([a-z0-9-]+)\)/g,
+                  (_, role: string) =>
+                    (tokens.themes.vantare.dark as Record<string, string>)[
+                      role
+                    ],
+                )
+                .replace(/^#fff$/, "#ffffff");
               if (/^-?\d*\.?\d+$/.test(value)) value = String(Number(value));
               return [key, value];
             });

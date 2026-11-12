@@ -25,7 +25,7 @@ export function BroadcastTowerIllustration(props: IllustrationProps) {
       />
       <path
         d={"M13 5l6 12h-3l-3-6-3 6h-3z"}
-        style={{ fill: "#fff", opacity: ".9" }}
+        style={{ fill: "var(--ill-white)", opacity: ".9" }}
       />
       <rect
         x={"30"}

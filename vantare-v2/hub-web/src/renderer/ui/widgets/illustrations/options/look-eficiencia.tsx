@@ -9,77 +9,80 @@ export function LookEficienciaIllustration(props: IllustrationProps) {
         width={"89"}
         height={"51"}
         rx={"1.5"}
-        style={{ fill: "#0f0f10", stroke: "#ffffff26" }}
+        style={{
+          fill: "var(--ill-classic-panel)",
+          stroke: "var(--ill-classic-edge)",
+        }}
       />
       <rect
         x={"1"}
         y={"1"}
         width={"88"}
         height={"11"}
-        style={{ fill: "#2e2e30" }}
+        style={{ fill: "var(--ill-classic-placeholder)" }}
       />
       <rect
         x={"6"}
         y={"4.5"}
         width={"30"}
         height={"4"}
-        style={{ fill: "#c9c9c9" }}
+        style={{ fill: "var(--ill-classic-line)" }}
       />
       <rect
         x={"6"}
         y={"17"}
         width={"60"}
         height={"3.4"}
-        style={{ fill: "#a8a8a8" }}
+        style={{ fill: "var(--ill-classic-text)" }}
       />
       <rect
         x={"72"}
         y={"17"}
         width={"12"}
         height={"3.4"}
-        style={{ fill: "#7d7d7d" }}
+        style={{ fill: "var(--ill-classic-ink-muted)" }}
       />
       <rect
         x={"6"}
         y={"25"}
         width={"54"}
         height={"3.4"}
-        style={{ fill: "#a8a8a8" }}
+        style={{ fill: "var(--ill-classic-text)" }}
       />
       <rect
         x={"72"}
         y={"25"}
         width={"12"}
         height={"3.4"}
-        style={{ fill: "#7d7d7d" }}
+        style={{ fill: "var(--ill-classic-ink-muted)" }}
       />
       <rect
         x={"6"}
         y={"33"}
         width={"48"}
         height={"3.4"}
-        style={{ fill: "#a8a8a8" }}
+        style={{ fill: "var(--ill-classic-text)" }}
       />
       <rect
         x={"72"}
         y={"33"}
         width={"12"}
         height={"3.4"}
-        style={{ fill: "#7d7d7d" }}
+        style={{ fill: "var(--ill-classic-ink-muted)" }}
       />
       <rect
         x={"6"}
         y={"41"}
         width={"42"}
         height={"3.4"}
-        style={{ fill: "#a8a8a8" }}
+        style={{ fill: "var(--ill-classic-text)" }}
       />
       <rect
         x={"72"}
         y={"41"}
         width={"12"}
         height={"3.4"}
-        style={{ fill: "#7d7d7d" }}
+        style={{ fill: "var(--ill-classic-ink-muted)" }}
       />
     </svg>
   );

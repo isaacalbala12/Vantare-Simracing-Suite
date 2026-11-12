@@ -337,8 +337,13 @@ it("drops a late replacement question after the session or access changed", asyn
     await pending;
   });
   expect(hook.result.current.confirmationId).toBeUndefined();
+  expect(hook.result.current.failure).toBe("rejected");
+  host.client.request.mockResolvedValueOnce(reply);
+  act(() => hook.result.current.retry());
+  await act(async () => {});
+  expect(hook.result.current.view).toEqual(value);
   await act(async () => {
     await hook.result.current.replace(true);
   });
-  expect(host.client.request).toHaveBeenCalledTimes(2);
+  expect(host.client.request).toHaveBeenCalledTimes(3);
 });

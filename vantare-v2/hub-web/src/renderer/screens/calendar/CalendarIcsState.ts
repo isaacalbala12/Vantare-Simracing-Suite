@@ -124,7 +124,11 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
         reply.status === "replacementRequired" &&
         typeof reply.confirmationId === "string"
       ) {
-        if (!authority.current || generation !== epoch.current) return false;
+        if (!authority.current || generation !== epoch.current) {
+          setStatus(undefined);
+          if (authority.current) setFailure("rejected");
+          return false;
+        }
         confirmation.current = reply.confirmationId;
         setConfirmationId(reply.confirmationId);
       } else if (reply.status !== "saved")

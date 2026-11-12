@@ -699,7 +699,7 @@ describe("Studio gallery", () => {
     const user = userEvent.setup();
     await screen.findByRole("slider", { name: t.opacity });
     await tabTo(user, screen.getByRole("tab", { name: t.track }));
-    await user.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}{Enter}");
     const appearance = screen.getByRole("tab", { name: t.appearance });
     expect(appearance.getAttribute("aria-selected")).toBe("true");
     await user.click(screen.getByRole("combobox", { name: t.widgetAccent }));

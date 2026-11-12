@@ -5,6 +5,7 @@ import type {
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Select } from "../Forms";
+import "./appearance.css";
 
 export function AppearanceInspector({ item }: { item: OverlayInstance }) {
   const state = useStudio();
@@ -24,7 +25,7 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
     });
   };
   return (
-    <div className="v-studio-inspector-fields">
+    <div className="v-studio-inspector-fields v-studio-appearance">
       <p className="v-muted">{t.appearancePreviewNote}</p>
       <Select
         label={t.widgetLook}

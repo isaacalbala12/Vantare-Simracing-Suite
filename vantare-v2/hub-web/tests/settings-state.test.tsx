@@ -12,6 +12,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { HostProvider, useHost } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import {
@@ -100,12 +101,14 @@ function mount(scene = "ajustes-base", content?: ReactNode) {
             <CSPProvider disableStyleElements>
               <TooltipProvider delay={0}>
                 <ToastProvider>
-                  <PilotProvider>
-                    <SettingsProvider>
-                      {content}
-                      {children}
-                    </SettingsProvider>
-                  </PilotProvider>
+                  <AccountProvider>
+                    <PilotProvider>
+                      <SettingsProvider>
+                        {content}
+                        {children}
+                      </SettingsProvider>
+                    </PilotProvider>
+                  </AccountProvider>
                   <ToastViewport closeLabel="Cerrar aviso" />
                 </ToastProvider>
               </TooltipProvider>
@@ -1048,7 +1051,7 @@ describe("restart feedback", () => {
 
 describe("honest notification preferences", () => {
   it.each([false, true])(
-    "keeps unavailable saved preferences (%s) read only",
+    "allows changing emitted internal preferences from saved=%s",
     async (saved) => {
       const calls = vi.spyOn(Client.prototype, "request");
       const hook = mount("ajustes-base", <General />);
@@ -1067,17 +1070,19 @@ describe("honest notification preferences", () => {
           name: t(`general.${field}`),
         });
         expect(control.getAttribute("aria-checked")).toBe(String(saved));
-        expect(control.getAttribute("aria-disabled")).toBe("true");
+        expect(control.getAttribute("aria-disabled")).not.toBe("true");
         expect(control.getAttribute("aria-description")).toBe(
           t(`general.${field}Help`),
         );
         expect(screen.getByText(t(`general.${field}Help`))).toBeTruthy();
         fireEvent.click(control);
-        fireEvent.keyDown(control, { key: " " });
+        await waitFor(() =>
+          expect(hook.result.current.view?.general[field]).toBe(!saved),
+        );
       }
       expect(
         calls.mock.calls.filter(([r]) => r.method === "settings.update"),
-      ).toHaveLength(0);
+      ).toHaveLength(2);
     },
   );
   it("keeps the Windows switch editable for the manual test and explains its limit", async () => {

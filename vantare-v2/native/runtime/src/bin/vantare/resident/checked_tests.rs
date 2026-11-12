@@ -1,6 +1,13 @@
 use super::*;
 use std::{fs, path::PathBuf};
-use vantare_ipc::{control, launcher::execution::ResidentInstance};
+use vantare_ipc::{
+    control,
+    launcher::{
+        Request,
+        execution::{ChainFailure, ChainOutcome, ResidentInstance},
+        request_path,
+    },
+};
 struct Fixture {
     root: PathBuf,
     owner: Owner,

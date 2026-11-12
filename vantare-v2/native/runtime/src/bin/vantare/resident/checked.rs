@@ -1,5 +1,7 @@
 //! Only explicit checked requests query the authority; never a polling/retry loop.
-use super::*;
+use super::{
+    Arc, Chain, Discovery, Document, Duration, EventKind, ExecutionStatus, Owner, Sources, launcher,
+};
 use launcher::chain::StartError;
 use vantare_ipc::{
     account_session::{self, AccountObservation},

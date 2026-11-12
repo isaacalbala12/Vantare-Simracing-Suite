@@ -442,7 +442,8 @@ fn silent_core_does_not_make_resident_status_stale() {
 }
 
 #[test]
-fn exhausted_sequence_rejects_without_observing_or_starting_and_disables_extension_on_record_failure() {
+fn exhausted_sequence_rejects_without_observing_or_starting_and_disables_extension_on_record_failure()
+ {
     use vantare_ipc::launcher::execution::{ExecutionEvent, RunId};
     for exhausted in [false, true] {
         let mut f = fixture();
@@ -450,14 +451,29 @@ fn exhausted_sequence_rejects_without_observing_or_starting_and_disables_extensi
         let seq: RunId = last.to_string().try_into().unwrap();
         let extension = f.owner.status.extension.as_mut().unwrap();
         extension.first_retained_seq = seq;
-        extension.events.push(ExecutionEvent { seq, kind: EventKind::Started { run: seq } });
+        extension.events.push(ExecutionEvent {
+            seq,
+            kind: EventKind::Started { run: seq },
+        });
         assert!(!extension.can_start());
-        f.owner.launch_checked_with(f.request.clone(), || panic!("must reject before observing"), |_, _| panic!("must never start"));
+        f.owner.launch_checked_with(
+            f.request.clone(),
+            || panic!("must reject before observing"),
+            |_, _| panic!("must never start"),
+        );
         assert!(f.owner.chain.is_none());
         if exhausted {
-            assert!(f.owner.status.extension.is_none(), "failed record invalidates observation");
+            assert!(
+                f.owner.status.extension.is_none(),
+                "failed record invalidates observation"
+            );
         } else {
-            assert_eq!(receipt(&f.owner), LaunchReceipt::Rejected { reason: LaunchRejection::StartFailed });
+            assert_eq!(
+                receipt(&f.owner),
+                LaunchReceipt::Rejected {
+                    reason: LaunchRejection::StartFailed
+                }
+            );
         }
     }
 }

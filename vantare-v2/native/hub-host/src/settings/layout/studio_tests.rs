@@ -620,3 +620,40 @@ fn projected_settings_that_exceed_the_transport_become_protected() {
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
     assert!(crate::studio::widget_settings::fits_view(&view));
 }
+
+#[test]
+fn native_serialization_and_host_projection_round_trip_all_five_families() {
+    use vantare_domain::widget_settings as native;
+    fn round_trip<T: Serialize + DeserializeOwned>(kind: WidgetKind, settings: T) {
+        let mut stored = serde_json::to_value(&settings).unwrap();
+        stored["kind"] = serde_json::to_value(kind).unwrap();
+        let raw: Fields = serde_json::from_value(stored.clone()).unwrap();
+        let projected = typed_settings(kind, &raw).unwrap().unwrap();
+        let value = serde_json::to_value(projected).unwrap();
+        let decoded: T = serde_json::from_value(value).unwrap();
+        assert_eq!(
+            serde_json::to_value(decoded).unwrap(),
+            serde_json::to_value(settings).unwrap()
+        );
+    }
+    round_trip(
+        WidgetKind::Standings,
+        native::standings::Settings::default().normalized(),
+    );
+    round_trip(
+        WidgetKind::Relative,
+        native::relative::Settings::default().normalized(),
+    );
+    round_trip(
+        WidgetKind::Delta,
+        native::delta::Settings::default().normalized(),
+    );
+    round_trip(
+        WidgetKind::Pedals,
+        native::pedals::Settings::default().normalized(),
+    );
+    round_trip(
+        WidgetKind::FuelStrategy,
+        native::fuel_strategy::Settings::default().normalized(),
+    );
+}

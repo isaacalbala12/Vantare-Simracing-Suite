@@ -288,6 +288,15 @@ pub(crate) fn edit_result(
     access: Option<CatalogAccess>,
 ) -> Result<(StudioView, Option<String>), HostError> {
     let mut opened = Open::read(&state.path)?;
+    if matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_))) {
+        let projected = StudioView {
+            instances: opened.projected.clone(),
+            ..State::unavailable(StudioState::Ready, access)
+        };
+        if !crate::studio::widget_settings::fits_view(&projected) {
+            return Err(HostError::Protected);
+        }
+    }
     if opened.revision() != revision {
         return Err(HostError::StudioConflict {
             current: view(state, access),

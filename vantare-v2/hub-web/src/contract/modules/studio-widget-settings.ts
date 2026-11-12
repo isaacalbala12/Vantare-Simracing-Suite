@@ -51,7 +51,7 @@ const columnRead: Check = (v) =>
     format: (f) =>
       object(f, {
         mode: text,
-        maxChars: nullable(integer),
+        maxChars: nullable((v) => typeof v === "number" && Number.isInteger(v) && v >= 0),
         display: nullable(text),
         decimals: nullable(integer),
       }),

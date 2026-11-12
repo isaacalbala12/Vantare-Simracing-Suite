@@ -17,6 +17,8 @@
 
 use std::io::Write;
 use vantare_ipc::product;
+#[cfg(feature = "parity-capture")]
+use vantare_ui::standings::SessionSettings as _;
 
 use std::path::PathBuf;
 use std::process::ExitCode;

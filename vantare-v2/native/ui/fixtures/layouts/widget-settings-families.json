@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "instances": [
+    {
+      "id": "relative-custom",
+      "settings": {
+        "kind": "relative",
+        "designSystem": "eficiencia",
+        "style": "neutro",
+        "accent": "green",
+        "contentVersion": 1,
+        "rangeAhead": 4,
+        "rangeBehind": 2,
+        "includePlayer": false,
+        "classScope": "all",
+        "rowHeightMode": "normal",
+        "footerSlots": [
+          "clock"
+        ],
+        "columns": [
+          {
+            "id": "driver",
+            "metricId": "driver",
+            "enabled": true,
+            "widthPreset": "lg",
+            "format": {
+              "mode": "short",
+              "maxChars": 12
+            },
+            "style": {
+              "align": "left"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "relative-legacy",
+      "settings": {
+        "kind": "relative"
+      }
+    },
+    {
+      "id": "fuel-custom",
+      "settings": {
+        "kind": "fuel-strategy",
+        "designSystem": "eficiencia",
+        "style": "neutro",
+        "accent": "amber",
+        "size": "expanded",
+        "contentVersion": 1,
+        "historyRows": 4,
+        "showProjection": false,
+        "source": "fuel",
+        "units": "gallons",
+        "brandVisible": false
+      }
+    },
+    {
+      "id": "fuel-legacy",
+      "settings": {
+        "kind": "fuel-strategy"
+      }
+    },
+    {
+      "id": "pedals-custom",
+      "settings": {
+        "kind": "pedals",
+        "designSystem": "vantare",
+        "style": "neutro",
+        "accent": "white",
+        "transparentBackground": true,
+        "showBrakePeak": false,
+        "gap": 7.5,
+        "brandVisible": true
+      }
+    },
+    {
+      "id": "pedals-legacy",
+      "settings": {
+        "kind": "pedals"
+      }
+    }
+  ]
+}

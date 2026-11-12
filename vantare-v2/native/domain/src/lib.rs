@@ -7,6 +7,9 @@
 
 #![forbid(unsafe_code)]
 
+pub mod widget_settings;
+pub(crate) use widget_settings::look;
+
 mod adapter;
 mod banner;
 pub mod broadcast_tower;

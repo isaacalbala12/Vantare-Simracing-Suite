@@ -1,6 +1,10 @@
 //! Relative común: un Board y Motion activos, con pintores por Look.
 
 #[cfg(test)]
+use crate::standings::options::ColumnFormat as _;
+#[cfg(test)]
+use crate::widget_settings::SettingsDemand as _;
+#[cfg(test)]
 mod contract_tests;
 mod eficiencia;
 mod motion;
@@ -29,32 +33,8 @@ const ROW: f32 = 29.0;
 // Conserva las señales Vantare (número y mejor vuelta), sin inventar ratings.
 const EDGES: [f32; 7] = [0.0, 30.0, 38.0, 68.0, 300.0, 364.0, 470.0];
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
-    pub design_system: crate::look::Look,
-    #[serde(default)]
-    pub content_version: u8,
-    pub style: crate::look::Tone,
-    pub accent: crate::look::Accent,
-    pub columns: Option<Vec<crate::standings::options::ColumnSetting>>,
-    pub range_ahead: usize,
-    pub range_behind: usize,
-    pub class_scope: String,
-    pub include_player: bool,
-    pub row_height_mode: String,
-    pub footer_slots: Vec<String>,
-    /// Marca Vantare: decisión inyectada por el host según la licencia
-    /// (como en Standings). Sin decisión no se pinta.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub brand_visible: Option<bool>,
-}
-impl Default for Settings {
-    fn default() -> Self {
-        Self::for_look(crate::look::Look::default())
-    }
-}
+pub use vantare_domain::widget_settings::relative::Settings;
+
 /// Métricas de Relative Vantare que ocupan un hueco propio (el punto de clase
 /// es fijo; el coche y la tira de pista son complementos).
 const MOVABLE: &[&str] = &[
@@ -138,112 +118,6 @@ pub fn shift_column(
     step: i32,
 ) -> bool {
     crate::vantare::columns::shift_column(columns, metric, step, MOVABLE)
-}
-
-impl Settings {
-    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
-        let mut s = Self::for_look(look);
-        match look {
-            crate::look::Look::Vantare => {
-                s.columns = Some(vantare_template("standard"));
-                s.class_scope = "all".into();
-                s.brand_visible = Some(true);
-            }
-            crate::look::Look::Eficiencia => {
-                s.columns = Some(crate::workshop::default_columns(crate::Kind::Relative));
-            }
-        }
-        s
-    }
-    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
-    #[must_use]
-    pub fn for_look(design_system: crate::look::Look) -> Self {
-        Self {
-            design_system,
-            content_version: 1,
-            style: crate::look::Tone::Neo,
-            accent: crate::look::Accent::Red,
-            columns: None,
-            range_ahead: 3,
-            range_behind: 3,
-            class_scope: "sameClass".into(),
-            include_player: true,
-            row_height_mode: "compact".into(),
-            footer_slots: Vec::new(),
-            brand_visible: None,
-        }
-    }
-
-    /// Relative del sistema Eficiencia heredado.
-    #[must_use]
-    pub fn eficiencia() -> Self {
-        Self::for_look(crate::look::Look::Eficiencia)
-    }
-
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
-        (
-            "includePlayer",
-            "parseRelativeContent conserva siempre al jugador; el inspector productivo no ofrece ocultarlo",
-        ),
-        (
-            "rowHeightMode",
-            "RelativeFunctional conserva filas de 28 px; fill solo figura en su clave de presentación",
-        ),
-        (
-            "columns.format.display/decimals",
-            "el VM v2 productivo siempre formatea la vuelta completa con tres decimales",
-        ),
-    ];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        let mut value = self.clone();
-        value.range_ahead = value.range_ahead.min(8);
-        value.range_behind = value.range_behind.min(8);
-        value.include_player = true;
-        if value.content_version == 0 && value.design_system == crate::look::Look::Vantare {
-            value.class_scope = "sameClass".into();
-        } else if value.class_scope != "sameClass" {
-            value.class_scope = "all".into();
-        }
-        if value.row_height_mode != "fill" {
-            value.row_height_mode = "compact".into();
-        }
-        value.footer_slots.truncate(9);
-        if value.content_version == 0
-            && value.design_system == crate::look::Look::Eficiencia
-            && let Some(columns) = &mut value.columns
-        {
-            columns.truncate(7);
-            columns.retain(|c| {
-                [
-                    "position",
-                    "class",
-                    "carNumber",
-                    "driverName",
-                    "gap",
-                    "bestLap",
-                    "lastLap",
-                ]
-                .contains(&c.metric_id.as_str())
-            });
-        }
-        value.content_version = 1;
-        value
-    }
-    fn content(&self) -> relative::Content {
-        relative::Content {
-            range_ahead: self.range_ahead,
-            range_behind: self.range_behind,
-            same_class: self.class_scope == "sameClass",
-            include_player: self.include_player,
-        }
-    }
-    fn slot_count(&self) -> usize {
-        self.range_ahead + self.range_behind + usize::from(self.include_player)
-    }
-    fn size(&self) -> (f32, f32) {
-        (SIZE.0, SIZE.1 + (self.slot_count() as f32 - 7.0) * ROW)
-    }
 }
 
 /// Board y Motion activos comunes: los pintores solo reciben datos proyectados.
@@ -451,8 +325,45 @@ impl std::ops::Deref for Widget {
     }
 }
 
-impl Settings {
-    pub fn demand(&self) -> vantare_ipc::Demand {
+trait SettingsPresentation {
+    fn content(&self) -> relative::Content;
+    fn slot_count(&self) -> usize;
+    fn size(&self) -> (f32, f32);
+}
+impl SettingsPresentation for Settings {
+    fn content(&self) -> relative::Content {
+        relative::Content {
+            range_ahead: self.range_ahead,
+            range_behind: self.range_behind,
+            same_class: self.class_scope == "sameClass",
+            include_player: self.include_player,
+        }
+    }
+    fn slot_count(&self) -> usize {
+        self.range_ahead + self.range_behind + usize::from(self.include_player)
+    }
+    fn size(&self) -> (f32, f32) {
+        (SIZE.0, SIZE.1 + (self.slot_count() as f32 - 7.0) * ROW)
+    }
+}
+impl crate::widget_settings::WorkshopSettings for Settings {
+    fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        match look {
+            crate::look::Look::Vantare => {
+                s.columns = Some(vantare_template("standard"));
+                s.class_scope = "all".into();
+                s.brand_visible = Some(true);
+            }
+            crate::look::Look::Eficiencia => {
+                s.columns = Some(crate::workshop::default_columns(crate::Kind::Relative));
+            }
+        }
+        s
+    }
+}
+impl crate::widget_settings::SettingsDemand for Settings {
+    fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
             LapTimes, PitStatus, Positions, Relative, SessionClock, SessionInfo, TrackName, Weather,
         };
@@ -485,7 +396,6 @@ impl Settings {
         demand
     }
 }
-
 #[cfg(test)]
 mod tests {
     #[test]

@@ -1,6 +1,7 @@
 //! Export the frozen Hub's new-widget defaults without starting GPUI or a window.
 use std::{collections::BTreeMap, error::Error};
 use vantare_domain::format::Preferences;
+use vantare_ui::standings::SessionSettings as _;
 use vantare_ui::{Kind, Overlay, Settings};
 fn canonical(value: serde_json::Value) -> serde_json::Value {
     match value {

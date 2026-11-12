@@ -20,9 +20,11 @@
     clippy::unreadable_literal // colores hex de CSS
 )]
 
+use crate::widget_settings::SettingsDemand as _;
 mod motion_policy;
 #[cfg(test)]
 mod paint_tests;
+pub mod widget_settings;
 pub use motion_policy::MotionPolicy;
 
 pub mod analytics;

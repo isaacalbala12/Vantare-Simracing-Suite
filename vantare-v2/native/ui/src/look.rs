@@ -1,57 +1,27 @@
 //! Aspectos del producto. El contenido y su proyección no dependen de Look.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Look {
-    Eficiencia,
-    #[default]
-    #[serde(other)]
-    Vantare,
-}
+use crate::widget_settings::WorkshopSettings as _;
+pub use vantare_domain::widget_settings::look::Look;
 /// Estilo Vantare del catálogo r10b.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Tone {
-    /// Neo con fondos en escala de grises, sin subtono rojo.
-    Neutro,
-    #[default]
-    #[serde(other)]
-    Neo,
-}
-
-impl Tone {
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::Neo => "neo",
-            Self::Neutro => "neutro",
-        }
-    }
-    pub fn from_name(name: &str) -> Self {
-        if name == "neutro" {
-            Self::Neutro
-        } else {
-            Self::Neo
-        }
-    }
-}
+pub use vantare_domain::widget_settings::look::Tone;
 
 /// Acento Vantare: fila propia, bordes y énfasis.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Accent {
-    Amber,
-    Green,
-    White,
-    #[default]
-    #[serde(other)]
-    Red,
-}
+pub use vantare_domain::widget_settings::look::Accent;
 
-impl Look {
-    pub const ALL: &'static [Self] = &[Self::Eficiencia, Self::Vantare];
+pub(crate) trait WorkshopLook {
+    fn choices() -> Vec<(&'static str, &'static str)>;
+    fn workshop_defaults(self, kind: crate::Kind) -> crate::Settings;
 }
+impl WorkshopLook for Look {
+    fn choices() -> Vec<(&'static str, &'static str)> {
+        let mut looks = Self::ALL.to_vec();
+        looks.sort_by_key(|look| *look != Self::default());
+        looks
+            .into_iter()
+            .map(|look| (look.name(), look.label()))
+            .collect()
+    }
 
-impl Look {
-    pub(crate) fn workshop_defaults(self, kind: crate::Kind) -> crate::Settings {
+    fn workshop_defaults(self, kind: crate::Kind) -> crate::Settings {
         use crate::{Kind, Settings};
         match kind {
             Kind::Standings => {
@@ -70,31 +40,6 @@ impl Look {
     }
 }
 
-impl Look {
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::Eficiencia => "eficiencia",
-            Self::Vantare => "vantare",
-        }
-    }
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Eficiencia => "Eficiencia",
-            Self::Vantare => "Vantare",
-        }
-    }
-    pub(crate) fn choices() -> Vec<(&'static str, &'static str)> {
-        let mut looks = Self::ALL.to_vec();
-        looks.sort_by_key(|look| *look != Self::default());
-        looks
-            .into_iter()
-            .map(|look| (look.name(), look.label()))
-            .collect()
-    }
-    pub fn from_name(name: &str) -> Option<Self> {
-        Self::ALL.iter().copied().find(|l| l.name() == name)
-    }
-}
 impl crate::Settings {
     /// Controles de apariencia disponibles; los consumidores no clasifican Looks.
     pub fn appearance(&self) -> Option<(Look, Tone, Accent)> {

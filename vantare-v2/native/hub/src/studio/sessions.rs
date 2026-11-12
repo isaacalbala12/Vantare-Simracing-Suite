@@ -6,6 +6,7 @@ use crate::orbit::{
     NumberKind, NumberRange, OptionItem, button,
 };
 use gpui::{Context, Window, div, prelude::*, px};
+use vantare_ui::standings::SessionSettings as _;
 use vantare_ui::standings::options::ColumnSetting;
 use vantare_ui::{Settings, layout::Instance, session::Session};
 

@@ -1,4 +1,5 @@
 //! Workshop de desarrollo sobre el mismo `Overlay` que el producto.
+use crate::look::WorkshopLook as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
 

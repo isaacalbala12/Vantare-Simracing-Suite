@@ -1,5 +1,7 @@
 //! Fuel y stint: una proyección y un historial; un pintor y Motion activos.
 use crate::app::{Paint, Wake};
+#[cfg(test)]
+use crate::widget_settings::SettingsDemand as _;
 use std::sync::Arc;
 use std::time::Instant;
 use vantare_domain::{Snapshot, format::Preferences, fuel_strategy};
@@ -7,112 +9,7 @@ use vantare_domain::{Snapshot, format::Preferences, fuel_strategy};
 mod contract_tests;
 mod eficiencia;
 pub(crate) mod vantare;
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
-    pub design_system: crate::look::Look,
-    pub style: crate::look::Tone,
-    pub accent: crate::look::Accent,
-    /// Tamaño Vantare: `compact` (230), `standard` (300) o `expanded` (460).
-    pub size: String,
-    /// Marca Vantare: decisión inyectada por el host según la licencia.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub brand_visible: Option<bool>,
-    #[serde(default)]
-    pub content_version: u8,
-    pub history_rows: u8,
-    pub show_projection: bool,
-    pub source: String,
-    pub units: String,
-}
-impl Default for Settings {
-    fn default() -> Self {
-        Self::for_look(crate::look::Look::default())
-    }
-}
-
-impl Settings {
-    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
-        let mut s = Self::for_look(look);
-        if look == crate::look::Look::Vantare {
-            s.brand_visible = Some(true);
-        }
-        s
-    }
-
-    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
-    #[must_use]
-    pub fn for_look(design_system: crate::look::Look) -> Self {
-        Self {
-            design_system,
-            style: crate::look::Tone::Neo,
-            accent: crate::look::Accent::Red,
-            size: "standard".into(),
-            brand_visible: None,
-            content_version: 1,
-            history_rows: fuel_strategy::Config::default().history_rows,
-            show_projection: fuel_strategy::Config::default().show_projection,
-            source: "fuel".into(),
-            units: "liters".into(),
-        }
-    }
-
-    /// Ajustes por defecto del sistema Eficiencia heredado.
-    #[must_use]
-    pub fn eficiencia() -> Self {
-        Self::for_look(crate::look::Look::Eficiencia)
-    }
-
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
-        "source=virtual-energy:live",
-        "El Look Eficiencia conserva el estado histórico no disponible",
-    )];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        let legacy_rich =
-            self.content_version == 0 && self.design_system == crate::look::Look::Vantare;
-        Self {
-            content_version: 1,
-            history_rows: if legacy_rich {
-                4
-            } else {
-                self.history_rows.clamp(1, 8)
-            },
-            show_projection: if legacy_rich {
-                true
-            } else {
-                self.show_projection
-            },
-            source: if !legacy_rich && self.source == "virtual-energy" {
-                "virtual-energy"
-            } else {
-                "fuel"
-            }
-            .into(),
-            units: "liters".into(),
-            size: match self.size.as_str() {
-                "compact" | "expanded" => self.size.clone(),
-                _ => "standard".into(),
-            },
-            ..self.clone()
-        }
-    }
-    fn content(&self) -> fuel_strategy::Config {
-        fuel_strategy::Config {
-            history_rows: self.history_rows,
-            show_projection: self.show_projection,
-            virtual_energy: self.source == "virtual-energy",
-        }
-    }
-    #[cfg(test)]
-    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> eficiencia::Labels {
-        eficiencia::Labels::new(
-            &fuel_strategy::project_with_config(snapshot, prefs, self.content()),
-            prefs,
-        )
-    }
-}
+pub use vantare_domain::widget_settings::fuel_strategy::Settings;
 
 enum Presentation {
     Eficiencia {
@@ -302,8 +199,39 @@ impl Widget {
         }
     }
 }
-impl Settings {
-    pub fn demand(&self) -> vantare_ipc::Demand {
+
+trait SettingsPresentation {
+    fn content(&self) -> fuel_strategy::Config;
+    #[cfg(test)]
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> eficiencia::Labels;
+}
+impl SettingsPresentation for Settings {
+    fn content(&self) -> fuel_strategy::Config {
+        fuel_strategy::Config {
+            history_rows: self.history_rows,
+            show_projection: self.show_projection,
+            virtual_energy: self.source == "virtual-energy",
+        }
+    }
+    #[cfg(test)]
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> eficiencia::Labels {
+        eficiencia::Labels::new(
+            &fuel_strategy::project_with_config(snapshot, prefs, self.content()),
+            prefs,
+        )
+    }
+}
+impl crate::widget_settings::WorkshopSettings for Settings {
+    fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        if look == crate::look::Look::Vantare {
+            s.brand_visible = Some(true);
+        }
+        s
+    }
+}
+impl crate::widget_settings::SettingsDemand for Settings {
+    fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
             Cars, Flags, FuelEstimate, FuelLevel, LapCount, LapsRemaining, PitStatus, SessionInfo,
         };

@@ -1,5 +1,6 @@
 //! Editor del único documento compartido. Historial y selección pertenecen al Hub.
 use std::path::{Path, PathBuf};
+use vantare_ui::standings::SessionSettings as _;
 use vantare_ui::{
     Kind, Settings,
     layout::{Document, Instance, Layout},

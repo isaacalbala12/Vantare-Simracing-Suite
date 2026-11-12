@@ -2,6 +2,7 @@ use super::{Prepared, Studio};
 use crate::orbit;
 use gpui::AppContext;
 use vantare_domain::Quality;
+use vantare_ui::standings::SessionSettings as _;
 use vantare_ui::standings::session_preset;
 use vantare_ui::{Settings, session::Session};
 

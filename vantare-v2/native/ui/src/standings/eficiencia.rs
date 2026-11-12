@@ -1,4 +1,5 @@
 //! Eficiencia: presentación y movimiento sobre el Board común; sin Snapshot ni I/O.
+use super::SettingsPresentation as _;
 use super::model::{Config, ContentPlan, Metric, Plan, Status};
 use super::motion::{Motion, Wake};
 use super::{Settings, model, style, view};

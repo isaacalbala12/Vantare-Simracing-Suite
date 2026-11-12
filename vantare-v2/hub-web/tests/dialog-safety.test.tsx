@@ -386,6 +386,8 @@ describe("partial-window modality", () => {
       const dialog = await screen.findByRole(
         Parts === WindowAlertDialog ? "alertdialog" : "dialog",
       );
+      fireEvent.keyDown(dialog, { key: "Escape", isComposing: true });
+      expect(dialog.isConnected).toBe(true);
       expect(
         document.querySelector(".v-shell-body")?.hasAttribute("inert"),
       ).toBe(true);

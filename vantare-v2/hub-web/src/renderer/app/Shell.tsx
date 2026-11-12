@@ -25,7 +25,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
-import { hubKeys } from "../ui/hub-shortcuts";
+import { hubKeys, zoomKeys } from "../ui/hub-shortcuts";
 import { initials } from "../ui/initials";
 import { ToastViewport, useToastManager } from "../ui/Layers";
 import { SaveWarnings } from "../ui/SaveWarnings";
@@ -246,9 +246,7 @@ function ShellContent() {
         if (!event.repeat) void launchFavorite();
       }
       if (
-        [...hubKeys.zoomIn, hubKeys.zoomOut, hubKeys.zoomReset].includes(
-          key as never,
-        ) &&
+        zoomKeys.includes(key) &&
         settings.view &&
         !settings.pending &&
         !settings.view.protected &&

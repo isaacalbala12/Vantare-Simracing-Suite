@@ -117,7 +117,8 @@ async function check(
     });
     await page.keyboard.press("Control+l");
     await page.keyboard.press("Control+s");
-    await page.keyboard.press("Control+k");
+    if (!(await page.locator("[data-command-palette]").count()))
+      await page.keyboard.press("Control+k");
     const escaped = await page.evaluate(() => {
       const probe = document.getElementById("dialog-shortcut-probe");
       const count = Number(probe?.dataset.count);
@@ -458,6 +459,49 @@ scenes["dialog-topbar-resident-covered"] = {
           .evaluate((node) => node.hasAttribute("inert")),
       );
     await check(page, "resident-covered");
-    await page.keyboard.press("Escape");
+    await page.keyboard.press("Control+k");
+    if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after") {
+      await page
+        .locator('[data-window-dialog="screen"]')
+        .waitFor({ state: "hidden" });
+      assert.ok(
+        await page
+          .locator('[data-window-dialog="notice"]')
+          .evaluate((node) => !node.hasAttribute("inert")),
+      );
+    }
+  },
+};
+scenes["dialog-topbar-toast-covered"] = {
+  mock: "launcher-base",
+  async prepare(page) {
+    await launcher(page);
+    // Only the local mock is running: this produces its acknowledgement toast,
+    // never a real launcher request or process.
+    await page.keyboard.press("Control+l");
+    await page.locator(".v-toast").waitFor();
+    await page.keyboard.press("Control+k");
+    await page.locator('[data-window-dialog="screen"]').waitFor();
+  },
+  async cleanup(page) {
+    if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after") {
+      const close = page.locator(".v-toast button").first();
+      await close.focus();
+      assert.ok(
+        await close.evaluate(
+          (node) => node === document.activeElement && !node.closest("[inert]"),
+        ),
+      );
+      await close.click();
+      await page.locator(".v-toast").waitFor({ state: "hidden" });
+    }
+    await check(page, "toast-covered");
+    await page.keyboard.press("Control+k");
+    if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after") {
+      await page
+        .locator('[data-window-dialog="screen"]')
+        .waitFor({ state: "hidden" });
+      await checkProfileContextKeys(page);
+    }
   },
 };

@@ -91,6 +91,15 @@ export function ProfileCardActions({
             setOpen(true);
           } else children.props.onKeyDown?.(event);
         },
+        onKeyUp: (event) => {
+          if (
+            event.key === "ContextMenu" ||
+            (event.key === "F10" && event.shiftKey)
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+          } else children.props.onKeyUp?.(event);
+        },
       })}
       <Menu.Portal>
         <Menu.Positioner className="v-positioner" anchor={anchor} align="start">
@@ -99,6 +108,19 @@ export function ProfileCardActions({
             id={popupId}
             className="v-popup"
             finalFocus={() => origin.current ?? false}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onKeyUp={(event) => {
+              if (
+                event.key === "ContextMenu" ||
+                (event.key === "F10" && event.shiftKey)
+              ) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
           >
             {items.map((item) => (
               <Menu.Item

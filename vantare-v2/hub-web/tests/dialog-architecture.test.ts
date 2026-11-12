@@ -54,7 +54,14 @@ function audit(source: string, file: string) {
   const common = file === "ui/WindowDialog.tsx";
   const native = file === "ui/AccessBoundary.tsx";
   walk(ast, (node) => {
-    const source = sub(node, "source")?.value;
+    const source = (
+      sub(node, "source") ??
+      (node.type === "TSExternalModuleReference"
+        ? sub(node, "expression")
+        : node.type === "TSImportType"
+          ? sub(node, "argument")
+          : undefined)
+    )?.value;
     if (typeof source === "string") {
       if (
         !common &&
@@ -85,8 +92,11 @@ function audit(source: string, file: string) {
         errors.push("raw require");
     }
     if (
-      node.type === "CallExpression" &&
-      sub(sub(node, "callee"), "property")?.name === "showModal" &&
+      ["CallExpression", "OptionalCallExpression"].includes(
+        String(node.type),
+      ) &&
+      (sub(sub(node, "callee"), "property")?.name ??
+        sub(sub(node, "callee"), "property")?.value) === "showModal" &&
       !native
     )
       errors.push("native top layer outside AccessBoundary");
@@ -118,6 +128,8 @@ function audit(source: string, file: string) {
     if (/\.(Backdrop|Popup)$/.test(tag)) {
       if (attr("style")) errors.push("inline popup layout");
       const value = literal(sub(attr("className"), "value"));
+      if (attr("className") && typeof value !== "string")
+        errors.push("popup classes must be statically auditable");
       if (typeof value === "string")
         for (const cls of value.split(/\s+/)) classes.add(cls);
     }

@@ -29,9 +29,9 @@ export function ShellLayout({
             </div>
             <SectionRailVisibility>{rail}</SectionRailVisibility>
           </div>
-          <div className="v-shell-toast-anchor">{toasts}</div>
         </div>
       </div>
+      <div className="v-shell-toast-anchor">{toasts}</div>
     </SectionChromeProvider>
   );
 }

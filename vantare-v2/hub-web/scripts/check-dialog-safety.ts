@@ -22,7 +22,7 @@ export async function checkProfileContextKeys(page: Page) {
             )
           )
             return;
-          queueMicrotask(() => {
+          requestAnimationFrame(() => {
             document.documentElement.dataset.profileMenuDefaultPrevented =
               String(event.defaultPrevented);
           });
@@ -42,6 +42,16 @@ export async function checkProfileContextKeys(page: Page) {
       if (key === "mouse") await card.click({ button: "right" });
       else await page.keyboard.press(key);
       await page.getByRole("menu").waitFor();
+      await until(
+        () =>
+          page.evaluate(
+            () =>
+              document.documentElement.dataset.profileMenuDefaultPrevented !==
+              undefined,
+          ),
+        5000,
+        "native event dispatch completed",
+      );
       assert.equal(
         await page.evaluate(
           () => document.documentElement.dataset.profileMenuDefaultPrevented,
@@ -154,7 +164,7 @@ export async function checkDialogSafety(
       "background action is inert",
     );
     const rect = await button.boundingBox();
-    if (rect && rect.width && rect.height)
+    if (rect?.width && rect.height)
       await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
   }
   assert.equal(
@@ -167,7 +177,8 @@ export async function checkDialogSafety(
     await page.evaluate(
       () =>
         (Reflect.get(window, "dialogRequestMethods") as string[]).filter(
-          (method) => method === "launcher.launch",
+          (method) =>
+            method === "launcher.launch" || method === "launcher.favorite",
         ).length,
     ),
     0,

@@ -775,8 +775,9 @@ textarea.v-input:read-only {
   min-height: 0;
 }
 .v-shell-toast-anchor {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  z-index: var(--z-toast);
   pointer-events: none;
 }
 .v-shell-toast-anchor .v-toast-viewport {

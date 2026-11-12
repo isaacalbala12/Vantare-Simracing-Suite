@@ -10,6 +10,11 @@ export const hubKeys = {
   zoomReset: "0",
   undo: "z",
 } as const;
+export const zoomKeys: readonly string[] = [
+  ...hubKeys.zoomIn,
+  hubKeys.zoomOut,
+  hubKeys.zoomReset,
+];
 // Chromium's built-in print/reload must not act on the document behind a dialog.
 const browserKeys = ["p", "r"];
 const keys = new Set<string>([

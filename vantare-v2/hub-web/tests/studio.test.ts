@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
+import { applyWidgetSettings } from "../src/mock/modules/studio";
 
 type Host = ReturnType<typeof createMockHost>;
 const send = (host: Host, method: string, fields = {}) =>
@@ -105,14 +106,7 @@ describe("Studio document contract", () => {
     });
     const after = view(host);
     expect(after.instances[0]).toMatchObject({ visible: true, opacity: 20 });
-    for (const forbidden of [
-      '"x":',
-      '"y":',
-      '"settings":',
-      "Users",
-      ":/",
-      "executable",
-    ])
+    for (const forbidden of ['"x":', '"y":', "Users", ":/", "executable"])
       expect(JSON.stringify(after)).not.toContain(forbidden);
   });
   it("does not seed a missing document and denies a locked add", () => {
@@ -185,4 +179,168 @@ describe("Studio document contract", () => {
       result: { method: "studio.add", added: "widget-1" },
     });
   });
+});
+
+describe("typed Studio settings writes", () => {
+  it("uses CAS, rejects another kind and keeps no-op revisions", () => {
+    const host = createMockHost("studio-base");
+    const before = view(host);
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: before.revision,
+        patch: {
+          field: "settings",
+          value: { kind: "standings", rowCount: 21 },
+        },
+      }),
+    ).toMatchObject({ kind: "response" });
+    const changed = view(host);
+    expect(changed.instances[0].settings).toMatchObject({
+      kind: "standings",
+      rowCount: 21,
+    });
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: before.revision,
+        patch: {
+          field: "settings",
+          value: { kind: "standings", rowCount: 22 },
+        },
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "studioConflict" } });
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: changed.revision,
+        patch: {
+          field: "settings",
+          value: { kind: "standings", rowCount: 21 },
+        },
+      }),
+    ).toMatchObject({ kind: "response" });
+    expect(view(host).revision).toBe(changed.revision);
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: changed.revision,
+        patch: { field: "settings", value: { kind: "delta", size: "pill" } },
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "denied" } });
+    expect(view(host)).toEqual(changed);
+  });
+});
+
+it("session columns inherit main formatting when an override is absent", () => {
+  const host = createMockHost("studio-base");
+  let current = view(host);
+  send(host, "studio.instance", {
+    id: "widget-1",
+    baseRevision: current.revision,
+    patch: {
+      field: "settings",
+      value: {
+        kind: "standings",
+        columns: [
+          {
+            metric: "driverName",
+            widthPreset: "lg",
+            format: { mode: "surname" },
+          },
+        ],
+        practiceColumns: null,
+        qualifyingColumns: null,
+      },
+    },
+  });
+  current = view(host);
+  send(host, "studio.instance", {
+    id: "widget-1",
+    baseRevision: current.revision,
+    patch: {
+      field: "settings",
+      value: {
+        kind: "standings",
+        practiceColumns: [{ metric: "driverName", format: { maxChars: 0 } }],
+        qualifyingColumns: [{ metric: "driverName" }],
+      },
+    },
+  });
+  expect(view(host).instances[0].settings).toMatchObject({
+    practiceColumns: [
+      { widthPreset: "lg", format: { mode: "surname", maxChars: 0 } },
+    ],
+    qualifyingColumns: [{ widthPreset: "lg", format: { mode: "surname" } }],
+  });
+});
+
+it("simultaneous main and session patches inherit from the original snapshot", () => {
+  for (const reverse of [false, true]) {
+    const host = createMockHost("studio-base");
+    send(host, "studio.instance", {
+      id: "widget-1",
+      baseRevision: view(host).revision,
+      patch: {
+        field: "settings",
+        value: {
+          kind: "standings",
+          columns: [
+            {
+              metric: "driverName",
+              widthPreset: "lg",
+              format: { mode: "surname" },
+            },
+          ],
+          practiceColumns: null,
+        },
+      },
+    });
+    const value = reverse
+      ? {
+          kind: "standings",
+          practiceColumns: [{ metric: "driverName" }],
+          columns: [],
+        }
+      : {
+          kind: "standings",
+          columns: [],
+          practiceColumns: [{ metric: "driverName" }],
+        };
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: view(host).revision,
+        patch: { field: "settings", value },
+      }),
+    ).toMatchObject({ kind: "response" });
+    expect(view(host).instances[0].settings).toMatchObject({
+      columns: [],
+      practiceColumns: [
+        {
+          metricId: "driverName",
+          widthPreset: "lg",
+          format: { mode: "surname" },
+        },
+      ],
+    });
+  }
+});
+it("mock rejects new column IDs that collide without changing the original", () => {
+  const settings = structuredClone(
+    view(createMockHost("studio-base")).instances[0].settings,
+  );
+  if (settings?.kind !== "standings" || !settings.columns?.length)
+    throw new Error("Expected table settings");
+  settings.columns = [
+    { ...settings.columns[0], id: "gap", metricId: "driverName" },
+  ];
+  const before = structuredClone(settings);
+  expect(
+    applyWidgetSettings(settings, {
+      kind: "standings",
+      columns: [{ metric: "gap" }],
+    }),
+  ).toBeNull();
+  expect(settings).toEqual(before);
 });

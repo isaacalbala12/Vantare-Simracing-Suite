@@ -30,9 +30,12 @@ fn put<T: Serialize>(fields: &mut Fields, key: &str, value: &T) -> Result<(), Ho
 }
 #[path = "studio_fields.rs"]
 mod ordered;
+#[path = "studio_settings.rs"]
+mod setting_edit;
 struct Open {
     document: Document,
     instances: Vec<Fields>,
+    projected: Vec<OverlayInstance>,
 }
 impl Open {
     fn read(path: &Path) -> Result<Self, HostError> {
@@ -49,17 +52,35 @@ impl Open {
             return Err(HostError::Protected);
         }
         let mut ids = HashSet::new();
+        let mut projected = Vec::with_capacity(instances.len());
         for fields in &instances {
             let item = instance(fields, None)?;
             companion(fields)?;
-            if !ids.insert(item.id) {
+            if !ids.insert(item.id.clone()) {
                 return Err(HostError::Protected);
             }
+            projected.push(item);
         }
         Ok(Self {
             document,
             instances,
+            projected,
         })
+    }
+    fn fits_frame(&self, access: Option<CatalogAccess>) -> bool {
+        fits_instances(
+            self.projected
+                .iter()
+                .zip(&self.instances)
+                .filter(|(_, fields)| companion(fields).expect("validated companion").is_none())
+                .map(|(item, _)| {
+                    let mut item = item.clone();
+                    item.locked = !item.kind.info(access).allowed;
+                    item
+                })
+                .collect(),
+            access,
+        )
     }
     fn bytes(&self) -> Result<Vec<u8>, HostError> {
         let mut root = Fields(self.document.fields.0.clone());
@@ -133,6 +154,7 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     Ok(OverlayInstance {
         id,
         kind,
+        settings: typed_settings(kind, &settings)?,
         visible: optional(fields, "visible", true)?,
         locked: !kind.info(access).allowed,
         opacity: (opacity * 100.0).round() as u8,
@@ -151,6 +173,43 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
         },
     })
 }
+fn merged_settings(kind: WidgetKind, stored: &Fields) -> Result<Fields, HostError> {
+    let defaults = crate::widget_defaults::get(kind.id()).ok_or(HostError::Protected)?;
+    let mut merged: Fields =
+        serde_json::from_str(defaults.settings.get()).map_err(|_| HostError::Protected)?;
+    merged.0.extend(stored.0.clone());
+    let source = serde_json::to_string(&stored.0).map_err(|_| HostError::Io)?;
+    let native = crate::studio::WidgetSettings::unnormalized_json(&source)?;
+    // Absence/null of native optional fields means inheritance, not a new-widget
+    // preset. Derive that distinction from serde itself, without another table.
+    merged
+        .0
+        .retain(|key, _| stored.0.contains_key(key) || native.get(key).is_some());
+    for (key, value) in native.as_object().ok_or(HostError::Protected)? {
+        if !stored.0.contains_key(key)
+            && (value.is_null()
+                || key == "contentVersion"
+                || (kind == WidgetKind::Pedals && key == "designSystem"))
+        {
+            put(&mut merged, key, value)?;
+        }
+    }
+    Ok(merged)
+}
+fn typed_settings(
+    kind: WidgetKind,
+    stored: &Fields,
+) -> Result<Option<crate::studio::WidgetSettings>, HostError> {
+    if !crate::studio::WidgetSettings::supports(kind) {
+        return Ok(None);
+    }
+    let merged = merged_settings(kind, stored)?;
+    crate::studio::WidgetSettings::from_json(
+        kind,
+        &serde_json::to_string(&merged.0).map_err(|_| HostError::Protected)?,
+    )
+}
+
 fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
     let (width, height) = canvas(&opened.document.fields)?;
     let taken: Vec<_> = opened
@@ -214,18 +273,30 @@ pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioVi
         state.redo.clear();
     }
     state.revision = Some(revision.clone());
-    StudioView {
+    let value = StudioView {
         revision,
         instances: opened
-            .instances
-            .iter()
-            .filter(|f| companion(f).expect("validated companion").is_none())
-            .map(|f| instance(f, access).expect("validated instance"))
+            .projected
+            .into_iter()
+            .zip(&opened.instances)
+            .filter(|(_, fields)| companion(fields).expect("validated companion").is_none())
+            .map(|(mut item, _)| {
+                item.locked = !item.kind.info(access).allowed;
+                item
+            })
             .collect(),
         showing: showing(&state.path),
         can_undo: !state.undo.is_empty(),
         can_redo: !state.redo.is_empty(),
         ..State::unavailable(StudioState::Ready, access)
+    };
+    if crate::studio::widget_settings::fits_view(&value) {
+        value
+    } else {
+        let mut protected = State::unavailable(StudioState::Protected, access);
+        protected.revision = value.revision;
+        protected.showing = value.showing;
+        protected
     }
 }
 pub(crate) fn edit(
@@ -243,6 +314,10 @@ pub(crate) fn edit_result(
     access: Option<CatalogAccess>,
 ) -> Result<(StudioView, Option<String>), HostError> {
     let mut opened = Open::read(&state.path)?;
+    let settings_edit = matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_)));
+    if settings_edit && !opened.fits_frame(access) {
+        return Err(HostError::Protected);
+    }
     if opened.revision() != revision {
         return Err(HostError::StudioConflict {
             current: view(state, access),
@@ -267,11 +342,15 @@ pub(crate) fn edit_result(
         .expect("existing layout")
         .to_vec();
     let after = apply(&mut opened, state, &edit, access)?;
+    if settings_edit && after == before {
+        return Ok((view(state, access), None));
+    }
     let adding = matches!(edit, Edit::Add(_));
     // Undo/redo may cross a plan change: restoring a removed Pro instance is an addition.
     let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
     let restored: Vec<Fields> = read(&root, "instances")?;
     let mut added = None;
+    let mut projected = Vec::new();
     for fields in &restored {
         let item = instance(fields, access)?;
         let existed = known
@@ -283,6 +362,12 @@ pub(crate) fn edit_result(
         if !existed && item.locked {
             return Err(HostError::Denied);
         }
+        if settings_edit && companion(fields)?.is_none() {
+            projected.push(item);
+        }
+    }
+    if settings_edit && !fits_instances(projected, access) {
+        return Err(HostError::Protected);
     }
     if let Err(error) = files::save(
         &state.path,
@@ -365,6 +450,11 @@ fn apply(
                     put(&mut stored, "qualifying", &value.qualifying)?;
                     put(&mut stored, "race", &value.race)?;
                     put(fields, "showIn", &stored.0)?;
+                }
+                InstancePatch::Settings(patch) => {
+                    if !setting_edit::apply(fields, patch, access)? {
+                        return Ok(opened.document.observed.clone().expect("existing layout"));
+                    }
                 }
                 InstancePatch::OffTrack(value) => put(
                     fields,
@@ -523,4 +613,11 @@ fn canvas(fields: &Fields) -> Result<(f64, f64), HostError> {
         return Err(HostError::Protected);
     }
     Ok((width, height))
+}
+
+fn fits_instances(instances: Vec<OverlayInstance>, access: Option<CatalogAccess>) -> bool {
+    crate::studio::widget_settings::fits_view(&StudioView {
+        instances,
+        ..State::unavailable(StudioState::Ready, access)
+    })
 }

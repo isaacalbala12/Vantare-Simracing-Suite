@@ -565,3 +565,297 @@ fn off_track_is_saved_in_native_spelling_and_projection_clamps_without_rewriting
     assert_eq!(changed.instances[0].off_track, OffTrack::AlwaysVisible);
     assert_eq!(layout(&path)["instances"][0]["offTrack"], "always_visible");
 }
+
+#[test]
+fn typed_settings_read_never_seeds_and_sparse_write_uses_existing_cas() {
+    let (_root, path, before) = fixture();
+    let access = Some(CatalogAccess::Pro);
+    let mut state = State::new(path.clone());
+    let view = state.view(access);
+    assert!(view.instances[0].settings.is_some());
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let update = InstancePatch::Settings(Box::new(
+        serde_json::from_value(serde_json::json!({"kind":"standings","rowCount":21})).unwrap(),
+    ));
+    assert!(matches!(
+        state.edit(
+            Edit::Instance("widget-1".into(), update.clone()),
+            &"f".repeat(64),
+            access
+        ),
+        Err(HostError::StudioConflict { .. })
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let changed = state
+        .edit(
+            Edit::Instance("widget-1".into(), update),
+            &view.revision,
+            access,
+        )
+        .unwrap();
+    assert_ne!(changed.revision, view.revision);
+    let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let settings = &saved["instances"][0]["settings"];
+    let native: vantare_domain::widget_settings::standings::Settings =
+        serde_json::from_value(settings.clone()).unwrap();
+    assert_eq!(native.row_count, 21);
+    assert_eq!(settings["private"]["a"], 1.0);
+    assert!(settings.get("brandVisible").is_none());
+    let undo = state.edit(Edit::Undo, &changed.revision, access).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert_eq!(undo.revision, view.revision);
+}
+#[test]
+fn projected_settings_that_exceed_the_transport_become_protected() {
+    let (_root, path, _) = fixture();
+    let mut document: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    document["instances"][0]["settings"]["columns"] =
+        serde_json::json!([{"id":"x".repeat(crate::frame::LIMIT+1),"metricId":"driverName"}]);
+    let bytes = serde_json::to_vec(&document).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    let view = State::new(path.clone()).view(Some(CatalogAccess::Pro));
+    assert_eq!(view.state, StudioState::Protected);
+    assert!(view.instances.is_empty());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    assert!(crate::studio::widget_settings::fits_view(&view));
+    let mut state = State::new(path.clone());
+    let update = InstancePatch::Settings(Box::new(
+        serde_json::from_value(serde_json::json!({"kind":"standings","rowCount":21})).unwrap(),
+    ));
+    assert!(matches!(
+        state.edit(
+            Edit::Instance("widget-1".into(), update),
+            &view.revision,
+            Some(CatalogAccess::Pro)
+        ),
+        Err(HostError::Protected)
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+}
+
+#[test]
+fn native_serialization_and_host_projection_round_trip_all_five_families() {
+    use vantare_domain::widget_settings as native;
+    fn round_trip<T: Serialize + DeserializeOwned>(kind: WidgetKind, settings: T) {
+        let mut stored = serde_json::to_value(&settings).unwrap();
+        stored["kind"] = serde_json::to_value(kind).unwrap();
+        let raw: Fields = serde_json::from_value(stored).unwrap();
+        let projected = typed_settings(kind, &raw).unwrap().unwrap();
+        let decoded: T = serde_json::from_value(serde_json::to_value(projected).unwrap()).unwrap();
+        assert_eq!(
+            serde_json::to_value(decoded).unwrap(),
+            serde_json::to_value(settings).unwrap()
+        );
+    }
+    macro_rules! family {
+        ($kind:expr,$ty:ty) => {{
+            round_trip($kind, <$ty>::default().normalized());
+            let fixture = crate::widget_defaults::get($kind.id()).unwrap();
+            round_trip(
+                $kind,
+                serde_json::from_str::<$ty>(fixture.settings.get()).unwrap(),
+            );
+        }};
+    }
+    family!(WidgetKind::Standings, native::standings::Settings);
+    family!(WidgetKind::Relative, native::relative::Settings);
+    family!(WidgetKind::Delta, native::delta::Settings);
+    family!(WidgetKind::Pedals, native::pedals::Settings);
+    family!(WidgetKind::FuelStrategy, native::fuel_strategy::Settings);
+}
+#[test]
+fn absence_preserves_session_inheritance_and_the_native_legacy_pedals_look() {
+    let stored:Fields=serde_json::from_value(serde_json::json!({"kind":"standings","contentVersion":1,"columns":[{"id":"custom","metricId":"gap"}]})).unwrap();
+    let value = serde_json::to_value(
+        typed_settings(WidgetKind::Standings, &stored)
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(value.get("practiceColumns").is_none());
+    assert!(value.get("qualifyingColumns").is_none());
+    assert_eq!(value["columns"][0]["id"], "custom");
+    let pedals: Fields = serde_json::from_value(serde_json::json!({"kind":"pedals"})).unwrap();
+    let value = serde_json::to_value(
+        typed_settings(WidgetKind::Pedals, &pedals)
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    let native: vantare_domain::widget_settings::pedals::Settings =
+        serde_json::from_str("{}").unwrap();
+    assert_eq!(
+        value["designSystem"],
+        serde_json::to_value(native.design_system).unwrap()
+    );
+}
+
+#[test]
+fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
+    use vantare_domain::widget_settings as native;
+    for fixture in [
+        include_str!("../../../../ui/fixtures/layouts/native-beta-v0.0.975.json"),
+        include_str!("../../../../packaging/fixtures/layout.golden.json"),
+        include_str!("../../../../ui/fixtures/layouts/widget-settings-families.json"),
+    ] {
+        let mut document: serde_json::Value = serde_json::from_str(fixture).unwrap();
+        // The families fixture contains Settings only, without required layout
+        // coordinates. Keep that original protected; mount its exact settings
+        // in a complete layout for the writer oracle, without changing fixtures.
+        let missing_coordinates = document["instances"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item.get("x").is_none() || item.get("y").is_none());
+        let input = if missing_coordinates {
+            let root = crate::test_support::Root::new();
+            let path = root.path.join("layout.json");
+            std::fs::write(&path, fixture).unwrap();
+            assert_eq!(
+                State::new(path.clone())
+                    .view(Some(CatalogAccess::Pro))
+                    .state,
+                StudioState::Protected
+            );
+            assert_eq!(std::fs::read(&path).unwrap(), fixture.as_bytes());
+            for item in document["instances"].as_array_mut().unwrap() {
+                item["x"] = serde_json::json!(0.0);
+                item["y"] = serde_json::json!(0.0);
+            }
+            serde_json::to_string(&document).unwrap()
+        } else {
+            fixture.to_owned()
+        };
+        let mut processed = 0;
+        for index in 0..document["instances"].as_array().unwrap().len() {
+            let settings = &document["instances"][index]["settings"];
+            let kind: WidgetKind = serde_json::from_value(settings["kind"].clone()).unwrap();
+            if !crate::studio::WidgetSettings::supports(kind) {
+                continue;
+            }
+            processed += 1;
+            let root = crate::test_support::Root::new();
+            let path = root.path.join("layout.json");
+            std::fs::write(&path, &input).unwrap();
+            let mut state = State::new(path.clone());
+            let access = Some(CatalogAccess::Pro);
+            let current = state.view(access);
+            assert_eq!(current.state, StudioState::Ready);
+            let id = document["instances"][index]["id"].as_str().unwrap();
+            let empty = serde_json::from_value(serde_json::json!({"kind":kind})).unwrap();
+            let noop = state
+                .edit(
+                    Edit::Instance(id.into(), InstancePatch::Settings(Box::new(empty))),
+                    &current.revision,
+                    access,
+                )
+                .unwrap();
+            assert_eq!(std::fs::read(&path).unwrap(), input.as_bytes());
+            assert!(!noop.can_undo && !noop.can_redo);
+            let accent = if settings["accent"] == "white" {
+                native::look::Accent::Red
+            } else {
+                native::look::Accent::White
+            };
+            macro_rules! oracle {
+                ($ty:ty) => {{
+                    let mut data = serde_json::from_value::<$ty>(settings.clone())
+                        .unwrap()
+                        .normalized();
+                    data.accent = accent;
+                    serde_json::from_str::<serde_json::Value>(
+                        &serde_json::to_string(&data.normalized()).unwrap(),
+                    )
+                    .unwrap()
+                }};
+            }
+            let mut expected = match kind {
+                WidgetKind::Standings => oracle!(native::standings::Settings),
+                WidgetKind::Relative => oracle!(native::relative::Settings),
+                WidgetKind::Delta => oracle!(native::delta::Settings),
+                WidgetKind::Pedals => oracle!(native::pedals::Settings),
+                WidgetKind::FuelStrategy => oracle!(native::fuel_strategy::Settings),
+                _ => unreachable!(),
+            };
+            expected["kind"] = settings["kind"].clone();
+            let update =
+                serde_json::from_value(serde_json::json!({"kind":kind,"accent":accent})).unwrap();
+            state
+                .edit(
+                    Edit::Instance(id.into(), InstancePatch::Settings(Box::new(update))),
+                    &current.revision,
+                    access,
+                )
+                .unwrap();
+            let mut actual: serde_json::Value =
+                serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+            assert_eq!(actual["instances"][index]["settings"], expected);
+            actual["instances"][index]["settings"] = settings.clone();
+            assert_eq!(actual, document);
+        }
+        assert!(processed > 0, "fixture must exercise the writer");
+    }
+}
+#[test]
+fn unreadable_supported_settings_protect_the_whole_document_without_creating_files() {
+    for bytes in [
+        br#"{"version":1,"instances":[{"id":"widget-1","x":0,"y":0,"settings":{"kind":"pedals","gap":"broken"}}]}"#.as_slice(),
+        br#"{"version":1,"instances":[],"instances":[]}"#.as_slice(),
+    ] {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("layout.json");
+        std::fs::write(&path, bytes).unwrap();
+        let entries = || {
+            let mut names: Vec<_> = std::fs::read_dir(&root.path)
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name())
+                .collect();
+            names.sort();
+            names
+        };
+        let before = entries();
+        let mut state = State::new(path.clone());
+        let access = Some(CatalogAccess::Pro);
+        let view = state.view(access);
+        assert_eq!(view.state, StudioState::Protected);
+        assert!(view.instances.is_empty());
+        let update = serde_json::from_value(serde_json::json!({"kind":"pedals","gap":2.7}))
+            .unwrap();
+        assert!(matches!(
+            state.edit(
+                Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(update))),
+                &view.revision,
+                access,
+            ),
+            Err(HostError::Protected)
+        ));
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        assert_eq!(before, entries());
+    }
+}
+
+#[test]
+fn free_plan_cannot_edit_paid_fuel_settings() {
+    let (_root, path, _) = fixture();
+    let mut doc: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    doc["instances"][0]["settings"] = serde_json::json!({"kind":"fuel-strategy"});
+    let bytes = serde_json::to_vec(&doc).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    let mut state = State::new(path.clone());
+    let view = state.view(Some(CatalogAccess::Free));
+    assert!(view.instances[0].locked);
+    let update =
+        serde_json::from_value(serde_json::json!({"kind":"fuel-strategy","historyRows":3}))
+            .unwrap();
+    assert!(matches!(
+        state.edit(
+            Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(update))),
+            &view.revision,
+            Some(CatalogAccess::Free)
+        ),
+        Err(HostError::Denied)
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+}

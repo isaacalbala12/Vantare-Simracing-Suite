@@ -1,4 +1,17 @@
 //! Stored widget settings; extracted without changing serialization or normalization.
+pub const RELATIVE_SCOPES: &[&str] = &[RELATIVE_SCOPE_ALL, RELATIVE_SCOPE_SAME_CLASS];
+pub const RELATIVE_VANTARE_COLUMNS: &[&str] = &[
+    super::columns::COLUMN_METRIC_POSITION,
+    super::columns::COLUMN_METRIC_CAR_NUMBER,
+    super::columns::COLUMN_METRIC_DRIVER_NAME,
+    super::columns::COLUMN_METRIC_VEHICLE,
+    super::columns::COLUMN_METRIC_LAP_DELTA,
+    super::columns::COLUMN_METRIC_DRIVER_RATING,
+    super::columns::COLUMN_METRIC_SAFETY_RATING,
+    super::columns::COLUMN_METRIC_TREND,
+    super::columns::COLUMN_METRIC_GAP,
+    super::columns::COLUMN_METRIC_TRACK_STRIP,
+];
 pub const RELATIVE_RANGE_MAX: usize = 8;
 pub const RELATIVE_RANGE_MIN: usize = 0;
 pub const RELATIVE_RANGE_STEP: usize = 1;
@@ -27,6 +40,7 @@ pub struct Settings {
     /// Marca Vantare: decisión inyectada por el host según la licencia
     /// (como en Standings). Sin decisión no se pinta.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub brand_visible: Option<bool>,
 }
 

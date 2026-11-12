@@ -5,7 +5,10 @@ use std::{path::PathBuf, time::Instant};
 use ts_rs::TS;
 #[path = "studio/catalog.rs"]
 pub mod catalog;
+#[path = "studio/widget_settings.rs"]
+pub mod widget_settings;
 pub use catalog::{WidgetInfo, WidgetKind};
+pub use widget_settings::{WidgetSettings, WidgetSettingsPatch};
 pub const INSTANCE_LIMIT: usize = 256;
 pub const HISTORY_LIMIT: usize = 50;
 pub const OPACITY_MIN: u8 = 20;
@@ -64,6 +67,7 @@ pub struct OverlaySize {
 pub struct OverlayInstance {
     pub id: String,
     pub kind: WidgetKind,
+    pub settings: Option<WidgetSettings>,
     pub visible: bool,
     pub locked: bool,
     pub opacity: u8,
@@ -96,6 +100,7 @@ pub enum InstancePatch {
     Opacity(u8),
     ShowIn(ShowIn),
     OffTrack(OffTrack),
+    Settings(Box<WidgetSettingsPatch>),
 }
 pub enum Edit {
     Visibility(String, bool),

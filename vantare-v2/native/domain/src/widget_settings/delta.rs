@@ -1,4 +1,11 @@
 //! Stored widget settings; extracted without changing serialization or normalization.
+pub const DELTA_TEMPLATES: &[&str] = &[DELTA_TEMPLATE_INSTRUMENT, DELTA_TEMPLATE_CAPSULE];
+pub const DELTA_REFERENCES: &[&str] = &[
+    DELTA_REFERENCE_BEST,
+    DELTA_REFERENCE_OPTIMAL,
+    DELTA_REFERENCE_LEADER,
+];
+pub const DELTA_SIZES: &[&str] = &[DELTA_SIZE_PILL, DELTA_SIZE_BAR, DELTA_SIZE_EXPANDED];
 pub const DELTA_SIZE_PILL: &str = "pill";
 pub const DELTA_SIZE_BAR: &str = "bar";
 pub const DELTA_SIZE_EXPANDED: &str = "expanded";
@@ -26,9 +33,11 @@ pub struct Settings {
     pub show_sectors: bool,
     /// Solo se guarda cuando está activo: los layouts anteriores no cambian de bytes.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[cfg_attr(feature = "bindings", ts(optional = nullable))]
     pub transparent_background: bool,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub brand_visible: Option<bool>,
     pub template_id: String,
 }

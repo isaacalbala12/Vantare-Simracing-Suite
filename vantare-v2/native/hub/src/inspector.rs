@@ -1132,3 +1132,14 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod studio_contract_metrics {
+    #[test]
+    fn inspector_footer_choices_match_shared_ids() {
+        assert_eq!(
+            super::METRICS.iter().map(|(_, id)| *id).collect::<Vec<_>>(),
+            vantare_domain::widget_settings::standings::STANDINGS_FOOTER_METRICS
+        );
+    }
+}

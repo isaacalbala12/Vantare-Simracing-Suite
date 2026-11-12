@@ -79,3 +79,14 @@ fn every_extracted_widget_data_type_supports_host_bindings() {
         "no TS declaration collisions"
     );
 }
+
+#[test]
+fn shipping_host_does_not_activate_domain_bindings_from_its_test_dependency() {
+    let graph = tree("vantare-hub-host", &[], "normal");
+    assert!(
+        !graph
+            .lines()
+            .any(|line| line.split_whitespace().next() == Some("ts-rs")),
+        "ts-rs leaked into the shipping host: {graph}"
+    );
+}

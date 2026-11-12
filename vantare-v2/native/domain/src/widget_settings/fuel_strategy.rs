@@ -16,6 +16,7 @@ pub struct Settings {
     pub size: String,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub brand_visible: Option<bool>,
     #[serde(default)]
     pub content_version: u8,

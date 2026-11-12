@@ -2,6 +2,7 @@ import type {
   HostToUi,
   OverlayInstance,
   StudioView,
+  WidgetKind,
 } from "../../contract/generated/contract";
 import {
   studioAddAvailable,
@@ -9,7 +10,9 @@ import {
   studioFreeKinds,
   studioLimits,
   studioSizes,
+  studioWidgetDefaults,
 } from "../../contract/generated/studio";
+import { isWidgetSettings } from "../../contract/studio-widget-settings";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
   const { sceneName } = context;
@@ -28,6 +31,7 @@ export function create(context: MockContext): MockHandler {
     },
   ].map((item) => ({
     ...item,
+    settings: widgetDefault(item.kind as WidgetKind),
     visible: true,
     locked: false,
     opacity: 100,
@@ -167,6 +171,7 @@ export function create(context: MockContext): MockHandler {
         view.instances.push({
           id: added,
           kind: request.kind,
+          settings: widgetDefault(request.kind),
           visible: true,
           locked: false,
           opacity: 100,
@@ -190,8 +195,28 @@ export function create(context: MockContext): MockHandler {
       }
       case "studio.instance": {
         const item = view.instances.find((w) => w.id === request.id);
-        if (!item) return fail("denied");
+        if (!item || item.locked) return fail("denied");
         switch (request.patch.field) {
+          case "settings": {
+            if (!item.settings || item.kind !== request.patch.value.kind)
+              return fail("denied");
+            const next = applyWidgetSettings(
+              item.settings,
+              request.patch.value,
+            );
+            if (!next) return fail("denied");
+            if (JSON.stringify(next) === JSON.stringify(item.settings))
+              return {
+                kind: "response",
+                id,
+                result: {
+                  method: "studio.instance",
+                  value: structuredClone(view),
+                },
+              };
+            item.settings = next;
+            break;
+          }
           case "opacity":
             item.opacity = request.patch.value;
             break;
@@ -232,4 +257,71 @@ export function create(context: MockContext): MockHandler {
       result: { method: request.method, value: structuredClone(view) },
     };
   };
+}
+
+export function applyWidgetSettings(
+  current: NonNullable<OverlayInstance["settings"]>,
+  patch: import("../../contract/generated/studio").WidgetSettingsPatch,
+): NonNullable<OverlayInstance["settings"]> | null {
+  const original = current as unknown as Record<string, unknown>;
+  const result = structuredClone(current) as unknown as Record<string, unknown>;
+  for (const [key, value] of Object.entries(patch)) {
+    if (
+      ["columns", "practiceColumns", "qualifyingColumns"].includes(key) &&
+      Array.isArray(value)
+    ) {
+      const inherited =
+        key !== "columns" && original[key] == null
+          ? original.columns
+          : original[key];
+      const previous = Array.isArray(inherited)
+        ? (inherited as Record<string, unknown>[])
+        : [];
+      if (
+        value.some(
+          (entry) =>
+            !previous.some((column) => column.metricId === entry.metric) &&
+            previous.some((column) => column.id === entry.metric),
+        )
+      )
+        return null;
+      result[key] = value.map((entry) => {
+        const { metric, ...fields } = entry;
+        const old = previous.find((c) => c.metricId === metric) ?? {
+          id: metric,
+          metricId: metric,
+          enabled: true,
+          widthPreset: "auto",
+          format: {
+            mode: "",
+            maxChars: null,
+            display: null,
+            decimals: null,
+          },
+          style: { align: null },
+        };
+        return {
+          ...old,
+          ...fields,
+          format: { ...(old.format as object), ...fields.format },
+          style: { ...(old.style as object), ...fields.style },
+        };
+      });
+    } else if (
+      value === null &&
+      ["practiceColumns", "qualifyingColumns", "footerSlots"].includes(key)
+    ) {
+      delete result[key];
+    } else result[key] = value;
+  }
+  if (result.kind === "delta" && result.transparentBackground === false)
+    delete result.transparentBackground;
+  return result as unknown as NonNullable<OverlayInstance["settings"]>;
+}
+
+function widgetDefault(kind: WidgetKind): OverlayInstance["settings"] {
+  const value: unknown = structuredClone(studioWidgetDefaults[kind]);
+  if (!isWidgetSettings(value, kind))
+    throw new Error("Invalid generated widget default");
+  return value;
 }

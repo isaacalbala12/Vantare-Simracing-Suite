@@ -18,6 +18,7 @@ pub struct Settings {
     pub accent: crate::look::Accent,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub brand_visible: Option<bool>,
     pub transparent_background: bool,
     pub show_brake_peak: bool,

@@ -266,6 +266,8 @@ diferido pendiente en #2089. Sin cambios en IPC, services, runtime o derechos.
 
 ## Studio (`studio`, v18)
 
+La ampliación de ajustes está descrita en [Ajustes tipados de Studio](studio-settings-contract.md).
+
 El módulo ofrece `studio.get`, tema `studio`, `visibility`, `add`, `remove`,
 `instance`, `undo`, `redo` y `track`. Todas las escrituras del diseño requieren
 `baseRevision`; el historial de sesión conserva como máximo 50 pasos. `add`

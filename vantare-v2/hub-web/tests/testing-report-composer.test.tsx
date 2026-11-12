@@ -13,11 +13,22 @@ import type { CoreStatus, Reply } from "../src/contract/generated/contract";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { reportText as text } from "../src/renderer/i18n/testing-report";
-import { ReportsProvider } from "../src/renderer/screens/testing/ReportsState";
+import {
+  ReportsProvider,
+  useReports,
+} from "../src/renderer/screens/testing/ReportsState";
 import { Reports } from "../src/renderer/screens/testing/Testing";
 import { ToastProvider } from "../src/renderer/ui/Layers";
 
 let cache: QueryClient;
+function DraftReady() {
+  return (
+    <output data-testid="draft-state">
+      {useReports().loaded ? "loaded" : "pending"}
+    </output>
+  );
+}
+
 beforeEach(async () => {
   await import("../src/mock/host");
   vi.stubGlobal("matchMedia", () => ({
@@ -41,6 +52,7 @@ function renderReport() {
       <HostProvider>
         <ToastProvider>
           <ReportsProvider>
+            <DraftReady />
             <Reports view="compose" />
           </ReportsProvider>
         </ToastProvider>
@@ -51,13 +63,10 @@ function renderReport() {
 async function mount() {
   renderReport();
   await waitFor(() =>
-    expect(
-      screen
-        .getByRole("button", { name: text.loadDraft })
-        .hasAttribute("disabled"),
-    ).toBe(false),
+    expect(screen.getByTestId("draft-state").textContent).toBe("loaded"),
   );
 }
+
 function edit() {
   for (const [label, value] of [
     [text.action, "Nota privada del piloto"],
@@ -338,4 +347,55 @@ it("keeps a legacy image on failure, then removes it once with the current local
         request.method === "report.capture" || request.method === "report.send",
     ),
   ).toBe(false);
+});
+
+it("can review a pending host attempt after draft loading failed and still recover the editor", async () => {
+  const original = Client.prototype.request;
+  vi.spyOn(Client.prototype, "request").mockImplementation(async function (
+    this: Client,
+    request,
+  ): Promise<Reply> {
+    if (request.method === "draft.load")
+      throw new HostFailure({ kind: "rejected" });
+    if (request.method === "report.retryPrepare")
+      return {
+        method: "report.retryPrepare",
+        value: {
+          id: "a".repeat(64),
+          digest: "b".repeat(64),
+          fields: {
+            module: "hub",
+            actionText: "Informe estructurado",
+            expectedText: "Revisión humana pendiente",
+            observedText: "Revisión humana pendiente",
+            contextText: "",
+          },
+          appVersion: "QA",
+          osVersion: "Windows",
+          channel: "nightly",
+          retry: true,
+          screenshots: [],
+        },
+      };
+    return original.call(this, request);
+  });
+  renderReport();
+  expect(await screen.findByText(text.failed, { exact: true })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: text.pending }));
+  fireEvent.click(await screen.findByRole("checkbox", { name: text.consent }));
+  expect(
+    screen.getByRole("button", { name: text.send }).hasAttribute("disabled"),
+  ).toBe(false);
+  fireEvent.change(screen.getByRole("textbox", { name: text.context }), {
+    target: { value: "Nota nueva" },
+  });
+  expect(screen.queryByRole("checkbox", { name: text.consent })).toBeNull();
+  expect(
+    screen
+      .getByRole("button", { name: text.loadDraft })
+      .hasAttribute("disabled"),
+  ).toBe(false);
+  expect(
+    screen.getByRole("button", { name: text.send }).hasAttribute("disabled"),
+  ).toBe(true);
 });

@@ -77,6 +77,10 @@
   gap: 6px;
   margin-top: 12px;
 }
+.v-testing-report .v-testing-report-screenshots .v-testing-fine-print {
+  font-size: 11px;
+  line-height: 16px;
+}
 .v-testing-report-screenshots h3 {
   margin: 0;
   font-size: 14px;

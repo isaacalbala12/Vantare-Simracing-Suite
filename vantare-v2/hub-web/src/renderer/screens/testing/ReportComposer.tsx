@@ -22,7 +22,7 @@ export function ReportComposer({ onDiscard }: { onDiscard: () => void }) {
       dirty={state.dirty}
       draftExists={state.draftExists}
       editBlocked={state.busy || !state.access.verified || state.access.blocked}
-      requestBlocked={blocked || (!state.loaded && !state.error)}
+      requestBlocked={blocked}
       saveBlocked={blocked || !state.loaded || !valid}
       prepareBlocked={
         blocked ||

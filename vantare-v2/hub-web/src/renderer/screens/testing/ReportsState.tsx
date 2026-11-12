@@ -215,7 +215,11 @@ function useReportsState() {
     }
     let reply: Reply;
     if (closeSave) {
-      if (closeSignal?.aborted || sessionSignal.aborted)
+      if (
+        !state.current.available ||
+        closeSignal?.aborted ||
+        sessionSignal.aborted
+      )
         throw new HostFailure({ kind: "coreUnavailable" });
       setBusy(true);
       try {
@@ -262,8 +266,13 @@ function useReportsState() {
   }, [loaded, dirty, busy, error, available, fields]);
   useEffect(
     () =>
-      client?.onCloseSettled(() => {
+      client?.onCloseSettled((reason, allow) => {
         closePermit.current = undefined;
+        if (allow && reason !== "window") {
+          setCloseConfirmation(false);
+          setCloseSaveFailed(false);
+          setCloseBlocked(false);
+        }
       }),
     [client],
   );

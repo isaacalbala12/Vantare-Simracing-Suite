@@ -134,12 +134,18 @@ it.each(["standings", "relative", "delta", "pedals", "fuel-strategy"] as const)(
       await user.tab();
     expect(document.activeElement).toBe(lookControl);
     await user.keyboard("{ArrowDown}");
-    const option = await screen.findByRole("option", {
-      name: t.lookEficiencia,
-    });
+    // Options mount before Base UI moves keyboard focus on an animation frame.
+    // Home belongs to the popup, not to its still-focused combobox trigger.
+    await waitFor(() =>
+      expect(screen.getByRole("option", { selected: true })).toBe(
+        document.activeElement,
+      ),
+    );
     await user.keyboard("{Home}");
     await waitFor(() =>
-      expect(option.hasAttribute("data-highlighted")).toBe(true),
+      expect(screen.getByRole("option", { name: t.lookEficiencia })).toBe(
+        document.activeElement,
+      ),
     );
     await user.keyboard("{Enter}");
     expect(state.execute).toHaveBeenCalledExactlyOnceWith({

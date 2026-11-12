@@ -38,7 +38,6 @@ export function CommandPalette({
   title: string;
   description: string;
   trigger: ReactNode;
-  closeLabel: string;
   empty: string;
   commands: PaletteCommand[];
   open: boolean;
@@ -50,10 +49,6 @@ export function CommandPalette({
   useEffect(() => {
     if (!open) {
       setQuery("");
-      // The screen was inert while the dialog was open. Its layout cleanup
-      // must finish before focusing the destination after a command.
-      if (committed.current)
-        document.querySelector<HTMLElement>(".v-shell-main")?.focus();
     } else committed.current = false;
   }, [open]);
   const filtered = commands.filter((item) =>
@@ -64,10 +59,6 @@ export function CommandPalette({
   return (
     <Dialog.Root
       open={open}
-      onOpenChangeComplete={(value) => {
-        if (!value && committed.current)
-          document.querySelector<HTMLElement>(".v-shell-main")?.focus();
-      }}
       onOpenChange={(value) => {
         if (!value) setQuery("");
         onOpenChange(value);
@@ -80,12 +71,17 @@ export function CommandPalette({
         <Dialog.Backdrop className="v-command-backdrop" />
         <Dialog.Popup
           className="v-command-palette"
-          finalFocus={() =>
-            // Base UI resolves an element to its first tabbable child. A
-            // destination's loading screen may replace that child; focus the
-            // stable main explicitly after close instead.
-            !committed.current
-          }
+          finalFocus={() => {
+            if (!committed.current) return true; // Escape: Base UI restores the origin.
+            // Base UI resolves an element to its first tabbable child, which
+            // navigation may replace. Restore the stable main after cleanup.
+            queueMicrotask(() =>
+              document
+                .querySelector<HTMLElement>(".v-shell-main")
+                ?.focus({ preventScroll: true }),
+            );
+            return false;
+          }}
           initialFocus={(event) => {
             if (event !== "touch")
               return document.querySelector<HTMLInputElement>(
@@ -111,11 +107,7 @@ export function CommandPalette({
             inline
             onValueChange={(item, event) => {
               if (!item) return;
-              if (
-                item.disabled ||
-                committed.current ||
-                (event.event instanceof MouseEvent && event.event.detail > 1)
-              ) {
+              if (item.disabled || committed.current) {
                 event.cancel();
                 return;
               }

@@ -17,6 +17,7 @@ import type {
 } from "../src/contract/generated/contract";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
+import { registeredSections } from "../src/renderer/app/ScreenRegistry";
 import { SettingsProvider } from "../src/renderer/app/SettingsState";
 import { Shell } from "../src/renderer/app/Shell";
 import { UiProvider } from "../src/renderer/app/UiState";
@@ -335,4 +336,120 @@ it("warns and opens Launcher when the favorite shortcut loses verified access", 
     ).toBe("Launcher"),
   );
   expect(document.querySelector(".v-toast")).toBeTruthy();
+});
+
+it("offers only registered navigation destinations and never Workshop, with an orphan control", async () => {
+  await mount();
+  const core = structuredClone(cache.getQueryData<CoreStatus>(coreKey));
+  if (!core) throw new Error("Missing core");
+  core.access.tester = true;
+  core.access.calendar = true;
+  act(() => cache.setQueryData(coreKey, core));
+  await waitFor(() =>
+    expect(driver.commands.some((row) => row.id === "calendar")).toBe(true),
+  );
+  const known = new Set<string>(registeredSections);
+  const orphans = (commands: readonly PaletteCommand[]) =>
+    commands
+      .filter((row) => row.group === "navigation" && !known.has(row.id))
+      .map((row) => row.id);
+  expect(driver.commands.some((row) => row.id === "workshop")).toBe(false);
+  expect(orphans(driver.commands)).toEqual([]);
+  expect(
+    orphans([
+      ...driver.commands,
+      { id: "workshop", label: "Workshop", group: "navigation", run: vi.fn() },
+    ]),
+  ).toEqual(["workshop"]);
+});
+
+it.each(["verified", "unverified"] as const)(
+  "never labels the %s plan as Included in Pro",
+  async (kind) => {
+    await mount();
+    act(() =>
+      cache.setQueryData(["frame", "account"], {
+        session: "signedIn",
+        name: "QA",
+        photo: null,
+        plan: { kind },
+      }),
+    );
+    await waitFor(() => {
+      for (const id of ["strategy", "engineer"])
+        expect(driver.commands.find((row) => row.id === id)?.meta).toBe(
+          text.soon,
+        );
+    });
+  },
+);
+
+it.each(["unverified", "blocked"])(
+  "does not show the Pro catalog label with %s authority",
+  async (reason) => {
+    await mount();
+    const core = structuredClone(cache.getQueryData<CoreStatus>(coreKey));
+    if (!core) throw new Error("Missing core");
+    if (reason === "unverified") core.access.verified = false;
+    else core.access.blocked = true;
+    act(() => {
+      cache.setQueryData(["frame", "account"], {
+        session: "signedIn",
+        name: "QA",
+        photo: null,
+        plan: { kind: "founders" },
+      });
+      cache.setQueryData(coreKey, core);
+    });
+    await waitFor(() => {
+      for (const id of ["strategy", "engineer"])
+        expect(driver.commands.find((row) => row.id === id)?.meta).toBe(
+          text.soon,
+        );
+    });
+  },
+);
+
+it.each([
+  ["Planificador", text.strategy],
+  ["Radio", text.engineer],
+])("finds the native help text %s", async (query, label) => {
+  await mount();
+  await userEvent.setup().type(screen.getByRole("combobox"), query);
+  expect(
+    screen.getByRole("option", { name: new RegExp(`^${label} ·`) }),
+  ).toBeTruthy();
+});
+
+it("does not navigate when Enter selects a blocked destination", async () => {
+  await mount();
+  const core = structuredClone(cache.getQueryData<CoreStatus>(coreKey));
+  if (!core) throw new Error("Missing core");
+  core.access.verified = false;
+  act(() => cache.setQueryData(coreKey, core));
+  const before = document.querySelector('.v-sidebar [aria-current="page"]');
+  const user = userEvent.setup();
+  await user.type(screen.getByRole("combobox"), "Abre tus apps");
+  const row = screen.getByRole("option", { name: /^Launcher ·/ });
+  expect(row.getAttribute("aria-disabled")).toBe("true");
+  await user.keyboard("{ArrowDown}{Enter}");
+  expect(document.querySelector('.v-sidebar [aria-current="page"]')).toBe(
+    before,
+  );
+  expect(screen.getByRole("combobox")).toBeTruthy();
+});
+
+it("returns focus to the opener on Escape without navigating", async () => {
+  await mount();
+  const user = userEvent.setup();
+  await user.keyboard("{Escape}");
+  const origin = document.querySelector<HTMLButtonElement>(
+    '.v-sidebar [data-nav="home"]',
+  );
+  if (!origin) throw new Error("Missing origin");
+  origin.focus();
+  fireEvent.keyDown(origin, { key: "k", ctrlKey: true });
+  await screen.findByRole("combobox");
+  await user.keyboard("{Escape}");
+  await waitFor(() => expect(document.activeElement).toBe(origin));
 });

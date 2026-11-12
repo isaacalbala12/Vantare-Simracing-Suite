@@ -20,7 +20,6 @@ function Harness({ commands }: { commands: PaletteCommand[] }) {
           title="Paleta de comandos"
           description="Busca una sección o una acción"
           trigger="Comandos"
-          closeLabel="Cerrar"
           empty="Sin resultados"
           commands={commands}
           open={open}

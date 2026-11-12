@@ -445,7 +445,6 @@ function ShellContent() {
                 title={t("shell.commands")}
                 description={t("shell.commandsHelp")}
                 trigger={null}
-                closeLabel={t("shell.close")}
                 empty={t("shell.emptyCommands")}
                 notice={launcherFailed ? commandsText.readFailed : undefined}
                 commands={[
@@ -478,7 +477,7 @@ function ShellContent() {
                           // verified LaunchV1 catalog (account/mod.rs).
                           account?.plan?.kind === "founders"
                           ? commandsText.included
-                          : commandsText.meta.strategy
+                          : commandsText.soon
                         : (item.locked ??
                           commandsText.meta[
                             item.id as keyof typeof commandsText.meta
@@ -500,12 +499,6 @@ function ShellContent() {
                         label: commandsText.account,
                         meta: commandsText.accountMeta,
                         icon: "i-cuenta",
-                      },
-                      {
-                        id: "workshop",
-                        label: commandsText.workshop,
-                        meta: commandsText.workshopMeta,
-                        icon: "v-studio",
                       },
                       {
                         id: "notifications",
@@ -534,7 +527,7 @@ function ShellContent() {
                     id: "sidebar",
                     label: t("shell.sidebar"),
                     icon: "v-side",
-                    shortcut: "Ctrl B",
+                    shortcut: commandsText.shortcut.sidebar,
                     run: ui.toggleSidebar,
                   },
                   {
@@ -542,21 +535,21 @@ function ShellContent() {
                     label: commandsText.context,
                     meta: commandsText.contextMeta,
                     icon: "v-side",
-                    shortcut: "Ctrl Alt B",
+                    shortcut: commandsText.shortcut.context,
                     run: ui.toggleRail,
                   },
                   {
                     id: "notices",
                     label: t("shell.notices"),
                     icon: "v-bell",
-                    shortcut: "Ctrl Mayús N",
+                    shortcut: commandsText.shortcut.notices,
                     run: () => ui.notices(true),
                   },
                   {
                     id: "zoom-less",
                     label: t("general.zoomLess"),
                     meta: settingsBlocked,
-                    shortcut: "Ctrl −",
+                    shortcut: commandsText.shortcut.zoomOut,
                     disabled: editBlocked,
                     run: () => zoom(-1),
                   },
@@ -564,7 +557,7 @@ function ShellContent() {
                     id: "zoom-more",
                     label: t("general.zoomMore"),
                     meta: settingsBlocked,
-                    shortcut: "Ctrl +",
+                    shortcut: commandsText.shortcut.zoomIn,
                     disabled: editBlocked,
                     run: () => zoom(1),
                   },
@@ -572,7 +565,7 @@ function ShellContent() {
                     id: "zoom-reset",
                     label: t("general.zoomReset"),
                     meta: settingsBlocked,
-                    shortcut: "Ctrl 0",
+                    shortcut: commandsText.shortcut.zoomReset,
                     disabled: editBlocked,
                     run: () => zoom(0),
                   },
@@ -580,7 +573,7 @@ function ShellContent() {
                     id: "favorite",
                     label: t("shell.favorite"),
                     icon: "v-launch",
-                    shortcut: "Ctrl L",
+                    shortcut: commandsText.shortcut.launch,
                     meta:
                       launchBlocked ??
                       (launcher?.running

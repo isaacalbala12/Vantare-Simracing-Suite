@@ -16,6 +16,7 @@
 }
 .v-profile-form > .v-field {
   width: 100%;
+  gap: 9px;
 }
 .v-profile-form .v-input {
   /* GPUI orbit/controls.rs: field uses skin.l2 and skin.line2. */
@@ -28,6 +29,7 @@
 .v-profile-form .v-field label,
 .v-profile-decorations > div > span {
   font-size: 12px;
+  line-height: 16px;
   font-weight: 600;
   color: var(--text-3);
 }
@@ -37,8 +39,10 @@
   min-height: 22px;
 }
 .v-profile-favorite .v-switch-field {
+  font-size: 13px;
+  font-weight: 500;
   flex-direction: row-reverse;
-  gap: 10px;
+  gap: 8px;
 }
 .v-profile-decorations {
   display: flex;
@@ -123,7 +127,7 @@
   border-radius: 10px;
 }
 .v-profile-preview .v-launcher-circuit {
-  top: 10px;
+  top: 12px;
   left: 14px;
   width: calc(100% - 28px);
   height: 80px;
@@ -131,7 +135,7 @@
 }
 .v-profile-preview strong {
   display: block;
-  margin-top: 92px;
+  margin-top: 96px;
   font: 600 24px var(--font-display);
 }
 .v-profile-behavior {
@@ -212,12 +216,13 @@
 .v-profile-behavior .v-select-trigger svg {
   width: 12px;
   height: 12px;
-  transform: rotate(90deg);
+  transform: none;
 }
 .v-profile-decorations .v-button:disabled {
-  color: var(--text-3);
+  opacity: var(--disabled-opacity);
+  color: var(--text-1);
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
 }
 .v-profile-editor > .v-launcher-heading .v-button--primary {
   width: 104px;
@@ -225,4 +230,42 @@
   background: var(--grad-button);
   color: var(--text-on-accent);
   border: 0;
+}
+
+/* neo_card: GPUI's blur_radius is sigma; the CSS blur is 2*sigma. */
+.v-profile-form,
+.v-profile-preview {
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    0 12px 56px var(--button-shadow);
+}
+[data-palette="classic"] .v-profile-form,
+[data-palette="classic"] .v-profile-preview {
+  /* Same classic neo recipe already exported for account cards. */
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    var(--shadow-account-classic);
+}
+.v-profile-behavior .v-field {
+  gap: 9px;
+}
+.v-profile-behavior .v-field label {
+  line-height: 16px;
+}
+.v-profile-editor > .v-launcher-heading .v-launcher-actions {
+  gap: 12px;
+}
+.v-profile-editor > .v-launcher-heading .v-button--neutral {
+  padding-inline: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+}
+.v-profile-editor > .v-launcher-heading .v-button--primary {
+  font-size: 15px;
+  font-weight: 600;
+}
+.v-profile-editor > .v-launcher-heading .v-button--primary svg {
+  width: 12px;
+  height: 12px;
 }

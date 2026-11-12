@@ -8,3 +8,4 @@ rune.workspace = true
 vantare-domain = { path = "../../domain" }
 vantare-ipc = { path = "../../ipc", features = ["medir-latencia"] }
 vantare-profiling = { path = "../../profiling", features = ["medir-latencia"] }
+serde_json = "1"

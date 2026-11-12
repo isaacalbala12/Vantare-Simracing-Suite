@@ -1,5 +1,5 @@
 //! Relative: the product projection owns all formatting and ordering.
-use rune::{Color, Cx, El, LiveText, TextStyle, col, row, text};
+use rune::{Cx, El, LiveText};
 use std::{cell::Cell, collections::BTreeMap, sync::Arc};
 use vantare_domain::{
     CarId, Snapshot,
@@ -8,7 +8,9 @@ use vantare_domain::{
 };
 
 pub const WIDTH: f32 = 420.0;
-pub const ROW_HEIGHT: f32 = 28.0;
+pub const ROW_HEIGHT: f32 = 24.0;
+pub const HEIGHT: f32 = 265.0;
+pub mod presentation;
 
 pub struct RowLive {
     pub id: CarId,
@@ -28,11 +30,40 @@ impl RowLive {
     }
 }
 fn values(row: &Row) -> [String; 4] {
+    let name = if row.is_player {
+        "Tú".to_owned()
+    } else if row.driver.is_empty() {
+        "—".into()
+    } else {
+        vantare_domain::standings::driver_name(&row.driver, "", 16)
+    };
+    let vehicle = row.vehicle.split_whitespace().next().unwrap_or("");
+    let number = if row.number.is_empty() {
+        String::new()
+    } else {
+        format!(" #{}", row.number)
+    };
+    let detail = format!("{vehicle}{number}");
+    let name = if detail.trim().is_empty() {
+        name
+    } else {
+        format!("{name} · {}", detail.trim())
+    };
+    let laps = row
+        .lap_delta
+        .filter(|value| *value != 0)
+        .map_or_else(String::new, |value| {
+            format!(
+                "{}{} V",
+                if value < 0 { "−" } else { "+" },
+                value.unsigned_abs()
+            )
+        });
     [
-        row.position.to_string(),
-        row.number.clone(),
-        row.driver.clone(),
-        row.gap.to_string(),
+        row.class_position.to_string(),
+        name,
+        laps,
+        row.rich_gap.to_string(),
     ]
 }
 
@@ -42,6 +73,7 @@ pub struct Relative {
     pub views: Cell<usize>,
     prefs: Preferences,
     content: relative::Content,
+    pub labels: [LiveText; 4],
 }
 impl Default for Relative {
     fn default() -> Self {
@@ -52,10 +84,12 @@ impl Relative {
     pub fn new(prefs: Preferences, content: relative::Content) -> Self {
         let board = relative::project_cached(&Snapshot::default(), prefs, content, &[], None);
         let slots = vec![None; board.slots.len()];
+        let labels = presentation::labels(&board).map(LiveText::new);
         Self {
             board,
             slots,
             views: Cell::new(0),
+            labels,
             prefs,
             content,
         }
@@ -66,6 +100,10 @@ impl Relative {
             relative::project_cached(snapshot, self.prefs, self.content, &[], Some(&self.board));
         if Arc::ptr_eq(&self.board, &board) {
             return false;
+        }
+        let shape_changed = !presentation::same_structure(&self.board, &board);
+        for (live, value) in self.labels.iter().zip(presentation::labels(&board)) {
+            live.set(value);
         }
         let old: BTreeMap<_, _> = self
             .slots
@@ -98,42 +136,13 @@ impl Relative {
             .map(|row| row.as_ref().map(|r| r.id))
             .collect();
         self.board = board;
-        before != after
+        before != after || shape_changed
     }
 }
 
-/// Initial retained row tree; Vantare decoration is added by the presentation layer.
 pub fn view(state: &Relative, _: &mut Cx<Relative>) -> El {
     state.views.set(state.views.get() + 1);
-    col()
-        .w(WIDTH)
-        .children(state.slots.iter().enumerate().map(|(index, slot)| {
-            let Some(slot) = slot else {
-                return row().key(format!("empty-{index}")).w(WIDTH).h(ROW_HEIGHT);
-            };
-            row()
-                .key(format!("car-{}", slot.id.0))
-                .w(WIDTH)
-                .h(ROW_HEIGHT)
-                .children(
-                    slot.cells
-                        .iter()
-                        .zip([30.0, 38.0, 266.0, 86.0])
-                        .enumerate()
-                        .map(|(index, (cell, width))| {
-                            text(cell.get().to_string())
-                                .key(format!("cell-{}-{index}", slot.id.0))
-                                .live_text(cell)
-                                .w(width)
-                                .h(ROW_HEIGHT)
-                                .color(Color::WHITE)
-                                .font(TextStyle {
-                                    features: "'tnum' 1",
-                                    ..TextStyle::new(12.0, 500.0)
-                                })
-                        }),
-                )
-        }))
+    presentation::view(state)
 }
 
 #[cfg(test)]
@@ -167,7 +176,13 @@ mod tests {
     fn runtime(snapshot: &Snapshot) -> Runtime<Relative> {
         let mut state = Relative::default();
         state.ingest(snapshot);
-        let mut runtime = Runtime::new(state, view, (WIDTH, 300.0), Env::new(true, 1.0));
+        let mut runtime = Runtime::with_text(
+            state,
+            view,
+            (WIDTH, 300.0),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(presentation::FONTS, ("Inter", "Inter")),
+        );
         runtime.frame(0.0);
         runtime
     }
@@ -189,10 +204,20 @@ mod tests {
                 .flatten()
                 .find(|r| r.id == row.id)
                 .unwrap();
-            assert_eq!(
-                live.cells.each_ref().map(|v| v.get().to_string()),
-                values(row)
-            );
+            assert_eq!(&*live.cells[0].get(), row.class_position.as_ref());
+            assert_eq!(&*live.cells[3].get(), row.rich_gap.as_ref());
+            let elements = runtime.elements();
+            for column in [0, 3] {
+                let key = format!("cell-{}-{column}", row.id.0);
+                let element = elements
+                    .iter()
+                    .find(|element| element.key.as_deref() == Some(key.as_str()))
+                    .unwrap();
+                assert_eq!(
+                    element.text.as_deref(),
+                    Some(live.cells[column].get().as_ref())
+                );
+            }
         }
     }
     #[test]
@@ -218,12 +243,16 @@ mod tests {
             .flatten()
             .find(|r| r.id == row.id)
             .unwrap();
-        assert_eq!(&*live.cells[3].get(), row.gap.as_ref());
+        assert_eq!(&*live.cells[3].get(), row.rich_gap.as_ref());
     }
     #[test]
     fn reorder_preserves_bindings_for_each_car() {
         let mut snapshot = scene();
         let mut runtime = runtime(&snapshot);
+        let shape_changed = !presentation::same_structure(&self.board, &board);
+        for (live, value) in self.labels.iter().zip(presentation::labels(&board)) {
+            live.set(value);
+        }
         let old: BTreeMap<_, _> = runtime
             .state
             .slots

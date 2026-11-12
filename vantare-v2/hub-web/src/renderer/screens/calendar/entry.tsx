@@ -537,10 +537,6 @@ export default function CalendarEntry() {
                 following={view?.following.length ?? 0}
                 limit={calendarStartsLimit}
                 notifyWeek={alerts.notifyWeek}
-                notifyDisabled={!preferences.canNotifyWeek}
-                onNotifyWeek={() =>
-                  void preferences.notifyWeek(!alerts.notifyWeek)
-                }
                 onRefresh={() => void state.refresh()}
                 busy={state.busy}
               />

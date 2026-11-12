@@ -15,6 +15,8 @@ export const calendarAlertsText = {
   subtitle: "Configura los avisos en pista antes de tu carrera.",
   close: "Cerrar (Esc)",
   lead: "Con cuánta antelación",
+  leadScope:
+    "Esta antelación se añade al recordatorio del calendario (.ics). El aviso en pista usa los umbrales configurados en el overlay.",
   where: "Dónde te llega",
   when: "Al avisar",
   what: "Qué se avisa",

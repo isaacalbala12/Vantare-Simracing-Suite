@@ -1045,3 +1045,61 @@ describe("restart feedback", () => {
     await screen.findByRole("button", { name: t("updates.restarting") });
   });
 });
+
+describe("honest notification preferences", () => {
+  it.each([false, true])(
+    "keeps unavailable saved preferences (%s) read only",
+    async (saved) => {
+      const calls = vi.spyOn(Client.prototype, "request");
+      const hook = mount("ajustes-base", <General />);
+      await loaded(hook);
+      for (const field of ["updates", "launcher"] as const) {
+        if (hook.result.current.view?.general[field] !== saved) {
+          act(() => hook.result.current.update({ field, value: saved }));
+          await waitFor(() =>
+            expect(hook.result.current.view?.general[field]).toBe(saved),
+          );
+        }
+      }
+      calls.mockClear();
+      for (const field of ["updates", "launcher"] as const) {
+        const control = screen.getByRole("switch", {
+          name: t(`general.${field}`),
+        });
+        expect(control.getAttribute("aria-checked")).toBe(String(saved));
+        expect(control.getAttribute("aria-disabled")).toBe("true");
+        expect(control.getAttribute("aria-description")).toBe(
+          t(`general.${field}Help`),
+        );
+        expect(screen.getByText(t(`general.${field}Help`))).toBeTruthy();
+        fireEvent.click(control);
+        fireEvent.keyDown(control, { key: " " });
+      }
+      expect(
+        calls.mock.calls.filter(([r]) => r.method === "settings.update"),
+      ).toHaveLength(0);
+    },
+  );
+  it("keeps the Windows switch editable for the manual test and explains its limit", async () => {
+    const calls = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-base", <General />);
+    await loaded(hook);
+    vi.stubGlobal("vantare", { platform: "win32" });
+    const control = screen.getByRole("switch", { name: t("general.toasts") });
+    expect(control.getAttribute("aria-description")).toBe(
+      t("general.toastsHelp"),
+    );
+    expect(screen.getByText(t("general.toastsHelp"))).toBeTruthy();
+    await userEvent.setup().click(control);
+    await waitFor(() =>
+      expect(hook.result.current.view?.general.toasts).toBe(true),
+    );
+    const test = screen.getByRole("button", { name: t("general.testNotice") });
+    await userEvent.setup().click(test);
+    await waitFor(() =>
+      expect(
+        calls.mock.calls.some(([r]) => r.method === "notifications.test"),
+      ).toBe(true),
+    );
+  });
+});

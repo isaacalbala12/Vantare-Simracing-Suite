@@ -16,7 +16,6 @@ it("offers a retry when there is no cached publication", () => {
       following={0}
       limit={1000}
       notifyWeek={true}
-      onNotifyWeek={() => {}}
       onRefresh={refresh}
       busy={false}
     />,
@@ -26,8 +25,7 @@ it("offers a retry when there is no cached publication", () => {
   expect(screen.queryByText(fixture.series[0].name)).toBeNull();
 });
 it("keeps expired rows read-only and exposes refresh and next-week preference", () => {
-  const refresh = vi.fn(),
-    notify = vi.fn();
+  const refresh = vi.fn();
   render(
     <CalendarUpcomingView
       previous={fixture}
@@ -35,7 +33,6 @@ it("keeps expired rows read-only and exposes refresh and next-week preference", 
       following={0}
       limit={1000}
       notifyWeek={true}
-      onNotifyWeek={notify}
       onRefresh={refresh}
       busy={false}
     />,
@@ -47,7 +44,13 @@ it("keeps expired rows read-only and exposes refresh and next-week preference", 
   fireEvent.click(screen.getByRole("button", { name: text.searchNow }));
   expect(refresh).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("switch", { name: text.notifyWeek }));
-  expect(notify).toHaveBeenCalledOnce();
+  const control = screen.getByRole("switch", { name: text.notifyWeek });
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  expect(control.getAttribute("aria-checked")).toBe("true");
+  expect(
+    document.getElementById(control.getAttribute("aria-describedby") ?? "")
+      ?.textContent,
+  ).toBe(text.notifyWeekPending);
 });
 
 it("filters live sessions and routes favorite changes without mutating the publication", () => {
@@ -122,3 +125,26 @@ it("keeps scheduled launch visible but inactive while immediate launch remains e
   fireEvent.click(screen.getByRole("button", { name: /Lanzar «QA»/u }));
   expect(launch).toHaveBeenCalledOnce();
 });
+
+it.each([false, true])(
+  "keeps the saved next-week notification value (%s) read only",
+  (saved) => {
+    render(
+      <CalendarUpcomingView
+        previous={fixture}
+        utc
+        following={0}
+        limit={1000}
+        notifyWeek={saved}
+        onRefresh={() => {}}
+        busy={false}
+      />,
+    );
+    const control = screen.getByRole("switch", { name: text.notifyWeek });
+    fireEvent.click(control);
+    fireEvent.keyDown(control, { key: " " });
+    expect(control.getAttribute("aria-checked")).toBe(String(saved));
+    expect(control.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByRole("status").textContent).toBe(text.notifyWeekPending);
+  },
+);

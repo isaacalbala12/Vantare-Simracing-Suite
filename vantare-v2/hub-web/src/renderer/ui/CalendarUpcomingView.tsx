@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { CalendarSchedule } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText as text } from "../i18n/calendar";
@@ -12,8 +13,6 @@ export function CalendarUpcomingView({
   following,
   limit,
   notifyWeek,
-  notifyDisabled = false,
-  onNotifyWeek,
   onRefresh,
   busy,
 }: {
@@ -22,11 +21,10 @@ export function CalendarUpcomingView({
   following: number;
   limit: number;
   notifyWeek: boolean;
-  notifyDisabled?: boolean;
-  onNotifyWeek: () => void;
   onRefresh: () => void;
   busy: boolean;
 }) {
+  const notifyHint = useId();
   if (!previous)
     return (
       <section className="v-calendar-missing">
@@ -57,12 +55,15 @@ export function CalendarUpcomingView({
           </Button>
           <div className="v-calendar-notify">
             <Switch
-              disabled={notifyDisabled}
+              disabled
               label={text.notifyWeek}
               checked={notifyWeek}
-              onCheckedChange={onNotifyWeek}
+              aria-describedby={notifyHint}
             />
           </div>
+          <p id={notifyHint} role="status">
+            {text.notifyWeekPending}
+          </p>
         </div>
       </section>
       <WeekBoard schedule={previous} utc={utc} limit={limit} />

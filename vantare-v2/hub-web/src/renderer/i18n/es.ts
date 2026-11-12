@@ -351,11 +351,14 @@ export const settingsText = {
   "general.minimizedHelp": "Arranque sin abrir la ventana",
   "general.notices": "Avisos",
   "general.updates": "Avisos de actualización",
-  "general.updatesHelp": "Cuando hay una versión nueva",
+  "general.updatesHelp":
+    "Preferencia conservada, de solo lectura: este Hub aún no emite avisos de actualización.",
   "general.launcher": "Avisos del Launcher",
-  "general.launcherHelp": "Al terminar de abrir tus aplicaciones",
+  "general.launcherHelp":
+    "Preferencia conservada, de solo lectura: este Hub aún no emite avisos al terminar el Launcher.",
   "general.toasts": "Notificaciones de Windows",
-  "general.toastsHelp": "Avisos con el Hub minimizado",
+  "general.toastsHelp":
+    "Habilita únicamente «Enviar prueba», que sí muestra una notificación de Windows. Los avisos automáticos aún no están disponibles en este Hub.",
   "general.testNotice": "Enviar prueba",
   "general.noticeSent": "Notificación de prueba enviada",
   "general.noticeUnavailable": "No se pudo mostrar la notificación de Windows",

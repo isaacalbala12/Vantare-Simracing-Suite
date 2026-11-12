@@ -699,7 +699,34 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
         include_str!("../../../../packaging/fixtures/layout.golden.json"),
         include_str!("../../../../ui/fixtures/layouts/widget-settings-families.json"),
     ] {
-        let document: serde_json::Value = serde_json::from_str(fixture).unwrap();
+        let mut document: serde_json::Value = serde_json::from_str(fixture).unwrap();
+        // The families fixture contains Settings only, without required layout
+        // coordinates. Keep that original protected; mount its exact settings
+        // in a complete layout for the writer oracle, without changing fixtures.
+        let missing_coordinates = document["instances"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item.get("x").is_none() || item.get("y").is_none());
+        let input = if missing_coordinates {
+            let root = crate::test_support::Root::new();
+            let path = root.path.join("layout.json");
+            std::fs::write(&path, fixture).unwrap();
+            assert_eq!(
+                State::new(path.clone())
+                    .view(Some(CatalogAccess::Pro))
+                    .state,
+                StudioState::Protected
+            );
+            assert_eq!(std::fs::read(&path).unwrap(), fixture.as_bytes());
+            for item in document["instances"].as_array_mut().unwrap() {
+                item["x"] = serde_json::json!(0.0);
+                item["y"] = serde_json::json!(0.0);
+            }
+            serde_json::to_string(&document).unwrap()
+        } else {
+            fixture.to_owned()
+        };
         for index in 0..document["instances"].as_array().unwrap().len() {
             let settings = &document["instances"][index]["settings"];
             let kind: WidgetKind = serde_json::from_value(settings["kind"].clone()).unwrap();
@@ -708,7 +735,7 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
             }
             let root = crate::test_support::Root::new();
             let path = root.path.join("layout.json");
-            std::fs::write(&path, fixture).unwrap();
+            std::fs::write(&path, &input).unwrap();
             let mut state = State::new(path.clone());
             let access = Some(CatalogAccess::Pro);
             let current = state.view(access);
@@ -722,7 +749,7 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
                     access,
                 )
                 .unwrap();
-            assert_eq!(std::fs::read(&path).unwrap(), fixture.as_bytes());
+            assert_eq!(std::fs::read(&path).unwrap(), input.as_bytes());
             assert!(!noop.can_undo);
             assert!(!noop.can_redo);
             let accent = if settings["accent"] == "white" {

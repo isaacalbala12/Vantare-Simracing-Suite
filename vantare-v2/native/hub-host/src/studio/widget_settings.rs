@@ -88,6 +88,7 @@ impl WidgetSettings {
             .map(|(kind, data)| (kind, serde_json::to_value(data).expect("settings schema")))
             .collect()
     }
+    #[cfg(any(test, feature = "bindings"))]
     pub(crate) fn schema_keys() -> std::collections::BTreeMap<String, serde_json::Value> {
         let bare = [
             Data::Standings(Default::default()),

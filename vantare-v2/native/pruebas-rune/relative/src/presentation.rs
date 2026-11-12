@@ -343,7 +343,7 @@ pub fn view(state: &Relative) -> El {
                 .font(font("Inter", 11.0, 400.0))
                 .color(color("colors", "muted"))
                 .size(230.0, 18.0)
-                .truncate()
+                .truncate_fade()
                 .pin(Some(12.0), Some(header_y), None, None),
         )
         .child(

@@ -305,3 +305,57 @@
 .v-context:has(.v-appearance-preview) .v-rail-block-body p {
   line-height: 19px;
 }
+
+/* Settings only: numbered meta and the square scissor edges visible in GPUI's miniatures. */
+.v-appearance-groups .v-setting-group-title > span:first-child {
+  letter-spacing: 0.4px;
+}
+.v-appearance-groups .v-scheme-preview {
+  border-radius: 0;
+}
+.v-appearance-groups .v-segmented {
+  box-shadow: inset 0 2px 1px var(--button-shadow);
+}
+.v-appearance-groups .v-segment[data-pressed] {
+  box-shadow: inset 0 1px 0 var(--neo-light);
+}
+.v-appearance-groups .v-switch:not([data-checked]) {
+  box-shadow: inset 0 2px 1px color(from var(--button-shadow) srgb r g b / 40%);
+}
+.v-appearance-groups .v-slider--appearance .v-slider-value {
+  line-height: 1.618034;
+}
+.v-appearance-groups .v-slider--appearance .v-slider-control {
+  height: 20px;
+}
+
+/* settings_appearance_preview calls Orbit text (phi) and meta (size-sized lines).
+   Keep these rules out of the onboarding's reuse of AppearancePreview. */
+.v-context .v-appearance-preview-palette {
+  letter-spacing: 0.4px;
+}
+.v-context .v-appearance-preview-nav > span {
+  line-height: 9px;
+  letter-spacing: 0.4px;
+}
+.v-context .v-appearance-preview-nav > div,
+.v-context .v-appearance-preview-main > strong,
+.v-context .v-appearance-preview-hero > strong,
+.v-context .v-appearance-preview-sim {
+  line-height: 1.618034;
+}
+.v-context .v-appearance-preview-nav > div[data-active] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.v-context .v-appearance-preview-hero small {
+  line-height: 10px;
+  letter-spacing: 0.4px;
+}
+.v-context:has(.v-appearance-preview) .v-rail-block-body p {
+  line-height: 1.5;
+}
+.v-context:has(.v-appearance-preview) .v-button--sm {
+  color: var(--text-2);
+  font-weight: 600;
+  border-color: var(--line-1);
+}

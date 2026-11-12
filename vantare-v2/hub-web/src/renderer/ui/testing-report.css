@@ -33,6 +33,15 @@
 .v-testing-report-module > .v-field {
   flex: 1;
 }
+/* GPUI editor::module_trigger uses the legacy ink alphas and radius 12, not a text well. */
+.v-testing-report-module .v-select-trigger {
+  border-radius: 12px;
+  color: var(--text-2);
+  border-color: color-mix(in srgb, var(--text-1) 7.0588%, transparent);
+  background: color-mix(in srgb, var(--text-1) 2.7451%, transparent);
+  box-shadow: none;
+}
+
 .v-testing-report-inline-action {
   display: flex;
   justify-content: flex-end;
@@ -103,9 +112,29 @@
     inset 0 1px var(--button-highlight),
     0 1px 4px var(--button-shadow);
 }
+
+/* GPUI applies disabled alpha to the painted face and the glyphs independently. */
 .v-testing-report .v-testing-report-send.v-button--primary:disabled {
-  background: var(--grad-button);
-  color: var(--text-on-accent);
+  isolation: isolate;
+  background: transparent;
+  color: color-mix(
+    in srgb,
+    var(--text-on-accent) var(--testing-disabled),
+    transparent
+  );
   border-color: transparent;
+  box-shadow: none;
+  opacity: 1;
+}
+.v-testing-report .v-testing-report-send.v-button--primary:disabled::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--grad-button);
+  box-shadow:
+    inset 0 1px var(--button-highlight),
+    0 1px 4px var(--button-shadow);
   opacity: var(--disabled-opacity);
 }

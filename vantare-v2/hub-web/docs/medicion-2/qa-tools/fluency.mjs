@@ -16,9 +16,10 @@ export async function fluency(page) {
       const begin = performance.now(), start = main.scrollTop;
       main.scrollTo({top:target,behavior:'smooth'});
       await new Promise((accept,reject) => {
-        let previous = performance.now();
-        const frame = now => {
-          intervals.push(now-previous); previous=now;
+        let previous;
+        const frame = () => {
+          const now=performance.now();
+          if(previous!==undefined)intervals.push(now-previous); previous=now;
           if (Math.abs(main.scrollTop-target) < 1) {
             transitions.push({start,target,end:main.scrollTop,milliseconds:now-begin}); accept();
           } else if (now-begin > 4000) reject(new Error('Measured scroll did not reach its target'));
@@ -31,21 +32,26 @@ export async function fluency(page) {
   });
   const sidebar = await page.evaluate(async () => {
     const nav = document.querySelector('.v-sidebar');
-    const button = document.querySelector('button[aria-label="Contraer o ampliar navegación"]');
-    if (!nav || !button) throw new Error('Missing sidebar animation positive control');
+    if (!nav) throw new Error('Missing sidebar animation positive control');
     const intervals=[],transitions=[];
     for (let run=0;run<2;run++) {
       const before=nav.getBoundingClientRect().width, begin=performance.now();
       const collapsed=nav.classList.contains('v-sidebar--collapsed');
+      // The expanded and collapsed footers are different React subtrees.
+      const button=collapsed
+        ? nav.querySelector('button[aria-label="Contraer o ampliar navegación"]')
+        : nav.querySelector('button.v-sidebar-footer-row[aria-expanded="true"]');
+      if(!button)throw new Error('Missing live sidebar toggle');
       button.click();
       const target=collapsed?272:76;
       await new Promise((accept,reject)=>{
-        let previous=performance.now();
-        const frame=now=>{
-          intervals.push(now-previous); previous=now;
+        let previous;
+        const frame=()=>{
+          const now=performance.now();
+          if(previous!==undefined)intervals.push(now-previous); previous=now;
           const width=nav.getBoundingClientRect().width;
           if(Math.abs(width-target)<1){transitions.push({before,target,end:width,milliseconds:now-begin});accept();}
-          else if(now-begin>4000)reject(new Error('Measured sidebar did not reach its target'));
+          else if(now-begin>4000)reject(new Error(`Measured sidebar target ${target}, actual ${width}, class ${nav.className}`));
           else requestAnimationFrame(frame);
         };
         requestAnimationFrame(frame);

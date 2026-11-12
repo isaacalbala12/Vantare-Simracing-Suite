@@ -8,15 +8,20 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import settingsFixture from "../fixtures/settings-base.json";
 import type {
+  AccountView,
   HostToUi,
   PerformanceLevel,
   Request,
 } from "../src/contract/generated/contract";
 import { createMockHost } from "../src/mock/host";
+import {
+  AccountSessionContext,
+  createAccountSession,
+} from "../src/renderer/app/AccountSession";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { OnboardingIntroPreview } from "../src/renderer/screens/onboarding/IntroPreview";
@@ -110,6 +115,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 function MailIntro(props: ComponentProps<typeof OnboardingIntroPreview>) {
+  const [session] = useState(() => {
+    const session = createAccountSession();
+    session.confirm({
+      session: "signedIn",
+      gate: "none",
+      blocked: false,
+    } as AccountView);
+    return session;
+  });
+  return (
+    <AccountSessionContext.Provider value={session}>
+      <MailIntroContent {...props} />
+    </AccountSessionContext.Provider>
+  );
+}
+function MailIntroContent(
+  props: ComponentProps<typeof OnboardingIntroPreview>,
+) {
   const { mail, commitMail } = useOnboardingMail(true, true);
   return (
     <OnboardingIntroPreview

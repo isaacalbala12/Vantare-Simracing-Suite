@@ -87,6 +87,10 @@ export function create(context: MockContext): MockHandler {
     };
   }
   current = accountScene(context.sceneName, current);
+  // These mail fixtures represent an authenticated account, independent of
+  // the startup core snapshot used while mock modules are being constructed.
+  if (context.sceneName.startsWith("privacidad-mail"))
+    current = { ...current, session: "signedIn", gate: "none", blocked: false };
   if (context.sceneName.startsWith("email-")) {
     const scene = context.sceneName;
     current = {

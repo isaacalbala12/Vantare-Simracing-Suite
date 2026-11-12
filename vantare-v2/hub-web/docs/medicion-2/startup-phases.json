@@ -1,0 +1,1172 @@
+[
+  {
+    "experiment": "hardware-off",
+    "condition": "baseline",
+    "rows": [
+      {
+        "parentToElectronMs": 589.43505859375,
+        "electronToMainMarkerMs": 307.240234375,
+        "appReadyWaitMs": 31.256591796875,
+        "hostHandshakeMs": 637.0068359375,
+        "windowConstructorMs": 42.159912109375,
+        "loadToDomMs": 478.177734375,
+        "domToShowMs": 29.287353515625,
+        "fcpAfterLaunchMs": 2262.199951171875,
+        "visibleMs": 2115.4271
+      },
+      {
+        "parentToElectronMs": 373.263916015625,
+        "electronToMainMarkerMs": 208.266845703125,
+        "appReadyWaitMs": 22.17724609375,
+        "hostHandshakeMs": 26.99169921875,
+        "windowConstructorMs": 37.397705078125,
+        "loadToDomMs": 110.406005859375,
+        "domToShowMs": 18.17041015625,
+        "fcpAfterLaunchMs": 949.10009765625,
+        "visibleMs": 807.0124
+      },
+      {
+        "parentToElectronMs": 432.6650390625,
+        "electronToMainMarkerMs": 785.092529296875,
+        "appReadyWaitMs": 64.33203125,
+        "hostHandshakeMs": 91.581787109375,
+        "windowConstructorMs": 46.22314453125,
+        "loadToDomMs": 2352.051513671875,
+        "domToShowMs": 32.695068359375,
+        "fcpAfterLaunchMs": 3960.699951171875,
+        "visibleMs": 3879.7236
+      },
+      {
+        "parentToElectronMs": 377.31103515625,
+        "electronToMainMarkerMs": 213.02880859375,
+        "appReadyWaitMs": 23.73193359375,
+        "hostHandshakeMs": 13.347412109375,
+        "windowConstructorMs": 41.552001953125,
+        "loadToDomMs": 115.33447265625,
+        "domToShowMs": 18.30078125,
+        "fcpAfterLaunchMs": 937.699951171875,
+        "visibleMs": 810.1961
+      },
+      {
+        "parentToElectronMs": 394.10400390625,
+        "electronToMainMarkerMs": 272.23095703125,
+        "appReadyWaitMs": 29.1220703125,
+        "hostHandshakeMs": 18.050048828125,
+        "windowConstructorMs": 50.09033203125,
+        "loadToDomMs": 143.1923828125,
+        "domToShowMs": 39.847412109375,
+        "fcpAfterLaunchMs": 1083.300048828125,
+        "visibleMs": 941.3031
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 394.10400390625,
+        "min": 373.263916015625,
+        "max": 589.43505859375
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 272.23095703125,
+        "min": 208.266845703125,
+        "max": 785.092529296875
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 29.1220703125,
+        "min": 22.17724609375,
+        "max": 64.33203125
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 26.99169921875,
+        "min": 13.347412109375,
+        "max": 637.0068359375
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 42.159912109375,
+        "min": 37.397705078125,
+        "max": 50.09033203125
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 143.1923828125,
+        "min": 110.406005859375,
+        "max": 2352.051513671875
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 29.287353515625,
+        "min": 18.17041015625,
+        "max": 39.847412109375
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1083.300048828125,
+        "min": 937.699951171875,
+        "max": 3960.699951171875
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 941.3031,
+        "min": 807.0124,
+        "max": 3879.7236
+      }
+    }
+  },
+  {
+    "experiment": "hardware-off",
+    "condition": "variant",
+    "rows": [
+      {
+        "parentToElectronMs": 402.554931640625,
+        "electronToMainMarkerMs": 220.253173828125,
+        "appReadyWaitMs": 21.906982421875,
+        "hostHandshakeMs": 250.132080078125,
+        "windowConstructorMs": 36.981201171875,
+        "loadToDomMs": 107.238037109375,
+        "domToShowMs": 19.720458984375,
+        "fcpAfterLaunchMs": 1115.89990234375,
+        "visibleMs": 1073.1326
+      },
+      {
+        "parentToElectronMs": 414.56689453125,
+        "electronToMainMarkerMs": 252.753173828125,
+        "appReadyWaitMs": 25.538818359375,
+        "hostHandshakeMs": 30.989990234375,
+        "windowConstructorMs": 40.392333984375,
+        "loadToDomMs": 119.3203125,
+        "domToShowMs": 90.9580078125,
+        "fcpAfterLaunchMs": 1005.39990234375,
+        "visibleMs": 990.2109
+      },
+      {
+        "parentToElectronMs": 568.843017578125,
+        "electronToMainMarkerMs": 1008.964111328125,
+        "appReadyWaitMs": 26.9755859375,
+        "hostHandshakeMs": 22.207275390625,
+        "windowConstructorMs": 47.145263671875,
+        "loadToDomMs": 127.54052734375,
+        "domToShowMs": 26.62939453125,
+        "fcpAfterLaunchMs": 1887,
+        "visibleMs": 1845.4283
+      },
+      {
+        "parentToElectronMs": 373.138916015625,
+        "electronToMainMarkerMs": 206.53955078125,
+        "appReadyWaitMs": 22.376953125,
+        "hostHandshakeMs": 22.775634765625,
+        "windowConstructorMs": 39.711669921875,
+        "loadToDomMs": 107.697509765625,
+        "domToShowMs": 23.373779296875,
+        "fcpAfterLaunchMs": 856.800048828125,
+        "visibleMs": 804.8647
+      },
+      {
+        "parentToElectronMs": 386.282958984375,
+        "electronToMainMarkerMs": 220.5986328125,
+        "appReadyWaitMs": 22.989501953125,
+        "hostHandshakeMs": 25.16943359375,
+        "windowConstructorMs": 42.27197265625,
+        "loadToDomMs": 121.740478515625,
+        "domToShowMs": 25.9775390625,
+        "fcpAfterLaunchMs": 901.89990234375,
+        "visibleMs": 848.9504
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 402.554931640625,
+        "min": 373.138916015625,
+        "max": 568.843017578125
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 220.5986328125,
+        "min": 206.53955078125,
+        "max": 1008.964111328125
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 22.989501953125,
+        "min": 21.906982421875,
+        "max": 26.9755859375
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 25.16943359375,
+        "min": 22.207275390625,
+        "max": 250.132080078125
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 40.392333984375,
+        "min": 36.981201171875,
+        "max": 47.145263671875
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 119.3203125,
+        "min": 107.238037109375,
+        "max": 127.54052734375
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 25.9775390625,
+        "min": 19.720458984375,
+        "max": 90.9580078125
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1005.39990234375,
+        "min": 856.800048828125,
+        "max": 1887
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 990.2109,
+        "min": 804.8647,
+        "max": 1845.4283
+      }
+    }
+  },
+  {
+    "experiment": "hardware-off-no-gpu",
+    "condition": "baseline",
+    "rows": [
+      {
+        "parentToElectronMs": 475.319091796875,
+        "electronToMainMarkerMs": 586.01318359375,
+        "appReadyWaitMs": 25.273193359375,
+        "hostHandshakeMs": 272.4970703125,
+        "windowConstructorMs": 41.887939453125,
+        "loadToDomMs": 374.317626953125,
+        "domToShowMs": 11.1220703125,
+        "fcpAfterLaunchMs": 2041.89990234375,
+        "visibleMs": 1924.8399
+      },
+      {
+        "parentToElectronMs": 396.133056640625,
+        "electronToMainMarkerMs": 471.39599609375,
+        "appReadyWaitMs": 23.06982421875,
+        "hostHandshakeMs": 58.215087890625,
+        "windowConstructorMs": 43.0810546875,
+        "loadToDomMs": 112.762451171875,
+        "domToShowMs": 15.490478515625,
+        "fcpAfterLaunchMs": 1244.300048828125,
+        "visibleMs": 1137.8914
+      },
+      {
+        "parentToElectronMs": 386.2509765625,
+        "electronToMainMarkerMs": 492.311767578125,
+        "appReadyWaitMs": 27.062744140625,
+        "hostHandshakeMs": 734.667236328125,
+        "windowConstructorMs": 36.939453125,
+        "loadToDomMs": 330.783447265625,
+        "domToShowMs": 30.64013671875,
+        "fcpAfterLaunchMs": 2186,
+        "visibleMs": 2041.2425
+      },
+      {
+        "parentToElectronMs": 376.77001953125,
+        "electronToMainMarkerMs": 472.033203125,
+        "appReadyWaitMs": 22.99658203125,
+        "hostHandshakeMs": 1603.58056640625,
+        "windowConstructorMs": 35.26806640625,
+        "loadToDomMs": 108.418212890625,
+        "domToShowMs": 10.45654296875,
+        "fcpAfterLaunchMs": 2786.800048828125,
+        "visibleMs": 2647.1629
+      },
+      {
+        "parentToElectronMs": 402.666015625,
+        "electronToMainMarkerMs": 486.255615234375,
+        "appReadyWaitMs": 22.999755859375,
+        "hostHandshakeMs": 831.20556640625,
+        "windowConstructorMs": 38.63427734375,
+        "loadToDomMs": 245.355712890625,
+        "domToShowMs": 11.827880859375,
+        "fcpAfterLaunchMs": 2194.300048828125,
+        "visibleMs": 2049.8127
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 396.133056640625,
+        "min": 376.77001953125,
+        "max": 475.319091796875
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 486.255615234375,
+        "min": 471.39599609375,
+        "max": 586.01318359375
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 23.06982421875,
+        "min": 22.99658203125,
+        "max": 27.062744140625
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 734.667236328125,
+        "min": 58.215087890625,
+        "max": 1603.58056640625
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 38.63427734375,
+        "min": 35.26806640625,
+        "max": 43.0810546875
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 245.355712890625,
+        "min": 108.418212890625,
+        "max": 374.317626953125
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 11.827880859375,
+        "min": 10.45654296875,
+        "max": 30.64013671875
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 2186,
+        "min": 1244.300048828125,
+        "max": 2786.800048828125
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 2041.2425,
+        "min": 1137.8914,
+        "max": 2647.1629
+      }
+    }
+  },
+  {
+    "experiment": "hardware-off-no-gpu",
+    "condition": "variant",
+    "rows": [
+      {
+        "parentToElectronMs": 421.6298828125,
+        "electronToMainMarkerMs": 705.589599609375,
+        "appReadyWaitMs": 25.149169921875,
+        "hostHandshakeMs": 15.719970703125,
+        "windowConstructorMs": 66.78076171875,
+        "loadToDomMs": 108.0361328125,
+        "domToShowMs": 9.730712890625,
+        "fcpAfterLaunchMs": 1406.300048828125,
+        "visibleMs": 1372.5835
+      },
+      {
+        "parentToElectronMs": 394.069091796875,
+        "electronToMainMarkerMs": 549.57861328125,
+        "appReadyWaitMs": 24.743896484375,
+        "hostHandshakeMs": 946.61962890625,
+        "windowConstructorMs": 49.519287109375,
+        "loadToDomMs": 385.49072265625,
+        "domToShowMs": 31.1484375,
+        "fcpAfterLaunchMs": 2441.39990234375,
+        "visibleMs": 2398.976
+      },
+      {
+        "parentToElectronMs": 821.4169921875,
+        "electronToMainMarkerMs": 500.54736328125,
+        "appReadyWaitMs": 23.211669921875,
+        "hostHandshakeMs": 2320.1865234375,
+        "windowConstructorMs": 61.007568359375,
+        "loadToDomMs": 111.159912109375,
+        "domToShowMs": 19.78076171875,
+        "fcpAfterLaunchMs": 3915.39990234375,
+        "visibleMs": 3866.9743
+      },
+      {
+        "parentToElectronMs": 497.7041015625,
+        "electronToMainMarkerMs": 474.430908203125,
+        "appReadyWaitMs": 23.020263671875,
+        "hostHandshakeMs": 1420.097900390625,
+        "windowConstructorMs": 36.800537109375,
+        "loadToDomMs": 393.871337890625,
+        "domToShowMs": 9.896240234375,
+        "fcpAfterLaunchMs": 2942.300048828125,
+        "visibleMs": 2899.571
+      },
+      {
+        "parentToElectronMs": 495.68505859375,
+        "electronToMainMarkerMs": 557.125,
+        "appReadyWaitMs": 41.64990234375,
+        "hostHandshakeMs": 72.891357421875,
+        "windowConstructorMs": 49.052001953125,
+        "loadToDomMs": 146.97802734375,
+        "domToShowMs": 13.73486328125,
+        "fcpAfterLaunchMs": 1560.60009765625,
+        "visibleMs": 1514.2764
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 495.68505859375,
+        "min": 394.069091796875,
+        "max": 821.4169921875
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 549.57861328125,
+        "min": 474.430908203125,
+        "max": 705.589599609375
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 24.743896484375,
+        "min": 23.020263671875,
+        "max": 41.64990234375
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 946.61962890625,
+        "min": 15.719970703125,
+        "max": 2320.1865234375
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 49.519287109375,
+        "min": 36.800537109375,
+        "max": 66.78076171875
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 146.97802734375,
+        "min": 108.0361328125,
+        "max": 393.871337890625
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 13.73486328125,
+        "min": 9.730712890625,
+        "max": 31.1484375
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 2441.39990234375,
+        "min": 1406.300048828125,
+        "max": 3915.39990234375
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 2398.976,
+        "min": 1372.5835,
+        "max": 3866.9743
+      }
+    }
+  },
+  {
+    "experiment": "media-keys-off",
+    "condition": "baseline",
+    "rows": [
+      {
+        "parentToElectronMs": 379.080078125,
+        "electronToMainMarkerMs": 474.454345703125,
+        "appReadyWaitMs": 48.2998046875,
+        "hostHandshakeMs": 36.552001953125,
+        "windowConstructorMs": 41.2529296875,
+        "loadToDomMs": 119.142333984375,
+        "domToShowMs": 28.391845703125,
+        "fcpAfterLaunchMs": 1260.800048828125,
+        "visibleMs": 1132.1184
+      },
+      {
+        "parentToElectronMs": 380.006103515625,
+        "electronToMainMarkerMs": 247.916748046875,
+        "appReadyWaitMs": 25.718994140625,
+        "hostHandshakeMs": 16.531982421875,
+        "windowConstructorMs": 44.108642578125,
+        "loadToDomMs": 135.635986328125,
+        "domToShowMs": 27.28662109375,
+        "fcpAfterLaunchMs": 1033.10009765625,
+        "visibleMs": 894.1951
+      },
+      {
+        "parentToElectronMs": 381.7529296875,
+        "electronToMainMarkerMs": 249.6923828125,
+        "appReadyWaitMs": 23.811279296875,
+        "hostHandshakeMs": 13.89990234375,
+        "windowConstructorMs": 43.0947265625,
+        "loadToDomMs": 127.1005859375,
+        "domToShowMs": 23.00390625,
+        "fcpAfterLaunchMs": 1009.39990234375,
+        "visibleMs": 862.9746
+      },
+      {
+        "parentToElectronMs": 380.73388671875,
+        "electronToMainMarkerMs": 240.273193359375,
+        "appReadyWaitMs": 24.83740234375,
+        "hostHandshakeMs": 18.317138671875,
+        "windowConstructorMs": 45.225830078125,
+        "loadToDomMs": 132.812255859375,
+        "domToShowMs": 37.6708984375,
+        "fcpAfterLaunchMs": 1014.699951171875,
+        "visibleMs": 881.2116
+      },
+      {
+        "parentToElectronMs": 404.031982421875,
+        "electronToMainMarkerMs": 247.077880859375,
+        "appReadyWaitMs": 24.367431640625,
+        "hostHandshakeMs": 17.99951171875,
+        "windowConstructorMs": 45.81396484375,
+        "loadToDomMs": 130.772216796875,
+        "domToShowMs": 20.269287109375,
+        "fcpAfterLaunchMs": 1042,
+        "visibleMs": 904.7598
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 380.73388671875,
+        "min": 379.080078125,
+        "max": 404.031982421875
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 247.916748046875,
+        "min": 240.273193359375,
+        "max": 474.454345703125
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 24.83740234375,
+        "min": 23.811279296875,
+        "max": 48.2998046875
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 17.99951171875,
+        "min": 13.89990234375,
+        "max": 36.552001953125
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 44.108642578125,
+        "min": 41.2529296875,
+        "max": 45.81396484375
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 130.772216796875,
+        "min": 119.142333984375,
+        "max": 135.635986328125
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 27.28662109375,
+        "min": 20.269287109375,
+        "max": 37.6708984375
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1033.10009765625,
+        "min": 1009.39990234375,
+        "max": 1260.800048828125
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 894.1951,
+        "min": 862.9746,
+        "max": 1132.1184
+      }
+    }
+  },
+  {
+    "experiment": "media-keys-off",
+    "condition": "variant",
+    "rows": [
+      {
+        "parentToElectronMs": 373.907958984375,
+        "electronToMainMarkerMs": 216.119873046875,
+        "appReadyWaitMs": 25.399658203125,
+        "hostHandshakeMs": 17.417724609375,
+        "windowConstructorMs": 42.337158203125,
+        "loadToDomMs": 120.538330078125,
+        "domToShowMs": 42.28857421875,
+        "fcpAfterLaunchMs": 940.10009765625,
+        "visibleMs": 841.9266
+      },
+      {
+        "parentToElectronMs": 416.407958984375,
+        "electronToMainMarkerMs": 234.29541015625,
+        "appReadyWaitMs": 118.44873046875,
+        "hostHandshakeMs": 53.198486328125,
+        "windowConstructorMs": 47.422119140625,
+        "loadToDomMs": 145.298583984375,
+        "domToShowMs": 24.468017578125,
+        "fcpAfterLaunchMs": 1196.199951171875,
+        "visibleMs": 1079.0362
+      },
+      {
+        "parentToElectronMs": 371.743896484375,
+        "electronToMainMarkerMs": 209.97607421875,
+        "appReadyWaitMs": 21.758544921875,
+        "hostHandshakeMs": 14.69873046875,
+        "windowConstructorMs": 40.80078125,
+        "loadToDomMs": 117.406494140625,
+        "domToShowMs": 37.8525390625,
+        "fcpAfterLaunchMs": 947.199951171875,
+        "visibleMs": 812.9114
+      },
+      {
+        "parentToElectronMs": 369.97412109375,
+        "electronToMainMarkerMs": 209.2392578125,
+        "appReadyWaitMs": 22.53271484375,
+        "hostHandshakeMs": 14.93017578125,
+        "windowConstructorMs": 38.76513671875,
+        "loadToDomMs": 110.454345703125,
+        "domToShowMs": 39.963623046875,
+        "fcpAfterLaunchMs": 928.300048828125,
+        "visibleMs": 809.7484
+      },
+      {
+        "parentToElectronMs": 381.944091796875,
+        "electronToMainMarkerMs": 223.235595703125,
+        "appReadyWaitMs": 22.745361328125,
+        "hostHandshakeMs": 208.712646484375,
+        "windowConstructorMs": 35.438720703125,
+        "loadToDomMs": 266.263671875,
+        "domToShowMs": 18.376953125,
+        "fcpAfterLaunchMs": 1297.300048828125,
+        "visibleMs": 1162.2229
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 373.907958984375,
+        "min": 369.97412109375,
+        "max": 416.407958984375
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 216.119873046875,
+        "min": 209.2392578125,
+        "max": 234.29541015625
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 22.745361328125,
+        "min": 21.758544921875,
+        "max": 118.44873046875
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 17.417724609375,
+        "min": 14.69873046875,
+        "max": 208.712646484375
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 40.80078125,
+        "min": 35.438720703125,
+        "max": 47.422119140625
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 120.538330078125,
+        "min": 110.454345703125,
+        "max": 266.263671875
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 37.8525390625,
+        "min": 18.376953125,
+        "max": 42.28857421875
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 947.199951171875,
+        "min": 928.300048828125,
+        "max": 1297.300048828125
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 841.9266,
+        "min": 809.7484,
+        "max": 1162.2229
+      }
+    }
+  },
+  {
+    "experiment": "media-router-off",
+    "condition": "baseline",
+    "rows": [
+      {
+        "parentToElectronMs": 408.72705078125,
+        "electronToMainMarkerMs": 246.790283203125,
+        "appReadyWaitMs": 27.265869140625,
+        "hostHandshakeMs": 14.00439453125,
+        "windowConstructorMs": 51.115478515625,
+        "loadToDomMs": 138.118408203125,
+        "domToShowMs": 26.31640625,
+        "fcpAfterLaunchMs": 1062.60009765625,
+        "visibleMs": 915.73
+      },
+      {
+        "parentToElectronMs": 1125.7919921875,
+        "electronToMainMarkerMs": 481.836181640625,
+        "appReadyWaitMs": 342.3310546875,
+        "hostHandshakeMs": 193.416259765625,
+        "windowConstructorMs": 38.9501953125,
+        "loadToDomMs": 224.334716796875,
+        "domToShowMs": 20.851806640625,
+        "fcpAfterLaunchMs": 2594.39990234375,
+        "visibleMs": 2439.7754
+      },
+      {
+        "parentToElectronMs": 466.62109375,
+        "electronToMainMarkerMs": 7334.096923828125,
+        "appReadyWaitMs": 41.931884765625,
+        "hostHandshakeMs": 15.69482421875,
+        "windowConstructorMs": 80.7001953125,
+        "loadToDomMs": 152.283203125,
+        "domToShowMs": 38.970458984375,
+        "fcpAfterLaunchMs": 8284.300048828125,
+        "visibleMs": 8125.9869
+      },
+      {
+        "parentToElectronMs": 378.426025390625,
+        "electronToMainMarkerMs": 237.804443359375,
+        "appReadyWaitMs": 24.015380859375,
+        "hostHandshakeMs": 181.368408203125,
+        "windowConstructorMs": 43.58154296875,
+        "loadToDomMs": 128.5322265625,
+        "domToShowMs": 28.734130859375,
+        "fcpAfterLaunchMs": 1169.89990234375,
+        "visibleMs": 1033.7881
+      },
+      {
+        "parentToElectronMs": 370.98388671875,
+        "electronToMainMarkerMs": 208.896240234375,
+        "appReadyWaitMs": 26.89013671875,
+        "hostHandshakeMs": 22.58203125,
+        "windowConstructorMs": 40.333251953125,
+        "loadToDomMs": 116.321533203125,
+        "domToShowMs": 46.8876953125,
+        "fcpAfterLaunchMs": 930.5,
+        "visibleMs": 837.3157
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 408.72705078125,
+        "min": 370.98388671875,
+        "max": 1125.7919921875
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 246.790283203125,
+        "min": 208.896240234375,
+        "max": 7334.096923828125
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 27.265869140625,
+        "min": 24.015380859375,
+        "max": 342.3310546875
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 22.58203125,
+        "min": 14.00439453125,
+        "max": 193.416259765625
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 43.58154296875,
+        "min": 38.9501953125,
+        "max": 80.7001953125
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 138.118408203125,
+        "min": 116.321533203125,
+        "max": 224.334716796875
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 28.734130859375,
+        "min": 20.851806640625,
+        "max": 46.8876953125
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1169.89990234375,
+        "min": 930.5,
+        "max": 8284.300048828125
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 1033.7881,
+        "min": 837.3157,
+        "max": 8125.9869
+      }
+    }
+  },
+  {
+    "experiment": "media-router-off",
+    "condition": "variant",
+    "rows": [
+      {
+        "parentToElectronMs": 402.384033203125,
+        "electronToMainMarkerMs": 239.732666015625,
+        "appReadyWaitMs": 28.082763671875,
+        "hostHandshakeMs": 26.697998046875,
+        "windowConstructorMs": 39.96337890625,
+        "loadToDomMs": 133.383056640625,
+        "domToShowMs": 25.54541015625,
+        "fcpAfterLaunchMs": 1045.89990234375,
+        "visibleMs": 896.5604
+      },
+      {
+        "parentToElectronMs": 550.699951171875,
+        "electronToMainMarkerMs": 720.23291015625,
+        "appReadyWaitMs": 26.439453125,
+        "hostHandshakeMs": 25.272705078125,
+        "windowConstructorMs": 86.5263671875,
+        "loadToDomMs": 2459.01318359375,
+        "domToShowMs": 39.611083984375,
+        "fcpAfterLaunchMs": 4072,
+        "visibleMs": 3985.6361
+      },
+      {
+        "parentToElectronMs": 423.85498046875,
+        "electronToMainMarkerMs": 556.444091796875,
+        "appReadyWaitMs": 28.188720703125,
+        "hostHandshakeMs": 14.087158203125,
+        "windowConstructorMs": 43.4208984375,
+        "loadToDomMs": 152.136474609375,
+        "domToShowMs": 31.806884765625,
+        "fcpAfterLaunchMs": 1408.5,
+        "visibleMs": 1278.9347
+      },
+      {
+        "parentToElectronMs": 381.2509765625,
+        "electronToMainMarkerMs": 214.892333984375,
+        "appReadyWaitMs": 25.417236328125,
+        "hostHandshakeMs": 335.04296875,
+        "windowConstructorMs": 33.85888671875,
+        "loadToDomMs": 116.711669921875,
+        "domToShowMs": 22.285400390625,
+        "fcpAfterLaunchMs": 1270.699951171875,
+        "visibleMs": 1139.3244
+      },
+      {
+        "parentToElectronMs": 410.1201171875,
+        "electronToMainMarkerMs": 246.8388671875,
+        "appReadyWaitMs": 25.403564453125,
+        "hostHandshakeMs": 16.814453125,
+        "windowConstructorMs": 50.478515625,
+        "loadToDomMs": 132.10205078125,
+        "domToShowMs": 38.94921875,
+        "fcpAfterLaunchMs": 1071.5,
+        "visibleMs": 922.149
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 410.1201171875,
+        "min": 381.2509765625,
+        "max": 550.699951171875
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 246.8388671875,
+        "min": 214.892333984375,
+        "max": 720.23291015625
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 26.439453125,
+        "min": 25.403564453125,
+        "max": 28.188720703125
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 25.272705078125,
+        "min": 14.087158203125,
+        "max": 335.04296875
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 43.4208984375,
+        "min": 33.85888671875,
+        "max": 86.5263671875
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 133.383056640625,
+        "min": 116.711669921875,
+        "max": 2459.01318359375
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 31.806884765625,
+        "min": 22.285400390625,
+        "max": 39.611083984375
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1270.699951171875,
+        "min": 1045.89990234375,
+        "max": 4072
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 1139.3244,
+        "min": 896.5604,
+        "max": 3985.6361
+      }
+    }
+  },
+  {
+    "experiment": "renderer-limit",
+    "condition": "baseline",
+    "rows": [
+      {
+        "parentToElectronMs": 659.162109375,
+        "electronToMainMarkerMs": 600.707275390625,
+        "appReadyWaitMs": 27.787841796875,
+        "hostHandshakeMs": 595.617919921875,
+        "windowConstructorMs": 78.160400390625,
+        "loadToDomMs": 177.571044921875,
+        "domToShowMs": 12.194580078125,
+        "fcpAfterLaunchMs": 2376.89990234375,
+        "visibleMs": 2246.7567
+      },
+      {
+        "parentToElectronMs": 373.041015625,
+        "electronToMainMarkerMs": 709.6611328125,
+        "appReadyWaitMs": 23.658935546875,
+        "hostHandshakeMs": 17.599853515625,
+        "windowConstructorMs": 38.634521484375,
+        "loadToDomMs": 120.63525390625,
+        "domToShowMs": 12.53515625,
+        "fcpAfterLaunchMs": 1444.199951171875,
+        "visibleMs": 1316.6647
+      },
+      {
+        "parentToElectronMs": 369.52197265625,
+        "electronToMainMarkerMs": 210.025146484375,
+        "appReadyWaitMs": 24.53466796875,
+        "hostHandshakeMs": 21.388916015625,
+        "windowConstructorMs": 42.4345703125,
+        "loadToDomMs": 111.908447265625,
+        "domToShowMs": 10.875,
+        "fcpAfterLaunchMs": 932.89990234375,
+        "visibleMs": 813.1374
+      },
+      {
+        "parentToElectronMs": 371.094970703125,
+        "electronToMainMarkerMs": 206.62744140625,
+        "appReadyWaitMs": 21.302734375,
+        "hostHandshakeMs": 52.537353515625,
+        "windowConstructorMs": 39.84521484375,
+        "loadToDomMs": 302.779052734375,
+        "domToShowMs": 25.983642578125,
+        "fcpAfterLaunchMs": 1158.800048828125,
+        "visibleMs": 1044.6684
+      },
+      {
+        "parentToElectronMs": 393.302001953125,
+        "electronToMainMarkerMs": 223.776123046875,
+        "appReadyWaitMs": 24.562255859375,
+        "hostHandshakeMs": 753.75048828125,
+        "windowConstructorMs": 40.27392578125,
+        "loadToDomMs": 126.921875,
+        "domToShowMs": 33.812744140625,
+        "fcpAfterLaunchMs": 1744.199951171875,
+        "visibleMs": 1592.3638
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 373.041015625,
+        "min": 369.52197265625,
+        "max": 659.162109375
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 223.776123046875,
+        "min": 206.62744140625,
+        "max": 709.6611328125
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 24.53466796875,
+        "min": 21.302734375,
+        "max": 27.787841796875
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 52.537353515625,
+        "min": 17.599853515625,
+        "max": 753.75048828125
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 40.27392578125,
+        "min": 38.634521484375,
+        "max": 78.160400390625
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 126.921875,
+        "min": 111.908447265625,
+        "max": 302.779052734375
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 12.53515625,
+        "min": 10.875,
+        "max": 33.812744140625
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1444.199951171875,
+        "min": 932.89990234375,
+        "max": 2376.89990234375
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 1316.6647,
+        "min": 813.1374,
+        "max": 2246.7567
+      }
+    }
+  },
+  {
+    "experiment": "renderer-limit",
+    "condition": "variant",
+    "rows": [
+      {
+        "parentToElectronMs": 425.85009765625,
+        "electronToMainMarkerMs": 227.50927734375,
+        "appReadyWaitMs": 24.9140625,
+        "hostHandshakeMs": 29.186767578125,
+        "windowConstructorMs": 45.90673828125,
+        "loadToDomMs": 430.4208984375,
+        "domToShowMs": 8.29248046875,
+        "fcpAfterLaunchMs": 1370.699951171875,
+        "visibleMs": 1222.0119
+      },
+      {
+        "parentToElectronMs": 678.81689453125,
+        "electronToMainMarkerMs": 276.4287109375,
+        "appReadyWaitMs": 29.253662109375,
+        "hostHandshakeMs": 40.873779296875,
+        "windowConstructorMs": 49.779296875,
+        "loadToDomMs": 224.547607421875,
+        "domToShowMs": 14.44775390625,
+        "fcpAfterLaunchMs": 1481.800048828125,
+        "visibleMs": 1333.2358
+      },
+      {
+        "parentToElectronMs": 378.237060546875,
+        "electronToMainMarkerMs": 226.777099609375,
+        "appReadyWaitMs": 24.10791015625,
+        "hostHandshakeMs": 36.268310546875,
+        "windowConstructorMs": 37.213623046875,
+        "loadToDomMs": 118.301513671875,
+        "domToShowMs": 37.77783203125,
+        "fcpAfterLaunchMs": 991,
+        "visibleMs": 857.5823
+      },
+      {
+        "parentToElectronMs": 374.3779296875,
+        "electronToMainMarkerMs": 241.399658203125,
+        "appReadyWaitMs": 23.114013671875,
+        "hostHandshakeMs": 366.25048828125,
+        "windowConstructorMs": 35.010986328125,
+        "loadToDomMs": 380.56689453125,
+        "domToShowMs": 28.02197265625,
+        "fcpAfterLaunchMs": 1581.199951171875,
+        "visibleMs": 1453.0064
+      },
+      {
+        "parentToElectronMs": 454.385009765625,
+        "electronToMainMarkerMs": 213.380615234375,
+        "appReadyWaitMs": 26.56396484375,
+        "hostHandshakeMs": 576.076904296875,
+        "windowConstructorMs": 47.962890625,
+        "loadToDomMs": 145.138427734375,
+        "domToShowMs": 17.291015625,
+        "fcpAfterLaunchMs": 1640.39990234375,
+        "visibleMs": 1502.1635
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 425.85009765625,
+        "min": 374.3779296875,
+        "max": 678.81689453125
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 227.50927734375,
+        "min": 213.380615234375,
+        "max": 276.4287109375
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 24.9140625,
+        "min": 23.114013671875,
+        "max": 29.253662109375
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 40.873779296875,
+        "min": 29.186767578125,
+        "max": 576.076904296875
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 45.90673828125,
+        "min": 35.010986328125,
+        "max": 49.779296875
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 224.547607421875,
+        "min": 118.301513671875,
+        "max": 430.4208984375
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 17.291015625,
+        "min": 8.29248046875,
+        "max": 37.77783203125
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1481.800048828125,
+        "min": 991,
+        "max": 1640.39990234375
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 1333.2358,
+        "min": 857.5823,
+        "max": 1502.1635
+      }
+    }
+  }
+]

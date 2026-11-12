@@ -180,6 +180,12 @@ Datos crudos, hashes del banco, generación, versión de Node, memoria libre ini
 
 - paired-hardware-off-4ed8aec3: incomplete series.
 - paired-media-router-off-2d7364a0: incomplete series.
+- paired-trace-1ce564c3: incomplete series.
+- paired-trace-1de26582: incomplete series.
+- paired-trace-4758f33d: incomplete series.
+- paired-trace-61887605: incomplete series.
+- paired-trace-d2775be4: incomplete series.
+- paired-trace-e4075fa4: incomplete series.
 - pilot-hardware-off-48769692: incomplete series.
 - pilot-hardware-off-f11da39a: pilot, not N=5.
 - pilot-trace-d570cfc4: pilot, not N=5.

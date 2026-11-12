@@ -1,0 +1,4308 @@
+{
+  "source": "9401501ea38f2e8fe65584511f27844c7efd157a",
+  "method": "Exact packaged asset byte sizes; diagnostic source rebuild module renderedLength estimates (not compressed, not additive heap). No sourcemaps, no network, no product build changed.",
+  "assets": [
+    {
+      "name": "Account-BCpyxmhx.css",
+      "bytes": 1283,
+      "sha256": "44709eaf7388e30f0e6db8933c1830d89ed06e9ce61b033dea32d57e4416f716"
+    },
+    {
+      "name": "Account-DE5Zl1mo.js",
+      "bytes": 6304,
+      "sha256": "eebf66c6f72399f06cd4b74f3a046e79ed32914336ddec6bc605fcca99e71c97"
+    },
+    {
+      "name": "Appearance-CcvCvbk-.js",
+      "bytes": 4927,
+      "sha256": "6837aaf16b03a0f12dc1be232134fe529ed0a254a92cab3ca1933b882b2068af"
+    },
+    {
+      "name": "Button-BcKoTkIw.js",
+      "bytes": 1100,
+      "sha256": "bac7a2bab4b3b94c8de65f1f3af5f3c01a31315cadef04c309156d20f71908c0"
+    },
+    {
+      "name": "calendar-runs-CFdBQxsV.js",
+      "bytes": 508,
+      "sha256": "6bcaece10394fd0684fcf469e2730703626f34712e3144d7ed57a85904b8608d"
+    },
+    {
+      "name": "CompositeRoot-CjDN3_KY.js",
+      "bytes": 4088,
+      "sha256": "3b31c008421fbdfcfd7fc38721f355164cbb066a05527e2b506faf461c758c56"
+    },
+    {
+      "name": "contract-Ct3sLB7O.js",
+      "bytes": 13658,
+      "sha256": "6022fa76be5f0f297d1925c2ad98f8f2314fff5d4778a764790a102681db0707"
+    },
+    {
+      "name": "core-offline-UyYBGoLn.js",
+      "bytes": 45238,
+      "sha256": "8300c0acdd161f53d6c014ac930cdeba7e834665b06ba6948cd06368c4ca5c0e"
+    },
+    {
+      "name": "Diagnostics-BlK1AWyX.js",
+      "bytes": 5005,
+      "sha256": "6974ac26b7c90b7e312557ac0734f980ad3369adb1d63e21bb26abffd3c15c82"
+    },
+    {
+      "name": "editor-state-BKo8sF-2.js",
+      "bytes": 26124,
+      "sha256": "92be351286652c6163b2d79bfc1781534ec0ee9c4973ffe6d6c1f3343e6e3e1b"
+    },
+    {
+      "name": "editor-state-sp5czjiI.css",
+      "bytes": 16080,
+      "sha256": "86c06863980e62abf4def729df99d6e6d3dba923891701ace45821bf09520f8a"
+    },
+    {
+      "name": "entry-9TJBZq-F.js",
+      "bytes": 78487,
+      "sha256": "8ce32402e2259f45d7a5cd586eb6797dd0b6bb592eb7f8bdafd72e76d43041ec"
+    },
+    {
+      "name": "entry-BdrbaGQs.js",
+      "bytes": 58320,
+      "sha256": "693ee6c36af60431d0724079aeda6e4aa807945fb827cb7a2ca33c31adc12573"
+    },
+    {
+      "name": "entry-BNz9hnbE.css",
+      "bytes": 18776,
+      "sha256": "cd8ce9f950de373139ec44c8b0b0040071983e2b78603cd8a859e27de02a9fca"
+    },
+    {
+      "name": "entry-BYBOzWDF.js",
+      "bytes": 163,
+      "sha256": "d2b574c1d79717a1cbbdab14eaab8cc6246dcdb0fa2f698bac810a5554b38f84"
+    },
+    {
+      "name": "entry-CTabIUq_.css",
+      "bytes": 10674,
+      "sha256": "f9d41c642f6397e10d0997f5725135d3e579347c6b40b74e28a4f28923f010df"
+    },
+    {
+      "name": "entry-CUTaCNk9.js",
+      "bytes": 36360,
+      "sha256": "e8c8df9fc41c44e25945d07d03ef23f4487bb731bfbab86b761e20e69195e9ce"
+    },
+    {
+      "name": "entry-Cwsx1j4t.js",
+      "bytes": 163,
+      "sha256": "65f66b00ce8ae575a38760b14b4abe3f13123a82efa908e0b2f7b33724a5ce99"
+    },
+    {
+      "name": "entry-D3OYA5EE.css",
+      "bytes": 6556,
+      "sha256": "8ea927b8d32a232d79217cf8c7d14cd0ee53c614b0d7981d01682c1551c4a628"
+    },
+    {
+      "name": "entry-D6O34MNI.css",
+      "bytes": 2730,
+      "sha256": "e1f39353f79c2413ab0923f64d99f8800979ffa1d79e791d4b57f304ac32e451"
+    },
+    {
+      "name": "entry-Dd7CnHzW.js",
+      "bytes": 25747,
+      "sha256": "fd9e6c674bd66d1ae91179fb0d936ee6e641b5fbab8312aeda24b114e5abd92a"
+    },
+    {
+      "name": "entry-DmH0fbAD.css",
+      "bytes": 43917,
+      "sha256": "66b6335bb8bdfb4bb3de660c343a714b37119a246fc72a236d97716cc563a173"
+    },
+    {
+      "name": "entry-DpNJgmcZ.js",
+      "bytes": 8832,
+      "sha256": "815031aa0cb6969b3a16d292dda51e4e86c4ae7caa09f3a864612fd3a3c7f9d6"
+    },
+    {
+      "name": "entry-DvRaRq7t.css",
+      "bytes": 11226,
+      "sha256": "cef31e3f9aa5de7217dcaf80bb850e8cd43273627e0caf75f98bfa445c95b519"
+    },
+    {
+      "name": "entry-x30EZ-m-.js",
+      "bytes": 24361,
+      "sha256": "e0f3b2e0f2f9123dfad7f34130921bd1ba2f99e2d36039b2ed92f216a9983521"
+    },
+    {
+      "name": "entry-YbFM86uF.js",
+      "bytes": 46,
+      "sha256": "48346a0da3ddec28948759f9fc5d692292fd0790c1c19eea36a80e8dfac289ed"
+    },
+    {
+      "name": "entry-_WU_XpPH.js",
+      "bytes": 5695,
+      "sha256": "0cd71046774094bece57a12387690e4b21e2eebfe9f015d150e4abe50c01182b"
+    },
+    {
+      "name": "es-Dyhmfu5B.js",
+      "bytes": 59632,
+      "sha256": "d86f7ab9916986317b96f2192cd0429d35a02ec92e13c4c5ef65cc1380a4462d"
+    },
+    {
+      "name": "Forms-D4H2ktMT.css",
+      "bytes": 5158,
+      "sha256": "a42daeecbea24f69d8094c5d70a2c71f6d13446b9a63c5329a601217b596c82e"
+    },
+    {
+      "name": "Forms-SZc2TjDS.js",
+      "bytes": 63584,
+      "sha256": "a3336e4d824447fe5524c7391711e3eb8fb86c4379181d5fcf24d06e8880a170"
+    },
+    {
+      "name": "General-BnN6s5Fs.js",
+      "bytes": 3439,
+      "sha256": "8942b891b113986e812978ff8bbe517034329bdfb997e34dcc5239b50ad4f340"
+    },
+    {
+      "name": "host-B6xGWm-9.js",
+      "bytes": 79015,
+      "sha256": "067cb7188b9a440d2f51d01abb0fc12eb62fe0b4b397477f2f31cf51527c1f53"
+    },
+    {
+      "name": "Host-BPkHhvtK.js",
+      "bytes": 7634,
+      "sha256": "80b02c7f88d704ac42f73ed8f52691bf6527f49fcdb2d45c36b4265c642d66ee"
+    },
+    {
+      "name": "index-B4ftF3Do.js",
+      "bytes": 406311,
+      "sha256": "f820dbd385e48b28f8bb0abe2905cc6efd312ef64ff8c55971320ae5eb4ca1e9"
+    },
+    {
+      "name": "index-DfyTIFPO.css",
+      "bytes": 80291,
+      "sha256": "6ab148a940b29d6376612860509c94d5e6aad21ea3b746967f318ec6bec96eaf"
+    },
+    {
+      "name": "Inter-400-IsXIeOlL.ttf",
+      "bytes": 49428,
+      "sha256": "68de6c5ca72566ecbef77b4928f200bc3209db8450e6d78eb03596d218839d57"
+    },
+    {
+      "name": "Inter-500-CaG2z5XM.ttf",
+      "bytes": 49452,
+      "sha256": "ddc1ed2b17bd6137d3d2be996282d045e779b3170f37393046133e4dd3243291"
+    },
+    {
+      "name": "Inter-600-DdKvOFfw.ttf",
+      "bytes": 49544,
+      "sha256": "3752f1ad27e7895daba32b9122a8c26aa42edb638e32a28db41588db14ebc15a"
+    },
+    {
+      "name": "Inter-650-CTDoNty5.ttf",
+      "bytes": 49524,
+      "sha256": "d723325fe65e64550590352441818c78a963220cc9608743a90528b28e338712"
+    },
+    {
+      "name": "Inter-700-CZ4LmGoZ.ttf",
+      "bytes": 49596,
+      "sha256": "126d9557fd3ff8961656347b8aed9df31933e839e3c40b1594843c141ae3e696"
+    },
+    {
+      "name": "Inter-750-YvMuLHGH.ttf",
+      "bytes": 49608,
+      "sha256": "c05db589aad9d989c938aae480e51598554da09bb87cf1fab6ae64b15d78f79e"
+    },
+    {
+      "name": "Inter-800-CnQ_XYWj.ttf",
+      "bytes": 49736,
+      "sha256": "a5d7976ab14aa771d4995c8e4070d81f27f3ac441ab3c10ecebb19792c1a4c12"
+    },
+    {
+      "name": "itemEquality-BrbgLKIL.js",
+      "bytes": 3094,
+      "sha256": "13f2ce268f598597ef82407f02a3dfabd896bf58b521d671629639a967f35825"
+    },
+    {
+      "name": "NotificationsState-DxGjmnNt.js",
+      "bytes": 3334,
+      "sha256": "62c643316c59407f56cff1b72704cbc8dc4c916d3be8b68ad9eef154b0f3829b"
+    },
+    {
+      "name": "Performance-CAFPA6SV.js",
+      "bytes": 851,
+      "sha256": "95641cebba88677f81cc4555ad9379e24f76adca1fdecacdb031747e6e3df605"
+    },
+    {
+      "name": "Privacy-DmySDTH1.js",
+      "bytes": 4617,
+      "sha256": "7622b080d144dbd09ccfec6558f78d783fedf3fc37e93a7b988667aafdc3893e"
+    },
+    {
+      "name": "RadioGroup-DDyGwDkf.js",
+      "bytes": 8343,
+      "sha256": "7c5aa1d0317ddbe2e5ab988043a9ff1609ceac10f56adb87c072421c3844f6b0"
+    },
+    {
+      "name": "Rajdhani-jm7qWhP6.ttf",
+      "bytes": 23468,
+      "sha256": "89be8d3d12966c2c5a491f24e5f3d6729c5181b47cc2f7d93734e2778422a199"
+    },
+    {
+      "name": "report-digest-B7trpZ8Z.js",
+      "bytes": 187,
+      "sha256": "d5cc8b436647eabed64c6957d8ed823c397f267eaeb98ff423afd58fc2a6ae3d"
+    },
+    {
+      "name": "rolldown-runtime-XKyaHtl9.js",
+      "bytes": 726,
+      "sha256": "548d1dbf321e7d2ae804fcc158b588706a7c52f8ca175de1490c6ccb4dbe55b7"
+    },
+    {
+      "name": "SectionChrome-DxQLIn0y.js",
+      "bytes": 2579,
+      "sha256": "9d87cb649bbe4202078ec915756d868ae84ac529b818b978b00a3f1d9c200f9f"
+    },
+    {
+      "name": "ShellLayout-CMiXS7s3.js",
+      "bytes": 1032,
+      "sha256": "70522400d718d949740035f4ef9ac4d4b0b2344a55033132c8d19ab306f3d4a0"
+    },
+    {
+      "name": "Shortcuts-C8m2uWcz.js",
+      "bytes": 2274,
+      "sha256": "85e71de532cdda48103806aebd73190ecb28d5ae35f72b99f46fa5f3ed69d50a"
+    },
+    {
+      "name": "SpaceMono-ClIhMTlo.ttf",
+      "bytes": 23392,
+      "sha256": "c9f1ba6b9514538b4b8ea88881a1ebe07c2792482f7e97cc79386174579a242e"
+    },
+    {
+      "name": "Specimen-DBpyw3GB.js",
+      "bytes": 5007,
+      "sha256": "fd1377cffc4f29d2e620168054ad6c385aad0fd0eefcddf525551e8bc18573fd"
+    },
+    {
+      "name": "standings-B_cAMX_Y.svg",
+      "bytes": 5709,
+      "sha256": "7707c803216ee93ef6871c3dd967daa59e3e89e706de272b7cd0e37d99841d65"
+    },
+    {
+      "name": "state-Cgo9Lvsl.js",
+      "bytes": 237,
+      "sha256": "11df38c1201ba403fa0fe9d8b7545f931c84161337f7713f8872b87fa3bfe2ee"
+    },
+    {
+      "name": "TabsList-PrZMJFFl.js",
+      "bytes": 5977,
+      "sha256": "4548fbedc9f138e4e687ec58b644e2ae95e88f591e5fcefbe2ff427401fc0bb0"
+    },
+    {
+      "name": "UiState-D4r6kmRl.js",
+      "bytes": 1497,
+      "sha256": "47cf8ce2cd2a78a762d599a847d22e958bf714d2f7c922b897c511ad4d7ede82"
+    },
+    {
+      "name": "Upcoming-C4TWEKaW.js",
+      "bytes": 1668,
+      "sha256": "dba435a4032a1d5ff2f3fc002d36689bede7c31297a76ee7fa1a034324111a6a"
+    },
+    {
+      "name": "Upcoming-D8XO3ghK.css",
+      "bytes": 2883,
+      "sha256": "dcd6829cf7e90808992308d733b79f1132bb8396caa77917df89571a11fe6325"
+    },
+    {
+      "name": "Updates-CVoIXlhO.js",
+      "bytes": 4959,
+      "sha256": "862d3f0042279541a95183d7628a13d991b0333a8506583085ae0e8d876b1644"
+    },
+    {
+      "name": "useCompositeItem-DTAc3AAg.js",
+      "bytes": 27373,
+      "sha256": "16199a817122b7860d8bc8d035643637c17d78c4787236ee75cc20f278ad603e"
+    },
+    {
+      "name": "useLabelableId-BafnNTpP.js",
+      "bytes": 2609,
+      "sha256": "e04f06b1dc8697d68886e4d0c4a16860ea7fcb1ce21efaf8656612a109a8910a"
+    },
+    {
+      "name": "useMutation-BW-x9dif.js",
+      "bytes": 5815,
+      "sha256": "583c066c54d8edc21217eaddd1d0c89f1eb107443445dcfb7d6b12721d30a9cf"
+    },
+    {
+      "name": "useQuery-pBAlM106.js",
+      "bytes": 22712,
+      "sha256": "84fff1ade928d6d776ce17644af85d644d7f7a790ffb61f6340bd6874465d4c0"
+    },
+    {
+      "name": "valueToPercent-DBoYgKZH.js",
+      "bytes": 163396,
+      "sha256": "4439194d1537cbf6785365d7f0361b62d89a49b0a78a4367d95e79f8ffe2c50f"
+    }
+  ],
+  "chunks": [
+    {
+      "fileName": "assets/index-B4RL4UI4.js",
+      "bytes": 405376,
+      "isEntry": true,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/useMutation-C-7Ye1je.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/useCompositeItem-DTAc3AAg.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/core-offline-UyYBGoLn.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/UiState-D4r6kmRl.js",
+        "assets/NotificationsState-DfxA1eCZ.js",
+        "assets/ShellLayout-CMiXS7s3.js",
+        "assets/itemEquality-BrbgLKIL.js",
+        "assets/useLabelableId-BafnNTpP.js",
+        "assets/CompositeRoot-CjDN3_KY.js",
+        "assets/RadioGroup-DDyGwDkf.js"
+      ],
+      "dynamicImports": [
+        "assets/entry-VcymmVYr.js",
+        "assets/entry-BrQQ4N-Q.js",
+        "assets/entry-BBZXc7Cw.js",
+        "assets/entry-CkBe0GNi.js",
+        "assets/entry-CxdCQ9Hp.js",
+        "assets/entry-B9AnLgLI.js",
+        "assets/entry-BP0u0bpc.js",
+        "assets/entry-CVuBaX3L.js",
+        "assets/entry-BSLZtKxx.js",
+        "assets/entry-Dq1avEod.js",
+        "assets/Specimen-CW9846mf.js"
+      ],
+      "modules": [
+        {
+          "id": "\u0000vite/modulepreload-polyfill.js",
+          "renderedLength": 1185
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/csp-provider/CSPProvider.mjs",
+          "renderedLength": 564
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/mutationCache.js",
+          "renderedLength": 3020
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/queryCache.js",
+          "renderedLength": 2023
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/queryClient.js",
+          "renderedLength": 8543
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/scheduler/cjs/scheduler.production.js",
+          "renderedLength": 9113
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/scheduler/index.js",
+          "renderedLength": 237
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/react-dom/cjs/react-dom-client.production.js",
+          "renderedLength": 529605
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/react-dom/client.js",
+          "renderedLength": 522
+        },
+        {
+          "id": "<source>/src/renderer/i18n/access.es.ts",
+          "renderedLength": 2354
+        },
+        {
+          "id": "<source>/src/renderer/bridge/account-secrets.ts",
+          "renderedLength": 372
+        },
+        {
+          "id": "<source>/src/renderer/app/AccountState.tsx",
+          "renderedLength": 4223
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/filter.mjs",
+          "renderedLength": 1484
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useInitialLiveRegionTextMutation.mjs",
+          "renderedLength": 1296
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/scrollable.mjs",
+          "renderedLength": 407
+        },
+        {
+          "id": "<source>/src/renderer/ui/AccessForm.tsx",
+          "renderedLength": 1188
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/otp-field/root/OTPFieldRootContext.mjs",
+          "renderedLength": 522
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/otp-field/utils/stateAttributesMapping.mjs",
+          "renderedLength": 351
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/otp-field/utils/otp.mjs",
+          "renderedLength": 2560
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/otp-field/root/OTPFieldRoot.mjs",
+          "renderedLength": 9230
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/otp-field/input/OTPFieldInput.mjs",
+          "renderedLength": 6335
+        },
+        {
+          "id": "<source>/src/renderer/ui/OtpField.tsx",
+          "renderedLength": 1761
+        },
+        {
+          "id": "<source>/src/renderer/ui/useSecretInput.ts",
+          "renderedLength": 971
+        },
+        {
+          "id": "<source>/src/renderer/screens/account/EmailForm.tsx",
+          "renderedLength": 8036
+        },
+        {
+          "id": "<source>/src/renderer/ui/gate.css",
+          "renderedLength": 174
+        },
+        {
+          "id": "<source>/src/renderer/ui/GateFrame.tsx",
+          "renderedLength": 1163
+        },
+        {
+          "id": "<source>/src/renderer/ui/access-boundary.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/AccessBoundary.tsx",
+          "renderedLength": 1566
+        },
+        {
+          "id": "<source>/src/renderer/i18n/window.es.ts",
+          "renderedLength": 301
+        },
+        {
+          "id": "<source>/src/renderer/ui/WindowButtons.tsx",
+          "renderedLength": 1179
+        },
+        {
+          "id": "<source>/src/renderer/app/WindowControls.tsx",
+          "renderedLength": 1310
+        },
+        {
+          "id": "<source>/src/renderer/screens/account/access.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/app/AccountGate.tsx",
+          "renderedLength": 6957
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/avatar/root/AvatarRootContext.mjs",
+          "renderedLength": 388
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/avatar/root/stateAttributesMapping.mjs",
+          "renderedLength": 210
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/avatar/root/AvatarRoot.mjs",
+          "renderedLength": 882
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/avatar/image/useImageLoadingStatus.mjs",
+          "renderedLength": 1174
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/avatar/image/AvatarImage.mjs",
+          "renderedLength": 3084
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/avatar/fallback/AvatarFallback.mjs",
+          "renderedLength": 937
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/progress/root/ProgressRootContext.mjs",
+          "renderedLength": 398
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/progress/root/ProgressRootDataAttributes.mjs",
+          "renderedLength": 257
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/progress/root/stateAttributesMapping.mjs",
+          "renderedLength": 393
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/progress/root/ProgressRoot.mjs",
+          "renderedLength": 2178
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/progress/track/ProgressTrack.mjs",
+          "renderedLength": 531
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/progress/indicator/ProgressIndicator.mjs",
+          "renderedLength": 729
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/progress/label/ProgressLabel.mjs",
+          "renderedLength": 650
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/virtual-core/dist/esm/lazy-measurements.js",
+          "renderedLength": 914
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/virtual-core/dist/esm/utils.js",
+          "renderedLength": 1180
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/virtual-core/dist/esm/scroll-classifier.js",
+          "renderedLength": 2418
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/virtual-core/dist/esm/ios-gesture.js",
+          "renderedLength": 3836
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/virtual-core/dist/esm/index.js",
+          "renderedLength": 48956
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-virtual/dist/esm/index.js",
+          "renderedLength": 4073
+        },
+        {
+          "id": "<source>/src/renderer/ui/TrackedCaps.tsx",
+          "renderedLength": 826
+        },
+        {
+          "id": "<source>/src/renderer/ui/Data.tsx",
+          "renderedLength": 6562
+        },
+        {
+          "id": "<source>/src/renderer/ui/sidebar-expanded.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/gridNavigation.mjs",
+          "renderedLength": 591
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/root/ComboboxRootContext.mjs",
+          "renderedLength": 1285
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/store.mjs",
+          "renderedLength": 2642
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/root/utils/index.mjs",
+          "renderedLength": 334
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/root/utils/useFilter.mjs",
+          "renderedLength": 165
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/root/utils/constants.mjs",
+          "renderedLength": 242
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/items/itemCollection.mjs",
+          "renderedLength": 447
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/root/AriaCombobox.mjs",
+          "renderedLength": 35238
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/root/ComboboxRoot.mjs",
+          "renderedLength": 530
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/input/ComboboxInputDataAttributes.mjs",
+          "renderedLength": 271
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/utils/stateAttributesMapping.mjs",
+          "renderedLength": 364
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/chips/ComboboxChipsContext.mjs",
+          "renderedLength": 311
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/positioner/ComboboxPositionerContext.mjs",
+          "renderedLength": 449
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/utils/ComboboxInternalDismissButton.mjs",
+          "renderedLength": 844
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/utils/parts.mjs",
+          "renderedLength": 879
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/input/ComboboxInput.mjs",
+          "renderedLength": 10338
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/collection/GroupCollectionContext.mjs",
+          "renderedLength": 322
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/collection/ComboboxCollection.mjs",
+          "renderedLength": 514
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/list/ComboboxList.mjs",
+          "renderedLength": 2568
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/item/ComboboxItemContext.mjs",
+          "renderedLength": 214
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/row/ComboboxRowContext.mjs",
+          "renderedLength": 300
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/item/ComboboxItem.mjs",
+          "renderedLength": 5278
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/combobox/empty/ComboboxEmpty.mjs",
+          "renderedLength": 806
+        },
+        {
+          "id": "<source>/src/renderer/ui/Frame.tsx",
+          "renderedLength": 8260
+        },
+        {
+          "id": "<source>/src/renderer/app/HostIssue.tsx",
+          "renderedLength": 693
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/photo-crop.ts",
+          "renderedLength": 1540
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/photo-preflight.ts",
+          "renderedLength": 2037
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/pilot-photo.ts",
+          "renderedLength": 1556
+        },
+        {
+          "id": "<source>/src/renderer/app/PilotState.tsx",
+          "renderedLength": 6437
+        },
+        {
+          "id": "<source>/src/renderer/i18n/privacy-gate.es.ts",
+          "renderedLength": 1518
+        },
+        {
+          "id": "<source>/src/renderer/ui/PrivacyQuestion.tsx",
+          "renderedLength": 3351
+        },
+        {
+          "id": "<source>/src/renderer/app/PrivacyGate.tsx",
+          "renderedLength": 3625
+        },
+        {
+          "id": "<source>/design/tokens.json",
+          "renderedLength": 41559
+        },
+        {
+          "id": "<source>/src/renderer/design/appearance.ts",
+          "renderedLength": 2476
+        },
+        {
+          "id": "<source>/src/renderer/app/SettingsState.tsx",
+          "renderedLength": 3776
+        },
+        {
+          "id": "<source>/src/renderer/i18n/account.es.ts",
+          "renderedLength": 5605
+        },
+        {
+          "id": "<source>/src/renderer/i18n/upcoming.ts",
+          "renderedLength": 1475
+        },
+        {
+          "id": "<source>/src/renderer/ui/NotificationPopover.tsx",
+          "renderedLength": 874
+        },
+        {
+          "id": "<source>/src/renderer/ui/notifications.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/NotificationsLayout.tsx",
+          "renderedLength": 5645
+        },
+        {
+          "id": "<source>/src/renderer/screens/notifications/Notifications.tsx",
+          "renderedLength": 1697
+        },
+        {
+          "id": "<source>/src/renderer/screens/notifications/NotificationsPopover.tsx",
+          "renderedLength": 501
+        },
+        {
+          "id": "<source>/src/renderer/ui/initials.ts",
+          "renderedLength": 297
+        },
+        {
+          "id": "<source>/src/renderer/ui/SaveWarnings.tsx",
+          "renderedLength": 1483
+        },
+        {
+          "id": "<source>/src/renderer/ui/ZoomControl.tsx",
+          "renderedLength": 1357
+        },
+        {
+          "id": "<source>/src/renderer/app/sections.ts",
+          "renderedLength": 358
+        },
+        {
+          "id": "<source>/src/renderer/app/navigation.ts",
+          "renderedLength": 1593
+        },
+        {
+          "id": "<source>/src/renderer/app/ScreenRegistry.tsx",
+          "renderedLength": 1969
+        },
+        {
+          "id": "<source>/src/renderer/app/Shell.tsx",
+          "renderedLength": 16604
+        },
+        {
+          "id": "<source>/src/renderer/i18n/testing-discard.ts",
+          "renderedLength": 560
+        },
+        {
+          "id": "<source>/src/renderer/ui/DiscardReportDialog.tsx",
+          "renderedLength": 1565
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/es.ts",
+          "renderedLength": 3975
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/TestingRequests.ts",
+          "renderedLength": 893
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/TriageState.ts",
+          "renderedLength": 3455
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/ReportsState.tsx",
+          "renderedLength": 14908
+        },
+        {
+          "id": "<source>/src/renderer/design/base.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/ui.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/main.tsx",
+          "renderedLength": 2592
+        },
+        {
+          "id": "<source>/src/renderer/index.html",
+          "renderedLength": 0
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Account-C74IOm5Y.js",
+      "bytes": 6304,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/core-offline-UyYBGoLn.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/UiState-D4r6kmRl.js",
+        "assets/entry-CVuBaX3L.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/ShellLayout-CMiXS7s3.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/ui/pilot-cropper.css",
+          "renderedLength": 175
+        },
+        {
+          "id": "<source>/src/renderer/ui/PilotCropper.tsx",
+          "renderedLength": 5908
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/Account.tsx",
+          "renderedLength": 6049
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Appearance-DZWImNuo.js",
+      "bytes": 4927,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/RadioGroup-DDyGwDkf.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/ui/PalettePicker.tsx",
+          "renderedLength": 1440
+        },
+        {
+          "id": "<source>/src/renderer/ui/SchemePicker.tsx",
+          "renderedLength": 1948
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/Appearance.tsx",
+          "renderedLength": 5712
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Button-BcKoTkIw.js",
+      "bytes": 1100,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js",
+        "assets/valueToPercent-DBoYgKZH.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/button/Button.mjs",
+          "renderedLength": 699
+        },
+        {
+          "id": "<source>/src/renderer/ui/Button.tsx",
+          "renderedLength": 1165
+        }
+      ]
+    },
+    {
+      "fileName": "assets/CompositeRoot-CjDN3_KY.js",
+      "bytes": 4088,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useControlled.mjs",
+          "renderedLength": 589
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/isElementDisabled.mjs",
+          "renderedLength": 275
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/constants.mjs",
+          "renderedLength": 192
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/root/useCompositeRoot.mjs",
+          "renderedLength": 7406
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/root/CompositeRoot.mjs",
+          "renderedLength": 1892
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Diagnostics-DeLfi7cX.js",
+      "bytes": 5005,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/entry-CVuBaX3L.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/state-yWut36mv.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/ui/DiagnosticsPresentation.tsx",
+          "renderedLength": 5102
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/Diagnostics.tsx",
+          "renderedLength": 3886
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Forms-SZc2TjDS.js",
+      "bytes": 63584,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/itemEquality-BrbgLKIL.js",
+        "assets/CompositeRoot-CjDN3_KY.js",
+        "assets/useLabelableId-BafnNTpP.js",
+        "assets/RadioGroup-DDyGwDkf.js",
+        "assets/TabsList-PrZMJFFl.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/csp-context/CSPContext.mjs",
+          "renderedLength": 436
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/usePreviousValue.mjs",
+          "renderedLength": 420
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/getCssDimensions.mjs",
+          "renderedLength": 648
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/getDefaultFormSubmitter.mjs",
+          "renderedLength": 426
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/checkbox/root/CheckboxRootDataAttributes.mjs",
+          "renderedLength": 213
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/checkbox/utils/getCheckboxStateAttributesMapping.mjs",
+          "renderedLength": 385
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/checkbox-group/CheckboxGroupContext.mjs",
+          "renderedLength": 311
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/checkbox/root/CheckboxRootContext.mjs",
+          "renderedLength": 398
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/checkbox/root/CheckboxRoot.mjs",
+          "renderedLength": 8710
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/checkbox/indicator/CheckboxIndicator.mjs",
+          "renderedLength": 1191
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/labelable-provider/LabelableProvider.mjs",
+          "renderedLength": 2103
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/labelable-provider/useLabel.mjs",
+          "renderedLength": 1775
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/field-register-control/useFieldControlRegistration.mjs",
+          "renderedLength": 3601
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/root/FieldRoot.mjs",
+          "renderedLength": 4347
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/label/FieldLabel.mjs",
+          "renderedLength": 916
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/error/FieldError.mjs",
+          "renderedLength": 2750
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/description/FieldDescription.mjs",
+          "renderedLength": 1002
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/control/FieldControl.mjs",
+          "renderedLength": 3807
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/radio/indicator/RadioIndicator.mjs",
+          "renderedLength": 1057
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/root/SelectRootContext.mjs",
+          "renderedLength": 648
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/store.mjs",
+          "renderedLength": 2244
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/scrollEdges.mjs",
+          "renderedLength": 720
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/root/SelectRoot.mjs",
+          "renderedLength": 11969
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/resolveAriaLabelledBy.mjs",
+          "renderedLength": 313
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/trigger/SelectTriggerDataAttributes.mjs",
+          "renderedLength": 236
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/trigger/SelectTrigger.mjs",
+          "renderedLength": 4602
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/value/SelectValue.mjs",
+          "renderedLength": 1498
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/icon/SelectIcon.mjs",
+          "renderedLength": 584
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/portal/SelectPortal.mjs",
+          "renderedLength": 531
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/positioner/SelectPositionerContext.mjs",
+          "renderedLength": 408
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/popup/utils.mjs",
+          "renderedLength": 351
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/positioner/SelectPositioner.mjs",
+          "renderedLength": 5333
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/styles.mjs",
+          "renderedLength": 562
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/positioner/SelectPositionerCssVars.mjs",
+          "renderedLength": 190
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/popup/SelectPopup.mjs",
+          "renderedLength": 13994
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/list/SelectList.mjs",
+          "renderedLength": 1242
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/item/SelectItemContext.mjs",
+          "renderedLength": 378
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/item/SelectItem.mjs",
+          "renderedLength": 5445
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/ItemIndicator.mjs",
+          "renderedLength": 946
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/item-indicator/SelectItemIndicator.mjs",
+          "renderedLength": 507
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/select/item-text/SelectItemText.mjs",
+          "renderedLength": 861
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/utils/asc.mjs",
+          "renderedLength": 159
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/utils/getSliderValue.mjs",
+          "renderedLength": 433
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/utils/validateMinimumDistance.mjs",
+          "renderedLength": 443
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/root/stateAttributesMapping.mjs",
+          "renderedLength": 383
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/root/SliderRootContext.mjs",
+          "renderedLength": 388
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/root/SliderRoot.mjs",
+          "renderedLength": 6983
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/label/SliderLabel.mjs",
+          "renderedLength": 1223
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/value/SliderValue.mjs",
+          "renderedLength": 1058
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/usePressAndHold.mjs",
+          "renderedLength": 237
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/utils/getMidpoint.mjs",
+          "renderedLength": 300
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/utils/roundValueToStep.mjs",
+          "renderedLength": 722
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/utils/getPushedThumbValues.mjs",
+          "renderedLength": 1547
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/utils/resolveThumbCollision.mjs",
+          "renderedLength": 3520
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/control/SliderControl.mjs",
+          "renderedLength": 12032
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/track/SliderTrack.mjs",
+          "renderedLength": 558
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/hydration.mjs",
+          "renderedLength": 647
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/PrehydrationScript.mjs",
+          "renderedLength": 428
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/thumb/SliderThumbDataAttributes.mjs",
+          "renderedLength": 171
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/thumb/SliderThumb.mjs",
+          "renderedLength": 10143
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/slider/indicator/SliderIndicator.mjs",
+          "renderedLength": 1860
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/switch/root/SwitchRootContext.mjs",
+          "renderedLength": 388
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/switch/root/SwitchRootDataAttributes.mjs",
+          "renderedLength": 205
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/switch/stateAttributesMapping.mjs",
+          "renderedLength": 286
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/switch/root/SwitchRoot.mjs",
+          "renderedLength": 4392
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/switch/thumb/SwitchThumb.mjs",
+          "renderedLength": 512
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/indicator/TabsIndicatorCssVars.mjs",
+          "renderedLength": 396
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/indicator/TabsIndicator.mjs",
+          "renderedLength": 5288
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/panel/TabsPanelDataAttributes.mjs",
+          "renderedLength": 235
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/panel/TabsPanel.mjs",
+          "renderedLength": 1720
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toggle-group/ToggleGroupContext.mjs",
+          "renderedLength": 301
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toggle/Toggle.mjs",
+          "renderedLength": 1931
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toolbar/group/ToolbarGroupContext.mjs",
+          "renderedLength": 306
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toggle-group/ToggleGroup.mjs",
+          "renderedLength": 2285
+        },
+        {
+          "id": "<source>/src/renderer/ui/appearance-controls.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/Forms.tsx",
+          "renderedLength": 8743
+        }
+      ]
+    },
+    {
+      "fileName": "assets/General-XOHU6Rgn.js",
+      "bytes": 3439,
+      "isEntry": false,
+      "imports": [
+        "assets/useMutation-C-7Ye1je.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/valueToPercent-DBoYgKZH.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/screens/settings/General.tsx",
+          "renderedLength": 5506
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Host-ccyZROyU.js",
+      "bytes": 7264,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/core-offline-UyYBGoLn.js",
+        "assets/contract-Ct3sLB7O.js"
+      ],
+      "dynamicImports": [
+        "assets/host-B6xGWm-9.js"
+      ],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js",
+          "renderedLength": 844
+        },
+        {
+          "id": "<source>/src/renderer/bridge/request-deadlines.ts",
+          "renderedLength": 224
+        },
+        {
+          "id": "\u0000vite/preload-helper.js",
+          "renderedLength": 3222
+        },
+        {
+          "id": "<source>/src/renderer/bridge/client.ts",
+          "renderedLength": 6259
+        },
+        {
+          "id": "<source>/src/renderer/app/Host.tsx",
+          "renderedLength": 2075
+        }
+      ]
+    },
+    {
+      "fileName": "assets/NotificationsState-DfxA1eCZ.js",
+      "bytes": 3334,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/UiState-D4r6kmRl.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/contract-Ct3sLB7O.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/notifications.ts",
+          "renderedLength": 1245
+        },
+        {
+          "id": "<source>/src/renderer/screens/notifications/center.ts",
+          "renderedLength": 2003
+        },
+        {
+          "id": "<source>/src/renderer/screens/notifications/NotificationsState.tsx",
+          "renderedLength": 1958
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Performance-C2ELISry.js",
+      "bytes": 851,
+      "isEntry": false,
+      "imports": [
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/UiState-D4r6kmRl.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/entry-CVuBaX3L.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/screens/settings/Performance.tsx",
+          "renderedLength": 1236
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Privacy-B92tqKhf.js",
+      "bytes": 4617,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/useMutation-C-7Ye1je.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/entry-CVuBaX3L.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/ShellLayout-CMiXS7s3.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/screens/settings/Privacy.tsx",
+          "renderedLength": 7738
+        }
+      ]
+    },
+    {
+      "fileName": "assets/RadioGroup-DDyGwDkf.js",
+      "bytes": 8343,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/CompositeRoot-CjDN3_KY.js",
+        "assets/useLabelableId-BafnNTpP.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/item/FieldItemContext.mjs",
+          "renderedLength": 368
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/labelable-provider/useAriaLabelledBy.mjs",
+          "renderedLength": 1594
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/fieldset/root/FieldsetRootContext.mjs",
+          "renderedLength": 465
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/utils/getCombinedFieldValidityData.mjs",
+          "renderedLength": 331
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/root/useFieldValidation.mjs",
+          "renderedLength": 7462
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/radio/root/RadioRootDataAttributes.mjs",
+          "renderedLength": 203
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/radio/utils/stateAttributesMapping.mjs",
+          "renderedLength": 318
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/radio-group/RadioGroupContext.mjs",
+          "renderedLength": 296
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/radio/root/RadioRootContext.mjs",
+          "renderedLength": 377
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/radio/root/RadioRoot.mjs",
+          "renderedLength": 4977
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/radio-group/RadioGroup.mjs",
+          "renderedLength": 4981
+        }
+      ]
+    },
+    {
+      "fileName": "assets/SectionChrome-DxQLIn0y.js",
+      "bytes": 2579,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js",
+        "assets/TabsList-PrZMJFFl.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/shell.es.ts",
+          "renderedLength": 721
+        },
+        {
+          "id": "<source>/src/renderer/app/SectionChrome.tsx",
+          "renderedLength": 3853
+        }
+      ]
+    },
+    {
+      "fileName": "assets/ShellLayout-CMiXS7s3.js",
+      "bytes": 1032,
+      "isEntry": false,
+      "imports": [
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/es-Dyhmfu5B.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/ui/ShellLayout.tsx",
+          "renderedLength": 1915
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Shortcuts-C2MeI3pD.js",
+      "bytes": 2274,
+      "isEntry": false,
+      "imports": [
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/UiState-D4r6kmRl.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/entry-CVuBaX3L.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/screens/settings/Shortcuts.tsx",
+          "renderedLength": 3635
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Specimen-CW9846mf.js",
+      "bytes": 5007,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/valueToPercent-DBoYgKZH.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/app/Specimen.tsx",
+          "renderedLength": 10950
+        }
+      ]
+    },
+    {
+      "fileName": "assets/TabsList-PrZMJFFl.js",
+      "bytes": 5977,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js",
+        "assets/CompositeRoot-CjDN3_KY.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/root/TabsRootContext.mjs",
+          "renderedLength": 442
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/root/TabsRootDataAttributes.mjs",
+          "renderedLength": 192
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/root/stateAttributesMapping.mjs",
+          "renderedLength": 241
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/root/TabsRoot.mjs",
+          "renderedLength": 8017
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/list/TabsListContext.mjs",
+          "renderedLength": 378
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/tab/TabsTab.mjs",
+          "renderedLength": 3613
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tabs/list/TabsList.mjs",
+          "renderedLength": 2940
+        }
+      ]
+    },
+    {
+      "fileName": "assets/UiState-D4r6kmRl.js",
+      "bytes": 1497,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/zustand/esm/vanilla.mjs",
+          "renderedLength": 1124
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/zustand/esm/react.mjs",
+          "renderedLength": 414
+        },
+        {
+          "id": "<source>/src/renderer/app/UiState.tsx",
+          "renderedLength": 1531
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Upcoming-DORqbL_C.js",
+      "bytes": 1668,
+      "isEntry": false,
+      "imports": [
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/UiState-D4r6kmRl.js",
+        "assets/es-Dyhmfu5B.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/ui/upcoming.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/UpcomingLayout.tsx",
+          "renderedLength": 2833
+        },
+        {
+          "id": "<source>/src/renderer/screens/upcoming/Upcoming.tsx",
+          "renderedLength": 495
+        }
+      ]
+    },
+    {
+      "fileName": "assets/Updates-FKkAkWy8.js",
+      "bytes": 4959,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/useMutation-C-7Ye1je.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/entry-CVuBaX3L.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/ui/UpdatesPresentation.tsx",
+          "renderedLength": 4399
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/Updates.tsx",
+          "renderedLength": 4106
+        }
+      ]
+    },
+    {
+      "fileName": "assets/calendar-runs-CFdBQxsV.js",
+      "bytes": 508,
+      "isEntry": false,
+      "imports": [],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/mock/calendar-runs.ts",
+          "renderedLength": 824
+        }
+      ]
+    },
+    {
+      "fileName": "assets/contract-Ct3sLB7O.js",
+      "bytes": 13658,
+      "isEntry": false,
+      "imports": [],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/contract/generated/account.ts",
+          "renderedLength": 1315
+        },
+        {
+          "id": "<source>/src/contract/generated/calendar.ts",
+          "renderedLength": 1026
+        },
+        {
+          "id": "<source>/src/contract/generated/diagnostics.ts",
+          "renderedLength": 373
+        },
+        {
+          "id": "<source>/src/contract/generated/home.ts",
+          "renderedLength": 1487
+        },
+        {
+          "id": "<source>/src/contract/generated/launcher.ts",
+          "renderedLength": 1137
+        },
+        {
+          "id": "<source>/src/contract/generated/notifications.ts",
+          "renderedLength": 407
+        },
+        {
+          "id": "<source>/src/contract/generated/onboarding.ts",
+          "renderedLength": 512
+        },
+        {
+          "id": "<source>/src/contract/generated/pilot.ts",
+          "renderedLength": 3616
+        },
+        {
+          "id": "<source>/src/contract/generated/privacy.ts",
+          "renderedLength": 311
+        },
+        {
+          "id": "<source>/src/contract/generated/report_local.ts",
+          "renderedLength": 610
+        },
+        {
+          "id": "<source>/src/contract/generated/roadmap.ts",
+          "renderedLength": 234
+        },
+        {
+          "id": "<source>/src/contract/generated/settings.ts",
+          "renderedLength": 1074
+        },
+        {
+          "id": "<source>/src/contract/generated/shortcuts.ts",
+          "renderedLength": 238
+        },
+        {
+          "id": "<source>/src/contract/generated/studio.ts",
+          "renderedLength": 5738
+        },
+        {
+          "id": "<source>/src/contract/generated/testing.ts",
+          "renderedLength": 1620
+        },
+        {
+          "id": "<source>/src/contract/generated/transport.ts",
+          "renderedLength": 240
+        },
+        {
+          "id": "<source>/src/contract/generated/triage.ts",
+          "renderedLength": 449
+        },
+        {
+          "id": "<source>/src/contract/generated/updates.ts",
+          "renderedLength": 505
+        },
+        {
+          "id": "<source>/src/contract/generated/window.ts",
+          "renderedLength": 212
+        },
+        {
+          "id": "<source>/src/contract/generated/contract.ts",
+          "renderedLength": 675
+        }
+      ]
+    },
+    {
+      "fileName": "assets/core-offline-UyYBGoLn.js",
+      "bytes": 45238,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/contract-Ct3sLB7O.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/contract/validation-common.ts",
+          "renderedLength": 571
+        },
+        {
+          "id": "<source>/src/contract/modules/account.ts",
+          "renderedLength": 4726
+        },
+        {
+          "id": "<source>/src/contract/apps-validation.ts",
+          "renderedLength": 3078
+        },
+        {
+          "id": "<source>/src/contract/calendar-common.ts",
+          "renderedLength": 781
+        },
+        {
+          "id": "<source>/src/contract/calendar-config-validation.ts",
+          "renderedLength": 1840
+        },
+        {
+          "id": "<source>/src/contract/calendar-history-validation.ts",
+          "renderedLength": 1042
+        },
+        {
+          "id": "<source>/src/contract/modules/calendar.ts",
+          "renderedLength": 5133
+        },
+        {
+          "id": "<source>/src/contract/core-validation.ts",
+          "renderedLength": 653
+        },
+        {
+          "id": "<source>/src/contract/privacy-validation.ts",
+          "renderedLength": 1465
+        },
+        {
+          "id": "<source>/src/contract/modules/diagnostics.ts",
+          "renderedLength": 695
+        },
+        {
+          "id": "<source>/src/contract/modules/home.ts",
+          "renderedLength": 3052
+        },
+        {
+          "id": "<source>/src/contract/launcher-validation.ts",
+          "renderedLength": 2749
+        },
+        {
+          "id": "<source>/src/contract/profile-actions.ts",
+          "renderedLength": 1902
+        },
+        {
+          "id": "<source>/src/contract/profile-validation.ts",
+          "renderedLength": 2473
+        },
+        {
+          "id": "<source>/src/contract/modules/launcher.ts",
+          "renderedLength": 2282
+        },
+        {
+          "id": "<source>/src/contract/modules/notifications.ts",
+          "renderedLength": 607
+        },
+        {
+          "id": "<source>/src/contract/modules/onboarding.ts",
+          "renderedLength": 2697
+        },
+        {
+          "id": "<source>/src/contract/pilot-validation.ts",
+          "renderedLength": 1711
+        },
+        {
+          "id": "<source>/src/contract/modules/pilot.ts",
+          "renderedLength": 729
+        },
+        {
+          "id": "<source>/src/contract/modules/privacy.ts",
+          "renderedLength": 1427
+        },
+        {
+          "id": "<source>/src/contract/testing-validation.ts",
+          "renderedLength": 4588
+        },
+        {
+          "id": "<source>/src/contract/report-local-validation.ts",
+          "renderedLength": 934
+        },
+        {
+          "id": "<source>/src/contract/modules/report_local.ts",
+          "renderedLength": 1047
+        },
+        {
+          "id": "<source>/src/contract/roadmap-validation.ts",
+          "renderedLength": 993
+        },
+        {
+          "id": "<source>/src/contract/modules/roadmap.ts",
+          "renderedLength": 565
+        },
+        {
+          "id": "<source>/src/contract/settings-validation.ts",
+          "renderedLength": 3393
+        },
+        {
+          "id": "<source>/src/contract/modules/settings.ts",
+          "renderedLength": 871
+        },
+        {
+          "id": "<source>/src/contract/modules/shortcuts.ts",
+          "renderedLength": 957
+        },
+        {
+          "id": "<source>/src/contract/modules/studio.ts",
+          "renderedLength": 4076
+        },
+        {
+          "id": "<source>/src/contract/modules/testing.ts",
+          "renderedLength": 2363
+        },
+        {
+          "id": "<source>/src/contract/modules/transport.ts",
+          "renderedLength": 1050
+        },
+        {
+          "id": "<source>/src/contract/triage-validation.ts",
+          "renderedLength": 5973
+        },
+        {
+          "id": "<source>/src/contract/modules/triage.ts",
+          "renderedLength": 685
+        },
+        {
+          "id": "<source>/src/contract/updates-validation.ts",
+          "renderedLength": 1627
+        },
+        {
+          "id": "<source>/src/contract/modules/updates.ts",
+          "renderedLength": 761
+        },
+        {
+          "id": "<source>/src/contract/modules/window.ts",
+          "renderedLength": 703
+        },
+        {
+          "id": "<source>/src/contract/generated/validators.ts",
+          "renderedLength": 494
+        },
+        {
+          "id": "<source>/src/contract/validation.ts",
+          "renderedLength": 3139
+        },
+        {
+          "id": "<source>/fixtures/core-offline.json",
+          "renderedLength": 425
+        }
+      ]
+    },
+    {
+      "fileName": "assets/editor-state-CA0hFnDV.js",
+      "bytes": 26124,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/useCompositeItem-DTAc3AAg.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/core-offline-UyYBGoLn.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/state-yWut36mv.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/profile-editor.ts",
+          "renderedLength": 3729
+        },
+        {
+          "id": "<source>/src/renderer/i18n/launcher.ts",
+          "renderedLength": 2696
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/generated/circuit.ts",
+          "renderedLength": 641
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/context-menu/root/ContextMenuRoot.mjs",
+          "renderedLength": 1202
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/context-menu/trigger/ContextMenuTrigger.mjs",
+          "renderedLength": 4562
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/context-menu/positioner/ContextMenuPositioner.mjs",
+          "renderedLength": 194
+        },
+        {
+          "id": "<source>/src/renderer/i18n/launcher-actions.ts",
+          "renderedLength": 959
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/applications.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/ProfileActions.tsx",
+          "renderedLength": 3327
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/profiles.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/Profiles.tsx",
+          "renderedLength": 9385
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/editor.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/ProfileEditor.tsx",
+          "renderedLength": 15967
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/profile-actions.tsx",
+          "renderedLength": 2182
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/editor-state.tsx",
+          "renderedLength": 3515
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-B9AnLgLI.js",
+      "bytes": 46,
+      "isEntry": false,
+      "imports": [
+        "assets/index-B4RL4UI4.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/screens/notifications/entry.tsx",
+          "renderedLength": 0
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-BBZXc7Cw.js",
+      "bytes": 163,
+      "isEntry": false,
+      "imports": [
+        "assets/Upcoming-DORqbL_C.js",
+        "assets/es-Dyhmfu5B.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/screens/engineer/entry.tsx",
+          "renderedLength": 274
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-BP0u0bpc.js",
+      "bytes": 5695,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/contract-Ct3sLB7O.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/roadmap.ts",
+          "renderedLength": 1265
+        },
+        {
+          "id": "<source>/src/renderer/ui/roadmap.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/RoadmapLayout.tsx",
+          "renderedLength": 5667
+        },
+        {
+          "id": "<source>/src/renderer/screens/roadmap/poll.ts",
+          "renderedLength": 1455
+        },
+        {
+          "id": "<source>/src/renderer/screens/roadmap/Roadmap.tsx",
+          "renderedLength": 1738
+        },
+        {
+          "id": "<source>/src/renderer/screens/roadmap/entry.tsx",
+          "renderedLength": 0
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-BSLZtKxx.js",
+      "bytes": 163,
+      "isEntry": false,
+      "imports": [
+        "assets/Upcoming-DORqbL_C.js",
+        "assets/es-Dyhmfu5B.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/screens/strategy/entry.tsx",
+          "renderedLength": 274
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-BrQQ4N-Q.js",
+      "bytes": 58334,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/state-yWut36mv.js"
+      ],
+      "dynamicImports": [
+        "assets/calendar-runs-CFdBQxsV.js"
+      ],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/calendar.ts",
+          "renderedLength": 6417
+        },
+        {
+          "id": "<source>/src/renderer/i18n/calendarEvents.ts",
+          "renderedLength": 1305
+        },
+        {
+          "id": "<source>/src/renderer/ui/calendarDate.ts",
+          "renderedLength": 1611
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/schedule.ts",
+          "renderedLength": 2596
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/rows.ts",
+          "renderedLength": 3836
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/events.ts",
+          "renderedLength": 1146
+        },
+        {
+          "id": "<source>/src/renderer/ui/calendarZone.ts",
+          "renderedLength": 597
+        },
+        {
+          "id": "<source>/src/renderer/ui/calendar-events.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarEventsView.tsx",
+          "renderedLength": 9673
+        },
+        {
+          "id": "<source>/src/renderer/design/generated/calendar-tokens.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/calendar-layout.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarFrame.tsx",
+          "renderedLength": 1692
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarFilters.tsx",
+          "renderedLength": 1671
+        },
+        {
+          "id": "<source>/src/renderer/ui/calendar-live.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarLiveView.tsx",
+          "renderedLength": 15724
+        },
+        {
+          "id": "<source>/src/renderer/i18n/calendarMine.ts",
+          "renderedLength": 2044
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/days.ts",
+          "renderedLength": 1354
+        },
+        {
+          "id": "<source>/src/renderer/ui/calendar-mine.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarMineView.tsx",
+          "renderedLength": 11698
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarRail.tsx",
+          "renderedLength": 7177
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarWeekBoard.tsx",
+          "renderedLength": 4258
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarUpcomingView.tsx",
+          "renderedLength": 2416
+        },
+        {
+          "id": "<source>/src/renderer/i18n/calendarWeek.ts",
+          "renderedLength": 1391
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/grid.ts",
+          "renderedLength": 1038
+        },
+        {
+          "id": "<source>/src/renderer/ui/calendar-week-live.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/CalendarWeekView.tsx",
+          "renderedLength": 13557
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/CalendarLauncher.ts",
+          "renderedLength": 3773
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/CalendarPreferences.ts",
+          "renderedLength": 3866
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/CalendarQARuns.ts",
+          "renderedLength": 547
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/CalendarState.ts",
+          "renderedLength": 2967
+        },
+        {
+          "id": "<source>/src/renderer/screens/calendar/entry.tsx",
+          "renderedLength": 7208
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-CVuBaX3L.js",
+      "bytes": 34889,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/ShellLayout-CMiXS7s3.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/UiState-D4r6kmRl.js",
+        "assets/state-yWut36mv.js",
+        "assets/useMutation-C-7Ye1je.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/RadioGroup-DDyGwDkf.js"
+      ],
+      "dynamicImports": [
+        "assets/Account-C74IOm5Y.js",
+        "assets/General-XOHU6Rgn.js",
+        "assets/Appearance-DZWImNuo.js",
+        "assets/Performance-C2ELISry.js",
+        "assets/Shortcuts-C2MeI3pD.js",
+        "assets/Updates-FKkAkWy8.js",
+        "assets/Privacy-B92tqKhf.js",
+        "assets/Diagnostics-DeLfi7cX.js"
+      ],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/pilot.es.ts",
+          "renderedLength": 1527
+        },
+        {
+          "id": "<source>/src/renderer/assets/generated/pilot-flags.ts",
+          "renderedLength": 7836
+        },
+        {
+          "id": "<source>/src/renderer/ui/pilot-profile.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/PilotProfile.tsx",
+          "renderedLength": 10569
+        },
+        {
+          "id": "<source>/src/renderer/app/DiagnosticsState.ts",
+          "renderedLength": 1476
+        },
+        {
+          "id": "<source>/src/renderer/i18n/diagnostics.es.ts",
+          "renderedLength": 1567
+        },
+        {
+          "id": "<source>/src/renderer/ui/diagnostics.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/i18n/performance.es.ts",
+          "renderedLength": 802
+        },
+        {
+          "id": "<source>/src/renderer/ui/performance.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/PerformanceLevels.tsx",
+          "renderedLength": 6337
+        },
+        {
+          "id": "<source>/src/renderer/i18n/privacy.es.ts",
+          "renderedLength": 1068
+        },
+        {
+          "id": "<source>/src/renderer/ui/privacy.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/PrivacyPresentation.tsx",
+          "renderedLength": 2502
+        },
+        {
+          "id": "<source>/src/renderer/ui/setting-actions.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/SettingActions.tsx",
+          "renderedLength": 568
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/shortcuts.es.ts",
+          "renderedLength": 697
+        },
+        {
+          "id": "<source>/src/renderer/i18n/updates.es.ts",
+          "renderedLength": 1077
+        },
+        {
+          "id": "<source>/src/renderer/ui/updates.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/i18n/settings-frame.es.ts",
+          "renderedLength": 1011
+        },
+        {
+          "id": "<source>/src/renderer/ui/AppearanceGroups.tsx",
+          "renderedLength": 271
+        },
+        {
+          "id": "<source>/src/renderer/ui/UpdatesRailContent.tsx",
+          "renderedLength": 951
+        },
+        {
+          "id": "<source>/src/renderer/i18n/appearance.es.ts",
+          "renderedLength": 561
+        },
+        {
+          "id": "<source>/src/renderer/ui/AppearancePreview.tsx",
+          "renderedLength": 1996
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/appearance-profile.ts",
+          "renderedLength": 685
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/AppearanceRail.tsx",
+          "renderedLength": 2120
+        },
+        {
+          "id": "<source>/src/renderer/ui/DiagnosticRailLayout.tsx",
+          "renderedLength": 277
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/DiagnosticsRail.tsx",
+          "renderedLength": 1319
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/GeneralRail.tsx",
+          "renderedLength": 2496
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/PerformanceRail.tsx",
+          "renderedLength": 505
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/ShortcutsRail.tsx",
+          "renderedLength": 457
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/Settings.tsx",
+          "renderedLength": 9034
+        },
+        {
+          "id": "<source>/src/renderer/screens/settings/entry.tsx",
+          "renderedLength": 195
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-CkBe0GNi.js",
+      "bytes": 78487,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/UiState-D4r6kmRl.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/editor-state-CA0hFnDV.js",
+        "assets/NotificationsState-DfxA1eCZ.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/home.ts",
+          "renderedLength": 4132
+        },
+        {
+          "id": "<source>/src/renderer/assets/tracks/tracks.json",
+          "renderedLength": 10759
+        },
+        {
+          "id": "<source>/src/renderer/ui/home/Circuit.tsx",
+          "renderedLength": 1366
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/broadcast-tower.svg?url",
+          "renderedLength": 2709
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/car-damage-numbers.svg?url",
+          "renderedLength": 2157
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/car-damage-visual.svg?url",
+          "renderedLength": 1620
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/delta-trace.svg?url",
+          "renderedLength": 1214
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/delta.svg?url",
+          "renderedLength": 2363
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/fastest-lap.svg?url",
+          "renderedLength": 1450
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/fuel-strategy.svg?url",
+          "renderedLength": 2963
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/head-to-head.svg?url",
+          "renderedLength": 2885
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/home-preview-bg.svg?url",
+          "renderedLength": 497
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/input-telemetry.svg?url",
+          "renderedLength": 2830
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/multiclass-relative.svg?url",
+          "renderedLength": 4673
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/pedals-telemetry.svg?url",
+          "renderedLength": 2258
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/pedals.svg?url",
+          "renderedLength": 1666
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/racing-flags.svg?url",
+          "renderedLength": 917
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/radar.svg?url",
+          "renderedLength": 1970
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/relative.svg?url",
+          "renderedLength": 4371
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/session-alerts.svg?url",
+          "renderedLength": 819
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/standings.svg?url",
+          "renderedLength": 204
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/track-map.svg?url",
+          "renderedLength": 2034
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/track-weather.svg?url",
+          "renderedLength": 1806
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-broadcast-tower.svg?url",
+          "renderedLength": 681
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-car-damage-numbers.svg?url",
+          "renderedLength": 544
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-car-damage-visual.svg?url",
+          "renderedLength": 634
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-delta-trace.svg?url",
+          "renderedLength": 521
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-delta.svg?url",
+          "renderedLength": 485
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-fastest-lap.svg?url",
+          "renderedLength": 510
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-fuel-strategy.svg?url",
+          "renderedLength": 701
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-head-to-head.svg?url",
+          "renderedLength": 481
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-input-telemetry.svg?url",
+          "renderedLength": 714
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-multiclass-relative.svg?url",
+          "renderedLength": 749
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-pedals-telemetry.svg?url",
+          "renderedLength": 530
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-pedals.svg?url",
+          "renderedLength": 645
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-racing-flags.svg?url",
+          "renderedLength": 527
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-radar.svg?url",
+          "renderedLength": 675
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-relative.svg?url",
+          "renderedLength": 614
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-session-alerts.svg?url",
+          "renderedLength": 451
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-standings.svg?url",
+          "renderedLength": 542
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-track-map.svg?url",
+          "renderedLength": 713
+        },
+        {
+          "id": "<source>/src/renderer/assets/widgets/w-track-weather.svg?url",
+          "renderedLength": 684
+        },
+        {
+          "id": "<source>/src/renderer/ui/home/widget-artwork.json",
+          "renderedLength": 3826
+        },
+        {
+          "id": "<source>/src/renderer/ui/home/LayoutPreview.tsx",
+          "renderedLength": 4756
+        },
+        {
+          "id": "<source>/src/renderer/ui/home/model.ts",
+          "renderedLength": 756
+        },
+        {
+          "id": "<source>/src/renderer/ui/home/home.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/home/HomeLayout.tsx",
+          "renderedLength": 17165
+        },
+        {
+          "id": "<source>/src/renderer/screens/home/entry.tsx",
+          "renderedLength": 4150
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-CxdCQ9Hp.js",
+      "bytes": 25747,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/editor-state-CA0hFnDV.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/core-offline-UyYBGoLn.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/state-yWut36mv.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/launcher-apps.ts",
+          "renderedLength": 2583
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/Applications.tsx",
+          "renderedLength": 12277
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/Applications.tsx",
+          "renderedLength": 10157
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/merge-draft.ts",
+          "renderedLength": 1487
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/profile-errors.ts",
+          "renderedLength": 465
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/ProfileEditor.tsx",
+          "renderedLength": 7276
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/Launcher.tsx",
+          "renderedLength": 6236
+        },
+        {
+          "id": "<source>/src/renderer/ui/launcher/ApplicationsRail.tsx",
+          "renderedLength": 5760
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/LauncherRail.tsx",
+          "renderedLength": 1425
+        },
+        {
+          "id": "<source>/src/renderer/screens/launcher/entry.tsx",
+          "renderedLength": 1373
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-Dq1avEod.js",
+      "bytes": 24361,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/Forms-SZc2TjDS.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/report-digest-B7trpZ8Z.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/ShellLayout-CMiXS7s3.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/i18n/testing-questionnaires.ts",
+          "renderedLength": 888
+        },
+        {
+          "id": "<source>/src/renderer/ui/testing-layout.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/TestingLayout.tsx",
+          "renderedLength": 1986
+        },
+        {
+          "id": "<source>/src/renderer/ui/testing-questionnaires.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/TestingQuestionnairesView.tsx",
+          "renderedLength": 2630
+        },
+        {
+          "id": "<source>/src/renderer/i18n/testing-summary.ts",
+          "renderedLength": 1906
+        },
+        {
+          "id": "<source>/src/renderer/ui/testing-summary.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/TestingSummaryView.tsx",
+          "renderedLength": 2766
+        },
+        {
+          "id": "<source>/src/renderer/i18n/testing-community.ts",
+          "renderedLength": 476
+        },
+        {
+          "id": "<source>/src/renderer/ui/testing-community.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/TestingCommunityView.tsx",
+          "renderedLength": 1063
+        },
+        {
+          "id": "<source>/src/renderer/i18n/testing-triage.ts",
+          "renderedLength": 1139
+        },
+        {
+          "id": "<source>/src/renderer/ui/testing-triage.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/TriageEditorView.tsx",
+          "renderedLength": 2447
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/TriageEditor.tsx",
+          "renderedLength": 718
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/Community.tsx",
+          "renderedLength": 1536
+        },
+        {
+          "id": "<source>/src/renderer/i18n/testing-local.ts",
+          "renderedLength": 1374
+        },
+        {
+          "id": "<source>/src/renderer/ui/local-diagnostic.css",
+          "renderedLength": 0
+        },
+        {
+          "id": "<source>/src/renderer/ui/LocalDiagnosticView.tsx",
+          "renderedLength": 3190
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/LocalDiagnostic.tsx",
+          "renderedLength": 3112
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/Questionnaires.tsx",
+          "renderedLength": 1993
+        },
+        {
+          "id": "<source>/src/renderer/ui/SessionReportReceipts.tsx",
+          "renderedLength": 3766
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/Testing.tsx",
+          "renderedLength": 12099
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/Summary.tsx",
+          "renderedLength": 631
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/TestingRail.tsx",
+          "renderedLength": 1306
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/TestingTabs.ts",
+          "renderedLength": 1082
+        },
+        {
+          "id": "<source>/src/renderer/screens/testing/entry.tsx",
+          "renderedLength": 2132
+        }
+      ]
+    },
+    {
+      "fileName": "assets/entry-VcymmVYr.js",
+      "bytes": 8832,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/useQuery-DwF4D5X9.js",
+        "assets/index-B4RL4UI4.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/SectionChrome-DxQLIn0y.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/Button-BcKoTkIw.js",
+        "assets/ShellLayout-CMiXS7s3.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/ui/account-panel.css",
+          "renderedLength": 175
+        },
+        {
+          "id": "<source>/src/renderer/ui/AccountPanel.tsx",
+          "renderedLength": 11433
+        },
+        {
+          "id": "<source>/src/renderer/ui/DeviceResetDialog.tsx",
+          "renderedLength": 1256
+        },
+        {
+          "id": "<source>/src/renderer/ui/AccountRail.tsx",
+          "renderedLength": 4246
+        },
+        {
+          "id": "<source>/src/renderer/screens/account/AccountScreen.tsx",
+          "renderedLength": 1556
+        },
+        {
+          "id": "<source>/src/renderer/screens/account/entry.tsx",
+          "renderedLength": 0
+        }
+      ]
+    },
+    {
+      "fileName": "assets/es-Dyhmfu5B.js",
+      "bytes": 59632,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/react/cjs/react.production.js",
+          "renderedLength": 16048
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/react/index.js",
+          "renderedLength": 225
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/react/cjs/react-jsx-runtime.production.js",
+          "renderedLength": 920
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/react/jsx-runtime.js",
+          "renderedLength": 249
+        },
+        {
+          "id": "<source>/src/renderer/assets/icons/Icon.tsx",
+          "renderedLength": 51551
+        },
+        {
+          "id": "<source>/src/renderer/i18n/es.ts",
+          "renderedLength": 17807
+        }
+      ]
+    },
+    {
+      "fileName": "assets/host-B6xGWm-9.js",
+      "bytes": 79015,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/core-offline-UyYBGoLn.js",
+        "assets/contract-Ct3sLB7O.js",
+        "assets/report-digest-B7trpZ8Z.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/fixtures/ajustes-base.json",
+          "renderedLength": 489
+        },
+        {
+          "id": "<source>/fixtures/demo-identity.json",
+          "renderedLength": 170
+        },
+        {
+          "id": "<source>/src/contract/generated/corpus/account.json",
+          "renderedLength": 19757
+        },
+        {
+          "id": "<source>/src/mock/modules/account.ts",
+          "renderedLength": 6977
+        },
+        {
+          "id": "<source>/fixtures/calendar-alerts-reference.json",
+          "renderedLength": 636
+        },
+        {
+          "id": "<source>/fixtures/calendar-demo.json",
+          "renderedLength": 6781
+        },
+        {
+          "id": "<source>/src/contract/generated/corpus/calendar.json",
+          "renderedLength": 19989
+        },
+        {
+          "id": "<source>/src/mock/calendar-reference.ts",
+          "renderedLength": 1569
+        },
+        {
+          "id": "<source>/src/mock/modules/calendar.ts",
+          "renderedLength": 5146
+        },
+        {
+          "id": "<source>/fixtures/diagnostics-base.json",
+          "renderedLength": 617
+        },
+        {
+          "id": "<source>/src/mock/modules/diagnostics.ts",
+          "renderedLength": 1744
+        },
+        {
+          "id": "<source>/fixtures/launcher-base.json",
+          "renderedLength": 1741
+        },
+        {
+          "id": "<source>/src/mock/modules/home.ts",
+          "renderedLength": 2721
+        },
+        {
+          "id": "<source>/fixtures/launcher-editor.json",
+          "renderedLength": 589
+        },
+        {
+          "id": "<source>/fixtures/launcher-apps.json",
+          "renderedLength": 1691
+        },
+        {
+          "id": "<source>/src/mock/launcher-apps.ts",
+          "renderedLength": 6550
+        },
+        {
+          "id": "<source>/src/mock/profile-actions.ts",
+          "renderedLength": 3409
+        },
+        {
+          "id": "<source>/src/mock/modules/launcher.ts",
+          "renderedLength": 8411
+        },
+        {
+          "id": "<source>/src/mock/modules/notifications.ts",
+          "renderedLength": 682
+        },
+        {
+          "id": "<source>/fixtures/settings-base.json",
+          "renderedLength": 1048
+        },
+        {
+          "id": "<source>/src/mock/modules/onboarding.ts",
+          "renderedLength": 2617
+        },
+        {
+          "id": "<source>/fixtures/pilot-base.json",
+          "renderedLength": 405
+        },
+        {
+          "id": "<source>/fixtures/pilot-visual.json",
+          "renderedLength": 397
+        },
+        {
+          "id": "<source>/src/mock/modules/pilot.ts",
+          "renderedLength": 1958
+        },
+        {
+          "id": "<source>/fixtures/privacy-base.json",
+          "renderedLength": 596
+        },
+        {
+          "id": "<source>/src/mock/modules/privacy.ts",
+          "renderedLength": 4527
+        },
+        {
+          "id": "<source>/src/mock/modules/report_local.ts",
+          "renderedLength": 1748
+        },
+        {
+          "id": "<source>/fixtures/roadmap-publication.json",
+          "renderedLength": 1288
+        },
+        {
+          "id": "<source>/src/mock/modules/roadmap.ts",
+          "renderedLength": 1410
+        },
+        {
+          "id": "<source>/fixtures/settings-protected.json",
+          "renderedLength": 982
+        },
+        {
+          "id": "<source>/src/mock/modules/settings.ts",
+          "renderedLength": 3836
+        },
+        {
+          "id": "<source>/fixtures/shortcuts-base.json",
+          "renderedLength": 391
+        },
+        {
+          "id": "<source>/src/mock/modules/shortcuts.ts",
+          "renderedLength": 760
+        },
+        {
+          "id": "<source>/src/mock/modules/studio.ts",
+          "renderedLength": 5452
+        },
+        {
+          "id": "<source>/src/mock/testing.ts",
+          "renderedLength": 7015
+        },
+        {
+          "id": "<source>/src/mock/modules/testing.ts",
+          "renderedLength": 1447
+        },
+        {
+          "id": "<source>/src/mock/modules/transport.ts",
+          "renderedLength": 1086
+        },
+        {
+          "id": "<source>/src/mock/triage.ts",
+          "renderedLength": 2221
+        },
+        {
+          "id": "<source>/src/mock/modules/triage.ts",
+          "renderedLength": 610
+        },
+        {
+          "id": "<source>/fixtures/updates-base.json",
+          "renderedLength": 526
+        },
+        {
+          "id": "<source>/fixtures/updates-ready.json",
+          "renderedLength": 1106
+        },
+        {
+          "id": "<source>/src/mock/modules/updates.ts",
+          "renderedLength": 1148
+        },
+        {
+          "id": "<source>/src/mock/modules/window.ts",
+          "renderedLength": 1011
+        },
+        {
+          "id": "<source>/src/contract/generated/mocks/index.ts",
+          "renderedLength": 496
+        },
+        {
+          "id": "<source>/src/mock/host.ts",
+          "renderedLength": 3135
+        }
+      ]
+    },
+    {
+      "fileName": "assets/itemEquality-BrbgLKIL.js",
+      "bytes": 3094,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js",
+        "assets/valueToPercent-DBoYgKZH.js",
+        "assets/useLabelableId-BafnNTpP.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useFloatingRootContext.mjs",
+          "renderedLength": 1211
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/resolveValueLabel.mjs",
+          "renderedLength": 2794
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useOnFirstRender.mjs",
+          "renderedLength": 249
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/areArraysEqual.mjs",
+          "renderedLength": 368
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/itemEquality.mjs",
+          "renderedLength": 2535
+        }
+      ]
+    },
+    {
+      "fileName": "assets/report-digest-B7trpZ8Z.js",
+      "bytes": 187,
+      "isEntry": false,
+      "imports": [],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/contract/report-digest.ts",
+          "renderedLength": 333
+        }
+      ]
+    },
+    {
+      "fileName": "assets/rolldown-runtime-XKyaHtl9.js",
+      "bytes": 726,
+      "isEntry": false,
+      "imports": [],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "\u0000rolldown/runtime.js",
+          "renderedLength": 1419
+        }
+      ]
+    },
+    {
+      "fileName": "assets/state-yWut36mv.js",
+      "bytes": 237,
+      "isEntry": false,
+      "imports": [
+        "assets/useQuery-DwF4D5X9.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "<source>/src/renderer/screens/launcher/state.ts",
+          "renderedLength": 455
+        }
+      ]
+    },
+    {
+      "fileName": "assets/useCompositeItem-DTAc3AAg.js",
+      "bytes": 27373,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/react-dom/cjs/react-dom.production.js",
+          "renderedLength": 6319
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/react-dom/index.js",
+          "renderedLength": 517
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs",
+          "renderedLength": 4890
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/safeReact.mjs",
+          "renderedLength": 151
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useRefWithInit.mjs",
+          "renderedLength": 313
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useStableCallback.mjs",
+          "renderedLength": 769
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useIsoLayoutEffect.mjs",
+          "renderedLength": 240
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/mergeObjects.mjs",
+          "renderedLength": 238
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/merge-props/mergeProps.mjs",
+          "renderedLength": 3551
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/formatErrorMessage.mjs",
+          "renderedLength": 556
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/root/CompositeRootContext.mjs",
+          "renderedLength": 442
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/useFocusableWhenDisabled.mjs",
+          "renderedLength": 1259
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/owner.mjs",
+          "renderedLength": 184
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/dispatchClickWithModifiers.mjs",
+          "renderedLength": 520
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/use-button/useButton.mjs",
+          "renderedLength": 4294
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useMergedRefs.mjs",
+          "renderedLength": 1981
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/reactVersion.mjs",
+          "renderedLength": 261
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/getReactElementRef.mjs",
+          "renderedLength": 392
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/empty.mjs",
+          "renderedLength": 204
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/getStateAttributesProps.mjs",
+          "renderedLength": 600
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/resolveClassName.mjs",
+          "renderedLength": 247
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/resolveStyle.mjs",
+          "renderedLength": 223
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useRenderElement.mjs",
+          "renderedLength": 2870
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/platform/shared.mjs",
+          "renderedLength": 537
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/platform/os.mjs",
+          "renderedLength": 524
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/platform/env.mjs",
+          "renderedLength": 168
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/event.mjs",
+          "renderedLength": 1277
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/shadowDom.mjs",
+          "renderedLength": 1030
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/constants.mjs",
+          "renderedLength": 460
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/createBaseUIEventDetails.mjs",
+          "renderedLength": 812
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/reason-parts.mjs",
+          "renderedLength": 906
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs",
+          "renderedLength": 3708
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/composite.mjs",
+          "renderedLength": 9415
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useForcedRerendering.mjs",
+          "renderedLength": 276
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useId.mjs",
+          "renderedLength": 827
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useBaseUiId.mjs",
+          "renderedLength": 201
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/composite.mjs",
+          "renderedLength": 4410
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/list/CompositeListContext.mjs",
+          "renderedLength": 429
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/list/useCompositeListItem.mjs",
+          "renderedLength": 1516
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/direction-context/DirectionContext.mjs",
+          "renderedLength": 321
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/list/CompositeList.mjs",
+          "renderedLength": 5894
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/item/useCompositeItem.mjs",
+          "renderedLength": 901
+        }
+      ]
+    },
+    {
+      "fileName": "assets/useLabelableId-BafnNTpP.js",
+      "bytes": 2609,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/serializeValue.mjs",
+          "renderedLength": 318
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/field/control/FieldControlDataAttributes.mjs",
+          "renderedLength": 265
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/field-constants/constants.mjs",
+          "renderedLength": 754
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/field-root-context/FieldRootContext.mjs",
+          "renderedLength": 1189
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/field-root-context/useSetFieldFocused.mjs",
+          "renderedLength": 799
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/field-register-control/useRegisterFieldControl.mjs",
+          "renderedLength": 911
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/form-context/FormContext.mjs",
+          "renderedLength": 468
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/labelable-provider/LabelableContext.mjs",
+          "renderedLength": 506
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/labelable-provider/useLabelableId.mjs",
+          "renderedLength": 1467
+        }
+      ]
+    },
+    {
+      "fileName": "assets/useMutation-C-7Ye1je.js",
+      "bytes": 5815,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useQuery-DwF4D5X9.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/mutation.js",
+          "renderedLength": 5793
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/mutationObserver.js",
+          "renderedLength": 3393
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-query/build/modern/useMutation.js",
+          "renderedLength": 1002
+        }
+      ]
+    },
+    {
+      "fileName": "assets/useQuery-DwF4D5X9.js",
+      "bytes": 22712,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/Host-ccyZROyU.js",
+        "assets/es-Dyhmfu5B.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/timeoutManager.js",
+          "renderedLength": 1008
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/utils.js",
+          "renderedLength": 6272
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/environmentManager.js",
+          "renderedLength": 211
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/subscribable.js",
+          "renderedLength": 533
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/focusManager.js",
+          "renderedLength": 1356
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/notifyManager.js",
+          "renderedLength": 1308
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/onlineManager.js",
+          "renderedLength": 1285
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/retryer.js",
+          "renderedLength": 3248
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/removable.js",
+          "renderedLength": 648
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/infiniteQueryBehavior.js",
+          "renderedLength": 3112
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/query.js",
+          "renderedLength": 10917
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/query-core/build/modern/queryObserver.js",
+          "renderedLength": 13196
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-query/build/modern/IsRestoringProvider.js",
+          "renderedLength": 394
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-query/build/modern/QueryErrorResetBoundary.js",
+          "renderedLength": 564
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-query/build/modern/errorBoundaryUtils.js",
+          "renderedLength": 960
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-query/build/modern/suspense.js",
+          "renderedLength": 983
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-query/build/modern/useBaseQuery.js",
+          "renderedLength": 1825
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@tanstack/react-query/build/modern/useQuery.js",
+          "renderedLength": 235
+        }
+      ]
+    },
+    {
+      "fileName": "assets/valueToPercent-DBoYgKZH.js",
+      "bytes": 163396,
+      "isEntry": false,
+      "imports": [
+        "assets/rolldown-runtime-XKyaHtl9.js",
+        "assets/es-Dyhmfu5B.js",
+        "assets/useCompositeItem-DTAc3AAg.js"
+      ],
+      "dynamicImports": [],
+      "modules": [
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/addEventListener.mjs",
+          "renderedLength": 422
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/platform/engine.mjs",
+          "renderedLength": 329
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/platform/screen-reader.mjs",
+          "renderedLength": 150
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useOnMount.mjs",
+          "renderedLength": 185
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useTimeout.mjs",
+          "renderedLength": 725
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useAnimationFrame.mjs",
+          "renderedLength": 1807
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useScrollLock.mjs",
+          "renderedLength": 7399
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/TransitionStatusDataAttributes.mjs",
+          "renderedLength": 231
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/stateAttributesMapping.mjs",
+          "renderedLength": 398
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/CommonPopupDataAttributes.mjs",
+          "renderedLength": 307
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/CommonTriggerDataAttributes.mjs",
+          "renderedLength": 205
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/popupStateMapping.mjs",
+          "renderedLength": 871
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/trigger/TooltipTriggerDataAttributes.mjs",
+          "renderedLength": 225
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/element.mjs",
+          "renderedLength": 1808
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useHoverShared.mjs",
+          "renderedLength": 870
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/components/FloatingDelayGroup.mjs",
+          "renderedLength": 4100
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/mergeCleanups.mjs",
+          "renderedLength": 290
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useValueAsRef.mjs",
+          "renderedLength": 452
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/visuallyHidden.mjs",
+          "renderedLength": 455
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/FocusGuard.mjs",
+          "renderedLength": 591
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/tabbable.mjs",
+          "renderedLength": 6410
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/nodes.mjs",
+          "renderedLength": 761
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/createAttribute.mjs",
+          "renderedLength": 211
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/enqueueFocus.mjs",
+          "renderedLength": 624
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/markOthers.mjs",
+          "renderedLength": 3701
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/constants.mjs",
+          "renderedLength": 744
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/components/FloatingPortal.mjs",
+          "renderedLength": 5477
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/utils/createEventEmitter.mjs",
+          "renderedLength": 515
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/components/FloatingTreeStore.mjs",
+          "renderedLength": 454
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/components/FloatingTree.mjs",
+          "renderedLength": 1465
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/resolveRef.mjs",
+          "renderedLength": 256
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/components/FloatingFocusManager.mjs",
+          "renderedLength": 21221
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useClick.mjs",
+          "renderedLength": 3337
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useClientPoint.mjs",
+          "renderedLength": 4413
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useDismiss.mjs",
+          "renderedLength": 15764
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useSyncedFloatingRootContext.mjs",
+          "renderedLength": 1198
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useTransitionStatus.mjs",
+          "renderedLength": 1773
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/getFiniteAnimations.mjs",
+          "renderedLength": 372
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useAnimationsFinished.mjs",
+          "renderedLength": 2145
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useOpenChangeComplete.mjs",
+          "renderedLength": 696
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useUnmountAfterClose.mjs",
+          "renderedLength": 1551
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/popups/popupStoreUtils.mjs",
+          "renderedLength": 10003
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/popups/popupTriggerMap.mjs",
+          "renderedLength": 747
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/use-sync-external-store/cjs/use-sync-external-store-shim.production.js",
+          "renderedLength": 1873
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/use-sync-external-store/shim/index.js",
+          "renderedLength": 270
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/use-sync-external-store/cjs/use-sync-external-store-shim/with-selector.production.js",
+          "renderedLength": 2400
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/use-sync-external-store/shim/with-selector.js",
+          "renderedLength": 272
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/fastHooks.mjs",
+          "renderedLength": 1023
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/store/useStore.mjs",
+          "renderedLength": 2900
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/store/Store.mjs",
+          "renderedLength": 1188
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/store/ReactStore.mjs",
+          "renderedLength": 2355
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/components/FloatingRootStore.mjs",
+          "renderedLength": 1732
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/popups/store.mjs",
+          "renderedLength": 2831
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/popups/usePopupHandleStore.mjs",
+          "renderedLength": 552
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useFocus.mjs",
+          "renderedLength": 4150
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useHoverInteractionSharedState.mjs",
+          "renderedLength": 2790
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useHoverFloatingInteraction.mjs",
+          "renderedLength": 5260
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useHoverReferenceInteraction.mjs",
+          "renderedLength": 10441
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useListNavigation.mjs",
+          "renderedLength": 15742
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useTypeahead.mjs",
+          "renderedLength": 3903
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/safePolygon.mjs",
+          "renderedLength": 8844
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@floating-ui/core/dist/floating-ui.core.mjs",
+          "renderedLength": 16120
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs",
+          "renderedLength": 18395
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs",
+          "renderedLength": 6171
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/root/useDialogRoot.mjs",
+          "renderedLength": 2969
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/root/DialogRootContext.mjs",
+          "renderedLength": 403
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/store/DialogStore.mjs",
+          "renderedLength": 2327
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/root/useRenderDialogRoot.mjs",
+          "renderedLength": 2360
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/alert-dialog/root/AlertDialogRoot.mjs",
+          "renderedLength": 226
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/backdrop/DialogBackdrop.mjs",
+          "renderedLength": 944
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/close/DialogClose.mjs",
+          "renderedLength": 854
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/description/DialogDescription.mjs",
+          "renderedLength": 589
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/portal/DialogPortalContext.mjs",
+          "renderedLength": 392
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/popup/DialogPopupCssVars.mjs",
+          "renderedLength": 176
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/popup/DialogPopupDataAttributes.mjs",
+          "renderedLength": 309
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/utils/stateAttributesMapping.mjs",
+          "renderedLength": 314
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/popup/DialogPopup.mjs",
+          "renderedLength": 2566
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/inertValue.mjs",
+          "renderedLength": 225
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/InternalBackdrop.mjs",
+          "renderedLength": 824
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/portal/DialogPortal.mjs",
+          "renderedLength": 928
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/title/DialogTitle.mjs",
+          "renderedLength": 560
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/useEnhancedClickHandler.mjs",
+          "renderedLength": 816
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useValueChanged.mjs",
+          "renderedLength": 435
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/useOpenInteractionType.mjs",
+          "renderedLength": 934
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/trigger/DialogTrigger.mjs",
+          "renderedLength": 1910
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/alert-dialog/trigger/AlertDialogTrigger.mjs",
+          "renderedLength": 184
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/dialog/root/DialogRoot.mjs",
+          "renderedLength": 237
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/positioner/MenuPositionerContext.mjs",
+          "renderedLength": 429
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/root/MenuRootContext.mjs",
+          "renderedLength": 399
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/context-menu/root/ContextMenuRootContext.mjs",
+          "renderedLength": 442
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/filter-root/MenuFilterContext.mjs",
+          "renderedLength": 1069
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/item/useMenuItemCommonProps.mjs",
+          "renderedLength": 2479
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/item/useMenuItem.mjs",
+          "renderedLength": 1163
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/item/MenuItem.mjs",
+          "renderedLength": 1499
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toolbar/root/ToolbarRootContext.mjs",
+          "renderedLength": 414
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/getDisabledMountTransitionStyles.mjs",
+          "renderedLength": 296
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/submenu-root/MenuSubmenuRootContext.mjs",
+          "renderedLength": 322
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/resolveRenderedId.mjs",
+          "renderedLength": 705
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/resolvePopupLabel.mjs",
+          "renderedLength": 709
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/popup/MenuPopup.mjs",
+          "renderedLength": 5355
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/portal/MenuPortalContext.mjs",
+          "renderedLength": 382
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/portal/MenuPortal.mjs",
+          "renderedLength": 738
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/hooks/useFloating.mjs",
+          "renderedLength": 2602
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/floating-ui-react/middleware/arrow.mjs",
+          "renderedLength": 2242
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/hideMiddleware.mjs",
+          "renderedLength": 583
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/adaptiveOriginConstants.mjs",
+          "renderedLength": 189
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/CommonPositionerCssVars.mjs",
+          "renderedLength": 338
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useAnchorPositioning.mjs",
+          "renderedLength": 13064
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/useTriggerSwitchTransition.mjs",
+          "renderedLength": 1366
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/usePositioner.mjs",
+          "renderedLength": 572
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/useAnchoredPopupScrollLock.mjs",
+          "renderedLength": 924
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/positioner/MenuPositioner.mjs",
+          "renderedLength": 7607
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menubar/MenubarContext.mjs",
+          "renderedLength": 388
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/getHighlightReason.mjs",
+          "renderedLength": 356
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/store/MenuStore.mjs",
+          "renderedLength": 5867
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/filter-provider/MenuFilterProviderContext.mjs",
+          "renderedLength": 231
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/utils/isKeyboardOpen.mjs",
+          "renderedLength": 377
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/root/MenuRoot.mjs",
+          "renderedLength": 15932
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/getPseudoElementBounds.mjs",
+          "renderedLength": 1527
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/internals/composite/item/CompositeItem.mjs",
+          "renderedLength": 624
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/utils/findRootOwnerId.mjs",
+          "renderedLength": 367
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/popups/useTriggerFocusGuards.mjs",
+          "renderedLength": 1017
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/useMixedToggleClickHandler.mjs",
+          "renderedLength": 876
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/menu/trigger/MenuTrigger.mjs",
+          "renderedLength": 7607
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/stringifyLocale.mjs",
+          "renderedLength": 305
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/root/PopoverRootContext.mjs",
+          "renderedLength": 414
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/store/PopoverStore.mjs",
+          "renderedLength": 3990
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/root/PopoverRoot.mjs",
+          "renderedLength": 3042
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/trigger/PopoverTrigger.mjs",
+          "renderedLength": 3653
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/portal/PopoverPortalContext.mjs",
+          "renderedLength": 397
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/portal/PopoverPortal.mjs",
+          "renderedLength": 605
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/positioner/PopoverPositionerContext.mjs",
+          "renderedLength": 413
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/positioner/PopoverPositioner.mjs",
+          "renderedLength": 2778
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/closePart.mjs",
+          "renderedLength": 584
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/popover/popup/PopoverPopup.mjs",
+          "renderedLength": 3429
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/provider/ToastProviderContext.mjs",
+          "renderedLength": 377
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/generateId.mjs",
+          "renderedLength": 253
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/utils/resolvePromiseOptions.mjs",
+          "renderedLength": 457
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/store.mjs",
+          "renderedLength": 9644
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/provider/ToastProvider.mjs",
+          "renderedLength": 1422
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/viewport/ToastViewportCssVars.mjs",
+          "renderedLength": 190
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/viewport/ToastViewport.mjs",
+          "renderedLength": 5945
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/root/ToastRootContext.mjs",
+          "renderedLength": 373
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/clamp.mjs",
+          "renderedLength": 239
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/getElementTransform.mjs",
+          "renderedLength": 859
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/useSwipeDismiss.mjs",
+          "renderedLength": 349
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/root/ToastRootCssVars.mjs",
+          "renderedLength": 324
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/root/ToastRootDataAttributes.mjs",
+          "renderedLength": 254
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/root/ToastRoot.mjs",
+          "renderedLength": 13256
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/content/ToastContent.mjs",
+          "renderedLength": 1204
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/utils/isRenderableNode.mjs",
+          "renderedLength": 470
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/utils/useToastLabelPart.mjs",
+          "renderedLength": 837
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/description/ToastDescription.mjs",
+          "renderedLength": 670
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/title/ToastTitle.mjs",
+          "renderedLength": 641
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/close/ToastClose.mjs",
+          "renderedLength": 979
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/FloatingPortalLite.mjs",
+          "renderedLength": 734
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/portal/ToastPortal.mjs",
+          "renderedLength": 342
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/toast/useToastManager.mjs",
+          "renderedLength": 423
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/root/TooltipRootContext.mjs",
+          "renderedLength": 414
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/store/TooltipStore.mjs",
+          "renderedLength": 1882
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/root/TooltipRoot.mjs",
+          "renderedLength": 3987
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/provider/TooltipProviderContext.mjs",
+          "renderedLength": 321
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/trigger/TooltipTrigger.mjs",
+          "renderedLength": 6096
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/portal/TooltipPortalContext.mjs",
+          "renderedLength": 397
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/portal/TooltipPortal.mjs",
+          "renderedLength": 609
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/positioner/TooltipPositionerContext.mjs",
+          "renderedLength": 423
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/positioner/TooltipPositioner.mjs",
+          "renderedLength": 2239
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/popup/TooltipPopup.mjs",
+          "renderedLength": 1476
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/arrow/TooltipArrow.mjs",
+          "renderedLength": 814
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/tooltip/provider/TooltipProvider.mjs",
+          "renderedLength": 623
+        },
+        {
+          "id": "<source>/src/renderer/ui/Layers.tsx",
+          "renderedLength": 5348
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/useRegisteredLabelId.mjs",
+          "renderedLength": 390
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/utils/formatNumber.mjs",
+          "renderedLength": 636
+        },
+        {
+          "id": "D:/VantareServer/worktrees/isa-1995-ajustes-pista/vantare-v2/hub-web/node_modules/@base-ui/react/utils/valueToPercent.mjs",
+          "renderedLength": 213
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "application",
+      "renderedLength": 1037254
+    },
+    {
+      "name": "@base-ui/react",
+      "renderedLength": 684770
+    },
+    {
+      "name": "react-dom",
+      "renderedLength": 536963
+    },
+    {
+      "name": "@tanstack/query-core",
+      "renderedLength": 65866
+    },
+    {
+      "name": "@tanstack/virtual-core",
+      "renderedLength": 57304
+    },
+    {
+      "name": "@base-ui/utils",
+      "renderedLength": 33779
+    },
+    {
+      "name": "@floating-ui/dom",
+      "renderedLength": 18395
+    },
+    {
+      "name": "react",
+      "renderedLength": 17442
+    },
+    {
+      "name": "@floating-ui/core",
+      "renderedLength": 16120
+    },
+    {
+      "name": "scheduler",
+      "renderedLength": 9350
+    },
+    {
+      "name": "@floating-ui/utils",
+      "renderedLength": 8598
+    },
+    {
+      "name": "@tanstack/react-query",
+      "renderedLength": 6807
+    },
+    {
+      "name": "@floating-ui/react-dom",
+      "renderedLength": 6171
+    },
+    {
+      "name": "use-sync-external-store",
+      "renderedLength": 4815
+    },
+    {
+      "name": "@tanstack/react-virtual",
+      "renderedLength": 4073
+    },
+    {
+      "name": "zustand",
+      "renderedLength": 1538
+    }
+  ]
+}

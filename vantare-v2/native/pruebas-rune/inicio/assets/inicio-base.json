@@ -1,0 +1,28 @@
+{
+  "profiles": [
+    {
+      "id": "carrera-lmu",
+      "name": "Carrera LMU",
+      "description": "lmu → crewchief → simhub → overlays",
+      "favorite": true,
+      "lastLaunchedAt": "2026-10-05T18:02:00+02:00",
+      "apps": ["lmu", "crewchief", "simhub", "custom:vantare"]
+    },
+    {
+      "id": "streaming-le-mans",
+      "name": "Streaming Le Mans",
+      "description": "lmu → obs → spotify",
+      "favorite": false,
+      "lastLaunchedAt": "2026-10-04T20:41:00+02:00",
+      "apps": ["lmu", "obs", "spotify"]
+    },
+    {
+      "id": "entreno-rapido",
+      "name": "Entreno rápido",
+      "description": "lmu → overlays",
+      "favorite": false,
+      "lastLaunchedAt": "2026-10-04T20:41:00+02:00",
+      "apps": ["lmu", "custom:vantare"]
+    }
+  ]
+}

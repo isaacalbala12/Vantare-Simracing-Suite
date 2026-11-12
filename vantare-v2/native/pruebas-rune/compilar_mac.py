@@ -13,7 +13,7 @@ import subprocess
 import time
 
 GIB = 1024 ** 3
-STOP_FREE = 18 * GIB  # Margen de 3 GiB antes del mínimo de Isaac: 15 GiB.
+STOP_FREE = 10.25 * GIB  # Parar con 256 MiB de margen antes del minimo autorizado: 10 GiB.
 TARGET = Path.home() / "target-isa-2213-rune"
 
 
@@ -55,10 +55,12 @@ def main():
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if platform.system() != "Darwin" or not command:
         parser.error("Solo Mac; indicar comando tras --")
+    if any(action in command for action in ("build", "test", "clippy", "check", "bench")) and "--release" not in command:
+        parser.error("Isaac autoriza solamente compilaciones y tests en Release")
     if TARGET.is_symlink():
         raise SystemExit("El target no puede ser un enlace")
     if free_bytes() < STOP_FREE:
-        raise SystemExit("PARADA: menos de 18 GiB libres; no acercarse al mínimo de 15 GiB")
+        raise SystemExit("PARADA: menos de 10,25 GiB libres; preservar el minimo de 10 GiB")
     busy = other_cargo()
     if busy:
         raise SystemExit(f"PARADA: hay otro Cargo/Rust activo ({busy}); coordinar con worker G")
@@ -88,11 +90,11 @@ def main():
             while process.poll() is None:
                 minimum_free = min(minimum_free, free_bytes())
                 if minimum_free < STOP_FREE:
-                    reason = "disk_approaching_15_gib"
+                    reason = "disk_approaching_10_gib"
                     stop_group(process)
                     break
                 try:
-                    process.wait(timeout=2)
+                    process.wait(timeout=0.5)
                 except subprocess.TimeoutExpired:
                     pass
         except KeyboardInterrupt:

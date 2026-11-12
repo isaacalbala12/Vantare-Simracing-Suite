@@ -486,8 +486,14 @@ y un error cerrado opcional; el renderer escucha el resultado y ya no sondea.
 
 La semana nueva solo nace de una publicación vigente recibida por refresh;
 una transición de reloj o una publicación futura no avisa. Si la base inicial
-del disco está caducada, el primer refresh establece la base silenciosamente.
+del disco está caducada, el primer refresh válido establece la base silenciosamente,
+aunque no devuelva horario vigente. Una publicación posterior puede avisar usando
+la última semana caducada como comparación.
 No se persiste una última semana avisada. Un fallo breve de autoridad cancela
 la entrega pendiente, sin borrar la base de refresh ni la deduplicación.
 Main tolera hasta 5 segundos de adelanto del reloj del host y usa ciclo h23.
 La prueba de Ajustes y los avisos comparten el doble solo en QA o mock autorizado.
+
+La primera evaluación habilitada del emisor carga horario y preferencias locales
+solo para lectura, aunque el refresh falle por falta de red. Un sello checked
+futuro o un retroceso del reloj no suspende el sondeo: se considera vencido.

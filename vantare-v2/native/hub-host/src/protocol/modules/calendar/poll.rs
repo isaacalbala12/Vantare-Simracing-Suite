@@ -38,7 +38,7 @@ impl State {
             .poll
             .last
             .unwrap_or(self.view.checked.saturating_mul(1000));
-        last == 0 || now.saturating_sub(last) >= interval
+        last == 0 || last > now || now.saturating_sub(last) >= interval
     }
     pub fn poll_retry_ready(&self, now: Instant) -> bool {
         self.poll

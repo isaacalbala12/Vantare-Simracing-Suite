@@ -640,6 +640,10 @@ fn calendar_host_poll_uses_the_shared_background_lane_without_a_mounted_screen()
             event: Event::CalendarRefreshed { error: None, .. }
         }
     ));
+    assert_eq!(
+        session.core.requests, 1,
+        "a completed refresh must restart the cadence"
+    );
 }
 #[test]
 fn calendar_poll_obeys_guards_and_user_refresh_exclusion_and_retries_busy_without_flooding() {
@@ -654,6 +658,8 @@ fn calendar_poll_obeys_guards_and_user_refresh_exclusion_and_retries_busy_withou
         "rights",
         "services",
         "handshake",
+        "closing",
+        "manual_refresh",
     ] {
         let fixture = Fixture::new();
         let mut s = fixture.session();
@@ -670,6 +676,10 @@ fn calendar_poll_obeys_guards_and_user_refresh_exclusion_and_retries_busy_withou
             "rights" => s.current.rights = protocol::LinkState::Unavailable,
             "services" => s.current.services = protocol::LinkState::Unavailable,
             "handshake" => s.handshaken = false,
+            "closing" => s.closing = Some((protocol::CloseReason::Window, clock)),
+            "manual_refresh" => {
+                s.remotes.insert(123, RemoteKind::CalendarRefresh);
+            }
             _ => unreachable!(),
         }
         super::calendar_tick::tick_with_clock(&mut s, &mut Pipe::new(Vec::new()), now, clock)
@@ -735,4 +745,106 @@ fn calendar_refresh_failures_are_closed_events_and_do_not_make_background_respon
             Some(crate::calendar::CalendarRefreshFailure::CoreUnavailable)
         ))
     ));
+}
+
+#[test]
+fn calendar_offline_refresh_still_loads_local_departure_notices() {
+    let fixture = Fixture::new();
+    let base = fixture.0.join("calendar-offline");
+    std::fs::create_dir(&base).unwrap();
+    std::fs::write(base.join("official-schedule.json"), br#"{"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#).unwrap();
+    let mut alerts = crate::calendar::CalendarAlerts::default();
+    alerts.bands.push(crate::calendar::CalendarBand {
+        series_id: "qa".into(),
+        from: 0,
+        to: 1440,
+        days: crate::calendar::CalendarDays::All,
+        mode: crate::calendar::CalendarBandMode::Each,
+    });
+    std::fs::write(
+        base.join("calendar-alerts.json"),
+        serde_json::to_vec(&alerts).unwrap(),
+    )
+    .unwrap();
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    session.current.rights = protocol::LinkState::Connected;
+    session.calendar_state = crate::calendar::State::new(base);
+    let now = chrono::DateTime::parse_from_rfc3339("2026-11-12T12:50:00Z")
+        .unwrap()
+        .timestamp_millis();
+    assert_eq!(
+        super::calendar::complete_at(
+            &mut session,
+            Some((41, RemoteKind::CalendarRefresh)),
+            41,
+            Err(HostError::CoreUnavailable),
+            now
+        ),
+        Err(HostError::CoreUnavailable)
+    );
+    let clock = Instant::now();
+    assert!(
+        session
+            .calendar_state
+            .notice_tick(now - 1000, clock, true, false)
+            .is_empty()
+    );
+    assert!(matches!(
+        session
+            .calendar_state
+            .notice_tick(now, clock + Duration::from_secs(1), true, false)
+            .as_slice(),
+        [crate::calendar::CalendarNotice::Start { .. }]
+    ));
+}
+#[test]
+fn calendar_refresh_completion_never_queues_a_week_notice_without_current_authority() {
+    for revoked in ["rights", "closing"] {
+        let fixture = Fixture::new();
+        let mut session = fixture.session();
+        session.current.access.verified = true;
+        session.current.access.calendar = true;
+        session.current.rights = protocol::LinkState::Connected;
+        let now = chrono::DateTime::parse_from_rfc3339("2026-11-09T08:00:00Z")
+            .unwrap()
+            .timestamp_millis();
+        let old = r#"{"version":1,"timezone":"UTC","validFrom":"2026-11-02T00:00:00Z","validUntil":"2026-11-09T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#;
+        let base = fixture.0.join("calendar-authority");
+        std::fs::create_dir(&base).unwrap();
+        std::fs::write(base.join("official-schedule.json"), old).unwrap();
+        session.calendar_state = crate::calendar::State::new(base);
+        session
+            .calendar_state
+            .refresh_notices(None, None, now, true, false)
+            .unwrap();
+        let clock = Instant::now();
+        session.calendar_state.notice_tick(now, clock, true, false);
+        if revoked == "rights" {
+            session.current.rights = protocol::LinkState::Unavailable;
+        } else {
+            session.closing = Some((protocol::CloseReason::Window, clock));
+        }
+        let next = r#"{"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#;
+        super::calendar::complete_at(
+            &mut session,
+            Some((42, RemoteKind::CalendarRefresh)),
+            42,
+            Ok(vantare_ipc::services_protocol::Reply::Calendar {
+                schedule: Some(next.into()),
+                fallback: None,
+            }),
+            now + 1000,
+        )
+        .unwrap();
+        // Authority may return before the next tick. The completion itself must not queue a notice.
+        assert!(
+            session
+                .calendar_state
+                .notice_tick(now + 1000, clock + Duration::from_secs(1), true, false)
+                .is_empty(),
+            "{revoked}"
+        );
+    }
 }

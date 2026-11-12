@@ -282,6 +282,11 @@ impl State {
         enabled: bool,
         in_track: bool,
     ) -> Vec<CalendarNotice> {
+        if enabled && !self.notices_loaded {
+            self.load();
+            self.config();
+            self.notices_loaded = true;
+        }
         let safe = enabled && self.config_view.documents.alerts == CalendarDocumentState::Ready;
         self.cache_current(now);
         self.notices.tick_current(
@@ -324,8 +329,8 @@ impl State {
         let value = self.refreshed(official, fallback)?;
         self.cache_current(now);
         let announce = self.notices.refresh_initialized || was_current;
+        self.notices.refresh_initialized = true;
         if let Some(schedule) = self.cached_current.as_ref() {
-            self.notices.refresh_initialized = true;
             if arrived
                 && announce
                 && enabled

@@ -437,3 +437,10 @@ it("keeps background refresh errors and fields closed", () => {
   expect(isEvent({ ...message.event, error: "arbitrary" })).toBe(false);
   expect(isEvent({ ...message.event, message: "free text" })).toBe(false);
 });
+
+it("uses the later host clock when formatting a departure across a minute boundary", () => {
+  const present = vi.fn(() => true);
+  const session = calendarNoticeSession(present, () => 1000);
+  session.receive({kind:"start",id:"e".repeat(64),issuedAt:6000,expiresAt:66000,at:606000,series:"QA",track:"Spa",raceMinutes:30,silent:true});
+  expect(present).toHaveBeenCalledWith({title:expect.any(String),body:"Spa · carrera 30 min · en 10 min",silent:true});
+});

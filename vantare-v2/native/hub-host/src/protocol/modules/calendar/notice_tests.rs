@@ -482,3 +482,48 @@ fn host_poll_cadence_is_utc_and_backoff_is_injected() {
     assert!(!state.poll_retry_ready(clock + Duration::from_millis(999)));
     assert!(state.poll_retry_ready(clock + Duration::from_secs(1)));
 }
+
+#[test]
+fn an_empty_successful_monday_refresh_initializes_the_later_publication_notice() {
+    let root = Root::new();
+    let (view, _, _) = setup();
+    let current = view.official.unwrap();
+    let mut old = current.clone();
+    old.valid_from = "2026-11-02T00:00:00Z".into();
+    old.valid_until = "2026-11-09T00:00:00Z".into();
+    std::fs::write(root.0.join("official-schedule.json"), raw(&old)).unwrap();
+    let morning = date_millis("2026-11-09T08:00:00Z").unwrap();
+    let arrival = date_millis("2026-11-09T10:30:00Z").unwrap();
+    let clock = Instant::now();
+    let mut state = root.state();
+    state
+        .refresh_notices(None, None, morning, true, false)
+        .unwrap();
+    assert!(state.notice_tick(morning, clock, true, false).is_empty());
+    state
+        .refresh_notices(Some(raw(&current)), None, arrival, true, false)
+        .unwrap();
+    assert!(matches!(
+        state
+            .notice_tick(arrival, clock + Duration::from_secs(1), true, false)
+            .as_slice(),
+        [CalendarNotice::Week { .. }]
+    ));
+}
+#[test]
+fn a_future_checked_stamp_or_backward_clock_never_suspends_host_polling() {
+    let root = Root::new();
+    let now = date_millis("2026-11-09T08:00:00Z").unwrap();
+    std::fs::write(
+        root.0.join("calendar-stamps.json"),
+        format!(r#"{{"checked":{},"updated":0}}"#, now / 1000 + 3600),
+    )
+    .unwrap();
+    let mut state = root.state();
+    state.load();
+    assert!(state.poll_due(now));
+    state.poll_started(now + 3600000);
+    assert!(state.poll_due(now));
+    state.poll_started(now);
+    assert!(!state.poll_due(now));
+}

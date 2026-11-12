@@ -1,3 +1,10 @@
+## VANTA-141 · Pieza 8 Inicio Rune compilada
+
+- Pantalla local Inicio, tokens y fuentes del Hub, recursos SVG y fixture inicio-base incrustados. Ventana 1440×900 sin entrada animada, navegación sencilla y scroll Rune real. Sin red ni servicios reales.
+- Fuente Windows 69d2a5cc78aadc06b5dda900afc269f313b8c487; Rust 1.99.1 Release opt3/lto=false/cgu16/debug0, target único Mac. 2 tests puros de árbol y pulsación pasan; fmt y clippy all-targets -D warnings pasan.
+- Cruce incremental 11,16 s, 27.247.616 bytes; mínimo libre 11,75 GiB sobre el nuevo límite autorizado 10. Guardián cancela a 10,25.
+- Binario copiado al servidor; procedencia incrustada y dumpbin comprobados sin ejecutarlo. Sin imagen física ni medidas de pantalla. A-Electron/A-GPUI fast, campaña completa y kit pendientes; no merge ni release.
+
 ## VANTA-141 - Esqueleto Windows compilado y Runtime nativo verificado (12-nov-2026)
 
 [#2213](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2213),

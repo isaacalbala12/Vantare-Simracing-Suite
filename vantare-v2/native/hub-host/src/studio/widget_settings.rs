@@ -220,6 +220,7 @@ macro_rules! patch {
         #[serde(rename_all = "camelCase", deny_unknown_fields)]
         pub struct $name {
             $(#[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = $decode)]
+              #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
               pub $field: Option<$ty>,)*
         }
     };
@@ -239,24 +240,28 @@ pub struct WidgetColumnPatch {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "some"
     )]
+    #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
     pub enabled: Option<bool>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "some"
     )]
+    #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
     pub width_preset: Option<ColumnWidth>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "some"
     )]
+    #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
     pub format: Option<WidgetColumnFormatPatch>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "some"
     )]
+    #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
     pub style: Option<WidgetColumnStylePatch>,
 }
 patch!(StandingsWidgetPatch {

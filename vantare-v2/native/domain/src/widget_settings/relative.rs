@@ -40,6 +40,7 @@ pub struct Settings {
     /// Marca Vantare: decisión inyectada por el host según la licencia
     /// (como en Standings). Sin decisión no se pinta.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub brand_visible: Option<bool>,
 }
 

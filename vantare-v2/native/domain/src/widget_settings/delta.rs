@@ -33,9 +33,11 @@ pub struct Settings {
     pub show_sectors: bool,
     /// Solo se guarda cuando está activo: los layouts anteriores no cambian de bytes.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[cfg_attr(feature = "bindings", ts(optional = nullable))]
     pub transparent_background: bool,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub brand_visible: Option<bool>,
     pub template_id: String,
 }

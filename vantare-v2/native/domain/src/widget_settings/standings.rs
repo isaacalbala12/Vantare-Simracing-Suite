@@ -75,8 +75,10 @@ pub struct Settings {
     pub columns: Option<Vec<options::ColumnSetting>>,
     /// Pestañas Práctica y Qualy (#1564); `None` usa `columns`.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub practice_columns: Option<Vec<options::ColumnSetting>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub qualifying_columns: Option<Vec<options::ColumnSetting>>,
     pub class_scope: String,
     pub classification_mode: String,
@@ -91,8 +93,10 @@ pub struct Settings {
     pub footer_second: String,
     pub show_brand: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub brand_visible: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "bindings", ts(optional))]
     pub footer_slots: Option<Vec<String>>,
 }
 

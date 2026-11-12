@@ -82,7 +82,11 @@ pub(crate) fn typescript() -> String {
     )
     .expect("categories");
     metadata(&mut text);
-    text
+    text.lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n"
 }
 fn metadata(text: &mut String) {
     for (name, value) in [

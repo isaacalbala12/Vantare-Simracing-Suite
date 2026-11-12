@@ -5,6 +5,7 @@ import { Button, IconButton } from "../Button";
 import { Skeleton } from "../Data";
 import { Tooltip } from "../Layers";
 import type { ReturnTypeOfStudioFocus } from "./StudioFocus";
+import { StudioSaveStatus } from "./StudioStates";
 import {
   VisibilityIcon,
   WidgetPreview,
@@ -18,6 +19,9 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
   return (
     <aside className="v-focus-strip" aria-label={t.layoutLabel}>
       <header className="v-focus-layout-name">
+        <span className="v-focus-layout-icon" aria-hidden="true">
+          <Icon name="v-studio" />
+        </span>
         <div>
           <small>{t.layoutLabel}</small>
           <strong>{t.local}</strong>
@@ -26,17 +30,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           <Icon name="info" />
         </IconButton>
       </header>
-      <div className="v-focus-save" role="status" data-failed={!!state.failure}>
-        {state.pending
-          ? t.saving
-          : state.failure
-            ? t.notSaved
-            : view?.state === "protected"
-              ? t.readOnly
-              : view?.state === "ready"
-                ? t.saved
-                : t.loading}
-      </div>
+      <StudioSaveStatus model={model} />
       <div className="v-focus-list-heading">
         {view?.state === "ready" && (
           <>
@@ -142,7 +136,13 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
               </div>
             ))}
         {view && !items.length && (
-          <p>
+          <p
+            className={
+              view.state === "ready" && !view.instances.length
+                ? "v-focus-empty-list"
+                : undefined
+            }
+          >
             {view.instances.length
               ? model.filter === "hidden"
                 ? t.noHidden
@@ -166,6 +166,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
       >
         <Button
           className="v-focus-add"
+          data-empty={view?.state === "ready" && !view.instances.length}
           data-add-widget
           aria-label={t.add}
           disabled={

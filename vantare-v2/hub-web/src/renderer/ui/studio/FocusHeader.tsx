@@ -31,7 +31,10 @@ export function FocusHeader({
   return (
     <header className="v-focus-header">
       <div className="v-focus-heading">
-        <small>{info?.category}</small>
+        <small>
+          {info?.category ??
+            (view.state === "ready" && !item ? t.local : undefined)}
+        </small>
         <h1>
           {item ? (
             <>
@@ -44,12 +47,14 @@ export function FocusHeader({
             t.title
           )}
         </h1>
-        <p>
-          {info?.about}
-          {item && (
-            <span>{t.stageSize(item.size.width, item.size.height)}</span>
-          )}
-        </p>
+        {(info || item) && (
+          <p>
+            {info?.about}
+            {item && (
+              <span>{t.stageSize(item.size.width, item.size.height)}</span>
+            )}
+          </p>
+        )}
       </div>
       <div className="v-focus-actions">
         {item && (

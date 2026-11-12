@@ -9,6 +9,14 @@ pub(crate) fn typescript() -> String {
     declare::<ResidentQuestionKind>(&mut text);
     declare::<ResidentChoice>(&mut text);
     declare::<ResidentQuestion>(&mut text);
+    declare::<crate::launcher_resident::ResidentFailure>(&mut text);
+    declare::<crate::launcher_resident::ResidentCancellation>(&mut text);
+    declare::<crate::launcher_resident::ResidentRejection>(&mut text);
+    declare::<crate::launcher_resident::ResidentOutcome>(&mut text);
+    declare::<crate::launcher_resident::ResidentReceipt>(&mut text);
+    declare::<crate::launcher_resident::ResidentEventKind>(&mut text);
+    declare::<crate::launcher_resident::ResidentExecutionEvent>(&mut text);
+    declare::<crate::launcher_resident::ResidentExecution>(&mut text);
     declare::<ResidentView>(&mut text);
     constants!(&mut text, "residentActions", ResidentAction::ALL);
     constants!(

@@ -13,6 +13,7 @@ use std::fmt::Write as _;
 
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    declare::<crate::launcher::checked::LaunchQueued>(&mut text);
     declare::<crate::launcher::actions::ProfileOption>(&mut text);
     declare::<ExecutableSelection>(&mut text);
     declare::<AppDraft>(&mut text);
@@ -262,6 +263,7 @@ fn launcher_host_samples() -> Vec<HostToUi> {
             id: 1,
             result: Reply::LauncherLaunch { accepted: true },
         },
+        HostToUi::Response { id: 1, result: Reply::LauncherLaunchChecked { value: crate::launcher::checked::LaunchQueued::Queued { request: "a".repeat(32) } } },
         HostToUi::Failure {
             id: 1,
             error: crate::protocol::HostError::LauncherConflict {
@@ -300,6 +302,10 @@ fn launcher_ui_samples() -> Vec<UiToHost> {
                 ),
                 base_revision: "0".repeat(64),
             },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::LauncherLaunchChecked { profile: "creator".into(), base_revision: "0".repeat(64), armed_generation: "a".repeat(64) },
         },
         UiToHost::Request {
             id: 1,

@@ -35,6 +35,7 @@ struct Core {
     requests: usize,
     sent: Vec<(u32, vantare_ipc::services_protocol::Command)>,
     policy: vantare_ipc::control::Policy,
+    observation: Option<vantare_ipc::account_session::AccountObservation>,
     cancelled: Vec<u32>,
     available: bool,
     busy: bool,
@@ -51,6 +52,7 @@ impl Core {
     )> {
         self.reply.take()
     }
+    fn account_observation(&self) -> Option<vantare_ipc::account_session::AccountObservation> { self.observation.clone() }
     fn policy(&self) -> vantare_ipc::control::Policy {
         self.policy.clone()
     }

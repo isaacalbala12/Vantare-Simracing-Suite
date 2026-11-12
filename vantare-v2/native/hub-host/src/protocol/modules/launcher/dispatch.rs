@@ -18,7 +18,7 @@ impl Session {
                 self.profile_request(pipe, id, request)
             }
             Request::LauncherGet {} => self.launcher_snapshot(pipe, id),
-            Request::LauncherLaunch { .. } => self.launcher_request(pipe, id, request),
+            Request::LauncherLaunch { .. } | Request::LauncherLaunchChecked { .. } => self.launcher_request(pipe, id, request),
             Request::LauncherFavorite {} => {
                 let message = match crate::favorite::launch(&self.launcher, &self.current) {
                     Ok(accepted) => HostToUi::Response {
@@ -51,6 +51,18 @@ pub(super) fn dispatch(
 impl Session {
     fn launcher_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::LauncherLaunchChecked { profile, base_revision, armed_generation } => {
+                let result = armed_generation.clone().try_into().map_err(|_| HostError::Denied)
+                    .and_then(|generation| crate::launcher::checked::launch(
+                        &self.launcher, self.core.account_observation().as_ref(), &generation, profile, base_revision
+                    ));
+                let message = match result {
+                    Ok(value) => HostToUi::Response { id, result: Reply::LauncherLaunchChecked { value } },
+                    Err(HostError::LauncherConflict { .. }) => HostToUi::Failure { id, error: HostError::LauncherConflict { current: self.launcher_reader.view() } },
+                    Err(error) => HostToUi::Failure { id, error },
+                };
+                frame::write(pipe, &message)
+            }
             Request::LauncherLaunch {
                 profile,
                 base_revision,

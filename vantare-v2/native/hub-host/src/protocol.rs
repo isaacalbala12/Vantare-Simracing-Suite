@@ -7,7 +7,7 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 include!(concat!(env!("OUT_DIR"), "/wire.rs"));
-pub const VERSION: u32 = 30;
+pub const VERSION: u32 = 31;
 pub const DEMO_NAME_LIMIT: usize = 128;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -55,6 +55,7 @@ pub struct AccessView {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CoreStatus {
+    pub account_generation: Option<String>,
     pub photos: LinkState,
     pub rights: LinkState,
     pub services: LinkState,

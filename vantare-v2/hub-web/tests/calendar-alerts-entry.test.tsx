@@ -29,17 +29,29 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock("../src/renderer/app/SettingsState", () => ({
   useSettings: () => ({
-    view: api.settingsState === "ready" ? { general: { toasts: api.toasts }, protected: false } : undefined,
+    view:
+      api.settingsState === "ready"
+        ? { general: { toasts: api.toasts }, protected: false }
+        : undefined,
     loading: api.settingsState === "loading",
   }),
 }));
-vi.mock("../src/renderer/screens/calendar/CalendarNoticeTest", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/renderer/screens/calendar/CalendarNoticeTest")>();
-  return {...actual, useCalendarNoticeTest: (allowed: boolean) => {
-    api.noticeAllowed(allowed);
-    return actual.useCalendarNoticeTest(allowed);
-  }};
-});
+vi.mock(
+  "../src/renderer/screens/calendar/CalendarNoticeTest",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("../src/renderer/screens/calendar/CalendarNoticeTest")
+      >();
+    return {
+      ...actual,
+      useCalendarNoticeTest: (allowed: boolean) => {
+        api.noticeAllowed(allowed);
+        return actual.useCalendarNoticeTest(allowed);
+      },
+    };
+  },
+);
 vi.mock("../src/renderer/app/Host", () => ({
   useHost: () => ({ client: api, hello: { demo: false } }),
 }));
@@ -424,25 +436,61 @@ it.each([false, true])(
   },
 );
 
-it.each(["loading","error"] as const)("shows the actual Settings %s state rather than promising desktop notices",async(state)=>{
- api.settingsState=state;
- api.request.mockResolvedValue({method:"calendar.configLoad",value:{utc:true,prefsRevision:"a".repeat(64),following:[],followingRevision:"b".repeat(64),alerts:{...calendarDefaultAlerts,bands:[],slots:[]},alertsRevision:"c".repeat(64),documents:{prefs:"ready",following:"ready",alerts:"ready"}}});
- render(content()); await act(async()=>{});
- fireEvent.click(screen.getByRole("button",{name:"Avisos"})); await act(async()=>{});
- expect(screen.getAllByText(state === "loading" ? text.windowsLoading : text.windowsUnavailable).length).toBeGreaterThan(0);
- if(state === "error") expect(screen.queryByText(text.windowsLoading)).toBeNull();
- expect(screen.queryByText(text.deliveryScope)).toBeNull();
- expect(screen.queryByText(text.sample)).toBeNull();
- expect(api.noticeAllowed).toHaveBeenLastCalledWith(false);
-});
-it("gates noticeTest at the entry while General is off and re-enables it live",async()=>{
- api.toasts=false;
- api.request.mockResolvedValue({method:"calendar.configLoad",value:{utc:true,prefsRevision:"a".repeat(64),following:[],followingRevision:"b".repeat(64),alerts:{...calendarDefaultAlerts,bands:[],slots:[]},alertsRevision:"c".repeat(64),documents:{prefs:"ready",following:"ready",alerts:"ready"}}});
- const ui=render(content()); await act(async()=>{});
- fireEvent.click(screen.getByRole("button",{name:"Avisos"})); await act(async()=>{});
- expect(api.noticeAllowed).toHaveBeenLastCalledWith(false);
- expect(screen.queryByText(text.sample)).toBeNull(); expect(screen.queryByText(text.deliveryScope)).toBeNull();
- api.toasts=true;ui.rerender(content());
- expect(api.noticeAllowed).toHaveBeenLastCalledWith(true);
- expect(screen.getByText(text.sample)).toBeTruthy();
+it.each(["loading", "error"] as const)(
+  "shows the actual Settings %s state rather than promising desktop notices",
+  async (state) => {
+    api.settingsState = state;
+    api.request.mockResolvedValue({
+      method: "calendar.configLoad",
+      value: {
+        utc: true,
+        prefsRevision: "a".repeat(64),
+        following: [],
+        followingRevision: "b".repeat(64),
+        alerts: { ...calendarDefaultAlerts, bands: [], slots: [] },
+        alertsRevision: "c".repeat(64),
+        documents: { prefs: "ready", following: "ready", alerts: "ready" },
+      },
+    });
+    render(content());
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+    await act(async () => {});
+    expect(
+      screen.getAllByText(
+        state === "loading" ? text.windowsLoading : text.windowsUnavailable,
+      ).length,
+    ).toBeGreaterThan(0);
+    if (state === "error")
+      expect(screen.queryByText(text.windowsLoading)).toBeNull();
+    expect(screen.queryByText(text.deliveryScope)).toBeNull();
+    expect(screen.queryByText(text.sample)).toBeNull();
+    expect(api.noticeAllowed).toHaveBeenLastCalledWith(false);
+  },
+);
+it("gates noticeTest at the entry while General is off and re-enables it live", async () => {
+  api.toasts = false;
+  api.request.mockResolvedValue({
+    method: "calendar.configLoad",
+    value: {
+      utc: true,
+      prefsRevision: "a".repeat(64),
+      following: [],
+      followingRevision: "b".repeat(64),
+      alerts: { ...calendarDefaultAlerts, bands: [], slots: [] },
+      alertsRevision: "c".repeat(64),
+      documents: { prefs: "ready", following: "ready", alerts: "ready" },
+    },
+  });
+  const ui = render(content());
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  await act(async () => {});
+  expect(api.noticeAllowed).toHaveBeenLastCalledWith(false);
+  expect(screen.queryByText(text.sample)).toBeNull();
+  expect(screen.queryByText(text.deliveryScope)).toBeNull();
+  api.toasts = true;
+  ui.rerender(content());
+  expect(api.noticeAllowed).toHaveBeenLastCalledWith(true);
+  expect(screen.getByText(text.sample)).toBeTruthy();
 });

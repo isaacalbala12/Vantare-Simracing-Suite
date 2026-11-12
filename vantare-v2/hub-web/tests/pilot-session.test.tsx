@@ -42,12 +42,10 @@ beforeEach(() => {
   if (sample?.kind !== "response" || sample.result.method !== "pilot.load")
     throw Error("missing pilot fixture");
   view = structuredClone(sample.result.value);
-  fake.client.request
-    .mockReset()
-    .mockImplementation(async (r) => ({
-      method: r.method,
-      value: { ...view, fields: r.fields ?? view.fields },
-    }));
+  fake.client.request.mockReset().mockImplementation(async (r) => ({
+    method: r.method,
+    value: { ...view, fields: r.fields ?? view.fields },
+  }));
   vi.mocked(openPilotPhoto).mockReset();
 });
 afterEach(cleanup);
@@ -193,4 +191,16 @@ it("does not read or edit a pilot while the session is unconfirmed", async () =>
   act(() => h.result.current.edit(view.fields));
   expect(fake.client.request).not.toHaveBeenCalled();
   expect(h.result.current.draft).toBeUndefined();
+});
+it("preserves the stable guest's local profile without authenticating reports or mail", async () => {
+  session.confirm({
+    session: "signedOut",
+    gate: "none",
+    blocked: false,
+  } as AccountView);
+  const h = mount();
+  expect(session.getSnapshot().confirmed).toBe(false);
+  expect(h.result.current.available).toBe(true);
+  await load(h);
+  expect(h.result.current.draft).toEqual(view.fields);
 });

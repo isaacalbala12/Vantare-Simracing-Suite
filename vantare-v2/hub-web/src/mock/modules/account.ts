@@ -62,6 +62,7 @@ export function create(context: MockContext): MockHandler {
   }
   if (
     context.sceneName === "cuenta-base" ||
+    context.sceneName === "cuenta-cambio-sesion" ||
     context.sceneName === "cuenta-sesion" ||
     context.sceneName === "cuenta-founders"
   ) {

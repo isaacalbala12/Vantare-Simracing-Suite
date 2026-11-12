@@ -1,6 +1,5 @@
 # Ajustes tipados de Studio
 
-
 `OverlayInstance.settings` contiene una unión cerrada por `kind` para Standings,
 Relative, Delta, Pedales y Fuel Strategy. Los demás tipos devuelven `null` hasta
 su propia ampliación. El anfitrión proyecta los tipos de

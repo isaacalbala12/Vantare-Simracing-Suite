@@ -326,11 +326,7 @@ fn widget_settings_types(text: &mut String) {
         "tableSizes": native::TABLE_SIZES, "footerKeys": native::FOOTER_KEYS,
         "footerMax": native::FOOTER_ITEMS_MAX
     });
-    writeln!(
-        text,
-        "export const studioWidgetOptions = {options} as const;"
-    )
-    .expect("widget options");
+    crate::protocol::bindings::constants!(text, "studioWidgetOptions", options);
     let defaults: std::collections::BTreeMap<_, _> = WidgetKind::ALL
         .iter()
         .map(|kind| {

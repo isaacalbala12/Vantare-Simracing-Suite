@@ -395,13 +395,9 @@ it("keeps only one calendar dialog open when switching between alerts and ICS", 
     </TooltipProvider>,
   );
   fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
-  expect(
-    screen.getByRole("dialog", { name: "Avisos" }),
-  ).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "Avisos" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
-  expect(
-    screen.queryByRole("dialog", { name: "Avisos" }),
-  ).toBeNull();
+  expect(screen.queryByRole("dialog", { name: "Avisos" })).toBeNull();
   expect(
     screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
   ).toBeTruthy();
@@ -409,7 +405,5 @@ it("keeps only one calendar dialog open when switching between alerts and ICS", 
   expect(
     screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
   ).toBeNull();
-  expect(
-    screen.getByRole("dialog", { name: "Avisos" }),
-  ).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "Avisos" })).toBeTruthy();
 });

@@ -39,7 +39,8 @@ export const calendarIcsText = {
   destination: "Elige dónde guardar el archivo .ics.",
   cancel: "Cancelar",
   replaceTitle: "¿Reemplazar?",
-  replaceDescription: "Ya existe un archivo con ese nombre. Reemplazarlo sustituirá su contenido por el calendario que has revisado. Si el archivo cambia, volveremos a pedir confirmación.",
+  replaceDescription:
+    "Ya existe un archivo con ese nombre. Reemplazarlo sustituirá su contenido por el calendario que has revisado. Si el archivo cambia, volveremos a pedir confirmación.",
   replaceConfirm: "Reemplazar",
   download: "Descargar .ics",
   preparing: "Preparando calendario…",

@@ -221,7 +221,11 @@ export function isRequest(v: Record<string, unknown>) {
         typeof v.alarm === "boolean"
       );
     case "calendar.icsReplace":
-      return exact(v, ["method", "confirmationId", "replace"]) && isCalendarRevision(v.confirmationId) && typeof v.replace === "boolean";
+      return (
+        exact(v, ["method", "confirmationId", "replace"]) &&
+        isCalendarRevision(v.confirmationId) &&
+        typeof v.replace === "boolean"
+      );
     case "calendar.icsExport":
       return (
         exact(v, ["method", "preparedHash"]) &&
@@ -261,12 +265,13 @@ export function isReply(v: Record<string, unknown>) {
   if (v.method === "calendar.noticeTest")
     return exact(v, ["method", "accepted"]) && typeof v.accepted === "boolean";
   if (v.method === "calendar.icsExport" || v.method === "calendar.icsReplace")
-    return (
-      v.status === "replacementRequired"
-        ? exact(v, ["method", "status", "confirmationId"]) && isCalendarRevision(v.confirmationId)
-        : exact(v, ["method", "status"]) &&
-          (v.status === "saved" || v.status === "cancelled" || v.status === "conflict")
-    );
+    return v.status === "replacementRequired"
+      ? exact(v, ["method", "status", "confirmationId"]) &&
+          isCalendarRevision(v.confirmationId)
+      : exact(v, ["method", "status"]) &&
+          (v.status === "saved" ||
+            v.status === "cancelled" ||
+            v.status === "conflict");
   if (!exact(v, ["method", "value"])) return false;
   switch (v.method) {
     case "calendar.icsPrepare":

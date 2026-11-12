@@ -3,14 +3,17 @@ import { link, open, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, win32 } from "node:path";
 import {
   type CalendarIcsStatus,
-  calendarIcsLimit,
   calendarIcsConfirmationMaxAgeMs,
+  calendarIcsLimit,
   calendarIcsPreparedMaxAgeMs,
   type HostError,
   type HostToUi,
 } from "../contract/generated/contract";
 
-import { calendarFingerprint, replaceCalendar } from "./calendar-replacement-file";
+import {
+  calendarFingerprint,
+  replaceCalendar,
+} from "./calendar-replacement-file";
 
 // Only called with main's own native dialog result; never a renderer path.
 function destinationPath(path: string) {
@@ -93,7 +96,10 @@ function code(error: unknown) {
     ? error.code
     : undefined;
 }
-type Outcome = { status: Exclude<CalendarIcsStatus, "replacementRequired"> } | { status: "replacementRequired"; confirmationId: string } | { error: HostError };
+type Outcome =
+  | { status: Exclude<CalendarIcsStatus, "replacementRequired"> }
+  | { status: "replacementRequired"; confirmationId: string }
+  | { error: HostError };
 export function calendarExportSession(
   pick: () => Promise<string | undefined>,
   save = saveCalendar,
@@ -105,9 +111,21 @@ export function calendarExportSession(
   let prepared:
     | { calendar: string; hash: string; preparedAt: number; validUntil: number }
     | undefined;
-  let replacement: { id: string; path: string; calendar: string; fingerprint: string; issuedAt: number } | undefined;
+  let replacement:
+    | {
+        id: string;
+        path: string;
+        calendar: string;
+        fingerprint: string;
+        issuedAt: number;
+      }
+    | undefined;
   let alive = true;
-  const validConfirmation = (issuedAt: number) => alive && Number.isFinite(now()) && now() >= issuedAt && now() - issuedAt < calendarIcsConfirmationMaxAgeMs;
+  const validConfirmation = (issuedAt: number) =>
+    alive &&
+    Number.isFinite(now()) &&
+    now() >= issuedAt &&
+    now() - issuedAt < calendarIcsConfirmationMaxAgeMs;
   async function ask(path: string, calendar: string): Promise<Outcome> {
     const value = await fingerprint(path);
     if (!alive) return { status: "cancelled" };
@@ -167,7 +185,11 @@ export function calendarExportSession(
     async replace(confirmationId: string, replace: boolean): Promise<Outcome> {
       if (busy) return { error: { kind: "busy" } };
       const pending = replacement;
-      if (!pending || pending.id !== confirmationId || !validConfirmation(pending.issuedAt)) {
+      if (
+        !pending ||
+        pending.id !== confirmationId ||
+        !validConfirmation(pending.issuedAt)
+      ) {
         if (pending?.id === confirmationId) replacement = undefined;
         return { error: { kind: "rejected" } };
       }
@@ -177,12 +199,26 @@ export function calendarExportSession(
       try {
         if ((await fingerprint(pending.path)) !== pending.fingerprint)
           return await ask(pending.path, pending.calendar);
-        await replaceFile(pending.path, pending.calendar, pending.fingerprint, () => validConfirmation(pending.issuedAt));
+        await replaceFile(
+          pending.path,
+          pending.calendar,
+          pending.fingerprint,
+          () => validConfirmation(pending.issuedAt),
+        );
         return { status: "saved" };
       } catch (error) {
-        if (code(error) === "VANTARE_ICS_CHANGED" && validConfirmation(pending.issuedAt))
-          return await ask(pending.path, pending.calendar).catch(() => ({ error: { kind: "io" } }) as Outcome);
-        return { error: { kind: validConfirmation(pending.issuedAt) ? "io" : "rejected" } };
+        if (
+          code(error) === "VANTARE_ICS_CHANGED" &&
+          validConfirmation(pending.issuedAt)
+        )
+          return await ask(pending.path, pending.calendar).catch(
+            () => ({ error: { kind: "io" } }) as Outcome,
+          );
+        return {
+          error: {
+            kind: validConfirmation(pending.issuedAt) ? "io" : "rejected",
+          },
+        };
       } finally {
         busy = false;
       }
@@ -214,7 +250,8 @@ export function calendarExportSession(
         try {
           await save(destination, snapshot.calendar);
         } catch (error) {
-          if (code(error) === "EEXIST") return await ask(destination, snapshot.calendar);
+          if (code(error) === "EEXIST")
+            return await ask(destination, snapshot.calendar);
           throw error;
         }
         return { status: "saved" };

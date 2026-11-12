@@ -170,3 +170,32 @@ it("renders markup in a summary as literal text", () => {
   expect(screen.getByText("<b>Serie local</b>")).toBeTruthy();
   expect(document.querySelector(".v-calendar-ics-entry b")).toBeNull();
 });
+
+it("asks explicitly before replacing and can cancel without showing a path", () => {
+  const onReplace = vi.fn();
+  const component = show({
+    ...props,
+    confirmationId: "b".repeat(64),
+    onReplace,
+  });
+  const question = screen.getByRole("alertdialog", { name: text.replaceTitle });
+  expect(question.textContent).toContain(text.replaceDescription);
+  expect(question.textContent).not.toContain("b".repeat(64));
+  fireEvent.click(
+    screen.getByRole("button", { name: text.replaceConfirm, exact: true }),
+  );
+  expect(onReplace).toHaveBeenLastCalledWith(true);
+  component.rerender(
+    <TooltipProvider>
+      <CalendarIcsDialog
+        {...props}
+        confirmationId={"c".repeat(64)}
+        onReplace={onReplace}
+      />
+    </TooltipProvider>,
+  );
+  const cancel = question.querySelector<HTMLButtonElement>("button");
+  if (!cancel) throw new Error("cancel missing");
+  fireEvent.click(cancel);
+  expect(onReplace).toHaveBeenLastCalledWith(false);
+});

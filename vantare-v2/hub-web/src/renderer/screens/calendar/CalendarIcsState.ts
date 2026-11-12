@@ -74,18 +74,31 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     const snapshot = prepared.current;
     if (!client || !authority.current || !snapshot || busy || exporting.current)
       return false;
-    return await exportRequest({ method: "calendar.icsExport", preparedHash: snapshot.preparedHash });
+    return await exportRequest({
+      method: "calendar.icsExport",
+      preparedHash: snapshot.preparedHash,
+    });
   }
   async function replace(replace: boolean) {
     const id = confirmation.current;
     if (!client || !authority.current || !id || exporting.current) return false;
     confirmation.current = undefined;
     setConfirmationId(undefined);
-    return await exportRequest({ method: "calendar.icsReplace", confirmationId: id, replace });
+    return await exportRequest({
+      method: "calendar.icsReplace",
+      confirmationId: id,
+      replace,
+    });
   }
-  async function exportRequest(request: Extract<import("../../../contract/generated/contract").Request, {method: "calendar.icsExport" | "calendar.icsReplace"}>) {
+  async function exportRequest(
+    request: Extract<
+      import("../../../contract/generated/contract").Request,
+      { method: "calendar.icsExport" | "calendar.icsReplace" }
+    >,
+  ) {
     if (!client) return false;
     const owner = client;
+    const generation = epoch.current;
     exporting.current = true;
     setExporting(true);
     prepared.current = undefined;
@@ -94,14 +107,21 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     setStatus(undefined);
     try {
       const reply = await owner.request(request);
-      if (!authority.current) return false;
       setView(undefined);
-      if (reply.method !== request.method || (reply.method !== "calendar.icsExport" && reply.method !== "calendar.icsReplace")) {
+      if (
+        reply.method !== request.method ||
+        (reply.method !== "calendar.icsExport" &&
+          reply.method !== "calendar.icsReplace")
+      ) {
         setFailure("rejected");
         return false;
       }
       setStatus(reply.status);
-      if (reply.status === "replacementRequired") {
+      if (
+        reply.status === "replacementRequired" &&
+        typeof reply.confirmationId === "string"
+      ) {
+        if (!authority.current || generation !== epoch.current) return false;
         confirmation.current = reply.confirmationId;
         setConfirmationId(reply.confirmationId);
       } else if (reply.status !== "saved")

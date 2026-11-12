@@ -12,7 +12,9 @@ function stamp(stat: Awaited<ReturnType<typeof lstat>>) {
 }
 // These paths come exclusively from main's native picker. Fingerprints never
 // leave main. Stream the contents so a pre-existing file cannot exhaust memory.
-export async function calendarFingerprint(path: string): Promise<string | null> {
+export async function calendarFingerprint(
+  path: string,
+): Promise<string | null> {
   let before: Awaited<ReturnType<typeof lstat>>;
   try {
     before = await lstat(path);
@@ -21,9 +23,12 @@ export async function calendarFingerprint(path: string): Promise<string | null> 
     throw error;
   }
   if (!before.isFile() || before.isSymbolicLink())
-    throw Object.assign(new Error("calendar destination is not a regular file"), {
-      code: "EINVAL",
-    });
+    throw Object.assign(
+      new Error("calendar destination is not a regular file"),
+      {
+        code: "EINVAL",
+      },
+    );
   const file = await open(path, "r");
   try {
     if (stamp(await file.stat()) !== stamp(before)) throw changed();
@@ -56,7 +61,10 @@ export async function replaceCalendar(
   publish = rename,
   create = open,
 ) {
-  const temporary = join(dirname(path), `.vantare-calendar-${randomUUID()}.tmp`);
+  const temporary = join(
+    dirname(path),
+    `.vantare-calendar-${randomUUID()}.tmp`,
+  );
   const file = await create(temporary, "wx");
   try {
     await file.writeFile(calendar, "utf8");

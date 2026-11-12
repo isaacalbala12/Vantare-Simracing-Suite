@@ -233,6 +233,20 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page.mouse.move(600, 890);
     },
   },
+  "calendario-ics-reemplazar": {
+    mock: "calendar-ics-replace-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-ics-contraida"].prepare(page);
+      await page
+        .getByRole("button", { name: "Descargar .ics", exact: true })
+        .click();
+      await page
+        .getByRole("alertdialog", { name: "¿Reemplazar?", exact: true })
+        .waitFor();
+      await assertDetailWindowControls(page);
+      await page.mouse.move(600, 890);
+    },
+  },
   "calendario-ics-contraida": {
     mock: "calendar-live-reference",
     async prepare(page) {

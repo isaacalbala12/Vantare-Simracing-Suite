@@ -56,14 +56,9 @@ export function HostProvider({ children }: { children: ReactNode }) {
               }
               setHost({ client: connection, hello: message });
               disposers.push(connection.subscribe("core"));
-              // The frame displays profiles in every section. Keep its lease
-              // for the connection lifetime; screen leases share one wire watch.
-              disposers.push(connection.subscribe("launcher"));
             }
             if (message.kind === "event" && message.event.topic === "core")
               query.setQueryData(coreKey, message.event.value);
-            if (message.kind === "event" && message.event.topic === "launcher")
-              query.setQueryData(["launcher"], message.event.value);
             if (message.kind === "failure" && message.id === 0)
               setHost((previous) => ({
                 ...previous,

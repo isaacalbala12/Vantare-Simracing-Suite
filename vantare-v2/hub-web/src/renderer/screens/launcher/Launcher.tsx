@@ -89,8 +89,10 @@ export function Launcher() {
     }
   }, [client, setView]);
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    // The frame's live feed may already have a fresh snapshot. Do not disable
+    // the newly visible controls for a redundant initial read in that case.
+    if (!query.getQueryData(launcherKey)) void reload();
+  }, [reload, query]);
   useEffect(() => {
     if (!client) return;
     const off = client.listen((message) => {

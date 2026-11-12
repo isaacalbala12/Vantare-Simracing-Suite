@@ -88,8 +88,10 @@ function ShellContent() {
       if (message.kind === "event" && message.event.topic === "launcher")
         query.setQueryData(["launcher"], message.event.value);
     });
+    const unsubscribe = host.client?.subscribe("launcher");
     return () => {
       off?.();
+      unsubscribe?.();
     };
   }, [host.client, query]);
   // QA identity stays separate from both account data and the editable pilot draft.
@@ -103,8 +105,7 @@ function ShellContent() {
       ? (account.photo ?? undefined)
       : undefined;
   const ui = useUi((state) => state);
-  // Read the existing launcher snapshot for the expanded frame. The screen owns
-  // its subscription; this reader never unsubscribes it or writes a profile.
+  // The frame retains its subscription across screen changes.
   const {
     data: launcher,
     isFetching: launcherLoading,

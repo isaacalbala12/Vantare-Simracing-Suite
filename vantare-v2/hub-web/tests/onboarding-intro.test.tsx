@@ -926,6 +926,34 @@ it("the real Client addCloseGuard waits for the completion write before answerin
   expect(view.complete).toHaveBeenCalledWith(false, true);
 });
 
+it("keeps a failed commit optional but respects its result in the summary even without a saved mail view", async () => {
+  respond("onboarding-sin-diseno");
+  const commitMail = vi.fn(async () => "failed" as const);
+  mount(true, true, commitMail);
+  const start = await screen.findByRole("button", { name: "Empezar" });
+  await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(start);
+  for (let step = 1; step <= 5; step++)
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: step === 3 ? "Ahora no" : "Continuar",
+      }),
+    );
+  const finish = screen.getByRole("button", { name: "Terminar" });
+  await waitFor(() => expect(finish.hasAttribute("disabled")).toBe(false));
+  fireEvent.click(finish);
+  await screen.findByText(
+    "Correos sin confirmar. Puedes terminar y reintentarlo en Ajustes › Privacidad",
+  );
+  expect(commitMail).toHaveBeenCalledOnce();
+  expect(screen.getByText("Correos").closest("div")?.textContent).toContain(
+    "Sin confirmar",
+  );
+  expect(
+    screen.getByRole("button", { name: "Preparar desde Inicio" }),
+  ).toBeTruthy();
+});
+
 it.each(["mail.set", "account.get"])(
   "keeps optional %s failure nonblocking and labels the summary unconfirmed",
   async (failedMethod) => {

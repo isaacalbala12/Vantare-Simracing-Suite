@@ -88,7 +88,11 @@ export function useOnboardingMail(
     },
   };
   async function commitMail(): Promise<"ok" | "failed"> {
-    if (!enabled || !allowedRef.current || !currentSession()) return "ok";
+    if (!enabled || !allowedRef.current) return "ok";
+    if (!currentSession()) {
+      setFailed(true);
+      return "failed";
+    }
     if (loading) {
       setFailed(true);
       return "failed";

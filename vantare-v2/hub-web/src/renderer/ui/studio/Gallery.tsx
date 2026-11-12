@@ -17,6 +17,7 @@ import { Button, IconButton } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { Segmented } from "../../ui/Forms";
 import { Tooltip } from "../../ui/Layers";
+import { hubKeys } from "../hub-shortcuts";
 import { ActionNotice } from "./ActionNotice";
 import { DisabledHint } from "./DisabledHint";
 import { RemoveWidget } from "./RemoveWidget";
@@ -148,7 +149,7 @@ export function Gallery() {
       }
       if (
         (event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === "z" &&
+        event.key.toLowerCase() === hubKeys.undo &&
         view
       ) {
         event.preventDefault();

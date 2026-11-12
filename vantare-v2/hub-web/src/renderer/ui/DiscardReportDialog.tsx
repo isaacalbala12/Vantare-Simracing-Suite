@@ -1,10 +1,10 @@
-import { AlertDialog } from "@base-ui/react/alert-dialog";
 import {
   closeUnsavedReportText,
   testingDiscardText,
 } from "../i18n/testing-discard";
 import { Button } from "./Button";
 import { ActionGroup } from "./ShellLayout";
+import { WindowAlertDialog as AlertDialog } from "./WindowDialog";
 
 type Props = {
   open: boolean;
@@ -39,7 +39,7 @@ function ReportConfirmation({
         <AlertDialog.Popup
           className="v-dialog"
           finalFocus={() =>
-            document.querySelector<HTMLElement>(".v-testing .v-input") ?? false
+            document.querySelector<HTMLElement>(".v-testing .v-input") ?? true
           }
         >
           <AlertDialog.Title>{text.title}</AlertDialog.Title>

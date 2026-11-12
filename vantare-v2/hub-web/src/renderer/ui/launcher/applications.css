@@ -1,8 +1,8 @@
 @import "./generated/catalog.css";
 .v-launcher-removal {
   position: fixed;
-  inset: 0 0 0 auto;
-  z-index: 30;
+  inset: var(--topbar-h) 0 0 auto;
+  z-index: var(--z-modal);
   width: min(420px, 100vw);
   padding: 24px;
   background: var(--bg-window);

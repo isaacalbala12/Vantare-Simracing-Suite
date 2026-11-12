@@ -498,14 +498,17 @@ describe("profile editor", () => {
       }),
     );
     await screen.findByRole("button", { name: "Creador de Contenido (copia)" });
+    await waitFor(() => expect(creator).toHaveProperty("disabled", false));
     fireEvent.contextMenu(creator);
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.trigger }),
     );
+    await waitFor(() => expect(creator).toHaveProperty("disabled", false));
     fireEvent.contextMenu(creator);
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.triggered }),
     );
+    await waitFor(() => expect(creator).toHaveProperty("disabled", false));
     fireEvent.contextMenu(creator);
     await screen.findByRole("menuitem", { name: actionText.trigger });
   });

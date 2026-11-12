@@ -15,7 +15,7 @@ export function NotificationPopover({
   children: ReactNode;
 }) {
   return (
-    <Popover.Root open={open} onOpenChange={onOpenChange}>
+    <Popover.Root modal={false} open={open} onOpenChange={onOpenChange}>
       <Popover.Trigger
         aria-label={label}
         className="v-button v-button--ghost v-notification-bell"

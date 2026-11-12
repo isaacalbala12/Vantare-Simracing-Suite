@@ -12,6 +12,7 @@ import { accountText } from "../i18n/account.es";
 import { paletteNames, t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
 import { upcoming } from "../i18n/upcoming";
+import { RendererQa } from "../qa/entry";
 import { NotificationsPopover } from "../screens/notifications/NotificationsPopover";
 import { NotificationsProvider } from "../screens/notifications/NotificationsState";
 import { Button, IconButton } from "../ui/Button";
@@ -24,6 +25,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
+import { hubKeys, zoomKeys } from "../ui/hub-shortcuts";
 import { initials } from "../ui/initials";
 import { ToastViewport, useToastManager } from "../ui/Layers";
 import { SaveWarnings } from "../ui/SaveWarnings";
@@ -216,7 +218,7 @@ function ShellContent() {
         return;
       }
       if (!event.ctrlKey || event.metaKey) return;
-      if (key === "k") {
+      if (key === hubKeys.commands) {
         event.preventDefault();
         ui.commands(!ui.commandsOpen);
         return;
@@ -230,28 +232,28 @@ function ShellContent() {
           ))
       )
         return;
-      if (key === "b") {
+      if (key === hubKeys.sidebar) {
         event.preventDefault();
         if (event.altKey) ui.toggleRail();
         else ui.toggleSidebar();
       }
-      if (key === "n" && event.shiftKey) {
+      if (key === hubKeys.notifications && event.shiftKey) {
         event.preventDefault();
         ui.notices(!ui.noticesOpen);
       }
-      if (key === "l") {
+      if (key === hubKeys.launch) {
         event.preventDefault();
         if (!event.repeat) void launchFavorite();
       }
       if (
-        ["+", "=", "-", "0"].includes(key) &&
+        zoomKeys.includes(key) &&
         settings.view &&
         !settings.pending &&
         !settings.view.protected &&
         !settings.error
       ) {
         event.preventDefault();
-        zoom(key === "0" ? 0 : key === "-" ? -1 : 1);
+        zoom(key === hubKeys.zoomReset ? 0 : key === hubKeys.zoomOut ? -1 : 1);
       }
     }
     window.addEventListener("keydown", key);
@@ -584,6 +586,7 @@ function ShellContent() {
             </ContentStack>
           }
         />
+        <RendererQa />
       </ContentStack>
     </ShellLayout>
   );

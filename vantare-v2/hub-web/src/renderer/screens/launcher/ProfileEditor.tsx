@@ -5,6 +5,7 @@ import { isProfileDraft } from "../../../contract/profile-validation";
 import { useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import { profileText as text } from "../../i18n/profile-editor";
+import { hubKeys } from "../../ui/hub-shortcuts";
 import { useToastManager } from "../../ui/Layers";
 import {
   ArgumentLossDialog,
@@ -57,7 +58,7 @@ export function ProfileEditor() {
         event.ctrlKey &&
         !event.altKey &&
         !event.metaKey &&
-        event.key.toLowerCase() === "s"
+        event.key.toLowerCase() === hubKeys.save
       ) {
         event.preventDefault();
         actions.current.save();

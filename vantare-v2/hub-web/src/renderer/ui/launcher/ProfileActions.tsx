@@ -1,10 +1,18 @@
-import { ContextMenu } from "@base-ui/react/context-menu";
-import { Dialog } from "@base-ui/react/dialog";
-import type { ReactElement } from "react";
+import { Menu } from "@base-ui/react/menu";
+import {
+  cloneElement,
+  type HTMLAttributes,
+  type ReactElement,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { LauncherProfile } from "../../../contract/generated/contract";
 import { actionText as text } from "../../i18n/launcher-actions";
 import { Button } from "../Button";
 import { Callout } from "../Data";
+import { WindowDialog as Dialog } from "../WindowDialog";
 import "./applications.css";
 export type ProfileCardAction = "favorite" | "duplicate" | "remove" | "trigger";
 export function ProfileCardActions({
@@ -15,13 +23,25 @@ export function ProfileCardActions({
   canDuplicate,
   onAction,
 }: {
-  children: ReactElement;
+  children: ReactElement<HTMLAttributes<HTMLElement>>;
   profile: LauncherProfile;
   triggered: boolean;
   disabled: boolean;
   canDuplicate: boolean;
   onAction: (action: ProfileCardAction) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [point, setPoint] = useState({ x: 0, y: 0 });
+  const origin = useRef<HTMLElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
+  const keyboard = useRef(false);
+  const popupId = useId();
+  const anchor = useMemo(
+    () => ({
+      getBoundingClientRect: () => new DOMRect(point.x, point.y, 0, 0),
+    }),
+    [point],
+  );
   const items: { id: ProfileCardAction; label: string }[] = [
     {
       id: "favorite",
@@ -32,27 +52,100 @@ export function ProfileCardActions({
     { id: "trigger", label: triggered ? text.triggered : text.trigger },
   ];
   return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger render={children} />
-      <ContextMenu.Portal>
-        <ContextMenu.Positioner className="v-positioner">
-          <ContextMenu.Popup className="v-popup">
+    <Menu.Root
+      modal={false}
+      open={open}
+      onOpenChange={setOpen}
+      onOpenChangeComplete={(value) => {
+        if (value && keyboard.current)
+          popup.current
+            ?.querySelector<HTMLElement>(
+              '[role="menuitem"]:not([aria-disabled="true"])',
+            )
+            ?.focus();
+      }}
+    >
+      {cloneElement(children, {
+        "aria-controls": open ? popupId : undefined,
+        onContextMenu: (event) => {
+          children.props.onContextMenu?.(event);
+          if (event.defaultPrevented) return;
+          event.preventDefault();
+          event.stopPropagation();
+          keyboard.current = false;
+          origin.current = event.currentTarget;
+          setPoint({ x: event.clientX, y: event.clientY });
+          setOpen(true);
+        },
+        onKeyDown: (event) => {
+          if (
+            event.key === "ContextMenu" ||
+            (event.key === "F10" && event.shiftKey)
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            keyboard.current = true;
+            origin.current = event.currentTarget;
+            const rect = event.currentTarget.getBoundingClientRect();
+            setPoint({ x: rect.left, y: rect.bottom });
+            setOpen(true);
+          } else children.props.onKeyDown?.(event);
+        },
+        onKeyUp: (event) => {
+          if (
+            event.key === "ContextMenu" ||
+            (event.key === "F10" && event.shiftKey)
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+          } else children.props.onKeyUp?.(event);
+        },
+      })}
+      <Menu.Portal>
+        <Menu.Positioner className="v-positioner" anchor={anchor} align="start">
+          <Menu.Popup
+            ref={popup}
+            id={popupId}
+            className="v-popup"
+            finalFocus={() =>
+              document.querySelector('[data-window-dialog="screen"]')
+                ? false
+                : (origin.current ?? false)
+            }
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onKeyUp={(event) => {
+              if (
+                event.key === "ContextMenu" ||
+                (event.key === "F10" && event.shiftKey)
+              ) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+          >
             {items.map((item) => (
-              <ContextMenu.Item
+              <Menu.Item
                 key={item.id}
                 className="v-option"
                 disabled={
                   disabled || (item.id === "duplicate" && !canDuplicate)
                 }
-                onClick={() => onAction(item.id)}
+                onClick={() => {
+                  origin.current?.focus({ preventScroll: true });
+                  setOpen(false);
+                  onAction(item.id);
+                }}
               >
                 {item.label}
-              </ContextMenu.Item>
+              </Menu.Item>
             ))}
-          </ContextMenu.Popup>
-        </ContextMenu.Positioner>
-      </ContextMenu.Portal>
-    </ContextMenu.Root>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }
 export function RemoveProfileDialog({
@@ -68,16 +161,18 @@ export function RemoveProfileDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const cancel = useRef<HTMLButtonElement>(null);
   return (
     <Dialog.Root
       open={name !== undefined}
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open && !pending) onCancel();
       }}
     >
       <Dialog.Portal>
         <Dialog.Backdrop className="v-backdrop" />
-        <Dialog.Popup className="v-launcher-removal">
+        <Dialog.Popup className="v-launcher-removal" initialFocus={cancel}>
           <Dialog.Title>
             {duplicate ? text.duplicateTitle : text.removeTitle}
           </Dialog.Title>
@@ -87,7 +182,7 @@ export function RemoveProfileDialog({
               : text.removeMessage(name ?? "")}
           </Dialog.Description>
           <div className="v-launcher-actions">
-            <Button disabled={pending} onClick={onCancel}>
+            <Button ref={cancel} disabled={pending} onClick={onCancel}>
               {text.cancel}
             </Button>
             <Button

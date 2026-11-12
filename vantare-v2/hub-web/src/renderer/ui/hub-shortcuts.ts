@@ -1,0 +1,46 @@
+/** Shared by the actual registrations and partial-window modality. */
+export const hubKeys = {
+  commands: "k",
+  sidebar: "b",
+  notifications: "n",
+  launch: "l",
+  save: "s",
+  zoomIn: ["+", "="],
+  zoomOut: "-",
+  zoomReset: "0",
+  undo: "z",
+} as const;
+export const zoomKeys: readonly string[] = [
+  ...hubKeys.zoomIn,
+  hubKeys.zoomOut,
+  hubKeys.zoomReset,
+];
+// Chromium's built-in print/reload must not act on the document behind a dialog.
+const browserKeys = ["p", "r"];
+const keys = new Set<string>([
+  ...Object.values(hubKeys).flat(),
+  ...browserKeys,
+]);
+// Windows may report Spanish AltGr as Control+Alt without AltGraph. Match
+// exact modifier chords and logical keys instead of exempting all Control+Alt.
+export const dialogBindings = [...keys].flatMap((key) => [
+  { key, ctrl: true, alt: false, meta: false },
+  { key, ctrl: true, alt: true, meta: false },
+  { key, ctrl: false, alt: false, meta: true },
+  { key, ctrl: false, alt: true, meta: true },
+]);
+export function dialogShortcut(event: KeyboardEvent) {
+  if (
+    event.key.toLowerCase() === hubKeys.undo &&
+    event.target instanceof Element &&
+    event.target.closest('input,textarea,[contenteditable="true"]')
+  )
+    return false;
+  return dialogBindings.some(
+    (binding) =>
+      binding.key === event.key.toLowerCase() &&
+      binding.ctrl === event.ctrlKey &&
+      binding.alt === event.altKey &&
+      binding.meta === event.metaKey,
+  );
+}

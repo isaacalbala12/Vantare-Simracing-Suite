@@ -1,3 +1,4 @@
+import "../assets/calendar-providers.css";
 import type {
   CalendarAlerts,
   CalendarSchedule,
@@ -221,9 +222,20 @@ export function CalendarRail({
         <Caption name={text.inCalendar} icon="v-calendar" />
         <p>{text.exportHelp}</p>
         <div className="v-calendar-export-providers">
-          {[text.google, text.apple, text.outlook].map((provider) => (
-            <Button key={provider} onClick={onExport} disabled={!onExport}>
-              {provider}
+          {[
+            { id: "google", label: text.google, glyph: "G" },
+            { id: "apple", label: text.apple, glyph: "A" },
+            { id: "outlook", label: text.outlook, glyph: "O" },
+          ].map((provider) => (
+            <Button key={provider.id} onClick={onExport} disabled={!onExport}>
+              <span
+                className="v-calendar-provider-mark"
+                data-provider={provider.id}
+                aria-hidden="true"
+              >
+                {provider.glyph}
+              </span>
+              {provider.label}
             </Button>
           ))}
         </div>

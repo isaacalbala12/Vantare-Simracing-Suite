@@ -1,0 +1,6 @@
+/* Frozen calendar/ui.rs::rail_export: local glyphs, no provider URLs. */
+:root {
+  --calendar-provider-google: #1a73e8;
+  --calendar-provider-apple: #000000;
+  --calendar-provider-outlook: #0f6cbd;
+}

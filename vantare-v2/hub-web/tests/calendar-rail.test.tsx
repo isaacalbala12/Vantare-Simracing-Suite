@@ -34,6 +34,11 @@ it("shows the upcoming slot and band alerts and routes UTC, export and alert act
   expect(utc).toHaveBeenCalledWith(true);
   fireEvent.click(screen.getByRole("button", { name: text.configure }));
   expect(configure).toHaveBeenCalledOnce();
-  fireEvent.click(screen.getByRole("button", { name: text.google }));
-  expect(exportFile).toHaveBeenCalledOnce();
+  for (const provider of [text.google, text.apple, text.outlook]) {
+    const button = screen.getByRole("button", { name: provider });
+    expect(button.hasAttribute("href")).toBe(false);
+    expect(button.querySelector("[aria-hidden=true]")).toBeTruthy();
+    fireEvent.click(button);
+  }
+  expect(exportFile).toHaveBeenCalledTimes(3);
 });

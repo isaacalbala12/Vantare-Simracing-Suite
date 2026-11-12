@@ -142,6 +142,14 @@ mod contract_parity_tests {
             assert_eq!(value.column().unwrap().align, Some(expected));
         }
         assert_eq!(keys::COLUMN_ALIGNS.len(), 3);
+        assert_eq!(keys::LEGACY_TABLE_COLUMNS.len(), 12);
+        assert_eq!(
+            keys::LEGACY_TABLE_COLUMNS
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .len(),
+            12
+        );
         for name in keys::LEGACY_TABLE_COLUMNS {
             let mut value = column();
             value.metric_id = (*name).into();

@@ -610,8 +610,8 @@ fn projected_settings_that_exceed_the_transport_become_protected() {
     let (_root, path, _) = fixture();
     let mut document: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    document["instances"][0]["settings"]["headerFirst"] =
-        serde_json::Value::String("x".repeat(crate::frame::LIMIT + 1));
+    document["instances"][0]["settings"]["columns"] =
+        serde_json::json!([{"id":"x".repeat(crate::frame::LIMIT+1),"metricId":"driverName"}]);
     let bytes = serde_json::to_vec(&document).unwrap();
     std::fs::write(&path, &bytes).unwrap();
     let view = State::new(path.clone()).view(Some(CatalogAccess::Pro));

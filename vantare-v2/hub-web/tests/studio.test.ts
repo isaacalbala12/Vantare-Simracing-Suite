@@ -105,13 +105,7 @@ describe("Studio document contract", () => {
     });
     const after = view(host);
     expect(after.instances[0]).toMatchObject({ visible: true, opacity: 20 });
-    for (const forbidden of [
-      '"x":',
-      '"y":',
-      "Users",
-      ":/",
-      "executable",
-    ])
+    for (const forbidden of ['"x":', '"y":', "Users", ":/", "executable"])
       expect(JSON.stringify(after)).not.toContain(forbidden);
   });
   it("does not seed a missing document and denies a locked add", () => {

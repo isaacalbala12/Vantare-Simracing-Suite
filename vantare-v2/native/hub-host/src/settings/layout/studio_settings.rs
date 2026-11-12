@@ -28,7 +28,12 @@ fn stored_columns(stored: &Fields, key: &str) -> Result<Vec<Fields>, HostError> 
     })?;
     Ok(value.unwrap_or_default())
 }
-fn column_edits(stored: &Fields, key: &str, edits: &Value) -> Result<Value, HostError> {
+fn column_edits(
+    stored: &Fields,
+    baseline: &Value,
+    key: &str,
+    edits: &Value,
+) -> Result<Value, HostError> {
     if edits.is_null() {
         return Ok(Value::Null);
     }
@@ -49,6 +54,12 @@ fn column_edits(stored: &Fields, key: &str, edits: &Value) -> Result<Value, Host
             .find(|column| read::<String>(column, "metricId").as_deref() == Ok(metric));
         let mut column = if let Some(existing) = existing {
             Fields(existing.0.clone())
+        } else if let Some(default) = baseline
+            .get(key)
+            .and_then(Value::as_array)
+            .and_then(|items| items.iter().find(|item| item["metricId"] == metric))
+        {
+            serde_json::from_value(default.clone()).map_err(|_| HostError::Io)?
         } else {
             let default = vantare_domain::widget_settings::columns::ColumnSetting {
                 id: metric.into(),
@@ -118,7 +129,7 @@ pub(super) fn apply(
         }
         candidate[key] =
             if ["columns", "practiceColumns", "qualifyingColumns"].contains(&key.as_str()) {
-                column_edits(&stored, key, value)?
+                column_edits(&stored, &old, key, value)?
             } else {
                 value.clone()
             };

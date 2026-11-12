@@ -1,4 +1,3 @@
-import { isWidgetSettings, isWidgetSettingsPatch } from "./studio-widget-settings";
 import {
   studioAddKinds,
   studioKinds,
@@ -10,6 +9,10 @@ import {
   studioStates,
 } from "../generated/studio";
 import { exact, integer, oneOf, record } from "../validation-common";
+import {
+  isWidgetSettings,
+  isWidgetSettingsPatch,
+} from "./studio-widget-settings";
 
 export { studioMethods as methods };
 

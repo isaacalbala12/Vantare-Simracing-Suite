@@ -30,7 +30,13 @@ export class Client {
     };
   }
   private observed(event: RequestObservation) {
-    for (const receive of this.requestListeners) receive(event);
+    for (const receive of this.requestListeners) {
+      try {
+        receive(event);
+      } catch {
+        /* Observers must never own request settlement. */
+      }
+    }
   }
   private sequence = 0;
   private closing = false;

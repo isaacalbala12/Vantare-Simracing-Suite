@@ -136,7 +136,7 @@ describe("main process trust boundary", () => {
   });
 });
 
-it("shares topics until the final consumer leaves and observes only request metadata", async () => {
+it("shares topics until the final consumer leaves and observes start plus correlated completion", async () => {
   const client = await Client.connect();
   try {
     const send = vi.spyOn(client, "send");
@@ -169,6 +169,27 @@ it("shares topics until the final consumer leaves and observes only request meta
     stop();
     await client.request({ method: "core.get" });
     expect(events).toHaveBeenCalledTimes(2);
+  } finally {
+    client.close();
+  }
+});
+
+it("isolates throwing request observers at start and completion without delaying settlement", async () => {
+  const client = await Client.connect();
+  try {
+    client.start();
+    const good = vi.fn();
+    client.observeRequests(() => {
+      throw new Error("observer failure");
+    });
+    client.observeRequests(good);
+    await expect(client.request({ method: "core.get" })).resolves.toMatchObject(
+      { method: "core.get" },
+    );
+    expect(good.mock.calls.map(([event]) => event.phase)).toEqual([
+      "start",
+      "done",
+    ]);
   } finally {
     client.close();
   }

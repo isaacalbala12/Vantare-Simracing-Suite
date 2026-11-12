@@ -21,7 +21,7 @@ import { SectionChromeProvider } from "../src/renderer/app/SectionChrome";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import type { Client } from "../src/renderer/bridge/client";
 import Home from "../src/renderer/screens/home/entry";
-import { NotificationsProvider } from "../src/renderer/screens/notifications/NotificationsState";
+import { NotificationsProvider } from "./notifications-provider";
 
 function RouteProbe() {
   const section = useUi((s) => s.section);

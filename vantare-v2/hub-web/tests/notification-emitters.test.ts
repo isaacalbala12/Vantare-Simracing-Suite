@@ -10,6 +10,7 @@ import type {
   UpdatesView,
 } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
+import { createAccountSession } from "../src/renderer/app/AccountSession";
 import type { Client, RequestObservation } from "../src/renderer/bridge/client";
 import { connectEmitters } from "../src/renderer/screens/notifications/emitters";
 import { createNotifications } from "../src/renderer/screens/notifications/NotificationsState";
@@ -39,11 +40,17 @@ function harness() {
     request: vi.fn(async () => undefined),
   };
   const store = createNotifications();
-  const connection = connectEmitters(client as unknown as Client, {
-    add: (input) => store.getState().add(input, 100),
-    changeReports: (update) =>
-      store.setState((value) => ({ records: update(value.records) })),
-  });
+  const session = createAccountSession();
+  const connection = connectEmitters(
+    client as unknown as Client,
+    {
+      resetReports: () => store.getState().resetReports(),
+      add: (input) => store.getState().add(input, 100),
+      changeReports: (update) =>
+        store.setState((value) => ({ records: update(value.records) })),
+    },
+    session,
+  );
   const response = (result: Reply) =>
     receive({ kind: "response", id: 0, result });
   const settings = fixture("settings.get") as SettingsView;
@@ -58,18 +65,12 @@ function harness() {
       },
     });
   const login = () =>
-    receive({
-      kind: "event",
-      event: {
-        topic: "account",
-        value: {
-          ...account,
-          gate: "none",
-          session: "signedIn",
-          verified: true,
-          blocked: false,
-        },
-      },
+    session.confirm({
+      ...account,
+      gate: "none",
+      session: "signedIn",
+      verified: true,
+      blocked: false,
     });
   const resident = (patch: Partial<ResidentView>) =>
     receive({
@@ -113,6 +114,7 @@ function harness() {
   };
   return {
     client,
+    session,
     store,
     connection,
     response,
@@ -222,6 +224,7 @@ it("synchronizes accepted/fixed reports, acknowledgements and account generation
   expect(h.records().every((record) => !record.unread)).toBe(true);
   const old = h.report(5);
   h.observe({ phase: "start", id: 6, method: "testing.refresh" });
+  h.session.invalidate();
   h.observe({ phase: "start", id: 7, method: "account.logout" });
   expect(h.records()).toEqual([]);
   h.login();
@@ -234,5 +237,101 @@ it("synchronizes accepted/fixed reports, acknowledgements and account generation
   expect(h.records()).toEqual([]);
   h.report(8);
   expect(h.records()).toHaveLength(1);
+  h.connection.dispose();
+});
+
+it("favorite accepted:false is profile selection, never a persistent failure", () => {
+  const h = harness();
+  h.preferences(true);
+  h.observe({
+    phase: "done",
+    id: 3,
+    method: "launcher.favorite",
+    reply: { method: "launcher.favorite", accepted: false },
+  });
+  expect(h.records()).toEqual([]);
+  h.connection.dispose();
+});
+it.each([true, false])(
+  "resident errors are independent of settings ordering: preferences first=%s",
+  (first) => {
+    const h = harness();
+    if (first) h.preferences(true);
+    h.resident({ error: true });
+    if (!first) h.preferences(true);
+    expect(h.records()).toHaveLength(1);
+    h.connection.dispose();
+  },
+);
+it("a repeated error stays read, but recovery then a new error creates a new unread incident", () => {
+  const h = harness();
+  h.preferences(true);
+  h.resident({ error: true });
+  h.store.getState().read();
+  h.resident({ error: true });
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0].unread).toBe(false);
+  h.resident({ error: false });
+  h.resident({ error: true });
+  expect(h.records()).toHaveLength(2);
+  expect(h.records()[0].unread).toBe(true);
+  expect(h.records()[1].unread).toBe(false);
+  h.connection.dispose();
+});
+it("clear remembers update versions and report states for this session", () => {
+  const h = harness();
+  h.preferences(true);
+  h.login();
+  const value = fixture("updates.get") as UpdatesView;
+  const ready = {
+    ...value,
+    beta: {
+      schema: 1,
+      state: "ready",
+      message: "",
+      version: "1.2",
+      notes: "",
+      rejectedVersion: null,
+    },
+  };
+  h.response({ method: "updates.get", value: ready });
+  h.report(1);
+  expect(h.records()).toHaveLength(2);
+  h.store.getState().clear();
+  h.response({ method: "updates.get", value: ready });
+  h.report(2);
+  expect(h.records()).toEqual([]);
+  h.report(3, "fixed");
+  h.response({
+    method: "updates.get",
+    value: { ...ready, beta: { ...ready.beta, version: "1.3" } },
+  });
+  expect(h.records()).toHaveLength(2);
+  h.session.invalidate();
+  h.login();
+  h.report(4);
+  expect(
+    h.records().some((r) => r.dedupeKey === "report:report1:accepted"),
+  ).toBe(true);
+  h.connection.dispose();
+});
+it("only an access generation clears report notices, not an unconfirmed status blink", () => {
+  const h = harness();
+  h.login();
+  h.report(1);
+  h.store.getState().read();
+  const value = fixture("account.get") as AccountView;
+  h.session.confirm({ ...value, session: "pending", gate: "checking" });
+  expect(h.records()).toHaveLength(1);
+  h.login();
+  h.report(2);
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0].unread).toBe(false);
+  h.session.invalidate();
+  expect(h.records()).toEqual([]);
+  h.login();
+  h.report(3);
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0].unread).toBe(true);
   h.connection.dispose();
 });

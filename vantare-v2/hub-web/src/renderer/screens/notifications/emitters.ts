@@ -1,5 +1,4 @@
 import type {
-  AccountView,
   HostToUi,
   Preferences,
   Reply,
@@ -7,64 +6,66 @@ import type {
   TestingView,
   UpdatesView,
 } from "../../../contract/generated/contract";
+import type { AccountSession } from "../../app/AccountSession";
 import type { Client, RequestObservation } from "../../bridge/client";
 import { notices as text } from "../../i18n/notifications";
 import type { Notice, NoticeInput } from "./center";
 
 interface Sink {
+  resetReports: () => void;
   add: (notice: NoticeInput) => void;
   changeReports: (update: (records: Notice[]) => Notice[]) => void;
 }
 // One lifetime per connection. No identity, free-form service error or credential is retained.
-export function connectEmitters(client: Client, sink: Sink) {
+export function connectEmitters(
+  client: Client,
+  sink: Sink,
+  session: AccountSession,
+) {
   let active = true;
   let preferences: Pick<Preferences, "updates" | "launcher"> | undefined;
   let resident: ResidentView | undefined;
-  let generation = 0;
-  let reportReady = false;
+  let generation = session.getSnapshot().generation;
+  let failureSequence = 0;
+  let pendingResidentError = false;
   const requests = new Map<number, number>();
   const failures = new Set<number>();
-  const reset = () => {
-    generation++;
-    reportReady = false;
-    sink.changeReports((records) =>
-      records.filter((record) => record.source !== "report"),
-    );
-  };
-  function account(value: AccountView) {
-    const ready =
-      value.gate === "none" &&
-      value.session === "signedIn" &&
-      value.verified &&
-      !value.blocked;
-    if (!ready && reportReady) reset();
-    reportReady = ready;
-  }
+  const unsession = session.subscribe(() => {
+    if (generation !== session.getSnapshot().generation) {
+      generation = session.getSnapshot().generation;
+      sink.resetReports();
+    }
+  });
   function launcherFailed(residentError = false) {
     if (preferences?.launcher)
       sink.add({
         source: "launcher",
         severity: "error",
-        dedupeKey: "launcher.failed",
+        dedupeKey: `launcher.failed:${++failureSequence}`,
         title: text.launchFailed,
         text: residentError ? text.residentFailure : text.launchFailure,
         action: "launcher",
       });
   }
+  function flushResidentError() {
+    if (!pendingResidentError || !preferences) return;
+    pendingResidentError = false;
+    launcherFailed(true);
+  }
   function execution(value: ResidentView) {
     if (value.online && !value.protected) {
-      if (value.error && !resident?.error) launcherFailed(true);
-      // Idle is not an outcome: cancellation and step failures also reach it.
-      // A ready notice requires a typed terminal result not present in this DTO.
+      if (value.error && !resident?.error) pendingResidentError = true;
+      if (!value.error) pendingResidentError = false;
     }
     resident = value;
+    flushResidentError();
   }
   function updates(value: UpdatesView) {
     if (preferences?.updates && value.beta?.state === "ready")
       sink.add({
         source: "updater",
         severity: "info",
-        dedupeKey: "updater.ready",
+        dedupeKey: `updater.ready:${value.beta.version}`,
         title: text.updateReady,
         text: text.updateReadyBody(value.beta.version),
         action: "settings:updates",
@@ -110,6 +111,7 @@ export function connectEmitters(client: Client, sink: Sink) {
       case "settings.retry":
       case "settings.discard":
         preferences = value.value.protected ? undefined : value.value.general;
+        flushResidentError();
         break;
       case "updates.get":
         updates(value.value);
@@ -123,12 +125,6 @@ export function connectEmitters(client: Client, sink: Sink) {
     if (!active) return;
     if (event.phase === "start") {
       if (
-        event.method === "account.begin" ||
-        event.method === "account.logout" ||
-        event.method === "account.email"
-      )
-        reset();
-      if (
         event.method.startsWith("testing.") ||
         event.method.startsWith("account.") ||
         event.method === "triage.send"
@@ -141,12 +137,10 @@ export function connectEmitters(client: Client, sink: Sink) {
     if (
       (event.method === "launcher.launch" ||
         event.method === "launcher.favorite") &&
-      (event.error ||
-        (event.reply && "accepted" in event.reply && !event.reply.accepted))
+      event.error
     ) {
       // Conflict/busy/denied already have an explanation in the initiating screen.
       if (
-        !event.error ||
         ["io", "coreUnavailable", "incompatible", "unsupported"].includes(
           event.error.kind,
         )
@@ -158,12 +152,9 @@ export function connectEmitters(client: Client, sink: Sink) {
     }
     if (
       event.reply &&
-      event.method.startsWith("account.") &&
-      ownGeneration === generation &&
-      "value" in event.reply
-    )
-      account(event.reply.value as AccountView);
-    if (event.reply && reportReady && ownGeneration === generation) {
+      session.getSnapshot().confirmed &&
+      ownGeneration === generation
+    ) {
       switch (event.reply.method) {
         case "testing.refresh":
         case "testing.answer":
@@ -179,9 +170,6 @@ export function connectEmitters(client: Client, sink: Sink) {
     if (!active) return;
     if (message.kind === "event") {
       switch (message.event.topic) {
-        case "account":
-          account(message.event.value);
-          break;
         case "launcherResident":
           execution(message.event.value);
           break;
@@ -197,7 +185,6 @@ export function connectEmitters(client: Client, sink: Sink) {
     client.subscribe("launcherResident"),
     client.subscribe("updates"),
   ];
-  void client.request({ method: "account.get" }).catch(() => {});
   // Preferences must arrive before reading ready states; do not guess defaults.
   void client
     .request({ method: "settings.get" })
@@ -211,6 +198,7 @@ export function connectEmitters(client: Client, sink: Sink) {
     dispose: () => {
       active = false;
       requests.clear();
+      unsession();
       unobserve();
       unlisten();
       for (const dispose of disposers) dispose();

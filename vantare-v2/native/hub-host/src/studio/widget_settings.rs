@@ -96,10 +96,47 @@ impl WidgetSettings {
             Data::Pedals(Default::default()),
             Data::FuelStrategy(Default::default()),
         ];
-        Self::schema_samples().into_iter().zip(bare).map(|((kind,full),data)|{
-            let plain=serde_json::to_value(data).expect("native keys");
-            (kind.id().to_owned(),serde_json::json!({"all":full.as_object().expect("object").keys().collect::<Vec<_>>(),"required":plain.as_object().expect("object").keys().collect::<Vec<_>>()}))
-        }).collect()
+        let mut keys: std::collections::BTreeMap<String, serde_json::Value> =
+            Self::schema_samples()
+                .into_iter()
+                .zip(bare)
+                .map(|((kind, full), data)| {
+                    let plain = serde_json::to_value(data).expect("native keys");
+                    let all: Vec<_> = full.as_object().expect("object").keys().collect();
+                    let required: Vec<_> = plain.as_object().expect("object").keys().collect();
+                    (
+                        kind.id().to_owned(),
+                        serde_json::json!({"all": all, "required": required}),
+                    )
+                })
+                .collect();
+        for (name, value) in [
+            (
+                "column",
+                serde_json::to_value(native::columns::ColumnSetting::default())
+                    .expect("column schema"),
+            ),
+            (
+                "columnFormat",
+                serde_json::to_value(native::columns::Format::default()).expect("format schema"),
+            ),
+            (
+                "columnStyle",
+                serde_json::to_value(native::columns::Style::default()).expect("style schema"),
+            ),
+        ] {
+            let fields: Vec<_> = value
+                .as_object()
+                .expect("schema object")
+                .keys()
+                .cloned()
+                .collect();
+            keys.insert(
+                name.into(),
+                serde_json::json!({"all":fields,"required":fields}),
+            );
+        }
+        keys
     }
     pub(crate) fn keys(kind: WidgetKind) -> Vec<String> {
         Self::schema_samples()

@@ -770,12 +770,39 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
 }
 #[test]
 fn unreadable_supported_settings_protect_the_whole_document_without_creating_files() {
-    for bytes in [br#"{"version":1,"instances":[{"id":"widget-1","x":0,"y":0,"settings":{"kind":"pedals","gap":"broken"}}]}"#.as_slice(),br#"{"version":1,"instances":[],"instances":[]}"#.as_slice()] {
-        let root=crate::test_support::Root::new();let path=root.path.join("layout.json");std::fs::write(&path,bytes).unwrap();
-        let before:Vec<_>=std::fs::read_dir(&root.path).unwrap().map(|e|e.unwrap().file_name()).collect();
-        let view=State::new(path.clone()).view(Some(CatalogAccess::Pro));assert_eq!(view.state,StudioState::Protected);assert!(view.instances.is_empty());
-        assert_eq!(std::fs::read(&path).unwrap(),bytes);
-        let after:Vec<_>=std::fs::read_dir(&root.path).unwrap().map(|e|e.unwrap().file_name()).collect();assert_eq!(before,after);
+    for bytes in [
+        br#"{"version":1,"instances":[{"id":"widget-1","x":0,"y":0,"settings":{"kind":"pedals","gap":"broken"}}]}"#.as_slice(),
+        br#"{"version":1,"instances":[],"instances":[]}"#.as_slice(),
+    ] {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("layout.json");
+        std::fs::write(&path, bytes).unwrap();
+        let entries = || {
+            let mut names: Vec<_> = std::fs::read_dir(&root.path)
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name())
+                .collect();
+            names.sort();
+            names
+        };
+        let before = entries();
+        let mut state = State::new(path.clone());
+        let access = Some(CatalogAccess::Pro);
+        let view = state.view(access);
+        assert_eq!(view.state, StudioState::Protected);
+        assert!(view.instances.is_empty());
+        let patch = serde_json::from_value(serde_json::json!({"kind":"pedals","gap":2.7}))
+            .unwrap();
+        assert!(matches!(
+            state.edit(
+                Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(patch))),
+                &view.revision,
+                access,
+            ),
+            Err(HostError::Protected)
+        ));
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        assert_eq!(before, entries());
     }
 }
 

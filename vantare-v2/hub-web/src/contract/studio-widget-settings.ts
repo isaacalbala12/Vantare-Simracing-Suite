@@ -44,13 +44,13 @@ function object(
   );
 }
 const columnRead: Check = (v) =>
-  object(v, {
+  settingObject(v, "column", {
     id: text,
     metricId: text,
     enabled: bool,
     widthPreset: text,
     format: (f) =>
-      object(f, {
+      settingObject(f, "columnFormat", {
         mode: text,
         maxChars: nullable(
           (v) => typeof v === "number" && Number.isInteger(v) && v >= 0,
@@ -58,7 +58,7 @@ const columnRead: Check = (v) =>
         display: nullable(text),
         decimals: nullable(integer),
       }),
-    style: (s) => object(s, { align: nullable(text) }),
+    style: (s) => settingObject(s, "columnStyle", { align: nullable(text) }),
   });
 const base = {
   kind: text,

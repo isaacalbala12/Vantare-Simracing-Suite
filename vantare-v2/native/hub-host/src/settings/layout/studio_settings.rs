@@ -1,4 +1,4 @@
-//! Sparse settings writes over the existing duplicate-safe `RawValue` adapter.
+//! Native normalized settings writes over the duplicate-safe `RawValue` adapter.
 use super::{Fields, HostError, WidgetKind, put, read, typed_settings};
 use crate::studio::{WidgetSettings, WidgetSettingsPatch};
 use serde_json::{Value, value::RawValue};

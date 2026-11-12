@@ -199,3 +199,75 @@ it("does not offer creation into a protected empty launcher document", () => {
     }).disabled,
   ).toBe(true);
 });
+
+it("matches the GPUI Home reference data in Home and Launcher without leaking to other scenes", () => {
+  const host = createMockHost("inicio-base");
+  const home = host({
+    kind: "request",
+    id: 1,
+    request: { method: "home.get" },
+  });
+  const launcher = host({
+    kind: "request",
+    id: 2,
+    request: { method: "launcher.get" },
+  });
+  expect(isHostMessage(home)).toBe(true);
+  expect(isHostMessage(launcher)).toBe(true);
+  if (
+    home?.kind !== "response" ||
+    home.result.method !== "home.get" ||
+    launcher?.kind !== "response" ||
+    launcher.result.method !== "launcher.get"
+  )
+    throw new Error("missing QA projections");
+  const names = ["Carrera LMU", "Streaming Le Mans", "Entreno rápido"];
+  expect(home.result.value.profiles.map((p) => p.name)).toEqual(names);
+  expect(launcher.result.value.profiles.map((p) => p.name)).toEqual(names);
+  expect(home.result.value.favorite).toBe("carrera-lmu");
+  expect(home.result.value.profiles.map((p) => p.lastLaunchedAt)).toEqual([
+    "2026-10-05T18:02:00+02:00",
+    "2026-10-04T20:41:00+02:00",
+    "2026-10-04T20:41:00+02:00",
+  ]);
+  expect(home.result.value.layout.widgets.map((w) => w.kind)).toEqual([
+    "standings",
+    "delta",
+    "relative",
+    "pedals",
+  ]);
+  const normal = createMockHost()({
+    kind: "request",
+    id: 3,
+    request: { method: "home.get" },
+  });
+  if (normal?.kind !== "response" || normal.result.method !== "home.get")
+    throw new Error("missing normal projection");
+  expect(normal.result.value.profiles[0].name).toBe("Creador de Contenido");
+  expect(
+    normal.result.value.profiles.every((p) => p.lastLaunchedAt === null),
+  ).toBe(true);
+});
+it("renders the three reference launches with Launcher tags from the QA data", () => {
+  const reply = createMockHost("inicio-base")({
+    kind: "request",
+    id: 1,
+    request: { method: "home.get" },
+  });
+  if (reply?.kind !== "response" || reply.result.method !== "home.get")
+    throw new Error("missing Home");
+  render(
+    <HomeLayout
+      {...props()}
+      view={reply.result.value}
+      selected="carrera-lmu"
+    />,
+  );
+  for (const name of ["Carrera LMU", "Streaming Le Mans", "Entreno rápido"])
+    expect(screen.getByText(`${name} · último lanzamiento`)).toBeTruthy();
+  expect(screen.getAllByText("Launcher")).toHaveLength(3);
+  expect(screen.queryByText("Todavía no hay actividad")).toBeNull();
+  expect(
+    screen.getByRole("button", { name: /^Lanzar Carrera LMU/ }),
+  ).toBeTruthy();
+});

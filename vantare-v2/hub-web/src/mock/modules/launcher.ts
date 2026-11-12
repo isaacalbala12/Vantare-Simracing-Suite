@@ -1,3 +1,4 @@
+import homeFixture from "../../../fixtures/inicio-base.json";
 import launcherFixture from "../../../fixtures/launcher-base.json";
 import editorFixture from "../../../fixtures/launcher-editor.json";
 import type {
@@ -33,6 +34,26 @@ export function create(context: MockContext): MockHandler {
     launcher.profiles.forEach((profile) => {
       profile.launchable = true;
     });
+  }
+  if (sceneName === "inicio-base") {
+    const options = structuredClone(launcher.profiles[0].options);
+    launcher.apps.forEach((app) => {
+      app.available = true;
+    });
+    launcher.apps.push({
+      id: "custom:vantare",
+      name: "Vantare",
+      available: true,
+    });
+    launcher.profiles = homeFixture.profiles.map((profile) => ({
+      id: profile.id,
+      name: profile.name,
+      description: profile.description,
+      favorite: profile.favorite,
+      apps: [...profile.apps],
+      launchable: true,
+      options: { ...options },
+    }));
   }
   if (sceneName === "calendar-live-reference") {
     core.rights = "connected";

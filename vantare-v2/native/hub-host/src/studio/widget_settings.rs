@@ -103,8 +103,10 @@ impl WidgetSettings {
                 .zip(bare)
                 .map(|((kind, full), data)| {
                     let plain = serde_json::to_value(data).expect("native keys");
-                    let all: Vec<_> = full.as_object().expect("object").keys().collect();
-                    let required: Vec<_> = plain.as_object().expect("object").keys().collect();
+                    let mut all: Vec<_> = full.as_object().expect("object").keys().collect();
+                    all.sort_unstable();
+                    let mut required: Vec<_> = plain.as_object().expect("object").keys().collect();
+                    required.sort_unstable();
                     (
                         kind.id().to_owned(),
                         serde_json::json!({"all": all, "required": required}),
@@ -126,12 +128,13 @@ impl WidgetSettings {
                 serde_json::to_value(native::columns::Style::default()).expect("style schema"),
             ),
         ] {
-            let fields: Vec<_> = value
+            let mut fields: Vec<_> = value
                 .as_object()
                 .expect("schema object")
                 .keys()
                 .cloned()
                 .collect();
+            fields.sort_unstable();
             keys.insert(
                 name.into(),
                 serde_json::json!({"all":fields,"required":fields}),
@@ -622,6 +625,20 @@ mod tests {
 
     fn patch(value: serde_json::Value) -> WidgetSettingsPatch {
         serde_json::from_value(value).unwrap()
+    }
+    #[test]
+    fn generated_key_lists_are_canonical_with_or_without_preserve_order() {
+        for (schema, value) in WidgetSettings::schema_keys() {
+            for field in ["all", "required"] {
+                let keys = value[field].as_array().unwrap();
+                assert!(!keys.is_empty(), "{schema}.{field}");
+                let names: Vec<_> = keys.iter().map(|key| key.as_str().unwrap()).collect();
+                assert!(
+                    names.windows(2).all(|pair| pair[0] < pair[1]),
+                    "{schema}.{field}: {names:?}"
+                );
+            }
+        }
     }
     #[test]
     fn patch_rejects_unknown_fields_readonly_brand_and_fallback_enums() {

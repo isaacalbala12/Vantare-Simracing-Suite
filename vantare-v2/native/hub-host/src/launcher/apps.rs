@@ -654,6 +654,7 @@ pub(super) fn edit(
     let mut store = Store::from_observed(path.into(), bytes).map_err(|_| HostError::Protected)?;
     let mut document = store.document.clone();
     change(&mut document)?;
+    super::sort_imported_settings(&mut document);
     store.replace(document).map_err(|error| {
         if error.kind().is_conflict() {
             HostError::LauncherConflict {

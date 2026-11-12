@@ -30,3 +30,35 @@ jobs:
         run: cargo test --locked -p vantare-hub-host --lib dispatch_contract_tests
       - name: Check parser rejection cases and rustfmt of owned sources
         run: cargo test --locked -p vantare-hub-host --lib wire_source_tests
+
+  host-writer-bytes:
+    name: host-writer-bytes (${{ matrix.order }})
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        order: [sorted, insertion]
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TARGET_DIR: ${{ runner.temp }}/hub-writer-target
+      VANTARE_NATIVE_DATA_ROOT: ${{ runner.temp }}/hub-writer-data
+      VANTARE_EXPECT_JSON_ORDER: ${{ matrix.order }}
+    defaults:
+      run:
+        working-directory: vantare-v2/native
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install repository Rust toolchain
+        run: rustup show active-toolchain
+      - name: Pin writer bytes with an isolated host feature graph
+        run: |
+          $extra = @()
+          if ('${{ matrix.order }}' -eq 'insertion') {
+            $extra = @('--features', 'serde_json/preserve_order')
+          }
+          cargo test --locked --no-default-features -p vantare-hub-host --lib writer_bytes @extra
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

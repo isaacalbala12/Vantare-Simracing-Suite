@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "apps": [
+    {
+      "id": "lmu",
+      "name": "Le Mans Ultimate",
+      "executable": null,
+      "args": [],
+      "favorite": false
+    },
+    {
+      "id": "obs",
+      "name": "OBS Studio",
+      "executable": null,
+      "args": [],
+      "favorite": false
+    },
+    {
+      "id": "crewchief",
+      "name": "CrewChief",
+      "executable": null,
+      "args": [],
+      "favorite": false
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "executable": null,
+      "args": [],
+      "favorite": false
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "executable": null,
+      "args": [],
+      "favorite": false
+    },
+    {
+      "id": "motec",
+      "name": "MoTeC",
+      "executable": null,
+      "args": [],
+      "favorite": false
+    },
+    {
+      "id": "simhub",
+      "name": "SimHub",
+      "executable": null,
+      "args": [],
+      "favorite": false
+    }
+  ],
+  "profiles": [
+    {
+      "imported": false,
+      "id": "qa",
+      "name": "QA",
+      "favorite": true,
+      "steps": [
+        {
+          "app_id": "lmu",
+          "delay_seconds": 0,
+          "args_override": null
+        }
+      ],
+      "first_step_delay": 0,
+      "continue_on_error": false,
+      "reuse_running": false,
+      "max_retries": 0,
+      "description": "",
+      "notes": "",
+      "advanced": false,
+      "hotkey": "",
+      "launch_on_windows_startup": false,
+      "launch_count": 0,
+      "last_launched_at": null,
+      "avg_chain_duration_ms": 0,
+      "policy": {
+        "alreadyRunning": "ask",
+        "failure": "ask",
+        "cancel": "ask",
+        "exit": "ask",
+        "retry": "ask",
+        "maxRetries": 0,
+        "firstStepDelay": 0
+      }
+    }
+  ],
+  "lmu_trigger_profile": null,
+  "wails_import": {
+    "source": "qa-legacy.json",
+    "launcher": {
+      "future": {
+        "a": [
+          {
+            "a": 1,
+            "z": 2
+          },
+          3
+        ],
+        "z": 0
+      }
+    }
+  }
+}

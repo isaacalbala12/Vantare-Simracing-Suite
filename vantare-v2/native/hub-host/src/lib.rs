@@ -32,3 +32,6 @@ mod dispatch_contract_tests;
 mod wire_source_tests;
 
 pub mod widget_defaults;
+
+#[cfg(all(test, windows))]
+mod writer_bytes;

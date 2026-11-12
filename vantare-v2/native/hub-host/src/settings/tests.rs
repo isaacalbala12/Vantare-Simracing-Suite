@@ -332,3 +332,36 @@ fn busy_layout_retains_the_intent_and_retries_after_the_lock_is_released() {
     lock.unlock().expect("release lock");
     assert!(settings.retry().expect("retry").track.hide_off_track);
 }
+
+#[test]
+fn writer_bytes_hub_settings_and_appearance_are_typed_and_feature_independent() {
+    let root = Root::new();
+    let mut expected: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../fixtures/writer-bytes/hub-settings.json"
+    ))
+    .unwrap();
+    expected["zoom"] = serde_json::json!(100);
+    expected["appearance"]["contrast"] = serde_json::json!(100);
+    fs::write(
+        root.0.join("hub-settings.json"),
+        serde_json::to_vec(&expected).unwrap(),
+    )
+    .unwrap();
+    let mut settings = root.settings();
+    settings.store.save_zoom(125).unwrap();
+    settings
+        .store
+        .save_appearance(AppearanceSettings {
+            contrast: 110,
+            ..AppearanceSettings::default()
+        })
+        .unwrap();
+    assert_eq!(
+        fs::read(root.0.join("hub-settings.json")).unwrap(),
+        include_bytes!("../../fixtures/writer-bytes/hub-settings.json")
+    );
+    assert_eq!(
+        fs::read(root.0.join("appearance.json")).unwrap(),
+        include_bytes!("../../fixtures/writer-bytes/appearance.json")
+    );
+}

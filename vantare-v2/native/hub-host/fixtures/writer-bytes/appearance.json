@@ -1,0 +1,10 @@
+{
+  "paletteVersion": 1,
+  "palette": "vantare",
+  "scheme": "dark",
+  "contrast": 110,
+  "glassOpacity": 80,
+  "interfaceFont": "inter",
+  "monoFont": "cascadia",
+  "reducedMotion": false
+}

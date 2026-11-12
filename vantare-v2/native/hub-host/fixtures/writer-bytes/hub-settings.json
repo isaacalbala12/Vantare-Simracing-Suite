@@ -1,7 +1,7 @@
 {
   "version": 2,
   "general": {
-    "onboardingCompleted": true,
+    "onboarding_completed": true,
     "density": "balanced",
     "minimized": false,
     "updates": true,

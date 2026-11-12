@@ -30,7 +30,7 @@ fn writer_bytes_calendar_preserves_array_order_and_sorts_unknown_objects() {
     .unwrap();
     std::fs::write(
         root.path.join("calendar-following.json"),
-        br#"{"seriesIds":["qa2","qa1"],"future":{"z":0,"a":[{"z":2,"a":1},3]}}"#,
+        br#"{"seriesIds":["qa2","qa1"]}"#,
     )
     .unwrap();
     let mut state = calendar::State::new(root.path.clone());

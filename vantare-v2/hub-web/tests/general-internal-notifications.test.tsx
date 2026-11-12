@@ -44,7 +44,15 @@ it("enables the two emitted internal preferences and explains the limited Launch
   expect(
     screen.getByText(/El aviso de aplicaciones listas aún no está disponible/),
   ).toBeTruthy();
-  expect(screen.getByText(/Prueba las notificaciones de Windows con «Enviar prueba»/)).toBeTruthy();
-  expect(screen.getByText(/Los avisos del Calendario se configuran en Calendario › Avisos/)).toBeTruthy();
+  expect(
+    screen.getByText(
+      /Prueba las notificaciones de Windows con «Enviar prueba»/,
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.getByText(
+      /Los avisos del Calendario se configuran en Calendario › Avisos/,
+    ),
+  ).toBeTruthy();
   cache.clear();
 });

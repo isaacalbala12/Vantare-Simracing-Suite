@@ -53,11 +53,15 @@ export function RoadmapLayout({
   status: string;
   view: string;
 }) {
+  const current = items(p, "now")[0];
   const hero = (
-    <section className="v-roadmap-hero">
+    <section className="v-roadmap-hero" aria-label={text.current}>
       <strong>{text.current}</strong>
-      {items(p, "now")[0] ? (
-        <h2>{items(p, "now")[0].title}</h2>
+      {current ? (
+        <>
+          <h2 title={current.title}>{current.title}</h2>
+          <p className="v-roadmap-current-body">{current.body}</p>
+        </>
       ) : (
         <p>{text.noCurrent}</p>
       )}

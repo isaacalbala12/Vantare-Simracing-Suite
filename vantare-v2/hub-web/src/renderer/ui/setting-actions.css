@@ -19,3 +19,23 @@
 .v-shortcut-rail .v-rail-block {
   border-bottom: 0;
 }
+
+/* GPUI section_row retains the last divider; numbered meta tracks at 0.4 px. */
+.v-shortcut-groups .v-setting-group .v-setting-row:last-child {
+  border-bottom: 1px solid var(--line-1);
+}
+.v-shortcut-groups .v-setting-group-title > span:first-child {
+  letter-spacing: 0.4px;
+}
+/* orbit::keycaps uses an exact 18 px box and 11 px monospaced text. */
+.v-shortcut-groups .v-keycap {
+  height: 18px;
+  min-height: 18px;
+  line-height: 16.5px;
+}
+/* orbit::small_button: 12/600, ink_2 and the subtle line, not line3. */
+.v-shortcut-groups .v-button--sm {
+  color: var(--text-2);
+  font-weight: 600;
+  border-color: var(--line-1);
+}

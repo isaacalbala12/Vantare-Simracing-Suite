@@ -4,6 +4,7 @@ import type {
   SettingsView,
 } from "../../contract/generated/contract";
 import { effectiveZoom } from "../../window-zoom";
+import { viewportSize } from "../bridge/viewport";
 
 const sans = {
   inter: 'Inter, "Segoe UI Variable", "Segoe UI", sans-serif',
@@ -79,10 +80,10 @@ export function applyAppearance(
     "--surface-panel",
     alpha(colors["surface-panel"], appearance.glassOpacity / 80),
   );
-  if (!window.vantare)
-    root.style.zoom = String(
-      effectiveZoom(zoom, window.outerWidth, window.outerHeight) / 100,
-    );
+  if (!window.vantare) {
+    const { width, height } = viewportSize();
+    root.style.zoom = String(effectiveZoom(zoom, width, height) / 100);
+  }
 }
 export function applySettings(view: SettingsView) {
   applyAppearance(view.appearance, view.general.density, view.zoom);

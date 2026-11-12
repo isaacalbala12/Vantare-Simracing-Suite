@@ -16,8 +16,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 function size(width: number, height: number) {
-  vi.stubGlobal("outerWidth", width);
-  vi.stubGlobal("outerHeight", height);
+  vi.stubGlobal("innerWidth", width);
+  vi.stubGlobal("innerHeight", height);
 }
 function mount(value: number) {
   const onChange = vi.fn();
@@ -69,4 +69,14 @@ it("displays the effective ceiling while preserving a larger saved request", () 
     screen.getByRole("button", { name: "Restablecer" }).textContent,
   ).toContain("125%");
   expect(change).not.toHaveBeenCalled();
+});
+it("ignores the invisible Windows frame and Chromium's page zoom when deriving the ceiling", () => {
+  size(1280, 720);
+  vi.stubGlobal("outerWidth", 1456);
+  vi.stubGlobal("outerHeight", 908);
+  vi.stubGlobal("vantare", { viewport: () => ({ width: 1440, height: 900 }) });
+  mount(125);
+  expect(screen.getByRole("button", { name: "Restablecer" }).textContent).toBe(
+    "112.5%",
+  );
 });

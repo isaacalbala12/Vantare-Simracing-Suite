@@ -611,8 +611,8 @@ it("returns focus to the opener on Escape without navigating", async () => {
 });
 
 it("announces unavailable zoom in the palette and reevaluates it on resize without saving", async () => {
-  vi.stubGlobal("outerWidth", 1280);
-  vi.stubGlobal("outerHeight", 720);
+  vi.stubGlobal("innerWidth", 1280);
+  vi.stubGlobal("innerHeight", 720);
   await mount();
   expect(driver.commands.find((row) => row.id === "zoom-more")).toMatchObject({
     disabled: true,
@@ -620,8 +620,8 @@ it("announces unavailable zoom in the palette and reevaluates it on resize witho
   });
   const request = vi.spyOn(Client.prototype, "request");
   act(() => {
-    vi.stubGlobal("outerWidth", 1920);
-    vi.stubGlobal("outerHeight", 1080);
+    vi.stubGlobal("innerWidth", 1920);
+    vi.stubGlobal("innerHeight", 1080);
     fireEvent(window, new Event("resize"));
   });
   await waitFor(() =>

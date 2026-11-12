@@ -27,6 +27,8 @@ export const notificationScenes: Record<string, VisualScene> = {
         .getByText("Respuesta al informe de prueba", { exact: true })
         .waitFor();
       const full = page.locator(".v-notifications--full");
+      await full.waitFor({ state: "visible" });
+      await full.locator("article.v-notification").nth(4).waitFor();
       assert.equal(await full.locator("article.v-notification").count(), 5);
       assert.equal(
         await full.locator('article[data-unread="true"]').count(),

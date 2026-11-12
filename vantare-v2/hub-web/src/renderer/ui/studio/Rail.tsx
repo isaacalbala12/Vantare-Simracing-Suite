@@ -11,6 +11,7 @@ import { useStudio } from "../../screens/studio/state";
 import { Button } from "../Button";
 import { Callout, Skeleton } from "../Data";
 import { SearchInput } from "../Forms";
+import { AppearanceInspector } from "./AppearanceInspector";
 import { DisabledHint } from "./DisabledHint";
 import { TrackInspector } from "./TrackInspector";
 import { WidgetPreview, WidgetThumb, widgetName } from "./Widgets";
@@ -85,7 +86,7 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
                     actions={<Button onClick={onPlans}>{t.plans}</Button>}
                   />
                 )}
-                <Tabs.Root value="track">
+                <Tabs.Root key={selected.id} defaultValue="track">
                   <Tabs.List
                     className="v-studio-tabs"
                     aria-label={t.inspectorTabs}
@@ -95,13 +96,20 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
                         {t.content}
                       </Tabs.Tab>
                     </DisabledHint>
-                    <DisabledHint label={t.soonTooltip}>
-                      <Tabs.Tab value="appearance" disabled>
-                        {t.appearance}
-                      </Tabs.Tab>
-                    </DisabledHint>
+                    {selected.settings ? (
+                      <Tabs.Tab value="appearance">{t.appearance}</Tabs.Tab>
+                    ) : (
+                      <DisabledHint label={t.soonTooltip}>
+                        <Tabs.Tab value="appearance" disabled>
+                          {t.appearance}
+                        </Tabs.Tab>
+                      </DisabledHint>
+                    )}
                     <Tabs.Tab value="track">{t.track}</Tabs.Tab>
                   </Tabs.List>
+                  <Tabs.Panel value="appearance">
+                    <AppearanceInspector item={selected} />
+                  </Tabs.Panel>
                   <Tabs.Panel value="track">
                     <TrackInspector key={selected.id} item={selected} />
                   </Tabs.Panel>

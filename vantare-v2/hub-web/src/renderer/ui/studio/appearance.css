@@ -1,0 +1,27 @@
+.v-studio-appearance {
+  gap: 10px;
+}
+.v-studio-appearance > .v-muted,
+.v-studio-appearance .v-field > .v-muted {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+.v-studio-appearance .v-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px;
+  align-items: center;
+  gap: 10px 12px;
+}
+.v-studio-appearance .v-field > .v-muted {
+  grid-column: 1 / -1;
+}
+.v-studio-appearance .v-select-trigger {
+  width: 100%;
+  min-width: 0;
+}
+
+.v-studio-appearance dl,
+.v-studio-appearance dd {
+  margin: 0;
+}

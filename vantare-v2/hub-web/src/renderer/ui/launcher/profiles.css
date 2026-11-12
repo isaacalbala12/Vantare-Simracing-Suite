@@ -40,8 +40,9 @@
   overflow: hidden;
   border: 1px solid var(--hero-ring);
   border-radius: 10px;
-  background: var(--grad-hero);
-  padding: 20px;
+  background: var(--grad-hero-wash), var(--grad-hero);
+  box-shadow: inset 0 0 0 1px var(--hero-light);
+  padding: 20px 20px 21px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -56,9 +57,9 @@
   background: repeating-linear-gradient(
     135deg,
     transparent,
-    transparent 7px,
-    var(--line-1) 7px,
-    var(--line-1) 8px
+    transparent 7.4853px,
+    var(--hero-stripe) 7.4853px,
+    var(--hero-stripe) 8.4853px
   );
 }
 .v-launcher-meta {
@@ -74,7 +75,7 @@
   font-size: 40px;
   font-weight: 600;
   line-height: 42px;
-  margin: 0;
+  margin: -2px 0 0;
 }
 .v-launcher-hero > p {
   max-width: 650px;
@@ -140,7 +141,10 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: var(--grad-neo);
+  background: var(--launcher-app-fallback-bg);
+  color: var(--launcher-app-fallback-ink);
+  font-size: 19.2px;
+  font-weight: 600;
   flex: none;
 }
 .v-launcher-app-mark svg {
@@ -148,6 +152,7 @@
   height: 24px;
 }
 .v-launcher-app-mark--small {
+  font-size: 11.2px;
   width: 28px;
   height: 28px;
   border-radius: 7px;
@@ -177,6 +182,8 @@
   margin: 2px 0 10px;
 }
 .v-launcher-profile-grid {
+  /* GPUI clips the profile carousel viewport, including card shadows. */
+  overflow: hidden;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -198,12 +205,15 @@
 .v-launcher-profile:not(.v-launcher-profile--new) {
   box-shadow:
     inset 0 1px 0 var(--neo-light),
-    var(--shadow-neo);
+    var(--launcher-profile-shadow);
 }
 [data-palette="classic"] .v-launcher-profile:not(.v-launcher-profile--new) {
   box-shadow:
     inset 0 1px 0 var(--neo-light),
-    var(--shadow-neo-classic);
+    var(--launcher-profile-shadow-classic);
+}
+.v-launcher-profile:focus-visible {
+  outline-offset: -3px;
 }
 .v-launcher-profile[aria-pressed="true"] {
   border-color: var(--accent-bright);
@@ -274,9 +284,10 @@
 }
 
 .v-launcher-rail {
+  padding-top: 4px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 22px;
 }
 .v-launcher-rail section > header {
   display: flex;
@@ -301,7 +312,7 @@
 }
 .v-launcher-app-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 31%));
   gap: 8px;
 }
 .v-launcher-app-tile {
@@ -323,6 +334,10 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
+}
+.v-launcher-app-tile .v-launcher-app-mark svg {
+  width: 15.36px;
+  height: 15.36px;
 }
 .v-launcher-app-tile strong {
   font-size: 11px;
@@ -347,6 +362,7 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
+  height: 30px;
   min-height: 30px;
 }
 .v-launcher-options .v-select-trigger {
@@ -491,4 +507,38 @@ button.v-launcher-app-tile {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* orbit::button_face: 16 px inset, Inter 14/500, radius md. */
+.v-launcher-page .v-button--neutral {
+  padding-inline: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+}
+.v-launcher-rail .v-button--ghost,
+.v-launcher-profile--new {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* RailSection's action makes only the app header 36 px tall. */
+.v-launcher-rail section:first-child > header {
+  height: 36px;
+  margin-bottom: 12px;
+}
+.v-launcher-rail section:not(:first-child) > header {
+  margin-bottom: 8px;
+}
+/* GPUI text inherits the rail's 21 px line box even at 11 px. */
+div.v-launcher-app-tile {
+  justify-content: flex-start;
+  padding-block: 1px;
+}
+.v-launcher-app-tile strong,
+.v-launcher-app-tile small {
+  line-height: 21px;
+}
+button.v-launcher-app-tile {
+  font-size: 14px;
 }

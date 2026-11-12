@@ -4,7 +4,12 @@
 Relative, Delta, Pedales y Fuel Strategy. Los demás tipos devuelven `null` hasta
 su propia ampliación. El anfitrión proyecta los tipos de
 `vantare_domain::widget_settings`, aplica sus valores nativos por defecto y su
-normalización sin escribir ni sembrar `layout.json` durante una lectura.
+normalización sin escribir ni sembrar `layout.json` durante una lectura. Los marcadores nativos de herencia y migración conservan su significado:
+los opcionales ausentes o nulos no reciben presets de un widget nuevo,
+`contentVersion` ausente mantiene la migración legacy y Pedales sin Look usa el
+valor legacy de su propio serde. El resto se completa con `widget-defaults`.
+`practiceColumns: null` devuelve la sesión a la herencia de las columnas
+principales, como GPUI; no aplica de nuevo los presets de alta.
 
 `studio.instance` acepta `patch: { field: "settings", value: { kind, ... } }`.
 Solo los campos tipados presentes cambian; un campo ausente conserva su valor.

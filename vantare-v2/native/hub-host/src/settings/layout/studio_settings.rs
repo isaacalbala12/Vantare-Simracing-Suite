@@ -26,6 +26,11 @@ fn stored_columns(stored: &Fields, key: &str) -> Result<Vec<Fields>, HostError> 
     let value: Option<Vec<Fields>> = stored.0.get(key).map_or(Ok(None), |raw| {
         serde_json::from_str(raw.get()).map_err(|_| HostError::Protected)
     })?;
+    // Native session overrides inherit the saved main columns when absent or
+    // null. An explicit empty array remains empty.
+    if value.is_none() && ["practiceColumns", "qualifyingColumns"].contains(&key) {
+        return stored_columns(stored, "columns");
+    }
     Ok(value.unwrap_or_default())
 }
 fn column_edits(
@@ -262,5 +267,32 @@ mod preserved_native_fields {
         assert_eq!(stored.0["source"].get(), r#""virtual-energy""#);
         assert_eq!(stored.0["units"].get(), r#""liters""#);
         assert_eq!(stored.0["future"].get(), r#"{"keep":  1.00}"#);
+    }
+}
+
+#[cfg(test)]
+mod inheritance_tests {
+    use super::*;
+    #[test]
+    fn session_override_preserves_inherited_format_and_can_return_to_inheritance() {
+        let mut fields:Fields=serde_json::from_str(r#"{"settings":{"kind":"standings","contentVersion":1,"columns":[{"id":"saved","metricId":"driverName","widthPreset":"lg","format":{"mode":"surname","future":17}}]}}"#).unwrap();
+        let update = serde_json::from_str(
+            r#"{"kind":"standings","practiceColumns":[{"metric":"driverName","enabled":false}]}"#,
+        )
+        .unwrap();
+        assert!(apply(&mut fields, &update, Some(CatalogAccess::Pro)).unwrap());
+        let stored: Fields = read(&fields, "settings").unwrap();
+        let value: Value = serde_json::from_str(fields.0["settings"].get()).unwrap();
+        assert_eq!(value["practiceColumns"][0]["id"], "saved");
+        assert_eq!(value["practiceColumns"][0]["widthPreset"], "lg");
+        assert_eq!(value["practiceColumns"][0]["format"]["future"], 17);
+        assert!(stored.0.contains_key("columns"));
+        let clear = serde_json::from_str(r#"{"kind":"standings","practiceColumns":null}"#).unwrap();
+        assert!(apply(&mut fields, &clear, Some(CatalogAccess::Pro)).unwrap());
+        let stored: Fields = read(&fields, "settings").unwrap();
+        assert!(!stored.0.contains_key("practiceColumns"));
+        let view =
+            serde_json::to_value(typed_settings(WidgetKind::Standings, &stored).unwrap()).unwrap();
+        assert!(view.get("practiceColumns").is_none());
     }
 }

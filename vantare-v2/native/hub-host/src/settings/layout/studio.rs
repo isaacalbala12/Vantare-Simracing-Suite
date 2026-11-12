@@ -178,10 +178,21 @@ fn merged_settings(kind: WidgetKind, stored: &Fields) -> Result<Fields, HostErro
     let mut merged: Fields =
         serde_json::from_str(defaults.settings.get()).map_err(|_| HostError::Protected)?;
     merged.0.extend(stored.0.clone());
-    // This is migration metadata, not a user setting. Domain/GPUI deserialize
-    // its absence as legacy zero before normalizing the projected value to one.
-    if kind != WidgetKind::Pedals && !stored.0.contains_key("contentVersion") {
-        put(&mut merged, "contentVersion", &0u8)?;
+    let source = serde_json::to_string(&stored.0).map_err(|_| HostError::Io)?;
+    let native = crate::studio::WidgetSettings::unnormalized_json(&source)?;
+    // Absence/null of native optional fields means inheritance, not a new-widget
+    // preset. Derive that distinction from serde itself, without another table.
+    merged
+        .0
+        .retain(|key, _| stored.0.contains_key(key) || native.get(key).is_some());
+    for (key, value) in native.as_object().ok_or(HostError::Protected)? {
+        if !stored.0.contains_key(key)
+            && (value.is_null()
+                || key == "contentVersion"
+                || (kind == WidgetKind::Pedals && key == "designSystem"))
+        {
+            put(&mut merged, key, value)?;
+        }
     }
     Ok(merged)
 }

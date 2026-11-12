@@ -637,11 +637,7 @@ fn projected_settings_that_exceed_the_transport_become_protected() {
 #[test]
 fn native_serialization_and_host_projection_round_trip_all_five_families() {
     use vantare_domain::widget_settings as native;
-    fn round_trip<T: Serialize + DeserializeOwned>(kind: WidgetKind) {
-        // This fixture comes from GPUI new_settings, which also materializes
-        // session-specific columns beyond the bare domain Settings::default().
-        let fixture = crate::widget_defaults::get(kind.id()).unwrap();
-        let settings: T = serde_json::from_str(fixture.settings.get()).unwrap();
+    fn round_trip<T: Serialize + DeserializeOwned>(kind: WidgetKind, settings: T) {
         let mut stored = serde_json::to_value(&settings).unwrap();
         stored["kind"] = serde_json::to_value(kind).unwrap();
         let raw: Fields = serde_json::from_value(stored).unwrap();
@@ -652,9 +648,45 @@ fn native_serialization_and_host_projection_round_trip_all_five_families() {
             serde_json::to_value(settings).unwrap()
         );
     }
-    round_trip::<native::standings::Settings>(WidgetKind::Standings);
-    round_trip::<native::relative::Settings>(WidgetKind::Relative);
-    round_trip::<native::delta::Settings>(WidgetKind::Delta);
-    round_trip::<native::pedals::Settings>(WidgetKind::Pedals);
-    round_trip::<native::fuel_strategy::Settings>(WidgetKind::FuelStrategy);
+    macro_rules! family {
+        ($kind:expr,$ty:ty) => {{
+            round_trip($kind, <$ty>::default().normalized());
+            let fixture = crate::widget_defaults::get($kind.id()).unwrap();
+            round_trip(
+                $kind,
+                serde_json::from_str::<$ty>(fixture.settings.get()).unwrap(),
+            );
+        }};
+    }
+    family!(WidgetKind::Standings, native::standings::Settings);
+    family!(WidgetKind::Relative, native::relative::Settings);
+    family!(WidgetKind::Delta, native::delta::Settings);
+    family!(WidgetKind::Pedals, native::pedals::Settings);
+    family!(WidgetKind::FuelStrategy, native::fuel_strategy::Settings);
+}
+#[test]
+fn absence_preserves_session_inheritance_and_the_native_legacy_pedals_look() {
+    let stored:Fields=serde_json::from_value(serde_json::json!({"kind":"standings","contentVersion":1,"columns":[{"id":"custom","metricId":"gap"}]})).unwrap();
+    let value = serde_json::to_value(
+        typed_settings(WidgetKind::Standings, &stored)
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(value.get("practiceColumns").is_none());
+    assert!(value.get("qualifyingColumns").is_none());
+    assert_eq!(value["columns"][0]["id"], "custom");
+    let pedals: Fields = serde_json::from_value(serde_json::json!({"kind":"pedals"})).unwrap();
+    let value = serde_json::to_value(
+        typed_settings(WidgetKind::Pedals, &pedals)
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    let native: vantare_domain::widget_settings::pedals::Settings =
+        serde_json::from_str("{}").unwrap();
+    assert_eq!(
+        value["designSystem"],
+        serde_json::to_value(native.design_system).unwrap()
+    );
 }

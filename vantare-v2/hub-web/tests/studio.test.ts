@@ -344,3 +344,37 @@ it("mock rejects new column IDs that collide without changing the original", () 
   ).toBeNull();
   expect(settings).toEqual(before);
 });
+
+it.each(["standings", "relative"] as const)(
+  "mock restores %s columns with a single Undo after a repeated recipe",
+  (kind) => {
+    const host = createMockHost("studio-base");
+    const before = view(host);
+    const item = before.instances.find((entry) => entry.kind === kind);
+    if (!item) throw new Error("Missing table fixture");
+    const fields = {
+      id: item.id,
+      patch: { field: "settings", value: { kind, tablePreset: "compact" } },
+    };
+    expect(
+      send(host, "studio.instance", {
+        ...fields,
+        baseRevision: before.revision,
+      }),
+    ).toMatchObject({ kind: "response" });
+    const applied = view(host);
+    expect(applied.revision).not.toBe(before.revision);
+    expect(applied.canUndo).toBe(true);
+    send(host, "studio.instance", {
+      ...fields,
+      baseRevision: applied.revision,
+    });
+    expect(view(host).revision).toBe(applied.revision);
+    send(host, "studio.undo", { baseRevision: applied.revision });
+    const undone = view(host);
+    expect(undone.instances).toEqual(before.instances);
+    expect(undone.canUndo).toBe(false);
+    send(host, "studio.redo", { baseRevision: undone.revision });
+    expect(view(host).instances).toEqual(applied.instances);
+  },
+);

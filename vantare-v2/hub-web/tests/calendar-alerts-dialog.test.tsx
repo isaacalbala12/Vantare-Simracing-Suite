@@ -247,6 +247,11 @@ it("keeps the test focused and blocks another click while awaiting main", () => 
     document.getElementById(button.getAttribute("aria-describedby") ?? "")
       ?.textContent,
   ).toBe(text.testHint);
+  expect(
+    document
+      .getElementById(button.getAttribute("aria-describedby") ?? "")
+      ?.closest("footer"),
+  ).toBe(button.closest("footer"));
   result.rerender(
     <TooltipProvider>
       <CalendarAlertsDialog {...props} onTest={onTest} testBusy />

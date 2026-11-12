@@ -18,6 +18,24 @@ use std::{
     time::{Duration, Instant},
 };
 pub use vantare_ipc::launcher::Action;
+pub use vantare_ipc::launcher::execution::{CancelReason, ChainFailure, ChainOutcome};
+
+#[derive(Debug)]
+pub enum StartError {
+    Busy(String),
+    Invalid(String),
+    Io(String),
+}
+impl std::fmt::Display for StartError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Busy(message) | Self::Invalid(message) | Self::Io(message) => {
+                f.write_str(message)
+            }
+        }
+    }
+}
+impl std::error::Error for StartError {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -53,6 +71,8 @@ struct RunContext {
     processes: processes::Shared,
     next_decision: AtomicU64,
     selected: Vec<usize>,
+    failure: Mutex<Option<ChainFailure>>,
+    trust_declined: AtomicBool,
 }
 impl RunContext {
     fn ask(
@@ -61,6 +81,25 @@ impl RunContext {
         message: String,
         actions: &[Action],
         closing: bool,
+    ) -> Result<Action, String> {
+        let started = Instant::now();
+        self.ask_with(
+            step,
+            message,
+            actions,
+            closing,
+            || started.elapsed(),
+            |receiver| receiver.recv_timeout(Duration::from_millis(50)),
+        )
+    }
+    fn ask_with(
+        &self,
+        step: Option<usize>,
+        message: String,
+        actions: &[Action],
+        closing: bool,
+        elapsed: impl Fn() -> Duration,
+        receive: impl Fn(&Receiver<(u64, Action)>) -> Result<(u64, Action), mpsc::RecvTimeoutError>,
     ) -> Result<Action, String> {
         let id = self.next_decision.fetch_add(1, Ordering::Relaxed);
         let decision = Decision {
@@ -78,7 +117,6 @@ impl RunContext {
                 decision: Some(decision),
             })
             .map_err(|e| format!("publicar decisión: {e}"))?;
-        let started = Instant::now();
         loop {
             if self.cancel.shutdown.load(Ordering::Acquire) {
                 return Ok(if closing {
@@ -90,7 +128,7 @@ impl RunContext {
             if !closing && self.cancel.cancelled() {
                 return Ok(Action::Cancel);
             }
-            match self.answers.recv_timeout(Duration::from_millis(50)) {
+            match receive(&self.answers) {
                 Ok((reply_id, action)) if reply_id == id && actions.contains(&action) => {
                     return Ok(action);
                 }
@@ -103,7 +141,10 @@ impl RunContext {
                     });
                 }
             }
-            if started.elapsed() >= Duration::from_mins(2) {
+            if elapsed() >= Duration::from_mins(2) {
+                if let Ok(mut failure) = self.failure.lock() {
+                    *failure = Some(ChainFailure::DecisionExpired);
+                }
                 return Err("decisión caducada; no se ha cerrado ninguna app".into());
             }
         }
@@ -166,7 +207,8 @@ pub struct Chain {
     pub progress: Receiver<Progress>,
     cancel: Arc<Cancellation>,
     answers: Sender<(u64, Action)>,
-    worker: Option<JoinHandle<()>>,
+    worker: Option<JoinHandle<ChainOutcome>>,
+    outcome: Option<ChainOutcome>,
 }
 impl Chain {
     pub fn start(
@@ -177,19 +219,32 @@ impl Chain {
         selected: Option<Vec<usize>>,
         settings: &std::path::Path,
     ) -> Result<Self, String> {
+        Self::start_checked(document, profile, found, processes, selected, settings)
+            .map_err(|error| error.to_string())
+    }
+    pub fn start_checked(
+        document: Document,
+        profile: Profile,
+        found: impl FnOnce(&[App]) -> Discovery + Send + 'static,
+        processes: processes::Shared,
+        selected: Option<Vec<usize>>,
+        settings: &std::path::Path,
+    ) -> Result<Self, StartError> {
         let selected = selected.unwrap_or_else(|| (0..profile.steps.len()).collect());
         if selected.is_empty()
             || selected.iter().any(|&index| index >= profile.steps.len())
             || selected.windows(2).any(|pair| pair[0] >= pair[1])
         {
-            return Err("seleccion de reintento vacia o invalida".into());
+            return Err(StartError::Invalid(
+                "seleccion de reintento vacia o invalida".into(),
+            ));
         }
-        document.validate()?;
+        document.validate().map_err(StartError::Invalid)?;
         // Valida también el perfil temporal del lanzamiento de una sola app.
         let mut checked = document.clone();
         checked.profiles = vec![profile.clone()];
         checked.lmu_trigger_profile = None;
-        checked.validate()?;
+        checked.validate().map_err(StartError::Invalid)?;
         // Distinto del lock de guardado: editar el perfil sigue permitido durante la cadena.
         let mut options = std::fs::File::options();
         options.read(true).write(true).create(true).truncate(false);
@@ -203,10 +258,23 @@ impl Chain {
         }
         let lease = options
             .open(settings.with_extension("chain-lock"))
-            .map_err(|error| format!("bloquear cadena Launcher: {error}"))?;
+            .map_err(|error| {
+                let message = format!("bloquear cadena Launcher: {error}");
+                if error.kind() == std::io::ErrorKind::WouldBlock
+                    || matches!(error.raw_os_error(), Some(32 | 33))
+                {
+                    StartError::Busy(message)
+                } else {
+                    StartError::Io(message)
+                }
+            })?;
         lease.try_lock().map_err(|error| match error {
-            std::fs::TryLockError::WouldBlock => "ya hay una cadena Launcher activa".into(),
-            std::fs::TryLockError::Error(error) => format!("bloquear cadena Launcher: {error}"),
+            std::fs::TryLockError::WouldBlock => {
+                StartError::Busy("ya hay una cadena Launcher activa".into())
+            }
+            std::fs::TryLockError::Error(error) => {
+                StartError::Io(format!("bloquear cadena Launcher: {error}"))
+            }
         })?;
         let (sender, progress) = mpsc::channel();
         let cancel = Arc::new(Cancellation::default());
@@ -218,20 +286,24 @@ impl Chain {
             processes,
             next_decision: AtomicU64::new(1),
             selected,
+            failure: Mutex::new(None),
+            trust_declined: AtomicBool::new(false),
         };
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
             .spawn(move || {
                 let discovery = found(&document.apps);
-                run(&document, &profile, &discovery, &context);
+                let outcome = run(&document, &profile, &discovery, &context);
                 drop(lease);
+                outcome
             })
-            .map_err(|e| format!("arrancar cadena: {e}"))?;
+            .map_err(|e| StartError::Io(format!("arrancar cadena: {e}")))?;
         Ok(Self {
             progress,
             cancel,
             answers,
             worker: Some(worker),
+            outcome: None,
         })
     }
     pub fn cancel(&self) {
@@ -249,12 +321,31 @@ impl Chain {
         self.cancel.shutdown.store(true, Ordering::Release);
         self.cancel();
     }
+    /// Collect only a finished worker. Repeated reads preserve the same terminal.
+    pub fn finish(&mut self) -> Option<ChainOutcome> {
+        if self.finished() {
+            self.collect();
+        }
+        self.outcome
+    }
+    fn collect(&mut self) {
+        if let Some(worker) = self.worker.take() {
+            self.outcome = Some(worker.join().unwrap_or(ChainOutcome::Failed {
+                reason: ChainFailure::WorkerPanicked,
+            }));
+        }
+    }
     pub fn shutdown(&mut self) -> Result<(), String> {
         self.prepare_shutdown();
-        if let Some(worker) = self.worker.take() {
-            worker
-                .join()
-                .map_err(|_| "el worker Launcher terminó con panic")?;
+        let collecting = self.worker.is_some();
+        self.collect();
+        if collecting
+            && self.outcome
+                == Some(ChainOutcome::Failed {
+                    reason: ChainFailure::WorkerPanicked,
+                })
+        {
+            return Err("el worker Launcher terminó con panic".into());
         }
         Ok(())
     }
@@ -497,7 +588,29 @@ fn probe(
     }
 }
 
-fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &RunContext) {
+fn run(
+    document: &Document,
+    profile: &Profile,
+    discovery: &Discovery,
+    context: &RunContext,
+) -> ChainOutcome {
+    run_with(
+        document,
+        profile,
+        discovery,
+        context,
+        || run_pass(document, profile, discovery, context),
+        |delay| context.cancel.wait(delay),
+    )
+}
+fn run_with(
+    document: &Document,
+    profile: &Profile,
+    discovery: &Discovery,
+    context: &RunContext,
+    mut pass: impl FnMut() -> bool,
+    mut wait: impl FnMut(Duration) -> bool,
+) -> ChainOutcome {
     if profile.imported
         && let Err(message) = review_import(document, profile, discovery, context)
     {
@@ -509,7 +622,20 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
             message,
             false,
         );
-        return;
+        return if context.cancel.cancelled() || context.trust_declined.load(Ordering::Acquire) {
+            ChainOutcome::Cancelled {
+                reason: cancellation_reason(context),
+            }
+        } else {
+            ChainOutcome::Failed {
+                reason: context
+                    .failure
+                    .lock()
+                    .ok()
+                    .and_then(|f| *f)
+                    .unwrap_or(ChainFailure::Internal),
+            }
+        };
     }
     let policy = profile.effective_policy();
     let retries = if policy.retry == super::policy::Retry::All {
@@ -519,15 +645,18 @@ fn run(document: &Document, profile: &Profile, discovery: &Discovery, context: &
     };
     let mut success = false;
     for attempt in 0..=retries {
-        success = run_pass(document, profile, discovery, context);
+        if let Ok(mut failure) = context.failure.lock() {
+            *failure = None;
+        }
+        success = pass();
         if success || context.cancel.cancelled() || attempt == retries {
             break;
         }
-        if context.cancel.wait(Duration::from_millis(250)) {
+        if wait(Duration::from_millis(250)) {
             break;
         }
     }
-    finish(profile, context, success);
+    finish(profile, context, success)
 }
 
 fn review_content(
@@ -604,6 +733,9 @@ fn review_at(
     if context.ask(None, message, &[Action::Trust, Action::Cancel], false)? != Action::Trust
         || context.cancel.cancelled()
     {
+        if !context.cancel.cancelled() {
+            context.trust_declined.store(true, Ordering::Release);
+        }
         return Err("Lanzamiento cancelado; no se abrió ninguna aplicación".into());
     }
     std::fs::create_dir_all(root).map_err(|e| format!("Guardar confianza: {e}"))?;
@@ -615,6 +747,25 @@ fn run_pass(
     profile: &Profile,
     discovery: &Discovery,
     context: &RunContext,
+) -> bool {
+    run_pass_with(document, profile, discovery, context, launch, |delay| {
+        context.cancel.wait(delay)
+    })
+}
+fn run_pass_with(
+    document: &Document,
+    profile: &Profile,
+    discovery: &Discovery,
+    context: &RunContext,
+    mut execute: impl FnMut(
+        &App,
+        &Step,
+        &Profile,
+        &Discovery,
+        &RunContext,
+        usize,
+    ) -> Result<u32, String>,
+    mut wait: impl FnMut(Duration) -> bool,
 ) -> bool {
     let cancel = &context.cancel;
     let sender = &context.sender;
@@ -641,7 +792,7 @@ fn run_pass(
         ) {
             return false;
         }
-        if cancel.wait(Duration::from_secs(u64::from(delay))) {
+        if wait(Duration::from_secs(u64::from(delay))) {
             success = false;
             break;
         }
@@ -659,11 +810,11 @@ fn run_pass(
             if cancel.cancelled() {
                 break;
             }
-            result = launch(app, step, profile, discovery, context, index);
+            result = execute(app, step, profile, discovery, context, index);
             if result.is_ok() || cancel.cancelled() {
                 break;
             }
-            if attempt < retries && cancel.wait(Duration::from_millis(250)) {
+            if attempt < retries && wait(Duration::from_millis(250)) {
                 break;
             }
         }
@@ -709,14 +860,16 @@ fn run_pass(
     success
 }
 
-fn finish(profile: &Profile, context: &RunContext, success: bool) {
+fn finish(profile: &Profile, context: &RunContext, success: bool) -> ChainOutcome {
     let cancel = &context.cancel;
     let sender = &context.sender;
     let cancelled = cancel.cancelled();
+    let mut cleanup_failed = false;
     if cancelled
         && !cancel.shutdown.load(Ordering::Acquire)
         && let Err(error) = close_cancelled(profile, &profile.effective_policy(), context)
     {
+        cleanup_failed = true;
         emit(sender, None, Status::Failed, None, error, false);
     }
     emit(
@@ -738,6 +891,35 @@ fn finish(profile: &Profile, context: &RunContext, success: bool) {
         .into(),
         success && !cancelled,
     );
+    if cleanup_failed {
+        ChainOutcome::Failed {
+            reason: ChainFailure::CleanupFailed,
+        }
+    } else if cancelled {
+        ChainOutcome::Cancelled {
+            reason: cancellation_reason(context),
+        }
+    } else if success {
+        ChainOutcome::Completed
+    } else {
+        ChainOutcome::Failed {
+            reason: context
+                .failure
+                .lock()
+                .ok()
+                .and_then(|f| *f)
+                .unwrap_or(ChainFailure::StepFailed),
+        }
+    }
+}
+fn cancellation_reason(context: &RunContext) -> CancelReason {
+    if context.cancel.shutdown.load(Ordering::Acquire) {
+        CancelReason::Shutdown
+    } else if context.trust_declined.load(Ordering::Acquire) {
+        CancelReason::TrustDeclined
+    } else {
+        CancelReason::User
+    }
 }
 
 fn failure_action(profile: &Profile, name: &str, index: usize, context: &RunContext) -> Action {
@@ -799,6 +981,10 @@ fn close_cancelled(
 }
 
 #[cfg(test)]
+#[path = "chain/outcome_tests.rs"]
+mod outcome_tests;
+
+#[cfg(test)]
 mod trust_tests {
     use super::*;
     #[test]
@@ -830,6 +1016,8 @@ mod trust_tests {
             processes: Arc::new(Mutex::new(processes::Processes::default())),
             next_decision: AtomicU64::new(1),
             selected: vec![0],
+            failure: Mutex::new(None),
+            trust_declined: AtomicBool::new(false),
         };
         answers.send((1, Action::Cancel)).expect("cancel");
         assert!(review_at(&document, &profile, &discovery, &context, &root).is_err());

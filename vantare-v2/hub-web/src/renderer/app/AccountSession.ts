@@ -3,10 +3,14 @@ import type { AccountView } from "../../contract/generated/account";
 
 /** Local invalidation only: no identity, credentials or new wire contract. */
 export function createAccountSession() {
-  let snapshot = { generation: 0, confirmed: false };
+  let snapshot = { generation: 0, confirmed: false, ready: false };
   const listeners = new Set<() => void>();
-  function publish(confirmed: boolean, generation = snapshot.generation) {
-    snapshot = { generation, confirmed };
+  function publish(
+    confirmed: boolean,
+    generation = snapshot.generation,
+    ready = confirmed,
+  ) {
+    snapshot = { generation, confirmed, ready };
     for (const listener of listeners) listener();
   }
   return {
@@ -23,6 +27,9 @@ export function createAccountSession() {
     confirm(value: AccountView) {
       publish(
         value.session === "signedIn" && value.gate === "none" && !value.blocked,
+        snapshot.generation,
+        // The local pilot also exists in the stable signed-out namespace.
+        value.session !== "pending" && value.gate === "none" && !value.blocked,
       );
     },
   };

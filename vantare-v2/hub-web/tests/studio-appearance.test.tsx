@@ -317,3 +317,419 @@ it.each(["delta", "pedals"] as const)(
     expect(state.execute).not.toHaveBeenCalled();
   },
 );
+
+function deltaItem(size: "pill" | "bar" | "expanded" = "pill") {
+  const item = instance("delta");
+  if (item.settings?.kind !== "delta") throw new Error("Missing Delta");
+  item.settings.size = size;
+  return item;
+}
+it.each([
+  ["pill", "Cápsula"],
+  ["bar", "Barra"],
+  ["expanded", "Ampliado"],
+] as const)("writes only the Delta size %s", async (size, label) => {
+  mount(deltaItem(size === "pill" ? "bar" : "pill"));
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("combobox", { name: t.deltaFormat }));
+  await user.click(await screen.findByRole("option", { name: label }));
+  expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+    method: "studio.instance",
+    id: "widget-1",
+    baseRevision: state.view.revision,
+    patch: { field: "settings", value: { kind: "delta", size } },
+  });
+});
+it("selects the expanded Delta with keyboard", async () => {
+  mount(deltaItem());
+  const user = userEvent.setup();
+  await user.tab();
+  expect(document.activeElement).toBe(
+    screen.getByRole("combobox", { name: t.deltaFormat }),
+  );
+  await user.keyboard("{ArrowDown}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { selected: true })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{End}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { name: t.deltaExpanded })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{Enter}");
+  expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+    method: "studio.instance",
+    id: "widget-1",
+    baseRevision: state.view.revision,
+    patch: { field: "settings", value: { kind: "delta", size: "expanded" } },
+  });
+});
+it("does not offer a difference bar for the capsule", () => {
+  mount(deltaItem());
+  expect(
+    screen.queryByRole("switch", { name: t.deltaDifferenceBar }),
+  ).toBeNull();
+});
+it.each(["bar", "expanded"] as const)(
+  "reads and writes the difference bar for %s",
+  async (size) => {
+    const item = deltaItem(size);
+    if (item.settings?.kind !== "delta") throw new Error("Missing Delta");
+    item.settings.showBar = false;
+    mount(item);
+    const user = userEvent.setup();
+    const control = screen.getByRole("switch", { name: t.deltaDifferenceBar });
+    expect(control.getAttribute("aria-checked")).toBe("false");
+    await user.click(control);
+    expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+      method: "studio.instance",
+      id: "widget-1",
+      baseRevision: state.view.revision,
+      patch: { field: "settings", value: { kind: "delta", showBar: true } },
+    });
+    expect(
+      Boolean(
+        control.compareDocumentPosition(
+          screen.getByRole("combobox", { name: t.widgetLook }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+  },
+);
+it("hides Delta format and bar in Eficiencia", () => {
+  const item = deltaItem("bar");
+  if (!item.settings) throw new Error("Missing Delta");
+  item.settings.designSystem = "eficiencia";
+  mount(item);
+  expect(screen.queryByRole("combobox", { name: t.deltaFormat })).toBeNull();
+  expect(
+    screen.queryByRole("switch", { name: t.deltaDifferenceBar }),
+  ).toBeNull();
+});
+it.each(["locked", "unverified"])(
+  "blocks the Delta controls when %s",
+  async (reason) => {
+    const item = deltaItem("bar");
+    item.locked = reason === "locked";
+    if (reason === "unverified") state.view.plan = "unverified";
+    mount(item);
+    const user = userEvent.setup();
+    const format = screen.getByRole("combobox", { name: t.deltaFormat });
+    expect(format.hasAttribute("disabled")).toBe(true);
+    const control = screen.getByRole("switch", { name: t.deltaDifferenceBar });
+    expect(
+      control.parentElement?.querySelector<HTMLInputElement>(
+        "input[type=checkbox]",
+      )?.disabled,
+    ).toBe(true);
+    expect(control.getAttribute("aria-busy")).toBeNull();
+    await user.click(control);
+    expect(state.execute).not.toHaveBeenCalled();
+  },
+);
+it("preserves the difference bar focus and blocks sends while saving", async () => {
+  const item = deltaItem("bar"),
+    mounted = mount(item),
+    user = userEvent.setup();
+  const control = screen.getByRole("switch", { name: t.deltaDifferenceBar });
+  for (let index = 0; index < 12 && document.activeElement !== control; index++)
+    await user.tab();
+  expect(document.activeElement).toBe(control);
+  state.pending = true;
+  mounted.rerender(
+    <CSPProvider disableStyleElements>
+      <AppearanceInspector item={item} />
+    </CSPProvider>,
+  );
+  expect(
+    control.parentElement?.querySelector<HTMLInputElement>(
+      "input[type=checkbox]",
+    )?.disabled,
+  ).toBe(false);
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  await user.keyboard(" ");
+  expect(document.activeElement).toBe(control);
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it("does not show Delta values for a protected layout", () => {
+  state.view.state = "protected";
+  mount(deltaItem("bar"));
+  expect(screen.queryByRole("combobox", { name: t.deltaFormat })).toBeNull();
+  expect(
+    screen.queryByRole("switch", { name: t.deltaDifferenceBar }),
+  ).toBeNull();
+});
+
+function fuelItem(size: "compact" | "standard" | "expanded" = "standard") {
+  const item = instance("fuel-strategy");
+  if (item.settings?.kind !== "fuel-strategy") throw new Error("Missing Fuel");
+  item.settings.size = size;
+  return item;
+}
+it.each([
+  ["compact", t.formatCompact],
+  ["standard", t.formatStandard],
+  ["expanded", t.formatExpanded],
+] as const)("sends only Fuel size %s", async (size, label) => {
+  mount(fuelItem(size === "standard" ? "compact" : "standard"));
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("combobox", { name: t.fuelFormat }));
+  await user.click(await screen.findByRole("option", { name: label }));
+  expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+    method: "studio.instance",
+    id: "widget-1",
+    baseRevision: state.view.revision,
+    patch: { field: "settings", value: { kind: "fuel-strategy", size } },
+  });
+});
+it("uses the saved Fuel size and native row order", () => {
+  mount(fuelItem("expanded"));
+  const format = screen.getByRole("combobox", { name: t.fuelFormat });
+  expect(format.textContent).toContain(t.formatExpanded);
+  expect(
+    Boolean(
+      screen
+        .getByRole("combobox", { name: t.widgetLook })
+        .compareDocumentPosition(format) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ),
+  ).toBe(true);
+  expect(
+    Boolean(
+      format.compareDocumentPosition(
+        screen.getByRole("combobox", { name: t.widgetStyle }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ),
+  ).toBe(true);
+});
+it("selects a Fuel format using the keyboard", async () => {
+  mount(fuelItem());
+  const user = userEvent.setup();
+  const control = screen.getByRole("combobox", { name: t.fuelFormat });
+  for (let index = 0; index < 12 && document.activeElement !== control; index++)
+    await user.tab();
+  expect(document.activeElement).toBe(control);
+  await user.keyboard("{ArrowDown}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { selected: true })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{Home}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { name: t.formatCompact })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{Enter}");
+  expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+    method: "studio.instance",
+    id: "widget-1",
+    baseRevision: state.view.revision,
+    patch: {
+      field: "settings",
+      value: { kind: "fuel-strategy", size: "compact" },
+    },
+  });
+});
+it("hides Fuel format in Eficiencia", () => {
+  const item = fuelItem();
+  if (!item.settings) throw new Error("Missing Fuel");
+  item.settings.designSystem = "eficiencia";
+  mount(item);
+  expect(screen.queryByRole("combobox", { name: t.fuelFormat })).toBeNull();
+});
+it.each(["locked", "unverified"])(
+  "disables Fuel format when %s",
+  async (reason) => {
+    const item = fuelItem();
+    item.locked = reason === "locked";
+    if (reason === "unverified") state.view.plan = "unverified";
+    mount(item);
+    const user = userEvent.setup();
+    const control = screen.getByRole("combobox", { name: t.fuelFormat });
+    expect(control.hasAttribute("disabled")).toBe(true);
+    expect(control.getAttribute("aria-busy")).toBeNull();
+    await user.click(control);
+    expect(screen.queryByRole("option")).toBeNull();
+    expect(state.execute).not.toHaveBeenCalled();
+  },
+);
+it("retains Fuel keyboard focus and blocks writes while saving", async () => {
+  const item = fuelItem();
+  const mounted = mount(item);
+  const user = userEvent.setup();
+  const control = screen.getByRole("combobox", { name: t.fuelFormat });
+  for (let index = 0; index < 12 && document.activeElement !== control; index++)
+    await user.tab();
+  state.pending = true;
+  mounted.rerender(
+    <CSPProvider disableStyleElements>
+      <AppearanceInspector item={item} />
+    </CSPProvider>,
+  );
+  expect(document.activeElement).toBe(control);
+  expect(control.hasAttribute("disabled")).toBe(false);
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  await user.keyboard("{ArrowDown}");
+  await user.click(
+    await screen.findByRole("option", { name: t.formatCompact }),
+  );
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it.each(["standings", "relative", "delta", "pedals"] as const)(
+  "does not offer Fuel format on %s",
+  (kind) => {
+    mount(instance(kind));
+    expect(screen.queryByRole("combobox", { name: t.fuelFormat })).toBeNull();
+  },
+);
+
+function legacyItem(kind: "standings" | "delta", templateId?: string) {
+  const item = instance(kind);
+  if (
+    !item.settings ||
+    (item.settings.kind !== "standings" && item.settings.kind !== "delta")
+  )
+    throw new Error("Missing template widget");
+  item.settings.designSystem = "eficiencia";
+  if (templateId !== undefined) item.settings.templateId = templateId;
+  return item;
+}
+it.each([
+  ["standings", "broadcast", "signature", t.designSignature],
+  ["standings", "signature", "broadcast", t.designBroadcast],
+  ["delta", "capsule", "instrument", t.designInstrument],
+  ["delta", "instrument", "capsule", t.designCapsule],
+] as const)(
+  "sends only the %s template %s → %s",
+  async (kind, initial, templateId, label) => {
+    mount(legacyItem(kind, initial));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: t.widgetDesign }));
+    await user.click(await screen.findByRole("option", { name: label }));
+    expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+      method: "studio.instance",
+      id: "widget-1",
+      baseRevision: state.view.revision,
+      patch: { field: "settings", value: { kind, templateId } },
+    });
+  },
+);
+it.each(["standings", "delta"] as const)(
+  "keeps the saved %s design before Look and Brand",
+  (kind) => {
+    mount(legacyItem(kind, kind === "standings" ? "broadcast" : "capsule"));
+    const control = screen.getByRole("combobox", { name: t.widgetDesign });
+    expect(control.textContent).toContain(
+      kind === "standings" ? t.designBroadcast : t.designCapsule,
+    );
+    expect(
+      Boolean(
+        control.compareDocumentPosition(
+          screen.getByRole("combobox", { name: t.widgetLook }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+    if (kind === "standings")
+      expect(
+        Boolean(
+          control.compareDocumentPosition(screen.getByText(t.widgetBrand)) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ).toBe(true);
+  },
+);
+it("chooses Broadcast using the keyboard", async () => {
+  mount(legacyItem("standings", "signature"));
+  const user = userEvent.setup();
+  await user.tab();
+  const control = screen.getByRole("combobox", { name: t.widgetDesign });
+  expect(document.activeElement).toBe(control);
+  await user.keyboard("{ArrowDown}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { selected: true })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{End}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { name: t.designBroadcast })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{Enter}");
+  expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+    method: "studio.instance",
+    id: "widget-1",
+    baseRevision: state.view.revision,
+    patch: {
+      field: "settings",
+      value: { kind: "standings", templateId: "broadcast" },
+    },
+  });
+});
+it.each(["standings", "delta"] as const)(
+  "does not offer the legacy design in Vantare %s",
+  (kind) => {
+    mount(instance(kind));
+    expect(screen.queryByRole("combobox", { name: t.widgetDesign })).toBeNull();
+  },
+);
+it.each(["relative", "pedals", "fuel-strategy"] as const)(
+  "does not invent a legacy design for %s",
+  (kind) => {
+    const item = instance(kind);
+    if (!item.settings) throw new Error("Missing widget");
+    item.settings.designSystem = "eficiencia";
+    mount(item);
+    expect(screen.queryByRole("combobox", { name: t.widgetDesign })).toBeNull();
+  },
+);
+it.each([
+  ["standings", "locked"],
+  ["standings", "unverified"],
+  ["delta", "locked"],
+  ["delta", "unverified"],
+] as const)("disables %s design when %s", async (kind, reason) => {
+  const item = legacyItem(kind);
+  item.locked = reason === "locked";
+  if (reason === "unverified") state.view.plan = "unverified";
+  mount(item);
+  const control = screen.getByRole("combobox", { name: t.widgetDesign });
+  expect(control.hasAttribute("disabled")).toBe(true);
+  expect(control.getAttribute("aria-busy")).toBeNull();
+  await userEvent.setup().click(control);
+  expect(screen.queryByRole("option")).toBeNull();
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it("retains design focus while saving without sending another patch", async () => {
+  const item = legacyItem("delta", "instrument");
+  const mounted = mount(item);
+  const user = userEvent.setup();
+  await user.tab();
+  const control = screen.getByRole("combobox", { name: t.widgetDesign });
+  expect(document.activeElement).toBe(control);
+  state.pending = true;
+  mounted.rerender(
+    <CSPProvider disableStyleElements>
+      <AppearanceInspector item={item} />
+    </CSPProvider>,
+  );
+  expect(document.activeElement).toBe(control);
+  expect(control.hasAttribute("disabled")).toBe(false);
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  await user.click(control);
+  await user.click(
+    await screen.findByRole("option", { name: t.designCapsule }),
+  );
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it("does not present a default design from a protected layout", () => {
+  state.view.state = "protected";
+  mount(legacyItem("standings"));
+  expect(screen.queryByRole("combobox", { name: t.widgetDesign })).toBeNull();
+  expect(screen.getByText(t.appearanceUnavailable)).toBeTruthy();
+});

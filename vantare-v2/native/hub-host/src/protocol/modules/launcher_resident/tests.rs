@@ -311,9 +311,9 @@ fn repeated_status_deduplicates_and_restart_or_stale_status_cannot_reuse_a_recei
     assert!(restarted.execution.unwrap().events.is_empty());
     status.updated_ms = 0;
     save(&status);
-    let stale = state
+    let offline_view = state
         .changed(now + std::time::Duration::from_millis(1500))
         .unwrap();
-    assert!(!stale.online && stale.execution.is_none());
+    assert!(!offline_view.online && offline_view.execution.is_none());
     std::fs::remove_dir_all(root).unwrap();
 }

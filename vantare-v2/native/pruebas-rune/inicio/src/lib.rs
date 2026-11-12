@@ -40,7 +40,16 @@ pub fn setup(s: &mut State, wake: rune::Waker) {
     let cache = ImageCache::new(wake);
     let images = PICTURES
         .iter()
-        .map(|bytes| cache.svg(*bytes, 512.0, 1.0))
+        .enumerate()
+        .map(|(index, bytes)| {
+            cache.svg(
+                *bytes,
+                [
+                    190.0, 40.0, 136.0, 136.0, 136.0, 454.0, 24.0, 24.0, 24.0, 24.0, 24.0, 580.0,
+                ][index],
+                1.0,
+            )
+        })
         .collect();
     s.assets = Some(Assets {
         _cache: cache,
@@ -302,7 +311,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .h_full()
         .gap(12.0)
         .py(16.0)
-        .center_x()
+        .align(rune::Align::Center)
         .fill(color("bg-sidebar"))
         .child(label("Λ", 30.0, 800.0).color(color("accent")));
     for (index, name) in NAV.iter().enumerate() {

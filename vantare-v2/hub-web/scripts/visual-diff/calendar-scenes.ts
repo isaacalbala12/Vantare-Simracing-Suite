@@ -236,7 +236,23 @@ export const calendarScenes: Record<string, VisualScene> = {
   "calendario-ics-reemplazar": {
     mock: "calendar-ics-replace-reference",
     async prepare(page) {
-      await calendarScenes["calendario-ics-contraida"].prepare(page);
+      await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "true")
+        await sidebar.click();
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Calendario", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Añadir a mi calendario", exact: true })
+        .click();
+      await page
+        .getByText("Vista previa · 75 eventos esta semana", { exact: true })
+        .waitFor();
       await page
         .getByRole("button", { name: "Descargar .ics", exact: true })
         .click();

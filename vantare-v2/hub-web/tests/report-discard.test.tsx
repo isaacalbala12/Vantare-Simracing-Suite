@@ -15,10 +15,20 @@ import { HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
 import { testingDiscardText as dialog } from "../src/renderer/i18n/testing-discard";
 import { testingText as text } from "../src/renderer/screens/testing/es";
-import { ReportsProvider } from "../src/renderer/screens/testing/ReportsState";
+import {
+  ReportsProvider,
+  useReports,
+} from "../src/renderer/screens/testing/ReportsState";
 import { Reports } from "../src/renderer/screens/testing/Testing";
 import { ToastProvider } from "../src/renderer/ui/Layers";
 
+function DraftReady() {
+  return (
+    <output data-testid="discard-draft-ready">
+      {String(useReports().loaded)}
+    </output>
+  );
+}
 const caches: QueryClient[] = [];
 beforeEach(() =>
   vi.stubGlobal("matchMedia", () => ({
@@ -54,6 +64,7 @@ it.each(["editor", "error"] as const)(
           <ToastProvider>
             <AccountProvider>
               <ReportsProvider>
+                <DraftReady />
                 <Reports />
               </ReportsProvider>
             </AccountProvider>
@@ -63,6 +74,11 @@ it.each(["editor", "error"] as const)(
     );
     fireEvent.click(
       await screen.findByRole("button", { name: text.withScreenshots }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("discard-draft-ready").textContent).toBe(
+        "true",
+      ),
     );
     const input = screen.getByLabelText(text.action) as HTMLInputElement;
     await waitFor(() => expect(input.disabled).toBe(false));

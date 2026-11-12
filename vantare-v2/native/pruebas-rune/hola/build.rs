@@ -23,10 +23,16 @@ fn main() {
             git(&["rev-parse", "--git-path", name])
         );
     }
-    let head_ref = git(&["symbolic-ref", "HEAD"]);
-    println!(
-        "cargo:rerun-if-changed={}",
-        git(&["rev-parse", "--git-path", &head_ref])
-    );
+    let reference = Command::new("git")
+        .args(["symbolic-ref", "-q", "HEAD"])
+        .output()
+        .expect("consulta de rama");
+    if reference.status.success() {
+        let reference = String::from_utf8(reference.stdout).expect("referencia UTF-8");
+        println!(
+            "cargo:rerun-if-changed={}",
+            git(&["rev-parse", "--git-path", reference.trim()])
+        );
+    }
     println!("cargo:rerun-if-changed=src/main.rs");
 }

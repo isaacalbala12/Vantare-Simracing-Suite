@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[string]$Output,[switch]$Prepare,[switch]$Offscreen,[ValidateRange(1,330000)][int]$TimeoutMilliseconds=15000)
+param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[string]$Output,[switch]$Prepare,[switch]$Offscreen,[ValidateRange(1,330000)][int]$TimeoutMilliseconds=15000,[ValidateRange(640,3840)][int]$Width=1440,[ValidateRange(480,2160)][int]$Height=900)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot '../../../native/hub/reference/tools/capture-bitmap.ps1')
 Add-Type @'
@@ -31,8 +31,8 @@ public static class VisualWindow {
   System.Threading.Thread.Sleep(20); // Bounded readiness polling, never a capture delay.
   }
  }
- public static void Check(IntPtr h) {Rect r;GetClientRect(h,out r);if(r.r!=1440||r.b!=900)throw new InvalidOperationException("Expected 1440x900 physical client pixels");}
- public static void Resize(IntPtr h,int x,int y,bool move) {Rect client,outer;GetClientRect(h,out client);GetWindowRect(h,out outer);if(!SetWindowPos(h,IntPtr.Zero,x,y,1440+outer.r-outer.l-client.r,900+outer.b-outer.t-client.b,(move?0u:2u)|4u|16u|64u))throw new InvalidOperationException("Could not prepare QA client");}
+ public static void Check(IntPtr h,int width,int height) {Rect r;GetClientRect(h,out r);if(r.r!=width||r.b!=height)throw new InvalidOperationException("Expected "+width+"x"+height+" physical client pixels");}
+ public static void Resize(IntPtr h,int x,int y,bool move,int width,int height) {Rect client,outer;GetClientRect(h,out client);GetWindowRect(h,out outer);if(!SetWindowPos(h,IntPtr.Zero,x,y,width+outer.r-outer.l-client.r,height+outer.b-outer.t-client.b,(move?0u:2u)|4u|16u|64u))throw new InvalidOperationException("Could not prepare QA client");}
 }
 '@
 $process=Get-Process -Id $ProcessId
@@ -43,13 +43,13 @@ $offscreenX=0
 if($Offscreen){
  if(-not $Prepare){throw 'Offscreen requires Prepare'}
  Add-Type -AssemblyName System.Windows.Forms
- $offscreenX=([Windows.Forms.Screen]::AllScreens | ForEach-Object {$_.Bounds.Left} | Measure-Object -Minimum).Minimum - 2880
+ $offscreenX=([Windows.Forms.Screen]::AllScreens | ForEach-Object {$_.Bounds.Left} | Measure-Object -Minimum).Minimum - 2*$Width
 }
-if($Prepare){[VisualWindow]::Resize($window,$offscreenX,0,[bool]$Offscreen);[VisualWindow]::Check($window);$window=[VisualWindow]::Find($ProcessId,$true,$TimeoutMilliseconds)}
-if($Prepare){@{pid=$ProcessId;hwnd=$window.ToInt64();visible=[VisualWindow]::Visible($window);foreground=([VisualWindow]::GetForegroundWindow() -eq $window);session=$process.SessionId;width=1440;height=900}|ConvertTo-Json -Compress;return}
+if($Prepare){[VisualWindow]::Resize($window,$offscreenX,0,[bool]$Offscreen,$Width,$Height);[VisualWindow]::Check($window,$Width,$Height);$window=[VisualWindow]::Find($ProcessId,$true,$TimeoutMilliseconds)}
+if($Prepare){@{pid=$ProcessId;hwnd=$window.ToInt64();visible=[VisualWindow]::Visible($window);foreground=([VisualWindow]::GetForegroundWindow() -eq $window);session=$process.SessionId;width=$Width;height=$Height}|ConvertTo-Json -Compress;return}
 if(-not $Output){throw 'Output required for capture'}
-[VisualWindow]::Check($window)
-$bitmap=[HubCaptureBitmap]::new(1440,900)
+[VisualWindow]::Check($window,$Width,$Height)
+$bitmap=[HubCaptureBitmap]::new($Width,$Height)
 try {
  if(-not $bitmap.Capture($window)){throw 'PrintWindow failed'}
  Save-HubCaptureBitmap $bitmap ([IO.Path]::GetFullPath($Output))

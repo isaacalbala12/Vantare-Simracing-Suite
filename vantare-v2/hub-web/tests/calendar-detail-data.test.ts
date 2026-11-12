@@ -38,3 +38,9 @@ it("keeps the exact session lengths while limiting the phase bar proportions", (
   expect(detailPhases(source, undefined).raceAt).toBeUndefined();
   expect(detailPhases(source, undefined).endAt).toBeUndefined();
 });
+
+it("uses an explicit event duration for the estimated end", () => {
+  expect(detailPhases({ ...series, eventDurationMin: 180 }, 0).endAt).toBe(
+    10_800_000,
+  );
+});

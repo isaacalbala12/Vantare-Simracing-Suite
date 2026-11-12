@@ -45,6 +45,7 @@ type Props = {
   canFollow: boolean;
   busy?: boolean;
   onClose: () => void;
+  returnFocus?: () => HTMLElement | false;
   onFollow: (id: string, enabled: boolean) => void;
   onLaunch: () => void;
   onSerie?: (id: string) => void;
@@ -58,6 +59,7 @@ export function CalendarDetail(props: Props) {
   const series = props.schedule.series.find((s) => s.id === props.seriesId);
   return (
     <Dialog.Root
+      modal={false}
       open
       onOpenChange={(open) => {
         if (!open) props.onClose();
@@ -68,10 +70,7 @@ export function CalendarDetail(props: Props) {
         <Dialog.Popup
           className="v-calendar v-calendar-detail"
           aria-describedby={undefined}
-          finalFocus={() =>
-            document.querySelector<HTMLElement>(".v-calendar-serie-name h2") ??
-            true
-          }
+          finalFocus={props.returnFocus ?? true}
         >
           {series ? (
             <DetailBody
@@ -123,7 +122,7 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
       : [text.energy, `${s.veLimit} % VE`],
   );
   const hm = (value: number | undefined) =>
-      value === undefined ? "—" : clock(value, utc),
+      value === undefined ? "â€”" : clock(value, utc),
     launchAt = at === undefined ? undefined : at - 180_000;
   return (
     <>
@@ -133,6 +132,9 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
             {calendarText.tiers[s.tier as keyof typeof calendarText.tiers] ??
               s.tier}
           </span>
+          {s.source === "racecontrol" && (
+            <span className="v-calendar-rc">{text.rc}</span>
+          )}
           <span>
             {s.recurrence.kind === "interval"
               ? text.daily(s.recurrence.intervalMinutes)
@@ -233,7 +235,7 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
                 <span>
                   {i === 2
                     ? calendarText.minutes(phase.minutes[i])
-                    : `${phase.minutes[i]}′`}
+                    : `${phase.minutes[i]}â€²`}
                 </span>
               </div>
             ))}
@@ -316,7 +318,7 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
               disabled={!p.onLead || p.busy}
               options={calendarAlertLeads.map((n) => ({
                 value: String(n),
-                label: `${n}′`,
+                label: `${n}â€²`,
               }))}
               onChange={(value) => {
                 const n = calendarAlertLeads.find((n) => String(n) === value);
@@ -386,7 +388,11 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
           {launchAt !== undefined && launchAt > now && (
             <Tooltip label={calendarText.launchPending}>
               <span>
-                <Button disabled aria-description={calendarText.launchPending}>
+                <Button
+                  aria-disabled="true"
+                  data-disabled=""
+                  aria-description={calendarText.launchPending}
+                >
                   <Icon name="clock" />
                   {calendarText.launchAt(hm(launchAt))}
                 </Button>

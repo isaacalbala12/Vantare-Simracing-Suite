@@ -53,14 +53,21 @@ vi.mock("../src/renderer/screens/calendar/CalendarHistory", () => ({
 vi.mock("../src/renderer/app/SectionChrome", () => ({
   SectionChrome: ({
     tabs,
+    activeTab,
     onTabChange,
   }: {
     tabs: { id: string; etiqueta: string }[];
+    activeTab: string;
     onTabChange: (id: string) => void;
   }) => (
     <nav>
       {tabs.map((t) => (
-        <button type="button" key={t.id} onClick={() => onTabChange(t.id)}>
+        <button
+          type="button"
+          data-test-tab={t.id === activeTab}
+          key={t.id}
+          onClick={() => onTabChange(t.id)}
+        >
           {t.etiqueta}
         </button>
       ))}
@@ -179,4 +186,48 @@ it("navigates from the real drawer to its series and gives focus to the title", 
   expect(document.activeElement).toBe(
     screen.getByRole("heading", { name: fixture.series[0].name }),
   );
+});
+
+it("clears the drawer on schedule expiry and never reopens it when a new publication arrives", async () => {
+  const content = () => (
+    <TooltipProvider>
+      <button type="button" role="tab" aria-selected="true">
+        Calendar fallback
+      </button>
+      <CalendarEntry />
+    </TooltipProvider>
+  );
+  const result = render(content());
+  const trigger = screen.getByRole("button", { name: "Ficha" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  const publication = model.view;
+  model.view = undefined;
+  result.rerender(content());
+  expect(screen.queryByRole("dialog")).toBeNull();
+  await vi.waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("tab", { name: "Calendar fallback" }),
+    ),
+  );
+  model.view = publication;
+  result.rerender(content());
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+it("returns from a series departure drawer to the exact departure button", async () => {
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Open daily" }));
+  const trigger = screen
+    .getAllByRole("button")
+    .find((node) => /^\d{2}:\d{2}$/.test(node.textContent ?? ""));
+  if (!trigger) throw new Error("series departure missing");
+  trigger.focus();
+  fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar (Esc)" }));
+  await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
 });

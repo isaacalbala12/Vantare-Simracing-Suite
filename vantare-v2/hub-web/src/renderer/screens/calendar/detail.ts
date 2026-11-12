@@ -31,6 +31,9 @@ export function detailPhases(series: CalendarSeries, at: number | undefined) {
     minutes: [practice, qualifying, race],
     weights: [Math.max(practice, 4), qualifying, Math.min(race, 60)],
     raceAt: at === undefined ? undefined : at + lead * 60_000,
-    endAt: at === undefined ? undefined : at + (lead + race) * 60_000,
+    endAt:
+      at === undefined
+        ? undefined
+        : at + (series.eventDurationMin ?? lead + race) * 60_000,
   };
 }

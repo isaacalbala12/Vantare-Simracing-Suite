@@ -6,6 +6,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
+import { type ComponentProps, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import alerts from "../fixtures/calendar-alerts-reference.json";
 import type { CalendarAlerts } from "../src/contract/generated/calendar";
@@ -38,7 +39,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
-function show(p = props) {
+function show(p: ComponentProps<typeof CalendarDetail> = props) {
   return render(
     <TooltipProvider>
       <CalendarDetail {...p} />
@@ -80,7 +81,11 @@ it("routes favorite and safe launch actions; leaves undelivered actions disabled
     true,
   );
   const pending = screen.getByRole("button", { name: /Lanzar a las/u });
-  expect(pending).toHaveProperty("disabled", true);
+  expect(pending.getAttribute("aria-disabled")).toBe("true");
+  pending.focus();
+  expect(document.activeElement).toBe(pending);
+  fireEvent.click(pending);
+  expect(props.onLaunch).toHaveBeenCalledOnce();
   expect(pending.getAttribute("aria-description")).toBe(
     calendarText.launchPending,
   );
@@ -116,3 +121,60 @@ it("opens the series page with its identity instead of inventing a target", () =
   fireEvent.click(screen.getByRole("button", { name: text.series }));
   expect(onSerie).toHaveBeenCalledWith(series.id);
 });
+
+it("shows the closed missing-series fallback and keeps its close action", () => {
+  show({ ...props, seriesId: "missing-series" });
+  expect(screen.getByRole("heading", { name: text.unknown })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: text.close }));
+  expect(props.onClose).toHaveBeenCalledOnce();
+});
+it("matches GPUI for a past chosen departure: zero minutes and no selected future chip", () => {
+  show({ ...props, initialAt: props.now - 60_000 });
+  expect(screen.getByText("en 0 min")).toBeTruthy();
+  expect(
+    screen
+      .queryAllByRole("button", { pressed: true })
+      .filter((node) => /^\d{2}:\d{2}$/.test(node.textContent ?? "")),
+  ).toHaveLength(0);
+});
+it("marks RaceControl fallback series", () => {
+  show({
+    ...props,
+    schedule: { ...schedule, series: [{ ...series, source: "racecontrol" }] },
+  });
+  expect(screen.getByText(text.rc)).toBeTruthy();
+});
+
+function Harness() {
+  const [open, setOpen] = useState(false);
+  return (
+    <TooltipProvider>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open drawer
+      </button>
+      <button type="button">Window control</button>
+      {open && <CalendarDetail {...props} onClose={() => setOpen(false)} />}
+    </TooltipProvider>
+  );
+}
+
+for (const method of ["escape", "button"] as const) {
+  it(`restores the opening button on ${method} without making window controls inert`, async () => {
+    render(<Harness />);
+    const trigger = screen.getByRole("button", { name: "Open drawer" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const control = screen.getByRole("button", { name: "Window control" });
+    expect(control.closest("[inert], [aria-hidden=true]")).toBeNull();
+    control.focus();
+    expect(document.activeElement).toBe(control);
+    screen.getByRole("dialog").focus();
+    if (method === "escape")
+      fireEvent.keyDown(screen.getByRole("dialog"), {
+        key: "Escape",
+        code: "Escape",
+      });
+    else fireEvent.click(screen.getByRole("button", { name: text.close }));
+    await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+}

@@ -71,7 +71,25 @@ export default function CalendarEntry() {
   }, []);
   const [selectedSerie, setSelectedSerie] = useState<string>();
   const [detail, setDetail] = useState<{ id: string; at?: number }>();
-  const openDetail = (id: string, at?: number) => setDetail({ id, at });
+  const detailOrigin = useRef<HTMLElement | null>(null);
+  const openDetail = (id: string, at?: number) => {
+    detailOrigin.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setDetail({ id, at });
+  };
+  const returnDetailFocus = () =>
+    detailOrigin.current?.isConnected ? detailOrigin.current : false;
+  const closeDetail = useCallback(() => {
+    setDetail(undefined);
+    const target = detailOrigin.current?.isConnected
+      ? detailOrigin.current
+      : document.querySelector<HTMLElement>(
+          '[role="tab"][aria-selected="true"]',
+        );
+    target?.focus({ preventScroll: true });
+  }, []);
   const origin = useRef<
     { id: string; element: HTMLElement | null } | undefined
   >(undefined);
@@ -130,6 +148,9 @@ export default function CalendarEntry() {
   const { schedule, previous } = view
     ? publication(view, state.now, calendarSeriesLimit)
     : { schedule: null, previous: null };
+  useEffect(() => {
+    if (!schedule && detail) closeDetail();
+  }, [schedule, detail, closeDetail]);
   const alerts = preferences.config?.alerts ?? {
     ...calendarDefaultAlerts,
     bands: [],
@@ -481,8 +502,10 @@ export default function CalendarEntry() {
           canLaunch={launcher.canLaunch}
           canFollow={preferences.canFollow}
           busy={preferences.busy}
-          onClose={() => setDetail(undefined)}
+          onClose={closeDetail}
+          returnFocus={returnDetailFocus}
           onSerie={(id) => {
+            detailOrigin.current = null;
             setDetail(undefined);
             openSerie(id);
           }}

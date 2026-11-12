@@ -35,6 +35,12 @@ const classes: Record<string, string> = {
   GTE: "gte",
 };
 const color = (hex: string) => `#${hex.replaceAll("_", "").toLowerCase()}`;
+export function detailGradient(gradient: string) {
+  const rotated = gradient.replace("145deg", "180deg");
+  if (rotated === gradient)
+    throw new Error("Calendar detail gradient rotation missing");
+  return rotated;
+}
 export function calendarTokens(source: string, filters: string) {
   const branches = source.split("if light(cx) {")[1]?.split("} else {");
   if (!branches || branches.length < 2)
@@ -72,10 +78,7 @@ export function calendarTokens(source: string, filters: string) {
         `linear-gradient(${angle}deg, ${color(match[1])} 0%, ${color(match[2])} 100%)`;
     }
     // Frozen ficha.rs uses the same neo ramp at 180 degrees.
-    values["calendar-detail-neo"] = values["grad-neo"].replace(
-      "145deg",
-      "180deg",
-    );
+    values["calendar-detail-neo"] = detailGradient(values["grad-neo"]);
     const white = source.match(/s\.on_primary = 0x([A-Fa-f0-9_]+);/);
     if (!white) throw new Error("Calendar primary text missing");
     values["text-on-accent"] = color(white[1]);

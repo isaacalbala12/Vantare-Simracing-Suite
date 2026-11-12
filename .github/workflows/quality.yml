@@ -1,3 +1,4 @@
+# CONTROL A/B #1993: rama de medición, no fusionar.
 name: vantare-quality
 on:
   pull_request:

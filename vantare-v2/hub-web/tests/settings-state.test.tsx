@@ -271,7 +271,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
   });
   it("does not relaunch a favorite on repeated keydown or while pending", async () => {
     const pending = hold("launcher.favorite");
-    const hook = mount("ajustes-base", <Shell />);
+    const hook = mount("launcher-ready", <Shell />);
     await loaded(hook);
     fireEvent.keyDown(window, { key: "l", ctrlKey: true, repeat: true });
     expect(pending.calls()).toBe(0);
@@ -279,6 +279,13 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     fireEvent.keyDown(window, { key: "l", ctrlKey: true });
     expect(pending.calls()).toBe(1);
     await act(async () => pending.release());
+  });
+  it("does not dispatch the favorite shortcut without verified access", async () => {
+    const pending = hold("launcher.favorite");
+    const hook = mount("ajustes-base", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
+    expect(pending.calls()).toBe(0);
   });
 });
 

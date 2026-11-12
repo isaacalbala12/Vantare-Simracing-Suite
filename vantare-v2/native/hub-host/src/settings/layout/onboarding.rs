@@ -144,7 +144,9 @@ pub(crate) fn apply(
         ids.insert(id.clone());
         let defaults = crate::widget_defaults::get(kind.key()).ok_or(HostError::Protected)?;
         let (x, y) = kind.position();
-        let item: Fields = serde_json::from_str(&serde_json::json!({"id":id,"x":x,"y":y,"visible":true,"opacity":1.0,"settings":defaults.settings}).to_string()).map_err(|_| HostError::Protected)?;
+        let value = serde_json::json!({"id":id,"x":x,"y":y,"visible":true,"opacity":1.0,"settings":defaults.settings});
+        let item: Fields =
+            serde_json::from_str(&value.to_string()).map_err(|_| HostError::Protected)?;
         items.push(item);
     }
     document.fields.0.insert(
@@ -321,5 +323,28 @@ mod tests {
                 .unwrap();
         assert_eq!(value["instances"][1]["settings"], defaults);
         assert_eq!(value["performance"]["level"], "economy");
+    }
+}
+
+#[cfg(test)]
+mod writer_bytes_tests {
+    use super::*;
+    #[test]
+    fn writer_bytes_onboarding_kit_is_independent_of_the_value_map_backend() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("layout.json");
+        std::fs::write(&path, br#"{"version":1,"instances":[]}"#).unwrap();
+        let (_, revision) = state(&path);
+        apply(
+            &path,
+            &[WidgetKind::Pedals],
+            PerformanceLevel::Balanced,
+            revision.as_deref(),
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            include_bytes!("../../../fixtures/writer-bytes/onboarding-layout.json")
+        );
     }
 }

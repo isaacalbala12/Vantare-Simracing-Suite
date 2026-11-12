@@ -100,7 +100,8 @@ impl Observed {
     ) -> Result<DiagnosticView, HostError> {
         let mut view = self.view(core, protected);
         view.report = None;
-        let report = serde_json::json!({"schemaVersion":1,"channel":vantare_ipc::product::CHANNEL,"observed":view,"uninstrumentedSections":["studio","analysis"]});
+        let mut report = serde_json::json!({"schemaVersion":1,"channel":vantare_ipc::product::CHANNEL,"observed":view,"uninstrumentedSections":["studio","analysis"]});
+        report.sort_all_objects();
         self.report = Some(serde_json::to_string_pretty(&report).map_err(|_| HostError::Io)?);
         Ok(self.view(core, protected))
     }
@@ -188,5 +189,26 @@ mod tests {
             assert!(!report.contains(forbidden));
         }
         assert_eq!(observed.copy().expect("copy"), report);
+    }
+}
+
+#[cfg(test)]
+mod writer_bytes_order {
+    use super::*;
+    #[test]
+    fn writer_bytes_diagnostics_copy_has_stable_root_and_nested_key_order() {
+        let mut observed = Observed::default();
+        let report = observed
+            .prepare(&CoreStatus::default(), true)
+            .unwrap()
+            .report
+            .unwrap();
+        let channel = vantare_ipc::product::CHANNEL;
+        let arch = std::env::consts::ARCH;
+        let prefix = format!(
+            "{{\n  \"channel\": \"{channel}\",\n  \"observed\": {{\n    \"arch\": \"{arch}\","
+        );
+        assert!(report.starts_with(&prefix), "{report}");
+        assert_eq!(observed.copy().unwrap(), report);
     }
 }

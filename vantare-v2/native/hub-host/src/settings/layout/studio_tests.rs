@@ -859,3 +859,47 @@ fn free_plan_cannot_edit_paid_fuel_settings() {
     ));
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
 }
+
+#[test]
+fn writer_bytes_studio_retains_opaque_objects_and_sorts_owned_fields() {
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("layout.json");
+    std::fs::write(&path,br#"{"version":1,"future":{"z":0, "a":1},"instances":[{"id":"widget-1","x":1.0,"y":2.0,"future":{"z":0, "a":1},"settings":{"kind":"standings","private":{"z":0, "a":1}}}]}"#).unwrap();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let current = state.view(access);
+    assert_eq!(current.state, StudioState::Ready);
+    state
+        .edit(
+            Edit::Instance("widget-1".into(), InstancePatch::Opacity(50)),
+            &current.revision,
+            access,
+        )
+        .unwrap();
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        include_bytes!("../../../fixtures/writer-bytes/studio-opacity.json")
+    );
+}
+
+#[test]
+fn writer_bytes_studio_typed_settings_keep_native_float_and_unknown_object_bytes() {
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("layout.json");
+    std::fs::write(&path,br#"{"version":1,"instances":[{"id":"widget-1","x":1.0,"y":2.0,"settings":{"kind":"pedals","designSystem":"vantare","style":"neo","accent":"red","transparentBackground":false,"showBrakePeak":true,"gap":2.0,"future":{"z":0, "a":1}}}]}"#).unwrap();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let view = state.view(access);
+    let update = serde_json::from_str(r#"{"kind":"pedals","gap":2.7}"#).unwrap();
+    state
+        .edit(
+            Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(update))),
+            &view.revision,
+            access,
+        )
+        .unwrap();
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        include_bytes!("../../../fixtures/writer-bytes/studio-settings.json")
+    );
+}

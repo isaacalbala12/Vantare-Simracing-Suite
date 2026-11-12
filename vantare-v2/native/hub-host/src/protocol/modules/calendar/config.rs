@@ -351,7 +351,9 @@ impl State {
         name: &str,
         doc: &Document,
     ) -> Result<CalendarConfigView, HostError> {
-        let bytes = serde_json::to_vec_pretty(&doc.value).map_err(|_| HostError::Rejected)?;
+        let mut value = doc.value.clone();
+        value.sort_all_objects();
+        let bytes = serde_json::to_vec_pretty(&value).map_err(|_| HostError::Rejected)?;
         let saved = Document::parse(name, Some(bytes.clone()))?;
         let mut next = self.config_view.clone();
         next.observe(&saved);

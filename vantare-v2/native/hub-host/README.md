@@ -228,3 +228,6 @@ mismos fuentes contra ambos tipos de pipe lleva una excepción localizada de
 El exportador Rust escribe solo módulos/corpus propios; el índice agregado tiene
 un único generador: `hub-web/scripts/contract-index.ts`. La guía y migración están
 en `hub-web/docs/screen-contracts.md`.
+
+La auditoría de escritores y los oráculos de bytes con ambos mapas de serde_json
+están en [docs/json-order.md](docs/json-order.md).

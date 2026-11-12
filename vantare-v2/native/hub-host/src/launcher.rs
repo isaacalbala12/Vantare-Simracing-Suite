@@ -7,6 +7,15 @@ use ts_rs::TS;
 use vantare_ipc::{files, launcher as mailbox};
 use vantare_launcher::{Document, discovery::Discovery};
 
+// The store serializes typed fields directly; only archived legacy data is Value.
+fn sort_imported_settings(document: &mut Document) {
+    if let Some(imported) = &mut document.wails_import {
+        for value in imported.launcher.values_mut() {
+            value.sort_all_objects();
+        }
+    }
+}
+
 pub const ID_LIMIT: usize = 256;
 pub const PROFILE_LIMIT: usize = 128;
 pub const APP_LIMIT: usize = 256;

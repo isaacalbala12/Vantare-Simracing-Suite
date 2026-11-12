@@ -39,6 +39,7 @@ import {
   fitWindow,
   hasDebuggerArguments,
   isRendererMessage,
+  mockAllowed,
   navigationAllowed,
   QA_DRIVER,
   requireDataDirectory,
@@ -157,7 +158,12 @@ async function start() {
   });
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   let disconnect: (() => void) | undefined;
-  const calendarNotices = calendarNoticeSession(presentSystemNotice);
+  // The same closed QA bootstrap as createHost; captures never emit OS notices.
+  const calendarNotices = calendarNoticeSession(
+    process.env.VANTARE_HUB_HOST === "mock" && mockAllowed(app.isPackaged)
+      ? () => true
+      : presentSystemNotice,
+  );
   const removeHostFailure = host.listen((message) => {
     if (
       message.kind === "event" &&

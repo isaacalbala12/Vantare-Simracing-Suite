@@ -61,7 +61,7 @@ describe("main Calendar presenter", () => {
     expect(present).toHaveBeenCalledTimes(1);
 
     expect(present.mock.calls[0]?.[0]).toEqual({
-      title: "Calendario · Aviso de prueba",
+      title: "Aviso de prueba del calendario",
       body: expect.any(String),
       silent: true,
     });
@@ -125,8 +125,8 @@ describe("main Calendar presenter", () => {
     });
 
     expect(present).toHaveBeenCalledWith({
-      title: "<b>LMGT3</b>",
-      body: "Spa · Sale en 10 min · Carrera de 30 min",
+      title: expect.stringContaining("<b>LMGT3</b> sale a las"),
+      body: "Spa · carrera 30 min · en 10 min",
       silent: false,
     });
 
@@ -268,4 +268,42 @@ it("mock emits only a fixed typed sample after rights and rate guards", () => {
     error: { kind: "denied" },
   });
   expect(emit).toHaveBeenCalledTimes(1);
+});
+
+import { calendarNoticeText } from "../src/renderer/i18n/calendar-notices";
+
+it("formats the frozen GPUI week and duration labels without OS actions", () => {
+  const base = {
+    id: "c".repeat(64),
+    issuedAt: 1000,
+    expiresAt: 61000,
+    silent: true,
+  };
+  expect(
+    calendarNoticeText(
+      {
+        ...base,
+        kind: "week",
+        from: Date.parse("2026-09-29T00:00:00Z"),
+        until: Date.parse("2026-10-06T00:00:00Z"),
+      },
+      1000,
+    ),
+  ).toEqual({
+    title: "Ya está el horario de la semana 29 sep–5 oct",
+    body: "Tus favoritas y tus avisos pasan solos a la semana nueva.",
+  });
+  expect(
+    calendarNoticeText(
+      {
+        ...base,
+        kind: "start",
+        series: "QA",
+        track: "Spa (Full)",
+        at: 601000,
+        raceMinutes: 100,
+      },
+      1000,
+    ).body,
+  ).toBe("Spa · carrera 1 h 40 min · en 10 min");
 });

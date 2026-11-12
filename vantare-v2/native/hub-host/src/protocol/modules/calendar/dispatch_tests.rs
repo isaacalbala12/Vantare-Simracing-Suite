@@ -492,24 +492,66 @@ fn calendar_notice_test_does_not_ignore_protected_alerts() {
 }
 
 #[test]
-fn calendar_notice_tick_stops_on_disconnect_and_protected_document() {
-    let fixture = Fixture::new();
-    let mut session = fixture.session();
-    session.current.access.verified = true;
-    session.current.access.calendar = true;
-    session.current.rights = protocol::LinkState::Connected;
-    let path = fixture.0.join("layout.json");
-    session.calendar_state = crate::calendar::State::new(fixture.0.join("hub")).with_layout(path);
-    let mut pipe = Pipe::new(Vec::new());
-    let clock = Instant::now();
-    super::calendar_tick::tick_with_clock(&mut session, &mut pipe, 1_000, clock).unwrap();
-    session.current.rights = protocol::LinkState::Unavailable;
-    super::calendar_tick::tick_with_clock(
-        &mut session,
-        &mut pipe,
-        2_000,
-        clock + Duration::from_secs(1),
-    )
-    .unwrap();
-    assert!(pipe.get_ref().is_empty());
+fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() {
+    for blocked in ["none", "rights", "calendar", "blocked", "document"] {
+        let fixture = Fixture::new();
+        let base = fixture.0.join("hub");
+        std::fs::create_dir_all(&base).unwrap();
+        std::fs::write(base.join("official-schedule.json"),br#"{"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#).unwrap();
+        let mut alerts = crate::calendar::CalendarAlerts::default();
+        alerts.bands.push(crate::calendar::CalendarBand {
+            series_id: "qa".into(),
+            from: 0,
+            to: 1440,
+            days: crate::calendar::CalendarDays::All,
+            mode: crate::calendar::CalendarBandMode::Each,
+        });
+        std::fs::write(
+            base.join("calendar-alerts.json"),
+            serde_json::to_vec(&alerts).unwrap(),
+        )
+        .unwrap();
+        let mut session = fixture.session();
+        session.current.access.verified = true;
+        session.current.access.calendar = true;
+        session.current.rights = protocol::LinkState::Connected;
+        session.calendar_state =
+            crate::calendar::State::new(base.clone()).with_layout(fixture.0.join("layout.json"));
+        let now = chrono::DateTime::parse_from_rfc3339("2026-11-12T12:50:00Z")
+            .unwrap()
+            .timestamp_millis();
+        let clock = Instant::now();
+        let mut pipe = Pipe::new(Vec::new());
+        super::calendar_tick::tick_with_clock(&mut session, &mut pipe, now - 1000, clock).unwrap();
+        assert!(pipe.get_ref().is_empty());
+        match blocked {
+            "rights" => session.current.rights = protocol::LinkState::Unavailable,
+            "calendar" => session.current.access.calendar = false,
+            "blocked" => session.current.access.blocked = true,
+            "document" => {
+                std::fs::write(base.join("calendar-alerts.json"), b"protected JSON").unwrap()
+            }
+            _ => {}
+        }
+        super::calendar_tick::tick_with_clock(
+            &mut session,
+            &mut pipe,
+            now,
+            clock + Duration::from_secs(1),
+        )
+        .unwrap();
+        if blocked == "none" {
+            assert!(matches!(
+                response(&mut pipe),
+                HostToUi::Event {
+                    event: Event::CalendarNotice {
+                        value: crate::calendar::CalendarNotice::Start { .. }
+                    }
+                }
+            ));
+        } else {
+            assert!(pipe.get_ref().is_empty(), "{blocked}");
+        }
+        assert_eq!(session.core.requests, 0);
+    }
 }

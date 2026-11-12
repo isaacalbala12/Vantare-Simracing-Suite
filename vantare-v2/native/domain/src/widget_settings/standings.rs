@@ -5,17 +5,12 @@ pub const STANDINGS_ROWS_STEP: usize = 1;
 pub const STANDINGS_COLUMNS_MAX: usize = 12;
 pub const STANDINGS_CLASSIFICATION_NORMAL: &str = "normal";
 pub const STANDINGS_CLASSIFICATION_MULTICLASS: &str = "multiclass";
-pub const STANDINGS_CLASSIFICATION_MODES: &[&str] = &[
-    STANDINGS_CLASSIFICATION_NORMAL,
-    STANDINGS_CLASSIFICATION_MULTICLASS,
-];
 pub const STANDINGS_TEMPLATE_SIGNATURE: &str = "signature";
 pub const STANDINGS_TEMPLATE_BROADCAST: &str = "broadcast";
 pub const STANDINGS_TEMPLATES: &[&str] =
     &[STANDINGS_TEMPLATE_SIGNATURE, STANDINGS_TEMPLATE_BROADCAST];
 pub const STANDINGS_SCOPE_PLAYER_CLASS: &str = "player-class";
 pub const STANDINGS_SCOPE_ALL_CLASSES: &str = "all-classes";
-pub const STANDINGS_SCOPES: &[&str] = &[STANDINGS_SCOPE_PLAYER_CLASS, STANDINGS_SCOPE_ALL_CLASSES];
 pub const STANDINGS_WINDOW_AROUND: &[usize] = &[0, 2, 4, 6, 8];
 pub const STANDINGS_INFO_NONE: &str = "none";
 pub const STANDINGS_INFO_TRACK_TEMPERATURE: &str = "trackTemperature";
@@ -36,20 +31,6 @@ pub const STANDINGS_INFORMATION_KEYS: &[&str] = &[
     STANDINGS_INFO_REMAINING,
     STANDINGS_INFO_RAIN,
     STANDINGS_INFO_WETNESS,
-];
-pub const STANDINGS_VANTARE_COLUMNS: &[&str] = &[
-    super::columns::COLUMN_METRIC_POSITION,
-    super::columns::COLUMN_METRIC_POSITIONS_GAINED,
-    super::columns::COLUMN_METRIC_DRIVER_NUMBER,
-    super::columns::COLUMN_METRIC_DRIVER_NAME,
-    super::columns::COLUMN_METRIC_VEHICLE,
-    super::columns::COLUMN_METRIC_TIRE_COMPOUND,
-    super::columns::COLUMN_METRIC_PIT,
-    super::columns::COLUMN_METRIC_SECTORS,
-    super::columns::COLUMN_METRIC_LAST_LAP,
-    super::columns::COLUMN_METRIC_BEST_LAP,
-    super::columns::COLUMN_METRIC_INTERVAL,
-    super::columns::COLUMN_METRIC_GAP,
 ];
 use super::columns as options;
 use super::look::{Accent, Look, Tone};

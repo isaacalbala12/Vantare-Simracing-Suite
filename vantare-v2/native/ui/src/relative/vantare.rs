@@ -150,14 +150,18 @@ impl Options {
             look: settings.style,
             accent: settings.accent,
             cols: Cols::from_settings(&columns),
-            ahead: settings.range_ahead.min(8),
-            behind: settings.range_behind.min(8),
+            ahead: settings
+                .range_ahead
+                .min(vantare_domain::widget_settings::relative::RELATIVE_RANGE_MAX),
+            behind: settings
+                .range_behind
+                .min(vantare_domain::widget_settings::relative::RELATIVE_RANGE_MAX),
             same_class: settings.class_scope == "sameClass",
             name_mode: driver.map(|c| c.format.mode.clone()).unwrap_or_default(),
             name_max: driver
                 .and_then(|c| c.format.max_chars)
                 .unwrap_or(16)
-                .min(64),
+                .min(vantare_domain::widget_settings::columns::MAX_CHARS_LIMIT),
             brand: settings.brand_visible == Some(true),
         }
     }

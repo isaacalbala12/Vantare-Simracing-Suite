@@ -2,18 +2,11 @@
 pub const DELTA_SIZE_PILL: &str = "pill";
 pub const DELTA_SIZE_BAR: &str = "bar";
 pub const DELTA_SIZE_EXPANDED: &str = "expanded";
-pub const DELTA_SIZES: &[&str] = &[DELTA_SIZE_PILL, DELTA_SIZE_BAR, DELTA_SIZE_EXPANDED];
 pub const DELTA_REFERENCE_BEST: &str = "best";
 pub const DELTA_REFERENCE_OPTIMAL: &str = "optimal";
 pub const DELTA_REFERENCE_LEADER: &str = "leader";
-pub const DELTA_REFERENCES: &[&str] = &[
-    DELTA_REFERENCE_BEST,
-    DELTA_REFERENCE_OPTIMAL,
-    DELTA_REFERENCE_LEADER,
-];
 pub const DELTA_TEMPLATE_INSTRUMENT: &str = "instrument";
 pub const DELTA_TEMPLATE_CAPSULE: &str = "capsule";
-pub const DELTA_TEMPLATES: &[&str] = &[DELTA_TEMPLATE_INSTRUMENT, DELTA_TEMPLATE_CAPSULE];
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
 #[cfg_attr(feature = "bindings", ts(rename = "DeltaWidgetSettings"))]

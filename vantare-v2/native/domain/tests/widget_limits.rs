@@ -1,5 +1,6 @@
 //! Frozen values captured from origin/nightly SHA fe64b255f60a159e698df0366b0b4ee163e0a0b3 before the move.
 //! Do not regenerate this reference from the constants under test.
+//! This oracle is unconditional; only the separate TS derive test is feature-gated.
 use vantare_domain::widget_settings as widget;
 #[allow(clippy::too_many_lines)] // Frozen data table: one row per moved constant.
 #[test]
@@ -32,10 +33,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::standings::STANDINGS_CLASSIFICATION_MULTICLASS).unwrap(),
         ),
         (
-            "STANDINGS_CLASSIFICATION_MODES",
-            serde_json::to_value(widget::standings::STANDINGS_CLASSIFICATION_MODES).unwrap(),
-        ),
-        (
             "STANDINGS_TEMPLATE_SIGNATURE",
             serde_json::to_value(widget::standings::STANDINGS_TEMPLATE_SIGNATURE).unwrap(),
         ),
@@ -54,10 +51,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
         (
             "STANDINGS_SCOPE_ALL_CLASSES",
             serde_json::to_value(widget::standings::STANDINGS_SCOPE_ALL_CLASSES).unwrap(),
-        ),
-        (
-            "STANDINGS_SCOPES",
-            serde_json::to_value(widget::standings::STANDINGS_SCOPES).unwrap(),
         ),
         (
             "STANDINGS_WINDOW_AROUND",
@@ -104,10 +97,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::standings::STANDINGS_INFORMATION_KEYS).unwrap(),
         ),
         (
-            "STANDINGS_VANTARE_COLUMNS",
-            serde_json::to_value(widget::standings::STANDINGS_VANTARE_COLUMNS).unwrap(),
-        ),
-        (
             "FOOTER_ITEMS_MAX",
             serde_json::to_value(widget::FOOTER_ITEMS_MAX).unwrap(),
         ),
@@ -122,10 +111,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
         (
             "TABLE_SIZE_EXPANDED",
             serde_json::to_value(widget::TABLE_SIZE_EXPANDED).unwrap(),
-        ),
-        (
-            "TABLE_SIZES",
-            serde_json::to_value(widget::TABLE_SIZES).unwrap(),
         ),
         (
             "FOOTER_TIME",
@@ -164,10 +149,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::FOOTER_WIND).unwrap(),
         ),
         (
-            "FOOTER_KEYS",
-            serde_json::to_value(widget::FOOTER_KEYS).unwrap(),
-        ),
-        (
             "RELATIVE_RANGE_MAX",
             serde_json::to_value(widget::relative::RELATIVE_RANGE_MAX).unwrap(),
         ),
@@ -190,14 +171,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
         (
             "RELATIVE_SCOPE_SAME_CLASS",
             serde_json::to_value(widget::relative::RELATIVE_SCOPE_SAME_CLASS).unwrap(),
-        ),
-        (
-            "RELATIVE_SCOPES",
-            serde_json::to_value(widget::relative::RELATIVE_SCOPES).unwrap(),
-        ),
-        (
-            "RELATIVE_VANTARE_COLUMNS",
-            serde_json::to_value(widget::relative::RELATIVE_VANTARE_COLUMNS).unwrap(),
         ),
         (
             "FUEL_HISTORY_MIN",
@@ -232,10 +205,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::columns::COLUMN_NAME_TRUNCATE).unwrap(),
         ),
         (
-            "COLUMN_NAME_MODES",
-            serde_json::to_value(widget::columns::COLUMN_NAME_MODES).unwrap(),
-        ),
-        (
             "COLUMN_WIDTH_XS",
             serde_json::to_value(widget::columns::COLUMN_WIDTH_XS).unwrap(),
         ),
@@ -252,10 +221,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::columns::COLUMN_WIDTH_LG).unwrap(),
         ),
         (
-            "COLUMN_WIDTHS",
-            serde_json::to_value(widget::columns::COLUMN_WIDTHS).unwrap(),
-        ),
-        (
             "COLUMN_ALIGN_LEFT",
             serde_json::to_value(widget::columns::COLUMN_ALIGN_LEFT).unwrap(),
         ),
@@ -266,10 +231,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
         (
             "COLUMN_ALIGN_RIGHT",
             serde_json::to_value(widget::columns::COLUMN_ALIGN_RIGHT).unwrap(),
-        ),
-        (
-            "COLUMN_ALIGNS",
-            serde_json::to_value(widget::columns::COLUMN_ALIGNS).unwrap(),
         ),
         (
             "COLUMN_WIDTH_AUTO",
@@ -360,10 +321,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::columns::COLUMN_METRIC_CURRENT_LAP).unwrap(),
         ),
         (
-            "LEGACY_TABLE_COLUMNS",
-            serde_json::to_value(widget::columns::LEGACY_TABLE_COLUMNS).unwrap(),
-        ),
-        (
             "GAP_STEP",
             serde_json::to_value(widget::pedals::GAP_STEP).unwrap(),
         ),
@@ -380,10 +337,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::delta::DELTA_SIZE_EXPANDED).unwrap(),
         ),
         (
-            "DELTA_SIZES",
-            serde_json::to_value(widget::delta::DELTA_SIZES).unwrap(),
-        ),
-        (
             "DELTA_REFERENCE_BEST",
             serde_json::to_value(widget::delta::DELTA_REFERENCE_BEST).unwrap(),
         ),
@@ -396,10 +349,6 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::delta::DELTA_REFERENCE_LEADER).unwrap(),
         ),
         (
-            "DELTA_REFERENCES",
-            serde_json::to_value(widget::delta::DELTA_REFERENCES).unwrap(),
-        ),
-        (
             "DELTA_TEMPLATE_INSTRUMENT",
             serde_json::to_value(widget::delta::DELTA_TEMPLATE_INSTRUMENT).unwrap(),
         ),
@@ -408,8 +357,12 @@ fn pure_inspector_options_match_pre_move_nightly() {
             serde_json::to_value(widget::delta::DELTA_TEMPLATE_CAPSULE).unwrap(),
         ),
         (
-            "DELTA_TEMPLATES",
-            serde_json::to_value(widget::delta::DELTA_TEMPLATES).unwrap(),
+            "GAP_MIN",
+            serde_json::to_value(widget::pedals::GAP_MIN).unwrap(),
+        ),
+        (
+            "GAP_MAX",
+            serde_json::to_value(widget::pedals::GAP_MAX).unwrap(),
         ),
     ]
     .into_iter()

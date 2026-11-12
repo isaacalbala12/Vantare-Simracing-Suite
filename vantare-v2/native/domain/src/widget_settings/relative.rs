@@ -2,23 +2,10 @@
 pub const RELATIVE_RANGE_MAX: usize = 8;
 pub const RELATIVE_RANGE_MIN: usize = 0;
 pub const RELATIVE_RANGE_STEP: usize = 1;
-// Only legacy Eficiencia content_version == 0, preserving the existing branch.
+/// Only when content version is zero and the design system is Eficiencia (legacy).
 pub const RELATIVE_LEGACY_EFICIENCIA_COLUMNS_MAX: usize = 7;
 pub const RELATIVE_SCOPE_ALL: &str = "all";
 pub const RELATIVE_SCOPE_SAME_CLASS: &str = "sameClass";
-pub const RELATIVE_SCOPES: &[&str] = &[RELATIVE_SCOPE_ALL, RELATIVE_SCOPE_SAME_CLASS];
-pub const RELATIVE_VANTARE_COLUMNS: &[&str] = &[
-    super::columns::COLUMN_METRIC_POSITION,
-    super::columns::COLUMN_METRIC_CAR_NUMBER,
-    super::columns::COLUMN_METRIC_DRIVER_NAME,
-    super::columns::COLUMN_METRIC_VEHICLE,
-    super::columns::COLUMN_METRIC_LAP_DELTA,
-    super::columns::COLUMN_METRIC_DRIVER_RATING,
-    super::columns::COLUMN_METRIC_SAFETY_RATING,
-    super::columns::COLUMN_METRIC_TREND,
-    super::columns::COLUMN_METRIC_GAP,
-    super::columns::COLUMN_METRIC_TRACK_STRIP,
-];
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "bindings", derive(ts_rs::TS))]
 #[cfg_attr(feature = "bindings", ts(rename = "RelativeWidgetSettings"))]

@@ -587,8 +587,24 @@ impl Render for Workshop {
                         ],
                         cx,
                     ))
-                    .child(self.setting("rangeAhead", "Delante", numbers(0..=8), cx))
-                    .child(self.setting("rangeBehind", "Detrás", numbers(0..=8), cx))
+                    .child(self.setting(
+                        "rangeAhead",
+                        "Delante",
+                        numbers(
+                            widget::relative::RELATIVE_RANGE_MIN
+                                ..=widget::relative::RELATIVE_RANGE_MAX,
+                        ),
+                        cx,
+                    ))
+                    .child(self.setting(
+                        "rangeBehind",
+                        "Detrás",
+                        numbers(
+                            widget::relative::RELATIVE_RANGE_MIN
+                                ..=widget::relative::RELATIVE_RANGE_MAX,
+                        ),
+                        cx,
+                    ))
             } else {
                 group("Modo").child(Self::segments(
                     Control::Setting("classificationMode"),
@@ -700,7 +716,15 @@ impl Render for Workshop {
                 .child(
                     group(if relative { "Nombre" } else { "Filas y nombre" })
                         .when(!relative, |g| {
-                            g.child(self.setting("rowCount", "Filas", numbers(1..=30), cx))
+                            g.child(self.setting(
+                                "rowCount",
+                                "Filas",
+                                numbers(
+                                    widget::standings::STANDINGS_ROWS_MIN
+                                        ..=widget::standings::STANDINGS_ROWS_MAX,
+                                ),
+                                cx,
+                            ))
                         })
                         .child(self.picker(
                             Control::Name,
@@ -745,7 +769,15 @@ impl Render for Workshop {
                 )))
                 .child(
                     group("Filas")
-                        .child(self.setting("rowCount", "Pilotos totales", numbers(1..=30), cx))
+                        .child(self.setting(
+                            "rowCount",
+                            "Pilotos totales",
+                            numbers(
+                                widget::standings::STANDINGS_ROWS_MIN
+                                    ..=widget::standings::STANDINGS_ROWS_MAX,
+                            ),
+                            cx,
+                        ))
                         .child(self.setting(
                             "playerWindow",
                             "Ventana del jugador",
@@ -762,8 +794,24 @@ impl Render for Workshop {
         } else if self.kind == Kind::Relative {
             panel = panel.child(
                 group("Ventana")
-                    .child(self.setting("rangeAhead", "Delante", numbers(0..=8), cx))
-                    .child(self.setting("rangeBehind", "Detrás", numbers(0..=8), cx)),
+                    .child(self.setting(
+                        "rangeAhead",
+                        "Delante",
+                        numbers(
+                            widget::relative::RELATIVE_RANGE_MIN
+                                ..=widget::relative::RELATIVE_RANGE_MAX,
+                        ),
+                        cx,
+                    ))
+                    .child(self.setting(
+                        "rangeBehind",
+                        "Detrás",
+                        numbers(
+                            widget::relative::RELATIVE_RANGE_MIN
+                                ..=widget::relative::RELATIVE_RANGE_MAX,
+                        ),
+                        cx,
+                    )),
             );
         } else if self.kind == Kind::Delta {
             panel = panel.child(group("Estilo").child(self.setting(
@@ -877,7 +925,14 @@ impl Render for Workshop {
                         options(&[("false", "Con panel"), ("true", "Transparente")]),
                         cx,
                     ))
-                    .child(self.setting("gap", "Separación (px)", numbers(0..=12), cx)),
+                    .child(self.setting(
+                        "gap",
+                        "Separación (px)",
+                        numbers(
+                            widget::pedals::GAP_MIN as usize..=widget::pedals::GAP_MAX as usize,
+                        ),
+                        cx,
+                    )),
             );
         } else if self.kind == Kind::FastestLap {
             panel = panel.child(

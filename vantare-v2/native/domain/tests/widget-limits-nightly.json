@@ -17,10 +17,6 @@
     "GAP_STEP": 1.0,
     "STANDINGS_CLASSIFICATION_NORMAL": "normal",
     "STANDINGS_CLASSIFICATION_MULTICLASS": "multiclass",
-    "STANDINGS_CLASSIFICATION_MODES": [
-      "normal",
-      "multiclass"
-    ],
     "STANDINGS_TEMPLATE_SIGNATURE": "signature",
     "STANDINGS_TEMPLATE_BROADCAST": "broadcast",
     "STANDINGS_TEMPLATES": [
@@ -29,75 +25,30 @@
     ],
     "STANDINGS_SCOPE_PLAYER_CLASS": "player-class",
     "STANDINGS_SCOPE_ALL_CLASSES": "all-classes",
-    "STANDINGS_SCOPES": [
-      "player-class",
-      "all-classes"
-    ],
     "DELTA_SIZE_PILL": "pill",
     "DELTA_SIZE_BAR": "bar",
     "DELTA_SIZE_EXPANDED": "expanded",
-    "DELTA_SIZES": [
-      "pill",
-      "bar",
-      "expanded"
-    ],
     "DELTA_REFERENCE_BEST": "best",
     "DELTA_REFERENCE_OPTIMAL": "optimal",
     "DELTA_REFERENCE_LEADER": "leader",
-    "DELTA_REFERENCES": [
-      "best",
-      "optimal",
-      "leader"
-    ],
     "DELTA_TEMPLATE_INSTRUMENT": "instrument",
     "DELTA_TEMPLATE_CAPSULE": "capsule",
-    "DELTA_TEMPLATES": [
-      "instrument",
-      "capsule"
-    ],
     "RELATIVE_SCOPE_ALL": "all",
     "RELATIVE_SCOPE_SAME_CLASS": "sameClass",
-    "RELATIVE_SCOPES": [
-      "all",
-      "sameClass"
-    ],
     "TABLE_SIZE_COMPACT": "compact",
     "TABLE_SIZE_STANDARD": "standard",
     "TABLE_SIZE_EXPANDED": "expanded",
-    "TABLE_SIZES": [
-      "compact",
-      "standard",
-      "expanded"
-    ],
     "COLUMN_NAME_FULL": "full",
     "COLUMN_NAME_INITIAL": "initial",
     "COLUMN_NAME_SURNAME": "surname",
     "COLUMN_NAME_TRUNCATE": "truncate",
-    "COLUMN_NAME_MODES": [
-      "full",
-      "initial",
-      "surname",
-      "truncate"
-    ],
     "COLUMN_WIDTH_XS": "xs",
     "COLUMN_WIDTH_SM": "sm",
     "COLUMN_WIDTH_MD": "md",
     "COLUMN_WIDTH_LG": "lg",
-    "COLUMN_WIDTHS": [
-      "xs",
-      "sm",
-      "md",
-      "lg",
-      "auto"
-    ],
     "COLUMN_ALIGN_LEFT": "left",
     "COLUMN_ALIGN_CENTER": "center",
     "COLUMN_ALIGN_RIGHT": "right",
-    "COLUMN_ALIGNS": [
-      "left",
-      "center",
-      "right"
-    ],
     "COLUMN_WIDTH_AUTO": "auto",
     "STANDINGS_WINDOW_AROUND": [
       0,
@@ -138,55 +89,15 @@
     "COLUMN_METRIC_BEST_LAP": "bestLap",
     "COLUMN_METRIC_INTERVAL": "interval",
     "COLUMN_METRIC_GAP": "gap",
-    "STANDINGS_VANTARE_COLUMNS": [
-      "position",
-      "positionsGained",
-      "driverNumber",
-      "driverName",
-      "vehicle",
-      "tireCompound",
-      "pit",
-      "sectors",
-      "lastLap",
-      "bestLap",
-      "interval",
-      "gap"
-    ],
     "COLUMN_METRIC_CAR_NUMBER": "carNumber",
     "COLUMN_METRIC_LAP_DELTA": "lapDelta",
     "COLUMN_METRIC_DRIVER_RATING": "driverRating",
     "COLUMN_METRIC_SAFETY_RATING": "safetyRating",
     "COLUMN_METRIC_TREND": "trend",
     "COLUMN_METRIC_TRACK_STRIP": "trackStrip",
-    "RELATIVE_VANTARE_COLUMNS": [
-      "position",
-      "carNumber",
-      "driverName",
-      "vehicle",
-      "lapDelta",
-      "driverRating",
-      "safetyRating",
-      "trend",
-      "gap",
-      "trackStrip"
-    ],
     "COLUMN_METRIC_VEHICLE_CLASS": "vehicleClass",
     "COLUMN_METRIC_CLASS": "class",
     "COLUMN_METRIC_CURRENT_LAP": "currentLap",
-    "LEGACY_TABLE_COLUMNS": [
-      "position",
-      "driverNumber",
-      "carNumber",
-      "driverName",
-      "vehicleClass",
-      "class",
-      "gap",
-      "interval",
-      "currentLap",
-      "lastLap",
-      "bestLap",
-      "pit"
-    ],
     "FOOTER_TIME": "time",
     "FOOTER_LAP": "lap",
     "FOOTER_POSITION": "position",
@@ -196,16 +107,7 @@
     "FOOTER_TRACK": "track",
     "FOOTER_AMBIENT": "ambient",
     "FOOTER_WIND": "wind",
-    "FOOTER_KEYS": [
-      "time",
-      "lap",
-      "position",
-      "gap",
-      "bestLap",
-      "lastLap",
-      "track",
-      "ambient",
-      "wind"
-    ]
+    "GAP_MIN": 0.0,
+    "GAP_MAX": 12.0
   }
 }

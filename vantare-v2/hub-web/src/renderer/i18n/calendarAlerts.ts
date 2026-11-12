@@ -18,7 +18,7 @@ export const calendarAlertsText = {
   autoLegacyHint:
     "El lanzamiento automático no está disponible aquí; puedes desactivarlo.",
   autoHint:
-    "3 min antes de la salida, si el simulador está cerrado. Apagado por defecto.",
+    "Los avisos se guardan; el lanzamiento automático aún no está disponible.",
   daily: "Series diarias:",
   dailyHelp:
     "por franja horaria («de 20:00 a 23:00»), desde su ficha o su página.",

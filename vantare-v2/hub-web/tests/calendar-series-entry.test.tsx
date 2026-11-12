@@ -270,3 +270,24 @@ it("keeps series alert controls read-only when the document cannot be saved", ()
   expect(model.band).not.toHaveBeenCalled();
   expect(model.alert).not.toHaveBeenCalled();
 });
+
+it("connects alert edits from the actual drawer to the same typed preferences", () => {
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ficha" }));
+  fireEvent.click(
+    screen.getByRole("switch", { name: "Avisar por franja horaria" }),
+  );
+  expect(model.band).toHaveBeenCalledWith(fixture.series[0].id, {
+    seriesId: fixture.series[0].id,
+    from: 1200,
+    to: 1380,
+    days: "all",
+    mode: "each",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "15′" }));
+  expect(model.alert).toHaveBeenCalledWith({ kind: "lead", value: 15 });
+});

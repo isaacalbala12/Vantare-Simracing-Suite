@@ -419,7 +419,6 @@ export default function CalendarEntry() {
                 onSerie={openSerie}
                 onToggleSlot={toggleSlot}
                 onDetail={openDetail}
-                onSerie={openSerie}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -538,6 +537,27 @@ export default function CalendarEntry() {
             setDetail(undefined);
             openSerie(id);
           }}
+          onBand={
+            preferences.canAlerts
+              ? (id, value) => void preferences.band(id, value)
+              : undefined
+          }
+          onLead={
+            preferences.canAlerts
+              ? (value) => void preferences.alert({ kind: "lead", value })
+              : undefined
+          }
+          onSlot={
+            preferences.canAlerts
+              ? (id, at, enabled) =>
+                  void preferences.alert({
+                    kind: "slot",
+                    id,
+                    at: Math.trunc(at / 1000),
+                    enabled,
+                  })
+              : undefined
+          }
           onFollow={(id, enabled) => void preferences.follow(id, enabled)}
           onLaunch={() => void launcher.launch()}
           failure={

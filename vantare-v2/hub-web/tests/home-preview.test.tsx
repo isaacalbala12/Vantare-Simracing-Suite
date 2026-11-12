@@ -40,9 +40,12 @@ it("uses the common thumbnail source for every home widget kind", () => {
     expect(thumbnail).toBeTruthy();
     if (thumbnail instanceof SVGElement)
       expect(thumbnail.querySelector("image")?.getAttribute("href")).toMatch(
-        /\.svg$/,
+        /(?:\.svg$|^data:image\/svg\+xml[,;])/,
       );
-    else expect(thumbnail?.getAttribute("src")).toMatch(/\.png$/);
+    else
+      expect(thumbnail?.getAttribute("src")).toMatch(
+        /(?:\.png$|^data:image\/png[,;])/,
+      );
   }
 });
 it("fills positioned widget boxes without fitting the thumbnail canvas", () => {

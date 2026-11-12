@@ -29,14 +29,15 @@ export function CalendarFilters({
         }}
       >
         <Toggle className="v-segment" value="all">
-          {text.all} {total}
+          {text.all} <span className="v-calendar-filter-count">{total}</span>
         </Toggle>
         <Toggle
           className="v-segment v-calendar-favorites-filter"
           value="favorites"
         >
           <Icon name="star" />
-          {text.favorites} {following}
+          {text.favorites}{" "}
+          <span className="v-calendar-filter-count">{following}</span>
         </Toggle>
       </ToggleGroup>
       <ToggleGroup

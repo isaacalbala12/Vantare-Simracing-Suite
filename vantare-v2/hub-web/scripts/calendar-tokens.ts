@@ -85,6 +85,11 @@ export function calendarTokens(source: string, filters: string) {
       throw new Error("Calendar upcoming hero ramp missing");
     const wash = branch.match(/s\.hero_wash\.from = 0x([A-Fa-f0-9_]+);/);
     if (!wash) throw new Error("Calendar upcoming hero wash missing");
+    const heroShadow = source
+      .split("fn hero_plain")[1]
+      ?.match(/kit_shadow\(0x([A-Fa-f0-9_]+)/);
+    if (!heroShadow) throw new Error("Calendar upcoming hero shadow missing");
+    values["calendar-proximas-shadow"] = color(heroShadow[1]);
     values["calendar-proximas-hero"] = heroRamp;
     values["calendar-proximas-wash-from"] = color(wash[1]);
     // Frozen ficha.rs uses the same neo ramp at 180 degrees.

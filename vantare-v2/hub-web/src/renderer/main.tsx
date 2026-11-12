@@ -26,7 +26,11 @@ const Specimen = lazy(() =>
 );
 declare global {
   interface Window {
-    vantare?: { platform: string; connect(): Promise<void> };
+    vantare?: {
+      platform: string;
+      connect(): Promise<void>;
+      viewport(): { width: number; height: number };
+    };
   }
 }
 function Content() {

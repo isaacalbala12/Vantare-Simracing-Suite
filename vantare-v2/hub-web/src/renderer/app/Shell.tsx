@@ -7,6 +7,7 @@ import {
   type Palette,
   palettes,
 } from "../../contract/generated/contract";
+import { zoomStep } from "../../window-zoom";
 import { Icon } from "../assets/icons/Icon";
 import { HostFailure } from "../bridge/client";
 import { accountText } from "../i18n/account.es";
@@ -14,6 +15,7 @@ import { commandsText } from "../i18n/commands.es";
 import { paletteNames, t } from "../i18n/es";
 import { shellText } from "../i18n/shell.es";
 import { upcoming } from "../i18n/upcoming";
+import { zoomText } from "../i18n/zoom.es";
 import { RendererQa } from "../qa/entry";
 import { NotificationsPopover } from "../screens/notifications/NotificationsPopover";
 import { NotificationsProvider } from "../screens/notifications/NotificationsState";
@@ -27,7 +29,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
-import { hubKeys, zoomKeys } from "../ui/hub-shortcuts";
+import { hubShortcut, isZoomAction } from "../ui/hub-shortcuts";
 import { initials } from "../ui/initials";
 import { ToastViewport, useToastManager } from "../ui/Layers";
 import { SaveWarnings } from "../ui/SaveWarnings";
@@ -38,7 +40,7 @@ import {
   ShellLayout,
 } from "../ui/ShellLayout";
 import { TrackedCaps } from "../ui/TrackedCaps";
-import { zoomLevels } from "../ui/ZoomControl";
+import { currentZoomLimit, useWindowZoomLimit } from "../ui/window-zoom";
 import { useAccountSession } from "./AccountSession";
 import { useAccount } from "./AccountState";
 import { coreKey, offline, useHost } from "./Host";
@@ -57,6 +59,7 @@ export function Shell() {
   );
 }
 function ShellContent() {
+  const zoomLimit = useWindowZoomLimit();
   const host = useHost();
   const query = useQueryClient();
   const toast = useToastManager();
@@ -287,14 +290,8 @@ function ShellContent() {
       settings.error
     )
       return;
-    const index = zoomLevels.indexOf(settings.view.zoom);
-    const value =
-      direction === 0
-        ? defaultZoom
-        : zoomLevels[
-            Math.max(0, Math.min(zoomLevels.length - 1, index + direction))
-          ];
-    settings.update({ field: "zoom", value });
+    const value = zoomStep(settings.view.zoom, direction, currentZoomLimit());
+    if (value !== settings.view.zoom) settings.update({ field: "zoom", value });
   }
   function toggleTheme() {
     if (
@@ -314,16 +311,24 @@ function ShellContent() {
   }, [ui.section, ui.navigate, core.access]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
-      const key = event.key.toLowerCase();
-      if (key === "escape") {
+      if (event.isComposing) return;
+      if (event.key === "Escape") {
         ui.commands(false);
         ui.notices(false);
         return;
       }
-      if (!event.ctrlKey || event.metaKey) return;
-      if (key === hubKeys.commands) {
+      const action = hubShortcut(event);
+      if (!action) return;
+      if (action === "commands") {
         event.preventDefault();
         ui.commands(!ui.commandsOpen);
+        return;
+      }
+      // Zoom applies to the whole window, including an editable field or a
+      // nested Select. The normal settings/viewport guards still own the write.
+      if (isZoomAction(action)) {
+        event.preventDefault();
+        zoom(action === "zoomReset" ? 0 : action === "zoomOut" ? -1 : 1);
         return;
       }
       const target = event.target;
@@ -335,29 +340,11 @@ function ShellContent() {
           ))
       )
         return;
-      if (key === hubKeys.sidebar) {
-        event.preventDefault();
-        if (event.altKey) ui.toggleRail();
-        else ui.toggleSidebar();
-      }
-      if (key === hubKeys.notifications && event.shiftKey) {
-        event.preventDefault();
-        ui.notices(!ui.noticesOpen);
-      }
-      if (key === hubKeys.launch) {
-        event.preventDefault();
-        if (!event.repeat) void launchFavorite();
-      }
-      if (
-        zoomKeys.includes(key) &&
-        settings.view &&
-        !settings.pending &&
-        !settings.view.protected &&
-        !settings.error
-      ) {
-        event.preventDefault();
-        zoom(key === hubKeys.zoomReset ? 0 : key === hubKeys.zoomOut ? -1 : 1);
-      }
+      event.preventDefault();
+      if (action === "sidebar") ui.toggleSidebar();
+      if (action === "context") ui.toggleRail();
+      if (action === "notifications") ui.notices(!ui.noticesOpen);
+      if (action === "launch") void launchFavorite();
     }
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
@@ -385,6 +372,18 @@ function ShellContent() {
         : settings.view?.protected
           ? commandsText.settingsProtected
           : commandsText.settingsLoading;
+  function zoomReason(direction: -1 | 0 | 1) {
+    if (editBlocked || !settings.view) return settingsBlocked;
+    if (direction === 0)
+      return defaultZoom > zoomLimit ? zoomText.resetUnavailable : undefined;
+    if (
+      zoomStep(settings.view.zoom, direction, zoomLimit) === settings.view.zoom
+    )
+      return direction < 0
+        ? zoomText.lessUnavailable
+        : zoomText.moreUnavailable;
+    return undefined;
+  }
   const title =
     items.find((item) => item.id === ui.section)?.label ??
     (ui.section === "account" ? accountText.title : t("settings.title"));
@@ -531,25 +530,33 @@ function ShellContent() {
                   {
                     id: "zoom-less",
                     label: t("general.zoomLess"),
-                    meta: settingsBlocked,
+                    meta: zoomReason(-1),
                     shortcut: commandsText.shortcut.zoomOut,
-                    disabled: editBlocked,
+                    disabled:
+                      editBlocked ||
+                      !settings.view ||
+                      zoomStep(settings.view.zoom, -1, zoomLimit) ===
+                        settings.view.zoom,
                     run: () => zoom(-1),
                   },
                   {
                     id: "zoom-more",
                     label: t("general.zoomMore"),
-                    meta: settingsBlocked,
+                    meta: zoomReason(1),
                     shortcut: commandsText.shortcut.zoomIn,
-                    disabled: editBlocked,
+                    disabled:
+                      editBlocked ||
+                      !settings.view ||
+                      zoomStep(settings.view.zoom, 1, zoomLimit) ===
+                        settings.view.zoom,
                     run: () => zoom(1),
                   },
                   {
                     id: "zoom-reset",
                     label: t("general.zoomReset"),
-                    meta: settingsBlocked,
+                    meta: zoomReason(0),
                     shortcut: commandsText.shortcut.zoomReset,
-                    disabled: editBlocked,
+                    disabled: editBlocked || defaultZoom > zoomLimit,
                     run: () => zoom(0),
                   },
                   {

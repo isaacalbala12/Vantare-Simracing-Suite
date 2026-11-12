@@ -8,4 +8,10 @@ export const dialogAuditText = {
   trigger: "Abrir confirmación",
   cancel: "Cancelar",
   body: "Esta escena no ejecuta acciones.",
+  zoomTitle: "Zoom de la ventana",
+  zoomTrigger: "Comprobar zoom del diálogo",
+  zoomField: "Campo del diálogo",
+  zoomSelect: "Esquema del diálogo",
+  dark: "Oscuro",
+  light: "Claro",
 };

@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { shellText } from "../src/renderer/i18n/shell.es.ts";
+import { assertRendererIsolation } from "./preload-surface.ts";
 import { until } from "./wait-for.ts";
 
 const evidence = process.env.VANTARE_HUB_EVIDENCE ?? resolve("test-results");
@@ -196,11 +197,7 @@ try {
   }));
   assert.ok(result.viewport.width <= result.available.width);
   assert.ok(result.viewport.height <= result.available.height);
-  if (
-    result.node !== "undefined" ||
-    result.bridge.join(",") !== "platform,connect"
-  )
-    throw new Error("Renderer isolation failed");
+  assertRendererIsolation(result);
   await window.screenshot({
     path: resolve(evidence, "esqueleto.png"),
     fullPage: true,

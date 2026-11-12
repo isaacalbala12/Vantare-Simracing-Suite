@@ -4,6 +4,10 @@ export const shortcutsText = {
   search: "Buscar en Vantare",
   sidebar: "Contraer barra izquierda",
   rail: "Contraer barra derecha",
+  notifications: "Mostrar u ocultar notificaciones",
+  zoomIn: "Aumentar zoom",
+  zoomOut: "Reducir zoom",
+  zoomReset: "Restablecer zoom",
   blocks: [
     [
       "Atajos",

@@ -9,11 +9,6 @@ export const testingScenes: Record<string, VisualScene> = {
   "testing-center-comunidad": {
     mock: "testing-tester-community-reference",
     async prepare(page) {
-      // Electron seeds the host from its environment; renderer-only QA copy
-      // receives the same explicit scene through the local URL, as Notifications does.
-      const target = new URL(page.url());
-      target.searchParams.set("escena", "testing-tester-community-reference");
-      await page.goto(target.href);
       await page
         .getByRole("navigation", { name: "Navegación principal" })
         .getByRole("button", { name: "Testing Center", exact: true })
@@ -21,7 +16,7 @@ export const testingScenes: Record<string, VisualScene> = {
       await page.getByRole("tab", { name: "Comunidad", exact: true }).click();
       await page.getByRole("button", { name: "Recargar", exact: true }).click();
       await page
-        .getByText("QA · ejemplo de participación, sin backend ni envío", {
+        .getByText("Datos confirmados por el servicio", {
           exact: true,
         })
         .waitFor();
@@ -70,14 +65,6 @@ export const testingScenes: Record<string, VisualScene> = {
   "testing-center-cuestionarios": {
     mock: "testing-tester-questionnaires-reference",
     async prepare(page) {
-      // Electron seeds the host from its environment; renderer-only QA copy
-      // receives the same explicit scene through the local URL, as Notifications does.
-      const target = new URL(page.url());
-      target.searchParams.set(
-        "escena",
-        "testing-tester-questionnaires-reference",
-      );
-      await page.goto(target.href);
       await page
         .getByRole("navigation", { name: "Navegación principal" })
         .getByRole("button", { name: "Testing Center", exact: true })
@@ -87,7 +74,7 @@ export const testingScenes: Record<string, VisualScene> = {
         .click();
       await page.getByRole("button", { name: "Recargar", exact: true }).click();
       await page
-        .getByText("QA · ejemplo de participación, sin backend ni envío", {
+        .getByText("Datos confirmados por el servicio", {
           exact: true,
         })
         .waitFor();

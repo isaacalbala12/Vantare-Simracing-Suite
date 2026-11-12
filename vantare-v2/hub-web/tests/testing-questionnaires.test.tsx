@@ -18,7 +18,9 @@ import { ReportsProvider } from "../src/renderer/screens/testing/ReportsState";
 import { ToastProvider } from "../src/renderer/ui/Layers";
 
 let cache: QueryClient;
-beforeEach(() => {
+beforeEach(async () => {
+  // Load the local fixture before the UI readiness assertion, outside its timeout.
+  await import("../src/mock/host");
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
     addEventListener() {},
@@ -147,18 +149,12 @@ it("reproduces cached reference data after disconnecting, without accepting anot
 it.each([
   "testing-tester-questionnaires-reference",
   "visual-light:testing-tester-questionnaires-reference",
-])("shows capture-bank status after loading %s", async (scene) => {
+])("keeps the product status after loading QA data in %s", async (scene) => {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   await mount();
-  expect(
-    screen.queryByText("QA · ejemplo de participación, sin backend ni envío"),
-  ).toBeNull();
+  expect(screen.queryByText(text.loaded)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Recargar" }));
-  expect(
-    await screen.findByText(
-      "QA · ejemplo de participación, sin backend ni envío",
-    ),
-  ).toBeTruthy();
+  expect(await screen.findByText(text.loaded)).toBeTruthy();
   expect(
     screen.getByRole("button", {
       name: "0.0.974 · QA · experiencia del Hub · Sin responder",

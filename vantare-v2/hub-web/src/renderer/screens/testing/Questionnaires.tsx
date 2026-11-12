@@ -1,4 +1,3 @@
-import { testingParticipationLabel } from "../../../mock/testing-participation";
 import { testingQuestionnairesText as questionnaireText } from "../../i18n/testing-questionnaires";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
@@ -7,8 +6,6 @@ import { TestingQuestionnairesView } from "../../ui/TestingQuestionnairesView";
 import { testingText as text } from "./es";
 import { LocalDiagnostic } from "./LocalDiagnostic";
 import { useReports } from "./ReportsState";
-
-declare const __VANTARE_RENDERER_MOCK__: boolean;
 
 export function TestingQuestionnaires({
   onDiagnostic,
@@ -32,9 +29,7 @@ export function TestingQuestionnaires({
           <TestingCard title={questionnaireText.title}>
             <p>
               {state.participationLoaded
-                ? __VANTARE_RENDERER_MOCK__
-                  ? testingParticipationLabel(questionnaireText.loaded)
-                  : questionnaireText.loaded
+                ? questionnaireText.loaded
                 : text.reloadHelp}
             </p>
             {state.error && (

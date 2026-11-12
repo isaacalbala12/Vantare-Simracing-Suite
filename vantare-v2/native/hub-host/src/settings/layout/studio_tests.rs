@@ -907,9 +907,8 @@ fn writer_bytes_studio_typed_settings_keep_native_float_and_unknown_object_bytes
 #[test]
 fn design_system_patch_matches_native_set_look_for_all_families_and_legacy() {
     use vantare_domain::widget_settings as native;
-    let cases: Vec<serde_json::Value> = serde_json::from_str(include_str!(
-        "../../../fixtures/studio-look-cases.json"
-    )).unwrap();
+    let cases: Vec<serde_json::Value> =
+        serde_json::from_str(include_str!("../../../fixtures/studio-look-cases.json")).unwrap();
     assert_eq!(cases.len(), 13);
     for case in cases {
         let settings = &case["settings"];
@@ -919,11 +918,14 @@ fn design_system_patch_matches_native_set_look_for_all_families_and_legacy() {
         // normalized settings read from disk, then its writer normalizes again.
         macro_rules! oracle {
             ($ty:ty) => {{
-                let mut value = serde_json::from_value::<$ty>(settings.clone()).unwrap().normalized();
+                let mut value = serde_json::from_value::<$ty>(settings.clone())
+                    .unwrap()
+                    .normalized();
                 value.design_system = look;
                 serde_json::from_str::<serde_json::Value>(
-                    &serde_json::to_string(&value.normalized()).unwrap()
-                ).unwrap()
+                    &serde_json::to_string(&value.normalized()).unwrap(),
+                )
+                .unwrap()
             }};
         }
         let mut expected = match kind {
@@ -944,15 +946,24 @@ fn design_system_patch_matches_native_set_look_for_all_families_and_legacy() {
         let mut state = State::new(path.clone());
         let before = state.view(access);
         assert_eq!(before.state, StudioState::Ready, "{}", case["name"]);
-        let patch = serde_json::from_value(serde_json::json!({"kind":kind,"designSystem":look})).unwrap();
-        let saved = state.edit(
-            Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(patch))),
-            &before.revision, access
-        ).unwrap();
+        let patch =
+            serde_json::from_value(serde_json::json!({"kind":kind,"designSystem":look})).unwrap();
+        let saved = state
+            .edit(
+                Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(patch))),
+                &before.revision,
+                access,
+            )
+            .unwrap();
         assert!(saved.can_undo, "{}", case["name"]);
-        let mut actual: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        let mut actual: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         expected["futureLookMember"] = serde_json::json!({"keep":17});
-        assert_eq!(actual["instances"][0]["settings"], expected, "{}", case["name"]);
+        assert_eq!(
+            actual["instances"][0]["settings"], expected,
+            "{}",
+            case["name"]
+        );
         actual["instances"][0]["settings"] = document["instances"][0]["settings"].clone();
         assert_eq!(actual, document, "other layout members: {}", case["name"]);
     }

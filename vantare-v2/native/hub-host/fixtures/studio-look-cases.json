@@ -66,22 +66,20 @@
     }
   },
   {
-    "name": "pedals-vantare-v1",
+    "name": "pedals-vantare-current",
     "look": "eficiencia",
     "settings": {
       "kind": "pedals",
-      "contentVersion": 1,
       "designSystem": "vantare",
       "style": "neutro",
       "accent": "green"
     }
   },
   {
-    "name": "pedals-eficiencia-v1",
+    "name": "pedals-eficiencia-current",
     "look": "vantare",
     "settings": {
       "kind": "pedals",
-      "contentVersion": 1,
       "designSystem": "eficiencia",
       "style": "neutro",
       "accent": "green"

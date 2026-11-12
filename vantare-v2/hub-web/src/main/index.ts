@@ -134,6 +134,7 @@ async function start() {
       );
   };
   repaint();
+  currentWindow.on("resize", repaint);
   nativeTheme.on("updated", repaint);
   const devUrl = !app.isPackaged
     ? developmentUrl(process.env.ELECTRON_RENDERER_URL)

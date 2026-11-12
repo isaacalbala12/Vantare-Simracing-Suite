@@ -28,6 +28,7 @@ import { Shell } from "../src/renderer/app/Shell";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { commandsText as text } from "../src/renderer/i18n/commands.es";
+import { zoomText } from "../src/renderer/i18n/zoom.es";
 import type { PaletteCommand } from "../src/renderer/ui/CommandPalette";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 import { WindowDialogProvider } from "../src/renderer/ui/WindowDialog";
@@ -607,4 +608,28 @@ it("returns focus to the opener on Escape without navigating", async () => {
   await screen.findByRole("combobox");
   await user.keyboard("{Escape}");
   await waitFor(() => expect(document.activeElement).toBe(origin));
+});
+
+it("announces unavailable zoom in the palette and reevaluates it on resize without saving", async () => {
+  vi.stubGlobal("outerWidth", 1280);
+  vi.stubGlobal("outerHeight", 720);
+  await mount();
+  expect(driver.commands.find((row) => row.id === "zoom-more")).toMatchObject({
+    disabled: true,
+    meta: zoomText.moreUnavailable,
+  });
+  const request = vi.spyOn(Client.prototype, "request");
+  act(() => {
+    vi.stubGlobal("outerWidth", 1920);
+    vi.stubGlobal("outerHeight", 1080);
+    fireEvent(window, new Event("resize"));
+  });
+  await waitFor(() =>
+    expect(
+      driver.commands.find((row) => row.id === "zoom-more")?.disabled,
+    ).toBe(false),
+  );
+  expect(
+    request.mock.calls.filter(([value]) => value.method === "settings.update"),
+  ).toHaveLength(0);
 });

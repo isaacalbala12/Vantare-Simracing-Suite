@@ -2,7 +2,9 @@ import {
   defaultZoom,
   zoomLevels as domainZoomLevels,
 } from "../../contract/generated/contract";
+import { zoomStep } from "../../window-zoom";
 import { Button, IconButton } from "./Button";
+import { useWindowZoomLimit } from "./window-zoom";
 
 export const zoomLevels: readonly number[] = domainZoomLevels;
 export function ZoomControl({
@@ -24,7 +26,9 @@ export function ZoomControl({
   more: string;
   reset: string;
 }) {
-  const index = zoomLevels.indexOf(value);
+  const limit = useWindowZoomLimit();
+  const lessValue = zoomStep(value, -1, limit);
+  const moreValue = zoomStep(value, 1, limit);
   return (
     <fieldset
       className="v-zoom"
@@ -35,9 +39,9 @@ export function ZoomControl({
       <IconButton
         label={less}
         className="v-zoom-step"
-        disabled={disabled || index <= 0}
+        disabled={disabled || lessValue === value}
         onClick={() => {
-          if (!pending) onChange(zoomLevels[index - 1]);
+          if (!pending) onChange(lessValue);
         }}
       >
         {"−"}
@@ -46,19 +50,19 @@ export function ZoomControl({
         variant="ghost"
         className="v-zoom-reset"
         aria-label={reset}
-        disabled={disabled}
+        disabled={disabled || defaultZoom > limit}
         onClick={() => {
           if (!pending) onChange(defaultZoom);
         }}
       >
-        {`${value}%`}
+        {`${Number(Math.min(value, limit).toFixed(1))}%`}
       </Button>
       <IconButton
         label={more}
         className="v-zoom-step"
-        disabled={disabled || index >= zoomLevels.length - 1}
+        disabled={disabled || moreValue === value}
         onClick={() => {
-          if (!pending) onChange(zoomLevels[index + 1]);
+          if (!pending) onChange(moreValue);
         }}
       >
         {"+"}

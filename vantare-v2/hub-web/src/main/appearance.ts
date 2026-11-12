@@ -2,6 +2,7 @@ import { type BrowserWindow, nativeTheme } from "electron";
 import tokens from "../../design/tokens.json";
 import type { SettingsView, ThemeBoot } from "../contract/generated/contract";
 import { t } from "../renderer/i18n/es";
+import { effectiveZoom } from "../window-zoom";
 import { presentSystemNotice } from "./system-notifications";
 export function resolveTheme(theme: Pick<ThemeBoot, "palette" | "scheme">) {
   const scheme =
@@ -22,7 +23,10 @@ export function paintWindow(
     nativeTheme.themeSource = theme.scheme;
   const colors = resolveTheme(theme);
   window.setBackgroundColor(colors["bg-window"]);
-  window.webContents.setZoomFactor(zoom / 100);
+  const [width, height] = window.getContentSize();
+  const factor = effectiveZoom(zoom, width, height) / 100;
+  if (Math.abs(window.webContents.getZoomFactor() - factor) > 0.00001)
+    window.webContents.setZoomFactor(factor);
 }
 export function testNotification(
   view?: SettingsView,

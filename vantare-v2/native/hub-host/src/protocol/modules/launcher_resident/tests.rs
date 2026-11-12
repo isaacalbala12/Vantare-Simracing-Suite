@@ -252,30 +252,68 @@ fn document_projection_is_reused_until_timestamp_or_length_changes() {
 
 #[test]
 fn repeated_status_deduplicates_and_restart_or_stale_status_cannot_reuse_a_receipt() {
-    use mailbox::execution::{ExecutionStatus, EventKind, ChainOutcome, ChainFailure};
-    let root=std::env::temp_dir().join(format!("resident-execution-projection-{}",vantare_services::random_id().unwrap()));
+    use mailbox::execution::{ChainFailure, ChainOutcome, EventKind, ExecutionStatus};
+    let root = std::env::temp_dir().join(format!(
+        "resident-execution-projection-{}",
+        vantare_services::random_id().unwrap()
+    ));
     std::fs::create_dir_all(&root).unwrap();
-    let path=root.join("launcher.json");
-    std::fs::write(&path,serde_json::to_vec(&vantare_launcher::Document::default()).unwrap()).unwrap();
-    let mut status=status();
-    let mut extension=ExecutionStatus::new("a".repeat(64).try_into().unwrap());
-    let run=extension.accept("b".repeat(32).try_into().unwrap()).unwrap();
-    extension.record(EventKind::Finished{run,outcome:ChainOutcome::Failed{reason:ChainFailure::StepFailed}}).unwrap();
-    status.extension=Some(extension);
-    let save=|value:&mailbox::Status| { std::fs::write(mailbox::status_path(&path),serde_json::to_vec(value).unwrap()).unwrap(); };
+    let path = root.join("launcher.json");
+    std::fs::write(
+        &path,
+        serde_json::to_vec(&vantare_launcher::Document::default()).unwrap(),
+    )
+    .unwrap();
+    let mut status = status();
+    let mut extension = ExecutionStatus::new("a".repeat(64).try_into().unwrap());
+    let run = extension
+        .accept("b".repeat(32).try_into().unwrap())
+        .unwrap();
+    extension
+        .record(EventKind::Finished {
+            run,
+            outcome: ChainOutcome::Failed {
+                reason: ChainFailure::StepFailed,
+            },
+        })
+        .unwrap();
+    status.extension = Some(extension);
+    let save = |value: &mailbox::Status| {
+        std::fs::write(
+            mailbox::status_path(&path),
+            serde_json::to_vec(value).unwrap(),
+        )
+        .unwrap();
+    };
     save(&status);
-    let mut state=State::new(path.clone());let now=Instant::now();
-    let first=state.changed(now).unwrap();assert_eq!(first.execution.as_ref().unwrap().events.len(),2);
-    let wire=serde_json::to_string(&first).unwrap();
+    let mut state = State::new(path.clone());
+    let now = Instant::now();
+    let first = state.changed(now).unwrap();
+    assert_eq!(first.execution.as_ref().unwrap().events.len(), 2);
+    let wire = serde_json::to_string(&first).unwrap();
     assert!(!wire.contains("private") && !wire.contains("message") && !wire.contains("progress"));
-    status.updated_ms=mailbox::now_ms();save(&status);
-    assert!(state.changed(now+std::time::Duration::from_millis(500)).is_none());
-    status.extension=Some(ExecutionStatus::new("c".repeat(64).try_into().unwrap()));save(&status);
-    let restarted=state.changed(now+std::time::Duration::from_secs(1)).unwrap();
-    assert_ne!(first.execution.as_ref().unwrap().instance,restarted.execution.as_ref().unwrap().instance);
+    status.updated_ms = mailbox::now_ms();
+    save(&status);
+    assert!(
+        state
+            .changed(now + std::time::Duration::from_millis(500))
+            .is_none()
+    );
+    status.extension = Some(ExecutionStatus::new("c".repeat(64).try_into().unwrap()));
+    save(&status);
+    let restarted = state
+        .changed(now + std::time::Duration::from_secs(1))
+        .unwrap();
+    assert_ne!(
+        first.execution.as_ref().unwrap().instance,
+        restarted.execution.as_ref().unwrap().instance
+    );
     assert!(restarted.execution.unwrap().events.is_empty());
-    status.updated_ms=0;save(&status);
-    let stale=state.changed(now+std::time::Duration::from_millis(1500)).unwrap();
+    status.updated_ms = 0;
+    save(&status);
+    let stale = state
+        .changed(now + std::time::Duration::from_millis(1500))
+        .unwrap();
     assert!(!stale.online && stale.execution.is_none());
     std::fs::remove_dir_all(root).unwrap();
 }

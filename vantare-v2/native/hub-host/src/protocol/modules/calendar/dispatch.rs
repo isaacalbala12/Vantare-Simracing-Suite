@@ -77,6 +77,12 @@ pub(super) fn dispatch(
             },
         );
     }
+    if matches!(
+        request,
+        Request::CalendarLaunchArm { .. } | Request::CalendarLaunchCancel { .. }
+    ) {
+        return launches::dispatch(session, pipe, id, request);
+    }
     if matches!(request, Request::CalendarNoticeTest {}) {
         if session.current.rights != crate::protocol::LinkState::Connected
             || session.closing.is_some()
@@ -225,4 +231,25 @@ pub(super) fn complete_at(
     });
     session.calendar_state.poll_completed(now, failure);
     result
+}
+
+#[path = "launch_driver.rs"]
+mod launches;
+pub(super) fn subscribe(
+    session: &mut Session,
+    pipe: &mut Pipe,
+    _topic: super::Topic,
+) -> io::Result<()> {
+    launches::publish(session, pipe, true)
+}
+pub(super) fn launch_tick(
+    session: &mut Session,
+    pipe: &mut Pipe,
+    now: crate::calendar::launch::Clock,
+) -> io::Result<()> {
+    launches::tick(session, pipe, now)
+}
+pub(super) fn launch_closing(session: &mut Session, pipe: &mut Pipe) -> io::Result<()> {
+    session.calendar_launch.close();
+    launches::publish(session, pipe, false)
 }

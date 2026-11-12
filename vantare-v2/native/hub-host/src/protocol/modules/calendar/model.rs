@@ -1,3 +1,13 @@
+#[path = "launch.rs"]
+pub mod launch;
+#[path = "launch_targets.rs"]
+mod launch_targets;
+#[path = "launch_types.rs"]
+pub mod launch_types;
+pub use launch_types::{
+    CalendarLaunchAttempt, CalendarLaunchChange, CalendarLaunchMode, CalendarLaunchPlan,
+    CalendarLaunchProgress, CalendarLaunchStop, CalendarLaunchUnknown, CalendarLaunchView,
+};
 #[path = "notice.rs"]
 mod notice;
 #[path = "poll.rs"]

@@ -123,6 +123,7 @@ impl Session {
         }
         self.cancel_deferred(pipe)?;
         self.closing = Some((reason, now));
+        super::calendar::launch_closing(self, pipe)?;
         frame::write(pipe, &HostToUi::CloseRequested { reason })
     }
     pub(super) fn respond_service(

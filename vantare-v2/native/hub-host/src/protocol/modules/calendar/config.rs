@@ -467,3 +467,24 @@ mod alerts_save;
 #[path = "alerts_input.rs"]
 mod alerts_input;
 pub(crate) use alerts_input::deserialize_complete_alerts;
+
+impl State {
+    pub(super) fn arm_auto_launch(
+        &mut self,
+        expected: &str,
+    ) -> Result<CalendarConfigView, HostError> {
+        let mut document = self.observed_document("calendar-alerts.json", expected)?;
+        let Contents::Alerts(alerts) = &document.contents else {
+            return Err(HostError::Protected);
+        };
+        if !alerts.valid() {
+            return Err(HostError::Rejected);
+        }
+        if alerts.auto_launch {
+            self.config_view.observe(&document);
+            return Ok(self.config_view.clone());
+        }
+        document.value["autoLaunch"] = json!(true);
+        self.write_config_document("calendar-alerts.json", &document)
+    }
+}

@@ -211,9 +211,12 @@ function useReportsState() {
   useEffect(() => {
     if (!loaded || !dirty || busy || error || !available) return;
     const snapshot = JSON.stringify(fields);
+    const epoch = generation.current;
     const timer = setTimeout(() => {
       if (JSON.stringify(state.current.fields) !== snapshot) return;
-      void saveCurrent.current().catch(() => setMessage(text.autosaveFailed));
+      void saveCurrent.current().catch(() => {
+        if (epoch === generation.current) setMessage(text.autosaveFailed);
+      });
     }, reportAutosaveMs);
     return () => clearTimeout(timer);
   }, [loaded, dirty, busy, error, available, fields]);
@@ -262,7 +265,10 @@ function useReportsState() {
   useEffect(() => {
     const flush = () => {
       if (!state.current.available || !state.current.loaded) return;
-      void saveCurrent.current().catch(() => setMessage(text.autosaveFailed));
+      const epoch = generation.current;
+      void saveCurrent.current().catch(() => {
+        if (epoch === generation.current) setMessage(text.autosaveFailed);
+      });
     };
     const hidden = () => {
       if (document.visibilityState === "hidden") flush();
@@ -430,6 +436,7 @@ function useReportsState() {
       !screenshots.some((shot) => shot.id === id)
     )
       return;
+    const epoch = generation.current;
     removingScreenshot.current = true;
     setPreview(undefined);
     setConsent(false);
@@ -455,7 +462,7 @@ function useReportsState() {
       setPreview(undefined);
       setConsent(false);
     } finally {
-      removingScreenshot.current = false;
+      if (epoch === generation.current) removingScreenshot.current = false;
     }
   }
   async function prepare(retry = false) {

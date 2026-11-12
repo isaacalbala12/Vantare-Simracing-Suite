@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { LocalReportView } from "../../../contract/generated/contract";
 import { reportDigest } from "../../../contract/report-digest";
 import { useHost } from "../../app/Host";
@@ -18,7 +18,7 @@ export function LocalDiagnostic() {
   const lifetime = useRef(new AbortController());
   const running = useRef(false);
   const snapshot = useRef({ client, fields, allowed });
-  useEffect(() => {
+  useLayoutEffect(() => {
     snapshot.current = { client, fields, allowed };
     const controller = new AbortController();
     lifetime.current.abort();

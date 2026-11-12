@@ -930,3 +930,44 @@ it("normal logout clears reports and keeps remote actions disabled until a confi
   expectSessionEmpty(hook);
   expect(hook.result.current.available).toBe(false);
 });
+
+it("a failed autosave from A cannot publish an error into confirmed B", async () => {
+  const hook = await mount("testing-tester-reports");
+  const original = Client.prototype.request;
+  let fail: ((error: unknown) => void) | undefined;
+  vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    request,
+  ) {
+    return request.method === "draft.save"
+      ? new Promise((_resolve, reject) => {
+          fail = reject;
+        })
+      : original.call(this, request);
+  });
+  act(() => {
+    hook.result.current.edit({ actionText: "PRIVATE_AUTOSAVE_A" });
+  });
+  act(() => {
+    window.dispatchEvent(new Event("blur"));
+  });
+  await waitFor(() => expect(fail).toBeDefined());
+  const account = hook.account().value;
+  if (!account) throw new Error("missing account");
+  await act(async () => {
+    hook.host.postMessage({
+      kind: "event",
+      event: {
+        topic: "account",
+        value: { ...account, name: "B", session: "signedIn", gate: "none" },
+      },
+    });
+  });
+  await waitFor(() => expect(hook.result.current.fields.actionText).toBe(""));
+  await act(async () => {
+    fail?.(new HostFailure({ kind: "io" }));
+  });
+  expect(hook.result.current.message).toBe("");
+  expect(hook.result.current.error).toBe(false);
+  expectSessionEmpty(hook);
+});

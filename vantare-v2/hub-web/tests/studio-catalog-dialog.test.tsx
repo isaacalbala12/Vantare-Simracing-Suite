@@ -26,6 +26,7 @@ import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { CatalogDialog } from "../src/renderer/ui/studio/CatalogDialog";
 import { MoreMenu } from "../src/renderer/ui/studio/MoreMenu";
 import { RemoveWidget } from "../src/renderer/ui/studio/RemoveWidget";
+import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
 import { WindowDialogProvider } from "../src/renderer/ui/WindowDialog";
 
 const caches: QueryClient[] = [];
@@ -83,7 +84,7 @@ function Probe() {
     </>
   );
 }
-function mount(scene = "studio-base") {
+function mount(scene = "studio-base", realScreen = false) {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   const cache = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -97,7 +98,7 @@ function mount(scene = "studio-base") {
             <UiProvider>
               <WindowDialogProvider>
                 <StudioProvider>
-                  <Probe />
+                  {realScreen ? <StudioFocus /> : <Probe />}
                 </StudioProvider>
               </WindowDialogProvider>
             </UiProvider>
@@ -111,6 +112,20 @@ async function openCatalog() {
   await userEvent.click(screen.getByRole("button", { name: "Abrir catálogo" }));
   return screen.findByRole("dialog", { name: t.catalog });
 }
+
+it("keeps Add named and operable when the compact strip hides its visible text", async () => {
+  mount("studio-base", true);
+  await screen.findByRole("button", { name: /^Standings,/ });
+  const trigger = await screen.findByRole("button", { name: t.add });
+  const label = Array.from(trigger.querySelectorAll<HTMLElement>("span")).find(
+    (node) => node.textContent === t.add && !node.querySelector("svg"),
+  );
+  if (!label) throw new Error("missing strip label");
+  label.hidden = true;
+  expect(screen.getByRole("button", { name: t.add })).toBe(trigger);
+  await userEvent.click(trigger);
+  await screen.findByRole("dialog", { name: t.catalog });
+});
 
 it("focuses search and restores the opener after Escape without adding anything", async () => {
   const requests = vi.spyOn(Client.prototype, "request");

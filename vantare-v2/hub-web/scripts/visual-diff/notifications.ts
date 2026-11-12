@@ -34,6 +34,34 @@ export const notificationScenes: Record<string, VisualScene> = {
         await full.locator('article[data-unread="true"]').count(),
         3,
       );
+      await page
+        .getByRole("heading", { name: "Centro operativo", exact: true })
+        .waitFor();
+      await page.locator(".v-notifications-profile").nth(1).waitFor();
+      assert.equal(
+        await page.locator(".v-notification-bell-count").textContent(),
+        "3",
+      );
+      const geometry = await full.evaluate((card) => {
+        const main = card.closest(".v-shell-main");
+        if (!main) throw new Error("Missing content frame");
+        const read = card.querySelector(".v-notification-read");
+        const action = card.querySelector(".v-notification-open");
+        return {
+          bottom: card.getBoundingClientRect().bottom,
+          expected:
+            main.getBoundingClientRect().bottom -
+            parseFloat(getComputedStyle(main).paddingBottom),
+          readBorder: read ? getComputedStyle(read).borderTopWidth : null,
+          actionHeight: action?.getBoundingClientRect().height,
+        };
+      });
+      assert.ok(
+        Math.abs(geometry.bottom - geometry.expected) <= 2,
+        "Notification card fills the available height",
+      );
+      assert.equal(geometry.readBorder, "0px");
+      assert.equal(geometry.actionHeight, 36);
     },
   },
   "notificaciones-completa-vacio": {

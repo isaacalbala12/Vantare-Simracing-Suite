@@ -1,7 +1,7 @@
 //! Volatile intentions and receipt correlation. IO and clocks are supplied by the host.
 use super::launch_types::*;
 use crate::{
-    launcher_checked::LaunchQueued,
+    launcher::checked::LaunchQueued,
     launcher_resident::{ResidentEventKind, ResidentReceipt, ResidentView},
     protocol::{CoreStatus, HostError, LinkState},
 };
@@ -70,6 +70,15 @@ struct Pending {
     cursor: u64,
     sent: Instant,
 }
+#[derive(Clone, Copy)]
+pub struct Inputs<'a> {
+    pub core: &'a CoreStatus,
+    pub closing: bool,
+    pub resident: &'a ResidentView,
+    pub alerts_ready: bool,
+    pub auto_enabled: bool,
+    pub candidates: &'a [Candidate],
+}
 #[derive(Default)]
 pub struct Scheduler {
     armed: Option<Binding>,
@@ -107,6 +116,7 @@ impl Scheduler {
             .unwrap_or_default()
     }
     pub fn install(&mut self, binding: Binding, now: Clock) {
+        let first = !self.active();
         let slot = if matches!(binding.plan.mode, CalendarLaunchMode::Once { .. }) {
             &mut self.armed
         } else {
@@ -116,7 +126,9 @@ impl Scheduler {
             plan: old.plan,
             reason: CalendarLaunchStop::Replaced,
         });
-        self.clock = Some(now);
+        if first {
+            self.clock = Some(now);
+        }
     }
     pub fn cancel(&mut self, id: &str) {
         if self.armed.as_ref().is_some_and(|b| b.plan.arm_id == id) {
@@ -157,16 +169,22 @@ impl Scheduler {
             };
         }
     }
-    pub fn step(
-        &mut self,
-        core: &CoreStatus,
-        closing: bool,
-        resident: &ResidentView,
-        alerts_ready: bool,
-        auto_enabled: bool,
-        candidates: &[Candidate],
-        now: Clock,
-    ) -> Option<Due> {
+    pub fn step(&mut self, inputs: Inputs<'_>, now: Clock) -> Option<Due> {
+        if !self.revalidate(&inputs, now) {
+            return None;
+        }
+        self.take_due(inputs.candidates, now)
+    }
+    fn revalidate(&mut self, inputs: &Inputs<'_>, now: Clock) -> bool {
+        let Inputs {
+            core,
+            closing,
+            resident,
+            alerts_ready,
+            auto_enabled,
+            ..
+        } = *inputs;
+
         let scope = |binding: &Binding| {
             scope_stop(core, closing, &binding.generation).or_else(|| {
                 (!resident.online
@@ -213,8 +231,11 @@ impl Scheduler {
         if jumped {
             self.stop_once(CalendarLaunchStop::ClockChanged);
             self.stop_auto(CalendarLaunchStop::ClockChanged);
-            return None;
+            return false;
         }
+        true
+    }
+    fn take_due(&mut self, candidates: &[Candidate], now: Clock) -> Option<Due> {
         let automatic = self.automatic.as_mut().and_then(|binding| {
             let since = std::mem::replace(&mut binding.since, now.wall);
             candidates

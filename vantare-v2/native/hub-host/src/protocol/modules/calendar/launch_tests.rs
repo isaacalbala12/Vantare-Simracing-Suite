@@ -64,12 +64,14 @@ fn once(base: Instant) -> Scheduler {
 }
 fn step(s: &mut Scheduler, base: Instant, ms: u64) -> Option<Due> {
     s.step(
-        &core(),
-        false,
-        &resident(),
-        true,
-        true,
-        &[],
+        Inputs {
+            core: &core(),
+            closing: false,
+            resident: &resident(),
+            alerts_ready: true,
+            auto_enabled: true,
+            candidates: &[],
+        },
         clock(base, ms),
     )
 }
@@ -143,12 +145,14 @@ fn every_scope_loss_disarms_without_an_action_even_with_the_same_rights() {
         }
         assert!(
             s.step(
-                &scope,
-                cause == 4,
-                &resident(),
-                true,
-                true,
-                &[],
+                Inputs {
+                    core: &scope,
+                    closing: cause == 4,
+                    resident: &resident(),
+                    alerts_ready: true,
+                    auto_enabled: true,
+                    candidates: &[]
+                },
                 clock(base, 1000)
             )
             .is_none()
@@ -165,8 +169,18 @@ fn a_wall_clock_jump_in_either_direction_disarms_instead_of_launching_early_or_r
         let mut time = clock(base, 1000);
         time.wall += jump;
         assert!(
-            s.step(&core(), false, &resident(), true, true, &[], time)
-                .is_none()
+            s.step(
+                Inputs {
+                    core: &core(),
+                    closing: false,
+                    resident: &resident(),
+                    alerts_ready: true,
+                    auto_enabled: true,
+                    candidates: &[]
+                },
+                time
+            )
+            .is_none()
         );
         assert_eq!(
             s.view().change.unwrap().reason,
@@ -205,8 +219,18 @@ fn receipts_require_the_owned_request_run_and_instance_and_do_not_repeat_termina
         },
     ];
     assert!(
-        s.step(&core(), false, &view, true, true, &[], clock(base, 1100))
-            .is_none()
+        s.step(
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &view,
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &[]
+            },
+            clock(base, 1100)
+        )
+        .is_none()
     );
     assert!(matches!(
         s.view().latest.as_ref().unwrap().progress,
@@ -216,7 +240,17 @@ fn receipts_require_the_owned_request_run_and_instance_and_do_not_repeat_termina
         }
     ));
     let completed = s.view();
-    s.step(&core(), false, &view, true, true, &[], clock(base, 1200));
+    s.step(
+        Inputs {
+            core: &core(),
+            closing: false,
+            resident: &view,
+            alerts_ready: true,
+            auto_enabled: true,
+            candidates: &[],
+        },
+        clock(base, 1200),
+    );
     assert_eq!(s.view(), completed);
 }
 #[test]
@@ -232,7 +266,17 @@ fn an_unrelated_terminal_never_confirms_our_launch() {
             outcome: ResidentOutcome::Completed,
         },
     }];
-    s.step(&core(), false, &view, true, true, &[], clock(base, 6000));
+    s.step(
+        Inputs {
+            core: &core(),
+            closing: false,
+            resident: &view,
+            alerts_ready: true,
+            auto_enabled: true,
+            candidates: &[],
+        },
+        clock(base, 6000),
+    );
     assert!(matches!(
         s.view().latest.unwrap().progress,
         CalendarLaunchProgress::Unknown {
@@ -267,7 +311,17 @@ fn a_gap_restart_disconnect_or_lost_scope_turns_an_unconfirmed_request_unknown()
                 CalendarLaunchUnknown::ScopeLost
             }
         };
-        s.step(&scope, false, &view, true, true, &[], clock(base, 1100));
+        s.step(
+            Inputs {
+                core: &scope,
+                closing: false,
+                resident: &view,
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &[],
+            },
+            clock(base, 1100),
+        );
         assert!(
             matches!(s.view().latest.unwrap().progress,CalendarLaunchProgress::Unknown {reason,..} if reason==expected)
         );
@@ -293,7 +347,17 @@ fn a_late_receipt_after_timeout_does_not_reopen_the_attempt() {
             receipt: ResidentReceipt::Accepted { run: "1".into() },
         },
     }];
-    s.step(&core(), false, &view, true, true, &[], clock(base, 6100));
+    s.step(
+        Inputs {
+            core: &core(),
+            closing: false,
+            resident: &view,
+            alerts_ready: true,
+            auto_enabled: true,
+            candidates: &[],
+        },
+        clock(base, 6100),
+    );
     assert_eq!(s.view(), unknown);
 }
 #[test]
@@ -316,12 +380,14 @@ fn automatic_mode_is_session_scoped_respects_the_saved_flag_and_sends_each_windo
     }];
     let due = s
         .step(
-            &core(),
-            false,
-            &resident(),
-            true,
-            true,
-            &candidates,
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &resident(),
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &candidates,
+            },
             clock(base, 1000),
         )
         .unwrap();
@@ -333,24 +399,28 @@ fn automatic_mode_is_session_scoped_respects_the_saved_flag_and_sends_each_windo
     );
     assert!(
         s.step(
-            &core(),
-            false,
-            &resident(),
-            true,
-            true,
-            &candidates,
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &resident(),
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &candidates
+            },
             clock(base, 1000)
         )
         .is_none()
     );
     assert!(
         s.step(
-            &core(),
-            false,
-            &resident(),
-            true,
-            false,
-            &candidates,
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &resident(),
+                alerts_ready: true,
+                auto_enabled: false,
+                candidates: &candidates
+            },
             clock(base, 1001)
         )
         .is_none()

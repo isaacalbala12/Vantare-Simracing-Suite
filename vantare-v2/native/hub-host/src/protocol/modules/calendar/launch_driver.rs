@@ -167,12 +167,14 @@ pub(super) fn tick(session: &mut Session, pipe: &mut Pipe, now: Clock) -> io::Re
         (true, false, vec![])
     };
     if let Some(due) = session.calendar_launch.step(
-        &session.current,
-        session.closing.is_some(),
-        &resident,
-        ready,
-        auto,
-        &candidates,
+        crate::calendar::launch::Inputs {
+            core: &session.current,
+            closing: session.closing.is_some(),
+            resident: &resident,
+            alerts_ready: ready,
+            auto_enabled: auto,
+            candidates: &candidates,
+        },
         now,
     ) {
         let result = session

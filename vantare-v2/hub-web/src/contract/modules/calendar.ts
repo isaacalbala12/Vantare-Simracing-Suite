@@ -1,3 +1,4 @@
+import { isCalendarLaunchArm, isCalendarLaunchCancel, isCalendarLaunchView } from "../calendar-launch-validation";
 import {
   duration,
   isCalendarRevision,
@@ -207,6 +208,8 @@ export function isCalendarIcsView(v: unknown) {
   );
 }
 export function isRequest(v: Record<string, unknown>) {
+  if (v.method === "calendar.launchArm") return isCalendarLaunchArm(v);
+  if (v.method === "calendar.launchCancel") return isCalendarLaunchCancel(v);
   switch (v.method) {
     case "calendar.alertsSave":
       return (
@@ -262,6 +265,8 @@ export function isRequest(v: Record<string, unknown>) {
   }
 }
 export function isReply(v: Record<string, unknown>) {
+  if (v.method === "calendar.launchArm") return exact(v,["method","value","config"]) && isCalendarLaunchView(v.value) && (v.config === null || isCalendarConfig(v.config));
+  if (v.method === "calendar.launchCancel") return exact(v,["method","value"]) && isCalendarLaunchView(v.value);
   if (v.method === "calendar.noticeTest")
     return exact(v, ["method", "accepted"]) && typeof v.accepted === "boolean";
   if (v.method === "calendar.icsExport" || v.method === "calendar.icsReplace")
@@ -300,7 +305,7 @@ export const isError = (v: Record<string, unknown>) =>
       exact(v, ["kind", "current"]) &&
       isCalendarConfig(v.current);
 export const isEvent = (v: Record<string, unknown>) =>
-  v.topic === "calendarRefreshed"
+  v.topic === "calendarLaunch" ? exact(v,["topic","value"]) && isCalendarLaunchView(v.value) : v.topic === "calendarRefreshed"
     ? exact(v, ["topic", "value", "error"]) &&
       isCalendarView(v.value) &&
       (v.error === null ||

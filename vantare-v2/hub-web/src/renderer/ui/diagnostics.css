@@ -3,8 +3,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: calc(100dvh - 138px);
-  padding-bottom: 14px;
+  /* The GPUI scroll body ends above the shell's 18 px bottom inset. */
+  min-height: calc(100dvh - 152px);
   overflow: hidden;
 }
 .v-diagnostic-health,

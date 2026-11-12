@@ -94,6 +94,13 @@ export function calendarTokens(source: string, filters: string) {
     values["calendar-proximas-wash-from"] = color(wash[1]);
     // Frozen ficha.rs uses the same neo ramp at 180 degrees.
     values["calendar-detail-neo"] = detailGradient(values["grad-neo"]);
+    const stripe = source.match(
+      /pub\(super\) fn stripe[\s\S]*?tint\(0x([A-Fa-f0-9_]+), ([0-9.]+)\)[\s\S]*?tint\(0x([A-Fa-f0-9_]+), ([0-9.]+)\)/,
+    );
+    if (!stripe) throw new Error("Calendar month stripe missing");
+    const stripeIndex = scheme === "light" ? 1 : 3;
+    values["calendar-month-stripe"] =
+      `color-mix(in srgb, ${color(stripe[stripeIndex])} ${Number((Number(stripe[stripeIndex + 1]) * 100).toFixed(4))}%, transparent)`;
     const white = source.match(/s\.on_primary = 0x([A-Fa-f0-9_]+);/);
     if (!white) throw new Error("Calendar primary text missing");
     values["text-on-accent"] = color(white[1]);

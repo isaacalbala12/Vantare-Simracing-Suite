@@ -127,6 +127,38 @@ async function checkExpandedCalendarDay(page: Page) {
     throw new Error("Expanded calendar day lost the inline hour");
 }
 
+async function checkExpandedCalendarMonth(page: Page) {
+  await page
+    .getByRole("button", { name: "Pantalla completa", exact: true })
+    .click();
+  await page.getByRole("dialog", { name: "Calendario", exact: true }).waitFor();
+  await assertDetailWindowControls(page);
+  const below = await page
+    .locator(".v-calendar-month-full")
+    .evaluate(
+      (popup) =>
+        popup.getBoundingClientRect().top >=
+        Number.parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue(
+            "--topbar-h",
+          ),
+        ),
+    );
+  if (!below) throw new Error("Expanded calendar month covers the topbar");
+  await page
+    .getByRole("button", {
+      name: "Salir de pantalla completa (Esc)",
+      exact: true,
+    })
+    .click();
+  await page.getByRole("dialog").waitFor({ state: "hidden" });
+  await page.waitForFunction(
+    () =>
+      document.activeElement?.getAttribute("aria-label") ===
+      "Pantalla completa",
+  );
+}
+
 async function checkExpandedCalendarWeek(page: Page) {
   await page
     .getByRole("button", { name: "Pantalla completa", exact: true })
@@ -459,6 +491,33 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page.mouse.move(600, 890);
     },
   },
+  "calendario-r6-mes": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-mes-contraida"].prepare(page);
+      await page
+        .getByRole("button", {
+          name: "Contraer o ampliar navegación",
+          exact: true,
+        })
+        .click();
+      await page.mouse.move(600, 890);
+    },
+  },
+  "calendario-mes-ampliada": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-mes-contraida"].prepare(page);
+      await page
+        .getByRole("button", { name: "Pantalla completa", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Calendario", exact: true })
+        .waitFor();
+      await assertDetailWindowControls(page);
+      await page.mouse.move(600, 890);
+    },
+  },
   "calendario-mes-contraida": {
     mock: "calendar-live-reference",
     async prepare(page) {
@@ -478,6 +537,7 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Octubre 2026", exact: true })
         .waitFor();
+      await checkExpandedCalendarMonth(page);
       await page.mouse.move(600, 890);
     },
   },

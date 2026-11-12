@@ -58,3 +58,39 @@ Al guardar un cambio real se eliminan los campos conocidos que domain omite,
 como valores por defecto con skip_serializing_if y opcionales nulos.
 Un parche que solicita exactamente el valor ya normalizado no escribe aunque
 el documento almacenado todavía contenga un valor sin normalizar.
+
+## Aplicar formato de tabla
+
+Solo los parches de Standings y Relative admiten `tablePreset?: TableSize`
+(`compact`, `standard`, `expanded`, generados desde Rust). Es una orden cerrada,
+no un ajuste persistido. Se rechaza combinarla con cualquier otro campo salvo
+`kind`, incluso con `columns: null`. Solo se aplica al Look Vantare.
+Las recetas se generan desde `vantare-ui` con el ejemplo `table-presets`; el
+anfitrión incluye su JSON y nunca depende de UI/GPUI. El ejemplo también genera
+el oráculo de carga, edición y guardado con las operaciones nativas.
+
+GPUI no guarda el nombre del formato: lo deduce comparando columnas exactamente
+(`hub/src/inspector.rs`, `table_template`). La futura fila del Hub será una acción
+«Aplicar formato…», sin atribuir al documento una selección que no contiene.
+GPUI aplica la receta sin confirmación (`studio/inspector_panel.rs`, ChoiceChanged).
+Se conserva ese comportamiento; Deshacer recupera el documento anterior completo,
+incluidas las columnas personalizadas reemplazadas.
+
+Standings aplica el formato a Carrera, la sesión inicial del inspector GPUI.
+Como `session_columns_mut(Session::Race)`, fija primero las columnas heredadas de
+Práctica y Clasificación para que no cambien con Carrera; conserva sus overrides
+explícitos, incluidos los vacíos. El Hub no añade un selector de sesión.
+La receta restablece ids y campos conocidos de las columnas, conserva los miembros
+desconocidos de las columnas supervivientes por `metricId` y los del documento.
+Se mantiene el CAS, las guardas de derechos/documento protegido y el historial
+existentes. Una receta que no cambia el resultado no escribe ni añade historial.
+
+Reproducir sin abrir ventanas, desde `vantare-v2` y mediante la cola:
+
+```powershell
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo run --manifest-path native/Cargo.toml -p vantare-ui --example table-presets -- native/hub-host/data/table-presets.json native/hub-host/fixtures/studio-table-preset-golden.json
+```
+
+Los tests de UI comparan ambos archivos con la salida del ejemplo. Los tests del
+escritor comparan los dieciocho casos (widget × tamaño × actual/legacy/personalizado)
+con ese oráculo independiente y verifican Deshacer/rehacer.

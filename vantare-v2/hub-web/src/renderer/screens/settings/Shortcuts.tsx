@@ -43,14 +43,6 @@ export function Shortcuts() {
     ["zoomOut", "shortcuts.zoomOut"],
     ["zoomReset", "shortcuts.zoomReset"],
   ] as const;
-  const studio = [
-    ["shortcuts.save", "shortcuts.keysSave"],
-    ["shortcuts.undo", "shortcuts.keysUndo"],
-    ["shortcuts.redo", "shortcuts.keysRedo"],
-    ["shortcuts.duplicate", "shortcuts.keysDuplicate"],
-    ["shortcuts.delete", "shortcuts.keysDelete"],
-    ["shortcuts.move", "shortcuts.keysMove"],
-  ] as const;
   return (
     <>
       <SettingGroup number={1} title={t("shortcuts.global")}>
@@ -110,17 +102,6 @@ export function Shortcuts() {
             key={label}
             label={shortcutsText[label]}
             description={t("shortcuts.hubHelp")}
-          >
-            <Keycap>{t(key)}</Keycap>
-          </SettingRow>
-        ))}
-      </SettingGroup>
-      <SettingGroup number={3} title={t("shortcuts.studio")}>
-        {studio.map(([label, key]) => (
-          <SettingRow
-            key={label}
-            label={t(label)}
-            description={t("shortcuts.studioHelp")}
           >
             <Keycap>{t(key)}</Keycap>
           </SettingRow>

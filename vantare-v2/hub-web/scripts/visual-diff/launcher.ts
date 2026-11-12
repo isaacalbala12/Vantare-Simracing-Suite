@@ -48,6 +48,20 @@ launcherScenes["launcher-aplicaciones"] = {
     await page
       .getByRole("button", { name: "Editar Vantare Overlay", exact: true })
       .waitFor();
+    const catalog = await page.locator(".v-launcher-catalog").boundingBox();
+    const height = await page.evaluate(() => window.innerHeight);
+    assert.ok(
+      catalog &&
+        catalog.y + catalog.height >= height - 20 &&
+        catalog.y + catalog.height <= height - 17,
+      "Native catalogue must fill the content down to the page footer",
+    );
+    assert.ok(
+      await page
+        .locator(".v-launcher-catalog-body")
+        .evaluate((node) => node.scrollHeight > node.clientHeight),
+      "Catalogue overflow must stay inside its own scroller",
+    );
   },
 };
 

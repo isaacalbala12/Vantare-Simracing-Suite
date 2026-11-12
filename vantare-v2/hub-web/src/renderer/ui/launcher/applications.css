@@ -1,3 +1,4 @@
+@import "./generated/catalog.css";
 .v-launcher-removal {
   position: fixed;
   inset: 0 0 0 auto;
@@ -215,4 +216,60 @@
 }
 .v-launcher-app-search .v-launcher-actions > .v-tooltip-trigger .v-button {
   min-width: 180px;
+}
+
+/* The native catalogue owns the remaining page height and scrolls only its body. */
+.v-launcher-applications {
+  height: calc(100vh - var(--topbar-h) - 16px - 18px);
+  min-height: 0;
+}
+
+.v-launcher-applications .v-launcher-app-search .v-launcher-actions .v-button {
+  height: 36px;
+  min-height: 36px;
+  padding-inline: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+}
+.v-launcher-applications > .v-launcher-catalog {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border-radius: 18px;
+  background: color-mix(
+    in srgb,
+    var(--surface-2) calc(var(--glass) * 100%),
+    transparent
+  );
+}
+.v-launcher-applications > .v-launcher-catalog > header {
+  flex: none;
+}
+.v-launcher-applications > .v-launcher-catalog > .v-launcher-catalog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.v-launcher-applications .v-launcher-app-status {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 8px;
+  background: var(--line-1);
+}
+.v-launcher-applications .v-launcher-catalog .v-launcher-app-row .v-button {
+  min-height: 30px;
+}
+.v-launcher-applications .v-launcher-catalog .v-launcher-app-row > .v-button {
+  color: var(--launcher-catalog-icon);
+}
+.v-launcher-applications
+  .v-launcher-app-row
+  .v-launcher-app-favorite[data-favorite="false"]
+  .v-button {
+  color: var(--launcher-catalog-icon);
 }

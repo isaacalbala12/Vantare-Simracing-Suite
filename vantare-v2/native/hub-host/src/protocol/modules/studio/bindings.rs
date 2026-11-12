@@ -356,6 +356,8 @@ fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
         });
     }
     for value in [
+        serde_json::json!({"kind":"standings","tablePreset":"compact"}),
+        serde_json::json!({"kind":"relative","tablePreset":"expanded"}),
         serde_json::json!({"kind":"standings","rowCount":30}),
         serde_json::json!({"kind":"relative","columns":[{"metric":"driverName","format":{"mode":"full","maxChars":64}}]}),
         serde_json::json!({"kind":"delta","showBar":false}),
@@ -378,6 +380,16 @@ fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
 fn invalid_settings() -> Vec<serde_json::Value> {
     use serde_json::json;
     vec![
+        json!({"kind":"standings","tablePreset":"unknown"}),
+        json!({"kind":"relative","tablePreset":null}),
+        json!({"kind":"relative","tablePreset":1}),
+        json!({"kind":"delta","tablePreset":"standard"}),
+        json!({"kind":"pedals","tablePreset":"standard"}),
+        json!({"kind":"fuel-strategy","tablePreset":"standard"}),
+        json!({"kind":"standings","tablePreset":"compact","columns":null}),
+        json!({"kind":"standings","tablePreset":"compact","style":"neo"}),
+        json!({"kind":"relative","tablePreset":"compact","rangeAhead":2}),
+        json!({"kind":"relative","tablePreset":"compact","columns":[]}),
         json!({"kind":"delta","brandVisible":false}),
         json!({"kind":"delta","size":"unknown"}),
         json!({"kind":"pedals","gap":13}),

@@ -4,13 +4,15 @@
 
 VANTA-138 / #1995 · 12-11-2026. Candidato exacto de medición-1: UI `9401501ea38f2e8fe65584511f27844c7efd157a`, Electron 45.2.3 y anfitrión Release QA. No es una medición de nightly actual. El paquete distribuido, instalador y supervisor no cambian.
 
-## Bloqueo y siguiente paso
+## Serie pendiente y exclusiones actualizadas
 
-El servidor se apagó durante la serie de traza. Se conserva esa ejecución como incompleta y se liberó el cerrojo huérfano tras comprobar propietario ausente y cero Hub/Electron. Después del reinicio, dos intentos no alcanzaron una ventana visible en 60 s: el anfitrión seguía vivo y Electron aún no se había lanzado. No se interpreta como un tiempo de arranque válido ni como regresión del producto.
+La serie completa N=5 por fases está esperando un minuto sin compilaciones, con captura.lock reservado. Los cinco experimentos anteriores siguen siendo los únicos resultados completos que se tabulan. No se mezclan sus bases con las nuevas tomadas después de reparar D:.
 
-A las 18:47–18:50 CET se observaron dos Cargo ajenos, después cuatro rustc, cola de disco D: 13 y luego 9. El hash aislado del EXE tardó 13,08 s, frente a unos cientos de ms para el inventario completo en las series anteriores. Son observaciones separadas, no se mezclan con los cinco pares. No se ha probado que la carga sea la única causa del bloqueo previo a Electron. Las ejecuciones gráficas quedan pausadas hasta que la cola esté vacía y se pueda repetir el diagnóstico. No se aumenta el plazo para ocultarlo ni se cancelan procesos ajenos.
+Los pilotos del grabador nativo de Chromium no terminaron stopRecording en 20 s. Se conservan incompletos. La nueva serie usa una traza de marcas explícitas del main y Paint Timing del renderer para creación, carga, handshake, FCP y show; no es un perfil de CPU V8 ni permite estimar ahorro de snapshot.
 
-Pendiente: una serie completa de cinco pares traza/base sin compilación simultánea, análisis de sus marcas y cierre del informe. Las marcas de arranque de los cinco pares base ya medidos se muestran abajo; no sustituyen ni se presentan como esa serie de traza.
+La tanda paired-trace-6e40e1b0 quedó excluida entera: Cargo PID 8948 arrancó a las 23:36:49 CET, durante la reserva iniciada a las 23:35:46. Tenía hijos sccache de compilación. Se interrumpieron solo los procesos propios; no quedaron Hub/Electron propios y se liberó su cerrojo. La reserva de repetición exige un minuto estable sin builds y registra siete comprobaciones de quietud por arranque; cualquier compilación invalida toda la serie. No se cancelan procesos ajenos.
+
+Los fallos previos de ventana visible, cierre y mantenimiento también se conservan como incompletos, sin reinterpretarlos como tiempos válidos ni atribuirles una causa no demostrada. La supervisión QA confirma hub-ready antes de retirar boot-pending, conservando la protección nativa y sin imprimir el nonce.
 
 ## Resultado antes → después
 

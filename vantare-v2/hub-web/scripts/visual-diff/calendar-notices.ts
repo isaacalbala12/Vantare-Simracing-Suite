@@ -1,4 +1,5 @@
 import type { Page } from "playwright-core";
+import { PNG } from "pngjs";
 import { calendarScenes } from "./calendar-scenes.ts";
 import { notificationHonestyScenes } from "./notification-honesty.ts";
 import type { VisualScene } from "./scenes.ts";
@@ -24,6 +25,17 @@ function alerts(expanded: boolean): VisualScene {
       await preview
         .getByText("Vantare · Calendario", { exact: true })
         .waitFor();
+      // Force compositor readback and reject a preview without painted text.
+      const pixels = PNG.sync.read(await preview.screenshot());
+      let ink = 0;
+      for (let i = 0; i < pixels.data.length; i += 4)
+        if (
+          pixels.data[i] > 180 &&
+          pixels.data[i + 1] > 180 &&
+          pixels.data[i + 2] > 180
+        )
+          ink++;
+      if (ink < 50) throw Error("Calendar preview text was not painted");
       for (const name of ["Notificación de Windows", "Sonido"]) {
         const control = page.getByRole("checkbox", { name, exact: true });
         if ((await control.getAttribute("aria-disabled")) === "true")

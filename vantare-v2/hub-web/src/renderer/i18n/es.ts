@@ -358,7 +358,7 @@ export const settingsText = {
     "Avisa de fallos de lanzamiento en el centro del Hub. El aviso de aplicaciones listas aún no está disponible.",
   "general.toasts": "Notificaciones de Windows",
   "general.toastsHelp":
-    "Este interruptor habilita «Enviar prueba». Los avisos automáticos del Calendario se activan en Calendario › Avisos y no dependen de este ajuste.",
+    "Prueba las notificaciones de Windows con «Enviar prueba». Los avisos del Calendario se configuran en Calendario › Avisos.",
   "general.testNotice": "Enviar prueba",
   "general.noticeSent": "Notificación de prueba enviada",
   "general.noticeUnavailable": "No se pudo mostrar la notificación de Windows",

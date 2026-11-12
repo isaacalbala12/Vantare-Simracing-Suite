@@ -71,7 +71,7 @@ impl Relative {
             .slots
             .iter()
             .flatten()
-            .map(|row| (row.id, row.clone()))
+            .map(|row| (row.id.0, row.clone()))
             .collect();
         let before: Vec<_> = self
             .slots
@@ -84,7 +84,7 @@ impl Relative {
             .map(|slot| {
                 slot.as_ref().map(|row| {
                     let live = old
-                        .get(&row.id)
+                        .get(&row.id.0)
                         .cloned()
                         .unwrap_or_else(|| Arc::new(RowLive::new(row)));
                     live.update(row);
@@ -229,13 +229,13 @@ mod tests {
             .slots
             .iter()
             .flatten()
-            .map(|r| (r.id, r.clone()))
+            .map(|r| (r.id.0, r.clone()))
             .collect();
         snapshot.state.cars[1].relative_s = Quality::Reliable(3.0);
         assert!(runtime.update_if(|s, _| s.ingest(&snapshot)));
         runtime.frame(1.0 / 60.0);
         for live in runtime.state.slots.iter().flatten() {
-            assert!(Arc::ptr_eq(&old[&live.id], live));
+            assert!(Arc::ptr_eq(&old[&live.id.0], live));
             assert!(runtime.find(&format!("car-{}", live.id.0)).is_some());
         }
     }

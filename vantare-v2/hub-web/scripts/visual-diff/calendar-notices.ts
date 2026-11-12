@@ -43,20 +43,25 @@ function alerts(expanded: boolean, enabled = true): VisualScene {
           : "calendario-avisos-contraida"
       ].prepare(page);
       const preview = page.locator(".v-calendar-alerts-toast");
-      await preview
-        .getByText("Vantare · Calendario", { exact: true })
-        .waitFor();
-      // Force compositor readback and reject a preview without painted text.
-      const pixels = PNG.sync.read(await preview.screenshot());
-      let ink = 0;
-      for (let i = 0; i < pixels.data.length; i += 4)
-        if (
-          pixels.data[i] > 180 &&
-          pixels.data[i + 1] > 180 &&
-          pixels.data[i + 2] > 180
-        )
-          ink++;
-      if (ink < 50) throw Error("Calendar preview text was not painted");
+      if (enabled) {
+        await preview
+          .getByText("Vantare · Calendario", { exact: true })
+          .waitFor();
+        // Force compositor readback and reject a preview without painted text.
+        const pixels = PNG.sync.read(await preview.screenshot());
+        let ink = 0;
+        for (let i = 0; i < pixels.data.length; i += 4)
+          if (
+            pixels.data[i] > 180 &&
+            pixels.data[i + 1] > 180 &&
+            pixels.data[i + 2] > 180
+          )
+            ink++;
+        if (ink < 50) throw Error("Calendar preview text was not painted");
+      } else {
+        if (await preview.count())
+          throw Error("General-off preview promises a Windows notice");
+      }
       if (!enabled)
         await page
           .getByText(

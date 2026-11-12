@@ -12,7 +12,9 @@ la familia del proceso. Distingue identidades por PID y fecha de creación;
 no guarda líneas de comandos, nombres de usuario ni credenciales. PresentMon
 2.6.0 se verifica por SHA-256 antes de abrirlo. Se captura su CSV sin quitar
 fotogramas descartados. Los resultados incompletos se conservan con INVALIDA.
-Falta la agregación estricta de estos CSV y su integración con las rondas.
+La agregación pura inicial está en `agregar.py`: valida las unidades QPC de
+PresentMon 2.6, separa cadenas y suma CPU y memoria de la familia declarada.
+Siete pruebas sintéticas pasan; falta integrar los resultados con las rondas.
 
 Los nombres y unidades de PresentMon se consultan en su documentación oficial
 [v2.6.0](https://github.com/GameTechDev/PresentMon/blob/v2.6.0/README-ConsoleApplication.md).
@@ -32,3 +34,8 @@ del calentamiento de overlays y medir exactamente el mismo tramo temporal.
 La compilación C# y el parseo PowerShell se verifican sin instanciar contadores.
 No se ha ejecutado PresentMon ni la carga en el servidor. El funcionamiento
 real de GPU, relojes, pantalla y contadores queda para el PC de juego.
+
+Pendientes antes del kit: iniciar PresentMon antes del proceso medido para
+capturar su primer Present; ruido de otros procesos por encima del 2 %;
+comprobación térmica verificable y normalización completa de contadores GPU.
+Estos pendientes no se dan por cubiertos por las pruebas sintéticas.

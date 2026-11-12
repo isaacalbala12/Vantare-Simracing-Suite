@@ -1,3 +1,13 @@
+## VANTA-141 · Agregación inicial piezas 6+7
+
+Siete pruebas puras PASS: unidades PresentMon QPC/duraciones, descartados,
+filtrado por PID, cadenas separadas sin FPS artificiales, sumas CPU/memoria
+por familia y rechazo de reinicios de contadores o cambio de identidad.
+Fuentes de carga y muestreador preparadas; C# compilado sin instanciar APIs.
+Carga todavía sin compilar y ningún gráfico ejecutado en servidor.
+Arranque del capturador antes del proceso, ruido/temperatura y contadores GPU
+siguen pendientes de integración. No entregar como campaña completa todavía.
+
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 
 [#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995),

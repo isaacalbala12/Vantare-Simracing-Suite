@@ -63,6 +63,19 @@ class ClassifyPathsTest(unittest.TestCase):
         self.assertEqual(scope.telemetria_paths, ())
         self.assertTrue(scope.reasons)
 
+    def test_hub_web_contract_fixtures_and_tokens_keep_native_gates(self) -> None:
+        for path in (
+            "vantare-v2/hub-web/src/contract/generated/account.ts",
+            "vantare-v2/hub-web/fixtures/calendar-ics-gpui.json",
+            "vantare-v2/hub-web/design/tokens.json",
+        ):
+            with self.subTest(path=path):
+                scope = classify_paths([path])
+                self.assertTrue(scope.native)
+                self.assertIn(path, scope.native_paths)
+        self.assertFalse(classify_paths(
+            ["vantare-v2/hub-web/src/renderer/screens/home.tsx"]).native)
+
     def test_web_supabase_and_tooling_only_skip_the_native_gates(self) -> None:
         scope = classify_paths(
             [

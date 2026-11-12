@@ -50,8 +50,16 @@ IGNORED_PREFIXES = (
     ".github/workflows/hub-web.yml",
 )
 # Excepciones dentro de las zonas ignoradas: el trabajo de Windows ejecuta los
-# tests de `tools/ci-runners` y no puede saltárselos.
-NEVER_IGNORED_PREFIXES = ("tools/ci-runners/",)
+# tests de `tools/ci-runners` y no puede saltárselos. Los tests de hub-host y
+# hub comparan el contrato generado, los fixtures y los tokens de hub-web: un
+# PR que toque solo esas rutas también debe correr los gates nativos (no
+# esperar a nightly).
+NEVER_IGNORED_PREFIXES = (
+    "tools/ci-runners/",
+    "vantare-v2/hub-web/src/contract/",
+    "vantare-v2/hub-web/fixtures/",
+    "vantare-v2/hub-web/design/tokens.json",
+)
 IGNORED_SUFFIXES = (".md",)
 # Zonas que obligan a repetir el corpus de grabaciones reales (#1498): el código
 # del runtime y TODO lo que compila dentro de él (Cargo.toml de runtime: domain,

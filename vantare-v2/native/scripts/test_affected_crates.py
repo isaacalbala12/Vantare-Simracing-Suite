@@ -1,6 +1,7 @@
 import unittest
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -117,7 +118,10 @@ class ScopeTests(unittest.TestCase):
              'dependencies': [{'name': dep} for dep in deps]}
             for name, directory, deps in [
                 ('vantare-hub-host', 'hub-host', []),
+                ('vantare-ui', 'ui', ['vantare-hub-host']),
                 ('vantare-installer', 'installer', ['vantare-hub-host']),
+                ('vantare-hub', 'hub', ['vantare-ui']),
+                ('vantare-admin', 'admin', ['vantare-hub']),
                 ('vantare-domain', 'domain', []),
             ]
         ]
@@ -126,12 +130,37 @@ class ScopeTests(unittest.TestCase):
         packages = self._hub_web_packages()
         for path in (
             'vantare-v2/hub-web/src/contract/generated/account.ts',
-            'vantare-v2/hub-web/fixtures/launcher-apps.json',
             'vantare-v2/hub-web/design/tokens.json',
             'vantare-v2/hub-web/scripts/contract-index.ts',
         ):
-            self.assertEqual(affected.select(packages, [path]),
-                             ['vantare-hub-host', 'vantare-installer'], path)
+            self.assertEqual(
+                affected.select_for_ci(packages, [path], fast=True),
+                ['vantare-hub-host', 'vantare-installer', 'vantare-ui'], path)
+
+    def test_hub_web_calendar_fixtures_keep_legacy_hub_tests(self):
+        packages = self._hub_web_packages()
+        selected = affected.select_for_ci(
+            packages, ['vantare-v2/hub-web/fixtures/calendar-ics-gpui.json'], fast=True)
+        self.assertIn('vantare-hub', selected)
+        self.assertIn('vantare-admin', selected)
+        self.assertIn('vantare-hub-host', selected)
+
+    def test_every_hub_web_input_referenced_from_native_is_covered(self):
+        native = Path(__file__).resolve().parents[1]
+        metadata = json.loads(subprocess.check_output(
+            ['cargo', 'metadata', '--locked', '--offline', '--no-deps', '--format-version', '1'],
+            cwd=native))
+        packages = [p for p in metadata['packages'] if p['id'] in metadata['workspace_members']]
+        referenced = set()
+        for source in native.rglob('*.rs'):
+            text = source.read_text(encoding='utf-8', errors='ignore')
+            for match in re.findall(r'hub-web/[A-Za-z0-9_./-]+', text):
+                referenced.add('vantare-v2/' + match.rstrip('/.'))
+        self.assertTrue(referenced, 'native no referencia ningún input de hub-web')
+        for path in sorted(referenced):
+            changed = affected.changed_crates(packages, [path])
+            self.assertFalse(changed is not None and not changed,
+                             f'{path} se ignora en silencio')
 
     def test_other_hub_web_changes_do_not_select_native_crates(self):
         packages = self._hub_web_packages()

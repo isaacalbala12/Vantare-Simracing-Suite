@@ -121,8 +121,11 @@ def select_for_ci(packages, paths, fast=False):
     selected = select(packages, paths)
     if changed_crates(packages, paths) is None:
         return selected
+    # Hub también lee fixtures de hub-web en sus tests: si cambian, no puede
+    # perder sus tests por el filtro rápido de legacy.
     legacy_changed = any(path.replace('\\', '/').startswith(
-        ('vantare-v2/native/hub/', 'vantare-v2/native/admin/')) for path in paths)
+        ('vantare-v2/native/hub/', 'vantare-v2/native/admin/',
+         'vantare-v2/hub-web/fixtures/')) for path in paths)
     return sorted(set(selected) - LEGACY) if fast and not legacy_changed else selected
 
 

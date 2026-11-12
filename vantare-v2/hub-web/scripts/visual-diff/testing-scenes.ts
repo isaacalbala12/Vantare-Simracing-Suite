@@ -16,6 +16,11 @@ export const testingScenes: Record<string, VisualScene> = {
       await page.getByRole("tab", { name: "Comunidad", exact: true }).click();
       await page.getByRole("button", { name: "Recargar", exact: true }).click();
       await page
+        .getByText("QA · ejemplo de participación, sin backend ni envío", {
+          exact: true,
+        })
+        .waitFor();
+      await page
         .getByText("QA · documentación de una prueba · En revisión", {
           exact: true,
         })
@@ -68,6 +73,11 @@ export const testingScenes: Record<string, VisualScene> = {
         .getByRole("tab", { name: "Cuestionarios", exact: true })
         .click();
       await page.getByRole("button", { name: "Recargar", exact: true }).click();
+      await page
+        .getByText("QA · ejemplo de participación, sin backend ni envío", {
+          exact: true,
+        })
+        .waitFor();
       await page
         .getByRole("button", {
           name: "0.0.974 · QA · experiencia del Hub · Sin responder",

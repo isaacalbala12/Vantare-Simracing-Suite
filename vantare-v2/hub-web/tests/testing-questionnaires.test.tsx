@@ -144,12 +144,11 @@ it("reproduces cached reference data after disconnecting, without accepting anot
   ).toBe(true);
 });
 
-it("shows capture-bank status after loading the explicit questionnaire fixture", async () => {
-  window.history.replaceState(
-    null,
-    "",
-    "/?escena=testing-tester-questionnaires-reference",
-  );
+it.each([
+  "testing-tester-questionnaires-reference",
+  "visual-light:testing-tester-questionnaires-reference",
+])("shows capture-bank status after loading %s", async (scene) => {
+  window.history.replaceState(null, "", `/?escena=${scene}`);
   await mount();
   expect(
     screen.queryByText("QA · ejemplo de participación, sin backend ni envío"),

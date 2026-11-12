@@ -5,6 +5,8 @@ it("uses the frozen bank status only for the two explicit participation scenes",
   for (const scene of [
     "testing-tester-questionnaires-reference",
     "testing-tester-community-reference",
+    "visual-dark:testing-tester-questionnaires-reference",
+    "visual-light:testing-tester-community-reference",
   ])
     expect(
       testingParticipationLabel("Datos confirmados por el servicio", scene),
@@ -13,6 +15,8 @@ it("uses the frozen bank status only for the two explicit participation scenes",
     "",
     "testing-tester-reports",
     "testing-tester-reference",
+    "visual-light:testing-tester-reports",
+    "visual-other:testing-tester-questionnaires-reference",
   ])
     expect(
       testingParticipationLabel("Datos confirmados por el servicio", scene),

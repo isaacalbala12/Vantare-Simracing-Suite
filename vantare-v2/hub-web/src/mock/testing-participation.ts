@@ -5,7 +5,7 @@ export function testingParticipationLabel(fallback: string, scene?: string) {
   return [
     "testing-tester-questionnaires-reference",
     "testing-tester-community-reference",
-  ].includes(name ?? "")
+  ].includes((name ?? "").replace(/^visual-(?:dark|light):/, ""))
     ? "QA · ejemplo de participación, sin backend ni envío"
     : fallback;
 }

@@ -11,15 +11,35 @@ def changed_crates(packages, paths):
         Path(package['manifest_path']).parent.name: package['name']
         for package in packages
     }
+    # hub-web (Electron) no es producto nativo, pero hub-host compila y prueba su
+    # contrato generado, sus fixtures y los tokens de diseño: un cambio ahí sí
+    # activa hub-host y sus dependientes. El resto de hub-web no toca Rust.
+    hub_web_prefix = 'vantare-v2/hub-web/'
+    hub_web_host_inputs = (
+        'vantare-v2/hub-web/src/contract/',
+        'vantare-v2/hub-web/fixtures/',
+        'vantare-v2/hub-web/design/tokens.json',
+        'vantare-v2/hub-web/scripts/contract-index.ts',
+    )
+    hub_web_host = next(
+        (package['name'] for package in packages if package['name'] == 'vantare-hub-host'), None)
     changed = set()
     for path in paths:
-        parts = path.replace('\\', '/').split('/')
+        normalized = path.replace('\\', '/')
+        if normalized.startswith(hub_web_prefix):
+            if not normalized.startswith(hub_web_host_inputs):
+                continue
+            if hub_web_host is None:
+                return None
+            changed.add(hub_web_host)
+            continue
+        parts = normalized.split('/')
         if parts[:2] != ['vantare-v2', 'native']:
             # Workflow and build tooling outside native may change any gate.
-            if path.startswith('vantare-v2/docs/') or path.endswith('.md'):
+            if normalized.startswith('vantare-v2/docs/') or normalized.endswith('.md'):
                 continue
             return None
-        if path.endswith(('Cargo.toml', 'Cargo.lock')) or parts[2:4] in [['hub', 'assets'], ['hub', 'reference']]:
+        if normalized.endswith(('Cargo.toml', 'Cargo.lock')) or parts[2:4] in [['hub', 'assets'], ['hub', 'reference']]:
             return None
         if len(parts) < 4 or parts[2] not in roots:
             return None

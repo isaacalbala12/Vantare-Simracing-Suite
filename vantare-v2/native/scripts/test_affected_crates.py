@@ -2,6 +2,7 @@ import unittest
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location('affected', Path(__file__).with_name('affected-crates.py'))
@@ -109,6 +110,47 @@ class ScopeTests(unittest.TestCase):
 
     def test_documentation_outside_native_has_no_native_scope(self):
         self.assertEqual(affected.select(self.packages, ['vantare-v2/docs/guide.md']), [])
+
+    def _hub_web_packages(self):
+        return [
+            {'name': name, 'manifest_path': f'D:/repo/vantare-v2/native/{directory}/Cargo.toml',
+             'dependencies': [{'name': dep} for dep in deps]}
+            for name, directory, deps in [
+                ('vantare-hub-host', 'hub-host', []),
+                ('vantare-installer', 'installer', ['vantare-hub-host']),
+                ('vantare-domain', 'domain', []),
+            ]
+        ]
+
+    def test_hub_web_contract_fixtures_and_tokens_activate_hub_host(self):
+        packages = self._hub_web_packages()
+        for path in (
+            'vantare-v2/hub-web/src/contract/generated/account.ts',
+            'vantare-v2/hub-web/fixtures/launcher-apps.json',
+            'vantare-v2/hub-web/design/tokens.json',
+            'vantare-v2/hub-web/scripts/contract-index.ts',
+        ):
+            self.assertEqual(affected.select(packages, [path]),
+                             ['vantare-hub-host', 'vantare-installer'], path)
+
+    def test_other_hub_web_changes_do_not_select_native_crates(self):
+        packages = self._hub_web_packages()
+        for path in ('vantare-v2/hub-web/src/renderer/screens/home.tsx',
+                     'vantare-v2/hub-web/tests/home.test.tsx',
+                     'vantare-v2/hub-web/docs/screen-contracts.md'):
+            self.assertEqual(affected.select(packages, [path]), [], path)
+
+    def test_hub_web_only_pr_keeps_the_web_workflow_and_skips_native(self):
+        repo = Path(__file__).resolve().parents[3]
+        workflow = (repo / '.github/workflows/hub-web.yml').read_text(encoding='utf-8')
+        self.assertIn("paths: ['vantare-v2/hub-web/**', '.github/workflows/hub-web.yml']", workflow)
+        spec = importlib.util.spec_from_file_location(
+            'native_gate_scope', repo / '.github/scripts/native_gate_scope.py')
+        scope = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = scope
+        spec.loader.exec_module(scope)
+        self.assertFalse(scope.classify_paths(
+            ['vantare-v2/hub-web/src/renderer/screens/home.tsx']).native)
 
 
 if __name__ == '__main__':

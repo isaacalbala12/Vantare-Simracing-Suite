@@ -28,6 +28,9 @@ export const calendarAlertsText = {
   track: "En pista, si ya estás conduciendo",
   trackHint: "Un aviso discreto en tus overlays, sin sonido.",
   sound: "Sonido",
+  windowsDisabled:
+    "Las notificaciones de Windows están desactivadas en Ajustes › General",
+  windowsLoading: "Leyendo las notificaciones de Windows de Ajustes › General…",
   soundRequiresWindows: "Requiere la notificación de Windows",
   soundHint: "Sonido de los avisos de Windows, solo fuera del simulador.",
   deliveryScope:

@@ -93,6 +93,10 @@ impl Settings {
                 .filter(|path| path.is_absolute()),
         }
     }
+    /// Cached, committed preference; no filesystem work on the host tick.
+    pub(crate) fn windows_notifications_enabled(&self) -> bool {
+        !self.store.protected() && self.store.value.general.toasts
+    }
     pub fn view(&self) -> SettingsView {
         #[cfg(windows)]
         let motion = self.layout.motion();

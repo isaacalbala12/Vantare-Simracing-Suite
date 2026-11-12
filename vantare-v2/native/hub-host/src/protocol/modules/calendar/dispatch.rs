@@ -87,6 +87,15 @@ pub(super) fn dispatch(
                 },
             );
         }
+        if !session.settings.windows_notifications_enabled() {
+            return frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::CalendarNoticeTest { accepted: false },
+                },
+            );
+        }
         return match session.calendar_state.notice_test(
             id,
             chrono::Utc::now().timestamp_millis(),
@@ -190,7 +199,8 @@ pub(super) fn complete_at(
     }
     let allowed = crate::calendar::allowed(&session.current.access)
         && session.current.rights == crate::protocol::LinkState::Connected
-        && session.closing.is_none();
+        && session.closing.is_none()
+        && session.settings.windows_notifications_enabled();
     let result = if crate::calendar::allowed(&session.current.access) {
         match result {
             Ok(vantare_ipc::services_protocol::Reply::Calendar { schedule, fallback }) => session

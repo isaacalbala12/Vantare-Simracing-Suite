@@ -47,6 +47,11 @@ const model = vi.hoisted(() => ({
   alert: vi.fn(),
   band: vi.fn(),
 }));
+vi.mock("../src/renderer/app/SettingsState", () => ({
+  useSettings: () => ({
+    view: { general: { toasts: true }, protected: false },
+  }),
+}));
 vi.mock("../src/renderer/app/Host", () => ({
   useHost: () => ({ client: model.client, hello: { demo: false } }),
 }));

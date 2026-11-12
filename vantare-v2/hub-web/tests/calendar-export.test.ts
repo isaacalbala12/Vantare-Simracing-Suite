@@ -12,7 +12,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { calendarIcsLimit, type HostToUi } from "../src/contract/generated/contract";
+import {
+  calendarIcsLimit,
+  type HostToUi,
+} from "../src/contract/generated/contract";
 import {
   calendarExportSession,
   saveCalendar,
@@ -179,7 +182,10 @@ it("adds a missing extension but returns a closed specific error for a different
 it("enforces the byte limit and leaves a missing directory absent", async () => {
   await withDirectory(async (root) => {
     await expect(
-      saveCalendar(join(root, "large.ics"), "á".repeat(Math.floor(calendarIcsLimit / 2) + 1)),
+      saveCalendar(
+        join(root, "large.ics"),
+        "á".repeat(Math.floor(calendarIcsLimit / 2) + 1),
+      ),
     ).rejects.toHaveProperty("code", "EFBIG");
     const session = calendarExportSession(async () =>
       join(root, "missing", "calendar.ics"),

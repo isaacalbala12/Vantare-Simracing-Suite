@@ -18,6 +18,7 @@ import {
 import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
+import { calendarIcsText } from "../../i18n/calendarIcs";
 import { Button } from "../../ui/Button";
 import { CalendarAlertsDialog } from "../../ui/CalendarAlertsDialog";
 import { CalendarBandControls } from "../../ui/CalendarBandControls";
@@ -25,6 +26,7 @@ import { CalendarDayView } from "../../ui/CalendarDayView";
 import { CalendarDetail } from "../../ui/CalendarDetail";
 import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
+import { CalendarIcsDialog } from "../../ui/CalendarIcsDialog";
 import {
   type CalendarLiveFilters,
   CalendarLiveView,
@@ -40,7 +42,9 @@ import {
   CalendarWeekView,
 } from "../../ui/CalendarWeekView";
 import { weekLongTitle, weekTitle } from "../../ui/calendarDate";
+import { useToastManager } from "../../ui/Layers";
 import { useCalendarHistory } from "./CalendarHistory";
+import { useCalendarIcs } from "./CalendarIcsState";
 import { useCalendarLauncher } from "./CalendarLauncher";
 import { useCalendarPreferences } from "./CalendarPreferences";
 import { useCalendarQARuns } from "./CalendarQARuns";
@@ -56,17 +60,22 @@ function nextPublication(now: number) {
 }
 
 export default function CalendarEntry() {
+  const toast = useToastManager();
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alertsOrigin = useRef<HTMLElement | null>(null);
   const openAlerts = () => {
+    if (!ics.canClose()) return;
     alertsOrigin.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
+    setIcsOpen(false);
     setAlertsOpen(true);
   };
   const returnAlertsFocus = () =>
-    alertsOrigin.current?.isConnected ? alertsOrigin.current : false;
+    !icsOpen && alertsOrigin.current?.isConnected
+      ? alertsOrigin.current
+      : false;
   const [activeTab, setActiveTab] = useState("upcoming");
   const [calendarSpan, setCalendarSpan] = useState("week");
   const liveFilters = useRef<CalendarLiveFilters>({
@@ -134,12 +143,26 @@ export default function CalendarEntry() {
     )?.focus({ preventScroll: true });
   }, [selectedSerie]);
 
+  const [icsOpen, setIcsOpen] = useState(false);
+  const icsOrigin = useRef<HTMLElement | null>(null);
+  const openIcs = () => {
+    icsOrigin.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setAlertsOpen(false);
+    setIcsOpen(true);
+  };
+  const returnIcsFocus = () =>
+    !alertsOpen && icsOrigin.current?.isConnected ? icsOrigin.current : false;
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
+  const ics = useCalendarIcs(icsOpen, state.allowed);
   useEffect(() => {
     if (!state.allowed) {
       setAlertsOpen(false);
+      setIcsOpen(false);
       setSelectedSerie(undefined);
       setDetail(undefined);
       liveFilters.current = {
@@ -268,6 +291,7 @@ export default function CalendarEntry() {
               onAlerts={openAlerts}
               onUtc={(utc) => void preferences.utc(utc)}
               utcDisabled={!preferences.canUtc}
+              onExport={openIcs}
             />
           ) : undefined
         }
@@ -375,6 +399,7 @@ export default function CalendarEntry() {
             subtitle={subtitle}
             count={alerts.bands.length + alerts.slots.length}
             busy={state.busy}
+            onExport={openIcs}
             onRefresh={() => void state.refresh()}
           >
             {state.failure && (
@@ -407,6 +432,7 @@ export default function CalendarEntry() {
             ) : activeTab === "mine" && schedule && view ? (
               <CalendarMineView
                 onDetail={openDetail}
+                onExport={openIcs}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -422,6 +448,7 @@ export default function CalendarEntry() {
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
                 alertsBusy={preferences.busy}
+                onExport={openIcs}
                 onSerie={openSerie}
                 onToggleSlot={toggleSlot}
                 onDetail={openDetail}
@@ -523,6 +550,7 @@ export default function CalendarEntry() {
       </SectionPanel>
       {detail && state.allowed && schedule && view && (
         <CalendarDetail
+          onExport={openIcs}
           schedule={schedule}
           seriesId={detail.id}
           initialAt={detail.at}
@@ -538,7 +566,10 @@ export default function CalendarEntry() {
           canLaunch={launcher.canLaunch}
           canFollow={preferences.canFollow}
           busy={preferences.busy}
-          onClose={closeDetail}
+          onClose={() => {
+            // The modal temporarily owns focus; keep its source drawer mounted.
+            if (!icsOpen && !alertsOpen) closeDetail();
+          }}
           returnFocus={returnDetailFocus}
           onSerie={(id) => {
             detailOrigin.current = null;
@@ -597,6 +628,34 @@ export default function CalendarEntry() {
               ? preferencesFailure
               : undefined
           }
+        />
+      )}
+      {icsOpen && state.allowed && (
+        <CalendarIcsDialog
+          returnFocus={returnIcsFocus}
+          scope={ics.scope}
+          alarm={ics.alarm}
+          lead={alerts.leadMin}
+          utc={view?.utc ?? false}
+          view={ics.view}
+          busy={ics.busy}
+          exporting={ics.exporting}
+          failure={ics.failure}
+          status={ics.status}
+          onScope={ics.setScope}
+          onAlarm={ics.setAlarm}
+          onRetry={ics.retry}
+          onClose={() => {
+            if (ics.canClose()) setIcsOpen(false);
+          }}
+          onDownload={() => {
+            void ics.download().then((saved) => {
+              if (saved) {
+                setIcsOpen(false);
+                toast.add({ title: calendarIcsText.saved, type: "ok" });
+              }
+            });
+          }}
         />
       )}
     </>

@@ -3,7 +3,7 @@
 import {
   cleanup,
   fireEvent,
-  render,
+  render as renderTree,
   screen,
   within,
 } from "@testing-library/react";
@@ -14,9 +14,15 @@ import type { CalendarView } from "../src/contract/generated/calendar";
 import { calendarDefaultAlerts } from "../src/contract/generated/calendar";
 import CalendarEntry from "../src/renderer/screens/calendar/entry";
 import { clock } from "../src/renderer/ui/calendarDate";
-import { TooltipProvider } from "../src/renderer/ui/Layers";
+import {
+  ToastProvider,
+  ToastViewport,
+  TooltipProvider,
+} from "../src/renderer/ui/Layers";
 
+const render = (ui: ReactNode) => renderTree(ui, { wrapper: ToastProvider });
 const model = vi.hoisted(() => ({
+  client: { request: vi.fn() },
   view: undefined as CalendarView | undefined,
   now: 0,
   failure: undefined as string | undefined,
@@ -34,7 +40,7 @@ const model = vi.hoisted(() => ({
   band: vi.fn(),
 }));
 vi.mock("../src/renderer/app/Host", () => ({
-  useHost: () => ({ hello: { demo: false } }),
+  useHost: () => ({ client: model.client, hello: { demo: false } }),
 }));
 vi.mock("../src/renderer/screens/calendar/CalendarState", () => ({
   useCalendar: () => ({
@@ -111,13 +117,18 @@ vi.mock("../src/renderer/ui/CalendarFrame", () => ({
   CalendarFrame: ({
     children,
     onAlerts,
+    onExport,
   }: {
     children: ReactNode;
     onAlerts: () => void;
+    onExport: () => void;
   }) => (
     <>
       <button type="button" onClick={onAlerts}>
         Avisos
+      </button>
+      <button type="button" onClick={onExport}>
+        Exportar ICS
       </button>
       {children}
     </>
@@ -172,6 +183,16 @@ beforeEach(() => {
     updated: (from + 9 * 3600_000) / 1000,
     invalidCache: false,
   };
+  model.client.request.mockReset().mockResolvedValue({
+    method: "calendar.icsPrepare",
+    value: {
+      calendar: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
+      preparedHash: "a".repeat(64),
+      entries: [],
+      total: 0,
+      validUntil: fixture.validUntil,
+    },
+  });
   model.failure = undefined;
   model.preferenceFailure = undefined;
   model.preferenceIntent = undefined;
@@ -359,4 +380,94 @@ it("keeps unrelated UTC errors outside Avisos and explains its own conflict with
   expect(
     within(dialog).queryByRole("button", { name: "Reintentar" }),
   ).toBeNull();
+});
+
+it("opens the ICS dialog from the real detail drawer and returns to it on cancel", async () => {
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ficha" }));
+  const trigger = screen.getByRole("button", {
+    name: "Añadir a mi calendario",
+  });
+  trigger.focus();
+  fireEvent.click(trigger);
+  expect(
+    screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(
+    screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeNull();
+  await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
+it("keeps only one calendar dialog open when switching between alerts and ICS", () => {
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  expect(screen.getByRole("dialog", { name: "Avisos" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
+  expect(screen.queryByRole("dialog", { name: "Avisos" })).toBeNull();
+  expect(
+    screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  expect(
+    screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeNull();
+  expect(screen.getByRole("dialog", { name: "Avisos" })).toBeTruthy();
+});
+
+it("keeps ICS open during export then closes it with a visible saved notice", async () => {
+  let finish!: (value: unknown) => void;
+  model.client.request
+    .mockImplementationOnce(async () => ({
+      method: "calendar.icsPrepare",
+      value: {
+        calendar: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
+        preparedHash: "a".repeat(64),
+        entries: [],
+        total: 0,
+        validUntil: fixture.validUntil,
+      },
+    }))
+    .mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          finish = r;
+        }),
+    );
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+      <ToastViewport closeLabel="Cerrar aviso" />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
+  await vi.waitFor(() =>
+    expect(
+      screen
+        .getByRole("button", { name: "Descargar .ics" })
+        .getAttribute("aria-disabled"),
+    ).toBe("false"),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Descargar .ics" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar (Esc)" }));
+  expect(
+    screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeTruthy();
+  finish({ method: "calendar.icsExport", status: "saved" });
+  await vi.waitFor(() =>
+    expect(
+      screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
+    ).toBeNull(),
+  );
+  expect(screen.getByText("Calendario guardado.")).toBeTruthy();
 });

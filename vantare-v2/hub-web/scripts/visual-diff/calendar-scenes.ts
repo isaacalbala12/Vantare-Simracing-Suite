@@ -34,6 +34,40 @@ async function assertDetailWindowControls(page: Page) {
 }
 
 export const calendarScenes: Record<string, VisualScene> = {
+  "calendario-ics-contraida": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-proximas-contraida"].prepare(page);
+      await page
+        .getByRole("button", { name: "Añadir a mi calendario", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Añadir a mi calendario", exact: true })
+        .waitFor();
+      await page
+        .getByText("Vista previa · 75 eventos esta semana", { exact: true })
+        .waitFor();
+      await assertDetailWindowControls(page);
+      await page.mouse.move(600, 890);
+    },
+  },
+  "calendario-ics-desplegada": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-r6-proximas"].prepare(page);
+      await page
+        .getByRole("button", { name: "Añadir a mi calendario", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Añadir a mi calendario", exact: true })
+        .waitFor();
+      await page
+        .getByText("Vista previa · 75 eventos esta semana", { exact: true })
+        .waitFor();
+      await assertDetailWindowControls(page);
+      await page.mouse.move(600, 890);
+    },
+  },
   "calendario-r6-mias": {
     mock: "calendar-live-reference",
     async prepare(page) {

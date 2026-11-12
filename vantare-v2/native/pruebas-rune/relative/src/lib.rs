@@ -13,6 +13,7 @@ pub const ROW_HEIGHT: f32 = 24.0;
 pub const HEIGHT: f32 = 265.0;
 pub mod motion;
 pub mod presentation;
+pub mod relative_motion;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Wake {
     Frame,
@@ -102,8 +103,7 @@ pub struct Relative {
     prefs: Preferences,
     content: relative::Content,
     pub labels: [LiveText; 4],
-    movement: motion::Motion,
-    epoch: Option<u64>,
+    movement: relative_motion::Rows,
     started: Instant,
     now: Instant,
 }
@@ -122,8 +122,7 @@ impl Relative {
             slots,
             views: Cell::new(0),
             labels,
-            movement: motion::Motion::default(),
-            epoch: None,
+            movement: relative_motion::Motion::default().rows,
             started: Instant::now(),
             now: Instant::now(),
             prefs,
@@ -175,10 +174,6 @@ impl Relative {
             .iter()
             .map(|row| row.as_ref().map(|r| r.id))
             .collect();
-        if self.epoch != Some(snapshot.epoch) {
-            self.movement = motion::Motion::default();
-            self.epoch = Some(snapshot.epoch);
-        }
         let top = presentation::rows_y(&board);
         let samples: Vec<_> = board
             .slots
@@ -199,7 +194,8 @@ impl Relative {
                 })
             })
             .collect();
-        self.movement.update(&samples, presentation::timing(), now);
+        self.movement
+            .update_rows(&board, &samples, presentation::timing(), now);
         self.board = board;
         self.animate(now);
         before != after || shape_changed

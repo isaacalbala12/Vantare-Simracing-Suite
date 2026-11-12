@@ -53,33 +53,52 @@ fn class_color(name: &str) -> Color {
         .unwrap();
     hex(entry["dot"].as_str().unwrap())
 }
+struct MotionTokens {
+    timing: motion::Timing,
+    period: f32,
+    alpha: f32,
+    flash: [Color; 6],
+}
+fn motion_tokens() -> &'static MotionTokens {
+    static MOTION: OnceLock<MotionTokens> = OnceLock::new();
+    MOTION.get_or_init(|| {
+        let value = |key: &str| {
+            std::time::Duration::from_secs_f64(tokens()["motion"][key].as_f64().unwrap() / 1000.0)
+        };
+        MotionTokens {
+            timing: motion::Timing {
+                reorder: value("reorder_ms"),
+                fade: value("fade_ms"),
+                flash: value("flash_ms"),
+            },
+            period: tokens()["relative"]["pulse_ms"].as_f64().unwrap() as f32 / 1000.0,
+            alpha: tokens()["relative"]["pulse_alpha"].as_f64().unwrap() as f32,
+            flash: [
+                color("colors", "flash_gain"),
+                color("colors", "flash_loss"),
+                color("colors", "leader"),
+                color("colors", "purple"),
+                color("colors", "box_fill"),
+                color("colors", "flash_gain"),
+            ],
+        }
+    })
+}
 pub fn timing() -> motion::Timing {
-    let value = |key: &str| {
-        std::time::Duration::from_secs_f64(tokens()["motion"][key].as_f64().unwrap() / 1000.0)
-    };
-    motion::Timing {
-        reorder: value("reorder_ms"),
-        fade: value("fade_ms"),
-        flash: value("flash_ms"),
-    }
+    motion_tokens().timing
 }
 pub fn pulse_parameters() -> (f32, f32) {
-    (
-        tokens()["relative"]["pulse_ms"].as_f64().unwrap() as f32 / 1000.0,
-        tokens()["relative"]["pulse_alpha"].as_f64().unwrap() as f32,
-    )
+    (motion_tokens().period, motion_tokens().alpha)
 }
 pub fn flash_color(kind: motion::Flash) -> Color {
-    color(
-        "colors",
-        match kind {
-            motion::Flash::Gain | motion::Flash::PersonalBest => "flash_gain",
-            motion::Flash::Loss => "flash_loss",
-            motion::Flash::Lead => "leader",
-            motion::Flash::Best => "purple",
-            motion::Flash::Pit => "box_fill",
-        },
-    )
+    motion_tokens().flash[match kind {
+        motion::Flash::Gain => 0,
+        motion::Flash::Loss => 1,
+        motion::Flash::Lead => 2,
+        motion::Flash::Best => 3,
+        motion::Flash::Pit => 4,
+        motion::Flash::PersonalBest => 5,
+    }]
 }
 pub fn rows_y(board: &Board) -> f32 {
     if board.banner.is_some() && !waiting(board) {

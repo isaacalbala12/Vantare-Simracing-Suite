@@ -101,10 +101,7 @@ export const calendarNoticeScenes: Record<string, VisualScene> = {
         .getByRole("button", { name: "Probar aviso", exact: true })
         .click();
       await page
-        .getByText(
-          "Prueba solicitada a Windows. Su configuración decide si se muestra o suena.",
-          { exact: true },
-        )
+        .getByText("Aviso de prueba solicitado.", { exact: true })
         .waitFor();
     },
   },

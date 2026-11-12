@@ -197,3 +197,86 @@ it.each([true, false])(
     ).toBeTruthy();
   },
 );
+
+it("persists desktop channels with the observed revision and blocks duplicate writes without optimism", async () => {
+  let config: CalendarConfigView = {
+    utc: true,
+    prefsRevision: "a".repeat(64),
+    following: [],
+    followingRevision: "b".repeat(64),
+    alerts: {
+      ...calendarDefaultAlerts,
+      bands: [],
+      slots: [],
+      channels: { windows: true, inTrack: true, sound: false },
+    },
+    alertsRevision: "c".repeat(64),
+    documents: { prefs: "ready", following: "ready", alerts: "ready" },
+  };
+  let finish!: (reply: unknown) => void;
+  api.request.mockImplementation((request) =>
+    request.method === "calendar.configLoad"
+      ? Promise.resolve({ method: request.method, value: config })
+      : new Promise((resolve) => {
+          finish = resolve;
+        }),
+  );
+  render(content());
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  await vi.waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: text.close }),
+    ),
+  );
+  const windows = screen.getByRole("checkbox", { name: text.windows });
+  windows.focus();
+  fireEvent.click(windows);
+  await act(async () => {});
+  const request = api.request.mock.calls.at(-1)?.[0];
+  expect(request).toEqual({
+    method: "calendar.alertsSave",
+    expectedRevision: "c".repeat(64),
+    alerts: {
+      ...config.alerts,
+      channels: { ...config.alerts.channels, windows: false },
+    },
+  });
+  expect(windows.getAttribute("aria-checked")).toBe("true");
+  expect(windows.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(windows);
+  fireEvent.click(windows);
+  fireEvent.click(screen.getByRole("checkbox", { name: text.sound }));
+  expect(api.request).toHaveBeenCalledTimes(2);
+  config = {
+    ...config,
+    alerts: request.alerts,
+    alertsRevision: "d".repeat(64),
+  };
+  await act(async () => {
+    finish({ method: "calendar.alertsSave", value: config });
+  });
+  expect(windows.getAttribute("aria-checked")).toBe("false");
+  fireEvent.click(screen.getByRole("checkbox", { name: text.sound }));
+  await act(async () => {});
+  expect(api.request.mock.calls.at(-1)?.[0]).toEqual({
+    method: "calendar.alertsSave",
+    expectedRevision: "d".repeat(64),
+    alerts: {
+      ...config.alerts,
+      channels: { ...config.alerts.channels, sound: true },
+    },
+  });
+  await act(async () => {
+    finish({
+      method: "calendar.alertsSave",
+      value: {
+        ...config,
+        alerts: {
+          ...config.alerts,
+          channels: { ...config.alerts.channels, sound: true },
+        },
+      },
+    });
+  });
+});

@@ -369,3 +369,8 @@
   font-size: 11px;
   font-weight: 600;
 }
+
+.v-calendar-month > footer > span:nth-child(-n + 2),
+.v-calendar-month > footer > span:last-child {
+  flex: none;
+}

@@ -179,3 +179,41 @@
 .v-context:has(.v-performance-pill) .v-rail-block-body p {
   line-height: 19px;
 }
+
+/* GPUI settings text uses 1.5; orbit::meta uses its font size as line height. */
+.v-performance .v-performance-level strong {
+  line-height: 22.5px;
+}
+.v-performance .v-performance-level-title > span {
+  line-height: 16px;
+  letter-spacing: 0.4px;
+}
+.v-performance .v-frequency-table [data-current] {
+  background: color-mix(in srgb, var(--accent-bright) 7.843137%, transparent);
+}
+/* GPUI's shadow blur is sigma; CSS's blur radius is twice sigma. */
+.v-performance .v-performance-card,
+.v-performance .v-performance-level {
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    var(--shadow-account);
+}
+:root[data-palette="classic"] .v-performance .v-performance-card,
+:root[data-palette="classic"] .v-performance .v-performance-level {
+  box-shadow:
+    inset 0 1px 0 var(--neo-light),
+    var(--shadow-account-classic);
+}
+.v-performance-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  line-height: 1.618034;
+}
+.v-context:has(.v-performance-pill) .v-rail-block-body p {
+  line-height: 19.5px;
+}
+.v-context:has(.v-performance-pill) .v-rail-block-body .v-performance-count {
+  line-height: 18px;
+}

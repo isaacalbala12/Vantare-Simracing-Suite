@@ -380,3 +380,56 @@ fn intervening_legacy_launch_does_not_invalidate_a_checked_request() {
     f.owner.progress();
     assert_eq!(f.owner.status.extension.as_ref().unwrap().events.len(), 4);
 }
+
+#[test]
+fn silent_core_does_not_make_resident_status_stale() {
+    use vantare_ipc::transport::{Event, Listener};
+    let mut f = fixture();
+    let link = account_session::AuthorityLink {
+        pipe: format!("checked-unavailable-{}", std::process::id()),
+        image: std::env::current_exe().unwrap(),
+    };
+    let stop = Arc::new(Event::new().unwrap());
+    let mut listener = Listener::new(&link.pipe, stop, Duration::from_secs(2)).unwrap();
+    let mut pipe = listener.instance().unwrap();
+    let (ready, listening) = std::sync::mpsc::channel::<()>();
+    let (release, waiting) = std::sync::mpsc::channel::<()>();
+    let server = std::thread::spawn(move || {
+        ready.send(()).unwrap();
+        pipe.accept().unwrap();
+        let request = control::read_request(&mut pipe).unwrap();
+        assert!(matches!(
+            request.command,
+            control::Command::ReadAccountSession {}
+        ));
+        assert!(request.nonce.is_empty());
+        waiting.recv().unwrap();
+    });
+    listening.recv().unwrap();
+    f.owner.authority = Some(link);
+    f.owner.publish();
+    fs::write(
+        request_path(&f.owner.path),
+        serde_json::to_vec(&Request::LaunchChecked(f.request.clone())).unwrap(),
+    )
+    .unwrap();
+    // The only timed wait is the real RPC deadline under test, not a test sleep.
+    let started = std::time::Instant::now();
+    f.owner.request();
+    let elapsed = started.elapsed();
+    release.send(()).unwrap();
+    server.join().unwrap();
+    assert!(
+        elapsed < Duration::from_secs(2),
+        "the previous 3s Status remains fresh during consume"
+    );
+    assert_eq!(
+        receipt(&f.owner),
+        LaunchReceipt::Rejected {
+            reason: LaunchRejection::AuthorityUnavailable
+        }
+    );
+    assert!(vantare_ipc::launcher::read_status(&f.owner.path).is_some());
+    assert!(f.owner.chain.is_none());
+    assert!(!request_path(&f.owner.path).exists());
+}

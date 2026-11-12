@@ -42,9 +42,19 @@ describe("partial-window modality", () => {
         popup.dispatchEvent(event);
         expect(event.defaultPrevented).toBe(false);
       }
-      const alt = new KeyboardEvent("keydown", {
-        key: "l",
+      const rail = new KeyboardEvent("keydown", {
+        key: "b",
         ctrlKey: true,
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      popup.dispatchEvent(rail);
+      expect(rail.defaultPrevented).toBe(true);
+      const alt = new KeyboardEvent("keydown", {
+        key: "@",
+        ctrlKey: true,
+        altKey: true,
         bubbles: true,
         cancelable: true,
       });
@@ -72,7 +82,7 @@ describe("partial-window modality", () => {
   });
   it("keeps notices and header actions inert, leaves toast actions available, and restores everything", async () => {
     document.body.innerHTML =
-      '<header class="v-titlebar"><div><button>Bell</button><button role="tab">Tab</button></div><div class="v-window-controls"><button>Min</button></div></header><main class="v-shell-body"></main><div class="v-toast-viewport"><button>Retry</button></div><div id="popup" tabindex="-1"><button>Cancel</button></div>';
+      '<header class="v-titlebar"><div><button>Bell</button><button role="tab">Tab</button></div><div class="v-window-controls"><button>Min</button></div></header><main class="v-shell-main"></main><div class="v-toast-viewport"><button>Retry</button></div><div id="popup" tabindex="-1"><button>Cancel</button></div>';
     const popup = document.getElementById("popup");
     if (!popup) throw new Error("Missing popup");
     const safety = dialogSafety(document),
@@ -103,7 +113,7 @@ describe("partial-window modality", () => {
   it("only dismisses on left backdrop clicks and cleans inert when unmounted open", async () => {
     const tree = render(
       <WindowDialogProvider>
-        <main className="v-shell-body">
+        <main className="v-shell-main">
           <WindowDialog.Root defaultOpen>
             <WindowDialog.Portal>
               <WindowDialog.Backdrop data-testid="backdrop" />
@@ -120,7 +130,7 @@ describe("partial-window modality", () => {
     const dialog = await screen.findByRole("dialog");
     fireEvent.pointerDown(screen.getByTestId("backdrop"), { button: 2 });
     expect(dialog.isConnected).toBe(true);
-    const main = document.querySelector(".v-shell-body");
+    const main = document.querySelector(".v-shell-main");
     tree.unmount();
     expect(main?.hasAttribute("inert")).toBe(false);
     const second = render(
@@ -144,7 +154,7 @@ describe("partial-window modality", () => {
     const user = userEvent.setup();
     render(
       <WindowDialogProvider>
-        <main className="v-shell-body">
+        <main className="v-shell-main">
           <WindowDialog.Root>
             <WindowDialog.Trigger>Outer</WindowDialog.Trigger>
             <WindowDialog.Portal>
@@ -184,7 +194,7 @@ describe("partial-window modality", () => {
   });
   it("yields focus, Escape and keyboard input to Access without closing the retained editor", () => {
     document.body.innerHTML =
-      '<main class="v-shell-body"></main><div id="editor" tabindex="-1"><input /></div><dialog open><input id="login" /><button>Gate close</button></dialog>';
+      '<main class="v-shell-main"></main><div id="editor" tabindex="-1"><input /></div><dialog open><input id="login" /><button>Gate close</button></dialog>';
     const editor = document.getElementById("editor"),
       login = document.getElementById("login");
     if (!editor || !login) throw new Error("Missing fixture");
@@ -222,7 +232,7 @@ describe("partial-window modality", () => {
     const user = userEvent.setup();
     render(
       <WindowDialogProvider>
-        <main className="v-shell-body">
+        <main className="v-shell-main">
           <WindowDialog.Root>
             <WindowDialog.Trigger>Open nested</WindowDialog.Trigger>
             <WindowDialog.Portal>
@@ -262,7 +272,7 @@ describe("partial-window modality", () => {
   });
   it("blocks background focus and launch/save shortcuts while retaining every caption control", () => {
     document.body.innerHTML =
-      '<header class="v-titlebar"><div class="v-window-controls"><button>Min</button><button>Max</button><button>Close</button></div></header><nav class="v-sidebar"><button>Launch</button></nav><main class="v-shell-body"><button id="behind">Save</button></main><div role="dialog" tabindex="-1" id="popup"><input/><button>Cancel</button></div>';
+      '<header class="v-titlebar"><div class="v-window-controls"><button>Min</button><button>Max</button><button>Close</button></div></header><nav class="v-sidebar"><button>Launch</button></nav><main class="v-shell-main"><button id="behind">Save</button></main><div role="dialog" tabindex="-1" id="popup"><input/><button>Cancel</button></div>';
     const safety = dialogSafety(document),
       stop = safety.listen(),
       close = vi.fn();
@@ -273,7 +283,7 @@ describe("partial-window modality", () => {
     window.addEventListener("keydown", leaked);
     try {
       expect(
-        document.querySelector(".v-shell-body")?.hasAttribute("inert"),
+        document.querySelector(".v-shell-main")?.hasAttribute("inert"),
       ).toBe(true);
       expect(document.querySelector(".v-sidebar")?.hasAttribute("inert")).toBe(
         true,
@@ -321,7 +331,7 @@ describe("partial-window modality", () => {
       stop();
       window.removeEventListener("keydown", leaked);
     }
-    expect(document.querySelector(".v-shell-body")?.hasAttribute("inert")).toBe(
+    expect(document.querySelector(".v-shell-main")?.hasAttribute("inert")).toBe(
       false,
     );
     expect(document.querySelector(".v-sidebar")?.hasAttribute("inert")).toBe(
@@ -330,7 +340,7 @@ describe("partial-window modality", () => {
   });
   it("restores a parent dialog and preserves pre-existing inert state after nesting and unmount", () => {
     document.body.innerHTML =
-      '<main class="v-shell-body" inert></main><nav class="v-sidebar"></nav><div id="outer" tabindex="-1"></div><div id="inner" tabindex="-1"></div>';
+      '<main class="v-shell-main" inert></main><nav class="v-sidebar"></nav><div id="outer" tabindex="-1"></div><div id="inner" tabindex="-1"></div>';
     const outer = document.getElementById("outer"),
       inner = document.getElementById("inner");
     if (!outer || !inner) throw new Error("Fixture missing");
@@ -346,7 +356,7 @@ describe("partial-window modality", () => {
     );
     first();
     stop();
-    expect(document.querySelector(".v-shell-body")?.hasAttribute("inert")).toBe(
+    expect(document.querySelector(".v-shell-main")?.hasAttribute("inert")).toBe(
       true,
     );
     expect(document.querySelector(".v-sidebar")?.hasAttribute("inert")).toBe(
@@ -366,7 +376,7 @@ describe("partial-window modality", () => {
               <button type="button">Close</button>
             </div>
           </header>
-          <main className="v-shell-body">
+          <main className="v-shell-main">
             <Parts.Root>
               <Parts.Trigger>Open</Parts.Trigger>
               <Parts.Portal>
@@ -389,13 +399,13 @@ describe("partial-window modality", () => {
       fireEvent.keyDown(dialog, { key: "Escape", isComposing: true });
       expect(dialog.isConnected).toBe(true);
       expect(
-        document.querySelector(".v-shell-body")?.hasAttribute("inert"),
+        document.querySelector(".v-shell-main")?.hasAttribute("inert"),
       ).toBe(true);
       await user.keyboard("{Escape}");
       await waitFor(() => expect(dialog.isConnected).toBe(false));
       await waitFor(() => expect(document.activeElement).toBe(trigger));
       expect(
-        document.querySelector(".v-shell-body")?.hasAttribute("inert"),
+        document.querySelector(".v-shell-main")?.hasAttribute("inert"),
       ).toBe(false);
     },
   );

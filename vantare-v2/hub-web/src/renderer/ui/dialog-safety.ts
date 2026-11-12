@@ -33,7 +33,7 @@ export function dialogSafety(doc: Document) {
     const targets = new Set<HTMLElement>();
     if (top()) {
       for (const node of doc.querySelectorAll<HTMLElement>(
-        ".v-shell-body,.v-sidebar,.v-titlebar > :not(.v-window-controls),[data-window-dialog=notice]",
+        ".v-shell-main,.v-context,.v-sidebar,.v-titlebar > :not(.v-window-controls),[data-window-dialog=notice]",
       ))
         if (!node.contains(top()?.node ?? null)) targets.add(node);
       for (const entry of entries.slice(0, -1)) targets.add(entry.node);

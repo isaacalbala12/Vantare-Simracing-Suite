@@ -107,7 +107,11 @@ export function ProfileCardActions({
             ref={popup}
             id={popupId}
             className="v-popup"
-            finalFocus={() => origin.current ?? false}
+            finalFocus={() =>
+              document.querySelector('[data-window-dialog="screen"]')
+                ? false
+                : (origin.current ?? false)
+            }
             onContextMenu={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -157,6 +161,7 @@ export function RemoveProfileDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const cancel = useRef<HTMLButtonElement>(null);
   return (
     <Dialog.Root
       open={name !== undefined}
@@ -167,7 +172,7 @@ export function RemoveProfileDialog({
     >
       <Dialog.Portal>
         <Dialog.Backdrop className="v-backdrop" />
-        <Dialog.Popup className="v-launcher-removal">
+        <Dialog.Popup className="v-launcher-removal" initialFocus={cancel}>
           <Dialog.Title>
             {duplicate ? text.duplicateTitle : text.removeTitle}
           </Dialog.Title>
@@ -177,7 +182,7 @@ export function RemoveProfileDialog({
               : text.removeMessage(name ?? "")}
           </Dialog.Description>
           <div className="v-launcher-actions">
-            <Button disabled={pending} onClick={onCancel}>
+            <Button ref={cancel} disabled={pending} onClick={onCancel}>
               {text.cancel}
             </Button>
             <Button

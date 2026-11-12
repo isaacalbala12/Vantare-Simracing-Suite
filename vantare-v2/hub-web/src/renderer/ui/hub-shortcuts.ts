@@ -21,16 +21,26 @@ const keys = new Set<string>([
   ...Object.values(hubKeys).flat(),
   ...browserKeys,
 ]);
-export function altGraph(event: KeyboardEvent) {
-  return event.getModifierState("AltGraph") || (event.ctrlKey && event.altKey);
-}
+// Windows may report Spanish AltGr as Control+Alt without AltGraph. Match
+// exact modifier chords and logical keys instead of exempting all Control+Alt.
+export const dialogBindings = [...keys].flatMap((key) => [
+  { key, ctrl: true, alt: false, meta: false },
+  { key, ctrl: true, alt: true, meta: false },
+  { key, ctrl: false, alt: false, meta: true },
+  { key, ctrl: false, alt: true, meta: true },
+]);
 export function dialogShortcut(event: KeyboardEvent) {
-  if (altGraph(event) || !(event.ctrlKey || event.metaKey)) return false;
   if (
     event.key.toLowerCase() === hubKeys.undo &&
     event.target instanceof Element &&
     event.target.closest('input,textarea,[contenteditable="true"]')
   )
     return false;
-  return keys.has(event.key.toLowerCase());
+  return dialogBindings.some(
+    (binding) =>
+      binding.key === event.key.toLowerCase() &&
+      binding.ctrl === event.ctrlKey &&
+      binding.alt === event.altKey &&
+      binding.meta === event.metaKey,
+  );
 }

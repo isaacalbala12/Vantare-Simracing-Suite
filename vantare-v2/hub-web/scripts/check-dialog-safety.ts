@@ -75,7 +75,40 @@ export async function checkProfileContextKeys(page: Page) {
 }
 
 /** Runs in the existing Chromium web job, not jsdom, without any new server/dependency. */
+export async function openProfileRemovalWithKeyboard(page: Page) {
+  await page.locator(".v-launcher-profile").first().focus();
+  await page.keyboard.press("Shift+F10");
+  const remove = page.getByRole("menuitem", { name: "Eliminar", exact: true });
+  await remove.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog");
+  await dialog.waitFor();
+  await until(
+    () =>
+      dialog
+        .getByRole("button")
+        .first()
+        .evaluate((node) => node === document.activeElement),
+    5000,
+    "keyboard menu hands focus to the first confirmation button",
+  );
+  return dialog;
+}
+
 export async function checkDialogSafety(
+  page: Page,
+  base: string,
+  evidence: string,
+) {
+  // Closing this page removes its init script and prototype hook completely.
+  const isolated = await page.context().newPage();
+  try {
+    await checkIsolatedDialogs(isolated, base, evidence);
+  } finally {
+    await isolated.close();
+  }
+}
+async function checkIsolatedDialogs(
   page: Page,
   base: string,
   evidence: string,
@@ -108,11 +141,38 @@ export async function checkDialogSafety(
   await page.goto(`${base}?escena=visual-dark:launcher-base`);
   await launcherScenes["launcher-base"].prepare(page);
   await checkProfileContextKeys(page);
-  await page.locator(".v-launcher-profile").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: "Eliminar", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.waitFor();
+  const dialog = await openProfileRemovalWithKeyboard(page);
+  const firstButton = dialog.getByRole("button").first();
+  await until(
+    () => firstButton.evaluate((node) => node === document.activeElement),
+    5000,
+    "first confirmation button receives initial focus",
+  );
+  const order = await page.evaluate(() => {
+    const popup = document.querySelector("[data-window-dialog=screen]");
+    const buttons = [
+      ...(popup?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ??
+        []),
+      ...document.querySelectorAll<HTMLButtonElement>(
+        ".v-window-controls button",
+      ),
+    ];
+    return buttons.map((node) => {
+      node.dataset.dialogTabId = String(buttons.indexOf(node));
+      return node.dataset.dialogTabId;
+    });
+  });
   await dialog.focus();
+  for (const expected of order) {
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await page.evaluate(
+        () => (document.activeElement as HTMLElement)?.dataset.dialogTabId,
+      ),
+      expected,
+      "caption controls follow every dialog button",
+    );
+  }
   await page.keyboard.press("Tab");
   assert.ok(
     await dialog.evaluate((node) => node.contains(document.activeElement)),
@@ -131,6 +191,7 @@ export async function checkDialogSafety(
     );
   }
   const controls = page.locator(".v-window-controls button");
+  assert.equal(await controls.count(), 3);
   for (const button of await controls.all()) {
     await button.focus();
     assert.ok(await button.evaluate((node) => node === document.activeElement));
@@ -146,6 +207,10 @@ export async function checkDialogSafety(
   );
   const behind = page.locator(
     '.v-sidebar button,.v-section-tabs-slot [role="tab"],.v-notification-bell,.v-titlebar-actions button',
+  );
+  assert.ok(
+    (await behind.count()) > 0,
+    "background actions fixture is nonempty",
   );
   await page.evaluate(() => {
     document.documentElement.dataset.behindClicks = "0";
@@ -184,6 +249,9 @@ export async function checkDialogSafety(
     0,
     "Ctrl L sends no launch request",
   );
+  const rail = await page.locator(".v-context").getAttribute("class");
+  await page.keyboard.press("Control+Alt+b");
+  assert.equal(await page.locator(".v-context").getAttribute("class"), rail);
   await dialog.waitFor();
   await page.screenshot({
     path: resolve(evidence, "dialog-profile-safety.png"),
@@ -195,11 +263,39 @@ export async function checkDialogSafety(
     "profile confirmation closes",
   );
 
+  await page.keyboard.press("Control+l");
+  assert.equal(
+    await page.evaluate(
+      () =>
+        (Reflect.get(window, "dialogRequestMethods") as string[]).filter(
+          (method) =>
+            method === "launcher.favorite" || method === "launcher.launch",
+        ).length,
+    ),
+    1,
+    "positive control: Ctrl L launches exactly once without a dialog",
+  );
+
   await page.goto(`${base}?escena=visual-dark:ajustes-con-diseno`);
   await page.locator('.v-search input[type="search"]').waitFor();
   await page.keyboard.press("Control+k");
   const search = page.getByRole("dialog").getByRole("combobox");
   await search.focus();
+  assert.equal(
+    await search.evaluate((node) => {
+      const event = new KeyboardEvent("keydown", {
+        key: "b",
+        ctrlKey: true,
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      node.dispatchEvent(event);
+      return event.defaultPrevented;
+    }),
+    true,
+    "Ctrl Alt B is blocked even in editable fields",
+  );
   // Linux CI has no Spanish OS keyboard layout. Assert the cancelable AltGr
   // keydown first, then insert its text through Chromium's input pipeline.
   assert.equal(

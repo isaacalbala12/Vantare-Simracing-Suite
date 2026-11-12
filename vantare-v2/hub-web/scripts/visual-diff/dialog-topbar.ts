@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Locator, Page } from "playwright-core";
-import { checkProfileContextKeys } from "../check-dialog-safety.ts";
+import {
+  checkProfileContextKeys,
+  openProfileRemovalWithKeyboard,
+} from "../check-dialog-safety.ts";
 import { checkNativeAccessLayer } from "../check-native-access-layer.ts";
 import { until } from "../wait-for.ts";
 import { accessScenes } from "./access.ts";
@@ -47,7 +50,9 @@ async function chrome(page: Page) {
         getComputedStyle(header).getPropertyValue("-webkit-app-region") ===
           "drag",
       backgroundInert: [
-        ...document.querySelectorAll<HTMLElement>(".v-shell-body,.v-sidebar"),
+        ...document.querySelectorAll<HTMLElement>(
+          ".v-shell-main,.v-context,.v-sidebar",
+        ),
       ].every((node) => node.inert),
     };
   });
@@ -485,6 +490,10 @@ scenes["dialog-topbar-toast-covered"] = {
   },
   async cleanup(page) {
     if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after") {
+      if (process.env.VANTARE_VERIFY_SPANISH_ALTGR === "1") {
+        const { checkSpanishAltGr } = await import("../check-spanish-altgr.ts");
+        await checkSpanishAltGr(page);
+      }
       const close = page.locator(".v-toast button").first();
       await close.focus();
       assert.ok(
@@ -502,6 +511,8 @@ scenes["dialog-topbar-toast-covered"] = {
         .locator('[data-window-dialog="screen"]')
         .waitFor({ state: "hidden" });
       await checkProfileContextKeys(page);
+      await openProfileRemovalWithKeyboard(page);
+      await page.keyboard.press("Escape");
     }
   },
 };

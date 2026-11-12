@@ -1,5 +1,6 @@
 import type { VisualScene } from "./scenes.ts";
 import {
+  assertQuestionnaireUsesFreeHeight,
   assertTestingConsentFits,
   settingsTabsStyle,
 } from "./testing-readability.ts";
@@ -76,6 +77,7 @@ export const testingScenes: Record<string, VisualScene> = {
       await page
         .getByRole("button", { name: "Guardar respuesta", exact: true })
         .waitFor();
+      await assertQuestionnaireUsesFreeHeight(page);
       await page.mouse.move(600, 890);
     },
   },
@@ -138,19 +140,20 @@ export const testingScenes: Record<string, VisualScene> = {
     },
   },
   "testing-center-informe": {
-    mock: "testing-reference",
+    mock: "testing-tester-reference",
     async prepare(page) {
       await page
         .getByRole("navigation", { name: "Navegación principal" })
-        .getByRole("button", { name: "Informes", exact: true })
+        .getByRole("button", { name: "Testing Center", exact: true })
+        .click();
+      await page.getByRole("tab", { name: "Informes", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Informe con capturas", exact: true })
         .click();
       await page
-        .getByRole("heading", {
-          name: "Ayúdanos a mejorar Vantare",
-          exact: true,
-        })
+        .getByRole("heading", { name: "Nuevo informe", exact: true })
         .waitFor();
-      await assertTestingConsentFits(page);
+      await page.mouse.move(600, 890);
     },
   },
 };

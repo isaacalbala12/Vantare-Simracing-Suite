@@ -143,3 +143,26 @@ it("reproduces cached reference data after disconnecting, without accepting anot
     screen.getByRole("button", { name: "Recargar" }).hasAttribute("disabled"),
   ).toBe(true);
 });
+
+it("shows capture-bank status after loading the explicit questionnaire fixture", async () => {
+  window.history.replaceState(
+    null,
+    "",
+    "/?escena=testing-tester-questionnaires-reference",
+  );
+  await mount();
+  expect(
+    screen.queryByText("QA · ejemplo de participación, sin backend ni envío"),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Recargar" }));
+  expect(
+    await screen.findByText(
+      "QA · ejemplo de participación, sin backend ni envío",
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", {
+      name: "0.0.974 · QA · experiencia del Hub · Sin responder",
+    }),
+  ).toBeTruthy();
+});

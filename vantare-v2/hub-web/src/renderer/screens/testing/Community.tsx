@@ -1,3 +1,4 @@
+import { testingParticipationLabel } from "../../../mock/testing-participation";
 import { testingCommunityText as communityText } from "../../i18n/testing-community";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
@@ -6,6 +7,8 @@ import { TestingCard, TestingLayout } from "../../ui/TestingLayout";
 import { testingText as text } from "./es";
 import { useReports } from "./ReportsState";
 import { TriageEditor } from "./TriageEditor";
+
+declare const __VANTARE_RENDERER_MOCK__: boolean;
 
 export function TestingCommunity({
   onDiagnostic,
@@ -28,7 +31,9 @@ export function TestingCommunity({
           <TestingCard title={communityText.title}>
             <p>
               {state.participationLoaded
-                ? communityText.loaded
+                ? __VANTARE_RENDERER_MOCK__
+                  ? testingParticipationLabel(communityText.loaded)
+                  : communityText.loaded
                 : text.reloadHelp}
             </p>
             {state.error && (

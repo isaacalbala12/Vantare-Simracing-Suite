@@ -9,6 +9,8 @@ import { SessionReportReceipts } from "../../ui/SessionReportReceipts";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import {
   TestingCard,
+  TestingComposeCard,
+  TestingFieldPair,
   TestingFinePrint,
   TestingLayout,
   TestingNotes,
@@ -185,7 +187,7 @@ export function Reports({
           </TestingCard>
         </>
       ) : (
-        <TestingCard title={text.compose}>
+        <TestingComposeCard title={text.compose}>
           <Select
             label={text.module}
             value={state.fields.module}
@@ -209,22 +211,24 @@ export function Reports({
               state.edit({ observedText: event.currentTarget.value })
             }
           />
-          <Textarea
-            label={text.expected}
-            value={state.fields.expectedText}
-            disabled={blocked}
-            onChange={(event) =>
-              state.edit({ expectedText: event.currentTarget.value })
-            }
-          />
-          <Textarea
-            label={text.context}
-            value={state.fields.contextText}
-            disabled={blocked}
-            onChange={(event) =>
-              state.edit({ contextText: event.currentTarget.value })
-            }
-          />
+          <TestingFieldPair>
+            <Textarea
+              label={text.expected}
+              value={state.fields.expectedText}
+              disabled={blocked}
+              onChange={(event) =>
+                state.edit({ expectedText: event.currentTarget.value })
+              }
+            />
+            <Textarea
+              label={text.context}
+              value={state.fields.contextText}
+              disabled={blocked}
+              onChange={(event) =>
+                state.edit({ contextText: event.currentTarget.value })
+              }
+            />
+          </TestingFieldPair>
           <ActionGroup>
             <Button
               disabled={blocked || !loaded}
@@ -265,7 +269,7 @@ export function Reports({
           >
             {text.retryPrepare}
           </Button>
-        </TestingCard>
+        </TestingComposeCard>
       )}
       {state.receipt && (
         <Callout title={text.received}>

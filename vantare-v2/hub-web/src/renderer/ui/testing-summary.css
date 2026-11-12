@@ -83,7 +83,14 @@
   }
 }
 
-.v-shell-main > [role="tabpanel"]:has(.v-testing-summary),
+.v-shell-main > .v-content-stack:has(.v-testing-summary) {
+  height: 100%;
+  min-height: 0;
+}
+.v-shell-main [role="tabpanel"]:has(.v-testing-summary) {
+  flex: 1;
+  min-height: 0;
+}
 .v-testing:has(> .v-testing-summary) {
   height: 100%;
 }

@@ -48,12 +48,14 @@ export function TestingToolbar({
 export function TestingCard({
   title,
   children,
+  className = "",
 }: {
   title?: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="v-testing-card">
+    <section className={`v-testing-card ${className}`}>
       {title && (
         <h2>
           <Icon name="v-testing" />
@@ -88,4 +90,22 @@ export function TestingRailSection({
 
 export function TestingRailLayout({ children }: { children: ReactNode }) {
   return <div className="v-testing-rail">{children}</div>;
+}
+
+export function TestingFieldPair({ children }: { children: ReactNode }) {
+  return <div className="v-testing-compose-pair">{children}</div>;
+}
+
+export function TestingComposeCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <TestingCard title={title} className="v-testing-compose">
+      {children}
+    </TestingCard>
+  );
 }

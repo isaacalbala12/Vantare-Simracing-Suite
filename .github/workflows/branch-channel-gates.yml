@@ -401,6 +401,9 @@ jobs:
         shell: pwsh
         env:
           CARGO_BUILD_JOBS: '4'
+          # Experimento #1993: sin info de depuración en los binarios de test;
+          # acelera compilación/enlace y reduce el archivo. No cambia qué se ejecuta.
+          CARGO_PROFILE_TEST_DEBUG: '0'
           # Decisión del clasificador de rutas (trabajo `policy`). Vacío o
           # distinto de «false» ⇒ corre el corpus: fail-closed.
           TELEMETRIA_SCOPE: ${{ needs.policy.outputs.telemetria }}

@@ -191,6 +191,32 @@ petición cancelada se descartan. No se introducen variantes en el wire v6.
 Distingue `archived` (se archivó el antiguo y ganó el borrador protegido) de
 `preserved` (el origen sigue conservado por un fallo o por no poder importarlo).
 
+### Cierre con borrador de Informes (sin método nuevo)
+
+La X intenta guardar mediante `draft.save` durante un plazo total de 5 s, con reloj
+monotónico inyectable. El cliente mantiene `request()` cerrado con `busy` después
+de `closeRequested`; únicamente la preparación del propietario de Informes tiene
+una función cerrada que admite `ReportFields`, nunca un método libre. Después del
+guardado se ejecutan los guards de cierre habituales, que no hacen peticiones.
+Si no hay ediciones de informe ni notas/respuesta/triage locales, no se espera
+a operaciones de Testing en vuelo ni se muestra el aviso de texto sin guardar.
+Las esperas abandonadas terminan también para los observadores de peticiones.
+
+Un fallo o vencimiento veta ese cierre y abre WindowDialog con Reintentar / Cerrar
+sin guardar; Escape vuelve a la edición. La segunda X no duplica la preparación.
+Un cambio de sesión cancela la espera antes de otro guardado; las respuestas tardías
+no cierran la ventana ni restituyen texto de la cuenta anterior. Un comando ya
+enviado al núcleo no se puede retirar mediante el wire actual.
+
+Live, Restart, EOF y cierre del propietario cancelan la preparación inmediatamente.
+Restart omite solo la preparación de Informes: conserva los demás guards, sus
+esperas y el aviso de veto de Actualizaciones. Live, EOF y cierre del propietario
+cierran sin esos vetos. Tras invalidar la cuenta, un estado ya limpio permite
+ese primer cierre y nunca despacha otro guardado de la sesión anterior.
+En el anfitrión la razón solo sube: Window < Restart < Live/EOF. Una razón forzada
+en curso no se sustituye ni vuelve a emitir; el renderer ignora razones iguales o
+inferiores. No se añade protocolo, ni cambia IPC, derechos, runtime o supervisor.
+
 ## Calendario (`calendar`): datos de solo lectura
 
 `calendar.load {}` lee los documentos existentes del GPUI sin crearlos ni modificarlos:
@@ -406,8 +432,8 @@ Su plazo está exento únicamente en la lista cerrada de métodos del cliente;
 no existe un parámetro de timeout controlado por el renderer. El anfitrión Rust
 rechaza la exportación directa con `unsupported`.
 
-El archivo nunca sobrescribe un destino existente y usa creación exclusiva
-si el sistema de archivos no admite enlaces duros. No publica suscripciones,
+Para un destino nuevo se usa creación exclusiva, también si el sistema de
+archivos no admite enlaces duros. La confirmación de reemplazo se describe abajo. No publica suscripciones,
 URLs ni conexiones a Google, Apple o Microsoft. El límite de ICS es un cuarto
 del frame para que su JSON y la vista previa quepan en el protocolo.
 La versión v25 sigue al contrato de avisos (v24).
@@ -423,9 +449,8 @@ al iniciar la exportación, nunca después de la espera en el diálogo.
 
 Sin extensión se añade `.ics`. Otra extensión produce el error cerrado
 `calendarExportExtension`. UNC, rutas relativas, ADS, dispositivos reservados y
-rutas excesivas se rechazan. Un destino existente siempre da `conflict`, incluso
-si el diálogo de Windows había preguntado por sobrescribir: hay que elegir otro
-nombre. No se cambia esa decisión de producto.
+rutas excesivas se rechazan. Un destino existente pide confirmación propia mediante
+`WindowAlertDialog`, sin comunicar su ruta al renderer.
 
 La selección de series replica `Series::every().is_some()` de GPUI para ICS;
 no reutiliza la clasificación diaria de los avisos. El fixture
@@ -441,7 +466,12 @@ antelación del documento, causa de franja/tanda y zona local. La primera lectur
 no recupera avisos pasados. Las franjas se callan en pista; una tanda explícita
 puede avisar, siempre en silencio en pista. Fuera de pista, `channels.sound`
 controla el sonido del sistema, sin reproductor ni dependencia adicional.
-Calendar no depende de `general.toasts`, como el GPUI.
+Decisión de Isaac (12-11): `general.toasts` gobierna también las notificaciones
+de Windows del Calendario. El anfitrión consulta el valor confirmado de Settings
+en cada tick y al completar un refresh; una actualización de General surte efecto
+sin reiniciar. No se reescribe `calendar-alerts.json` ni se alteran sus canales.
+El sondeo, el feed y los avisos en pista no dependen de este interruptor.
+Es una desviación deliberada respecto a la independencia del GPUI.
 
 `calendarNotice` es un evento privado host→main, unión cerrada `start|week|test`
 con `deny_unknown_fields`. No acepta texto, URL, ruta ni fecha del renderer.
@@ -459,7 +489,9 @@ No existe garantía de que Windows muestre o reproduzca sonido: depende del SO.
 
 `calendar.noticeTest {}` solo genera un ejemplo fijo, con los mismos derechos,
 documento legible y un límite de una prueba cada 5 s. No requiere horario ni que
-el canal esté marcado: prueba el canal, como el GPUI. Main proyecta `accepted`
+el canal esté marcado: prueba el canal, como el GPUI. Sí exige `general.toasts`;
+con el ajuste apagado devuelve `accepted:false`, sin evento ni consumo del plazo.
+Main proyecta `accepted`
 a partir del resultado real de invocar el presentador, sin afirmar que el usuario
 lo haya visto. El evento precede a la respuesta; una presentación ausente o
 rechazada da `accepted:false`. Nunca se envían notificaciones reales en tests.
@@ -497,3 +529,37 @@ La prueba de Ajustes y los avisos comparten el doble solo en QA o mock autorizad
 La primera evaluación habilitada del emisor carga horario y preferencias locales
 solo para lectura, aunque el refresh falle por falta de red. Un sello checked
 futuro o un retroceso del reloj no suspende el sondeo: se considera vencido.
+
+## Calendario: confirmar reemplazo ICS (wire v30 provisional)
+
+Decisión de Isaac del 12-11: `calendar.icsExport` puede responder
+`replacementRequired {confirmationId}`. `calendar.icsReplace {confirmationId,
+replace}` confirma o cancela. Ambos resultados son cerrados y main es su único
+emisor; Rust rechaza su ejecución directa. Los identificadores tienen 64 hex
+minúsculos, son aleatorios, de un solo uso y caducan a los 60 s con reloj inyectado.
+Main conserva en privado destino, contenido revisado y huella (identidad,
+tamaño, mtime, ctime y SHA-256 leído por bloques). Ninguna ruta cruza el puente.
+
+Cancelar no escribe. Confirmar comprueba la huella; un cambio solicita otra
+confirmación con id nuevo. Se escribe y sincroniza un temporal hermano y se
+recomprueba la huella inmediatamente antes de `rename`. Un fallo de escritura o
+publicación conserva el archivo original y retira el temporal en mejor esfuerzo.
+Un destino eliminado no se convierte en creación sin confirmar. Enlaces y
+directorios se rechazan. Un nuevo prepare o la desconexión invalida la confirmación.
+No se cambia la limitación anterior sobre recomprobar derechos al exportar.
+
+El método nuevo también está en la lista cerrada de plazos de main: no se
+notifica timeout mientras una publicación aún podría terminar. La caducidad del
+id se comprueba antes y después de escribir el temporal. No hay timeout configurable
+por el renderer. La pantalla bloquea envíos duplicados y mantiene los controles
+de ventana operativos; cancelar devuelve al calendario preparado de nuevo.
+
+La huella se comprueba justo antes de renombrar; no bloquea editores externos.
+La reutilización con report-export y la longitud de su temporal anterior siguen
+fuera de este cambio. Sin IPC/runtime/rights/supervisor, red ni dependencias nuevas.
+
+### Seguimiento de ICS tras #2219
+
+El reloj fijo del selector QA se declara en main sin importar el mock ni el corpus JSON. Un test mantiene su paridad con la escena. Main ya no devuelve `conflict` al exportar: un destino existente exige confirmación; otros fallos del selector se clasifican como `io`. La variante del wire y su lectura permanecen por compatibilidad, sin cambiar v30.
+
+Pendientes deliberados de Isaac: si el archivo desaparece entre EEXIST y la huella, el motivo exacto requiere una variante cerrada nueva; se conserva el error actual, sin ampliar el contrato por esta carrera infrecuente. El diálogo tampoco recibe nombre base ni ruta. Ambos quedan fuera de este seguimiento.

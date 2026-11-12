@@ -5,6 +5,11 @@ pub(crate) fn typescript() -> String {
     notice_types(&mut text);
     declare::<crate::calendar::CalendarIcsScope>(&mut text);
     declare::<crate::calendar::CalendarIcsStatus>(&mut text);
+    constants!(
+        &mut text,
+        "calendarIcsConfirmationMaxAgeMs",
+        crate::calendar::ics::ICS_CONFIRMATION_MAX_AGE_MS
+    );
     declare::<crate::calendar::CalendarIcsEntry>(&mut text);
     declare::<crate::calendar::CalendarIcsView>(&mut text);
     constants!(
@@ -373,12 +378,19 @@ fn ics_samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
             }),
             sample_response(Reply::CalendarIcsExport {
                 status: crate::calendar::CalendarIcsStatus::Saved,
+                confirmation_id: None,
             }),
             sample_response(Reply::CalendarIcsExport {
                 status: crate::calendar::CalendarIcsStatus::Cancelled,
+                confirmation_id: None,
+            }),
+            sample_response(Reply::CalendarIcsReplace {
+                status: crate::calendar::CalendarIcsStatus::ReplacementRequired,
+                confirmation_id: Some("b".repeat(64)),
             }),
             sample_response(Reply::CalendarIcsExport {
                 status: crate::calendar::CalendarIcsStatus::Conflict,
+                confirmation_id: None,
             }),
             HostToUi::Failure {
                 id: 1,
@@ -409,6 +421,13 @@ fn ics_samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
                 request: Request::CalendarIcsPrepare {
                     scope: crate::calendar::CalendarIcsScope::All,
                     alarm: true,
+                },
+            },
+            UiToHost::Request {
+                id: 1,
+                request: Request::CalendarIcsReplace {
+                    confirmation_id: "b".repeat(64),
+                    replace: true,
                 },
             },
             UiToHost::Request {

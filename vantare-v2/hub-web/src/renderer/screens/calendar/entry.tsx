@@ -17,7 +17,9 @@ import {
 } from "../../../contract/generated/calendar";
 import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
+import { useSettings } from "../../app/SettingsState";
 import { calendarText as text } from "../../i18n/calendar";
+import { calendarAlertsText } from "../../i18n/calendarAlerts";
 import { calendarIcsText } from "../../i18n/calendarIcs";
 import { useCalendarQARuns } from "../../qa/calendar-runs";
 import { Button } from "../../ui/Button";
@@ -47,6 +49,7 @@ import { useToastManager } from "../../ui/Layers";
 import { useCalendarHistory } from "./CalendarHistory";
 import { useCalendarIcs } from "./CalendarIcsState";
 import { useCalendarLauncher } from "./CalendarLauncher";
+import { useCalendarNoticeTest } from "./CalendarNoticeTest";
 import { useCalendarPreferences } from "./CalendarPreferences";
 import { useCalendar } from "./CalendarState";
 import { publication } from "./schedule";
@@ -61,6 +64,16 @@ function nextPublication(now: number) {
 
 export default function CalendarEntry() {
   const toast = useToastManager();
+  const settings = useSettings();
+  const windowsEnabled =
+    settings.view?.general.toasts === true && !settings.view.protected;
+  const windowsDisabledReason = windowsEnabled
+    ? undefined
+    : settings.view?.protected
+      ? calendarAlertsText.windowsUnavailable
+      : settings.view
+        ? calendarAlertsText.windowsDisabled
+        : calendarAlertsText.windowsLoading;
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alertsOrigin = useRef<HTMLElement | null>(null);
   const openAlerts = () => {
@@ -193,6 +206,9 @@ export default function CalendarEntry() {
   const alertsState =
     preferences.config?.documents.alerts ??
     (preferences.failure ? "unavailable" : "loading");
+  const noticeTest = useCalendarNoticeTest(
+    alertsOpen && state.allowed && alertsState === "ready" && windowsEnabled,
+  );
   const alertsValid = isCalendarAlerts(alerts);
   const preferencesFailure = preferences.failure ? (
     <CalendarPreferencesFailure
@@ -532,6 +548,18 @@ export default function CalendarEntry() {
                 following={view?.following.length ?? 0}
                 limit={calendarStartsLimit}
                 notifyWeek={alerts.notifyWeek}
+                alertsState={alertsState}
+                notifyDisabledReason={windowsDisabledReason}
+                notifyDisabled={
+                  !windowsEnabled ||
+                  !state.allowed ||
+                  alertsState !== "ready" ||
+                  preferences.config?.alertsRevision == null
+                }
+                notifyBusy={preferences.busy}
+                onNotifyWeek={(value) => {
+                  if (windowsEnabled) void preferences.notifyWeek(value);
+                }}
                 onRefresh={() => void state.refresh()}
                 busy={state.busy}
               />
@@ -614,6 +642,27 @@ export default function CalendarEntry() {
           busy={preferences.busy}
           onChange={(change) => void preferences.alert(change)}
           onClose={() => setAlertsOpen(false)}
+          onTest={
+            alertsState === "ready" ? () => void noticeTest.test() : undefined
+          }
+          windowsDisabledReason={windowsDisabledReason}
+          testBusy={noticeTest.busy}
+          testCooling={noticeTest.cooldown}
+          testFeedback={
+            noticeTest.busy ? (
+              <p role="status">{calendarAlertsText.testSending}</p>
+            ) : noticeTest.failure ? (
+              <p role="alert">{calendarAlertsText.testFailure}</p>
+            ) : noticeTest.status ? (
+              <p role="status">
+                {noticeTest.status === "accepted"
+                  ? calendarAlertsText.testAccepted
+                  : calendarAlertsText.testUnavailable}
+              </p>
+            ) : noticeTest.cooldown ? (
+              <p role="status">{calendarAlertsText.testBusy}</p>
+            ) : undefined
+          }
           failure={
             preferences.failureIntent === "alerts"
               ? preferencesFailure
@@ -632,7 +681,17 @@ export default function CalendarEntry() {
           busy={ics.busy}
           exporting={ics.exporting}
           failure={ics.failure}
+          confirmationFailed={ics.confirmationFailed}
           status={ics.status}
+          confirmationId={ics.confirmationId}
+          onReplace={(replace) => {
+            void ics.replace(replace).then((saved) => {
+              if (saved) {
+                setIcsOpen(false);
+                toast.add({ title: calendarIcsText.saved, type: "ok" });
+              }
+            });
+          }}
           onScope={ics.setScope}
           onAlarm={ics.setAlarm}
           onRetry={ics.retry}

@@ -12,10 +12,14 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type {
+  AccountView,
   CoreStatus,
+  HostToUi,
   LauncherView,
+  Reply,
 } from "../src/contract/generated/contract";
-import { AccountProvider } from "../src/renderer/app/AccountState";
+import corpus from "../src/contract/generated/corpus.json";
+import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import { registeredSections } from "../src/renderer/app/ScreenRegistry";
@@ -44,7 +48,60 @@ vi.mock("../src/renderer/ui/CommandPalette", async (original) => {
   };
 });
 let cache: QueryClient;
+const accountListeners = new Set<(message: HostToUi) => void>();
+let showAccountIdentity = false;
+let accountState: ReturnType<typeof useAccount>;
+function AccountProbe() {
+  accountState = useAccount();
+  return showAccountIdentity ? (
+    <button
+      type="button"
+      onClick={() => {
+        void accountState.act({ method: "account.logout" });
+      }}
+    >
+      Iniciar transición de cierre
+    </button>
+  ) : null;
+}
+function publishAccount(patch: Partial<AccountView>) {
+  const sample = (corpus.host as HostToUi[]).find(
+    (m) => m.kind === "response" && m.result.method === "account.get",
+  );
+  if (sample?.kind !== "response" || sample.result.method !== "account.get")
+    throw Error("missing account fixture");
+  const value: AccountView = {
+    ...sample.result.value,
+    session: "signedIn",
+    gate: "none",
+    blocked: false,
+    verified: true,
+    ...patch,
+  };
+  for (const listener of accountListeners)
+    listener({ kind: "event", event: { topic: "account", value } });
+}
 beforeEach(() => {
+  accountListeners.clear();
+  showAccountIdentity = false;
+  const listen = Client.prototype.listen;
+  vi.spyOn(Client.prototype, "listen").mockImplementation(function (
+    this: Client,
+    fn,
+  ) {
+    accountListeners.add(fn);
+    const stop = listen.call(this, (message) =>
+      fn(
+        message.kind === "hello" && showAccountIdentity
+          ? { ...message, demo: false }
+          : message,
+      ),
+    );
+    return () => {
+      accountListeners.delete(fn);
+      return stop();
+    };
+  });
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
     addEventListener() {},
@@ -74,6 +131,7 @@ async function mount() {
             <TooltipProvider delay={0}>
               <ToastProvider>
                 <AccountProvider>
+                  <AccountProbe />
                   <PilotProvider>
                     <SettingsProvider>
                       <WindowDialogProvider>
@@ -122,6 +180,100 @@ function launchCalls(spy: {
     ([request]) => request.method === "launcher.launch",
   );
 }
+
+it("the frame never replaces B's published identity with an initial GET from A", async () => {
+  showAccountIdentity = true;
+  const pending: ((reply: Reply) => void)[] = [];
+  const request = Client.prototype.request;
+  const calls = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(function (this: Client, input, onSent) {
+      if (input.method === "account.get")
+        return new Promise((resolve) => pending.push(resolve));
+      return request.call(this, input, onSent);
+    });
+  await mount();
+  act(() => publishAccount({ name: "Cuenta B", photo: null }));
+  await screen.findByLabelText("Cuenta B");
+  const sample = (corpus.host as HostToUi[]).find(
+    (m) => m.kind === "response" && m.result.method === "account.get",
+  );
+  if (sample?.kind !== "response" || sample.result.method !== "account.get")
+    throw Error("missing account fixture");
+  const oldAccount = sample.result.value;
+  await act(async () => {
+    for (const resolve of pending)
+      resolve({
+        method: "account.get",
+        value: {
+          ...oldAccount,
+          session: "signedIn",
+          gate: "none",
+          blocked: false,
+          name: "Cuenta A",
+          photo: null,
+        },
+      });
+  });
+  expect(screen.getByLabelText("Cuenta B")).toBeTruthy();
+  expect(screen.queryByLabelText("Cuenta A")).toBeNull();
+  expect(
+    calls.mock.calls.filter(([r]) => r.method === "account.get"),
+  ).toHaveLength(1);
+  expect(cache.getQueryData(["frame", "account"])).toBeUndefined();
+});
+
+it("hides A immediately after logout starts while its signed-in value is still published", async () => {
+  showAccountIdentity = true;
+  vi.stubGlobal(
+    "Image",
+    class {
+      onload?: () => void;
+      set src(_value: string) {
+        queueMicrotask(() => this.onload?.());
+      }
+    },
+  );
+  const request = Client.prototype.request;
+  vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    input,
+    onSent,
+  ) {
+    if (input.method === "account.logout") return new Promise(() => {});
+    return request.call(this, input, onSent);
+  });
+  await mount();
+  const photo = "data:image/png;base64,cGhvdG8=";
+  await userEvent.setup().keyboard("{Escape}");
+  act(() => publishAccount({ name: "Cuenta A", photo }));
+  await screen.findByLabelText("Cuenta A");
+  await waitFor(() =>
+    expect(document.querySelector(`img[src="${photo}"]`)).not.toBeNull(),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Iniciar transición de cierre" }),
+  );
+  expect(accountState.value?.name).toBe("Cuenta A");
+  expect(accountState.value?.session).toBe("signedIn");
+  expect(accountState.value?.gate).toBe("none");
+  expect(accountState.pending).toBe(true);
+  expect(screen.queryByLabelText("Cuenta A")).toBeNull();
+  expect(document.querySelector(`img[src="${photo}"]`)).toBeNull();
+});
+
+it("hides the account identity while confirmation is pending, then shows B", async () => {
+  showAccountIdentity = true;
+  await mount();
+  act(() => publishAccount({ name: "Cuenta A", photo: null }));
+  await screen.findByLabelText("Cuenta A");
+  act(() =>
+    publishAccount({ name: "Cuenta A", session: "pending", gate: "checking" }),
+  );
+  expect(screen.queryByLabelText("Cuenta A")).toBeNull();
+  act(() => publishAccount({ name: "Cuenta B", photo: null }));
+  await screen.findByLabelText("Cuenta B");
+});
 
 it.each(["revision", "deleted", "unlaunchable"])(
   "rechecks %s at dispatch, warns and sends no launch",
@@ -255,7 +407,7 @@ it.each(["strategy", "engineer"])(
   async (id) => {
     await mount();
     act(() =>
-      cache.setQueryData(["frame", "account"], {
+      publishAccount({
         session: "signedIn",
         name: "QA",
         photo: null,
@@ -371,7 +523,7 @@ it.each(["verified", "unverified"] as const)(
   async (kind) => {
     await mount();
     act(() =>
-      cache.setQueryData(["frame", "account"], {
+      publishAccount({
         session: "signedIn",
         name: "QA",
         photo: null,
@@ -396,7 +548,7 @@ it.each(["unverified", "blocked"])(
     if (reason === "unverified") core.access.verified = false;
     else core.access.blocked = true;
     act(() => {
-      cache.setQueryData(["frame", "account"], {
+      publishAccount({
         session: "signedIn",
         name: "QA",
         photo: null,

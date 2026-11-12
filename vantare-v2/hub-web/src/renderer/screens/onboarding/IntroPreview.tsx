@@ -101,6 +101,17 @@ export function OnboardingIntroPreview({
   });
   const [step, setStep] = useState<IntroStep | 3 | 4 | 5 | 6 | 7>(0);
   const completion = useCompletion(full && step >= 6, onComplete);
+  const summaryMail: OnboardingMailStatus | undefined =
+    completion.mailUnconfirmed
+      ? {
+          ...mail,
+          available: false,
+          consent: false,
+          pending: false,
+          unconfirmed: true,
+          message: stepsText.mailNotConfirmed,
+        }
+      : mail;
   const [simulators, setSimulators] = useState<Simulators>([true, false]);
   const [styles, setStyles] = useState<Styles>([true, false, false, false]);
   const [touched, setTouched] = useState(false);
@@ -418,7 +429,7 @@ export function OnboardingIntroPreview({
             crashes={completion.intent.crashes}
             usage={completion.intent.usage}
             account={account}
-            mail={mail}
+            mail={summaryMail}
             layoutReady={query.data?.layoutReady ?? false}
             pending={settings.pending || completion.pending}
             studioReason={studioReason}

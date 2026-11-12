@@ -13,6 +13,7 @@ import {
 import {
   type HostError,
   type LegacyMigration,
+  type Reply,
   type ReportFields,
   type ReportPreviewView,
   type ReportReceiptView,
@@ -26,9 +27,11 @@ import { isReportFields } from "../../../contract/testing-validation";
 import { useAccountSession } from "../../app/AccountSession";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
-import { Button } from "../../ui/Button";
-import { CloseUnsavedReportDialog } from "../../ui/DiscardReportDialog";
-import { useToastManager } from "../../ui/Layers";
+import type { CloseDraftSave } from "../../bridge/report-close";
+import {
+  CloseReportSaveFailureDialog,
+  CloseUnsavedReportDialog,
+} from "../../ui/DiscardReportDialog";
 import { testingText as text } from "./es";
 import { reportSuggestion, withReportKind } from "./report-kind";
 import { testingRequest } from "./TestingRequests";
@@ -56,7 +59,7 @@ function useReportsState() {
     () => setSessionDiscarded(false),
     [],
   );
-  const toast = useToastManager();
+
   const { data: core = offline } = useQuery({
     queryKey: coreKey,
     queryFn: async () => offline,
@@ -104,6 +107,8 @@ function useReportsState() {
   );
   const [closeBlocked, setCloseBlocked] = useState(false);
   const [closeConfirmation, setCloseConfirmation] = useState(false);
+  const [closeSaveFailed, setCloseSaveFailed] = useState(false);
+  const closeEpoch = useRef<number | undefined>(undefined);
   const state = useRef({
     fields,
     saved,
@@ -182,7 +187,12 @@ function useReportsState() {
     setMessage(reply.value.message);
     setLegacy(reply.value.legacy);
   }
-  async function save() {
+  async function saveWith(
+    closeSave?: CloseDraftSave,
+    closeSignal?: AbortSignal,
+  ) {
+    const epoch = generation.current;
+    const sessionSignal = cancellation.current.signal;
     if (!state.current.loaded) return;
     const snapshot = JSON.stringify(state.current.fields);
     if (snapshot === state.current.saved) return;
@@ -203,7 +213,27 @@ function useReportsState() {
       setFailure("rejected");
       throw new HostFailure({ kind: "rejected" });
     }
-    const reply = await request({ method: "draft.save", fields });
+    let reply: Reply;
+    if (closeSave) {
+      if (
+        !state.current.available ||
+        closeSignal?.aborted ||
+        sessionSignal.aborted
+      )
+        throw new HostFailure({ kind: "coreUnavailable" });
+      setBusy(true);
+      try {
+        reply = await closeSave(fields, sessionSignal);
+      } finally {
+        if (epoch === generation.current) setBusy(false);
+      }
+    } else reply = await request({ method: "draft.save", fields });
+    if (
+      epoch !== generation.current ||
+      closeSignal?.aborted ||
+      sessionSignal.aborted
+    )
+      throw new HostFailure({ kind: "coreUnavailable" });
     if (reply.method !== "draft.save")
       throw new Error("unexpected report reply");
     setScreenshots(reply.value.screenshots);
@@ -219,8 +249,9 @@ function useReportsState() {
     setPreview(undefined);
     setConsent(false);
   }
-  const saveCurrent = useRef(save);
-  saveCurrent.current = save;
+  const save = () => saveWith();
+  const saveCurrent = useRef(saveWith);
+  saveCurrent.current = saveWith;
   useEffect(() => {
     if (!loaded || !dirty || busy || error || !available) return;
     const snapshot = JSON.stringify(fields);
@@ -235,18 +266,78 @@ function useReportsState() {
   }, [loaded, dirty, busy, error, available, fields]);
   useEffect(
     () =>
-      client?.onCloseSettled(() => {
+      client?.onCloseSettled((reason, allow) => {
         closePermit.current = undefined;
+        if (allow && reason !== "window") {
+          setCloseConfirmation(false);
+          setCloseSaveFailed(false);
+          setCloseBlocked(false);
+        }
       }),
     [client],
   );
   useEffect(() => {
     if (!client) return;
-    return client.addCloseGuard(async (reason) => {
+    return client.setReportClosePreparation({
+      async prepare(send, signal) {
+        const epoch = generation.current;
+        closeEpoch.current = epoch;
+        const permitted = closePermit.current;
+        if (
+          permitted?.epoch === epoch &&
+          permitted.fields === JSON.stringify(state.current.fields)
+        )
+          return "discard";
+        const clean = () =>
+          JSON.stringify(state.current.fields) === state.current.saved &&
+          !state.current.localNotes.title &&
+          !state.current.localNotes.body &&
+          !state.current.answerDraft.note &&
+          state.current.answerDraft.score === 3 &&
+          !triageHasText.current?.();
+        // No text to preserve: abandon only Testing's waits, not other screens.
+        if (clean()) return "discard";
+        const pending = inflight.current;
+        if (pending) {
+          const cancelled = AbortSignal.any([
+            signal,
+            cancellation.current.signal,
+          ]);
+          await new Promise<void>((resolve) => {
+            const done = () => {
+              cancelled.removeEventListener("abort", done);
+              resolve();
+            };
+            if (cancelled.aborted) done();
+            else {
+              cancelled.addEventListener("abort", done, { once: true });
+              void pending.then(done, done);
+            }
+          });
+        }
+        if (!signal.aborted && clean()) return "discard";
+        if (epoch !== generation.current || signal.aborted) return false;
+        await saveCurrent.current(send, signal);
+        return epoch === generation.current &&
+          !signal.aborted &&
+          JSON.stringify(state.current.fields) === state.current.saved
+          ? "saved"
+          : false;
+      },
+      failed() {
+        if (closeEpoch.current !== generation.current) return;
+        setCloseBlocked(true);
+        setMessage(text.closeUnsaved);
+        setCloseSaveFailed(true);
+      },
+    });
+  }, [client]);
+  useEffect(() => {
+    if (!client) return;
+    return client.addCloseGuard((reason) => {
+      if (reason !== "window") return true;
       const permitted = closePermit.current;
       closePermit.current = undefined;
-      if (reason === "live" || reason === "controlEof") return true;
-      await inflight.current?.catch(() => {});
       if (
         permitted?.epoch === generation.current &&
         permitted.fields === JSON.stringify(state.current.fields)
@@ -257,24 +348,11 @@ function useReportsState() {
       if (!clean) {
         setCloseBlocked(true);
         setMessage(text.closeUnsaved);
-        const epoch = generation.current;
-        toast.add({
-          title: text.closeUnsaved,
-          type: "warn",
-          description: (
-            <Button
-              onClick={() => {
-                if (epoch === generation.current) askCloseWithoutSave();
-              }}
-            >
-              {text.closeWithoutSave}
-            </Button>
-          ),
-        });
+        setCloseSaveFailed(true);
       }
       return clean;
     });
-  }, [client, toast, askCloseWithoutSave]);
+  }, [client]);
   useEffect(() => {
     const flush = () => {
       if (!state.current.available || !state.current.loaded) return;
@@ -327,6 +405,8 @@ function useReportsState() {
     closePermit.current = undefined;
     setCloseBlocked(false);
     setCloseConfirmation(false);
+    setCloseSaveFailed(false);
+    closeEpoch.current = undefined;
     failedRequest.current = undefined;
     setBusy(false);
     setLocalNotes({ title: "", body: "" });
@@ -564,6 +644,7 @@ function useReportsState() {
       fields: JSON.stringify(state.current.fields),
     };
     setCloseConfirmation(false);
+    setCloseSaveFailed(false);
     // Start a new close negotiation after the veto. The guard only consumes this one-shot permission.
     client.closeWindow();
   }
@@ -631,6 +712,12 @@ function useReportsState() {
     access: core.access,
     closeBlocked,
     closeConfirmation,
+    closeSaveFailed,
+    retryCloseSave: () => {
+      setCloseSaveFailed(false);
+      client?.closeWindow();
+    },
+    dismissCloseSaveFailure: () => setCloseSaveFailed(false),
     askCloseWithoutSave,
     confirmCloseWithoutSave,
     cancelCloseWithoutSave: () => setCloseConfirmation(false),
@@ -680,6 +767,12 @@ export function ReportsProvider({ children }: { children: ReactNode }) {
   return (
     <Context.Provider value={state}>
       {children}
+      <CloseReportSaveFailureDialog
+        open={state.closeSaveFailed}
+        onRetry={state.retryCloseSave}
+        onDiscard={state.confirmCloseWithoutSave}
+        onDismiss={state.dismissCloseSaveFailure}
+      />
       <CloseUnsavedReportDialog
         open={state.closeConfirmation}
         disabled={state.busy}

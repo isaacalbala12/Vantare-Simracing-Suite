@@ -19,7 +19,9 @@ fn local(
                     value: Box::new(value),
                 }),
         ),
-        Request::CalendarIcsExport { .. } => Some(Err(HostError::Unsupported)),
+        Request::CalendarIcsExport { .. } | Request::CalendarIcsReplace { .. } => {
+            Some(Err(HostError::Unsupported))
+        }
         Request::CalendarHistoryLoad {} => Some(Ok(Reply::CalendarHistoryLoad {
             value: Box::new(state.history()),
         })),
@@ -84,6 +86,15 @@ pub(super) fn dispatch(
                 &HostToUi::Failure {
                     id,
                     error: HostError::Denied,
+                },
+            );
+        }
+        if !session.settings.windows_notifications_enabled() {
+            return frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::CalendarNoticeTest { accepted: false },
                 },
             );
         }
@@ -190,7 +201,8 @@ pub(super) fn complete_at(
     }
     let allowed = crate::calendar::allowed(&session.current.access)
         && session.current.rights == crate::protocol::LinkState::Connected
-        && session.closing.is_none();
+        && session.closing.is_none()
+        && session.settings.windows_notifications_enabled();
     let result = if crate::calendar::allowed(&session.current.access) {
         match result {
             Ok(vantare_ipc::services_protocol::Reply::Calendar { schedule, fallback }) => session

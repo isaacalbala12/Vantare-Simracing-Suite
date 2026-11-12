@@ -20,7 +20,7 @@
 .v-pilot-preview {
   background: var(--grad-neo);
   border: 1px solid var(--line-1);
-  border-radius: 14px;
+  border-radius: 10px;
   box-shadow:
     inset 0 1px 0 var(--neo-light),
     var(--shadow-neo);
@@ -457,4 +457,22 @@
 }
 .v-pilot-preview-avatar {
   margin-bottom: 2px;
+}
+
+/* Frozen pilot/view.rs: Orbit numbered meta, eyebrow and compact photo action. */
+.v-pilot-editor .v-setting-group-title > span:first-child {
+  letter-spacing: 0.4px;
+}
+.v-pilot-photo-actions .v-button--sm {
+  color: var(--text-2);
+  border-color: var(--line-1);
+}
+.v-pilot-preview-heading > strong {
+  font-weight: 600;
+}
+.v-pilot-preview-heading > span {
+  gap: 6px;
+}
+.v-pilot-preview dd {
+  color: var(--text-1);
 }

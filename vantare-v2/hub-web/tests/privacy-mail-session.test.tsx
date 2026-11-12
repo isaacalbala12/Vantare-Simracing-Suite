@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  MutationCache,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   act,
   cleanup,
@@ -100,6 +104,100 @@ function nextAccount() {
     confirm();
   });
 }
+function pending() {
+  session.confirm({
+    session: "pending",
+    gate: "none",
+    blocked: false,
+  } as AccountView);
+}
+const writes = () =>
+  fake.client.request.mock.calls.filter(([r]) => r.method === "mail.set");
+
+it("rechecks confirmation before dispatching a queued mail mutation in the same generation", async () => {
+  mount();
+  await loaded();
+  const generation = session.getSnapshot().generation;
+  act(() => {
+    fireEvent.click(screen.getByRole("button", { name: text.enable }));
+    pending();
+  });
+  await act(async () => {});
+  expect(session.getSnapshot().generation).toBe(generation);
+  expect(writes()).toHaveLength(0);
+});
+
+it("rejects a mail response delivered while confirmation is absent in the same generation", async () => {
+  mount();
+  await loaded();
+  let resolve!: (value: unknown) => void;
+  fake.client.request.mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: text.enable }));
+  await waitFor(() => expect(resolve).toBeTypeOf("function"));
+  act(pending);
+  await act(async () =>
+    resolve({ method: "mail.set", value: { consent: true } }),
+  );
+  const mutation = cache
+    .getMutationCache()
+    .getAll()
+    .find(
+      (m) =>
+        m.state.variables &&
+        (m.state.variables as { consent?: boolean }).consent === true,
+    );
+  expect(mutation?.state.status).toBe("error");
+  expect(
+    cache.getQueryData([
+      "mail",
+      session.getSnapshot().generation,
+      true,
+      "connected",
+    ]),
+  ).toBeUndefined();
+});
+
+it("does not publish consent when confirmation changes between mutation completion and its cache callback", async () => {
+  cache = new QueryClient({
+    mutationCache: new MutationCache({ onSuccess: () => pending() }),
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  cache.setQueryData(coreKey, {
+    ...offline,
+    services: "connected",
+    access: { ...offline.access, verified: true },
+  });
+  mount();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: text.enable }));
+  await waitFor(() => expect(writes()).toHaveLength(1));
+  await act(async () => {});
+  expect(session.getSnapshot().confirmed).toBe(false);
+  expect(
+    cache.getQueryData([
+      "mail",
+      session.getSnapshot().generation,
+      true,
+      "connected",
+    ]),
+  ).toBeUndefined();
+});
+
+it("releases the mail lock after settling so the next explicit choice can be saved", async () => {
+  mount();
+  await loaded();
+  fireEvent.click(screen.getByRole("button", { name: text.enable }));
+  await screen.findByRole("button", { name: text.disable });
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: text.disable }));
+  await waitFor(() => expect(writes()).toHaveLength(2));
+  expect(writes().map(([r]) => r.consent)).toEqual([true, false]);
+});
 it("does not retain A's saved consent in B while verified remains true", async () => {
   const original = fake.client.request.getMockImplementation();
   fake.client.request.mockImplementationOnce(async (r) => original?.(r));

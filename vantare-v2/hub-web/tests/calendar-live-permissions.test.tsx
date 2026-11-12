@@ -135,3 +135,35 @@ it("restores the favorite filter after returning from a series", () => {
   ).toBe("true");
   expect(document.querySelectorAll(".v-calendar-live-series")).toHaveLength(3);
 });
+
+it("paints the clipped notice band without making it an interactive control", () => {
+  const value = calendarReference();
+  if (!value.official) throw new Error("Missing public reference schedule");
+  render(
+    <CalendarLiveView
+      schedule={value.official}
+      alerts={{
+        ...(alerts as CalendarAlerts),
+        bands: [
+          {
+            seriesId: value.official.series[0].id,
+            from: 0,
+            to: 1440,
+            days: "all",
+            mode: "each",
+          },
+        ],
+      }}
+      following={value.following}
+      utc
+      now={Date.parse("2026-10-08T17:47:13Z")}
+      limit={10000}
+      onFollow={vi.fn()}
+    />,
+  );
+  const band = document.querySelector<HTMLElement>(".v-calendar-time-band");
+  expect(band?.style.left).toBe("0%");
+  expect(band?.style.width).toBe("100%");
+  expect(band?.getAttribute("aria-hidden")).toBe("true");
+  expect(band?.getAttribute("tabindex")).toBeNull();
+});

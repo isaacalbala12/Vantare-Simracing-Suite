@@ -1,4 +1,5 @@
 use super::*;
+#[cfg(windows)]
 use vantare_launcher::Document;
 fn status() -> mailbox::Status {
     mailbox::Status {

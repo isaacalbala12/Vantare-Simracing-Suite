@@ -8,7 +8,7 @@ use vantare_ipc::launcher as mailbox;
 mod document_cache;
 #[path = "execution.rs"]
 mod execution;
-pub use execution::*;
+pub use execution::{ResidentCancellation, ResidentEventKind, ResidentExecution, ResidentExecutionEvent, ResidentFailure, ResidentOutcome, ResidentReceipt, ResidentRejection};
 
 pub const DECISION_ID_MAX: usize = 20;
 pub const DECISION_ID_PATTERN: &str = "^(0|[1-9][0-9]*)$";

@@ -86,7 +86,9 @@ it("refuses parallel preparation and export while a native dialog is open and ca
   expect(save).not.toHaveBeenCalled();
 });
 it("uses exclusive destination creation even without hard links", async () => {
-  const root = await mkdtemp(join(tmpdir(), "vantare-ics-"));
+  const root = await mkdtemp(
+    join(process.env.VANTARE_HUB_QA_ROOT ?? tmpdir(), "vantare-ics-"),
+  );
   try {
     const path = join(root, "calendar.ics");
     const unsupported = async () => {
@@ -342,4 +344,27 @@ it("does not cache a response of another family even if its id matches", async (
   });
   session.observe(response());
   expect(await session.export(hash)).toEqual({ error: { kind: "rejected" } });
+});
+
+it("accepts a snapshot just before thirty minutes and rejects a backwards clock", async () => {
+  let time = preparedTime;
+  const save = vi.fn().mockResolvedValue(undefined);
+  const fresh = calendarExportSession(
+    async () => "C:/calendar.ics",
+    save,
+    () => time,
+  );
+  fresh.expect(1);
+  fresh.observe(response());
+  time += 30 * 60_000 - 1;
+  expect(await fresh.export(hash)).toEqual({ status: "saved" });
+  const backwards = calendarExportSession(
+    async () => "C:/calendar.ics",
+    save,
+    () => time,
+  );
+  backwards.expect(1);
+  backwards.observe(response());
+  time--;
+  expect(await backwards.export(hash)).toEqual({ error: { kind: "rejected" } });
 });

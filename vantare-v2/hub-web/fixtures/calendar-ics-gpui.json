@@ -1,0 +1,1589 @@
+{
+  "cases": [
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["lmgt3"],
+      "late": false,
+      "name": "interval",
+      "now": 1793577600000,
+      "preview": [],
+      "scope": "favs",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["lmgt3"],
+      "late": false,
+      "name": "interval",
+      "now": 1793577600000,
+      "preview": [],
+      "scope": "events",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["lmgt3"],
+      "late": false,
+      "name": "interval",
+      "now": 1793577600000,
+      "preview": [],
+      "scope": "all",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "lmgt3",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["lmgt3"],
+      "late": true,
+      "name": "interval",
+      "now": 1794168000000,
+      "preview": [
+        {
+          "end": 1794168660000,
+          "seriesId": "lmgt3",
+          "start": 1794168000000,
+          "summary": "LMGT3 · Sebring",
+          "track": "Sebring"
+        },
+        {
+          "end": 1794169560000,
+          "seriesId": "lmgt3",
+          "start": 1794168900000,
+          "summary": "LMGT3 · Sebring",
+          "track": "Sebring"
+        },
+        {
+          "end": 1794170460000,
+          "seriesId": "lmgt3",
+          "start": 1794169800000,
+          "summary": "LMGT3 · Sebring",
+          "track": "Sebring"
+        },
+        {
+          "end": 1794171360000,
+          "seriesId": "lmgt3",
+          "start": 1794170700000,
+          "summary": "LMGT3 · Sebring",
+          "track": "Sebring"
+        }
+      ],
+      "scope": "favs",
+      "total": 16,
+      "uids": [
+        "lmgt3-1794168000@vantare",
+        "lmgt3-1794168900@vantare",
+        "lmgt3-1794169800@vantare",
+        "lmgt3-1794170700@vantare",
+        "lmgt3-1794171600@vantare",
+        "lmgt3-1794172500@vantare",
+        "lmgt3-1794173400@vantare",
+        "lmgt3-1794174300@vantare",
+        "lmgt3-1794175200@vantare",
+        "lmgt3-1794176100@vantare",
+        "lmgt3-1794177000@vantare",
+        "lmgt3-1794177900@vantare",
+        "lmgt3-1794178800@vantare",
+        "lmgt3-1794179700@vantare",
+        "lmgt3-1794180600@vantare",
+        "lmgt3-1794181500@vantare"
+      ]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "lmgt3",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["lmgt3"],
+      "late": true,
+      "name": "interval",
+      "now": 1794168000000,
+      "preview": [],
+      "scope": "events",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "lmgt3",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["lmgt3"],
+      "late": true,
+      "name": "interval",
+      "now": 1794168000000,
+      "preview": [
+        {
+          "end": 1794168660000,
+          "seriesId": "lmgt3",
+          "start": 1794168000000,
+          "summary": "LMGT3 · Sebring",
+          "track": "Sebring"
+        },
+        {
+          "end": 1794169560000,
+          "seriesId": "lmgt3",
+          "start": 1794168900000,
+          "summary": "LMGT3 · Sebring",
+          "track": "Sebring"
+        },
+        {
+          "end": 1794170460000,
+          "seriesId": "lmgt3",
+          "start": 1794169800000,
+          "summary": "LMGT3 · Sebring",
+          "track": "Sebring"
+        },
+        {
+          "end": 1794171360000,
+          "seriesId": "lmgt3",
+          "start": 1794170700000,
+          "summary": "LMGT3 · Sebring",
+          "track": "Sebring"
+        }
+      ],
+      "scope": "all",
+      "total": 16,
+      "uids": [
+        "lmgt3-1794168000@vantare",
+        "lmgt3-1794168900@vantare",
+        "lmgt3-1794169800@vantare",
+        "lmgt3-1794170700@vantare",
+        "lmgt3-1794171600@vantare",
+        "lmgt3-1794172500@vantare",
+        "lmgt3-1794173400@vantare",
+        "lmgt3-1794174300@vantare",
+        "lmgt3-1794175200@vantare",
+        "lmgt3-1794176100@vantare",
+        "lmgt3-1794177000@vantare",
+        "lmgt3-1794177900@vantare",
+        "lmgt3-1794178800@vantare",
+        "lmgt3-1794179700@vantare",
+        "lmgt3-1794180600@vantare",
+        "lmgt3-1794181500@vantare"
+      ]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [
+          {
+            "at": 1793649600,
+            "seriesId": "weekly"
+          }
+        ]
+      },
+      "following": ["weekly"],
+      "late": false,
+      "name": "weekly",
+      "now": 1793577600000,
+      "preview": [
+        {
+          "end": 1793650260000,
+          "seriesId": "weekly",
+          "start": 1793649600000,
+          "summary": "Weekly · Spa",
+          "track": "Spa"
+        },
+        {
+          "end": 1793995860000,
+          "seriesId": "weekly",
+          "start": 1793995200000,
+          "summary": "Weekly · Spa",
+          "track": "Spa"
+        }
+      ],
+      "scope": "favs",
+      "total": 2,
+      "uids": ["weekly-1793649600@vantare", "weekly-1793995200@vantare"]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [
+          {
+            "at": 1793649600,
+            "seriesId": "weekly"
+          }
+        ]
+      },
+      "following": ["weekly"],
+      "late": false,
+      "name": "weekly",
+      "now": 1793577600000,
+      "preview": [
+        {
+          "end": 1793650260000,
+          "seriesId": "weekly",
+          "start": 1793649600000,
+          "summary": "Weekly · Spa",
+          "track": "Spa"
+        },
+        {
+          "end": 1793995860000,
+          "seriesId": "weekly",
+          "start": 1793995200000,
+          "summary": "Weekly · Spa",
+          "track": "Spa"
+        }
+      ],
+      "scope": "events",
+      "total": 2,
+      "uids": ["weekly-1793649600@vantare", "weekly-1793995200@vantare"]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [
+          {
+            "at": 1793649600,
+            "seriesId": "weekly"
+          }
+        ]
+      },
+      "following": ["weekly"],
+      "late": false,
+      "name": "weekly",
+      "now": 1793577600000,
+      "preview": [
+        {
+          "end": 1793650260000,
+          "seriesId": "weekly",
+          "start": 1793649600000,
+          "summary": "Weekly · Spa",
+          "track": "Spa"
+        },
+        {
+          "end": 1793995860000,
+          "seriesId": "weekly",
+          "start": 1793995200000,
+          "summary": "Weekly · Spa",
+          "track": "Spa"
+        }
+      ],
+      "scope": "all",
+      "total": 2,
+      "uids": ["weekly-1793649600@vantare", "weekly-1793995200@vantare"]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["weekly"],
+      "late": true,
+      "name": "weekly",
+      "now": 1794168000000,
+      "preview": [],
+      "scope": "favs",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["weekly"],
+      "late": true,
+      "name": "weekly",
+      "now": 1794168000000,
+      "preview": [],
+      "scope": "events",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["weekly"],
+      "late": true,
+      "name": "weekly",
+      "now": 1794168000000,
+      "preview": [],
+      "scope": "all",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["rich"],
+      "late": false,
+      "name": "rich_valid",
+      "now": 1793577600000,
+      "preview": [],
+      "scope": "favs",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["rich"],
+      "late": false,
+      "name": "rich_valid",
+      "now": 1793577600000,
+      "preview": [],
+      "scope": "events",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["rich"],
+      "late": false,
+      "name": "rich_valid",
+      "now": 1793577600000,
+      "preview": [],
+      "scope": "all",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "rich",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["rich"],
+      "late": true,
+      "name": "rich_valid",
+      "now": 1794168000000,
+      "preview": [
+        {
+          "end": 1794171360000,
+          "seriesId": "rich",
+          "start": 1794168000000,
+          "summary": "Rich · T",
+          "track": "T"
+        },
+        {
+          "end": 1794172260000,
+          "seriesId": "rich",
+          "start": 1794168900000,
+          "summary": "Rich · T",
+          "track": "T"
+        },
+        {
+          "end": 1794173160000,
+          "seriesId": "rich",
+          "start": 1794169800000,
+          "summary": "Rich · T",
+          "track": "T"
+        },
+        {
+          "end": 1794174060000,
+          "seriesId": "rich",
+          "start": 1794170700000,
+          "summary": "Rich · T",
+          "track": "T"
+        }
+      ],
+      "scope": "favs",
+      "total": 16,
+      "uids": [
+        "rich-1794168000@vantare",
+        "rich-1794168900@vantare",
+        "rich-1794169800@vantare",
+        "rich-1794170700@vantare",
+        "rich-1794171600@vantare",
+        "rich-1794172500@vantare",
+        "rich-1794173400@vantare",
+        "rich-1794174300@vantare",
+        "rich-1794175200@vantare",
+        "rich-1794176100@vantare",
+        "rich-1794177000@vantare",
+        "rich-1794177900@vantare",
+        "rich-1794178800@vantare",
+        "rich-1794179700@vantare",
+        "rich-1794180600@vantare",
+        "rich-1794181500@vantare"
+      ]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "rich",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["rich"],
+      "late": true,
+      "name": "rich_valid",
+      "now": 1794168000000,
+      "preview": [],
+      "scope": "events",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "rich",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": ["rich"],
+      "late": true,
+      "name": "rich_valid",
+      "now": 1794168000000,
+      "preview": [
+        {
+          "end": 1794171360000,
+          "seriesId": "rich",
+          "start": 1794168000000,
+          "summary": "Rich · T",
+          "track": "T"
+        },
+        {
+          "end": 1794172260000,
+          "seriesId": "rich",
+          "start": 1794168900000,
+          "summary": "Rich · T",
+          "track": "T"
+        },
+        {
+          "end": 1794173160000,
+          "seriesId": "rich",
+          "start": 1794169800000,
+          "summary": "Rich · T",
+          "track": "T"
+        },
+        {
+          "end": 1794174060000,
+          "seriesId": "rich",
+          "start": 1794170700000,
+          "summary": "Rich · T",
+          "track": "T"
+        }
+      ],
+      "scope": "all",
+      "total": 16,
+      "uids": [
+        "rich-1794168000@vantare",
+        "rich-1794168900@vantare",
+        "rich-1794169800@vantare",
+        "rich-1794170700@vantare",
+        "rich-1794171600@vantare",
+        "rich-1794172500@vantare",
+        "rich-1794173400@vantare",
+        "rich-1794174300@vantare",
+        "rich-1794175200@vantare",
+        "rich-1794176100@vantare",
+        "rich-1794177000@vantare",
+        "rich-1794177900@vantare",
+        "rich-1794178800@vantare",
+        "rich-1794179700@vantare",
+        "rich-1794180600@vantare",
+        "rich-1794181500@vantare"
+      ]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [
+          {
+            "at": 1791252000,
+            "seriesId": "weekly-wec-weekly"
+          },
+          {
+            "at": 1791511200,
+            "seriesId": "weekly-10-hours-of-road-atlanta"
+          }
+        ]
+      },
+      "following": [
+        "beginner-lmgt3-fixed",
+        "beginner-lmp3-fixed",
+        "beginner-logitech-mclaren-g-challenge-q1",
+        "intermediate-lmgt3-sprint",
+        "intermediate-prototype-fixed",
+        "intermediate-elms-sprint",
+        "advanced-one-stint-sprint",
+        "advanced-elms-super-60",
+        "advanced-wec-xperience",
+        "weekly-wec-weekly",
+        "weekly-10-hours-of-road-atlanta"
+      ],
+      "late": false,
+      "name": "october-2026",
+      "now": 1791244800000,
+      "preview": [
+        {
+          "end": 1791258900000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791252000000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791273300000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791266400000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791284100000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791277200000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791294900000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791288000000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        }
+      ],
+      "scope": "favs",
+      "total": 36,
+      "uids": [
+        "weekly-wec-weekly-1791252000@vantare",
+        "weekly-wec-weekly-1791266400@vantare",
+        "weekly-wec-weekly-1791277200@vantare",
+        "weekly-wec-weekly-1791288000@vantare",
+        "weekly-wec-weekly-1791298800@vantare",
+        "weekly-wec-weekly-1791309600@vantare",
+        "weekly-wec-weekly-1791316800@vantare",
+        "weekly-wec-weekly-1791327600@vantare",
+        "weekly-wec-weekly-1791338400@vantare",
+        "weekly-wec-weekly-1791352800@vantare",
+        "weekly-wec-weekly-1791363600@vantare",
+        "weekly-wec-weekly-1791374400@vantare",
+        "weekly-wec-weekly-1791385200@vantare",
+        "weekly-wec-weekly-1791396000@vantare",
+        "weekly-wec-weekly-1791403200@vantare",
+        "weekly-wec-weekly-1791414000@vantare",
+        "weekly-wec-weekly-1791424800@vantare",
+        "weekly-wec-weekly-1791439200@vantare",
+        "weekly-wec-weekly-1791450000@vantare",
+        "weekly-wec-weekly-1791460800@vantare",
+        "weekly-wec-weekly-1791471600@vantare",
+        "weekly-wec-weekly-1791482400@vantare",
+        "weekly-wec-weekly-1791489600@vantare",
+        "weekly-wec-weekly-1791500400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791511200@vantare",
+        "weekly-10-hours-of-road-atlanta-1791536400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791558000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791579600@vantare",
+        "weekly-10-hours-of-road-atlanta-1791597600@vantare",
+        "weekly-10-hours-of-road-atlanta-1791622800@vantare",
+        "weekly-10-hours-of-road-atlanta-1791644400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791666000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791684000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791709200@vantare",
+        "weekly-10-hours-of-road-atlanta-1791730800@vantare",
+        "weekly-10-hours-of-road-atlanta-1791752400@vantare"
+      ]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [
+          {
+            "at": 1791252000,
+            "seriesId": "weekly-wec-weekly"
+          },
+          {
+            "at": 1791511200,
+            "seriesId": "weekly-10-hours-of-road-atlanta"
+          }
+        ]
+      },
+      "following": [
+        "beginner-lmgt3-fixed",
+        "beginner-lmp3-fixed",
+        "beginner-logitech-mclaren-g-challenge-q1",
+        "intermediate-lmgt3-sprint",
+        "intermediate-prototype-fixed",
+        "intermediate-elms-sprint",
+        "advanced-one-stint-sprint",
+        "advanced-elms-super-60",
+        "advanced-wec-xperience",
+        "weekly-wec-weekly",
+        "weekly-10-hours-of-road-atlanta"
+      ],
+      "late": false,
+      "name": "october-2026",
+      "now": 1791244800000,
+      "preview": [
+        {
+          "end": 1791258900000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791252000000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791273300000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791266400000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791284100000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791277200000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791294900000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791288000000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        }
+      ],
+      "scope": "events",
+      "total": 36,
+      "uids": [
+        "weekly-wec-weekly-1791252000@vantare",
+        "weekly-wec-weekly-1791266400@vantare",
+        "weekly-wec-weekly-1791277200@vantare",
+        "weekly-wec-weekly-1791288000@vantare",
+        "weekly-wec-weekly-1791298800@vantare",
+        "weekly-wec-weekly-1791309600@vantare",
+        "weekly-wec-weekly-1791316800@vantare",
+        "weekly-wec-weekly-1791327600@vantare",
+        "weekly-wec-weekly-1791338400@vantare",
+        "weekly-wec-weekly-1791352800@vantare",
+        "weekly-wec-weekly-1791363600@vantare",
+        "weekly-wec-weekly-1791374400@vantare",
+        "weekly-wec-weekly-1791385200@vantare",
+        "weekly-wec-weekly-1791396000@vantare",
+        "weekly-wec-weekly-1791403200@vantare",
+        "weekly-wec-weekly-1791414000@vantare",
+        "weekly-wec-weekly-1791424800@vantare",
+        "weekly-wec-weekly-1791439200@vantare",
+        "weekly-wec-weekly-1791450000@vantare",
+        "weekly-wec-weekly-1791460800@vantare",
+        "weekly-wec-weekly-1791471600@vantare",
+        "weekly-wec-weekly-1791482400@vantare",
+        "weekly-wec-weekly-1791489600@vantare",
+        "weekly-wec-weekly-1791500400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791511200@vantare",
+        "weekly-10-hours-of-road-atlanta-1791536400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791558000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791579600@vantare",
+        "weekly-10-hours-of-road-atlanta-1791597600@vantare",
+        "weekly-10-hours-of-road-atlanta-1791622800@vantare",
+        "weekly-10-hours-of-road-atlanta-1791644400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791666000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791684000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791709200@vantare",
+        "weekly-10-hours-of-road-atlanta-1791730800@vantare",
+        "weekly-10-hours-of-road-atlanta-1791752400@vantare"
+      ]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [
+          {
+            "at": 1791252000,
+            "seriesId": "weekly-wec-weekly"
+          },
+          {
+            "at": 1791511200,
+            "seriesId": "weekly-10-hours-of-road-atlanta"
+          }
+        ]
+      },
+      "following": [
+        "beginner-lmgt3-fixed",
+        "beginner-lmp3-fixed",
+        "beginner-logitech-mclaren-g-challenge-q1",
+        "intermediate-lmgt3-sprint",
+        "intermediate-prototype-fixed",
+        "intermediate-elms-sprint",
+        "advanced-one-stint-sprint",
+        "advanced-elms-super-60",
+        "advanced-wec-xperience",
+        "weekly-wec-weekly",
+        "weekly-10-hours-of-road-atlanta"
+      ],
+      "late": false,
+      "name": "october-2026",
+      "now": 1791244800000,
+      "preview": [
+        {
+          "end": 1791258900000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791252000000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791273300000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791266400000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791284100000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791277200000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791294900000,
+          "seriesId": "weekly-wec-weekly",
+          "start": 1791288000000,
+          "summary": "WEC Weekly · Sebring",
+          "track": "Sebring (WEC)"
+        }
+      ],
+      "scope": "all",
+      "total": 36,
+      "uids": [
+        "weekly-wec-weekly-1791252000@vantare",
+        "weekly-wec-weekly-1791266400@vantare",
+        "weekly-wec-weekly-1791277200@vantare",
+        "weekly-wec-weekly-1791288000@vantare",
+        "weekly-wec-weekly-1791298800@vantare",
+        "weekly-wec-weekly-1791309600@vantare",
+        "weekly-wec-weekly-1791316800@vantare",
+        "weekly-wec-weekly-1791327600@vantare",
+        "weekly-wec-weekly-1791338400@vantare",
+        "weekly-wec-weekly-1791352800@vantare",
+        "weekly-wec-weekly-1791363600@vantare",
+        "weekly-wec-weekly-1791374400@vantare",
+        "weekly-wec-weekly-1791385200@vantare",
+        "weekly-wec-weekly-1791396000@vantare",
+        "weekly-wec-weekly-1791403200@vantare",
+        "weekly-wec-weekly-1791414000@vantare",
+        "weekly-wec-weekly-1791424800@vantare",
+        "weekly-wec-weekly-1791439200@vantare",
+        "weekly-wec-weekly-1791450000@vantare",
+        "weekly-wec-weekly-1791460800@vantare",
+        "weekly-wec-weekly-1791471600@vantare",
+        "weekly-wec-weekly-1791482400@vantare",
+        "weekly-wec-weekly-1791489600@vantare",
+        "weekly-wec-weekly-1791500400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791511200@vantare",
+        "weekly-10-hours-of-road-atlanta-1791536400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791558000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791579600@vantare",
+        "weekly-10-hours-of-road-atlanta-1791597600@vantare",
+        "weekly-10-hours-of-road-atlanta-1791622800@vantare",
+        "weekly-10-hours-of-road-atlanta-1791644400@vantare",
+        "weekly-10-hours-of-road-atlanta-1791666000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791684000@vantare",
+        "weekly-10-hours-of-road-atlanta-1791709200@vantare",
+        "weekly-10-hours-of-road-atlanta-1791730800@vantare",
+        "weekly-10-hours-of-road-atlanta-1791752400@vantare"
+      ]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmp3-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-lmgt3-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-prototype-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-elms-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-one-stint-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-elms-super-60",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-wec-xperience",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": [
+        "beginner-lmgt3-fixed",
+        "beginner-lmp3-fixed",
+        "beginner-logitech-mclaren-g-challenge-q1",
+        "intermediate-lmgt3-sprint",
+        "intermediate-prototype-fixed",
+        "intermediate-elms-sprint",
+        "advanced-one-stint-sprint",
+        "advanced-elms-super-60",
+        "advanced-wec-xperience",
+        "weekly-wec-weekly",
+        "weekly-10-hours-of-road-atlanta"
+      ],
+      "late": true,
+      "name": "october-2026",
+      "now": 1791835200000,
+      "preview": [
+        {
+          "end": 1791837060000,
+          "seriesId": "beginner-lmgt3-fixed",
+          "start": 1791835200000,
+          "summary": "LMGT3 Fixed · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791837060000,
+          "seriesId": "beginner-lmp3-fixed",
+          "start": 1791835200000,
+          "summary": "LMP3 Fixed · Spa-Francorchamps",
+          "track": "Spa-Francorchamps (WEC)"
+        },
+        {
+          "end": 1791836760000,
+          "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+          "start": 1791835200000,
+          "summary": "Logitech McLaren G Challenge - Q1 · Portimao",
+          "track": "Portimao (WEC)"
+        },
+        {
+          "end": 1791837660000,
+          "seriesId": "intermediate-lmgt3-sprint",
+          "start": 1791835200000,
+          "summary": "LMGT3 Sprint Cup · Interlagos",
+          "track": "Interlagos (WEC)"
+        }
+      ],
+      "scope": "favs",
+      "total": 108,
+      "uids": [
+        "beginner-lmgt3-fixed-1791835200@vantare",
+        "beginner-lmp3-fixed-1791835200@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791835200@vantare",
+        "intermediate-lmgt3-sprint-1791835200@vantare",
+        "intermediate-prototype-fixed-1791835200@vantare",
+        "intermediate-elms-sprint-1791835200@vantare",
+        "advanced-one-stint-sprint-1791835200@vantare",
+        "advanced-elms-super-60-1791835200@vantare",
+        "advanced-wec-xperience-1791835200@vantare",
+        "beginner-lmgt3-fixed-1791836100@vantare",
+        "beginner-lmp3-fixed-1791836100@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791836100@vantare",
+        "intermediate-lmgt3-sprint-1791836400@vantare",
+        "intermediate-prototype-fixed-1791836400@vantare",
+        "intermediate-elms-sprint-1791836400@vantare",
+        "beginner-lmgt3-fixed-1791837000@vantare",
+        "beginner-lmp3-fixed-1791837000@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791837000@vantare",
+        "advanced-one-stint-sprint-1791837000@vantare",
+        "advanced-elms-super-60-1791837000@vantare",
+        "advanced-wec-xperience-1791837000@vantare",
+        "intermediate-lmgt3-sprint-1791837600@vantare",
+        "intermediate-prototype-fixed-1791837600@vantare",
+        "intermediate-elms-sprint-1791837600@vantare",
+        "beginner-lmgt3-fixed-1791837900@vantare",
+        "beginner-lmp3-fixed-1791837900@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791837900@vantare",
+        "beginner-lmgt3-fixed-1791838800@vantare",
+        "beginner-lmp3-fixed-1791838800@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791838800@vantare",
+        "intermediate-lmgt3-sprint-1791838800@vantare",
+        "intermediate-prototype-fixed-1791838800@vantare",
+        "intermediate-elms-sprint-1791838800@vantare",
+        "advanced-one-stint-sprint-1791838800@vantare",
+        "advanced-elms-super-60-1791838800@vantare",
+        "advanced-wec-xperience-1791838800@vantare",
+        "beginner-lmgt3-fixed-1791839700@vantare",
+        "beginner-lmp3-fixed-1791839700@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791839700@vantare",
+        "intermediate-lmgt3-sprint-1791840000@vantare",
+        "intermediate-prototype-fixed-1791840000@vantare",
+        "intermediate-elms-sprint-1791840000@vantare",
+        "beginner-lmgt3-fixed-1791840600@vantare",
+        "beginner-lmp3-fixed-1791840600@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791840600@vantare",
+        "advanced-one-stint-sprint-1791840600@vantare",
+        "advanced-elms-super-60-1791840600@vantare",
+        "advanced-wec-xperience-1791840600@vantare",
+        "intermediate-lmgt3-sprint-1791841200@vantare",
+        "intermediate-prototype-fixed-1791841200@vantare",
+        "intermediate-elms-sprint-1791841200@vantare",
+        "beginner-lmgt3-fixed-1791841500@vantare",
+        "beginner-lmp3-fixed-1791841500@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791841500@vantare",
+        "beginner-lmgt3-fixed-1791842400@vantare",
+        "beginner-lmp3-fixed-1791842400@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791842400@vantare",
+        "intermediate-lmgt3-sprint-1791842400@vantare",
+        "intermediate-prototype-fixed-1791842400@vantare",
+        "intermediate-elms-sprint-1791842400@vantare",
+        "advanced-one-stint-sprint-1791842400@vantare",
+        "advanced-elms-super-60-1791842400@vantare",
+        "advanced-wec-xperience-1791842400@vantare",
+        "beginner-lmgt3-fixed-1791843300@vantare",
+        "beginner-lmp3-fixed-1791843300@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791843300@vantare",
+        "intermediate-lmgt3-sprint-1791843600@vantare",
+        "intermediate-prototype-fixed-1791843600@vantare",
+        "intermediate-elms-sprint-1791843600@vantare",
+        "beginner-lmgt3-fixed-1791844200@vantare",
+        "beginner-lmp3-fixed-1791844200@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791844200@vantare",
+        "advanced-one-stint-sprint-1791844200@vantare",
+        "advanced-elms-super-60-1791844200@vantare",
+        "advanced-wec-xperience-1791844200@vantare",
+        "intermediate-lmgt3-sprint-1791844800@vantare",
+        "intermediate-prototype-fixed-1791844800@vantare",
+        "intermediate-elms-sprint-1791844800@vantare",
+        "beginner-lmgt3-fixed-1791845100@vantare",
+        "beginner-lmp3-fixed-1791845100@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791845100@vantare",
+        "beginner-lmgt3-fixed-1791846000@vantare",
+        "beginner-lmp3-fixed-1791846000@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791846000@vantare",
+        "intermediate-lmgt3-sprint-1791846000@vantare",
+        "intermediate-prototype-fixed-1791846000@vantare",
+        "intermediate-elms-sprint-1791846000@vantare",
+        "advanced-one-stint-sprint-1791846000@vantare",
+        "advanced-elms-super-60-1791846000@vantare",
+        "advanced-wec-xperience-1791846000@vantare",
+        "beginner-lmgt3-fixed-1791846900@vantare",
+        "beginner-lmp3-fixed-1791846900@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791846900@vantare",
+        "intermediate-lmgt3-sprint-1791847200@vantare",
+        "intermediate-prototype-fixed-1791847200@vantare",
+        "intermediate-elms-sprint-1791847200@vantare",
+        "beginner-lmgt3-fixed-1791847800@vantare",
+        "beginner-lmp3-fixed-1791847800@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791847800@vantare",
+        "advanced-one-stint-sprint-1791847800@vantare",
+        "advanced-elms-super-60-1791847800@vantare",
+        "advanced-wec-xperience-1791847800@vantare",
+        "intermediate-lmgt3-sprint-1791848400@vantare",
+        "intermediate-prototype-fixed-1791848400@vantare",
+        "intermediate-elms-sprint-1791848400@vantare",
+        "beginner-lmgt3-fixed-1791848700@vantare",
+        "beginner-lmp3-fixed-1791848700@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791848700@vantare"
+      ]
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmp3-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-lmgt3-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-prototype-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-elms-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-one-stint-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-elms-super-60",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-wec-xperience",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": [
+        "beginner-lmgt3-fixed",
+        "beginner-lmp3-fixed",
+        "beginner-logitech-mclaren-g-challenge-q1",
+        "intermediate-lmgt3-sprint",
+        "intermediate-prototype-fixed",
+        "intermediate-elms-sprint",
+        "advanced-one-stint-sprint",
+        "advanced-elms-super-60",
+        "advanced-wec-xperience",
+        "weekly-wec-weekly",
+        "weekly-10-hours-of-road-atlanta"
+      ],
+      "late": true,
+      "name": "october-2026",
+      "now": 1791835200000,
+      "preview": [],
+      "scope": "events",
+      "total": 0,
+      "uids": []
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmp3-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-lmgt3-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-prototype-fixed",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-elms-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-one-stint-sprint",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-elms-super-60",
+            "to": 1440
+          },
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-wec-xperience",
+            "to": 1440
+          }
+        ],
+        "channels": {
+          "inTrack": true,
+          "sound": false,
+          "windows": true
+        },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "following": [
+        "beginner-lmgt3-fixed",
+        "beginner-lmp3-fixed",
+        "beginner-logitech-mclaren-g-challenge-q1",
+        "intermediate-lmgt3-sprint",
+        "intermediate-prototype-fixed",
+        "intermediate-elms-sprint",
+        "advanced-one-stint-sprint",
+        "advanced-elms-super-60",
+        "advanced-wec-xperience",
+        "weekly-wec-weekly",
+        "weekly-10-hours-of-road-atlanta"
+      ],
+      "late": true,
+      "name": "october-2026",
+      "now": 1791835200000,
+      "preview": [
+        {
+          "end": 1791837060000,
+          "seriesId": "beginner-lmgt3-fixed",
+          "start": 1791835200000,
+          "summary": "LMGT3 Fixed · Sebring",
+          "track": "Sebring (WEC)"
+        },
+        {
+          "end": 1791837060000,
+          "seriesId": "beginner-lmp3-fixed",
+          "start": 1791835200000,
+          "summary": "LMP3 Fixed · Spa-Francorchamps",
+          "track": "Spa-Francorchamps (WEC)"
+        },
+        {
+          "end": 1791836760000,
+          "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+          "start": 1791835200000,
+          "summary": "Logitech McLaren G Challenge - Q1 · Portimao",
+          "track": "Portimao (WEC)"
+        },
+        {
+          "end": 1791837660000,
+          "seriesId": "intermediate-lmgt3-sprint",
+          "start": 1791835200000,
+          "summary": "LMGT3 Sprint Cup · Interlagos",
+          "track": "Interlagos (WEC)"
+        }
+      ],
+      "scope": "all",
+      "total": 108,
+      "uids": [
+        "beginner-lmgt3-fixed-1791835200@vantare",
+        "beginner-lmp3-fixed-1791835200@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791835200@vantare",
+        "intermediate-lmgt3-sprint-1791835200@vantare",
+        "intermediate-prototype-fixed-1791835200@vantare",
+        "intermediate-elms-sprint-1791835200@vantare",
+        "advanced-one-stint-sprint-1791835200@vantare",
+        "advanced-elms-super-60-1791835200@vantare",
+        "advanced-wec-xperience-1791835200@vantare",
+        "beginner-lmgt3-fixed-1791836100@vantare",
+        "beginner-lmp3-fixed-1791836100@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791836100@vantare",
+        "intermediate-lmgt3-sprint-1791836400@vantare",
+        "intermediate-prototype-fixed-1791836400@vantare",
+        "intermediate-elms-sprint-1791836400@vantare",
+        "beginner-lmgt3-fixed-1791837000@vantare",
+        "beginner-lmp3-fixed-1791837000@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791837000@vantare",
+        "advanced-one-stint-sprint-1791837000@vantare",
+        "advanced-elms-super-60-1791837000@vantare",
+        "advanced-wec-xperience-1791837000@vantare",
+        "intermediate-lmgt3-sprint-1791837600@vantare",
+        "intermediate-prototype-fixed-1791837600@vantare",
+        "intermediate-elms-sprint-1791837600@vantare",
+        "beginner-lmgt3-fixed-1791837900@vantare",
+        "beginner-lmp3-fixed-1791837900@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791837900@vantare",
+        "beginner-lmgt3-fixed-1791838800@vantare",
+        "beginner-lmp3-fixed-1791838800@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791838800@vantare",
+        "intermediate-lmgt3-sprint-1791838800@vantare",
+        "intermediate-prototype-fixed-1791838800@vantare",
+        "intermediate-elms-sprint-1791838800@vantare",
+        "advanced-one-stint-sprint-1791838800@vantare",
+        "advanced-elms-super-60-1791838800@vantare",
+        "advanced-wec-xperience-1791838800@vantare",
+        "beginner-lmgt3-fixed-1791839700@vantare",
+        "beginner-lmp3-fixed-1791839700@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791839700@vantare",
+        "intermediate-lmgt3-sprint-1791840000@vantare",
+        "intermediate-prototype-fixed-1791840000@vantare",
+        "intermediate-elms-sprint-1791840000@vantare",
+        "beginner-lmgt3-fixed-1791840600@vantare",
+        "beginner-lmp3-fixed-1791840600@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791840600@vantare",
+        "advanced-one-stint-sprint-1791840600@vantare",
+        "advanced-elms-super-60-1791840600@vantare",
+        "advanced-wec-xperience-1791840600@vantare",
+        "intermediate-lmgt3-sprint-1791841200@vantare",
+        "intermediate-prototype-fixed-1791841200@vantare",
+        "intermediate-elms-sprint-1791841200@vantare",
+        "beginner-lmgt3-fixed-1791841500@vantare",
+        "beginner-lmp3-fixed-1791841500@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791841500@vantare",
+        "beginner-lmgt3-fixed-1791842400@vantare",
+        "beginner-lmp3-fixed-1791842400@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791842400@vantare",
+        "intermediate-lmgt3-sprint-1791842400@vantare",
+        "intermediate-prototype-fixed-1791842400@vantare",
+        "intermediate-elms-sprint-1791842400@vantare",
+        "advanced-one-stint-sprint-1791842400@vantare",
+        "advanced-elms-super-60-1791842400@vantare",
+        "advanced-wec-xperience-1791842400@vantare",
+        "beginner-lmgt3-fixed-1791843300@vantare",
+        "beginner-lmp3-fixed-1791843300@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791843300@vantare",
+        "intermediate-lmgt3-sprint-1791843600@vantare",
+        "intermediate-prototype-fixed-1791843600@vantare",
+        "intermediate-elms-sprint-1791843600@vantare",
+        "beginner-lmgt3-fixed-1791844200@vantare",
+        "beginner-lmp3-fixed-1791844200@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791844200@vantare",
+        "advanced-one-stint-sprint-1791844200@vantare",
+        "advanced-elms-super-60-1791844200@vantare",
+        "advanced-wec-xperience-1791844200@vantare",
+        "intermediate-lmgt3-sprint-1791844800@vantare",
+        "intermediate-prototype-fixed-1791844800@vantare",
+        "intermediate-elms-sprint-1791844800@vantare",
+        "beginner-lmgt3-fixed-1791845100@vantare",
+        "beginner-lmp3-fixed-1791845100@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791845100@vantare",
+        "beginner-lmgt3-fixed-1791846000@vantare",
+        "beginner-lmp3-fixed-1791846000@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791846000@vantare",
+        "intermediate-lmgt3-sprint-1791846000@vantare",
+        "intermediate-prototype-fixed-1791846000@vantare",
+        "intermediate-elms-sprint-1791846000@vantare",
+        "advanced-one-stint-sprint-1791846000@vantare",
+        "advanced-elms-super-60-1791846000@vantare",
+        "advanced-wec-xperience-1791846000@vantare",
+        "beginner-lmgt3-fixed-1791846900@vantare",
+        "beginner-lmp3-fixed-1791846900@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791846900@vantare",
+        "intermediate-lmgt3-sprint-1791847200@vantare",
+        "intermediate-prototype-fixed-1791847200@vantare",
+        "intermediate-elms-sprint-1791847200@vantare",
+        "beginner-lmgt3-fixed-1791847800@vantare",
+        "beginner-lmp3-fixed-1791847800@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791847800@vantare",
+        "advanced-one-stint-sprint-1791847800@vantare",
+        "advanced-elms-super-60-1791847800@vantare",
+        "advanced-wec-xperience-1791847800@vantare",
+        "intermediate-lmgt3-sprint-1791848400@vantare",
+        "intermediate-prototype-fixed-1791848400@vantare",
+        "intermediate-elms-sprint-1791848400@vantare",
+        "beginner-lmgt3-fixed-1791848700@vantare",
+        "beginner-lmp3-fixed-1791848700@vantare",
+        "beginner-logitech-mclaren-g-challenge-q1-1791848700@vantare"
+      ]
+    }
+  ]
+}

@@ -952,6 +952,13 @@
     },
     {
       "error": {
+        "kind": "calendarExportExtension"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
         "kind": "calendarExportTooLarge"
       },
       "id": 1,

@@ -39,9 +39,11 @@ nueva ni se alteran comandos o argumentos.
 | Peticiones de lanzamiento y favorito | Request enum tipado, con ID del perfil; no hay Value ni Map persistido |
 | Presentación en Studio/Onboarding | Contador u64, texto fijo o eliminación del fichero; ningún objeto dinámico |
 
-Los informes locales y el diagnóstico del anfitrión se proyectan desde structs
-(o BTreeMap tipados). Triage ya ordena su Value con sort_all_objects antes de
-crear el JSON de previsualización; no es un escritor local de documentos.
+Los informes locales se proyectan desde structs (o BTreeMap tipados).
+Diagnostics::prepare construye un Value para el JSON de copia; no escribe un
+fichero y su orden de previsualización queda fuera de esta garantía de disco.
+Triage ya ordena su Value con sort_all_objects antes de crear su previsualización.
+Tampoco es un escritor local de documentos.
 Los guardados delegados a Services no pasan por un serializador de disco del
 anfitrión. No se cambia ese protocolo ni ningún crate de núcleo.
 

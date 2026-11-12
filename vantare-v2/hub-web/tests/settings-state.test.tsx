@@ -625,6 +625,51 @@ describe("Privacidad and Diagnóstico over the simulated host", () => {
     await user.click(mail);
     await screen.findByRole("button", { name: privacyText.disable });
   });
+  it("loads the visual settings session email choice and keeps its actions keyboard usable", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("visual-dark:ajustes-con-diseno", <Privacy />);
+    await loaded(hook);
+    await screen.findByText(privacyText.optional);
+    expect(screen.queryByText(privacyText.signIn)).toBeNull();
+    const enable = screen.getByRole("button", { name: privacyText.enable });
+    const refresh = screen.getByRole("button", { name: privacyText.refresh });
+    const policy = screen.getByRole("button", { name: t("privacy.policy") });
+    for (const button of [enable, refresh, policy]) {
+      expect(button.getAttribute("aria-disabled")).not.toBe("true");
+      expect(button.hasAttribute("disabled")).toBe(false);
+    }
+    const user = userEvent.setup();
+    enable.focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("button", { name: privacyText.disable });
+    await user.click(refresh);
+    await waitFor(() =>
+      expect(refresh.getAttribute("aria-disabled")).not.toBe("true"),
+    );
+    expect(
+      request.mock.calls.filter(([value]) => value.method === "mail.get")
+        .length,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      request.mock.calls
+        .filter(([value]) => value.method === "mail.set")
+        .map(([value]) => value),
+    ).toEqual([{ method: "mail.set", consent: true, source: "settings" }]);
+    for (const label of ["privacy.crashes", "privacy.usage"] as const)
+      expect(
+        screen
+          .getByRole("switch", { name: t(label) })
+          .getAttribute("aria-checked"),
+      ).toBe("false");
+    policy.focus();
+    expect(document.activeElement).toBe(policy);
+  });
+  it("keeps the unknown email choice in other visual scenes", async () => {
+    const hook = mount("visual-dark:privacidad-uso", <Privacy />);
+    await loaded(hook);
+    await screen.findByText(privacyText.signIn);
+    expect(screen.queryByText(privacyText.optional)).toBeNull();
+  });
   it("retries only the failed privacy field after a conflict", async () => {
     const hook = mount("privacidad-conflicto", <Privacy />);
     await loaded(hook);

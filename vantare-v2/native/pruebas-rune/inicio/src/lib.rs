@@ -46,12 +46,22 @@ pub fn setup(s: &mut State, wake: rune::Waker) {
         .iter()
         .enumerate()
         .map(|(index, bytes)| {
-            let ink=tokens()["themes"]["vantare"]["dark"][if index==6 {"accent-bright"} else {"text-3"}].as_str().unwrap();
-            let svg=std::str::from_utf8(bytes).unwrap().replace("currentColor",ink).into_bytes();
+            let ink = tokens()["themes"]["vantare"]["dark"][if index == 6 {
+                "accent-bright"
+            } else {
+                "text-3"
+            }]
+            .as_str()
+            .unwrap();
+            let svg = std::str::from_utf8(bytes)
+                .unwrap()
+                .replace("currentColor", ink)
+                .into_bytes();
             cache.svg(
                 svg,
                 [
-                    190.0, 40.0, 136.0, 136.0, 136.0, 454.0, 24.0, 24.0, 24.0, 24.0, 24.0, 580.0, 24.0,24.0,24.0,24.0,
+                    190.0, 40.0, 136.0, 136.0, 136.0, 454.0, 24.0, 24.0, 24.0, 24.0, 24.0, 580.0,
+                    24.0, 24.0, 24.0, 24.0,
                 ][index],
                 1.0,
             )
@@ -182,7 +192,12 @@ fn home(s: &State) -> El {
         .min_w(0.0)
         .min_h(500.0)
         .child(preview)
-        .child(row().center_y().child(label("Layout local", 22.0, 650.0).grow(1.0)).child(button("Vista previa",false)))
+        .child(
+            row()
+                .center_y()
+                .child(label("Layout local", 22.0, 650.0).grow(1.0))
+                .child(button("Vista previa", false)),
+        )
         .child(label("Esperando simulador", 12.0, 400.0))
         .child(
             row()
@@ -203,7 +218,8 @@ fn home(s: &State) -> El {
                 .child(button("Editar overlay", false))
                 .child(button("Detener", false)),
         );
-    let mut activity = card("ACTIVIDAD", "activity-card").child(label("VER TODO",10.0,400.0))
+    let mut activity = card("ACTIVIDAD", "activity-card")
+        .child(label("VER TODO", 10.0, 400.0))
         .grow(1.0)
         .min_w(0.0)
         .min_h(500.0);
@@ -333,14 +349,22 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
                 } else {
                     "bg-sidebar"
                 }))
-                .child(picture(s, if index < 5 {6+index} else {7+index}, 24.0, 24.0).pin(Some(12.0), Some(8.0), None, None))
+                .child(
+                    picture(s, if index < 5 { 6 + index } else { 7 + index }, 24.0, 24.0).pin(
+                        Some(12.0),
+                        Some(8.0),
+                        None,
+                        None,
+                    ),
+                )
                 .on_press(move |s: &mut State| s.section = index),
         );
     }
-    sidebar=sidebar.child(el().grow(1.0))
-        .child(picture(s,15,24.0,24.0).label("Cambiar tema"))
-        .child(label("Ajustes",10.0,400.0))
-        .child(label("IA",13.0,600.0).label("Isaac"));
+    sidebar = sidebar
+        .child(el().grow(1.0))
+        .child(picture(s, 15, 24.0, 24.0).label("Cambiar tema"))
+        .child(label("Ajustes", 10.0, 400.0))
+        .child(label("IA", 13.0, 600.0).label("Isaac"));
     let content = if s.section == 0 {
         home(s)
     } else {

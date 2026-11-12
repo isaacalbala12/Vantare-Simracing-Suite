@@ -90,7 +90,6 @@ export function CalendarAlertsDialog(p: Props) {
           <div className="v-calendar-alerts-body">
             {p.failure}
             {p.testFeedback}
-            <p id={testHint}>{text.testHint}</p>
             <CalendarAlertsStatus state={p.alertsState ?? "ready"} />
             {ready && legacy && <p role="status">{text.duplicates}</p>}
             {p.busy && <p role="status">{text.saving}</p>}
@@ -310,6 +309,9 @@ export function CalendarAlertsDialog(p: Props) {
           <footer>
             <Tooltip label={text.testHint}>
               <span>
+                <span id={testHint} className="v-sr-only">
+                  {text.testHint}
+                </span>
                 <Button
                   disabled={!p.onTest || !ready}
                   focusableWhenDisabled

@@ -37,7 +37,7 @@
 }
 .v-calendar-alerts > header h2 {
   margin: 0;
-  font: 600 26px / 31px var(--font-display);
+  font: 600 26px / 28px var(--font-display);
 }
 .v-calendar-alerts :where(header) p {
   margin: 0;
@@ -83,7 +83,7 @@
 }
 .v-calendar-alerts-caption h3 {
   margin: 0;
-  font: 600 10.5px / 14px var(--font-display);
+  font: 600 10.5px / 11px var(--font-display);
   letter-spacing: 1.8px;
   text-transform: uppercase;
 }

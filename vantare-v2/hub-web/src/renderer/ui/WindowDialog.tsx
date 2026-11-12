@@ -3,6 +3,7 @@ import {
   createContext,
   forwardRef,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useLayoutEffect,
@@ -20,9 +21,26 @@ const Mode = createContext({
   outsideDismiss: true,
 });
 export function WindowDialogProvider({ children }: { children: ReactNode }) {
-  const safety = useMemo(() => dialogSafety(document), []);
-  useLayoutEffect(() => safety.listen(), [safety]);
+  const parent = useContext(Safety);
+  const safety = useMemo(() => parent ?? dialogSafety(document), [parent]);
+  useLayoutEffect(
+    () => (parent ? undefined : safety.listen()),
+    [parent, safety],
+  );
   return <Safety.Provider value={safety}>{children}</Safety.Provider>;
+}
+
+/** Existing partial-window modality, also for anchored popup surfaces. */
+export function useWindowDialogSurface(
+  node: RefObject<HTMLElement | null>,
+  open: boolean,
+  close: () => void,
+) {
+  const safety = useContext(Safety);
+  useLayoutEffect(() => {
+    if (open && node.current)
+      return safety?.register({ node: node.current, close });
+  }, [safety, node, open, close]);
 }
 type RootProps = Omit<Base.Root.Props, "modal"> & {
   scope?: "screen" | "gate" | "notice";
@@ -68,8 +86,7 @@ function Root({ scope = "screen", ...props }: RootProps) {
 }
 const Popup = forwardRef<HTMLDivElement, Base.Popup.Props>(
   function Popup(props, ref) {
-    const safety = useContext(Safety),
-      mode = useContext(Mode);
+    const mode = useContext(Mode);
     const node = useRef<HTMLDivElement>(null);
     const setNode = useCallback(
       (element: HTMLDivElement | null) => {
@@ -79,10 +96,11 @@ const Popup = forwardRef<HTMLDivElement, Base.Popup.Props>(
       },
       [ref],
     );
-    useLayoutEffect(() => {
-      if (mode.scope === "screen" && mode.open && node.current)
-        return safety?.register({ node: node.current, close: mode.close });
-    }, [safety, mode.scope, mode.open, mode.close]);
+    useWindowDialogSurface(
+      node,
+      mode.scope === "screen" && mode.open,
+      mode.close,
+    );
     return (
       <Base.Popup {...props} ref={setNode} data-window-dialog={mode.scope} />
     );

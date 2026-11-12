@@ -47,6 +47,7 @@ pub struct Core {
     last_photo: Option<Instant>,
     authority: Option<AccessView>,
     account_session: Option<vantare_ipc::services_protocol::Session>,
+    account_generation: Option<vantare_ipc::account_session::AccountGeneration>,
     home_demand: crate::home::demand::State,
     home_sim: crate::home::HomeSim,
 }
@@ -58,7 +59,7 @@ impl Core {
             peer.is_image(&image)
         })
         .map_err(io::Error::other)?;
-        let rights = control::Feed::connect(photo, core_image)?;
+        let rights = control::Feed::connect_account(photo, core_image)?;
         let service_ok = Arc::new(AtomicBool::new(false));
         let stop = Arc::new(Event::new()?);
         let target = Arc::clone(&service_ok);
@@ -85,6 +86,7 @@ impl Core {
             last_photo: None,
             authority: None,
             account_session: None,
+            account_generation: None,
             home_demand: crate::home::demand::State::default(),
             home_sim: crate::home::HomeSim::default(),
         })
@@ -265,6 +267,7 @@ impl Core {
         let access = control::wall_ms()
             .map(|now| access_view(&policy, now))
             .unwrap_or_default();
+        self.observe_account_generation(self.rights.account_observation().map(|o| o.generation));
         self.observe_authority(access.clone());
         CoreStatus {
             photos: if self.photos.connection().incompatible() {
@@ -294,6 +297,18 @@ impl Core {
             // Feed already carries the core's exact domain::is_live observation.
             live: policy.epoch > 0 && policy.live,
         }
+    }
+    pub fn account_observation(&self) -> Option<vantare_ipc::account_session::AccountObservation> {
+        self.rights.account_observation()
+    }
+    fn observe_account_generation(
+        &mut self,
+        generation: Option<vantare_ipc::account_session::AccountGeneration>,
+    ) {
+        if self.account_generation != generation {
+            self.queue.invalidate_waiting();
+        }
+        self.account_generation = generation;
     }
     pub(crate) fn observe_authority(&mut self, access: AccessView) {
         // Feed revisions also change on harmless refreshes; only capabilities matter.
@@ -395,6 +410,33 @@ fn service_worker(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn account_scope_invalidates_waiters_even_with_unchanged_capabilities() {
+        use vantare_ipc::services_protocol::Command;
+        let root = crate::test_support::Root::new();
+        let mut core = Core::start("scope-unused", &root.path).unwrap();
+        let generation: vantare_ipc::account_session::AccountGeneration =
+            "a".repeat(64).try_into().unwrap();
+        core.observe_account_generation(Some(generation.clone()));
+        core.queue
+            .submit_at(1, Command::PilotLoad, Instant::now())
+            .unwrap();
+        core.observe_account_generation(Some(generation));
+        assert!(core.queue.failure().is_none());
+        core.observe_account_generation(Some("b".repeat(64).try_into().unwrap()));
+        assert_eq!(
+            core.queue.failure(),
+            Some((1, crate::protocol::HostError::Denied))
+        );
+        core.queue
+            .submit_at(2, Command::PilotLoad, Instant::now())
+            .unwrap();
+        core.observe_account_generation(None);
+        assert_eq!(
+            core.queue.failure(),
+            Some((2, crate::protocol::HostError::Denied))
+        );
+    }
     #[test]
     fn a_full_worker_channel_fails_only_one_waiter_and_preserves_the_next() {
         use vantare_ipc::services_protocol::Command;

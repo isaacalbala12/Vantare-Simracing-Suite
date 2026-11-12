@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { onboardingStepsText as text } from "../../i18n/onboarding-pasos";
 import { onboardingSummaryText } from "../../i18n/onboarding-summary";
 import { privacyGateText } from "../../i18n/privacy-gate.es";
@@ -8,7 +9,9 @@ import "./privacy-step.css";
 export interface OnboardingMailStatus {
   available: boolean;
   pending: boolean;
+  reading?: boolean;
   consent: boolean;
+  unconfirmed?: boolean;
   message?: string;
   onChange?: (value: boolean) => void;
 }
@@ -19,6 +22,7 @@ function ConsentCard({
   pending = false,
   disabled = false,
   onChange,
+  describedBy,
 }: {
   label: string;
   hint: string;
@@ -26,6 +30,7 @@ function ConsentCard({
   pending?: boolean;
   disabled?: boolean;
   onChange: (value: boolean) => void;
+  describedBy?: string;
 }) {
   return (
     <div className="v-ob-consent-card" data-on={checked}>
@@ -35,6 +40,7 @@ function ConsentCard({
       </div>
       <Switch
         label={label}
+        aria-describedby={describedBy}
         hideLabel
         checked={checked}
         pending={pending}
@@ -67,6 +73,7 @@ export function PrivacyStep({
   onUsage: (value: boolean) => void;
   onPolicy: () => void;
 }) {
+  const mailNoteId = useId();
   if (protectedFile)
     return (
       <div className="v-ob-consent" role="status">
@@ -107,17 +114,20 @@ export function PrivacyStep({
       />
       <ConsentCard
         label={text.mail}
+        describedBy={mailNoteId}
         hint={text.mailHint}
         checked={mail?.consent ?? false}
         pending={pending || mail?.pending}
         disabled={!mail?.available}
         onChange={(value) => mail?.onChange?.(value)}
       />
-      <p className="v-ob-mail-note" role="status">
-        {mail?.pending
-          ? text.mailSaving
-          : (mail?.message ??
-            (mail?.available ? text.mailUnconfirmed : text.mailOff))}
+      <p id={mailNoteId} className="v-ob-mail-note" role="status">
+        {mail?.reading
+          ? text.mailLoading
+          : mail?.pending
+            ? text.mailSaving
+            : (mail?.message ??
+              (mail?.available ? text.mailUnconfirmed : text.mailOff))}
       </p>
     </div>
   );

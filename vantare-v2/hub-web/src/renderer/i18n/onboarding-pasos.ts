@@ -92,7 +92,16 @@ export const onboardingStepsText = {
   mailOff: "Sin cuenta: no se activa el envío de correos.",
   mailUnconfirmed:
     "El permiso se confirma en el servidor. Se cambia en Ajustes › Privacidad.",
+  mailLoading: "Consultando permiso de correos…",
   mailSaving: "Guardando permiso de correos…",
+  mailNotConfirmed:
+    "Correos sin confirmar. Puedes terminar y reintentarlo en Ajustes › Privacidad",
+  mailBlocked: "Cuenta bloqueada: no se puede cambiar el permiso de correos.",
+  mailAccountPending:
+    "La cuenta está pendiente de confirmar. Espera para cambiar el permiso de correos.",
+  mailAtFinish: "Si cambias tu elección, se guardará al pulsar Terminar.",
+  mailUnavailable:
+    "No se pudo consultar el permiso de correos. Puedes terminar sin modificarlo y revisarlo en Ajustes › Privacidad.",
   crashNotice:
     "Si está encendido, Vantare envía a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.. Puedes apagarlo aquí mismo o más tarde en Ajustes › Privacidad.",
   usageOnSay: "Datos de uso activados. Son anónimos.",

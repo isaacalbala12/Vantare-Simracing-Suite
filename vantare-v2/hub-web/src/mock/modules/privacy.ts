@@ -12,7 +12,10 @@ export function create(context: MockContext): MockHandler {
   // The explicit first-run scenes below alone leave decisions pending.
   privacy.crashesDecided = true;
   privacy.usageDecided = true;
-  let consent = false;
+  const mailScene =
+    sceneName === "onboarding-cuenta-sesion" ||
+    sceneName.startsWith("onboarding-correo-");
+  let consent = sceneName === "onboarding-correo-con-permiso";
   let privacyRevision = 0;
   let privacyConflict = false;
   if (
@@ -133,9 +136,9 @@ export function create(context: MockContext): MockHandler {
       }
       case "mail.get":
         // Settings parity shows a verified session with its email choice loaded.
-        if (context.visual && sceneName !== "ajustes-con-diseno")
+        if (context.visual && sceneName !== "ajustes-con-diseno" && !mailScene)
           return { kind: "failure", id, error: { kind: "denied" } };
-        return core.services === "connected"
+        return core.services === "connected" || mailScene
           ? {
               kind: "response",
               id,
@@ -143,10 +146,13 @@ export function create(context: MockContext): MockHandler {
             }
           : { kind: "failure", id, error: { kind: "coreUnavailable" } };
       case "mail.set":
-        if (sceneName === "privacidad-mail-error")
+        if (
+          sceneName === "privacidad-mail-error" ||
+          sceneName === "onboarding-correo-error"
+        )
           return { kind: "failure", id, error: { kind: "io" } };
         {
-          if (core.services !== "connected")
+          if (core.services !== "connected" && !mailScene)
             return { kind: "failure", id, error: { kind: "coreUnavailable" } };
           consent = request.consent;
           return {

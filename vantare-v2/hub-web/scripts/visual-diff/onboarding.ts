@@ -31,7 +31,10 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
             .click();
         if (step >= 4)
           await page
-            .getByRole("button", { name: "Ahora no", exact: true })
+            .getByRole("button", {
+              name: /^(Ahora no|Continuar)$/,
+              exact: true,
+            })
             .click();
         if (step >= 5)
           await page
@@ -103,6 +106,25 @@ export const onboardingScenes: Record<string, VisualScene> = Object.fromEntries(
     },
   ]),
 );
+onboardingScenes["onboarding-correo"] = {
+  mock: "onboarding-cuenta-sesion",
+  async prepare(page) {
+    await onboardingScenes["onboarding-6"].prepare(page);
+    const mail = page.getByRole("switch", {
+      name: "Recibir novedades y ofertas por correo",
+    });
+    await mail.waitFor();
+    assert.equal(await mail.isEnabled(), true);
+    assert.equal(await mail.isChecked(), false);
+    await mail.click();
+    assert.equal(await mail.isChecked(), true);
+    await page
+      .getByText("Si cambias tu elección, se guardará al pulsar Terminar.", {
+        exact: true,
+      })
+      .waitFor();
+  },
+};
 
 // Additional account states have no matching frozen GPUI bank scene: capture
 // them without percentages, preserving onboarding-3 as the comparable guest.
@@ -128,6 +150,39 @@ for (const state of ["sesion", "cargando", "error"] as const) {
       } else {
         await page
           .getByText("No se pudo cargar la cuenta.", { exact: true })
+          .waitFor();
+      }
+    },
+  };
+}
+
+for (const state of ["sin-permiso", "con-permiso", "error"] as const) {
+  const scene = `onboarding-correo-${state}`;
+  onboardingScenes[scene] = {
+    mock: scene,
+    async prepare(page) {
+      await onboardingScenes["onboarding-6"].prepare(page);
+      const mail = page.getByRole("switch", {
+        name: "Recibir novedades y ofertas por correo",
+      });
+      await mail.waitFor();
+      assert.equal(await mail.isEnabled(), true);
+      assert.equal(await mail.isChecked(), state === "con-permiso");
+      if (state === "error") {
+        await mail.click();
+        await page
+          .getByRole("button", { name: "Terminar", exact: true })
+          .click();
+        await page
+          .getByText(
+            "Correos sin confirmar. Puedes terminar y reintentarlo en Ajustes › Privacidad",
+            { exact: true },
+          )
+          .waitFor();
+        await page
+          .locator("dl > div")
+          .filter({ has: page.locator("dt", { hasText: /^Correos$/ }) })
+          .getByText("Sin confirmar", { exact: true })
           .waitFor();
       }
     },

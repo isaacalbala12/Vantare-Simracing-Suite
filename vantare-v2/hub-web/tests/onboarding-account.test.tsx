@@ -29,9 +29,16 @@ vi.mock("../src/renderer/screens/onboarding/IntroPreview", async () => {
   return {
     OnboardingIntroPreview: ({
       account,
+      mail,
     }: {
       account: Parameters<typeof AccountStep>[0]["value"];
-    }) => <AccountStep value={account} />,
+      mail?: { message?: string };
+    }) => (
+      <>
+        <AccountStep value={account} />
+        <output aria-label="Estado del correo">{mail?.message}</output>
+      </>
+    ),
   };
 });
 function account(): AccountView {
@@ -173,3 +180,20 @@ it.each([
     expect(screen.queryByText("Acceso verificado")).toBeNull();
   },
 );
+
+it("distinguishes a pending or blocked account from no session in the mail explanation", async () => {
+  fake.request.mockResolvedValue({ method: "account.get", value: account() });
+  mount();
+  await screen.findByText("Puedes continuar sin cuenta.");
+  expect(screen.getByLabelText("Estado del correo").textContent).toContain(
+    "Sin cuenta",
+  );
+  update({ ...account(), session: "signedIn", gate: "checking" });
+  expect(screen.getByLabelText("Estado del correo").textContent).toContain(
+    "pendiente de confirmar",
+  );
+  update({ ...account(), session: "signedIn", blocked: true });
+  expect(screen.getByLabelText("Estado del correo").textContent).toContain(
+    "Cuenta bloqueada",
+  );
+});

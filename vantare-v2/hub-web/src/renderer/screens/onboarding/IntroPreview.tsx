@@ -56,12 +56,14 @@ export function OnboardingIntroPreview({
   proDescription,
   full = false,
   mail,
+  commitMail,
   studioReason,
   onComplete,
 }: {
   extended?: boolean;
   full?: boolean;
   mail?: OnboardingMailStatus;
+  commitMail?: () => Promise<"ok" | "failed">;
   studioReason?: string;
   onComplete?: (privateSession: boolean, show: boolean) => void;
   account?: OnboardingAccountStatus;
@@ -167,7 +169,7 @@ export function OnboardingIntroPreview({
       completion.consent(() => {
         setStep(7);
         say(summaryText.complete);
-      });
+      }, commitMail);
       return;
     }
     if (

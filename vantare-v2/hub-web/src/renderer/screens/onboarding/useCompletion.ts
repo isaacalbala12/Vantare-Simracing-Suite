@@ -70,10 +70,14 @@ export function useCompletion(
   }
   const publish = (value: PrivacyView) =>
     cache.setQueryData(["privacy"], value);
-  function consent(done: () => void) {
+  function consent(
+    done: () => void,
+    commitMail?: () => Promise<"ok" | "failed">,
+  ) {
     run(async () => {
       if (!client) return;
       await saveConsents(client, intent, publish, setSaveFailure);
+      await commitMail?.();
       done();
     });
   }

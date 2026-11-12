@@ -13,6 +13,7 @@ import {
   SectionChromeProvider,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
+import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { testingQuestionnairesText } from "../src/renderer/i18n/testing-questionnaires";
 import TestingEntry from "../src/renderer/screens/testing/entry";
 import { ReportsProvider } from "../src/renderer/screens/testing/ReportsState";
@@ -35,16 +36,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
+function OpenReports() {
+  const navigate = useUi((state) => state.navigate);
+  return (
+    <button type="button" onClick={() => navigate("testing", "reports")}>
+      Abrir aviso de informe
+    </button>
+  );
+}
 async function mount() {
   render(
     <QueryClientProvider client={cache}>
       <HostProvider>
         <ToastProvider>
           <ReportsProvider>
-            <SectionChromeProvider>
-              <SectionTabsSlot />
-              <TestingEntry />
-            </SectionChromeProvider>
+            <UiProvider>
+              <SectionChromeProvider>
+                <SectionTabsSlot />
+                <TestingEntry />
+                <OpenReports />
+              </SectionChromeProvider>
+            </UiProvider>
           </ReportsProvider>
         </ToastProvider>
       </HostProvider>
@@ -145,4 +157,23 @@ it("preserves questionnaire edits across Summary and the shared diagnostic overl
       }) as HTMLTextAreaElement
     ).value,
   ).toBe("Nota privada entre pestañas");
+});
+
+it("opens the report list from an external notice, consumes the target and permits changing tabs", async () => {
+  await mount();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Abrir aviso de informe" }),
+  );
+  await screen.findByRole("heading", { name: "Mis informes" });
+  expect(
+    screen.getByRole("tab", { name: "Informes" }).getAttribute("aria-selected"),
+  ).toBe("true");
+  fireEvent.click(screen.getByRole("tab", { name: "Resumen" }));
+  expect(
+    screen.getByRole("tab", { name: "Resumen" }).getAttribute("aria-selected"),
+  ).toBe("true");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Abrir aviso de informe" }),
+  );
+  await screen.findByRole("heading", { name: "Mis informes" });
 });

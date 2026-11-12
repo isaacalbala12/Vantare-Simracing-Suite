@@ -26,6 +26,7 @@ export function Notifications({ compact = false }: { compact?: boolean }) {
     action === "settings:updates" ||
     (core.access.verified && !core.access.blocked);
   function open(id: string, action?: Destination) {
+    action ??= center.records.find((record) => record.id === id)?.action;
     if (action && !canOpen(action)) return;
     center.read(id);
     if (!action) return;
@@ -36,7 +37,7 @@ export function Notifications({ compact = false }: { compact?: boolean }) {
           ? "settings"
           : "testing";
     ui.notices(false);
-    ui.navigate(section);
+    ui.navigate(section, action === "testing:reports" ? "reports" : undefined);
   }
   const content = (
     <NotificationsLayout

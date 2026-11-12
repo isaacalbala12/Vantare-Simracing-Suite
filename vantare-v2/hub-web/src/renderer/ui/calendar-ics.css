@@ -212,3 +212,24 @@
     width: 100%;
   }
 }
+
+.v-calendar-ics-card > .v-radio {
+  border-width: 2px;
+}
+.v-calendar-ics-card > .v-radio[data-checked] {
+  border-color: var(--accent);
+}
+.v-calendar-ics .v-radio-indicator {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+}
+.v-calendar-ics-card > .v-checkbox[data-checked] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+.v-calendar-ics .v-checkbox svg {
+  width: 12px;
+  height: 12px;
+}

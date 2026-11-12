@@ -21,6 +21,42 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 describe("partial-window modality", () => {
+  it("yields focus, Escape and keyboard input to Access without closing the retained editor", () => {
+    document.body.innerHTML =
+      '<main class="v-shell-body"></main><div id="editor" tabindex="-1"><input /></div><dialog open><input id="login" /><button>Gate close</button></dialog>';
+    const editor = document.getElementById("editor"),
+      login = document.getElementById("login");
+    if (!editor || !login) throw new Error("Missing fixture");
+    const safety = dialogSafety(document),
+      stop = safety.listen(),
+      close = vi.fn();
+    const release = safety.register({ node: editor, close });
+    try {
+      login.focus();
+      expect(document.activeElement).toBe(login);
+      const escapeEvent = new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true,
+      });
+      login.dispatchEvent(escapeEvent);
+      expect(close).not.toHaveBeenCalled();
+      expect(escapeEvent.defaultPrevented).toBe(false);
+      const tab = new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      });
+      login.dispatchEvent(tab);
+      expect(tab.defaultPrevented).toBe(false);
+      document.querySelector("dialog")?.remove();
+      fireEvent.keyDown(editor, { key: "Escape" });
+      expect(close).toHaveBeenCalledOnce();
+    } finally {
+      release();
+      stop();
+    }
+  });
   it("closes a nested Select before its confirmation and restores focus in order", async () => {
     const user = userEvent.setup();
     render(

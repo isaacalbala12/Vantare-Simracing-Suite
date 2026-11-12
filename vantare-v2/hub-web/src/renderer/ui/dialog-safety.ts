@@ -10,6 +10,9 @@ export function dialogSafety(doc: Document) {
   const previous = new Map<HTMLElement, boolean>();
   const oldFloating = new Set<HTMLElement>();
   const top = () => entries.at(-1);
+  // Access owns the browser's native top layer when a session expires. Keep
+  // the underlying editor mounted/inert, but never intercept its gate's input.
+  const covered = () => !!doc.querySelector("dialog[open]");
   const usable = (node: HTMLElement) =>
     !node.closest('[inert],[hidden],[aria-hidden="true"]') &&
     getComputedStyle(node).display !== "none" &&
@@ -63,7 +66,7 @@ export function dialogSafety(doc: Document) {
   }
   function key(event: KeyboardEvent) {
     const active = top();
-    if (!active) return;
+    if (!active || covered()) return;
     if (event.key === "Tab") {
       const nodes = targets(),
         index = nodes.indexOf(doc.activeElement as HTMLElement);
@@ -114,11 +117,21 @@ export function dialogSafety(doc: Document) {
     }
   }
   function focusIn(event: FocusEvent) {
-    if (top() && event.target instanceof Element && !allowed(event.target))
+    if (
+      top() &&
+      !covered() &&
+      event.target instanceof Element &&
+      !allowed(event.target)
+    )
       focus();
   }
   function pointer(event: MouseEvent) {
-    if (!top() || !(event.target instanceof Element) || allowed(event.target))
+    if (
+      !top() ||
+      covered() ||
+      !(event.target instanceof Element) ||
+      allowed(event.target)
+    )
       return;
     // Keep native drag regions alone; block interactive actions behind the dialog.
     if (event.target.closest('button,a,input,[role="tab"]')) {
@@ -127,7 +140,7 @@ export function dialogSafety(doc: Document) {
     }
   }
   function escapeBubble(event: KeyboardEvent) {
-    if (top() && event.key === "Escape") event.stopPropagation();
+    if (top() && !covered() && event.key === "Escape") event.stopPropagation();
   }
   return {
     register(entry: Entry) {

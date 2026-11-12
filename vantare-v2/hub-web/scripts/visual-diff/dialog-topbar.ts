@@ -398,6 +398,20 @@ scenes["dialog-topbar-context-menu"] = {
     await record(page, "context-menu");
     if (process.env.VANTARE_DIALOG_AUDIT_PHASE !== "after") return;
     const card = page.locator(".v-launcher-profile").first();
+    const items = page.getByRole("menuitem");
+    await items.first().focus();
+    await page.keyboard.press("End");
+    assert.ok(
+      await items.last().evaluate((node) => node === document.activeElement),
+    );
+    await page.keyboard.press("Home");
+    assert.ok(
+      await items.first().evaluate((node) => node === document.activeElement),
+    );
+    await page.keyboard.press("ArrowDown");
+    assert.ok(
+      await items.nth(1).evaluate((node) => node === document.activeElement),
+    );
     await page.keyboard.press("Escape");
     await page.getByRole("menu").waitFor({ state: "hidden" });
     await until(

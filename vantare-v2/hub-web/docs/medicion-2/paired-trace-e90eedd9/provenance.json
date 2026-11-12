@@ -1,0 +1,74 @@
+{
+  "generation": "fb72dd50a3e803bb8cef65470f4908c6",
+  "folder": "D:\\VantareServer\\qa\\isa-1995-measure-2\\generations\\fb72dd50a3e803bb8cef65470f4908c6",
+  "source": "51c2a713f2fecac4efe36f79aa74605c5522fec6",
+  "uiSource": "9401501ea38f2e8fe65584511f27844c7efd157a",
+  "originalGeneration": "D:/VantareServer/qa/isa-1995-measure-1/paired-4b60bc7058e6445c/generations/d9044dff2c4db874687078424f1588f1",
+  "originalMainSha256": "637cb97d1f505486599a00d1c50255b13123ec8763fd110bf8dfbca13d7f2091",
+  "instrumentedMainSha256": "c1e723d70a470c8cf15937bc13548840b11dea38cae5626b28a43f9718fb6b4b",
+  "appAsarSha256": "b6cffdf4d8d15bfd13f660b485a3cfcc7069bd9f7bb21770db99dca8f195fc6e",
+  "uiExeSha256": "5e940d6af4ef427e783ac81bdbbeeadcd0addc6dc5b540a266fb59c920df3a10",
+  "featureNames": {
+    "MediaRouter": true,
+    "HardwareMediaKeyHandling": true,
+    "renderer-process-limit": true
+  },
+  "patches": [
+    {
+      "anchor": "await app.whenReady();",
+      "before": "before-app-ready-await",
+      "after": "after-app-ready-await"
+    },
+    {
+      "anchor": "const host = createHost();",
+      "before": "before-host-create",
+      "after": "after-host-create"
+    },
+    {
+      "anchor": "const hello = await host.hello;",
+      "before": "before-host-hello",
+      "after": "after-host-hello"
+    },
+    {
+      "anchor": "port1.postMessage(hello);",
+      "before": "before-renderer-hello",
+      "after": "after-renderer-hello"
+    },
+    {
+      "anchor": "window = new BrowserWindow({",
+      "before": "before-window-constructor"
+    },
+    {
+      "anchor": "const currentWindow = window;",
+      "before": "after-window-constructor"
+    }
+  ],
+  "payloadBytes": 334379076,
+  "qaOnly": true,
+  "source_dirty": true,
+  "method": "Five alternated same-package baseline/variant launches, fresh profiles, Settings then Home, no own compilation, natural OS caches",
+  "experiment": "trace",
+  "runs": 5,
+  "trial": "e90eedd9",
+  "toolHashes": {
+    "measure.mjs": "efad9e9474941652dd4563e4a321d80cf9d443b3af225259696f41400d2ce17f",
+    "measure.ps1": "76522ff1c40d0e4f238d8b9e41539478124414039d86975fb54cfb645efcb577",
+    "capture-lock.ps1": "33807efa9dfcc8458e93302b8e76dd8812842f90c85ac14c75c5d27dd1ebb866",
+    "measure-window.ps1": "81397895398eda920ffc20e0cccb6dd92ae544427946a8271ada5791d30528bd",
+    "fluency.mjs": "3536e1a1193200c85758a6a10fe8f1517d84df7d504d9653e59f3f4cebd963e6",
+    "image-proof.mjs": "38266633021a9339fd2fc9ac6890a02585f3d86157ad15f3134c79a95d026445",
+    "measurement-qa.mjs": "322eaad503d5ba7157658ad6848b84f9e91b7f94902d68ab1c2d648d9dc0afc8"
+  },
+  "toolSource": "e2e8b32f96145a568930b79789a57f386318f2b1",
+  "reservationFile": "D:\\VantareServer\\evidence\\hub-web\\medicion-2\\reservation-trace-1794523178753.json",
+  "nodeVersion": "v24.14.1",
+  "sourceMeasureWrapperSha256": "988f487e0211531578f5ddf133dfd6b7edb461072e8019fb43dd29e75d69acc6",
+  "os": "10.0.22631",
+  "logicalCpus": 8,
+  "totalMemory": 17128898560,
+  "freeMemory": 7239041024,
+  "initialOrder": [
+    "variant",
+    "baseline"
+  ]
+}

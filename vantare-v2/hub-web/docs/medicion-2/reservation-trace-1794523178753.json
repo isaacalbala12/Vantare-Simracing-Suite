@@ -1,0 +1,20 @@
+{
+  "experiment": "trace",
+  "buildsBefore": [],
+  "runs": 5,
+  "reservedAt": "2026-11-12T23:39:38.7574412+01:00",
+  "buildsAtReservation": [
+    {
+      "ProcessId": 8948,
+      "Name": "cargo.exe"
+    },
+    {
+      "ProcessId": 10560,
+      "Name": "rustc.exe"
+    }
+  ],
+  "started": "2026-11-12T23:43:04.6691404+01:00",
+  "completed": true,
+  "finished": "2026-11-12T23:47:10.6227460+01:00",
+  "buildsAfter": []
+}

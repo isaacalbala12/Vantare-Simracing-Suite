@@ -1,0 +1,151 @@
+{
+  "variant": "baseline",
+  "pid": 9116,
+  "creationEpochMs": 1794497774326.435,
+  "versions": {
+    "node": "24.22.2",
+    "acorn": "8.18.0",
+    "ada": "4.0.0",
+    "amaro": "1.1.11",
+    "ares": "1.34.9",
+    "brotli": "1.2.0",
+    "cldr": "48.0",
+    "icu": "78.2",
+    "llhttp": "9.4.3",
+    "merve": "1.2.2",
+    "modules": "150",
+    "napi": "10",
+    "nbytes": "0.1.4",
+    "ncrypto": "0.0.1",
+    "nghttp2": "1.70.0",
+    "nghttp3": "",
+    "ngtcp2": "",
+    "openssl": "0.0.0",
+    "simdjson": "4.6.11",
+    "simdutf": "7.7.0",
+    "sqlite": "3.53.4",
+    "tz": "2026e",
+    "undici": "7.30.1",
+    "unicode": "17.0",
+    "uv": "1.52.1",
+    "uvwasi": "0.0.23",
+    "v8": "15.6.75.27-electron.0",
+    "zlib": "1.3.2.1-motley",
+    "zstd": "1.6.0",
+    "electron": "45.2.3",
+    "chrome": "156.0.8078.80"
+  },
+  "flags": [],
+  "preferences": [
+    {
+      "sandbox": true,
+      "contextIsolation": true,
+      "nodeIntegration": false,
+      "webSecurity": true,
+      "webviewTag": false
+    }
+  ],
+  "deniedSchemes": [],
+  "events": [
+    {
+      "name": "qa-module-start",
+      "epochMs": 1794497774633.6753,
+      "processMs": 284.9784
+    },
+    {
+      "name": "qa-module-end",
+      "epochMs": 1794497774633.923,
+      "processMs": 285.2195
+    },
+    {
+      "name": "before-app-ready-await",
+      "epochMs": 1794497774638.6106,
+      "processMs": 289.9118
+    },
+    {
+      "name": "app-ready",
+      "epochMs": 1794497774669.8477,
+      "processMs": 321.1448
+    },
+    {
+      "name": "after-app-ready-await",
+      "epochMs": 1794497774669.8672,
+      "processMs": 321.1636
+    },
+    {
+      "name": "before-host-create",
+      "epochMs": 1794497774669.872,
+      "processMs": 321.168
+    },
+    {
+      "name": "after-host-create",
+      "epochMs": 1794497774672.0579,
+      "processMs": 323.3546
+    },
+    {
+      "name": "before-host-hello",
+      "epochMs": 1794497774672.064,
+      "processMs": 323.3599
+    },
+    {
+      "name": "after-host-hello",
+      "epochMs": 1794497775309.0708,
+      "processMs": 960.3677
+    },
+    {
+      "name": "before-window-constructor",
+      "epochMs": 1794497775316.5303,
+      "processMs": 967.8273
+    },
+    {
+      "name": "window-created",
+      "epochMs": 1794497775355.7192,
+      "processMs": 1007.0152
+    },
+    {
+      "name": "after-window-constructor",
+      "epochMs": 1794497775358.6902,
+      "processMs": 1009.9864
+    },
+    {
+      "name": "did-start-loading",
+      "epochMs": 1794497775365.6094,
+      "processMs": 1016.905
+    },
+    {
+      "name": "dom-ready",
+      "epochMs": 1794497775843.787,
+      "processMs": 1495.0837
+    },
+    {
+      "name": "did-finish-load",
+      "epochMs": 1794497775843.9116,
+      "processMs": 1495.2071
+    },
+    {
+      "name": "ready-to-show",
+      "epochMs": 1794497775852.1448,
+      "processMs": 1503.4405
+    },
+    {
+      "name": "window-show",
+      "epochMs": 1794497775873.0745,
+      "processMs": 1524.3701
+    },
+    {
+      "name": "renderer-connect-request",
+      "epochMs": 1794497775873.7234,
+      "processMs": 1525.0188
+    },
+    {
+      "name": "before-renderer-hello",
+      "epochMs": 1794497775874.4563,
+      "processMs": 1525.7554
+    },
+    {
+      "name": "after-renderer-hello",
+      "epochMs": 1794497775874.5513,
+      "processMs": 1525.847
+    }
+  ]
+}

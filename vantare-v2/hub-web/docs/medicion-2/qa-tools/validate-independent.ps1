@@ -1,5 +1,6 @@
+param([string]$EvidenceRoot='D:/VantareServer/evidence/hub-web/medicion-2')
 $ErrorActionPreference='Stop'
-$evidence='D:/VantareServer/evidence/hub-web/medicion-2'
+$evidence=$EvidenceRoot
 $statistics=Get-Content -LiteralPath (Join-Path $evidence 'statistics.json') -Raw | ConvertFrom-Json
 function Assert-Measurement([bool]$Condition,[string]$Message) { if(-not $Condition){throw $Message} }
 function Compare-Median([string]$Name,[double[]]$Values,$Expected) {

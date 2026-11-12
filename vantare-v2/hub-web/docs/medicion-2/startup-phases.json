@@ -1168,5 +1168,239 @@
         "max": 1502.1635
       }
     }
+  },
+  {
+    "experiment": "trace",
+    "condition": "baseline",
+    "rows": [
+      {
+        "parentToElectronMs": 396.87109375,
+        "electronToMainMarkerMs": 247.248291015625,
+        "appReadyWaitMs": 26.682373046875,
+        "hostHandshakeMs": 14.86474609375,
+        "windowConstructorMs": 47.043212890625,
+        "loadToDomMs": 142.130859375,
+        "domToShowMs": 24.3701171875,
+        "fcpAfterLaunchMs": 1055,
+        "visibleMs": 922.1043
+      },
+      {
+        "parentToElectronMs": 434.18701171875,
+        "electronToMainMarkerMs": 254.23583984375,
+        "appReadyWaitMs": 23.552978515625,
+        "hostHandshakeMs": 28.02978515625,
+        "windowConstructorMs": 40.1533203125,
+        "loadToDomMs": 114.214111328125,
+        "domToShowMs": 32.479248046875,
+        "fcpAfterLaunchMs": 1092.5,
+        "visibleMs": 934.6204
+      },
+      {
+        "parentToElectronMs": 388.116943359375,
+        "electronToMainMarkerMs": 225.758056640625,
+        "appReadyWaitMs": 23.1103515625,
+        "hostHandshakeMs": 32.80859375,
+        "windowConstructorMs": 36.7177734375,
+        "loadToDomMs": 149.072021484375,
+        "domToShowMs": 24.914306640625,
+        "fcpAfterLaunchMs": 1014.199951171875,
+        "visibleMs": 1046.1279
+      },
+      {
+        "parentToElectronMs": 422.35498046875,
+        "electronToMainMarkerMs": 257.44873046875,
+        "appReadyWaitMs": 28.67041015625,
+        "hostHandshakeMs": 532.975341796875,
+        "windowConstructorMs": 39.380126953125,
+        "loadToDomMs": 205.742431640625,
+        "domToShowMs": 23.09228515625,
+        "fcpAfterLaunchMs": 1645.89990234375,
+        "visibleMs": 1544.3532
+      },
+      {
+        "parentToElectronMs": 400.76806640625,
+        "electronToMainMarkerMs": 223.029052734375,
+        "appReadyWaitMs": 25.406494140625,
+        "hostHandshakeMs": 28.201904296875,
+        "windowConstructorMs": 45.925048828125,
+        "loadToDomMs": 128.0400390625,
+        "domToShowMs": 30.95703125,
+        "fcpAfterLaunchMs": 998.89990234375,
+        "visibleMs": 1127.8118
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 400.76806640625,
+        "min": 388.116943359375,
+        "max": 434.18701171875
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 247.248291015625,
+        "min": 223.029052734375,
+        "max": 257.44873046875
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 25.406494140625,
+        "min": 23.1103515625,
+        "max": 28.67041015625
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 28.201904296875,
+        "min": 14.86474609375,
+        "max": 532.975341796875
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 40.1533203125,
+        "min": 36.7177734375,
+        "max": 47.043212890625
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 142.130859375,
+        "min": 114.214111328125,
+        "max": 205.742431640625
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 24.914306640625,
+        "min": 23.09228515625,
+        "max": 32.479248046875
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1055,
+        "min": 998.89990234375,
+        "max": 1645.89990234375
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 1046.1279,
+        "min": 922.1043,
+        "max": 1544.3532
+      }
+    }
+  },
+  {
+    "experiment": "trace",
+    "condition": "variant",
+    "rows": [
+      {
+        "parentToElectronMs": 381.427001953125,
+        "electronToMainMarkerMs": 550.78125,
+        "appReadyWaitMs": 29.703857421875,
+        "hostHandshakeMs": 14.90869140625,
+        "windowConstructorMs": 75.217529296875,
+        "loadToDomMs": 120.539306640625,
+        "domToShowMs": 31.362548828125,
+        "fcpAfterLaunchMs": 1404.60009765625,
+        "visibleMs": 1207.4444
+      },
+      {
+        "parentToElectronMs": 401.70703125,
+        "electronToMainMarkerMs": 242.334228515625,
+        "appReadyWaitMs": 23.87890625,
+        "hostHandshakeMs": 798.478515625,
+        "windowConstructorMs": 38.2578125,
+        "loadToDomMs": 125.7978515625,
+        "domToShowMs": 22.765625,
+        "fcpAfterLaunchMs": 1782.89990234375,
+        "visibleMs": 1667.9045
+      },
+      {
+        "parentToElectronMs": 392.655029296875,
+        "electronToMainMarkerMs": 232.1044921875,
+        "appReadyWaitMs": 23.193603515625,
+        "hostHandshakeMs": 37.75537109375,
+        "windowConstructorMs": 37.572998046875,
+        "loadToDomMs": 117.586181640625,
+        "domToShowMs": 30.17333984375,
+        "fcpAfterLaunchMs": 988.5,
+        "visibleMs": 1227.7307
+      },
+      {
+        "parentToElectronMs": 400.197021484375,
+        "electronToMainMarkerMs": 251.823486328125,
+        "appReadyWaitMs": 28.313232421875,
+        "hostHandshakeMs": 32.2265625,
+        "windowConstructorMs": 44.15478515625,
+        "loadToDomMs": 119.92041015625,
+        "domToShowMs": 22.998291015625,
+        "fcpAfterLaunchMs": 1062.10009765625,
+        "visibleMs": 916.0302
+      },
+      {
+        "parentToElectronMs": 420.7060546875,
+        "electronToMainMarkerMs": 244.4443359375,
+        "appReadyWaitMs": 27.896240234375,
+        "hostHandshakeMs": 36.933349609375,
+        "windowConstructorMs": 43.935546875,
+        "loadToDomMs": 128.140625,
+        "domToShowMs": 29.788330078125,
+        "fcpAfterLaunchMs": 1048.10009765625,
+        "visibleMs": 1046.6245
+      }
+    ],
+    "summary": {
+      "parentToElectronMs": {
+        "n": 5,
+        "median": 400.197021484375,
+        "min": 381.427001953125,
+        "max": 420.7060546875
+      },
+      "electronToMainMarkerMs": {
+        "n": 5,
+        "median": 244.4443359375,
+        "min": 232.1044921875,
+        "max": 550.78125
+      },
+      "appReadyWaitMs": {
+        "n": 5,
+        "median": 27.896240234375,
+        "min": 23.193603515625,
+        "max": 29.703857421875
+      },
+      "hostHandshakeMs": {
+        "n": 5,
+        "median": 36.933349609375,
+        "min": 14.90869140625,
+        "max": 798.478515625
+      },
+      "windowConstructorMs": {
+        "n": 5,
+        "median": 43.935546875,
+        "min": 37.572998046875,
+        "max": 75.217529296875
+      },
+      "loadToDomMs": {
+        "n": 5,
+        "median": 120.539306640625,
+        "min": 117.586181640625,
+        "max": 128.140625
+      },
+      "domToShowMs": {
+        "n": 5,
+        "median": 29.788330078125,
+        "min": 22.765625,
+        "max": 31.362548828125
+      },
+      "fcpAfterLaunchMs": {
+        "n": 5,
+        "median": 1062.10009765625,
+        "min": 988.5,
+        "max": 1782.89990234375
+      },
+      "visibleMs": {
+        "n": 5,
+        "median": 1207.4444,
+        "min": 916.0302,
+        "max": 1667.9045
+      }
+    }
   }
 ]

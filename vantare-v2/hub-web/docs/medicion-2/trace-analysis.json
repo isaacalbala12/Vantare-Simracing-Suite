@@ -1,0 +1,552 @@
+[
+  {
+    "directory": "paired-trace-e90eedd9",
+    "iteration": 0,
+    "visibleMs": 1207.4444,
+    "stages": [
+      {
+        "name": "qa-module-start",
+        "afterLaunchMs": 932.208251953125
+      },
+      {
+        "name": "trace-started",
+        "afterLaunchMs": 932.406982421875
+      },
+      {
+        "name": "qa-module-end",
+        "afterLaunchMs": 932.55908203125
+      },
+      {
+        "name": "before-app-ready-await",
+        "afterLaunchMs": 937.7919921875
+      },
+      {
+        "name": "app-ready",
+        "afterLaunchMs": 967.475830078125
+      },
+      {
+        "name": "after-app-ready-await",
+        "afterLaunchMs": 967.495849609375
+      },
+      {
+        "name": "before-host-create",
+        "afterLaunchMs": 967.501708984375
+      },
+      {
+        "name": "after-host-create",
+        "afterLaunchMs": 969.88818359375
+      },
+      {
+        "name": "before-host-hello",
+        "afterLaunchMs": 969.897705078125
+      },
+      {
+        "name": "after-host-hello",
+        "afterLaunchMs": 984.806396484375
+      },
+      {
+        "name": "before-window-constructor",
+        "afterLaunchMs": 992.17138671875
+      },
+      {
+        "name": "window-created",
+        "afterLaunchMs": 1064.805419921875
+      },
+      {
+        "name": "after-window-constructor",
+        "afterLaunchMs": 1067.388916015625
+      },
+      {
+        "name": "did-start-loading",
+        "afterLaunchMs": 1073.072509765625
+      },
+      {
+        "name": "dom-ready",
+        "afterLaunchMs": 1193.61181640625
+      },
+      {
+        "name": "ready-to-show",
+        "afterLaunchMs": 1194.607666015625
+      },
+      {
+        "name": "window-show",
+        "afterLaunchMs": 1224.974365234375
+      },
+      {
+        "name": "did-finish-load",
+        "afterLaunchMs": 1225.642578125
+      },
+      {
+        "name": "renderer-connect-request",
+        "afterLaunchMs": 1226.287841796875
+      },
+      {
+        "name": "before-renderer-hello",
+        "afterLaunchMs": 1227.231689453125
+      },
+      {
+        "name": "after-renderer-hello",
+        "afterLaunchMs": 1227.314208984375
+      },
+      {
+        "name": "trace-stopped",
+        "afterLaunchMs": 21620.84130859375
+      }
+    ],
+    "paints": [
+      {
+        "name": "first-paint",
+        "afterLaunchMs": 1232.60009765625
+      },
+      {
+        "name": "first-contentful-paint",
+        "afterLaunchMs": 1404.60009765625
+      }
+    ],
+    "traceFormat": "Explicit epoch marker timeline",
+    "traceBytes": 2526,
+    "traceEvents": 22,
+    "topSlices": [],
+    "limit": "Explicit wall-clock markers only, not Chromium/V8 CPU slices. Native stopRecording pilots timed out and are excluded."
+  },
+  {
+    "directory": "paired-trace-e90eedd9",
+    "iteration": 1,
+    "visibleMs": 1667.9045,
+    "stages": [
+      {
+        "name": "qa-module-start",
+        "afterLaunchMs": 644.041259765625
+      },
+      {
+        "name": "trace-started",
+        "afterLaunchMs": 644.195556640625
+      },
+      {
+        "name": "qa-module-end",
+        "afterLaunchMs": 644.3271484375
+      },
+      {
+        "name": "before-app-ready-await",
+        "afterLaunchMs": 648.265869140625
+      },
+      {
+        "name": "app-ready",
+        "afterLaunchMs": 672.1259765625
+      },
+      {
+        "name": "after-app-ready-await",
+        "afterLaunchMs": 672.144775390625
+      },
+      {
+        "name": "before-host-create",
+        "afterLaunchMs": 672.1494140625
+      },
+      {
+        "name": "after-host-create",
+        "afterLaunchMs": 674.24267578125
+      },
+      {
+        "name": "before-host-hello",
+        "afterLaunchMs": 674.251220703125
+      },
+      {
+        "name": "after-host-hello",
+        "afterLaunchMs": 1472.729736328125
+      },
+      {
+        "name": "before-window-constructor",
+        "afterLaunchMs": 1479.375732421875
+      },
+      {
+        "name": "window-created",
+        "afterLaunchMs": 1515.273681640625
+      },
+      {
+        "name": "after-window-constructor",
+        "afterLaunchMs": 1517.633544921875
+      },
+      {
+        "name": "did-start-loading",
+        "afterLaunchMs": 1522.663818359375
+      },
+      {
+        "name": "dom-ready",
+        "afterLaunchMs": 1648.461669921875
+      },
+      {
+        "name": "did-finish-load",
+        "afterLaunchMs": 1648.75048828125
+      },
+      {
+        "name": "ready-to-show",
+        "afterLaunchMs": 1649.557373046875
+      },
+      {
+        "name": "window-show",
+        "afterLaunchMs": 1671.227294921875
+      },
+      {
+        "name": "renderer-connect-request",
+        "afterLaunchMs": 1672.620849609375
+      },
+      {
+        "name": "before-renderer-hello",
+        "afterLaunchMs": 1673.566162109375
+      },
+      {
+        "name": "after-renderer-hello",
+        "afterLaunchMs": 1673.653564453125
+      },
+      {
+        "name": "trace-stopped",
+        "afterLaunchMs": 26890.218505859375
+      }
+    ],
+    "paints": [
+      {
+        "name": "first-paint",
+        "afterLaunchMs": 1782.89990234375
+      },
+      {
+        "name": "first-contentful-paint",
+        "afterLaunchMs": 1782.89990234375
+      }
+    ],
+    "traceFormat": "Explicit epoch marker timeline",
+    "traceBytes": 2554,
+    "traceEvents": 22,
+    "topSlices": [],
+    "limit": "Explicit wall-clock markers only, not Chromium/V8 CPU slices. Native stopRecording pilots timed out and are excluded."
+  },
+  {
+    "directory": "paired-trace-e90eedd9",
+    "iteration": 2,
+    "visibleMs": 1227.7307,
+    "stages": [
+      {
+        "name": "qa-module-start",
+        "afterLaunchMs": 624.759521484375
+      },
+      {
+        "name": "trace-started",
+        "afterLaunchMs": 624.8974609375
+      },
+      {
+        "name": "qa-module-end",
+        "afterLaunchMs": 625.0068359375
+      },
+      {
+        "name": "before-app-ready-await",
+        "afterLaunchMs": 628.586181640625
+      },
+      {
+        "name": "app-ready",
+        "afterLaunchMs": 651.758056640625
+      },
+      {
+        "name": "after-app-ready-await",
+        "afterLaunchMs": 651.77978515625
+      },
+      {
+        "name": "before-host-create",
+        "afterLaunchMs": 651.784423828125
+      },
+      {
+        "name": "after-host-create",
+        "afterLaunchMs": 653.687744140625
+      },
+      {
+        "name": "before-host-hello",
+        "afterLaunchMs": 653.6943359375
+      },
+      {
+        "name": "after-host-hello",
+        "afterLaunchMs": 691.44970703125
+      },
+      {
+        "name": "before-window-constructor",
+        "afterLaunchMs": 697.898193359375
+      },
+      {
+        "name": "window-created",
+        "afterLaunchMs": 732.315185546875
+      },
+      {
+        "name": "after-window-constructor",
+        "afterLaunchMs": 735.47119140625
+      },
+      {
+        "name": "did-start-loading",
+        "afterLaunchMs": 742.572021484375
+      },
+      {
+        "name": "dom-ready",
+        "afterLaunchMs": 860.158203125
+      },
+      {
+        "name": "did-finish-load",
+        "afterLaunchMs": 860.373046875
+      },
+      {
+        "name": "ready-to-show",
+        "afterLaunchMs": 861.047607421875
+      },
+      {
+        "name": "window-show",
+        "afterLaunchMs": 890.33154296875
+      },
+      {
+        "name": "renderer-connect-request",
+        "afterLaunchMs": 891.04052734375
+      },
+      {
+        "name": "before-renderer-hello",
+        "afterLaunchMs": 891.724609375
+      },
+      {
+        "name": "after-renderer-hello",
+        "afterLaunchMs": 891.794189453125
+      },
+      {
+        "name": "trace-stopped",
+        "afterLaunchMs": 26152.343994140625
+      }
+    ],
+    "paints": [
+      {
+        "name": "first-paint",
+        "afterLaunchMs": 896.5
+      },
+      {
+        "name": "first-contentful-paint",
+        "afterLaunchMs": 988.5
+      }
+    ],
+    "traceFormat": "Explicit epoch marker timeline",
+    "traceBytes": 2548,
+    "traceEvents": 22,
+    "topSlices": [],
+    "limit": "Explicit wall-clock markers only, not Chromium/V8 CPU slices. Native stopRecording pilots timed out and are excluded."
+  },
+  {
+    "directory": "paired-trace-e90eedd9",
+    "iteration": 3,
+    "visibleMs": 916.0302,
+    "stages": [
+      {
+        "name": "qa-module-start",
+        "afterLaunchMs": 652.0205078125
+      },
+      {
+        "name": "trace-started",
+        "afterLaunchMs": 652.18701171875
+      },
+      {
+        "name": "qa-module-end",
+        "afterLaunchMs": 652.322509765625
+      },
+      {
+        "name": "before-app-ready-await",
+        "afterLaunchMs": 655.941650390625
+      },
+      {
+        "name": "app-ready",
+        "afterLaunchMs": 684.23486328125
+      },
+      {
+        "name": "after-app-ready-await",
+        "afterLaunchMs": 684.2548828125
+      },
+      {
+        "name": "before-host-create",
+        "afterLaunchMs": 684.260009765625
+      },
+      {
+        "name": "after-host-create",
+        "afterLaunchMs": 686.55419921875
+      },
+      {
+        "name": "before-host-hello",
+        "afterLaunchMs": 686.5634765625
+      },
+      {
+        "name": "after-host-hello",
+        "afterLaunchMs": 718.7900390625
+      },
+      {
+        "name": "before-window-constructor",
+        "afterLaunchMs": 725.524658203125
+      },
+      {
+        "name": "window-created",
+        "afterLaunchMs": 766.506103515625
+      },
+      {
+        "name": "after-window-constructor",
+        "afterLaunchMs": 769.679443359375
+      },
+      {
+        "name": "did-start-loading",
+        "afterLaunchMs": 775.794189453125
+      },
+      {
+        "name": "dom-ready",
+        "afterLaunchMs": 895.714599609375
+      },
+      {
+        "name": "ready-to-show",
+        "afterLaunchMs": 896.537109375
+      },
+      {
+        "name": "window-show",
+        "afterLaunchMs": 918.712890625
+      },
+      {
+        "name": "did-finish-load",
+        "afterLaunchMs": 919.48486328125
+      },
+      {
+        "name": "renderer-connect-request",
+        "afterLaunchMs": 920.422119140625
+      },
+      {
+        "name": "before-renderer-hello",
+        "afterLaunchMs": 921.25146484375
+      },
+      {
+        "name": "after-renderer-hello",
+        "afterLaunchMs": 921.322998046875
+      },
+      {
+        "name": "trace-stopped",
+        "afterLaunchMs": 20417.229736328125
+      }
+    ],
+    "paints": [
+      {
+        "name": "first-paint",
+        "afterLaunchMs": 1062.10009765625
+      },
+      {
+        "name": "first-contentful-paint",
+        "afterLaunchMs": 1062.10009765625
+      }
+    ],
+    "traceFormat": "Explicit epoch marker timeline",
+    "traceBytes": 2516,
+    "traceEvents": 22,
+    "topSlices": [],
+    "limit": "Explicit wall-clock markers only, not Chromium/V8 CPU slices. Native stopRecording pilots timed out and are excluded."
+  },
+  {
+    "directory": "paired-trace-e90eedd9",
+    "iteration": 4,
+    "visibleMs": 1046.6245,
+    "stages": [
+      {
+        "name": "qa-module-start",
+        "afterLaunchMs": 665.150390625
+      },
+      {
+        "name": "trace-started",
+        "afterLaunchMs": 665.3427734375
+      },
+      {
+        "name": "qa-module-end",
+        "afterLaunchMs": 665.500732421875
+      },
+      {
+        "name": "before-app-ready-await",
+        "afterLaunchMs": 669.302734375
+      },
+      {
+        "name": "app-ready",
+        "afterLaunchMs": 697.1806640625
+      },
+      {
+        "name": "after-app-ready-await",
+        "afterLaunchMs": 697.198974609375
+      },
+      {
+        "name": "before-host-create",
+        "afterLaunchMs": 697.20361328125
+      },
+      {
+        "name": "after-host-create",
+        "afterLaunchMs": 699.494140625
+      },
+      {
+        "name": "before-host-hello",
+        "afterLaunchMs": 699.503662109375
+      },
+      {
+        "name": "after-host-hello",
+        "afterLaunchMs": 736.43701171875
+      },
+      {
+        "name": "before-window-constructor",
+        "afterLaunchMs": 742.859375
+      },
+      {
+        "name": "window-created",
+        "afterLaunchMs": 783.902099609375
+      },
+      {
+        "name": "after-window-constructor",
+        "afterLaunchMs": 786.794921875
+      },
+      {
+        "name": "did-start-loading",
+        "afterLaunchMs": 792.501708984375
+      },
+      {
+        "name": "dom-ready",
+        "afterLaunchMs": 920.642333984375
+      },
+      {
+        "name": "did-finish-load",
+        "afterLaunchMs": 920.7177734375
+      },
+      {
+        "name": "renderer-connect-request",
+        "afterLaunchMs": 929.60986328125
+      },
+      {
+        "name": "before-renderer-hello",
+        "afterLaunchMs": 930.34228515625
+      },
+      {
+        "name": "after-renderer-hello",
+        "afterLaunchMs": 930.41552734375
+      },
+      {
+        "name": "ready-to-show",
+        "afterLaunchMs": 930.553466796875
+      },
+      {
+        "name": "window-show",
+        "afterLaunchMs": 950.4306640625
+      },
+      {
+        "name": "trace-stopped",
+        "afterLaunchMs": 20928.080078125
+      }
+    ],
+    "paints": [
+      {
+        "name": "first-paint",
+        "afterLaunchMs": 1048.10009765625
+      },
+      {
+        "name": "first-contentful-paint",
+        "afterLaunchMs": 1048.10009765625
+      }
+    ],
+    "traceFormat": "Explicit epoch marker timeline",
+    "traceBytes": 2524,
+    "traceEvents": 22,
+    "topSlices": [],
+    "limit": "Explicit wall-clock markers only, not Chromium/V8 CPU slices. Native stopRecording pilots timed out and are excluded."
+  }
+]

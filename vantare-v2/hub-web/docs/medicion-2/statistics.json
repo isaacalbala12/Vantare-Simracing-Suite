@@ -10244,6 +10244,2058 @@
           ]
         }
       }
+    },
+    {
+      "experiment": "trace",
+      "directory": "paired-trace-e90eedd9",
+      "provenance": {
+        "generation": "fb72dd50a3e803bb8cef65470f4908c6",
+        "folder": "D:\\VantareServer\\qa\\isa-1995-measure-2\\generations\\fb72dd50a3e803bb8cef65470f4908c6",
+        "source": "51c2a713f2fecac4efe36f79aa74605c5522fec6",
+        "uiSource": "9401501ea38f2e8fe65584511f27844c7efd157a",
+        "originalGeneration": "D:/VantareServer/qa/isa-1995-measure-1/paired-4b60bc7058e6445c/generations/d9044dff2c4db874687078424f1588f1",
+        "originalMainSha256": "637cb97d1f505486599a00d1c50255b13123ec8763fd110bf8dfbca13d7f2091",
+        "instrumentedMainSha256": "c1e723d70a470c8cf15937bc13548840b11dea38cae5626b28a43f9718fb6b4b",
+        "appAsarSha256": "b6cffdf4d8d15bfd13f660b485a3cfcc7069bd9f7bb21770db99dca8f195fc6e",
+        "uiExeSha256": "5e940d6af4ef427e783ac81bdbbeeadcd0addc6dc5b540a266fb59c920df3a10",
+        "featureNames": {
+          "MediaRouter": true,
+          "HardwareMediaKeyHandling": true,
+          "renderer-process-limit": true
+        },
+        "patches": [
+          {
+            "anchor": "await app.whenReady();",
+            "before": "before-app-ready-await",
+            "after": "after-app-ready-await"
+          },
+          {
+            "anchor": "const host = createHost();",
+            "before": "before-host-create",
+            "after": "after-host-create"
+          },
+          {
+            "anchor": "const hello = await host.hello;",
+            "before": "before-host-hello",
+            "after": "after-host-hello"
+          },
+          {
+            "anchor": "port1.postMessage(hello);",
+            "before": "before-renderer-hello",
+            "after": "after-renderer-hello"
+          },
+          {
+            "anchor": "window = new BrowserWindow({",
+            "before": "before-window-constructor"
+          },
+          {
+            "anchor": "const currentWindow = window;",
+            "before": "after-window-constructor"
+          }
+        ],
+        "payloadBytes": 334379076,
+        "qaOnly": true,
+        "source_dirty": true,
+        "method": "Five alternated same-package baseline/variant launches, fresh profiles, Settings then Home, no own compilation, natural OS caches",
+        "experiment": "trace",
+        "runs": 5,
+        "trial": "e90eedd9",
+        "toolHashes": {
+          "measure.mjs": "efad9e9474941652dd4563e4a321d80cf9d443b3af225259696f41400d2ce17f",
+          "measure.ps1": "76522ff1c40d0e4f238d8b9e41539478124414039d86975fb54cfb645efcb577",
+          "capture-lock.ps1": "33807efa9dfcc8458e93302b8e76dd8812842f90c85ac14c75c5d27dd1ebb866",
+          "measure-window.ps1": "81397895398eda920ffc20e0cccb6dd92ae544427946a8271ada5791d30528bd",
+          "fluency.mjs": "3536e1a1193200c85758a6a10fe8f1517d84df7d504d9653e59f3f4cebd963e6",
+          "image-proof.mjs": "38266633021a9339fd2fc9ac6890a02585f3d86157ad15f3134c79a95d026445",
+          "measurement-qa.mjs": "322eaad503d5ba7157658ad6848b84f9e91b7f94902d68ab1c2d648d9dc0afc8"
+        },
+        "toolSource": "e2e8b32f96145a568930b79789a57f386318f2b1",
+        "reservationFile": "D:\\VantareServer\\evidence\\hub-web\\medicion-2\\reservation-trace-1794523178753.json",
+        "nodeVersion": "v24.14.1",
+        "sourceMeasureWrapperSha256": "988f487e0211531578f5ddf133dfd6b7edb461072e8019fb43dd29e75d69acc6",
+        "os": "10.0.22631",
+        "logicalCpus": 8,
+        "totalMemory": 17128898560,
+        "freeMemory": 7239041024,
+        "initialOrder": [
+          "variant",
+          "baseline"
+        ]
+      },
+      "condition": {
+        "baseline": {
+          "visibleMs": {
+            "median": 1046.1279,
+            "min": 922.1043,
+            "max": 1544.3532,
+            "mad": 111.50749999999994,
+            "values": [
+              922.1043,
+              934.6204,
+              1046.1279,
+              1544.3532,
+              1127.8118
+            ]
+          },
+          "responsiveMs": {
+            "median": 1046.496,
+            "min": 938.827,
+            "max": 1546.4921,
+            "mad": 98.71710000000007,
+            "values": [
+              938.827,
+              947.7789,
+              1046.496,
+              1546.4921,
+              1128.0674
+            ]
+          },
+          "integrityMs": {
+            "median": 380.797,
+            "min": 367.917,
+            "max": 409.386,
+            "mad": 12.880000000000052,
+            "values": [
+              375.603,
+              409.386,
+              367.917,
+              401.541,
+              380.797
+            ]
+          },
+          "firstWalkMs": {
+            "median": 7.125,
+            "min": 6.966,
+            "max": 10.376,
+            "mad": 0.1589999999999998,
+            "values": [
+              6.966,
+              10.376,
+              7.125,
+              6.983,
+              8.336
+            ]
+          },
+          "verifyHashMs": {
+            "median": 372.461,
+            "min": 360.792,
+            "max": 399.01,
+            "mad": 11.66900000000004,
+            "values": [
+              368.637,
+              399.01,
+              360.792,
+              394.558,
+              372.461
+            ]
+          },
+          "foreground": [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "settings": {
+            "workingMiB": {
+              "median": 389.51953125,
+              "min": 386.671875,
+              "max": 392.61328125,
+              "mad": 0.2890625,
+              "values": [
+                392.61328125,
+                389.23046875,
+                389.51953125,
+                389.75,
+                386.671875
+              ]
+            },
+            "privateMiB": {
+              "median": 362.5859375,
+              "min": 359.8046875,
+              "max": 370.1875,
+              "mad": 2.78125,
+              "values": [
+                370.1875,
+                365.3671875,
+                362.05859375,
+                362.5859375,
+                359.8046875
+              ]
+            },
+            "privateResidentMiB": {
+              "median": 158.796875,
+              "min": 156.484375,
+              "max": 161.7890625,
+              "mad": 0.93359375,
+              "values": [
+                161.7890625,
+                158.859375,
+                158.796875,
+                157.86328125,
+                156.484375
+              ]
+            },
+            "cpuOneCorePercent": {
+              "median": 0,
+              "min": 0,
+              "max": 0.30564853954672505,
+              "mad": 0,
+              "values": [
+                0,
+                0,
+                0,
+                0,
+                0.30564853954672505
+              ]
+            },
+            "heapUsedMiB": {
+              "median": 9.100269317626953,
+              "min": 8.685611724853516,
+              "max": 9.636646270751953,
+              "mad": 0.4146575927734375,
+              "values": [
+                9.557621002197266,
+                9.636646270751953,
+                8.699630737304688,
+                8.685611724853516,
+                9.100269317626953
+              ]
+            },
+            "heapReservedMiB": {
+              "median": 12.56640625,
+              "min": 11.56640625,
+              "max": 13.56640625,
+              "mad": 0.75,
+              "values": [
+                12.81640625,
+                13.56640625,
+                11.56640625,
+                11.81640625,
+                12.56640625
+              ]
+            },
+            "embedderHeapMiB": {
+              "median": 5.2288055419921875,
+              "min": 5.117027282714844,
+              "max": 5.8989715576171875,
+              "mad": 0.11177825927734375,
+              "values": [
+                5.8989715576171875,
+                5.873046875,
+                5.144767761230469,
+                5.117027282714844,
+                5.2288055419921875
+              ]
+            },
+            "interactiveMs": {
+              "median": 2317.2044,
+              "min": 1841.5996,
+              "max": 3218.9315,
+              "mad": 282.70019999999977,
+              "values": [
+                1841.5996,
+                2099.5139,
+                2317.2044,
+                3218.9315,
+                2599.9046
+              ]
+            },
+            "gpuCount": {
+              "median": 1,
+              "min": 1,
+              "max": 1,
+              "mad": 0,
+              "values": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "rendererCount": {
+              "median": 1,
+              "min": 1,
+              "max": 1,
+              "mad": 0,
+              "values": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "gpuStatus": [
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              }
+            ],
+            "roles": {
+              "host": {
+                "workingMiB": {
+                  "median": 8.703125,
+                  "min": 8.67578125,
+                  "max": 8.71875,
+                  "mad": 0.015625,
+                  "values": [
+                    8.71875,
+                    8.67578125,
+                    8.67578125,
+                    8.703125,
+                    8.703125
+                  ]
+                },
+                "privateMiB": {
+                  "median": 1.61328125,
+                  "min": 1.57421875,
+                  "max": 1.63671875,
+                  "mad": 0.00390625,
+                  "values": [
+                    1.63671875,
+                    1.57421875,
+                    1.61328125,
+                    1.609375,
+                    1.61328125
+                  ]
+                }
+              },
+              "main": {
+                "workingMiB": {
+                  "median": 103.828125,
+                  "min": 102.91015625,
+                  "max": 106.3046875,
+                  "mad": 0.484375,
+                  "values": [
+                    106.3046875,
+                    102.91015625,
+                    103.34375,
+                    104.24609375,
+                    103.828125
+                  ]
+                },
+                "privateMiB": {
+                  "median": 48.09375,
+                  "min": 47.23046875,
+                  "max": 50.8515625,
+                  "mad": 0.86328125,
+                  "values": [
+                    50.8515625,
+                    47.23046875,
+                    47.640625,
+                    49.16015625,
+                    48.09375
+                  ]
+                }
+              },
+              "gpu-process": {
+                "workingMiB": {
+                  "median": 127.84765625,
+                  "min": 127.13671875,
+                  "max": 128.703125,
+                  "mad": 0.6875,
+                  "values": [
+                    128.07421875,
+                    127.84765625,
+                    127.16015625,
+                    128.703125,
+                    127.13671875
+                  ]
+                },
+                "privateMiB": {
+                  "median": 249.2578125,
+                  "min": 247.2265625,
+                  "max": 252.27734375,
+                  "mad": 1.71875,
+                  "values": [
+                    252.27734375,
+                    250.47265625,
+                    247.5390625,
+                    249.2578125,
+                    247.2265625
+                  ]
+                }
+              },
+              "utility": {
+                "workingMiB": {
+                  "median": 43.28125,
+                  "min": 43.18359375,
+                  "max": 43.76171875,
+                  "mad": 0.09765625,
+                  "values": [
+                    43.76171875,
+                    43.28125,
+                    43.4453125,
+                    43.18359375,
+                    43.2421875
+                  ]
+                },
+                "privateMiB": {
+                  "median": 11.19140625,
+                  "min": 11.15625,
+                  "max": 11.359375,
+                  "mad": 0.03125,
+                  "values": [
+                    11.16015625,
+                    11.19921875,
+                    11.359375,
+                    11.19140625,
+                    11.15625
+                  ]
+                }
+              },
+              "renderer": {
+                "workingMiB": {
+                  "median": 105.75390625,
+                  "min": 103.76171875,
+                  "max": 106.89453125,
+                  "mad": 0.83984375,
+                  "values": [
+                    105.75390625,
+                    106.515625,
+                    106.89453125,
+                    104.9140625,
+                    103.76171875
+                  ]
+                },
+                "privateMiB": {
+                  "median": 53.90625,
+                  "min": 51.3671875,
+                  "max": 54.890625,
+                  "mad": 0.984375,
+                  "values": [
+                    54.26171875,
+                    54.890625,
+                    53.90625,
+                    51.3671875,
+                    51.71484375
+                  ]
+                }
+              }
+            }
+          },
+          "home": {
+            "workingMiB": {
+              "median": 402.76171875,
+              "min": 399.84375,
+              "max": 404.9453125,
+              "mad": 1.62109375,
+              "values": [
+                404.9453125,
+                401.140625,
+                402.77734375,
+                402.76171875,
+                399.84375
+              ]
+            },
+            "privateMiB": {
+              "median": 373.53515625,
+              "min": 372.34375,
+              "max": 380.609375,
+              "mad": 1.19140625,
+              "values": [
+                380.609375,
+                372.88671875,
+                373.53515625,
+                378.09375,
+                372.34375
+              ]
+            },
+            "privateResidentMiB": {
+              "median": 168.36328125,
+              "min": 167.15234375,
+              "max": 171.5546875,
+              "mad": 1.171875,
+              "values": [
+                171.5546875,
+                168.16015625,
+                169.53515625,
+                168.36328125,
+                167.15234375
+              ]
+            },
+            "cpuOneCorePercent": {
+              "median": 0,
+              "min": 0,
+              "max": 0,
+              "mad": 0,
+              "values": [
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            "heapUsedMiB": {
+              "median": 8.171672821044922,
+              "min": 7.941993713378906,
+              "max": 8.772708892822266,
+              "mad": 0.22967910766601562,
+              "values": [
+                8.171672821044922,
+                8.772708892822266,
+                7.980133056640625,
+                7.941993713378906,
+                8.516288757324219
+              ]
+            },
+            "heapReservedMiB": {
+              "median": 11.31640625,
+              "min": 10.31640625,
+              "max": 11.56640625,
+              "mad": 0.25,
+              "values": [
+                11.56640625,
+                10.56640625,
+                11.31640625,
+                10.31640625,
+                11.31640625
+              ]
+            },
+            "embedderHeapMiB": {
+              "median": 7.6128387451171875,
+              "min": 7.4608154296875,
+              "max": 8.492996215820312,
+              "mad": 0.1520233154296875,
+              "values": [
+                8.472892761230469,
+                8.492996215820312,
+                7.498085021972656,
+                7.4608154296875,
+                7.6128387451171875
+              ]
+            },
+            "interactiveMs": {
+              "median": 2317.2044,
+              "min": 1841.5996,
+              "max": 3218.9315,
+              "mad": 282.70019999999977,
+              "values": [
+                1841.5996,
+                2099.5139,
+                2317.2044,
+                3218.9315,
+                2599.9046
+              ]
+            },
+            "gpuCount": {
+              "median": 1,
+              "min": 1,
+              "max": 1,
+              "mad": 0,
+              "values": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "rendererCount": {
+              "median": 1,
+              "min": 1,
+              "max": 1,
+              "mad": 0,
+              "values": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "gpuStatus": [
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              }
+            ],
+            "roles": {
+              "host": {
+                "workingMiB": {
+                  "median": 8.83984375,
+                  "min": 8.796875,
+                  "max": 8.859375,
+                  "mad": 0.0078125,
+                  "values": [
+                    8.859375,
+                    8.796875,
+                    8.83984375,
+                    8.83203125,
+                    8.84765625
+                  ]
+                },
+                "privateMiB": {
+                  "median": 1.66796875,
+                  "min": 1.60546875,
+                  "max": 1.6875,
+                  "mad": 0.01953125,
+                  "values": [
+                    1.6875,
+                    1.60546875,
+                    1.66796875,
+                    1.6484375,
+                    1.66796875
+                  ]
+                }
+              },
+              "main": {
+                "workingMiB": {
+                  "median": 102.77734375,
+                  "min": 102.1015625,
+                  "max": 105.71875,
+                  "mad": 0.30859375,
+                  "values": [
+                    105.71875,
+                    102.77734375,
+                    102.1015625,
+                    103.0859375,
+                    102.5625
+                  ]
+                },
+                "privateMiB": {
+                  "median": 46.671875,
+                  "min": 45.91015625,
+                  "max": 49.796875,
+                  "mad": 0.44140625,
+                  "values": [
+                    49.796875,
+                    46.671875,
+                    45.91015625,
+                    46.9921875,
+                    46.23046875
+                  ]
+                }
+              },
+              "gpu-process": {
+                "workingMiB": {
+                  "median": 134.5859375,
+                  "min": 134.51953125,
+                  "max": 135.45703125,
+                  "mad": 0.06640625,
+                  "values": [
+                    135.36328125,
+                    134.51953125,
+                    134.5859375,
+                    135.45703125,
+                    134.57421875
+                  ]
+                },
+                "privateMiB": {
+                  "median": 255.8359375,
+                  "min": 254.3046875,
+                  "max": 261.06640625,
+                  "mad": 1.53125,
+                  "values": [
+                    260.1015625,
+                    255.515625,
+                    254.3046875,
+                    261.06640625,
+                    255.8359375
+                  ]
+                }
+              },
+              "utility": {
+                "workingMiB": {
+                  "median": 43.34375,
+                  "min": 43.234375,
+                  "max": 43.8671875,
+                  "mad": 0.0625,
+                  "values": [
+                    43.8671875,
+                    43.34375,
+                    43.40625,
+                    43.234375,
+                    43.29296875
+                  ]
+                },
+                "privateMiB": {
+                  "median": 11.21875,
+                  "min": 11.17578125,
+                  "max": 11.3046875,
+                  "mad": 0.04296875,
+                  "values": [
+                    11.21875,
+                    11.2734375,
+                    11.3046875,
+                    11.203125,
+                    11.17578125
+                  ]
+                }
+              },
+              "renderer": {
+                "workingMiB": {
+                  "median": 111.703125,
+                  "min": 110.56640625,
+                  "max": 113.84375,
+                  "mad": 0.56640625,
+                  "values": [
+                    111.13671875,
+                    111.703125,
+                    113.84375,
+                    112.15234375,
+                    110.56640625
+                  ]
+                },
+                "privateMiB": {
+                  "median": 57.8046875,
+                  "min": 57.18359375,
+                  "max": 60.34765625,
+                  "mad": 0.37109375,
+                  "values": [
+                    57.8046875,
+                    57.8203125,
+                    60.34765625,
+                    57.18359375,
+                    57.43359375
+                  ]
+                }
+              }
+            }
+          },
+          "fluency": {
+            "scrollP95CallbackGapMs": {
+              "median": 17.09999999962747,
+              "min": 16.899999998509884,
+              "max": 75.09999999962747,
+              "mad": 0.2000000011175871,
+              "values": [
+                75.09999999962747,
+                17.09999999962747,
+                16.899999998509884,
+                16.90000000037253,
+                67.80000000074506
+              ]
+            },
+            "scrollDurationMs": {
+              "median": 409.7999999988824,
+              "min": 404,
+              "max": 421.5,
+              "mad": 5.799999998882413,
+              "values": [
+                420.80000000074506,
+                421.5,
+                409.7999999988824,
+                407.0999999977648,
+                404
+              ]
+            },
+            "scrollMovement": [
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 160.30000000074506
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 135.09999999962747
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 125.40000000037253
+                }
+              ],
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 165.5
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 122.59999999962747
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.40000000037253
+                }
+              ],
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 145.90000000037253
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 130.39999999850988
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.5
+                }
+              ],
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 143.69999999925494
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 130
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.39999999850988
+                }
+              ],
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 138.5
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 132.2000000011176
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.2999999988824
+                }
+              ]
+            ],
+            "sidebarCallbacks": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "sidebarP95CallbackGapMs": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "sidebarDurations": [
+              [
+                16.700000001117587,
+                19
+              ],
+              [
+                15.800000000745058,
+                14.199999999254942
+              ],
+              [
+                13.199999999254942,
+                11.299999998882413
+              ],
+              [
+                13.399999998509884,
+                11.700000001117587
+              ],
+              [
+                13.599999999627471,
+                13.099999999627471
+              ]
+            ],
+            "foreground": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          }
+        },
+        "variant": {
+          "visibleMs": {
+            "median": 1207.4444,
+            "min": 916.0302,
+            "max": 1667.9045,
+            "mad": 160.8199000000002,
+            "values": [
+              1207.4444,
+              1667.9045,
+              1227.7307,
+              916.0302,
+              1046.6245
+            ]
+          },
+          "responsiveMs": {
+            "median": 1225.5417,
+            "min": 922.361,
+            "max": 1675.3911,
+            "mad": 178.6726000000001,
+            "values": [
+              1225.5417,
+              1675.3911,
+              1228.2109,
+              922.361,
+              1046.8691
+            ]
+          },
+          "integrityMs": {
+            "median": 380.65,
+            "min": 359.451,
+            "max": 399.657,
+            "mad": 13.456999999999994,
+            "values": [
+              359.451,
+              382.972,
+              367.193,
+              380.65,
+              399.657
+            ]
+          },
+          "firstWalkMs": {
+            "median": 6.924,
+            "min": 6.751,
+            "max": 8.359,
+            "mad": 0.17300000000000004,
+            "values": [
+              6.924,
+              7.299,
+              6.884,
+              6.751,
+              8.359
+            ]
+          },
+          "verifyHashMs": {
+            "median": 373.899,
+            "min": 352.527,
+            "max": 391.298,
+            "mad": 13.589999999999975,
+            "values": [
+              352.527,
+              375.673,
+              360.309,
+              373.899,
+              391.298
+            ]
+          },
+          "foreground": [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "settings": {
+            "workingMiB": {
+              "median": 389.7890625,
+              "min": 386.578125,
+              "max": 392.73046875,
+              "mad": 2.94140625,
+              "values": [
+                386.77734375,
+                389.94140625,
+                386.578125,
+                392.73046875,
+                389.7890625
+              ]
+            },
+            "privateMiB": {
+              "median": 361.09765625,
+              "min": 359.1640625,
+              "max": 367.5859375,
+              "mad": 1.9140625,
+              "values": [
+                359.1640625,
+                363.01171875,
+                361.09765625,
+                367.5859375,
+                360.546875
+              ]
+            },
+            "privateResidentMiB": {
+              "median": 158.2890625,
+              "min": 155.55859375,
+              "max": 162.4609375,
+              "mad": 1.6875,
+              "values": [
+                156.6015625,
+                158.2890625,
+                155.55859375,
+                162.4609375,
+                158.9765625
+              ]
+            },
+            "cpuOneCorePercent": {
+              "median": 0,
+              "min": 0,
+              "max": 0.30521797525056293,
+              "mad": 0,
+              "values": [
+                0,
+                0,
+                0,
+                0.30521797525056293,
+                0
+              ]
+            },
+            "heapUsedMiB": {
+              "median": 8.708793640136719,
+              "min": 8.688831329345703,
+              "max": 9.656452178955078,
+              "mad": 0.019962310791015625,
+              "values": [
+                8.733749389648438,
+                8.708793640136719,
+                8.688831329345703,
+                9.656452178955078,
+                8.69802474975586
+              ]
+            },
+            "heapReservedMiB": {
+              "median": 12.06640625,
+              "min": 11.56640625,
+              "max": 12.81640625,
+              "mad": 0.25,
+              "values": [
+                12.06640625,
+                11.81640625,
+                12.06640625,
+                12.81640625,
+                11.56640625
+              ]
+            },
+            "embedderHeapMiB": {
+              "median": 5.1445159912109375,
+              "min": 5.108161926269531,
+              "max": 5.874855041503906,
+              "mad": 0.01181793212890625,
+              "values": [
+                5.1445159912109375,
+                5.132698059082031,
+                5.145805358886719,
+                5.874855041503906,
+                5.108161926269531
+              ]
+            },
+            "interactiveMs": {
+              "median": 2617.1974,
+              "min": 2057.872,
+              "max": 3932.9632,
+              "mad": 200.90110000000004,
+              "values": [
+                2544.8585,
+                3932.9632,
+                2818.0985,
+                2057.872,
+                2617.1974
+              ]
+            },
+            "gpuCount": {
+              "median": 1,
+              "min": 1,
+              "max": 1,
+              "mad": 0,
+              "values": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "rendererCount": {
+              "median": 1,
+              "min": 1,
+              "max": 1,
+              "mad": 0,
+              "values": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "gpuStatus": [
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              }
+            ],
+            "roles": {
+              "host": {
+                "workingMiB": {
+                  "median": 8.69140625,
+                  "min": 8.66796875,
+                  "max": 8.69921875,
+                  "mad": 0.0078125,
+                  "values": [
+                    8.69921875,
+                    8.69140625,
+                    8.66796875,
+                    8.6796875,
+                    8.69140625
+                  ]
+                },
+                "privateMiB": {
+                  "median": 1.60546875,
+                  "min": 1.5859375,
+                  "max": 1.6875,
+                  "mad": 0.015625,
+                  "values": [
+                    1.609375,
+                    1.60546875,
+                    1.58984375,
+                    1.6875,
+                    1.5859375
+                  ]
+                }
+              },
+              "main": {
+                "workingMiB": {
+                  "median": 103.3125,
+                  "min": 103.24609375,
+                  "max": 106.49609375,
+                  "mad": 0.06640625,
+                  "values": [
+                    103.3125,
+                    103.39453125,
+                    103.2734375,
+                    106.49609375,
+                    103.24609375
+                  ]
+                },
+                "privateMiB": {
+                  "median": 48.015625,
+                  "min": 47.42578125,
+                  "max": 50.640625,
+                  "mad": 0.4609375,
+                  "values": [
+                    47.5859375,
+                    48.015625,
+                    48.4765625,
+                    50.640625,
+                    47.42578125
+                  ]
+                }
+              },
+              "gpu-process": {
+                "workingMiB": {
+                  "median": 127.42578125,
+                  "min": 126.8359375,
+                  "max": 128.16796875,
+                  "mad": 0.33984375,
+                  "values": [
+                    127.58984375,
+                    128.16796875,
+                    126.8359375,
+                    127.42578125,
+                    127.0859375
+                  ]
+                },
+                "privateMiB": {
+                  "median": 247.95703125,
+                  "min": 245.80078125,
+                  "max": 249.35546875,
+                  "mad": 1.3984375,
+                  "values": [
+                    246.55859375,
+                    248.015625,
+                    247.95703125,
+                    249.35546875,
+                    245.80078125
+                  ]
+                }
+              },
+              "utility": {
+                "workingMiB": {
+                  "median": 43.37109375,
+                  "min": 43.265625,
+                  "max": 43.38671875,
+                  "mad": 0.015625,
+                  "values": [
+                    43.37109375,
+                    43.375,
+                    43.265625,
+                    43.38671875,
+                    43.34765625
+                  ]
+                },
+                "privateMiB": {
+                  "median": 11.29296875,
+                  "min": 11.17578125,
+                  "max": 11.3828125,
+                  "mad": 0.04296875,
+                  "values": [
+                    11.30859375,
+                    11.3828125,
+                    11.17578125,
+                    11.29296875,
+                    11.25
+                  ]
+                }
+              },
+              "renderer": {
+                "workingMiB": {
+                  "median": 106.3125,
+                  "min": 103.8046875,
+                  "max": 107.41796875,
+                  "mad": 1.10546875,
+                  "values": [
+                    103.8046875,
+                    106.3125,
+                    104.53515625,
+                    106.7421875,
+                    107.41796875
+                  ]
+                },
+                "privateMiB": {
+                  "median": 53.9921875,
+                  "min": 51.8984375,
+                  "max": 54.609375,
+                  "mad": 0.6171875,
+                  "values": [
+                    52.1015625,
+                    53.9921875,
+                    51.8984375,
+                    54.609375,
+                    54.484375
+                  ]
+                }
+              }
+            }
+          },
+          "home": {
+            "workingMiB": {
+              "median": 404.125,
+              "min": 403.234375,
+              "max": 406.79296875,
+              "mad": 0.890625,
+              "values": [
+                403.234375,
+                404.125,
+                404.03125,
+                405.734375,
+                406.79296875
+              ]
+            },
+            "privateMiB": {
+              "median": 375.05078125,
+              "min": 372.703125,
+              "max": 376.53125,
+              "mad": 0.41796875,
+              "values": [
+                376.53125,
+                372.703125,
+                375.05078125,
+                374.6328125,
+                375.15234375
+              ]
+            },
+            "privateResidentMiB": {
+              "median": 168.265625,
+              "min": 167.671875,
+              "max": 171.2109375,
+              "mad": 0.59375,
+              "values": [
+                168.265625,
+                167.671875,
+                168.203125,
+                170.62890625,
+                171.2109375
+              ]
+            },
+            "cpuOneCorePercent": {
+              "median": 0,
+              "min": 0,
+              "max": 0,
+              "mad": 0,
+              "values": [
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            "heapUsedMiB": {
+              "median": 7.9521942138671875,
+              "min": 7.93511962890625,
+              "max": 8.15219497680664,
+              "mad": 0.01209259033203125,
+              "values": [
+                7.964286804199219,
+                7.93511962890625,
+                7.9521942138671875,
+                8.15219497680664,
+                7.947395324707031
+              ]
+            },
+            "heapReservedMiB": {
+              "median": 10.81640625,
+              "min": 10.56640625,
+              "max": 11.31640625,
+              "mad": 0.25,
+              "values": [
+                10.81640625,
+                11.06640625,
+                10.56640625,
+                11.31640625,
+                10.56640625
+              ]
+            },
+            "embedderHeapMiB": {
+              "median": 7.486457824707031,
+              "min": 7.47601318359375,
+              "max": 8.494132995605469,
+              "mad": 0.01044464111328125,
+              "values": [
+                7.499000549316406,
+                7.476524353027344,
+                7.47601318359375,
+                8.494132995605469,
+                7.486457824707031
+              ]
+            },
+            "interactiveMs": {
+              "median": 2617.1974,
+              "min": 2057.872,
+              "max": 3932.9632,
+              "mad": 200.90110000000004,
+              "values": [
+                2544.8585,
+                3932.9632,
+                2818.0985,
+                2057.872,
+                2617.1974
+              ]
+            },
+            "gpuCount": {
+              "median": 1,
+              "min": 1,
+              "max": 1,
+              "mad": 0,
+              "values": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "rendererCount": {
+              "median": 1,
+              "min": 1,
+              "max": 1,
+              "mad": 0,
+              "values": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ]
+            },
+            "gpuStatus": [
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              },
+              {
+                "2d_canvas": "enabled",
+                "direct_rendering_display_compositor": "disabled_off_ok",
+                "gpu_compositing": "enabled",
+                "multiple_raster_threads": "enabled_on",
+                "opengl": "enabled_on",
+                "rasterization": "enabled",
+                "raw_draw": "disabled_off_ok",
+                "skia_graphite": "disabled_off",
+                "trees_in_viz": "disabled_off",
+                "video_decode": "enabled",
+                "video_encode": "enabled",
+                "webgl": "enabled",
+                "webgpu": "enabled",
+                "webnn": "disabled_off"
+              }
+            ],
+            "roles": {
+              "host": {
+                "workingMiB": {
+                  "median": 8.83203125,
+                  "min": 8.8125,
+                  "max": 8.84765625,
+                  "mad": 0.01171875,
+                  "values": [
+                    8.8125,
+                    8.828125,
+                    8.84375,
+                    8.84765625,
+                    8.83203125
+                  ]
+                },
+                "privateMiB": {
+                  "median": 1.65234375,
+                  "min": 1.63671875,
+                  "max": 1.6796875,
+                  "mad": 0.015625,
+                  "values": [
+                    1.63671875,
+                    1.65234375,
+                    1.67578125,
+                    1.6796875,
+                    1.63671875
+                  ]
+                }
+              },
+              "main": {
+                "workingMiB": {
+                  "median": 105.4453125,
+                  "min": 105.1875,
+                  "max": 107.66796875,
+                  "mad": 0.1796875,
+                  "values": [
+                    105.625,
+                    105.1875,
+                    105.4453125,
+                    107.66796875,
+                    105.4375
+                  ]
+                },
+                "privateMiB": {
+                  "median": 47.265625,
+                  "min": 46.55078125,
+                  "max": 49.015625,
+                  "mad": 0.578125,
+                  "values": [
+                    47.265625,
+                    46.55078125,
+                    47.84375,
+                    49.015625,
+                    47.0234375
+                  ]
+                }
+              },
+              "gpu-process": {
+                "workingMiB": {
+                  "median": 134.87890625,
+                  "min": 134.37890625,
+                  "max": 135.07421875,
+                  "mad": 0.1953125,
+                  "values": [
+                    134.87890625,
+                    134.37890625,
+                    134.92578125,
+                    134.5,
+                    135.07421875
+                  ]
+                },
+                "privateMiB": {
+                  "median": 255.62890625,
+                  "min": 253.9375,
+                  "max": 259.0546875,
+                  "mad": 1.26171875,
+                  "values": [
+                    259.0546875,
+                    253.9375,
+                    256.890625,
+                    255.62890625,
+                    255.1484375
+                  ]
+                }
+              },
+              "utility": {
+                "workingMiB": {
+                  "median": 43.43359375,
+                  "min": 43.34765625,
+                  "max": 43.44921875,
+                  "mad": 0.015625,
+                  "values": [
+                    43.375,
+                    43.44921875,
+                    43.34765625,
+                    43.4453125,
+                    43.43359375
+                  ]
+                },
+                "privateMiB": {
+                  "median": 11.31640625,
+                  "min": 11.23046875,
+                  "max": 11.40234375,
+                  "mad": 0.078125,
+                  "values": [
+                    11.23046875,
+                    11.40234375,
+                    11.23828125,
+                    11.31640625,
+                    11.3671875
+                  ]
+                }
+              },
+              "renderer": {
+                "workingMiB": {
+                  "median": 111.46875,
+                  "min": 110.54296875,
+                  "max": 114.015625,
+                  "mad": 0.8125,
+                  "values": [
+                    110.54296875,
+                    112.28125,
+                    111.46875,
+                    111.2734375,
+                    114.015625
+                  ]
+                },
+                "privateMiB": {
+                  "median": 57.40234375,
+                  "min": 56.9921875,
+                  "max": 59.9765625,
+                  "mad": 0.41015625,
+                  "values": [
+                    57.34375,
+                    59.16015625,
+                    57.40234375,
+                    56.9921875,
+                    59.9765625
+                  ]
+                }
+              }
+            }
+          },
+          "fluency": {
+            "scrollP95CallbackGapMs": {
+              "median": 16.90000000037253,
+              "min": 16.800000000745058,
+              "max": 17.09999999962747,
+              "mad": 0.09999999962747097,
+              "values": [
+                17,
+                17.09999999962747,
+                16.800000000745058,
+                16.90000000037253,
+                16.90000000037253
+              ]
+            },
+            "scrollDurationMs": {
+              "median": 406.90000000037253,
+              "min": 403.09999999962747,
+              "max": 420.30000000074506,
+              "mad": 3.800000000745058,
+              "values": [
+                406.90000000037253,
+                420.30000000074506,
+                403.09999999962747,
+                410.90000000037253,
+                404.3999999985099
+              ]
+            },
+            "scrollMovement": [
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 140.09999999962747
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 133.40000000037253
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.40000000037253
+                }
+              ],
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 155.30000000074506
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 131.5
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.5
+                }
+              ],
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 136.30000000074506
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 133.40000000037253
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.39999999850988
+                }
+              ],
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 147.09999999962747
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 130.30000000074506
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.5
+                }
+              ],
+              [
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 137.69999999925494
+                },
+                {
+                  "start": 55,
+                  "target": 0,
+                  "end": 0,
+                  "milliseconds": 133.19999999925494
+                },
+                {
+                  "start": 0,
+                  "target": 55,
+                  "end": 55,
+                  "milliseconds": 133.5
+                }
+              ]
+            ],
+            "sidebarCallbacks": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "sidebarP95CallbackGapMs": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "sidebarDurations": [
+              [
+                13.5,
+                11.900000000372529
+              ],
+              [
+                16.09999999962747,
+                11.399999998509884
+              ],
+              [
+                13.400000000372529,
+                11.199999999254942
+              ],
+              [
+                13.300000000745058,
+                12.099999999627471
+              ],
+              [
+                13.299999998882413,
+                10.899999998509884
+              ]
+            ],
+            "foreground": [
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          }
+        }
+      },
+      "paired": {
+        "visibleMs": {
+          "median": 181.60280000000012,
+          "min": -628.323,
+          "max": 733.2841000000001,
+          "mad": 262.79010000000017,
+          "values": [
+            285.3401000000001,
+            733.2841000000001,
+            181.60280000000012,
+            -628.323,
+            -81.18730000000005
+          ]
+        },
+        "settingsWorkingMiB": {
+          "median": 0.7109375,
+          "min": -5.8359375,
+          "max": 3.1171875,
+          "mad": 2.40625,
+          "values": [
+            -5.8359375,
+            0.7109375,
+            -2.94140625,
+            2.98046875,
+            3.1171875
+          ]
+        },
+        "homeWorkingMiB": {
+          "median": 2.97265625,
+          "min": -1.7109375,
+          "max": 6.94921875,
+          "mad": 1.71875,
+          "values": [
+            -1.7109375,
+            2.984375,
+            1.25390625,
+            2.97265625,
+            6.94921875
+          ]
+        },
+        "scrollP95GapMs": {
+          "median": -0.09999999776482582,
+          "min": -58.09999999962747,
+          "max": 0,
+          "mad": 0.09999999776482582,
+          "values": [
+            -58.09999999962747,
+            0,
+            -0.09999999776482582,
+            0,
+            -50.90000000037253
+          ]
+        }
+      }
     }
   ],
   "excluded": [
@@ -10268,7 +12320,19 @@
       "reason": "incomplete series"
     },
     {
+      "directory": "paired-trace-56cba0ed",
+      "reason": "incomplete series"
+    },
+    {
       "directory": "paired-trace-61887605",
+      "reason": "incomplete series"
+    },
+    {
+      "directory": "paired-trace-6e40e1b0",
+      "reason": "incomplete series"
+    },
+    {
+      "directory": "paired-trace-c88d6f3b",
       "reason": "incomplete series"
     },
     {

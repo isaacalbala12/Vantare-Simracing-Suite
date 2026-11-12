@@ -1,0 +1,71 @@
+{
+  "generation": "7f98640c186f98eb03778efab5fff0f4",
+  "folder": "D:\\VantareServer\\qa\\isa-1995-measure-2\\generations\\7f98640c186f98eb03778efab5fff0f4",
+  "source": "0f29f1360d5412209c67a5d522304ef1a56fc878",
+  "uiSource": "9401501ea38f2e8fe65584511f27844c7efd157a",
+  "originalGeneration": "D:/VantareServer/qa/isa-1995-measure-1/paired-4b60bc7058e6445c/generations/d9044dff2c4db874687078424f1588f1",
+  "originalMainSha256": "637cb97d1f505486599a00d1c50255b13123ec8763fd110bf8dfbca13d7f2091",
+  "instrumentedMainSha256": "c1e723d70a470c8cf15937bc13548840b11dea38cae5626b28a43f9718fb6b4b",
+  "appAsarSha256": "c7c0e7fb1ea2cc8e490acabc12eac6a64dc5340babcbcfe787a44acd16157dc8",
+  "uiExeSha256": "3382a33207b21ee14f63d322c30f938c4548afa4a0db997fbd0fa996269f6455",
+  "featureNames": {
+    "MediaRouter": true,
+    "HardwareMediaKeyHandling": true,
+    "renderer-process-limit": true
+  },
+  "patches": [
+    {
+      "anchor": "await app.whenReady();",
+      "before": "before-app-ready-await",
+      "after": "after-app-ready-await"
+    },
+    {
+      "anchor": "const host = createHost();",
+      "before": "before-host-create",
+      "after": "after-host-create"
+    },
+    {
+      "anchor": "const hello = await host.hello;",
+      "before": "before-host-hello",
+      "after": "after-host-hello"
+    },
+    {
+      "anchor": "port1.postMessage(hello);",
+      "before": "before-renderer-hello",
+      "after": "after-renderer-hello"
+    },
+    {
+      "anchor": "window = new BrowserWindow({",
+      "before": "before-window-constructor"
+    },
+    {
+      "anchor": "const currentWindow = window;",
+      "before": "after-window-constructor"
+    }
+  ],
+  "payloadBytes": 334379322,
+  "qaOnly": true,
+  "source_dirty": true,
+  "method": "Five alternated same-package baseline/variant launches, fresh profiles, Settings then Home, no own compilation, natural OS caches",
+  "experiment": "hardware-off",
+  "runs": 5,
+  "trial": "5470ec00",
+  "toolHashes": {
+    "measure.mjs": "5edbeb1502479ff976e88d4d473668fc3af3a07ffa1bee58dd7f8f419b074aac",
+    "measure-window.ps1": "694a509ebd67845db922f7d75ed7aeda9aff250e9e942bc5e2ae56340bf03570",
+    "fluency.mjs": "3536e1a1193200c85758a6a10fe8f1517d84df7d504d9653e59f3f4cebd963e6",
+    "image-proof.mjs": "38266633021a9339fd2fc9ac6890a02585f3d86157ad15f3134c79a95d026445",
+    "measurement-qa.mjs": "32a29ad68d9affe75fdb946674fec3554a3a22c9c40c2065ab5ac4aa121cc8a7"
+  },
+  "toolSource": "74793033f50e8cbce473aafd828f2070ae5aefa8",
+  "nodeVersion": "v24.14.1",
+  "sourceMeasureWrapperSha256": "988f487e0211531578f5ddf133dfd6b7edb461072e8019fb43dd29e75d69acc6",
+  "os": "10.0.22631",
+  "logicalCpus": 8,
+  "totalMemory": 17128898560,
+  "freeMemory": 5614751744,
+  "initialOrder": [
+    "baseline",
+    "variant"
+  ]
+}

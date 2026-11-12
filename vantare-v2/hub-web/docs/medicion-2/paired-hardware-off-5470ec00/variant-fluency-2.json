@@ -1,0 +1,87 @@
+{
+  "event": {
+    "phase": "fluency",
+    "size": [
+      1440,
+      720
+    ],
+    "app": "variant",
+    "iteration": 2,
+    "foreground": true
+  },
+  "scene": "Ajustes/Apariencia",
+  "scroll": {
+    "intervals": [
+      16.200000017881393,
+      17.19999998807907,
+      16.5,
+      17.5,
+      16.099999994039536,
+      17,
+      17.599999994039536,
+      16.30000001192093,
+      16.399999976158142,
+      16.900000005960464,
+      17,
+      16.900000005960464,
+      16.099999994039536,
+      17.200000017881393,
+      16.599999994039536,
+      16.099999994039536,
+      17.099999994039536,
+      16,
+      17.400000005960464,
+      17.299999982118607,
+      16.200000017881393,
+      16.5
+    ],
+    "transitions": [
+      {
+        "start": 0,
+        "target": 55,
+        "end": 55,
+        "milliseconds": 140.09999999403954
+      },
+      {
+        "start": 55,
+        "target": 0,
+        "end": 0,
+        "milliseconds": 132.90000000596046
+      },
+      {
+        "start": 0,
+        "target": 55,
+        "end": 55,
+        "milliseconds": 133.40000000596046
+      }
+    ],
+    "maximum": 55,
+    "distance": 55,
+    "visibility": "visible",
+    "motion": "full"
+  },
+  "sidebar": {
+    "intervals": [],
+    "transitions": [
+      {
+        "before": 76,
+        "target": 272,
+        "end": 272,
+        "milliseconds": 12.699999988079071
+      },
+      {
+        "before": 272,
+        "target": 76,
+        "end": 76,
+        "milliseconds": 14.099999994039536
+      }
+    ],
+    "transition": "0s"
+  },
+  "nativeImage": {
+    "width": 1440,
+    "height": 720,
+    "colors": 396,
+    "luminanceRange": 234.33333333333334
+  }
+}

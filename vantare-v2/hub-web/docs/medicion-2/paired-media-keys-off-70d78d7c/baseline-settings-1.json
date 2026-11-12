@@ -1,0 +1,310 @@
+{
+  "event": {
+    "verifiedMs": 2087.1044,
+    "iteration": 1,
+    "app": "baseline",
+    "cpuSource": "CIM PerfProc raw",
+    "phase": "idle",
+    "privateBytes": 383377408,
+    "cpuOneCorePercent": 0,
+    "processMetrics": [
+      {
+        "cpuInterval100ns": "51177126",
+        "workingSetBytes": 9142272,
+        "name": "vantare-hub",
+        "pid": 10332,
+        "utilitySubtype": null,
+        "parentPid": 10556,
+        "privateBytes": 1703936,
+        "role": "host",
+        "cpuBefore100ns": "0",
+        "privateWorkingSetBytes": 1200128,
+        "cpuAfter100ns": "0"
+      },
+      {
+        "cpuInterval100ns": "51177126",
+        "workingSetBytes": 108994560,
+        "name": "vantare-hub-ui",
+        "pid": 8784,
+        "utilitySubtype": null,
+        "parentPid": 10332,
+        "privateBytes": 50495488,
+        "role": "main",
+        "cpuBefore100ns": "625000",
+        "privateWorkingSetBytes": 40271872,
+        "cpuAfter100ns": "625000"
+      },
+      {
+        "cpuInterval100ns": "51177126",
+        "workingSetBytes": 134238208,
+        "name": "vantare-hub-ui",
+        "pid": 7804,
+        "utilitySubtype": null,
+        "parentPid": 8784,
+        "privateBytes": 263147520,
+        "role": "gpu-process",
+        "cpuBefore100ns": "1093750",
+        "privateWorkingSetBytes": 73969664,
+        "cpuAfter100ns": "1093750"
+      },
+      {
+        "cpuInterval100ns": "51177126",
+        "workingSetBytes": 45391872,
+        "name": "vantare-hub-ui",
+        "pid": 2176,
+        "utilitySubtype": "network.mojom.NetworkService",
+        "parentPid": 8784,
+        "privateBytes": 11739136,
+        "role": "utility",
+        "cpuBefore100ns": "312500",
+        "privateWorkingSetBytes": 7307264,
+        "cpuAfter100ns": "312500"
+      },
+      {
+        "cpuInterval100ns": "51177126",
+        "workingSetBytes": 110653440,
+        "name": "vantare-hub-ui",
+        "pid": 2204,
+        "utilitySubtype": null,
+        "parentPid": 8784,
+        "privateBytes": 56291328,
+        "role": "renderer",
+        "cpuBefore100ns": "625000",
+        "privateWorkingSetBytes": 44494848,
+        "cpuAfter100ns": "625000"
+      }
+    ],
+    "cpuSampleMilliseconds": 5117.7126,
+    "familyAfter": [
+      10332,
+      8784,
+      7804,
+      2176,
+      2204
+    ],
+    "section": "settings",
+    "workingSetBytes": 408420352
+  },
+  "heap": {
+    "usedSize": 10115260,
+    "totalSize": 13701120,
+    "embedderHeapUsedSize": 6159056,
+    "backingStorageSize": 915365
+  },
+  "dom": {
+    "documents": 2,
+    "nodes": 1642,
+    "jsEventListeners": 934
+  },
+  "processes": {
+    "processInfo": [
+      {
+        "type": "browser",
+        "id": 8784,
+        "cpuTime": 0.841699
+      },
+      {
+        "type": "renderer",
+        "id": 2204,
+        "cpuTime": 0.659017
+      },
+      {
+        "type": "GPU",
+        "id": 7804,
+        "cpuTime": 1.201465
+      },
+      {
+        "type": "network.mojom.NetworkService",
+        "id": 2176,
+        "cpuTime": 0.070294
+      }
+    ]
+  },
+  "gpu": {
+    "2d_canvas": "enabled",
+    "direct_rendering_display_compositor": "disabled_off_ok",
+    "gpu_compositing": "enabled",
+    "multiple_raster_threads": "enabled_on",
+    "opengl": "enabled_on",
+    "rasterization": "enabled",
+    "raw_draw": "disabled_off_ok",
+    "skia_graphite": "disabled_off",
+    "trees_in_viz": "disabled_off",
+    "video_decode": "enabled",
+    "video_encode": "enabled",
+    "webgl": "enabled",
+    "webgpu": "enabled",
+    "webnn": "disabled_off"
+  },
+  "paint": {
+    "origin": 1794499332001.1,
+    "paint": [
+      {
+        "name": "first-paint",
+        "startTime": 176
+      },
+      {
+        "name": "first-contentful-paint",
+        "startTime": 304
+      }
+    ],
+    "motion": "full"
+  },
+  "startup": {
+    "variant": "baseline",
+    "pid": 8784,
+    "creationEpochMs": 1794499331652.006,
+    "versions": {
+      "node": "24.22.2",
+      "acorn": "8.18.0",
+      "ada": "4.0.0",
+      "amaro": "1.1.11",
+      "ares": "1.34.9",
+      "brotli": "1.2.0",
+      "cldr": "48.0",
+      "icu": "78.2",
+      "llhttp": "9.4.3",
+      "merve": "1.2.2",
+      "modules": "150",
+      "napi": "10",
+      "nbytes": "0.1.4",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.70.0",
+      "nghttp3": "",
+      "ngtcp2": "",
+      "openssl": "0.0.0",
+      "simdjson": "4.6.11",
+      "simdutf": "7.7.0",
+      "sqlite": "3.53.4",
+      "tz": "2026e",
+      "undici": "7.30.1",
+      "unicode": "17.0",
+      "uv": "1.52.1",
+      "uvwasi": "0.0.23",
+      "v8": "15.6.75.27-electron.0",
+      "zlib": "1.3.2.1-motley",
+      "zstd": "1.6.0",
+      "electron": "45.2.3",
+      "chrome": "156.0.8078.80"
+    },
+    "flags": [],
+    "preferences": [
+      {
+        "sandbox": true,
+        "contextIsolation": true,
+        "nodeIntegration": false,
+        "webSecurity": true,
+        "webviewTag": false
+      }
+    ],
+    "deniedSchemes": [],
+    "events": [
+      {
+        "name": "qa-module-start",
+        "epochMs": 1794499331899.9229,
+        "processMs": 232.8691
+      },
+      {
+        "name": "qa-module-end",
+        "epochMs": 1794499331900.105,
+        "processMs": 233.0458
+      },
+      {
+        "name": "before-app-ready-await",
+        "epochMs": 1794499331904.4355,
+        "processMs": 237.3798
+      },
+      {
+        "name": "app-ready",
+        "epochMs": 1794499331930.134,
+        "processMs": 263.075
+      },
+      {
+        "name": "after-app-ready-await",
+        "epochMs": 1794499331930.1545,
+        "processMs": 263.0953
+      },
+      {
+        "name": "before-host-create",
+        "epochMs": 1794499331930.161,
+        "processMs": 263.1014
+      },
+      {
+        "name": "after-host-create",
+        "epochMs": 1794499331932.2732,
+        "processMs": 265.2139
+      },
+      {
+        "name": "before-host-hello",
+        "epochMs": 1794499331932.279,
+        "processMs": 265.2189
+      },
+      {
+        "name": "after-host-hello",
+        "epochMs": 1794499331948.811,
+        "processMs": 281.7517
+      },
+      {
+        "name": "before-window-constructor",
+        "epochMs": 1794499331955.5515,
+        "processMs": 288.4927
+      },
+      {
+        "name": "window-created",
+        "epochMs": 1794499331996.5337,
+        "processMs": 329.4737
+      },
+      {
+        "name": "after-window-constructor",
+        "epochMs": 1794499331999.6602,
+        "processMs": 332.6005
+      },
+      {
+        "name": "did-start-loading",
+        "epochMs": 1794499332006.4858,
+        "processMs": 339.4254
+      },
+      {
+        "name": "dom-ready",
+        "epochMs": 1794499332142.1218,
+        "processMs": 475.0623
+      },
+      {
+        "name": "did-finish-load",
+        "epochMs": 1794499332142.2847,
+        "processMs": 475.2241
+      },
+      {
+        "name": "ready-to-show",
+        "epochMs": 1794499332149.6353,
+        "processMs": 482.575
+      },
+      {
+        "name": "window-show",
+        "epochMs": 1794499332169.4084,
+        "processMs": 502.3482
+      },
+      {
+        "name": "renderer-connect-request",
+        "epochMs": 1794499332170.1006,
+        "processMs": 503.0403
+      },
+      {
+        "name": "before-renderer-hello",
+        "epochMs": 1794499332170.9375,
+        "processMs": 503.877
+      },
+      {
+        "name": "after-renderer-hello",
+        "epochMs": 1794499332171.039,
+        "processMs": 503.9789
+      }
+    ]
+  },
+  "nativeImage": {
+    "width": 1440,
+    "height": 900,
+    "colors": 362,
+    "luminanceRange": 232.66666666666666
+  }
+}

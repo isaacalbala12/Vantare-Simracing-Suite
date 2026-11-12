@@ -18,5 +18,17 @@ QA. La ejecución conservará el cerrojo y la sonda Win32/PerfProc de
 propias durante las muestras, un solo Hub a la vez y cierre de todos sus hijos.
 
 Informe y muestras: `D:/VantareServer/evidence/hub-web/medicion-2/INFORME.md`.
-Los resultados aún están pendientes; no confundir el candidato histórico común
-con una compilación de todas las pantallas de nightly actual.
+Resultados completos: cinco series de opciones y una serie de fases de arranque,
+N=5 pares alternados por serie (60 arranques válidos). La serie de fases usa
+marcas explícitas y Paint Timing; los volcados nativos de CPU incompletos se
+excluyen. Una tanda adicional se descartó por compilación ajena durante la reserva.
+La serie final comprueba ausencia de builds antes, después y en 70 límites de fase.
+Validación independiente en PowerShell desde los datos crudos, correcta en seis series.
+No confundir el candidato histórico común con nightly actual. Ninguna opción se ha
+aplicado al producto; el informe incluye ruido y límites de interpretación.
+
+El respaldo incluye las 264 proyecciones JSON/JSONL de las seis series válidas
+(1,58 MB; sin PNG ni configuración con bootstrap), más el registro de reserva.
+Se verificó el respaldo con:
+`pwsh -NoProfile -File qa-tools/validate-independent.ps1 -EvidenceRoot <esta carpeta>`.
+Las capturas y las tandas incompletas quedan en la carpeta de evidencia local.

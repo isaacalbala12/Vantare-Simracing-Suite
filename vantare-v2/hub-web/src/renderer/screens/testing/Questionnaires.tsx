@@ -1,3 +1,4 @@
+import { useHost } from "../../app/Host";
 import { testingQuestionnairesText as questionnaireText } from "../../i18n/testing-questionnaires";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
@@ -15,6 +16,7 @@ export function TestingQuestionnaires({
   diagnosticOpen?: boolean;
 }) {
   const state = useReports();
+  const { hello } = useHost();
   const blocked = !state.available || state.busy || !state.access.tester;
   return (
     <TestingLayout
@@ -29,7 +31,9 @@ export function TestingQuestionnaires({
           <TestingCard title={questionnaireText.title}>
             <p>
               {state.participationLoaded
-                ? questionnaireText.loaded
+                ? hello?.demo
+                  ? questionnaireText.qaLoaded
+                  : questionnaireText.loaded
                 : text.reloadHelp}
             </p>
             {state.error && (

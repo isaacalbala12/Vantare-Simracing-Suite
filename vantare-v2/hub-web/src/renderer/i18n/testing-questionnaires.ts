@@ -9,6 +9,7 @@ export const testingQuestionnairesText = {
   save: "Guardar respuesta",
   help: "Solo se envía la puntuación al pulsar Guardar respuesta. La nota es local y no se envía.",
   loaded: "Datos confirmados por el servicio",
+  qaLoaded: "QA · ejemplo de participación, sin backend ni envío",
   openClosed: "Abiertos y cerrados",
   count: "cuestionarios cargados (últimos 10)",
   results: "Resultados",

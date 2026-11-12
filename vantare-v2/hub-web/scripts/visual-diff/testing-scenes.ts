@@ -1,8 +1,36 @@
+import type { Page } from "playwright-core";
 import type { VisualScene } from "./scenes.ts";
 import {
   assertTestingConsentFits,
   settingsTabsStyle,
 } from "./testing-readability.ts";
+
+async function assertQuestionnaireFill(page: Page) {
+  const bounds = await page
+    .locator(".v-testing-questionnaires")
+    .evaluate((node) => {
+      const list = node.children[0].getBoundingClientRect();
+      const form = node.children[1].getBoundingClientRect();
+      const main = node.closest(".v-shell-main");
+      if (!main) throw new Error("Questionnaires main missing");
+      return {
+        list: list.height,
+        footerGap:
+          main.getBoundingClientRect().bottom -
+          parseFloat(getComputedStyle(main).paddingBottom) -
+          form.bottom,
+      };
+    });
+  if (bounds.list < 250 || Math.abs(bounds.footerGap) > 1)
+    throw new Error(
+      `Questionnaire free height lost: ${JSON.stringify(bounds)}`,
+    );
+  await page
+    .getByText("QA · ejemplo de participación, sin backend ni envío", {
+      exact: true,
+    })
+    .waitFor();
+}
 
 export const testingScenes: Record<string, VisualScene> = {
   "testing-center-comunidad": {
@@ -59,6 +87,12 @@ export const testingScenes: Record<string, VisualScene> = {
   "testing-center-cuestionarios": {
     mock: "testing-tester-questionnaires-reference",
     async prepare(page) {
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "true")
+        await sidebar.click();
       await page
         .getByRole("navigation", { name: "Navegación principal" })
         .getByRole("button", { name: "Testing Center", exact: true })
@@ -76,6 +110,21 @@ export const testingScenes: Record<string, VisualScene> = {
       await page
         .getByRole("button", { name: "Guardar respuesta", exact: true })
         .waitFor();
+      await assertQuestionnaireFill(page);
+      await page.mouse.move(600, 890);
+    },
+  },
+  "testing-center-cuestionarios-desplegada": {
+    mock: "testing-tester-questionnaires-reference",
+    async prepare(page) {
+      await testingScenes["testing-center-cuestionarios"].prepare(page);
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "false")
+        await sidebar.click();
+      await assertQuestionnaireFill(page);
       await page.mouse.move(600, 890);
     },
   },

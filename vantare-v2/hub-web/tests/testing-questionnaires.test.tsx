@@ -143,3 +143,12 @@ it("reproduces cached reference data after disconnecting, without accepting anot
     screen.getByRole("button", { name: "Recargar" }).hasAttribute("disabled"),
   ).toBe(true);
 });
+
+it("labels the QA questionnaire as simulated participation instead of a confirmed backend response", async () => {
+  await mount();
+  await select();
+  expect(
+    screen.getByText("QA · ejemplo de participación, sin backend ni envío"),
+  ).toBeTruthy();
+  expect(screen.queryByText(text.loaded)).toBeNull();
+});

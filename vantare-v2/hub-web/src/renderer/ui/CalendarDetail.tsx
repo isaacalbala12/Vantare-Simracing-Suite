@@ -389,8 +389,8 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
             <Tooltip label={calendarText.launchPending}>
               <span>
                 <Button
-                  aria-disabled="true"
-                  data-disabled=""
+                  disabled
+                  focusableWhenDisabled
                   aria-description={calendarText.launchPending}
                 >
                   <Icon name="clock" />

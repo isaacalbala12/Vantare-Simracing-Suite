@@ -232,3 +232,11 @@ it.each([false, true])(
     expect(JSON.stringify(alerts)).toBe(before);
   },
 );
+
+it("explains that lead time belongs to ICS and not to the overlay thresholds", () => {
+  show();
+  expect(screen.getByText(text.leadScope)).toBeTruthy();
+  expect(
+    screen.getByRole("group", { name: `${text.lead}. ${text.leadScope}` }),
+  ).toBeTruthy();
+});

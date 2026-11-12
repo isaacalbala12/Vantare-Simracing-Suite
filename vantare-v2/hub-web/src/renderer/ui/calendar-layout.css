@@ -55,6 +55,13 @@
   flex-direction: column;
   gap: 6px;
 }
+.v-calendar-expired-actions > p {
+  max-width: 260px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--text-2);
+}
 .v-calendar-expired-actions .v-button {
   min-height: 34px;
   height: 34px;

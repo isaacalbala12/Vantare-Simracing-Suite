@@ -92,8 +92,9 @@ export function CalendarAlertsDialog(p: Props) {
               <div className="v-calendar-alerts-columns">
                 <section>
                   <Caption>{text.lead}</Caption>
+                  <p>{text.leadScope}</p>
                   <Segmented
-                    label={text.lead}
+                    label={`${text.lead}. ${text.leadScope}`}
                     value={String(p.alerts.leadMin)}
                     disabled={disabled || legacy}
                     pending={p.busy}

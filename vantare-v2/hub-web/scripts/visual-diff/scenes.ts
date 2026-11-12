@@ -7,6 +7,7 @@ import { dialogTopbarScenes } from "./dialog-topbar.ts";
 import { frameScenes } from "./frame.ts";
 import { homeScenes } from "./home.ts";
 import { launcherScenes } from "./launcher.ts";
+import { notificationHonestyScenes } from "./notification-honesty.ts";
 import { notificationScenes } from "./notifications.ts";
 import { onboardingScenes } from "./onboarding.ts";
 import { palettePreviewScenes } from "./palette-previews.ts";
@@ -90,4 +91,5 @@ export const visualScenes: Record<string, VisualScene> = {
     ]),
   ),
   ...palettePreviewScenes,
+  ...notificationHonestyScenes,
 };

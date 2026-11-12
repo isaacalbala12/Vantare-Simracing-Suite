@@ -40,14 +40,26 @@ export function General() {
     label: string,
     checked: boolean,
   ) {
+    const unavailable = field === "updates" || field === "launcher";
     return (
       <Switch
         label={label}
         checked={checked}
         hideLabel
-        disabled={disabled}
+        disabled={disabled || unavailable}
+        aria-description={
+          field === "updates"
+            ? t("general.updatesHelp")
+            : field === "launcher"
+              ? t("general.launcherHelp")
+              : field === "toasts"
+                ? t("general.toastsHelp")
+                : undefined
+        }
         pending={state.pending && state.field === field}
-        onCheckedChange={(value) => state.update({ field, value })}
+        onCheckedChange={(value) => {
+          if (!unavailable) state.update({ field, value });
+        }}
       />
     );
   }

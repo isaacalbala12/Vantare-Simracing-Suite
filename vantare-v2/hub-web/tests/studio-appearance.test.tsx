@@ -274,7 +274,11 @@ it.each(["locked", "unverified"])(
     const control = screen.getByRole("switch", {
       name: t.transparentBackground,
     });
-    expect(control.hasAttribute("disabled")).toBe(true);
+    expect(control.getAttribute("aria-disabled")).toBe("true");
+    const nativeInput = control.parentElement?.querySelector<HTMLInputElement>(
+      "input[type=checkbox]",
+    );
+    expect(nativeInput?.disabled).toBe(true);
     expect(control.getAttribute("aria-busy")).toBeNull();
     await user.click(control);
     expect(state.execute).not.toHaveBeenCalled();
@@ -287,3 +291,23 @@ it("does not invent a transparency value for a protected document", () => {
     screen.queryByRole("switch", { name: t.transparentBackground }),
   ).toBeNull();
 });
+
+it.each(["delta", "pedals"] as const)(
+  "reads the saved transparency for %s",
+  (kind) => {
+    const item = instance(kind);
+    if (
+      !item.settings ||
+      (item.settings.kind !== "delta" && item.settings.kind !== "pedals")
+    )
+      throw new Error("Missing settings");
+    item.settings.transparentBackground = true;
+    mount(item);
+    expect(
+      screen
+        .getByRole("switch", { name: t.transparentBackground })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(state.execute).not.toHaveBeenCalled();
+  },
+);

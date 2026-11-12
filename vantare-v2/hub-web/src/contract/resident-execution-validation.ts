@@ -16,8 +16,8 @@ function outcome(value: unknown): boolean {
 function event(value: unknown): boolean {
  if (!record(value) || !exact(value,["seq","kind"]) || !decimal(value.seq) || !record(value.kind)) return false;
  const kind=value.kind;
- const run=(value: unknown) => decimal(value) && BigInt(value) <= BigInt(String(valueSeq));
  const valueSeq=value.seq;
+ const run=(value: unknown) => decimal(value) && BigInt(value) <= BigInt(valueSeq);
  if (kind.kind === "started") return exact(kind,["kind","run"]) && run(kind.run);
  if (kind.kind === "finished") return exact(kind,["kind","run","outcome"]) && run(kind.run) && outcome(kind.outcome);
  if (kind.kind !== "received" || !exact(kind,["kind","request","receipt"]) || !hex(kind.request,32) || !record(kind.receipt)) return false;

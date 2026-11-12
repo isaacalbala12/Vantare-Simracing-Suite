@@ -21,6 +21,7 @@
             "kind": "authorization"
           },
           "error": false,
+          "execution": null,
           "online": true,
           "protected": false,
           "registrations": [],
@@ -47,6 +48,7 @@
             "kind": "authorization"
           },
           "error": false,
+          "execution": null,
           "online": true,
           "protected": false,
           "registrations": [],

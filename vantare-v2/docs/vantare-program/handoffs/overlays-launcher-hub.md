@@ -1616,3 +1616,16 @@ Policy::permits_launch y sin fallback v1. UI/Calendario corresponde a D después
 Ask/confianza puede esperar hasta 2 min y acabar DecisionExpired. Cancelar solo
 hasta el envío; una cadena aceptada no se mata. Sin agenda con Hub cerrado.
 Sin promoción, release, instalador, dependencia nueva ni ejecución gráfica local.
+
+### Superficie v31 preparada · worker E
+
+Método opt-in launcher.launchChecked con generación armada obligatoria, revisión
+y perfil. Respuesta Queued{request}; Policy::permits_launch y comparación de
+cuenta antes del envío, capability fresca obligatoria, sin fallback. CoreStatus
+proyecta accountGeneration opaca opcional; ResidentView proyecta execution
+cerrado con instancia/cursor/recibos/terminales. No hay rutas ni texto libre nuevo.
+D debe correlacionar RequestId→run dentro de la misma instancia y cuenta; sin
+recibo al plazo, hueco o reinicio = Unknown. Rechazos consumen el anillo de32.
+El método legacy conserva v1 para sus consumidores, y no da estas garantías:
+Calendario debe usar el nuevo. Sin implementación de calendario/interfaz aquí.
+Estado todavía local, gates y PR pendientes; no afirmar entrega ni integración.

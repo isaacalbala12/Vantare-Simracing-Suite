@@ -345,28 +345,59 @@ fn resident_subscription_and_live_gates_do_not_read_or_emit_implicitly() {
 mod close_priority_tests;
 #[test]
 fn checked_dispatch_cannot_replace_the_scope_captured_by_the_caller() {
-    use vantare_ipc::{account_session::AccountObservation, control::{AccessState, Policy}, launcher as mailbox};
-    let fixture=Fixture::new();
-    let mut session=fixture.session();
-    let document=vantare_launcher::Document::fresh_install();
-    let bytes=serde_json::to_vec(&document).unwrap();
-    std::fs::write(&session.launcher,&bytes).unwrap();
-    let request=Request::LauncherLaunchChecked {
-        profile:document.profiles[0].id.clone(), base_revision:vantare_services::content_hash(&bytes), armed_generation:"a".repeat(64)
+    use vantare_ipc::{
+        account_session::AccountObservation,
+        control::{AccessState, Policy},
+        launcher as mailbox,
     };
-    session.core.observation=Some(AccountObservation {
-        generation:"b".repeat(64).try_into().unwrap(),
-        policy:Policy { version:vantare_ipc::control::VERSION, epoch:1, revision:1, checked_at_ms:vantare_ipc::control::wall_ms().unwrap(), state:AccessState::Active, ..Default::default() }
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let document = vantare_launcher::Document::fresh_install();
+    let bytes = serde_json::to_vec(&document).unwrap();
+    std::fs::write(&session.launcher, &bytes).unwrap();
+    let request = Request::LauncherLaunchChecked {
+        profile: document.profiles[0].id.clone(),
+        base_revision: vantare_services::content_hash(&bytes),
+        armed_generation: "a".repeat(64),
+    };
+    session.core.observation = Some(AccountObservation {
+        generation: "b".repeat(64).try_into().unwrap(),
+        policy: Policy {
+            version: vantare_ipc::control::VERSION,
+            epoch: 1,
+            revision: 1,
+            checked_at_ms: vantare_ipc::control::wall_ms().unwrap(),
+            state: AccessState::Active,
+            ..Default::default()
+        },
     });
-    let mut pipe=Pipe::new(Vec::new());
-    session.request(&mut pipe,1,&request).unwrap();
+    let mut pipe = Pipe::new(Vec::new());
+    session.request(&mut pipe, 1, &request).unwrap();
     pipe.set_position(0);
-    assert!(matches!(frame::Reader::default().next::<HostToUi>(&mut pipe).unwrap().unwrap(),HostToUi::Failure{error:HostError::Denied,..}));
+    assert!(matches!(
+        frame::Reader::default()
+            .next::<HostToUi>(&mut pipe)
+            .unwrap()
+            .unwrap(),
+        HostToUi::Failure {
+            error: HostError::Denied,
+            ..
+        }
+    ));
     assert!(!mailbox::request_path(&session.launcher).exists());
-    session.core.observation=None;
-    let mut pipe=Pipe::new(Vec::new());
-    session.request(&mut pipe,2,&request).unwrap();
+    session.core.observation = None;
+    let mut pipe = Pipe::new(Vec::new());
+    session.request(&mut pipe, 2, &request).unwrap();
     pipe.set_position(0);
-    assert!(matches!(frame::Reader::default().next::<HostToUi>(&mut pipe).unwrap().unwrap(),HostToUi::Failure{error:HostError::CoreUnavailable,..}));
+    assert!(matches!(
+        frame::Reader::default()
+            .next::<HostToUi>(&mut pipe)
+            .unwrap()
+            .unwrap(),
+        HostToUi::Failure {
+            error: HostError::CoreUnavailable,
+            ..
+        }
+    ));
     assert!(!mailbox::request_path(&session.launcher).exists());
 }

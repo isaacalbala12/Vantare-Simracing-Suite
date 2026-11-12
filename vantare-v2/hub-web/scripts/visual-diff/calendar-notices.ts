@@ -76,12 +76,33 @@ function alerts(expanded: boolean, enabled = true): VisualScene {
     },
   };
 }
-function week(expanded: boolean): VisualScene {
+function week(expanded: boolean, enabled = true): VisualScene {
   return {
     mock: "calendar-live-reference",
     async prepare(page) {
-      await masterWindows(page, true);
+      await masterWindows(page, enabled);
       await sidebar(page, expanded);
+      if (!enabled) {
+        await page.clock.setFixedTime(new Date("2026-10-14T17:47:13Z"));
+        await page
+          .getByRole("navigation", { name: "Navegación principal" })
+          .getByRole("button", { name: "Calendario", exact: true })
+          .click();
+        const control = page.getByRole("switch", {
+          name: "Avisarme al llegar",
+          exact: true,
+        });
+        await control.waitFor();
+        if ((await control.getAttribute("aria-disabled")) !== "true")
+          throw Error("General-off week notice is enabled");
+        await page
+          .getByText(
+            "Las notificaciones de Windows están desactivadas en Ajustes › General",
+            { exact: true },
+          )
+          .waitFor();
+        return;
+      }
       await notificationHonestyScenes["calendario-semana-pendiente"].prepare(
         page,
       );
@@ -126,6 +147,7 @@ function weeklyDetail(expanded: boolean): VisualScene {
   };
 }
 export const calendarNoticeScenes: Record<string, VisualScene> = {
+  "calendario-general-semana-contraida": week(false, false),
   "calendario-general-avisos-contraida": alerts(false, false),
   "calendario-general-avisos-desplegada": alerts(true, false),
   "calendario-emisor-ficha-semanal-contraida": weeklyDetail(false),

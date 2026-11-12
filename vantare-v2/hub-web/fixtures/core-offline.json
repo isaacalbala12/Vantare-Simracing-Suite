@@ -10,5 +10,6 @@
     "engineer": false,
     "strategy": false
   },
-  "live": false
+  "live": false,
+  "accountGeneration": null
 }

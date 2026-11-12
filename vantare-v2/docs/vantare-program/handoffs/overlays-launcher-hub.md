@@ -1595,3 +1595,41 @@ invertidas y :/ en el JSON. Comprobaciones P2 en curso; sin merge propio.
 - Entrega de lista/lanzamiento consolidada en un bloque propio para resolver el rebase sin reaplicar conflictos históricos. Bindings y corpus regenerados desde Rust, sin edición manual; versión del protocolo de nightly conservada.
 - Exportación correcta; gate Rust y suite web en curso. Evidencia native-notifications-rebase.log y *-notifications-rebase.log en la carpeta propia de #2029. #2038 y #2044 se reapilan después, conservando el P0 corregido y el P2 de identidad de pasos pendiente de implementar.
 - Sin merge, promoción ni release propios.
+
+## VANTA-138 · Núcleo de lanzamientos launch-v2 (2026-11-12)
+
+PR #2225 integrado en nightly: 84a8d70065e56ae7c60aab2a6e22cbac44a0ad31.
+CI completa verde (15 checks), suite Windows 2156 PASS, lifecycle 5 PASS,
+telemetría 34 PASS. Sesión #2209, terminales #2215 y seguimiento #2220 integrados.
+launch-v2 valida instancia, revisión SHA-256 de todos los bytes y generación
+capturada al armar; ejecuta la instantánea leída una vez. Consulta readonly
+con plazo total 750 ms e identidad del par; sin nonce mutador, ticket ni fallback.
+Los consumidores existentes siguen launch-v1. La superficie del Hub aún no lo activa.
+
+Seguimiento de review: compartir RPC autenticado y probar imagen incorrecta,
+desbordamiento de cursor y decoder antiguo; no cambia el wire.
+Los rechazos también ocupan huecos del anillo único de 32; pueden desalojar
+recibos/terminales. Lectura no consume; sin recibo = Unknown, jamás éxito supuesto.
+PR4 autorizado con protocolo Hub v31: armed_generation como parámetro,
+Queued{request}, capability RevisionCheckedLaunch obligatoria, permisos mediante
+Policy::permits_launch y sin fallback v1. UI/Calendario corresponde a D después;
+Ask/confianza puede esperar hasta 2 min y acabar DecisionExpired. Cancelar solo
+hasta el envío; una cadena aceptada no se mata. Sin agenda con Hub cerrado.
+Sin promoción, release, instalador, dependencia nueva ni ejecución gráfica local.
+
+### Superficie v31 preparada · worker E
+
+Método opt-in launcher.launchChecked con generación armada obligatoria, revisión
+y perfil. Respuesta Queued{request}; Policy::permits_launch y comparación de
+cuenta antes del envío, capability fresca obligatoria, sin fallback. CoreStatus
+proyecta accountGeneration opaca opcional; ResidentView proyecta execution
+cerrado con instancia/cursor/recibos/terminales. No hay rutas ni texto libre nuevo.
+D debe correlacionar RequestId→run dentro de la misma instancia y cuenta; sin
+recibo al plazo, hueco o reinicio = Unknown. Rechazos consumen el anillo de32.
+El método legacy conserva v1 para sus consumidores, y no da estas garantías:
+Calendario debe usar el nuevo. Sin implementación de calendario/interfaz aquí.
+Rama vantareapp/isa-2089-superficie, contra nightly; SHA y resultados finales
+se registran en el PR de esta rama. Sin integración, promoción ni release propios.
+Seguimiento #2229 listo para review: 9685935ef, CI completa verde15/15.
+La superficie no depende de cambios de API de ese seguimiento; integrar su
+arreglo y regresiones antes de activar Calendario.

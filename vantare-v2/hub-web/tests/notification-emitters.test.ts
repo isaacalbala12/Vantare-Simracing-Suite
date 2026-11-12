@@ -83,6 +83,7 @@ function harness() {
           running: false,
           error: false,
           decision: null,
+          execution: null,
           registrations: [],
           ...patch,
         },

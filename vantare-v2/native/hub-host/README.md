@@ -231,3 +231,38 @@ en `hub-web/docs/screen-contracts.md`.
 
 La auditoría de escritores y los oráculos de bytes con ambos mapas de serde_json
 están en [docs/json-order.md](docs/json-order.md).
+
+## Lanzamientos comprobados · protocolo Hub v31
+
+`core.accountGeneration` es una generación opaca de sesión, no una identidad,
+credencial ni permiso. Puede faltar con un núcleo antiguo o desconectado. D
+captura generación, perfil y revisión AL ARMAR. `launcher.launchChecked` exige
+esos tres valores (`armedGeneration`, `profile`, `baseRevision`); el helper nunca
+sustituye la generación armada por la observación al disparar. Solo una acción
+explícita «Lanzar ahora» toma la última observación para crear su intención.
+La política actual debe satisfacer `Policy::permits_launch`, además de coincidir
+la generación. El residente vuelve a validar al consumir.
+
+El envío exige Status fresco con `RevisionCheckedLaunch`, genera RequestId
+aleatorio de32 hex y devuelve `{kind:"queued",request}`. Significa encolado;
+no significa aceptado, completado ni «aplicaciones listas». No hay fallback a v1.
+Los consumidores legacy (incluido el método previo, favorito, CLI y atajos)
+conservan v1; D debe usar exclusivamente el método comprobado para Calendario.
+
+`launcher.resident.get` y sus eventos incluyen `execution` opcional: instancia,
+soporte comprobado, primer cursor retenido y el anillo cerrado de eventos.
+Los IDs de ejecución y secuencia son strings decimales exactos, también sobre
+2^53. Solo Received con el RequestId propio correlaciona la ejecución; Finished
+se atribuye usando el run de ese Received y la misma instancia. Started de otro
+consumidor no confirma una intención del Hub. Failed/Cancelled nunca son éxito.
+La lectura no consume. Los rechazos ocupan huecos del mismo anillo de32 y pueden
+desalojar recibos/terminales. Falta de extensión, hueco, reinicio o ausencia de
+recibo al vencer el plazo significa **Unknown**, jamás éxito supuesto ni reenvío.
+No hay ACK ni persistencia. Se reservan16KiB en el presupuesto de registros para
+la extensión cerrada de32 eventos. No salen rutas, argumentos, documentos,
+identidades personales ni mensajes libres por esta superficie nueva.
+
+D implementa armar/cancelar/textos/casillas y descarta intenciones/correlaciones
+al cambiar de cuenta. Cancelar deja de tener efecto tras el envío; una cadena
+aceptada no se mata. Ask/confianza puede esperar hasta2min y acabar
+DecisionExpired: avisar al armar. Sin agenda con el Hub cerrado.

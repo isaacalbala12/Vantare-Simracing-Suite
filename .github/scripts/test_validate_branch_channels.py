@@ -65,10 +65,13 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             if "uses:" in line and "uses: ./" not in line:
                 self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
         for required in (
-            "Native format and blocking gates",
+            "Native format and lint",
+            "Native test archive for the changed scope",
             "native/retirement/verify.py",
         ):
             self.assertIn(required, workflow)
+        self.assertIn("-LintOnly", workflow)
+        self.assertIn("-ArchiveOnly", workflow)
         native = Path(__file__).resolve().parents[2] / "vantare-v2/native"
         gates = (native / "scripts/ci-gates.ps1").read_text(encoding="utf-8")
         self.assertIn("scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1", workflow)
@@ -109,7 +112,7 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn('python -m unittest vantare-v2/native/scripts/test_affected_crates.py', workflow)
         for test in ('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests'):
             self.assertIn(test, workflow)
-        for job in ('policy', 'product', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
+        for job in ('policy', 'product', 'native_lint', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
             block = re.split(r'\n  \S', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
             self.assertRegex(block, r'timeout-minutes: [1-9][0-9]*')
         archive = workflow.split('name: Share one compiled test archive', 1)[1].split('\n  native_tests:', 1)[0]
@@ -120,12 +123,13 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         native = Path(__file__).resolve().parents[2] / "vantare-v2/native"
         gates = (native / "gates.ps1").read_text(encoding="utf-8")
         ci = (native / "scripts/ci-gates.ps1").read_text(encoding="utf-8")
-        self.assertIn("if ($LASTEXITCODE) { throw 'Native blocking gates failed' }", workflow)
+        self.assertIn("if ($LASTEXITCODE) { throw 'Native lint failed' }", workflow)
+        self.assertIn("if ($LASTEXITCODE) { throw 'Native test archive failed' }", workflow)
         self.assertIn('throw "Gate $Gate falló (código $LASTEXITCODE)."', gates)
         reuse = (native / 'scripts/ci-reuse-tests.ps1').read_text(encoding='utf-8')
         self.assertIn('debug/ci-lifecycle/manifest.json', reuse)
         self.assertIn('foreach ($artifact in $lifecycle', reuse)
-        self.assertIn('needs: [policy, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]', workflow)
+        self.assertIn('needs: [policy, native_lint, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]', workflow)
         distribution = re.split(r'\n  \S', workflow.split('\n  native_distribution:\n', 1)[1], maxsplit=1)[0]
         installation = re.split(r'\n  \S', workflow.split('\n  native_installation:\n', 1)[1], maxsplit=1)[0]
         self.assertIn('-Gate distribution', distribution)
@@ -145,6 +149,30 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertNotIn("--exclude", workflow)
         self.assertNotIn("--skip", workflow)
         self.assertNotIn("continue-on-error", workflow)
+
+    def test_native_test_matrix_covers_every_partition(self) -> None:
+        workflow = (Path(__file__).resolve().parents[1] / 'workflows/branch-channel-gates.yml').read_text(encoding='utf-8')
+        block = workflow.split('  native_tests:', 1)[1].split('\n  native_lifecycle_build:', 1)[0]
+        self.assertIn("-Suite '${{ matrix.suite }}'", block)
+        self.assertIn("-Partition '${{ matrix.partition }}'", block)
+        entries = re.findall(
+            r"- suite: (\w+)[^\n]*\n\s+label: [^\n]*\n\s+partition: '?([^'\n]*)'?",
+            block,
+        )
+        test_parts = [partition for suite, partition in entries if suite == 'test']
+        self.assertEqual(block.count('- suite: test'), len(test_parts),
+                         'algún leg de suite: test no declara partición')
+        self.assertGreaterEqual(len(test_parts), 2)
+        parsed = []
+        for partition in test_parts:
+            match = re.fullmatch(r'hash:(\d+)/(\d+)', partition)
+            self.assertIsNotNone(match, partition)
+            parsed.append((int(match.group(1)), int(match.group(2))))
+        denominators = {denominator for _, denominator in parsed}
+        self.assertEqual(len(denominators), 1, test_parts)
+        denominator = denominators.pop()
+        self.assertEqual(sorted(numerator for numerator, _ in parsed),
+                         list(range(1, denominator + 1)))
 
     def test_accepts_issue_branch_into_nightly(self) -> None:
         self.assertEqual(

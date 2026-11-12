@@ -41,6 +41,7 @@ impl Owner {
         start: impl FnOnce(Document, launcher::Profile) -> Result<Chain, StartError>,
     ) {
         let Some(extension) = self.status.extension.as_ref() else {
+            super::super::log("Launcher: launch-v2 descartado sin extension de ejecucion");
             return;
         };
         if extension.instance != request.instance {

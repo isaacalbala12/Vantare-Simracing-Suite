@@ -10,6 +10,7 @@ import { checkCalendarDialogSafety } from "./check-calendar-dialog-safety.ts";
 import { checkCommandPalette } from "./check-command-palette.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
+import { checkNotificationFocus } from "./check-notification-focus.ts";
 import {
   checkOnboarding,
   checkOnboardingGuardedExit,
@@ -155,6 +156,7 @@ try {
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   await checkCommandPalette(page, server.resolvedUrls?.local[0] ?? "");
+  await checkNotificationFocus(page, server.resolvedUrls?.local[0] ?? "");
   await checkPrivacyGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkAccessGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkAccount(page, server.resolvedUrls?.local[0] ?? "", evidence);

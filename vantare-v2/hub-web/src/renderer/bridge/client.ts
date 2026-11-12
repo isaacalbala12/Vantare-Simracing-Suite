@@ -22,6 +22,12 @@ export class HostFailure extends Error {
     super(detail.kind);
   }
 }
+// Local cancellation of a clean Testing request during Window close, not a core failure.
+export class ReportCloseDiscarded extends HostFailure {
+  constructor() {
+    super({ kind: "busy" });
+  }
+}
 export type RequestObservation = {
   id: number;
   method: Request["method"];
@@ -207,9 +213,15 @@ export class Client {
     const sequence = ++this.closeSequence;
     this.reportClose.cancel();
     if (reason === "live" || reason === "controlEof") {
-      for (const pending of this.pending.values()) {
+      for (const [id, pending] of this.pending) {
         clearTimeout(pending.timer);
         pending.dispose?.();
+        this.observed({
+          id,
+          method: pending.method,
+          phase: "done",
+          error: { kind: "busy" },
+        });
         pending.reject(new HostFailure({ kind: "busy" }));
       }
       this.pending.clear();
@@ -252,7 +264,7 @@ export class Client {
                   phase: "done",
                   error: { kind: "busy" },
                 });
-                pending.reject(new HostFailure({ kind: "busy" }));
+                pending.reject(new ReportCloseDiscarded());
               }
             }
           }

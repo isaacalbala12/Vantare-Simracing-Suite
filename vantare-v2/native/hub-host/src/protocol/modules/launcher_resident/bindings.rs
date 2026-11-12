@@ -9,6 +9,14 @@ pub(crate) fn typescript() -> String {
     declare::<ResidentQuestionKind>(&mut text);
     declare::<ResidentChoice>(&mut text);
     declare::<ResidentQuestion>(&mut text);
+    declare::<crate::launcher_resident::ResidentFailure>(&mut text);
+    declare::<crate::launcher_resident::ResidentCancellation>(&mut text);
+    declare::<crate::launcher_resident::ResidentRejection>(&mut text);
+    declare::<crate::launcher_resident::ResidentOutcome>(&mut text);
+    declare::<crate::launcher_resident::ResidentReceipt>(&mut text);
+    declare::<crate::launcher_resident::ResidentEventKind>(&mut text);
+    declare::<crate::launcher_resident::ResidentExecutionEvent>(&mut text);
+    declare::<crate::launcher_resident::ResidentExecution>(&mut text);
     declare::<ResidentView>(&mut text);
     constants!(&mut text, "residentActions", ResidentAction::ALL);
     constants!(
@@ -44,7 +52,23 @@ pub(crate) fn typescript() -> String {
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
+    use vantare_ipc::launcher::{RequestId, execution as native};
+    let mut execution =
+        native::ExecutionStatus::new("b".repeat(64).try_into().expect("instance fixture"));
+    execution
+        .capabilities
+        .push(native::Capability::RevisionCheckedLaunch);
+    let run = execution
+        .accept(RequestId::try_from("a".repeat(32)).expect("request fixture"))
+        .expect("run fixture");
+    execution
+        .record(native::EventKind::Finished {
+            run,
+            outcome: native::ChainOutcome::Completed,
+        })
+        .expect("terminal fixture");
     let value = ResidentView {
+        execution: Some((&execution).into()),
         online: true,
         running: true,
         decision: Some(ResidentQuestion {

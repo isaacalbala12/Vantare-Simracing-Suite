@@ -7,10 +7,21 @@ import {
 import { isLauncher, isLauncherLaunch } from "../launcher-validation";
 import { isProfileAction, isProfileActionMethod } from "../profile-actions";
 import { isProfileEditor, isProfileRequest } from "../profile-validation";
-import { exact } from "../validation-common";
+import { exact, record } from "../validation-common";
 
 export { launcherMethods as methods } from "../generated/launcher";
 export function isRequest(value: Record<string, unknown>): boolean {
+  if (value.method === "launcher.launchChecked")
+    return (
+      exact(value, ["method", "profile", "baseRevision", "armedGeneration"]) &&
+      isLauncherLaunch({
+        method: "launcher.launch",
+        profile: value.profile,
+        baseRevision: value.baseRevision,
+      }) &&
+      typeof value.armedGeneration === "string" &&
+      /^[0-9a-f]{64}$/.test(value.armedGeneration)
+    );
   if (isProfileActionMethod(value.method)) return isProfileAction(value);
   if (
     typeof value.method === "string" &&
@@ -31,6 +42,15 @@ export function isRequest(value: Record<string, unknown>): boolean {
         exact(value, ["method"]);
 }
 export function isReply(value: Record<string, unknown>): boolean {
+  if (value.method === "launcher.launchChecked")
+    return (
+      exact(value, ["method", "value"]) &&
+      record(value.value) &&
+      exact(value.value, ["kind", "request"]) &&
+      value.value.kind === "queued" &&
+      typeof value.value.request === "string" &&
+      /^[0-9a-f]{32}$/.test(value.value.request)
+    );
   if (isProfileActionMethod(value.method))
     return exact(value, ["method", "value"]) && isLauncher(value.value);
   if (value.method === "launcher.catalog")

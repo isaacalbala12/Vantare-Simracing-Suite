@@ -26,7 +26,7 @@ import {
 import { isReportFields } from "../../../contract/testing-validation";
 import { useAccountSession } from "../../app/AccountSession";
 import { coreKey, offline, useHost } from "../../app/Host";
-import { HostFailure } from "../../bridge/client";
+import { HostFailure, ReportCloseDiscarded } from "../../bridge/client";
 import type { CloseDraftSave } from "../../bridge/report-close";
 import {
   CloseReportSaveFailureDialog,
@@ -149,7 +149,10 @@ function useReportsState() {
             throw new Error("report session changed");
           return reply;
         } catch (error) {
-          if (epoch === generation.current) {
+          if (
+            epoch === generation.current &&
+            !(error instanceof ReportCloseDiscarded)
+          ) {
             failedRequest.current = request;
             setError(true);
             if (

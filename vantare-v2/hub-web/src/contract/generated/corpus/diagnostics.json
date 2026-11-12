@@ -16,6 +16,7 @@
               "tester": false,
               "verified": false
             },
+            "accountGeneration": null,
             "live": false,
             "photos": "unavailable",
             "rights": "unavailable",
@@ -45,6 +46,7 @@
               "tester": false,
               "verified": false
             },
+            "accountGeneration": null,
             "live": false,
             "photos": "unavailable",
             "rights": "unavailable",

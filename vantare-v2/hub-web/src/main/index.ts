@@ -25,7 +25,7 @@ import {
 import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
-import { paintWindow, resolveTheme } from "./appearance";
+import { paintWindow, resolveTheme, zoomWindow } from "./appearance";
 import { calendarExportSession } from "./calendar-export";
 import { calendarExportQa } from "./calendar-export-qa";
 import { externalPages } from "./external-pages";
@@ -133,7 +133,10 @@ async function start() {
         settings?.zoom ?? hello.window.zoom,
       );
   };
+  const resize = () =>
+    zoomWindow(currentWindow, settings?.zoom ?? hello.window.zoom);
   repaint();
+  currentWindow.on("resize", resize);
   nativeTheme.on("updated", repaint);
   const devUrl = !app.isPackaged
     ? developmentUrl(process.env.ELECTRON_RENDERER_URL)
@@ -194,6 +197,7 @@ async function start() {
       window?.destroy();
   });
   contents.once("destroyed", () => {
+    currentWindow.removeListener("resize", resize);
     nativeTheme.removeListener("updated", repaint);
     disconnect?.();
     ipcMain.removeListener("vantare:connect", connectRenderer);
@@ -475,9 +479,19 @@ async function start() {
     },
   );
   window.once("ready-to-show", () => {
-    window?.show();
+    if (currentWindow.isDestroyed()) return;
+    if (hello.window.minimized) {
+      // On Windows minimize() shows a hidden window in its minimized state.
+      // Suppress activation during that transition; restore taskbar/focusability
+      // afterwards so a later user activation works normally.
+      currentWindow.setFocusable(false);
+      try {
+        currentWindow.minimize();
+      } finally {
+        if (!currentWindow.isDestroyed()) currentWindow.setFocusable(true);
+      }
+    } else currentWindow.show();
     if (compatible) host.send({ kind: "ready" });
-    if (hello.window.minimized) window?.minimize();
   });
   if (devUrl) await window.loadURL(devUrl);
   else await window.loadURL("app://hub/");

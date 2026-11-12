@@ -6,6 +6,7 @@ import { isHostMessage, isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
 
 const view: ResidentView = {
+  execution: null,
   protected: false,
   online: true,
   running: true,

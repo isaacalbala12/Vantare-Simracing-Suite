@@ -4,7 +4,8 @@ import {
   CloseUnsavedReportDialog,
   DiscardReportDialog,
 } from "../ui/DiscardReportDialog";
-import { AlertDialog } from "../ui/Layers";
+import { Input, Select } from "../ui/Forms";
+import { AlertDialog, Dialog } from "../ui/Layers";
 import { ApplicationArgumentReset } from "../ui/launcher/Applications";
 import { ArgumentLossDialog } from "../ui/launcher/ProfileEditor";
 import { dialogAuditText as text } from "./dialog-audit-text";
@@ -14,6 +15,29 @@ import "./dialog-audit.css";
 export default function DialogAuditFixtures() {
   const kind = new URLSearchParams(location.search).get("dialog-fixture");
   const [open, setOpen] = useState(false);
+  const [scheme, setScheme] = useState("dark");
+  if (kind === "zoom")
+    return (
+      <div className="v-dialog-audit-fixture">
+        <Dialog
+          title={text.zoomTitle}
+          description={text.description}
+          trigger={text.zoomTrigger}
+          closeLabel={text.cancel}
+        >
+          <Input label={text.zoomField} />
+          <Select
+            label={text.zoomSelect}
+            value={scheme}
+            onChange={setScheme}
+            options={[
+              { value: "dark", label: text.dark },
+              { value: "light", label: text.light },
+            ]}
+          />
+        </Dialog>
+      </div>
+    );
   if (kind === "profile-arguments")
     return (
       <div className="v-dialog-audit-fixture">

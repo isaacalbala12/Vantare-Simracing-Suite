@@ -6,6 +6,7 @@ import {
   residentIdPattern,
   residentQuestionKinds,
 } from "../generated/launcher_resident";
+import { isResidentExecution } from "../resident-execution-validation";
 import { exact, oneOf, record } from "../validation-common";
 import { isReply as isShortcutsReply } from "./shortcuts";
 
@@ -39,6 +40,7 @@ export function isResident(value: unknown): boolean {
   return (
     record(value) &&
     exact(value, [
+      "execution",
       "protected",
       "online",
       "running",
@@ -46,6 +48,8 @@ export function isResident(value: unknown): boolean {
       "decision",
       "registrations",
     ]) &&
+    (value.execution === null ||
+      (value.online === true && isResidentExecution(value.execution))) &&
     typeof value.protected === "boolean" &&
     typeof value.online === "boolean" &&
     typeof value.running === "boolean" &&

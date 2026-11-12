@@ -8,6 +8,7 @@ import {
   renderHook,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
@@ -53,6 +54,9 @@ type Guard = Parameters<Client["setCloseGuard"]>[0];
 const caches: QueryClient[] = [];
 const connections = new Set<Client>();
 beforeEach(() => {
+  // Native-size window: jsdom's 1024px default cannot reach 100/110/125%.
+  vi.stubGlobal("innerWidth", 1920);
+  vi.stubGlobal("innerHeight", 1080);
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
     addEventListener() {},
@@ -168,6 +172,105 @@ function Outside() {
 }
 
 describe("SettingsState through createMockHost and a real MessageChannel", () => {
+  it("continues zooming on held-key repeats after each write completes", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-con-diseno", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "+", ctrlKey: true });
+    await waitFor(() => {
+      expect(hook.result.current.view?.zoom).toBe(110);
+      expect(hook.result.current.pending).toBe(false);
+    });
+    fireEvent.keyDown(window, { key: "+", ctrlKey: true, repeat: true });
+    await waitFor(() => {
+      expect(hook.result.current.view?.zoom).toBe(125);
+      expect(hook.result.current.pending).toBe(false);
+    });
+    fireEvent.keyDown(window, { key: "+", ctrlKey: true, repeat: true });
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "settings.update",
+      ),
+    ).toHaveLength(2);
+    fireEvent.keyDown(window, { key: "0", ctrlKey: true, repeat: true });
+    await waitFor(() => expect(hook.result.current.view?.zoom).toBe(100));
+  });
+  it("zooms from an editable dialog without moving focus or bypassing the pending write guard", async () => {
+    const pending = hold("settings.update");
+    const hook = mount("ajustes-con-diseno", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByRole("combobox");
+    input.focus();
+    try {
+      fireEvent.keyDown(input, { key: "+", code: "NumpadAdd", ctrlKey: true });
+      fireEvent.keyDown(input, { key: "+", code: "NumpadAdd", ctrlKey: true });
+      await waitFor(() => expect(pending.calls()).toBe(1));
+      expect(document.activeElement).toBe(input);
+      fireEvent.keyDown(input, { key: "l", ctrlKey: true });
+      expect(
+        vi
+          .mocked(Client.prototype.request)
+          .mock.calls.some(
+            ([request]) =>
+              request.method === "launcher.favorite" ||
+              request.method === "launcher.launch",
+          ),
+      ).toBe(false);
+    } finally {
+      await act(async () => pending.release());
+    }
+    await waitFor(() => expect(hook.result.current.view?.zoom).toBe(110));
+    expect(document.activeElement).toBe(input);
+  });
+  it("keeps a failed zoom write guarded while its editable dialog stays open", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-error", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByRole("combobox");
+    input.focus();
+    fireEvent.keyDown(input, { key: "+", ctrlKey: true });
+    await waitFor(() =>
+      expect(hook.result.current.error?.detail.kind).toBe("io"),
+    );
+    fireEvent.keyDown(input, { key: "-", ctrlKey: true });
+    expect(
+      request.mock.calls.filter(
+        ([request]) => request.method === "settings.update",
+      ),
+    ).toHaveLength(1);
+    expect(dialog.isConnected).toBe(true);
+    expect(document.activeElement).toBe(input);
+  });
+  it("changes only effective zoom on resize and restores the saved request without a write", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-base", <General />);
+    await loaded(hook);
+    const saved = hook.result.current.view?.zoom;
+    act(() => {
+      vi.stubGlobal("innerWidth", 1000);
+      vi.stubGlobal("innerHeight", 600);
+      fireEvent(window, new Event("resize"));
+    });
+    expect(document.documentElement.style.zoom).toBe("0.9");
+    expect(hook.result.current.view?.zoom).toBe(saved);
+    act(() => {
+      vi.stubGlobal("innerWidth", 1920);
+      vi.stubGlobal("innerHeight", 1080);
+      fireEvent(window, new Event("resize"));
+    });
+    expect(document.documentElement.style.zoom).toBe(
+      String((saved ?? 100) / 100),
+    );
+    expect(
+      request.mock.calls.filter(
+        ([value]) => value.method === "settings.update",
+      ),
+    ).toHaveLength(0);
+  });
   it("retries only the losing intent and preserves the winner", async () => {
     const hook = mount("ajustes-conflicto");
     await conflict(hook);
@@ -289,6 +392,42 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     await loaded(hook);
     fireEvent.keyDown(window, { key: "l", ctrlKey: true });
     expect(pending.calls()).toBe(0);
+  });
+  it("never launches with extended modifiers or AltGr, with a positive Ctrl L control", async () => {
+    const pending = hold("launcher.favorite");
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true, altKey: true });
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true, shiftKey: true });
+    const altGr = new KeyboardEvent("keydown", {
+      key: "@",
+      ctrlKey: true,
+      altKey: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(altGr);
+    expect(altGr.defaultPrevented).toBe(false);
+    expect(pending.calls()).toBe(0);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
+    expect(pending.calls()).toBe(1);
+    await act(async () => pending.release());
+  });
+  it("does not toggle the sidebar or palette again when a key is held", async () => {
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    const sidebar = () => document.querySelector(".v-sidebar")?.className;
+    const before = sidebar();
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    const after = sidebar();
+    expect(after).not.toBe(before);
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true, repeat: true });
+    expect(sidebar()).toBe(after);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    await waitFor(() =>
+      expect(document.querySelector("[data-command-palette]")).toBeTruthy(),
+    );
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true, repeat: true });
+    expect(document.querySelector("[data-command-palette]")).toBeTruthy();
   });
 });
 
@@ -449,6 +588,8 @@ describe("Rendimiento y atajos over the simulated host", () => {
     expect(screen.getByRole("heading", { name: "02 En el Hub" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "03 En Studio" })).toBeTruthy();
     expect(screen.getByText("Buscar en Vantare")).toBeTruthy();
+    for (const label of ["Ctrl +", "Ctrl −", "Ctrl 0", "Ctrl Mayús N"])
+      expect(screen.getByText(label)).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: t("settings.reload") }),
     ).toBeNull();

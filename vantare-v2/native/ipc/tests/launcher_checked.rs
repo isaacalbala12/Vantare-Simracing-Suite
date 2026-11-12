@@ -189,3 +189,75 @@ fn silent_authority_has_a_total_deadline_without_sleep_or_a_real_service() {
         "consume must not inherit 5s + 5s timeouts"
     );
 }
+
+#[test]
+fn both_account_observers_reject_a_different_peer_image_before_writing() {
+    use std::{
+        sync::{Arc, mpsc},
+        time::Duration,
+    };
+    use vantare_ipc::{
+        account_session::{self, AuthorityLink},
+        transport::{Event, Listener},
+    };
+    for consume in [false, true] {
+        let link = AuthorityLink {
+            pipe: format!("checked-impostor-{}-{consume}", std::process::id()),
+            image: std::env::current_exe()
+                .unwrap()
+                .with_file_name("not-the-authority.exe"),
+        };
+        let stop = Arc::new(Event::new().unwrap());
+        let mut listener =
+            Listener::new(&link.pipe, Arc::clone(&stop), Duration::from_secs(1)).unwrap();
+        let mut pipe = listener.instance().unwrap();
+        let (ready, listening) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            ready.send(()).unwrap();
+            pipe.accept().unwrap();
+            // A missing identity check would send ReadAccountSession and get EOF,
+            // which must not be mistaken for the expected PermissionDenied.
+            let _ = vantare_ipc::control::read_request(&mut pipe);
+        });
+        listening.recv().unwrap();
+        let result = if consume {
+            account_session::read_account_session(&link, Duration::from_secs(1))
+        } else {
+            account_session::request_cancelled(&link, &stop)
+        };
+        worker.join().unwrap();
+        assert_eq!(
+            result.unwrap_err().kind(),
+            std::io::ErrorKind::PermissionDenied
+        );
+    }
+}
+// Frozen wire shape from before launch-v2; never decode through current Request.
+#[derive(serde::Deserialize)]
+#[allow(dead_code)]
+enum LegacyRequest {
+    #[serde(rename = "launch-v1")]
+    Launch { profile: String },
+    #[serde(rename = "answer-v2")]
+    Answer { decision: u64, action: String },
+}
+#[test]
+fn old_request_decoder_rejects_checked_launch_before_dispatch() {
+    let decode_and_dispatch = |bytes: &[u8], effects: &mut usize| {
+        let request = serde_json::from_slice::<LegacyRequest>(bytes)?;
+        *effects += 1;
+        Ok::<_, serde_json::Error>(request)
+    };
+    let mut effects = 0;
+    assert!(decode_and_dispatch(br#"{"launch-v1":{"profile":"qa"}}"#, &mut effects).is_ok());
+    assert!(
+        decode_and_dispatch(
+            br#"{"answer-v2":{"decision":1,"action":"trust"}}"#,
+            &mut effects
+        )
+        .is_ok()
+    );
+    let bytes = serde_json::to_vec(&Request::LaunchChecked(request())).unwrap();
+    assert!(decode_and_dispatch(&bytes, &mut effects).is_err());
+    assert_eq!(effects, 2);
+}

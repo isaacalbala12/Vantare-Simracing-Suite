@@ -44,7 +44,7 @@ export function render(tokens: Tokens) {
       );
     }
   const colors = tokens.semantic
-    .filter((name) => !name.startsWith("grad-"))
+    .filter((name) => !name.startsWith("grad-") && name !== "ill-ground")
     .map((name) => `  --color-${name}: var(--${name});`);
   return {
     typescript: `// Generated from design/tokens.json.\nexport const semantic = ${JSON.stringify(tokens.semantic)} as const;\nexport type Semantic = typeof semantic[number];\n`,

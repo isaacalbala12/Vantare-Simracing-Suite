@@ -1300,3 +1300,60 @@ it("closes a clean report immediately while testing.refresh is still in flight, 
   expect(screen.queryByRole("alertdialog")).toBeNull();
   await refresh;
 });
+
+it("keeps a clean Testing screen free of a fake Busy retry when another screen vetoes X", async () => {
+  const hook = await mount("testing-tester-reports");
+  hook.connection.addCloseGuard(() => false);
+  const port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  let held: MessageEvent | undefined;
+  port.onmessage = (event) => {
+    if (
+      event.data.kind === "request" &&
+      event.data.request.method === "testing.refresh"
+    )
+      held = event;
+    else receive.call(port, event);
+  };
+  let refresh!: Promise<unknown>;
+  act(() => {
+    refresh = hook.result.current.refresh().catch(() => {});
+  });
+  await waitFor(() => expect(held).toBeDefined());
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+    await refresh;
+  });
+  expect(hook.result.current.failure).toBeUndefined();
+  expect(hook.result.current.error).toBe(false);
+  expect(hook.result.current.busy).toBe(false);
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  await act(async () => {
+    if (held) receive.call(port, held);
+  });
+  expect(hook.result.current.failure).toBeUndefined();
+});
+it("still explains an actual core Busy response to Testing", async () => {
+  const hook = await mount("testing-tester-reports");
+  const port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  port.onmessage = (event) => {
+    if (
+      event.data.kind === "request" &&
+      event.data.request.method === "testing.refresh"
+    )
+      port.postMessage({
+        kind: "failure",
+        id: event.data.id,
+        error: { kind: "busy" },
+      });
+    else receive.call(port, event);
+  };
+  await act(async () => {
+    await hook.result.current.refresh().catch(() => {});
+  });
+  expect(hook.result.current.failure).toBe("busy");
+  expect(hook.result.current.error).toBe(true);
+});

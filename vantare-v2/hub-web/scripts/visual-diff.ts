@@ -41,6 +41,16 @@ const currentOnly = option("--current");
 const captureOnly = args.includes("--capture-only");
 const invalidReason = option("--invalid-reference-reason");
 const selected = option("--scene");
+const width = Number(option("--width", "1440"));
+const height = Number(option("--height", "900"));
+assert.ok(
+  Number.isInteger(width) && width >= 640 && width <= 3840,
+  "Invalid capture width",
+);
+assert.ok(
+  Number.isInteger(height) && height >= 480 && height <= 2160,
+  "Invalid capture height",
+);
 assert.ok(
   !args.includes("--capture-expanded-sidebar") || !currentOnly,
   "Expanded sidebar requires a live capture",
@@ -97,6 +107,7 @@ for (const scheme of schemes) {
             scene,
             scheme,
             destination,
+            dimensions: [width, height],
             capture: () => capture(adapter, scheme, destination),
           }),
         );
@@ -104,7 +115,7 @@ for (const scheme of schemes) {
       }
       const entry = batch.find((item) => item.scene === scene);
       assert.ok(entry, `Reference manifest missing scene ${scene}`);
-      assert.deepEqual(entry.size, [1440, 900]);
+      assert.deepEqual(entry.size, [width, height]);
       assert.equal(
         entry.appearance,
         `vantare-${scheme}`,
@@ -141,6 +152,7 @@ for (const scheme of schemes) {
             scene,
             scheme,
             destination,
+            dimensions: [width, height],
             capture: async () => current,
             invalidReason,
             suppliedCapture: Boolean(currentOnly),
@@ -267,6 +279,12 @@ async function capture(
       "QA Electron endpoint",
     );
     browser = await chromium.connectOverCDP(endpoint);
+    const versionSession = await browser.newBrowserCDPSession();
+    await writeFile(
+      join(destination, "browser.json"),
+      JSON.stringify(await versionSession.send("Browser.getVersion"), null, 2),
+    );
+    await versionSession.detach();
     const context = browser.contexts()[0];
     const page = context.pages()[0] ?? (await context.waitForEvent("page"));
     cleanupPage = page;
@@ -285,15 +303,22 @@ async function capture(
         "-Executable",
         executable,
         "-Prepare",
+        "-Width",
+        String(width),
+        "-Height",
+        String(height),
       ],
       { windowsHide: true },
     );
     await writeFile(join(destination, "window.json"), preparedWindow);
     await until(
       async () =>
-        page.evaluate(() => innerWidth === 1440 && innerHeight === 900),
+        page.evaluate(
+          ({ width, height }) => innerWidth === width && innerHeight === height,
+          { width, height },
+        ),
       5000,
-      "1440x900 CSS client",
+      `${width}x${height} CSS client`,
     );
     await adapter.prepare(page);
     await page.evaluate(async () => {
@@ -355,6 +380,10 @@ async function capture(
           executable,
           "-Output",
           join(destination, filename),
+          "-Width",
+          String(width),
+          "-Height",
+          String(height),
         ],
         { windowsHide: true },
       );
@@ -382,7 +411,7 @@ async function capture(
             5000,
             "sidebar matrix width",
           );
-          await page.mouse.move(1000, 890);
+          await page.mouse.move(Math.min(1000, width - 10), height - 10);
         }
         const filename = expanded
           ? "sidebar-expanded.png"
@@ -430,7 +459,7 @@ async function capture(
         JSON.stringify(
           {
             sidebarWidth: 272,
-            viewport: [1440, 900],
+            viewport: [width, height],
             reference: null,
             comparison:
               "Not compared: the scene reference has a collapsed sidebar",

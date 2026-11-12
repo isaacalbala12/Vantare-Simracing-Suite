@@ -1,7 +1,31 @@
+// @vitest-environment jsdom
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { parse } from "@babel/parser";
 import { describe, expect, it } from "vitest";
+import { dialogShortcut, hubBindings } from "../src/renderer/ui/hub-shortcuts";
+
+it("only lets the three exact zoom actions cross partial-window modality", () => {
+  for (const binding of hubBindings) {
+    for (const repeat of [false, true]) {
+      const event = new KeyboardEvent("keydown", {
+        key: binding.key,
+        ctrlKey: binding.ctrl,
+        altKey: binding.alt,
+        metaKey: binding.meta,
+        shiftKey: binding.shift,
+        repeat,
+      });
+      const zoom = ["zoomIn", "zoomOut", "zoomReset"].includes(binding.action);
+      expect(dialogShortcut(event), binding.action).toBe(!zoom);
+    }
+  }
+  for (const key of ["s", "r", "p", "z"])
+    expect(
+      dialogShortcut(new KeyboardEvent("keydown", { key, ctrlKey: true })),
+      key,
+    ).toBe(true);
+});
 
 const root = "src/renderer";
 type Node = Record<string, unknown>;

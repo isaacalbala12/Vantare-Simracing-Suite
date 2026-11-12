@@ -21,6 +21,34 @@
             "kind": "authorization"
           },
           "error": false,
+          "execution": {
+            "events": [
+              {
+                "kind": {
+                  "kind": "received",
+                  "receipt": {
+                    "kind": "accepted",
+                    "run": "1"
+                  },
+                  "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "seq": "1"
+              },
+              {
+                "kind": {
+                  "kind": "finished",
+                  "outcome": {
+                    "kind": "completed"
+                  },
+                  "run": "1"
+                },
+                "seq": "2"
+              }
+            ],
+            "firstRetainedSeq": "1",
+            "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "revisionCheckedLaunch": true
+          },
           "online": true,
           "protected": false,
           "registrations": [],
@@ -47,6 +75,34 @@
             "kind": "authorization"
           },
           "error": false,
+          "execution": {
+            "events": [
+              {
+                "kind": {
+                  "kind": "received",
+                  "receipt": {
+                    "kind": "accepted",
+                    "run": "1"
+                  },
+                  "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "seq": "1"
+              },
+              {
+                "kind": {
+                  "kind": "finished",
+                  "outcome": {
+                    "kind": "completed"
+                  },
+                  "run": "1"
+                },
+                "seq": "2"
+              }
+            ],
+            "firstRetainedSeq": "1",
+            "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "revisionCheckedLaunch": true
+          },
           "online": true,
           "protected": false,
           "registrations": [],

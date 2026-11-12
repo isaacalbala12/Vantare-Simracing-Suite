@@ -80,7 +80,12 @@ impl Reader {
         let first = !std::mem::replace(&mut self.opened, true);
         let opened = open(&self.path)?;
         if first && opened.is_none() {
-            initialize_missing(&self.path)?;
+            if let Err(error) = initialize_missing(&self.path) {
+                // A failed first write is not an opened document. Retry without
+                // recreating files removed after a successful initialization.
+                self.opened = false;
+                return Err(error);
+            }
             return open(&self.path);
         }
         Ok(opened)
@@ -222,6 +227,45 @@ mod tests {
 #[cfg(all(test, windows))]
 mod initialization_tests {
     use super::*;
+    #[test]
+    fn first_open_retries_after_a_busy_initialization_without_restarting_the_reader() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        let lock = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(root.path.join("launcher.json.lock"))
+            .unwrap();
+        lock.lock().unwrap();
+        let mut reader = Reader::new(path.clone());
+        assert_eq!(reader.open_document().unwrap_err(), HostError::Busy);
+        assert!(!path.exists());
+        assert!(reader.scan.is_none());
+        drop(lock);
+
+        let (bytes, document) = reader.open_document().unwrap().expect("retry initializes");
+        assert_eq!(document.profiles.len(), 2);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        assert!(reader.scan.is_none());
+    }
+    #[test]
+    fn first_open_retries_after_an_io_initialization_failure_without_restarting_the_reader() {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        let lock = root.path.join("launcher.json.lock");
+        std::fs::create_dir(&lock).unwrap();
+        let mut reader = Reader::new(path.clone());
+        assert_eq!(reader.open_document().unwrap_err(), HostError::Io);
+        assert!(!path.exists());
+        assert!(reader.scan.is_none());
+        std::fs::remove_dir(&lock).unwrap();
+
+        let (bytes, document) = reader.open_document().unwrap().expect("retry initializes");
+        assert_eq!(document.profiles.len(), 2);
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        assert!(reader.scan.is_none());
+    }
     #[test]
     fn first_open_seeds_once_but_later_reads_do_not_recreate_a_removed_document() {
         let root = crate::test_support::Root::new();

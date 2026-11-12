@@ -971,3 +971,158 @@ it("a failed autosave from A cannot publish an error into confirmed B", async ()
   expect(hook.result.current.error).toBe(false);
   expectSessionEmpty(hook);
 });
+
+it.each([
+  ["account.begin", "busy"],
+  ["account.begin", "coreUnavailable"],
+  ["account.logout", "busy"],
+  ["account.logout", "coreUnavailable"],
+] as const)(
+  "reconfirms A and can reload after rejected %s (%s)",
+  async (method, kind) => {
+    const hook = await mount("testing-tester-reports");
+    act(() => hook.result.current.edit({ actionText: "UNSAVED_A" }));
+    const original = Client.prototype.request;
+    const calls = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(function (this: Client, request) {
+        return request.method === method
+          ? Promise.reject(new HostFailure({ kind }))
+          : original.call(this, request);
+      });
+    await act(async () => {
+      await hook.account().act({ method });
+    });
+    expect(calls.mock.calls.some(([r]) => r.method === "account.get")).toBe(
+      true,
+    );
+    expect(hook.result.current.available).toBe(true);
+    expect(hook.account().value?.session).toBe("signedIn");
+    expect(hook.account().value?.gate).toBe("none");
+    expect(hook.cache.getQueryData<CoreStatus>(coreKey)?.access.verified).toBe(
+      true,
+    );
+    await act(async () => {
+      await hook.result.current.load();
+      await hook.result.current.refresh();
+    });
+    expect(hook.result.current.loaded).toBe(true);
+    expect(hook.result.current.participationLoaded).toBe(true);
+    expect(hook.result.current.fields.actionText).not.toBe("UNSAVED_A");
+  },
+);
+it("an old autosave timer rejection cannot set the new session message", async () => {
+  const hook = await mount("testing-tester-reports");
+  const original = Client.prototype.request;
+  let fail: ((error: unknown) => void) | undefined;
+  vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    request,
+  ) {
+    return request.method === "draft.save"
+      ? new Promise((_resolve, reject) => {
+          fail = reject;
+        })
+      : original.call(this, request);
+  });
+  vi.useFakeTimers();
+  act(() => hook.result.current.edit({ actionText: "UNSAVED_TIMER_A" }));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(reportAutosaveMs);
+  });
+  expect(fail).toBeDefined();
+  vi.useRealTimers();
+  const account = hook.account().value;
+  if (!account) throw new Error("missing account");
+  await act(async () => {
+    hook.host.postMessage({
+      kind: "event",
+      event: {
+        topic: "account",
+        value: { ...account, name: "B", session: "signedIn", gate: "none" },
+      },
+    });
+  });
+  await waitFor(() => expect(hook.result.current.fields.actionText).toBe(""));
+  await act(async () => {
+    fail?.(new HostFailure({ kind: "io" }));
+  });
+  expect(hook.result.current.message).toBe("");
+  expect(hook.result.current.sessionDiscarded).toBe(true);
+});
+it("invalidates the synchronous state before an access request can trigger a stale save", async () => {
+  const hook = await mount("testing-tester-reports");
+  act(() =>
+    hook.result.current.edit({ actionText: "UNSAVED_BEFORE_DISPATCH_A" }),
+  );
+  const original = Client.prototype.request;
+  let release: ((reply: Reply) => void) | undefined;
+  let staleSave: Promise<unknown> | undefined;
+  const calls = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(function (this: Client, request) {
+      if (request.method === "account.begin") {
+        staleSave = hook.result.current.save().catch((error) => error);
+        return new Promise((resolve) => {
+          release = resolve;
+        });
+      }
+      return original.call(this, request);
+    });
+  let pending: Promise<void> | undefined;
+  act(() => {
+    pending = hook.account().act({ method: "account.begin" });
+  });
+  await act(async () => {
+    expect(await staleSave).toBeUndefined();
+  });
+  expect(calls.mock.calls.some(([r]) => r.method === "draft.save")).toBe(false);
+  const account = hook.account().value;
+  if (!account || !release) throw new Error("missing account request");
+  await act(async () => {
+    release?.({ method: "account.begin", value: account });
+    await pending;
+  });
+  expect(hook.result.current.fields.actionText).toBe("");
+});
+
+it("a recovery get from A cannot overwrite a newer published B session", async () => {
+  const hook = await mount("testing-tester-reports");
+  const original = Client.prototype.request;
+  const accountA = hook.account().value;
+  if (!accountA) throw new Error("missing A");
+  let deliver: ((reply: Reply) => void) | undefined;
+  vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    request,
+  ) {
+    if (request.method === "account.begin")
+      return Promise.reject(new HostFailure({ kind: "busy" }));
+    if (request.method === "account.get")
+      return new Promise((resolve) => {
+        deliver = resolve;
+      });
+    return original.call(this, request);
+  });
+  let pending: Promise<void> | undefined;
+  act(() => {
+    pending = hook.account().act({ method: "account.begin" });
+  });
+  await waitFor(() => expect(deliver).toBeDefined());
+  await act(async () => {
+    hook.host.postMessage({
+      kind: "event",
+      event: {
+        topic: "account",
+        value: { ...accountA, name: "B", session: "signedIn", gate: "none" },
+      },
+    });
+  });
+  await waitFor(() => expect(hook.account().value?.name).toBe("B"));
+  await act(async () => {
+    deliver?.({ method: "account.get", value: accountA });
+    await pending;
+  });
+  expect(hook.account().value?.name).toBe("B");
+  expect(hook.result.current.available).toBe(true);
+});

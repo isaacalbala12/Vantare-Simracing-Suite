@@ -321,10 +321,13 @@ export function create(context: MockContext): MockHandler {
         };
         break;
     }
-    context.emit?.({
-      kind: "event",
-      event: { topic: "account", value: structuredClone(current) },
-    });
+    // The real host publishes changed AccountView snapshots (tick.rs:29).
+    // A read-only get must not fabricate a new account publication.
+    if (request.method !== "account.get")
+      context.emit?.({
+        kind: "event",
+        event: { topic: "account", value: structuredClone(current) },
+      });
     return {
       kind: "response",
       id,

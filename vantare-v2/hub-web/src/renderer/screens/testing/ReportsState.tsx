@@ -50,6 +50,8 @@ function useReportsState() {
   );
   const observedGeneration = useRef(session.generation);
   const clearTriage = useRef<(() => void) | undefined>(undefined);
+  const triageHasText = useRef<(() => boolean) | undefined>(undefined);
+  const [sessionDiscarded, setSessionDiscarded] = useState(false);
   const toast = useToastManager();
   const { data: core = offline } = useQuery({
     queryKey: coreKey,
@@ -98,8 +100,15 @@ function useReportsState() {
   );
   const [closeBlocked, setCloseBlocked] = useState(false);
   const [closeConfirmation, setCloseConfirmation] = useState(false);
-  const state = useRef({ fields, saved, loaded, available });
-  state.current = { fields, saved, loaded, available };
+  const state = useRef({
+    fields,
+    saved,
+    loaded,
+    available,
+    localNotes,
+    answerDraft,
+  });
+  state.current = { fields, saved, loaded, available, localNotes, answerDraft };
   const inflight = useRef<Promise<unknown> | undefined>(undefined);
   const attempt = useRef<string | undefined>(undefined);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -281,6 +290,15 @@ function useReportsState() {
     };
   }, []);
   const invalidate = useCallback(() => {
+    const previous = state.current;
+    if (
+      JSON.stringify(previous.fields) !== previous.saved ||
+      previous.localNotes.title ||
+      previous.localNotes.body ||
+      previous.answerDraft.note ||
+      triageHasText.current?.()
+    )
+      setSessionDiscarded(true);
     cancellation.current.abort();
     cancellation.current = new AbortController();
 
@@ -290,6 +308,8 @@ function useReportsState() {
       saved: JSON.stringify(empty()),
       loaded: false,
       available: false,
+      localNotes: { title: "", body: "" },
+      answerDraft: { score: 3, note: "" },
     };
     queue.current = Promise.resolve();
     inflight.current = undefined;
@@ -348,13 +368,15 @@ function useReportsState() {
     attempt.current = undefined;
     failedRequest.current = undefined;
     setError(false);
-    setFields((current) => ({ ...current, ...patch }));
+    state.current.fields = { ...state.current.fields, ...patch };
+    setFields(state.current.fields);
     setPreview(undefined);
     setConsent(false);
     setReceipt(undefined);
   }
   function editLocal(patch: Partial<typeof localNotes>) {
-    setLocalNotes((current) => ({ ...current, ...patch }));
+    state.current.localNotes = { ...state.current.localNotes, ...patch };
+    setLocalNotes(state.current.localNotes);
     attempt.current = undefined;
     setConsent(false);
   }
@@ -592,7 +614,9 @@ function useReportsState() {
     },
   });
   clearTriage.current = triage.reset;
+  triageHasText.current = triage.hasLocalText;
   return {
+    sessionDiscarded,
     sessionGeneration: session.generation,
     sessionConfirmed: session.confirmed,
     triage,

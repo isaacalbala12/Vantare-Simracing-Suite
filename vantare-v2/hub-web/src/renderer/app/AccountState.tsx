@@ -89,19 +89,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setError(text.busy);
         return;
       }
-      if (
-        [
-          "account.begin",
-          "account.logout",
-          "account.email",
-          "account.cancel",
-          "account.choose",
-          "account.back",
-          "account.retry",
-          "account.deviceReset",
-        ].includes(method)
-      )
-        session.invalidate();
+      const transition = [
+        "account.begin",
+        "account.logout",
+        "account.email",
+        "account.cancel",
+        "account.choose",
+        "account.back",
+        "account.retry",
+        "account.deviceReset",
+      ].includes(method);
+      if (transition) session.invalidate();
       const current = ++sequence.current;
       intents.current.add(key);
       running.current++;
@@ -131,7 +129,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           setValue(reply.value);
         }
       } catch (failure) {
-        if (active.current && sequence.current === current)
+        if (active.current && sequence.current === current) {
           setError(
             failure instanceof HostFailure && failure.detail.kind === "busy"
               ? sent && secretKind
@@ -143,6 +141,25 @@ export function AccountProvider({ children }: { children: ReactNode }) {
                 ? text.logoutFailed
                 : text.failed,
           );
+          if (transition) {
+            // A rejected intent does not prove logout. Re-read the host once;
+            // never restore an old cached identity after a newer publication.
+            try {
+              const fresh = await client.request({ method: "account.get" });
+              if (
+                active.current &&
+                sequence.current === current &&
+                fresh.method === "account.get" &&
+                isAccount(fresh.value)
+              ) {
+                session.confirm(fresh.value);
+                setValue(fresh.value);
+              }
+            } catch {
+              /* Keep the session unavailable until it can be confirmed. */
+            }
+          }
+        }
       } finally {
         intents.current.delete(key);
         running.current--;

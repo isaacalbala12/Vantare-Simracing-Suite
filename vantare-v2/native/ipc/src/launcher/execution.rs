@@ -48,6 +48,7 @@ impl From<RunId> for String {
 #[serde(rename_all = "kebab-case")]
 pub enum Capability {
     TypedTerminal,
+    RevisionCheckedLaunch,
     #[serde(other)]
     Unknown,
 }
@@ -77,8 +78,17 @@ pub enum ChainOutcome {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum EventKind {
-    Started { run: RunId },
-    Finished { run: RunId, outcome: ChainOutcome },
+    Started {
+        run: RunId,
+    },
+    Received {
+        request: super::RequestId,
+        receipt: super::checked::LaunchReceipt,
+    },
+    Finished {
+        run: RunId,
+        outcome: ChainOutcome,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -123,6 +133,24 @@ impl ExecutionStatus {
         self.record(EventKind::Started { run })?;
         Some(run)
     }
+    pub fn contains_request(&self, request: &super::RequestId) -> bool {
+        self.events.iter().any(|event| {
+            matches!(&event.kind,
+            EventKind::Received { request: observed, .. } if observed == request)
+        })
+    }
+    pub fn accept(&mut self, request: super::RequestId) -> Option<RunId> {
+        let run = self.next()?;
+        run.0.checked_add(1)?;
+        self.record(EventKind::Received {
+            request,
+            receipt: super::checked::LaunchReceipt::Accepted { run },
+        })?;
+        Some(run)
+    }
+    pub fn can_start(&self) -> bool {
+        self.next().and_then(|seq| seq.0.checked_add(1)).is_some()
+    }
     fn valid(&self) -> bool {
         self.events.len() <= EVENT_LIMIT
             && self.capabilities.len() <= EVENT_LIMIT
@@ -133,6 +161,10 @@ impl ExecutionStatus {
                 .all(|w| w[0].seq.0.checked_add(1) == Some(w[1].seq.0))
             && self.events.iter().all(|e| match e.kind {
                 EventKind::Started { run } | EventKind::Finished { run, .. } => run <= e.seq,
+                EventKind::Received { ref receipt, .. } => match receipt {
+                    super::checked::LaunchReceipt::Accepted { run } => *run <= e.seq,
+                    super::checked::LaunchReceipt::Rejected { .. } => true,
+                },
             })
     }
 }

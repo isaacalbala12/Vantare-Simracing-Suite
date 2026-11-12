@@ -22,6 +22,8 @@ use vantare_ipc::launcher::execution::{
 };
 use vantare_ipc::launcher::{Decision, Registration, Request, Status, request_path, status_path};
 
+mod checked;
+
 pub struct Resident {
     stop: Arc<AtomicBool>,
     thread: Option<thread::JoinHandle<()>>,
@@ -90,10 +92,21 @@ impl Resident {
         first.map_or(Ok(()), |error| Err(std::io::Error::other(error)))
     }
 
-    pub fn start(path: PathBuf, profile: Option<String>, startup: bool) -> std::io::Result<Self> {
+    pub fn start(
+        path: PathBuf,
+        profile: Option<String>,
+        startup: bool,
+        authority: vantare_ipc::account_session::AuthorityLink,
+    ) -> std::io::Result<Self> {
         let stop = Arc::new(AtomicBool::new(false));
         let cancellation = stop.clone();
         let mut owner = Owner::new(path, startup);
+        owner.authority = Some(authority);
+        if let Some(extension) = &mut owner.status.extension {
+            extension
+                .capabilities
+                .push(vantare_ipc::launcher::execution::Capability::RevisionCheckedLaunch);
+        }
         let processes = Arc::clone(&owner.processes);
         let close_on_exit = Arc::clone(&owner.close_on_exit);
         let worker = thread::Builder::new()
@@ -177,6 +190,7 @@ struct Owner {
     status: Status,
     chain: Option<Chain>,
     active_run: Option<RunId>,
+    authority: Option<vantare_ipc::account_session::AuthorityLink>,
     decision_serial: u64,
     chain_decision: Option<u64>,
     processes: launcher::processes::Shared,
@@ -200,6 +214,7 @@ impl Owner {
             },
             chain: None,
             active_run: None,
+            authority: None,
             decision_serial: vantare_ipc::launcher::now_ms(),
             chain_decision: None,
             processes: Arc::new(Mutex::new(launcher::processes::Processes::default())),
@@ -395,6 +410,7 @@ impl Owner {
         }
         match request {
             Ok(Request::Launch { profile }) => self.launch(&profile),
+            Ok(Request::LaunchChecked(request)) => self.launch_checked(request),
             Ok(Request::Answer { decision, action }) => {
                 // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
                 // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
@@ -816,8 +832,12 @@ mod tests {
         ));
         fs::create_dir(&dir).expect("raíz propia");
         let path = dir.join("launcher.json");
-        let mut resident =
-            Resident::start(path.clone(), None, false).expect("residente sin registro Startup");
+        let authority = vantare_ipc::account_session::AuthorityLink {
+            pipe: format!("unused-resident-core-{}", std::process::id()),
+            image: dir.join("unused-core.exe"),
+        };
+        let mut resident = Resident::start(path.clone(), None, false, authority)
+            .expect("residente sin registro Startup");
         resident.request_shutdown();
         let deadline = std::time::Instant::now() + Duration::from_secs(5);
         while !resident.poll_shutdown().expect("recoger sólo al terminar") {

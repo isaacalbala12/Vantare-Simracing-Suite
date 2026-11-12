@@ -291,6 +291,9 @@ pub struct Pipe {
     timeout: Duration,
 }
 impl Pipe {
+    pub(crate) fn set_timeout(&mut self, timeout: Duration) {
+        self.timeout = timeout;
+    }
     pub fn accept(&mut self) -> io::Result<()> {
         let endpoint = self.listener.as_ref().ok_or(io::ErrorKind::InvalidInput)?;
         loop {

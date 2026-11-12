@@ -387,3 +387,17 @@ for (const [scene, widget] of [
     },
   };
 }
+
+studioScenes["studio-a-estructura"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page.getByRole("button", { name: /^Delta, / }).click();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+    await page
+      .getByRole("combobox", { name: "Formato Delta", exact: true })
+      .click();
+    await page.getByRole("option", { name: "Barra", exact: true }).click();
+    await page.getByRole("tab", { name: "Apariencia", exact: true }).click();
+  },
+};

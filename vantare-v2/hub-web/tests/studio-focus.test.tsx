@@ -199,4 +199,13 @@ describe("Studio Foco structure", () => {
     const show = await screen.findByRole("button", { name: t.show });
     expect(show.hasAttribute("disabled")).toBe(true);
   });
+  it("never paints editable defaults for a protected document", async () => {
+    mount("studio-protegido");
+    await screen.findByText(t.protected);
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: t.show }).hasAttribute("disabled"),
+    ).toBe(true);
+  });
 });

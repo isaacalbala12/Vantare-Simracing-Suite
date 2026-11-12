@@ -76,7 +76,7 @@ export function Stage({
                 size="sm"
                 variant="ghost"
                 disabled
-                aria-pressed={scene === "Carrera"}
+                aria-pressed={scene === "Boxes"}
               >
                 {scene}
               </Button>

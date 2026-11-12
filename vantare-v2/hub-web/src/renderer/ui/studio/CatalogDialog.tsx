@@ -8,7 +8,7 @@ import { studioText as t } from "../../i18n/studio";
 import { studioCatalogText as text } from "../../i18n/studio-catalog";
 import { useStudio } from "../../screens/studio/state";
 import { Button } from "../Button";
-import { Callout, Skeleton } from "../Data";
+import { Callout, Keycap, Skeleton } from "../Data";
 import { SearchInput } from "../Forms";
 import { WindowDialog as Dialog } from "../WindowDialog";
 import { catalogBlock, catalogGroups } from "./catalog-model";
@@ -211,7 +211,20 @@ export function CatalogDialog({
                               <span className="v-studio-catalog-preview">
                                 <WidgetThumb kind={widget.kind} />
                               </span>
-                              <strong>{widget.name}</strong>
+                              <strong>
+                                {widget.name}
+                                {view.instances.some(
+                                  (item) => item.kind === widget.kind,
+                                ) && (
+                                  <span className="v-studio-owned">
+                                    {t.owned(
+                                      view.instances.filter(
+                                        (item) => item.kind === widget.kind,
+                                      ).length,
+                                    )}
+                                  </span>
+                                )}
+                              </strong>
                               <small>{widget.about}</small>
                               {!widget.allowed ? (
                                 <span className="v-studio-catalog-badge">
@@ -258,7 +271,12 @@ export function CatalogDialog({
                     ),
                     view.catalog.filter((widget) => !widget.allowed).length,
                   )
-                : null}
+                : view
+                  ? text.catalogAllIncluded(
+                      t.planNames[view.plan],
+                      view.catalog.length,
+                    )
+                  : null}
             {view?.catalog.some((widget) => !widget.allowed) && (
               <Button
                 size="sm"
@@ -270,6 +288,14 @@ export function CatalogDialog({
                 {t.plans}
               </Button>
             )}
+            <span className="v-studio-catalog-keys">
+              <Keycap>{text.catalogMoveKeys}</Keycap>
+              {text.catalogMove}
+              <Keycap>{text.catalogEnterKey}</Keycap>
+              {text.catalogKeyAdd}
+              <Keycap>{text.catalogEscapeKey}</Keycap>
+              {text.catalogKeyClose}
+            </span>
           </footer>
         </Dialog.Popup>
       </Dialog.Portal>

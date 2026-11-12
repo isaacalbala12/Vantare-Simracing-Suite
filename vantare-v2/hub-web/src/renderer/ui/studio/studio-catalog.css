@@ -99,6 +99,18 @@
   font-size: 13.5px;
   font-weight: 600;
   padding: 0 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.v-studio-catalog-dialog .v-studio-owned {
+  position: static;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--text-caption);
+  padding: 0;
+  background: transparent;
 }
 .v-studio-catalog-preview {
   height: 92px;
@@ -188,8 +200,12 @@
   color: var(--text-caption);
   flex-wrap: wrap;
 }
-.v-studio-catalog-dialog > footer > button {
+.v-studio-catalog-keys {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .v-popup.v-studio-more {
   width: 320px;

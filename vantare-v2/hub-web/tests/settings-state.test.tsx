@@ -285,6 +285,11 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     const button = (
       await screen.findAllByRole("button", { name: /^Lanzar perfil/ })
     )[0];
+    await waitFor(() =>
+      expect(caches.at(-1)?.getQueryState(["launcher"])?.fetchStatus).toBe(
+        "idle",
+      ),
+    );
     const cache = caches.at(-1),
       view = structuredClone(cache?.getQueryData<LauncherView>(["launcher"]));
     if (!cache || !view) throw new Error("Missing snapshot");
@@ -309,6 +314,11 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     const button = (
       await screen.findAllByRole("button", { name: /^Lanzar perfil/ })
     )[0];
+    await waitFor(() =>
+      expect(caches.at(-1)?.getQueryState(["launcher"])?.fetchStatus).toBe(
+        "idle",
+      ),
+    );
     const cache = caches.at(-1),
       current = structuredClone(
         cache?.getQueryData<LauncherView>(["launcher"]),
@@ -347,6 +357,11 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     const button = (
       await screen.findAllByRole("button", { name: /^Lanzar perfil/ })
     )[0];
+    await waitFor(() =>
+      expect(caches.at(-1)?.getQueryState(["launcher"])?.fetchStatus).toBe(
+        "idle",
+      ),
+    );
     const view = caches.at(-1)?.getQueryData<LauncherView>(["launcher"]);
     if (!view) throw new Error("Missing launcher snapshot");
     fireEvent.click(button);
@@ -379,6 +394,11 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
       const button = (
         await screen.findAllByRole("button", { name: /^Lanzar perfil/ })
       )[0];
+      await waitFor(() =>
+        expect(caches.at(-1)?.getQueryState(["launcher"])?.fetchStatus).toBe(
+          "idle",
+        ),
+      );
       const cache = caches.at(-1),
         core = structuredClone(cache?.getQueryData<CoreStatus>(coreKey)),
         view = structuredClone(cache?.getQueryData<LauncherView>(["launcher"]));

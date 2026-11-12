@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useSyncExternalStore } from "react";
 import {
-  type CoreStatus,
   defaultZoom,
   type LauncherView,
   type Palette,
@@ -130,7 +129,11 @@ function ShellContent() {
     if (ui.commandsOpen && host.client && !core.live)
       void refreshLauncher({ cancelRefetch: false });
   }, [ui.commandsOpen, host.client, core.live, refreshLauncher]);
-  const { launchFavorite, launchProfile, pending: profileWaiting } = useLauncherLaunch(core, launcher);
+  const {
+    launchFavorite,
+    launchProfile,
+    pending: profileWaiting,
+  } = useLauncherLaunch(core, launcher);
   const isUpcoming = (section: Section) =>
     section === "strategy" || section === "engineer";
   const items = navigation(core.access).map((item) =>

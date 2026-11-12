@@ -348,10 +348,16 @@ it("selects the expanded Delta with keyboard", async () => {
     screen.getByRole("combobox", { name: t.deltaFormat }),
   );
   await user.keyboard("{ArrowDown}");
-  const option = await screen.findByRole("option", { name: t.deltaExpanded });
+  await waitFor(() =>
+    expect(screen.getByRole("option", { selected: true })).toBe(
+      document.activeElement,
+    ),
+  );
   await user.keyboard("{End}");
   await waitFor(() =>
-    expect(option.hasAttribute("data-highlighted")).toBe(true),
+    expect(screen.getByRole("option", { name: t.deltaExpanded })).toBe(
+      document.activeElement,
+    ),
   );
   await user.keyboard("{Enter}");
   expect(state.execute).toHaveBeenCalledExactlyOnceWith({

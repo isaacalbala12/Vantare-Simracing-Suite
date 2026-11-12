@@ -230,6 +230,13 @@ describe("Studio Foco interactions", () => {
     );
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("searchbox", { name: t.search })).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: t.show })
+          .getAttribute("aria-disabled"),
+      ).toBe("false"),
+    );
     fireEvent.click(screen.getByRole("button", { name: t.show }));
     await screen.findByRole("button", { name: t.hide });
     expect(
@@ -412,9 +419,8 @@ describe("Studio Foco interactions", () => {
         .getByRole("button", { name: "QA toggle rail" })
         .getAttribute("aria-pressed"),
     ).toBe("true");
-    expect(document.activeElement).toBe(
-      await screen.findByRole("searchbox", { name: t.search }),
-    );
+    const search = await screen.findByRole("searchbox", { name: t.search });
+    await waitFor(() => expect(document.activeElement).toBe(search));
   });
   it("keeps focus in the filtered gallery after a card leaves it", async () => {
     mount("studio-muchos");
@@ -425,7 +431,7 @@ describe("Studio Foco interactions", () => {
         "true",
       ),
     );
-    fireEvent.click(screen.getByRole("button", { name: t.add, exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: t.filters.hidden }));
     const show = screen.getByRole("button", { name: t.showWidget });
     show.focus();
     fireEvent.click(show);

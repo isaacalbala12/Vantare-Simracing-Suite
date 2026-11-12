@@ -9,7 +9,7 @@ import { WidgetPreview } from "./Widgets";
 export function EmptyStudio({ model }: { model: ReturnTypeOfStudioFocus }) {
   const { state, blocked } = model;
   const view = state.view;
-  if (!view || view.state !== "ready" || view.instances.length) return null;
+  if (view?.state !== "ready" || view.instances.length) return null;
   const suggestions = view.catalog
     .filter((widget) => widget.allowed && widget.suggested)
     .slice(0, 3);

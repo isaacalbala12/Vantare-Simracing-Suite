@@ -13,6 +13,7 @@ export function StudioSaveStatus({
   const { state } = model;
   const view = state.view;
   const saving = !!view && state.pending;
+  const loading = !view && !state.failure;
   const label = state.failure
     ? t.notSaved
     : saving
@@ -31,7 +32,7 @@ export function StudioSaveStatus({
       data-saving={saving}
       data-readonly={view?.state === "protected"}
     >
-      {saving ? (
+      {saving || loading ? (
         <span className="v-spinner" aria-hidden="true" />
       ) : (
         <Icon

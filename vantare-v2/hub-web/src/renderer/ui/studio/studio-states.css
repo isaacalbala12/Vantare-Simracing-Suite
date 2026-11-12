@@ -1,3 +1,23 @@
+.v-studio-state-feedback > svg {
+  color: var(--err);
+  flex: none;
+}
+.v-studio-unread > svg {
+  color: var(--text-3);
+  flex: none;
+}
+.v-focus-hidden > span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--edge);
+  font-size: 12.5px;
+}
 .v-focus-save {
   display: flex;
   align-items: center;
@@ -20,12 +40,12 @@
 .v-focus-layout-icon {
   display: none;
 }
-.v-focus-empty-list {
+.v-studio-list > .v-focus-empty-list {
   border: 1px dashed var(--line-3);
   border-radius: var(--radius-lg);
-  padding: 18px 14px !important;
+  padding: 18px 14px;
   text-align: center;
-  font-size: 12.5px !important;
+  font-size: 12.5px;
 }
 .v-focus-add[data-empty="true"] {
   border-style: solid;
@@ -186,10 +206,7 @@
   flex: none;
   font-size: 13px;
 }
-.v-studio-state-feedback > svg {
-  color: var(--err);
-  flex: none;
-}
+
 .v-studio-state-feedback[data-tone="warn"] {
   border-color: color-mix(in srgb, var(--warn) 34%, transparent);
   background: var(--warn-tint);
@@ -226,10 +243,7 @@
 .v-studio-temporary .v-studio-unread {
   flex: none;
 }
-.v-studio-unread > svg {
-  color: var(--text-3);
-  flex: none;
-}
+
 .v-studio-unread strong {
   font-weight: 600;
   color: var(--text-1);
@@ -281,18 +295,7 @@
   gap: 10px;
   padding: 0;
 }
-.v-focus-hidden > span {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-panel);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--edge);
-  font-size: 12.5px;
-}
+
 .v-studio-unavailable {
   flex: 1;
   display: grid;
@@ -325,9 +328,9 @@
   .v-focus-save > span:not(.v-spinner) {
     display: none;
   }
-  .v-focus-empty-list {
-    font-size: 0 !important;
-    padding: 10px 4px !important;
+  .v-studio-list > .v-focus-empty-list {
+    font-size: 0;
+    padding: 10px 4px;
   }
   .v-focus-filters {
     display: none;

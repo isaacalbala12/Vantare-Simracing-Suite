@@ -6,6 +6,7 @@ import { type Section, useUi } from "../../app/UiState";
 import { notices as text } from "../../i18n/notifications";
 import { NotificationsLayout } from "../../ui/NotificationsLayout";
 import type { Destination } from "./center";
+import { NotificationsRail } from "./NotificationsRail";
 import { useNotifications } from "./NotificationsState";
 export function Notifications({ compact = false }: { compact?: boolean }) {
   const center = useNotifications();
@@ -60,7 +61,7 @@ export function Notifications({ compact = false }: { compact?: boolean }) {
   if (compact) return content;
   return (
     <>
-      <SectionChrome title={text.title} />
+      <SectionChrome title={text.title} rail={<NotificationsRail />} />
       {content}
     </>
   );

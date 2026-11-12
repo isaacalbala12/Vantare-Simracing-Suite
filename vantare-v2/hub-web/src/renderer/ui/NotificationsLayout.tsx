@@ -133,6 +133,7 @@ export function NotificationsLayout({
                       {record.action && (
                         <button
                           type="button"
+                          className="v-notification-open"
                           onClick={() => onOpen(record.id, record.action)}
                         >
                           {record.action === "launcher"
@@ -143,7 +144,11 @@ export function NotificationsLayout({
                         </button>
                       )}
                       {record.unread ? (
-                        <button type="button" onClick={() => onRead(record.id)}>
+                        <button
+                          type="button"
+                          className="v-notification-read"
+                          onClick={() => onRead(record.id)}
+                        >
                           {text.read}
                         </button>
                       ) : (

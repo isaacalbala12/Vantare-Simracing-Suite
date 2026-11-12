@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { isRendererMessage, mockAllowed } from "../src/main/security";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 
@@ -134,4 +134,42 @@ describe("main process trust boundary", () => {
     expect(mockAllowed(true, true)).toBe(true);
     expect(mockAllowed(false, false)).toBe(true);
   });
+});
+
+it("shares topics until the final consumer leaves and observes only request metadata", async () => {
+  const client = await Client.connect();
+  try {
+    const send = vi.spyOn(client, "send");
+    const events = vi.fn();
+    const stop = client.observeRequests(events);
+    const first = client.subscribe("updates");
+    const second = client.subscribe("updates");
+    first();
+    first();
+    expect(
+      send.mock.calls.filter(([message]) => message.kind === "subscribe"),
+    ).toHaveLength(1);
+    expect(
+      send.mock.calls.filter(([message]) => message.kind === "unsubscribe"),
+    ).toHaveLength(0);
+    second();
+    expect(
+      send.mock.calls.filter(([message]) => message.kind === "unsubscribe"),
+    ).toHaveLength(1);
+    await client.request({ method: "core.get" });
+    expect(events.mock.calls.map(([event]) => event.phase)).toEqual([
+      "start",
+      "done",
+    ]);
+    expect(events.mock.calls[0][0]).toEqual({
+      id: 1,
+      method: "core.get",
+      phase: "start",
+    });
+    stop();
+    await client.request({ method: "core.get" });
+    expect(events).toHaveBeenCalledTimes(2);
+  } finally {
+    client.close();
+  }
 });

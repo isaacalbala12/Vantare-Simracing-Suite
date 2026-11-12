@@ -75,6 +75,7 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   );
   const client = {
     request,
+    observeRequests: () => () => {},
     subscribe: vi.fn(() => unsub),
     listen: (listener: (m: HostToUi) => void) => {
       listeners.add(listener);
@@ -149,13 +150,14 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   await userEvent.click(screen.getByRole("button", { name: "Abrir Studio" }));
   expect(screen.getByLabelText("Sección actual").textContent).toBe("home");
   ui.unmount();
-  expect(unsub).toHaveBeenCalledOnce();
+  expect(unsub).toHaveBeenCalledTimes(3);
   expect(listeners.size).toBe(0);
 });
 
 function harness(request: ReturnType<typeof vi.fn>, query = new QueryClient()) {
   const client = {
     request,
+    observeRequests: () => () => {},
     subscribe: () => () => {},
     listen: () => () => {},
   } as unknown as Client;

@@ -43,6 +43,21 @@ export const notices = {
   unavailable: "Servicios no disponibles.",
   busy: "Vantare está ocupado.",
   failure: "No se pudo completar la acción.",
+  launchFailed: "Error del Launcher",
+  launchFailure: "No se pudo completar el lanzamiento. Revisa el Launcher.",
+  launchReady: "Aplicaciones listas",
+  launchReadyBody: "El Launcher ha terminado de preparar las aplicaciones.",
+  updateReady: "Actualización lista",
+  updateReadyBody: (version: string) =>
+    `La actualización ${version} está preparada.`,
+  reportAccepted: "Informe aceptado",
+  reportAcceptedBody:
+    "Tu informe ha sido aceptado. Puedes consultar su estado en Testing Center.",
+  reportFixed: "Informe resuelto",
+  reportFixedBody: (version: string | null) =>
+    version
+      ? `El informe se ha resuelto en ${version}.`
+      : "El informe se ha resuelto.",
   count: (count: number) => `${count} sin leer`,
   history: (limit: number) => `Historial de esta sesión · máximo ${limit}`,
 };

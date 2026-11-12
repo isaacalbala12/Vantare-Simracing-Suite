@@ -187,7 +187,12 @@ it("observes only explicit unexpected failures and test replies, deduplicating b
     return unsubscribe;
   });
   vi.spyOn(host, "useHost").mockReturnValue({
-    client: { listen } as unknown as Client,
+    client: {
+      listen,
+      observeRequests: () => () => {},
+      subscribe: () => () => {},
+      request: async () => undefined,
+    } as unknown as Client,
   });
   const { result, unmount } = renderHook(() => useNotifications(), {
     wrapper: NotificationsProvider,
@@ -246,7 +251,7 @@ it("observes only explicit unexpected failures and test replies, deduplicating b
     text: "La notificación de prueba falló.",
   });
   unmount();
-  expect(unsubscribe).toHaveBeenCalledOnce();
+  expect(unsubscribe).toHaveBeenCalledTimes(2);
 });
 function NoticeSeed({ input }: { input: NoticeInput }) {
   const add = useNotifications().add;

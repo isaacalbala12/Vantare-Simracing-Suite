@@ -12,6 +12,7 @@ import { useHost } from "../../app/Host";
 import { notices as text } from "../../i18n/notifications";
 import { seedNotificationScene } from "../../qa/notifications-scene";
 import { type Center, type Filter, type NoticeInput, publish } from "./center";
+import { connectEmitters } from "./emitters";
 
 const notifiableFailures = [
   "io",
@@ -52,6 +53,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createNotifications);
   const { client } = useHost();
   useEffect(() => {
+    if (!client) return;
+    const emitters = connectEmitters(client, {
+      add: (input) => store.getState().add(input),
+      changeReports: (update) =>
+        store.setState((state) => ({ records: update(state.records) })),
+    });
     const dispose = client?.listen((message) => {
       if (
         message.kind === "response" &&
@@ -66,6 +73,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         });
       if (
         message.kind === "failure" &&
+        !emitters.ownsFailure(message.id) &&
         notifiableFailures.some((kind) => kind === message.error.kind)
       )
         store.getState().add({
@@ -77,6 +85,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         });
     });
     return () => {
+      emitters.dispose();
       dispose?.();
     };
   }, [client, store]);

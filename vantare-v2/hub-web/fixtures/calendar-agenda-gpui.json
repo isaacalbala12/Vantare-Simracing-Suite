@@ -1,0 +1,1589 @@
+{
+  "sources": {
+    "alerts": "1d5548bd281797b84c7e3320b3aee0fc71a467123615e16250909ea161079f47",
+    "clock": "dff7f05ffecaa0b2e91328153a9008a54b588413c6e7c0088603575edea35a80",
+    "model": "4d1af6c35991d32919d7417407343e44203d49f5e8cd1f9295f4788154035e1d"
+  },
+  "cases": [
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "lmgt3",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "interval",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1793578020000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 3600,
+      "seriesId": "lmgt3",
+      "source": "shared",
+      "startOffsetMinute": 0,
+      "starts": [
+        1793578500000, 1793579400000, 1793580300000, 1793581200000,
+        1793582100000, 1793583000000, 1793583900000, 1793584800000,
+        1793585700000, 1793586600000, 1793587500000, 1793588400000,
+        1793589300000, 1793590200000, 1793591100000, 1793592000000,
+        1793592900000, 1793593800000, 1793594700000, 1793595600000,
+        1793596500000, 1793597400000, 1793598300000, 1793599200000
+      ],
+      "until": 1793599620000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "lmgt3",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "interval",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1793577600000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 3600,
+      "seriesId": "lmgt3",
+      "source": "shared",
+      "startOffsetMinute": 0,
+      "starts": [
+        1793577600000, 1793578500000, 1793579400000, 1793580300000,
+        1793581200000, 1793582100000, 1793583000000, 1793583900000,
+        1793584800000, 1793585700000, 1793586600000, 1793587500000,
+        1793588400000, 1793589300000, 1793590200000, 1793591100000,
+        1793592000000, 1793592900000, 1793593800000, 1793594700000,
+        1793595600000, 1793596500000, 1793597400000, 1793598300000
+      ],
+      "until": 1793599200000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [{ "at": 1793649600, "seriesId": "weekly" }]
+      },
+      "case": "weekly",
+      "causes": ["slot", "none"],
+      "from": 1793578020000,
+      "intervalMinutes": 0,
+      "offsetSeconds": 3600,
+      "seriesId": "weekly",
+      "source": "shared",
+      "startOffsetMinute": 0,
+      "starts": [1793649600000, 1793995200000],
+      "until": 1794182400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [{ "at": 1793649600, "seriesId": "weekly" }]
+      },
+      "case": "weekly",
+      "causes": ["slot", "none"],
+      "from": 1793577600000,
+      "intervalMinutes": 0,
+      "offsetSeconds": 3600,
+      "seriesId": "weekly",
+      "source": "shared",
+      "startOffsetMinute": 0,
+      "starts": [1793649600000, 1793995200000],
+      "until": 1794182400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "rich",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "rich_valid",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1793578020000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 3600,
+      "seriesId": "rich",
+      "source": "shared",
+      "startOffsetMinute": 0,
+      "starts": [
+        1793578500000, 1793579400000, 1793580300000, 1793581200000,
+        1793582100000, 1793583000000, 1793583900000, 1793584800000,
+        1793585700000, 1793586600000, 1793587500000, 1793588400000,
+        1793589300000, 1793590200000, 1793591100000, 1793592000000,
+        1793592900000, 1793593800000, 1793594700000, 1793595600000,
+        1793596500000, 1793597400000, 1793598300000, 1793599200000
+      ],
+      "until": 1793599620000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "rich",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "rich_valid",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1793577600000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 3600,
+      "seriesId": "rich",
+      "source": "shared",
+      "startOffsetMinute": 0,
+      "starts": [
+        1793577600000, 1793578500000, 1793579400000, 1793580300000,
+        1793581200000, 1793582100000, 1793583000000, 1793583900000,
+        1793584800000, 1793585700000, 1793586600000, 1793587500000,
+        1793588400000, 1793589300000, 1793590200000, 1793591100000,
+        1793592000000, 1793592900000, 1793593800000, 1793594700000,
+        1793595600000, 1793596500000, 1793597400000, 1793598300000
+      ],
+      "until": 1793599200000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-lmgt3-fixed",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791245700000, 1791246600000, 1791247500000, 1791248400000,
+        1791249300000, 1791250200000, 1791251100000, 1791252000000,
+        1791252900000, 1791253800000, 1791254700000, 1791255600000,
+        1791256500000, 1791257400000, 1791258300000, 1791259200000,
+        1791260100000, 1791261000000, 1791261900000, 1791262800000,
+        1791263700000, 1791264600000, 1791265500000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-lmgt3-fixed",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791245700000, 1791246600000, 1791247500000,
+        1791248400000, 1791249300000, 1791250200000, 1791251100000,
+        1791252000000, 1791252900000, 1791253800000, 1791254700000,
+        1791255600000, 1791256500000, 1791257400000, 1791258300000,
+        1791259200000, 1791260100000, 1791261000000, 1791261900000,
+        1791262800000, 1791263700000, 1791264600000, 1791265500000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmp3-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-lmp3-fixed",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791245700000, 1791246600000, 1791247500000, 1791248400000,
+        1791249300000, 1791250200000, 1791251100000, 1791252000000,
+        1791252900000, 1791253800000, 1791254700000, 1791255600000,
+        1791256500000, 1791257400000, 1791258300000, 1791259200000,
+        1791260100000, 1791261000000, 1791261900000, 1791262800000,
+        1791263700000, 1791264600000, 1791265500000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "beginner-lmp3-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-lmp3-fixed",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791245700000, 1791246600000, 1791247500000,
+        1791248400000, 1791249300000, 1791250200000, 1791251100000,
+        1791252000000, 1791252900000, 1791253800000, 1791254700000,
+        1791255600000, 1791256500000, 1791257400000, 1791258300000,
+        1791259200000, 1791260100000, 1791261000000, 1791261900000,
+        1791262800000, 1791263700000, 1791264600000, 1791265500000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791245700000, 1791246600000, 1791247500000, 1791248400000,
+        1791249300000, 1791250200000, 1791251100000, 1791252000000,
+        1791252900000, 1791253800000, 1791254700000, 1791255600000,
+        1791256500000, 1791257400000, 1791258300000, 1791259200000,
+        1791260100000, 1791261000000, 1791261900000, 1791262800000,
+        1791263700000, 1791264600000, 1791265500000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 15,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-logitech-mclaren-g-challenge-q1",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791245700000, 1791246600000, 1791247500000,
+        1791248400000, 1791249300000, 1791250200000, 1791251100000,
+        1791252000000, 1791252900000, 1791253800000, 1791254700000,
+        1791255600000, 1791256500000, 1791257400000, 1791258300000,
+        1791259200000, 1791260100000, 1791261000000, 1791261900000,
+        1791262800000, 1791263700000, 1791264600000, 1791265500000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-lmgt3-sprint",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 20,
+      "offsetSeconds": 7200,
+      "seriesId": "intermediate-lmgt3-sprint",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791246000000, 1791247200000, 1791248400000, 1791249600000,
+        1791250800000, 1791252000000, 1791253200000, 1791254400000,
+        1791255600000, 1791256800000, 1791258000000, 1791259200000,
+        1791260400000, 1791261600000, 1791262800000, 1791264000000,
+        1791265200000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "intermediate-lmgt3-sprint",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 20,
+      "offsetSeconds": 7200,
+      "seriesId": "intermediate-lmgt3-sprint",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791246000000, 1791247200000, 1791248400000,
+        1791249600000, 1791250800000, 1791252000000, 1791253200000,
+        1791254400000, 1791255600000, 1791256800000, 1791258000000,
+        1791259200000, 1791260400000, 1791261600000, 1791262800000,
+        1791264000000, 1791265200000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-prototype-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 20,
+      "offsetSeconds": 7200,
+      "seriesId": "intermediate-prototype-fixed",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791246000000, 1791247200000, 1791248400000, 1791249600000,
+        1791250800000, 1791252000000, 1791253200000, 1791254400000,
+        1791255600000, 1791256800000, 1791258000000, 1791259200000,
+        1791260400000, 1791261600000, 1791262800000, 1791264000000,
+        1791265200000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "intermediate-prototype-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 20,
+      "offsetSeconds": 7200,
+      "seriesId": "intermediate-prototype-fixed",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791246000000, 1791247200000, 1791248400000,
+        1791249600000, 1791250800000, 1791252000000, 1791253200000,
+        1791254400000, 1791255600000, 1791256800000, 1791258000000,
+        1791259200000, 1791260400000, 1791261600000, 1791262800000,
+        1791264000000, 1791265200000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "intermediate-elms-sprint",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 20,
+      "offsetSeconds": 7200,
+      "seriesId": "intermediate-elms-sprint",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791246000000, 1791247200000, 1791248400000, 1791249600000,
+        1791250800000, 1791252000000, 1791253200000, 1791254400000,
+        1791255600000, 1791256800000, 1791258000000, 1791259200000,
+        1791260400000, 1791261600000, 1791262800000, 1791264000000,
+        1791265200000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "intermediate-elms-sprint",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 20,
+      "offsetSeconds": 7200,
+      "seriesId": "intermediate-elms-sprint",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791246000000, 1791247200000, 1791248400000,
+        1791249600000, 1791250800000, 1791252000000, 1791253200000,
+        1791254400000, 1791255600000, 1791256800000, 1791258000000,
+        1791259200000, 1791260400000, 1791261600000, 1791262800000,
+        1791264000000, 1791265200000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-one-stint-sprint",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 30,
+      "offsetSeconds": 7200,
+      "seriesId": "advanced-one-stint-sprint",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791246600000, 1791248400000, 1791250200000, 1791252000000,
+        1791253800000, 1791255600000, 1791257400000, 1791259200000,
+        1791261000000, 1791262800000, 1791264600000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "advanced-one-stint-sprint",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 30,
+      "offsetSeconds": 7200,
+      "seriesId": "advanced-one-stint-sprint",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791246600000, 1791248400000, 1791250200000,
+        1791252000000, 1791253800000, 1791255600000, 1791257400000,
+        1791259200000, 1791261000000, 1791262800000, 1791264600000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-elms-super-60",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 30,
+      "offsetSeconds": 7200,
+      "seriesId": "advanced-elms-super-60",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791246600000, 1791248400000, 1791250200000, 1791252000000,
+        1791253800000, 1791255600000, 1791257400000, 1791259200000,
+        1791261000000, 1791262800000, 1791264600000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "advanced-elms-super-60",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 30,
+      "offsetSeconds": 7200,
+      "seriesId": "advanced-elms-super-60",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791246600000, 1791248400000, 1791250200000,
+        1791252000000, 1791253800000, 1791255600000, 1791257400000,
+        1791259200000, 1791261000000, 1791262800000, 1791264600000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "advanced-wec-xperience",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 30,
+      "offsetSeconds": 7200,
+      "seriesId": "advanced-wec-xperience",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791246600000, 1791248400000, 1791250200000, 1791252000000,
+        1791253800000, 1791255600000, 1791257400000, 1791259200000,
+        1791261000000, 1791262800000, 1791264600000, 1791266400000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "advanced-wec-xperience",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "publication",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 30,
+      "offsetSeconds": 7200,
+      "seriesId": "advanced-wec-xperience",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791244800000, 1791246600000, 1791248400000, 1791250200000,
+        1791252000000, 1791253800000, 1791255600000, 1791257400000,
+        1791259200000, 1791261000000, 1791262800000, 1791264600000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [{ "at": 1791252000, "seriesId": "weekly-wec-weekly" }]
+      },
+      "case": "publication",
+      "causes": [
+        "slot",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 0,
+      "offsetSeconds": 7200,
+      "seriesId": "weekly-wec-weekly",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791252000000, 1791266400000, 1791277200000, 1791288000000,
+        1791298800000, 1791309600000, 1791316800000, 1791327600000,
+        1791338400000, 1791352800000, 1791363600000, 1791374400000,
+        1791385200000, 1791396000000, 1791403200000, 1791414000000,
+        1791424800000, 1791439200000, 1791450000000, 1791460800000,
+        1791471600000, 1791482400000, 1791489600000, 1791500400000
+      ],
+      "until": 1791849600000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [{ "at": 1791252000, "seriesId": "weekly-wec-weekly" }]
+      },
+      "case": "publication",
+      "causes": [
+        "slot",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 0,
+      "offsetSeconds": 7200,
+      "seriesId": "weekly-wec-weekly",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791252000000, 1791266400000, 1791277200000, 1791288000000,
+        1791298800000, 1791309600000, 1791316800000, 1791327600000,
+        1791338400000, 1791352800000, 1791363600000, 1791374400000,
+        1791385200000, 1791396000000, 1791403200000, 1791414000000,
+        1791424800000, 1791439200000, 1791450000000, 1791460800000,
+        1791471600000, 1791482400000, 1791489600000, 1791500400000
+      ],
+      "until": 1791849600000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [
+          { "at": 1791511200, "seriesId": "weekly-10-hours-of-road-atlanta" }
+        ]
+      },
+      "case": "publication",
+      "causes": [
+        "slot",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 0,
+      "offsetSeconds": 7200,
+      "seriesId": "weekly-10-hours-of-road-atlanta",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791511200000, 1791536400000, 1791558000000, 1791579600000,
+        1791597600000, 1791622800000, 1791644400000, 1791666000000,
+        1791684000000, 1791709200000, 1791730800000, 1791752400000
+      ],
+      "until": 1791849600000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": [
+          { "at": 1791511200, "seriesId": "weekly-10-hours-of-road-atlanta" }
+        ]
+      },
+      "case": "publication",
+      "causes": [
+        "slot",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 0,
+      "offsetSeconds": 7200,
+      "seriesId": "weekly-10-hours-of-road-atlanta",
+      "source": "october",
+      "startOffsetMinute": 0,
+      "starts": [
+        1791511200000, 1791536400000, 1791558000000, 1791579600000,
+        1791597600000, 1791622800000, 1791644400000, 1791666000000,
+        1791684000000, 1791709200000, 1791730800000, 1791752400000
+      ],
+      "until": 1791849600000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "interval-37",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 37,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-lmgt3-fixed",
+      "source": "october",
+      "startOffsetMinute": 5,
+      "starts": [
+        1791246000000, 1791248220000, 1791250440000, 1791252660000,
+        1791254880000, 1791257100000, 1791259320000, 1791261540000,
+        1791263760000, 1791265980000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "interval-37",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 37,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-lmgt3-fixed",
+      "source": "october",
+      "startOffsetMinute": 5,
+      "starts": [
+        1791246000000, 1791248220000, 1791250440000, 1791252660000,
+        1791254880000, 1791257100000, 1791259320000, 1791261540000,
+        1791263760000, 1791265980000
+      ],
+      "until": 1791266400000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "each",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "interval-37",
+      "causes": [
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band",
+        "band"
+      ],
+      "from": 1791245220000,
+      "intervalMinutes": 37,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-lmgt3-fixed",
+      "source": "october",
+      "startOffsetMinute": -17,
+      "starts": [
+        1791246900000, 1791249120000, 1791251340000, 1791253560000,
+        1791255780000, 1791258000000, 1791260220000, 1791262440000,
+        1791264660000
+      ],
+      "until": 1791266820000
+    },
+    {
+      "alerts": {
+        "autoLaunch": false,
+        "bands": [
+          {
+            "days": "all",
+            "from": 0,
+            "mode": "first",
+            "seriesId": "beginner-lmgt3-fixed",
+            "to": 1440
+          }
+        ],
+        "channels": { "inTrack": true, "sound": false, "windows": true },
+        "leadMin": 10,
+        "notifyWeek": true,
+        "slots": []
+      },
+      "case": "interval-37",
+      "causes": [
+        "band",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none",
+        "none"
+      ],
+      "from": 1791244800000,
+      "intervalMinutes": 37,
+      "offsetSeconds": 7200,
+      "seriesId": "beginner-lmgt3-fixed",
+      "source": "october",
+      "startOffsetMinute": -17,
+      "starts": [
+        1791246900000, 1791249120000, 1791251340000, 1791253560000,
+        1791255780000, 1791258000000, 1791260220000, 1791262440000,
+        1791264660000
+      ],
+      "until": 1791266400000
+    }
+  ]
+}

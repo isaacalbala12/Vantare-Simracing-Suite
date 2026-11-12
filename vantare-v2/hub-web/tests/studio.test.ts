@@ -179,3 +179,54 @@ describe("Studio document contract", () => {
     });
   });
 });
+
+describe("typed Studio settings writes", () => {
+  it("uses CAS, rejects another kind and keeps no-op revisions", () => {
+    const host = createMockHost("studio-base");
+    const before = view(host);
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: before.revision,
+        patch: {
+          field: "settings",
+          value: { kind: "standings", rowCount: 21 },
+        },
+      }),
+    ).toMatchObject({ kind: "response" });
+    const changed = view(host);
+    expect(changed.instances[0].settings).toMatchObject({
+      kind: "standings",
+      rowCount: 21,
+    });
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: before.revision,
+        patch: {
+          field: "settings",
+          value: { kind: "standings", rowCount: 22 },
+        },
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "studioConflict" } });
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: changed.revision,
+        patch: {
+          field: "settings",
+          value: { kind: "standings", rowCount: 21 },
+        },
+      }),
+    ).toMatchObject({ kind: "response" });
+    expect(view(host).revision).toBe(changed.revision);
+    expect(
+      send(host, "studio.instance", {
+        id: "widget-1",
+        baseRevision: changed.revision,
+        patch: { field: "settings", value: { kind: "delta", size: "pill" } },
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "denied" } });
+    expect(view(host)).toEqual(changed);
+  });
+});

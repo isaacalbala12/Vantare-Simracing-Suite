@@ -248,3 +248,19 @@ mod tests {
         assert_eq!(column["widthPreset"], "lg");
     }
 }
+
+#[cfg(test)]
+mod preserved_native_fields {
+    use super::*;
+    #[test]
+    fn editing_fuel_history_preserves_native_source_and_unknown_settings_bytes() {
+        let raw = r#"{"settings":{"kind":"fuel-strategy","contentVersion":1,"source":"virtual-energy","units":"liters","future":{"keep":  1.00}}}"#;
+        let mut fields: Fields = serde_json::from_str(raw).unwrap();
+        let patch = serde_json::from_str(r#"{"kind":"fuel-strategy","historyRows":3}"#).unwrap();
+        assert!(apply(&mut fields, &patch, Some(CatalogAccess::Pro)).unwrap());
+        let stored: Fields = read(&fields, "settings").unwrap();
+        assert_eq!(stored.0["source"].get(), r#""virtual-energy""#);
+        assert_eq!(stored.0["units"].get(), r#""liters""#);
+        assert_eq!(stored.0["future"].get(), r#"{"keep":  1.00}"#);
+    }
+}

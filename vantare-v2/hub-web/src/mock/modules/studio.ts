@@ -300,6 +300,8 @@ function applyWidgetSettings(
       delete result[key];
     } else result[key] = value;
   }
+  if (result.kind === "delta" && result.transparentBackground === false)
+    delete result.transparentBackground;
   return result as unknown as NonNullable<OverlayInstance["settings"]>;
 }
 

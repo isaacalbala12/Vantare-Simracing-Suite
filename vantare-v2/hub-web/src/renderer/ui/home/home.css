@@ -355,9 +355,12 @@
 .v-home-activity-list > div > span:nth-child(2) {
   flex: 1;
   min-width: 0;
+  padding-right: 8px;
+  font-size: var(--text-body);
+  line-height: 1.618;
 }
 .v-home-activity-list strong {
-  font-size: 13.5px;
+  font-size: var(--text-body);
   font-weight: 650;
 }
 .v-home-activity-list small {

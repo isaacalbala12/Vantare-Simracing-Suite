@@ -360,3 +360,25 @@ it("keeps unrelated UTC errors outside Avisos and explains its own conflict with
     within(dialog).queryByRole("button", { name: "Reintentar" }),
   ).toBeNull();
 });
+
+it("opens the ICS dialog from the real detail drawer and returns to it on cancel", async () => {
+  render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Ficha" }));
+  const trigger = screen.getByRole("button", {
+    name: "Añadir a mi calendario",
+  });
+  trigger.focus();
+  fireEvent.click(trigger);
+  expect(
+    screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(
+    screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
+  ).toBeNull();
+  await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+});

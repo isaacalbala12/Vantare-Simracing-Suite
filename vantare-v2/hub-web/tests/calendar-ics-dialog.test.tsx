@@ -84,3 +84,19 @@ it("keeps the conflict explanation readable and freezes options while busy", () 
     true,
   );
 });
+
+it.each(["calendarExportExtension", "rejected"] as const)(
+  "explains %s without enabling a consumed preparation",
+  (failure) => {
+    show({ ...props, view: undefined, failure });
+    expect(screen.getByRole("alert").textContent).toContain(
+      text.error(failure),
+    );
+    expect(screen.getByRole("button", { name: text.download })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    fireEvent.click(screen.getByRole("button", { name: text.retry }));
+    expect(props.onRetry).toHaveBeenCalledOnce();
+  },
+);

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { HostFailure } from "../src/renderer/bridge/client";
 import { useCalendarIcs } from "../src/renderer/screens/calendar/CalendarIcsState";
 
 const host = vi.hoisted(() => ({ client: { request: vi.fn() } }));
@@ -108,4 +109,31 @@ it("clears a failed prepare and retries only on explicit request", async () => {
   await act(async () => {});
   expect(hook.result.current.view).toEqual(value);
   expect(hook.result.current.failure).toBeUndefined();
+});
+
+it("drops a preparation rejected by main and only prepares again on explicit retry", async () => {
+  host.client.request.mockResolvedValueOnce(reply);
+  const hook = renderHook(() => useCalendarIcs(true, true));
+  await act(async () => {});
+  host.client.request.mockRejectedValueOnce(
+    new HostFailure({ kind: "rejected" }),
+  );
+  await act(async () => {
+    await hook.result.current.download();
+  });
+  expect(hook.result.current.failure).toBe("rejected");
+  expect(hook.result.current.view).toBeUndefined();
+  await act(async () => {
+    await hook.result.current.download();
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(2);
+  host.client.request.mockResolvedValueOnce(reply);
+  act(() => hook.result.current.retry());
+  await act(async () => {});
+  expect(hook.result.current.view).toEqual(value);
+  expect(host.client.request).toHaveBeenLastCalledWith({
+    method: "calendar.icsPrepare",
+    scope: "favs",
+    alarm: true,
+  });
 });

@@ -548,7 +548,10 @@ export default function CalendarEntry() {
           canLaunch={launcher.canLaunch}
           canFollow={preferences.canFollow}
           busy={preferences.busy}
-          onClose={closeDetail}
+          onClose={() => {
+            // The modal temporarily owns focus; keep its source drawer mounted.
+            if (!icsOpen) closeDetail();
+          }}
           returnFocus={returnDetailFocus}
           onSerie={(id) => {
             detailOrigin.current = null;

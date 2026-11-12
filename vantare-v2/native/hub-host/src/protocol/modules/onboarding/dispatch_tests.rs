@@ -252,3 +252,42 @@ fn io_failure_arms_escape_but_existing_disk_opt_in_still_denies_it() {
     assert!(session.privacy.view().crashes);
     drop(guard);
 }
+
+#[test]
+fn completed_onboarding_never_detects_hardware_when_served() {
+    let fixture = Fixture::new();
+    std::fs::write(
+        fixture.0.join("layout.json"),
+        br#"{"version":2,"instances":[]}"#,
+    )
+    .unwrap();
+    let mut session = fixture.session();
+    assert!(session.settings.view().general.onboarding_completed);
+    session.onboarding =
+        crate::onboarding::State::with_detector(session.onboarding.layout.clone(), || {
+            panic!("completed onboarding must never enumerate adapters")
+        });
+    assert!(matches!(call(&mut session, &Request::OnboardingGet {}),
+        HostToUi::Response { result: Reply::OnboardingGet { value }, .. } if !value.pending && value.equipment.gpu.is_none()));
+}
+#[test]
+fn pending_onboarding_detects_injected_hardware_only_on_its_first_view() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static DETECTIONS: AtomicUsize = AtomicUsize::new(0);
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.onboarding =
+        crate::onboarding::State::with_detector(session.onboarding.layout.clone(), || {
+            DETECTIONS.fetch_add(1, Ordering::Relaxed);
+            let mut equipment = crate::onboarding::Equipment::default();
+            equipment.gpu = Some("QA GPU".into());
+            equipment
+        });
+    assert!(session.onboarding.equipment.gpu.is_none());
+    assert_eq!(DETECTIONS.load(Ordering::Relaxed), 0);
+    for _ in 0..2 {
+        assert!(matches!(call(&mut session, &Request::OnboardingGet {}),
+            HostToUi::Response { result: Reply::OnboardingGet { value }, .. } if value.pending && value.equipment.gpu.as_deref() == Some("QA GPU")));
+        assert_eq!(DETECTIONS.load(Ordering::Relaxed), 1);
+    }
+}

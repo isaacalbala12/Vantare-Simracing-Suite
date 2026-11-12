@@ -29,14 +29,24 @@ export function PerformanceStep({
   return (
     <>
       <div className="v-ob-equipment">
-        <span>
+        <span data-device="cpu">
           <Icon name="v-gauge" />
-          {equipment.cpu ?? text.cpuMissing}
-          {equipment.cores ? text.cores(equipment.cores) : ""}
+          <span className="v-ob-equipment-label">
+            {equipment.cpu ?? text.cpuMissing}
+            {equipment.cores ? text.cores(equipment.cores) : ""}
+          </span>
         </span>
-        <span>
+        <span data-device="gpu">
           <Icon name="monitor" />
-          {equipment.ramGb ? text.ram(equipment.ramGb) : text.ramMissing}
+          <span className="v-ob-equipment-label">
+            {equipment.gpu ?? text.gpuMissing}
+          </span>
+        </span>
+        <span data-device="ram">
+          <Icon name="monitor" />
+          <span className="v-ob-equipment-label">
+            {equipment.ramGb ? text.ram(equipment.ramGb) : text.ramMissing}
+          </span>
         </span>
       </div>
       <Button
@@ -53,7 +63,7 @@ export function PerformanceStep({
             {text.automatic}
             <small>{text.recommended}</small>
           </strong>
-          <span>{text.automaticHelp}</span>
+          <span className="v-ob-equipment-label">{text.automaticHelp}</span>
         </span>
         <span
           className="v-ob-check"

@@ -22,7 +22,7 @@ function PerformanceExample() {
   const [level, setLevel] = useState<PerformanceLevel>("balanced");
   return (
     <PerformanceStep
-      equipment={{ cpu: null, cores: null, ramGb: null }}
+      equipment={{ cpu: null, gpu: null, cores: null, ramGb: null }}
       automatic={automatic}
       level={level}
       onLevel={(next) => {
@@ -78,6 +78,7 @@ afterEach(() => {
 it("keeps automatic separate from a fixed level and can return to it", () => {
   render(<PerformanceExample />);
   expect(screen.getByText("CPU no disponible")).toBeTruthy();
+  expect(screen.getByText("GPU no disponible")).toBeTruthy();
   expect(screen.getByText("RAM no disponible")).toBeTruthy();
   expect(
     screen
@@ -166,4 +167,23 @@ it("supports Tab and arrows from Automatic through the manual cadence group", as
       .getAllByRole("radio")
       .some((r) => r.getAttribute("aria-checked") === "true"),
   ).toBe(false);
+});
+
+it("shows the GPU label between CPU and RAM without inferring a performance level", () => {
+  const onLevel = vi.fn();
+  render(
+    <PerformanceStep
+      equipment={{ cpu: "CPU", gpu: "RTX 3070", cores: 8, ramGb: 32 }}
+      automatic
+      level="balanced"
+      onAutomatic={() => {}}
+      onLevel={onLevel}
+    />,
+  );
+  const labels = Array.from(
+    document.querySelectorAll(".v-ob-equipment > span"),
+    (node) => node.textContent,
+  );
+  expect(labels).toEqual(["CPU · 8 núcleos", "RTX 3070", "32 GB"]);
+  expect(onLevel).not.toHaveBeenCalled();
 });

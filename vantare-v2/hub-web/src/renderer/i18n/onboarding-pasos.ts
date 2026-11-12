@@ -56,6 +56,7 @@ export const onboardingStepsText = {
   automaticHelp:
     "Elige Equilibrado o Ahorro según los núcleos y la RAM de tu PC.",
   manualHelp: "O fija tú un nivel.",
+  gpuMissing: "GPU no disponible",
   cpuMissing: "CPU no disponible",
   ramMissing: "RAM no disponible",
   cores: (n: number) => ` · ${n} núcleos`,

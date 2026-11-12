@@ -19,6 +19,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.v-ob-equipment > span[data-device="gpu"] {
+  max-width: calc(200 * var(--ob-unit));
+}
+.v-ob-equipment > span[data-device="ram"] {
+  max-width: calc(100 * var(--ob-unit));
+}
+.v-ob-equipment-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .v-ob-equipment svg {
   width: calc(14 * var(--ob-unit));
   height: calc(14 * var(--ob-unit));

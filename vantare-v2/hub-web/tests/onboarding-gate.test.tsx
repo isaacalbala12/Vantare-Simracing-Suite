@@ -55,7 +55,7 @@ const view: OnboardingView = {
   pending: true,
   simulators: [true, false],
   scanning: false,
-  equipment: { cpu: null, cores: null, ramGb: null },
+  equipment: { cpu: null, gpu: null, cores: null, ramGb: null },
   recommendedLevel: "balanced",
   layoutReady: false,
   layoutRevision: null,

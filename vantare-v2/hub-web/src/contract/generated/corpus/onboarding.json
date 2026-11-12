@@ -9,6 +9,7 @@
           "equipment": {
             "cores": null,
             "cpu": null,
+            "gpu": null,
             "ramGb": null
           },
           "layoutReady": false,
@@ -34,6 +35,59 @@
           "equipment": {
             "cores": null,
             "cpu": null,
+            "gpu": null,
+            "ramGb": null
+          },
+          "layoutReady": false,
+          "layoutRevision": null,
+          "pending": true,
+          "privateSession": false,
+          "recommendedLevel": "balanced",
+          "scanning": false,
+          "settingsRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "simulators": [
+            true,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "onboarding.get",
+        "value": {
+          "equipment": {
+            "cores": null,
+            "cpu": null,
+            "gpu": "NVIDIA GeForce RTX 3070",
+            "ramGb": null
+          },
+          "layoutReady": false,
+          "layoutRevision": null,
+          "pending": true,
+          "privateSession": false,
+          "recommendedLevel": "balanced",
+          "scanning": false,
+          "settingsRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "simulators": [
+            true,
+            false
+          ]
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "onboarding.get",
+        "value": {
+          "equipment": {
+            "cores": null,
+            "cpu": null,
+            "gpu": "🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎🏎",
             "ramGb": null
           },
           "layoutReady": false,
@@ -72,6 +126,7 @@
           "equipment": {
             "cores": null,
             "cpu": null,
+            "gpu": null,
             "ramGb": null
           },
           "layoutReady": false,

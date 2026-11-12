@@ -17,6 +17,8 @@ pub fn layout_revision<'de, D: serde::Deserializer<'de>>(
 pub const PRICES_URL: &str = "https://vantare.app/#precios";
 pub const KIT_LIMIT: usize = 10;
 pub const CPU_LIMIT: usize = 128;
+// DXGI_ADAPTER_DESC1.Description, as in the frozen GPUI detector.
+pub const GPU_UTF16_LIMIT: usize = 128;
 pub const EQUIPMENT_COUNT_MAX: u32 = u32::MAX;
 pub const REVISION_PATTERN: &str = "^[0-9a-f]{64}$";
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -126,6 +128,7 @@ pub fn kits() -> [&'static [WidgetKind]; 4] {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Equipment {
     pub cpu: Option<String>,
+    pub gpu: Option<String>,
     pub cores: Option<u32>,
     pub ram_gb: Option<u32>,
     #[serde(skip)]
@@ -217,29 +220,46 @@ pub struct Finish {
 pub struct State {
     pub layout: std::path::PathBuf,
     pub equipment: Equipment,
+    detect: fn() -> Equipment,
+    detected: bool,
     pub private: PrivateExit,
 }
 impl State {
     pub fn new(layout: std::path::PathBuf) -> Self {
+        // Protocol tests always inject inert equipment, including corpus sessions.
+        #[cfg(test)]
+        let detect = Equipment::default;
+        #[cfg(not(test))]
+        let detect = Equipment::detect;
+        Self::with_detector(layout, detect)
+    }
+    pub(crate) fn with_detector(layout: std::path::PathBuf, detect: fn() -> Equipment) -> Self {
         Self {
             layout,
-            equipment: Equipment::detect(),
+            equipment: Equipment::default(),
+            detect,
+            detected: false,
             private: PrivateExit::default(),
         }
     }
     pub fn view(
-        &self,
+        &mut self,
         settings: &crate::settings::SettingsView,
         simulators: [bool; 2],
         scanning: bool,
     ) -> OnboardingView {
+        let pending = !settings.general.onboarding_completed && !self.private.active();
+        if pending && !self.detected {
+            self.equipment = (self.detect)();
+            self.detected = true;
+        }
         #[cfg(windows)]
         let (layout_ready, layout_revision) =
             crate::settings::Settings::onboarding_layout(&self.layout);
         #[cfg(not(windows))]
         let (layout_ready, layout_revision) = (false, None);
         OnboardingView {
-            pending: !settings.general.onboarding_completed && !self.private.active(),
+            pending,
             simulators,
             scanning,
             equipment: self.equipment.clone(),

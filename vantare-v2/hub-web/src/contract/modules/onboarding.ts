@@ -1,6 +1,7 @@
 import {
   onboardingCpuLimit,
   onboardingEquipmentCountMax,
+  onboardingGpuUtf16Limit,
   onboardingKitLimit,
   onboardingRevisionPattern,
   onboardingWidgetKinds,
@@ -37,12 +38,18 @@ export function isOnboarding(v: unknown): boolean {
     revision(v.settingsRevision) &&
     (v.layoutReady ? revision(v.layoutRevision) : v.layoutRevision === null) &&
     record(v.equipment) &&
-    exact(v.equipment, ["cpu", "cores", "ramGb"]) &&
+    exact(v.equipment, ["cpu", "gpu", "cores", "ramGb"]) &&
     (v.equipment.cpu === null ||
       (typeof v.equipment.cpu === "string" &&
         v.equipment.cpu.trim().length > 0 &&
         Array.from(v.equipment.cpu).length <= onboardingCpuLimit &&
         !/\p{Cc}/u.test(v.equipment.cpu))) &&
+    (v.equipment.gpu === null ||
+      (typeof v.equipment.gpu === "string" &&
+        v.equipment.gpu.trim().length > 0 &&
+        v.equipment.gpu.length <= onboardingGpuUtf16Limit &&
+        !/\p{Cc}/u.test(v.equipment.gpu) &&
+        !/[\uD800-\uDFFF]/u.test(v.equipment.gpu))) &&
     (v.equipment.cores === null ||
       (integer(v.equipment.cores) &&
         v.equipment.cores > 0 &&

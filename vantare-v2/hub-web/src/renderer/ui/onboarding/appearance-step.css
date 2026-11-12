@@ -22,7 +22,7 @@
   background: var(--ob-c-121011);
   box-shadow: none;
   font-size: calc(14 * var(--ob-unit));
-  line-height: calc(20 * var(--ob-unit));
+  line-height: 1.618034;
   font-weight: 600;
   color: var(--text-1);
 }

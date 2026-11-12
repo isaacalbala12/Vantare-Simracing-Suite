@@ -10,6 +10,9 @@
   overflow: hidden;
   background: var(--ob-c-0a0909);
   color: var(--text-1);
+  font-variant-numeric: normal;
+  /* gpui::TextStyle::default uses phi(); explicit line boxes stay unchanged. */
+  line-height: 1.618034;
   isolation: isolate;
 }
 .v-ob-backdrop {
@@ -76,7 +79,6 @@
 }
 .v-ob-column {
   position: relative;
-  z-index: 1;
   flex: 0 0 calc(600 * var(--ob-unit));
   display: flex;
   align-items: center;
@@ -174,6 +176,8 @@
   font-weight: 600;
 }
 .v-ob-progress {
+  /* GPUI paints the progress after the artwork shadow. */
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -277,7 +281,8 @@
   height: 12.244898%;
   border-radius: calc(var(--helmet-width) / 210 * 8 * var(--ob-unit));
   background: var(--ob-c-ff5b64);
-  box-shadow: 0 0 calc(var(--helmet-width) / 210 * 11 * var(--ob-unit))
+  /* GPUI's blur radius is sigma; CSS uses twice that radius. */
+  box-shadow: 0 0 calc(var(--helmet-width) / 210 * 22 * var(--ob-unit))
     calc(var(--helmet-width) / 210 * var(--ob-unit))
     color-mix(in srgb, var(--ob-c-ff3d4a) 65%, transparent);
 }

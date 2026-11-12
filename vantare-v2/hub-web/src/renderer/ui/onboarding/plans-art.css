@@ -11,7 +11,6 @@
 .v-ob-plans-heading {
   display: flex;
   justify-content: space-between;
-  align-items: center;
 }
 .v-ob-plans-heading h2 {
   margin: 0;
@@ -79,6 +78,8 @@
 }
 .v-ob-plan p {
   margin: 0;
+  display: flex;
+  gap: calc(8 * var(--ob-unit));
   font-size: calc(13 * var(--ob-unit));
   color: var(--ob-raw-f3eeee);
 }
@@ -135,6 +136,7 @@
 }
 .v-ob-launch-plan .v-button-label > span > span {
   font-size: calc(13 * var(--ob-unit));
+  font-weight: 400;
   color: var(--ob-raw-cfc6c7);
 }
 .v-ob-launch-plan b {

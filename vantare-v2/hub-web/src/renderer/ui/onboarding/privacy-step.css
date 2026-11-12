@@ -20,18 +20,20 @@
   min-width: 0;
 }
 .v-ob-consent-card strong {
+  display: block;
   font-size: calc(16 * var(--ob-unit));
   font-weight: 700;
   color: var(--text-1);
 }
 .v-ob-consent-card p {
-  margin: calc(4 * var(--ob-unit)) 0 0;
+  margin: 0;
   font-size: calc(13 * var(--ob-unit));
   color: var(--text-3);
 }
 .v-ob-consent-card .v-switch {
   width: calc(58 * var(--ob-unit));
   height: calc(32 * var(--ob-unit));
+  border-radius: var(--radius-pill);
   border: 1px solid var(--ob-c-51464a);
   background: var(--ob-c-221d1f);
   padding: calc(3 * var(--ob-unit));

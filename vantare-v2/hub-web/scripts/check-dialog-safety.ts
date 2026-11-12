@@ -114,6 +114,19 @@ export async function checkDialogZoom(page: Page, base: string) {
   await page.addInitScript(() => {
     Reflect.set(window, "dialogZoomWrites", []);
     Reflect.set(window, "dialogZoomMethods", []);
+    // Register before React mounts the safety listener on Window capture.
+    window.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key.toLowerCase() === "r" && event.ctrlKey)
+          requestAnimationFrame(() => {
+            document.documentElement.dataset.dialogReloadPrevented = String(
+              event.defaultPrevented,
+            );
+          });
+      },
+      true,
+    );
     const send = MessagePort.prototype.postMessage;
     MessagePort.prototype.postMessage = function (message, options) {
       const request = message?.request;
@@ -224,17 +237,7 @@ export async function checkDialogZoom(page: Page, base: string) {
   assert.equal(await page.locator("[data-command-palette]").count(), 0);
   assert.ok(await list.isVisible());
   await page.evaluate(() => {
-    const probe = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== "r") return;
-      window.removeEventListener("keydown", probe, true);
-      requestAnimationFrame(() => {
-        document.documentElement.dataset.dialogReloadPrevented = String(
-          event.defaultPrevented,
-        );
-      });
-    };
-    // Observe before dialog-safety's document capture listener stops the event.
-    window.addEventListener("keydown", probe, true);
+    delete document.documentElement.dataset.dialogReloadPrevented;
   });
   await page.keyboard.press("Control+r");
   await until(

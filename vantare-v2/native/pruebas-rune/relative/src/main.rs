@@ -51,7 +51,7 @@ impl Reader {
                     if let Some(photo) = subscriber.next_photo(Duration::from_millis(50)) {
                         *bus.latest.lock().unwrap() = Some(photo.snapshot);
                         if let Some(waker) = bus.waker.lock().unwrap().as_ref() {
-                            waker.wake();
+                            waker();
                         }
                     }
                 }
@@ -115,35 +115,41 @@ fn view(state: &Mosaic, _cx: &mut Cx<Mosaic>) -> El {
             .label("Vantare: comprobar clic sin foco")
             .hit()
             .size(65.0, 18.0)
-            .pin(Some(363.0), Some(31.0), None, None)
+            .pin(
+                Some(363.0),
+                Some(
+                    if state.copies[0].board.banner.is_some()
+                        && !presentation::waiting(&state.copies[0].board)
+                    {
+                        51.0
+                    } else {
+                        31.0
+                    },
+                ),
+                None,
+                None,
+            )
             .on_press(|state: &mut Mosaic| {
                 state.clicks += 1;
                 eprintln!("VANTARE_MEASUREMENT_CLICK;count={}", state.clicks);
             }),
     )
 }
-struct Encoded {
-    previous: Option<(u64, u64)>,
-}
+struct Encoded;
 impl rune::compose::Compositor<Mosaic> for Encoded {
     fn render(&mut self, frame: &mut rune::compose::Frame<'_, Mosaic>) {
         frame.draw_ui();
-        if let Some((epoch, sequence)) = frame
-            .rt
-            .state
-            .photo
-            .filter(|photo| Some(*photo) != self.previous)
-        {
-            // This is an ENCODE marker, immediately before Rune's submit path;
-            // it is not mislabeled as DXGI Present, nor as visibility.
-            vantare_profiling::latency::mark("encoded", epoch, sequence, 1);
-            self.previous = Some((epoch, sequence));
-        }
+        let (epoch, sequence) = frame.rt.state.photo.unwrap_or((0, 0));
+        // One marker for EVERY encoded frame, including repeated photos. Windows
+        // submits/presents synchronously after this callback; interval matching
+        // must prove a bijection with PresentMon before attributing pixels.
+        vantare_profiling::latency::mark("encoded", epoch, sequence, 1);
     }
     fn draws_own(&self) -> bool {
         false
     }
 }
+
 fn config(args: &[String]) -> Result<(usize, String), Box<dyn std::error::Error>> {
     let mut args = args.to_vec();
     let index = args
@@ -152,7 +158,9 @@ fn config(args: &[String]) -> Result<(usize, String), Box<dyn std::error::Error>
         .ok_or("falta --control-stdin")?;
     args.remove(index);
     let [flag, count, source_flag, source] = args.as_slice() else {
-        return Err("uso: --medicion-relative 1|4|10 --fuente pipe[:nombre] --control-stdin".into());
+        return Err(
+            "uso: --medicion-relative 1|4|10 --fuente pipe[:nombre] --control-stdin".into(),
+        );
     };
     let copies = count.parse::<usize>()?;
     if flag != "--medicion-relative" || source_flag != "--fuente" || !matches!(copies, 1 | 4 | 10) {
@@ -215,7 +223,7 @@ fn application() -> Result<(), Box<dyn std::error::Error>> {
                 })
                 .setup(setup)
                 .poll(poll)
-                .compositor(Encoded { previous: None }),
+                .compositor(Encoded),
             state,
         );
         overlay.show();

@@ -401,6 +401,8 @@ it("can review a pending host attempt after draft loading failed and still recov
   fireEvent.change(screen.getByRole("textbox", { name: text.context }), {
     target: { value: "Nota nueva" },
   });
+  await act(async () => reports.load());
+  expect(reports.fields.contextText).toBe("Nota nueva");
   expect(screen.queryByRole("checkbox", { name: text.consent })).toBeNull();
   expect(
     screen
@@ -632,9 +634,10 @@ it("describes invalid fields and kind limits outside button titles", async () =>
       .split(" ")
       .some((id) => document.getElementById(id)?.textContent === text.tooShort),
   ).toBe(true);
+  // GPUI allows saving an incomplete draft; its review still requires complete fields.
   expect(
     screen.getByRole("button", { name: text.save }).hasAttribute("disabled"),
-  ).toBe(true);
+  ).toBe(false);
   fireEvent.change(screen.getByRole("textbox", { name: text.context }), {
     target: { value: "a".repeat(reportFieldLimits[3]) },
   });

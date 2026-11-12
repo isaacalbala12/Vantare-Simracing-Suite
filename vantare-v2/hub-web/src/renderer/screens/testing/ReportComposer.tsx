@@ -10,7 +10,6 @@ export function ReportComposer({ onDiscard }: { onDiscard: () => void }) {
   const errors = reportErrors(state.fields);
   const valid =
     isReportFields(state.fields) &&
-    !Object.values(errors).some(Boolean) &&
     withReportKind(
       state.fields.contextText,
       reportSuggestion(state.fields.contextText),
@@ -29,7 +28,12 @@ export function ReportComposer({ onDiscard }: { onDiscard: () => void }) {
       consent={state.consent}
       dirty={state.dirty}
       draftExists={state.draftExists}
-      editBlocked={state.busy || !state.access.verified || state.access.blocked}
+      editBlocked={
+        state.busy ||
+        (state.available && !state.loaded && !state.error) ||
+        !state.access.verified ||
+        state.access.blocked
+      }
       requestBlocked={blocked}
       saveBlocked={blocked || !state.loaded || !valid}
       prepareBlocked={
@@ -37,6 +41,7 @@ export function ReportComposer({ onDiscard }: { onDiscard: () => void }) {
         !state.loaded ||
         !valid ||
         !required ||
+        Object.values(errors).some(Boolean) ||
         state.dirty ||
         state.screenshots.length > 0
       }

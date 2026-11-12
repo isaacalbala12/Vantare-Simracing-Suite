@@ -144,11 +144,7 @@ function useReportsState() {
     return operation;
   }
   async function load() {
-    if (
-      state.current.loaded &&
-      JSON.stringify(state.current.fields) !== state.current.saved
-    )
-      return;
+    if (JSON.stringify(state.current.fields) !== state.current.saved) return;
     const reply = await request({ method: "draft.load" });
     if (reply.method !== "draft.load")
       throw new Error("unexpected report reply");

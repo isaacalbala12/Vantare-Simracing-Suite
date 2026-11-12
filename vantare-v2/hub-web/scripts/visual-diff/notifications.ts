@@ -105,3 +105,32 @@ export const notificationScenes: Record<string, VisualScene> = {
     },
   },
 };
+
+notificationScenes["notificaciones-completa-expandida"] = {
+  mock: "notificaciones-base",
+  async prepare(page) {
+    await notificationScenes["notificaciones-completa"].prepare(page);
+    await page
+      .getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      })
+      .click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector(".v-sidebar")?.getBoundingClientRect().width ===
+        272,
+    );
+    await page
+      .getByRole("heading", { name: "Centro operativo", exact: true })
+      .waitFor();
+    await page.locator(".v-notifications-profile").nth(1).waitFor();
+    await page.mouse.move(1000, 890);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+  },
+};

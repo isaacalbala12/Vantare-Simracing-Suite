@@ -73,3 +73,24 @@ En Unix de desarrollo se conserva el archivo vacío para evitar la carrera entre
 un archivo anterior abierto y otro recreado; el SO libera el lock al cerrar.
 En ambos casos el archivo no guarda estado. El lock de guardado es distinto,
 por lo que el perfil sigue editable durante la cadena.
+
+## Resultado por ejecución (#2186)
+
+`Chain::start_checked` clasifica inicio ocupado, inválido o E/S; `start` conserva
+el texto legacy. El worker devuelve `ChainOutcome`; `finish` recoge un terminal
+sin cancelar una cadena activa, y conserva ese mismo resultado en lecturas
+posteriores. `shutdown` mantiene su contrato anterior de cancelación y join.
+Completed requiere todos los pasos seleccionados correctos: Continue tras un
+fallo no lo convierte en éxito. Se distinguen cancelación, rechazo de confianza,
+decisión caducada, fallo de cleanup y panic sin analizar mensajes.
+
+El residente publica un anillo de 32 eventos dentro de una extensión opcional
+al Status v2, con instancia por arranque y secuencias decimales exactas. Leer no
+consume. Extensión futura/dañada se descarta sin perder el Status legacy; si
+su adición excede el marco legal anterior, se omite entera. No hay ACK,
+persistencia ni agenda. Un hueco o un reinicio no demuestra éxito.
+
+`snapshot::read_checked` lee bytes una vez con el lector tipado, verifica su
+SHA-256 completo y devuelve Document/Profile por valor. Un error, versión
+protegida, perfil ausente/vacío o revisión distinta rechaza sin recargar el Store,
+reparar archivos ni volver al documento cacheado. El motor ejecuta esa instantánea.

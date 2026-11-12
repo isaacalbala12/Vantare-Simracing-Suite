@@ -36,6 +36,7 @@ const hm = (n: number) =>
 type Props = {
   schedule: CalendarSchedule | null;
   alertsState?: AlertsDocumentState;
+  windowsDisabledReason?: string;
   returnFocus?: () => HTMLElement | false;
   alerts: CalendarAlerts;
   following: readonly string[];
@@ -129,18 +130,23 @@ export function CalendarAlertsDialog(p: Props) {
                       key={channel}
                       label={label}
                       hint={
-                        channel === "sound" && !p.alerts.channels.windows
-                          ? text.soundRequiresWindows
-                          : hint
+                        channel !== "inTrack" && p.windowsDisabledReason
+                          ? p.windowsDisabledReason
+                          : channel === "sound" && !p.alerts.channels.windows
+                            ? text.soundRequiresWindows
+                            : hint
                       }
                       value={p.alerts.channels[channel]}
                       disabled={
                         disabled ||
                         legacy ||
+                        (channel !== "inTrack" && !!p.windowsDisabledReason) ||
                         (channel === "sound" && !p.alerts.channels.windows)
                       }
                       pending={p.busy}
                       onChange={(value) => {
+                        if (channel !== "inTrack" && p.windowsDisabledReason)
+                          return;
                         if (channel === "sound" && !p.alerts.channels.windows)
                           return;
                         change({
@@ -318,20 +324,31 @@ export function CalendarAlertsDialog(p: Props) {
             )}
           </div>
           <footer>
-            <Tooltip label={text.testHint}>
+            <Tooltip label={p.windowsDisabledReason ?? text.testHint}>
               <span>
                 <span id={testHint} className="v-sr-only">
-                  {text.testHint}
+                  {p.windowsDisabledReason ?? text.testHint}
                 </span>
                 <Button
-                  disabled={!p.onTest || !ready}
+                  disabled={!p.onTest || !ready || !!p.windowsDisabledReason}
                   focusableWhenDisabled
                   aria-disabled={
-                    !p.onTest || !ready || p.testBusy || p.testCooling || p.busy
+                    !p.onTest ||
+                    !ready ||
+                    !!p.windowsDisabledReason ||
+                    p.testBusy ||
+                    p.testCooling ||
+                    p.busy
                   }
                   aria-busy={p.testBusy || undefined}
                   onClick={() => {
-                    if (!p.testBusy && !p.testCooling && !p.busy && ready)
+                    if (
+                      !p.windowsDisabledReason &&
+                      !p.testBusy &&
+                      !p.testCooling &&
+                      !p.busy &&
+                      ready
+                    )
                       p.onTest?.();
                   }}
                   aria-describedby={testHint}

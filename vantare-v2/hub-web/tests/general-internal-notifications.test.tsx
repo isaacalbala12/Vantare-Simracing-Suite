@@ -46,12 +46,12 @@ it("enables the two emitted internal preferences and explains the limited Launch
   ).toBeTruthy();
   expect(
     screen.getByText(
-      /Prueba las notificaciones de Windows con «Enviar prueba»/,
+      /Este interruptor gobierna todas las notificaciones de Windows del Hub/,
     ),
   ).toBeTruthy();
   expect(
     screen.getByText(
-      /Los avisos del Calendario se configuran en Calendario › Avisos/,
+      /los canales del Calendario se configuran en Calendario › Avisos/,
     ),
   ).toBeTruthy();
   cache.clear();

@@ -8,6 +8,7 @@ import type {
 } from "../contract/generated/contract";
 export interface MockContext {
   testingData?: TestingView;
+  windowsNotificationsEnabled?: boolean;
   onboarding?: {
     completed: boolean;
     settingsRevision: string;

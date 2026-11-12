@@ -218,7 +218,7 @@ fn new_operations_are_opt_in_and_never_legacy_response_fields() {
 }
 
 #[test]
-fn account_feed_probes_an_old_core_only_once_per_epoch_and_preserves_legacy_policy() {
+fn account_feed_stops_after_three_failed_probes_per_epoch_and_preserves_legacy_policy() {
     use std::{sync::Arc, time::Duration};
     use vantare_ipc::transport::{Event, Listener};
     let photo = format!("old-account-core-{}", std::process::id());
@@ -229,13 +229,13 @@ fn account_feed_probes_an_old_core_only_once_per_epoch_and_preserves_legacy_poli
     let worker = std::thread::spawn(move || {
         let mut first = Some(first);
         let mut probes = 0;
-        for index in 0..4 {
+        for index in 0..8 {
             let mut pipe = first.take().unwrap_or_else(|| listener.instance().unwrap());
             pipe.accept().unwrap();
             let request = control::read_request(&mut pipe).unwrap();
             if matches!(request.command, control::Command::ReadAccountSession { .. }) {
                 probes += 1;
-                assert_eq!(index, 1);
+                assert!([1, 3, 5].contains(&index));
                 // Frozen core: unknown operation closes this connection without a reply.
                 continue;
             }
@@ -256,7 +256,7 @@ fn account_feed_probes_an_old_core_only_once_per_epoch_and_preserves_legacy_poli
             )
             .unwrap();
         }
-        assert_eq!(probes, 1);
+        assert_eq!(probes, 3);
     });
     let feed = control::Feed::connect_account(&photo, std::env::current_exe().unwrap()).unwrap();
     assert!(feed.wait_initial(Duration::from_secs(5)));

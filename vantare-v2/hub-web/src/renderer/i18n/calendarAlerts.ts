@@ -28,6 +28,11 @@ export const calendarAlertsText = {
   track: "En pista, si ya estás conduciendo",
   trackHint: "Un aviso discreto en tus overlays, sin sonido.",
   sound: "Sonido",
+  windowsDisabled:
+    "Las notificaciones de Windows están desactivadas en Ajustes › General",
+  windowsUnavailable:
+    "No se han podido leer las notificaciones de Windows de Ajustes › General.",
+  windowsLoading: "Leyendo las notificaciones de Windows de Ajustes › General…",
   soundRequiresWindows: "Requiere la notificación de Windows",
   soundHint: "Sonido de los avisos de Windows, solo fuera del simulador.",
   deliveryScope:
@@ -46,7 +51,7 @@ export const calendarAlertsText = {
   save: "Guardar",
   test: "Probar aviso",
   testHint:
-    "Solicita un ejemplo fijo de aviso con el Hub abierto, también con el canal Windows apagado. Requiere derechos vigentes y avisos legibles.",
+    "Solicita un ejemplo fijo con el Hub abierto. Necesita «Notificaciones de Windows» activado en Ajustes › General, derechos vigentes y avisos legibles. Se puede solicitar aunque desmarques el canal del Calendario.",
   testSending: "Solicitando el aviso de prueba…",
   testAccepted: "Aviso de prueba solicitado.",
   testUnavailable:

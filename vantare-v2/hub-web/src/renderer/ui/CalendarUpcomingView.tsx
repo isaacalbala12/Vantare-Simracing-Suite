@@ -19,6 +19,7 @@ export function CalendarUpcomingView({
   notifyWeek,
   alertsState = "ready",
   notifyDisabled,
+  notifyDisabledReason,
   notifyBusy,
   onNotifyWeek,
   onRefresh,
@@ -31,6 +32,7 @@ export function CalendarUpcomingView({
   notifyWeek: boolean;
   alertsState?: AlertsDocumentState;
   notifyDisabled: boolean;
+  notifyDisabledReason?: string;
   notifyBusy: boolean;
   onNotifyWeek: (value: boolean) => void;
   onRefresh: () => void;
@@ -71,14 +73,16 @@ export function CalendarUpcomingView({
                 <Switch
                   disabled={notifyDisabled}
                   pending={notifyBusy}
-                  onCheckedChange={(value) => onNotifyWeek(value)}
+                  onCheckedChange={(value) => {
+                    if (!notifyDisabled) onNotifyWeek(value);
+                  }}
                   label={text.notifyWeek}
                   checked={notifyWeek}
                   aria-describedby={notifyHint}
                 />
               </div>
               <p id={notifyHint} role="status">
-                {text.notifyWeekHelp}
+                {notifyDisabledReason ?? text.notifyWeekHelp}
               </p>
             </>
           ) : (

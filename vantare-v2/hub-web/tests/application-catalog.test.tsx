@@ -238,11 +238,17 @@ describe("application catalog", () => {
     await screen.findByRole("button", { name: "Editar Vantare Overlay" });
     expect(screen.getAllByText(text.installed)).toHaveLength(8);
     fireEvent.change(screen.getByRole("searchbox", { name: text.search }), {
-      target: { value: " TELE METRÍA " },
+      target: { value: " TELEMETRÍA " },
     });
     expect(screen.getByRole("button", { name: "Editar SimHub" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Editar MoTeC" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Editar Spotify" })).toBeNull();
+    fireEvent.change(screen.getByRole("searchbox", { name: text.search }), {
+      target: { value: " TELE METRÍA " },
+    });
+    expect(screen.queryByRole("button", { name: "Editar SimHub" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Editar MoTeC" })).toBeNull();
+    expect(screen.getByText(text.empty)).toBeTruthy();
     expect(document.body.textContent).not.toContain(".exe");
   });
   it("requires a selection, preserves a draft on conflict and retries its latest fields explicitly", async () => {

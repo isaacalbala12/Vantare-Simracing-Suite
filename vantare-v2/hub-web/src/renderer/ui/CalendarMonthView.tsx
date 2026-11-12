@@ -175,7 +175,7 @@ export function CalendarMonthView({
                             key={`${at}:${hour}`}
                             data-event={event || undefined}
                             style={{
-                              height: `${Math.max(1, Math.min(100, (100 * count) / 40))}%`,
+                              height: `${Math.max(10, Math.min(100, (100 * count) / 40))}%`,
                             }}
                           />
                         ))}

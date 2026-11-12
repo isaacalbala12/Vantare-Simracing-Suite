@@ -164,7 +164,7 @@
 }
 .v-calendar-month-density {
   display: flex;
-  height: 14px;
+  height: 20px;
   gap: 1px;
   align-items: flex-end;
   padding: 0 8px;
@@ -177,12 +177,13 @@
 .v-calendar-month-density i {
   flex: 1;
   min-width: 1px;
-  background: var(--text-caption);
-  opacity: 0.4;
+  border-radius: 1px 1px 0 0;
+  background: var(--text-3);
+  opacity: calc(77 / 255);
 }
 .v-calendar-month-density i[data-event] {
   background: var(--accent);
-  opacity: 0.8;
+  opacity: 1;
 }
 .v-calendar-month-count {
   margin: 0;

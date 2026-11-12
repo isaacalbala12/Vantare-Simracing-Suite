@@ -1,3 +1,11 @@
+## VANTA-141 · Pieza 4, Relative Rune compilado
+
+- Fuente Windows 5b45c86119530c3d13b750e2d85e12d88c85e9a1; Release opt3/lto=false/cgu16/debug0, Rust 1.99.1. Cruce Mac cargo-xwin 48,97 s incremental, mínimo 12,34 GiB libres; target único. Límite nuevo de Isaac 10 GiB, guardián 10,25.
+- 10 tests puros Runtime/movimiento PASS; usa Subscriber y project_cached canónicos. Sin ventana ni dispositivo gráfico en tests.
+- Decisiones de Isaac: una ventana por monitor con 1/4/10 Relative; Inter/Rajdhani/Space Mono reales idénticas; demanda real 33 ms, pérdidas sent frente a received, origin aparte para latencia.
+- PE 29.329.920 bytes; procedencia incrustada verificada. Dumpbin solo Windows y CRT redistribuible preservado. No ejecutado en servidor.
+- `encoded` no equivale a Present ni pantalla. Cruce estricto, paridad visual y lista física siguen pendientes del kit/PC. Ninguna adopción, merge o release. Evidencia CONSTRUCCION.md externa.
+
 ## VANTA-141 / #2213 - worker F, 12-nov-2026
 
 - Pieza 1: PR draft #2222, HEAD 842f440b19d084489860104c38f7cbafecd0c4ad, CI completa verde; sin integrar ni publicar.

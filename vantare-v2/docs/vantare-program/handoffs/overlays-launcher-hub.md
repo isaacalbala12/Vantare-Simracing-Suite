@@ -1,27 +1,28 @@
-## VANTA-141 · Kit Rune/GPUI en construcción (12-nov-2026)
+## VANTA-141 - Esqueleto Windows compilado y Runtime nativo verificado (12-nov-2026)
 
 [#2213](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2213),
-area:overlays-runtime / Project Vantare / Plane **En curso** verificado.
-Worker F: piezas 1–11 de INFORME-FABLE.md, secciones 8–9.5.
-Base origin/nightly b71e65cbf87b138ea5b3dbaf471f7797fc9c0bc9.
-Worktrees propios D:/VantareServer/worktrees/isa-2213-esqueleto y
-isa-2213-replay-latencia; ramas vantareapp/isa-2213-<parte>.
+area:overlays-runtime / Project Vantare / Plane **En curso**. Worker F,
+piezas 1-11 de INFORME-FABLE.md; base nightly b71e65cbf.
 
-Pieza 1: workspace independiente native/pruebas-rune. Rune y sus cuatro
-parches fijados a d5338988a7c1b3377adb60853815b6d0843dae7c. Rust 1.99.1
-instalado y verificado; native/rust-toolchain.toml intacto. Árbol Windows:
-185 dependencias normales, 186 con hola; lock multiplataforma: 433 paquetes.
-El reinicio confirmado por Isaac cortó el build inicial. Logs conservados,
-sin atribuirle un tiempo limpio completado. Reanudado por la misma cola,
--j 2 y sccache=0, usando la raíz de targets aislada documentada en D:.
-Aún sin exe ni test Runtime verificado. Piezas 2+3 preparadas localmente;
-3 tests Python sintéticos PASS, compilación y replay real pendientes.
+Por orden de Isaac, Rune se compila en el Mac; el build del servidor se
+cancelo tras el reinicio y por compartir sus 16 GiB con otros workers.
+Target unico ~/target-isa-2213-rune; se para al bajar de 18 GiB libres para
+no alcanzar el minimo de 15 GiB. Rust 1.99.1, perfil Release sin debuginfo,
+cuatro jobs, sccache desactivado. No se toca el toolchain del producto.
 
-Parada gráfica completa: ningún ejecutable gráfico ni tooling headless Rune
-lanzado. Kit no listo; sin PR/CI, merge, promoción o release verificados.
-Evidencia por pieza: D:/VantareServer/evidence/rune-vs-gpui/CONSTRUCCION.md.
-Siguiente: confirmar build de hola, test Runtime, tiempos/tamaño y PR draft;
-después cerrar piezas 2+3. La prueba física corresponde al PC de Isaac.
+Fuente del primer binario: 814cb20db en bare Mac. Windows x64 compila;
+Cargo 2m01s, intento inicial con preparacion xwin 158,52 s; no se usa aun
+como tiempo limpio comparable. Exe 26.580.480 bytes, SHA256
+9bb4c5f8796110bd114692d97af07055129818127033e6431319c70472a45722.
+Test Runtime nativo: 1/1 PASS; compilacion 1m29s, ejecucion 0,00s. Ningun
+binario grafico ejecutado en servidor ni Mac. Minimos libres: 25,04 GiB
+Windows / 24,19 GiB test nativo. Dumpbin exige incluir VCRUNTIME140.dll.
+
+Piezas 2+3: checkpoint 2837d460e, preparado en el Mac, sin build/replay aun.
+Analizador: 12 casos sinteticos en desarrollo; no hay mediciones de producto.
+Evidencia: D:/VantareServer/evidence/rune-vs-gpui/CONSTRUCCION.md.
+Kit incompleto; sin PR, CI, merge, promocion o release. Siguiente: fmt/Clippy,
+medidas limpia/incremental del esqueleto, PR draft pieza 1 y replay real.
 
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 

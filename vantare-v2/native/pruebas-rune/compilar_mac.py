@@ -31,7 +31,11 @@ def stop_group(process):
     for sig, timeout in ((signal.SIGINT, 20), (signal.SIGTERM, 5), (signal.SIGKILL, 5)):
         if process.poll() is not None:
             return
-        os.killpg(process.pid, sig)
+        try:
+            os.killpg(process.pid, sig)
+        except ProcessLookupError:
+            process.wait()
+            return
         try:
             process.wait(timeout=timeout)
             return
@@ -70,6 +74,8 @@ def main():
                XWIN_CACHE_DIR=str(Path.home() / "orq/vanta141/xwin-cache"))
     env.update(RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="", SCCACHE_DISABLE="1")
     env["PATH"] = str(Path.home() / "orq/vanta141/tools") + ":/opt/homebrew/opt/llvm/bin:" + env["PATH"]
+    source_head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    source_status = subprocess.check_output(["git", "status", "--porcelain"], text=True)
     initial_free = free_bytes()
     minimum_free = initial_free
     start = time.monotonic()
@@ -93,7 +99,11 @@ def main():
         finally:
             if process is not None and process.poll() is None:
                 stop_group(process)
-    result = {"machine": socket.gethostname(), "platform": platform.platform(),
+    final_head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    final_status = subprocess.check_output(["git", "status", "--porcelain"], text=True)
+    if (final_head, final_status) != (source_head, source_status):
+        reason = "source_changed_during_build"
+    result = {"source_head": source_head, "source_dirty": bool(source_status), "machine": socket.gethostname(), "platform": platform.platform(),
               "architecture": platform.machine(), "target": str(TARGET), "command": command,
               "elapsed_s": time.monotonic() - start, "exit": process.returncode if process else None,
               "reason": reason, "initial_free_gib": initial_free / GIB,

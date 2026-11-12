@@ -317,3 +317,148 @@ it.each(["delta", "pedals"] as const)(
     expect(state.execute).not.toHaveBeenCalled();
   },
 );
+
+function deltaItem(size: "pill" | "bar" | "expanded" = "pill") {
+  const item = instance("delta");
+  if (item.settings?.kind !== "delta") throw new Error("Missing Delta");
+  item.settings.size = size;
+  return item;
+}
+it.each([
+  ["pill", "Cápsula"],
+  ["bar", "Barra"],
+  ["expanded", "Ampliado"],
+] as const)("writes only the Delta size %s", async (size, label) => {
+  mount(deltaItem(size === "pill" ? "bar" : "pill"));
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("combobox", { name: t.deltaFormat }));
+  await user.click(await screen.findByRole("option", { name: label }));
+  expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+    method: "studio.instance",
+    id: "widget-1",
+    baseRevision: state.view.revision,
+    patch: { field: "settings", value: { kind: "delta", size } },
+  });
+});
+it("selects the expanded Delta with keyboard", async () => {
+  mount(deltaItem());
+  const user = userEvent.setup();
+  await user.tab();
+  expect(document.activeElement).toBe(
+    screen.getByRole("combobox", { name: t.deltaFormat }),
+  );
+  await user.keyboard("{ArrowDown}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { selected: true })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{End}");
+  await waitFor(() =>
+    expect(screen.getByRole("option", { name: t.deltaExpanded })).toBe(
+      document.activeElement,
+    ),
+  );
+  await user.keyboard("{Enter}");
+  expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+    method: "studio.instance",
+    id: "widget-1",
+    baseRevision: state.view.revision,
+    patch: { field: "settings", value: { kind: "delta", size: "expanded" } },
+  });
+});
+it("does not offer a difference bar for the capsule", () => {
+  mount(deltaItem());
+  expect(
+    screen.queryByRole("switch", { name: t.deltaDifferenceBar }),
+  ).toBeNull();
+});
+it.each(["bar", "expanded"] as const)(
+  "reads and writes the difference bar for %s",
+  async (size) => {
+    const item = deltaItem(size);
+    if (item.settings?.kind !== "delta") throw new Error("Missing Delta");
+    item.settings.showBar = false;
+    mount(item);
+    const user = userEvent.setup();
+    const control = screen.getByRole("switch", { name: t.deltaDifferenceBar });
+    expect(control.getAttribute("aria-checked")).toBe("false");
+    await user.click(control);
+    expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+      method: "studio.instance",
+      id: "widget-1",
+      baseRevision: state.view.revision,
+      patch: { field: "settings", value: { kind: "delta", showBar: true } },
+    });
+    expect(
+      Boolean(
+        control.compareDocumentPosition(
+          screen.getByRole("combobox", { name: t.widgetLook }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+  },
+);
+it("hides Delta format and bar in Eficiencia", () => {
+  const item = deltaItem("bar");
+  if (!item.settings) throw new Error("Missing Delta");
+  item.settings.designSystem = "eficiencia";
+  mount(item);
+  expect(screen.queryByRole("combobox", { name: t.deltaFormat })).toBeNull();
+  expect(
+    screen.queryByRole("switch", { name: t.deltaDifferenceBar }),
+  ).toBeNull();
+});
+it.each(["locked", "unverified"])(
+  "blocks the Delta controls when %s",
+  async (reason) => {
+    const item = deltaItem("bar");
+    item.locked = reason === "locked";
+    if (reason === "unverified") state.view.plan = "unverified";
+    mount(item);
+    const user = userEvent.setup();
+    const format = screen.getByRole("combobox", { name: t.deltaFormat });
+    expect(format.hasAttribute("disabled")).toBe(true);
+    const control = screen.getByRole("switch", { name: t.deltaDifferenceBar });
+    expect(
+      control.parentElement?.querySelector<HTMLInputElement>(
+        "input[type=checkbox]",
+      )?.disabled,
+    ).toBe(true);
+    expect(control.getAttribute("aria-busy")).toBeNull();
+    await user.click(control);
+    expect(state.execute).not.toHaveBeenCalled();
+  },
+);
+it("preserves the difference bar focus and blocks sends while saving", async () => {
+  const item = deltaItem("bar"),
+    mounted = mount(item),
+    user = userEvent.setup();
+  const control = screen.getByRole("switch", { name: t.deltaDifferenceBar });
+  for (let index = 0; index < 12 && document.activeElement !== control; index++)
+    await user.tab();
+  expect(document.activeElement).toBe(control);
+  state.pending = true;
+  mounted.rerender(
+    <CSPProvider disableStyleElements>
+      <AppearanceInspector item={item} />
+    </CSPProvider>,
+  );
+  expect(
+    control.parentElement?.querySelector<HTMLInputElement>(
+      "input[type=checkbox]",
+    )?.disabled,
+  ).toBe(false);
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  await user.keyboard(" ");
+  expect(document.activeElement).toBe(control);
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it("does not show Delta values for a protected layout", () => {
+  state.view.state = "protected";
+  mount(deltaItem("bar"));
+  expect(screen.queryByRole("combobox", { name: t.deltaFormat })).toBeNull();
+  expect(
+    screen.queryByRole("switch", { name: t.deltaDifferenceBar }),
+  ).toBeNull();
+});

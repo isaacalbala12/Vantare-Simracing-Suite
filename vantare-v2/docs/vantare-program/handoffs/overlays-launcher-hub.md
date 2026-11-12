@@ -1,3 +1,11 @@
+## VANTA-141 · Cadencia real verificada con replay
+
+- Fuente c46772dd5ed51b603d699e36c43ffa50de3e2916: replay real Mac, 1.663 fotos enviadas por pipe y 1.663 recibidas frente a 3.840 publicaciones de origen, sin pérdida, en 65,66 s. Demanda Relative real de 33 ms. Las omisiones deliberadas no invalidan la ronda.
+- IPC/profiling 104 PASS y 1 ignorado preexistente; contador 2/2, Python 4/4, clippy estricto de IPC/profiling/contador all-targets pasan. Solo Release, sin gráfica.
+- B-Rune actualizado compiló para Windows en Mac, 48,97 s incremental; Runtime/movimiento 10/10, fmt y clippy pasan. PR draft #2238, HEAD ff6be1fd963d8f34e26faead23c2ba995fa08229, CI pendiente. No ejecutado en servidor.
+- Nuevo mínimo Mac autorizado: 10 GiB, target único, una compilación a la vez, debug=0 para todo. Guardián detiene a 10,25 GiB. Bucle de otro worker fuera del Mac por decisión de Isaac.
+- captura.lock sigue presente: no nuevos builds/tests Rust en servidor. Kit incompleto, sin merge ni release ni resultados de pantalla.
+
 ## VANTA-141 / #2213 · correcciones de método autorizadas por Isaac
 
 - Fuentes: conservar Inter, Rajdhani y Space Mono por celda, con los mismos ficheros que el Relative productivo.

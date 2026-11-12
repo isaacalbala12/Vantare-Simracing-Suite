@@ -19,7 +19,7 @@ El contador no enlaza Rune/GPUI. Arranca el núcleo real con stdin controlado,
 una raíz de datos nueva y `VANTARE_REPLAY_WAIT_SUBSCRIBER=1`: la reproducción
 no comienza hasta negociar demanda. El núcleo conserva los tiempos del
 corpus. Tras 65 s cierra stdin y concede 30 s de cierre; compara todas las
-identidades emitidas y recibidas. Cualquier pérdida anula la ejecución,
+identidades realmente enviadas por el pipe y recibidas. Cualquier pérdida anula la ejecución,
 aunque los contadores o la última secuencia coincidan.
 
 Las compilaciones de medición se realizan en el Mac con el guardián de espacio
@@ -44,3 +44,13 @@ El contador usa esa misma demanda por defecto. `--cada-foto` solicita todas
 solo como prueba de estrés separada: sus resultados nunca se mezclan con la
 campaña principal. El resultado anterior de 3.840/3.840 corresponde a ese modo
 sin limitación, no a la nueva campaña con la cadencia real.
+
+Comprobación real con la demanda principal, fuente
+`c46772dd5ed51b603d699e36c43ffa50de3e2916`: 1.663 enviadas por pipe y
+1.663 recibidas; 3.840 publicaciones de origen separadas. 65,66 s, sin pérdidas.
+IPC/profiling 104 PASS y 1 ignorado preexistente; contador 2/2 y Python 4/4.
+Los tres paquetes pasan clippy all-targets -D warnings en Release.
+
+Límite de espacio autorizado actualizado: mínimo 10 GiB en Mac, guardian
+10,25 GiB, target único, una compilación cada vez y debug=0 en dependencias.
+GPUI y fast se compilan en Windows por la cola, -j 2 y captura.lock respetado.

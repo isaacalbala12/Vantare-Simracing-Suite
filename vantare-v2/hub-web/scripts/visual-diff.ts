@@ -107,6 +107,7 @@ for (const scheme of schemes) {
             scene,
             scheme,
             destination,
+            dimensions: [width, height],
             capture: () => capture(adapter, scheme, destination),
           }),
         );
@@ -151,6 +152,7 @@ for (const scheme of schemes) {
             scene,
             scheme,
             destination,
+            dimensions: [width, height],
             capture: async () => current,
             invalidReason,
             suppliedCapture: Boolean(currentOnly),

@@ -919,7 +919,16 @@ describe("Rendimiento y atajos over the simulated host", () => {
       screen.getByRole("heading", { name: "01 Globales con el juego" }),
     ).toBeTruthy();
     expect(screen.getByRole("heading", { name: "02 En el Hub" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "03 En Studio" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "03 En Studio" })).toBeNull();
+    for (const action of [
+      "save",
+      "undo",
+      "redo",
+      "duplicate",
+      "delete",
+      "move",
+    ] as const)
+      expect(screen.queryByText(t(`shortcuts.${action}`))).toBeNull();
     expect(screen.getByText("Buscar en Vantare")).toBeTruthy();
     for (const label of ["Ctrl +", "Ctrl −", "Ctrl 0", "Ctrl Mayús N"])
       expect(screen.getByText(label)).toBeTruthy();

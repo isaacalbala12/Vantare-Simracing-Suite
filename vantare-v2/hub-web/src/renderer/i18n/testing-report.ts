@@ -9,6 +9,10 @@ export const reportText = {
   kind: "Tipo de informe",
   kindLimit:
     "No cabe el tipo de informe en el contexto. Reduce el texto antes de cambiarlo.",
+  loadDirty: "Guarda o descarta los cambios antes de cargar otro borrador.",
+  tooShort: "Hacen falta al menos tres caracteres.",
+  tooLong: "El texto es demasiado largo.",
+  invalidText: "El texto contiene caracteres no permitidos.",
   notes:
     "Estas notas se guardan solo en este equipo y no se envían. El envío contiene los campos estructurados permitidos.",
   screenshots: "Capturas",

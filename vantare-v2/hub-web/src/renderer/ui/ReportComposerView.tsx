@@ -1,3 +1,4 @@
+import { useId, useLayoutEffect, useRef } from "react";
 import type {
   ReportFields,
   ReportPreviewView,
@@ -20,6 +21,7 @@ import "./testing-report.css";
 
 interface Props {
   fields: ReportFields;
+  errors: Partial<Record<keyof ReportFields, string>>;
   screenshots: ReportScreenshot[];
   preview?: ReportPreviewView;
   consent: boolean;
@@ -44,16 +46,53 @@ interface Props {
   onRemove: (id: string) => void;
 }
 export function ReportComposerView(p: Props) {
+  const kindHelp = useId();
+  const loadHelp = useId();
+  const root = useRef<HTMLDivElement>(null);
+  const lastFocus = useRef<HTMLElement | null>(null);
+  const previousPreview = useRef(p.preview);
+  useLayoutEffect(() => {
+    const newPreview = p.preview && previousPreview.current !== p.preview;
+    const lostFocus =
+      lastFocus.current &&
+      document.activeElement === document.body &&
+      !p.requestBlocked;
+    const removedControl = lastFocus.current && !lastFocus.current.isConnected;
+    if (newPreview || removedControl || lostFocus) {
+      const target = root.current?.querySelector<HTMLElement>(
+        newPreview
+          ? ".v-testing-report-preview"
+          : ".v-testing-report-preview, .v-input:not(:disabled)",
+      );
+      target?.focus();
+    }
+    previousPreview.current = p.preview;
+  });
   return (
-    <div className="v-testing-report">
+    <div
+      className="v-testing-report"
+      ref={root}
+      onFocusCapture={(event) => {
+        lastFocus.current = event.target as HTMLElement;
+      }}
+    >
       <div className="v-testing-report-draft-actions">
-        <Button disabled={p.requestBlocked} onClick={p.onLoad}>
+        <Button
+          disabled={p.requestBlocked || p.dirty}
+          aria-describedby={p.dirty ? loadHelp : undefined}
+          onClick={p.onLoad}
+        >
           {text.loadDraft}
         </Button>
         <Button disabled={p.requestBlocked} onClick={p.onRetry}>
           {text.pending}
         </Button>
       </div>
+      {p.dirty && (
+        <p className="v-testing-fine-print" id={loadHelp}>
+          {text.loadDirty}
+        </p>
+      )}
       <TestingComposeCard title={text.compose}>
         <div className="v-testing-report-module">
           <Select
@@ -63,11 +102,17 @@ export function ReportComposerView(p: Props) {
             disabled={p.editBlocked}
             onChange={(module) => p.onEdit({ module })}
           />
-          <fieldset className="v-testing-report-kind" aria-label={text.kind}>
+          <fieldset
+            className="v-testing-report-kind"
+            aria-label={text.kind}
+            aria-describedby={
+              !p.canChooseBug || !p.canChooseSuggestion ? kindHelp : undefined
+            }
+          >
             <Button
               aria-pressed={!p.suggestion}
               disabled={p.editBlocked || !p.canChooseBug}
-              title={!p.canChooseBug ? text.kindLimit : undefined}
+              aria-describedby={!p.canChooseBug ? kindHelp : undefined}
               onClick={() => p.onKind(false)}
             >
               {text.bug}
@@ -75,20 +120,27 @@ export function ReportComposerView(p: Props) {
             <Button
               aria-pressed={p.suggestion}
               disabled={p.editBlocked || !p.canChooseSuggestion}
-              title={!p.canChooseSuggestion ? text.kindLimit : undefined}
+              aria-describedby={!p.canChooseSuggestion ? kindHelp : undefined}
               onClick={() => p.onKind(true)}
             >
               {text.suggestion}
             </Button>
           </fieldset>
         </div>
+        {(!p.canChooseBug || !p.canChooseSuggestion) && (
+          <p id={kindHelp} className="v-error">
+            {text.kindLimit}
+          </p>
+        )}
         <Input
+          error={p.errors.actionText}
           label={text.action}
           value={p.fields.actionText}
           disabled={p.editBlocked}
           onChange={(e) => p.onEdit({ actionText: e.currentTarget.value })}
         />
         <Textarea
+          error={p.errors.observedText}
           label={text.observed}
           value={p.fields.observedText}
           disabled={p.editBlocked}
@@ -97,12 +149,14 @@ export function ReportComposerView(p: Props) {
         <TestingFinePrint>{text.notes}</TestingFinePrint>
         <TestingFieldPair>
           <Textarea
+            error={p.errors.expectedText}
             label={text.expected}
             value={p.fields.expectedText}
             disabled={p.editBlocked}
             onChange={(e) => p.onEdit({ expectedText: e.currentTarget.value })}
           />
           <Textarea
+            error={p.errors.contextText}
             label={text.context}
             value={p.fields.contextText}
             disabled={p.editBlocked}
@@ -161,6 +215,8 @@ export function ReportComposerView(p: Props) {
           <section
             className="v-testing-report-preview"
             aria-label={text.preview}
+            aria-live="polite"
+            tabIndex={-1}
           >
             <strong>{text.preview}</strong>
             <TestingFinePrint>{`${text.screenshots} · ${p.preview.screenshots.length}/${reportScreenshotLimits.count}`}</TestingFinePrint>

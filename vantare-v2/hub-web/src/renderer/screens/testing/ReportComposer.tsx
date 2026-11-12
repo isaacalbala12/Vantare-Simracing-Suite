@@ -1,13 +1,20 @@
 import { isReportFields } from "../../../contract/testing-validation";
 import { ReportComposerView } from "../../ui/ReportComposerView";
 import { useReports } from "./ReportsState";
-import { reportSuggestion, withReportKind } from "./report-kind";
+import { reportErrors, reportSuggestion, withReportKind } from "./report-kind";
 
 export function ReportComposer({ onDiscard }: { onDiscard: () => void }) {
   const state = useReports();
   const blocked = !state.available || state.busy;
   const run = (action: () => Promise<void>) => void action().catch(() => {});
-  const valid = isReportFields(state.fields);
+  const errors = reportErrors(state.fields);
+  const valid =
+    isReportFields(state.fields) &&
+    !Object.values(errors).some(Boolean) &&
+    withReportKind(
+      state.fields.contextText,
+      reportSuggestion(state.fields.contextText),
+    ) !== undefined;
   const required = [
     state.fields.actionText,
     state.fields.expectedText,
@@ -16,6 +23,7 @@ export function ReportComposer({ onDiscard }: { onDiscard: () => void }) {
   return (
     <ReportComposerView
       fields={state.fields}
+      errors={errors}
       screenshots={state.screenshots}
       preview={state.preview}
       consent={state.consent}

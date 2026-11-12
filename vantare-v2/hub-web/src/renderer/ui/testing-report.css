@@ -19,7 +19,7 @@
 .v-testing-report-kind .v-button[aria-pressed="true"] {
   background: var(--surface-3);
 }
-.v-testing-report input {
+.v-testing-report input.v-input {
   min-height: 38px;
 }
 .v-testing-report textarea {

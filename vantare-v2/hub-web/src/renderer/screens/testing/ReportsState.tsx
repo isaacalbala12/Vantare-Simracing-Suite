@@ -27,6 +27,7 @@ import { Button } from "../../ui/Button";
 import { CloseUnsavedReportDialog } from "../../ui/DiscardReportDialog";
 import { useToastManager } from "../../ui/Layers";
 import { testingText as text } from "./es";
+import { reportSuggestion, withReportKind } from "./report-kind";
 import { testingRequest } from "./TestingRequests";
 import { useTriageState } from "./TriageState";
 
@@ -143,16 +144,17 @@ function useReportsState() {
     return operation;
   }
   async function load() {
-    const baseline = JSON.parse(state.current.saved) as ReportFields;
+    if (
+      state.current.loaded &&
+      JSON.stringify(state.current.fields) !== state.current.saved
+    )
+      return;
     const reply = await request({ method: "draft.load" });
     if (reply.method !== "draft.load")
       throw new Error("unexpected report reply");
-    const fields = { ...reply.value.fields };
-    for (const key of Object.keys(fields) as (keyof ReportFields)[]) {
-      if (state.current.fields[key] !== baseline[key])
-        fields[key] = state.current.fields[key];
-    }
-    setFields(fields);
+    setPreview(undefined);
+    setConsent(false);
+    setFields(reply.value.fields);
     setSaved(JSON.stringify(reply.value.fields));
     setLoaded(true);
     setScreenshots(reply.value.screenshots);
@@ -161,12 +163,21 @@ function useReportsState() {
     setLegacy(reply.value.legacy);
   }
   async function save() {
-    if (
-      !state.current.loaded ||
-      JSON.stringify(state.current.fields) === state.current.saved
-    )
-      return;
+    if (!state.current.loaded) return;
+    const snapshot = JSON.stringify(state.current.fields);
+    if (snapshot === state.current.saved) return;
     const fields = structuredClone(state.current.fields);
+    const contextText = withReportKind(
+      fields.contextText,
+      reportSuggestion(fields.contextText),
+    );
+    if (contextText === undefined) {
+      setError(true);
+      setFailure("rejected");
+      throw new HostFailure({ kind: "rejected" });
+    }
+    fields.contextText = contextText;
+    if (JSON.stringify(fields) === state.current.saved) return;
     if (!isReportFields(fields)) {
       setError(true);
       setFailure("rejected");
@@ -179,6 +190,10 @@ function useReportsState() {
     setDraftExists(reply.value.exists);
     setMessage(reply.value.message);
     setLegacy(reply.value.legacy);
+    if (JSON.stringify(state.current.fields) === snapshot) {
+      state.current.fields = fields;
+      setFields(fields);
+    }
     state.current.saved = JSON.stringify(fields);
     setSaved(state.current.saved);
     setPreview(undefined);

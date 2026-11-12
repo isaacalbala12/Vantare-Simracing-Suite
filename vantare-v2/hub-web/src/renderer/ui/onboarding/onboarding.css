@@ -785,3 +785,10 @@
   box-shadow: 0 calc(40 * var(--ob-unit)) calc(200 * var(--ob-unit))
     color-mix(in srgb, var(--ob-raw-280008) 45%, transparent);
 }
+
+.v-ob-kit-widget > .v-widget-thumbnail {
+  display: block;
+}
+.v-ob-kit-widget > .v-widget-thumbnail[data-fallback="true"] {
+  opacity: 1;
+}

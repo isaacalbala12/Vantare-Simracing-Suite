@@ -4,7 +4,7 @@ import {
 } from "../../../contract/generated/onboarding";
 import sizes from "../../assets/onboarding/previews.json";
 import { onboardingText as t } from "../../i18n/onboarding";
-import { WidgetArtwork } from "../home/LayoutPreview";
+import { WidgetThumb } from "../widgets/WidgetThumb";
 
 // Frozen art.rs placements and per-widget preview scales, in design pixels.
 const placement: Record<WidgetKind, readonly [number, number, number]> = {
@@ -40,13 +40,14 @@ export function KitArt({
         <span className="v-ob-kit-total">{label.toUpperCase()}</span>
       </div>
       <div className="v-ob-kit-screen">
-        {widgets.map(({ kind }) => {
+        {widgets.map(({ kind, label }) => {
           const [x, y, scale] = placement[kind];
           const [width, height] = sizes[kind];
           return (
-            <WidgetArtwork
+            <div
               key={kind}
-              kind={kind}
+              role="img"
+              aria-label={label}
               className="v-ob-kit-widget"
               style={{
                 position: "absolute",
@@ -55,7 +56,9 @@ export function KitArt({
                 width: `calc(${width * scale} * var(--ob-unit))`,
                 height: `calc(${height * scale} * var(--ob-unit))`,
               }}
-            />
+            >
+              <WidgetThumb kind={kind} fit="fill" />
+            </div>
           );
         })}
       </div>

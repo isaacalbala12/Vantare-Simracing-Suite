@@ -30,7 +30,16 @@ const PICTURES: &[&[u8]] = &[
     include_bytes!("../assets/engineer.svg"),
     include_bytes!("../assets/palette.svg"),
 ];
-pub const NAV: [&str; 8] = ["Inicio", "Launcher", "Studio", "Roadmap", "Testing Center"];
+pub const NAV: [&str; 8] = [
+    "Inicio",
+    "Launcher",
+    "Studio",
+    "Roadmap",
+    "Testing Center",
+    "Calendario",
+    "Estrategia",
+    "Ingeniero",
+];
 struct Assets {
     _cache: ImageCache,
     images: Vec<Image>,

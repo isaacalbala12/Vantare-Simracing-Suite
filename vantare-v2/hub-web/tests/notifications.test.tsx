@@ -257,7 +257,13 @@ function NoticeSeed({ input }: { input: NoticeInput }) {
 }
 function NavigationProbe() {
   const section = useUi((state) => state.section);
-  return <output aria-label="Sección actual">{section}</output>;
+  const requested = useUi((state) => state.testingReportsRequested);
+  return (
+    <>
+      <output aria-label="Sección actual">{section}</output>
+      <output aria-label="Lista solicitada">{String(requested)}</output>
+    </>
+  );
 }
 function NotificationsHarness({
   access,
@@ -363,4 +369,57 @@ it("returns Beta to All when tester access is lost", async () => {
   expect(screen.queryByRole("button", { name: "Beta" })).toBeNull();
   expect(screen.queryByText(notice.title)).toBeNull();
   expect(screen.getByText("0 sin leer")).toBeTruthy();
+});
+
+it("activates a full notification with Enter/Space and keeps inner actions independent", async () => {
+  const user = userEvent.setup();
+  const record = publish({ records: [], sequence: 0 }, notice, Date.now())
+    .records[0];
+  const open = vi.fn(),
+    read = vi.fn();
+  render(
+    <NotificationsLayout
+      records={[record]}
+      tester
+      compact={false}
+      filter="all"
+      onFilter={vi.fn()}
+      onRead={read}
+      onClear={vi.fn()}
+      onOpen={open}
+      onFull={vi.fn()}
+    />,
+  );
+  const row = screen.getByRole("button", { name: notice.title });
+  row.focus();
+  await user.keyboard("{Enter}");
+  expect(open).toHaveBeenCalledExactlyOnceWith(record.id, "launcher");
+  open.mockClear();
+  await user.keyboard(" ");
+  expect(open).toHaveBeenCalledExactlyOnceWith(record.id, "launcher");
+  open.mockClear();
+  await user.click(screen.getByRole("button", { name: "Ver Launcher" }));
+  expect(open).toHaveBeenCalledExactlyOnceWith(record.id, "launcher");
+  open.mockClear();
+  await user.click(screen.getByRole("button", { name: "Marcar leído" }));
+  expect(read).toHaveBeenCalledExactlyOnceWith(record.id);
+  expect(open).not.toHaveBeenCalled();
+});
+
+it("routes a report notice to the report list rather than the default tester summary", async () => {
+  const access = {
+    ...host.offline.access,
+    verified: true,
+    blocked: false,
+    tester: true,
+  };
+  render(
+    <NotificationsHarness
+      access={access}
+      input={{ ...notice, source: "report", action: "testing:reports" }}
+    />,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Ver informes" }));
+  expect(screen.getByLabelText("Sección actual").textContent).toBe("testing");
+  expect(screen.getByLabelText("Lista solicitada").textContent).toBe("true");
 });

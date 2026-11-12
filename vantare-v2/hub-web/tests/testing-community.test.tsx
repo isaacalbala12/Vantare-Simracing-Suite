@@ -15,6 +15,7 @@ import {
   SectionChromeProvider,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
+import { UiProvider } from "../src/renderer/app/UiState";
 import { testingCommunityText as text } from "../src/renderer/i18n/testing-community";
 import { testingTriageText as triageText } from "../src/renderer/i18n/testing-triage";
 import { TestingCommunity } from "../src/renderer/screens/testing/Community";
@@ -167,10 +168,12 @@ it("shares the local editor across Community and Reports while keeping Diagnosti
       <HostProvider>
         <ToastProvider>
           <ReportsProvider>
-            <SectionChromeProvider>
-              <SectionTabsSlot />
-              <TestingEntry />
-            </SectionChromeProvider>
+            <UiProvider>
+              <SectionChromeProvider>
+                <SectionTabsSlot />
+                <TestingEntry />
+              </SectionChromeProvider>
+            </UiProvider>
           </ReportsProvider>
         </ToastProvider>
       </HostProvider>

@@ -110,6 +110,12 @@ export function NotificationsLayout({
                   className={`v-notification v-notification--${record.severity}`}
                   data-unread={record.unread}
                 >
+                  <button
+                    type="button"
+                    className="v-notification-activate"
+                    aria-label={record.title}
+                    onClick={() => onOpen(record.id, record.action)}
+                  />
                   <span className="v-notification-icon">
                     <Icon name={icons[record.source]} />
                   </span>

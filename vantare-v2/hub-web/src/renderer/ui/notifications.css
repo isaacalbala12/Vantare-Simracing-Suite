@@ -157,10 +157,28 @@
   margin: 12px 0 0;
 }
 .v-notification {
+  position: relative;
   display: flex;
   gap: 12px;
   padding: 12px;
   border-radius: 8px;
+}
+.v-notification-activate {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  cursor: pointer;
+}
+.v-notification-actions {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+.v-notification-actions > button {
+  pointer-events: auto;
 }
 .v-notification[data-unread="true"] {
   background: color-mix(in srgb, var(--text-on-accent) 3.5%, transparent);

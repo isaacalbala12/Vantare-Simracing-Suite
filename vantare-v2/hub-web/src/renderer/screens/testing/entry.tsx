@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
+import { useUi } from "../../app/UiState";
 import { TestingQuestionnairesRail } from "../../ui/TestingQuestionnairesView";
 import { TestingSummaryRail } from "../../ui/TestingSummaryView";
 import { TestingCommunity } from "./Community";
@@ -12,13 +13,24 @@ import { TestingRail } from "./TestingRail";
 import { useTestingTabs } from "./TestingTabs";
 
 export default function TestingEntry() {
-  const { access, participation } = useReports();
+  const { access, participation, refresh, available, busy } = useReports();
+  const requested = useUi((state) => state.testingReportsRequested);
+  const consume = useUi((state) => state.consumeTestingReports);
   // GPUI's rail uses its loaded-contribution count for both captions.
   const railCount = participation.reports.length;
-  const { tabs, active, change } = useTestingTabs(access);
+  const { tabs, active: selected, change } = useTestingTabs(access);
+  const active = requested ? "reports" : selected;
   const [reportView, setReportView] =
     useState<Exclude<ReportsView, "diagnostic">>("local");
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
+  useEffect(() => {
+    if (!requested) return;
+    setDiagnosticOpen(false);
+    setReportView("list");
+    change("reports");
+    consume();
+    if (available && !busy) void refresh();
+  }, [requested, change, consume, available, busy, refresh]);
   function showReports(view: Exclude<ReportsView, "diagnostic">) {
     setDiagnosticOpen(false);
     setReportView(view);
@@ -51,7 +63,9 @@ export default function TestingEntry() {
       <SectionPanel activeTab={active}>
         {diagnosticOpen || active === "reports" ? (
           <Reports
-            view={diagnosticOpen ? "diagnostic" : reportView}
+            view={
+              requested ? "list" : diagnosticOpen ? "diagnostic" : reportView
+            }
             onViewChange={changeReportView}
           />
         ) : active === "summary" ? (

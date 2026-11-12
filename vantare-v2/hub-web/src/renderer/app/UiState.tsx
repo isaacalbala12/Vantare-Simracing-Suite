@@ -18,7 +18,9 @@ interface UiState {
   railCollapsed: boolean;
   commandsOpen: boolean;
   noticesOpen: boolean;
-  navigate: (section: Section) => void;
+  testingReportsRequested: boolean;
+  consumeTestingReports: () => void;
+  navigate: (section: Section, target?: "reports") => void;
   toggleSidebar: () => void;
   adaptSidebar: (width: number) => void;
   toggleRail: () => void;
@@ -33,7 +35,14 @@ function createUi() {
     railCollapsed: false,
     commandsOpen: false,
     noticesOpen: false,
-    navigate: (section) => set({ section, commandsOpen: false }),
+    testingReportsRequested: false,
+    consumeTestingReports: () => set({ testingReportsRequested: false }),
+    navigate: (section, target) =>
+      set({
+        section,
+        commandsOpen: false,
+        testingReportsRequested: section === "testing" && target === "reports",
+      }),
     toggleSidebar: () =>
       set((state) => ({
         sidebarCollapsed: !state.sidebarCollapsed,

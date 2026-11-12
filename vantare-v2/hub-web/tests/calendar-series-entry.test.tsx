@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
@@ -14,6 +20,13 @@ const model = vi.hoisted(() => ({
   view: undefined as CalendarView | undefined,
   now: 0,
   failure: undefined as string | undefined,
+  preferenceFailure: undefined as
+    | "coreUnavailable"
+    | "calendarConflict"
+    | "calendarScheduleUnavailable"
+    | undefined,
+  preferenceIntent: undefined as "utc" | "alerts" | undefined,
+  discard: vi.fn(),
   reload: vi.fn(),
   alertsState: "ready" as "ready" | "protected" | "unavailable",
   canAlerts: true,
@@ -39,6 +52,11 @@ vi.mock("../src/renderer/screens/calendar/CalendarPreferences", () => ({
     canFollow: true,
     canUtc: true,
     canAlerts: model.canAlerts,
+    failure: model.preferenceFailure,
+    failureIntent: model.preferenceIntent,
+    canRetry: false,
+    retry: vi.fn(),
+    discard: model.discard,
     config: {
       documents: { alerts: model.alertsState },
       alerts: calendarDefaultAlerts,
@@ -90,7 +108,20 @@ vi.mock("../src/renderer/app/SectionChrome", () => ({
   SectionPanel: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("../src/renderer/ui/CalendarFrame", () => ({
-  CalendarFrame: ({ children }: { children: ReactNode }) => children,
+  CalendarFrame: ({
+    children,
+    onAlerts,
+  }: {
+    children: ReactNode;
+    onAlerts: () => void;
+  }) => (
+    <>
+      <button type="button" onClick={onAlerts}>
+        Avisos
+      </button>
+      {children}
+    </>
+  ),
 }));
 vi.mock("../src/renderer/ui/CalendarRail", () => ({
   CalendarRail: () => null,
@@ -142,6 +173,9 @@ beforeEach(() => {
     invalidCache: false,
   };
   model.failure = undefined;
+  model.preferenceFailure = undefined;
+  model.preferenceIntent = undefined;
+  model.discard.mockClear();
   model.reload.mockClear();
   model.alert.mockClear();
   model.band.mockClear();
@@ -299,4 +333,30 @@ it("connects alert edits from the actual drawer to the same typed preferences", 
   });
   fireEvent.click(screen.getByRole("button", { name: "15′" }));
   expect(model.alert).toHaveBeenCalledWith({ kind: "lead", value: 15 });
+});
+
+it("keeps unrelated UTC errors outside Avisos and explains its own conflict without a blind retry", () => {
+  model.preferenceFailure = "coreUnavailable";
+  model.preferenceIntent = "utc";
+  const result = render(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).queryByRole("alert")).toBeNull();
+  model.preferenceFailure = "calendarConflict";
+  model.preferenceIntent = "alerts";
+  result.rerender(
+    <TooltipProvider>
+      <CalendarEntry />
+    </TooltipProvider>,
+  );
+  expect(within(dialog).getByRole("alert").textContent).toContain(
+    "Se ha actualizado desde otro sitio; revisa y repite",
+  );
+  expect(
+    within(dialog).queryByRole("button", { name: "Reintentar" }),
+  ).toBeNull();
 });

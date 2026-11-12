@@ -178,7 +178,10 @@ it("keeps retired series visible and removable when the publication disappears",
   const result = show();
   result.rerender(
     <TooltipProvider>
-      <CalendarAlertsDialog {...props} schedule={null} />
+      <CalendarAlertsDialog
+        {...props}
+        schedule={{ ...props.schedule, series: [] }}
+      />
     </TooltipProvider>,
   );
   expect(

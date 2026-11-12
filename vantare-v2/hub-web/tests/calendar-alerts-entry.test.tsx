@@ -107,7 +107,12 @@ it.each(["protected", "unavailable"] as const)(
       prefsRevision: "a".repeat(64),
       following: [],
       followingRevision: "b".repeat(64),
-      alerts: calendarDefaultAlerts,
+      alerts: {
+        ...calendarDefaultAlerts,
+        bands: [],
+        slots: [],
+        channels: { ...calendarDefaultAlerts.channels },
+      },
       alertsRevision: null,
       documents: { prefs: "ready", following: "ready", alerts: state },
     };
@@ -126,6 +131,14 @@ it.each(["protected", "unavailable"] as const)(
     expect(screen.queryByRole("checkbox", { name: text.windows })).toBeNull();
     expect(screen.queryByRole("button", { name: "10 min" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: text.close }));
+    await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog");
+    await vi.waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
     fireEvent.click(screen.getByRole("button", { name: "Open series" }));
     expect(screen.getByText(text[state])).toBeTruthy();

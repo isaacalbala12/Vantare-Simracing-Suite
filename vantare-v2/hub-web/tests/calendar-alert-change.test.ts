@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { isCalendarAlerts } from "../src/contract/calendar-config-validation";
 import {
   type CalendarAlerts,
   calendarDefaultAlerts,
@@ -139,7 +140,12 @@ it("replaces legacy duplicate bands only for the explicitly edited series", () =
 });
 
 it("removes an identity and normalizes the remaining inherited duplicate bands and slots", () => {
-  const initial = structuredClone(calendarDefaultAlerts);
+  const initial: CalendarAlerts = {
+    ...calendarDefaultAlerts,
+    bands: [],
+    slots: [],
+    channels: { ...calendarDefaultAlerts.channels },
+  };
   initial.bands = [
     { seriesId: "remove", from: 0, to: 60, days: "all", mode: "each" },
     { seriesId: "keep", from: 0, to: 60, days: "all", mode: "each" },
@@ -157,6 +163,7 @@ it("removes an identity and normalizes the remaining inherited duplicate bands a
   });
   expect(next.bands.map((b) => b.seriesId)).toEqual(["keep"]);
   expect(next.slots).toEqual([{ seriesId: "event", at: 1000 }]);
+  expect(isCalendarAlerts(next)).toBe(true);
   expect(next.channels).toEqual(initial.channels);
   expect(next.autoLaunch).toBe(initial.autoLaunch);
   expect(next.notifyWeek).toBe(initial.notifyWeek);

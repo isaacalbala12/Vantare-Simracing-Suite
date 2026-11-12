@@ -63,6 +63,7 @@ export function CalendarSeriesView({
   alerts,
   alertsState = "ready",
   alertsValid = true,
+  alertsBusy = false,
   utc,
   now,
   limit,
@@ -89,6 +90,7 @@ export function CalendarSeriesView({
   alerts: CalendarAlerts;
   alertsState?: AlertsDocumentState;
   alertsValid?: boolean;
+  alertsBusy?: boolean;
   utc: boolean;
   now: number;
   limit: number;
@@ -395,6 +397,7 @@ export function CalendarSeriesView({
                           alertAt(schedule, series, at, alerts, limit)
                         }
                         next={at === first}
+                        pending={alertsBusy}
                         onClick={
                           onSlot && at >= now
                             ? () => onSlot(seriesId, at)
@@ -550,12 +553,14 @@ function Departure({
   next,
   alert,
   past,
+  pending = false,
   onClick,
 }: {
   children: ReactNode;
   next: boolean;
   alert: boolean;
   past?: boolean;
+  pending?: boolean;
   onClick?: () => void;
 }) {
   const attrs = {
@@ -564,7 +569,13 @@ function Departure({
     "data-past": past || undefined,
   };
   return onClick ? (
-    <Button {...attrs} onClick={onClick}>
+    <Button
+      {...attrs}
+      aria-disabled={pending}
+      onClick={() => {
+        if (!pending) onClick();
+      }}
+    >
       {children}
     </Button>
   ) : (

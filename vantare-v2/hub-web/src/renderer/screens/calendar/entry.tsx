@@ -277,6 +277,7 @@ export default function CalendarEntry() {
           <p role="status">{text.noAccess}</p>
         ) : selectedSerie && schedule && view ? (
           <CalendarSeriesView
+            alertsBusy={preferences.busy}
             alertsState={alertsState}
             alertsValid={alertsValid}
             onDetail={openDetail}
@@ -420,6 +421,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
+                alertsBusy={preferences.busy}
                 onSerie={openSerie}
                 onToggleSlot={toggleSlot}
                 onDetail={openDetail}

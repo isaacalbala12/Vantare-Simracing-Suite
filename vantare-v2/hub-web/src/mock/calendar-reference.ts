@@ -5,6 +5,8 @@ import type {
 import type { HostToUi } from "../contract/generated/contract";
 import corpus from "../contract/generated/corpus/calendar.json";
 
+export const calendarReferenceNow = Date.parse("2026-10-08T17:47:13Z");
+
 // Public QA data: the same October publication and offsets as the frozen GPUI bank.
 export function calendarReference(): CalendarView {
   const sample = (corpus.host as unknown as HostToUi[]).find(

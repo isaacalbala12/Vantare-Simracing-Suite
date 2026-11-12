@@ -181,3 +181,32 @@ it("never toggles the alert of a departed slot even when the callback is availab
   }
   expect(onToggleSlot).not.toHaveBeenCalled();
 });
+
+it("marks a pending event alert without removing focus or submitting a second change", () => {
+  const view = calendarReference();
+  if (!view.official) throw new Error("schedule missing");
+  const onToggleSlot = vi.fn();
+  const props = {
+    schedule: view.official,
+    alerts: alerts as CalendarAlerts,
+    following: view.following,
+    now: Date.parse("2026-10-08T17:47:13Z"),
+    utc: true,
+    limit: 1000,
+    onFollow: vi.fn(),
+    onLaunch: vi.fn(),
+    onToggleSlot,
+  };
+  const result = render(<CalendarEventsView {...props} />);
+  const button = within(
+    screen.getByRole("article", { name: "WEC Weekly" }),
+  ).getByRole("button", { name: /^18:00\s*siguiente$/u });
+  button.focus();
+  fireEvent.click(button);
+  expect(onToggleSlot).toHaveBeenCalledOnce();
+  result.rerender(<CalendarEventsView {...props} alertsBusy />);
+  expect(document.activeElement).toBe(button);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(button);
+  expect(onToggleSlot).toHaveBeenCalledOnce();
+});

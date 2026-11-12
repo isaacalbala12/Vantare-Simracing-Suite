@@ -41,10 +41,17 @@ function markAround(anchor, before, after) {
   main = main.replace(anchor, `globalThis.__vantareMeasureMark(${JSON.stringify(before)});\n${anchor}\nglobalThis.__vantareMeasureMark(${JSON.stringify(after)});`);
   patches.push({ anchor, before, after });
 }
+function markBefore(anchor, name) {
+  assert.equal(main.split(anchor).length - 1, 1, `Unique instrumentation anchor: ${anchor}`);
+  main = main.replace(anchor, `globalThis.__vantareMeasureMark(${JSON.stringify(name)});\n${anchor}`);
+  patches.push({ anchor, before:name });
+}
 markAround('await app.whenReady();', 'before-app-ready-await', 'after-app-ready-await');
 markAround('const host = createHost();', 'before-host-create', 'after-host-create');
 markAround('const hello = await host.hello;', 'before-host-hello', 'after-host-hello');
 markAround('port1.postMessage(hello);', 'before-renderer-hello', 'after-renderer-hello');
+markBefore('window = new BrowserWindow({', 'before-window-constructor');
+markBefore('const currentWindow = window;', 'after-window-constructor');
 await writeFile(entry, main);
 await cp(join(root, 'tools/measurement-qa.mjs'), join(dirname(entry), 'measurement-qa.mjs'));
 await createPackageWithOptions(stage, archive, {});

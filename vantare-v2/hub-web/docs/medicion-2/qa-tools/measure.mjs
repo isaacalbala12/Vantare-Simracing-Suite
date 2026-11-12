@@ -8,6 +8,11 @@ import {cpus,freemem,totalmem,release} from 'node:os';
 import {root,evidence,code,sourceGeneration,require,json,owned,experiments,until,hashFile} from './common.mjs';
 import {fluency} from './fluency.mjs';
 const {chromium}=require('playwright-core');
+async function deadline(promise,label,milliseconds=15000){
+  let timer;
+  try{return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(`Deadline: ${label}`)),milliseconds);})]);}
+  finally{clearTimeout(timer);}
+}
 const experiment=process.env.VANTARE_MEASURE_EXPERIMENT;
 assert.ok(experiments.includes(experiment),'Closed experiment selection required');
 const runs=Number(process.env.VANTARE_MEASURE_RUNS??5);
@@ -87,12 +92,12 @@ try{
       assert.deepEqual([...event.familyAfter].sort((a,b)=>a-b),event.processMetrics.map(item=>item.pid).sort((a,b)=>a-b),'Process family changed during idle sample');
       const page=browser.contexts()[0].pages()[0];
       const renderer=await page.context().newCDPSession(page);
-      const heap=await renderer.send('Runtime.getHeapUsage'),dom=await renderer.send('Memory.getDOMCounters');
+      const heap=await deadline(renderer.send('Runtime.getHeapUsage'),'renderer heap'),dom=await deadline(renderer.send('Memory.getDOMCounters'),'DOM counters');
       await renderer.detach();
       const connection=await browser.newBrowserCDPSession();
-      const processes=await connection.send('SystemInfo.getProcessInfo');
+      const processes=await deadline(connection.send('SystemInfo.getProcessInfo'),'process roles');
       let gpu;
-      try{gpu=(await connection.send('SystemInfo.getInfo')).gpu.featureStatus;}catch(error){gpu={unavailable:String(error)};}
+      try{gpu=(await deadline(connection.send('SystemInfo.getInfo'),'GPU feature status',5000)).gpu.featureStatus;}catch(error){gpu={unavailable:String(error)};}
       await connection.detach();
       const paint=await page.evaluate(()=>({origin:performance.timeOrigin,paint:performance.getEntriesByType('paint').map(item=>({name:item.name,startTime:item.startTime})),motion:document.documentElement.dataset.motion}));
       const startup=await json(join(activeProfile,'measurement-startup.json'));

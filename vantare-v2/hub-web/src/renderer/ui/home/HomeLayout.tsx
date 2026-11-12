@@ -10,8 +10,9 @@ import { Button } from "../Button";
 import { Skeleton } from "../Data";
 import { Select } from "../Forms";
 import { TrackedCaps } from "../TrackedCaps";
+import { WidgetThumb } from "../widgets/WidgetThumb";
 import { Circuit } from "./Circuit";
-import { LayoutPreview, widgetAsset } from "./LayoutPreview";
+import { LayoutPreview } from "./LayoutPreview";
 import { activityDate, greeting } from "./model";
 import "./home.css";
 export interface HomeProps {
@@ -424,7 +425,7 @@ export function HomeRail({
       <div className="v-home-template-section">
         <Heading icon="v-studio" title={t.templates} />
         <div className="v-home-templates">
-          {["standings", "relative", "fuel-strategy", "delta"].map(
+          {(["standings", "relative", "fuel-strategy", "delta"] as const).map(
             (kind, i) => (
               <button
                 type="button"
@@ -433,7 +434,7 @@ export function HomeRail({
               >
                 <div>
                   {v ? (
-                    <img src={widgetAsset(kind)} alt={t.decorative} />
+                    <WidgetThumb kind={kind} />
                   ) : (
                     <Skeleton label={t.loading} />
                   )}

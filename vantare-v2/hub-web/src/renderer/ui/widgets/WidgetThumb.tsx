@@ -77,10 +77,12 @@ export function WidgetThumb({
   kind,
   icon = false,
   onFallback,
+  fit = "contain",
 }: {
   kind: WidgetKind;
   icon?: boolean;
   onFallback?: (fallback: boolean) => void;
+  fit?: "contain" | "fill";
 }) {
   const fallback =
     vectors[`../../assets/widgets/${icon ? "w-" : ""}${kind}.svg`];
@@ -98,6 +100,7 @@ export function WidgetThumb({
       source={source}
       fallback={fallback}
       onFallback={onFallback}
+      fit={fit}
     />
   );
 }
@@ -106,11 +109,13 @@ function WidgetImage({
   fallback,
   kind,
   onFallback,
+  fit,
 }: {
   source?: string;
   fallback: string;
   kind: WidgetKind;
   onFallback?: (fallback: boolean) => void;
+  fit: "contain" | "fill";
 }) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const raster = !!source && state !== "error";
@@ -130,6 +135,7 @@ function WidgetImage({
           className="v-widget-thumbnail"
           data-fallback={!raster}
           style={{
+            objectFit: fit,
             visibility: raster && state === "loading" ? "hidden" : undefined,
           }}
           onLoad={() => setState("ready")}
@@ -142,6 +148,7 @@ function WidgetImage({
           aria-hidden="true"
           className="v-widget-thumbnail"
           data-fallback="true"
+          preserveAspectRatio={fit === "fill" ? "none" : undefined}
           viewBox={fallbackBounds[kind].join(" ")}
         >
           <image href={fallback} x={0} y={0} width={160} height={80} />

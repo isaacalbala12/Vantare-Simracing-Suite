@@ -181,9 +181,7 @@ it("asks explicitly before replacing and can cancel without showing a path", () 
   const question = screen.getByRole("alertdialog", { name: text.replaceTitle });
   expect(question.textContent).toContain(text.replaceDescription);
   expect(question.textContent).not.toContain("b".repeat(64));
-  fireEvent.click(
-    screen.getByRole("button", { name: text.replaceConfirm, exact: true }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: text.replaceConfirm }));
   expect(onReplace).toHaveBeenLastCalledWith(true);
   component.rerender(
     <TooltipProvider>
@@ -198,4 +196,12 @@ it("asks explicitly before replacing and can cancel without showing a path", () 
   if (!cancel) throw new Error("cancel missing");
   fireEvent.click(cancel);
   expect(onReplace).toHaveBeenLastCalledWith(false);
+});
+
+it("explains an expired replacement confirmation without claiming the preparation lasted thirty minutes", () => {
+  show({ ...props, failure: "rejected", confirmationFailed: true });
+  expect(screen.getByRole("alert").textContent).toContain(
+    "La confirmación ha caducado",
+  );
+  expect(screen.getByRole("alert").textContent).not.toContain("30 min");
 });

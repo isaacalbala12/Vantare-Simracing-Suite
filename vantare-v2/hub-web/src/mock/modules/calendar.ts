@@ -51,6 +51,7 @@ export function create(context: MockContext): MockHandler {
     context.sceneName === "calendar-ics-replace-reference";
   let replacementId: string | undefined;
   let replacementAt = 0;
+  let replacementSequence = 0;
   const value: CalendarView = {
     official: null,
     fallback: null,
@@ -230,7 +231,9 @@ export function create(context: MockContext): MockHandler {
           return { kind: "failure", id, error: { kind: "rejected" } };
         icsHash = undefined;
         if (context.sceneName === "calendar-ics-replace-reference") {
-          replacementId = "b".repeat(64);
+          replacementId = (++replacementSequence)
+            .toString(16)
+            .padStart(calendarRevisionLength, "0");
           replacementAt = clock();
           return {
             kind: "response",

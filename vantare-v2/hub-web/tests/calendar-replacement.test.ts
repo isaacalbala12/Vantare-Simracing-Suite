@@ -7,6 +7,7 @@ import {
   readFile,
   rename,
   rm,
+  stat,
   symlink,
   utimes,
   writeFile,
@@ -113,8 +114,9 @@ it("asks again with a different id after a same-size edit even if mtime is resto
       () => initialTime,
     );
     const id = await ask(session);
+    const original = await stat(path);
     await writeFile(path, "modified");
-    await utimes(path, initialTime / 1000, initialTime / 1000);
+    await utimes(path, original.atime, original.mtime);
     const result = await session.replace(id, true);
     expect(result).toEqual({
       status: "replacementRequired",

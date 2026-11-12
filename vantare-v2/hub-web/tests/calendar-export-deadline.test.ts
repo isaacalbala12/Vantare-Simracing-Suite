@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { requestTimeoutMs } from "../src/contract/generated/contract";
+import { methods, requestTimeoutMs } from "../src/contract/generated/contract";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
+import { requestDeadline } from "../src/renderer/bridge/request-deadlines";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -118,4 +119,14 @@ it("waits for main replacement publication beyond the regular timeout and still 
   } finally {
     client.close();
   }
+});
+
+it("keeps the main publication deadline exception a closed list", () => {
+  expect(
+    methods.filter((method) => requestDeadline(method) === undefined).sort(),
+  ).toEqual([
+    "calendar.icsExport",
+    "calendar.icsReplace",
+    "report.localExport",
+  ]);
 });

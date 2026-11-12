@@ -229,13 +229,11 @@ it.each(["closed", "rights", "client"] as const)(
 );
 
 it("requires confirmation, rotates a changed destination id and serializes double confirmation", async () => {
-  host.client.request
-    .mockResolvedValueOnce(reply)
-    .mockResolvedValueOnce({
-      method: "calendar.icsExport",
-      status: "replacementRequired",
-      confirmationId: "b".repeat(64),
-    });
+  host.client.request.mockResolvedValueOnce(reply).mockResolvedValueOnce({
+    method: "calendar.icsExport",
+    status: "replacementRequired",
+    confirmationId: "b".repeat(64),
+  });
   const hook = renderHook(() => useCalendarIcs(true, true));
   await act(async () => {});
   await act(async () => {

@@ -6,6 +6,7 @@ import {
   calendarIcsConfirmationMaxAgeMs,
   calendarIcsLimit,
   calendarIcsPreparedMaxAgeMs,
+  calendarRevisionLength,
   type HostError,
   type HostToUi,
 } from "../contract/generated/contract";
@@ -121,18 +122,22 @@ export function calendarExportSession(
       }
     | undefined;
   let alive = true;
-  const validConfirmation = (issuedAt: number) =>
-    alive &&
-    Number.isFinite(now()) &&
-    now() >= issuedAt &&
-    now() - issuedAt < calendarIcsConfirmationMaxAgeMs;
+  const validConfirmation = (issuedAt: number) => {
+    const time = now();
+    return (
+      alive &&
+      Number.isFinite(time) &&
+      time >= issuedAt &&
+      time - issuedAt < calendarIcsConfirmationMaxAgeMs
+    );
+  };
   async function ask(path: string, calendar: string): Promise<Outcome> {
     const value = await fingerprint(path);
     if (!alive) return { status: "cancelled" };
     // A removed destination must not turn a replace confirmation into an
     // unconfirmed create. Prepare again through the native picker instead.
     if (value === null) return { error: { kind: "rejected" } };
-    const id = randomBytes(32).toString("hex");
+    const id = randomBytes(calendarRevisionLength / 2).toString("hex");
     replacement = { id, path, calendar, fingerprint: value, issuedAt: now() };
     return { status: "replacementRequired", confirmationId: id };
   }

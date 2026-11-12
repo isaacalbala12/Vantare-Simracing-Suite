@@ -4,7 +4,7 @@ import type {
   CalendarIcsStatus,
   CalendarIcsView,
 } from "../../../contract/generated/calendar";
-import type { HostError } from "../../../contract/generated/contract";
+import type { HostError, Request } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 
@@ -19,6 +19,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   const [busy, setBusy] = useState(false);
   const [isExporting, setExporting] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
+  const [confirmationFailed, setConfirmationFailed] = useState(false);
   const [status, setStatus] = useState<CalendarIcsStatus>();
   const [confirmationId, setConfirmationId] = useState<string>();
   const confirmation = useRef<string | undefined>(undefined);
@@ -34,6 +35,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     setConfirmationId(undefined);
     setView(undefined);
     setFailure(undefined);
+    setConfirmationFailed(false);
     setBusy(exporting.current);
     if (exporting.current || !open || !allowed || !client) return;
     setBusy(true);
@@ -92,7 +94,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   }
   async function exportRequest(
     request: Extract<
-      import("../../../contract/generated/contract").Request,
+      Request,
       { method: "calendar.icsExport" | "calendar.icsReplace" }
     >,
   ) {
@@ -105,6 +107,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     setBusy(true);
     setFailure(undefined);
     setStatus(undefined);
+    setConfirmationFailed(request.method === "calendar.icsReplace");
     try {
       const reply = await owner.request(request);
       setView(undefined);
@@ -149,6 +152,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     confirmationId: allowed && open ? confirmationId : undefined,
     replace,
     failure,
+    confirmationFailed,
     status,
     download,
     setScope(value: CalendarIcsScope) {

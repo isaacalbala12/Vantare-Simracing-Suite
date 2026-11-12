@@ -26,6 +26,7 @@ type Props = {
   busy: boolean;
   exporting?: boolean;
   failure?: HostError["kind"];
+  confirmationFailed?: boolean;
   status?: CalendarIcsStatus;
   confirmationId?: string;
   onReplace?: (replace: boolean) => void;
@@ -84,7 +85,7 @@ export function CalendarIcsDialog(p: Props) {
           <div className="v-calendar-ics-body">
             {p.failure && (
               <div role="alert" className="v-calendar-ics-error">
-                <span>{text.error(p.failure)}</span>
+                <span>{text.error(p.failure, p.confirmationFailed)}</span>
                 <Button
                   size="sm"
                   aria-disabled={p.busy}

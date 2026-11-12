@@ -1,4 +1,7 @@
-import { calendarIcsPreparedMaxAgeMs } from "../../contract/generated/calendar";
+import {
+  calendarIcsConfirmationMaxAgeMs,
+  calendarIcsPreparedMaxAgeMs,
+} from "../../contract/generated/calendar";
 export const calendarIcsText = {
   title: "Añadir a mi calendario",
   subtitle:
@@ -39,8 +42,7 @@ export const calendarIcsText = {
   destination: "Elige dónde guardar el archivo .ics.",
   cancel: "Cancelar",
   replaceTitle: "¿Reemplazar?",
-  replaceDescription:
-    "Ya existe un archivo con ese nombre. Reemplazarlo sustituirá su contenido por el calendario que has revisado. Si el archivo cambia, volveremos a pedir confirmación.",
+  replaceDescription: `Ya existe un archivo con ese nombre. Reemplazarlo sustituirá su contenido por el calendario que has revisado. Si el archivo cambia, volveremos a pedir confirmación. Esta confirmación caduca en ${calendarIcsConfirmationMaxAgeMs / 60_000} min.`,
   replaceConfirm: "Reemplazar",
   download: "Descargar .ics",
   preparing: "Preparando calendario…",
@@ -50,20 +52,22 @@ export const calendarIcsText = {
   cancelled: "Descarga cancelada.",
   conflict:
     "Ya existe un archivo con ese nombre. Elige otro nombre al descargar.",
-  error: (kind: string) =>
-    kind === "rejected"
-      ? `La preparación caduca a los ${calendarIcsPreparedMaxAgeMs / 60_000} min o al terminar el horario. Pulsa Reintentar para prepararla de nuevo.`
-      : kind === "calendarExportExtension"
-        ? "Elige un nombre sin extensión o terminado en .ics."
-        : kind === "calendarExportTooLarge"
-          ? "El calendario supera el tamaño permitido. Prueba con tus favoritas o solo con eventos."
-          : kind === "calendarScheduleUnavailable"
-            ? "Descarga un horario vigente antes de exportar."
-            : kind === "protected"
-              ? "No se pudieron leer tus preferencias de calendario. Los originales se conservan."
-              : kind === "denied"
-                ? "No tienes acceso al Calendario."
-                : kind === "busy"
-                  ? "Hay otra operación en curso. Inténtalo de nuevo."
-                  : "No se pudo preparar o guardar el calendario. Puedes reintentarlo.",
+  error: (kind: string, confirmation = false) =>
+    kind === "rejected" && confirmation
+      ? "La confirmación ha caducado o ya no es válida. Pulsa Reintentar para preparar de nuevo."
+      : kind === "rejected"
+        ? `La preparación caduca a los ${calendarIcsPreparedMaxAgeMs / 60_000} min o al terminar el horario. Pulsa Reintentar para prepararla de nuevo.`
+        : kind === "calendarExportExtension"
+          ? "Elige un nombre sin extensión o terminado en .ics."
+          : kind === "calendarExportTooLarge"
+            ? "El calendario supera el tamaño permitido. Prueba con tus favoritas o solo con eventos."
+            : kind === "calendarScheduleUnavailable"
+              ? "Descarga un horario vigente antes de exportar."
+              : kind === "protected"
+                ? "No se pudieron leer tus preferencias de calendario. Los originales se conservan."
+                : kind === "denied"
+                  ? "No tienes acceso al Calendario."
+                  : kind === "busy"
+                    ? "Hay otra operación en curso. Inténtalo de nuevo."
+                    : "No se pudo preparar o guardar el calendario. Puedes reintentarlo.",
 };

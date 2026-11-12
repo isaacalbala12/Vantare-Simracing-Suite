@@ -359,7 +359,10 @@ fn calendar_ics_is_denied_before_reading_and_export_paths_are_main_only() {
         Request::CalendarIcsExport {
             prepared_hash: "a".repeat(64),
         },
-        Request::CalendarIcsReplace { confirmation_id: "b".repeat(64), replace: true },
+        Request::CalendarIcsReplace {
+            confirmation_id: "b".repeat(64),
+            replace: true,
+        },
     ] {
         let mut pipe = Pipe::new(Vec::new());
         session.request(&mut pipe, 41, &request).unwrap();

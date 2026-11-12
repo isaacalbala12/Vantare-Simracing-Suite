@@ -1628,4 +1628,8 @@ D debe correlacionar RequestId→run dentro de la misma instancia y cuenta; sin
 recibo al plazo, hueco o reinicio = Unknown. Rechazos consumen el anillo de32.
 El método legacy conserva v1 para sus consumidores, y no da estas garantías:
 Calendario debe usar el nuevo. Sin implementación de calendario/interfaz aquí.
-Estado todavía local, gates y PR pendientes; no afirmar entrega ni integración.
+Rama vantareapp/isa-2089-superficie, contra nightly; SHA y resultados finales
+se registran en el PR de esta rama. Sin integración, promoción ni release propios.
+Seguimiento #2229 listo para review: 9685935ef, CI completa verde15/15.
+La superficie no depende de cambios de API de ese seguimiento; integrar su
+arreglo y regresiones antes de activar Calendario.

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
+import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 
-async function studioDelta(page: Page) {
+async function studioDelta(page: Page, expanded: boolean) {
   await page
     .getByRole("button", { name: /^(Studio|Overlays Studio)$/, exact: true })
     .click();
@@ -10,18 +11,25 @@ async function studioDelta(page: Page) {
   await page.getByRole("heading", { name: "Delta", exact: true }).waitFor();
   const sidebar = page.locator(".v-sidebar");
   if (
-    !(await sidebar.evaluate((node) =>
+    (await sidebar.evaluate((node) =>
       node.classList.contains("v-sidebar--collapsed"),
-    ))
+    )) === expanded
   )
     await page.keyboard.press("Control+b");
+  await until(
+    async () => (await sidebar.boundingBox())?.width === (expanded ? 272 : 76),
+    5000,
+    "sidebar before opening a modal",
+  );
 }
 
-export const studioCatalogScenes: Record<string, VisualScene> = {
-  "studio-a-catalogo": {
+export const studioCatalogScenes: Record<string, VisualScene> = {};
+for (const expanded of [false, true]) {
+  const suffix = expanded ? "-abierto" : "";
+  studioCatalogScenes[`studio-a-catalogo${suffix}`] = {
     mock: "studio-base",
     async prepare(page) {
-      await studioDelta(page);
+      await studioDelta(page, expanded);
       await page
         .getByRole("button", { name: "Añadir widget", exact: true })
         .click();
@@ -33,17 +41,20 @@ export const studioCatalogScenes: Record<string, VisualScene> = {
       await dialog
         .getByRole("button", { name: "Añadir Delta", exact: true })
         .waitFor();
-      assert.ok(
-        await dialog
-          .getByRole("searchbox", { name: "Buscar widget", exact: true })
-          .evaluate((node) => node === document.activeElement),
+      await until(
+        () =>
+          dialog
+            .getByRole("searchbox", { name: "Buscar widget", exact: true })
+            .evaluate((node) => node === document.activeElement),
+        5000,
+        "catalogue search focus",
       );
     },
-  },
-  "studio-a-menu": {
+  };
+  studioCatalogScenes[`studio-a-menu${suffix}`] = {
     mock: "studio-base",
     async prepare(page) {
-      await studioDelta(page);
+      await studioDelta(page, expanded);
       await page
         .getByRole("button", { name: "Más acciones", exact: true })
         .click();
@@ -57,5 +68,5 @@ export const studioCatalogScenes: Record<string, VisualScene> = {
       );
       await menu.getByRole("menuitem", { name: /^Eliminar Delta/ }).waitFor();
     },
-  },
-};
+  };
+}

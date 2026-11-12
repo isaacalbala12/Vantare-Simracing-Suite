@@ -137,7 +137,7 @@ describe("Studio Foco interactions", () => {
     const card = await screen.findByRole("button", {
       name: /^Standings,/,
     });
-    const article = card.closest(".v-focus-row");
+    const article = card.closest<HTMLElement>(".v-focus-row");
     if (!article) throw new Error("Missing card");
     fireEvent.click(
       within(article).getByRole("button", { name: t.hideWidget }),
@@ -168,9 +168,7 @@ describe("Studio Foco interactions", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-vacio");
     await screen.findByText(t.empty);
-    fireEvent.click(
-      screen.getAllByRole("button", { name: t.add, exact: true })[0],
-    );
+    fireEvent.click(screen.getAllByRole("button", { name: t.add })[0]);
     const catalogButton = await screen.findByRole("button", {
       name: "Añadir Standings",
     });
@@ -371,7 +369,7 @@ describe("Studio Foco interactions", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-pocos");
     await screen.findByRole("button", { name: /^Standings,/ });
-    fireEvent.click(screen.getByRole("button", { name: t.add, exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: t.add }));
     const suggestion = within(
       await screen.findByRole("group", { name: t.kit }),
     ).getAllByRole("button")[0];
@@ -427,9 +425,9 @@ describe("Studio Foco interactions", () => {
     const first = await screen.findByRole("button", { name: /^Standings 1,/ });
     fireEvent.keyDown(first, { key: " " });
     await waitFor(() =>
-      expect(first.closest(".v-focus-row")?.getAttribute("data-hidden")).toBe(
-        "true",
-      ),
+      expect(
+        first.closest<HTMLElement>(".v-focus-row")?.getAttribute("data-hidden"),
+      ).toBe("true"),
     );
     fireEvent.click(screen.getByRole("button", { name: t.filters.hidden }));
     const show = screen.getByRole("button", { name: t.showWidget });
@@ -437,14 +435,14 @@ describe("Studio Foco interactions", () => {
     fireEvent.click(show);
     await screen.findByText(t.noHidden);
     expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: t.add, exact: true }),
+      screen.getByRole("button", { name: t.add }),
     );
   });
   it("puts a filtered card in the real Tab order when selection is outside the filter", async () => {
     mount("studio-muchos");
     const user = userEvent.setup();
     const delta = await screen.findByRole("button", { name: /^Delta 1,/ });
-    const article = delta.closest(".v-focus-row");
+    const article = delta.closest<HTMLElement>(".v-focus-row");
     if (!article) throw new Error("Missing card");
     await user.click(
       within(article).getByRole("button", { name: t.hideWidget }),
@@ -546,7 +544,7 @@ describe("Studio Foco interactions", () => {
     await screen.findByText(t.empty);
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        screen.getAllByRole("button", { name: t.add, exact: true })[0],
+        screen.getAllByRole("button", { name: t.add })[0],
       ),
     );
   });
@@ -554,7 +552,7 @@ describe("Studio Foco interactions", () => {
     mount("studio-pocos");
     const user = userEvent.setup();
     await screen.findByRole("heading", { name: "Standings" });
-    fireEvent.click(screen.getByRole("button", { name: t.add, exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: t.add }));
     const suggestion = within(
       await screen.findByRole("group", { name: t.kit }),
     ).getAllByRole("button")[0];

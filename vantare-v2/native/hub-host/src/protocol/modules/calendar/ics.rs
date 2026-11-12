@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use std::fmt::Write;
 
 pub const ICS_LIMIT: usize = crate::frame::LIMIT / 4;
+pub const ICS_PREPARED_MAX_AGE_MS: u32 = 30 * 60 * 1000;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Scope {
     Favs,
@@ -39,6 +40,7 @@ fn escape(text: &str) -> String {
     text.replace('\\', "\\\\")
         .replace(';', "\\;")
         .replace(',', "\\,")
+        .replace('\r', "")
         .replace('\n', "\\n")
 }
 // Fold by UTF-8 octets without splitting a code point (RFC 5545 section 3.1).
@@ -58,7 +60,11 @@ fn record(entry: &Entry, now: i64, lead: Option<u8>) -> Result<String, Error> {
     let mut out = String::from("BEGIN:VEVENT\r\n");
     line(
         &mut out,
-        &format!("UID:{}-{}@vantare", entry.series_id, entry.start / 1000),
+        &format!(
+            "UID:{}-{}@vantare",
+            escape(&entry.series_id),
+            entry.start / 1000
+        ),
     );
     writeln!(out, "DTSTAMP:{}\r", stamp(now)?).expect("String");
     writeln!(out, "DTSTART:{}\r", stamp(entry.start)?).expect("String");
@@ -72,6 +78,12 @@ fn record(entry: &Entry, now: i64, lead: Option<u8>) -> Result<String, Error> {
     }
     out.push_str("END:VEVENT\r\n");
     Ok(out)
+}
+fn agenda_error(error: agenda::AgendaError) -> Error {
+    match error {
+        agenda::AgendaError::Invalid => Error::Invalid,
+        agenda::AgendaError::Expansion => Error::Limit,
+    }
 }
 pub fn prepare(
     schedule: &CalendarSchedule,
@@ -88,7 +100,8 @@ pub fn prepare(
     let mut bytes = header.len() + footer.len();
     let mut records = Vec::new();
     for series in &schedule.series {
-        let daily = agenda::daily(series);
+        // GPUI ICS uses Series::every(), not its weekly/special classification.
+        let daily = series.recurrence.kind == "interval";
         if match scope {
             Scope::Favs => !following.contains(&series.id),
             Scope::Events => daily,
@@ -111,10 +124,10 @@ pub fn prepare(
             },
             i64::from,
         );
-        for start in agenda::starts(schedule, series, now, until).map_err(|_| Error::Invalid)? {
+        for start in agenda::starts(schedule, series, now, until).map_err(agenda_error)? {
             if daily
                 && agenda::cause(schedule, series, start, alerts)
-                    .map_err(|_| Error::Invalid)?
+                    .map_err(agenda_error)?
                     .is_none()
             {
                 continue;
@@ -187,8 +200,15 @@ mod tests {
     }
     #[test]
     fn stable_utc_uid_escaped_fields_duration_and_optional_alarm() {
+        let mut source = schedule(60);
+        source.series[0].recurrence = CalendarRecurrence {
+            kind: "weekly-slots".into(),
+            days: vec!["Thu".into()],
+            times_utc: vec!["00:00".into()],
+            ..Default::default()
+        };
         let a = prepare(
-            &schedule(60),
+            &source,
             &["weekly".into()],
             &CalendarAlerts::default(),
             Scope::Favs,
@@ -196,8 +216,8 @@ mod tests {
             now(),
         )
         .unwrap();
-        assert_eq!(a.total, 24);
-        assert_eq!(a.entries.len(), 4);
+        assert_eq!(a.total, 1);
+        assert_eq!(a.entries.len(), 1);
         assert!(a.calendar.contains("UID:weekly-1791417600@vantare\r\n"));
         assert!(
             a.calendar
@@ -210,7 +230,7 @@ mod tests {
         assert!(a.calendar.contains("TRIGGER:-PT10M"));
         assert_eq!(a.calendar.matches("BEGIN:VEVENT").count(), a.total);
         let b = prepare(
-            &schedule(60),
+            &source,
             &[],
             &CalendarAlerts::default(),
             Scope::Events,
@@ -259,28 +279,238 @@ mod tests {
         assert_eq!(out.replace("\r\n ", "").trim_end_matches("\r\n"), text);
         let mut schedule = schedule(1);
         schedule.series[0].name = "x".repeat(300);
+        schedule.series[0].event_kind = "daily".into();
+        let mut alerts = CalendarAlerts::default();
+        alerts.bands.push(super::super::CalendarBand {
+            series_id: "weekly".into(),
+            from: 0,
+            to: 1440,
+            days: super::super::CalendarDays::All,
+            mode: super::super::CalendarBandMode::Each,
+        });
         assert!(matches!(
-            prepare(
-                &schedule,
-                &[],
-                &CalendarAlerts::default(),
-                Scope::All,
-                true,
-                now()
-            ),
+            prepare(&schedule, &[], &alerts, Scope::All, true, now()),
             Err(Error::Limit)
         ));
         assert!(matches!(
-            prepare(
-                &schedule,
+            prepare(&schedule, &[], &alerts, Scope::All, false, -1),
+            Err(Error::Invalid)
+        ));
+    }
+    fn one_departure() -> CalendarSchedule {
+        let mut source = schedule(60);
+        source.series[0].recurrence = CalendarRecurrence {
+            kind: "weekly-slots".into(),
+            days: vec!["Thu".into()],
+            times_utc: vec!["00:00".into()],
+            ..Default::default()
+        };
+        source
+    }
+    #[test]
+    fn events_excludes_every_interval_even_when_its_event_kind_is_weekly() {
+        let source = schedule(60);
+        let mut alerts = CalendarAlerts::default();
+        alerts.slots.push(super::super::CalendarSlot {
+            series_id: "weekly".into(),
+            at: now() / 1000,
+        });
+        assert_eq!(
+            prepare(&source, &[], &alerts, Scope::All, false, now())
+                .unwrap()
+                .total,
+            1
+        );
+        assert_eq!(
+            prepare(&source, &[], &alerts, Scope::Events, false, now())
+                .unwrap()
+                .total,
+            0
+        );
+    }
+    #[test]
+    fn injection_in_uid_name_and_track_cannot_create_an_ics_property_or_component() {
+        let mut source = one_departure();
+        source.series[0].id = format!("id,semi;slash{}{}BEGIN:VTODO{}END:VTODO", '\\', '\n', '\r');
+        source.series[0].name = "Name\r\nBEGIN:VTODO\nEND:VCALENDAR".into();
+        source.series[0].track = "Track\rBEGIN:VTODO\nEND:VTODO".into();
+        let result = prepare(
+            &source,
+            &[],
+            &CalendarAlerts::default(),
+            Scope::All,
+            true,
+            now(),
+        )
+        .unwrap();
+        assert_eq!(
+            result
+                .calendar
+                .split("\r\n")
+                .filter(|line| *line == "BEGIN:VEVENT")
+                .count(),
+            1
+        );
+        assert!(
+            !result
+                .calendar
+                .split("\r\n")
+                .any(|line| line == "BEGIN:VTODO" || line == "END:VTODO")
+        );
+        assert!(
+            result
+                .calendar
+                .contains(r"UID:id\,semi\;slash\\\nBEGIN:VTODOEND:VTODO-")
+        );
+        assert!(
+            result
+                .calendar
+                .contains(r"SUMMARY:Name\nBEGIN:VTODO\nEND:VCALENDAR")
+        );
+        assert!(!result.calendar.replace("\r\n", "").contains(['\r', '\n']));
+    }
+    #[test]
+    fn folding_keeps_every_multibyte_codepoint_and_uses_at_most_75_octets() {
+        let input = format!("SUMMARY:{}", "ñ🚗é".repeat(50));
+        let mut folded = String::new();
+        line(&mut folded, &input);
+        assert!(folded.split("\r\n").all(|line| line.len() <= 75));
+        assert_eq!(folded.replace("\r\n ", "").trim_end_matches("\r\n"), input);
+        assert!(folded.as_bytes().starts_with(b"SUMMARY:"));
+    }
+    #[test]
+    fn an_exact_256_kib_calendar_is_accepted_and_one_more_character_is_rejected() {
+        assert_eq!(ICS_LIMIT, 256 * 1024);
+        for padding in 0..4 {
+            let mut source = one_departure();
+            source.series[0].track = format!("T{}", "x".repeat(padding));
+            let (mut low, mut high) = (0, ICS_LIMIT);
+            while low < high {
+                let mid = (low + high).div_ceil(2);
+                source.series[0].name = "x".repeat(mid);
+                if prepare(
+                    &source,
+                    &[],
+                    &CalendarAlerts::default(),
+                    Scope::All,
+                    false,
+                    now(),
+                )
+                .is_ok()
+                {
+                    low = mid;
+                } else {
+                    high = mid - 1;
+                }
+            }
+            source.series[0].name = "x".repeat(low);
+            let result = prepare(
+                &source,
                 &[],
                 &CalendarAlerts::default(),
                 Scope::All,
                 false,
-                -1
+                now(),
+            )
+            .unwrap();
+            if result.calendar.len() == ICS_LIMIT {
+                source.series[0].name.push('x');
+                assert!(matches!(
+                    prepare(
+                        &source,
+                        &[],
+                        &CalendarAlerts::default(),
+                        Scope::All,
+                        false,
+                        now()
+                    ),
+                    Err(Error::Limit)
+                ));
+                return;
+            }
+        }
+        panic!("no exact byte-limit witness found");
+    }
+    #[test]
+    fn recurrence_expansion_limit_is_a_size_error() {
+        let mut source = schedule(1);
+        source.valid_until = "2026-10-20T00:00:00Z".into();
+        assert!(matches!(
+            prepare(
+                &source,
+                &[],
+                &CalendarAlerts::default(),
+                Scope::All,
+                false,
+                now()
             ),
-            Err(Error::Invalid)
+            Err(Error::Limit)
         ));
+    }
+    #[test]
+    fn real_october_and_weekly_slots_match_generated_gpui_for_every_scope() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../hub-web/fixtures/calendar-ics-gpui.json"
+        )))
+        .unwrap();
+        let shared: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../fixtures/calendar/cases.json"
+        )))
+        .unwrap();
+        let october: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../hub/reference/fixtures/calendar-lmu-2026-10-06.json"
+        )))
+        .unwrap();
+        let cases = fixture["cases"].as_array().unwrap();
+        assert!(cases.iter().any(|case| case["name"] == "october-2026"
+            && case["scope"] == "events"
+            && case["total"].as_u64().unwrap() > 0));
+        for case in cases {
+            let document = if case["name"] == "october-2026" {
+                &october
+            } else {
+                &shared
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|item| item["name"] == case["name"])
+                    .unwrap()["document"]
+            };
+            let source = CalendarSchedule::parse(&serde_json::to_vec(document).unwrap()).unwrap();
+            let following: Vec<String> = serde_json::from_value(case["following"].clone()).unwrap();
+            let alerts: CalendarAlerts = serde_json::from_value(case["alerts"].clone()).unwrap();
+            let scope = match case["scope"].as_str().unwrap() {
+                "favs" => Scope::Favs,
+                "events" => Scope::Events,
+                "all" => Scope::All,
+                _ => unreachable!(),
+            };
+            let actual = prepare(
+                &source,
+                &following,
+                &alerts,
+                scope,
+                false,
+                case["now"].as_i64().unwrap(),
+            )
+            .unwrap();
+            assert_eq!(
+                actual.total,
+                usize::try_from(case["total"].as_u64().unwrap()).unwrap(),
+                "{case}"
+            );
+            let preview: Vec<_> = actual.entries.iter().map(|e| serde_json::json!({"seriesId":e.series_id,"start":e.start,"end":e.end,"summary":e.summary,"track":e.track})).collect();
+            assert_eq!(serde_json::json!(preview), case["preview"], "{case}");
+            let uids: Vec<_> = actual
+                .calendar
+                .split("\r\n")
+                .filter_map(|line| line.strip_prefix("UID:"))
+                .collect();
+            assert_eq!(serde_json::json!(uids), case["uids"], "{case}");
+        }
     }
 }
 

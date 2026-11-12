@@ -281,7 +281,8 @@ export function isReply(v: Record<string, unknown>) {
 }
 export const isError = (v: Record<string, unknown>) =>
   v.kind === "calendarScheduleUnavailable" ||
-  v.kind === "calendarExportTooLarge"
+  v.kind === "calendarExportTooLarge" ||
+  v.kind === "calendarExportExtension"
     ? exact(v, ["kind"])
     : v.kind === "calendarConflict" &&
       exact(v, ["kind", "current"]) &&

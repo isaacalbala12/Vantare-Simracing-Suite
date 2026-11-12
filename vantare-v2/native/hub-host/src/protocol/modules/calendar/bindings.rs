@@ -12,6 +12,11 @@ pub(crate) fn typescript() -> String {
         crate::calendar::ics::ICS_LIMIT
     );
     constants!(&mut text, "calendarIcsName", "vantare-calendario-lmu.ics");
+    constants!(
+        &mut text,
+        "calendarIcsPreparedMaxAgeMs",
+        crate::calendar::ics::ICS_PREPARED_MAX_AGE_MS
+    );
     declare::<crate::calendar::CalendarHistoryTrack>(&mut text);
     declare::<crate::calendar::CalendarHistoryWeek>(&mut text);
     declare::<crate::calendar::CalendarHistoryView>(&mut text);
@@ -322,6 +327,10 @@ fn ics_samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
             sample_response(Reply::CalendarIcsExport {
                 status: crate::calendar::CalendarIcsStatus::Conflict,
             }),
+            HostToUi::Failure {
+                id: 1,
+                error: HostError::CalendarExportExtension,
+            },
             HostToUi::Failure {
                 id: 1,
                 error: HostError::CalendarExportTooLarge,

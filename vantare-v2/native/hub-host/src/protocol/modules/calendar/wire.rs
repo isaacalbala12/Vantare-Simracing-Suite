@@ -100,6 +100,8 @@ pub enum Reply {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum HostError {
+    #[serde(rename = "calendarExportExtension")]
+    CalendarExportExtension,
     #[serde(rename = "calendarExportTooLarge")]
     CalendarExportTooLarge,
     #[serde(rename = "calendarScheduleUnavailable")]

@@ -11,7 +11,6 @@ import {
 } from "../contract/generated/calendar";
 import {
   alertAt,
-  daily,
   leadMinutes,
   raceMinutes,
 } from "../renderer/screens/calendar/rows";
@@ -71,7 +70,7 @@ export function mockCalendarIcs(
   const footer = "END:VCALENDAR\r\n";
   let bytes = new TextEncoder().encode(header + footer).length;
   for (const series of schedule.series) {
-    const isDaily = daily(series);
+    const isDaily = series.recurrence.kind === "interval";
     if (
       (scope === "favs" && !config.following.includes(series.id)) ||
       (scope === "events" && isDaily)
@@ -102,7 +101,7 @@ export function mockCalendarIcs(
       };
       let text =
         "BEGIN:VEVENT\r\n" +
-        line(`UID:${series.id}-${Math.floor(at / 1000)}@vantare`) +
+        line(`UID:${escapeText(series.id)}-${Math.floor(at / 1000)}@vantare`) +
         `DTSTAMP:${stamp(now)}\r\nDTSTART:${stamp(at)}\r\nDTEND:${stamp(entry.end)}\r\n` +
         line(`SUMMARY:${escapeText(entry.summary)}`) +
         line(`LOCATION:${escapeText(entry.track)}`);

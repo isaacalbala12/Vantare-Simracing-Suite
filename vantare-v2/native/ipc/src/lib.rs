@@ -359,3 +359,25 @@ mod tests {
 #[cfg(feature = "qa-e2e")]
 pub mod qa;
 pub mod session_alerts;
+
+/// Demanda exacta de Relative Vantare usada por las tres variantes de VANTA-141.
+/// Solo existe en binarios de medicion; no cambia ajustes ni cadencias de producto.
+#[cfg(feature = "medir-latencia")]
+pub fn relative_measurement_demand() -> Demand {
+    let mut demand = Demand::default();
+    for signal in [
+        Signal::Cars,
+        Signal::Relative,
+        Signal::Positions,
+        Signal::PitStatus,
+        Signal::SessionInfo,
+        Signal::TrackName,
+        Signal::Flags,
+        Signal::LapTimes,
+    ] {
+        demand.request(signal, 33);
+    }
+    demand.request(Signal::SessionClock, 250);
+    demand.request(Signal::Weather, 500);
+    demand
+}

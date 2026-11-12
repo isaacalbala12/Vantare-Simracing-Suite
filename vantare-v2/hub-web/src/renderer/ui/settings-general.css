@@ -1,0 +1,39 @@
+/* Frozen GPUI: settings/view.rs section_row/settings_zoom, orbit/kit.rs settings_group. */
+.v-settings-general {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-x: clip;
+}
+
+.v-settings-general .v-setting-group-title > span:first-child {
+  line-height: 11px;
+  letter-spacing: 0.4px;
+}
+
+.v-settings-general .v-zoom {
+  background: var(--surface-2);
+}
+
+.v-settings-general .v-zoom-step {
+  color: var(--text-3);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.v-settings-general .v-zoom-reset {
+  border-color: var(--line-1);
+}
+
+.v-settings-general .v-segmented {
+  box-shadow: inset 0 2px 1px var(--button-shadow);
+}
+
+.v-settings-general .v-segment[data-pressed] {
+  box-shadow: inset 0 1px 0 var(--neo-light);
+}
+
+/* settings/view/rail.rs uses the settings text helper (22 px × 1.5). */
+.v-settings-general-rail .v-rail-version {
+  line-height: 1.5;
+}

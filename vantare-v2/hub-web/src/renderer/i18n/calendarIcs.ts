@@ -42,15 +42,17 @@ export const calendarIcsText = {
   conflict:
     "Ya existe un archivo con ese nombre. Elige otro nombre al descargar.",
   error: (kind: string) =>
-    kind === "calendarExportTooLarge"
-      ? "El calendario supera el tamaño permitido. Prueba con tus favoritas o solo con eventos."
-      : kind === "calendarScheduleUnavailable"
-        ? "Descarga un horario vigente antes de exportar."
-        : kind === "protected"
-          ? "No se pudieron leer tus preferencias de calendario. Los originales se conservan."
-          : kind === "denied"
-            ? "No tienes acceso al Calendario."
-            : kind === "busy"
-              ? "Hay otra operación en curso. Inténtalo de nuevo."
-              : "No se pudo preparar o guardar el calendario. Puedes reintentarlo.",
+    kind === "calendarExportExtension"
+      ? "Elige un nombre sin extensión o terminado en .ics."
+      : kind === "calendarExportTooLarge"
+        ? "El calendario supera el tamaño permitido. Prueba con tus favoritas o solo con eventos."
+        : kind === "calendarScheduleUnavailable"
+          ? "Descarga un horario vigente antes de exportar."
+          : kind === "protected"
+            ? "No se pudieron leer tus preferencias de calendario. Los originales se conservan."
+            : kind === "denied"
+              ? "No tienes acceso al Calendario."
+              : kind === "busy"
+                ? "Hay otra operación en curso. Inténtalo de nuevo."
+                : "No se pudo preparar o guardar el calendario. Puedes reintentarlo.",
 };

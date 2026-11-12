@@ -43,6 +43,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--log", required=True, type=Path)
     parser.add_argument("command", nargs=argparse.REMAINDER)
+    def requested_stop(_signal, _frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, requested_stop)
+    signal.signal(signal.SIGHUP, requested_stop)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if platform.system() != "Darwin" or not command:
@@ -64,6 +68,7 @@ def main():
                CARGO_PROFILE_RELEASE_LTO="false", CARGO_PROFILE_RELEASE_CODEGEN_UNITS="16",
                CARGO_PROFILE_RELEASE_INCREMENTAL="false", XWIN_ARCH="x86_64",
                XWIN_CACHE_DIR=str(Path.home() / "orq/vanta141/xwin-cache"))
+    env.update(RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="", SCCACHE_DISABLE="1")
     env["PATH"] = str(Path.home() / "orq/vanta141/tools") + ":/opt/homebrew/opt/llvm/bin:" + env["PATH"]
     initial_free = free_bytes()
     minimum_free = initial_free

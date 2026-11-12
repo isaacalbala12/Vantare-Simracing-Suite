@@ -367,7 +367,6 @@ pub fn latency_submit(_window: u64) {
     latency::submit(_window);
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

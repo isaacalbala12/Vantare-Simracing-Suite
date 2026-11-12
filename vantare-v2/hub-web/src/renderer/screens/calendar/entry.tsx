@@ -20,6 +20,7 @@ import { calendarText as text } from "../../i18n/calendar";
 import { Button } from "../../ui/Button";
 import { CalendarBandControls } from "../../ui/CalendarBandControls";
 import { CalendarDayView } from "../../ui/CalendarDayView";
+import { CalendarDetail } from "../../ui/CalendarDetail";
 import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
 import {
@@ -69,6 +70,26 @@ export default function CalendarEntry() {
     weekState.current = value;
   }, []);
   const [selectedSerie, setSelectedSerie] = useState<string>();
+  const [detail, setDetail] = useState<{ id: string; at?: number }>();
+  const detailOrigin = useRef<HTMLElement | null>(null);
+  const openDetail = (id: string, at?: number) => {
+    detailOrigin.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setDetail({ id, at });
+  };
+  const returnDetailFocus = () =>
+    detailOrigin.current?.isConnected ? detailOrigin.current : false;
+  const closeDetail = useCallback(() => {
+    setDetail(undefined);
+    const target = detailOrigin.current?.isConnected
+      ? detailOrigin.current
+      : document.querySelector<HTMLElement>(
+          '[role="tab"][aria-selected="true"]',
+        );
+    target?.focus({ preventScroll: true });
+  }, []);
   const origin = useRef<
     { id: string; element: HTMLElement | null } | undefined
   >(undefined);
@@ -105,6 +126,7 @@ export default function CalendarEntry() {
   useEffect(() => {
     if (!state.allowed) {
       setSelectedSerie(undefined);
+      setDetail(undefined);
       liveFilters.current = {
         searchOpen: false,
         query: "",
@@ -126,6 +148,9 @@ export default function CalendarEntry() {
   const { schedule, previous } = view
     ? publication(view, state.now, calendarSeriesLimit)
     : { schedule: null, previous: null };
+  useEffect(() => {
+    if (!schedule && detail) closeDetail();
+  }, [schedule, detail, closeDetail]);
   const alerts = preferences.config?.alerts ?? {
     ...calendarDefaultAlerts,
     bands: [],
@@ -212,6 +237,7 @@ export default function CalendarEntry() {
           <p role="status">{text.noAccess}</p>
         ) : selectedSerie && schedule && view ? (
           <CalendarSeriesView
+            onDetail={openDetail}
             schedule={schedule}
             seriesId={selectedSerie}
             alerts={alerts}
@@ -348,6 +374,7 @@ export default function CalendarEntry() {
               <p role="status">{text.loading}</p>
             ) : activeTab === "mine" && schedule && view ? (
               <CalendarMineView
+                onDetail={openDetail}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -362,6 +389,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
+                onDetail={openDetail}
                 onSerie={openSerie}
                 schedule={schedule}
                 alerts={alerts}
@@ -382,6 +410,7 @@ export default function CalendarEntry() {
               view &&
               calendarSpan === "day" ? (
               <CalendarDayView
+                onDetail={openDetail}
                 spans={["day", "week", "month"]}
                 schedule={schedule}
                 alerts={alerts}
@@ -393,6 +422,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "calendar" && view && calendarSpan === "month" ? (
               <CalendarMonthView
+                onDetail={openDetail}
                 spans={["day", "week", "month"]}
                 expired={health === "expired"}
                 view={{ ...view, official: schedule ?? view.official }}
@@ -404,6 +434,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "calendar" && view ? (
               <CalendarWeekView
+                onDetail={openDetail}
                 initialState={weekState.current}
                 onViewStateChange={rememberWeek}
                 onSpan={setCalendarSpan}
@@ -420,6 +451,7 @@ export default function CalendarEntry() {
               />
             ) : schedule && view ? (
               <CalendarLiveView
+                onDetail={openDetail}
                 initialFilters={liveFilters.current}
                 onFiltersChange={rememberLive}
                 onSerie={openSerie}
@@ -455,6 +487,39 @@ export default function CalendarEntry() {
           </CalendarFrame>
         )}
       </SectionPanel>
+      {detail && state.allowed && schedule && view && (
+        <CalendarDetail
+          schedule={schedule}
+          seriesId={detail.id}
+          initialAt={detail.at}
+          now={state.now}
+          utc={view.utc}
+          limit={calendarStartsLimit}
+          alerts={alerts}
+          following={view.following}
+          runs={runs}
+          profile={launcher.profile?.name}
+          canLaunch={launcher.canLaunch}
+          canFollow={preferences.canFollow}
+          busy={preferences.busy}
+          onClose={closeDetail}
+          returnFocus={returnDetailFocus}
+          onSerie={(id) => {
+            detailOrigin.current = null;
+            setDetail(undefined);
+            openSerie(id);
+          }}
+          onFollow={(id, enabled) => void preferences.follow(id, enabled)}
+          onLaunch={() => void launcher.launch()}
+          failure={
+            launcher.failure ? (
+              <p role="alert">{text.launchFailed}</p>
+            ) : preferences.failure ? (
+              <p role="alert">{text.preferencesFailed}</p>
+            ) : undefined
+          }
+        />
+      )}
     </>
   );
 }

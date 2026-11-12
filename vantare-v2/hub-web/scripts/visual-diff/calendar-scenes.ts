@@ -1,4 +1,38 @@
+import type { Page } from "playwright-core";
 import type { VisualScene } from "./scenes.ts";
+
+async function assertDetailWindowControls(page: Page) {
+  const accessible = await page
+    .locator(".v-window-controls")
+    .evaluate((controls) => {
+      const buttons = [
+        ...controls.querySelectorAll<HTMLButtonElement>("button"),
+      ];
+      return (
+        buttons.length === 3 &&
+        buttons.every((button) => {
+          const r = button.getBoundingClientRect();
+          const hit = document.elementFromPoint(
+            r.x + r.width / 2,
+            r.y + r.height / 2,
+          );
+          return (
+            !!hit &&
+            button.contains(hit) &&
+            !button.closest("[inert], [aria-hidden=true]")
+          );
+        })
+      );
+    });
+  if (!accessible)
+    throw new Error("Calendar detail blocks native window controls");
+  const control = page.locator(".v-window-controls button").first();
+  await control.focus();
+  if (!(await control.evaluate((node) => node === document.activeElement)))
+    throw new Error("Calendar detail makes window controls keyboard-inert");
+  await page.getByRole("dialog").focus();
+}
+
 export const calendarScenes: Record<string, VisualScene> = {
   "calendario-r6-mias": {
     mock: "calendar-live-reference",
@@ -248,6 +282,48 @@ export const calendarScenes: Record<string, VisualScene> = {
         .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
         .waitFor();
       await page.getByText("Imola", { exact: true }).waitFor();
+      await page.mouse.move(600, 890);
+    },
+  },
+  "calendario-ficha-desplegada": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-r6-proximas"].prepare(page);
+      await page
+        .getByRole("button", { name: "Ficha", exact: true })
+        .first()
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
+        .waitFor();
+      await assertDetailWindowControls(page);
+      await page.mouse.move(600, 890);
+    },
+  },
+  "calendario-ficha-contraida": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
+      const sidebar = page.getByRole("button", {
+        name: "Contraer o ampliar navegación",
+        exact: true,
+      });
+      if ((await sidebar.getAttribute("aria-expanded")) === "true")
+        await sidebar.click();
+      await page
+        .getByRole("navigation", { name: "Navegación principal" })
+        .getByRole("button", { name: "Calendario", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Ficha", exact: true })
+        .first()
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("heading", { name: "LMGT3 Fixed", exact: true })
+        .waitFor();
+      await assertDetailWindowControls(page);
       await page.mouse.move(600, 890);
     },
   },

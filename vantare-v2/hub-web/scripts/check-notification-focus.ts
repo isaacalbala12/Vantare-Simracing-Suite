@@ -153,9 +153,10 @@ if (import.meta.main) {
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
   try {
     browser = await chromium.launch();
-    const page = await browser.newPage({
+    const context = await browser.newContext({
       viewport: { width: 1440, height: 900 },
     });
+    const page = await context.newPage();
     await checkNotificationFocus(page, server.resolvedUrls?.local[0] ?? "");
   } finally {
     await browser?.close();

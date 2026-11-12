@@ -28,12 +28,11 @@ export const calendarAlertsText = {
   track: "En pista, si ya estás conduciendo",
   trackHint: "Un aviso discreto en tus overlays, sin sonido.",
   sound: "Sonido",
-  soundHint:
-    "Sonido para los avisos de Windows fuera de pista, si el sistema lo permite.",
+  soundHint: "Sonido de los avisos de Windows, solo fuera del simulador.",
   deliveryScope:
     "Con el Hub abierto, recibes avisos según tus canales. En pista, las franjas se callan y las tandas explícitas pueden avisar en silencio.",
   previewScope:
-    "El aviso usa tu hora local. Windows decide su aspecto y si se muestra o suena. Contiene texto, sin botones para lanzar ni posponer.",
+    "El aviso usa tu hora local. Contiene texto, sin botones para lanzar ni posponer.",
   autoLegacyHint:
     "El lanzamiento automático no está disponible aquí; puedes desactivarlo.",
   autoHint:
@@ -46,10 +45,9 @@ export const calendarAlertsText = {
   save: "Guardar",
   test: "Probar aviso",
   testHint:
-    "Solicita un ejemplo fijo a Windows con el Hub abierto. Requiere derechos vigentes y avisos legibles; el sistema puede ocultarlo o silenciarlo.",
+    "Solicita un ejemplo fijo de aviso con el Hub abierto. Requiere derechos vigentes y avisos legibles.",
   testSending: "Solicitando el aviso de prueba…",
-  testAccepted:
-    "Prueba solicitada a Windows. Su configuración decide si se muestra o suena.",
+  testAccepted: "Aviso de prueba solicitado.",
   testUnavailable:
     "La prueba no está disponible o el sistema no ha aceptado la solicitud.",
   testBusy: `Espera ${calendarNoticeTestIntervalMs / 1000} segundos antes de volver a probar el aviso.`,

@@ -48,13 +48,13 @@ it("starts unchecked, stages changes and saves only on Finish with onboarding or
   expect(
     fake.client.request.mock.calls.map(([request]) => request.method),
   ).toEqual(["mail.get"]);
-  await act(async () => hook.result.current.beforeFinish());
+  await act(async () => hook.result.current.commitMail());
   expect(fake.client.request).toHaveBeenLastCalledWith({
     method: "mail.set",
     consent: true,
     source: "onboarding",
   });
-  await act(async () => hook.result.current.beforeFinish());
+  await act(async () => hook.result.current.commitMail());
   expect(
     fake.client.request.mock.calls.filter(
       ([request]) => request.method === "mail.set",
@@ -69,7 +69,7 @@ it("does not adopt a previous opt-in; an unchecked Finish explicitly turns it of
   const hook = renderHook(() => useOnboardingMail(true, true));
   await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
   expect(hook.result.current.mail.consent).toBe(false);
-  await act(async () => hook.result.current.beforeFinish());
+  await act(async () => hook.result.current.commitMail());
   expect(fake.client.request).toHaveBeenLastCalledWith({
     method: "mail.set",
     consent: false,
@@ -86,7 +86,7 @@ it("disables and explains mail without a session, including after a staged opt-i
   expect(hook.result.current.mail.available).toBe(false);
   expect(hook.result.current.mail.consent).toBe(false);
   expect(hook.result.current.mail.message).toContain("Sin cuenta");
-  await act(async () => hook.result.current.beforeFinish());
+  await act(async () => hook.result.current.commitMail());
   expect(
     fake.client.request.mock.calls.filter(
       ([request]) => request.method === "mail.set",
@@ -101,7 +101,7 @@ it("does not save when account revalidation fails and allows a deliberate retry"
     method: "account.get",
     value: { session: "signedOut", gate: "choose", blocked: false },
   });
-  await expect(hook.result.current.beforeFinish()).rejects.toEqual(
+  await expect(hook.result.current.commitMail()).rejects.toEqual(
     new HostFailure({ kind: "denied" }),
   );
   expect(
@@ -109,7 +109,7 @@ it("does not save when account revalidation fails and allows a deliberate retry"
       ([request]) => request.method === "mail.set",
     ),
   ).toHaveLength(0);
-  await act(async () => hook.result.current.beforeFinish());
+  await act(async () => hook.result.current.commitMail());
   expect(fake.client.request).toHaveBeenLastCalledWith({
     method: "mail.set",
     consent: true,
@@ -126,10 +126,10 @@ it("a failed consent write is retriable and an unavailable read cannot opt in", 
       value: { session: "signedIn", gate: "none", blocked: false },
     }))
     .mockRejectedValueOnce(new HostFailure({ kind: "io" }));
-  await expect(hook.result.current.beforeFinish()).rejects.toEqual(
+  await expect(hook.result.current.commitMail()).rejects.toEqual(
     new HostFailure({ kind: "io" }),
   );
-  await act(async () => hook.result.current.beforeFinish());
+  await act(async () => hook.result.current.commitMail());
   hook.unmount();
   fake.client.request.mockRejectedValueOnce(
     new HostFailure({ kind: "coreUnavailable" }),

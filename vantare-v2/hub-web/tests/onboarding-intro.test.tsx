@@ -109,7 +109,7 @@ afterEach(() => {
 function mount(
   extended = false,
   full = false,
-  beforeFinish?: () => Promise<void>,
+  commitMail?: () => Promise<void>,
 ) {
   const complete = vi.fn();
   const leave = vi.fn();
@@ -124,7 +124,7 @@ function mount(
         extended={extended}
         full={full}
         onComplete={complete}
-        beforeFinish={beforeFinish}
+        commitMail={commitMail}
       />
     </QueryClientProvider>,
   );
@@ -404,8 +404,8 @@ function respond(scene: string, recommended?: PerformanceLevel) {
 }
 it("preserves choices through consent and finishes an absent layout once on double click", async () => {
   respond("onboarding-sin-diseno");
-  const beforeFinish = vi.fn(async () => {});
-  const { complete } = mount(true, true, beforeFinish);
+  const commitMail = vi.fn(async () => {});
+  const { complete } = mount(true, true, commitMail);
   const start = await screen.findByRole("button", { name: "Empezar" });
   await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
   fireEvent.click(start);
@@ -419,6 +419,7 @@ it("preserves choices through consent and finishes an absent layout once on doub
   const finish = await screen.findByRole("button", { name: "Terminar" });
   await waitFor(() => expect(finish.hasAttribute("disabled")).toBe(false));
   expect(screen.queryByRole("button", { name: "Saltar" })).toBeNull();
+  expect(commitMail).not.toHaveBeenCalled();
   fireEvent.click(finish);
   const prepare = await screen.findByRole("button", {
     name: "Preparar desde Inicio",
@@ -426,6 +427,7 @@ it("preserves choices through consent and finishes an absent layout once on doub
   expect(
     screen.queryByRole("button", { name: "Editar en Overlays Studio" }),
   ).toBeNull();
+  expect(commitMail).toHaveBeenCalledOnce();
   expect(screen.getByText("6 widgets · 2 Pro")).toBeTruthy();
   await waitFor(() => expect(prepare.hasAttribute("disabled")).toBe(false));
   fireEvent.click(prepare);
@@ -442,7 +444,7 @@ it("preserves choices through consent and finishes an absent layout once on doub
     (request) => request.method === "onboarding.finish",
   );
   expect(writes).toHaveLength(1);
-  expect(beforeFinish).toHaveBeenCalledOnce();
+  expect(commitMail).toHaveBeenCalledOnce();
   expect(writes[0]).toMatchObject({
     level: "economy",
     layoutRevision: null,

@@ -56,14 +56,14 @@ export function OnboardingIntroPreview({
   proDescription,
   full = false,
   mail,
-  beforeFinish,
+  commitMail,
   studioReason,
   onComplete,
 }: {
   extended?: boolean;
   full?: boolean;
   mail?: OnboardingMailStatus;
-  beforeFinish?: () => Promise<void>;
+  commitMail?: () => Promise<void>;
   studioReason?: string;
   onComplete?: (privateSession: boolean, show: boolean) => void;
   account?: OnboardingAccountStatus;
@@ -149,6 +149,7 @@ export function OnboardingIntroPreview({
     canAdvance(step, simulators, styles) &&
     !(full && step >= 6 && !styles.some(Boolean)) &&
     !settings.pending &&
+    !(full && step === 6 && mail?.pending) &&
     !completion.pending &&
     !(full && step >= 6 && completion.privacy.data?.protected) &&
     !(
@@ -169,7 +170,7 @@ export function OnboardingIntroPreview({
       completion.consent(() => {
         setStep(7);
         say(summaryText.complete);
-      });
+      }, commitMail);
       return;
     }
     if (
@@ -255,15 +256,12 @@ export function OnboardingIntroPreview({
   function finish(show: boolean) {
     if (!full || !query.data || !allowed || (show === false && studioReason))
       return;
-    completion.finish(
-      {
-        kit: kitForStyles(styles),
-        level,
-        show,
-        layoutRevision: query.data.layoutRevision,
-      },
-      beforeFinish,
-    );
+    completion.finish({
+      kit: kitForStyles(styles),
+      level,
+      show,
+      layoutRevision: query.data.layoutRevision,
+    });
   }
   const introStep = step === 0 || step === 1 || step === 2 ? step : undefined;
   return (

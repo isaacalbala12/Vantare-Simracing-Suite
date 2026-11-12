@@ -30,7 +30,7 @@ function ConnectedIntro(props: Props) {
     <OnboardingIntroPreview
       {...props}
       mail={stagedMail.mail}
-      beforeFinish={stagedMail.beforeFinish}
+      commitMail={stagedMail.commitMail}
       accountActions={<OnboardingAccountActions />}
       accountPending={accountPending}
       onPro={() => {

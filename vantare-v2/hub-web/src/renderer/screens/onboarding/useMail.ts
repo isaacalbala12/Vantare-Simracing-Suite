@@ -56,7 +56,7 @@ export function useOnboardingMail(allowed: boolean, enabled: boolean) {
       if (available) setConsent(value);
     },
   };
-  async function beforeFinish() {
+  async function commitMail() {
     if (!enabled || !allowedRef.current) return;
     if (loading) throw new HostFailure({ kind: "busy" });
     if (!available || consent === saved || !client) return;
@@ -85,5 +85,5 @@ export function useOnboardingMail(allowed: boolean, enabled: boolean) {
       throw new HostFailure({ kind: "io" });
     setSaved(reply.value.consent);
   }
-  return { mail, beforeFinish };
+  return { mail, commitMail };
 }

@@ -70,22 +70,20 @@ export function useCompletion(
   }
   const publish = (value: PrivacyView) =>
     cache.setQueryData(["privacy"], value);
-  function consent(done: () => void) {
+  function consent(done: () => void, commitMail?: () => Promise<void>) {
     run(async () => {
       if (!client) return;
       await saveConsents(client, intent, publish, setSaveFailure);
+      await commitMail?.();
       done();
     });
   }
-  function finish(
-    input: {
-      kit: WidgetKind[];
-      level: PerformanceLevel;
-      show: boolean;
-      layoutRevision: string | null;
-    },
-    beforeFinish?: () => Promise<void>,
-  ) {
+  function finish(input: {
+    kit: WidgetKind[];
+    level: PerformanceLevel;
+    show: boolean;
+    layoutRevision: string | null;
+  }) {
     run(async () => {
       if (!client) return;
       // Read again after all earlier asynchronous settings writes have settled.
@@ -93,7 +91,6 @@ export function useCompletion(
         const settings = cache.getQueryData<SettingsView>(settingsKey);
         if (!settings || settings.protected)
           throw new HostFailure({ kind: "protected" });
-        await beforeFinish?.();
         const reply = await client.request({
           method: "onboarding.finish",
           ...input,

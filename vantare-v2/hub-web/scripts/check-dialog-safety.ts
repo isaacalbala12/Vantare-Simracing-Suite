@@ -226,14 +226,15 @@ export async function checkDialogZoom(page: Page, base: string) {
   await page.evaluate(() => {
     const probe = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== "r") return;
-      document.removeEventListener("keydown", probe, true);
+      window.removeEventListener("keydown", probe, true);
       requestAnimationFrame(() => {
         document.documentElement.dataset.dialogReloadPrevented = String(
           event.defaultPrevented,
         );
       });
     };
-    document.addEventListener("keydown", probe, true);
+    // Observe before dialog-safety's document capture listener stops the event.
+    window.addEventListener("keydown", probe, true);
   });
   await page.keyboard.press("Control+r");
   await until(

@@ -22,7 +22,7 @@
 
 /* GPUI section_row retains the last divider; numbered meta tracks at 0.4 px. */
 .v-shortcut-groups .v-setting-group .v-setting-row:last-child {
-  border-bottom: 1px solid var(--line-1);
+  box-shadow: inset 0 -1px 0 var(--line-1);
 }
 .v-shortcut-groups .v-setting-group-title > span:first-child {
   letter-spacing: 0.4px;

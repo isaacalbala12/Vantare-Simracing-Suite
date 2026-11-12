@@ -4,6 +4,7 @@ import { accountText } from "../../i18n/account.es";
 import { onboardingStepsText as text } from "../../i18n/onboarding-pasos";
 import { OnboardingAccountActions } from "./AccountActions";
 import { OnboardingIntroPreview } from "./IntroPreview";
+import { useOnboardingMail } from "./useMail";
 
 type Props = Omit<
   ComponentProps<typeof OnboardingIntroPreview>,
@@ -14,6 +15,10 @@ function ConnectedIntro(props: Props) {
   const blocked = !!value?.blocked;
   const signedIn = value?.session === "signedIn";
   const verified = signedIn && value.verified && !blocked;
+  const stagedMail = useOnboardingMail(
+    signedIn && !blocked && value?.gate === "none",
+    !!props.full,
+  );
   const accountPending =
     !value?.configured ||
     pending ||
@@ -24,6 +29,8 @@ function ConnectedIntro(props: Props) {
   return (
     <OnboardingIntroPreview
       {...props}
+      mail={stagedMail.mail}
+      beforeFinish={stagedMail.beforeFinish}
       accountActions={<OnboardingAccountActions />}
       accountPending={accountPending}
       onPro={() => {

@@ -56,12 +56,14 @@ export function OnboardingIntroPreview({
   proDescription,
   full = false,
   mail,
+  beforeFinish,
   studioReason,
   onComplete,
 }: {
   extended?: boolean;
   full?: boolean;
   mail?: OnboardingMailStatus;
+  beforeFinish?: () => Promise<void>;
   studioReason?: string;
   onComplete?: (privateSession: boolean, show: boolean) => void;
   account?: OnboardingAccountStatus;
@@ -253,12 +255,15 @@ export function OnboardingIntroPreview({
   function finish(show: boolean) {
     if (!full || !query.data || !allowed || (show === false && studioReason))
       return;
-    completion.finish({
-      kit: kitForStyles(styles),
-      level,
-      show,
-      layoutRevision: query.data.layoutRevision,
-    });
+    completion.finish(
+      {
+        kit: kitForStyles(styles),
+        level,
+        show,
+        layoutRevision: query.data.layoutRevision,
+      },
+      beforeFinish,
+    );
   }
   const introStep = step === 0 || step === 1 || step === 2 ? step : undefined;
   return (

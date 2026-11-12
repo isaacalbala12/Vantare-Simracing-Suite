@@ -93,6 +93,9 @@ export const onboardingStepsText = {
   mailUnconfirmed:
     "El permiso se confirma en el servidor. Se cambia en Ajustes › Privacidad.",
   mailSaving: "Guardando permiso de correos…",
+  mailAtFinish: "Tu elección se guardará al pulsar Terminar.",
+  mailUnavailable:
+    "No se pudo consultar el permiso de correos. Puedes terminar sin modificarlo y revisarlo en Ajustes › Privacidad.",
   crashNotice:
     "Si está encendido, Vantare envía a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.. Puedes apagarlo aquí mismo o más tarde en Ajustes › Privacidad.",
   usageOnSay: "Datos de uso activados. Son anónimos.",

@@ -106,7 +106,11 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
   vi.unstubAllGlobals();
 });
-function mount(extended = false, full = false) {
+function mount(
+  extended = false,
+  full = false,
+  beforeFinish?: () => Promise<void>,
+) {
   const complete = vi.fn();
   const leave = vi.fn();
   const query = new QueryClient({
@@ -120,6 +124,7 @@ function mount(extended = false, full = false) {
         extended={extended}
         full={full}
         onComplete={complete}
+        beforeFinish={beforeFinish}
       />
     </QueryClientProvider>,
   );
@@ -399,7 +404,8 @@ function respond(scene: string, recommended?: PerformanceLevel) {
 }
 it("preserves choices through consent and finishes an absent layout once on double click", async () => {
   respond("onboarding-sin-diseno");
-  const { complete } = mount(true, true);
+  const beforeFinish = vi.fn(async () => {});
+  const { complete } = mount(true, true, beforeFinish);
   const start = await screen.findByRole("button", { name: "Empezar" });
   await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
   fireEvent.click(start);
@@ -436,6 +442,7 @@ it("preserves choices through consent and finishes an absent layout once on doub
     (request) => request.method === "onboarding.finish",
   );
   expect(writes).toHaveLength(1);
+  expect(beforeFinish).toHaveBeenCalledOnce();
   expect(writes[0]).toMatchObject({
     level: "economy",
     layoutRevision: null,

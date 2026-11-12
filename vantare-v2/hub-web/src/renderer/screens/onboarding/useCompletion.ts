@@ -77,12 +77,15 @@ export function useCompletion(
       done();
     });
   }
-  function finish(input: {
-    kit: WidgetKind[];
-    level: PerformanceLevel;
-    show: boolean;
-    layoutRevision: string | null;
-  }) {
+  function finish(
+    input: {
+      kit: WidgetKind[];
+      level: PerformanceLevel;
+      show: boolean;
+      layoutRevision: string | null;
+    },
+    beforeFinish?: () => Promise<void>,
+  ) {
     run(async () => {
       if (!client) return;
       // Read again after all earlier asynchronous settings writes have settled.
@@ -90,6 +93,7 @@ export function useCompletion(
         const settings = cache.getQueryData<SettingsView>(settingsKey);
         if (!settings || settings.protected)
           throw new HostFailure({ kind: "protected" });
+        await beforeFinish?.();
         const reply = await client.request({
           method: "onboarding.finish",
           ...input,

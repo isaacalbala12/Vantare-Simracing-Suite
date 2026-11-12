@@ -8,6 +8,7 @@ import {
   renderHook,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
@@ -171,6 +172,56 @@ function Outside() {
 }
 
 describe("SettingsState through createMockHost and a real MessageChannel", () => {
+  it("zooms from an editable dialog without moving focus or bypassing the pending write guard", async () => {
+    const pending = hold("settings.update");
+    const hook = mount("ajustes-con-diseno", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByRole("combobox");
+    input.focus();
+    try {
+      fireEvent.keyDown(input, { key: "+", code: "NumpadAdd", ctrlKey: true });
+      fireEvent.keyDown(input, { key: "+", code: "NumpadAdd", ctrlKey: true });
+      await waitFor(() => expect(pending.calls()).toBe(1));
+      expect(document.activeElement).toBe(input);
+      fireEvent.keyDown(input, { key: "l", ctrlKey: true });
+      expect(
+        vi
+          .mocked(Client.prototype.request)
+          .mock.calls.some(
+            ([request]) =>
+              request.method === "launcher.favorite" ||
+              request.method === "launcher.launch",
+          ),
+      ).toBe(false);
+    } finally {
+      await act(async () => pending.release());
+    }
+    await waitFor(() => expect(hook.result.current.view?.zoom).toBe(110));
+    expect(document.activeElement).toBe(input);
+  });
+  it("keeps a failed zoom write guarded while its editable dialog stays open", async () => {
+    const request = vi.spyOn(Client.prototype, "request");
+    const hook = mount("ajustes-error", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByRole("combobox");
+    input.focus();
+    fireEvent.keyDown(input, { key: "+", ctrlKey: true });
+    await waitFor(() =>
+      expect(hook.result.current.error?.detail.kind).toBe("io"),
+    );
+    fireEvent.keyDown(input, { key: "-", ctrlKey: true });
+    expect(
+      request.mock.calls.filter(
+        ([request]) => request.method === "settings.update",
+      ),
+    ).toHaveLength(1);
+    expect(dialog.isConnected).toBe(true);
+    expect(document.activeElement).toBe(input);
+  });
   it("changes only effective zoom on resize and restores the saved request without a write", async () => {
     const request = vi.spyOn(Client.prototype, "request");
     const hook = mount("ajustes-base", <General />);

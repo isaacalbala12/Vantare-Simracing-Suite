@@ -71,6 +71,9 @@ export function hubShortcut(event: KeyboardEvent): Action | undefined {
     return;
   return hubBindings.find((binding) => matches(binding, event))?.action;
 }
+export function isZoomAction(action: Action | undefined) {
+  return action === "zoomIn" || action === "zoomOut" || action === "zoomReset";
+}
 // Chromium's built-in print/reload must not act on the document behind a dialog.
 const browserKeys = ["p", "r"];
 const keys = new Set<string>([
@@ -86,6 +89,7 @@ export const dialogBindings = [...keys].flatMap((key) => [
   { key, ctrl: false, alt: true, meta: true },
 ]);
 export function dialogShortcut(event: KeyboardEvent) {
+  if (isZoomAction(hubShortcut(event))) return false;
   if (
     event.key.toLowerCase() === hubKeys.undo &&
     event.target instanceof Element &&

@@ -33,8 +33,21 @@ it.each(["@", "#", "\\", "[", "]", "{", "}", "|", "~"])(
     expect(dialogShortcut(event)).toBe(false);
   },
 );
-it("does not change the pending decision on zoom inside dialogs", () => {
-  expect(
-    dialogShortcut(new KeyboardEvent("keydown", { key: "+", ctrlKey: true })),
-  ).toBe(true);
-});
+it.each([
+  { key: "+", code: "NumpadAdd", location: 3 },
+  { key: "-", code: "NumpadSubtract", location: 3 },
+  { key: "0", code: "Numpad0", location: 3 },
+  { key: "=", code: "Equal" },
+])(
+  "permits exact zoom inside dialogs, including the numeric keypad: %j",
+  (key) => {
+    expect(
+      dialogShortcut(new KeyboardEvent("keydown", { ...key, ctrlKey: true })),
+    ).toBe(false);
+    expect(
+      dialogShortcut(
+        new KeyboardEvent("keydown", { ...key, ctrlKey: true, altKey: true }),
+      ),
+    ).toBe(true);
+  },
+);

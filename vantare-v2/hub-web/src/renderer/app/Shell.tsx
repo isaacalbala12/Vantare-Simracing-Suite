@@ -29,7 +29,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
-import { hubShortcut } from "../ui/hub-shortcuts";
+import { hubShortcut, isZoomAction } from "../ui/hub-shortcuts";
 import { initials } from "../ui/initials";
 import { ToastViewport, useToastManager } from "../ui/Layers";
 import { SaveWarnings } from "../ui/SaveWarnings";
@@ -324,6 +324,13 @@ function ShellContent() {
         ui.commands(!ui.commandsOpen);
         return;
       }
+      // Zoom applies to the whole window, including an editable field or a
+      // nested Select. The normal settings/viewport guards still own the write.
+      if (isZoomAction(action)) {
+        event.preventDefault();
+        zoom(action === "zoomReset" ? 0 : action === "zoomOut" ? -1 : 1);
+        return;
+      }
       const target = event.target;
       if (
         target instanceof HTMLElement &&
@@ -338,16 +345,6 @@ function ShellContent() {
       if (action === "context") ui.toggleRail();
       if (action === "notifications") ui.notices(!ui.noticesOpen);
       if (action === "launch") void launchFavorite();
-      if (
-        ["zoomIn", "zoomOut", "zoomReset"].includes(action) &&
-        settings.view &&
-        !settings.pending &&
-        !settings.view.protected &&
-        !settings.error
-      ) {
-        event.preventDefault();
-        zoom(action === "zoomReset" ? 0 : action === "zoomOut" ? -1 : 1);
-      }
     }
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);

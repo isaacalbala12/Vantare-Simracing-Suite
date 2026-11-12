@@ -108,6 +108,163 @@ export async function checkDialogSafety(
     await isolated.close();
   }
 }
+
+/** The real Shell settings path, with an editable field and a nested Select. */
+export async function checkDialogZoom(page: Page, base: string) {
+  await page.addInitScript(() => {
+    Reflect.set(window, "dialogZoomWrites", []);
+    Reflect.set(window, "dialogZoomMethods", []);
+    const send = MessagePort.prototype.postMessage;
+    MessagePort.prototype.postMessage = function (message, options) {
+      const request = message?.request;
+      if (message?.kind === "request")
+        (Reflect.get(window, "dialogZoomMethods") as string[]).push(
+          request.method,
+        );
+      if (
+        message?.kind === "request" &&
+        request?.method === "settings.update" &&
+        request.patch?.field === "zoom"
+      )
+        (Reflect.get(window, "dialogZoomWrites") as number[]).push(
+          request.patch.value,
+        );
+      send.call(
+        this,
+        message,
+        Array.isArray(options) ? { transfer: options } : options,
+      );
+    };
+  });
+  await page.goto(
+    `${base}?escena=visual-dark:launcher-ready&dialog-fixture=zoom`,
+  );
+  const trigger = page.getByRole("button", {
+    name: "Comprobar zoom del diálogo",
+    exact: true,
+  });
+  await trigger.click();
+  const popup = page.getByRole("dialog", {
+    name: "Zoom de la ventana",
+    exact: true,
+  });
+  const field = popup.getByRole("textbox", {
+    name: "Campo del diálogo",
+    exact: true,
+  });
+  const reset = page.locator(".v-zoom-reset");
+  const writes = () =>
+    page.evaluate(() => Reflect.get(window, "dialogZoomWrites") as number[]);
+  const launches = () =>
+    page.evaluate(
+      () =>
+        (Reflect.get(window, "dialogZoomMethods") as string[]).filter(
+          (method) =>
+            method === "launcher.favorite" || method === "launcher.launch",
+        ).length,
+    );
+  const settled = async (value: string) => {
+    await until(
+      async () =>
+        (await reset.textContent()) === value &&
+        (await page.locator(".v-zoom").getAttribute("aria-busy")) !== "true",
+      5000,
+      `zoom ${value} saved through Settings`,
+    );
+    assert.ok(await popup.isVisible());
+    assert.equal(await page.locator(".v-sidebar[inert]").count(), 1);
+  };
+  await settled("100%");
+  await field.focus();
+  await page.keyboard.press("Control+=");
+  await settled("110%");
+  assert.equal(
+    await field.evaluate((node) => node === document.activeElement),
+    true,
+  );
+  assert.deepEqual(await writes(), [110]);
+  await page.keyboard.press("Control+=");
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
+  assert.deepEqual(await writes(), [110], "112.5% ceiling cannot reach 125%");
+  const select = popup.getByRole("combobox", {
+    name: "Esquema del diálogo",
+    exact: true,
+  });
+  await select.click();
+  const list = page.getByRole("listbox");
+  await list.waitFor();
+  const nestedFocus = () =>
+    page.evaluate(
+      () =>
+        !!document.activeElement?.closest(
+          '[role="listbox"],[role="option"],[role="combobox"]',
+        ),
+    );
+  await page.keyboard.press("Control+NumpadSubtract");
+  await settled("100%");
+  assert.ok(await list.isVisible());
+  assert.ok(await nestedFocus());
+  await page.keyboard.press("Control+NumpadAdd");
+  await settled("110%");
+  // Chromium's headless keypad has NumLock off: Shift yields the logical 0.
+  await page.keyboard.press("Control+Shift+Numpad0");
+  await settled("100%");
+  assert.deepEqual(await writes(), [110, 100, 110, 100]);
+  assert.ok(await list.isVisible());
+  assert.ok(await nestedFocus());
+  const sidebar = await page.locator(".v-sidebar").getAttribute("class");
+  await page.keyboard.press("Control+l");
+  await page.keyboard.press("Control+b");
+  await page.keyboard.press("Control+k");
+  assert.equal(await launches(), 0);
+  assert.equal(await page.locator(".v-sidebar").getAttribute("class"), sidebar);
+  assert.equal(await page.locator("[data-command-palette]").count(), 0);
+  assert.ok(await list.isVisible());
+  await page.evaluate(() => {
+    const probe = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "r") return;
+      document.removeEventListener("keydown", probe, true);
+      requestAnimationFrame(() => {
+        document.documentElement.dataset.dialogReloadPrevented = String(
+          event.defaultPrevented,
+        );
+      });
+    };
+    document.addEventListener("keydown", probe, true);
+  });
+  await page.keyboard.press("Control+r");
+  await until(
+    () =>
+      page.evaluate(
+        () => document.documentElement.dataset.dialogReloadPrevented === "true",
+      ),
+    5000,
+    "Reload remains prevented with nested Select open",
+  );
+  await page.keyboard.press("Escape");
+  await list.waitFor({ state: "hidden" });
+  assert.ok(await popup.isVisible());
+  assert.equal(
+    await select.evaluate((node) => node === document.activeElement),
+    true,
+  );
+  await page.keyboard.press("Escape");
+  await popup.waitFor({ state: "hidden" });
+  await until(
+    () => trigger.evaluate((node) => node === document.activeElement),
+    5000,
+    "zoom dialog returns focus to its trigger",
+  );
+  await page.keyboard.press("Control+l");
+  await until(
+    async () => (await launches()) === 1,
+    5000,
+    "positive control: launch only works after closing the dialog",
+  );
+}
 async function checkIsolatedDialogs(
   page: Page,
   base: string,
@@ -335,6 +492,7 @@ async function checkIsolatedDialogs(
     "Ctrl K closes the top palette",
   );
 
+  await checkDialogZoom(page, base);
   await page.goto(`${base}?escena=specimen`);
   await page
     .getByRole("button", { name: "Abrir diálogo", exact: true })
@@ -372,6 +530,7 @@ async function checkIsolatedDialogs(
         altGr: true,
         ctrlKToggle: true,
         nestedSelectEscape: true,
+        nestedDialogZoom: true,
       },
       null,
       2,

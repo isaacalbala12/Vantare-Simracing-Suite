@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Locator, Page } from "playwright-core";
+import { checkNativeAccessLayer } from "../check-native-access-layer.ts";
 import { until } from "../wait-for.ts";
 import { accessScenes } from "./access.ts";
 import { launcherScenes } from "./launcher.ts";
@@ -277,6 +278,8 @@ scenes["dialog-topbar-commands"] = {
     await page.getByRole("dialog").waitFor();
   },
   async cleanup(page) {
+    if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after")
+      await checkNativeAccessLayer(page);
     await check(
       page,
       "commands",

@@ -26,7 +26,10 @@ pub enum Request {
     },
     #[serde(rename = "calendar.icsReplace")]
     CalendarIcsReplace {
-        #[serde(rename = "confirmationId", deserialize_with = "crate::calendar::ics::deserialize_confirmation_id")]
+        #[serde(
+            rename = "confirmationId",
+            deserialize_with = "crate::calendar::ics::deserialize_confirmation_id"
+        )]
         confirmation_id: String,
         replace: bool,
     },
@@ -76,13 +79,21 @@ pub enum Reply {
     #[serde(rename = "calendar.icsExport")]
     CalendarIcsExport {
         status: crate::calendar::CalendarIcsStatus,
-        #[serde(rename = "confirmationId", default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            rename = "confirmationId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
         confirmation_id: Option<String>,
     },
     #[serde(rename = "calendar.icsReplace")]
     CalendarIcsReplace {
         status: crate::calendar::CalendarIcsStatus,
-        #[serde(rename = "confirmationId", default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            rename = "confirmationId",
+            default,
+            skip_serializing_if = "Option::is_none"
+        )]
         confirmation_id: Option<String>,
     },
     #[serde(rename = "calendar.historyLoad")]

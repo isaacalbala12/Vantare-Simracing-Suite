@@ -5,7 +5,11 @@ pub(crate) fn typescript() -> String {
     notice_types(&mut text);
     declare::<crate::calendar::CalendarIcsScope>(&mut text);
     declare::<crate::calendar::CalendarIcsStatus>(&mut text);
-    constants!(&mut text, "calendarIcsConfirmationMaxAgeMs", crate::calendar::ics::ICS_CONFIRMATION_MAX_AGE_MS);
+    constants!(
+        &mut text,
+        "calendarIcsConfirmationMaxAgeMs",
+        crate::calendar::ics::ICS_CONFIRMATION_MAX_AGE_MS
+    );
     declare::<crate::calendar::CalendarIcsEntry>(&mut text);
     declare::<crate::calendar::CalendarIcsView>(&mut text);
     constants!(

@@ -1169,7 +1169,7 @@ impl Studio {
             .relative()
             .flex()
             .overflow_scroll()
-            .on_scroll_wheel(cx.listener(|this, _, _, cx| this.cancel_drag(cx)))
+            .on_scroll(cx.listener(|this, _, _, cx| this.cancel_drag(cx)))
             .child(measure)
             .child(stage)
             .children(self.toast_element(cx));

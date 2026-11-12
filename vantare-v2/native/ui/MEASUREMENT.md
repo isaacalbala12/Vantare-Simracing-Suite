@@ -1,4 +1,19 @@
-# Medición VANTA-139 — método Release v2 en preparación
+# Medición VANTA-139 — referencia Release v3 publicada
+
+La definición vigente es [MEASUREMENT-AB.md](MEASUREMENT-AB.md): CPU principal
+a cadencia normal, A/A intercalado, ABBA/BAAB, intervalo t y registro limitado
+de intentos. Las siete pasadas parciales v2 no se mezclan con la referencia v3.
+La referencia final usa los ejecutables congelados de acc6619b1 y un colector
+uniforme; está publicada en [measurements/release-v3](measurements/release-v3/README.md).
+La comparación de motores sigue bloqueada por ruido y una reproducción incompleta.
+Los detalles v2 siguientes
+describen la caracterización previa y se conservan para interpretar sus datos.
+
+La comparación entre motores requiere [A/A y ABBA](MEASUREMENT-AB.md) y el
+[gate físico VRR](VRR-GATE.md). Las pasadas Release de `5104c1bbf` son solo
+diagnóstico provisional. La referencia final debe construirse desde el SHA
+fusionado de #2001. La memoria de referencia es el working set; la privada
+incluye unos 137 MiB reservados para la traza.
 
 Las campañas anteriores son **solo dev**, no una línea base. Sus conclusiones de rendimiento se han retirado de #2001 y #2009. El informe histórico se conserva en [measurements/SOLO-DEV.md](measurements/SOLO-DEV.md); no usar sus tablas para comparar motores.
 
@@ -14,7 +29,7 @@ PresentMon no aparece en PATH. Se usan los contadores Windows GPU Engine y GPU P
 
 La traza se acumula en memoria acotada y se vuelca tras cerrar el host; un overflow invalida la pasada. Se reserva la cola de compilación con plazo máximo, se registra plan de energía, prioridad Normal y carga total del sistema. Una compilación ajena o carga por encima del umbral descarta la pasada.
 
-Pendiente antes de aceptar cifras: verificar la implementación, ejecutar al menos cinco pasadas alternadas de cada configuración (1/4/22 widgets, con y sin Phases), publicar mediana y rango, y completar los checks. No hay aún una línea base Release aceptada.
+La referencia acc6619b1 completó 30/30 observaciones: cinco pasadas alternadas por configuración (1/4/22 widgets, con y sin Phases). Medianas, rangos, procedencia y límites están en [el informe publicado](measurements/release-v3/README.md). Esto caracteriza la referencia; no valida una mejora entre motores.
 
 ## Repetir la campaña
 
@@ -23,6 +38,7 @@ Desde `vantare-v2`, con el código confirmado en Git y sin overrides de perfil:
 ```powershell
 $env:CARGO_TARGET_DIR = 'D:\VantareServer\targets\isa-1996-medicion'
 $env:CARGO_BUILD_JOBS = '4'
+$env:VANTARE_MEASUREMENT_SOURCE_SHA = (git rev-parse HEAD).Trim()
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --bin vantare-core --features paint-stats -j 4
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --locked --release -p vantare-ui --example overlay-replay --features paint-stats -j 4
 pwsh -NoProfile -File native/scripts/measure-overlay-campaign.ps1 -UI "$env:CARGO_TARGET_DIR/release/examples/overlay-replay.exe" -Core "$env:CARGO_TARGET_DIR/release/vantare-core.exe" -Recording testdata/rust-port/lmu47-high-rate-60s.tar.gz -Out D:/VantareServer/evidence/isa-1996/release-campaign-NEW -Runs 5

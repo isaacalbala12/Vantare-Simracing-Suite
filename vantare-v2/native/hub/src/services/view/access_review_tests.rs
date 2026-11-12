@@ -49,7 +49,7 @@ fn failed_logout(remote: &mut Remote, session: Session, cx: &mut Context<Remote>
 
 #[test]
 fn failed_logout_retry_repeats_logout_instead_of_opening_login() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for session in [Session::SignedIn, Session::NeedsSignIn] {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
@@ -73,7 +73,7 @@ fn failed_logout_retry_repeats_logout_instead_of_opening_login() {
 
 #[test]
 fn failed_logout_back_requires_new_fresh_core_rights_and_no_revocation_ack() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for session in [Session::SignedIn, Session::NeedsSignIn] {
             for condition in 0..4 {
                 let file = crate::document::tests::File::new();
@@ -119,7 +119,7 @@ fn failed_logout_back_requires_new_fresh_core_rights_and_no_revocation_ack() {
 
 #[test]
 fn needs_sign_in_choice_closes_with_escape_without_starting_an_attempt() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -142,7 +142,7 @@ fn needs_sign_in_choice_closes_with_escape_without_starting_an_attempt() {
 
 #[test]
 fn cancel_pending_or_in_flight_blocks_providers_and_duplicate_cancel_until_ack() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for mode in 0..3 {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
@@ -195,7 +195,7 @@ fn cancel_pending_or_in_flight_blocks_providers_and_duplicate_cancel_until_ack()
 
 #[test]
 fn cancel_transport_error_releases_controls_after_the_attempt() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -224,7 +224,7 @@ fn cancel_transport_error_releases_controls_after_the_attempt() {
 
 #[test]
 fn logout_transport_error_can_retry_and_return_to_the_hub() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -260,7 +260,7 @@ fn logout_transport_error_can_retry_and_return_to_the_hub() {
 
 #[test]
 fn late_account_during_logout_preserves_confirmed_identity_and_profile() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for previous in [Session::SignedOut, Session::SignedIn, Session::NeedsSignIn] {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
@@ -299,7 +299,7 @@ fn late_account_during_logout_preserves_confirmed_identity_and_profile() {
 
 #[test]
 fn pending_preserves_confirmed_identity_but_requires_the_attempt_to_settle() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for previous in [Session::SignedOut, Session::SignedIn, Session::NeedsSignIn] {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);

@@ -396,8 +396,6 @@ float4 gradient_color(Background background,
                 }
             }
 
-            // Preserve coverage for opaque app windows; transparent overlay
-            // windows retain their existing gradient rendering.
             // Dither to reduce banding in gradients (especially dark/alpha).
             // Triangular-distributed noise breaks up 8-bit quantization steps.
             // ±2/255 for RGB (enough for dark-on-dark compositing),
@@ -1147,10 +1145,10 @@ float4 underline_fragment(UnderlineFragmentInput input): SV_Target {
 struct MonochromeSprite {
     uint order;
     uint pad;
+    AtlasTile tile;
     Bounds bounds;
     Bounds content_mask;
     Hsla color;
-    AtlasTile tile;
     TransformationMatrix transformation;
 };
 
@@ -1223,12 +1221,12 @@ SubpixelSpriteFragmentOutput subpixel_sprite_fragment(MonochromeSpriteFragmentIn
 struct PolychromeSprite {
     uint order;
     uint pad;
+    AtlasTile tile;
     uint grayscale;
     float opacity;
     Bounds bounds;
     Bounds content_mask;
     Corners corner_radii;
-    AtlasTile tile;
 };
 
 struct PolychromeSpriteVertexOutput {

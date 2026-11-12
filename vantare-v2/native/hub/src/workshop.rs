@@ -467,7 +467,7 @@ impl Workshop {
                     cx.notify();
                 }),
             ))
-            .on_scroll_wheel(cx.listener(|_, _, _, cx| cx.notify()))
+            .on_scroll(cx.listener(|_, _, _, cx| cx.notify()))
     }
 
     pub fn preferences(&self) -> Preferences {

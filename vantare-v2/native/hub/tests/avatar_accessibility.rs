@@ -4,7 +4,7 @@ use vantare_hub::orbit;
 
 #[test]
 fn sidebar_avatar_leaves_the_account_row_as_the_only_accessible_button() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let avatar = orbit::avatar("IA", cx);
         assert_eq!(avatar.a11y_role(), None);

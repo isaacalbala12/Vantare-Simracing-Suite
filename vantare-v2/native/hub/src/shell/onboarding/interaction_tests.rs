@@ -23,7 +23,7 @@ impl Drop for Root {
 
 fn context() -> HeadlessAppContext {
     let mut cx = HeadlessAppContext::with_asset_source(
-        gpui_platform::current_platform(true).text_system(),
+        gpui::platform::current_platform(true).text_system(),
         std::sync::Arc::new(crate::shell::assets::Icons),
     );
     cx.update(|cx| cx.set_global(crate::orbit::theme::Theme::default()));
@@ -90,7 +90,11 @@ fn draw(window: impl Into<gpui::AnyWindowHandle>, cx: &mut HeadlessAppContext) {
     .expect("pintar árbol sin renderer");
 }
 
-fn key(window: impl Into<gpui::AnyWindowHandle>, stroke: &str, cx: &mut HeadlessAppContext) {
+fn key(
+    window: impl Into<gpui::AnyWindowHandle>,
+    stroke: &'static str,
+    cx: &mut HeadlessAppContext,
+) {
     cx.update_window(window.into(), |_, window, cx| {
         let keystroke = gpui::Keystroke::parse(stroke).expect("tecla");
         window.dispatch_event(
@@ -139,7 +143,7 @@ fn page(window: WindowHandle<Hub>, step: usize, tabs: usize, cx: &mut HeadlessAp
 
 #[test]
 fn interrupted_setup_reopens_saved_crash_rejection_and_usage_acceptance() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         for enable_usage in [false, true] {
             let root = Root::new();
             let mut cx = context();
@@ -188,7 +192,7 @@ fn interrupted_setup_reopens_saved_crash_rejection_and_usage_acceptance() {
 #[test]
 #[allow(clippy::too_many_lines)] // Un recorrido de foco real por los pasos 0–5.
 fn enter_and_space_activate_focused_controls_instead_of_advancing_the_page() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         let mut cx = context();
         let window = open(&root.0, &mut cx);
@@ -265,7 +269,7 @@ fn enter_and_space_activate_focused_controls_instead_of_advancing_the_page() {
 
 #[test]
 fn private_exit_revokes_memory_without_overwriting_the_unwritable_file() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         let mut store = crate::shell::settings::privacy::Store::load(&root.0).expect("store");
         store
@@ -298,7 +302,7 @@ fn private_exit_revokes_memory_without_overwriting_the_unwritable_file() {
 #[test]
 #[allow(clippy::too_many_lines)] // Tres salidas completas: 403, 409 y respuesta pendiente.
 fn persistent_marketing_errors_allow_finishing_with_unconfirmed_mail() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let roots = [Root::new(), Root::new(), Root::new()];
         let mut cx = context();
         for (index, (error, pending)) in [
@@ -396,7 +400,7 @@ fn enter_on_a_passive_focused_control_bubbles_to_continue() {
                 )
         }
     }
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         let mut cx = context();
         let original = open(&root.0, &mut cx);
@@ -429,7 +433,7 @@ fn enter_on_a_passive_focused_control_bubbles_to_continue() {
 
 /// Reutiliza el Hub aislado para comprobar handlers de Ajustes con su Remote real.
 pub(in crate::shell) fn with_hub(test: impl FnOnce(&mut Hub, &mut gpui::Context<Hub>) + 'static) {
-    gpui_platform::headless().run(move |app| {
+    gpui::platform::headless().run(move |app| {
         let root = Root::new();
         let mut cx = context();
         let window = open(&root.0, &mut cx);
@@ -453,7 +457,7 @@ fn stored_look(root: &Path) -> (Palette, Scheme) {
 
 #[test]
 fn the_look_step_previews_saves_like_settings_and_survives_a_restart() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         let mut cx = context();
         let window = open(&root.0, &mut cx);
@@ -513,7 +517,7 @@ fn the_look_step_previews_saves_like_settings_and_survives_a_restart() {
 
 #[test]
 fn skipping_the_look_step_keeps_vantare_or_the_previous_choice() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         for previous in [None, Some((Palette::Iris, Scheme::Light))] {
             let root = Root::new();
             let path = root.0.join("appearance.json");
@@ -571,7 +575,7 @@ fn skipping_the_look_step_keeps_vantare_or_the_previous_choice() {
 
 #[test]
 fn step6_shell_opens_and_renders_with_five_corrupt_documents_without_rewriting_them() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         for name in [
             "layout.json",
@@ -625,7 +629,7 @@ fn step6_shell_opens_and_renders_with_five_corrupt_documents_without_rewriting_t
 
 #[test]
 fn step6_preloaded_preferences_drive_the_window_without_loading_again() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         let mut store = crate::shell::settings::store::Store::load(&root.0, false);
         let mut general = store.value.general;
@@ -669,7 +673,7 @@ fn step6_preloaded_preferences_drive_the_window_without_loading_again() {
 
 #[test]
 fn step6_onboarding_reports_a_failed_mirror_without_reverting_v2() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         let mut cx = context();
         let window = open(&root.0, &mut cx);
@@ -712,7 +716,7 @@ fn step6_onboarding_reports_a_failed_mirror_without_reverting_v2() {
 
 #[test]
 fn step8a_mirror_failure_reaches_sanitized_diagnostic() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         let mut cx = context();
         let window = open(&root.0, &mut cx);
@@ -763,7 +767,7 @@ fn step8a_mirror_failure_reaches_sanitized_diagnostic() {
 
 #[test]
 fn step8a_existing_v2_motion_remains_editable_without_writing_legacy_mirror() {
-    gpui_platform::headless().run(|app| {
+    gpui::platform::headless().run(|app| {
         let root = Root::new();
         let mut cx = context();
         let layout = vantare_ui::layout::Layout {

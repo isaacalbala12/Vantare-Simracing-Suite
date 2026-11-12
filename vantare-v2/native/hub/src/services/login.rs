@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn expired_reply_preserves_email_and_clears_secrets_before_a_new_request() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, _requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn discarded_email_and_failed_dispatch_release_inputs() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn transport_error_releases_the_email_form_for_another_attempt() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -554,7 +554,7 @@ mod tests {
 
     #[test]
     fn a_dimmer_submit_button_does_not_send_during_the_cooldown() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -589,7 +589,7 @@ mod tests {
 
     #[test]
     fn back_during_network_wait_discards_late_reply_and_cancels_the_attempt() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -624,7 +624,7 @@ mod tests {
 
     #[test]
     fn password_mode_restart_never_asks_for_another_code() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, _requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));

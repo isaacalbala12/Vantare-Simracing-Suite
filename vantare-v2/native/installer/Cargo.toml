@@ -8,7 +8,7 @@ publish.workspace = true
 [features]
 default = ["ui", "write-engine"]
 write-engine = ["dep:zip", "dep:windows", "dep:windows-registry"]
-ui = ["write-engine", "dep:gpui", "dep:gpui_platform"]
+ui = ["write-engine", "dep:gpui"]
 setup-payload = ["write-engine"]
 test-installer = []
 # QA: HWND oculto fuera de los monitores y PrintWindow del banco de #1675.
@@ -26,14 +26,13 @@ zip = { version = "=6.0.0", default-features = false, features = ["deflate-flate
 # Approved in p5b: existing locked package replaces hand-written registry handles.
 windows-registry = { version = "=0.6.1", optional = true }
 windows = { version = "0.62", optional = true, features = ["Win32_Foundation", "Win32_Globalization", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_Registry", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_Shell_PropertiesSystem", "Win32_Security", "Win32_Security_Authorization"] }
-gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", optional = true }
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["font-kit"], optional = true }
+gpui = { workspace = true, optional = true }
 # Solo con parity-capture; nunca entra en VantareSetup/Uninstall publicados.
 vantare-ui = { path = "../ui", optional = true }
 
 [target.'cfg(windows)'.dev-dependencies]
 # Enable the existing GPUI test harness; no new library or lockfile dependency.
-gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["test-support"] }
+gpui = { workspace = true, features = ["test-support"] }
 
 [build-dependencies]
 vantare-build-support.workspace = true

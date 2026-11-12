@@ -54,6 +54,8 @@ pub(crate) struct DirectXRenderer {
     /// In that case we want to discard the first frame that we draw as we got reset in the middle of a frame
     /// meaning we lost all the allocated gpu textures and scene resources.
     skip_draws: bool,
+    #[cfg(feature = "paint-stats")]
+    gpu_measurement: Option<crate::gpu_measurement::GpuMeasurement>,
 }
 
 /// Direct3D objects
@@ -194,6 +196,8 @@ impl DirectXRenderer {
             width: 1,
             height: 1,
             skip_draws: false,
+            #[cfg(feature = "paint-stats")]
+            gpu_measurement: None,
         })
     }
 
@@ -245,7 +249,8 @@ impl DirectXRenderer {
     #[inline]
     fn present(&mut self) -> Result<()> {
         let span = crate::profiling::begin(crate::profiling::Stage::Present);
-        crate::profiling::mark("present", "base", 0, 0, 0);
+        #[cfg(feature = "paint-stats")]
+        crate::profiling::mark("present", "base", 0, 0, self.hwnd.0 as usize as u64);
         if span.is_some() && !crate::profiling::buffered() {
             eprintln!("perf present clock={:?}", crate::profiling::clock());
         }
@@ -257,7 +262,8 @@ impl DirectXRenderer {
                 .Present(0, DXGI_PRESENT(0))
         };
         drop(span);
-        crate::profiling::mark("present_end", "base", 0, 0, 0);
+        #[cfg(feature = "paint-stats")]
+        crate::profiling::mark("present_end", "base", 0, 0, self.hwnd.0 as usize as u64);
         crate::profiling::report_if_due();
         result.ok().context("Presenting swap chain failed")
     }
@@ -270,6 +276,10 @@ impl DirectXRenderer {
     }
 
     fn handle_device_lost_impl(&mut self, directx_devices: &DirectXDevices) -> Result<()> {
+        #[cfg(feature = "paint-stats")]
+        {
+            self.gpu_measurement = None;
+        }
         let disable_direct_composition = self.direct_composition.is_none();
 
         unsafe {
@@ -346,7 +356,33 @@ impl DirectXRenderer {
             // and so likely do not have the textures anymore that are required for drawing
             return Ok(());
         }
-        self.render(scene, background_appearance)?;
+        #[cfg(feature = "paint-stats")]
+        let query = if crate::gpu_measurement::enabled() {
+            let devices = self
+                .devices
+                .as_ref()
+                .context("GPU timing requires a device")?;
+            if self.gpu_measurement.is_none() {
+                self.gpu_measurement = Some(crate::gpu_measurement::GpuMeasurement::new(
+                    &devices.device,
+                )?);
+            }
+            self.gpu_measurement
+                .as_mut()
+                .unwrap()
+                .begin(&devices.device_context, self.hwnd.0 as usize as u64)?
+        } else {
+            None
+        };
+        let rendered = self.render(scene, background_appearance);
+        #[cfg(feature = "paint-stats")]
+        if let Some(index) = query {
+            self.gpu_measurement
+                .as_mut()
+                .unwrap()
+                .end(&self.devices.as_ref().unwrap().device_context, index);
+        }
+        rendered?;
         self.present()
     }
 
@@ -419,7 +455,7 @@ impl DirectXRenderer {
     /// goes through MetalRenderer; this is the Windows analogue). Draws into
     /// the existing render target, copies it into a `D3D11_USAGE_STAGING`
     /// texture, maps it, and converts BGRA to RGBA.
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(feature = "test-support")]
     pub(crate) fn render_to_image(
         &mut self,
         scene: &Scene,
@@ -1024,7 +1060,7 @@ impl DirectXRenderPipelines {
 impl DirectComposition {
     pub fn new(dxgi_device: &IDXGIDevice, hwnd: HWND) -> Result<Self> {
         let comp_device = get_comp_device(dxgi_device)?;
-        let comp_target = unsafe { comp_device.CreateTargetForHwnd(hwnd, true) }?;
+        let comp_target = unsafe { comp_device.CreateTargetForHwnd(hwnd, false) }?;
         let comp_visual = unsafe { comp_device.CreateVisual() }?;
 
         Ok(Self {
@@ -1513,7 +1549,7 @@ fn create_blend_state(device: &ID3D11Device) -> Result<ID3D11BlendState> {
     desc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
     desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
     desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+    desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
     desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL.0 as u8;
     unsafe {
         let mut state = None;
@@ -1574,7 +1610,7 @@ fn create_blend_state_for_path_sprite(device: &ID3D11Device) -> Result<ID3D11Ble
     desc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
     desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
     desc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+    desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
     desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL.0 as u8;
     unsafe {
         let mut state = None;
@@ -1729,7 +1765,6 @@ pub(crate) mod shader_resources {
         MonochromeSprite,
         SubpixelSprite,
         PolychromeSprite,
-        EmojiRasterization,
     }
 
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -1803,10 +1838,6 @@ pub(crate) mod shader_resources {
                     ShaderTarget::Vertex => POLYCHROME_SPRITE_VERTEX_BYTES,
                     ShaderTarget::Fragment => POLYCHROME_SPRITE_FRAGMENT_BYTES,
                 },
-                ShaderModule::EmojiRasterization => match target {
-                    ShaderTarget::Vertex => EMOJI_RASTERIZATION_VERTEX_BYTES,
-                    ShaderTarget::Fragment => EMOJI_RASTERIZATION_FRAGMENT_BYTES,
-                },
             };
             Self { inner: bytes }
         }
@@ -1817,12 +1848,6 @@ pub(crate) mod shader_resources {
         unsafe {
             use windows::Win32::Graphics::{
                 Direct3D::ID3DInclude, Hlsl::D3D_COMPILE_STANDARD_FILE_INCLUDE,
-            };
-
-            let shader_name = if matches!(entry, ShaderModule::EmojiRasterization) {
-                "color_text_raster.hlsl"
-            } else {
-                "shaders.hlsl"
             };
 
             let entry = format!(
@@ -1841,7 +1866,7 @@ pub(crate) mod shader_resources {
             let mut compile_blob = None;
             let mut error_blob = None;
             let shader_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join(&format!("src/{}", shader_name))
+                .join("src/shaders.hlsl")
                 .canonicalize()?;
 
             let entry_point = PCSTR::from_raw(entry.as_ptr());
@@ -1893,7 +1918,6 @@ pub(crate) mod shader_resources {
                 ShaderModule::MonochromeSprite => "monochrome_sprite",
                 ShaderModule::SubpixelSprite => "subpixel_sprite",
                 ShaderModule::PolychromeSprite => "polychrome_sprite",
-                ShaderModule::EmojiRasterization => "emoji_rasterization",
             }
         }
     }

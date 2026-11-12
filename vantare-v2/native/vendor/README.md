@@ -1,3 +1,16 @@
+# Backends Windows de GPUI
+
+La ruta activa de VANTA-139 usa [`gpui-pre-windows`](gpui-pre-windows/README.md)
+publicado, con `[patch.crates-io]`. Todos los consumidores normales resuelven
+Kit/Pre y el lockfile no contiene dependencias git de Zed.
+
+La carpeta antigua `gpui_windows/` se ha retirado del árbol activo. Su código y
+el informe de abajo permanecen en el historial de Git y en la rama del paso 1.
+Los comandos históricos de este informe no se ejecutan en el checkout migrado;
+para regenerar o probar el backend actual, seguir su README enlazado arriba.
+
+---
+
 # Parche de texto GPUI Windows — ISA-1427
 
 Solo se copia `gpui_windows`, de Zed

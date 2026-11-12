@@ -12,6 +12,7 @@ rust-version = "1.95"
 publish = false
 
 [workspace.dependencies]
+gpui = { package = "gpui-kit", version = "=0.9.1", default-features = false }
 vantare-launcher = { path = "launcher" }
 vantare-profiling = { path = "profiling" }
 vantare-build-support = { path = "build-support" }
@@ -30,8 +31,8 @@ must_use_candidate = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
 
-[patch."https://github.com/zed-industries/zed"]
-gpui_windows = { path = "vendor/gpui_windows" }
+[patch.crates-io]
+gpui-pre-windows = { path = "vendor/gpui-pre-windows" }
 
 # Dev/test sin símbolos, también en crates propios (#1993). Release no cambia.
 [profile.dev]

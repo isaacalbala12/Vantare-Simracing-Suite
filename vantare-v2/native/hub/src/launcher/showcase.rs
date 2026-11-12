@@ -1236,7 +1236,7 @@ impl Launcher {
                     .overflow_x_scroll()
                     .when(grid, gpui::StatefulInteractiveElement::overflow_y_scroll)
                     .track_scroll(&scroll)
-                    .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
+                    .on_scroll(cx.listener(|this, event: &gpui::ScrollEvent, _, cx| {
                         if this.launch_progress().is_none() && this.adapt.show_optional() {
                             return;
                         }

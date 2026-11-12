@@ -655,7 +655,7 @@ pub fn run(args: Args) -> Result<u8, String> {
     let (info, probe_error) = initial_info(&args, capture)?;
     let exit = Rc::new(Cell::new(1));
     let result = exit.clone();
-    gpui_platform::application().run(move |cx: &mut App| {
+    gpui::platform::application().run(move |cx: &mut App| {
         if crate::style::fonts(cx).is_err() {
             cx.quit();
             return;

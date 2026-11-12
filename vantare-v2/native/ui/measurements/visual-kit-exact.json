@@ -1,0 +1,1049 @@
+{
+  "binary_sha256": "65494073acf3b21c1c737d70e32589534930b528eb66df644a4aa57c4c0b86c2",
+  "reference_manifest_sha256": "4cf2136ffa9509d8c9fcac4d0f6957bb65d37fb0d1aecc7b14408c7a2fdd159c",
+  "pass": false,
+  "cases": [
+    {
+      "name": "standings.png",
+      "pass": false,
+      "different_pixels": 2,
+      "percent": 0.0006845564074479737,
+      "bounds": [
+        174,
+        12,
+        200,
+        19
+      ],
+      "candidate_sha256": "79c9bdf377ea2c991c2826b649e2f8a65d0927210f558bd050e27f0d5a928333",
+      "max_rgba_delta": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "examples": [
+        {
+          "xy": [
+            199,
+            12
+          ],
+          "reference_rgba": [
+            202,
+            24,
+            36,
+            255
+          ],
+          "candidate_rgba": [
+            203,
+            24,
+            36,
+            255
+          ]
+        },
+        {
+          "xy": [
+            174,
+            18
+          ],
+          "reference_rgba": [
+            220,
+            34,
+            45,
+            255
+          ],
+          "candidate_rgba": [
+            221,
+            34,
+            45,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "name": "radar.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "130ea65c0cb94e2414832c2cf35cc07993ba04ece307fd2a6b41e55f5ebdf9ac",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "pedals.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "275f48d639e5f296552b7ef23b04df7d0c7459740813a11a9036ea1574efff54",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "delta.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "4aa4d8abc4ccb9b5e7904202e98de763a1407c0cde0ca529da55bbd9bb4c1938",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "car-damage-visual.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "3e3e05c3a4044411a6e701fa55e05bcb5054bfc0e73f3668614b4fe7b70679a4",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "input-telemetry.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "3dace8861340fb0770a231b305854368746652e0f3aa4e4c31b9f1903a5568a5",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "multiclass-relative.png",
+      "pass": false,
+      "different_pixels": 4,
+      "percent": 0.0037105751391465678,
+      "bounds": [
+        48,
+        188,
+        106,
+        226
+      ],
+      "candidate_sha256": "f15bca9cbbc516d4774ca56fdbd0d1d78e2c111755a6ff99e92aa00dd9b4d9ea",
+      "max_rgba_delta": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": [
+        {
+          "xy": [
+            68,
+            188
+          ],
+          "reference_rgba": [
+            57,
+            52,
+            54,
+            251
+          ],
+          "candidate_rgba": [
+            57,
+            53,
+            54,
+            251
+          ]
+        },
+        {
+          "xy": [
+            68,
+            190
+          ],
+          "reference_rgba": [
+            44,
+            39,
+            40,
+            251
+          ],
+          "candidate_rgba": [
+            43,
+            39,
+            40,
+            250
+          ]
+        },
+        {
+          "xy": [
+            105,
+            222
+          ],
+          "reference_rgba": [
+            56,
+            51,
+            53,
+            251
+          ],
+          "candidate_rgba": [
+            55,
+            51,
+            53,
+            251
+          ]
+        },
+        {
+          "xy": [
+            48,
+            225
+          ],
+          "reference_rgba": [
+            64,
+            59,
+            60,
+            252
+          ],
+          "candidate_rgba": [
+            64,
+            60,
+            61,
+            252
+          ]
+        }
+      ]
+    },
+    {
+      "name": "broadcast-tower.png",
+      "pass": false,
+      "different_pixels": 2,
+      "percent": 0.002551020408163265,
+      "bounds": [
+        921,
+        29,
+        922,
+        31
+      ],
+      "candidate_sha256": "9d5024a16e312d01ab7bbec3f05ef025c49433b77e24347eee823bb3cad91484",
+      "max_rgba_delta": [
+        1,
+        1,
+        1,
+        2
+      ],
+      "examples": [
+        {
+          "xy": [
+            921,
+            29
+          ],
+          "reference_rgba": [
+            57,
+            53,
+            55,
+            250
+          ],
+          "candidate_rgba": [
+            58,
+            52,
+            54,
+            248
+          ]
+        },
+        {
+          "xy": [
+            921,
+            30
+          ],
+          "reference_rgba": [
+            39,
+            36,
+            37,
+            248
+          ],
+          "candidate_rgba": [
+            38,
+            36,
+            37,
+            248
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delta-trace.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "35c791729c2e41286cafda5e7754b0282b17989d5e728f5295817d514bbb7652",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "track-map.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "631ed1dc7df672321e1770701aa01ca535a4104768bd70b02abf106cac449030",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "track-weather.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "fe887d3aa518dda780aa7582d17b5af89b2152cdefc3c1829dfdf82f1d5c79b8",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "car-damage-numbers.png",
+      "pass": false,
+      "different_pixels": 2,
+      "percent": 0.009238728750923873,
+      "bounds": [
+        56,
+        112,
+        57,
+        114
+      ],
+      "candidate_sha256": "704d2c68fe139f45fcd3294f6f161d39b98575679b7315f76bbd62d48d70c62d",
+      "max_rgba_delta": [
+        1,
+        0,
+        0,
+        1
+      ],
+      "examples": [
+        {
+          "xy": [
+            56,
+            112
+          ],
+          "reference_rgba": [
+            52,
+            54,
+            56,
+            229
+          ],
+          "candidate_rgba": [
+            53,
+            54,
+            56,
+            228
+          ]
+        },
+        {
+          "xy": [
+            56,
+            113
+          ],
+          "reference_rgba": [
+            47,
+            48,
+            50,
+            228
+          ],
+          "candidate_rgba": [
+            47,
+            48,
+            50,
+            227
+          ]
+        }
+      ]
+    },
+    {
+      "name": "head-to-head.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "cb5a1a9a2e2832ee50e93697a001cbe50bbf551dbd49b4f5f8956db750ce4e75",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "fuel-strategy.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "1f215c601bc79ac7e089d4849a2496c800bd66a1949237dc85a064f3910b476b",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "pedals-telemetry.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "b2eb668d5796483a15641d1b322fd651152a41ba3a6dfe4c79759ab4efc2c50f",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "relative.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "07055495dc3f2750b115898fd0ec924fee82ab3385eee6adfe6ae9eda9820ca7",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "racing-flags.png",
+      "pass": false,
+      "different_pixels": 4,
+      "percent": 0.013368983957219251,
+      "bounds": [
+        86,
+        54,
+        239,
+        60
+      ],
+      "candidate_sha256": "231ed914d8dafd037f7494cfb901aefbb5094bdea4c7ea22b5f2d76e331ca1f3",
+      "max_rgba_delta": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "examples": [
+        {
+          "xy": [
+            238,
+            54
+          ],
+          "reference_rgba": [
+            44,
+            41,
+            42,
+            250
+          ],
+          "candidate_rgba": [
+            44,
+            42,
+            43,
+            250
+          ]
+        },
+        {
+          "xy": [
+            186,
+            55
+          ],
+          "reference_rgba": [
+            57,
+            58,
+            57,
+            249
+          ],
+          "candidate_rgba": [
+            58,
+            59,
+            57,
+            250
+          ]
+        },
+        {
+          "xy": [
+            86,
+            58
+          ],
+          "reference_rgba": [
+            61,
+            70,
+            64,
+            250
+          ],
+          "candidate_rgba": [
+            61,
+            70,
+            63,
+            249
+          ]
+        },
+        {
+          "xy": [
+            238,
+            59
+          ],
+          "reference_rgba": [
+            88,
+            85,
+            86,
+            250
+          ],
+          "candidate_rgba": [
+            88,
+            84,
+            85,
+            250
+          ]
+        }
+      ]
+    },
+    {
+      "name": "fastest-lap.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "137d5489c07877e962198ca7470c32e881042be187e91c24f3847c63b47ab4de",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "session-alerts.png",
+      "pass": false,
+      "different_pixels": 2,
+      "percent": 0.004734848484848485,
+      "bounds": [
+        232,
+        14,
+        421,
+        64
+      ],
+      "candidate_sha256": "93269ad44e1befa2ba9d3a35f1f605f0487ab6955ded7c4be8997f6f61b8ebce",
+      "max_rgba_delta": [
+        1,
+        1,
+        0,
+        1
+      ],
+      "examples": [
+        {
+          "xy": [
+            420,
+            14
+          ],
+          "reference_rgba": [
+            193,
+            125,
+            10,
+            255
+          ],
+          "candidate_rgba": [
+            194,
+            125,
+            10,
+            255
+          ]
+        },
+        {
+          "xy": [
+            232,
+            63
+          ],
+          "reference_rgba": [
+            49,
+            45,
+            47,
+            250
+          ],
+          "candidate_rgba": [
+            49,
+            46,
+            47,
+            249
+          ]
+        }
+      ]
+    },
+    {
+      "name": "real-standings-01.png",
+      "pass": false,
+      "different_pixels": 5,
+      "percent": 0.0017113910186199342,
+      "bounds": [
+        183,
+        21,
+        204,
+        32
+      ],
+      "candidate_sha256": "e672fecdce47a8bfb3f80556cfd151101d52082eceabe5d8e3f3fcd23e670025",
+      "max_rgba_delta": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "examples": [
+        {
+          "xy": [
+            193,
+            21
+          ],
+          "reference_rgba": [
+            203,
+            24,
+            36,
+            255
+          ],
+          "candidate_rgba": [
+            204,
+            24,
+            36,
+            255
+          ]
+        },
+        {
+          "xy": [
+            192,
+            23
+          ],
+          "reference_rgba": [
+            213,
+            72,
+            82,
+            255
+          ],
+          "candidate_rgba": [
+            214,
+            72,
+            82,
+            255
+          ]
+        },
+        {
+          "xy": [
+            203,
+            26
+          ],
+          "reference_rgba": [
+            189,
+            17,
+            29,
+            255
+          ],
+          "candidate_rgba": [
+            190,
+            17,
+            29,
+            255
+          ]
+        },
+        {
+          "xy": [
+            199,
+            30
+          ],
+          "reference_rgba": [
+            189,
+            17,
+            29,
+            255
+          ],
+          "candidate_rgba": [
+            190,
+            17,
+            29,
+            255
+          ]
+        },
+        {
+          "xy": [
+            183,
+            31
+          ],
+          "reference_rgba": [
+            203,
+            24,
+            36,
+            255
+          ],
+          "candidate_rgba": [
+            204,
+            24,
+            36,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "name": "real-standings-06.png",
+      "pass": false,
+      "different_pixels": 5,
+      "percent": 0.0017113910186199342,
+      "bounds": [
+        183,
+        21,
+        204,
+        32
+      ],
+      "candidate_sha256": "e672fecdce47a8bfb3f80556cfd151101d52082eceabe5d8e3f3fcd23e670025",
+      "max_rgba_delta": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "examples": [
+        {
+          "xy": [
+            193,
+            21
+          ],
+          "reference_rgba": [
+            203,
+            24,
+            36,
+            255
+          ],
+          "candidate_rgba": [
+            204,
+            24,
+            36,
+            255
+          ]
+        },
+        {
+          "xy": [
+            192,
+            23
+          ],
+          "reference_rgba": [
+            213,
+            72,
+            82,
+            255
+          ],
+          "candidate_rgba": [
+            214,
+            72,
+            82,
+            255
+          ]
+        },
+        {
+          "xy": [
+            203,
+            26
+          ],
+          "reference_rgba": [
+            189,
+            17,
+            29,
+            255
+          ],
+          "candidate_rgba": [
+            190,
+            17,
+            29,
+            255
+          ]
+        },
+        {
+          "xy": [
+            199,
+            30
+          ],
+          "reference_rgba": [
+            189,
+            17,
+            29,
+            255
+          ],
+          "candidate_rgba": [
+            190,
+            17,
+            29,
+            255
+          ]
+        },
+        {
+          "xy": [
+            183,
+            31
+          ],
+          "reference_rgba": [
+            203,
+            24,
+            36,
+            255
+          ],
+          "candidate_rgba": [
+            204,
+            24,
+            36,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "name": "real-standings-12.png",
+      "pass": false,
+      "different_pixels": 5,
+      "percent": 0.0017113910186199342,
+      "bounds": [
+        183,
+        21,
+        204,
+        32
+      ],
+      "candidate_sha256": "e672fecdce47a8bfb3f80556cfd151101d52082eceabe5d8e3f3fcd23e670025",
+      "max_rgba_delta": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "examples": [
+        {
+          "xy": [
+            193,
+            21
+          ],
+          "reference_rgba": [
+            203,
+            24,
+            36,
+            255
+          ],
+          "candidate_rgba": [
+            204,
+            24,
+            36,
+            255
+          ]
+        },
+        {
+          "xy": [
+            192,
+            23
+          ],
+          "reference_rgba": [
+            213,
+            72,
+            82,
+            255
+          ],
+          "candidate_rgba": [
+            214,
+            72,
+            82,
+            255
+          ]
+        },
+        {
+          "xy": [
+            203,
+            26
+          ],
+          "reference_rgba": [
+            189,
+            17,
+            29,
+            255
+          ],
+          "candidate_rgba": [
+            190,
+            17,
+            29,
+            255
+          ]
+        },
+        {
+          "xy": [
+            199,
+            30
+          ],
+          "reference_rgba": [
+            189,
+            17,
+            29,
+            255
+          ],
+          "candidate_rgba": [
+            190,
+            17,
+            29,
+            255
+          ]
+        },
+        {
+          "xy": [
+            183,
+            31
+          ],
+          "reference_rgba": [
+            203,
+            24,
+            36,
+            255
+          ],
+          "candidate_rgba": [
+            204,
+            24,
+            36,
+            255
+          ]
+        }
+      ]
+    },
+    {
+      "name": "real-radar-01.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "f30ed0844d59bb16d0d156cbbe9e7f3bd370c311043f9729faba1021c3c9646b",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "real-radar-06.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "f30ed0844d59bb16d0d156cbbe9e7f3bd370c311043f9729faba1021c3c9646b",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "real-radar-12.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "f30ed0844d59bb16d0d156cbbe9e7f3bd370c311043f9729faba1021c3c9646b",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "real-pedals-01.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "dda16fbb0b9b9d50cda1c9c8a517ea30cf25d0624e0bb97cd4bab0bd153e8962",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "real-pedals-06.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "dda16fbb0b9b9d50cda1c9c8a517ea30cf25d0624e0bb97cd4bab0bd153e8962",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    },
+    {
+      "name": "real-pedals-12.png",
+      "pass": true,
+      "different_pixels": 0,
+      "percent": 0.0,
+      "bounds": null,
+      "candidate_sha256": "dda16fbb0b9b9d50cda1c9c8a517ea30cf25d0624e0bb97cd4bab0bd153e8962",
+      "max_rgba_delta": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "examples": []
+    }
+  ],
+  "limits": "Real HWND pixels, default 96 DPI, settled animation endpoints and stuck-animation timeout. Not intermediate animation timing, desktop blending, VRR or HDR.",
+  "analysis_source_sha": "c5309dfef82d4f43d4673fcd9f0760a392405273",
+  "different_pixels_total": 31,
+  "max_rgba_delta": [
+    1,
+    1,
+    1,
+    2
+  ],
+  "repeatability": "28/28 candidate PNG SHA256 identical in an independent second native HWND batch"
+}

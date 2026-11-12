@@ -5,7 +5,7 @@ use crate::Section;
 
 #[test]
 fn cancel_cannot_hide_a_failed_logout_in_flight_or_queued() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         // Direct Logout, queued behind profile, and queued behind login.
         for mode in 0..3 {
             let file = crate::document::tests::File::new();
@@ -69,7 +69,7 @@ fn cancel_cannot_hide_a_failed_logout_in_flight_or_queued() {
 #[test]
 fn failed_email_and_cancel_restore_each_session_without_logout() {
     use super::super::protocol::{EmailAction, EmailMode, EmailStage, Session};
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         for session in [Session::SignedOut, Session::SignedIn, Session::NeedsSignIn] {
             for busy in [false, true] {
                 let file = crate::document::tests::File::new();
@@ -161,7 +161,7 @@ fn failed_email_and_cancel_restore_each_session_without_logout() {
 #[test]
 fn needs_sign_in_opens_provider_choices_and_hosted_cancel_keeps_access() {
     use super::super::protocol::Session;
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -206,7 +206,7 @@ fn needs_sign_in_opens_provider_choices_and_hosted_cancel_keeps_access() {
 
 #[test]
 fn needs_sign_in_from_profile_keeps_hub_pages_and_shows_a_session_notice() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -291,7 +291,7 @@ fn browser_failure_is_visible_and_retry_sends_one_fresh_login() {
     // sigue usando el portapapeles del WinSta0 real y no sirve para esta prueba.
     let file = crate::document::tests::File::new();
     let mut context = gpui::HeadlessAppContext::with_asset_source(
-        gpui_platform::current_platform(true).text_system(),
+        gpui::platform::current_platform(true).text_system(),
         std::sync::Arc::new(crate::shell::assets::Icons),
     );
     context.update(|cx| {
@@ -406,7 +406,7 @@ fn answer_local_probe(pipe: &mut vantare_ipc::transport::Pipe) {
 
 #[test]
 fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -507,7 +507,7 @@ fn a_silent_service_times_out_cancels_old_io_and_allows_a_fresh_retry() {
 
 #[test]
 fn pilot_dispatch_failure_releases_editor_and_can_retry() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -538,7 +538,7 @@ fn pilot_dispatch_failure_releases_editor_and_can_retry() {
 
 #[test]
 fn pilot_reply_during_logout_cannot_restore_private_profile() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -572,7 +572,7 @@ fn pilot_reply_during_logout_cannot_restore_private_profile() {
 
 #[test]
 fn participation_can_retry_after_background_busy_or_failed_ipc_dispatch() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -610,7 +610,7 @@ fn participation_can_retry_after_background_busy_or_failed_ipc_dispatch() {
 
 #[test]
 fn participation_is_cleared_on_logout_and_delayed_reply_cannot_restore_private_data() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, _requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -757,7 +757,7 @@ fn notice_status(catalog: vantare_ipc::control::CatalogAccess) -> Reply {
 
 #[test]
 fn old_session_fetches_profile_once_quietly_and_offline_keeps_rights() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -799,7 +799,7 @@ fn old_session_fetches_profile_once_quietly_and_offline_keeps_rights() {
 }
 #[test]
 fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -898,7 +898,7 @@ fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() 
 }
 #[test]
 fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         for denial in ["revoked", "expired", "missing"] {
             let (send, requests) = mpsc::sync_channel(8);
@@ -979,7 +979,7 @@ fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
 #[test]
 fn every_explicit_state_reaches_home_and_denied_states_never_grant_tools() {
     use vantare_ipc::control::AccessState;
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, _requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -1036,7 +1036,7 @@ fn every_explicit_state_reaches_home_and_denied_states_never_grant_tools() {
 }
 #[test]
 fn slow_manual_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_deny() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -1130,7 +1130,7 @@ fn slow_manual_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing
 }
 #[test]
 fn notice_read_preserves_user_context_and_queues_actions_without_session_http() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -1220,7 +1220,7 @@ fn notice_read_preserves_user_context_and_queues_actions_without_session_http() 
 }
 #[test]
 fn roadmap_request_queues_once_during_a_delayed_notice_read() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -1298,7 +1298,7 @@ fn founders_purchase_is_not_confirmed_by_an_existing_pro_subscription() {
 }
 #[test]
 fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
@@ -1364,7 +1364,7 @@ fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() 
 
 #[test]
 fn background_license_failure_preserves_the_user_message() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
         let (send, _requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));

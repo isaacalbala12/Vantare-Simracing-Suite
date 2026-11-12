@@ -670,7 +670,7 @@ mod tests {
 
     #[test]
     fn founders_account_label_is_preserved_and_removed_when_logging_out() {
-        gpui_platform::headless().run(|cx| {
+        gpui::platform::headless().run(|cx| {
             let file = crate::document::tests::File::new();
             let (send, requests) = mpsc::sync_channel(8);
             let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));

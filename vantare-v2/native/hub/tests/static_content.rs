@@ -5,7 +5,7 @@ use vantare_hub::orbit;
 
 #[test]
 fn pending_faces_describe_value_and_reason_without_click_or_focus() {
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let reason = "Próximamente. Usa captura de ventana en OBS";
         for (control, label, value) in [
@@ -63,7 +63,7 @@ fn track_toggle_button_states_text_aria_and_icon_in_both_directions() {
     assert_eq!(orbit::track_toggle_text(true), "Dejar de mostrar");
     assert_eq!(orbit::track_toggle_icon(false), "play");
     assert_eq!(orbit::track_toggle_icon(true), "stop");
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         for showing in [false, true] {
             let label = orbit::track_toggle_text(showing);
@@ -89,7 +89,7 @@ fn track_toggle_button_states_text_aria_and_icon_in_both_directions() {
 #[test]
 fn summary_accessibility_describes_content_without_button_actions() {
     // Construye los elementos productivos sin abrir ventanas ni usar GPU.
-    gpui_platform::headless().run(|cx| {
+    gpui::platform::headless().run(|cx| {
         cx.set_global(orbit::theme::Theme::default());
         let summary = orbit::summary_row("Beta para testers", "Acceso gratuito", "key", cx);
         assert_eq!(summary.a11y_role(), Some(gpui::Role::Group));

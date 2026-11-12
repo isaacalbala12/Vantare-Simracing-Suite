@@ -564,7 +564,7 @@ fn run_jobs(jobs: Vec<Job>) -> Result<(), String> {
     options.window_background = gpui::WindowBackgroundAppearance::Transparent;
     let failure = Rc::new(std::cell::RefCell::new(None));
     let flag = failure.clone();
-    gpui_platform::application().run(move |cx: &mut App| {
+    gpui::platform::application().run(move |cx: &mut App| {
         if !app::init(cx) {
             *flag.borrow_mut() = Some("inicializar UI".into());
             cx.quit();

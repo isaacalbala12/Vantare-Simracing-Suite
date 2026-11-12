@@ -8,7 +8,10 @@ use vantare_ipc::launcher as mailbox;
 mod document_cache;
 #[path = "execution.rs"]
 mod execution;
-pub use execution::{ResidentCancellation, ResidentEventKind, ResidentExecution, ResidentExecutionEvent, ResidentFailure, ResidentOutcome, ResidentReceipt, ResidentRejection};
+pub use execution::{
+    ResidentCancellation, ResidentEventKind, ResidentExecution, ResidentExecutionEvent,
+    ResidentFailure, ResidentOutcome, ResidentReceipt, ResidentRejection,
+};
 
 pub const DECISION_ID_MAX: usize = 20;
 pub const DECISION_ID_PATTERN: &str = "^(0|[1-9][0-9]*)$";
@@ -182,7 +185,10 @@ impl State {
         }
         let status = mailbox::read_status(&self.path);
         let mut view = ResidentView {
-            execution: status.as_ref().and_then(|s| s.extension.as_ref()).map(Into::into),
+            execution: status
+                .as_ref()
+                .and_then(|s| s.extension.as_ref())
+                .map(Into::into),
             online: status.is_some(),
             running: status.as_ref().is_some_and(|s| s.running),
             error: status.as_ref().is_some_and(|s| s.error.is_some()),

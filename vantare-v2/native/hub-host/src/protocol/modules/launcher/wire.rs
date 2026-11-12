@@ -161,7 +161,9 @@ pub enum Reply {
     #[serde(rename = "launcher.launch")]
     LauncherLaunch { accepted: bool },
     #[serde(rename = "launcher.launchChecked")]
-    LauncherLaunchChecked { value: crate::launcher::checked::LaunchQueued },
+    LauncherLaunchChecked {
+        value: crate::launcher::checked::LaunchQueued,
+    },
     #[serde(rename = "launcher.favorite")]
     LauncherFavorite { accepted: bool },
 }

@@ -5,7 +5,7 @@ import math
 import statistics
 from pathlib import Path
 
-PRIMARY = {"copies": 10, "hz": 60, "load": False}
+PRIMARY = {"copies": 10, "windows": 1, "hz": 60, "load": False}
 CHECKLIST = ("click_through", "no_focus", "topmost_borderless", "dpi_100", "dpi_150",
              "second_monitor", "obs_transparency", "exclude_from_capture")
 METRICS = ("cpu_cycles_s", "private_mib", "vram_mib", "gpu_percent", "frame_p99_ms",
@@ -59,6 +59,8 @@ def block_ratio(observations, metric):
 
 
 def validate_observation(row):
+    if row.get("windows") != 1:
+        raise InvalidEvidence("La comparacion exige una ventana overlay, no N ventanas")
     if row.get("valid") is not True or row.get("telemetry_complete") is not True:
         raise InvalidEvidence("Ronda fallida o con fotos perdidas")
     if row.get("duration_s", 0) < 60 or row.get("warmup_s", 0) < 10:
@@ -110,8 +112,8 @@ def endurance_pass(data):
 
 def evaluate(document):
     if document.get("schema") != 1 or document.get("configuration") != PRIMARY:
-        raise InvalidEvidence("Falta el escenario principal declarado: 10 ventanas, 60 Hz, sin carga")
-    output = {"source": "INFORME-FABLE.md §8", "hub": "pendiente", "overlays": {}, "adopted": False}
+        raise InvalidEvidence("Falta el escenario principal declarado: 1 ventana con 10 Relative, 60 Hz, sin carga")
+    output = {"source": "INFORME-FABLE.md §8, corregido por Isaac: una capa por monitor", "scenario": "1 ventana con 10 Relative, 60 Hz, sin carga", "hub": "pendiente", "overlays": {}, "adopted": False}
     for name in ("rune", "gpui_fast"):
         data = document.get("comparisons", {}).get(name)
         if not data:

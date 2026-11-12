@@ -24,6 +24,7 @@ function New-VantareOverlayPlan {
                     role = $role
                     variant = $variant
                     comparison = $Comparison
+                    windows = 1 # Una capa por monitor; copies cuenta widgets.
                     copies = $Copies
                     hz = $Hz
                     load = $Load

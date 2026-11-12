@@ -23,7 +23,7 @@ def campaign(candidate="rune", ratio=1.05):
                 rows.append({"id": f"{candidate}-{index}-{block}-{offset}", "role": role,
                              "variant": variant, "binary_sha256": hashes[variant],
                              "midpoint_qpc": index * 100_000 + block_index * 10_000 + offset * 1000,
-                             "valid": True, "telemetry_complete": True, "duration_s": 60,
+                             "valid": True, "windows": 1, "telemetry_complete": True, "duration_s": 60,
                              "warmup_s": 10, "noise_ok": True, "environment_ok": True,
                              "trace_overflow": 0, "trace_complete": True, "metrics": metrics})
             rowsets[block] = rows
@@ -82,6 +82,16 @@ class ThresholdTests(unittest.TestCase):
             mutation(data["comparisons"]["rune"]["rounds"][0]["ab"][1])
             with self.assertRaises(InvalidEvidence):
                 evaluate(data)
+
+    def test_native_window_count_cannot_replace_widget_count(self):
+        data = campaign()
+        data["configuration"]["windows"] = 10
+        with self.assertRaises(InvalidEvidence):
+            evaluate(data)
+        data = campaign()
+        data["comparisons"]["rune"]["rounds"][0]["ab"][1]["windows"] = 10
+        with self.assertRaises(InvalidEvidence):
+            evaluate(data)
 
     def test_reused_rounds_and_observations_are_rejected(self):
         data = campaign()

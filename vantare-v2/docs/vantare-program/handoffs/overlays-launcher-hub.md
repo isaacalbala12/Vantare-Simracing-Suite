@@ -1,3 +1,14 @@
+## VANTA-141 · Planificador y umbrales corregidos por Isaac
+
+La campaña compara una sola ventana por monitor con 1, 4 o 10 Relative.
+La métrica principal es una ventana con 10 Relative a 60 Hz sin carga.
+RONDAS.ps1 declara windows=1 y el analizador rechaza N ventanas nativas.
+Se conservan los valores numéricos de Fable sección 8. Pruebas sintéticas:
+13 del analizador y planificador PowerShell en seco pasan; ninguna medición
+real ni veredicto de adopción. Fuentes reales del producto en los tres motores.
+Demanda principal de 33 ms; validar envíos reales del pipe frente a recibidos,
+con publicaciones de origen aparte para latencia. Kit todavía incompleto.
+
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 
 [#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995),

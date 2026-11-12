@@ -224,7 +224,7 @@ impl Policy {
     }
     /// Same permission for the host and the resident, at the consumption boundary.
     pub fn permits_launch(&self, now_ms: u64) -> bool {
-        self.current_at(now_ms) && self.state.permits_access() && !self.live
+        self.epoch > 0 && self.current_at(now_ms) && self.state.permits_access() && !self.live
     }
     pub fn current(&self) -> bool {
         wall_ms().is_ok_and(|now| self.current_at(now))

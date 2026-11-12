@@ -115,6 +115,12 @@ fn launch_permission_covers_grace_no_credential_live_denials_and_time_boundaries
         ..Default::default()
     };
     assert!(policy.permits_launch(now));
+    policy.epoch = 0;
+    assert!(
+        !policy.permits_launch(now),
+        "missing authority is not launch permission"
+    );
+    policy.epoch = 1;
     policy.live = true;
     assert!(!policy.permits_launch(now));
     policy.live = false;

@@ -491,11 +491,22 @@ mod tests {
                     let projected = access_view(&observed, now);
                     assert_eq!(
                         observed.permits_launch(now),
-                        projected.verified && !projected.blocked && !observed.live
+                        observed.epoch > 0
+                            && projected.verified
+                            && !projected.blocked
+                            && !observed.live
                     );
                 }
             }
         }
+        let mut missing_authority = policy(control::AccessState::Active);
+        missing_authority.epoch = 0;
+        let projected = access_view(&missing_authority, 1000);
+        assert!(
+            projected.verified,
+            "rights link is an independent host guard"
+        );
+        assert!(!missing_authority.permits_launch(1000));
     }
 
     #[test]

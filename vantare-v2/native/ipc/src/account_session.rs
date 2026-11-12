@@ -75,25 +75,7 @@ pub fn request_cancelled(
     link: &AuthorityLink,
     stop: &std::sync::Arc<crate::transport::Event>,
 ) -> io::Result<Option<AccountObservation>> {
-    let mut pipe = crate::transport::connect(
-        &link.pipe,
-        std::sync::Arc::clone(stop),
-        std::time::Duration::from_millis(150),
-    )?;
-    if !pipe.server_peer()?.is_image(&link.image) {
-        return Err(io::ErrorKind::PermissionDenied.into());
-    }
-    control::write(
-        &mut pipe,
-        &control::Request {
-            version: control::VERSION,
-            sequence: 1,
-            nonce: String::new(),
-            command: control::Command::ReadAccountSession {},
-        },
-    )?;
-    let response: ControlResponse = control::read(&mut pipe)?;
-    response.validate(control::wall_ms()?)
+    request_with_deadline(link, stop, std::time::Duration::from_millis(150))
 }
 
 /// Bounded consume-time observation. One RPC, no retries, no mutator nonce.
@@ -102,12 +84,19 @@ pub fn read_account_session(
     link: &AuthorityLink,
     timeout: std::time::Duration,
 ) -> io::Result<Option<AccountObservation>> {
-    use std::{sync::Arc, time::Instant};
-    let until = Instant::now()
+    let stop = std::sync::Arc::new(crate::transport::Event::new()?);
+    request_with_deadline(link, &stop, timeout)
+}
+#[cfg(any(windows, unix))]
+fn request_with_deadline(
+    link: &AuthorityLink,
+    stop: &std::sync::Arc<crate::transport::Event>,
+    timeout: std::time::Duration,
+) -> io::Result<Option<AccountObservation>> {
+    let until = std::time::Instant::now()
         .checked_add(timeout)
         .ok_or(io::ErrorKind::InvalidInput)?;
-    let stop = Arc::new(crate::transport::Event::new()?);
-    let pipe = crate::transport::connect(&link.pipe, stop, timeout)?;
+    let pipe = crate::transport::connect(&link.pipe, std::sync::Arc::clone(stop), timeout)?;
     if !pipe.server_peer()?.is_image(&link.image) {
         return Err(io::ErrorKind::PermissionDenied.into());
     }

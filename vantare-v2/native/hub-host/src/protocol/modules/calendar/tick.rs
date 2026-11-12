@@ -55,10 +55,12 @@ pub(super) fn tick_with_clock(
             },
         )?;
     }
-    for value in session
-        .calendar_state
-        .notice_tick(now, monotonic, enabled, session.current.live)
-    {
+    for value in session.calendar_state.notice_tick(
+        now,
+        monotonic,
+        enabled && session.settings.windows_notifications_enabled(),
+        session.current.live,
+    ) {
         super::frame::write(
             pipe,
             &super::HostToUi::Event {

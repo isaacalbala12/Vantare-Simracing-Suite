@@ -53,6 +53,8 @@ export function create(context: MockContext): MockHandler {
   )
     settings.track.exists = true;
   if (sceneName === "ajustes-layout-protegido") settings.track.protected = true;
+  context.windowsNotificationsEnabled =
+    settings.general.toasts && !settings.protected;
   let revision = 0;
   let pending: SettingsPatch | undefined;
   let conflicted = false;
@@ -62,6 +64,8 @@ export function create(context: MockContext): MockHandler {
       revision: (++revision).toString(16).padStart(64, "0"),
       canRetry: false,
     };
+    context.windowsNotificationsEnabled =
+      settings.general.toasts && !settings.protected;
     pending = undefined;
     if (context.onboarding)
       context.onboarding.settingsRevision = settings.revision;

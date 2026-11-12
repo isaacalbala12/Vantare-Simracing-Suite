@@ -20,7 +20,16 @@ import CalendarEntry from "../src/renderer/screens/calendar/entry";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
 const render = (ui: ReactNode) => renderTree(ui, { wrapper: ToastProvider });
-const api = vi.hoisted(() => ({ request: vi.fn(), expired: false }));
+const api = vi.hoisted(() => ({
+  request: vi.fn(),
+  expired: false,
+  toasts: true,
+}));
+vi.mock("../src/renderer/app/SettingsState", () => ({
+  useSettings: () => ({
+    view: { general: { toasts: api.toasts }, protected: false },
+  }),
+}));
 vi.mock("../src/renderer/app/Host", () => ({
   useHost: () => ({ client: api, hello: { demo: false } }),
 }));
@@ -93,6 +102,7 @@ afterEach(() => {
   cleanup();
   api.request.mockReset();
   api.expired = false;
+  api.toasts = true;
 });
 function content() {
   return (
@@ -332,5 +342,72 @@ it.each([false, true])(
       },
     ]);
     expect(control.getAttribute("aria-checked")).toBe(String(!saved));
+  },
+);
+
+it.each([false, true])(
+  "keeps saved Windows=%s and the new-week preference while General forbids desktop notices",
+  async (windows) => {
+    api.toasts = false;
+    api.expired = true;
+    const config: CalendarConfigView = {
+      utc: true,
+      prefsRevision: "a".repeat(64),
+      following: [],
+      followingRevision: "b".repeat(64),
+      alerts: {
+        ...calendarDefaultAlerts,
+        bands: [],
+        slots: [],
+        notifyWeek: true,
+        channels: { windows, sound: true, inTrack: true },
+      },
+      alertsRevision: "c".repeat(64),
+      documents: { prefs: "ready", following: "ready", alerts: "ready" },
+    };
+    api.request.mockResolvedValue({
+      method: "calendar.configLoad",
+      value: config,
+    });
+    const ui = render(content());
+    await act(async () => {});
+    const week = screen.getByRole("switch", { name: "Avisarme al llegar" });
+    expect(week.getAttribute("aria-checked")).toBe("true");
+    expect(week.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(week);
+    fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+    await act(async () => {});
+    for (const label of [text.windows, text.sound]) {
+      const channel = screen.getByRole("checkbox", { name: label });
+      expect(channel.getAttribute("aria-checked")).toBe(
+        String(label === text.windows ? windows : true),
+      );
+      expect(channel.getAttribute("aria-disabled")).toBe("true");
+      expect(
+        document.getElementById(channel.getAttribute("aria-describedby") ?? "")
+          ?.textContent,
+      ).toBe(text.windowsDisabled);
+      fireEvent.click(channel);
+    }
+    const track = screen.getByRole("checkbox", { name: text.track });
+    expect(track.getAttribute("aria-disabled")).not.toBe("true");
+    const probe = screen.getByRole("button", { name: text.test });
+    expect(probe.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(probe);
+    expect(api.request.mock.calls.map(([request]) => request.method)).toEqual([
+      "calendar.configLoad",
+    ]);
+    api.toasts = true;
+    ui.rerender(content());
+    expect(
+      screen
+        .getByRole("checkbox", { name: text.windows })
+        .getAttribute("aria-disabled"),
+    ).not.toBe("true");
+    expect(
+      screen
+        .getByRole("checkbox", { name: text.sound })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
   },
 );

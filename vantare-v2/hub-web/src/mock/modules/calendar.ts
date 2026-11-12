@@ -153,6 +153,12 @@ export function create(context: MockContext): MockHandler {
       case "calendar.noticeTest": {
         if (context.core.rights !== "connected")
           return { kind: "failure", id, error: { kind: "denied" } };
+        if (!context.windowsNotificationsEnabled)
+          return {
+            kind: "response",
+            id,
+            result: { method: request.method, accepted: false },
+          };
         if (config.documents.alerts !== "ready")
           return {
             kind: "failure",

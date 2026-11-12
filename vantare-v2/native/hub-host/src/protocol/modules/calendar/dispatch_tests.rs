@@ -402,6 +402,7 @@ fn calendar_notice_test_is_closed_guarded_and_rate_limited_without_core_calls() 
     ] {
         let fixture = Fixture::new();
         let mut session = fixture.session();
+        set_calendar_windows(&mut session, true);
         session.current.access.verified = verified;
         session.current.access.calendar = calendar;
         session.current.access.blocked = blocked;
@@ -425,6 +426,7 @@ fn calendar_notice_test_is_closed_guarded_and_rate_limited_without_core_calls() 
     }
     let fixture = Fixture::new();
     let mut session = fixture.session();
+    set_calendar_windows(&mut session, true);
     session.current.access.verified = true;
     session.current.access.calendar = true;
     session.current.rights = protocol::LinkState::Connected;
@@ -472,6 +474,7 @@ fn calendar_notice_test_is_closed_guarded_and_rate_limited_without_core_calls() 
 fn calendar_notice_test_does_not_ignore_protected_alerts() {
     let fixture = Fixture::new();
     let mut session = fixture.session();
+    set_calendar_windows(&mut session, true);
     session.current.access.verified = true;
     session.current.access.calendar = true;
     session.current.rights = protocol::LinkState::Connected;
@@ -495,6 +498,9 @@ fn calendar_notice_test_does_not_ignore_protected_alerts() {
 fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() {
     for blocked in [
         "none",
+        "general",
+        "windows",
+        "both",
         "rights",
         "calendar",
         "blocked",
@@ -506,6 +512,7 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         std::fs::create_dir_all(&base).unwrap();
         std::fs::write(base.join("official-schedule.json"),br#"{"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#).unwrap();
         let mut alerts = crate::calendar::CalendarAlerts::default();
+        alerts.channels.windows = !matches!(blocked, "windows" | "both");
         alerts.bands.push(crate::calendar::CalendarBand {
             series_id: "qa".into(),
             from: 0,
@@ -519,6 +526,7 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         )
         .unwrap();
         let mut session = fixture.session();
+        set_calendar_windows(&mut session, true);
         session.handshaken = true;
         session.current.access.verified = true;
         session.current.access.calendar = true;
@@ -533,6 +541,7 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         super::calendar_tick::tick_with_clock(&mut session, &mut pipe, now - 1000, clock).unwrap();
         assert!(pipe.get_ref().is_empty());
         match blocked {
+            "general" | "both" => set_calendar_windows(&mut session, false),
             "handshake" => session.handshaken = false,
             "rights" => session.current.rights = protocol::LinkState::Unavailable,
             "calendar" => session.current.access.calendar = false,
@@ -561,6 +570,16 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         } else {
             assert!(pipe.get_ref().is_empty(), "{blocked}");
         }
+        if matches!(blocked, "general" | "both") {
+            let feed: vantare_ipc::session_alerts::Feed = serde_json::from_slice(
+                &std::fs::read(fixture.0.join("session-alerts-feed.json")).unwrap(),
+            )
+            .unwrap();
+            assert!(
+                !feed.events.is_empty(),
+                "overlay feed must ignore General: {blocked}"
+            );
+        }
         assert_eq!(session.core.requests, 0);
     }
 }
@@ -569,6 +588,7 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
 fn calendar_host_poll_uses_the_shared_background_lane_without_a_mounted_screen() {
     let fixture = Fixture::new();
     let mut session = fixture.session();
+    set_calendar_windows(&mut session, true);
     session.handshaken = true;
     session.current.access.verified = true;
     session.current.access.calendar = true;
@@ -767,6 +787,7 @@ fn calendar_offline_refresh_still_loads_local_departure_notices() {
     )
     .unwrap();
     let mut session = fixture.session();
+    set_calendar_windows(&mut session, true);
     session.current.access.verified = true;
     session.current.access.calendar = true;
     session.current.rights = protocol::LinkState::Connected;
@@ -801,9 +822,10 @@ fn calendar_offline_refresh_still_loads_local_departure_notices() {
 }
 #[test]
 fn calendar_refresh_completion_never_queues_a_week_notice_without_current_authority() {
-    for revoked in ["rights", "closing"] {
+    for revoked in ["none", "rights", "closing", "general", "windows", "both"] {
         let fixture = Fixture::new();
         let mut session = fixture.session();
+        set_calendar_windows(&mut session, true);
         session.current.access.verified = true;
         session.current.access.calendar = true;
         session.current.rights = protocol::LinkState::Connected;
@@ -814,6 +836,13 @@ fn calendar_refresh_completion_never_queues_a_week_notice_without_current_author
         let base = fixture.0.join("calendar-authority");
         std::fs::create_dir(&base).unwrap();
         std::fs::write(base.join("official-schedule.json"), old).unwrap();
+        let mut alerts = crate::calendar::CalendarAlerts::default();
+        alerts.channels.windows = !matches!(revoked, "windows" | "both");
+        std::fs::write(
+            base.join("calendar-alerts.json"),
+            serde_json::to_vec(&alerts).unwrap(),
+        )
+        .unwrap();
         session.calendar_state = crate::calendar::State::new(base);
         session
             .calendar_state
@@ -823,8 +852,11 @@ fn calendar_refresh_completion_never_queues_a_week_notice_without_current_author
         session.calendar_state.notice_tick(now, clock, true, false);
         if revoked == "rights" {
             session.current.rights = protocol::LinkState::Unavailable;
-        } else {
+        } else if revoked == "closing" {
             session.closing = Some((protocol::CloseReason::Window, clock));
+        }
+        if matches!(revoked, "general" | "both") {
+            set_calendar_windows(&mut session, false);
         }
         let next = r#"{"version":1,"timezone":"UTC","validFrom":"2026-11-09T00:00:00Z","validUntil":"2026-11-16T00:00:00Z","series":[{"id":"qa","name":"QA","track":"Spa","vehicleClass":"GT3","licenseLabel":"Bronce","recurrence":{"kind":"interval","intervalMinutes":60}}]}"#;
         super::calendar::complete_at(
@@ -843,8 +875,81 @@ fn calendar_refresh_completion_never_queues_a_week_notice_without_current_author
             session
                 .calendar_state
                 .notice_tick(now + 1000, clock + Duration::from_secs(1), true, false)
-                .is_empty(),
+                .is_empty()
+                == (revoked != "none"),
             "{revoked}"
         );
+    }
+}
+
+fn set_calendar_windows(session: &mut Session, enabled: bool) {
+    let revision = session.settings.view().revision;
+    session
+        .settings
+        .update(crate::settings::SettingsPatch::Toasts(enabled), &revision)
+        .unwrap();
+}
+#[test]
+fn calendar_test_follows_general_live_without_changing_calendar_channels() {
+    for general in [false, true] {
+        for windows in [false, true] {
+            let fixture = Fixture::new();
+            let base = fixture.0.join("hub");
+            std::fs::create_dir_all(&base).unwrap();
+            let mut alerts = crate::calendar::CalendarAlerts::default();
+            alerts.channels.windows = windows;
+            let bytes = serde_json::to_vec(&alerts).unwrap();
+            std::fs::write(base.join("calendar-alerts.json"), &bytes).unwrap();
+            let mut session = fixture.session();
+            session.current.access.verified = true;
+            session.current.access.calendar = true;
+            session.current.rights = protocol::LinkState::Connected;
+            set_calendar_windows(&mut session, general);
+            let mut pipe = Pipe::new(Vec::new());
+            session
+                .request(&mut pipe, 401, &Request::CalendarNoticeTest {})
+                .unwrap();
+            pipe.set_position(0);
+            let mut reader = frame::Reader::default();
+            if general {
+                assert!(matches!(
+                    reader.next::<HostToUi>(&mut pipe).unwrap().unwrap(),
+                    HostToUi::Event {
+                        event: Event::CalendarNotice { .. }
+                    }
+                ));
+            }
+            assert_eq!(
+                reader.next::<HostToUi>(&mut pipe).unwrap().unwrap(),
+                HostToUi::Response {
+                    id: 401,
+                    result: Reply::CalendarNoticeTest { accepted: general }
+                }
+            );
+            assert_eq!(
+                usize::try_from(pipe.position()).unwrap(),
+                pipe.get_ref().len()
+            );
+            assert_eq!(
+                std::fs::read(base.join("calendar-alerts.json")).unwrap(),
+                bytes
+            );
+            if !general {
+                // Settings update takes effect in this same Session and the refused
+                // test did not consume the host's five-second interval.
+                set_calendar_windows(&mut session, true);
+                let mut pipe = Pipe::new(Vec::new());
+                session
+                    .request(&mut pipe, 402, &Request::CalendarNoticeTest {})
+                    .unwrap();
+                assert!(matches!(
+                    response(&mut pipe),
+                    HostToUi::Event {
+                        event: Event::CalendarNotice { .. }
+                    }
+                ));
+            }
+            assert_eq!(session.core.requests, 0);
+        }
     }
 }

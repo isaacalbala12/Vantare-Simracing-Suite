@@ -227,6 +227,7 @@ it("mock emits only a fixed typed sample after rights and rate guards", () => {
   const core = structuredClone(coreFixture) as CoreStatus,
     emit = vi.fn();
   const host = create({
+    windowsNotificationsEnabled: true,
     core,
     emit,
     sceneName: "calendar-data",
@@ -312,6 +313,7 @@ it("keeps the main-process test clock independent of the visual bank date", () =
   core.rights = "connected";
   const emit = vi.fn();
   const host = create({
+    windowsNotificationsEnabled: true,
     core,
     emit,
     sceneName: "calendar-live-reference",
@@ -338,7 +340,9 @@ it("keeps the main-process test clock independent of the visual bank date", () =
 import settingsCorpus from "../src/contract/generated/corpus/settings.json";
 import { testNotification } from "../src/main/appearance";
 
-it("keeps Calendar independent of general.toasts while preserving the settings test gate", () => {
+// Calendar events have already passed the host Settings guard. The presenter
+// consumes only trusted events; the General sample has its own main-process gate.
+it("presents trusted host events and preserves the General test gate", () => {
   vi.spyOn(process, "platform", "get").mockReturnValue("win32");
   const sample = (settingsCorpus.host as unknown as HostToUi[]).find(
     (m) => m.kind === "response" && m.result.method === "settings.get",

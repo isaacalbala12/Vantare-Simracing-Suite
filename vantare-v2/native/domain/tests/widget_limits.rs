@@ -1,5 +1,5 @@
 //! Frozen values captured from origin/nightly SHA fe64b255f60a159e698df0366b0b4ee163e0a0b3 before the move.
-//! Do not regenerate this reference from widget_settings under test.
+//! Do not regenerate this reference from the constants under test.
 use vantare_domain::widget_settings as widget;
 #[allow(clippy::too_many_lines)] // Frozen data table: one row per moved constant.
 #[test]

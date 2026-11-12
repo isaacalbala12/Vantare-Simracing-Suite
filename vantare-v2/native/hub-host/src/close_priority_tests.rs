@@ -51,3 +51,61 @@ fn every_close_reason_pair_only_advances_and_never_repeats_a_forced_close() {
         assert!(session_effects::close_can_advance(None, next));
     }
 }
+
+#[test]
+fn production_tick_replaces_window_with_live_and_eof_and_renews_the_two_second_deadline() {
+    for reason in [CloseReason::Live, CloseReason::ControlEof] {
+        let fixture = Fixture::new();
+        let args = Args {
+            controlled: reason == CloseReason::ControlEof,
+            pipe: String::new(),
+            data: fixture.0.join("hub"),
+            layout: fixture.0.join("layout.json"),
+            launcher: fixture.0.join("launcher.json"),
+            engineer: fixture.0.join("engineer.json"),
+        };
+        let mut session = fixture.session();
+        let waiting = protocol::CoreStatus {
+            rights: protocol::LinkState::Connected,
+            ..Default::default()
+        };
+        session.last = Some(waiting.clone());
+        session.core.status = protocol::CoreStatus {
+            live: reason == CloseReason::Live,
+            ..waiting
+        };
+        let started = Instant::now();
+        let now = started + Duration::from_secs(10);
+        session.closing = Some((CloseReason::Window, started));
+        let mut pipe = Pipe::new(Vec::new());
+        assert!(session.tick(&args, &mut pipe, now, || true).unwrap());
+        assert_eq!(session.closing, Some((reason, now)));
+        assert!(
+            session
+                .tick(&args, &mut pipe, now + Duration::from_secs(2), || true)
+                .unwrap()
+        );
+        assert!(
+            !session
+                .tick(&args, &mut pipe, now + Duration::from_millis(2001), || true)
+                .unwrap()
+        );
+        assert_eq!(
+            session.closing,
+            Some((reason, now)),
+            "repeated priority must not renew the deadline"
+        );
+        pipe.set_position(0);
+        let mut reader = frame::Reader::default();
+        let mut emitted = Vec::new();
+        loop {
+            match reader.next::<HostToUi>(&mut pipe) {
+                Ok(Some(HostToUi::CloseRequested { reason })) => emitted.push(reason),
+                Ok(_) => {}
+                Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => break,
+                Err(error) => panic!("{error}"),
+            }
+        }
+        assert_eq!(emitted, vec![reason]);
+    }
+}

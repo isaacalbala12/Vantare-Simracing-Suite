@@ -18,6 +18,7 @@ it("keeps the close-time request list closed to the report draft save", () => {
     source.indexOf("private beginClose("),
     source.indexOf("private finishClose("),
   );
+  expect(source.match(/this\.issue\(/gu)).toHaveLength(2);
   expect(phase.match(/this\.issue\(/gu)).toHaveLength(1);
   expect(phase).toContain("{ method: reportCloseMethods[0], fields }");
   expect(phase).not.toContain("this.request(");

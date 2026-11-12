@@ -288,6 +288,15 @@ function useReportsState() {
           permitted.fields === JSON.stringify(state.current.fields)
         )
           return "discard";
+        const clean = () =>
+          JSON.stringify(state.current.fields) === state.current.saved &&
+          !state.current.localNotes.title &&
+          !state.current.localNotes.body &&
+          !state.current.answerDraft.note &&
+          state.current.answerDraft.score === 3 &&
+          !triageHasText.current?.();
+        // No text to preserve: abandon only Testing's waits, not other screens.
+        if (clean()) return "discard";
         const pending = inflight.current;
         if (pending) {
           const cancelled = AbortSignal.any([
@@ -306,6 +315,7 @@ function useReportsState() {
             }
           });
         }
+        if (!signal.aborted && clean()) return "discard";
         if (epoch !== generation.current || signal.aborted) return false;
         await saveCurrent.current(send, signal);
         return epoch === generation.current &&

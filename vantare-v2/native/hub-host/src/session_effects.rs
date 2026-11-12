@@ -110,11 +110,19 @@ impl Session {
         result
     }
     pub(super) fn request_close(&mut self, pipe: &mut Pipe, reason: CloseReason) -> io::Result<()> {
+        self.request_close_at(pipe, reason, Instant::now())
+    }
+    pub(super) fn request_close_at(
+        &mut self,
+        pipe: &mut Pipe,
+        reason: CloseReason,
+        now: Instant,
+    ) -> io::Result<()> {
         if !close_can_advance(self.closing.map(|(reason, _)| reason), reason) {
             return Ok(());
         }
         self.cancel_deferred(pipe)?;
-        self.closing = Some((reason, Instant::now()));
+        self.closing = Some((reason, now));
         frame::write(pipe, &HostToUi::CloseRequested { reason })
     }
     pub(super) fn respond_service(

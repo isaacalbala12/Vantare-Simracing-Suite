@@ -206,7 +206,7 @@ export class Client {
     this.closeReason = reason;
     const sequence = ++this.closeSequence;
     this.reportClose.cancel();
-    if (reason !== "window") {
+    if (reason === "live" || reason === "controlEof") {
       for (const pending of this.pending.values()) {
         clearTimeout(pending.timer);
         pending.dispose?.();
@@ -214,6 +214,11 @@ export class Client {
       }
       this.pending.clear();
       this.finishClose(true, sequence, reason);
+      return;
+    }
+    if (reason === "restart") {
+      this.closeAnswered = false;
+      this.answerWhenIdle();
       return;
     }
     const started = this.reportClose.start(

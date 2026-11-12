@@ -1262,7 +1262,7 @@ it("abandons the close preparation on session invalidation before dispatching an
         value: { ...account, name: "B", session: "signedIn", gate: "none" },
       },
     });
-    expect(await closing).toBe(false);
+    expect(await closing).toBe(true);
   });
   expect(hook.result.current.fields.actionText).toBe("");
   expect(screen.queryByRole("alertdialog")).toBeNull();
@@ -1272,4 +1272,31 @@ it("abandons the close preparation on session invalidation before dispatching an
   });
   expect(saves).toHaveLength(1);
   expect(hook.result.current.fields.actionText).toBe("");
+});
+
+it("closes a clean report immediately while testing.refresh is still in flight, without a false unsaved dialog", async () => {
+  const hook = await mount("testing-tester-reports");
+  const port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  let held: MessageEvent | undefined;
+  port.onmessage = (event) => {
+    if (
+      event.data.kind === "request" &&
+      event.data.request.method === "testing.refresh"
+    )
+      held = event;
+    else receive.call(port, event);
+  };
+  let refresh!: Promise<unknown>;
+  act(() => {
+    refresh = hook.result.current.refresh().catch(() => {});
+  });
+  await waitFor(() => expect(held).toBeDefined());
+  expect(hook.result.current.dirty).toBe(false);
+  await act(async () => {
+    expect(await hook.close("window")).toBe(true);
+  });
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  await refresh;
 });

@@ -1026,7 +1026,7 @@ function RestartVeto({ guard }: { guard: () => boolean }) {
   return null;
 }
 describe("restart feedback", () => {
-  it("forces an accepted restart without invoking a vetoing close guard", async () => {
+  it("shows a vetoed restart instead of discarding another screen edit", async () => {
     const guard = vi.fn(() => false);
     const sent = vi.spyOn(Client.prototype, "send");
     mount(
@@ -1040,16 +1040,16 @@ describe("restart feedback", () => {
       name: t("updates.restart"),
     });
     await userEvent.setup().click(restart);
-    await screen.findByRole("button", { name: t("updates.restarting") });
+    await screen.findByText(t("updates.restartVeto"));
     await waitFor(() =>
       expect(
         sent.mock.calls.some(
-          ([message]) => message.kind === "closeAnswer" && message.allow,
+          ([message]) => message.kind === "closeAnswer" && !message.allow,
         ),
       ).toBe(true),
     );
-    expect(guard).not.toHaveBeenCalled();
-    expect(screen.queryByText(t("updates.restartVeto"))).toBeNull();
+    expect(guard).toHaveBeenCalledWith("restart");
+    expect(screen.getByText(t("updates.restartVeto"))).toBeTruthy();
   });
   it("shows closing after accepted restart until the real window closes", async () => {
     mount("actualizacion-lista", <Updates />);

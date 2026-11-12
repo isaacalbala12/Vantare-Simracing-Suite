@@ -14,9 +14,24 @@ use std::{
 type Pipe = io::Cursor<Vec<u8>>;
 mod ready {
     pub struct Ready;
+    impl Ready {
+        #[allow(
+            clippy::unnecessary_wraps,
+            clippy::unused_self,
+            reason = "same signature as the real confirmation gate"
+        )]
+        pub fn check_confirmation(&self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
 }
 #[derive(Default)]
 struct Core {
+    status: protocol::CoreStatus,
+    reply: Option<(
+        u32,
+        Result<vantare_ipc::services_protocol::Reply, HostError>,
+    )>,
     requests: usize,
     sent: Vec<(u32, vantare_ipc::services_protocol::Command)>,
     policy: vantare_ipc::control::Policy,
@@ -25,6 +40,17 @@ struct Core {
     busy: bool,
 }
 impl Core {
+    fn status(&mut self) -> protocol::CoreStatus {
+        self.status.clone()
+    }
+    fn reply(
+        &mut self,
+    ) -> Option<(
+        u32,
+        Result<vantare_ipc::services_protocol::Reply, HostError>,
+    )> {
+        self.reply.take()
+    }
     fn policy(&self) -> vantare_ipc::control::Policy {
         self.policy.clone()
     }
@@ -86,6 +112,15 @@ include!(concat!(env!("OUT_DIR"), "/session.rs"));
 #[path = "session_effects.rs"]
 mod session_effects;
 use session_effects::settings_response;
+#[cfg_attr(
+    test,
+    allow(
+        clippy::duplicate_mod,
+        reason = "tests exercise the production tick with isolated IO"
+    )
+)]
+#[path = "ui_tick.rs"]
+mod ui_tick;
 
 struct Fixture(PathBuf);
 impl Fixture {

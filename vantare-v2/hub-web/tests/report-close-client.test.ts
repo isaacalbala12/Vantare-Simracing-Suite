@@ -177,7 +177,7 @@ it("uses one injected five-second deadline and ignores a late successful save af
   await pending;
   expect(h.received.filter((m) => m.kind === "closeAnswer")).toHaveLength(1);
 });
-it.each(["live", "restart", "controlEof"] as const)(
+it.each(["live", "controlEof"] as const)(
   "%s interrupts preparation immediately without a dialog or a late close",
   async (reason: CloseReason) => {
     const h = setup(),
@@ -316,4 +316,38 @@ it("rejects a success after the deadline even if the event loop delayed its time
   complete(h, request);
   expect(await h.next()).toEqual({ kind: "closeAnswer", allow: false });
   expect(failed).toHaveBeenCalledOnce();
+});
+
+it("Restart cancels only report preparation and still honors every other screen guard", async () => {
+  const h = setup(),
+    failed = vi.fn(),
+    guard = vi.fn(() => false);
+  h.client.addCloseGuard(guard);
+  h.client.setReportClosePreparation({
+    prepare: async (save) => {
+      await save(fields);
+      return "saved";
+    },
+    failed,
+  });
+  h.post({ kind: "closeRequested", reason: "window" });
+  const saving = await h.next();
+  h.post({ kind: "closeRequested", reason: "restart" });
+  expect(await h.next()).toEqual({ kind: "closeAnswer", allow: false });
+  expect(guard).toHaveBeenCalledExactlyOnceWith("restart");
+  expect(failed).not.toHaveBeenCalled();
+  expect(h.timers.size).toBe(0);
+  complete(h, saving);
+  const barrier = h.client.request({ method: "core.get" });
+  const request = await h.next();
+  if (request.kind !== "request") throw Error("missing barrier");
+  h.post({
+    kind: "failure",
+    id: request.id,
+    error: { kind: "coreUnavailable" },
+  });
+  await expect(barrier).rejects.toBeInstanceOf(HostFailure);
+  expect(
+    h.sent.mock.calls.filter(([message]) => message.kind === "closeAnswer"),
+  ).toHaveLength(1);
 });

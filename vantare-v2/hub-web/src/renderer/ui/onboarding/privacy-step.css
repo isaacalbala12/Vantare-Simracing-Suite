@@ -32,6 +32,7 @@
 .v-ob-consent-card .v-switch {
   width: calc(58 * var(--ob-unit));
   height: calc(32 * var(--ob-unit));
+  border-radius: var(--radius-pill);
   border: 1px solid var(--ob-c-51464a);
   background: var(--ob-c-221d1f);
   padding: calc(3 * var(--ob-unit));

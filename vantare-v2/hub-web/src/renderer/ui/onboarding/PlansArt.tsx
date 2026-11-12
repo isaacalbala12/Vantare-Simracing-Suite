@@ -63,7 +63,8 @@ export function PlansArt({
             </div>
             {card.features.map((feature) => (
               <p key={feature}>
-                {onboardingChoicesText.check} {feature}
+                <span aria-hidden="true">{onboardingChoicesText.check}</span>
+                {feature}
               </p>
             ))}
             <Button

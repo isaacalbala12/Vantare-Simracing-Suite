@@ -5,6 +5,7 @@ import type {
 } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
 import { roadmap as text } from "../i18n/roadmap";
+import { TrackedCaps } from "./TrackedCaps";
 import "./roadmap.css";
 
 const lanes = ["next", "now", "done"] as const;
@@ -39,7 +40,7 @@ function Heading({
   return (
     <h2 className="v-roadmap-heading">
       <Icon name={icon} />
-      {children}
+      <TrackedCaps>{children}</TrackedCaps>
     </h2>
   );
 }

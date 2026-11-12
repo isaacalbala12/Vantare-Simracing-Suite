@@ -406,8 +406,8 @@ Su plazo está exento únicamente en la lista cerrada de métodos del cliente;
 no existe un parámetro de timeout controlado por el renderer. El anfitrión Rust
 rechaza la exportación directa con `unsupported`.
 
-El archivo nunca sobrescribe un destino existente y usa creación exclusiva
-si el sistema de archivos no admite enlaces duros. No publica suscripciones,
+Para un destino nuevo se usa creación exclusiva, también si el sistema de
+archivos no admite enlaces duros. La confirmación de reemplazo se describe abajo. No publica suscripciones,
 URLs ni conexiones a Google, Apple o Microsoft. El límite de ICS es un cuarto
 del frame para que su JSON y la vista previa quepan en el protocolo.
 La versión v25 sigue al contrato de avisos (v24).
@@ -423,9 +423,8 @@ al iniciar la exportación, nunca después de la espera en el diálogo.
 
 Sin extensión se añade `.ics`. Otra extensión produce el error cerrado
 `calendarExportExtension`. UNC, rutas relativas, ADS, dispositivos reservados y
-rutas excesivas se rechazan. Un destino existente siempre da `conflict`, incluso
-si el diálogo de Windows había preguntado por sobrescribir: hay que elegir otro
-nombre. No se cambia esa decisión de producto.
+rutas excesivas se rechazan. Un destino existente pide confirmación propia mediante
+`WindowAlertDialog`, sin comunicar su ruta al renderer.
 
 La selección de series replica `Series::every().is_some()` de GPUI para ICS;
 no reutiliza la clasificación diaria de los avisos. El fixture
@@ -504,3 +503,31 @@ La prueba de Ajustes y los avisos comparten el doble solo en QA o mock autorizad
 La primera evaluación habilitada del emisor carga horario y preferencias locales
 solo para lectura, aunque el refresh falle por falta de red. Un sello checked
 futuro o un retroceso del reloj no suspende el sondeo: se considera vencido.
+
+## Calendario: confirmar reemplazo ICS (wire v30 provisional)
+
+Decisión de Isaac del 12-11: `calendar.icsExport` puede responder
+`replacementRequired {confirmationId}`. `calendar.icsReplace {confirmationId,
+replace}` confirma o cancela. Ambos resultados son cerrados y main es su único
+emisor; Rust rechaza su ejecución directa. Los identificadores tienen 64 hex
+minúsculos, son aleatorios, de un solo uso y caducan a los 60 s con reloj inyectado.
+Main conserva en privado destino, contenido revisado y huella (identidad,
+tamaño, mtime, ctime y SHA-256 leído por bloques). Ninguna ruta cruza el puente.
+
+Cancelar no escribe. Confirmar comprueba la huella; un cambio solicita otra
+confirmación con id nuevo. Se escribe y sincroniza un temporal hermano y se
+recomprueba la huella inmediatamente antes de `rename`. Un fallo de escritura o
+publicación conserva el archivo original y retira el temporal en mejor esfuerzo.
+Un destino eliminado no se convierte en creación sin confirmar. Enlaces y
+directorios se rechazan. Un nuevo prepare o la desconexión invalida la confirmación.
+No se cambia la limitación anterior sobre recomprobar derechos al exportar.
+
+El método nuevo también está en la lista cerrada de plazos de main: no se
+notifica timeout mientras una publicación aún podría terminar. La caducidad del
+id se comprueba antes y después de escribir el temporal. No hay timeout configurable
+por el renderer. La pantalla bloquea envíos duplicados y mantiene los controles
+de ventana operativos; cancelar devuelve al calendario preparado de nuevo.
+
+La huella se comprueba justo antes de renombrar; no bloquea editores externos.
+La reutilización con report-export y la longitud de su temporal anterior siguen
+fuera de este cambio. Sin IPC/runtime/rights/supervisor, red ni dependencias nuevas.

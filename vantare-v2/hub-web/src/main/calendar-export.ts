@@ -1,13 +1,20 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { link, open, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, win32 } from "node:path";
 import {
   type CalendarIcsStatus,
+  calendarIcsConfirmationMaxAgeMs,
   calendarIcsLimit,
   calendarIcsPreparedMaxAgeMs,
+  calendarRevisionLength,
   type HostError,
   type HostToUi,
 } from "../contract/generated/contract";
+
+import {
+  calendarFingerprint,
+  replaceCalendar,
+} from "./calendar-replacement-file";
 
 // Only called with main's own native dialog result; never a renderer path.
 function destinationPath(path: string) {
@@ -90,21 +97,55 @@ function code(error: unknown) {
     ? error.code
     : undefined;
 }
-type Outcome = { status: CalendarIcsStatus } | { error: HostError };
+type Outcome =
+  | { status: Exclude<CalendarIcsStatus, "replacementRequired"> }
+  | { status: "replacementRequired"; confirmationId: string }
+  | { error: HostError };
 export function calendarExportSession(
   pick: () => Promise<string | undefined>,
   save = saveCalendar,
   now = Date.now,
+  fingerprint = calendarFingerprint,
+  replaceFile = replaceCalendar,
 ) {
   let expected: number | undefined;
   let prepared:
     | { calendar: string; hash: string; preparedAt: number; validUntil: number }
     | undefined;
+  let replacement:
+    | {
+        id: string;
+        path: string;
+        calendar: string;
+        fingerprint: string;
+        issuedAt: number;
+      }
+    | undefined;
   let alive = true;
+  const validConfirmation = (issuedAt: number) => {
+    const time = now();
+    return (
+      alive &&
+      Number.isFinite(time) &&
+      time >= issuedAt &&
+      time - issuedAt < calendarIcsConfirmationMaxAgeMs
+    );
+  };
+  async function ask(path: string, calendar: string): Promise<Outcome> {
+    const value = await fingerprint(path);
+    if (!alive) return { status: "cancelled" };
+    // A removed destination must not turn a replace confirmation into an
+    // unconfirmed create. Prepare again through the native picker instead.
+    if (value === null) return { error: { kind: "rejected" } };
+    const id = randomBytes(calendarRevisionLength / 2).toString("hex");
+    replacement = { id, path, calendar, fingerprint: value, issuedAt: now() };
+    return { status: "replacementRequired", confirmationId: id };
+  }
   let busy = false;
   return {
     expect(id: number) {
       if (!alive || busy) return false;
+      replacement = undefined;
       expected = id;
       prepared = undefined;
       return true;
@@ -142,8 +183,50 @@ export function calendarExportSession(
     },
     close() {
       alive = false;
+      replacement = undefined;
       prepared = undefined;
       expected = undefined;
+    },
+    async replace(confirmationId: string, replace: boolean): Promise<Outcome> {
+      if (busy) return { error: { kind: "busy" } };
+      const pending = replacement;
+      if (
+        !pending ||
+        pending.id !== confirmationId ||
+        !validConfirmation(pending.issuedAt)
+      ) {
+        if (pending?.id === confirmationId) replacement = undefined;
+        return { error: { kind: "rejected" } };
+      }
+      replacement = undefined; // Single use, including cancel and failures.
+      if (!replace) return { status: "cancelled" };
+      busy = true;
+      try {
+        if ((await fingerprint(pending.path)) !== pending.fingerprint)
+          return await ask(pending.path, pending.calendar);
+        await replaceFile(
+          pending.path,
+          pending.calendar,
+          pending.fingerprint,
+          () => validConfirmation(pending.issuedAt),
+        );
+        return { status: "saved" };
+      } catch (error) {
+        if (
+          code(error) === "VANTARE_ICS_CHANGED" &&
+          validConfirmation(pending.issuedAt)
+        )
+          return await ask(pending.path, pending.calendar).catch(
+            () => ({ error: { kind: "io" } }) as Outcome,
+          );
+        return {
+          error: {
+            kind: validConfirmation(pending.issuedAt) ? "io" : "rejected",
+          },
+        };
+      } finally {
+        busy = false;
+      }
     },
     async export(preparedHash: string): Promise<Outcome> {
       if (busy) return { error: { kind: "busy" } };
@@ -168,7 +251,14 @@ export function calendarExportSession(
         const path = await pick();
         if (!alive || path === undefined) return { status: "cancelled" };
         // Freshness is checked only when starting, never after time spent in the dialog.
-        await save(destinationPath(path), snapshot.calendar);
+        const destination = destinationPath(path);
+        try {
+          await save(destination, snapshot.calendar);
+        } catch (error) {
+          if (code(error) === "EEXIST")
+            return await ask(destination, snapshot.calendar);
+          throw error;
+        }
         return { status: "saved" };
       } catch (error) {
         if (code(error) === "EEXIST") return { status: "conflict" };

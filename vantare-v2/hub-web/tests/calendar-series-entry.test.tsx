@@ -494,3 +494,82 @@ it("keeps ICS open during export then closes it with a visible saved notice", as
   );
   expect(screen.getByText("Calendario guardado.")).toBeTruthy();
 });
+
+it.each([true, false])(
+  "wires replacement answer=%s with the opaque id and acknowledges a saved result",
+  async (replace) => {
+    const prepared = {
+      method: "calendar.icsPrepare",
+      value: {
+        calendar: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
+        preparedHash: "a".repeat(64),
+        entries: [],
+        total: 0,
+        validUntil: fixture.validUntil,
+      },
+    };
+    model.client.request
+      .mockResolvedValueOnce(prepared)
+      .mockResolvedValueOnce({
+        method: "calendar.icsExport",
+        status: "replacementRequired",
+        confirmationId: "b".repeat(64),
+      })
+      .mockResolvedValueOnce({
+        method: "calendar.icsReplace",
+        status: replace ? "saved" : "cancelled",
+      })
+      .mockResolvedValueOnce(prepared);
+    render(
+      <TooltipProvider>
+        <CalendarEntry />
+        <ToastViewport closeLabel="Cerrar aviso" />
+      </TooltipProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
+    await vi.waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Descargar .ics" })
+          .getAttribute("aria-disabled"),
+      ).toBe("false"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Descargar .ics" }));
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole("alertdialog", { name: "¿Reemplazar?" }),
+      ).toBeTruthy(),
+    );
+    const question = screen.getByRole("alertdialog", { name: "¿Reemplazar?" });
+    fireEvent.click(
+      within(question).getByRole("button", {
+        name: replace ? "Reemplazar" : "Cancelar",
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(model.client.request).toHaveBeenCalledWith({
+        method: "calendar.icsReplace",
+        confirmationId: "b".repeat(64),
+        replace,
+      }),
+    );
+    if (replace) {
+      await vi.waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
+        ).toBeNull(),
+      );
+      expect(screen.getByText("Calendario guardado.")).toBeTruthy();
+    } else {
+      await vi.waitFor(() =>
+        expect(
+          screen.queryByRole("alertdialog", { name: "¿Reemplazar?" }),
+        ).toBeNull(),
+      );
+      expect(
+        screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
+      ).toBeTruthy();
+      expect(screen.queryByText("Calendario guardado.")).toBeNull();
+    }
+  },
+);

@@ -1085,6 +1085,15 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "confirmationId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "method": "calendar.icsReplace",
+        "status": "replacementRequired"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "calendar.icsExport",
         "status": "conflict"
       }
@@ -1226,6 +1235,15 @@
         "alarm": true,
         "method": "calendar.icsPrepare",
         "scope": "all"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "confirmationId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "method": "calendar.icsReplace",
+        "replace": true
       }
     },
     {

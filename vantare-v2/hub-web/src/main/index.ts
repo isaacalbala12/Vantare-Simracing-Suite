@@ -27,6 +27,7 @@ import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme } from "./appearance";
 import { calendarExportSession } from "./calendar-export";
+import { calendarExportQa } from "./calendar-export-qa";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
@@ -246,14 +247,25 @@ async function start() {
       });
       return result.canceled ? undefined : result.filePath;
     });
-    const calendarExport = calendarExportSession(async () => {
-      if (!window || window.isDestroyed()) return undefined;
-      const result = await dialog.showSaveDialog(window, {
-        defaultPath: calendarIcsName,
-        filters: [{ name: "iCalendar", extensions: ["ics"] }],
-      });
-      return result.canceled ? undefined : result.filePath;
-    });
+    const calendarQa = calendarExportQa(
+      QA_DRIVER,
+      process.env.VANTARE_HUB_HOST,
+      process.env.VANTARE_HUB_SCENE,
+      dataDir,
+    );
+    const calendarExport = calendarExportSession(
+      calendarQa?.pick ??
+        (async () => {
+          if (!window || window.isDestroyed()) return undefined;
+          const result = await dialog.showSaveDialog(window, {
+            defaultPath: calendarIcsName,
+            filters: [{ name: "iCalendar", extensions: ["ics"] }],
+          });
+          return result.canceled ? undefined : result.filePath;
+        }),
+      undefined,
+      calendarQa?.now,
+    );
     const unsubscribe = host.listen((message) => {
       const observed = calendarNotices.observe(message);
       if (!observed) return;
@@ -376,25 +388,32 @@ async function start() {
       }
       if (
         data.kind === "request" &&
-        data.request.method === "calendar.icsExport"
+        (data.request.method === "calendar.icsExport" ||
+          data.request.method === "calendar.icsReplace")
       ) {
-        void calendarExport
-          .export(data.request.preparedHash)
-          .then((outcome) => {
-            if (!portAlive) return;
-            port1.postMessage(
-              "error" in outcome
-                ? { kind: "failure", id: data.id, error: outcome.error }
-                : {
-                    kind: "response",
-                    id: data.id,
-                    result: {
-                      method: "calendar.icsExport",
-                      status: outcome.status,
-                    },
+        const method = data.request.method;
+        const result =
+          data.request.method === "calendar.icsExport"
+            ? calendarExport.export(data.request.preparedHash)
+            : calendarExport.replace(
+                data.request.confirmationId,
+                data.request.replace,
+              );
+        void result.then((outcome) => {
+          if (!portAlive) return;
+          port1.postMessage(
+            "error" in outcome
+              ? { kind: "failure", id: data.id, error: outcome.error }
+              : {
+                  kind: "response",
+                  id: data.id,
+                  result: {
+                    method,
+                    ...outcome,
                   },
-            );
-          });
+                },
+          );
+        });
         return;
       }
       if (

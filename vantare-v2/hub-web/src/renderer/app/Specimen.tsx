@@ -234,7 +234,6 @@ export function Specimen() {
             title={t.commands}
             description={t.commandsDescription}
             trigger={t.openCommands}
-            closeLabel={t.close}
             empty={t.empty}
             commands={[
               { id: "settings", label: t.settings, run: () => {} },

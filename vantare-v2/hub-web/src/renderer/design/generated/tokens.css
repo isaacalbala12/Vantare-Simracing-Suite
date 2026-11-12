@@ -10,6 +10,7 @@
   --sidebar-w: 272px;
   --sidebar-w-collapsed: 76px;
   --palette-w: 640px;
+  --command-radius: 25px;
   --popover-w: 360px;
   --option-h: 38px;
   --segment-h: 29px;
@@ -76,6 +77,7 @@
 [data-palette="vantare"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #edeaeb;
+  --command-backdrop: #f8f7f69e;
   --surface-1: #e4dfe1;
   --surface-2: #dcd7d8;
   --surface-3: #d4cdcf;
@@ -137,6 +139,7 @@
 [data-palette="vantare"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #161314;
+  --command-backdrop: #0404069e;
   --surface-1: #221d1f;
   --surface-2: #2b2527;
   --surface-3: #352e30;
@@ -198,6 +201,7 @@
 [data-palette="classic"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #f2edee;
+  --command-backdrop: #f8f7f69e;
   --surface-1: #ebe2e4;
   --surface-2: #e5d9dc;
   --surface-3: #ddced1;
@@ -259,6 +263,7 @@
 [data-palette="classic"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #170a0e;
+  --command-backdrop: #0404069e;
   --surface-1: #241116;
   --surface-2: #2e161c;
   --surface-3: #3b1e25;
@@ -320,6 +325,7 @@
 [data-palette="deepseek"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #e9e9eb;
+  --command-backdrop: #f8f7f69e;
   --surface-1: #ddddde;
   --surface-2: #d4d4d6;
   --surface-3: #c9c9cb;
@@ -381,6 +387,7 @@
 [data-palette="deepseek"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #151517;
+  --command-backdrop: #0404069e;
   --surface-1: #232324;
   --surface-2: #2c2c2e;
   --surface-3: #373739;
@@ -442,6 +449,7 @@
 [data-palette="rose"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #f2edf1;
+  --command-backdrop: #fff7fa9e;
   --surface-1: #ebe2e9;
   --surface-2: #e5d9e3;
   --surface-3: #ddceda;
@@ -503,6 +511,7 @@
 [data-palette="rose"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #150c13;
+  --command-backdrop: #0404069e;
   --surface-1: #22131f;
   --surface-2: #2b1928;
   --surface-3: #392034;
@@ -564,6 +573,7 @@
 [data-palette="grove"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #edf2f0;
+  --command-backdrop: #f5faf59e;
   --surface-1: #e2ebe6;
   --surface-2: #d9e5df;
   --surface-3: #ceddd5;
@@ -625,6 +635,7 @@
 [data-palette="grove"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #0c1511;
+  --command-backdrop: #0404069e;
   --surface-1: #13221b;
   --surface-2: #182c22;
   --surface-3: #20392d;
@@ -686,6 +697,7 @@
 [data-palette="ocean"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #edf0f2;
+  --command-backdrop: #f4f9fb9e;
   --surface-1: #e2e7eb;
   --surface-2: #d9e0e5;
   --surface-3: #ced6dd;
@@ -747,6 +759,7 @@
 [data-palette="ocean"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #0a1217;
+  --command-backdrop: #0404069e;
   --surface-1: #111c24;
   --surface-2: #16242e;
   --surface-3: #1e2f3b;
@@ -808,6 +821,7 @@
 [data-palette="ember"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #f2efed;
+  --command-backdrop: #fdf8f39e;
   --surface-1: #ebe5e2;
   --surface-2: #e5ddd9;
   --surface-3: #ddd3ce;
@@ -869,6 +883,7 @@
 [data-palette="ember"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #160f0b;
+  --command-backdrop: #0404069e;
   --surface-1: #231812;
   --surface-2: #2d1e17;
   --surface-3: #3a281f;
@@ -930,6 +945,7 @@
 [data-palette="iris"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #eeedf2;
+  --command-backdrop: #f8f6fc9e;
   --surface-1: #e4e2eb;
   --surface-2: #ddd9e5;
   --surface-3: #d2cedd;
@@ -991,6 +1007,7 @@
 [data-palette="iris"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #0e0b16;
+  --command-backdrop: #0404069e;
   --surface-1: #171124;
   --surface-2: #1d162e;
   --surface-3: #261e3b;
@@ -1052,6 +1069,7 @@
 [data-palette="mono"][data-scheme="light"] {
   color-scheme: light;
   --bg-base: #efefef;
+  --command-backdrop: #f5f5f59e;
   --surface-1: #e6e6e6;
   --surface-2: #dfdfdf;
   --surface-3: #d5d5d5;
@@ -1113,6 +1131,7 @@
 [data-palette="mono"][data-scheme="dark"] {
   color-scheme: dark;
   --bg-base: #111111;
+  --command-backdrop: #0404049e;
   --surface-1: #1b1b1b;
   --surface-2: #222222;
   --surface-3: #2d2d2d;

@@ -86,6 +86,7 @@ export function create(context: MockContext): MockHandler {
     context.core.access.blocked = false;
     context.core.access.calendar = true;
     if (context.sceneName === "calendar-live-reference") {
+      context.core.rights = "connected";
       Object.assign(value, calendarReference());
       Object.assign(history, calendarHistoryReference());
     } else value.official = structuredClone(fixture);

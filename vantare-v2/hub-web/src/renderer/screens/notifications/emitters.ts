@@ -16,7 +16,8 @@ interface Sink {
   add: (notice: NoticeInput) => void;
   changeReports: (update: (records: Notice[]) => Notice[]) => void;
 }
-// One lifetime per connection. No identity, free-form service error or credential is retained.
+// Requires AccountProvider's synchronous session boundary, including access intents
+// before transport dispatch. One lifetime per connection; no identity is retained.
 export function connectEmitters(
   client: Client,
   sink: Sink,
@@ -27,8 +28,12 @@ export function connectEmitters(
   let resident: ResidentView | undefined;
   let generation = session.getSnapshot().generation;
   let failureSequence = 0;
+  let launcherFailure = false;
   let pendingResidentError = false;
-  const requests = new Map<number, number>();
+  const requests = new Map<
+    number,
+    { generation: number; confirmed: boolean }
+  >();
   const failures = new Set<number>();
   const unsession = session.subscribe(() => {
     if (generation !== session.getSnapshot().generation) {
@@ -37,6 +42,8 @@ export function connectEmitters(
     }
   });
   function launcherFailed(residentError = false) {
+    if (launcherFailure) return;
+    launcherFailure = true;
     if (preferences?.launcher)
       sink.add({
         source: "launcher",
@@ -55,7 +62,10 @@ export function connectEmitters(
   function execution(value: ResidentView) {
     if (value.online && !value.protected) {
       if (value.error && !resident?.error) pendingResidentError = true;
-      if (!value.error) pendingResidentError = false;
+      if (!value.error) {
+        pendingResidentError = false;
+        launcherFailure = false;
+      }
     }
     resident = value;
     flushResidentError();
@@ -129,11 +139,19 @@ export function connectEmitters(
         event.method.startsWith("account.") ||
         event.method === "triage.send"
       )
-        requests.set(event.id, generation);
+        requests.set(event.id, session.getSnapshot());
       return;
     }
-    const ownGeneration = requests.get(event.id);
+    const started = requests.get(event.id);
     requests.delete(event.id);
+    if (event.method === "settings.update" && event.error?.kind === "conflict")
+      reply({ method: "settings.get", value: event.error.current });
+    if (
+      (event.reply?.method === "launcher.launch" ||
+        event.reply?.method === "launcher.favorite") &&
+      event.reply.accepted
+    )
+      launcherFailure = false;
     if (
       (event.method === "launcher.launch" ||
         event.method === "launcher.favorite") &&
@@ -153,7 +171,8 @@ export function connectEmitters(
     if (
       event.reply &&
       session.getSnapshot().confirmed &&
-      ownGeneration === generation
+      started?.confirmed &&
+      started.generation === generation
     ) {
       switch (event.reply.method) {
         case "testing.refresh":

@@ -1,0 +1,419 @@
+{
+  "status": "blocked",
+  "accepted": false,
+  "ab_ratio": null,
+  "reason": "Three registered attempts exhausted; incomplete replay on final attempt; A/A diagnostic exceeds unchanged 2.5% gate.",
+  "gate_percent": 2.5,
+  "partial_rounds_must_not_be_combined": true,
+  "attempts": [
+    {
+      "number": 1,
+      "config": {
+        "out": "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt1",
+        "b_info": {
+          "sha": "0d8dd4bcaf3778cfab5d776535476c0ffbddcf75",
+          "dirty": false,
+          "profile": "release",
+          "opt_level": "3",
+          "debug": "false",
+          "features": [
+            "PAINT_STATS"
+          ],
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "trace_capacity_bytes": 144000000,
+          "measurement_capabilities": [
+            "render_load",
+            "render_load_uncapped",
+            "d3d11_timestamps"
+          ]
+        },
+        "widgets": 22,
+        "family": "kit-vs-native|C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C|w=22|phases=False|stress=False|study=engine",
+        "study": "engine",
+        "attempt_reason": "",
+        "b": "D:/VantareServer/evidence/isa-1996/ab-B-release-0d8dd4bca/overlay-replay.exe",
+        "a_hash": "D9D0EC00A46F244625AD9D3EE060E0BB82B09F17E1C1E9B3EFE929FF7DDD7272",
+        "recording_hash": "C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C",
+        "comparison": "kit-vs-native",
+        "b_hash": "F3C6522DA00FEFC94D3BDF3148A45CE35E24BA8B809942D59F870B137875415A",
+        "priority": "AboveNormal",
+        "affinity_mask": 240,
+        "rounds": 8,
+        "quiet": false,
+        "power_plan": "Power Scheme GUID: 51ee2a53-5db6-4373-9e6c-425bda5861ab  (Sapphire)",
+        "stress": false,
+        "a": "D:/VantareServer/evidence/isa-1996/ab-A-release-835783d25/overlay-replay.exe",
+        "recording": "testdata/rust-port/lmu47-high-rate-60s.tar.gz",
+        "a_info": {
+          "sha": "835783d259919ef2f305d90e077d3a230858d40b",
+          "dirty": false,
+          "profile": "release",
+          "opt_level": "3",
+          "debug": "false",
+          "features": [
+            "PAINT_STATS"
+          ],
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "trace_capacity_bytes": 144000000,
+          "measurement_capabilities": [
+            "render_load",
+            "render_load_uncapped",
+            "d3d11_timestamps"
+          ]
+        },
+        "role": "primary",
+        "maximum_system_load": 35.0,
+        "registry": "D:\\VantareServer\\evidence\\isa-1996\\overlay-campaign-attempts.jsonl",
+        "phases": false,
+        "core": "D:/VantareServer/evidence/isa-1996/baseline-release-acc6619b1/vantare-core.exe",
+        "seconds": 60,
+        "core_hash": "CFF6BFE933D4AC625294D576223EA44CBF0C5D059E0AAC49BE41D98C3E9943BE",
+        "core_info": {
+          "debug": "false",
+          "dirty": false,
+          "features": [
+            "PAINT_STATS"
+          ],
+          "opt_level": "3",
+          "profile": "release",
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "sha": "acc6619b1eb34b39bb4367c066f33d03b5492d9b"
+        }
+      },
+      "valid_observations": 5,
+      "aa_complete_rounds": [
+        {
+          "round": 1,
+          "ratio": 0.9424366012463217,
+          "noise_percent": 6.10793327397873,
+          "raw_observation_cv": 0.044047501223204374,
+          "cycles_per_second": [
+            224092087.47604915,
+            221123748.474563,
+            211497825.4802456,
+            235348202.2979087
+          ],
+          "stable_midpoints": [
+            53379.245882,
+            53449.0305516,
+            54280.24702215,
+            54519.93924565
+          ],
+          "collector_sha": "835783d259919ef2f305d90e077d3a230858d40b",
+          "source_files": [
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt1\\aa-round-1-slot-0-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt1\\aa-round-1-slot-1-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt1\\aa-round-1-slot-2-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt1\\aa-round-1-slot-3-A\\summary.json"
+          ]
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "config": {
+        "attempt_reason": "Attempt1 stopped at first normal B observation because process exit exceeded five seconds after closed windows; preserve every failed/partial observation. Separate five-second window deadline from bounded post-recording diagnostic drain. Three predeclared B22 lifecycle runs passed (123,66,68 ms). Stable-window acquisition, binaries, priority, affinity, cadence, eight-round design, metric and noise threshold unchanged. Fresh full campaign; no reuse of attempt1.",
+        "recording": "testdata/rust-port/lmu47-high-rate-60s.tar.gz",
+        "core_info": {
+          "debug": "false",
+          "dirty": false,
+          "features": [
+            "PAINT_STATS"
+          ],
+          "opt_level": "3",
+          "profile": "release",
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "sha": "acc6619b1eb34b39bb4367c066f33d03b5492d9b"
+        },
+        "registry": "D:\\VantareServer\\evidence\\isa-1996\\overlay-campaign-attempts.jsonl",
+        "b": "D:/VantareServer/evidence/isa-1996/ab-B-release-0d8dd4bca/overlay-replay.exe",
+        "out": "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2",
+        "a_hash": "D9D0EC00A46F244625AD9D3EE060E0BB82B09F17E1C1E9B3EFE929FF7DDD7272",
+        "widgets": 22,
+        "power_plan": "Power Scheme GUID: 51ee2a53-5db6-4373-9e6c-425bda5861ab  (Sapphire)",
+        "core": "D:/VantareServer/evidence/isa-1996/baseline-release-acc6619b1/vantare-core.exe",
+        "study": "engine",
+        "rounds": 8,
+        "core_hash": "CFF6BFE933D4AC625294D576223EA44CBF0C5D059E0AAC49BE41D98C3E9943BE",
+        "seconds": 60,
+        "a": "D:/VantareServer/evidence/isa-1996/ab-A-release-835783d25/overlay-replay.exe",
+        "maximum_system_load": 35.0,
+        "phases": false,
+        "stress": false,
+        "b_hash": "F3C6522DA00FEFC94D3BDF3148A45CE35E24BA8B809942D59F870B137875415A",
+        "role": "primary",
+        "quiet": false,
+        "family": "kit-vs-native|C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C|w=22|phases=False|stress=False|study=engine",
+        "b_info": {
+          "sha": "0d8dd4bcaf3778cfab5d776535476c0ffbddcf75",
+          "dirty": false,
+          "profile": "release",
+          "opt_level": "3",
+          "debug": "false",
+          "features": [
+            "PAINT_STATS"
+          ],
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "trace_capacity_bytes": 144000000,
+          "measurement_capabilities": [
+            "render_load",
+            "render_load_uncapped",
+            "d3d11_timestamps"
+          ]
+        },
+        "a_info": {
+          "sha": "835783d259919ef2f305d90e077d3a230858d40b",
+          "dirty": false,
+          "profile": "release",
+          "opt_level": "3",
+          "debug": "false",
+          "features": [
+            "PAINT_STATS"
+          ],
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "trace_capacity_bytes": 144000000,
+          "measurement_capabilities": [
+            "render_load",
+            "render_load_uncapped",
+            "d3d11_timestamps"
+          ]
+        },
+        "recording_hash": "C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C",
+        "affinity_mask": 240,
+        "priority": "AboveNormal",
+        "comparison": "kit-vs-native"
+      },
+      "valid_observations": 38,
+      "aa_complete_rounds": [
+        {
+          "round": 1,
+          "ratio": 1.0296471067691806,
+          "noise_percent": 2.9647106769180587,
+          "raw_observation_cv": 0.02028755530884749,
+          "cycles_per_second": [
+            217092206.9479126,
+            223829057.37198445,
+            219235185.10564485,
+            213204275.28871533
+          ],
+          "stable_midpoints": [
+            56057.86627805,
+            56125.7490649,
+            56221.6352973,
+            56289.7473535
+          ],
+          "collector_sha": "0075f01dc1d86b3e913be228968863b3f20d72ba",
+          "source_files": [
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-1-slot-0-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-1-slot-1-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-1-slot-2-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-1-slot-3-A\\summary.json"
+          ]
+        },
+        {
+          "round": 2,
+          "ratio": 1.0233051853459485,
+          "noise_percent": 2.3305185345948494,
+          "raw_observation_cv": 0.026534440558706327,
+          "cycles_per_second": [
+            225679399.23942232,
+            212669788.64406645,
+            217258351.83669725,
+            214396659.32950875
+          ],
+          "stable_midpoints": [
+            57171.30843375,
+            57239.6098035,
+            57308.4144474,
+            57376.50974685
+          ],
+          "collector_sha": "0075f01dc1d86b3e913be228968863b3f20d72ba",
+          "source_files": [
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-2-slot-0-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-2-slot-1-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-2-slot-2-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-2-slot-3-B\\summary.json"
+          ]
+        },
+        {
+          "round": 3,
+          "ratio": 1.0118271248528232,
+          "noise_percent": 1.1827124852823223,
+          "raw_observation_cv": 0.011101747537639397,
+          "cycles_per_second": [
+            212496026.67498717,
+            213120028.900136,
+            217661047.0744816,
+            213238313.5338537
+          ],
+          "stable_midpoints": [
+            57444.25919575,
+            57513.04183195,
+            57628.8716286,
+            57698.9374187
+          ],
+          "collector_sha": "0075f01dc1d86b3e913be228968863b3f20d72ba",
+          "source_files": [
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-3-slot-0-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-3-slot-1-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-3-slot-2-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-3-slot-3-A\\summary.json"
+          ]
+        },
+        {
+          "round": 4,
+          "ratio": 0.9447220979456789,
+          "noise_percent": 5.8512341538876145,
+          "raw_observation_cv": 0.0511700284869913,
+          "cycles_per_second": [
+            214172973.0352427,
+            217294911.213559,
+            226655273.6917927,
+            200147540.96473274
+          ],
+          "stable_midpoints": [
+            58393.892129,
+            58462.79912905,
+            58530.76853895,
+            58757.68368085
+          ],
+          "collector_sha": "0075f01dc1d86b3e913be228968863b3f20d72ba",
+          "source_files": [
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-4-slot-0-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-4-slot-1-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-4-slot-2-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-4-slot-3-B\\summary.json"
+          ]
+        },
+        {
+          "round": 5,
+          "ratio": 0.9642373381013332,
+          "noise_percent": 3.7089065612296883,
+          "raw_observation_cv": 0.042776476063272215,
+          "cycles_per_second": [
+            233181369.1684188,
+            214016859.07416737,
+            216136372.7894269,
+            213536378.95186853
+          ],
+          "stable_midpoints": [
+            59460.58127315,
+            59531.9588398,
+            59600.9754918,
+            59670.09589345
+          ],
+          "collector_sha": "0075f01dc1d86b3e913be228968863b3f20d72ba",
+          "source_files": [
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-5-slot-0-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-5-slot-1-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-5-slot-2-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt2\\aa-round-5-slot-3-A\\summary.json"
+          ]
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "config": {
+        "widgets": 22,
+        "study": "engine",
+        "affinity_mask": 16,
+        "phases": false,
+        "stress": false,
+        "registry": "D:\\VantareServer\\evidence\\isa-1996\\overlay-campaign-attempts.jsonl",
+        "power_plan": "Power Scheme GUID: 51ee2a53-5db6-4373-9e6c-425bda5861ab  (Sapphire)",
+        "role": "primary",
+        "a_hash": "D9D0EC00A46F244625AD9D3EE060E0BB82B09F17E1C1E9B3EFE929FF7DDD7272",
+        "seconds": 60,
+        "b": "D:/VantareServer/evidence/isa-1996/ab-B-release-0d8dd4bca/overlay-replay.exe",
+        "core_hash": "CFF6BFE933D4AC625294D576223EA44CBF0C5D059E0AAC49BE41D98C3E9943BE",
+        "a": "D:/VantareServer/evidence/isa-1996/ab-A-release-835783d25/overlay-replay.exe",
+        "priority": "AboveNormal",
+        "maximum_system_load": 35.0,
+        "a_info": {
+          "sha": "835783d259919ef2f305d90e077d3a230858d40b",
+          "dirty": false,
+          "profile": "release",
+          "opt_level": "3",
+          "debug": "false",
+          "features": [
+            "PAINT_STATS"
+          ],
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "trace_capacity_bytes": 144000000,
+          "measurement_capabilities": [
+            "render_load",
+            "render_load_uncapped",
+            "d3d11_timestamps"
+          ]
+        },
+        "family": "kit-vs-native|C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C|w=22|phases=False|stress=False|study=engine",
+        "comparison": "kit-vs-native",
+        "b_info": {
+          "sha": "0d8dd4bcaf3778cfab5d776535476c0ffbddcf75",
+          "dirty": false,
+          "profile": "release",
+          "opt_level": "3",
+          "debug": "false",
+          "features": [
+            "PAINT_STATS"
+          ],
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "trace_capacity_bytes": 144000000,
+          "measurement_capabilities": [
+            "render_load",
+            "render_load_uncapped",
+            "d3d11_timestamps"
+          ]
+        },
+        "core": "D:/VantareServer/evidence/isa-1996/baseline-release-acc6619b1/vantare-core.exe",
+        "b_hash": "F3C6522DA00FEFC94D3BDF3148A45CE35E24BA8B809942D59F870B137875415A",
+        "core_info": {
+          "debug": "false",
+          "dirty": false,
+          "features": [
+            "PAINT_STATS"
+          ],
+          "opt_level": "3",
+          "profile": "release",
+          "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+          "sha": "acc6619b1eb34b39bb4367c066f33d03b5492d9b"
+        },
+        "rounds": 8,
+        "quiet": false,
+        "recording_hash": "C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C",
+        "recording": "testdata/rust-port/lmu47-high-rate-60s.tar.gz",
+        "out": "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt3",
+        "attempt_reason": "Final bounded attempt3: first2 failed studies preserved without reuse. Reduce scheduling/cache migration with single logical CPU affinity16 instead of240; same binaries, Full collector, AboveNormal priority, Sapphire power plan, normal cadence22 widgets, eight interleaved AA/AB rounds and unchanged2.5percent noise gate. Sampler control24 observations complete, informative only. No threshold relaxation."
+      },
+      "valid_observations": 4,
+      "aa_complete_rounds": [
+        {
+          "round": 1,
+          "ratio": 1.054840775818083,
+          "noise_percent": 5.484077581808312,
+          "raw_observation_cv": 0.049382995764393166,
+          "cycles_per_second": [
+            223421375.5602563,
+            249039652.0872891,
+            227441185.28502744,
+            228861862.21495113
+          ],
+          "stable_midpoints": [
+            68269.45111365,
+            68379.94700455,
+            68449.4385365,
+            68758.88335555
+          ],
+          "collector_sha": "14fa0dd6785691fdcb72d5efbe314a25c5983401",
+          "source_files": [
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt3\\aa-round-1-slot-0-A\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt3\\aa-round-1-slot-1-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt3\\aa-round-1-slot-2-B\\summary.json",
+            "D:\\VantareServer\\evidence\\isa-1996\\kit-vs-native-v3-attempt3\\aa-round-1-slot-3-A\\summary.json"
+          ]
+        }
+      ]
+    }
+  ]
+}

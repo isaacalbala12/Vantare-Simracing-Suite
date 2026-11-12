@@ -6725,6 +6725,7 @@ dependencies = [
  "flume",
  "gpui",
  "gpui_platform",
+ "gpui_windows",
  "png 0.18.1",
  "raw-window-handle",
  "serde",

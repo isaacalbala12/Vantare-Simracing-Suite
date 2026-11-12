@@ -1,0 +1,1214 @@
+{
+  "ab": {
+    "median": 0.975456345480896,
+    "minimum": 0.9196771422481606,
+    "maximum": 1.0511840616556254,
+    "cv": 0.04416674156215307
+  },
+  "ab_ratios": [
+    1.0017681636137383,
+    0.966656694562648,
+    0.9196771422481606,
+    1.0511840616556254,
+    0.9724629362076602,
+    0.9784497547541317
+  ],
+  "inference": {
+    "ratio": 0.9809063346625279,
+    "interval_95": [
+      0.9366346331597373,
+      1.0272706168628098
+    ],
+    "degrees_of_freedom": 5,
+    "unit": "complete round log-ratios, not frames"
+  },
+  "verdict": "informative",
+  "accepted": false,
+  "plan": {
+    "config": {
+      "rounds": 6,
+      "seconds": 60,
+      "affinity_mask": 240,
+      "core": "D:/VantareServer/evidence/isa-1996/baseline-release-acc6619b1/vantare-core.exe",
+      "maximum_system_load": 35.0,
+      "phases": false,
+      "attempt_reason": "Sampler attempt1 stopped after six valid observations at the old five-second Core EOF deadline; trace_end confirms full application trace. Keep failed attempt. Both completed workloads now share one bounded30s process/trace drain after the unchanged5s visible-window deadline, outside stableROI. Real backpressured-pipe and stuck-process regression tests passed. Same binaries, six rounds, priority, affinity, cadence and metric; fresh full control, no observation reuse.",
+      "out": "D:\\VantareServer\\evidence\\isa-1996\\sampler-overhead-v3-attempt2",
+      "role": "informative",
+      "b_hash": "D9D0EC00A46F244625AD9D3EE060E0BB82B09F17E1C1E9B3EFE929FF7DDD7272",
+      "widgets": 22,
+      "a_hash": "D9D0EC00A46F244625AD9D3EE060E0BB82B09F17E1C1E9B3EFE929FF7DDD7272",
+      "study": "sampler",
+      "core_info": {
+        "debug": "false",
+        "dirty": false,
+        "features": [
+          "PAINT_STATS"
+        ],
+        "opt_level": "3",
+        "profile": "release",
+        "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+        "sha": "acc6619b1eb34b39bb4367c066f33d03b5492d9b"
+      },
+      "a_info": {
+        "sha": "835783d259919ef2f305d90e077d3a230858d40b",
+        "dirty": false,
+        "profile": "release",
+        "opt_level": "3",
+        "debug": "false",
+        "features": [
+          "PAINT_STATS"
+        ],
+        "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+        "trace_capacity_bytes": 144000000,
+        "measurement_capabilities": [
+          "render_load",
+          "render_load_uncapped",
+          "d3d11_timestamps"
+        ]
+      },
+      "core_hash": "CFF6BFE933D4AC625294D576223EA44CBF0C5D059E0AAC49BE41D98C3E9943BE",
+      "recording_hash": "C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C",
+      "family": "sampler-overhead|C5B827CE1CFA558E732DA934F11EB0F83F5DFB9E8A3C793F4D3F65EF8CA2A01C|w=22|phases=False|stress=False|study=sampler",
+      "b_info": {
+        "sha": "835783d259919ef2f305d90e077d3a230858d40b",
+        "dirty": false,
+        "profile": "release",
+        "opt_level": "3",
+        "debug": "false",
+        "features": [
+          "PAINT_STATS"
+        ],
+        "release_options": "Cargo distribution defaults: opt-level=3, lto=false, codegen-units=16; no measurement override",
+        "trace_capacity_bytes": 144000000,
+        "measurement_capabilities": [
+          "render_load",
+          "render_load_uncapped",
+          "d3d11_timestamps"
+        ]
+      },
+      "priority": "AboveNormal",
+      "comparison": "sampler-overhead",
+      "b": "D:/VantareServer/evidence/isa-1996/ab-A-release-835783d25/overlay-replay.exe",
+      "stress": false,
+      "power_plan": "Power Scheme GUID: 51ee2a53-5db6-4373-9e6c-425bda5861ab  (Sapphire)",
+      "recording": "testdata/rust-port/lmu47-high-rate-60s.tar.gz",
+      "a": "D:/VantareServer/evidence/isa-1996/ab-A-release-835783d25/overlay-replay.exe",
+      "quiet": false,
+      "registry": "D:\\VantareServer\\evidence\\isa-1996\\overlay-campaign-attempts.jsonl"
+    },
+    "primary_metric": "ui.cycles_per_second",
+    "protocol": 3,
+    "rounds": 6,
+    "attempt": "934c55a7ded24c0e8853d6c2d32904b1",
+    "study": "sampler",
+    "role": "informative",
+    "noise_percent_limit": 2.5,
+    "max_attempts": 3
+  },
+  "rounds": {
+    "aa": {},
+    "ab": {
+      "1": {
+        "0": {
+          "label": "A",
+          "value": 227736217.14341316,
+          "stable_midpoint": 63715.33562235,
+          "metrics": {
+            "ui.cycles_per_second": 227736217.14341316,
+            "ui.cycles_per_received_photo": 4486750.468008001,
+            "ui.mean_working_set_mib": 48.11127232142857,
+            "process_cycles_per_present_informative": 10830528.96035804,
+            "presents_per_second": 21.027247882072473,
+            "receive_to_paint_median_ms": 20.0762,
+            "receive_to_submit_median_ms": 21.0616,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "% performance limit": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "% processor performance": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 101.98995821604932,
+              "minimum": 101.10182453324522,
+              "maximum": 102.08618274851071
+            },
+            "processor frequency": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 47714373595,
+            "cycles_per_second": 954616518.6678196,
+            "iteration_median_ms": 1421.9338,
+            "iterations": 35,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "a5c4f5098ac6cc629fa9cfa8dfa1f8d480df9dd013169a1c7e9f16ec18771d6b"
+        },
+        "1": {
+          "label": "B",
+          "value": 237753097.80549857,
+          "stable_midpoint": 63782.37967285,
+          "metrics": {
+            "ui.cycles_per_second": 237753097.80549857,
+            "ui.cycles_per_received_photo": 4568893.721058374,
+            "ui.mean_working_set_mib": 48.27240114795919,
+            "process_cycles_per_present_informative": 11328591.581003653,
+            "presents_per_second": 20.98699525933787,
+            "receive_to_paint_median_ms": 20.0639,
+            "receive_to_submit_median_ms": 21.1207,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 1199709560,
+            "cycles_per_second": 24002191.466446444,
+            "iteration_median_ms": 1013.6015,
+            "iterations": 49,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "9a8c88ec1457ba7aecf4f45671d7e72e9d444f2c08277dc9f6a9eee60afbb498"
+        },
+        "2": {
+          "label": "B",
+          "value": 234434084.41088486,
+          "stable_midpoint": 63850.0789212,
+          "metrics": {
+            "ui.cycles_per_second": 234434084.41088486,
+            "ui.cycles_per_received_photo": 4428570.302567582,
+            "ui.mean_working_set_mib": 48.245,
+            "process_cycles_per_present_informative": 10982190.272346599,
+            "presents_per_second": 21.346751294338357,
+            "receive_to_paint_median_ms": 20.8168,
+            "receive_to_submit_median_ms": 21.8556,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 959887845,
+            "cycles_per_second": 19203830.45705099,
+            "iteration_median_ms": 1010.6097,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "e0e92fe343e787ccde4f360f30914265bcde317adddc7a333805d0155c0d8072"
+        },
+        "3": {
+          "label": "A",
+          "value": 254841452.4354843,
+          "stable_midpoint": 64060.9032098,
+          "metrics": {
+            "ui.cycles_per_second": 254841452.4354843,
+            "ui.cycles_per_received_photo": 5221527.035893338,
+            "ui.mean_working_set_mib": 48.17213541666667,
+            "process_cycles_per_present_informative": 12559471.83485587,
+            "presents_per_second": 20.290777811868775,
+            "receive_to_paint_median_ms": 20.5635,
+            "receive_to_submit_median_ms": 21.6455,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "processor frequency": {
+              "samples": 29,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% performance limit": {
+              "samples": 29,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "% processor performance": {
+              "samples": 29,
+              "invalid": 0,
+              "median": 101.98861039011351,
+              "minimum": 101.81355577272093,
+              "maximum": 102.06862644029087
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 48061223280,
+            "cycles_per_second": 961735308.6204093,
+            "iteration_median_ms": 1596.8648,
+            "iterations": 29,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "0065a1fc679986cbc4d2d44982537d673d46822c2119c59cdec1aa62b06a2d65"
+        }
+      },
+      "2": {
+        "0": {
+          "label": "B",
+          "value": 251879127.68742022,
+          "stable_midpoint": 65778.48483,
+          "metrics": {
+            "ui.cycles_per_second": 251879127.68742022,
+            "ui.cycles_per_received_photo": 4923708.955626412,
+            "ui.mean_working_set_mib": 48.109056122448976,
+            "process_cycles_per_present_informative": 11910996.972125577,
+            "presents_per_second": 21.146771196137003,
+            "receive_to_paint_median_ms": 19.5825,
+            "receive_to_submit_median_ms": 20.6975,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 1027915980,
+            "cycles_per_second": 20564904.48241527,
+            "iteration_median_ms": 1013.1018,
+            "iterations": 49,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "55807027537edb6fe52fae8d49d43c32e33bfe2bfbbfe74760341d85bbef63ab"
+        },
+        "1": {
+          "label": "A",
+          "value": 262315669.5160867,
+          "stable_midpoint": 66050.52578035,
+          "metrics": {
+            "ui.cycles_per_second": 262315669.5160867,
+            "ui.cycles_per_received_photo": 5167962.574246271,
+            "ui.mean_working_set_mib": 48.338169642857146,
+            "process_cycles_per_present_informative": 10497294.676431376,
+            "presents_per_second": 24.988883098141493,
+            "receive_to_paint_median_ms": 8.1894,
+            "receive_to_submit_median_ms": 9.1262,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "% performance limit": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "processor frequency": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% processor performance": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 101.99395434291134,
+              "minimum": 101.58340163171032,
+              "maximum": 102.02251159580622
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 43196964895,
+            "cycles_per_second": 864246521.9821272,
+            "iteration_median_ms": 1421.9969,
+            "iterations": 35,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "c17242b23d3a49aa4b714ca517e29136ea7586c9231c56dc4253e66c29bc20b4"
+        },
+        "2": {
+          "label": "A",
+          "value": 272127355.7797021,
+          "stable_midpoint": 66159.21360735,
+          "metrics": {
+            "ui.cycles_per_second": 272127355.7797021,
+            "ui.cycles_per_received_photo": 5171928.328334895,
+            "ui.mean_working_set_mib": 48.49129464285714,
+            "process_cycles_per_present_informative": 10838383.668144044,
+            "presents_per_second": 25.107743378704455,
+            "receive_to_paint_median_ms": 8.5744,
+            "receive_to_submit_median_ms": 9.4628,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "% processor performance": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 101.99561089972713,
+              "minimum": 101.80094566589648,
+              "maximum": 102.06532515641071
+            },
+            "processor frequency": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% performance limit": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 44717809430,
+            "cycles_per_second": 894632098.5069722,
+            "iteration_median_ms": 1438.7961,
+            "iterations": 35,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "5fcad4ef5150033cc3bd76501b1a8fdc7f4fe942c98370d6feb288e3cafde9a4"
+        },
+        "3": {
+          "label": "B",
+          "value": 260375817.55480796,
+          "stable_midpoint": 66236.0542704,
+          "metrics": {
+            "ui.cycles_per_second": 260375817.55480796,
+            "ui.cycles_per_received_photo": 4941042.183935646,
+            "ui.mean_working_set_mib": 48.354921875,
+            "process_cycles_per_present_informative": 10280177.813970372,
+            "presents_per_second": 25.327948822146546,
+            "receive_to_paint_median_ms": 8.4549,
+            "receive_to_submit_median_ms": 9.3589,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 972496700,
+            "cycles_per_second": 19456040.00577125,
+            "iteration_median_ms": 1013.7574,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "f7089370288feaee556ab29a86d1dd28ae9ed04decb3d702a739c20c16a4ee0d"
+        }
+      },
+      "3": {
+        "0": {
+          "label": "A",
+          "value": 257384888.28630137,
+          "stable_midpoint": 66503.8243294,
+          "metrics": {
+            "ui.cycles_per_second": 257384888.28630137,
+            "ui.cycles_per_received_photo": 5041112.484822656,
+            "ui.mean_working_set_mib": 48.17138671875,
+            "process_cycles_per_present_informative": 12102463.839386094,
+            "presents_per_second": 21.267147888405294,
+            "receive_to_paint_median_ms": 19.287,
+            "receive_to_submit_median_ms": 20.2636,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "% performance limit": {
+              "samples": 32,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "processor frequency": {
+              "samples": 32,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% processor performance": {
+              "samples": 32,
+              "invalid": 0,
+              "median": 101.99507677928722,
+              "minimum": 100.99299348359648,
+              "maximum": 102.01517759728452
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 49872381335,
+            "cycles_per_second": 997782981.5601023,
+            "iteration_median_ms": 1537.4167,
+            "iterations": 32,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "a9aa89e0bd287b284f77edd7c4011e6efa013cbcc698a79c826d18fdf1a9beb0"
+        },
+        "1": {
+          "label": "B",
+          "value": 213614167.45536563,
+          "stable_midpoint": 66571.49787905,
+          "metrics": {
+            "ui.cycles_per_second": 213614167.45536563,
+            "ui.cycles_per_received_photo": 4089233.049279826,
+            "ui.mean_working_set_mib": 48.0925,
+            "process_cycles_per_present_informative": 10217212.910688637,
+            "presents_per_second": 20.90728355400084,
+            "receive_to_paint_median_ms": 19.2722,
+            "receive_to_submit_median_ms": 20.2158,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 928582200,
+            "cycles_per_second": 18578116.13262959,
+            "iteration_median_ms": 1012.9889,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "ec0bfc4c977190e45c1c3f0db850500ade521f014b992c3039c907781cefbc78"
+        },
+        "2": {
+          "label": "B",
+          "value": 228269991.02841914,
+          "stable_midpoint": 66684.83569375,
+          "metrics": {
+            "ui.cycles_per_second": 228269991.02841914,
+            "ui.cycles_per_received_photo": 4390053.69558882,
+            "ui.mean_working_set_mib": 48.198828125,
+            "process_cycles_per_present_informative": 10784262.33916384,
+            "presents_per_second": 21.16695457226035,
+            "receive_to_paint_median_ms": 20.7837,
+            "receive_to_submit_median_ms": 21.7682,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 989692340,
+            "cycles_per_second": 19800352.364172067,
+            "iteration_median_ms": 1011.0729,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "dc30b3abe56470898482e47ca193d967700e1bc6fdcee32c9d3d753c85e66ee0"
+        },
+        "3": {
+          "label": "A",
+          "value": 221201168.40461838,
+          "stable_midpoint": 66785.33391455,
+          "metrics": {
+            "ui.cycles_per_second": 221201168.40461838,
+            "ui.cycles_per_received_photo": 4273850.938022216,
+            "ui.mean_working_set_mib": 48.10078125,
+            "process_cycles_per_present_informative": 10470125.356688892,
+            "presents_per_second": 21.12688825289975,
+            "receive_to_paint_median_ms": 20.5482,
+            "receive_to_submit_median_ms": 21.4665,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "% performance limit": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "processor frequency": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% processor performance": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 101.96622198375728,
+              "minimum": 101.75777098648165,
+              "maximum": 102.00481026189203
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 43104185810,
+            "cycles_per_second": 862364883.3713042,
+            "iteration_median_ms": 1429.0234,
+            "iterations": 35,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "f0f2265ba100e8bb2668cf9ce05da7506de68b949e56fea25b39e582630d04f0"
+        }
+      },
+      "4": {
+        "0": {
+          "label": "B",
+          "value": 246519510.13681573,
+          "stable_midpoint": 66853.42899,
+          "metrics": {
+            "ui.cycles_per_second": 246519510.13681573,
+            "ui.cycles_per_received_photo": 4843546.922127999,
+            "ui.mean_working_set_mib": 48.1843112244898,
+            "process_cycles_per_present_informative": 11735222.257041553,
+            "presents_per_second": 21.006803683577036,
+            "receive_to_paint_median_ms": 20.3457,
+            "receive_to_submit_median_ms": 21.3872,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 1328016865,
+            "cycles_per_second": 26568942.449080408,
+            "iteration_median_ms": 1013.2886,
+            "iterations": 49,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "686525c088b4feeaf142587999ddbdef030e003eb6c107e1d57eb5d3d3e00f57"
+        },
+        "1": {
+          "label": "A",
+          "value": 231778193.3303844,
+          "stable_midpoint": 66933.7420569,
+          "metrics": {
+            "ui.cycles_per_second": 231778193.3303844,
+            "ui.cycles_per_received_photo": 4443750.599483964,
+            "ui.mean_working_set_mib": 48.18210018382353,
+            "process_cycles_per_present_informative": 10929111.144202542,
+            "presents_per_second": 21.207414790848155,
+            "receive_to_paint_median_ms": 20.6198,
+            "receive_to_submit_median_ms": 21.5266,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "% performance limit": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "processor frequency": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% processor performance": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 101.98068631787635,
+              "minimum": 101.61802623557834,
+              "maximum": 102.12288782926716
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 44543471525,
+            "cycles_per_second": 891181015.9009515,
+            "iteration_median_ms": 1438.8025,
+            "iterations": 34,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "baf531908b712cb52cf512563e88d7dd7d3189ca45cc6a3e76ee8cd128e39af8"
+        },
+        "2": {
+          "label": "A",
+          "value": 218677287.97327766,
+          "stable_midpoint": 67002.91377515,
+          "metrics": {
+            "ui.cycles_per_second": 218677287.97327766,
+            "ui.cycles_per_received_photo": 4112232.299194352,
+            "ui.mean_working_set_mib": 48.34185267857143,
+            "process_cycles_per_present_informative": 10370316.367418014,
+            "presents_per_second": 21.086848291372196,
+            "receive_to_paint_median_ms": 20.0422,
+            "receive_to_submit_median_ms": 21.0062,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "processor frequency": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% performance limit": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "% processor performance": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 101.958345306663,
+              "minimum": 101.81710745980142,
+              "maximum": 102.02855248001676
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 42819443030,
+            "cycles_per_second": 856667076.9399095,
+            "iteration_median_ms": 1421.9049,
+            "iterations": 35,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "b37d73577876a99a700f8313fea2ba5789a44f16795834b9c6faeff71e9b2c45"
+        },
+        "3": {
+          "label": "B",
+          "value": 224589582.41097713,
+          "stable_midpoint": 67112.59049115,
+          "metrics": {
+            "ui.cycles_per_second": 224589582.41097713,
+            "ui.cycles_per_received_photo": 4292786.718429513,
+            "ui.mean_working_set_mib": 48.238203125,
+            "process_cycles_per_present_informative": 10711485.94340952,
+            "presents_per_second": 20.96717333127444,
+            "receive_to_paint_median_ms": 21.1024,
+            "receive_to_submit_median_ms": 22.0414,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 1005683945,
+            "cycles_per_second": 20120562.58711343,
+            "iteration_median_ms": 1011.9297,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "65b5170dae49ce4a229c500e440ecbecffa64c7af09b185732558258cdb6dd45"
+        }
+      },
+      "5": {
+        "0": {
+          "label": "A",
+          "value": 222007164.61120057,
+          "stable_midpoint": 67183.35926495,
+          "metrics": {
+            "ui.cycles_per_second": 222007164.61120057,
+            "ui.cycles_per_received_photo": 4178045.303154859,
+            "ui.mean_working_set_mib": 48.05390625,
+            "process_cycles_per_present_informative": 10400082.778987166,
+            "presents_per_second": 21.346672841850324,
+            "receive_to_paint_median_ms": 19.556,
+            "receive_to_submit_median_ms": 20.5108,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "processor frequency": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% processor performance": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 101.95547989708137,
+              "minimum": 101.63831910411353,
+              "maximum": 102.04833086124863
+            },
+            "% performance limit": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 42197186395,
+            "cycles_per_second": 844207622.1374344,
+            "iteration_median_ms": 1422.5727,
+            "iterations": 35,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "ce05ae8dbc098bb3e06a3e88b9894fa14583e429c1f7e24cb0ba251acc19d87e"
+        },
+        "1": {
+          "label": "B",
+          "value": 226573355.40755257,
+          "stable_midpoint": 67313.1695343,
+          "metrics": {
+            "ui.cycles_per_second": 226573355.40755257,
+            "ui.cycles_per_received_photo": 4278471.481908852,
+            "ui.mean_working_set_mib": 48.204609375,
+            "process_cycles_per_present_informative": 10643904.147192417,
+            "presents_per_second": 21.286677545599346,
+            "receive_to_paint_median_ms": 20.7814,
+            "receive_to_submit_median_ms": 21.7124,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 985414570,
+            "cycles_per_second": 19714475.752185557,
+            "iteration_median_ms": 1012.0918,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "759d1aefe6ad3550d9c1a18fa25d0576eaa377e2375994c8d3b87c6fab62414b"
+        },
+        "2": {
+          "label": "B",
+          "value": 221024950.68583426,
+          "stable_midpoint": 67460.2336629,
+          "metrics": {
+            "ui.cycles_per_second": 221024950.68583426,
+            "ui.cycles_per_received_photo": 4237667.700153665,
+            "ui.mean_working_set_mib": 48.2378125,
+            "process_cycles_per_present_informative": 10441965.684594143,
+            "presents_per_second": 21.16698688369852,
+            "receive_to_paint_median_ms": 21.1133,
+            "receive_to_submit_median_ms": 22.064,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 949513670,
+            "cycles_per_second": 18996543.855181895,
+            "iteration_median_ms": 1011.5356,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "e7f88d2200bef207367b4a403611b1f3dc63d4af6485a05dc3f28ac684168e5b"
+        },
+        "3": {
+          "label": "A",
+          "value": 237834973.173532,
+          "stable_midpoint": 67568.4684352,
+          "metrics": {
+            "ui.cycles_per_second": 237834973.173532,
+            "ui.cycles_per_received_photo": 4609291.597261836,
+            "ui.mean_working_set_mib": 48.46484375,
+            "process_cycles_per_present_informative": 11299774.74271699,
+            "presents_per_second": 21.047762330556463,
+            "receive_to_paint_median_ms": 19.2354,
+            "receive_to_submit_median_ms": 20.2548,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "processor frequency": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            },
+            "% performance limit": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "% processor performance": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 101.99540497488053,
+              "minimum": 101.54643912044634,
+              "maximum": 102.06788325130283
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 45070843475,
+            "cycles_per_second": 901749431.0831858,
+            "iteration_median_ms": 1450.1452,
+            "iterations": 34,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "0300b3e51bf2337607a4f5930cfcb36f9db2f07cabf5bbec13b0c8688c5ec733"
+        }
+      },
+      "6": {
+        "0": {
+          "label": "B",
+          "value": 226972767.7319436,
+          "stable_midpoint": 67709.8632242,
+          "metrics": {
+            "ui.cycles_per_second": 226972767.7319436,
+            "ui.cycles_per_received_photo": 4383564.581726788,
+            "ui.mean_working_set_mib": 48.262734375,
+            "process_cycles_per_present_informative": 10722745.876662502,
+            "presents_per_second": 21.167410879888333,
+            "receive_to_paint_median_ms": 20.5999,
+            "receive_to_submit_median_ms": 21.5937,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 1176347795,
+            "cycles_per_second": 23535195.76031725,
+            "iteration_median_ms": 1011.5532,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "a4aa43a25e08dd0becbf9e53f08fe103ee9dbaf2ce42024aced3fc3efdf7a88a"
+        },
+        "1": {
+          "label": "A",
+          "value": 230257029.18112814,
+          "stable_midpoint": 67782.16586365,
+          "metrics": {
+            "ui.cycles_per_second": 230257029.18112814,
+            "ui.cycles_per_received_photo": 4376181.477419347,
+            "ui.mean_working_set_mib": 48.1203125,
+            "process_cycles_per_present_informative": 10857884.231710264,
+            "presents_per_second": 21.206436195798297,
+            "receive_to_paint_median_ms": 19.439,
+            "receive_to_submit_median_ms": 20.4948,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "% processor performance": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 101.97567973976554,
+              "minimum": 101.4493682475737,
+              "maximum": 102.02941659219813
+            },
+            "% performance limit": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "processor frequency": {
+              "samples": 35,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 44078189750,
+            "cycles_per_second": 881831432.603458,
+            "iteration_median_ms": 1425.7135,
+            "iterations": 35,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "bbb01d96eba68c1487e6984a13b6a551d22bfd5e977bd25ec5c152f11eeffe26"
+        },
+        "2": {
+          "label": "A",
+          "value": 232296600.08466208,
+          "stable_midpoint": 67890.7435391,
+          "metrics": {
+            "ui.cycles_per_second": 232296600.08466208,
+            "ui.cycles_per_received_photo": 4396422.65453562,
+            "ui.mean_working_set_mib": 48.197265625,
+            "process_cycles_per_present_informative": 10933100.028840462,
+            "presents_per_second": 21.247093639670915,
+            "receive_to_paint_median_ms": 21.0061,
+            "receive_to_submit_median_ms": 21.9695,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {
+            "% performance limit": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 100.0,
+              "minimum": 100.0,
+              "maximum": 100.0
+            },
+            "% processor performance": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 101.99094281809033,
+              "minimum": 101.83821280314616,
+              "maximum": 102.02383596294942
+            },
+            "processor frequency": {
+              "samples": 34,
+              "invalid": 0,
+              "median": 3500.0,
+              "minimum": 3500.0,
+              "maximum": 3500.0
+            }
+          },
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 43642235665,
+            "cycles_per_second": 873136222.0516391,
+            "iteration_median_ms": 1428.4113,
+            "iterations": 34,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "5f50ded7ac2b803a8fadd899eadf4b2d116b13ab1657a0e89e4d7fab753a9fe9"
+        },
+        "3": {
+          "label": "B",
+          "value": 225600714.79311633,
+          "stable_midpoint": 67968.5581807,
+          "metrics": {
+            "ui.cycles_per_second": 225600714.79311633,
+            "ui.cycles_per_received_photo": 4340297.122140197,
+            "ui.mean_working_set_mib": 48.28625,
+            "process_cycles_per_present_informative": 10668015.06463598,
+            "presents_per_second": 21.147393720971877,
+            "receive_to_paint_median_ms": 20.085,
+            "receive_to_submit_median_ms": 21.0499,
+            "gpu_render.mean_ms": null,
+            "gpu_render.p99_ms": null
+          },
+          "frequency_context": {},
+          "sampler": {
+            "status": "measured direct collector process only",
+            "cpu_cycles": 939250620,
+            "cycles_per_second": 18791582.463393513,
+            "iteration_median_ms": 1011.8001,
+            "iterations": 50,
+            "scope": "Get-Counter iteration including its sampling wait; provider process cost and system perturbation excluded"
+          },
+          "gpu_coverage": 0.0,
+          "gpu_disjoint_dropped": 0,
+          "summary_sha256": "4f8d85f7642a657d47053631d7368eaf5a19695ed6b99a9daad379ce7611ab1a"
+        }
+      }
+    }
+  },
+  "primary_metric": "ui.cycles_per_second",
+  "physical_vrr": "pending: separate game-PC gate, not inferred from server CPU",
+  "within_round_cv": {
+    "aa": {},
+    "ab": {
+      "1": 0.04836698076255878,
+      "2": 0.031767808511242224,
+      "3": 0.08316602168447947,
+      "4": 0.05214080576426885,
+      "5": 0.033966420538771004,
+      "6": 0.013334949377469402
+    }
+  },
+  "informative_metrics": {
+    "aa": {},
+    "ab": {
+      "gpu_render.mean_ms": {
+        "per_round": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "summary": null
+      },
+      "gpu_render.p99_ms": {
+        "per_round": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "summary": null
+      },
+      "presents_per_second": {
+        "per_round": [
+          1.018094475984813,
+          0.9584388367552565,
+          0.9923610451979394,
+          0.9926097760786744,
+          1.0018160392751054,
+          0.9967339332120694
+        ],
+        "summary": {
+          "median": 0.9946718546453719,
+          "minimum": 0.9584388367552565,
+          "maximum": 1.018094475984813,
+          "cv": 0.01970530064865448
+        }
+      },
+      "process_cycles_per_present_informative": {
+        "per_round": [
+          0.9839638533002717,
+          1.0085742120334076,
+          0.9267565939821027,
+          1.059010385539773,
+          0.9707001066895591,
+          0.9816559085141034
+        ],
+        "summary": {
+          "median": 0.9828098809071876,
+          "minimum": 0.9267565939821027,
+          "maximum": 1.059010385539773,
+          "cv": 0.04426349496893782
+        }
+      },
+      "receive_to_paint_median_ms": {
+        "per_round": [
+          1.0121386877062557,
+          1.2988797797586715,
+          1.0100672584301227,
+          1.017707073016898,
+          1.0802793972440485,
+          1.0065384423917507
+        ],
+        "summary": {
+          "median": 1.0149228803615769,
+          "minimum": 1.0065384423917507,
+          "maximum": 1.2988797797586715,
+          "cv": 0.10743405999966826
+        }
+      },
+      "receive_to_submit_median_ms": {
+        "per_round": [
+          1.0131375494055035,
+          1.2781276476089052,
+          1.0102370194799242,
+          1.0197485582430015,
+          1.0740116204913783,
+          1.0047134902600738
+        ],
+        "summary": {
+          "median": 1.0164430538242524,
+          "minimum": 1.0047134902600738,
+          "maximum": 1.2781276476089052,
+          "cv": 0.0999739904336095
+        }
+      },
+      "ui.cycles_per_received_photo": {
+        "per_round": [
+          0.9568343076398692,
+          0.954758794452707,
+          0.9065842445664535,
+          1.0746954975882614,
+          0.9680549746135453,
+          0.9945061117796233
+        ],
+        "summary": {
+          "median": 0.9624446411267072,
+          "minimum": 0.9065842445664535,
+          "maximum": 1.0746954975882614,
+          "cv": 0.05757149969586545
+        }
+      },
+      "ui.cycles_per_second": {
+        "per_round": [
+          1.0017681636137383,
+          0.966656694562648,
+          0.9196771422481606,
+          1.0511840616556254,
+          0.9724629362076602,
+          0.9784497547541317
+        ],
+        "summary": {
+          "median": 0.975456345480896,
+          "minimum": 0.9196771422481606,
+          "maximum": 1.0511840616556254,
+          "cv": 0.04416674156215307
+        }
+      },
+      "ui.mean_working_set_mib": {
+        "per_round": [
+          1.0026620061599414,
+          0.9974006437548035,
+          1.000169694711937,
+          0.998844575985958,
+          0.9990037758592426,
+          1.0023923119432117
+        ],
+        "summary": {
+          "median": 0.9995867352855898,
+          "minimum": 0.9974006437548035,
+          "maximum": 1.0026620061599414,
+          "cv": 0.0020919660567718305
+        }
+      }
+    }
+  }
+}

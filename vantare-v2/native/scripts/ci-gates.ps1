@@ -17,6 +17,12 @@ try {
         if ($legacy) { $legacyChecks = $legacy.Split(',') }
     }
     Write-Host "Scope: $(if ($packages.Count) { $packages -join ', ' } else { 'workspace completo' })"
+    $featureBase=if ($DiffBase) { $DiffBase } else { 'HEAD^1' }
+    $featureScope=& python (Join-Path $PSScriptRoot 'affected-crates.py') --base $featureBase --paint-stats
+    if ($LASTEXITCODE -or $featureScope -notin @('true','false')) { throw 'No se pudo clasificar paint-stats.' }
+    if ($featureScope -eq 'true') {
+        & (Join-Path $PSScriptRoot 'check-paint-stats.ps1')
+    }
     & cargo fmt --all -- --check
     if ($LASTEXITCODE) { throw 'Formato nativo.' }
     & (Join-Path $PSScriptRoot '../gates.ps1') -Gate clippy -Packages $packages

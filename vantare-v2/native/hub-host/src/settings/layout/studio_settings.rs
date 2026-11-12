@@ -3,6 +3,8 @@ use super::{Fields, HostError, WidgetKind, put, read, typed_settings};
 use crate::studio::{WidgetSettings, WidgetSettingsPatch};
 use serde_json::{Value, value::RawValue};
 use vantare_ipc::control::CatalogAccess;
+#[path = "table_presets.rs"]
+mod table_presets;
 
 fn encode(value: &impl serde::Serialize) -> Result<Box<RawValue>, HostError> {
     serde_json::value::to_raw_value(value).map_err(|_| HostError::Io)
@@ -131,11 +133,15 @@ pub(super) fn apply(
     patch.validate()?;
     let old = serde_json::to_value(typed_settings(kind, &stored)?.ok_or(HostError::Denied)?)
         .map_err(|_| HostError::Io)?;
+    let preset = patch.table_preset().map(|size| size.as_str());
     let patch = serde_json::to_value(patch).map_err(|_| HostError::Io)?;
     let requested = patch.as_object().ok_or(HostError::Denied)?;
     let mut candidate = old.clone();
+    if let Some(size) = preset {
+        table_presets::apply(kind, &old, &mut candidate, size)?;
+    }
     for (key, value) in requested {
-        if key == "kind" {
+        if key == "kind" || key == "tablePreset" {
             continue;
         }
         candidate[key] =

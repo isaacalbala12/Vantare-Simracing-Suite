@@ -380,6 +380,7 @@ pub struct WidgetColumnPatch {
     pub style: Option<WidgetColumnStylePatch>,
 }
 patch!(StandingsWidgetPatch {
+    table_preset: TableSize => "some",
     design_system: native::look::Look => "closed",
     style: native::look::Tone => "closed",
     accent: native::look::Accent => "closed",
@@ -399,6 +400,7 @@ patch!(StandingsWidgetPatch {
     footer_slots: Option<Vec<FooterKey>> => "some",
 });
 patch!(RelativeWidgetPatch {
+    table_preset: TableSize => "some",
     design_system: native::look::Look => "closed",
     style: native::look::Tone => "closed",
     accent: native::look::Accent => "closed",
@@ -447,6 +449,13 @@ pub enum WidgetSettingsPatch {
     FuelStrategy(FuelStrategyWidgetPatch),
 }
 impl WidgetSettingsPatch {
+    pub(crate) fn table_preset(&self) -> Option<&TableSize> {
+        match self {
+            Self::Standings(patch) => patch.table_preset.as_ref(),
+            Self::Relative(patch) => patch.table_preset.as_ref(),
+            _ => None,
+        }
+    }
     pub fn kind(&self) -> WidgetKind {
         match self {
             Self::Standings(_) => WidgetKind::Standings,
@@ -520,6 +529,14 @@ pub(crate) fn fits_view(view: &super::StudioView) -> bool {
 
 impl WidgetSettingsPatch {
     pub(crate) fn validate(&self) -> Result<(), HostError> {
+        // A recipe replaces the whole native column configuration; mixing it
+        // with a field patch would make ordering decide the user's result.
+        if self.table_preset().is_some()
+            && serde_json::to_value(self).map_err(|_| HostError::Io)?
+                .as_object().is_none_or(|fields| fields.len() != 2)
+        {
+            return Err(HostError::Denied);
+        }
         fn range(value: Option<usize>, min: usize, max: usize) -> Result<(), HostError> {
             if value.is_some_and(|v| !(min..=max).contains(&v)) {
                 Err(HostError::Denied)

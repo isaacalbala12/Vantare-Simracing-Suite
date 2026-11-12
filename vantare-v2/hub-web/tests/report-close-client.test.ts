@@ -27,6 +27,7 @@ function setup() {
     sequence = 0;
   const timers = new Map<number, { at: number; run: () => void }>();
   const clock: CloseClock = {
+    now: () => time,
     set(run, ms) {
       const id = ++sequence;
       timers.set(id, { at: time + ms, run });
@@ -69,6 +70,9 @@ function setup() {
     next,
     timers,
     post: (message: HostToUi) => port2.postMessage(message),
+    elapseWithoutTimers(ms: number) {
+      time += ms;
+    },
     advance(ms: number) {
       time += ms;
       for (const [id, timer] of timers)
@@ -294,4 +298,22 @@ it("owner shutdown cancels preparation without a failure dialog", async () => {
   await Promise.resolve();
   expect(h.timers.size).toBe(0);
   expect(failed).not.toHaveBeenCalled();
+});
+
+it("rejects a success after the deadline even if the event loop delayed its timer", async () => {
+  const h = setup(),
+    failed = vi.fn();
+  h.client.setReportClosePreparation({
+    prepare: async (save) => {
+      await save(fields);
+      return "saved";
+    },
+    failed,
+  });
+  h.post({ kind: "closeRequested", reason: "window" });
+  const request = await h.next();
+  h.elapseWithoutTimers(5001);
+  complete(h, request);
+  expect(await h.next()).toEqual({ kind: "closeAnswer", allow: false });
+  expect(failed).toHaveBeenCalledOnce();
 });

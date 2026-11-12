@@ -15,10 +15,12 @@ export type ReportCloseHandler = {
   failed: () => void;
 };
 export type CloseClock = {
+  now: () => number;
   set: (callback: () => void, ms: number) => ReturnType<typeof setTimeout>;
   clear: (timer: ReturnType<typeof setTimeout>) => void;
 };
 const systemClock: CloseClock = {
+  now: () => performance.now(),
   set: (callback, ms) => setTimeout(callback, ms),
   clear: (timer) => clearTimeout(timer),
 };
@@ -52,8 +54,10 @@ export class ReportClosePreparation {
     if (!handler) return false;
     if (this.active) return true;
     const controller = new AbortController();
+    const deadline = this.clock.now() + reportCloseTimeoutMs;
     const finish = (allow: ReportCloseVerdict) => {
       if (this.active?.controller !== controller) return;
+      if (allow && this.clock.now() >= deadline) allow = false;
       this.cancel();
       settle(allow);
       if (!allow) handler.failed();

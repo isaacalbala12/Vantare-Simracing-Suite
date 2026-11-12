@@ -288,7 +288,24 @@ function useReportsState() {
           permitted.fields === JSON.stringify(state.current.fields)
         )
           return "discard";
-        await inflight.current?.catch(() => {});
+        const pending = inflight.current;
+        if (pending) {
+          const cancelled = AbortSignal.any([
+            signal,
+            cancellation.current.signal,
+          ]);
+          await new Promise<void>((resolve) => {
+            const done = () => {
+              cancelled.removeEventListener("abort", done);
+              resolve();
+            };
+            if (cancelled.aborted) done();
+            else {
+              cancelled.addEventListener("abort", done, { once: true });
+              void pending.then(done, done);
+            }
+          });
+        }
         if (epoch !== generation.current || signal.aborted) return false;
         await saveCurrent.current(send, signal);
         return epoch === generation.current &&

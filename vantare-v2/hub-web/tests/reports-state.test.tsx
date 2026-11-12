@@ -1151,7 +1151,25 @@ it("a recovery get from A cannot overwrite a newer published B session", async (
 });
 
 it("retries from the GPUI failure dialog and closes only after saving", async () => {
-  const hook = await mount("testing-save-error");
+  const hook = await mount(),
+    port = hook.host,
+    receive = port.onmessage;
+  if (!receive) throw Error("missing mock port");
+  let first = true;
+  port.onmessage = (event) => {
+    if (
+      first &&
+      event.data.kind === "request" &&
+      event.data.request.method === "draft.save"
+    ) {
+      first = false;
+      port.postMessage({
+        kind: "failure",
+        id: event.data.id,
+        error: { kind: "io" },
+      });
+    } else receive.call(port, event);
+  };
   act(() => hook.result.current.edit({ actionText: "Reintento de cierre" }));
   await act(async () => {
     expect(await hook.close("window")).toBe(false);
@@ -1245,12 +1263,12 @@ it("abandons the close preparation on session invalidation before dispatching an
       },
     });
     expect(await closing).toBe(false);
-    await saving;
   });
   expect(hook.result.current.fields.actionText).toBe("");
   expect(screen.queryByRole("alertdialog")).toBeNull();
   await act(async () => {
     if (held) receive.call(port, held);
+    await saving;
   });
   expect(saves).toHaveLength(1);
   expect(hook.result.current.fields.actionText).toBe("");

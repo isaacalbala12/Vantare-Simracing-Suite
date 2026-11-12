@@ -67,6 +67,15 @@ for (const expanded of [false, true]) {
         "true",
       );
       await menu.getByRole("menuitem", { name: /^Eliminar Delta/ }).waitFor();
+      await page.keyboard.press("End");
+      const popup = await menu.boundingBox();
+      const actions = await page.locator(".v-focus-actions").boundingBox();
+      assert.ok(
+        popup &&
+          actions &&
+          Math.abs(popup.x + popup.width - actions.x - actions.width) <= 2,
+        "More aligns with the header actions edge",
+      );
     },
   };
 }

@@ -1,5 +1,5 @@
 import { Menu } from "@base-ui/react/menu";
-import { useId } from "react";
+import { useId, useRef } from "react";
 import type {
   OverlayInstance,
   StudioView,
@@ -23,6 +23,7 @@ export function MoreMenu({
   onRemove: () => void;
 }) {
   const id = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
   const reason =
     view.state !== "ready"
       ? text.catalogProtected
@@ -35,7 +36,11 @@ export function MoreMenu({
             : undefined;
   return (
     <Menu.Root modal={false}>
-      <Menu.Trigger render={<Button />} aria-label={text.moreLabel}>
+      <Menu.Trigger
+        ref={trigger}
+        render={<Button />}
+        aria-label={text.moreLabel}
+      >
         <span aria-hidden="true">{text.moreMark}</span>
         {text.more}
       </Menu.Trigger>
@@ -45,6 +50,9 @@ export function MoreMenu({
           side="bottom"
           align="end"
           sideOffset={6}
+          anchor={() =>
+            trigger.current?.closest(".v-focus-actions") ?? trigger.current
+          }
         >
           <Menu.Popup className="v-popup v-studio-more">
             <Menu.Item

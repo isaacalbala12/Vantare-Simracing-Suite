@@ -288,6 +288,7 @@
 }
 .v-studio-more-item[aria-disabled="true"] {
   cursor: not-allowed;
+  opacity: 1;
 }
 .v-studio-more-item[aria-disabled="true"] strong {
   color: var(--text-3);

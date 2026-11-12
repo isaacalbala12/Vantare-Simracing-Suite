@@ -6,6 +6,7 @@ import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button } from "../Button";
 import { DisabledHint } from "./DisabledHint";
+import { MoreMenu } from "./MoreMenu";
 import { WidgetThumb, widgetName } from "./Widgets";
 
 export function FocusHeader({
@@ -13,11 +14,13 @@ export function FocusHeader({
   view,
   pending,
   onTrack,
+  onRemove,
 }: {
   item?: OverlayInstance;
   view: StudioView;
   pending: boolean;
   onTrack: () => void;
+  onRemove: () => void;
 }) {
   const info = view.catalog.find((value) => value.kind === item?.kind);
   const unavailable =
@@ -49,12 +52,14 @@ export function FocusHeader({
         </p>
       </div>
       <div className="v-focus-actions">
-        <DisabledHint label={t.soonTooltip}>
-          <Button disabled aria-label={t.moreLabel}>
-            <span aria-hidden="true">{t.moreMark}</span>
-            {t.more}
-          </Button>
-        </DisabledHint>
+        {item && (
+          <MoreMenu
+            item={item}
+            view={view}
+            pending={pending}
+            onRemove={onRemove}
+          />
+        )}
         <DisabledHint
           disabled={unavailable}
           label={

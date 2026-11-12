@@ -56,10 +56,18 @@ export function CatalogDialog({
           initialFocus={() =>
             popup.current?.querySelector<HTMLInputElement>("input") ?? false
           }
-          finalFocus={() =>
-            !latestAdded.current ||
-            latestAdded.current.revision === addedWhenOpened.current
-          }
+          finalFocus={() => {
+            const added = latestAdded.current;
+            if (!added || added.revision === addedWhenOpened.current)
+              return true;
+            // The focus model selects/reveals the row. Restore it after the
+            // dialog releases its focus trap rather than returning to Add.
+            return (
+              Array.from(
+                document.querySelectorAll<HTMLElement>("[data-widget]"),
+              ).find((row) => row.dataset.widget === added.id) ?? false
+            );
+          }}
         >
           <header>
             <div>

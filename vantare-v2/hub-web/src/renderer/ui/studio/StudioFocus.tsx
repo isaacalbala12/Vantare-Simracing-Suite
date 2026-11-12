@@ -4,9 +4,9 @@ import { useStudioFocus } from "../../screens/studio/focus";
 import { Button } from "../Button";
 import { Callout, Skeleton } from "../Data";
 import { ActionNotice } from "./ActionNotice";
+import { CatalogDialog } from "./CatalogDialog";
 import { FocusHeader } from "./FocusHeader";
 import { LayoutStrip } from "./LayoutStrip";
-import { Catalog } from "./Rail";
 import { RemoveWidget } from "./RemoveWidget";
 import { Stage } from "./Stage";
 import { StudioSteps as StudioInspector } from "./StudioSteps";
@@ -27,6 +27,11 @@ export function StudioFocus() {
         ref={model.root}
       >
         <RemoveWidget />
+        <CatalogDialog
+          open={catalogOpen}
+          onOpenChange={model.setCatalogOpen}
+          onPlans={() => navigate("account")}
+        />
         {view?.state !== "missing" && <LayoutStrip model={model} />}
         <div className="v-focus-column">
           {view ? (
@@ -34,6 +39,9 @@ export function StudioFocus() {
               item={selected}
               view={view}
               pending={state.pending}
+              onRemove={() => {
+                if (selected) state.setRemoving(selected.id);
+              }}
               onTrack={() =>
                 void state.execute({
                   method: "studio.track",
@@ -133,32 +141,12 @@ export function StudioFocus() {
           <ActionNotice />
           {view && view.state !== "missing" && (
             <div className="v-studio-temporary">
-              {catalogOpen ? (
-                <>
-                  <header>
-                    <h2>{t.catalog}</h2>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        model.setCatalogOpen(false);
-                        model.root.current
-                          ?.querySelector<HTMLElement>("[data-add-widget]")
-                          ?.focus();
-                      }}
-                    >
-                      {t.close}
-                    </Button>
-                  </header>
-                  <Catalog onPlans={() => navigate("account")} />
-                </>
-              ) : (
-                selected &&
+              {selected &&
                 (view.state === "protected" ? (
                   <p>{t.appearanceUnavailable}</p>
                 ) : (
                   <StudioInspector item={selected} />
-                ))
-              )}
+                ))}
             </div>
           )}
         </div>

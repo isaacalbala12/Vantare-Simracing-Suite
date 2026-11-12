@@ -1,3 +1,6 @@
+#[path = "notice.rs"]
+mod notice;
+pub use notice::{CalendarNotice, NOTICE_TTL_MS, NOTICE_HISTORY_LIMIT, NOTICE_PRESENTATION_LIMIT, NOTICE_BATCH_LIMIT, NOTICE_TEST_INTERVAL_MS};
 #[path = "agenda.rs"]
 mod agenda;
 #[path = "feed.rs"]
@@ -350,6 +353,7 @@ pub struct State {
     memory: Publications,
     config_view: CalendarConfigView,
     feed: feed::Publisher,
+    notices: notice::Scheduler,
 }
 impl State {
     pub fn new(base: PathBuf) -> Self {
@@ -360,6 +364,7 @@ impl State {
             memory: Publications::default(),
             config_view: CalendarConfigView::default(),
             feed: feed::Publisher::default(),
+            notices: notice::Scheduler::default(),
         }
     }
     fn read(&mut self, name: &str) -> Read {
@@ -484,3 +489,4 @@ impl State {
 #[cfg(test)]
 #[path = "model_tests.rs"]
 mod tests;
+

@@ -1,12 +1,33 @@
 use super::{Instant, Pipe, Session, io};
-// The generated tick ABI requires io::Result; feed errors must not close the Hub.
-#[allow(clippy::unnecessary_wraps)]
-pub(super) fn tick(session: &mut Session, _pipe: &mut Pipe) -> io::Result<()> {
-    tick_at(
+pub(super) fn tick(session: &mut Session, pipe: &mut Pipe) -> io::Result<()> {
+    tick_with_clock(
         session,
+        pipe,
         chrono::Utc::now().timestamp_millis(),
         Instant::now(),
-    );
+    )
+}
+pub(super) fn tick_with_clock(
+    session: &mut Session,
+    pipe: &mut Pipe,
+    now: i64,
+    monotonic: Instant,
+) -> io::Result<()> {
+    tick_at(session, now, monotonic);
+    let enabled = crate::calendar::allowed(&session.current.access)
+        && session.current.rights == crate::protocol::LinkState::Connected
+        && session.closing.is_none();
+    for value in session
+        .calendar_state
+        .notice_tick(now, monotonic, enabled, session.current.live)
+    {
+        super::frame::write(
+            pipe,
+            &super::HostToUi::Event {
+                event: super::Event::CalendarNotice { value },
+            },
+        )?;
+    }
     Ok(())
 }
 pub(super) fn tick_at(session: &mut Session, now: i64, monotonic: Instant) {

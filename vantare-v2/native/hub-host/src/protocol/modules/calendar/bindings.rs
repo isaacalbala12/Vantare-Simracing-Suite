@@ -2,6 +2,32 @@ use crate::protocol::bindings::{constants, declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    declare::<crate::calendar::CalendarNotice>(&mut text);
+    constants!(
+        &mut text,
+        "calendarNoticeTtlMs",
+        crate::calendar::NOTICE_TTL_MS
+    );
+    constants!(
+        &mut text,
+        "calendarNoticeHistoryLimit",
+        crate::calendar::NOTICE_HISTORY_LIMIT
+    );
+    constants!(
+        &mut text,
+        "calendarNoticePresentationLimit",
+        crate::calendar::NOTICE_PRESENTATION_LIMIT
+    );
+    constants!(
+        &mut text,
+        "calendarNoticeBatchLimit",
+        crate::calendar::NOTICE_BATCH_LIMIT
+    );
+    constants!(
+        &mut text,
+        "calendarNoticeTestIntervalMs",
+        crate::calendar::NOTICE_TEST_INTERVAL_MS
+    );
     declare::<crate::calendar::CalendarIcsScope>(&mut text);
     declare::<crate::calendar::CalendarIcsStatus>(&mut text);
     declare::<crate::calendar::CalendarIcsEntry>(&mut text);
@@ -284,6 +310,44 @@ pub(crate) fn corpus() -> serde_json::Value {
             expected_revision: config.alerts_revision.expect("sample alerts revision"),
         },
     });
+    host.push(sample_response(Reply::CalendarNoticeTest {
+        accepted: true,
+    }));
+    ui.push(UiToHost::Request {
+        id: 1,
+        request: Request::CalendarNoticeTest {},
+    });
+    for value in [
+        crate::calendar::CalendarNotice::Start {
+            id: "a".repeat(64),
+            issued_at: 1_791_489_000_000,
+            expires_at: 1_791_489_060_000,
+            series: "WEC Weekly".into(),
+            track: "Sebring".into(),
+            at: 1_791_489_600_000,
+            race_minutes: 100,
+            silent: true,
+        },
+        crate::calendar::CalendarNotice::Week {
+            id: "b".repeat(64),
+            issued_at: 1_791_849_600_000,
+            expires_at: 1_791_849_660_000,
+            from: 1_791_849_600_000,
+            until: 1_792_454_400_000,
+            silent: false,
+        },
+        crate::calendar::CalendarNotice::Test {
+            id: "c".repeat(64),
+            issued_at: 1_791_489_000_000,
+            expires_at: 1_791_489_060_000,
+            request_id: 1,
+            silent: true,
+        },
+    ] {
+        host.push(HostToUi::Event {
+            event: crate::protocol::Event::CalendarNotice { value },
+        });
+    }
     let (ics_host, ics_ui) = ics_samples();
     host.extend(ics_host);
     ui.extend(ics_ui);

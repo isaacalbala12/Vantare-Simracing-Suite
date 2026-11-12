@@ -75,6 +75,43 @@ pub(super) fn dispatch(
             },
         );
     }
+    if matches!(request, Request::CalendarNoticeTest {}) {
+        if session.current.rights != crate::protocol::LinkState::Connected
+            || session.closing.is_some()
+        {
+            return frame::write(
+                pipe,
+                &HostToUi::Failure {
+                    id,
+                    error: HostError::Denied,
+                },
+            );
+        }
+        return match session.calendar_state.notice_test(
+            id,
+            chrono::Utc::now().timestamp_millis(),
+            std::time::Instant::now(),
+            session.current.live,
+        ) {
+            Ok(value) => {
+                // Main consumes the fixed sample before projecting the boolean ACK.
+                frame::write(
+                    pipe,
+                    &HostToUi::Event {
+                        event: crate::protocol::Event::CalendarNotice { value },
+                    },
+                )?;
+                frame::write(
+                    pipe,
+                    &HostToUi::Response {
+                        id,
+                        result: Reply::CalendarNoticeTest { accepted: true },
+                    },
+                )
+            }
+            Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
+        };
+    }
     let local = local(&mut session.calendar_state, request);
     if let Some(result) = local {
         return frame::write(

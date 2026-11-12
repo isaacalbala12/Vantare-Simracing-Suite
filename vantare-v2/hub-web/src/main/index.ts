@@ -26,6 +26,8 @@ import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, testNotification } from "./appearance";
+import { calendarNoticeSession } from "./calendar-notices";
+import { presentSystemNotice } from "./system-notifications";
 import { calendarExportSession } from "./calendar-export";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
@@ -155,7 +157,9 @@ async function start() {
   });
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   let disconnect: (() => void) | undefined;
+  const calendarNotices = calendarNoticeSession(presentSystemNotice);
   const removeHostFailure = host.listen((message) => {
+    if (message.kind === "event" && message.event.topic === "calendarNotice" && !currentWindow.isDestroyed()) calendarNotices.receive(message.event.value);
     if (
       message.kind === "response" &&
       (message.result.method === "settings.get" ||
@@ -182,6 +186,7 @@ async function start() {
     disconnect?.();
     ipcMain.removeListener("vantare:connect", connectRenderer);
     removeHostFailure();
+    calendarNotices.close();
     host.close();
   });
   window.on("close", (event) => {
@@ -239,6 +244,9 @@ async function start() {
       return result.canceled ? undefined : result.filePath;
     });
     const unsubscribe = host.listen((message) => {
+      const observed = calendarNotices.observe(message);
+      if (!observed) return;
+      message = observed;
       if (pickExecutable.receive(message)) return;
       message = reportExport.observe(message);
       message = calendarExport.observe(message);

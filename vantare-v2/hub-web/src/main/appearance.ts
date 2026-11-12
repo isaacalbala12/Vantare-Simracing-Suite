@@ -1,4 +1,5 @@
-import { type BrowserWindow, Notification, nativeTheme } from "electron";
+import { type BrowserWindow, nativeTheme } from "electron";
+import { presentSystemNotice } from "./system-notifications";
 import tokens from "../../design/tokens.json";
 import type { SettingsView, ThemeBoot } from "../contract/generated/contract";
 import { t } from "../renderer/i18n/es";
@@ -24,20 +25,6 @@ export function paintWindow(
   window.webContents.setZoomFactor(zoom / 100);
 }
 export function testNotification(view?: SettingsView): boolean {
-  if (
-    process.platform !== "win32" ||
-    !view?.general.toasts ||
-    !Notification.isSupported()
-  )
-    return false;
-  try {
-    new Notification({
-      title: t("shell.noticeTestTitle"),
-      body: t("shell.noticeTestBody"),
-      silent: true,
-    }).show();
-    return true;
-  } catch {
-    return false;
-  }
+  if (!view?.general.toasts) return false;
+  return presentSystemNotice({ title: t("shell.noticeTestTitle"), body: t("shell.noticeTestBody"), silent: true });
 }

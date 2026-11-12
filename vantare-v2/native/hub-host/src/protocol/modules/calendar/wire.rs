@@ -5,6 +5,8 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "calendar.noticeTest")]
+    CalendarNoticeTest {},
     #[serde(rename = "calendar.alertsSave")]
     CalendarAlertsSave {
         #[serde(deserialize_with = "crate::calendar::config::deserialize_complete_alerts")]
@@ -55,6 +57,8 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "calendar.noticeTest")]
+    CalendarNoticeTest { accepted: bool },
     #[serde(rename = "calendar.alertsSave")]
     CalendarAlertsSave {
         value: Box<crate::calendar::CalendarConfigView>,
@@ -109,6 +113,15 @@ pub enum HostError {
     #[serde(rename = "calendarConflict")]
     CalendarConflict {
         current: Box<crate::calendar::CalendarConfigView>,
+    },
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
+pub enum Event {
+    #[serde(rename = "calendarNotice")]
+    CalendarNotice {
+        value: crate::calendar::CalendarNotice,
     },
 }
 #[cfg(any(test, feature = "bindings"))]

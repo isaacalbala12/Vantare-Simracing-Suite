@@ -160,6 +160,17 @@ export default function CalendarEntry() {
     slots: [],
     channels: { ...calendarDefaultAlerts.channels },
   };
+  const toggleSlot = preferences.canAlerts
+    ? (id: string, at: number) =>
+        void preferences.alert({
+          kind: "slot",
+          id,
+          at: Math.trunc(at / 1000),
+          enabled: !alerts.slots.some(
+            (slot) => slot.seriesId === id && slot.at * 1000 === at,
+          ),
+        })
+    : undefined;
   const history = useCalendarHistory(
     state.allowed && !!selectedSerie,
     schedule?.validFrom ?? "",
@@ -273,6 +284,7 @@ export default function CalendarEntry() {
               setSelectedSerie(undefined);
             }}
             onSeries={openSerie}
+            onSlot={toggleSlot}
             canFollow={preferences.canFollow}
             canLaunch={launcher.canLaunch}
             onFollow={(followed) =>
@@ -404,20 +416,7 @@ export default function CalendarEntry() {
               />
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
-                onToggleSlot={
-                  preferences.canAlerts
-                    ? (id, at) =>
-                        void preferences.alert({
-                          kind: "slot",
-                          id,
-                          at: Math.trunc(at / 1000),
-                          enabled: !alerts.slots.some(
-                            (slot) =>
-                              slot.seriesId === id && slot.at * 1000 === at,
-                          ),
-                        })
-                    : undefined
-                }
+                onToggleSlot={toggleSlot}
                 onDetail={openDetail}
                 onSerie={openSerie}
                 schedule={schedule}

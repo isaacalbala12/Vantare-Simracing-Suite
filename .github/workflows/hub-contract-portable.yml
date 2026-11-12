@@ -41,8 +41,6 @@ jobs:
         order: [sorted, insertion]
     env:
       CARGO_BUILD_JOBS: '2'
-      CARGO_TARGET_DIR: ${{ runner.temp }}/hub-writer-target
-      VANTARE_NATIVE_DATA_ROOT: ${{ runner.temp }}/hub-writer-data
       VANTARE_EXPECT_JSON_ORDER: ${{ matrix.order }}
     defaults:
       run:
@@ -53,7 +51,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Install repository Rust toolchain
-        run: rustup show active-toolchain
+        run: |
+          "CARGO_TARGET_DIR=$env:RUNNER_TEMP/hub-writer-target" >> $env:GITHUB_ENV
+          "VANTARE_NATIVE_DATA_ROOT=$env:RUNNER_TEMP/hub-writer-data" >> $env:GITHUB_ENV
+          rustup show active-toolchain
       - name: Pin writer bytes with an isolated host feature graph
         run: |
           $extra = @()

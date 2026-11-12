@@ -202,7 +202,7 @@ impl Scheduler {
             }
             let series = &schedule.series[i];
             let id = vantare_services::content_hash(
-                format!("calendar-start:{}:{}:{at}", schedule.valid_from, series.id).as_bytes(),
+                format!("calendar-start:{}:{at}", series.id).as_bytes(),
             );
             if !self.accept(&id, at) {
                 continue;

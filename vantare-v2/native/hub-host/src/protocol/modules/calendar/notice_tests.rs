@@ -184,6 +184,7 @@ fn test_notice_has_fixed_shape_clock_limits_and_rate_limit() {
 fn new_week_requires_observed_transition_and_only_emits_once() {
     let (mut view, mut alerts, now) = setup();
     alerts.notify_week = true;
+    alerts.bands.clear(); // Isolate the publication notice from departure notices.
     let mut s = Scheduler::default();
     let clock = Instant::now();
     s.tick(&view, &alerts, (now, clock), true, false, &Utc);

@@ -90,3 +90,69 @@ impl ColumnFormat for ColumnSetting {
         )
     }
 }
+
+#[cfg(test)]
+mod contract_parity_tests {
+    use super::*;
+
+    fn column() -> ColumnSetting {
+        ColumnSetting {
+            metric_id: "driverName".into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn contract_choices_match_real_column_presentation() {
+        // Exercise the same conversion the GPUI tables render, including the
+        // implicit Auto/Full fallbacks; an invented choice is not an editor option.
+        for (name, expected) in [
+            ("xs", Preset::Xs),
+            ("sm", Preset::Sm),
+            ("md", Preset::Md),
+            ("lg", Preset::Lg),
+            ("auto", Preset::Auto),
+        ] {
+            assert!(keys::COLUMN_WIDTHS.contains(&name));
+            let mut value = column();
+            value.width_preset = name.into();
+            assert_eq!(value.column().unwrap().preset, expected);
+        }
+        assert_eq!(keys::COLUMN_WIDTHS.len(), 5);
+        for (name, expected) in [
+            ("full", NameMode::Full),
+            ("initial", NameMode::Initial),
+            ("surname", NameMode::Surname),
+            ("truncate", NameMode::Truncate),
+        ] {
+            assert!(keys::COLUMN_NAME_MODES.contains(&name));
+            let mut value = column();
+            value.format.mode = name.into();
+            assert_eq!(value.column().unwrap().name_mode, expected);
+        }
+        assert_eq!(keys::COLUMN_NAME_MODES.len(), 4);
+        for (name, expected) in [
+            ("left", Align::Left),
+            ("center", Align::Center),
+            ("right", Align::Right),
+        ] {
+            assert!(keys::COLUMN_ALIGNS.contains(&name));
+            let mut value = column();
+            value.style.align = Some(name.into());
+            assert_eq!(value.column().unwrap().align, Some(expected));
+        }
+        assert_eq!(keys::COLUMN_ALIGNS.len(), 3);
+        for name in keys::LEGACY_TABLE_COLUMNS {
+            let mut value = column();
+            value.metric_id = (*name).into();
+            assert!(value.column().is_some(), "{name}");
+        }
+        let mut unknown = column();
+        unknown.metric_id = "unknown".into();
+        assert!(unknown.column().is_none());
+        assert!(!keys::LEGACY_TABLE_COLUMNS.contains(&"unknown"));
+        assert!(!keys::COLUMN_WIDTHS.contains(&"unknown"));
+        assert!(!keys::COLUMN_ALIGNS.contains(&"unknown"));
+        assert!(!keys::COLUMN_NAME_MODES.contains(&"unknown"));
+    }
+}

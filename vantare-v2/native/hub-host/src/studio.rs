@@ -5,6 +5,7 @@ use std::{path::PathBuf, time::Instant};
 use ts_rs::TS;
 #[path = "studio/catalog.rs"]
 pub mod catalog;
+#[path = "studio/widget_settings.rs"]
 pub mod widget_settings;
 pub use catalog::{WidgetInfo, WidgetKind};
 pub use widget_settings::{WidgetSettings, WidgetSettingsPatch};

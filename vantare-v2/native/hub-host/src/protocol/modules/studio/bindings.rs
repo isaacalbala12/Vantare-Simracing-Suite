@@ -4,6 +4,7 @@ use crate::studio::*;
 use std::fmt::Write as _;
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    widget_settings_types(&mut text);
     declare::<WidgetKind>(&mut text);
     declare::<WidgetInfo>(&mut text);
     declare::<StudioState>(&mut text);
@@ -207,4 +208,100 @@ pub(crate) fn corpus() -> serde_json::Value {
         topic: crate::protocol::Topic::Studio,
     });
     serde_json::json!({"host":host,"ui":ui})
+}
+
+fn widget_settings_types(text: &mut String) {
+    use crate::studio::widget_settings::*;
+    use vantare_domain::widget_settings as native;
+    declare::<native::look::Look>(text);
+    declare::<native::look::Tone>(text);
+    declare::<native::look::Accent>(text);
+    declare::<native::columns::Format>(text);
+    declare::<native::columns::Style>(text);
+    declare::<native::columns::ColumnSetting>(text);
+    declare::<native::standings::Settings>(text);
+    declare::<native::relative::Settings>(text);
+    declare::<native::delta::Settings>(text);
+    declare::<native::pedals::Settings>(text);
+    declare::<native::fuel_strategy::Settings>(text);
+    declare::<WidgetSettings>(text);
+    declare::<WidgetGap>(text);
+    declare::<StandingsScope>(text);
+    declare::<StandingsClassification>(text);
+    declare::<StandingsTemplate>(text);
+    declare::<TableSize>(text);
+    declare::<RelativeScope>(text);
+    declare::<DeltaSize>(text);
+    declare::<DeltaReference>(text);
+    declare::<DeltaTemplate>(text);
+    declare::<FooterKey>(text);
+    declare::<ColumnWidth>(text);
+    declare::<ColumnNameMode>(text);
+    declare::<ColumnAlign>(text);
+    declare::<ColumnMetric>(text);
+    declare::<FooterMetric>(text);
+    declare::<WidgetColumnFormatPatch>(text);
+    declare::<WidgetColumnStylePatch>(text);
+    declare::<WidgetColumnPatch>(text);
+    declare::<StandingsWidgetPatch>(text);
+    declare::<RelativeWidgetPatch>(text);
+    declare::<DeltaWidgetPatch>(text);
+    declare::<PedalsWidgetPatch>(text);
+    declare::<FuelStrategyWidgetPatch>(text);
+    declare::<WidgetSettingsPatch>(text);
+
+    let metrics: std::collections::BTreeSet<_> = native::columns::LEGACY_TABLE_COLUMNS
+        .iter()
+        .chain(native::standings::STANDINGS_VANTARE_COLUMNS)
+        .chain(native::relative::RELATIVE_VANTARE_COLUMNS)
+        .collect();
+    let options = serde_json::json!({
+        "standings": {
+            "scopes": native::standings::STANDINGS_SCOPES,
+            "classifications": native::standings::STANDINGS_CLASSIFICATION_MODES,
+            "templates": native::standings::STANDINGS_TEMPLATES,
+            "footerMetrics": native::standings::STANDINGS_FOOTER_METRICS,
+            "rowsMin": native::standings::STANDINGS_ROWS_MIN,
+            "rowsMax": native::standings::STANDINGS_ROWS_MAX,
+            "rowsStep": native::standings::STANDINGS_ROWS_STEP,
+            "columnsMax": native::standings::STANDINGS_COLUMNS_MAX,
+            "windowAround": native::standings::STANDINGS_WINDOW_AROUND,
+            "columns": native::standings::STANDINGS_VANTARE_COLUMNS
+        },
+        "relative": {
+            "scopes": native::relative::RELATIVE_SCOPES,
+            "rangeMin": native::relative::RELATIVE_RANGE_MIN,
+            "rangeMax": native::relative::RELATIVE_RANGE_MAX,
+            "rangeStep": native::relative::RELATIVE_RANGE_STEP,
+            "columns": native::relative::RELATIVE_VANTARE_COLUMNS
+        },
+        "delta": { "sizes": native::delta::DELTA_SIZES,
+            "references": native::delta::DELTA_REFERENCES, "templates": native::delta::DELTA_TEMPLATES },
+        "columns": { "widths": native::columns::COLUMN_WIDTHS,
+            "names": native::columns::COLUMN_NAME_MODES, "aligns": native::columns::COLUMN_ALIGNS,
+            "metrics": metrics, "legacy": native::columns::LEGACY_TABLE_COLUMNS,
+            "maxChars": native::columns::MAX_CHARS_LIMIT },
+        "tableSizes": native::TABLE_SIZES, "footerKeys": native::FOOTER_KEYS,
+        "footerMax": native::FOOTER_ITEMS_MAX
+    });
+    writeln!(
+        text,
+        "export const studioWidgetOptions = {options} as const;"
+    )
+    .expect("widget options");
+    let defaults: std::collections::BTreeMap<_, _> = WidgetKind::ALL
+        .iter()
+        .map(|kind| {
+            let source = crate::widget_defaults::get(kind.id()).expect("native defaults");
+            let value =
+                WidgetSettings::from_json(*kind, source.settings.get()).expect("typed defaults");
+            (kind.id(), value)
+        })
+        .collect();
+    writeln!(
+        text,
+        "export const studioWidgetDefaults = {} as const;",
+        serde_json::to_string(&defaults).expect("defaults")
+    )
+    .expect("defaults");
 }

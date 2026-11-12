@@ -500,3 +500,86 @@ impl WidgetSettingsPatch {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn patch(value: serde_json::Value) -> WidgetSettingsPatch {
+        serde_json::from_value(value).unwrap()
+    }
+    #[test]
+    fn patch_rejects_unknown_fields_readonly_brand_and_fallback_enums() {
+        for value in [
+            json!({"kind":"delta","brandVisible":false}),
+            json!({"kind":"delta","path":"C:/a"}),
+            json!({"kind":"delta","designSystem":"unknown"}),
+            json!({"kind":"delta","style":"unknown"}),
+            json!({"kind":"delta","accent":"unknown"}),
+            json!({"kind":"delta","size":"unknown"}),
+            json!({"kind":"relative","columns":[{"metric":"driverName","id":"invented"}]}),
+            json!({"kind":"pedals","gap":null}),
+        ] {
+            assert!(
+                serde_json::from_value::<WidgetSettingsPatch>(value.clone()).is_err(),
+                "{value}"
+            );
+        }
+    }
+    #[test]
+    fn bounds_are_rejected_instead_of_normalized_on_write() {
+        for rows in [
+            native::standings::STANDINGS_ROWS_MIN,
+            native::standings::STANDINGS_ROWS_MAX,
+        ] {
+            assert!(
+                patch(json!({"kind":"standings","rowCount":rows}))
+                    .validate()
+                    .is_ok()
+            );
+        }
+        for value in [
+            json!({"kind":"standings","rowCount":0}),
+            json!({"kind":"standings","rowCount":native::standings::STANDINGS_ROWS_MAX+1}),
+            json!({"kind":"standings","windowAround":3}),
+            json!({"kind":"relative","rangeAhead":native::relative::RELATIVE_RANGE_MAX+1}),
+            json!({"kind":"fuel-strategy","historyRows":0}),
+            json!({"kind":"fuel-strategy","historyRows":native::fuel_strategy::FUEL_HISTORY_MAX+1}),
+            json!({"kind":"relative","columns":[{"metric":"driverName","format":{"maxChars":native::columns::MAX_CHARS_LIMIT+1}}]}),
+            json!({"kind":"relative","columns":[{"metric":"driverName"},{"metric":"driverName"}]}),
+            json!({"kind":"relative","footerSlots":["time","time"]}),
+        ] {
+            assert!(patch(value.clone()).validate().is_err(), "{value}");
+        }
+        for gap in [
+            f32::NAN,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            native::pedals::GAP_MAX + 1.0,
+        ] {
+            assert!(WidgetGap::try_from(gap).is_err());
+        }
+    }
+    #[test]
+    fn relative_has_no_general_legacy_seven_column_limit() {
+        let columns: Vec<_> = native::relative::RELATIVE_VANTARE_COLUMNS
+            .iter()
+            .map(|metric| json!({"metric":metric}))
+            .collect();
+        assert!(columns.len() > native::relative::RELATIVE_LEGACY_EFICIENCIA_COLUMNS_MAX);
+        assert!(
+            patch(json!({"kind":"relative","columns":columns}))
+                .validate()
+                .is_ok()
+        );
+    }
+    #[test]
+    fn explicit_null_and_omission_have_distinct_patch_semantics() {
+        let empty = serde_json::to_value(patch(json!({"kind":"standings"}))).unwrap();
+        let clear =
+            serde_json::to_value(patch(json!({"kind":"standings","columns":null}))).unwrap();
+        assert!(empty.get("columns").is_none());
+        assert_eq!(clear["columns"], serde_json::Value::Null);
+    }
+}

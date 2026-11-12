@@ -17,6 +17,7 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   });
   const [view, setView] = useState<CalendarIcsView>();
   const [busy, setBusy] = useState(false);
+  const [isExporting, setExporting] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
   const [status, setStatus] = useState<CalendarIcsStatus>();
   const prepared = useRef<CalendarIcsView | undefined>(undefined);
@@ -26,12 +27,11 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
   authority.current = open && allowed;
   useEffect(() => {
     const generation = ++epoch.current;
-    exporting.current = false;
     prepared.current = undefined;
     setView(undefined);
     setFailure(undefined);
-    setBusy(false);
-    if (!open || !allowed || !client) return;
+    setBusy(exporting.current);
+    if (exporting.current || !open || !allowed || !client) return;
     setBusy(true);
     void client
       .request({
@@ -70,8 +70,8 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     const snapshot = prepared.current;
     if (!client || !authority.current || !snapshot || busy || exporting.current)
       return false;
-    const generation = epoch.current;
     exporting.current = true;
+    setExporting(true);
     prepared.current = undefined;
     setBusy(true);
     setFailure(undefined);
@@ -81,7 +81,6 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
         method: "calendar.icsExport",
         preparedHash: snapshot.preparedHash,
       });
-      if (generation !== epoch.current || !authority.current) return false;
       setView(undefined);
       if (reply.method !== "calendar.icsExport") {
         setFailure("rejected");
@@ -92,18 +91,15 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
         setOptions((value) => ({ ...value, attempt: value.attempt + 1 }));
       return reply.status === "saved";
     } catch (error: unknown) {
-      if (generation === epoch.current && authority.current) {
-        setView(undefined);
-        setFailure(
-          error instanceof HostFailure ? error.detail.kind : "coreUnavailable",
-        );
-      }
+      setView(undefined);
+      setFailure(
+        error instanceof HostFailure ? error.detail.kind : "coreUnavailable",
+      );
       return false;
     } finally {
-      if (generation === epoch.current) {
-        exporting.current = false;
-        setBusy(false);
-      }
+      exporting.current = false;
+      setExporting(false);
+      setBusy(false);
     }
   }
   return {
@@ -111,6 +107,8 @@ export function useCalendarIcs(open: boolean, allowed: boolean) {
     alarm: options.alarm,
     view: allowed && open ? view : undefined,
     busy,
+    exporting: isExporting,
+    canClose: () => !exporting.current,
     failure,
     status,
     download,

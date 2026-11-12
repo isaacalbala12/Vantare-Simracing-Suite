@@ -3,7 +3,7 @@ import {
   act,
   cleanup,
   fireEvent,
-  render,
+  render as renderTree,
   screen,
   within,
 } from "@testing-library/react";
@@ -17,8 +17,9 @@ import {
 import { SectionChromeProvider } from "../src/renderer/app/SectionChrome";
 import { calendarAlertsText as text } from "../src/renderer/i18n/calendarAlerts";
 import CalendarEntry from "../src/renderer/screens/calendar/entry";
-import { TooltipProvider } from "../src/renderer/ui/Layers";
+import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
+const render = (ui: ReactNode) => renderTree(ui, { wrapper: ToastProvider });
 const api = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("../src/renderer/app/Host", () => ({
   useHost: () => ({ client: api, hello: { demo: false } }),

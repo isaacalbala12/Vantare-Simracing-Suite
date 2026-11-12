@@ -18,6 +18,7 @@ import {
 import { useHost } from "../../app/Host";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { calendarText as text } from "../../i18n/calendar";
+import { calendarIcsText } from "../../i18n/calendarIcs";
 import { Button } from "../../ui/Button";
 import { CalendarAlertsDialog } from "../../ui/CalendarAlertsDialog";
 import { CalendarBandControls } from "../../ui/CalendarBandControls";
@@ -41,6 +42,7 @@ import {
   CalendarWeekView,
 } from "../../ui/CalendarWeekView";
 import { weekLongTitle, weekTitle } from "../../ui/calendarDate";
+import { useToastManager } from "../../ui/Layers";
 import { useCalendarHistory } from "./CalendarHistory";
 import { useCalendarIcs } from "./CalendarIcsState";
 import { useCalendarLauncher } from "./CalendarLauncher";
@@ -58,9 +60,11 @@ function nextPublication(now: number) {
 }
 
 export default function CalendarEntry() {
+  const toast = useToastManager();
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alertsOrigin = useRef<HTMLElement | null>(null);
   const openAlerts = () => {
+    if (!ics.canClose()) return;
     alertsOrigin.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
@@ -635,15 +639,21 @@ export default function CalendarEntry() {
           utc={view?.utc ?? false}
           view={ics.view}
           busy={ics.busy}
+          exporting={ics.exporting}
           failure={ics.failure}
           status={ics.status}
           onScope={ics.setScope}
           onAlarm={ics.setAlarm}
           onRetry={ics.retry}
-          onClose={() => setIcsOpen(false)}
+          onClose={() => {
+            if (ics.canClose()) setIcsOpen(false);
+          }}
           onDownload={() => {
             void ics.download().then((saved) => {
-              if (saved) setIcsOpen(false);
+              if (saved) {
+                setIcsOpen(false);
+                toast.add({ title: calendarIcsText.saved, type: "ok" });
+              }
             });
           }}
         />

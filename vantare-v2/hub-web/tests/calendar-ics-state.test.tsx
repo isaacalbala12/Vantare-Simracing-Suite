@@ -137,3 +137,93 @@ it("drops a preparation rejected by main and only prepares again on explicit ret
     alarm: true,
   });
 });
+
+it("keeps the latest preparation when two requests resolve in reverse order", async () => {
+  const resolve: ((value: unknown) => void)[] = [];
+  host.client.request.mockImplementation(
+    () => new Promise((r) => resolve.push(r)),
+  );
+  const hook = renderHook(() => useCalendarIcs(true, true));
+  act(() => hook.result.current.setScope("events"));
+  expect(resolve).toHaveLength(2);
+  const latest = { ...value, preparedHash: "b".repeat(64) };
+  await act(async () => resolve[1]({ ...reply, value: latest }));
+  expect(hook.result.current.view).toEqual(latest);
+  await act(async () => resolve[0](reply));
+  expect(hook.result.current.view).toEqual(latest);
+  expect(hook.result.current.busy).toBe(false);
+});
+it("prepares again after a name conflict and keeps its explanation", async () => {
+  const next = { ...value, preparedHash: "c".repeat(64) };
+  host.client.request
+    .mockResolvedValueOnce(reply)
+    .mockResolvedValueOnce({ method: "calendar.icsExport", status: "conflict" })
+    .mockResolvedValueOnce({ ...reply, value: next });
+  const hook = renderHook(() => useCalendarIcs(true, true));
+  await act(async () => {});
+  await act(async () => {
+    expect(await hook.result.current.download()).toBe(false);
+  });
+  expect(hook.result.current.status).toBe("conflict");
+  expect(hook.result.current.view).toEqual(next);
+  expect(host.client.request).toHaveBeenCalledTimes(3);
+});
+it.each(["io", "calendarExportTooLarge", "denied"] as const)(
+  "reports export %s and consumes its preparation",
+  async (kind) => {
+    host.client.request
+      .mockResolvedValueOnce(reply)
+      .mockRejectedValueOnce(new HostFailure({ kind }));
+    const hook = renderHook(() => useCalendarIcs(true, true));
+    await act(async () => {});
+    await act(async () => {
+      expect(await hook.result.current.download()).toBe(false);
+    });
+    expect(hook.result.current.failure).toBe(kind);
+    expect(hook.result.current.view).toBeUndefined();
+    expect(hook.result.current.exporting).toBe(false);
+  },
+);
+it.each(["closed", "rights", "client"] as const)(
+  "keeps a live export locked across %s and acknowledges its eventual saved result",
+  async (transition) => {
+    let finish!: (value: unknown) => void;
+    const original = host.client;
+    original.request.mockResolvedValueOnce(reply).mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          finish = r;
+        }),
+    );
+    const hook = renderHook(
+      ({ open, allowed }) => useCalendarIcs(open, allowed),
+      { initialProps: { open: true, allowed: true } },
+    );
+    await act(async () => {});
+    let pending!: Promise<boolean>;
+    act(() => {
+      pending = hook.result.current.download();
+    });
+    if (transition === "client") host.client = { request: vi.fn() };
+    hook.rerender({
+      open: transition !== "closed",
+      allowed: transition !== "rights",
+    });
+    expect(hook.result.current.exporting).toBe(true);
+    expect(hook.result.current.canClose()).toBe(false);
+    hook.rerender({ open: true, allowed: true });
+    await act(async () => {
+      expect(await hook.result.current.download()).toBe(false);
+    });
+    expect(original.request).toHaveBeenCalledTimes(2);
+    if (transition === "client")
+      expect(host.client.request).not.toHaveBeenCalled();
+    await act(async () => {
+      finish({ method: "calendar.icsExport", status: "saved" });
+      expect(await pending).toBe(true);
+    });
+    expect(hook.result.current.status).toBe("saved");
+    expect(hook.result.current.exporting).toBe(false);
+    expect(hook.result.current.canClose()).toBe(true);
+  },
+);

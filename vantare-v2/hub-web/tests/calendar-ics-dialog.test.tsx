@@ -124,3 +124,49 @@ it("keeps an option focused while preparing and blocks repeated changes", () => 
   expect(screen.queryByText(text.preview(0))).toBeNull();
   expect(screen.getByText(text.previewPending)).toBeTruthy();
 });
+
+it("moves focus out of the retry alert before it unmounts", () => {
+  const result = show({ ...props, view: undefined, failure: "io" });
+  const retry = screen.getByRole("button", { name: text.retry });
+  retry.focus();
+  fireEvent.click(retry);
+  const download = screen.getByRole("button", { name: text.download });
+  expect(document.activeElement).toBe(download);
+  result.rerender(
+    <TooltipProvider>
+      <CalendarIcsDialog {...props} busy view={undefined} />
+    </TooltipProvider>,
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(document.activeElement).toBe(download);
+  const description = document.getElementById(
+    download.getAttribute("aria-describedby") ?? "",
+  );
+  expect(description?.textContent).toBe(text.expiry);
+  expect(description?.className).not.toContain("sr-only");
+});
+it("ignores cancel, close and Escape while main is exporting", async () => {
+  show({ ...props, busy: true, exporting: true });
+  for (const name of [text.cancel, text.close]) {
+    const button = screen.getByRole("button", { name });
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(button);
+  }
+  fireEvent.keyDown(screen.getByRole("dialog"), {
+    key: "Escape",
+    code: "Escape",
+  });
+  await Promise.resolve();
+  expect(props.onClose).not.toHaveBeenCalled();
+});
+it("renders markup in a summary as literal text", () => {
+  show({
+    ...props,
+    view: {
+      ...view,
+      entries: [{ ...view.entries[0], summary: "<b>Serie local</b>" }],
+    },
+  });
+  expect(screen.getByText("<b>Serie local</b>")).toBeTruthy();
+  expect(document.querySelector(".v-calendar-ics-entry b")).toBeNull();
+});

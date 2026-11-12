@@ -2,7 +2,7 @@ import { Checkbox } from "@base-ui/react/checkbox";
 import { Dialog } from "@base-ui/react/dialog";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { useId } from "react";
+import { useId, useRef } from "react";
 import type {
   CalendarIcsScope,
   CalendarIcsStatus,
@@ -23,6 +23,7 @@ type Props = {
   utc: boolean;
   view?: CalendarIcsView;
   busy: boolean;
+  exporting?: boolean;
   failure?: HostError["kind"];
   status?: CalendarIcsStatus;
   onScope: (scope: CalendarIcsScope) => void;
@@ -34,6 +35,10 @@ type Props = {
 };
 export function CalendarIcsDialog(p: Props) {
   const id = useId();
+  const download = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    if (!p.exporting) p.onClose();
+  };
   const day = (at: number) =>
     new Intl.DateTimeFormat("es", {
       weekday: "short",
@@ -47,7 +52,7 @@ export function CalendarIcsDialog(p: Props) {
       modal={false}
       open
       onOpenChange={(open) => {
-        if (!open) p.onClose();
+        if (!open) close();
       }}
     >
       <Dialog.Portal>
@@ -64,7 +69,12 @@ export function CalendarIcsDialog(p: Props) {
                 {text.subtitle}
               </Dialog.Description>
             </div>
-            <IconButton label={text.close} variant="ghost" onClick={p.onClose}>
+            <IconButton
+              label={text.close}
+              variant="ghost"
+              aria-disabled={p.exporting || undefined}
+              onClick={close}
+            >
               <Icon name="x" />
             </IconButton>
           </header>
@@ -72,7 +82,16 @@ export function CalendarIcsDialog(p: Props) {
             {p.failure && (
               <div role="alert" className="v-calendar-ics-error">
                 <span>{text.error(p.failure)}</span>
-                <Button size="sm" disabled={p.busy} onClick={p.onRetry}>
+                <Button
+                  size="sm"
+                  aria-disabled={p.busy}
+                  onClick={() => {
+                    if (!p.busy) {
+                      download.current?.focus();
+                      p.onRetry();
+                    }
+                  }}
+                >
                   {text.retry}
                 </Button>
               </div>
@@ -163,7 +182,7 @@ export function CalendarIcsDialog(p: Props) {
                 </h3>
                 {p.busy && !p.view ? (
                   <p role="status" className="v-muted">
-                    {text.preparing}
+                    {p.exporting ? text.exporting : text.preparing}
                   </p>
                 ) : (
                   p.view?.entries.map((entry) => (
@@ -183,8 +202,16 @@ export function CalendarIcsDialog(p: Props) {
             </div>
           </div>
           <footer>
-            <span>{text.destination}</span>
-            <Button size="sm" onClick={p.onClose}>
+            <span>
+              {text.destination}
+              <br />
+              <span id={`${id}-expiry`}>{text.expiry}</span>
+            </span>
+            <Button
+              size="sm"
+              aria-disabled={p.exporting || undefined}
+              onClick={close}
+            >
               {text.cancel}
             </Button>
             <Button
@@ -192,7 +219,8 @@ export function CalendarIcsDialog(p: Props) {
               variant="primary"
               aria-disabled={!p.view || p.busy}
               aria-busy={p.busy}
-              aria-description={text.expiry}
+              ref={download}
+              aria-describedby={`${id}-expiry`}
               onClick={() => {
                 if (p.view && !p.busy) p.onDownload();
               }}

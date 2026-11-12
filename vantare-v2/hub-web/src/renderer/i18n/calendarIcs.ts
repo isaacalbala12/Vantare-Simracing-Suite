@@ -40,6 +40,8 @@ export const calendarIcsText = {
   cancel: "Cancelar",
   download: "Descargar .ics",
   preparing: "Preparando calendario…",
+  exporting: "Guardando calendario…",
+  saved: "Calendario guardado.",
   retry: "Reintentar",
   cancelled: "Descarga cancelada.",
   conflict:

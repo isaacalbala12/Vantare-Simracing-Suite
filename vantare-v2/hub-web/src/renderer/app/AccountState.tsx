@@ -19,6 +19,7 @@ import {
 import { discardAccountSecrets } from "../bridge/account-secrets";
 import { HostFailure } from "../bridge/client";
 import { accessText as text } from "../i18n/access.es";
+import { AccountSessionContext, createAccountSession } from "./AccountSession";
 import { useHost } from "./Host";
 
 interface AccountState {
@@ -37,6 +38,7 @@ export function useAccount() {
 }
 export function AccountProvider({ children }: { children: ReactNode }) {
   const { client } = useHost();
+  const [session] = useState(createAccountSession);
   const [value, setValue] = useState<AccountView>();
   const [pending, setPending] = useState(false);
   const [pendingMethod, setPendingMethod] =
@@ -87,6 +89,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         setError(text.busy);
         return;
       }
+      const transition = [
+        "account.begin",
+        "account.logout",
+        "account.email",
+        "account.cancel",
+        "account.choose",
+        "account.back",
+        "account.retry",
+        "account.deviceReset",
+      ].includes(method);
+      if (transition) session.invalidate();
       const current = ++sequence.current;
       intents.current.add(key);
       running.current++;
@@ -111,10 +124,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           !isAccount(reply.value)
         )
           throw new HostFailure({ kind: "denied" });
-        if (active.current && sequence.current === current)
+        if (active.current && sequence.current === current) {
+          session.confirm(reply.value);
           setValue(reply.value);
+        }
       } catch (failure) {
-        if (active.current && sequence.current === current)
+        if (active.current && sequence.current === current) {
           setError(
             failure instanceof HostFailure && failure.detail.kind === "busy"
               ? sent && secretKind
@@ -126,19 +141,40 @@ export function AccountProvider({ children }: { children: ReactNode }) {
                 ? text.logoutFailed
                 : text.failed,
           );
+          if (transition) {
+            // A rejected intent does not prove logout. Re-read the host once;
+            // never restore an old cached identity after a newer publication.
+            try {
+              const fresh = await client.request({ method: "account.get" });
+              if (
+                active.current &&
+                sequence.current === current &&
+                fresh.method === "account.get" &&
+                isAccount(fresh.value)
+              ) {
+                session.confirm(fresh.value);
+                setValue(fresh.value);
+              }
+            } catch {
+              /* Keep the session unavailable until it can be confirmed. */
+            }
+          }
+        }
       } finally {
         intents.current.delete(key);
         running.current--;
         if (active.current) {
           setPending(running.current > 0);
-          if (sequence.current === current) setPendingMethod(undefined);
+          if (running.current === 0 || sequence.current === current)
+            setPendingMethod(undefined);
         }
       }
     },
-    [client],
+    [client, session],
   );
   useEffect(() => {
     active.current = true;
+    session.invalidate();
     if (!client) return;
     let current = true;
     const initialSequence = sequence.current;
@@ -148,6 +184,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         message.kind === "event" &&
         message.event.topic === "account"
       ) {
+        sequence.current++;
+        // A published session is a conservative boundary: the contract has no identity generation.
+        session.invalidate();
+        session.confirm(message.event.value);
         setValue(message.event.value);
         setError(undefined);
       }
@@ -159,6 +199,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         if (!current || sequence.current !== initialSequence) return;
         if (reply.method !== "account.get")
           throw new HostFailure({ kind: "denied" });
+        session.confirm(reply.value);
         setValue(reply.value);
       })
       .catch(() => {
@@ -168,11 +209,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     return () => {
       current = false;
       active.current = false;
+      session.invalidate();
       sequence.current++;
       unlisten();
       unsubscribe();
     };
-  }, [client]);
+  }, [client, session]);
   const state = {
     value,
     pending: pending || !!value?.working,
@@ -183,5 +225,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       void act({ method: "account.get" });
     },
   };
-  return <Context.Provider value={state}>{children}</Context.Provider>;
+  return (
+    <AccountSessionContext.Provider value={session}>
+      <Context.Provider value={state}>{children}</Context.Provider>
+    </AccountSessionContext.Provider>
+  );
 }

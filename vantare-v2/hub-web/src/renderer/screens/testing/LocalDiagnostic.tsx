@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { LocalReportView } from "../../../contract/generated/contract";
 import { reportDigest } from "../../../contract/report-digest";
 import { useHost } from "../../app/Host";
@@ -9,8 +9,8 @@ import { testingRequest } from "./TestingRequests";
 
 export function LocalDiagnostic() {
   const { client } = useHost();
-  const { fields, access } = useReports();
-  const allowed = access.verified && !access.blocked;
+  const { fields, access, sessionConfirmed } = useReports();
+  const allowed = sessionConfirmed && access.verified && !access.blocked;
   const [view, setView] = useState<LocalReportView>();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string>(text.initialStatus);
@@ -18,7 +18,7 @@ export function LocalDiagnostic() {
   const lifetime = useRef(new AbortController());
   const running = useRef(false);
   const snapshot = useRef({ client, fields, allowed });
-  useEffect(() => {
+  useLayoutEffect(() => {
     snapshot.current = { client, fields, allowed };
     const controller = new AbortController();
     lifetime.current.abort();

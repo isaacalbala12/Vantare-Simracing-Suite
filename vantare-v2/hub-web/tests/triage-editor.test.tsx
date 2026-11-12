@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
@@ -10,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { triageItems } from "../src/contract/generated/triage";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
 import { testingTriageText as text } from "../src/renderer/i18n/testing-triage";
@@ -43,10 +45,12 @@ async function mount() {
       <QueryClientProvider client={cache}>
         <HostProvider>
           <ToastProvider>
-            <ReportsProvider>
-              {children}
-              <TriageEditor />
-            </ReportsProvider>
+            <AccountProvider>
+              <ReportsProvider>
+                {children}
+                <TriageEditor />
+              </ReportsProvider>
+            </AccountProvider>
           </ToastProvider>
         </HostProvider>
       </QueryClientProvider>

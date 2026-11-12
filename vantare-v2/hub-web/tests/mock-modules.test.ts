@@ -46,3 +46,14 @@ describe("screen-owned mock sessions", () => {
     ).toMatchObject({ kind: "response", result: { value: { running: true } } });
   });
 });
+
+it("account.get returns its snapshot without fabricating a changed-account event", () => {
+  const emitted: unknown[] = [];
+  const host = createMockHost("acceso-base", (message) =>
+    emitted.push(message),
+  );
+  expect(
+    host({ kind: "request", id: 1, request: { method: "account.get" } }),
+  ).toMatchObject({ kind: "response", result: { method: "account.get" } });
+  expect(emitted).toEqual([]);
+});

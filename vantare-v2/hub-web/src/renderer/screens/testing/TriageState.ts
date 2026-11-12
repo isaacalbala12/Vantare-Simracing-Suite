@@ -27,6 +27,8 @@ export function useTriageState({
   const [consent, setConsent] = useState(false);
   const [preview, setPreview] = useState<TriagePreview>();
   const [pending, setPending] = useState(false);
+  const localText = useRef({ title, body });
+  localText.current = { title, body };
   const revision = useRef(0);
   const generation = useRef(0);
   const running = useRef(false);
@@ -39,11 +41,9 @@ export function useTriageState({
     setPreview(undefined);
     setConsent(false);
   }, []);
-  useEffect(() => {
-    if (identity.current === session && previousAllowed.current === allowed)
-      return;
-    identity.current = session;
-    previousAllowed.current = allowed;
+  const reset = useCallback(() => {
+    current.current = { allowed: false, available: false };
+    localText.current = { title: "", body: "" };
     generation.current++;
     running.current = false;
     setPending(false);
@@ -51,7 +51,14 @@ export function useTriageState({
     setBody("");
     setItems([...triageItems]);
     invalidate();
-  }, [session, allowed, invalidate]);
+  }, [invalidate]);
+  useEffect(() => {
+    if (identity.current === session && previousAllowed.current === allowed)
+      return;
+    identity.current = session;
+    previousAllowed.current = allowed;
+    reset();
+  }, [session, allowed, reset]);
   useEffect(() => {
     if (!available) invalidate();
   }, [available, invalidate]);
@@ -59,6 +66,7 @@ export function useTriageState({
     const next = Array.from(value).slice(0, triageLocalTitleMaxChars).join("");
     if (next !== title) {
       invalidate();
+      localText.current.title = next;
       setTitle(next);
     }
   }
@@ -66,6 +74,7 @@ export function useTriageState({
     const next = Array.from(value).slice(0, triageLocalBodyMaxChars).join("");
     if (next !== body) {
       invalidate();
+      localText.current.body = next;
       setBody(next);
     }
   }
@@ -138,6 +147,8 @@ export function useTriageState({
     }
   }
   return {
+    hasLocalText: () => !!(localText.current.title || localText.current.body),
+    reset,
     title,
     body,
     items,

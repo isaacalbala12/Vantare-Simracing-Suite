@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Reply } from "../src/contract/generated/contract";
 import { reportBinaryNames } from "../src/contract/generated/report_local";
 import { reportDigest } from "../src/contract/report-digest";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { HostProvider } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { localDiagnosticText as text } from "../src/renderer/i18n/testing-local";
@@ -48,9 +49,11 @@ async function mount() {
     <QueryClientProvider client={cache}>
       <HostProvider>
         <ToastProvider>
-          <ReportsProvider>
-            <LocalDiagnostic />
-          </ReportsProvider>
+          <AccountProvider>
+            <ReportsProvider>
+              <LocalDiagnostic />
+            </ReportsProvider>
+          </AccountProvider>
         </ToastProvider>
       </HostProvider>
     </QueryClientProvider>,

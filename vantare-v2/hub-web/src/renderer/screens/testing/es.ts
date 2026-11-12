@@ -1,4 +1,6 @@
 export const testingText = {
+  sessionDiscarded:
+    "La sesión ha cambiado y el informe sin guardar se ha descartado",
   legacy: {
     archived:
       "Se archivó el borrador antiguo y se conservó el borrador actual del núcleo.",

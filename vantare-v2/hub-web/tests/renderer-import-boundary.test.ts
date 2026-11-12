@@ -4,7 +4,7 @@ import { parse } from "@babel/parser";
 import { expect, it } from "vitest";
 
 const mockRoot = resolve("src/mock").toLowerCase();
-function mockImports(source: string, file: string): string[] {
+function mockDependencies(source: string, file: string): string[] {
   const imports: string[] = [];
   const ast = parse(source, {
     sourceType: "module",
@@ -21,6 +21,8 @@ function mockImports(source: string, file: string): string[] {
   function visit(value: unknown): void {
     if (!value || typeof value !== "object") return;
     const node = value as Record<string, unknown>;
+    if (node.type === "Identifier" && node.name === "__VANTARE_RENDERER_MOCK__")
+      imports.push(String(node.name));
     if (
       [
         "ImportDeclaration",
@@ -54,7 +56,7 @@ function* sources(folder: string): Generator<string> {
 it("rejects static, dynamic, type and re-export imports of test doubles", () => {
   const file = resolve("src/renderer/screens/testing/Example.tsx");
   expect(
-    mockImports(
+    mockDependencies(
       `
     import { fixture } from "../../../mock/testing";
     export * from "../../../mock/testing";
@@ -66,17 +68,32 @@ it("rejects static, dynamic, type and re-export imports of test doubles", () => 
     ),
   ).toHaveLength(5);
   expect(
-    mockImports(
+    mockDependencies(
       `import { Button } from "../../ui/Button"; // import("../../../mock/testing")`,
       file,
     ),
   ).toEqual([]);
 });
-it("keeps product screens and UI independent of src/mock", () => {
+it("rejects mock build branches while ignoring their mention in comments and strings", () => {
+  const file = resolve("src/renderer/ui/Example.tsx");
+  expect(
+    mockDependencies("if (__VANTARE_RENDERER_MOCK__) seed();", file),
+  ).toEqual(["__VANTARE_RENDERER_MOCK__"]);
+  expect(
+    mockDependencies(
+      'const note = "__VANTARE_RENDERER_MOCK__"; // __VANTARE_RENDERER_MOCK__',
+      file,
+    ),
+  ).toEqual([]);
+});
+it("keeps product screens and UI independent of src/mock and mock build branches", () => {
   const violations: string[] = [];
   for (const folder of ["src/renderer/screens", "src/renderer/ui"])
     for (const file of sources(folder))
-      for (const specifier of mockImports(readFileSync(file, "utf8"), file))
+      for (const specifier of mockDependencies(
+        readFileSync(file, "utf8"),
+        file,
+      ))
         violations.push(`${relative(process.cwd(), file)}: ${specifier}`);
   expect(violations).toEqual([]);
 });

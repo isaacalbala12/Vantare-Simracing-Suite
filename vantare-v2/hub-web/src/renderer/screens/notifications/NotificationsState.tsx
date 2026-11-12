@@ -10,10 +10,8 @@ import { createStore } from "zustand/vanilla";
 import type { HostError } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { notices as text } from "../../i18n/notifications";
-import { notificationScene } from "../../qa/notifications-scene";
+import { seedNotificationScene } from "../../qa/notifications-scene";
 import { type Center, type Filter, type NoticeInput, publish } from "./center";
-
-declare const __VANTARE_RENDERER_MOCK__: boolean;
 
 const notifiableFailures = [
   "io",
@@ -44,9 +42,7 @@ export function createNotifications() {
       })),
     clear: () => set({ records: [] }),
   }));
-  if (__VANTARE_RENDERER_MOCK__)
-    for (const { input, at, muted } of notificationScene())
-      store.getState().add(input, at, muted);
+  seedNotificationScene(store.getState().add);
   return store;
 }
 const Context = createContext<

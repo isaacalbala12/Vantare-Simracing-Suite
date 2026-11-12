@@ -66,3 +66,13 @@ export function notificationScene(scene?: string, now = new Date()) {
     return { input, at: at.getTime(), muted: !record.unread };
   });
 }
+
+declare const __VANTARE_RENDERER_MOCK__: boolean;
+/** Capture-only seeding stays at the QA boundary; production compiles to a no-op. */
+export function seedNotificationScene(
+  add: (input: NoticeInput, at: number, muted: boolean) => void,
+) {
+  if (__VANTARE_RENDERER_MOCK__)
+    for (const { input, at, muted } of notificationScene())
+      add(input, at, muted);
+}

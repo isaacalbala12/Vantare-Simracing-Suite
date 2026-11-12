@@ -170,7 +170,14 @@ export function createTestingMock(
             .toString(16)
             .padStart(testingIdLimits.previewId, "0"),
           digest: "b".repeat(64),
-          fields: structuredClone(draft.fields),
+          // Services Submission::new keeps tester notes in the local draft only.
+          fields: {
+            module: draft.fields.module,
+            actionText: "Informe estructurado",
+            expectedText: "Revisión humana pendiente",
+            observedText: "Revisión humana pendiente",
+            contextText: "",
+          },
           appVersion: "0.0.0",
           osVersion: "Windows",
           channel: "nightly",

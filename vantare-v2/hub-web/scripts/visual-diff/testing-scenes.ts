@@ -1,9 +1,14 @@
+import type { Page } from "playwright-core";
 import type { VisualScene } from "./scenes.ts";
 import {
   assertQuestionnaireUsesFreeHeight,
   assertTestingConsentFits,
   settingsTabsStyle,
 } from "./testing-readability.ts";
+import {
+  assertConsentPaintChange,
+  assertReportConsent,
+} from "./testing-report-consent.ts";
 
 export const testingScenes: Record<string, VisualScene> = {
   "testing-center-comunidad": {
@@ -173,53 +178,61 @@ export const testingScenes: Record<string, VisualScene> = {
   },
 };
 
-// A focused QA state: reuse the report form scene, then exercise only the existing draft/preview methods.
+// Both captured states exercise the real controls and the service-shaped mock projection.
+async function prepareReportPreview(page: Page, accepted: boolean) {
+  await testingScenes["testing-center-informe"].prepare(page);
+  await page
+    .getByRole("textbox", { name: "Título · qué hiciste", exact: true })
+    .fill("Abrir Testing Center");
+  await page
+    .getByRole("textbox", {
+      name: "Texto · qué ocurrió o qué propones",
+      exact: true,
+    })
+    .fill("El panel se quedó vacío");
+  await page
+    .getByRole("textbox", { name: "Qué esperabas", exact: true })
+    .fill("Ver el panel completo");
+  await page
+    .getByRole("button", { name: "Guardar borrador", exact: true })
+    .and(page.locator(":enabled"))
+    .click();
+  await page
+    .getByRole("button", { name: "Previsualizar envío", exact: true })
+    .and(page.locator(":enabled"))
+    .click();
+  const preview = page.getByRole("region", {
+    name: "Revisa el contenido antes de enviar",
+    exact: true,
+  });
+  await preview.getByText("Informe estructurado", { exact: true }).waitFor();
+  const content = (await preview.textContent()) ?? "";
+  if (
+    content.includes("Abrir Testing Center") ||
+    content.includes("El panel se quedó vacío")
+  )
+    throw new Error(
+      "Private draft notes leaked into the simulated submission preview",
+    );
+  const unchecked = await assertReportConsent(page, false);
+  const checkbox = page.getByRole("checkbox", {
+    name: "He revisado y acepto enviar este contenido al equipo de Vantare",
+    exact: true,
+  });
+  await checkbox.check();
+  const checked = await assertReportConsent(page, true);
+  assertConsentPaintChange(unchecked, checked);
+  if (!accepted) {
+    await checkbox.uncheck();
+    await assertReportConsent(page, false);
+  }
+  await page.mouse.move(600, 890);
+}
 testingScenes["testing-center-informe-preview"] = {
   mock: "testing-tester-report-reference",
-  async prepare(page) {
-    await testingScenes["testing-center-informe"].prepare(page);
-    await page
-      .getByRole("textbox", { name: "Título · qué hiciste", exact: true })
-      .fill("Abrir Testing Center");
-    await page
-      .getByRole("textbox", {
-        name: "Texto · qué ocurrió o qué propones",
-        exact: true,
-      })
-      .fill("El panel se quedó vacío");
-    await page
-      .getByRole("textbox", { name: "Qué esperabas", exact: true })
-      .fill("Ver el panel completo");
-    const save = page.getByRole("button", {
-      name: "Guardar borrador",
-      exact: true,
-    });
-    await save.and(page.locator(":enabled")).click();
-    await page
-      .getByRole("button", { name: "Previsualizar envío", exact: true })
-      .and(page.locator(":enabled"))
-      .click();
-    await page
-      .getByRole("checkbox", {
-        name: "He revisado y acepto enviar este contenido al equipo de Vantare",
-        exact: true,
-      })
-      .check();
-    await page
-      .getByRole("button", { name: "Enviar informe", exact: true })
-      .and(page.locator(":enabled"))
-      .waitFor();
-    await page
-      .getByRole("button", { name: "Enviar informe", exact: true })
-      .scrollIntoViewIfNeeded();
-    const consent = await page
-      .getByRole("checkbox", {
-        name: "He revisado y acepto enviar este contenido al equipo de Vantare",
-        exact: true,
-      })
-      .boundingBox();
-    if (!consent || consent.y < 52 || consent.y + consent.height > 900)
-      throw new Error("El consentimiento debe quedar completo en la captura");
-    await page.mouse.move(600, 890);
-  },
+  prepare: (page) => prepareReportPreview(page, true),
+};
+testingScenes["testing-center-informe-preview-sin-consentir"] = {
+  mock: "testing-tester-report-reference",
+  prepare: (page) => prepareReportPreview(page, false),
 };

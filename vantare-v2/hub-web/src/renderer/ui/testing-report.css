@@ -138,3 +138,18 @@
     0 1px 4px var(--button-shadow);
   opacity: var(--disabled-opacity);
 }
+
+/* GPUI checkbox: carmine face and ink tick. Override Testing's unqualified face. */
+.v-testing-report .v-checkbox[data-checked] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-1);
+}
+.v-testing-report .v-checkbox > span {
+  display: inline-flex;
+}
+.v-testing-report .v-checkbox svg {
+  stroke-width: 2;
+  width: 14px;
+  height: 14px;
+}

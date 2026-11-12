@@ -124,30 +124,7 @@ it("shows the GPUI controls and keeps local edits available when the service dis
   expect(calls).not.toHaveBeenCalled();
 });
 it("reviews the host preview, revokes consent on edits and sends only its id once", async () => {
-  const original = Client.prototype.request;
-  const calls = vi
-    .spyOn(Client.prototype, "request")
-    .mockImplementation(async function (
-      this: Client,
-      request: Parameters<Client["request"]>[0],
-    ): Promise<Reply> {
-      const reply = await original.call(this, request);
-      if (reply.method === "report.prepare")
-        return {
-          ...reply,
-          value: {
-            ...reply.value,
-            fields: {
-              module: "hub",
-              actionText: "Informe estructurado",
-              expectedText: "Revisión humana pendiente",
-              observedText: "Revisión humana pendiente",
-              contextText: "",
-            },
-          },
-        };
-      return reply;
-    });
+  const calls = vi.spyOn(Client.prototype, "request");
   await mount();
   edit();
   await save();

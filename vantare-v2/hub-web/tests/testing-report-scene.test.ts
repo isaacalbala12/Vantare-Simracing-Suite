@@ -43,3 +43,41 @@ it("gives only the dedicated report reference a connected service and a real dra
     other({ kind: "request", id: 2, request: { method: "draft.load" } }),
   ).toMatchObject({ kind: "failure", error: { kind: "coreUnavailable" } });
 });
+
+it("projects only the real service fields into previews and keeps tester notes in the local draft", () => {
+  const host = createMockHost("testing-tester-report-reference");
+  const fields = {
+    module: "hub",
+    actionText: "Título privado",
+    expectedText: "Esperado privado",
+    observedText: "Texto privado",
+    contextText: "Tipo: Sugerencia\nContexto privado",
+  };
+  host({ kind: "request", id: 1, request: { method: "draft.save", fields } });
+  for (const method of ["report.prepare", "report.retryPrepare"] as const) {
+    const preview = host({ kind: "request", id: 2, request: { method } });
+    expect(isHostMessage(preview)).toBe(true);
+    expect(preview).toMatchObject({
+      result: {
+        method,
+        value: {
+          fields: {
+            module: "hub",
+            actionText: "Informe estructurado",
+            expectedText: "Revisión humana pendiente",
+            observedText: "Revisión humana pendiente",
+            contextText: "",
+          },
+        },
+      },
+    });
+    expect(JSON.stringify(preview)).not.toContain("privado");
+  }
+  const draft = host({
+    kind: "request",
+    id: 3,
+    request: { method: "draft.load" },
+  });
+  expect(isHostMessage(draft)).toBe(true);
+  expect(draft).toMatchObject({ result: { value: { fields } } });
+});

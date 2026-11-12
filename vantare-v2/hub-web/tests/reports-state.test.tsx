@@ -354,7 +354,9 @@ describe("protected report draft behavior", () => {
     await act(async () => {
       await hook.result.current.prepare();
     });
-    expect(hook.result.current.preview?.fields.actionText).toBe("Acción");
+    expect(hook.result.current.preview?.fields.actionText).toBe(
+      "Informe estructurado",
+    );
     act(() => hook.result.current.setConsent(true));
     act(() => hook.result.current.edit({ actionText: "Otro contenido" }));
     expect(hook.result.current.preview).toBeUndefined();

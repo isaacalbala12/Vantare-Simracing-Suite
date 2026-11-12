@@ -1,5 +1,7 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
-import { useEffect, useState } from "react";
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSeries,
@@ -55,6 +57,13 @@ export function CalendarWeekView({
   onDetail?: (id: string, at?: number) => void;
 }) {
   const [full, setFull] = useState(false);
+  const fullToggle = useRef<HTMLButtonElement>(null);
+  const previousFull = useRef(false);
+  useLayoutEffect(() => {
+    if (previousFull.current && !full)
+      fullToggle.current?.focus({ preventScroll: true });
+    previousFull.current = full;
+  }, [full]);
   const [offset, setOffset] = useState(initialState?.offset ?? 0),
     [filter, setFilter] = useState(initialState?.filter ?? "all");
   useEffect(() => {
@@ -104,16 +113,24 @@ export function CalendarWeekView({
       >
         <strong>{s.name}</strong>
         <p>
-          <b data-tier={s.tier}>
+          <b
+            data-tier={
+              s.eventKind === "special" || s.tier === "weekly"
+                ? "event"
+                : s.tier
+            }
+          >
             {s.eventKind === "special"
               ? calendarText.specialty
               : (calendarText.tiers[
                   s.tier as keyof typeof calendarText.tiers
                 ] ?? s.tier)}
           </b>
-          {s.track.split(" (")[0]}
-          {text.separator}
-          {calendarText.minutes(raceMinutes(s))}
+          <span>
+            {s.track.split(" (")[0]}
+            {text.separator}
+            {calendarText.minutes(raceMinutes(s))}
+          </span>
         </p>
       </button>
     </div>
@@ -144,14 +161,15 @@ export function CalendarWeekView({
         <Button
           variant="ghost"
           className="v-calendar-week-full-toggle"
-          aria-label={text.full}
+          aria-label={full ? text.exitFull : text.full}
+          ref={fullToggle}
           aria-pressed={full}
           onClick={() => {
             setFull(!full);
             onFull?.();
           }}
         >
-          <Icon name="expand" />
+          <Icon name={full ? "shrink" : "expand"} />
         </Button>
         <Segmented
           label={text.calendar}
@@ -171,15 +189,25 @@ export function CalendarWeekView({
             },
           ]}
         />
-        <Segmented
-          label={text.favorites}
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { value: "all", label: text.all },
-            { value: "favorites", label: text.favorites },
-          ]}
-        />
+        <ToggleGroup
+          className="v-segmented"
+          aria-label={text.favorites}
+          value={[filter]}
+          onValueChange={(values) => {
+            if (values[0]) setFilter(values[0]);
+          }}
+        >
+          <Toggle className="v-segment" value="all">
+            {text.all}
+          </Toggle>
+          <Toggle
+            className="v-segment v-calendar-week-favorites"
+            value="favorites"
+          >
+            <Icon name="star" />
+            {text.favorites}
+          </Toggle>
+        </ToggleGroup>
       </header>
       {!schedule ? (
         <div className="v-calendar-week-live-empty">
@@ -264,23 +292,25 @@ export function CalendarWeekView({
                           ))}
                         </div>
                         {chosen !== undefined ? (
-                          <button
-                            type="button"
-                            data-alert={
-                              alertAt(schedule, s, chosen, alerts, limit) ||
-                              undefined
-                            }
-                            disabled={!onDetail}
-                            onClick={() => onDetail?.(s.id, chosen)}
-                          >
-                            {alertAt(schedule, s, chosen, alerts, limit) && (
-                              <Icon name="bell-fill" />
-                            )}
-                            {clock(chosen, view.utc)}
+                          <div className="v-calendar-week-event-label">
+                            <button
+                              type="button"
+                              data-alert={
+                                alertAt(schedule, s, chosen, alerts, limit) ||
+                                undefined
+                              }
+                              disabled={!onDetail}
+                              onClick={() => onDetail?.(s.id, chosen)}
+                            >
+                              {alertAt(schedule, s, chosen, alerts, limit) && (
+                                <Icon name="bell-fill" />
+                              )}
+                              {clock(chosen, view.utc)}
+                            </button>
                             {highlighted.length > 1 && (
                               <small>{`+${highlighted.length - 1}`}</small>
                             )}
-                          </button>
+                          </div>
                         ) : slots.length > 0 ? (
                           <small>{text.count(slots.length)}</small>
                         ) : null}
@@ -411,11 +441,16 @@ export function CalendarWeekView({
     </section>
   );
   return (
-    <BaseDialog.Root open={full} onOpenChange={setFull}>
+    <BaseDialog.Root modal={false} open={full} onOpenChange={setFull}>
       {full ? (
         <BaseDialog.Portal>
           <BaseDialog.Backdrop className="v-calendar-week-full-backdrop" />
-          <BaseDialog.Popup className="v-calendar v-calendar-week-full">
+          <BaseDialog.Popup
+            className="v-calendar v-calendar-week-full"
+            finalFocus={() =>
+              fullToggle.current?.isConnected ? fullToggle.current : false
+            }
+          >
             <BaseDialog.Title className="v-sr-only">
               {text.calendar}
             </BaseDialog.Title>

@@ -13,6 +13,7 @@ export const calendarWeekText = {
   all: "Todas",
   favorites: "Favoritas",
   full: "Pantalla completa",
+  exitFull: "Salir de pantalla completa (Esc)",
   series: "Serie",
   events: "Semanales y especiales",
   fixed: "· tandas fijas",

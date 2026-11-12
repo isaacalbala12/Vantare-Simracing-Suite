@@ -54,7 +54,7 @@ it("keeps the current publication and routes favorite actions by series id", asy
   expect(full).toHaveBeenCalledOnce();
   expect(screen.getByRole("dialog", { name: text.calendar })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: text.previous }));
-  fireEvent.click(screen.getByRole("button", { name: text.full }));
+  fireEvent.click(screen.getByRole("button", { name: text.exitFull }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(
     screen.getByRole("heading", { name: "Semana pasada · 29 sep–5 oct" }),
@@ -175,3 +175,43 @@ it("restores the selected week and favorites after returning from a series", () 
       .getAttribute("aria-pressed"),
   ).toBe("true");
 });
+
+it.each(["escape", "button"])(
+  "keeps window controls operable and restores focus on full-week %s exit",
+  async (mode) => {
+    const view = calendarReference();
+    view.utc = true;
+    render(
+      <>
+        <div className="v-window-controls">
+          <button type="button">Cerrar ventana QA</button>
+        </div>
+        <CalendarWeekView
+          view={view}
+          alerts={alerts}
+          now={Date.parse("2026-10-08T17:47:13Z")}
+          limit={1000}
+          onFollow={vi.fn()}
+        />
+      </>,
+    );
+    const trigger = screen.getByRole("button", { name: text.full });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: text.calendar });
+    const control = screen.getByRole("button", { name: "Cerrar ventana QA" });
+    control.focus();
+    expect(document.activeElement).toBe(control);
+    expect(control.closest('[inert], [aria-hidden="true"]')).toBeNull();
+    dialog.focus();
+    if (mode === "escape")
+      fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+    else fireEvent.click(screen.getByRole("button", { name: text.exitFull }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: text.full }),
+      ),
+    );
+  },
+);

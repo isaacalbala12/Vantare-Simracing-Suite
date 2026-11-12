@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
@@ -46,6 +46,7 @@ export function CalendarMineView({
   onDetail?: (id: string, at: number) => void;
   onAlert?: (id: string, at: number) => void;
 }) {
+  const launchPendingId = useId();
   const [filter, setFilter] = useState("all");
   const hero = nextRace(schedule, now, following, limit);
   const groups = days(schedule, now, utc, following, alerts, limit)
@@ -271,6 +272,14 @@ export function CalendarMineView({
                       )}
                     </div>
                     <div className="v-calendar-mine-actions">
+                      {!onAlert && (
+                        <span
+                          className="v-sr-only"
+                          id={`${launchPendingId}-${s.id}-${at}`}
+                        >
+                          {calendarText.launchPending}
+                        </span>
+                      )}
                       {launch ? (
                         <Button
                           variant="primary"
@@ -283,7 +292,16 @@ export function CalendarMineView({
                       ) : (
                         <Button
                           variant="ghost"
-                          aria-label={text.alert}
+                          className="v-calendar-mine-launch-pending"
+                          aria-label={text.launchBefore}
+                          aria-describedby={
+                            !onAlert
+                              ? `${launchPendingId}-${s.id}-${at}`
+                              : undefined
+                          }
+                          title={
+                            !onAlert ? calendarText.launchPending : undefined
+                          }
                           disabled={!onAlert}
                           onClick={() => onAlert?.(s.id, at)}
                         >

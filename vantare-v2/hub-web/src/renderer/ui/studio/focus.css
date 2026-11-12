@@ -1,0 +1,398 @@
+.v-shell-main:has(.v-studio-focus) {
+  padding: 0;
+  overflow: hidden;
+}
+.v-shell-main > .v-content-stack:has(.v-studio-focus) {
+  height: 100%;
+  gap: 0;
+}
+.v-studio-focus {
+  height: calc(100dvh - var(--topbar-h));
+  container: studio-main / inline-size;
+}
+.v-studio-focus-layout {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 20px;
+  height: 100%;
+  padding: 20px 24px 22px;
+  min-height: 0;
+}
+.v-focus-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+.v-focus-layout-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 0;
+}
+.v-focus-layout-name > strong {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+}
+.v-focus-save {
+  color: var(--ok);
+  font-size: 11px;
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--edge);
+}
+.v-focus-save[data-failed="true"] {
+  color: var(--err);
+}
+.v-focus-list-heading {
+  color: var(--text-caption);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 0 4px;
+}
+.v-focus-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.v-focus-filters [aria-pressed="true"] {
+  background: var(--active);
+}
+.v-studio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
+.v-studio-list > p {
+  font-size: 12px;
+  color: var(--text-caption);
+  padding: 8px;
+}
+.v-focus-row {
+  position: relative;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+}
+.v-focus-row[data-selected="true"] {
+  border-color: var(--edge);
+  background: var(--grad-nav-active);
+  box-shadow: inset 3px 0 var(--accent);
+}
+.v-focus-row > button {
+  appearance: none;
+  border: 0;
+  color: var(--text-1);
+  background: none;
+  min-width: 0;
+  flex: 1;
+  padding: 6px 4px 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  border-radius: inherit;
+}
+.v-focus-row > button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.v-focus-row .v-widget-preview {
+  flex: none;
+  width: 60px;
+  height: 42px;
+  padding: 3px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-md);
+}
+.v-focus-row-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+.v-focus-row-name strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.v-focus-row-name small {
+  font-size: 10.5px;
+  color: var(--text-caption);
+}
+.v-focus-row-name :is(strong, small) {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.v-focus-row[data-hidden="true"] > button {
+  opacity: 0.5;
+}
+.v-focus-row > span {
+  flex: none;
+}
+.v-focus-row > span .v-button {
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+}
+.v-focus-add {
+  flex: none;
+  min-height: 44px;
+  border: 1px dashed var(--line-3);
+  background: none;
+  border-radius: var(--radius-lg);
+  width: 100%;
+}
+[data-scheme="light"] .v-focus-add {
+  border-color: var(--edge);
+  border-width: 2px;
+}
+.v-focus-add:hover {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.v-focus-strip > footer {
+  margin-top: auto;
+  padding: 14px 4px 0;
+  border-top: 1px solid var(--edge);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-caption);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.v-focus-strip > footer svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+.v-focus-column {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+  container: studio-focus / inline-size;
+}
+.v-focus-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex: none;
+}
+.v-focus-heading {
+  min-width: 0;
+}
+.v-focus-heading > small {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+.v-focus-heading h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 700 34px / 1 var(--font-display);
+  margin: 7px 0 8px;
+}
+.v-focus-heading h1 .v-widget-icon {
+  width: 23px;
+  height: 23px;
+  background: var(--accent);
+}
+.v-focus-heading p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.v-focus-heading p > span {
+  margin-left: 12px;
+  color: var(--text-caption);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.v-focus-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 18px;
+  flex: none;
+}
+.v-focus-stage {
+  position: relative;
+  min-height: 230px;
+  flex: 1 0 230px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-xl);
+  background: var(--ill-ground);
+  overflow: hidden;
+}
+.v-focus-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--ill-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ill-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(
+    ellipse at center,
+    var(--text-1),
+    transparent 75%
+  );
+  pointer-events: none;
+}
+.v-focus-stage > header {
+  position: absolute;
+  z-index: 1;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-caption);
+  font-size: 11.5px;
+}
+.v-focus-stage > header > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.v-focus-stage > header svg {
+  width: 14px;
+  height: 14px;
+}
+.v-focus-stage > header > div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.v-focus-stage [aria-pressed="true"] {
+  background: var(--active);
+}
+.v-focus-drawing {
+  height: 100%;
+  min-height: 230px;
+  position: relative;
+}
+.v-widget-preview[data-stage="true"] {
+  background: none;
+  height: 100%;
+  min-height: 230px;
+  padding: 46px 56px 50px;
+}
+.v-widget-preview[data-stage="true"] .v-widget-thumb-image {
+  filter: drop-shadow(0 18px 28px var(--ill-shadow));
+}
+.v-focus-stage > footer {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-caption);
+  font-size: 11px;
+}
+.v-focus-stage > footer [role="group"] {
+  display: flex;
+  gap: 2px;
+}
+.v-focus-hidden {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.v-studio-temporary {
+  flex: 0 0 auto;
+  max-height: 280px;
+  overflow: auto;
+  min-height: 0;
+  border-top: 1px solid var(--edge);
+}
+.v-studio-temporary > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.v-studio-temporary .v-studio-inspector-fields {
+  padding: 12px 4px;
+}
+.v-focus-empty {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border: 1px dashed var(--edge);
+  border-radius: var(--radius-xl);
+  color: var(--text-2);
+}
+@container studio-main (max-width: 1120px) {
+  .v-studio-focus-layout {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+  .v-focus-strip {
+    width: 72px;
+  }
+  .v-focus-layout-name > strong,
+  .v-focus-row-name,
+  .v-focus-list-heading,
+  .v-focus-save,
+  .v-focus-strip > footer,
+  .v-focus-row > span,
+  .v-focus-add .v-button-label > span {
+    display: none;
+  }
+  .v-focus-row > button {
+    padding: 5px;
+    justify-content: center;
+  }
+  .v-focus-row .v-widget-preview {
+    width: 52px;
+    height: 40px;
+  }
+}
+
+.v-focus-filters,
+.v-focus-stage fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.v-studio-focus-layout[data-missing="true"] {
+  grid-template-columns: minmax(0, 1fr);
+}

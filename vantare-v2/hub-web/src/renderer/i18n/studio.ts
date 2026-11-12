@@ -1,4 +1,26 @@
 export const studioText = {
+  layoutLabel: "Layout",
+  overlaysCount: (n: number) => `Overlays · ${n}`,
+  more: "Más",
+  moreLabel: "Más acciones",
+  moreMark: "⋯",
+  illustrationNote: "Dibujo orientativo · la vista previa real aparecerá aquí",
+  stageLabel: (name: string) => `Dibujo orientativo de ${name}`,
+  stageSize: (width: number, height: number) =>
+    `${width} × ${height} px en pantalla`,
+  dataLabel: "Datos",
+  sceneLabel: "Escena",
+  scenesSoon: "Escenas de prueba: disponible cuando las vistas sean en vivo",
+  hiddenStage: "Oculto: no se dibuja en pista",
+  showNow: "Mostrar",
+  notSaved: "No se ha guardado",
+  readOnly: "Solo lectura",
+  emptyList: "Aún no hay overlays en este layout.",
+  emptyTitle: "Tu layout está vacío",
+  showNeedsWidget: "Añade un widget para mostrarlo en pista.",
+  protectedAction: "No disponible mientras el diseño esté protegido.",
+  close: "Cerrar",
+
   appearanceUnavailable:
     "No se pueden leer los ajustes de apariencia de este widget.",
   appearancePreviewNote:

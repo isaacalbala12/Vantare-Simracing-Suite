@@ -13,6 +13,8 @@ export type { Section } from "./sections";
 
 interface UiState {
   section: Section;
+  studioLastSelected: string | null;
+  rememberStudio: (id: string) => void;
   sidebarCollapsed: boolean;
   sidebarAutomatic: boolean;
   railCollapsed: boolean;
@@ -30,6 +32,8 @@ interface UiState {
 function createUi() {
   return createStore<UiState>((set) => ({
     section: "settings",
+    studioLastSelected: null,
+    rememberStudio: (studioLastSelected) => set({ studioLastSelected }),
     sidebarCollapsed: window.innerWidth < 1500,
     sidebarAutomatic: true,
     railCollapsed: false,

@@ -1,5 +1,5 @@
 import { Combobox } from "@base-ui/react/combobox";
-import { Fragment, type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "../assets/icons/Icon";
 import { commandsText as text } from "../i18n/commands.es";
 import { Keycap } from "./Data";
@@ -12,6 +12,8 @@ export type PaletteCommand = {
   group?: "navigation" | "actions";
   icon?: IconName;
   meta?: string;
+  trail?: string;
+  locked?: boolean;
   shortcut?: string;
   disabled?: boolean;
   run: () => void;
@@ -31,6 +33,7 @@ export function CommandPalette({
   commands,
   open,
   onOpenChange,
+  notice,
 }: {
   title: string;
   description: string;
@@ -40,19 +43,31 @@ export function CommandPalette({
   commands: PaletteCommand[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  notice?: string;
 }) {
   const [query, setQuery] = useState("");
+  const committed = useRef(false);
   useEffect(() => {
-    if (!open) setQuery("");
+    if (!open) {
+      setQuery("");
+      // The screen was inert while the dialog was open. Its layout cleanup
+      // must finish before focusing the destination after a command.
+      if (committed.current)
+        document.querySelector<HTMLElement>(".v-shell-main")?.focus();
+    } else committed.current = false;
   }, [open]);
   const filtered = commands.filter((item) =>
-    `${item.label} ${item.meta ?? ""}`
+    `${item.label} ${item.meta ?? ""} ${item.trail ?? ""}`
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
   );
   return (
     <Dialog.Root
       open={open}
+      onOpenChangeComplete={(value) => {
+        if (!value && committed.current)
+          document.querySelector<HTMLElement>(".v-shell-main")?.focus();
+      }}
       onOpenChange={(value) => {
         if (!value) setQuery("");
         onOpenChange(value);
@@ -65,6 +80,11 @@ export function CommandPalette({
         <Dialog.Backdrop className="v-command-backdrop" />
         <Dialog.Popup
           className="v-command-palette"
+          finalFocus={() =>
+            committed.current
+              ? (document.querySelector<HTMLElement>(".v-shell-main") ?? true)
+              : true
+          }
           initialFocus={(event) => {
             if (event !== "touch")
               return document.querySelector<HTMLInputElement>(
@@ -88,8 +108,18 @@ export function CommandPalette({
             itemToStringValue={(item) => item.id}
             isItemEqualToValue={(a, b) => a.id === b.id}
             inline
-            onValueChange={(item) => {
-              if (item && !item.disabled) {
+            onValueChange={(item, event) => {
+              if (!item) return;
+              if (
+                item.disabled ||
+                committed.current ||
+                (event.event instanceof MouseEvent && event.event.detail > 1)
+              ) {
+                event.cancel();
+                return;
+              }
+              if (item) {
+                committed.current = true;
                 onOpenChange(false);
                 setQuery("");
                 item.run();
@@ -104,32 +134,52 @@ export function CommandPalette({
                 placeholder={text.placeholder}
               />
             </div>
+            {notice && (
+              <p className="v-command-notice" role="status">
+                {notice}
+              </p>
+            )}
             <Combobox.List className="v-command-results">
-              {(item: PaletteCommand) => (
-                <Fragment key={item.id}>
-                  {filtered.find((candidate) => candidate.group === item.group)
-                    ?.id === item.id && (
-                    <div className="v-command-group" role="presentation">
-                      {item.group === "navigation"
+              {(["navigation", "actions"] as const).map((group) => {
+                const items = filtered.filter(
+                  (item) => (item.group ?? "actions") === group,
+                );
+                if (!items.length) return null;
+                return (
+                  <Combobox.Group key={group} items={items}>
+                    <Combobox.GroupLabel className="v-command-group">
+                      {group === "navigation"
                         ? text.destinations
                         : text.actions}
-                    </div>
-                  )}
-                  <Combobox.Item
-                    className="v-command-row"
-                    value={item}
-                    disabled={item.disabled}
-                  >
-                    <span className="v-command-icon">
-                      <Icon name={item.icon ?? "i-comando"} />
-                    </span>
-                    <span className="v-command-label">{item.label}</span>
-                    <span className="v-command-meta">{item.meta}</span>
-                    {item.shortcut && <Keycap>{item.shortcut}</Keycap>}
-                    {item.disabled && <Icon name="v-lock" />}
-                  </Combobox.Item>
-                </Fragment>
-              )}
+                    </Combobox.GroupLabel>
+                    <Combobox.Collection>
+                      {(item: PaletteCommand) => (
+                        <Combobox.Item
+                          className="v-command-row"
+                          key={item.id}
+                          value={item}
+                          aria-disabled={item.disabled || undefined}
+                          aria-label={
+                            item.meta
+                              ? `${item.label} · ${item.meta}`
+                              : item.label
+                          }
+                        >
+                          <span className="v-command-icon">
+                            <Icon name={item.icon ?? "i-comando"} />
+                          </span>
+                          <span className="v-command-label">{item.label}</span>
+                          <span className="v-command-meta">{item.meta}</span>
+                          {item.shortcut && <Keycap>{item.shortcut}</Keycap>}
+                          {(item.disabled || item.locked) && (
+                            <Icon name="v-lock" />
+                          )}
+                        </Combobox.Item>
+                      )}
+                    </Combobox.Collection>
+                  </Combobox.Group>
+                );
+              })}
             </Combobox.List>
             <Combobox.Empty className="v-sr-only">{empty}</Combobox.Empty>
           </Combobox.Root>

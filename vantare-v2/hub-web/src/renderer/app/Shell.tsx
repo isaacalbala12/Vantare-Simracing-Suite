@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   type AccountView,
+  type CoreStatus,
   defaultZoom,
   type LauncherView,
   type Palette,
@@ -80,7 +81,7 @@ function ShellContent() {
     enabled: false,
   });
   const { data: account } = useQuery<
-    Pick<AccountView, "name" | "photo" | "session">
+    Pick<AccountView, "name" | "photo" | "session" | "plan">
   >({
     queryKey: ["frame", "account"],
     enabled: !!host.client && !core.live,
@@ -93,14 +94,20 @@ function ShellContent() {
         name: reply.value.name,
         photo: reply.value.photo,
         session: reply.value.session,
+        plan: reply.value.plan,
       };
     },
   });
   useEffect(() => {
     const off = host.client?.listen((message) => {
       if (message.kind === "event" && message.event.topic === "account") {
-        const { name, photo, session } = message.event.value;
-        query.setQueryData(["frame", "account"], { name, photo, session });
+        const { name, photo, session, plan } = message.event.value;
+        query.setQueryData(["frame", "account"], {
+          name,
+          photo,
+          session,
+          plan,
+        });
       }
       if (message.kind === "event" && message.event.topic === "launcher")
         query.setQueryData(["launcher"], message.event.value);
@@ -125,6 +132,7 @@ function ShellContent() {
   const {
     data: launcher,
     isFetching: launcherLoading,
+    isError: launcherFailed,
     refetch: refreshLauncher,
   } = useQuery<LauncherView>({
     queryKey: ["launcher"],
@@ -182,45 +190,83 @@ function ShellContent() {
     )
       ui.navigate(section);
   }
+  function launchWarning(message: string) {
+    ui.navigate("launcher");
+    toast.add({ title: message, type: "warn" });
+  }
+  function launchAccess(status: CoreStatus) {
+    return (
+      lock("launcher", status.access) ??
+      (status.rights !== "connected"
+        ? commandsText.accessUnavailable
+        : undefined)
+    );
+  }
   async function launchFavorite() {
-    if (
-      !host.client ||
-      favoritePending.current ||
-      profilePending.current ||
-      core.live ||
-      launcher?.running ||
-      lock("launcher", core.access)
-    )
+    const latestCore = query.getQueryData<CoreStatus>(coreKey) ?? core;
+    const current = query.getQueryData<LauncherView>(["launcher"]) ?? launcher;
+    const reason = !host.client
+      ? commandsText.failed
+      : (launchAccess(latestCore) ??
+        (latestCore.live
+          ? commandsText.live
+          : favoritePending.current || profilePending.current
+            ? commandsText.pending
+            : current?.running
+              ? commandsText.running
+              : undefined));
+    if (reason || !host.client) {
+      launchWarning(reason ?? commandsText.failed);
       return;
+    }
     favoritePending.current = true;
     try {
       const reply = await host.client.request({ method: "launcher.favorite" });
-      if (reply.method !== "launcher.favorite") return;
-      if (!reply.accepted) {
-        navigate("launcher");
-        toast.add({ title: t("shell.profileNeeded") });
-      } else toast.add({ title: t("shell.favoriteSent") });
+      if (!alive.current || reply.method !== "launcher.favorite") return;
+      ui.navigate("launcher");
+      toast.add({
+        title: reply.accepted
+          ? t("shell.favoriteSent")
+          : t("shell.profileNeeded"),
+      });
     } catch {
-      toast.add({ title: t("shell.favoriteFailed"), type: "err" });
+      if (alive.current) launchWarning(t("shell.favoriteFailed"));
     } finally {
       favoritePending.current = false;
     }
   }
   async function launchProfile(profile: string, baseRevision: string) {
+    const latestCore = query.getQueryData<CoreStatus>(coreKey) ?? core;
     const current = query.getQueryData<LauncherView>(["launcher"]) ?? launcher;
+    const selected = current?.profiles.find((item) => item.id === profile);
     if (
-      !host.client ||
-      launcherLoading ||
-      profilePending.current ||
-      favoritePending.current ||
-      core.live ||
-      lock("launcher", core.access) ||
-      current?.running ||
-      !current?.profiles.some((item) => item.id === profile && item.launchable)
-    )
+      !current ||
+      current.revision !== baseRevision ||
+      !selected?.launchable
+    ) {
+      launchWarning(commandsText.changed);
       return;
-    if (current.revision !== baseRevision) {
-      toast.add({ title: commandsText.changed, type: "warn" });
+    }
+    const reason = !host.client
+      ? commandsText.failed
+      : (launchAccess(latestCore) ??
+        (latestCore.live
+          ? commandsText.live
+          : query.getQueryState(["launcher"])?.fetchStatus === "fetching"
+            ? commandsText.loading
+            : query.getQueryState(["launcher"])?.status === "error"
+              ? commandsText.readFailed
+              : profilePending.current || favoritePending.current
+                ? commandsText.pending
+                : current.scanning
+                  ? commandsText.scanning
+                  : !current.resident
+                    ? commandsText.noResident
+                    : current.running
+                      ? commandsText.running
+                      : undefined));
+    if (reason || !host.client) {
+      launchWarning(reason ?? commandsText.failed);
       return;
     }
     profilePending.current = true;
@@ -232,12 +278,10 @@ function ShellContent() {
         baseRevision,
       });
       if (!alive.current) return;
-      toast.add({
-        title:
-          reply.method === "launcher.launch" && reply.accepted
-            ? commandsText.sent
-            : commandsText.failed,
-      });
+      if (reply.method === "launcher.launch" && reply.accepted) {
+        ui.navigate("launcher");
+        toast.add({ title: commandsText.sent });
+      } else launchWarning(commandsText.failed);
     } catch (failure) {
       if (!alive.current) return;
       if (
@@ -245,8 +289,8 @@ function ShellContent() {
         failure.detail.kind === "launcherConflict"
       ) {
         query.setQueryData(["launcher"], failure.detail.current);
-        toast.add({ title: commandsText.changed, type: "warn" });
-      } else toast.add({ title: commandsText.failed, type: "err" });
+        launchWarning(commandsText.changed);
+      } else launchWarning(commandsText.failed);
     } finally {
       profilePending.current = false;
       if (alive.current) setProfileWaiting(false);
@@ -338,6 +382,26 @@ function ShellContent() {
   const status = core.live
     ? shellText.simulatorConnected
     : shellText.waitingSimulator;
+  const launchBlocked =
+    launchAccess(core) ??
+    (core.live
+      ? commandsText.live
+      : launcherFailed
+        ? commandsText.readFailed
+        : launcherLoading
+          ? commandsText.loading
+          : profileWaiting
+            ? commandsText.pending
+            : undefined);
+  const settingsBlocked = !editBlocked
+    ? undefined
+    : settings.pending
+      ? commandsText.settingsSaving
+      : settings.error
+        ? commandsText.settingsError
+        : settings.view?.protected
+          ? commandsText.settingsProtected
+          : commandsText.settingsLoading;
   const title =
     items.find((item) => item.id === ui.section)?.label ??
     (ui.section === "account" ? accountText.title : t("settings.title"));
@@ -383,6 +447,7 @@ function ShellContent() {
                 trigger={null}
                 closeLabel={t("shell.close")}
                 empty={t("shell.emptyCommands")}
+                notice={launcherFailed ? commandsText.readFailed : undefined}
                 commands={[
                   ...[
                     "home",
@@ -406,12 +471,26 @@ function ShellContent() {
                             : item.label,
                       group: "navigation" as const,
                       icon: item.icon,
-                      meta:
-                        item.locked ??
+                      meta: isUpcoming(item.id)
+                        ? core.access.verified &&
+                          !core.access.blocked &&
+                          // PlanView::Founders is Rust's projection of the
+                          // verified LaunchV1 catalog (account/mod.rs).
+                          account?.plan?.kind === "founders"
+                          ? commandsText.included
+                          : commandsText.meta.strategy
+                        : (item.locked ??
+                          commandsText.meta[
+                            item.id as keyof typeof commandsText.meta
+                          ]),
+                      trail:
                         commandsText.meta[
                           item.id as keyof typeof commandsText.meta
                         ],
-                      disabled: !!lock(item.id, core.access),
+                      locked: isUpcoming(item.id),
+                      disabled: isUpcoming(item.id)
+                        ? false
+                        : !!lock(item.id, core.access),
                       run: () => navigate(item.id),
                     })),
                   ...(
@@ -437,24 +516,17 @@ function ShellContent() {
                     ] as const
                   ).map((item) => ({
                     ...item,
+                    trail: item.meta,
+                    meta: lock(item.id, core.access) ?? item.meta,
                     group: "navigation" as const,
                     disabled: !!lock(item.id, core.access),
                     run: () => navigate(item.id),
                   })),
                   {
-                    // GPUI's global save persists Strategy/Workshop drafts.
-                    // Both are read-only here; no equivalent global wire method exists.
-                    id: "save",
-                    label: commandsText.save,
-                    icon: "v-studio",
-                    meta: commandsText.saveUnavailable,
-                    disabled: true,
-                    run: () => {},
-                  },
-                  {
                     id: "theme",
                     label: t("shell.toggleTheme"),
                     icon: "v-palette",
+                    meta: settingsBlocked,
                     disabled: editBlocked,
                     run: toggleTheme,
                   },
@@ -467,7 +539,8 @@ function ShellContent() {
                   },
                   {
                     id: "rail",
-                    label: t("shell.railToggle"),
+                    label: commandsText.context,
+                    meta: commandsText.contextMeta,
                     icon: "v-side",
                     shortcut: "Ctrl Alt B",
                     run: ui.toggleRail,
@@ -482,6 +555,7 @@ function ShellContent() {
                   {
                     id: "zoom-less",
                     label: t("general.zoomLess"),
+                    meta: settingsBlocked,
                     shortcut: "Ctrl −",
                     disabled: editBlocked,
                     run: () => zoom(-1),
@@ -489,6 +563,7 @@ function ShellContent() {
                   {
                     id: "zoom-more",
                     label: t("general.zoomMore"),
+                    meta: settingsBlocked,
                     shortcut: "Ctrl +",
                     disabled: editBlocked,
                     run: () => zoom(1),
@@ -496,6 +571,7 @@ function ShellContent() {
                   {
                     id: "zoom-reset",
                     label: t("general.zoomReset"),
+                    meta: settingsBlocked,
                     shortcut: "Ctrl 0",
                     disabled: editBlocked,
                     run: () => zoom(0),
@@ -505,11 +581,12 @@ function ShellContent() {
                     label: t("shell.favorite"),
                     icon: "v-launch",
                     shortcut: "Ctrl L",
-                    disabled:
-                      !!lock("launcher", core.access) ||
-                      core.live ||
-                      !!launcher?.running ||
-                      profileWaiting,
+                    meta:
+                      launchBlocked ??
+                      (launcher?.running
+                        ? commandsText.running
+                        : commandsText.profile),
+                    disabled: !!launchBlocked || !!launcher?.running,
                     run: () => void launchFavorite(),
                   },
                   {
@@ -520,14 +597,7 @@ function ShellContent() {
                   },
                   ...profileCommands(
                     launcher,
-                    lock("launcher", core.access) ??
-                      (core.live
-                        ? commandsText.live
-                        : launcherLoading
-                          ? commandsText.loading
-                          : profileWaiting
-                            ? commandsText.running
-                            : undefined),
+                    launchBlocked,
                     (profile, revision) =>
                       void launchProfile(profile, revision),
                   ),

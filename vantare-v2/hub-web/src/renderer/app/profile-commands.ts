@@ -11,17 +11,24 @@ export function profileCommands(
     view?.profiles.map((profile) => {
       const reason =
         blocked ??
-        (view.running
-          ? text.running
-          : !profile.launchable
-            ? text.unavailable
-            : undefined);
+        (view.scanning
+          ? text.scanning
+          : !view.resident
+            ? text.noResident
+            : view.running
+              ? text.running
+              : profile.apps.length === 0
+                ? text.noSteps
+                : !profile.launchable
+                  ? text.unavailable
+                  : undefined);
       return {
         id: `launch-profile:${profile.id}`,
         label: text.launch(profile.name),
         icon: "v-launch",
         group: "actions",
         meta: reason ?? text.profile,
+        trail: text.profile,
         disabled: !!reason,
         run: () => {
           if (!reason) launch(profile.id, view.revision);

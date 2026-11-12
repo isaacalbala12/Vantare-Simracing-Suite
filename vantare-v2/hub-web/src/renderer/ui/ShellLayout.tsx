@@ -25,7 +25,9 @@ export function ShellLayout({
           {header}
           <div className="v-shell-body">
             <div className="v-content-column">
-              <main className="v-shell-main">{children}</main>
+              <main className="v-shell-main" tabIndex={-1}>
+                {children}
+              </main>
               <div className="v-shell-toast-anchor">{toasts}</div>
             </div>
             <SectionRailVisibility>{rail}</SectionRailVisibility>

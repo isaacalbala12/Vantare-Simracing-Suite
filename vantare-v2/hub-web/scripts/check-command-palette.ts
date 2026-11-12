@@ -75,6 +75,21 @@ export async function checkCommandPalette(owner: Page, base: string) {
         },
       ],
     );
+    await until(
+      () =>
+        page.evaluate(
+          () =>
+            document.activeElement === document.querySelector(".v-shell-main"),
+        ),
+      5000,
+      "Executed command returns focus to the main content",
+    );
+    assert.equal(
+      await page
+        .locator('.v-sidebar [aria-current="page"]')
+        .getAttribute("aria-label"),
+      "Launcher",
+    );
     await page.keyboard.press("Control+k");
     await search.fill("Lanzar Pro");
     await until(

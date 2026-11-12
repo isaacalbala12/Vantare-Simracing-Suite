@@ -68,6 +68,8 @@ it("groups icons, metadata and shortcuts, filters by metadata and executes only 
   ]);
   expect(screen.getByText("IR A")).toBeTruthy();
   expect(screen.getByText("ACCIONES")).toBeTruthy();
+  expect(screen.getByRole("group", { name: "IR A" })).toBeTruthy();
+  expect(screen.getByRole("group", { name: "ACCIONES" })).toBeTruthy();
   expect(screen.getByText("Ctrl L").tagName).toBe("KBD");
   expect(
     screen.getByRole("option", { name: /Inicio/ }).querySelector("svg"),
@@ -77,6 +79,30 @@ it("groups icons, metadata and shortcuts, filters by metadata and executes only 
   await user.keyboard("{ArrowDown}{Enter}");
   expect(run).toHaveBeenCalledOnce();
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+it("includes the original trail and reaches a blocked row with the keyboard without dispatching", async () => {
+  const run = vi.fn();
+  const user = userEvent.setup();
+  mount([
+    {
+      id: "launcher",
+      label: "Launcher",
+      group: "navigation",
+      meta: "Acceso sin verificar",
+      trail: "Abre tus apps",
+      disabled: true,
+      run,
+    },
+  ]);
+  await user.type(screen.getByRole("combobox"), "abre tus apps");
+  const row = screen.getByRole("option", {
+    name: "Launcher · Acceso sin verificar",
+  });
+  await user.keyboard("{ArrowDown}");
+  expect(row.hasAttribute("data-highlighted")).toBe(true);
+  await user.keyboard("{Enter}");
+  expect(run).not.toHaveBeenCalled();
+  expect(screen.getByRole("combobox")).toBeTruthy();
 });
 it("shows locked reasons, cannot execute a locked destination and clears its search on reopening", async () => {
   const run = vi.fn();

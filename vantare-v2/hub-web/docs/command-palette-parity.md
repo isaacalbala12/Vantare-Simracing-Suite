@@ -32,9 +32,22 @@ los comandos quedan inactivos con motivo visible.
 El antiguo «Guardar perfil» global llama en GPUI a `Hub::save`
 (`native/hub/src/shell.rs:104`), que guarda Strategy/Workshop. No es el guardado
 del perfil de Launcher. Como esas dos vistas web no ofrecen esos borradores ni
-hay un método global equivalente, se conserva el rótulo inactivo con
-«Overlays Studio · Guarda desde cada editor». No devuelve una confirmación
-falsa de guardado y no abre un método nuevo del contrato.
+hay un método global equivalente, se omiten «Guardar perfil» y «Guardar y
+cerrar» hasta que existan esos borradores. Se conserva «Cerrar Hub», con sus
+guardas, y el único comando del panel derecho se llama «Mostrar / ocultar
+contexto». Es una diferencia deliberada aprobada por el orquestador.
+
+Las filas bloqueadas siguen siendo seleccionables con flechas y anuncian el
+motivo; Enter no las ejecuta. La búsqueda conserva también los metadatos
+originales. Estrategia e Ingeniero permiten abrir su presentación, como GPUI;
+el plan Founders recibido del anfitrión identifica el catálogo LaunchV1 y
+muestra «Incluida en Pro». No se deducen derechos nuevos en el renderer.
+
+Antes de enviar se comprueban otra vez revisión, identidad, disponibilidad,
+derechos conectados, pista y petición activa. Un conflicto sustituye la caché
+y pide volver a elegir. Un lanzamiento aceptado lleva al Launcher y el foco
+vuelve al contenido. El anfitrión mantiene la autoridad final. La revalidación
+de escaneo y pasos pendientes en el anfitrión se sigue en #2184.
 
 Base UI 1.9 soporta `autoHighlight: "always"` en AriaCombobox y Root lo
 transmite, aunque el tipo público de Root aún lo limita a boolean. La pequeña

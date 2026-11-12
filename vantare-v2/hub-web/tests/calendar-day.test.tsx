@@ -157,3 +157,51 @@ it.each(["escape", "button"])(
     );
   },
 );
+
+it("restores the inline hour after expansion clamps its shorter scroll range", async () => {
+  // jsdom has no layout: emulate the two viewport scroll ranges.
+  const values = new WeakMap<Element, number>();
+  const get = vi
+    .spyOn(Element.prototype, "scrollTop", "get")
+    .mockImplementation(function (this: Element) {
+      return values.get(this) ?? 0;
+    });
+  const set = vi
+    .spyOn(Element.prototype, "scrollTop", "set")
+    .mockImplementation(function (this: Element, value: number) {
+      values.set(
+        this,
+        Math.min(value, this.closest(".v-calendar-day-full") ? 95 : 168),
+      );
+    });
+  try {
+    const { container } = render(
+      <CalendarDayView
+        schedule={fixture}
+        alerts={alerts}
+        following={[]}
+        now={Date.parse("2026-07-02T19:00:00Z")}
+        utc
+        limit={1000}
+        onSpan={() => {}}
+      />,
+    );
+    expect(container.querySelector(".v-calendar-day-scroll")).toHaveProperty(
+      "scrollTop",
+      168,
+    );
+    fireEvent.click(screen.getByRole("button", { name: text.full }));
+    expect(
+      screen.getByRole("dialog").querySelector(".v-calendar-day-scroll"),
+    ).toHaveProperty("scrollTop", 95);
+    fireEvent.click(screen.getByRole("button", { name: text.exitFull }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(container.querySelector(".v-calendar-day-scroll")).toHaveProperty(
+      "scrollTop",
+      168,
+    );
+  } finally {
+    set.mockRestore();
+    get.mockRestore();
+  }
+});

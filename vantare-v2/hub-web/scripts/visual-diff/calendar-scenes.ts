@@ -88,6 +88,9 @@ async function assertCalendarMineControls(page: Page) {
 }
 
 async function checkExpandedCalendarDay(page: Page) {
+  const before = await page
+    .locator(".v-calendar-day-scroll")
+    .evaluate((node) => node.scrollTop);
   await page
     .getByRole("button", { name: "Pantalla completa", exact: true })
     .click();
@@ -117,6 +120,11 @@ async function checkExpandedCalendarDay(page: Page) {
       document.activeElement?.getAttribute("aria-label") ===
       "Pantalla completa",
   );
+  const after = await page
+    .locator(".v-calendar-day-scroll")
+    .evaluate((node) => node.scrollTop);
+  if (Math.abs(after - before) > 1)
+    throw new Error("Expanded calendar day lost the inline hour");
 }
 
 async function checkExpandedCalendarWeek(page: Page) {

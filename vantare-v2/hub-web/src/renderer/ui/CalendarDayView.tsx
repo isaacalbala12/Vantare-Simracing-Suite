@@ -43,6 +43,7 @@ export function CalendarDayView({
   const fullToggle = useRef<HTMLButtonElement>(null);
   const previousFull = useRef(false);
   const savedScroll = useRef<number | undefined>(undefined);
+  const appliedScroll = useRef<number | undefined>(undefined);
   useLayoutEffect(() => {
     if (previousFull.current && !full)
       fullToggle.current?.focus({ preventScroll: true });
@@ -57,11 +58,15 @@ export function CalendarDayView({
   const scrolled = useRef("");
   const attachScroll = useCallback((node: HTMLDivElement | null) => {
     scroll.current = node;
-    if (node && savedScroll.current !== undefined)
+    if (node && savedScroll.current !== undefined) {
       node.scrollTop = savedScroll.current;
+      appliedScroll.current = node.scrollTop;
+    }
   }, []);
   const changeFull = (next: boolean) => {
-    savedScroll.current = scroll.current?.scrollTop;
+    const current = scroll.current?.scrollTop;
+    if (savedScroll.current === undefined || current !== appliedScroll.current)
+      savedScroll.current = current;
     setFull(next);
   };
   const at = dates[selected],

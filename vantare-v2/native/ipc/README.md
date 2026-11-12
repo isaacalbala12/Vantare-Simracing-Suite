@@ -213,3 +213,14 @@ Es cÃ³digo puro movido desde runtime sin cambios de formato, topes ni cÃ¡lculo.
 `runtime::flows` conserva los nombres pÃºblicos mediante reexports; adquisiciÃ³n,
 feed y procesos siguen en runtime. `serde_json/float_roundtrip` se activa aquÃ­
 para conservar los f64 del golden LMU, incluido el caso de un ULP.
+
+## Observación opt-in de cuenta (#2089)
+
+`Feed::connect` y los sobres de control v7 permanecen iguales. Solo
+`Feed::connect_account` consulta además `ReadAccountSession`, en el mismo hilo
+existente, y recibe `account_session::ControlResponse`. La generación aleatoria
+procede de Owner, no de Services, de la cuenta presentada o de Policy.revision.
+No concede derechos ni persiste entre reinicios. Ausencia/fallo retira la
+observación; un núcleo antiguo se consulta una vez por época y conserva Read.
+`AuthorityLink` solo contiene pipe e imagen, nunca el nonce mutador.
+Los DTO congelados en tests verifican los bytes legacy de control y Services.

@@ -285,13 +285,25 @@ fn serve(
         if request.sequence != 1 {
             return Err(io::ErrorKind::InvalidData.into());
         }
-        if !matches!(request.command, Command::Read)
+        if !matches!(request.command, Command::Read | Command::ReadAccountSession)
             && (!mutator || nonce.is_none_or(|n| n.is_empty() || n != request.nonce))
         {
             return Err(io::Error::new(
                 io::ErrorKind::PermissionDenied,
                 control::Failure::CommandNotAllowed,
             ));
+        }
+        if matches!(request.command, Command::ReadAccountSession) {
+            return observe_account(state, latest, start, |observation| {
+                control::write(
+                    pipe,
+                    &vantare_ipc::account_session::ControlResponse {
+                        version: control::VERSION,
+                        sequence: request.sequence,
+                        observation,
+                    },
+                )
+            });
         }
         phase = "dispatch";
         respond(request, state, latest, start, |response| {
@@ -330,6 +342,7 @@ fn respond(
     let cached_install = matches!(request.command, Command::Install { .. });
     let result = match request.command {
         Command::Read => Ok(()),
+        Command::ReadAccountSession => return Err(io::ErrorKind::InvalidInput.into()),
         Command::Install { credential } => state
             .owner
             .as_mut()
@@ -450,6 +463,42 @@ fn spawn_timer(
                 }
             }
         })
+}
+
+fn observe_account(
+    state: &Mutex<State>,
+    latest: &ArcSwap<Observed>,
+    start: Instant,
+    write: impl FnOnce(Option<vantare_ipc::account_session::AccountObservation>) -> io::Result<()>,
+) -> io::Result<()> {
+    let mut state = state
+        .lock()
+        .map_err(|_| io::Error::other("authority unavailable"))?;
+    #[cfg(not(feature = "qa-e2e"))]
+    let tick = start.elapsed();
+    #[cfg(feature = "qa-e2e")]
+    let tick = vantare_ipc::qa::instant().saturating_duration_since(start);
+    let advanced = advance(&mut state, &latest.load(), tick, false);
+    let observation = if advanced.is_ok() {
+        state
+            .owner
+            .as_ref()
+            .and_then(Owner::account_generation)
+            .map(
+                |generation| vantare_ipc::account_session::AccountObservation {
+                    generation,
+                    policy: {
+                        let mut policy = state.policy.clone();
+                        policy.error = None;
+                        policy
+                    },
+                },
+            )
+    } else {
+        None
+    };
+    drop(state);
+    write(observation)
 }
 
 #[cfg(test)]

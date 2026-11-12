@@ -219,7 +219,7 @@ impl Policy {
             )
             && self.effective_until_ms().is_none_or(|end| now_ms < end)
     }
-    fn observable_at(&self, now_ms: u64) -> bool {
+    pub(crate) fn observable_at(&self, now_ms: u64) -> bool {
         self.fresh_at(now_ms) && (!self.state.permits_access() || self.current_at(now_ms))
     }
     pub fn current(&self) -> bool {
@@ -244,6 +244,8 @@ pub struct Bootstrap {
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
     Read,
+    /// Opt-in response uses `account_session::ControlResponse`, never legacy Response.
+    ReadAccountSession,
     // Retained solely for control v7 compatibility. Services no longer emits
     // this command; do not wire it to disk credentials or legacy candidates.
     Install {
@@ -493,6 +495,7 @@ fn retryable_connect(error: &io::Error) -> bool {
 #[cfg(any(windows, unix))]
 pub struct Feed {
     latest: std::sync::Arc<std::sync::Mutex<Option<Policy>>>,
+    account: std::sync::Arc<std::sync::Mutex<Option<crate::account_session::AccountObservation>>>,
     stop: std::sync::Arc<crate::transport::Event>,
     initial: std::sync::Arc<crate::transport::Event>,
     thread: Option<std::thread::JoinHandle<()>>,
@@ -500,8 +503,21 @@ pub struct Feed {
 #[cfg(any(windows, unix))]
 impl Feed {
     pub fn connect(photo: &str, core_image: std::path::PathBuf) -> io::Result<Self> {
+        Self::connect_inner(photo, core_image, false)
+    }
+    /// Account-aware consumers opt in; existing Feed users send only Read.
+    pub fn connect_account(photo: &str, core_image: std::path::PathBuf) -> io::Result<Self> {
+        Self::connect_inner(photo, core_image, true)
+    }
+    fn connect_inner(
+        photo: &str,
+        core_image: std::path::PathBuf,
+        observe_account: bool,
+    ) -> io::Result<Self> {
         use crate::transport::Event;
         let latest = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let account = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let account_target = std::sync::Arc::clone(&account);
         let stop = std::sync::Arc::new(Event::new()?);
         let initial = std::sync::Arc::new(Event::new()?);
         let ready = std::sync::Arc::clone(&initial);
@@ -516,8 +532,38 @@ impl Feed {
             .name("rights-feed".into())
             .spawn(move || {
                 let mut cursor = (0, 0);
+                let mut unsupported_epoch = None;
                 while !cancel.is_set() {
                     let result = request_cancelled(&link, Command::Read, &cancel);
+                    if observe_account {
+                        let epoch = result.as_ref().ok().map(|p| p.epoch);
+                        let observation = if epoch.is_some() && epoch != unsupported_epoch {
+                            let authority = crate::account_session::AuthorityLink {
+                                pipe: link.pipe.clone(),
+                                image: link.image.clone(),
+                            };
+                            match crate::account_session::request_cancelled(&authority, &cancel) {
+                                Ok(observed) => observed,
+                                Err(error) => {
+                                    // An old core closes an unknown command. Do not probe it each tick.
+                                    if matches!(
+                                        error.kind(),
+                                        io::ErrorKind::InvalidData
+                                            | io::ErrorKind::UnexpectedEof
+                                            | io::ErrorKind::BrokenPipe
+                                    ) {
+                                        unsupported_epoch = epoch;
+                                    }
+                                    None
+                                }
+                            }
+                        } else {
+                            None
+                        };
+                        if let Ok(mut slot) = account_target.lock() {
+                            *slot = observation;
+                        }
+                    }
                     if let Ok(mut slot) = target.lock() {
                         *slot = feed_observation(
                             result,
@@ -536,10 +582,18 @@ impl Feed {
             })?;
         Ok(Self {
             latest,
+            account,
             stop,
             initial,
             thread: Some(thread),
         })
+    }
+    pub fn account_observation(&self) -> Option<crate::account_session::AccountObservation> {
+        self.account
+            .lock()
+            .ok()
+            .and_then(|slot| slot.clone())
+            .filter(|o| wall_ms().is_ok_and(|now| o.policy.observable_at(now)))
     }
     pub fn policy(&self) -> Policy {
         self.latest

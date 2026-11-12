@@ -35,17 +35,23 @@ it("uses the common thumbnail source for every home widget kind", () => {
   );
   const images = screen.getAllByRole("img");
   expect(images).toHaveLength(homeWidgetKinds.length);
-  for (const image of images) {
+  for (const [index, image] of images.entries()) {
     const thumbnail = image.querySelector(".v-widget-thumbnail");
     expect(thumbnail).toBeTruthy();
-    if (thumbnail instanceof SVGElement)
-      expect(thumbnail.querySelector("image")?.getAttribute("href")).toMatch(
-        /(?:\.svg$|^data:image\/svg\+xml[,;])/,
-      );
-    else
+    const common = render(
+      <WidgetThumb kind={homeWidgetKinds[index]} fit="fill" />,
+    );
+    const expected = common.container.querySelector(".v-widget-thumbnail");
+    expect(expected).toBeTruthy();
+    expect(thumbnail?.isEqualNode(expected)).toBe(true);
+    if (thumbnail instanceof SVGElement) {
+      expect(thumbnail.querySelector("image")).toBeNull();
+      expect(thumbnail.querySelector("path,rect,circle")).toBeTruthy();
+    } else {
       expect(thumbnail?.getAttribute("src")).toMatch(
         /(?:\.png$|^data:image\/png[,;])/,
       );
+    }
   }
 });
 it("fills positioned widget boxes without fitting the thumbnail canvas", () => {

@@ -198,6 +198,9 @@ monotónico inyectable. El cliente mantiene `request()` cerrado con `busy` despu
 de `closeRequested`; únicamente la preparación del propietario de Informes tiene
 una función cerrada que admite `ReportFields`, nunca un método libre. Después del
 guardado se ejecutan los guards de cierre habituales, que no hacen peticiones.
+Si no hay ediciones de informe ni notas/respuesta/triage locales, no se espera
+a operaciones de Testing en vuelo ni se muestra el aviso de texto sin guardar.
+Las esperas abandonadas terminan también para los observadores de peticiones.
 
 Un fallo o vencimiento veta ese cierre y abre WindowDialog con Reintentar / Cerrar
 sin guardar; Escape vuelve a la edición. La segunda X no duplica la preparación.
@@ -206,6 +209,10 @@ no cierran la ventana ni restituyen texto de la cuenta anterior. Un comando ya
 enviado al núcleo no se puede retirar mediante el wire actual.
 
 Live, Restart, EOF y cierre del propietario cancelan la preparación inmediatamente.
+Restart omite solo la preparación de Informes: conserva los demás guards, sus
+esperas y el aviso de veto de Actualizaciones. Live, EOF y cierre del propietario
+cierran sin esos vetos. Tras invalidar la cuenta, un estado ya limpio permite
+ese primer cierre y nunca despacha otro guardado de la sesión anterior.
 En el anfitrión la razón solo sube: Window < Restart < Live/EOF. Una razón forzada
 en curso no se sustituye ni vuelve a emitir; el renderer ignora razones iguales o
 inferiores. No se añade protocolo, ni cambia IPC, derechos, runtime o supervisor.

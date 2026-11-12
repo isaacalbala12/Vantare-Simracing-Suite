@@ -90,9 +90,9 @@ Ya hay rutas con carga diferida, un renderer, spellcheck desactivado, sin source
 
 ## Recomendación por ahorro y riesgo
 
-1. **Probar desactivar aceleración en una entrega QA opcional**, solo si Isaac lo aprueba. Ahorro medido de working set pareado: -26,42 [-36,69–13,53] MiB en Ajustes; compromiso privado mucho menor. Riesgo medio: el rasterizado pasa a CPU y futuros lienzos, vídeo o scroll pueden empeorar. Validar en hardware de usuario; las dos variantes de GPU no se compararon directamente entre sí, por lo que no se demuestra un ahorro incremental de añadir más flags.
+1. **Priorizar aceleración desactivada para una prueba en un equipo representativo antes de decidir un PR de producto.** Ahorro medido de working set pareado: -26,42 [-36,69–13,53] MiB en Ajustes; compromiso privado mucho menor. Riesgo medio: el rasterizado pasa a CPU y futuros lienzos, vídeo o scroll pueden empeorar. Validar en hardware de usuario; las dos variantes de GPU no se compararon directamente entre sí, por lo que no se demuestra un ahorro incremental de añadir más flags.
 
-2. **Investigar el coste de integridad con un diseño separado.** El trabajo medido está arriba; cualquier caché o verificación al instalar debe conservar detección de alteraciones y resolver invalidación/TOCTOU. No se cambia ni se propone saltar el hash en este encargo.
+2. **Investigar el coste de integridad con un diseño separado.** El primer recorrido cuesta 7,13 [6,97–10,38] ms: esa es la cota de trabajo que podría evitar un recorrido único sin alterar la verificación. El hash domina el resto; cualquier caché o verificación al instalar debe conservar detección de alteraciones y resolver invalidación/TOCTOU. No se cambia ni se propone saltar el hash en este encargo.
 
 3. **Revisar importaciones de entrada y lazy-load solo donde quede código ávido**, empezando por módulos de UI compartidos. Beneficio de memoria probablemente pequeño frente a Chromium; el intervalo carga→DOM es una cota que incluye más trabajo que JS. Ahorro sin medir: no se promete una cifra.
 

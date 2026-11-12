@@ -31,6 +31,11 @@ foreach($case in $statistics.results) {
     foreach($app in @('baseline','variant')) {
         $visible=@($samples|Where-Object {$_.phase -eq 'visible' -and $_.app -eq $app}|Sort-Object iteration)
         $checks+=Compare-Median "$app.visibleMs" @($visible|ForEach-Object {[double]$_.visibleMs}) $case.condition.$app.visibleMs.median
+        $integrity=@($closed|Where-Object app -eq $app|Sort-Object iteration|ForEach-Object {
+            Assert-Measurement ($_.stderr -match 'first_walk_us=(\d+) verify_walk_and_hash_us=(\d+)') 'Missing observed native integrity timings'
+            ([double]$Matches[1]+[double]$Matches[2])/1000
+        })
+        $checks+=Compare-Median "$app.integrityMs" $integrity $case.condition.$app.integrityMs.median
         foreach($section in @('settings','home')) {
             $rows=@($samples|Where-Object {$_.phase -eq 'idle' -and $_.app -eq $app -and $_.section -eq $section}|Sort-Object iteration)
             Assert-Measurement ($rows.Count -eq 5) 'Five idle samples per condition/view required'

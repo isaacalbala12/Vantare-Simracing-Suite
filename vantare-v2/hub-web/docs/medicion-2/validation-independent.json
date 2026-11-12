@@ -1,884 +1,956 @@
 {
-  "engine": "7.6.6",
   "scope": "Independent PowerShell recomputation from raw samples, no JavaScript statistics helpers",
   "schema": 1,
-  "generatedAt": "2026-11-12T23:50:14.6212654+01:00",
   "cases": [
     {
-      "checks": [
-        {
-          "count": 5,
-          "reported": 941.3031,
-          "median": 941.3031,
-          "metric": "baseline.visibleMs"
-        },
-        {
-          "count": 5,
-          "reported": 392.859375,
-          "median": 392.859375,
-          "metric": "baseline.settings.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 360.3046875,
-          "median": 360.3046875,
-          "metric": "baseline.settings.privateMiB"
-        },
-        {
-          "count": 5,
-          "reported": 0.0,
-          "median": 0.0,
-          "metric": "baseline.settings.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "baseline.settings.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 8.68496322631836,
-          "median": 8.68496322631836,
-          "metric": "baseline.settings.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": 405.91796875,
-          "median": 405.91796875,
-          "metric": "baseline.home.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 378.25390625,
-          "median": 378.25390625,
-          "metric": "baseline.home.privateMiB"
-        },
-        {
-          "count": 5,
-          "reported": 0.0,
-          "median": 0.0,
-          "metric": "baseline.home.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "baseline.home.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 7.9787139892578125,
-          "median": 7.9787139892578125,
-          "metric": "baseline.home.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": 990.2109,
-          "median": 990.2109,
-          "metric": "variant.visibleMs"
-        },
-        {
-          "count": 5,
-          "reported": 366.6640625,
-          "median": 366.6640625,
-          "metric": "variant.settings.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 140.828125,
-          "median": 140.828125,
-          "metric": "variant.settings.privateMiB"
-        },
-        {
-          "count": 5,
-          "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.settings.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "variant.settings.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 8.739459991455078,
-          "median": 8.739459991455078,
-          "metric": "variant.settings.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": 365.8359375,
-          "median": 365.8359375,
-          "metric": "variant.home.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 149.78125,
-          "median": 149.78125,
-          "metric": "variant.home.privateMiB"
-        },
-        {
-          "count": 5,
-          "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.home.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "variant.home.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 7.977836608886719,
-          "median": 7.977836608886719,
-          "metric": "variant.home.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": -26.41796875,
-          "median": -26.41796875,
-          "metric": "paired.settingsWorkingMiB"
-        }
-      ],
+      "directory": "paired-hardware-off-5470ec00",
       "validCloses": 10,
       "samplesSha256": "31bdd40c804a802ace5d33d9d657e45f85c4c59df9809c54dcc75f49a9c0b026",
       "experiment": "hardware-off",
-      "directory": "paired-hardware-off-5470ec00"
-    },
-    {
       "checks": [
         {
-          "count": 5,
-          "reported": 2041.2425,
-          "median": 2041.2425,
-          "metric": "baseline.visibleMs"
+          "metric": "baseline.visibleMs",
+          "median": 941.3031,
+          "reported": 941.3031,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 390.06640625,
-          "median": 390.06640625,
-          "metric": "baseline.settings.workingMiB"
+          "metric": "baseline.integrityMs",
+          "median": 370.941,
+          "reported": 370.941,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 361.87109375,
-          "median": 361.87109375,
-          "metric": "baseline.settings.privateMiB"
+          "metric": "baseline.settings.workingMiB",
+          "median": 392.859375,
+          "reported": 392.859375,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 0.0,
+          "metric": "baseline.settings.privateMiB",
+          "median": 360.3046875,
+          "reported": 360.3046875,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.cpuOneCorePercent",
           "median": 0.0,
-          "metric": "baseline.settings.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "baseline.settings.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 8.726940155029297,
-          "median": 8.726940155029297,
-          "metric": "baseline.settings.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": 403.2734375,
-          "median": 403.2734375,
-          "metric": "baseline.home.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 376.4609375,
-          "median": 376.4609375,
-          "metric": "baseline.home.privateMiB"
-        },
-        {
-          "count": 5,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "baseline.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.settings.gpuCount",
           "median": 1.0,
-          "metric": "baseline.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 7.9500732421875,
-          "median": 7.9500732421875,
-          "metric": "baseline.home.heapUsedMiB"
+          "metric": "baseline.settings.heapUsedMiB",
+          "median": 8.68496322631836,
+          "reported": 8.68496322631836,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 2398.976,
-          "median": 2398.976,
-          "metric": "variant.visibleMs"
+          "metric": "baseline.home.workingMiB",
+          "median": 405.91796875,
+          "reported": 405.91796875,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 359.1171875,
-          "median": 359.1171875,
-          "metric": "variant.settings.workingMiB"
+          "metric": "baseline.home.privateMiB",
+          "median": 378.25390625,
+          "reported": 378.25390625,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 135.96875,
-          "median": 135.96875,
-          "metric": "variant.settings.privateMiB"
-        },
-        {
-          "count": 5,
+          "metric": "baseline.home.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.settings.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.home.gpuCount",
           "median": 1.0,
-          "metric": "variant.settings.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 8.722721099853516,
-          "median": 8.722721099853516,
-          "metric": "variant.settings.heapUsedMiB"
+          "metric": "baseline.home.heapUsedMiB",
+          "median": 7.9787139892578125,
+          "reported": 7.9787139892578125,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 360.40625,
-          "median": 360.40625,
-          "metric": "variant.home.workingMiB"
+          "metric": "variant.visibleMs",
+          "median": 990.2109,
+          "reported": 990.2109,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 146.4140625,
-          "median": 146.4140625,
-          "metric": "variant.home.privateMiB"
+          "metric": "variant.integrityMs",
+          "median": 384.417,
+          "reported": 384.417,
+          "count": 5
         },
         {
-          "count": 5,
+          "metric": "variant.settings.workingMiB",
+          "median": 366.6640625,
+          "reported": 366.6640625,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.privateMiB",
+          "median": 140.828125,
+          "reported": 140.828125,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "variant.settings.gpuCount",
           "median": 1.0,
-          "metric": "variant.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 7.9366607666015625,
-          "median": 7.9366607666015625,
-          "metric": "variant.home.heapUsedMiB"
+          "metric": "variant.settings.heapUsedMiB",
+          "median": 8.739459991455078,
+          "reported": 8.739459991455078,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": -31.0625,
-          "median": -31.0625,
-          "metric": "paired.settingsWorkingMiB"
+          "metric": "variant.home.workingMiB",
+          "median": 365.8359375,
+          "reported": 365.8359375,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.privateMiB",
+          "median": 149.78125,
+          "reported": 149.78125,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.heapUsedMiB",
+          "median": 7.977836608886719,
+          "reported": 7.977836608886719,
+          "count": 5
+        },
+        {
+          "metric": "paired.settingsWorkingMiB",
+          "median": -26.41796875,
+          "reported": -26.41796875,
+          "count": 5
         }
-      ],
+      ]
+    },
+    {
+      "directory": "paired-hardware-off-no-gpu-3ca18c99",
       "validCloses": 10,
       "samplesSha256": "22e64dc8c4829ca6f1cbfb2589d4425fa839c3fc715307f36e9dbffa5866f290",
       "experiment": "hardware-off-no-gpu",
-      "directory": "paired-hardware-off-no-gpu-3ca18c99"
-    },
-    {
       "checks": [
         {
-          "count": 5,
-          "reported": 894.1951,
-          "median": 894.1951,
-          "metric": "baseline.visibleMs"
+          "metric": "baseline.visibleMs",
+          "median": 2041.2425,
+          "reported": 2041.2425,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 389.5,
-          "median": 389.5,
-          "metric": "baseline.settings.workingMiB"
+          "metric": "baseline.integrityMs",
+          "median": 371.502,
+          "reported": 371.502,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 364.1875,
-          "median": 364.1875,
-          "metric": "baseline.settings.privateMiB"
+          "metric": "baseline.settings.workingMiB",
+          "median": 390.06640625,
+          "reported": 390.06640625,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 0.0,
+          "metric": "baseline.settings.privateMiB",
+          "median": 361.87109375,
+          "reported": 361.87109375,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.cpuOneCorePercent",
           "median": 0.0,
-          "metric": "baseline.settings.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "baseline.settings.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 8.748153686523438,
-          "median": 8.748153686523438,
-          "metric": "baseline.settings.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": 401.1640625,
-          "median": 401.1640625,
-          "metric": "baseline.home.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 374.70703125,
-          "median": 374.70703125,
-          "metric": "baseline.home.privateMiB"
-        },
-        {
-          "count": 5,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "baseline.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.settings.gpuCount",
           "median": 1.0,
-          "metric": "baseline.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 7.981365203857422,
-          "median": 7.981365203857422,
-          "metric": "baseline.home.heapUsedMiB"
+          "metric": "baseline.settings.heapUsedMiB",
+          "median": 8.726940155029297,
+          "reported": 8.726940155029297,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 841.9266,
-          "median": 841.9266,
-          "metric": "variant.visibleMs"
+          "metric": "baseline.home.workingMiB",
+          "median": 403.2734375,
+          "reported": 403.2734375,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 387.9140625,
-          "median": 387.9140625,
-          "metric": "variant.settings.workingMiB"
+          "metric": "baseline.home.privateMiB",
+          "median": 376.4609375,
+          "reported": 376.4609375,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 363.078125,
-          "median": 363.078125,
-          "metric": "variant.settings.privateMiB"
-        },
-        {
-          "count": 5,
+          "metric": "baseline.home.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.settings.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.home.gpuCount",
           "median": 1.0,
-          "metric": "variant.settings.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 8.716377258300781,
-          "median": 8.716377258300781,
-          "metric": "variant.settings.heapUsedMiB"
+          "metric": "baseline.home.heapUsedMiB",
+          "median": 7.9500732421875,
+          "reported": 7.9500732421875,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 402.31640625,
-          "median": 402.31640625,
-          "metric": "variant.home.workingMiB"
+          "metric": "variant.visibleMs",
+          "median": 2398.976,
+          "reported": 2398.976,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 375.2890625,
-          "median": 375.2890625,
-          "metric": "variant.home.privateMiB"
+          "metric": "variant.integrityMs",
+          "median": 439.467,
+          "reported": 439.467,
+          "count": 5
         },
         {
-          "count": 5,
+          "metric": "variant.settings.workingMiB",
+          "median": 359.1171875,
+          "reported": 359.1171875,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.privateMiB",
+          "median": 135.96875,
+          "reported": 135.96875,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "variant.settings.gpuCount",
           "median": 1.0,
-          "metric": "variant.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 7.988620758056641,
-          "median": 7.988620758056641,
-          "metric": "variant.home.heapUsedMiB"
+          "metric": "variant.settings.heapUsedMiB",
+          "median": 8.722721099853516,
+          "reported": 8.722721099853516,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": -1.4453125,
-          "median": -1.4453125,
-          "metric": "paired.settingsWorkingMiB"
+          "metric": "variant.home.workingMiB",
+          "median": 360.40625,
+          "reported": 360.40625,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.privateMiB",
+          "median": 146.4140625,
+          "reported": 146.4140625,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.heapUsedMiB",
+          "median": 7.9366607666015625,
+          "reported": 7.9366607666015625,
+          "count": 5
+        },
+        {
+          "metric": "paired.settingsWorkingMiB",
+          "median": -31.0625,
+          "reported": -31.0625,
+          "count": 5
         }
-      ],
+      ]
+    },
+    {
+      "directory": "paired-media-keys-off-70d78d7c",
       "validCloses": 10,
       "samplesSha256": "e64a0e47fbb0950815ea28a0a531a20c437319a3b0e24c0d53d87e6f8cfd2f80",
       "experiment": "media-keys-off",
-      "directory": "paired-media-keys-off-70d78d7c"
-    },
-    {
       "checks": [
         {
-          "count": 5,
-          "reported": 1033.7881,
-          "median": 1033.7881,
-          "metric": "baseline.visibleMs"
+          "metric": "baseline.visibleMs",
+          "median": 894.1951,
+          "reported": 894.1951,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 388.328125,
-          "median": 388.328125,
-          "metric": "baseline.settings.workingMiB"
+          "metric": "baseline.integrityMs",
+          "median": 361.589,
+          "reported": 361.589,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 361.6171875,
-          "median": 361.6171875,
-          "metric": "baseline.settings.privateMiB"
+          "metric": "baseline.settings.workingMiB",
+          "median": 389.5,
+          "reported": 389.5,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 0.0,
+          "metric": "baseline.settings.privateMiB",
+          "median": 364.1875,
+          "reported": 364.1875,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.cpuOneCorePercent",
           "median": 0.0,
-          "metric": "baseline.settings.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "baseline.settings.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 9.152820587158203,
-          "median": 9.152820587158203,
-          "metric": "baseline.settings.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": 404.58203125,
-          "median": 404.58203125,
-          "metric": "baseline.home.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 376.484375,
-          "median": 376.484375,
-          "metric": "baseline.home.privateMiB"
-        },
-        {
-          "count": 5,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "baseline.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.settings.gpuCount",
           "median": 1.0,
-          "metric": "baseline.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 8.097358703613281,
-          "median": 8.097358703613281,
-          "metric": "baseline.home.heapUsedMiB"
+          "metric": "baseline.settings.heapUsedMiB",
+          "median": 8.748153686523438,
+          "reported": 8.748153686523438,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1139.3244,
-          "median": 1139.3244,
-          "metric": "variant.visibleMs"
+          "metric": "baseline.home.workingMiB",
+          "median": 401.1640625,
+          "reported": 401.1640625,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 389.96875,
-          "median": 389.96875,
-          "metric": "variant.settings.workingMiB"
+          "metric": "baseline.home.privateMiB",
+          "median": 374.70703125,
+          "reported": 374.70703125,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 361.19140625,
-          "median": 361.19140625,
-          "metric": "variant.settings.privateMiB"
-        },
-        {
-          "count": 5,
+          "metric": "baseline.home.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.settings.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.home.gpuCount",
           "median": 1.0,
-          "metric": "variant.settings.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 8.70172119140625,
-          "median": 8.70172119140625,
-          "metric": "variant.settings.heapUsedMiB"
+          "metric": "baseline.home.heapUsedMiB",
+          "median": 7.981365203857422,
+          "reported": 7.981365203857422,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 403.3828125,
-          "median": 403.3828125,
-          "metric": "variant.home.workingMiB"
+          "metric": "variant.visibleMs",
+          "median": 841.9266,
+          "reported": 841.9266,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 371.8515625,
-          "median": 371.8515625,
-          "metric": "variant.home.privateMiB"
+          "metric": "variant.integrityMs",
+          "median": 356.665,
+          "reported": 356.665,
+          "count": 5
         },
         {
-          "count": 5,
+          "metric": "variant.settings.workingMiB",
+          "median": 387.9140625,
+          "reported": 387.9140625,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.privateMiB",
+          "median": 363.078125,
+          "reported": 363.078125,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "variant.settings.gpuCount",
           "median": 1.0,
-          "metric": "variant.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 7.958137512207031,
-          "median": 7.958137512207031,
-          "metric": "variant.home.heapUsedMiB"
+          "metric": "variant.settings.heapUsedMiB",
+          "median": 8.716377258300781,
+          "reported": 8.716377258300781,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 0.43359375,
-          "median": 0.43359375,
-          "metric": "paired.settingsWorkingMiB"
+          "metric": "variant.home.workingMiB",
+          "median": 402.31640625,
+          "reported": 402.31640625,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.privateMiB",
+          "median": 375.2890625,
+          "reported": 375.2890625,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.heapUsedMiB",
+          "median": 7.988620758056641,
+          "reported": 7.988620758056641,
+          "count": 5
+        },
+        {
+          "metric": "paired.settingsWorkingMiB",
+          "median": -1.4453125,
+          "reported": -1.4453125,
+          "count": 5
         }
-      ],
+      ]
+    },
+    {
+      "directory": "paired-media-router-off-107dde9f",
       "validCloses": 10,
       "samplesSha256": "5f170876187ed56cc029352c59dd8c4a149867db28d5f4f9065953bd37b7cec4",
       "experiment": "media-router-off",
-      "directory": "paired-media-router-off-107dde9f"
-    },
-    {
       "checks": [
         {
-          "count": 5,
-          "reported": 1316.6647,
-          "median": 1316.6647,
-          "metric": "baseline.visibleMs"
+          "metric": "baseline.visibleMs",
+          "median": 1033.7881,
+          "reported": 1033.7881,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 387.72265625,
-          "median": 387.72265625,
-          "metric": "baseline.settings.workingMiB"
+          "metric": "baseline.integrityMs",
+          "median": 365.676,
+          "reported": 365.676,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 360.1640625,
-          "median": 360.1640625,
-          "metric": "baseline.settings.privateMiB"
+          "metric": "baseline.settings.workingMiB",
+          "median": 388.328125,
+          "reported": 388.328125,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 0.0,
+          "metric": "baseline.settings.privateMiB",
+          "median": 361.6171875,
+          "reported": 361.6171875,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.cpuOneCorePercent",
           "median": 0.0,
-          "metric": "baseline.settings.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "baseline.settings.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 9.091266632080078,
-          "median": 9.091266632080078,
-          "metric": "baseline.settings.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": 401.83203125,
-          "median": 401.83203125,
-          "metric": "baseline.home.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 373.69140625,
-          "median": 373.69140625,
-          "metric": "baseline.home.privateMiB"
-        },
-        {
-          "count": 5,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "baseline.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.settings.gpuCount",
           "median": 1.0,
-          "metric": "baseline.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 8.538448333740234,
-          "median": 8.538448333740234,
-          "metric": "baseline.home.heapUsedMiB"
+          "metric": "baseline.settings.heapUsedMiB",
+          "median": 9.152820587158203,
+          "reported": 9.152820587158203,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1333.2358,
-          "median": 1333.2358,
-          "metric": "variant.visibleMs"
+          "metric": "baseline.home.workingMiB",
+          "median": 404.58203125,
+          "reported": 404.58203125,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 388.92578125,
-          "median": 388.92578125,
-          "metric": "variant.settings.workingMiB"
+          "metric": "baseline.home.privateMiB",
+          "median": 376.484375,
+          "reported": 376.484375,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 361.96875,
-          "median": 361.96875,
-          "metric": "variant.settings.privateMiB"
-        },
-        {
-          "count": 5,
+          "metric": "baseline.home.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.settings.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.home.gpuCount",
           "median": 1.0,
-          "metric": "variant.settings.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 8.716392517089844,
-          "median": 8.716392517089844,
-          "metric": "variant.settings.heapUsedMiB"
+          "metric": "baseline.home.heapUsedMiB",
+          "median": 8.097358703613281,
+          "reported": 8.097358703613281,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 403.51171875,
-          "median": 403.51171875,
-          "metric": "variant.home.workingMiB"
+          "metric": "variant.visibleMs",
+          "median": 1139.3244,
+          "reported": 1139.3244,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 376.32421875,
-          "median": 376.32421875,
-          "metric": "variant.home.privateMiB"
+          "metric": "variant.integrityMs",
+          "median": 389.364,
+          "reported": 389.364,
+          "count": 5
         },
         {
-          "count": 5,
+          "metric": "variant.settings.workingMiB",
+          "median": 389.96875,
+          "reported": 389.96875,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.privateMiB",
+          "median": 361.19140625,
+          "reported": 361.19140625,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "variant.settings.gpuCount",
           "median": 1.0,
-          "metric": "variant.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 7.973552703857422,
-          "median": 7.973552703857422,
-          "metric": "variant.home.heapUsedMiB"
+          "metric": "variant.settings.heapUsedMiB",
+          "median": 8.70172119140625,
+          "reported": 8.70172119140625,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.203125,
-          "median": 1.203125,
-          "metric": "paired.settingsWorkingMiB"
+          "metric": "variant.home.workingMiB",
+          "median": 403.3828125,
+          "reported": 403.3828125,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.privateMiB",
+          "median": 371.8515625,
+          "reported": 371.8515625,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.heapUsedMiB",
+          "median": 7.958137512207031,
+          "reported": 7.958137512207031,
+          "count": 5
+        },
+        {
+          "metric": "paired.settingsWorkingMiB",
+          "median": 0.43359375,
+          "reported": 0.43359375,
+          "count": 5
         }
-      ],
+      ]
+    },
+    {
+      "directory": "paired-renderer-limit-fee4dda8",
       "validCloses": 10,
       "samplesSha256": "9f02ccfc5c67099cb38e00871477411c872c8d26710be6487e5b4d8974455ac9",
       "experiment": "renderer-limit",
-      "directory": "paired-renderer-limit-fee4dda8"
-    },
-    {
       "checks": [
         {
-          "count": 5,
-          "reported": 1046.1279,
-          "median": 1046.1279,
-          "metric": "baseline.visibleMs"
+          "metric": "baseline.visibleMs",
+          "median": 1316.6647,
+          "reported": 1316.6647,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 389.51953125,
-          "median": 389.51953125,
-          "metric": "baseline.settings.workingMiB"
+          "metric": "baseline.integrityMs",
+          "median": 355.956,
+          "reported": 355.956,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 362.5859375,
-          "median": 362.5859375,
-          "metric": "baseline.settings.privateMiB"
+          "metric": "baseline.settings.workingMiB",
+          "median": 387.72265625,
+          "reported": 387.72265625,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 0.0,
+          "metric": "baseline.settings.privateMiB",
+          "median": 360.1640625,
+          "reported": 360.1640625,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.cpuOneCorePercent",
           "median": 0.0,
-          "metric": "baseline.settings.cpuOneCorePercent"
-        },
-        {
-          "count": 5,
-          "reported": 1.0,
-          "median": 1.0,
-          "metric": "baseline.settings.gpuCount"
-        },
-        {
-          "count": 5,
-          "reported": 9.100269317626953,
-          "median": 9.100269317626953,
-          "metric": "baseline.settings.heapUsedMiB"
-        },
-        {
-          "count": 5,
-          "reported": 402.76171875,
-          "median": 402.76171875,
-          "metric": "baseline.home.workingMiB"
-        },
-        {
-          "count": 5,
-          "reported": 373.53515625,
-          "median": 373.53515625,
-          "metric": "baseline.home.privateMiB"
-        },
-        {
-          "count": 5,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "baseline.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.settings.gpuCount",
           "median": 1.0,
-          "metric": "baseline.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 8.171672821044922,
-          "median": 8.171672821044922,
-          "metric": "baseline.home.heapUsedMiB"
+          "metric": "baseline.settings.heapUsedMiB",
+          "median": 9.091266632080078,
+          "reported": 9.091266632080078,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1207.4444,
-          "median": 1207.4444,
-          "metric": "variant.visibleMs"
+          "metric": "baseline.home.workingMiB",
+          "median": 401.83203125,
+          "reported": 401.83203125,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 389.7890625,
-          "median": 389.7890625,
-          "metric": "variant.settings.workingMiB"
+          "metric": "baseline.home.privateMiB",
+          "median": 373.69140625,
+          "reported": 373.69140625,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 361.09765625,
-          "median": 361.09765625,
-          "metric": "variant.settings.privateMiB"
-        },
-        {
-          "count": 5,
+          "metric": "baseline.home.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.settings.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "baseline.home.gpuCount",
           "median": 1.0,
-          "metric": "variant.settings.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 8.708793640136719,
-          "median": 8.708793640136719,
-          "metric": "variant.settings.heapUsedMiB"
+          "metric": "baseline.home.heapUsedMiB",
+          "median": 8.538448333740234,
+          "reported": 8.538448333740234,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 404.125,
-          "median": 404.125,
-          "metric": "variant.home.workingMiB"
+          "metric": "variant.visibleMs",
+          "median": 1333.2358,
+          "reported": 1333.2358,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 375.05078125,
-          "median": 375.05078125,
-          "metric": "variant.home.privateMiB"
+          "metric": "variant.integrityMs",
+          "median": 359.308,
+          "reported": 359.308,
+          "count": 5
         },
         {
-          "count": 5,
+          "metric": "variant.settings.workingMiB",
+          "median": 388.92578125,
+          "reported": 388.92578125,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.privateMiB",
+          "median": 361.96875,
+          "reported": 361.96875,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.cpuOneCorePercent",
+          "median": 0.0,
           "reported": 0.0,
-          "median": 0.0,
-          "metric": "variant.home.cpuOneCorePercent"
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 1.0,
+          "metric": "variant.settings.gpuCount",
           "median": 1.0,
-          "metric": "variant.home.gpuCount"
+          "reported": 1.0,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 7.9521942138671875,
-          "median": 7.9521942138671875,
-          "metric": "variant.home.heapUsedMiB"
+          "metric": "variant.settings.heapUsedMiB",
+          "median": 8.716392517089844,
+          "reported": 8.716392517089844,
+          "count": 5
         },
         {
-          "count": 5,
-          "reported": 0.7109375,
-          "median": 0.7109375,
-          "metric": "paired.settingsWorkingMiB"
+          "metric": "variant.home.workingMiB",
+          "median": 403.51171875,
+          "reported": 403.51171875,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.privateMiB",
+          "median": 376.32421875,
+          "reported": 376.32421875,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.heapUsedMiB",
+          "median": 7.973552703857422,
+          "reported": 7.973552703857422,
+          "count": 5
+        },
+        {
+          "metric": "paired.settingsWorkingMiB",
+          "median": 1.203125,
+          "reported": 1.203125,
+          "count": 5
         }
-      ],
+      ]
+    },
+    {
+      "directory": "paired-trace-e90eedd9",
       "validCloses": 10,
       "samplesSha256": "e402004d26dd584871d888e4575a8c7c8285e12bc25b338f92f4c2d380cfd7c1",
       "experiment": "trace",
-      "directory": "paired-trace-e90eedd9"
+      "checks": [
+        {
+          "metric": "baseline.visibleMs",
+          "median": 1046.1279,
+          "reported": 1046.1279,
+          "count": 5
+        },
+        {
+          "metric": "baseline.integrityMs",
+          "median": 380.797,
+          "reported": 380.797,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.workingMiB",
+          "median": 389.51953125,
+          "reported": 389.51953125,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.privateMiB",
+          "median": 362.5859375,
+          "reported": 362.5859375,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "baseline.settings.heapUsedMiB",
+          "median": 9.100269317626953,
+          "reported": 9.100269317626953,
+          "count": 5
+        },
+        {
+          "metric": "baseline.home.workingMiB",
+          "median": 402.76171875,
+          "reported": 402.76171875,
+          "count": 5
+        },
+        {
+          "metric": "baseline.home.privateMiB",
+          "median": 373.53515625,
+          "reported": 373.53515625,
+          "count": 5
+        },
+        {
+          "metric": "baseline.home.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "baseline.home.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "baseline.home.heapUsedMiB",
+          "median": 8.171672821044922,
+          "reported": 8.171672821044922,
+          "count": 5
+        },
+        {
+          "metric": "variant.visibleMs",
+          "median": 1207.4444,
+          "reported": 1207.4444,
+          "count": 5
+        },
+        {
+          "metric": "variant.integrityMs",
+          "median": 380.65,
+          "reported": 380.65,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.workingMiB",
+          "median": 389.7890625,
+          "reported": 389.7890625,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.privateMiB",
+          "median": 361.09765625,
+          "reported": 361.09765625,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.settings.heapUsedMiB",
+          "median": 8.708793640136719,
+          "reported": 8.708793640136719,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.workingMiB",
+          "median": 404.125,
+          "reported": 404.125,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.privateMiB",
+          "median": 375.05078125,
+          "reported": 375.05078125,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.cpuOneCorePercent",
+          "median": 0.0,
+          "reported": 0.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.gpuCount",
+          "median": 1.0,
+          "reported": 1.0,
+          "count": 5
+        },
+        {
+          "metric": "variant.home.heapUsedMiB",
+          "median": 7.9521942138671875,
+          "reported": 7.9521942138671875,
+          "count": 5
+        },
+        {
+          "metric": "paired.settingsWorkingMiB",
+          "median": 0.7109375,
+          "reported": 0.7109375,
+          "count": 5
+        }
+      ]
     }
-  ]
+  ],
+  "generatedAt": "2026-11-12T23:55:07.7519490+01:00",
+  "engine": "7.6.6"
 }

@@ -9,11 +9,12 @@ import {
   RailVersion,
   StatusAnnouncement,
 } from "../../ui/Frame";
+import { GeneralRailGroups } from "../../ui/GeneralGroups";
 import { ActionGroup } from "../../ui/ShellLayout";
 export function GeneralRail({ onUpdates }: { onUpdates: () => void }) {
   const { query, prepare, copy } = useDiagnostics({ notifyCopied: false });
   return (
-    <>
+    <GeneralRailGroups>
       <RailBlock title={text.preferences} icon="v-gauge">
         <p>{text.preferencesHelp}</p>
       </RailBlock>
@@ -57,6 +58,6 @@ export function GeneralRail({ onUpdates }: { onUpdates: () => void }) {
       {copy.isSuccess && (
         <StatusAnnouncement>{t("diagnostics.copied")}</StatusAnnouncement>
       )}
-    </>
+    </GeneralRailGroups>
   );
 }

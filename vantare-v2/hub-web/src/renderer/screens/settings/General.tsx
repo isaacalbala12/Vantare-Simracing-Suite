@@ -9,6 +9,7 @@ import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
 import { Callout, Pill, SettingGroup, SettingRow } from "../../ui/Data";
 import { Segmented, Switch } from "../../ui/Forms";
+import { GeneralGroups } from "../../ui/GeneralGroups";
 import { useToastManager } from "../../ui/Layers";
 import { ZoomControl } from "../../ui/ZoomControl";
 export function General() {
@@ -51,7 +52,7 @@ export function General() {
     );
   }
   return (
-    <>
+    <GeneralGroups>
       <SettingGroup number={1} title={t("general.interface")}>
         <SettingRow
           label={t("general.language")}
@@ -164,6 +165,6 @@ export function General() {
           </Button>
         )}
       </SettingGroup>
-    </>
+    </GeneralGroups>
   );
 }

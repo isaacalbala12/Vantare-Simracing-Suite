@@ -9,6 +9,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { dialogSafety } from "../src/renderer/ui/dialog-safety";
+import { Select } from "../src/renderer/ui/Forms";
 import {
   WindowAlertDialog,
   WindowDialog,
@@ -20,6 +21,48 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 describe("partial-window modality", () => {
+  it("closes a nested Select before its confirmation and restores focus in order", async () => {
+    const user = userEvent.setup();
+    render(
+      <WindowDialogProvider>
+        <main className="v-shell-body">
+          <WindowDialog.Root>
+            <WindowDialog.Trigger>Open nested</WindowDialog.Trigger>
+            <WindowDialog.Portal>
+              <WindowDialog.Backdrop className="v-backdrop" />
+              <WindowDialog.Popup>
+                <WindowDialog.Title>Nested</WindowDialog.Title>
+                <WindowDialog.Description>
+                  Choose before confirming
+                </WindowDialog.Description>
+                <Select
+                  label="Choice"
+                  value="one"
+                  onChange={() => {}}
+                  options={[
+                    { value: "one", label: "One" },
+                    { value: "two", label: "Two" },
+                  ]}
+                />
+              </WindowDialog.Popup>
+            </WindowDialog.Portal>
+          </WindowDialog.Root>
+        </main>
+      </WindowDialogProvider>,
+    );
+    const origin = screen.getByRole("button", { name: "Open nested" });
+    await user.click(origin);
+    const choice = await screen.findByRole("combobox");
+    await user.click(choice);
+    await screen.findByRole("listbox");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(choice));
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(origin));
+  });
   it("blocks background focus and launch/save shortcuts while retaining every caption control", () => {
     document.body.innerHTML =
       '<header class="v-titlebar"><div class="v-window-controls"><button>Min</button><button>Max</button><button>Close</button></div></header><nav class="v-sidebar"><button>Launch</button></nav><main class="v-shell-body"><button id="behind">Save</button></main><div role="dialog" tabindex="-1" id="popup"><input/><button>Cancel</button></div>';

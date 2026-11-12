@@ -149,6 +149,24 @@ async function check(
       `${id}: focus returns to origin`,
     );
   }
+  const root = process.env.VANTARE_DIALOG_AUDIT_ROOT;
+  assert.ok(root);
+  const scheme = await page.evaluate(
+    () => document.documentElement.dataset.scheme,
+  );
+  await writeFile(
+    join(root, "after", `${id}-${scheme}.checks.json`),
+    JSON.stringify(
+      {
+        ...result,
+        captionFocus: true,
+        ...(blocking ? { tabCycle: true, launchSaveSearchBlocked: true } : {}),
+        ...(trigger ? { escapeCloses: true, focusReturns: true } : {}),
+      },
+      null,
+      2,
+    ),
+  );
 }
 async function launcher(page: Page) {
   await launcherScenes["launcher-base"].prepare(page);
@@ -254,12 +272,16 @@ scenes["dialog-topbar-account-reset"] = {
 scenes["dialog-topbar-commands"] = {
   mock: "ajustes-con-diseno",
   async prepare(page) {
+    await page.locator('.v-search input[type="search"]').focus();
     await page.keyboard.press("Control+k");
     await page.getByRole("dialog").waitFor();
   },
   async cleanup(page) {
-    await check(page, "commands");
-    await page.keyboard.press("Escape");
+    await check(
+      page,
+      "commands",
+      page.locator('.v-search input[type="search"]'),
+    );
   },
 };
 for (const [kind, button, section] of [
@@ -302,6 +324,23 @@ scenes["dialog-topbar-notifications"] = {
     await page.locator(".v-notifications--compact").waitFor();
   },
   async cleanup(page) {
+    if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after") {
+      await page
+        .getByRole("dialog", { name: "Notificaciones", exact: true })
+        .focus();
+      await page.keyboard.press("Escape");
+      const bell = page.getByRole("button", {
+        name: "Notificaciones",
+        exact: true,
+      });
+      await until(
+        async () => bell.evaluate((node) => node === document.activeElement),
+        5000,
+        "notification focus returns",
+      );
+      await bell.click();
+      await page.locator(".v-notifications--compact").waitFor();
+    }
     await check(page, "notifications", undefined, false);
   },
 };
@@ -322,6 +361,18 @@ scenes["dialog-topbar-settings-select"] = {
     await page.getByRole("listbox").waitFor();
   },
   async cleanup(page) {
+    if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after") {
+      await page.keyboard.press("Escape");
+      const trigger = page.getByRole("combobox").first();
+      await until(
+        async () => trigger.evaluate((node) => node === document.activeElement),
+        5000,
+        "select focus returns",
+      );
+      await page.getByRole("listbox").waitFor({ state: "hidden" });
+      await trigger.click();
+      await page.getByRole("listbox").waitFor();
+    }
     await check(page, "settings-select", undefined, false);
   },
 };

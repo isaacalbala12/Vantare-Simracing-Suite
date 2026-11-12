@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dialogAuditText as text } from "../i18n/dialog-audit";
 import { Button } from "../ui/Button";
 import {
   CloseUnsavedReportDialog,
@@ -16,7 +17,7 @@ export default function DialogAuditFixtures() {
   if (kind === "profile-arguments")
     return (
       <div className="v-dialog-audit-fixture">
-        <Button onClick={() => setOpen(true)}>Confirmar argumentos</Button>
+        <Button onClick={() => setOpen(true)}>{text.arguments}</Button>
         <ArgumentLossDialog
           count={open ? 2 : 0}
           onCancel={() => setOpen(false)}
@@ -29,7 +30,7 @@ export default function DialogAuditFixtures() {
       kind === "report-close" ? CloseUnsavedReportDialog : DiscardReportDialog;
     return (
       <div className="v-dialog-audit-fixture">
-        <Button onClick={() => setOpen(true)}>Confirmar borrador</Button>
+        <Button onClick={() => setOpen(true)}>{text.draft}</Button>
         <Confirmation
           open={open}
           disabled={false}
@@ -42,7 +43,7 @@ export default function DialogAuditFixtures() {
   if (kind === "app-arguments")
     return (
       <div className="v-dialog-audit-fixture">
-        <Button onClick={() => setOpen(true)}>Restablecer argumentos</Button>
+        <Button onClick={() => setOpen(true)}>{text.resetArguments}</Button>
         <ApplicationArgumentReset
           open={open}
           profiles={2}
@@ -55,12 +56,12 @@ export default function DialogAuditFixtures() {
     return (
       <div className="v-dialog-audit-fixture">
         <AlertDialog
-          title="Confirmación de prueba"
-          description="Solo datos locales de QA."
-          trigger="Abrir confirmación"
-          closeLabel="Cancelar"
+          title={text.title}
+          description={text.description}
+          trigger={text.trigger}
+          closeLabel={text.cancel}
         >
-          <p>Esta escena no ejecuta acciones.</p>
+          <p>{text.body}</p>
         </AlertDialog>
       </div>
     );

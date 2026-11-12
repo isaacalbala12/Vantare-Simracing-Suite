@@ -61,8 +61,8 @@ export const calendarText = {
   refresh: "Actualizar horario",
   searchNow: "Buscar ahora",
   notifyWeek: "Avisarme al llegar",
-  notifyWeekPending:
-    "Preferencia conservada, de solo lectura: este Hub aún no emite avisos cuando llega una semana nueva.",
+  notifyWeekHelp:
+    "Te avisaremos de una nueva semana con el Hub abierto y el canal de Windows activado.",
   missing: "No hemos podido descargar el horario",
   missingHelp:
     "Hace falta conexión la primera vez. En cuanto lo descarguemos queda guardado en este equipo y el calendario funciona sin internet.",

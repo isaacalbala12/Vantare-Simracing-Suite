@@ -1,9 +1,12 @@
-import {
-  type DeltaSize,
-  type OverlayInstance,
-  studioWidgetOptions,
-  type WidgetSettingsPatch,
+import type {
+  DeltaSize,
+  DeltaTemplate,
+  OverlayInstance,
+  StandingsTemplate,
+  TableSize,
+  WidgetSettingsPatch,
 } from "../../../contract/generated/studio";
+import { studioWidgetOptions } from "../../../contract/generated/studio";
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Select, Switch } from "../Forms";
@@ -13,6 +16,19 @@ const deltaFormats: Record<DeltaSize, string> = {
   pill: t.deltaPill,
   bar: t.deltaBarFormat,
   expanded: t.deltaExpanded,
+};
+
+const fuelFormats: Record<TableSize, string> = {
+  compact: t.formatCompact,
+  standard: t.formatStandard,
+  expanded: t.formatExpanded,
+};
+
+const designs: Record<StandingsTemplate | DeltaTemplate, string> = {
+  signature: t.designSignature,
+  broadcast: t.designBroadcast,
+  instrument: t.designInstrument,
+  capsule: t.designCapsule,
 };
 
 export function AppearanceInspector({ item }: { item: OverlayInstance }) {
@@ -60,6 +76,32 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
           }}
         />
       )}
+      {settings.designSystem === "eficiencia" &&
+        (settings.kind === "standings" || settings.kind === "delta") && (
+          <Select
+            label={t.widgetDesign}
+            value={settings.templateId}
+            disabled={disabled}
+            pending={state.pending}
+            options={(settings.kind === "standings"
+              ? studioWidgetOptions.standings.templates
+              : studioWidgetOptions.delta.templates
+            ).map((value) => ({ value, label: designs[value] }))}
+            onChange={(value) => {
+              if (settings.kind === "standings") {
+                const templateId = studioWidgetOptions.standings.templates.find(
+                  (option) => option === value,
+                );
+                if (templateId) patch({ kind: "standings", templateId });
+              } else if (settings.kind === "delta") {
+                const templateId = studioWidgetOptions.delta.templates.find(
+                  (option) => option === value,
+                );
+                if (templateId) patch({ kind: "delta", templateId });
+              }
+            }}
+          />
+        )}
       {settings.kind === "standings" && (
         <dl className="v-field">
           <dt>{t.widgetBrand}</dt>
@@ -112,6 +154,24 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
       />
       {settings.designSystem === "vantare" && (
         <>
+          {settings.kind === "fuel-strategy" && (
+            <Select
+              label={t.fuelFormat}
+              value={settings.size}
+              disabled={disabled}
+              pending={state.pending}
+              options={studioWidgetOptions.tableSizes.map((value) => ({
+                value,
+                label: fuelFormats[value],
+              }))}
+              onChange={(value) => {
+                const size = studioWidgetOptions.tableSizes.find(
+                  (option) => option === value,
+                );
+                if (size) patch({ kind: "fuel-strategy", size });
+              }}
+            />
+          )}
           <Select
             label={t.widgetStyle}
             value={settings.style}

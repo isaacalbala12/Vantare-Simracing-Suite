@@ -22,6 +22,7 @@ export function useCompletion(
   const edited = useRef(false);
   const inFlight = useRef<Promise<void> | undefined>(undefined);
   const [pending, setPending] = useState(false);
+  const [mailUnconfirmed, setMailUnconfirmed] = useState(false);
   const [saveFailure, setSaveFailure] = useState<unknown>();
   const [failure, setFailure] = useState<unknown>();
   const finishing = useRef(false);
@@ -77,7 +78,7 @@ export function useCompletion(
     run(async () => {
       if (!client) return;
       await saveConsents(client, intent, publish, setSaveFailure);
-      await commitMail?.();
+      setMailUnconfirmed((await commitMail?.()) === "failed");
       done();
     });
   }
@@ -157,6 +158,7 @@ export function useCompletion(
   return {
     intent,
     pending,
+    mailUnconfirmed,
     privacy,
     consent,
     finish,

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { AccountProvider } from "../src/renderer/app/AccountState";
 import { HostProvider, useHost } from "../src/renderer/app/Host";
 import { PilotProvider, usePilot } from "../src/renderer/app/PilotState";
 import { Client } from "../src/renderer/bridge/client";
@@ -33,18 +34,22 @@ afterEach(() => {
   vi.mocked(openPilotPhoto).mockReset();
   vi.mocked(encodePilotPhoto).mockReset();
 });
-function mount() {
+async function mount() {
   const query = new QueryClient();
   caches.push(query);
-  return renderHook(() => ({ pilot: usePilot(), host: useHost() }), {
+  const hook = renderHook(() => ({ pilot: usePilot(), host: useHost() }), {
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={query}>
         <HostProvider>
-          <PilotProvider>{children}</PilotProvider>
+          <AccountProvider>
+            <PilotProvider>{children}</PilotProvider>
+          </AccountProvider>
         </HostProvider>
       </QueryClientProvider>
     ),
   });
+  await waitFor(() => expect(hook.result.current.pilot.available).toBe(true));
+  return hook;
 }
 function bitmap() {
   return { width: 800, height: 400, close: vi.fn() } as unknown as ImageBitmap;
@@ -53,7 +58,7 @@ const file = new File(["QA"], "photo.png");
 it("retains a crop across rerenders and closes its bitmap exactly once on cancel", async () => {
   const image = bitmap();
   vi.mocked(openPilotPhoto).mockResolvedValue(image);
-  const hook = mount();
+  const hook = await mount();
   await act(() => hook.result.current.pilot.choosePhoto(file));
   expect(hook.result.current.pilot.dirty).toBe(true);
   act(() => hook.result.current.pilot.cropPhoto({ x: 0.3, y: 0.1, side: 0.5 }));
@@ -87,7 +92,7 @@ it("closes a decoder result arriving after cancellation or unmount", async () =>
         resolve = done;
       }),
   );
-  const hook = mount();
+  const hook = await mount();
   let task!: Promise<void>;
   act(() => {
     task = hook.result.current.pilot.choosePhoto(file);
@@ -105,7 +110,7 @@ it("does not save the old photo while a crop is unconfirmed, then applies only t
   vi.mocked(openPilotPhoto).mockResolvedValue(image);
   vi.mocked(encodePilotPhoto).mockReturnValue("/9j/QA");
   const request = vi.spyOn(Client.prototype, "request");
-  const hook = mount();
+  const hook = await mount();
   await waitFor(() => expect(hook.result.current.host.client).toBeTruthy());
   await act(() => hook.result.current.pilot.load());
   await act(() => hook.result.current.pilot.choosePhoto(file));
@@ -127,7 +132,7 @@ it("keeps the original photo and crop when encoding fails", async () => {
   vi.mocked(encodePilotPhoto).mockImplementation(() => {
     throw new Error("canvas failure");
   });
-  const hook = mount();
+  const hook = await mount();
   await act(() => hook.result.current.pilot.choosePhoto(file));
   act(() => hook.result.current.pilot.applyPhoto());
   expect(hook.result.current.pilot.photoError).toBe(true);
@@ -146,7 +151,7 @@ it("vetoes a window close with an unconfirmed crop but Live releases it", async 
   });
   const image = bitmap();
   vi.mocked(openPilotPhoto).mockResolvedValue(image);
-  const hook = mount();
+  const hook = await mount();
   await waitFor(() => expect(guards.length).toBe(1));
   await act(() => hook.result.current.pilot.choosePhoto(file));
   await act(async () => {

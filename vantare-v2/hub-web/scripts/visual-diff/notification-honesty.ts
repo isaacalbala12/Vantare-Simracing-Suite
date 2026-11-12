@@ -38,11 +38,11 @@ export const notificationHonestyScenes: Record<string, VisualScene> = {
       });
       await control.waitFor();
       if (
-        (await control.getAttribute("aria-disabled")) !== "true" ||
+        (await control.getAttribute("aria-disabled")) === "true" ||
         !(await control.getAttribute("aria-describedby"))
       )
         throw new Error(
-          "Next-week notification lacks its read-only explanation",
+          "Next-week notification lacks its active state or delivery explanation",
         );
     },
   },

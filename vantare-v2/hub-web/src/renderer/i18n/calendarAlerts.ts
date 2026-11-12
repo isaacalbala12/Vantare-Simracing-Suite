@@ -1,3 +1,4 @@
+import { calendarNoticeTestIntervalMs } from "../../contract/generated/calendar";
 export const calendarAlertsText = {
   reading: "Leyendo tus avisos…",
   protected: "Tus avisos están protegidos; no se ha modificado nada.",
@@ -12,28 +13,27 @@ export const calendarAlertsText = {
     `Puedes guardar hasta ${n} tandas. Quita una antes de añadir otra.`,
   defaultProfile: "Perfil",
   title: "Avisos",
-  subtitle: "Configura los avisos en pista antes de tu carrera.",
+  subtitle: "Configura los avisos del Calendario antes de tu carrera.",
   close: "Cerrar (Esc)",
   lead: "Con cuánta antelación",
   leadScope:
-    "Esta antelación se añade al recordatorio del calendario (.ics). El aviso en pista usa los umbrales configurados en el overlay.",
+    "Esta antelación gobierna la notificación de Windows y el recordatorio del calendario (.ics); no cambia los umbrales del aviso en pista del overlay.",
   where: "Dónde te llega",
   when: "Al avisar",
   what: "Qué se avisa",
-  sample: "Ejemplo de notificación futura",
+  sample: "Ejemplo del aviso de Windows",
   yours: "Tus avisos",
   windows: "Notificación de Windows",
-  windowsHint:
-    "Preferencia conservada, de solo lectura: este Hub aún no emite notificaciones de Windows del Calendario.",
+  windowsHint: "Un aviso de Windows mientras el Hub esté abierto.",
   track: "En pista, si ya estás conduciendo",
   trackHint: "Un aviso discreto en tus overlays, sin sonido.",
   sound: "Sonido",
-  soundHint:
-    "Preferencia conservada, de solo lectura: este Hub aún no emite sonido para los avisos del Calendario.",
-  deliveryPending:
-    "Los avisos en pista funcionan. La notificación de Windows y el sonido aún no están disponibles en este Hub; tus preferencias guardadas se conservan.",
-  previewPending:
-    "Esta muestra es ilustrativa: aún no se envía una notificación de Windows ni funcionan sus botones.",
+  soundRequiresWindows: "Requiere la notificación de Windows",
+  soundHint: "Sonido de los avisos de Windows, solo fuera del simulador.",
+  deliveryScope:
+    "Con el Hub abierto, recibes avisos según tus canales. En pista, las franjas se callan y las tandas explícitas pueden avisar en silencio.",
+  previewScope:
+    "El aviso usa tu hora local. Contiene texto, sin botones para lanzar ni posponer.",
   autoLegacyHint:
     "El lanzamiento automático no está disponible aquí; puedes desactivarlo.",
   autoHint:
@@ -45,7 +45,15 @@ export const calendarAlertsText = {
   eventsHelp: "tanda a tanda.",
   save: "Guardar",
   test: "Probar aviso",
-  testPending: "La prueba de notificación aún no está disponible.",
+  testHint:
+    "Solicita un ejemplo fijo de aviso con el Hub abierto, también con el canal Windows apagado. Requiere derechos vigentes y avisos legibles.",
+  testSending: "Solicitando el aviso de prueba…",
+  testAccepted: "Aviso de prueba solicitado.",
+  testUnavailable:
+    "La prueba no está disponible o el sistema no ha aceptado la solicitud.",
+  testBusy: `Espera ${calendarNoticeTestIntervalMs / 1000} segundos antes de volver a probar el aviso.`,
+  testFailure:
+    "No se pudo solicitar la prueba. Comprueba la conexión, tus derechos y el documento de avisos.",
   edit: "Editar",
   endEdit: "Cerrar",
   removeBand: "Quitar franja",
@@ -85,5 +93,8 @@ export const calendarAlertsText = {
   legacy:
     "Hay avisos antiguos que debes revisar antes de guardarlos. Puedes quitar los avisos que ya no necesites.",
   invalidSlot: "Fecha no válida · puedes quitar este aviso.",
-  previewLabel: "Ejemplo ilustrativo de futura notificación de Windows",
+  previewMissing: "Ejemplo del Calendario",
+  previewMissingHelp:
+    "Descarga un horario vigente para ver una salida real. La prueba usa un ejemplo fijo.",
+  previewLabel: "Ejemplo de notificación de Windows",
 };

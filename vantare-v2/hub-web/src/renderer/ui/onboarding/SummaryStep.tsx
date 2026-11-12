@@ -74,13 +74,15 @@ export function SummaryStep({
     [text.crashes, crashes ? text.enabled : text.disabled, crashes],
     [
       text.mail,
-      !account.signedIn
-        ? text.guestMail
-        : !mail?.available || mail.pending || mail.unconfirmed
-          ? text.unconfirmed
-          : mail.consent
-            ? text.enabled
-            : text.disabled,
+      mail?.unconfirmed
+        ? text.unconfirmed
+        : !account.signedIn
+          ? text.guestMail
+          : !mail?.available || mail.pending
+            ? text.unconfirmed
+            : mail.consent
+              ? text.enabled
+              : text.disabled,
       !!mail?.available && !mail.pending && !mail.unconfirmed && mail.consent,
     ],
   ];

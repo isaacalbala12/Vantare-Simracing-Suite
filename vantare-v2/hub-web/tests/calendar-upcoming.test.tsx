@@ -16,6 +16,9 @@ it("offers a retry when there is no cached publication", () => {
       following={0}
       limit={1000}
       notifyWeek={true}
+      notifyDisabled={false}
+      notifyBusy={false}
+      onNotifyWeek={vi.fn()}
       onRefresh={refresh}
       busy={false}
     />,
@@ -33,6 +36,9 @@ it("keeps expired rows read-only and exposes refresh and next-week preference", 
       following={0}
       limit={1000}
       notifyWeek={true}
+      notifyDisabled={false}
+      notifyBusy={false}
+      onNotifyWeek={vi.fn()}
       onRefresh={refresh}
       busy={false}
     />,
@@ -45,12 +51,12 @@ it("keeps expired rows read-only and exposes refresh and next-week preference", 
   expect(refresh).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("switch", { name: text.notifyWeek }));
   const control = screen.getByRole("switch", { name: text.notifyWeek });
-  expect(control.getAttribute("aria-disabled")).toBe("true");
+  expect(control.getAttribute("aria-disabled")).not.toBe("true");
   expect(control.getAttribute("aria-checked")).toBe("true");
   expect(
     document.getElementById(control.getAttribute("aria-describedby") ?? "")
       ?.textContent,
-  ).toBe(text.notifyWeekPending);
+  ).toBe(text.notifyWeekHelp);
 });
 
 it("filters live sessions and routes favorite changes without mutating the publication", () => {
@@ -127,7 +133,7 @@ it("keeps scheduled launch visible but inactive while immediate launch remains e
 });
 
 it.each([false, true])(
-  "keeps the saved next-week notification value (%s) read only",
+  "preserves next-week notification value (%s) when the document is not editable",
   (saved) => {
     render(
       <CalendarUpcomingView
@@ -136,6 +142,9 @@ it.each([false, true])(
         following={0}
         limit={1000}
         notifyWeek={saved}
+        notifyDisabled={true}
+        notifyBusy={false}
+        onNotifyWeek={vi.fn()}
         onRefresh={() => {}}
         busy={false}
       />,
@@ -145,6 +154,57 @@ it.each([false, true])(
     fireEvent.keyDown(control, { key: " " });
     expect(control.getAttribute("aria-checked")).toBe(String(saved));
     expect(control.getAttribute("aria-disabled")).toBe("true");
-    expect(screen.getByRole("status").textContent).toBe(text.notifyWeekPending);
+    expect(screen.getByRole("status").textContent).toBe(text.notifyWeekHelp);
+  },
+);
+
+it("saves next-week preference explicitly and retains focus while saving", () => {
+  const onNotifyWeek = vi.fn();
+  const props = {
+    previous: fixture,
+    utc: true,
+    following: 0,
+    limit: 1000,
+    notifyWeek: true,
+    notifyDisabled: false,
+    notifyBusy: false,
+    onNotifyWeek,
+    onRefresh: vi.fn(),
+    busy: false,
+  };
+  const result = render(<CalendarUpcomingView {...props} />);
+  const control = screen.getByRole("switch", { name: text.notifyWeek });
+  control.focus();
+  fireEvent.click(control);
+  expect(onNotifyWeek).toHaveBeenCalledExactlyOnceWith(false);
+  expect(control.getAttribute("aria-checked")).toBe("true");
+  result.rerender(<CalendarUpcomingView {...props} notifyBusy />);
+  expect(document.activeElement).toBe(control);
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(control);
+  expect(onNotifyWeek).toHaveBeenCalledOnce();
+});
+it.each(["protected", "unavailable", "loading"] as const)(
+  "does not invent a next-week value for %s alerts",
+  (alertsState) => {
+    const onNotifyWeek = vi.fn();
+    render(
+      <CalendarUpcomingView
+        previous={fixture}
+        utc
+        following={0}
+        limit={1000}
+        notifyWeek
+        alertsState={alertsState}
+        notifyDisabled
+        notifyBusy={false}
+        onNotifyWeek={onNotifyWeek}
+        onRefresh={vi.fn()}
+        busy={false}
+      />,
+    );
+    expect(screen.queryByRole("switch", { name: text.notifyWeek })).toBeNull();
+    expect(screen.getByRole("status").textContent).toBeTruthy();
+    expect(onNotifyWeek).not.toHaveBeenCalled();
   },
 );

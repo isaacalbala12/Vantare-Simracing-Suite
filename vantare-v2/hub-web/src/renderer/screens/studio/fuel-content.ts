@@ -12,9 +12,13 @@ export function hasFuelContent(item: OverlayInstance) {
 }
 
 const limits = studioWidgetOptions.fuel;
-const rows = Array.from(
-  { length: (limits.historyMax - limits.historyMin) / limits.historyStep + 1 },
-  (_, index) => limits.historyMin + index * limits.historyStep,
+const rows = Object.freeze(
+  Array.from(
+    {
+      length: (limits.historyMax - limits.historyMin) / limits.historyStep + 1,
+    },
+    (_, index) => limits.historyMin + index * limits.historyStep,
+  ),
 );
 
 export function useFuelContent(item: OverlayInstance) {

@@ -521,8 +521,9 @@ fn a_future_checked_stamp_or_backward_clock_never_suspends_host_polling() {
     .unwrap();
     let mut state = root.state();
     state.load();
+    assert_eq!(state.view.checked, now / 1000 + 3600);
     assert!(state.poll_due(now));
-    state.poll_started(now + 3600000);
+    state.poll_started(now + 3_600_000);
     assert!(state.poll_due(now));
     state.poll_started(now);
     assert!(!state.poll_due(now));

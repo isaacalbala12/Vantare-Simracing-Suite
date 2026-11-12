@@ -212,10 +212,8 @@ describe("Studio Foco structure", () => {
     mount("studio-nueve");
     const user = userEvent.setup();
     await listRow("Standings 1");
-    await user.click(
-      screen.getByRole("button", { name: t.filters.hidden, exact: true }),
-    );
-    await user.click(screen.getByRole("button", { name: t.add, exact: true }));
+    await user.click(screen.getByRole("button", { name: t.filters.hidden }));
+    await user.click(screen.getByRole("button", { name: t.add }));
     await user.click(
       await screen.findByRole("button", { name: /^Añadir .*Radar/i }),
     );

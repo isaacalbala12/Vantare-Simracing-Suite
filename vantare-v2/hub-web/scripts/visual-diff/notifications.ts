@@ -22,6 +22,10 @@ export const notificationScenes: Record<string, VisualScene> = {
       await page
         .getByText("El perfil de prueba falló", { exact: true })
         .waitFor();
+      // Wait for tester access as well as the fixture before counting Beta.
+      await page
+        .getByText("Respuesta al informe de prueba", { exact: true })
+        .waitFor();
       const full = page.locator(".v-notifications--full");
       assert.equal(await full.locator("article.v-notification").count(), 5);
       assert.equal(

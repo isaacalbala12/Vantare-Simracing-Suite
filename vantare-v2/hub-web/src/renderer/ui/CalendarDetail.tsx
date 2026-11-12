@@ -122,7 +122,7 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
       : [text.energy, `${s.veLimit} % VE`],
   );
   const hm = (value: number | undefined) =>
-      value === undefined ? "â€”" : clock(value, utc),
+      value === undefined ? "—" : clock(value, utc),
     launchAt = at === undefined ? undefined : at - 180_000;
   return (
     <>
@@ -235,7 +235,7 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
                 <span>
                   {i === 2
                     ? calendarText.minutes(phase.minutes[i])
-                    : `${phase.minutes[i]}â€²`}
+                    : `${phase.minutes[i]}′`}
                 </span>
               </div>
             ))}
@@ -318,7 +318,7 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
               disabled={!p.onLead || p.busy}
               options={calendarAlertLeads.map((n) => ({
                 value: String(n),
-                label: `${n}â€²`,
+                label: `${n}′`,
               }))}
               onChange={(value) => {
                 const n = calendarAlertLeads.find((n) => String(n) === value);

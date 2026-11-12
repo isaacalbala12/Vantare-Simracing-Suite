@@ -1,3 +1,17 @@
+## VANTA-141 · Corrección de cadencia y pérdidas (Isaac)
+
+La campaña principal conserva la demanda Relative de 33 ms. `origin`
+registra todas las publicaciones para latencia; `sent` registra solamente
+fotos escritas con éxito al pipe. La validez compara `sent` con `received`,
+no las publicaciones omitidas intencionadamente por cadencia. La demanda
+compartida usa las señales reales del producto y no modifica el modo normal.
+Una ventana por monitor contiene 1/4/10 Relative; fuentes reales idénticas.
+B-GPUI compiló en servidor por cola Release -j 2 (8m30s), sin ejecución.
+Binario de preparación preservado; requiere rebuild con el registro sent.
+Mac bloqueado por espacio: 7,6 GiB libres (<15); no builds ni tests nuevos.
+Python del analizador de entrega: 4/4 PASS. Verificación Rust nueva pendiente.
+Kit incompleto; sin merge, release ni ejecución gráfica en servidor.
+
 ## VANTA-141 / #2213 - worker F, 12-nov-2026
 
 - Pieza 1: PR draft #2222, HEAD 842f440b19d084489860104c38f7cbafecd0c4ad, CI completa verde; sin integrar ni publicar.

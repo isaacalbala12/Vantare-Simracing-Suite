@@ -1,3 +1,14 @@
+## VANTA-141 / #2213 - worker F, 12-nov-2026
+
+- Pieza 1: PR draft #2222, HEAD 842f440b19d084489860104c38f7cbafecd0c4ad, CI completa verde; sin integrar ni publicar.
+- Piezas 2+3: instrumentacion opt-in medir-latencia, contador independiente y cruce estricto de relojes. Sin feature no cambia el comportamiento del producto ni el DTO.
+- IPC/profiling en Mac: 104 tests pasan y 1 ignorado preexistente; regresion entrega/latest-wins y clippy pasan. Contador 1/1 y Python 3/3 pasan.
+- Replay real Mac: 3.840 fotos emitidas y recibidas, sin perdidas, en 65,63 s. Nucleo y contador Windows x64 cruzados con Rust 1.95; dumpbin solo exige CRT ya incluido. No ejecutados en servidor.
+- Bloqueo GPUI cruzado: build.rs depende del SO anfitrion Windows para generar shaders_bytes.rs; macOS lo omite. Intento fallido conservado, sin alterar renderer ni shaders.
+- Mac alcanzo 18,57 GiB libres: compilaciones paradas por margen de disco acordado (minimo absoluto 15). Target unico propio; no se borran targets ajenos. Servidor sin builds ni graficos nuevos; captura.lock se comprobara antes de cualquier eventual build/test Rust alli.
+- Pendiente: resolver shaders de compilacion cruzada y espacio, verificar instrumentacion GPUI Windows, construir piezas 4-11 y kit. Ninguna latencia hasta pantalla ni veredicto de adopcion verificados en servidor.
+- Evidencia externa: D:/VantareServer/evidence/rune-vs-gpui/CONSTRUCCION.md; originales Mac ~/orq/vanta141. VANTA-141 sigue En curso.
+
 ## VANTA-141 · Kit Rune/GPUI en construcción (12-nov-2026)
 
 [#2213](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2213),

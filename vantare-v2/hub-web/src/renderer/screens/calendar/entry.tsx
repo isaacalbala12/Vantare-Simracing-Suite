@@ -137,6 +137,16 @@ export default function CalendarEntry() {
   }, [selectedSerie]);
 
   const [icsOpen, setIcsOpen] = useState(false);
+  const icsOrigin = useRef<HTMLElement | null>(null);
+  const openIcs = () => {
+    icsOrigin.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setIcsOpen(true);
+  };
+  const returnIcsFocus = () =>
+    icsOrigin.current?.isConnected ? icsOrigin.current : false;
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
@@ -273,7 +283,7 @@ export default function CalendarEntry() {
               onAlerts={openAlerts}
               onUtc={(utc) => void preferences.utc(utc)}
               utcDisabled={!preferences.canUtc}
-              onExport={() => setIcsOpen(true)}
+              onExport={openIcs}
             />
           ) : undefined
         }
@@ -381,7 +391,7 @@ export default function CalendarEntry() {
             subtitle={subtitle}
             count={alerts.bands.length + alerts.slots.length}
             busy={state.busy}
-            onExport={() => setIcsOpen(true)}
+            onExport={openIcs}
             onRefresh={() => void state.refresh()}
           >
             {state.failure && (
@@ -414,7 +424,7 @@ export default function CalendarEntry() {
             ) : activeTab === "mine" && schedule && view ? (
               <CalendarMineView
                 onDetail={openDetail}
-                onExport={() => setIcsOpen(true)}
+                onExport={openIcs}
                 schedule={schedule}
                 alerts={alerts}
                 following={view.following}
@@ -430,7 +440,7 @@ export default function CalendarEntry() {
             ) : activeTab === "events" && schedule && view ? (
               <CalendarEventsView
                 alertsBusy={preferences.busy}
-                onExport={() => setIcsOpen(true)}
+                onExport={openIcs}
                 onSerie={openSerie}
                 onToggleSlot={toggleSlot}
                 onDetail={openDetail}
@@ -532,7 +542,7 @@ export default function CalendarEntry() {
       </SectionPanel>
       {detail && state.allowed && schedule && view && (
         <CalendarDetail
-          onExport={() => setIcsOpen(true)}
+          onExport={openIcs}
           schedule={schedule}
           seriesId={detail.id}
           initialAt={detail.at}
@@ -614,6 +624,7 @@ export default function CalendarEntry() {
       )}
       {icsOpen && state.allowed && (
         <CalendarIcsDialog
+          returnFocus={returnIcsFocus}
           scope={ics.scope}
           alarm={ics.alarm}
           lead={alerts.leadMin}

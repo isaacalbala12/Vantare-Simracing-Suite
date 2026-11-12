@@ -1,12 +1,12 @@
 .v-calendar-ics-backdrop {
   position: fixed;
-  inset: 0;
+  inset: var(--topbar-h) 0 0;
   z-index: var(--z-modal);
   background: var(--calendar-ics-backdrop);
 }
 .v-calendar.v-calendar-ics {
   position: fixed;
-  top: 50%;
+  top: calc(50% + var(--topbar-h) / 2);
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: var(--z-modal);
@@ -16,7 +16,7 @@
   width: 820px;
   max-width: 96vw;
   height: auto;
-  max-height: 94vh;
+  max-height: calc(100vh - var(--topbar-h) - 24px);
   overflow: hidden;
   border: 1px solid var(--line-1);
   border-radius: 14px;

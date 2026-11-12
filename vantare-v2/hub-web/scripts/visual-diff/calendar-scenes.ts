@@ -47,6 +47,7 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page
         .getByText("Vista previa · 75 eventos esta semana", { exact: true })
         .waitFor();
+      await assertDetailWindowControls(page);
       await page.mouse.move(600, 890);
     },
   },
@@ -63,6 +64,7 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page
         .getByText("Vista previa · 75 eventos esta semana", { exact: true })
         .waitFor();
+      await assertDetailWindowControls(page);
       await page.mouse.move(600, 890);
     },
   },

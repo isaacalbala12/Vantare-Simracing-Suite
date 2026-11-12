@@ -30,6 +30,7 @@ type Props = {
   onRetry: () => void;
   onDownload: () => void;
   onClose: () => void;
+  returnFocus?: () => HTMLElement | false;
 };
 export function CalendarIcsDialog(p: Props) {
   const id = useId();
@@ -43,6 +44,7 @@ export function CalendarIcsDialog(p: Props) {
       .replaceAll(".", "");
   return (
     <Dialog.Root
+      modal={false}
       open
       onOpenChange={(open) => {
         if (!open) p.onClose();
@@ -53,6 +55,7 @@ export function CalendarIcsDialog(p: Props) {
         <Dialog.Popup
           className="v-calendar v-calendar-ics"
           aria-describedby={`${id}-description`}
+          finalFocus={p.returnFocus ?? true}
         >
           <header>
             <div>

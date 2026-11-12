@@ -19,6 +19,17 @@ import {
 import { AppMark } from "./Profiles";
 import "./applications.css";
 
+// Rust String::cmp compares UTF-8 bytes, independently of the machine's locale.
+function compareNames(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const a = encoder.encode(left);
+  const b = encoder.encode(right);
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return a.length - b.length;
+}
+
 export function ApplicationEditorDrawer({
   children,
   pending,
@@ -79,15 +90,16 @@ export function ApplicationCatalog({
   onRetry: () => void;
   onDiscard: () => void;
 }) {
-  const normalized = (value: string) =>
-    value.toLocaleLowerCase("es").replace(/\s/g, "");
+  const normalized = query.trim().toLowerCase();
   const apps = value.apps
     .filter((app) =>
-      normalized(`${app.name}${app.category}`).includes(normalized(query)),
+      [app.name, app.category].some((field) =>
+        field.toLowerCase().includes(normalized),
+      ),
     )
     .sort(
       (a, b) =>
-        Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name),
+        Number(b.favorite) - Number(a.favorite) || compareNames(a.name, b.name),
     );
   return (
     <div className="v-launcher-page v-launcher-applications">

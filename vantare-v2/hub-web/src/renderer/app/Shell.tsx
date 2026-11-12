@@ -28,7 +28,7 @@ import {
   Sidebar,
   TitleBar,
 } from "../ui/Frame";
-import { hubKeys, zoomKeys } from "../ui/hub-shortcuts";
+import { hubShortcut } from "../ui/hub-shortcuts";
 import { initials } from "../ui/initials";
 import { ToastViewport, useToastManager } from "../ui/Layers";
 import { SaveWarnings } from "../ui/SaveWarnings";
@@ -331,14 +331,15 @@ function ShellContent() {
   }, [ui.section, ui.navigate, core.access]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
-      const key = event.key.toLowerCase();
-      if (key === "escape") {
+      if (event.isComposing) return;
+      if (event.key === "Escape") {
         ui.commands(false);
         ui.notices(false);
         return;
       }
-      if (!event.ctrlKey || event.metaKey) return;
-      if (key === hubKeys.commands) {
+      const action = hubShortcut(event);
+      if (!action) return;
+      if (action === "commands") {
         event.preventDefault();
         ui.commands(!ui.commandsOpen);
         return;
@@ -352,28 +353,20 @@ function ShellContent() {
           ))
       )
         return;
-      if (key === hubKeys.sidebar) {
-        event.preventDefault();
-        if (event.altKey) ui.toggleRail();
-        else ui.toggleSidebar();
-      }
-      if (key === hubKeys.notifications && event.shiftKey) {
-        event.preventDefault();
-        ui.notices(!ui.noticesOpen);
-      }
-      if (key === hubKeys.launch) {
-        event.preventDefault();
-        if (!event.repeat) void launchFavorite();
-      }
+      event.preventDefault();
+      if (action === "sidebar") ui.toggleSidebar();
+      if (action === "context") ui.toggleRail();
+      if (action === "notifications") ui.notices(!ui.noticesOpen);
+      if (action === "launch") void launchFavorite();
       if (
-        zoomKeys.includes(key) &&
+        ["zoomIn", "zoomOut", "zoomReset"].includes(action) &&
         settings.view &&
         !settings.pending &&
         !settings.view.protected &&
         !settings.error
       ) {
         event.preventDefault();
-        zoom(key === hubKeys.zoomReset ? 0 : key === hubKeys.zoomOut ? -1 : 1);
+        zoom(action === "zoomReset" ? 0 : action === "zoomOut" ? -1 : 1);
       }
     }
     window.addEventListener("keydown", key);

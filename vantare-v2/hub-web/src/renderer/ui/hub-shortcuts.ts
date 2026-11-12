@@ -15,6 +15,62 @@ export const zoomKeys: readonly string[] = [
   hubKeys.zoomOut,
   hubKeys.zoomReset,
 ];
+type Binding = {
+  key: string;
+  ctrl: boolean;
+  alt: boolean;
+  meta: boolean;
+  shift?: boolean;
+};
+type Action =
+  | "commands"
+  | "sidebar"
+  | "context"
+  | "notifications"
+  | "launch"
+  | "zoomIn"
+  | "zoomOut"
+  | "zoomReset";
+const control = { ctrl: true, alt: false, meta: false, shift: false };
+/** GPUI shell/shortcuts.rs and shell/chrome.rs: shell_zoom_key. */
+export const hubBindings: readonly (Binding & { action: Action })[] = [
+  { ...control, key: hubKeys.commands, action: "commands" },
+  { ...control, key: hubKeys.sidebar, action: "sidebar" },
+  { ...control, alt: true, key: hubKeys.sidebar, action: "context" },
+  {
+    ...control,
+    shift: true,
+    key: hubKeys.notifications,
+    action: "notifications",
+  },
+  { ...control, key: hubKeys.launch, action: "launch" },
+  ...zoomKeys.flatMap((key) =>
+    [false, true].map((shift) => ({
+      ...control,
+      key,
+      shift,
+      action: (key === hubKeys.zoomReset
+        ? "zoomReset"
+        : key === hubKeys.zoomOut
+          ? "zoomOut"
+          : "zoomIn") as Action,
+    })),
+  ),
+];
+function matches(binding: Binding, event: KeyboardEvent) {
+  return (
+    binding.key === event.key.toLowerCase() &&
+    binding.ctrl === event.ctrlKey &&
+    binding.alt === event.altKey &&
+    binding.meta === event.metaKey &&
+    (binding.shift === undefined || binding.shift === event.shiftKey)
+  );
+}
+export function hubShortcut(event: KeyboardEvent): Action | undefined {
+  if (event.repeat || event.isComposing || event.getModifierState("AltGraph"))
+    return;
+  return hubBindings.find((binding) => matches(binding, event))?.action;
+}
 // Chromium's built-in print/reload must not act on the document behind a dialog.
 const browserKeys = ["p", "r"];
 const keys = new Set<string>([
@@ -36,11 +92,5 @@ export function dialogShortcut(event: KeyboardEvent) {
     event.target.closest('input,textarea,[contenteditable="true"]')
   )
     return false;
-  return dialogBindings.some(
-    (binding) =>
-      binding.key === event.key.toLowerCase() &&
-      binding.ctrl === event.ctrlKey &&
-      binding.alt === event.altKey &&
-      binding.meta === event.metaKey,
-  );
+  return dialogBindings.some((binding) => matches(binding, event));
 }

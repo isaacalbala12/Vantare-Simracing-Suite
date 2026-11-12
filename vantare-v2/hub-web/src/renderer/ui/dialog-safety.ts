@@ -1,4 +1,4 @@
-import { dialogShortcut, hubKeys } from "./hub-shortcuts";
+import { dialogShortcut, hubShortcut } from "./hub-shortcuts";
 
 type Entry = { node: HTMLElement; close: () => void };
 const controls = ".v-window-controls";
@@ -109,7 +109,7 @@ export function dialogSafety(doc: Document) {
     }
     if (dialogShortcut(event)) {
       if (
-        event.key.toLowerCase() === hubKeys.commands &&
+        hubShortcut(event) === "commands" &&
         active.node.querySelector("[data-command-palette]")
       )
         active.close();

@@ -4,7 +4,7 @@ import type {
 } from "../../../contract/generated/studio";
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
-import { Select } from "../Forms";
+import { Select, Switch } from "../Forms";
 import "./appearance.css";
 
 export function AppearanceInspector({ item }: { item: OverlayInstance }) {
@@ -46,6 +46,18 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
           </dd>
           <dd className="v-muted">{t.brandReadOnly}</dd>
         </dl>
+      )}
+      {(settings.kind === "pedals" ||
+        (settings.kind === "delta" && settings.designSystem === "vantare")) && (
+        <Switch
+          label={t.transparentBackground}
+          checked={settings.transparentBackground ?? false}
+          disabled={disabled}
+          pending={state.pending}
+          onCheckedChange={(value) =>
+            patch({ kind: settings.kind, transparentBackground: value })
+          }
+        />
       )}
       <Select
         label={t.widgetLook}

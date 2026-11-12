@@ -7,6 +7,7 @@ export const studioText = {
   lookVantare: "Vantare",
   styleNeo: "Neo",
   styleNeutral: "Neutro",
+  transparentBackground: "Fondo transparente",
   widgetLook: "Look",
   widgetStyle: "Estilo del widget",
   widgetAccent: "Acento del widget",

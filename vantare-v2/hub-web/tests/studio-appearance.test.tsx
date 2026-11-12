@@ -125,10 +125,14 @@ it.each(["standings", "relative", "delta", "pedals", "fuel-strategy"] as const)(
   async (kind) => {
     mount(instance(kind));
     const user = userEvent.setup();
-    await user.tab();
-    expect(document.activeElement).toBe(
-      screen.getByRole("combobox", { name: t.widgetLook }),
-    );
+    const lookControl = screen.getByRole("combobox", { name: t.widgetLook });
+    for (
+      let index = 0;
+      index < 12 && document.activeElement !== lookControl;
+      index++
+    )
+      await user.tab();
+    expect(document.activeElement).toBe(lookControl);
     await user.keyboard("{ArrowDown}");
     const option = await screen.findByRole("option", {
       name: t.lookEficiencia,
@@ -195,3 +199,91 @@ it.each([
     ).toBe(true);
   },
 );
+
+it.each([
+  ["delta", "vantare"],
+  ["pedals", "vantare"],
+  ["pedals", "eficiencia"],
+] as const)(
+  "writes only transparentBackground for %s / %s",
+  async (kind, look) => {
+    const item = instance(kind);
+    if (!item.settings) throw new Error("Missing settings");
+    item.settings.designSystem = look;
+    mount(item);
+    const user = userEvent.setup();
+    const control = screen.getByRole("switch", {
+      name: t.transparentBackground,
+    });
+    expect(control.getAttribute("aria-checked")).toBe("false");
+    await user.click(control);
+    expect(state.execute).toHaveBeenCalledExactlyOnceWith({
+      method: "studio.instance",
+      id: "widget-1",
+      baseRevision: state.view.revision,
+      patch: {
+        field: "settings",
+        value: { kind, transparentBackground: true },
+      },
+    });
+    expect(
+      Boolean(
+        control.compareDocumentPosition(
+          screen.getByRole("combobox", { name: t.widgetLook }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
+  },
+);
+it("does not offer Delta transparency in Eficiencia", () => {
+  const item = instance("delta");
+  if (!item.settings) throw new Error("Missing settings");
+  item.settings.designSystem = "eficiencia";
+  mount(item);
+  expect(
+    screen.queryByRole("switch", { name: t.transparentBackground }),
+  ).toBeNull();
+});
+it("keeps the transparency switch focused while pending and blocks a second send", async () => {
+  const item = instance("pedals");
+  const mounted = mount(item);
+  const user = userEvent.setup();
+  const control = screen.getByRole("switch", { name: t.transparentBackground });
+  await user.tab();
+  expect(document.activeElement).toBe(control);
+  state.pending = true;
+  mounted.rerender(
+    <CSPProvider disableStyleElements>
+      <AppearanceInspector item={item} />
+    </CSPProvider>,
+  );
+  expect(control.hasAttribute("disabled")).toBe(false);
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(control);
+  await user.keyboard(" ");
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it.each(["locked", "unverified"])(
+  "disables transparency when %s",
+  async (reason) => {
+    const item = instance("pedals");
+    item.locked = reason === "locked";
+    if (reason === "unverified") state.view.plan = "unverified";
+    mount(item);
+    const user = userEvent.setup();
+    const control = screen.getByRole("switch", {
+      name: t.transparentBackground,
+    });
+    expect(control.hasAttribute("disabled")).toBe(true);
+    expect(control.getAttribute("aria-busy")).toBeNull();
+    await user.click(control);
+    expect(state.execute).not.toHaveBeenCalled();
+  },
+);
+it("does not invent a transparency value for a protected document", () => {
+  state.view.state = "protected";
+  mount(instance("pedals"));
+  expect(
+    screen.queryByRole("switch", { name: t.transparentBackground }),
+  ).toBeNull();
+});

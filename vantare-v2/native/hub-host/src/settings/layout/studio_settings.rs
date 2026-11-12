@@ -218,7 +218,7 @@ mod tests {
         let mut doc = fields(json!({"kind":"pedals"}));
         let before = doc.0["settings"].get().to_owned();
         assert!(matches!(
-            edit(&mut doc, json!({"kind":"delta","size":"compact"})),
+            edit(&mut doc, json!({"kind":"delta","size":"pill"})),
             Err(HostError::Denied)
         ));
         assert!(matches!(

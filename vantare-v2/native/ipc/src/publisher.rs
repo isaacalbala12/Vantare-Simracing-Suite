@@ -269,6 +269,10 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
                     } else {
                         transmit(&Message::Snapshot(SnapshotDto::from(&*snapshot)))?;
                     }
+                    // Only a successfully written snapshot counts as sent. Cadence
+                    // omissions remain in origin, without being mislabeled as IPC loss.
+                    #[cfg(feature = "medir-latencia")]
+                    vantare_profiling::latency::mark("sent", snapshot.epoch, snapshot.sequence, 0);
                     last_message = Instant::now();
                     sent = Some(revision);
                 }

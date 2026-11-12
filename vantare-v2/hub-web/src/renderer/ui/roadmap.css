@@ -164,6 +164,8 @@
   box-shadow: inset 0 1px 0 var(--neo-light);
 }
 .v-roadmap-counts span {
+  display: block;
+  line-height: 11px;
   letter-spacing: 0.4px;
 }
 

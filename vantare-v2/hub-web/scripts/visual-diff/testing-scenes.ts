@@ -1,9 +1,14 @@
+import type { Page } from "playwright-core";
 import type { VisualScene } from "./scenes.ts";
 import {
   assertQuestionnaireUsesFreeHeight,
   assertTestingConsentFits,
   settingsTabsStyle,
 } from "./testing-readability.ts";
+import {
+  assertConsentPaintChange,
+  assertReportConsent,
+} from "./testing-report-consent.ts";
 
 export const testingScenes: Record<string, VisualScene> = {
   "testing-center-comunidad": {
@@ -150,7 +155,7 @@ export const testingScenes: Record<string, VisualScene> = {
     },
   },
   "testing-center-informe": {
-    mock: "testing-tester-reference",
+    mock: "testing-tester-report-reference",
     async prepare(page) {
       await page
         .getByRole("navigation", { name: "Navegación principal" })
@@ -163,7 +168,71 @@ export const testingScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Nuevo informe", exact: true })
         .waitFor();
+      await page
+        .getByRole("button", { name: "Cargar borrador", exact: true })
+        .and(page.locator(":enabled"))
+        .waitFor();
+      await page.getByText("Capturas · 0/3", { exact: true }).waitFor();
       await page.mouse.move(600, 890);
     },
   },
+};
+
+// Both captured states exercise the real controls and the service-shaped mock projection.
+async function prepareReportPreview(page: Page, accepted: boolean) {
+  await testingScenes["testing-center-informe"].prepare(page);
+  await page
+    .getByRole("textbox", { name: "Título · qué hiciste", exact: true })
+    .fill("Abrir Testing Center");
+  await page
+    .getByRole("textbox", {
+      name: "Texto · qué ocurrió o qué propones",
+      exact: true,
+    })
+    .fill("El panel se quedó vacío");
+  await page
+    .getByRole("textbox", { name: "Qué esperabas", exact: true })
+    .fill("Ver el panel completo");
+  await page
+    .getByRole("button", { name: "Guardar borrador", exact: true })
+    .and(page.locator(":enabled"))
+    .click();
+  await page
+    .getByRole("button", { name: "Previsualizar envío", exact: true })
+    .and(page.locator(":enabled"))
+    .click();
+  const preview = page.getByRole("region", {
+    name: "Revisa el contenido antes de enviar",
+    exact: true,
+  });
+  await preview.getByText("Informe estructurado", { exact: true }).waitFor();
+  const content = (await preview.textContent()) ?? "";
+  if (
+    content.includes("Abrir Testing Center") ||
+    content.includes("El panel se quedó vacío")
+  )
+    throw new Error(
+      "Private draft notes leaked into the simulated submission preview",
+    );
+  const unchecked = await assertReportConsent(page, false);
+  const checkbox = page.getByRole("checkbox", {
+    name: "He revisado y acepto enviar este contenido al equipo de Vantare",
+    exact: true,
+  });
+  await checkbox.check();
+  const checked = await assertReportConsent(page, true);
+  assertConsentPaintChange(unchecked, checked);
+  if (!accepted) {
+    await checkbox.uncheck();
+    await assertReportConsent(page, false);
+  }
+  await page.mouse.move(600, 890);
+}
+testingScenes["testing-center-informe-preview"] = {
+  mock: "testing-tester-report-reference",
+  prepare: (page) => prepareReportPreview(page, true),
+};
+testingScenes["testing-center-informe-preview-sin-consentir"] = {
+  mock: "testing-tester-report-reference",
+  prepare: (page) => prepareReportPreview(page, false),
 };

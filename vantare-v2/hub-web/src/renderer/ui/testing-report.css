@@ -1,0 +1,155 @@
+.v-testing-report {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.v-testing-report-draft-actions,
+.v-testing-report-kind {
+  display: flex;
+  gap: 8px;
+}
+.v-testing-report-kind {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  gap: 4px;
+}
+.v-testing-report-kind .v-button[aria-pressed="true"] {
+  background: var(--surface-3);
+}
+.v-testing-report input.v-input {
+  min-height: 38px;
+}
+.v-testing-report textarea {
+  resize: none;
+}
+.v-testing-report-module {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.v-testing-report-module > .v-field {
+  flex: 1;
+}
+/* GPUI editor::module_trigger uses the legacy ink alphas and radius 12, not a text well. */
+.v-testing-report-module .v-select-trigger {
+  border-radius: 12px;
+  color: var(--text-2);
+  border-color: color-mix(in srgb, var(--text-1) 7.0588%, transparent);
+  background: color-mix(in srgb, var(--text-1) 2.7451%, transparent);
+  box-shadow: none;
+}
+
+.v-testing-report-inline-action {
+  display: flex;
+  justify-content: flex-end;
+}
+.v-testing-report-screenshots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.v-testing-report .v-testing-report-screenshots .v-testing-fine-print {
+  font-size: 11px;
+  line-height: 16px;
+}
+.v-testing-report-screenshots h3 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 21px;
+  font-weight: 650;
+}
+.v-testing-report-images {
+  display: flex;
+  gap: 10px;
+}
+.v-testing-report-images > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+.v-testing-report-images img {
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+}
+.v-testing-report-metadata {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.v-testing-report .v-testing-report-metadata .v-testing-fine-print {
+  font-size: 11px;
+  line-height: 16px;
+}
+.v-testing-report-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-testing-report-final-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.v-testing-report .v-testing-report-send.v-button--primary {
+  height: 38px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  border-color: transparent;
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+  box-shadow:
+    inset 0 1px var(--button-highlight),
+    0 1px 4px var(--button-shadow);
+}
+
+/* GPUI applies disabled alpha to the painted face and the glyphs independently. */
+.v-testing-report .v-testing-report-send.v-button--primary:disabled {
+  isolation: isolate;
+  background: transparent;
+  color: color-mix(
+    in srgb,
+    var(--text-on-accent) var(--testing-disabled),
+    transparent
+  );
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 1;
+}
+.v-testing-report .v-testing-report-send.v-button--primary:disabled::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--grad-button);
+  box-shadow:
+    inset 0 1px var(--button-highlight),
+    0 1px 4px var(--button-shadow);
+  opacity: var(--disabled-opacity);
+}
+
+/* GPUI checkbox: carmine face and ink tick. Override Testing's unqualified face. */
+.v-testing-report .v-checkbox[data-checked] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-1);
+}
+.v-testing-report .v-checkbox > span {
+  display: inline-flex;
+}
+.v-testing-report .v-checkbox svg {
+  stroke-width: 2;
+  width: 14px;
+  height: 14px;
+}

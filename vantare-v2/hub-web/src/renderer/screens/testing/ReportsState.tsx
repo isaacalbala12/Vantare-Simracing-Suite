@@ -14,6 +14,7 @@ import {
   type ReportFields,
   type ReportPreviewView,
   type ReportReceiptView,
+  type ReportScreenshot,
   type Request,
   reportAutosaveMs,
   reportModules,
@@ -26,6 +27,7 @@ import { Button } from "../../ui/Button";
 import { CloseUnsavedReportDialog } from "../../ui/DiscardReportDialog";
 import { useToastManager } from "../../ui/Layers";
 import { testingText as text } from "./es";
+import { reportSuggestion, withReportKind } from "./report-kind";
 import { testingRequest } from "./TestingRequests";
 import { useTriageState } from "./TriageState";
 
@@ -51,6 +53,9 @@ function useReportsState() {
   const [fields, setFields] = useState(empty);
   const [saved, setSaved] = useState(JSON.stringify(fields));
   const [loaded, setLoaded] = useState(false);
+  const [draftExists, setDraftExists] = useState(false);
+  const [screenshots, setScreenshots] = useState<ReportScreenshot[]>([]);
+  const removingScreenshot = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
@@ -139,28 +144,36 @@ function useReportsState() {
     return operation;
   }
   async function load() {
-    const baseline = JSON.parse(state.current.saved) as ReportFields;
+    if (JSON.stringify(state.current.fields) !== state.current.saved) return;
     const reply = await request({ method: "draft.load" });
     if (reply.method !== "draft.load")
       throw new Error("unexpected report reply");
-    const fields = { ...reply.value.fields };
-    for (const key of Object.keys(fields) as (keyof ReportFields)[]) {
-      if (state.current.fields[key] !== baseline[key])
-        fields[key] = state.current.fields[key];
-    }
-    setFields(fields);
+    setPreview(undefined);
+    setConsent(false);
+    setFields(reply.value.fields);
     setSaved(JSON.stringify(reply.value.fields));
     setLoaded(true);
+    setScreenshots(reply.value.screenshots);
+    setDraftExists(reply.value.exists);
     setMessage(reply.value.message);
     setLegacy(reply.value.legacy);
   }
   async function save() {
-    if (
-      !state.current.loaded ||
-      JSON.stringify(state.current.fields) === state.current.saved
-    )
-      return;
+    if (!state.current.loaded) return;
+    const snapshot = JSON.stringify(state.current.fields);
+    if (snapshot === state.current.saved) return;
     const fields = structuredClone(state.current.fields);
+    const contextText = withReportKind(
+      fields.contextText,
+      reportSuggestion(fields.contextText),
+    );
+    if (contextText === undefined) {
+      setError(true);
+      setFailure("rejected");
+      throw new HostFailure({ kind: "rejected" });
+    }
+    fields.contextText = contextText;
+    if (JSON.stringify(fields) === state.current.saved) return;
     if (!isReportFields(fields)) {
       setError(true);
       setFailure("rejected");
@@ -169,8 +182,14 @@ function useReportsState() {
     const reply = await request({ method: "draft.save", fields });
     if (reply.method !== "draft.save")
       throw new Error("unexpected report reply");
+    setScreenshots(reply.value.screenshots);
+    setDraftExists(reply.value.exists);
     setMessage(reply.value.message);
     setLegacy(reply.value.legacy);
+    if (JSON.stringify(state.current.fields) === snapshot) {
+      state.current.fields = fields;
+      setFields(fields);
+    }
     state.current.saved = JSON.stringify(fields);
     setSaved(state.current.saved);
     setPreview(undefined);
@@ -267,6 +286,8 @@ function useReportsState() {
     setFields(empty());
     setSaved(JSON.stringify(empty()));
     setLoaded(false);
+    setDraftExists(false);
+    setScreenshots([]);
     setPreview(undefined);
     setReceipt(undefined);
     setConsent(false);
@@ -357,11 +378,47 @@ function useReportsState() {
     const reply = await request({ method: "draft.discard" });
     if (reply.method !== "draft.discard")
       throw new Error("unexpected report reply");
+    setScreenshots(reply.value.screenshots);
+    setDraftExists(reply.value.exists);
     setFields(reply.value.fields);
     setSaved(JSON.stringify(reply.value.fields));
     setLegacy(reply.value.legacy);
     setPreview(undefined);
     setConsent(false);
+  }
+  async function removeScreenshot(id: string) {
+    if (
+      removingScreenshot.current ||
+      !screenshots.some((shot) => shot.id === id)
+    )
+      return;
+    removingScreenshot.current = true;
+    setPreview(undefined);
+    setConsent(false);
+    try {
+      const fields = structuredClone(state.current.fields);
+      if (!isReportFields(fields)) {
+        setError(true);
+        setFailure("rejected");
+        throw new HostFailure({ kind: "rejected" });
+      }
+      const reply = await request({
+        method: "report.removeScreenshot",
+        id,
+        fields,
+      });
+      if (reply.method !== "report.removeScreenshot")
+        throw new Error("unexpected screenshot reply");
+      setSaved(JSON.stringify(reply.value.fields));
+      state.current.saved = JSON.stringify(reply.value.fields);
+      setScreenshots(reply.value.screenshots);
+      setDraftExists(reply.value.exists);
+      setMessage(reply.value.message);
+      setPreview(undefined);
+      setConsent(false);
+    } finally {
+      removingScreenshot.current = false;
+    }
   }
   async function prepare(retry = false) {
     await save();
@@ -377,7 +434,14 @@ function useReportsState() {
     }
   }
   async function send() {
-    if (sending.current || !preview || !consent || dirty) return;
+    if (
+      sending.current ||
+      removingScreenshot.current ||
+      !preview ||
+      !consent ||
+      dirty
+    )
+      return;
     sending.current = true;
     const epoch = generation.current;
     try {
@@ -403,6 +467,8 @@ function useReportsState() {
       );
       setPreview(undefined);
       if (reply.value.draftState === "cleared") {
+        setScreenshots([]);
+        setDraftExists(false);
         if (JSON.stringify(state.current.fields) === sentFields)
           setFields(empty());
         setSaved(JSON.stringify(empty()));
@@ -437,6 +503,8 @@ function useReportsState() {
         return save();
       case "testing.refresh":
         return refresh();
+      case "report.removeScreenshot":
+        return removeScreenshot(failed.id);
       case "report.prepare":
         return prepare();
       case "report.retryPrepare":
@@ -488,6 +556,9 @@ function useReportsState() {
     fields,
     edit,
     loaded,
+    draftExists,
+    screenshots,
+    removeScreenshot,
     available,
     busy,
     dirty,

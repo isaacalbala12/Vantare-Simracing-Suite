@@ -18,6 +18,7 @@ Formato: mediana [mínimo–máximo]; MAD = desviación absoluta mediana. Las di
 | --- | --- | --- | --- | --- | --- |
 | hardware-off | 392,86 [385,20–398,00]; MAD 5,14 → 366,66 [361,31–398,73]; MAD 5,35 | -26,42 [-36,69–13,53]; MAD 10,27 | 941,30 [807,01–3879,72]; MAD 134,29 → 990,21 [804,86–1845,43]; MAD 141,26 | -92,35 [-2034,30–183,20]; MAD 275,55 | 1 → 1 |
 | hardware-off-no-gpu | 390,07 [387,32–501,78]; MAD 2,75 → 359,12 [358,07–362,48]; MAD 1,05 | -31,06 [-139,29–-28,20]; MAD 2,86 | 2041,24 [1137,89–2647,16]; MAD 116,40 → 2398,98 [1372,58–3866,97]; MAD 884,70 | 252,41 [-552,26–1825,73]; MAD 804,66 | 1 → 1 |
+| renderer-limit | 387,72 [372,97–394,30]; MAD 1,50 → 388,93 [383,11–394,78]; MAD 2,44 | 1,20 [-5,82–18,39]; MAD 0,74 | 1316,66 [813,14–2246,76]; MAD 275,70 → 1333,24 [857,58–1502,16]; MAD 119,77 | 16,57 [-1024,74–408,34]; MAD 106,77 | 1 → 1 |
 
 ## Memoria, CPU y heap
 
@@ -31,6 +32,10 @@ Formato: mediana [mínimo–máximo]; MAD = desviación absoluta mediana. Las di
 | hardware-off-no-gpu / baseline | home | 403,27 [399,49–514,96]; MAD 3,78 | 376,46 [373,77–454,03]; MAD 2,27 | 170,28 [167,32–218,80]; MAD 1,28 | 7,95 [6,09–8,00]; MAD 0,05 | 0,00 [0,00–0,30]; MAD 0,00 |
 | hardware-off-no-gpu / variant | settings | 359,12 [358,07–362,48]; MAD 1,05 | 135,97 [134,56–139,36]; MAD 0,32 | 105,09 [103,65–108,79]; MAD 0,18 | 8,72 [8,72–9,59]; MAD 0,01 | 0,00 [0,00–0,30]; MAD 0,00 |
 | hardware-off-no-gpu / variant | home | 360,41 [357,41–363,78]; MAD 1,97 | 146,41 [142,27–149,35]; MAD 1,67 | 115,00 [111,51–118,81]; MAD 1,69 | 7,94 [6,10–8,16]; MAD 0,23 | 0,00 [0,00–0,00]; MAD 0,00 |
+| renderer-limit / baseline | settings | 387,72 [372,97–394,30]; MAD 1,50 | 360,16 [208,00–363,57]; MAD 2,82 | 156,17 [144,23–158,22]; MAD 1,38 | 9,09 [8,69–9,68]; MAD 0,37 | 0,00 [0,00–0,00]; MAD 0,00 |
+| renderer-limit / baseline | home | 401,83 [398,65–409,42]; MAD 2,80 | 373,69 [372,61–377,39]; MAD 1,09 | 167,75 [167,45–169,93]; MAD 0,30 | 8,54 [6,10–8,81]; MAD 0,27 | 0,00 [0,00–0,92]; MAD 0,00 |
+| renderer-limit / variant | settings | 388,93 [383,11–394,78]; MAD 2,44 | 361,97 [359,35–403,99]; MAD 2,62 | 158,94 [154,32–162,78]; MAD 2,72 | 8,72 [8,68–9,79]; MAD 0,03 | 0,00 [0,00–0,00]; MAD 0,00 |
+| renderer-limit / variant | home | 403,51 [398,40–405,43]; MAD 1,21 | 376,32 [239,53–380,61]; MAD 0,47 | 170,16 [167,08–172,54]; MAD 0,75 | 7,97 [7,91–8,75]; MAD 0,07 | 0,00 [0,00–0,00]; MAD 0,00 |
 
 ## Desglose por proceso
 
@@ -76,6 +81,26 @@ Formato: mediana [mínimo–máximo]; MAD = desviación absoluta mediana. Las di
 | hardware-off-no-gpu / variant | home | gpu-process | 72,69 [72,25–73,00]; MAD 0,18 | 17,64 [17,58–17,68]; MAD 0,04 |
 | hardware-off-no-gpu / variant | home | utility | 43,46 [43,35–43,56]; MAD 0,05 | 11,34 [11,30–11,48]; MAD 0,04 |
 | hardware-off-no-gpu / variant | home | renderer | 134,80 [131,11–137,09]; MAD 2,29 | 69,39 [64,59–70,98]; MAD 1,59 |
+| renderer-limit / baseline | settings | host | 8,68 [8,65–8,72]; MAD 0,03 | 1,57 [1,53–1,63]; MAD 0,04 |
+| renderer-limit / baseline | settings | main | 101,90 [100,48–104,14]; MAD 1,29 | 47,10 [46,14–47,95]; MAD 0,57 |
+| renderer-limit / baseline | settings | gpu-process | 127,28 [119,66–131,13]; MAD 0,57 | 247,54 [101,11–250,07]; MAD 2,03 |
+| renderer-limit / baseline | settings | utility | 43,35 [43,24–44,55]; MAD 0,11 | 11,30 [11,16–11,37]; MAD 0,07 |
+| renderer-limit / baseline | settings | renderer | 105,19 [100,67–107,65]; MAD 0,63 | 51,71 [47,77–53,71]; MAD 1,25 |
+| renderer-limit / baseline | home | host | 8,86 [8,81–8,87]; MAD 0,01 | 1,67 [1,61–1,69]; MAD 0,02 |
+| renderer-limit / baseline | home | main | 102,97 [100,79–105,04]; MAD 1,80 | 47,02 [46,21–48,82]; MAD 0,82 |
+| renderer-limit / baseline | home | gpu-process | 134,76 [134,37–138,35]; MAD 0,16 | 257,46 [255,21–258,09]; MAD 0,62 |
+| renderer-limit / baseline | home | utility | 43,43 [43,30–44,57]; MAD 0,13 | 11,29 [11,16–11,38]; MAD 0,09 |
+| renderer-limit / baseline | home | renderer | 112,20 [110,46–112,75]; MAD 0,55 | 57,41 [57,18–58,21]; MAD 0,08 |
+| renderer-limit / variant | settings | host | 8,70 [8,63–8,73]; MAD 0,00 | 1,61 [1,52–1,64]; MAD 0,01 |
+| renderer-limit / variant | settings | main | 101,71 [99,91–106,59]; MAD 1,37 | 47,63 [45,50–50,74]; MAD 0,88 |
+| renderer-limit / variant | settings | gpu-process | 127,35 [126,79–129,84]; MAD 0,54 | 249,30 [243,36–287,87]; MAD 2,30 |
+| renderer-limit / variant | settings | utility | 43,39 [43,22–43,46]; MAD 0,07 | 11,27 [11,13–11,38]; MAD 0,11 |
+| renderer-limit / variant | settings | renderer | 108,08 [104,31–108,88]; MAD 0,80 | 54,46 [52,38–55,80]; MAD 1,34 |
+| renderer-limit / variant | home | host | 8,84 [8,75–8,86]; MAD 0,02 | 1,66 [1,55–1,67]; MAD 0,02 |
+| renderer-limit / variant | home | main | 103,25 [101,48–105,22]; MAD 1,63 | 49,06 [46,75–49,51]; MAD 0,45 |
+| renderer-limit / variant | home | gpu-process | 134,49 [133,66–135,63]; MAD 0,70 | 255,93 [122,92–259,16]; MAD 1,46 |
+| renderer-limit / variant | home | utility | 43,42 [43,30–43,47]; MAD 0,05 | 11,25 [11,21–11,39]; MAD 0,01 |
+| renderer-limit / variant | home | renderer | 113,51 [111,00–114,88]; MAD 1,37 | 58,38 [56,94–60,58]; MAD 0,91 |
 
 ## Fluidez: ejercicio reproducible, no juicio humano
 
@@ -85,6 +110,7 @@ Después de las medidas de reposo a 1440×900, se redimensiona a 1440×720 para 
 | --- | --- | --- |
 | hardware-off | 17,30 [16,90–75,90]; MAD 0,40 → 17,60 [17,50–18,10]; MAD 0,10 | 409,90 [402,20–417,00]; MAD 4,70 → 406,40 [402,20–408,40]; MAD 1,90 |
 | hardware-off-no-gpu | 67,90 [17,00–72,50]; MAD 4,60 → 17,70 [17,40–18,10]; MAD 0,10 | 419,80 [404,20–421,00]; MAD 1,20 → 395,40 [393,30–401,20]; MAD 2,10 |
+| renderer-limit | 17,00 [16,80–73,20]; MAD 0,20 → 17,20 [16,90–18,70]; MAD 0,20 | 409,30 [406,60–422,40]; MAD 1,10 → 411,90 [405,40–424,10]; MAD 6,30 |
 
 ## Coste de integridad
 
@@ -92,6 +118,7 @@ Después de las medidas de reposo a 1440×900, se redimensiona a 1440×720 para 
 | --- | --- | --- | --- |
 | hardware-off | 370,94 [354,40–440,32]; MAD 16,54 → 384,42 [354,71–471,85]; MAD 20,86 | 7,72 [7,13–10,90]; MAD 0,59 → 7,36 [6,73–18,75]; MAD 0,63 | 363,22 [347,28–430,36]; MAD 15,94 → 377,69 [347,36–453,10]; MAD 21,06 |
 | hardware-off-no-gpu | 371,50 [355,75–448,92]; MAD 7,82 → 439,47 [367,06–542,52]; MAD 43,24 | 7,31 [6,64–10,22]; MAD 0,54 → 9,74 [6,89–11,19]; MAD 1,45 | 364,86 [348,99–438,70]; MAD 8,95 → 429,07 [357,32–531,34]; MAD 40,14 |
+| renderer-limit | 355,96 [352,34–613,10]; MAD 3,62 → 359,31 [356,73–518,23]; MAD 2,58 | 7,19 [6,65–11,07]; MAD 0,54 → 9,69 [6,65–10,68]; MAD 0,99 | 349,25 [345,69–602,02]; MAD 3,56 → 350,54 [349,49–507,55]; MAD 1,04 |
 
 ## Trazabilidad y exclusiones
 

@@ -8,19 +8,23 @@ export function ActionNotice() {
   return (
     <div className="v-studio-action-notice" role="status">
       <span>
-        {notice.kind === "removed"
-          ? t.removedName(notice.name)
-          : t.addedName(notice.name)}
+        {notice.kind === "preset"
+          ? t.presetApplied(notice.name)
+          : notice.kind === "removed"
+            ? t.removedName(notice.name)
+            : t.addedName(notice.name)}
       </span>
       <Button
         size="sm"
-        disabled={state.pending || !view.canUndo}
-        onClick={() =>
-          void state.execute({
-            method: "studio.undo",
-            baseRevision: view.revision,
-          })
-        }
+        disabled={!view.canUndo}
+        aria-disabled={state.pending}
+        onClick={() => {
+          if (!state.pending)
+            void state.execute({
+              method: "studio.undo",
+              baseRevision: view.revision,
+            });
+        }}
       >
         {t.undo}
       </Button>

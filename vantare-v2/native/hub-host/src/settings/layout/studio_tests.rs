@@ -624,36 +624,24 @@ fn projected_settings_that_exceed_the_transport_become_protected() {
 #[test]
 fn native_serialization_and_host_projection_round_trip_all_five_families() {
     use vantare_domain::widget_settings as native;
-    fn round_trip<T: Serialize + DeserializeOwned>(kind: WidgetKind, settings: T) {
+    fn round_trip<T: Serialize + DeserializeOwned>(kind: WidgetKind) {
+        // This fixture comes from GPUI new_settings, which also materializes
+        // session-specific columns beyond the bare domain Settings::default().
+        let fixture = crate::widget_defaults::get(kind.id()).unwrap();
+        let settings: T = serde_json::from_str(fixture.settings.get()).unwrap();
         let mut stored = serde_json::to_value(&settings).unwrap();
         stored["kind"] = serde_json::to_value(kind).unwrap();
-        let raw: Fields = serde_json::from_value(stored.clone()).unwrap();
+        let raw: Fields = serde_json::from_value(stored).unwrap();
         let projected = typed_settings(kind, &raw).unwrap().unwrap();
-        let value = serde_json::to_value(projected).unwrap();
-        let decoded: T = serde_json::from_value(value).unwrap();
+        let decoded: T = serde_json::from_value(serde_json::to_value(projected).unwrap()).unwrap();
         assert_eq!(
             serde_json::to_value(decoded).unwrap(),
             serde_json::to_value(settings).unwrap()
         );
     }
-    round_trip(
-        WidgetKind::Standings,
-        native::standings::Settings::default().normalized(),
-    );
-    round_trip(
-        WidgetKind::Relative,
-        native::relative::Settings::default().normalized(),
-    );
-    round_trip(
-        WidgetKind::Delta,
-        native::delta::Settings::default().normalized(),
-    );
-    round_trip(
-        WidgetKind::Pedals,
-        native::pedals::Settings::default().normalized(),
-    );
-    round_trip(
-        WidgetKind::FuelStrategy,
-        native::fuel_strategy::Settings::default().normalized(),
-    );
+    round_trip::<native::standings::Settings>(WidgetKind::Standings);
+    round_trip::<native::relative::Settings>(WidgetKind::Relative);
+    round_trip::<native::delta::Settings>(WidgetKind::Delta);
+    round_trip::<native::pedals::Settings>(WidgetKind::Pedals);
+    round_trip::<native::fuel_strategy::Settings>(WidgetKind::FuelStrategy);
 }

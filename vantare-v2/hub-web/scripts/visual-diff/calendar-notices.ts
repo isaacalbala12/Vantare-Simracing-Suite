@@ -13,7 +13,7 @@ async function sidebar(page: Page, expanded: boolean) {
 }
 function alerts(expanded: boolean): VisualScene {
   return {
-    mock: "calendar-notice-reference",
+    mock: "calendar-live-reference",
     async prepare(page) {
       await calendarScenes[
         expanded
@@ -30,7 +30,7 @@ function alerts(expanded: boolean): VisualScene {
 }
 function week(expanded: boolean): VisualScene {
   return {
-    mock: "calendar-notice-reference",
+    mock: "calendar-live-reference",
     async prepare(page) {
       await sidebar(page, expanded);
       await notificationHonestyScenes["calendario-semana-pendiente"].prepare(
@@ -45,12 +45,12 @@ export const calendarNoticeScenes: Record<string, VisualScene> = {
   "calendario-emisor-semana-contraida": week(false),
   "calendario-emisor-semana-desplegada": week(true),
   "calendario-emisor-ficha-contraida": {
-    mock: "calendar-notice-reference",
+    mock: "calendar-live-reference",
     prepare: (page) =>
       calendarScenes["calendario-ficha-contraida"].prepare(page),
   },
   "calendario-emisor-ficha-desplegada": {
-    mock: "calendar-notice-reference",
+    mock: "calendar-live-reference",
     prepare: (page) =>
       calendarScenes["calendario-ficha-desplegada"].prepare(page),
   },

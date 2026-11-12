@@ -20,7 +20,7 @@ export const calendarAlertsText = {
   where: "Dónde te llega",
   when: "Al avisar",
   what: "Qué se avisa",
-  sample: "Así te llegará",
+  sample: "Ejemplo del aviso de Windows",
   yours: "Tus avisos",
   windows: "Notificación de Windows",
   windowsHint: "Un aviso de Windows mientras el Hub esté abierto.",
@@ -32,7 +32,7 @@ export const calendarAlertsText = {
   deliveryScope:
     "Con el Hub abierto, recibes avisos según tus canales. En pista, las franjas se callan y las tandas explícitas pueden avisar en silencio.",
   previewScope:
-    "Windows muestra el texto del aviso; los botones de esta muestra no están disponibles.",
+    "El aviso usa tu hora local. Windows decide su aspecto y si se muestra o suena. Contiene texto, sin botones para lanzar ni posponer.",
   autoLegacyHint:
     "El lanzamiento automático no está disponible aquí; puedes desactivarlo.",
   autoHint:
@@ -93,5 +93,8 @@ export const calendarAlertsText = {
   legacy:
     "Hay avisos antiguos que debes revisar antes de guardarlos. Puedes quitar los avisos que ya no necesites.",
   invalidSlot: "Fecha no válida · puedes quitar este aviso.",
+  previewMissing: "Ejemplo del Calendario",
+  previewMissingHelp:
+    "Descarga un horario vigente para ver una salida real. La prueba usa un ejemplo fijo.",
   previewLabel: "Ejemplo de notificación de Windows",
 };

@@ -184,3 +184,27 @@ it("saves next-week preference explicitly and retains focus while saving", () =>
   fireEvent.click(control);
   expect(onNotifyWeek).toHaveBeenCalledOnce();
 });
+it.each(["protected", "unavailable", "loading"] as const)(
+  "does not invent a next-week value for %s alerts",
+  (alertsState) => {
+    const onNotifyWeek = vi.fn();
+    render(
+      <CalendarUpcomingView
+        previous={fixture}
+        utc
+        following={0}
+        limit={1000}
+        notifyWeek
+        alertsState={alertsState}
+        notifyDisabled
+        notifyBusy={false}
+        onNotifyWeek={onNotifyWeek}
+        onRefresh={vi.fn()}
+        busy={false}
+      />,
+    );
+    expect(screen.queryByRole("switch", { name: text.notifyWeek })).toBeNull();
+    expect(screen.getByRole("status").textContent).toBeTruthy();
+    expect(onNotifyWeek).not.toHaveBeenCalled();
+  },
+);

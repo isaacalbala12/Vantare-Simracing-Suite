@@ -12,6 +12,7 @@ import {
 } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText } from "../i18n/calendar";
+import { calendarStartNoticeText } from "../i18n/calendar-notices";
 import { calendarAlertsText as text } from "../i18n/calendarAlerts";
 import { calendarBandText as bandText } from "../i18n/calendarBands";
 import type { CalendarAlertChange } from "../screens/calendar/AlertChange";
@@ -532,13 +533,18 @@ function Preview(p: Props) {
     series && p.schedule
       ? nextStart(p.schedule, series, p.now, p.limit)
       : undefined;
-  const next =
-    series && p.schedule && first !== undefined
-      ? nextStart(p.schedule, series, first + 1000, p.limit)
+  const sample =
+    series && first !== undefined
+      ? calendarStartNoticeText(
+          {
+            series: series.name,
+            track: series.track,
+            at: first,
+            raceMinutes: raceMinutes(series),
+          },
+          first - p.alerts.leadMin * 60000,
+        )
       : undefined;
-  const band = series
-    ? p.alerts.bands.find((b) => b.seriesId === series.id)
-    : undefined;
   return (
     <section
       className="v-calendar-alerts-preview"
@@ -553,27 +559,10 @@ function Preview(p: Props) {
         <div className="v-calendar-alerts-toast-body">
           <b>{`${p.alerts.leadMin}′`}</b>
           <div>
-            <strong>
-              {text.previewTitle(
-                series?.name ?? "—",
-                first === undefined ? "—" : clock(first, p.utc),
-              )}
-            </strong>
-            <p>
-              {text.previewBody(
-                series?.track.split(" (")[0] ?? "—",
-                series ? raceMinutes(series) : 0,
-                band ? text.previewBand(hm(band.from), hm(band.to)) : "",
-                next === undefined ? undefined : clock(next, p.utc),
-              )}
-            </p>
+            <strong>{sample?.title ?? text.previewMissing}</strong>
+            <p>{sample?.body ?? text.previewMissingHelp}</p>
           </div>
         </div>
-        <footer aria-hidden="true">
-          <span>{text.launch}</span>
-          <span>{text.detail}</span>
-          <span>{text.snooze}</span>
-        </footer>
       </div>
     </section>
   );

@@ -1,6 +1,8 @@
 import type {
   DeltaSize,
+  DeltaTemplate,
   OverlayInstance,
+  StandingsTemplate,
   TableSize,
   WidgetSettingsPatch,
 } from "../../../contract/generated/studio";
@@ -20,6 +22,13 @@ const fuelFormats: Record<TableSize, string> = {
   compact: t.formatCompact,
   standard: t.formatStandard,
   expanded: t.formatExpanded,
+};
+
+const designs: Record<StandingsTemplate | DeltaTemplate, string> = {
+  signature: t.designSignature,
+  broadcast: t.designBroadcast,
+  instrument: t.designInstrument,
+  capsule: t.designCapsule,
 };
 
 export function AppearanceInspector({ item }: { item: OverlayInstance }) {
@@ -67,6 +76,32 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
           }}
         />
       )}
+      {settings.designSystem === "eficiencia" &&
+        (settings.kind === "standings" || settings.kind === "delta") && (
+          <Select
+            label={t.widgetDesign}
+            value={settings.templateId}
+            disabled={disabled}
+            pending={state.pending}
+            options={(settings.kind === "standings"
+              ? studioWidgetOptions.standings.templates
+              : studioWidgetOptions.delta.templates
+            ).map((value) => ({ value, label: designs[value] }))}
+            onChange={(value) => {
+              if (settings.kind === "standings") {
+                const templateId = studioWidgetOptions.standings.templates.find(
+                  (option) => option === value,
+                );
+                if (templateId) patch({ kind: "standings", templateId });
+              } else if (settings.kind === "delta") {
+                const templateId = studioWidgetOptions.delta.templates.find(
+                  (option) => option === value,
+                );
+                if (templateId) patch({ kind: "delta", templateId });
+              }
+            }}
+          />
+        )}
       {settings.kind === "standings" && (
         <dl className="v-field">
           <dt>{t.widgetBrand}</dt>

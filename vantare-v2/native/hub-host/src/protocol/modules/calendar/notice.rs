@@ -330,29 +330,28 @@ impl State {
         self.cache_current(now);
         let announce = self.notices.refresh_initialized || was_current;
         self.notices.refresh_initialized = true;
-        if let Some(schedule) = self.cached_current.as_ref() {
-            if arrived
-                && announce
-                && enabled
-                && valid_clock(now)
-                && self.config_view.documents.alerts == CalendarDocumentState::Ready
-                && self.config_view.alerts.notify_week
-                && self.config_view.alerts.channels.windows
-                && let Some(from) = date_millis(&schedule.valid_from)
-                && before.is_some_and(|old| from > old)
-                && let Some(until) = date_millis(&schedule.valid_until)
-            {
-                let id = vantare_services::content_hash(format!("calendar-week:{from}").as_bytes());
-                if self.notices.accept(&id, until) {
-                    self.notices.pending_week = Some(CalendarNotice::Week {
-                        id,
-                        issued_at: now,
-                        expires_at: now + NOTICE_TTL_MS,
-                        from,
-                        until,
-                        silent: !self.config_view.alerts.channels.sound || in_track,
-                    });
-                }
+        if let Some(schedule) = self.cached_current.as_ref()
+            && arrived
+            && announce
+            && enabled
+            && valid_clock(now)
+            && self.config_view.documents.alerts == CalendarDocumentState::Ready
+            && self.config_view.alerts.notify_week
+            && self.config_view.alerts.channels.windows
+            && let Some(from) = date_millis(&schedule.valid_from)
+            && before.is_some_and(|old| from > old)
+            && let Some(until) = date_millis(&schedule.valid_until)
+        {
+            let id = vantare_services::content_hash(format!("calendar-week:{from}").as_bytes());
+            if self.notices.accept(&id, until) {
+                self.notices.pending_week = Some(CalendarNotice::Week {
+                    id,
+                    issued_at: now,
+                    expires_at: now + NOTICE_TTL_MS,
+                    from,
+                    until,
+                    silent: !self.config_view.alerts.channels.sound || in_track,
+                });
             }
         }
         Ok(value)

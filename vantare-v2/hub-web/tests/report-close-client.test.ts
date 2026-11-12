@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// Real MessageChannel and injected clocks; this suite needs no DOM.
 import { afterEach, expect, it, vi } from "vitest";
 import type {
   CloseReason,
@@ -6,7 +6,11 @@ import type {
   ReportFields,
   UiToHost,
 } from "../src/contract/generated/contract";
-import { Client, HostFailure } from "../src/renderer/bridge/client";
+import {
+  Client,
+  HostFailure,
+  ReportCloseDiscarded,
+} from "../src/renderer/bridge/client";
 import type { CloseClock } from "../src/renderer/bridge/report-close";
 
 const fields: ReportFields = {
@@ -368,7 +372,7 @@ it("settles abandoned clean Testing waits even if another screen vetoes the clos
   });
   h.post({ kind: "closeRequested", reason: "window" });
   expect(await h.next()).toEqual({ kind: "closeAnswer", allow: false });
-  expect(await pending).toEqual(new HostFailure({ kind: "busy" }));
+  expect(await pending).toBeInstanceOf(ReportCloseDiscarded);
   expect(observed).toHaveBeenCalledWith({
     id: request.id,
     method: "testing.refresh",
@@ -376,3 +380,47 @@ it("settles abandoned clean Testing waits even if another screen vetoes the clos
     error: { kind: "busy" },
   });
 });
+
+it.each(["live", "controlEof"] as const)(
+  "completes every request observation once on priority %s",
+  async (reason) => {
+    const h = setup();
+    const observed = vi.fn();
+    h.client.observeRequests(observed);
+    const pending = h.client
+      .request({ method: "testing.refresh" })
+      .catch((error) => error);
+    const request = await h.next();
+    if (request.kind !== "request") throw Error("Expected refresh");
+    h.post({ kind: "closeRequested", reason });
+    expect(await h.next()).toEqual({ kind: "closeAnswer", allow: true });
+    expect(await pending).toEqual(new HostFailure({ kind: "busy" }));
+    expect(observed.mock.calls.map(([event]) => event)).toEqual([
+      { id: request.id, method: "testing.refresh", phase: "start" },
+      {
+        id: request.id,
+        method: "testing.refresh",
+        phase: "done",
+        error: { kind: "busy" },
+      },
+    ]);
+    // An old result cannot settle the observer for a second time.
+    h.post({
+      kind: "failure",
+      id: request.id,
+      error: { kind: "coreUnavailable" },
+    });
+    const delivered = new Promise<void>((resolve) => {
+      const off = h.client.listen((message) => {
+        if (message.kind === "failure" && message.id === request.id) {
+          off();
+          resolve();
+        }
+      });
+    });
+    await delivered;
+    expect(
+      observed.mock.calls.filter(([event]) => event.phase === "done"),
+    ).toHaveLength(1);
+  },
+);

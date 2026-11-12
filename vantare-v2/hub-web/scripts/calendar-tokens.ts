@@ -99,8 +99,14 @@ export function calendarTokens(source: string, filters: string) {
     );
     if (!stripe) throw new Error("Calendar month stripe missing");
     const stripeIndex = scheme === "light" ? 1 : 3;
+    const stripeRgb = Number.parseInt(
+      stripe[stripeIndex].replaceAll("_", ""),
+      16,
+    )
+      .toString(16)
+      .padStart(6, "0");
     values["calendar-month-stripe"] =
-      `color-mix(in srgb, ${color(stripe[stripeIndex])} ${Number((Number(stripe[stripeIndex + 1]) * 100).toFixed(4))}%, transparent)`;
+      `color-mix(in srgb, #${stripeRgb} ${Number((Number(stripe[stripeIndex + 1]) * 100).toFixed(4))}%, transparent)`;
     const white = source.match(/s\.on_primary = 0x([A-Fa-f0-9_]+);/);
     if (!white) throw new Error("Calendar primary text missing");
     values["text-on-accent"] = color(white[1]);

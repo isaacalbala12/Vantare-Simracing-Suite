@@ -33,7 +33,7 @@
   --calendar-proximas-hero: linear-gradient(110deg, #fbe4e6 0%, #ffffff 78%);
   --calendar-proximas-wash-from: #c42b361a;
   --calendar-detail-neo: linear-gradient(180deg, #ffffff 0%, #faf7f7 100%);
-  --calendar-month-stripe: color-mix(in srgb, #003c1920 4.5%, transparent);
+  --calendar-month-stripe: color-mix(in srgb, #3c1920 4.5%, transparent);
   --text-on-accent: #ffffff;
 }
 
@@ -89,7 +89,7 @@
   --calendar-proximas-hero: linear-gradient(110deg, #5c1720 0%, #1e1517 78%);
   --calendar-proximas-wash-from: #ff525c42;
   --calendar-detail-neo: linear-gradient(180deg, #262022 0%, #1f1a1c 100%);
-  --calendar-month-stripe: color-mix(in srgb, #00ffffff 3.5%, transparent);
+  --calendar-month-stripe: color-mix(in srgb, #ffffff 3.5%, transparent);
   --text-on-accent: #ffffff;
 }
 

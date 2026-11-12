@@ -227,15 +227,19 @@ export function CalendarMonthView({
           {text.special}
         </span>
         <span>
-          <i className="v-calendar-month-legend-density" />
-          {text.density}
+          <span className="v-calendar-month-legend-density" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="v-calendar-month-legend-copy">{text.density}</span>
         </span>
         <span>
           <b data-ran>
             <Icon name="check" />
             {text.legendRuns}
           </b>
-          {text.ran}
+          <span className="v-calendar-month-legend-copy">{text.ran}</span>
         </span>
         <span>
           <b data-alert>

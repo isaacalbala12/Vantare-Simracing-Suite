@@ -82,6 +82,7 @@
   border-radius: 16px;
 }
 .v-calendar-month > footer b {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 3px;
@@ -307,11 +308,29 @@
   height: 10px;
 }
 .v-calendar-month-legend-density {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 1px;
   width: 22px;
-  height: 12px;
-  border-left: 7px solid var(--surface-3);
-  border-right: 7px solid var(--surface-3);
+  height: 14px;
+}
+.v-calendar-month-legend-density i {
+  flex: 1;
+  height: 60%;
+  background: var(--line-3);
+}
+.v-calendar-month-legend-density i:nth-child(2) {
+  height: 90%;
   background: var(--accent);
+}
+.v-calendar-month > footer > span {
+  min-width: 0;
+}
+.v-calendar-month-legend-copy {
+  min-width: 0;
+  white-space: normal;
+  line-height: 15px;
 }
 
 .v-calendar-month-full {

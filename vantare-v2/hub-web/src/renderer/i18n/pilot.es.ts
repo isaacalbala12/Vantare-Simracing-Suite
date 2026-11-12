@@ -1,4 +1,6 @@
 export const pilotText = {
+  sessionDiscarded:
+    "La sesión ha cambiado y el perfil sin guardar se ha descartado",
   cropLabel: "Recorte de la foto: arrastra para mover, rueda para acercar",
   cropTitle: "Ajusta el recorte",
   cropHelp:

@@ -3,6 +3,34 @@ import { readFile } from "node:fs/promises";
 import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 export const pilotScenes: Record<string, VisualScene> = {
+  "cuenta-cambio-sesion": {
+    mock: "cuenta-cambio-sesion",
+    async prepare(page) {
+      await page.getByRole("tab", { name: "Cuenta", exact: true }).click();
+      await page
+        .getByRole("textbox", { name: "Nombre público", exact: true })
+        .fill("Nota QA sin guardar");
+      await page
+        .getByRole("button", { name: "Guardar perfil", exact: true })
+        .click();
+      await page
+        .getByText(
+          "La sesión ha cambiado y el perfil sin guardar se ha descartado",
+          { exact: true },
+        )
+        .waitFor();
+      const name = page.getByRole("textbox", {
+        name: "Nombre público",
+        exact: true,
+      });
+      await name.waitFor();
+      await until(
+        async () => (await name.inputValue()) !== "Nota QA sin guardar",
+        2000,
+        "fresh pilot after session boundary",
+      );
+    },
+  },
   "ajustes-perfil-recorte": {
     mock: "ajustes-con-diseno",
     async cleanup(page) {

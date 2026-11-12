@@ -1,6 +1,8 @@
 import pilotFixture from "../../../fixtures/pilot-base.json";
 import visualPilot from "../../../fixtures/pilot-visual.json";
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
+import accountCorpus from "../../contract/generated/corpus/account.json";
+import { isAccount } from "../../contract/modules/account";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
   const { sceneName, core } = context;
@@ -24,6 +26,35 @@ export function create(context: MockContext): MockHandler {
           result: { method: request.method, value: structuredClone(pilot) },
         };
       case "pilot.save":
+        if (sceneName === "cuenta-cambio-sesion") {
+          const account = accountCorpus.host.find(
+            (m) =>
+              m.kind === "response" &&
+              "result" in m &&
+              m.result?.method === "account.get",
+          );
+          if (
+            !account ||
+            !("result" in account) ||
+            !account.result ||
+            !("value" in account.result) ||
+            !isAccount(account.result.value)
+          )
+            throw Error("missing QA account");
+          context.emit?.({
+            kind: "event",
+            event: {
+              topic: "account",
+              value: {
+                ...account.result.value,
+                session: "signedIn",
+                gate: "none",
+                blocked: false,
+              },
+            },
+          });
+          return { kind: "failure", id, error: { kind: "busy" } };
+        }
         if (sceneName === "cuenta-error")
           return { kind: "failure", id, error: { kind: "io" } };
         if (sceneName === "cuenta-ocupada")

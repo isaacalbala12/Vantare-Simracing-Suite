@@ -326,7 +326,12 @@ export class Client {
         clearTimeout(timer);
         entry.dispose?.();
         this.pending.delete(id);
-        this.observed({ id, method: request.method, phase: "done", error: { kind: "coreUnavailable" } });
+        this.observed({
+          id,
+          method: request.method,
+          phase: "done",
+          error: { kind: "coreUnavailable" },
+        });
         reject(new HostFailure({ kind: "coreUnavailable" }));
         this.answerWhenIdle();
       };
@@ -347,7 +352,12 @@ export class Client {
         clearTimeout(timer);
         dispose();
         this.pending.delete(id);
-        this.observed({ id, method: request.method, phase: "done", error: { kind: "coreUnavailable" } });
+        this.observed({
+          id,
+          method: request.method,
+          phase: "done",
+          error: { kind: "coreUnavailable" },
+        });
         reject(new HostFailure({ kind: "coreUnavailable" }));
       }
     });

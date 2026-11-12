@@ -191,6 +191,25 @@ petición cancelada se descartan. No se introducen variantes en el wire v6.
 Distingue `archived` (se archivó el antiguo y ganó el borrador protegido) de
 `preserved` (el origen sigue conservado por un fallo o por no poder importarlo).
 
+### Cierre con borrador de Informes (sin método nuevo)
+
+La X intenta guardar mediante `draft.save` durante un plazo total de 5 s, con reloj
+monotónico inyectable. El cliente mantiene `request()` cerrado con `busy` después
+de `closeRequested`; únicamente la preparación del propietario de Informes tiene
+una función cerrada que admite `ReportFields`, nunca un método libre. Después del
+guardado se ejecutan los guards de cierre habituales, que no hacen peticiones.
+
+Un fallo o vencimiento veta ese cierre y abre WindowDialog con Reintentar / Cerrar
+sin guardar; Escape vuelve a la edición. La segunda X no duplica la preparación.
+Un cambio de sesión cancela la espera antes de otro guardado; las respuestas tardías
+no cierran la ventana ni restituyen texto de la cuenta anterior. Un comando ya
+enviado al núcleo no se puede retirar mediante el wire actual.
+
+Live, Restart, EOF y cierre del propietario cancelan la preparación inmediatamente.
+En el anfitrión la razón solo sube: Window < Restart < Live/EOF. Una razón forzada
+en curso no se sustituye ni vuelve a emitir; el renderer ignora razones iguales o
+inferiores. No se añade protocolo, ni cambia IPC, derechos, runtime o supervisor.
+
 ## Calendario (`calendar`): datos de solo lectura
 
 `calendar.load {}` lee los documentos existentes del GPUI sin crearlos ni modificarlos:

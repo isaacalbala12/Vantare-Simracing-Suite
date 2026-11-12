@@ -95,6 +95,26 @@
 .v-calendar-alerts-columns > section > .v-segmented {
   align-self: flex-start;
   margin-bottom: 16px;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line-1);
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+.v-calendar-alerts-columns > section > .v-segmented .v-segment {
+  min-height: 26px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.v-calendar-alerts-columns > section > .v-segmented .v-segment[data-pressed] {
+  background: var(--surface-1);
+  border-color: var(--line-2);
+}
+.v-calendar-alerts-auto {
+  align-items: flex-start;
 }
 .v-calendar-alerts-channel {
   display: flex;

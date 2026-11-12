@@ -1,4 +1,3 @@
-import { Dialog } from "@base-ui/react/dialog";
 import { type ReactNode, useState } from "react";
 import type {
   CalendarAlerts,
@@ -31,6 +30,7 @@ import { clock, datePart } from "./calendarDate";
 import { zoneLabel } from "./calendarZone";
 import { Segmented, Switch } from "./Forms";
 import { Tooltip } from "./Layers";
+import { WindowDialog as Dialog } from "./WindowDialog";
 import "../assets/calendar-detail.css";
 import "../design/generated/calendar-tokens.css";
 import "./calendar-detail.css";

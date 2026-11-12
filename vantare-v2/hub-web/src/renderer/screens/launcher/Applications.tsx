@@ -20,6 +20,7 @@ import {
   ApplicationFields,
   ApplicationRemoval,
 } from "../../ui/launcher/Applications";
+import { WindowDialog } from "../../ui/WindowDialog";
 import { useProfileEditorState } from "./editor-state";
 import { launcherKey, useLauncherSnapshot } from "./state";
 
@@ -54,6 +55,7 @@ export function Applications() {
     undefined,
   );
   const busy = useRef(false);
+  const editorOrigin = useRef<HTMLElement | null>(null);
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -103,6 +105,14 @@ export function Applications() {
   const open = useCallback(
     async (id: string | null) => {
       if (!client || busy.current) return;
+      if (
+        !editorOrigin.current?.isConnected ||
+        !document.activeElement?.closest(".v-launcher-app-drawer")
+      )
+        editorOrigin.current =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
       busy.current = true;
       setPending(true);
       try {
@@ -323,55 +333,77 @@ export function Applications() {
   return (
     <>
       {editor ? (
-        <ApplicationFields
-          value={editor}
-          selected={selected}
-          pending={pending}
-          error={error}
-          official={catalog.apps.some(
-            (app) => app.id === editor.draft.id && !app.removable,
-          )}
-          onChange={(draft) => setEditor({ ...editor, draft })}
-          onPick={() => void pick()}
-          onDiscovery={() => {
-            setSelected(null);
-            setEditor({
-              ...editor,
-              draft: { ...editor.draft, useDiscovery: true },
-            });
+        <WindowDialog.Root
+          open
+          onOpenChange={(open) => {
+            if (!open && !pending) {
+              setEditor(undefined);
+              setSelected(null);
+              setError(undefined);
+            }
           }}
-          onSave={() => save()}
-          onCancel={() => {
-            setEditor(undefined);
-            setSelected(null);
-            setError(undefined);
-          }}
-          onRetry={again}
-          onDiscard={discard}
-        />
-      ) : (
-        <ApplicationCatalog
-          value={catalog}
-          query={query}
-          onQuery={setQuery}
-          pending={pending}
-          error={error}
-          onReload={() => void load().catch(() => setError(text.failed))}
-          onScan={() => void scan()}
-          onEdit={(id) => void open(id)}
-          onFavorite={(app) =>
-            void mutate({
-              method: "launcher.app.favorite",
-              id: app.id,
-              favorite: !app.favorite,
-              baseRevision: catalog.revision,
-            })
-          }
-          onRemove={setRemoval}
-          onRetry={again}
-          onDiscard={discard}
-        />
-      )}
+        >
+          <WindowDialog.Portal>
+            <WindowDialog.Backdrop className="v-backdrop" />
+            <WindowDialog.Popup
+              className="v-launcher-app-drawer"
+              aria-label={text.editor}
+              aria-describedby={undefined}
+              finalFocus={() =>
+                editorOrigin.current?.isConnected ? editorOrigin.current : false
+              }
+            >
+              <ApplicationFields
+                value={editor}
+                selected={selected}
+                pending={pending}
+                error={error}
+                official={catalog.apps.some(
+                  (app) => app.id === editor.draft.id && !app.removable,
+                )}
+                onChange={(draft) => setEditor({ ...editor, draft })}
+                onPick={() => void pick()}
+                onDiscovery={() => {
+                  setSelected(null);
+                  setEditor({
+                    ...editor,
+                    draft: { ...editor.draft, useDiscovery: true },
+                  });
+                }}
+                onSave={() => save()}
+                onCancel={() => {
+                  setEditor(undefined);
+                  setSelected(null);
+                  setError(undefined);
+                }}
+                onRetry={again}
+                onDiscard={discard}
+              />
+            </WindowDialog.Popup>
+          </WindowDialog.Portal>
+        </WindowDialog.Root>
+      ) : null}
+      <ApplicationCatalog
+        value={catalog}
+        query={query}
+        onQuery={setQuery}
+        pending={pending}
+        error={editor ? undefined : error}
+        onReload={() => void load().catch(() => setError(text.failed))}
+        onScan={() => void scan()}
+        onEdit={(id) => void open(id)}
+        onFavorite={(app) =>
+          void mutate({
+            method: "launcher.app.favorite",
+            id: app.id,
+            favorite: !app.favorite,
+            baseRevision: catalog.revision,
+          })
+        }
+        onRemove={setRemoval}
+        onRetry={again}
+        onDiscard={discard}
+      />
       <ApplicationArgumentReset
         open={argumentReset !== undefined}
         profiles={argumentReset?.source.customProfiles ?? 0}

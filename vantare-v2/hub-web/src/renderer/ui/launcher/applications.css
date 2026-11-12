@@ -1,4 +1,13 @@
 @import "./generated/catalog.css";
+.v-launcher-app-drawer {
+  position: fixed;
+  inset: var(--topbar-h) 0 0 auto;
+  width: min(480px, 100vw);
+  overflow: auto;
+  z-index: var(--z-modal);
+  background: var(--bg-window);
+  border-left: 1px solid var(--line-2);
+}
 .v-launcher-removal {
   position: fixed;
   inset: var(--topbar-h) 0 0 auto;
@@ -272,4 +281,10 @@
   .v-launcher-app-favorite[data-favorite="false"]
   .v-button {
   color: var(--launcher-catalog-icon);
+}
+
+.v-launcher-app-drawer > .v-launcher-catalog {
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
 }

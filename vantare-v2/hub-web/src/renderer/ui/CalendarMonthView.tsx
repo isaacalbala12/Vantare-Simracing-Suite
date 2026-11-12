@@ -1,4 +1,3 @@
-import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
   CalendarAlerts,
@@ -10,6 +9,7 @@ import { monthWeeks } from "../screens/calendar/month";
 import { Button } from "./Button";
 import { civilDay, datePart } from "./calendarDate";
 import { Segmented } from "./Forms";
+import { WindowDialog as BaseDialog } from "./WindowDialog";
 import "./calendar-month.css";
 export function CalendarMonthView({
   view,

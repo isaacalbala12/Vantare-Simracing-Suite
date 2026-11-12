@@ -152,7 +152,9 @@ function Harness() {
       <button type="button" onClick={() => setOpen(true)}>
         Open drawer
       </button>
-      <button type="button">Window control</button>
+      <div className="v-window-controls">
+        <button type="button">Window control</button>
+      </div>
       {open && <CalendarDetail {...props} onClose={() => setOpen(false)} />}
     </TooltipProvider>
   );

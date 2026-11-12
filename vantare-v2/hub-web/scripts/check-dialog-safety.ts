@@ -401,6 +401,10 @@ if (import.meta.main) {
       server.resolvedUrls?.local[0] ?? "",
       evidence,
     );
+    const { checkCalendarDialogSafety } = await import(
+      "./check-calendar-dialog-safety.ts"
+    );
+    await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   } finally {
     await browser.close();
     await new Promise<void>((done, reject) =>

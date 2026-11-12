@@ -21,6 +21,8 @@ import {
   TooltipProvider,
 } from "../src/renderer/ui/Layers";
 
+import { WindowDialogProvider } from "../src/renderer/ui/WindowDialog";
+
 const caches: QueryClient[] = [];
 vi.mock("../src/mock/host", async (original) => {
   const actual = await original<typeof import("../src/mock/host")>();
@@ -74,9 +76,11 @@ function mount(scene = "launcher-aplicaciones") {
         <CSPProvider disableStyleElements>
           <ToastProvider>
             <TooltipProvider>
-              <ProfileEditorProvider>
-                <Applications />
-              </ProfileEditorProvider>
+              <WindowDialogProvider>
+                <ProfileEditorProvider>
+                  <Applications />
+                </ProfileEditorProvider>
+              </WindowDialogProvider>
               <ToastViewport closeLabel={text.cancel} />
             </TooltipProvider>
           </ToastProvider>
@@ -87,6 +91,29 @@ function mount(scene = "launcher-aplicaciones") {
 }
 
 describe("application catalog", () => {
+  it("closes the application drawer with Escape without saving and restores its origin", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const trigger = await screen.findByRole("button", {
+      name: text.edit("OBS Studio"),
+    });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = await screen.findByRole("dialog", { name: text.editor });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: text.name }), {
+      target: { value: "Borrador sin guardar" },
+    });
+    fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: text.editor })).toBeNull(),
+    );
+    expect(
+      requests.mock.calls.some(
+        ([request]) => request.method === "launcher.app.save",
+      ),
+    ).toBe(false);
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
   it("rereads after conflict before warning about newly added private profile options", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("launcher-aplicaciones-args-conflicto");

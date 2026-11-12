@@ -1,4 +1,3 @@
-import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
@@ -15,6 +14,7 @@ import { Button } from "./Button";
 import { civilDay, clock, datePart, dayHours } from "./calendarDate";
 import { zoneLabel } from "./calendarZone";
 import { Segmented } from "./Forms";
+import { WindowDialog as BaseDialog } from "./WindowDialog";
 import "./calendar-day.css";
 export function CalendarDayView({
   schedule,

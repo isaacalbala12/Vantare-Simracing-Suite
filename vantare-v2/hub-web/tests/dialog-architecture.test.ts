@@ -4,14 +4,6 @@ import { parse } from "@babel/parser";
 import { describe, expect, it } from "vitest";
 
 const root = "src/renderer";
-const calendar = new Set([
-  "ui/CalendarAlertsDialog.tsx",
-  "ui/CalendarDetail.tsx",
-  "ui/CalendarIcsDialog.tsx",
-  "ui/CalendarDayView.tsx",
-  "ui/CalendarMonthView.tsx",
-  "ui/CalendarWeekView.tsx",
-]);
 type Node = Record<string, unknown>;
 function sub(node: Node | undefined, key: string): Node | undefined {
   const value = node?.[key];
@@ -194,10 +186,8 @@ describe("dialog architecture outside Calendar", () => {
   it("requires the common root, explicit non-modal floats and audited native/scope exceptions", () => {
     for (const path of files(root).filter((path) => /\.tsx?$/.test(path))) {
       const file = relative(root, path).replaceAll("\\", "/");
-      if (!calendar.has(file))
-        expect(audit(readFileSync(path, "utf8"), file).errors, file).toEqual(
-          [],
-        );
+
+      expect(audit(readFileSync(path, "utf8"), file).errors, file).toEqual([]);
     }
   });
   it("rejects full-cover CSS including zero px and all four physical edges", () => {
@@ -211,9 +201,9 @@ describe("dialog architecture outside Calendar", () => {
     const classes = new Set<string>();
     for (const path of files(root).filter((path) => /\.tsx?$/.test(path))) {
       const file = relative(root, path).replaceAll("\\", "/");
-      if (!calendar.has(file))
-        for (const cls of audit(readFileSync(path, "utf8"), file).classes)
-          classes.add(cls);
+
+      for (const cls of audit(readFileSync(path, "utf8"), file).classes)
+        classes.add(cls);
     }
     for (const path of files(root).filter((path) => path.endsWith(".css")))
       for (const rule of readFileSync(path, "utf8").matchAll(

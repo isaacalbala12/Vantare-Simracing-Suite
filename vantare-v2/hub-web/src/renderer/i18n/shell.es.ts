@@ -9,7 +9,7 @@ export const shellText = {
   studioName: "Overlays Studio",
   strategyName: "Strategy",
   engineerName: "Engineer",
-  openProfile: (name: string) => `Abrir ${name} en Launcher`,
+  launchProfile: (name: string) => `Lanzar perfil ${name}`,
   waitingSimulator: "Esperando simulador",
   simulatorConnected: "LMU conectado",
   sectionTabs: "Pestañas de la sección",

@@ -12,20 +12,26 @@ export const calendarAlertsText = {
     `Puedes guardar hasta ${n} tandas. Quita una antes de añadir otra.`,
   defaultProfile: "Perfil",
   title: "Avisos",
-  subtitle: "Te avisamos antes de que salga la carrera que elijas.",
+  subtitle: "Configura los avisos en pista antes de tu carrera.",
   close: "Cerrar (Esc)",
   lead: "Con cuánta antelación",
   where: "Dónde te llega",
   when: "Al avisar",
   what: "Qué se avisa",
-  sample: "Así te llegará",
+  sample: "Ejemplo de notificación futura",
   yours: "Tus avisos",
   windows: "Notificación de Windows",
-  windowsHint: "Un aviso antes de la salida elegida.",
+  windowsHint:
+    "Preferencia conservada, de solo lectura: este Hub aún no emite notificaciones de Windows del Calendario.",
   track: "En pista, si ya estás conduciendo",
   trackHint: "Un aviso discreto en tus overlays, sin sonido.",
   sound: "Sonido",
-  soundHint: "Solo fuera del simulador.",
+  soundHint:
+    "Preferencia conservada, de solo lectura: este Hub aún no emite sonido para los avisos del Calendario.",
+  deliveryPending:
+    "Los avisos en pista funcionan. La notificación de Windows y el sonido aún no están disponibles en este Hub; tus preferencias guardadas se conservan.",
+  previewPending:
+    "Esta muestra es ilustrativa: aún no se envía una notificación de Windows ni funcionan sus botones.",
   autoLegacyHint:
     "El lanzamiento automático no está disponible aquí; puedes desactivarlo.",
   autoHint:
@@ -77,5 +83,5 @@ export const calendarAlertsText = {
   legacy:
     "Hay avisos antiguos que debes revisar antes de guardarlos. Puedes quitar los avisos que ya no necesites.",
   invalidSlot: "Fecha no válida · puedes quitar este aviso.",
-  previewLabel: "Ejemplo visual de notificación",
+  previewLabel: "Ejemplo ilustrativo de futura notificación de Windows",
 };

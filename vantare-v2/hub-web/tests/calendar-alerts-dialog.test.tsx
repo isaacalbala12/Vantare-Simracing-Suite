@@ -38,11 +38,11 @@ it("sends only the chosen lead or channel and closes without another write", () 
   show();
   fireEvent.click(screen.getByRole("button", { name: "15 min" }));
   expect(props.onChange).toHaveBeenLastCalledWith({ kind: "lead", value: 15 });
-  fireEvent.click(screen.getByRole("checkbox", { name: text.sound }));
+  fireEvent.click(screen.getByRole("checkbox", { name: text.track }));
   expect(props.onChange).toHaveBeenLastCalledWith({
     kind: "channel",
-    channel: "sound",
-    value: true,
+    channel: "inTrack",
+    value: false,
   });
   const writes = props.onChange.mock.calls.length;
   fireEvent.click(screen.getByRole("button", { name: text.save }));
@@ -150,7 +150,7 @@ it("shows legacy duplicate alerts safely and lets the user remove an unrepresent
 
 it("preserves the focused checkbox while saving and reports its blocked second click", () => {
   const result = show();
-  const checkbox = screen.getByRole("checkbox", { name: text.sound });
+  const checkbox = screen.getByRole("checkbox", { name: text.track });
   checkbox.focus();
   fireEvent.click(checkbox);
   expect(props.onChange).toHaveBeenCalledOnce();
@@ -163,7 +163,11 @@ it("preserves the focused checkbox while saving and reports its blocked second c
   expect(checkbox.getAttribute("aria-disabled")).toBe("true");
   fireEvent.click(checkbox);
   expect(props.onChange).toHaveBeenCalledOnce();
-  expect(screen.getByRole("status").textContent).toBe(text.saving);
+  expect(
+    screen
+      .getAllByRole("status")
+      .some((node) => node.textContent === text.saving),
+  ).toBe(true);
 });
 it("blocks global edits for legacy duplicates but allows their removal", () => {
   const band = props.alerts.bands[0];
@@ -194,3 +198,37 @@ it("keeps retired series visible and removable when the publication disappears",
   fireEvent.click(screen.getByRole("button", { name: text.removeBand }));
   expect(props.onChange).toHaveBeenCalledOnce();
 });
+
+it.each([false, true])(
+  "preserves saved desktop channels (%s) as read only and labels the future preview",
+  (saved) => {
+    const alerts = structuredClone(props.alerts);
+    alerts.channels.windows = saved;
+    alerts.channels.sound = saved;
+    const before = JSON.stringify(alerts);
+    show({ ...props, alerts });
+    expect(screen.getByText(text.deliveryPending)).toBeTruthy();
+    expect(screen.getByText(text.previewPending)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: text.sample })).toBeTruthy();
+    for (const label of [text.windows, text.sound]) {
+      const node = screen.getByRole("checkbox", { name: label });
+      expect(node.getAttribute("aria-checked")).toBe(String(saved));
+      expect(node.getAttribute("aria-disabled")).toBe("true");
+      const hint = document.getElementById(
+        node.getAttribute("aria-describedby") ?? "",
+      );
+      expect(hint?.textContent).toContain("solo lectura");
+      fireEvent.click(node);
+      fireEvent.keyDown(node, { key: " " });
+    }
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(JSON.stringify(alerts)).toBe(before);
+    fireEvent.click(screen.getByRole("checkbox", { name: text.track }));
+    expect(props.onChange).toHaveBeenCalledWith({
+      kind: "channel",
+      channel: "inTrack",
+      value: false,
+    });
+    expect(JSON.stringify(alerts)).toBe(before);
+  },
+);

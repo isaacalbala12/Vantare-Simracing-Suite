@@ -3,8 +3,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: calc(100dvh - 138px);
-  padding-bottom: 14px;
+  /* The GPUI scroll body ends above the shell's 18 px bottom inset. */
+  min-height: calc(100dvh - 152px);
   overflow: hidden;
 }
 .v-diagnostic-health,
@@ -93,7 +93,8 @@
   flex: 1;
   gap: 16px;
   min-height: 220px;
-  overflow: hidden;
+  /* GPUI settings_events leaves the canvas rectangular; the outer stack clips it. */
+  overflow: visible;
 }
 .v-diagnostic-log h2 {
   padding: 14px 20px;
@@ -101,6 +102,7 @@
 .v-diagnostic-log-body {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
   padding: 20px;
   background: var(--bg-base);
 }
@@ -120,6 +122,7 @@
   gap: 2.5px;
   background: var(--surface-2);
   border-radius: 6px;
+  box-shadow: inset 0 2px 1px var(--button-shadow);
 }
 .v-diagnostic-log-filters .v-segment {
   min-height: 29px;
@@ -175,6 +178,7 @@
 }
 .v-diagnostic-log-filters .v-segment[data-pressed] {
   background: var(--surface-elevated);
+  box-shadow: inset 0 1px 0 var(--neo-light);
 }
 
 /* GPUI paints card shadows below the whole grid, so later rows do not dim earlier faces. */
@@ -193,4 +197,9 @@
   box-shadow: var(--shadow-neo);
   z-index: -1;
   pointer-events: none;
+}
+
+/* section_row keeps its bottom rule even for the final row. */
+.v-diagnostics .v-setting-group .v-setting-row:last-child {
+  border-bottom: 1px solid var(--line-1);
 }

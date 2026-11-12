@@ -28,7 +28,7 @@ const settingsTabs: Record<string, string> = {
   "ajustes-atajos": "Atajos",
   "ajustes-actualizaciones": "Actualizaciones",
   "ajustes-privacidad": "Privacidad",
-  "ajustes-diagnostico": "DiagnÃ³stico",
+  "ajustes-diagnostico": "Diagnóstico",
 };
 // Each screen worker adds its own module, imported here. No fallback to another scene.
 export const visualScenes: Record<string, VisualScene> = {

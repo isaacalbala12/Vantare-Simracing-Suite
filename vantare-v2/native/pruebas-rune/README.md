@@ -54,6 +54,8 @@ Verificado con índice Git aislado: aplicar el parche a la base fast produce
 exactamente todo native del SHA compilado, sin tocar los checkouts.
 
 Los dos ejecutables compilan en Windows y su procedencia está dentro del PE.
-No se ha ejecutado GPUI en el servidor. Tests de interfaz, clippy Windows,
+No se ha ejecutado GPUI en el servidor. Clippy all-targets -D warnings con las
+features de medición pasa en las dos variantes (4m04s y 3m06s). Se conservan
+las dos advertencias de dependencias vendor de fast; el paquete UI pasa. Tests de interfaz,
 paridad gráfica, segundo monitor, DPI, OBS y latencia hasta pantalla siguen
 pendientes de CI/PC. El kit está incompleto. Ningún merge ni release.

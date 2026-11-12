@@ -30,3 +30,6 @@ las advertencias preexistentes HWND y shader_path del vendor sin ocultarlas.
 No ejecutar el binario en servidor. Dumpbin y procedencia se comprueban leyendo
 el PE; paridad, GPU, foco, DPI, segundo monitor, OBS y latencia hasta pantalla
 quedan para Isaac. Sin merge ni release.
+
+Clippy Release all-targets -D warnings con gpui-fast,medir-latencia PASS
+(3m06s) en el paquete UI; conserva las dos advertencias vendor descritas.

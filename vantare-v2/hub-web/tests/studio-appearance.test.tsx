@@ -71,7 +71,9 @@ it("keeps the focused control enabled and blocks writes while saving", async () 
   const mounted = mount(item);
   const user = userEvent.setup();
   const accent = screen.getByRole("combobox", { name: t.widgetAccent });
-  while (document.activeElement !== accent) await user.tab();
+  for (let index = 0; index < 12 && document.activeElement !== accent; index++)
+    await user.tab();
+  expect(document.activeElement).toBe(accent);
   state.pending = true;
   mounted.rerender(
     <CSPProvider disableStyleElements>

@@ -382,6 +382,7 @@ it("can review a pending host attempt after draft loading failed and still recov
   renderReport();
   expect(await screen.findByText(text.failed, { exact: true })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: text.pending }));
+  expect(await screen.findByText(text.retryOriginal)).toBeTruthy();
   fireEvent.click(await screen.findByRole("checkbox", { name: text.consent }));
   expect(
     screen.getByRole("button", { name: text.send }).hasAttribute("disabled"),

@@ -11,7 +11,11 @@ import {
 import { reportText as text } from "../i18n/testing-report";
 import { Button } from "./Button";
 import { Checkbox, Input, Select, Textarea } from "./Forms";
-import { TestingCard, TestingFinePrint } from "./TestingLayout";
+import {
+  TestingComposeCard,
+  TestingFieldPair,
+  TestingFinePrint,
+} from "./TestingLayout";
 import "./testing-report.css";
 
 interface Props {
@@ -50,7 +54,7 @@ export function ReportComposerView(p: Props) {
           {text.pending}
         </Button>
       </div>
-      <TestingCard title={text.compose}>
+      <TestingComposeCard title={text.compose}>
         <div className="v-testing-report-module">
           <Select
             label={text.module}
@@ -91,7 +95,7 @@ export function ReportComposerView(p: Props) {
           onChange={(e) => p.onEdit({ observedText: e.currentTarget.value })}
         />
         <TestingFinePrint>{text.notes}</TestingFinePrint>
-        <div className="v-testing-report-pair">
+        <TestingFieldPair>
           <Textarea
             label={text.expected}
             value={p.fields.expectedText}
@@ -104,7 +108,7 @@ export function ReportComposerView(p: Props) {
             disabled={p.editBlocked}
             onChange={(e) => p.onEdit({ contextText: e.currentTarget.value })}
           />
-        </div>
+        </TestingFieldPair>
         {p.dirty ? (
           <div className="v-testing-report-inline-action">
             <Button disabled={p.saveBlocked} onClick={p.onSave}>
@@ -156,6 +160,9 @@ export function ReportComposerView(p: Props) {
         {p.preview && (
           <div className="v-testing-report-preview">
             <strong>{text.preview}</strong>
+            {p.preview.retry && (
+              <TestingFinePrint>{text.retryOriginal}</TestingFinePrint>
+            )}
             <p>{`${text.module}: ${reportModules.find(([id]) => id === p.preview?.fields.module)?.[1] ?? p.preview.fields.module}`}</p>
             <p>{p.preview.fields.actionText}</p>
             <p>{p.preview.fields.expectedText}</p>
@@ -186,7 +193,7 @@ export function ReportComposerView(p: Props) {
             {text.send}
           </Button>
         </div>
-      </TestingCard>
+      </TestingComposeCard>
     </div>
   );
 }

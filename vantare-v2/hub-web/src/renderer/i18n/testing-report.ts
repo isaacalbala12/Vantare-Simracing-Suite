@@ -3,6 +3,7 @@ export const reportText = {
   ...testingText,
   loadDraft: "Cargar borrador",
   pending: "Revisar envío pendiente",
+  retryOriginal: "Reintento con contenido original",
   bug: "Algo falla",
   suggestion: "Sugerencia",
   kind: "Tipo de informe",

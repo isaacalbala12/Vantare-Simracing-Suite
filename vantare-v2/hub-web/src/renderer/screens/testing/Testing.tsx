@@ -8,8 +8,6 @@ import { SessionReportReceipts } from "../../ui/SessionReportReceipts";
 import { ActionGroup, ContentStack } from "../../ui/ShellLayout";
 import {
   TestingCard,
-  TestingComposeCard,
-  TestingFieldPair,
   TestingFinePrint,
   TestingLayout,
   TestingNotes,

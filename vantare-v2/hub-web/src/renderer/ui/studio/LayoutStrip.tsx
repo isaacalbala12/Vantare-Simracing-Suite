@@ -167,6 +167,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
         <Button
           className="v-focus-add"
           data-empty={view?.state === "ready" && !view.instances.length}
+          aria-label={t.add}
           data-add-widget
           aria-label={t.add}
           disabled={

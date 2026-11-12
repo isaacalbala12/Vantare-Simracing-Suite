@@ -10,8 +10,8 @@ import { FocusHeader } from "./FocusHeader";
 import { LayoutStrip } from "./LayoutStrip";
 import { RemoveWidget } from "./RemoveWidget";
 import { Stage } from "./Stage";
-import { StudioSteps as StudioInspector } from "./StudioSteps";
 import { LoadingStudio, ReadonlyStudio, StudioFeedback } from "./StudioStates";
+import { StudioSteps as StudioInspector } from "./StudioSteps";
 import { widgetName } from "./Widgets";
 import "./focus.css";
 import "./studio-states.css";
@@ -95,7 +95,9 @@ export function StudioFocus() {
             <div className="v-studio-temporary" aria-busy={state.pending}>
               {selected &&
                 (view.state === "protected" ? (
-                  <ReadonlyStudio />
+                  <ReadonlyStudio>
+                    <StudioInspector item={selected} readOnly />
+                  </ReadonlyStudio>
                 ) : (
                   <StudioInspector item={selected} />
                 ))}

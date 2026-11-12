@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { studioStateText as text } from "../../i18n/studio-states.es";
@@ -119,7 +120,14 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
   );
 }
 
-export function ReadonlyStudio() {
+export function ReadonlyStudio({ children }: { children?: ReactNode }) {
+  if (children)
+    return (
+      <section className="v-studio-readonly-with-steps">
+        {children}
+        <p className="v-studio-readonly-detail">{text.protectedSettings}</p>
+      </section>
+    );
   return (
     <section className="v-studio-unread" role="note">
       <Icon name="lock" />

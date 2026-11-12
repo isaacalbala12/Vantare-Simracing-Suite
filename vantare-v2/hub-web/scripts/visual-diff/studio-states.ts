@@ -1,0 +1,116 @@
+import assert from "node:assert/strict";
+import type { Page } from "playwright-core";
+import { studioText as t } from "../../src/renderer/i18n/studio.ts";
+import type { VisualScene } from "./scenes.ts";
+
+async function open(page: Page) {
+  await page
+    .getByRole("button", { name: /^(Studio|Overlays Studio)$/ })
+    .click();
+  await page.locator(".v-studio-focus").waitFor();
+}
+async function select(page: Page, name: string) {
+  await page.getByRole("button", { name: new RegExp(`^${name}, `) }).click();
+  await page.getByRole("heading", { name, exact: true }).waitFor();
+}
+async function appearance(page: Page, name: string) {
+  await select(page, name);
+  await page.getByRole("tab", { name: t.appearance, exact: true }).click();
+}
+const scene = (
+  mock: string,
+  prepare: (page: Page) => Promise<void>,
+): VisualScene => ({
+  mock,
+  async prepare(page) {
+    await open(page);
+    await prepare(page);
+  },
+});
+const ordinary = "studio-a-oculto";
+// The 13 states of variante-a.html, with the same real bridge and renderer.
+// Width/theme/sidebar variants are supplied by visual-diff, not by these scenes.
+export const studioStateScenes: Record<string, VisualScene> = {
+  "studio-estado-delta": scene(ordinary, async (page) => {
+    await appearance(page, "Delta");
+  }),
+  "studio-estado-std-v": scene(ordinary, async (page) => {
+    await appearance(page, "Standings");
+  }),
+  "studio-estado-std-e": scene(ordinary, async (page) => {
+    await appearance(page, "Standings");
+    await page
+      .getByRole("radio", { name: t.lookEficiencia, exact: true })
+      .click();
+    await page
+      .getByRole("radio", { name: t.designSignature, exact: true })
+      .waitFor();
+  }),
+  "studio-estado-fuel": scene(ordinary, async (page) => {
+    await appearance(page, "Fuel y stint");
+  }),
+  "studio-estado-oculto": scene(ordinary, async (page) => {
+    await appearance(page, "Relative");
+    await page.getByText(t.hiddenStage, { exact: true }).waitFor();
+  }),
+  "studio-estado-pista": scene(ordinary, async (page) => {
+    await select(page, "Delta");
+    await page.getByRole("tab", { name: t.track, exact: true }).click();
+  }),
+  "studio-estado-contenido": scene(ordinary, async (page) => {
+    await appearance(page, "Delta");
+    const tab = page.getByRole("tab", { name: t.content, exact: true });
+    await tab.focus();
+    assert.equal(await tab.getAttribute("aria-disabled"), "true");
+  }),
+  "studio-estado-menu": scene(ordinary, async (page) => {
+    await appearance(page, "Delta");
+    await page.getByRole("button", { name: t.moreLabel, exact: true }).click();
+    await page.getByRole("menu").waitFor();
+  }),
+  "studio-estado-add": scene(ordinary, async (page) => {
+    await appearance(page, "Delta");
+    await page.locator("[data-add-widget]").click();
+    await page.getByRole("dialog", { name: t.catalog, exact: true }).waitFor();
+  }),
+  "studio-estado-vacio": scene("studio-a-vacio", async (page) => {
+    await page
+      .getByRole("heading", { name: t.emptyTitle, exact: true })
+      .waitFor();
+  }),
+  "studio-estado-protegido": scene("studio-a-protegido", async (page) => {
+    await page.getByRole("alert").waitFor();
+    assert.equal(await page.getByRole("combobox").count(), 0);
+    assert.equal(await page.getByRole("switch").count(), 0);
+  }),
+  "studio-estado-guardando": scene("studio-a-guardando", async (page) => {
+    await appearance(page, "Delta");
+    const expanded = page.getByRole("radio", {
+      name: t.deltaExpanded,
+      exact: true,
+    });
+    await expanded.click();
+    await page
+      .locator(".v-focus-strip")
+      .getByRole("status", { name: t.saving, exact: true })
+      .waitFor();
+  }),
+  "studio-estado-error": scene("studio-a-error", async (page) => {
+    await appearance(page, "Delta");
+    await page
+      .getByRole("radio", { name: t.deltaExpanded, exact: true })
+      .click();
+    await page.getByRole("alert").waitFor();
+    await page.getByRole("button", { name: t.retry, exact: true }).waitFor();
+  }),
+  // Additional negative-document cases have no fabricated counterpart in the mockup.
+  "studio-estado-ilegible": scene("studio-a-ilegible", async (page) => {
+    await page.getByRole("alert").waitFor();
+  }),
+  "studio-estado-cargando": scene("studio-a-cargando", async (page) => {
+    await page.locator('[data-state="loading"]').waitFor();
+  }),
+  "studio-estado-missing": scene("studio-a-missing", async (page) => {
+    await page.getByText(t.missing, { exact: true }).waitFor();
+  }),
+};

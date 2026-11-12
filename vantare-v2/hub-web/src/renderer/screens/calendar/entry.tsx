@@ -324,13 +324,24 @@ export default function CalendarEntry() {
                 modes={calendarBandModes}
                 stepMinutes={30}
                 dayMinutes={calendarDayMinutes}
-                busy
+                onBand={
+                  preferences.canAlerts
+                    ? (value) => void preferences.band(selectedSerie, value)
+                    : undefined
+                }
+                onLead={
+                  preferences.canAlerts
+                    ? (value) => void preferences.alert({ kind: "lead", value })
+                    : undefined
+                }
+                busy={preferences.busy}
               />
             }
           />
         ) : (
           <CalendarFrame
-            onAlerts={() => setAlertsOpen(true)}            subtitle={subtitle}
+            onAlerts={() => setAlertsOpen(true)}
+            subtitle={subtitle}
             count={alerts.bands.length + alerts.slots.length}
             busy={state.busy}
             onRefresh={() => void state.refresh()}

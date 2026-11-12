@@ -10,7 +10,10 @@ import { createStore } from "zustand/vanilla";
 import type { HostError } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { notices as text } from "../../i18n/notifications";
+import { notificationScene } from "../../qa/notifications-scene";
 import { type Center, type Filter, type NoticeInput, publish } from "./center";
+
+declare const __VANTARE_RENDERER_MOCK__: boolean;
 
 const notifiableFailures = [
   "io",
@@ -26,7 +29,7 @@ interface State extends Center {
   clear: () => void;
 }
 export function createNotifications() {
-  return createStore<State>((set) => ({
+  const store = createStore<State>((set) => ({
     filter: "all",
     setFilter: (filter) => set({ filter }),
     records: [],
@@ -41,6 +44,10 @@ export function createNotifications() {
       })),
     clear: () => set({ records: [] }),
   }));
+  if (__VANTARE_RENDERER_MOCK__)
+    for (const { input, at, muted } of notificationScene())
+      store.getState().add(input, at, muted);
+  return store;
 }
 const Context = createContext<
   ReturnType<typeof createNotifications> | undefined

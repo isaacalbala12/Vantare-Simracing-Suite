@@ -1,4 +1,5 @@
 import { calendarScenes } from "./calendar-scenes.ts";
+import { notificationScenes } from "./notifications.ts";
 import type { VisualScene } from "./scenes.ts";
 export const sweepScenes: Record<string, VisualScene> = {
   "strategy-proximamente": {
@@ -25,30 +26,7 @@ export const sweepScenes: Record<string, VisualScene> = {
         .waitFor();
     },
   },
-  "notificaciones-completa": {
-    mock: "notificaciones-base",
-    async prepare(page) {
-      const toasts = page.getByRole("switch", {
-        name: "Notificaciones de Windows",
-        exact: true,
-      });
-      if ((await toasts.getAttribute("aria-checked")) !== "true")
-        await toasts.click();
-      await page
-        .getByRole("button", { name: "Enviar prueba", exact: true })
-        .click();
-      await page
-        .getByRole("button", { name: "Notificaciones", exact: true })
-        .click();
-      await page
-        .getByRole("button", {
-          name: "Ver todas las notificaciones",
-          exact: true,
-        })
-        .click();
-      await page.locator(".v-notifications--full").waitFor();
-    },
-  },
+  "notificaciones-completa": notificationScenes["notificaciones-completa"],
   "calendario-mes": {
     mock: "calendar-live-reference",
     async prepare(page) {

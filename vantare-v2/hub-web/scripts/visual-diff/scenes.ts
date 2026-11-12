@@ -2,6 +2,7 @@ import type { Page } from "playwright-core";
 import { privacyText } from "../../src/renderer/i18n/privacy.es.ts";
 import { accessScenes } from "./access.ts";
 import { accountScenes } from "./account.ts";
+import { analysisScenes } from "./analysis.ts";
 import { calendarScenes } from "./calendar-scenes.ts";
 import { commandScenes } from "./commands.ts";
 import { dialogTopbarScenes } from "./dialog-topbar.ts";
@@ -37,6 +38,7 @@ const settingsTabs: Record<string, string> = {
 };
 // Each screen worker adds its own module, imported here. No fallback to another scene.
 export const visualScenes: Record<string, VisualScene> = {
+  ...analysisScenes,
   ...accountScenes,
   ...dialogTopbarScenes,
   ...accessScenes,

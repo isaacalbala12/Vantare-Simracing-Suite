@@ -1,0 +1,295 @@
+.v-analysis {
+  width: 100%;
+  max-width: 1508px;
+  height: calc(100vh - 102px);
+  min-height: 0;
+  margin: 0 auto;
+  position: relative;
+  left: -1px;
+  padding-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-1);
+}
+.v-analysis-header {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.v-analysis-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.v-analysis p {
+  margin: 0;
+}
+.v-analysis-eyebrow {
+  position: relative;
+  top: -2px;
+  font: 800 11px / 18px var(--font-sans);
+  letter-spacing: 0.99px;
+  color: var(--text-3);
+}
+.v-analysis h1 {
+  font: 700 34px / 51px var(--font-sans);
+  letter-spacing: -1.36px;
+  height: 51px;
+  margin: 6px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.v-analysis .v-analysis-lead {
+  margin-top: 7px;
+  font: 400 13.5px / 20.9px var(--font-sans);
+  color: var(--text-2);
+}
+.v-analysis-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.v-analysis .v-segmented,
+.v-analysis-axis {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  padding: 4px;
+  border: 1px solid var(--line-1);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text-on-accent) 2%, transparent);
+}
+.v-analysis .v-segment,
+.v-analysis-axis button {
+  height: 29px;
+  min-height: 29px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-caption);
+  font: 650 12px / 18px var(--font-sans);
+  white-space: nowrap;
+}
+.v-analysis .v-segment[data-pressed],
+.v-analysis-axis button[aria-pressed="true"] {
+  padding: 0 11px;
+  border: 1px solid color-mix(in srgb, var(--accent-bright) 22%, transparent);
+  background: var(--accent-tint);
+  color: var(--text-1);
+}
+.v-analysis-axis {
+  margin: 0;
+  min-width: 0;
+}
+.v-analysis-axis button:disabled {
+  opacity: var(--disabled-opacity);
+}
+.v-analysis-status {
+  height: 29px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
+  font: 750 10px / 15px var(--font-sans);
+  letter-spacing: 0.6px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.v-analysis-stats {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 21px;
+  margin-top: 16px;
+}
+.v-analysis-stats > section {
+  min-width: 0;
+  padding: 14px 18px 15px;
+  border: 1px solid var(--line-1);
+  border-radius: 18px;
+  background: var(--surface-1);
+}
+.v-analysis-stats h2 {
+  margin: 0;
+  font: 700 11px / 18px var(--font-sans);
+  letter-spacing: 0.44px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.v-analysis-stats strong {
+  display: block;
+  margin-top: 6px;
+  font: 700 21px / 33px var(--font-mono);
+}
+.v-analysis-stats p {
+  margin-top: 4px;
+  font: 400 11.5px / 18px var(--font-sans);
+  color: var(--text-caption);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-analysis-columns {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 21px;
+  margin-top: 16px;
+}
+.v-analysis-map-column {
+  width: 400px;
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 21px;
+}
+.v-analysis-surface {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line-1);
+  border-radius: 18px;
+  background: var(--surface-1);
+}
+.v-analysis-surface[data-fill="true"] {
+  flex: 1;
+}
+.v-analysis-surface > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--line-1);
+  flex: none;
+}
+.v-analysis-surface h2 {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  font: 700 15px / 22px var(--font-sans);
+  letter-spacing: -0.15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-analysis-meta {
+  flex: none;
+  font: 400 12px / 18px var(--font-mono);
+  color: var(--text-3);
+}
+.v-analysis-body {
+  min-height: 0;
+  padding: 21px;
+}
+.v-analysis-surface[data-fill="true"] > .v-analysis-body {
+  flex: 1;
+  padding-right: 31px;
+  overflow: auto;
+}
+.v-analysis-body p {
+  font: 400 12px / 18.6px var(--font-sans);
+  color: var(--text-3);
+}
+.v-analysis .v-analysis-note {
+  flex: none;
+  margin-top: 14px;
+  padding: 13px 17px;
+  border: 1px solid color-mix(in srgb, var(--warn) 13%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--warn) 6%, transparent),
+    color-mix(in srgb, var(--accent) 2%, transparent)
+  );
+  font: 400 12px / 18px var(--font-sans);
+  color: var(--text-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.v-analysis-rail {
+  min-height: calc(100vh - 84px);
+  display: flex;
+  flex-direction: column;
+}
+.v-analysis-rail h2 {
+  font: 700 14px / 21px var(--font-sans);
+  margin: 14px 8px 22px;
+  border-bottom: 1px solid var(--line-1);
+  padding-bottom: 22px;
+}
+.v-analysis-rail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 19px 9px 11px;
+}
+.v-analysis-rail h3 {
+  margin: 0;
+  font: 700 11px / 18px var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-caption);
+}
+.v-analysis-rail-heading > span {
+  font: 400 11px / 18px var(--font-mono);
+  color: var(--text-caption);
+}
+.v-analysis-rail > p {
+  padding: 0 2px;
+  color: var(--text-3);
+  font: 400 12px / 18px var(--font-sans);
+}
+.v-analysis-rail > small {
+  margin-top: auto;
+  padding-bottom: 4px;
+  font: 400 10.5px / 15.5px var(--font-sans);
+  color: var(--text-caption);
+}
+@media (max-width: 1360px) {
+  .v-analysis {
+    height: auto;
+  }
+  .v-analysis-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .v-analysis-actions {
+    flex-wrap: wrap;
+  }
+  .v-analysis-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .v-analysis-columns {
+    flex-direction: column;
+    flex: none;
+  }
+  .v-analysis-map-column {
+    width: 100%;
+  }
+  .v-analysis-map-column > .v-analysis-surface[data-fill="true"] {
+    flex: none;
+    min-height: 220px;
+  }
+  .v-analysis-columns > .v-analysis-surface[data-fill="true"] {
+    flex: none;
+    min-height: 350px;
+  }
+}
+
+/* The QA catalogue has explanatory siblings; preview the real Shell at viewport size. */
+.v-analysis-qa-frame {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}

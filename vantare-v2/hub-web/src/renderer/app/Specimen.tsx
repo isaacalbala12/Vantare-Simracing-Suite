@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { contrastRange } from "../../contract/generated/contract";
 import { Icon } from "../assets/icons/Icon";
+import { analysisText } from "../i18n/analysis";
 import { paletteNames, specimen as t } from "../i18n/es";
 import { onboardingText } from "../i18n/onboarding";
+import { AnalysisPreview } from "../qa/AnalysisPreview";
 import { OnboardingAccountIntro } from "../screens/onboarding/AccountIntro";
 import { Button, IconButton } from "../ui/Button";
 import {
@@ -38,6 +40,8 @@ import {
   useToastManager,
 } from "../ui/Layers";
 import { SettingsProvider } from "./SettingsState";
+
+declare const __VANTARE_RENDERER_MOCK__: boolean;
 export function Specimen() {
   const [checked, setChecked] = useState(false);
   const [value, setValue] = useState(100);
@@ -48,7 +52,9 @@ export function Specimen() {
   const [palette, setPalette] = useState("vantare");
   const [commandsOpen, setCommandsOpen] = useState(false);
   const toast = useToastManager();
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  if (__VANTARE_RENDERER_MOCK__ && analysisOpen) return <AnalysisPreview />;
   if (onboardingOpen)
     return (
       <SettingsProvider>
@@ -72,6 +78,13 @@ export function Specimen() {
           {onboardingText.setup}
         </Button>
       </Card>
+      {__VANTARE_RENDERER_MOCK__ && (
+        <Card title={analysisText.title}>
+          <Button onClick={() => setAnalysisOpen(true)}>
+            {analysisText.preview}
+          </Button>
+        </Card>
+      )}
       <Card title={t.theme}>
         <div className="v-specimen-row">
           <Select

@@ -48,12 +48,12 @@ export function PalettePicker({
           ) : (
             <span className="v-palette-orbs" aria-hidden="true">
               <span
-                className="v-palette-orb"
+                className="v-palette-orb v-palette-preview-colors"
                 data-palette={option.value}
                 data-scheme="light"
               />
               <span
-                className="v-palette-orb"
+                className="v-palette-orb v-palette-preview-colors"
                 data-palette={option.value}
                 data-scheme="dark"
               />

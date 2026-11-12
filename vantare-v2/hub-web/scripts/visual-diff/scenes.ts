@@ -8,6 +8,7 @@ import { homeScenes } from "./home.ts";
 import { launcherScenes } from "./launcher.ts";
 import { notificationScenes } from "./notifications.ts";
 import { onboardingScenes } from "./onboarding.ts";
+import { palettePreviewScenes } from "./palette-previews.ts";
 import { pilotScenes } from "./pilot.ts";
 import { privacyScenes } from "./privacy.ts";
 import { roadmapScenes } from "./roadmap.ts";
@@ -86,4 +87,5 @@ export const visualScenes: Record<string, VisualScene> = {
       },
     ]),
   ),
+  ...palettePreviewScenes,
 };

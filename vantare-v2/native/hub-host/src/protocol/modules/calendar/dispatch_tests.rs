@@ -529,7 +529,7 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
             "calendar" => session.current.access.calendar = false,
             "blocked" => session.current.access.blocked = true,
             "document" => {
-                std::fs::write(base.join("calendar-alerts.json"), b"protected JSON").unwrap()
+                std::fs::write(base.join("calendar-alerts.json"), b"protected JSON").unwrap();
             }
             _ => {}
         }

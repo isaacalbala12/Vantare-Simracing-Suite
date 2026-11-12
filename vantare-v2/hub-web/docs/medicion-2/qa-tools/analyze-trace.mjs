@@ -33,7 +33,7 @@ for(const entry of await readdir(evidence,{withFileTypes:true})){
       const previous=groups.get(key)??{name:key,count:0,totalSliceMs:0,maxSliceMs:0};
       previous.count++;previous.totalSliceMs+=event.dur/1000;previous.maxSliceMs=Math.max(previous.maxSliceMs,event.dur/1000);groups.set(key,previous);
     }
-    output.push({directory:entry.name,iteration,visibleMs:launch.visibleMs,stages,paints,traceFormat:isJson?'Chrome JSON':'Perfetto protobuf',traceBytes:traceBytes.length,traceEvents:trace?.traceEvents?.length??null,topSlices:[...groups.values()].sort((a,b)=>b.totalSliceMs-a.totalSliceMs).slice(0,25),limit:isJson?null:'Electron 45 emits Perfetto. Raw recording retained; no speculative protobuf parser or external converter. Startup wall phases come from explicit epoch markers; no V8 CPU totals are claimed.'});
+    output.push({directory:entry.name,iteration,visibleMs:launch.visibleMs,stages,paints,traceFormat:trace?.format==='vantare-startup-markers-v1'?'Explicit epoch marker timeline':isJson?'Chrome JSON':'Perfetto protobuf',traceBytes:traceBytes.length,traceEvents:trace?.traceEvents?.length??null,topSlices:[...groups.values()].sort((a,b)=>b.totalSliceMs-a.totalSliceMs).slice(0,25),limit:trace?.format==='vantare-startup-markers-v1'?'Explicit wall-clock markers only, not Chromium/V8 CPU slices. Native stopRecording pilots timed out and are excluded.':isJson?null:'Electron 45 emits Perfetto. Raw recording retained; no speculative protobuf parser or external converter. Startup wall phases come from explicit epoch markers; no V8 CPU totals are claimed.'});
   }
 }
 await writeFile(join(evidence,'trace-analysis.json'),JSON.stringify(output,null,2));

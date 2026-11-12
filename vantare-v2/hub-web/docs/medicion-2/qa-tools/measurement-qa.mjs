@@ -1,6 +1,6 @@
 // Loaded ONLY by the instrumented ASAR under the dedicated QA root. No TLA,
 // browser capabilities, authentication values, or product defaults are changed.
-import { app, contentTracing } from 'electron';
+import { app } from 'electron';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join, sep } from 'node:path';
 
@@ -24,25 +24,21 @@ if (options.variant === 'media-keys-off') flag('disable-features', 'HardwareMedi
 mkdirSync(data, { recursive: true });
 const result = () => ({ variant: options.variant, pid: process.pid, creationEpochMs: process.getCreationTime(), versions: process.versions, flags, preferences, deniedSchemes, events });
 const flush = () => writeFileSync(join(data, 'measurement-startup.json'), JSON.stringify(result(), null, 2));
-let tracePromise;
+// Native contentTracing.stopRecording did not finish in the excluded pilots.
+// This trace deliberately records explicit process/window/bridge epoch markers,
+// not V8/Chromium CPU slices. Both paired conditions retain the same markers.
 if (options.variant === 'trace') {
-  mark('trace-requested');
-  try {
-    tracePromise = app.whenReady().then(() => contentTracing.startRecording({ included_categories: ['v8', 'devtools.timeline', 'blink.user_timing', 'loading', 'disabled-by-default-v8.compile'], recording_mode: 'record-until-full', trace_buffer_size_in_kb: 32768 }));
-    tracePromise.then(() => { mark('trace-started'); flush(); }, error => { events.push({ name: 'trace-failed', message: String(error) }); flush(); });
-  } catch(error) { events.push({ name: 'trace-failed', message: String(error) }); }
-  // Directory notifications can be coalesced amid Chromium profile writes.
-  // Poll only this closed QA marker; cancel on completion or app shutdown.
+  mark('trace-started');
   const monitor = setInterval(() => {
     if (!existsSync(join(data, 'measurement-stop-trace'))) return;
     clearInterval(monitor);
-    mark('trace-stop-requested'); flush();
-    Promise.resolve(tracePromise).then(() => contentTracing.stopRecording(join(data, 'startup-trace.json'))).then(() => {
-      mark('trace-stopped'); flush(); writeFileSync(join(data, 'trace-complete'), 'ok');
-    }, error => { events.push({ name: 'trace-stop-failed', message: String(error) }); flush(); writeFileSync(join(data, 'trace-complete'), 'failed'); });
-  }, 100);
+    mark('trace-stopped'); flush();
+    const traceEvents = events.filter(event => Number.isFinite(event.epochMs)).map(event => ({name:event.name,cat:'vantare.startup',ph:'i',s:'p',ts:event.epochMs*1000,pid:process.pid,tid:0}));
+    writeFileSync(join(data,'startup-trace.json'),JSON.stringify({format:'vantare-startup-markers-v1',traceEvents}));
+    writeFileSync(join(data,'trace-complete'),'ok');
+  },100);
   monitor.unref();
-  app.once('before-quit', () => clearInterval(monitor));
+  app.once('before-quit',()=>clearInterval(monitor));
 }
 app.once('ready', () => mark('app-ready'));
 app.on('web-contents-created', (_event, contents) => {

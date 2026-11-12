@@ -16,6 +16,7 @@ import {
 import type { HostToUi, UiToHost } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/calendar.json";
 import { starts } from "../../renderer/screens/calendar/schedule";
+import { mockCalendarIcs } from "../calendar-ics";
 import {
   calendarHistoryReference,
   calendarReference,
@@ -107,6 +108,7 @@ export function create(context: MockContext): MockHandler {
   let counter = 1;
   const next = () =>
     String((counter++).toString(16)).padStart(calendarRevisionLength, "0");
+  let icsHash: string | undefined;
   return (message: UiToHost): HostToUi | undefined => {
     if (
       message.kind !== "request" ||
@@ -123,6 +125,33 @@ export function create(context: MockContext): MockHandler {
       error: { kind: "calendarConflict", current: structuredClone(config) },
     });
     switch (request.method) {
+      case "calendar.icsPrepare": {
+        icsHash = undefined;
+        const prepared = mockCalendarIcs(
+          value,
+          config,
+          request.scope,
+          request.alarm,
+          Date.now(),
+        );
+        if (typeof prepared !== "string") icsHash = prepared.preparedHash;
+        return typeof prepared === "string"
+          ? { kind: "failure", id, error: { kind: prepared } }
+          : {
+              kind: "response",
+              id,
+              result: { method: request.method, value: prepared },
+            };
+      }
+      case "calendar.icsExport":
+        if (icsHash === undefined || request.preparedHash !== icsHash)
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        icsHash = undefined;
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, status: "cancelled" },
+        };
       case "calendar.historyLoad":
         return {
           kind: "response",

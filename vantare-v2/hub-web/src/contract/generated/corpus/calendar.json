@@ -911,6 +911,58 @@
           "utc": false
         }
       }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.icsPrepare",
+        "value": {
+          "calendar": "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
+          "entries": [],
+          "preparedHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "total": 0,
+          "validUntil": "2026-10-13T00:00:00Z"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.icsExport",
+        "status": "saved"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.icsExport",
+        "status": "cancelled"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.icsExport",
+        "status": "conflict"
+      }
+    },
+    {
+      "error": {
+        "kind": "calendarExportExtension"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "calendarExportTooLarge"
+      },
+      "id": 1,
+      "kind": "failure"
     }
   ],
   "ui": [
@@ -1001,6 +1053,41 @@
         },
         "expectedRevision": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
         "method": "calendar.alertsSave"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "alarm": true,
+        "method": "calendar.icsPrepare",
+        "scope": "favs"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "alarm": false,
+        "method": "calendar.icsPrepare",
+        "scope": "events"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "alarm": true,
+        "method": "calendar.icsPrepare",
+        "scope": "all"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "calendar.icsExport",
+        "preparedHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
     }
   ]

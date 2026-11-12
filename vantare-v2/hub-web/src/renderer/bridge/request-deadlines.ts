@@ -5,5 +5,7 @@ import {
 
 // The native save dialog is user-paced. Renderer arguments cannot override deadlines.
 export function requestDeadline(method: Request["method"]): number | undefined {
-  return method === "report.localExport" ? undefined : requestTimeoutMs;
+  return method === "report.localExport" || method === "calendar.icsExport"
+    ? undefined
+    : requestTimeoutMs;
 }

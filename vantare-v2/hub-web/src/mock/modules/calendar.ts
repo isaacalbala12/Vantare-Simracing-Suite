@@ -149,7 +149,7 @@ export function create(context: MockContext): MockHandler {
                   : "coreUnavailable",
             },
           };
-        const now = clock();
+        const now = Date.now();
         if (now - lastNoticeTest < calendarNoticeTestIntervalMs)
           return { kind: "failure", id, error: { kind: "busy" } };
         lastNoticeTest = now;

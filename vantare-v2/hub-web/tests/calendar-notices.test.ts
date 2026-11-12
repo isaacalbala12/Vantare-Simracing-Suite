@@ -307,3 +307,30 @@ it("formats the frozen GPUI week and duration labels without OS actions", () => 
     ).body,
   ).toBe("Spa · carrera 1 h 40 min · en 10 min");
 });
+it("keeps the main-process test clock independent of the visual bank date", () => {
+  const core = structuredClone(coreFixture) as CoreStatus;
+  core.rights = "connected";
+  const emit = vi.fn();
+  const host = create({
+    core,
+    emit,
+    sceneName: "calendar-live-reference",
+    visual: /visual/.exec("visual"),
+    notes: [],
+    note: () => {},
+  });
+  const before = Date.now();
+  host({ kind: "request", id: 91, request: { method: "calendar.noticeTest" } });
+  const event = emit.mock.calls[0]?.[0] as HostToUi;
+  expect(event).toMatchObject({
+    kind: "event",
+    event: {
+      topic: "calendarNotice",
+      value: { kind: "test", issuedAt: expect.any(Number) },
+    },
+  });
+  if (event.kind !== "event" || event.event.topic !== "calendarNotice")
+    throw Error("missing fixed sample");
+  expect(event.event.value.issuedAt).toBeGreaterThanOrEqual(before);
+  expect(event.event.value.expiresAt).toBeGreaterThan(Date.now());
+});

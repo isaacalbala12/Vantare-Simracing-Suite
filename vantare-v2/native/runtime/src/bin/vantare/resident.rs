@@ -832,8 +832,12 @@ mod tests {
         ));
         fs::create_dir(&dir).expect("raíz propia");
         let path = dir.join("launcher.json");
-        let mut resident =
-            Resident::start(path.clone(), None, false).expect("residente sin registro Startup");
+        let authority = vantare_ipc::account_session::AuthorityLink {
+            pipe: format!("unused-resident-core-{}", std::process::id()),
+            image: dir.join("unused-core.exe"),
+        };
+        let mut resident = Resident::start(path.clone(), None, false, authority)
+            .expect("residente sin registro Startup");
         resident.request_shutdown();
         let deadline = std::time::Instant::now() + Duration::from_secs(5);
         while !resident.poll_shutdown().expect("recoger sólo al terminar") {

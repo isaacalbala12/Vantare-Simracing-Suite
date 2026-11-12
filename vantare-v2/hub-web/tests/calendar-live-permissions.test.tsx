@@ -31,6 +31,7 @@ it("keeps the profile visible while launch and protected favorite writes are dis
       onLaunch={launch}
     />,
   );
+  expect(screen.getAllByText(/Sebring WEC/)).toHaveLength(2);
   const deferred = screen.getByRole("button", { name: /Lanzar a las/ });
   expect(deferred).toHaveProperty("disabled", true);
   expect(
@@ -130,4 +131,40 @@ it("restores the favorite filter after returning from a series", () => {
       .getAttribute("aria-pressed"),
   ).toBe("true");
   expect(document.querySelectorAll(".v-calendar-live-series")).toHaveLength(3);
+});
+
+it("paints the clipped notice band without making it an interactive control", () => {
+  const value = calendarReference();
+  if (!value.official) throw new Error("Missing public reference schedule");
+  render(
+    <CalendarLiveView
+      schedule={value.official}
+      alerts={{
+        ...(alerts as CalendarAlerts),
+        bands: [
+          {
+            seriesId: value.official.series[0].id,
+            from: 0,
+            to: 1440,
+            days: "all",
+            mode: "each",
+          },
+        ],
+      }}
+      following={value.following}
+      utc
+      now={Date.parse("2026-10-08T17:47:13Z")}
+      limit={10000}
+      onFollow={vi.fn()}
+      onLaunch={vi.fn()}
+    />,
+  );
+  expect(
+    document.querySelector(".v-calendar-time[data-alert] svg"),
+  ).toBeTruthy();
+  const band = document.querySelector<HTMLElement>(".v-calendar-time-band");
+  expect(band?.style.left).toBe("0%");
+  expect(band?.style.width).toBe("100%");
+  expect(band?.getAttribute("aria-hidden")).toBe("true");
+  expect(band?.getAttribute("tabindex")).toBeNull();
 });

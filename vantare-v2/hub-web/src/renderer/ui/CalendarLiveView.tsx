@@ -24,7 +24,14 @@ function classLabel(value: string) {
 }
 function Tier({ series }: { series: CalendarSeries }) {
   return (
-    <span className="v-calendar-tier" data-tier={series.tier}>
+    <span
+      className="v-calendar-tier"
+      data-tier={
+        series.eventKind === "special" || series.tier === "weekly"
+          ? "event"
+          : series.tier
+      }
+    >
       {series.eventKind === "special"
         ? text.specialty
         : (text.tiers[series.tier as keyof typeof text.tiers] ?? series.tier)}
@@ -109,6 +116,23 @@ export function CalendarLiveView({
     const s = row.series,
       hasAlert =
         row.next !== undefined && alertAt(schedule, s, row.next, alerts, limit);
+    const band = alerts.bands.find((value) => value.seriesId === s.id);
+    const day = new Date(now);
+    const midnight = utc
+      ? new Date(
+          day.getUTCFullYear(),
+          day.getUTCMonth(),
+          day.getUTCDate(),
+        ).getTime()
+      : new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+    const lineFrom = now - 10 * 60_000,
+      lineUntil = now + 90 * 60_000;
+    const bandFrom = band
+      ? Math.max(lineFrom, midnight + band.from * 60_000)
+      : 0;
+    const bandUntil = band
+      ? Math.min(lineUntil, midnight + band.to * 60_000)
+      : 0;
     const visibleStarts = row.starts.filter(
       (at) =>
         at - (now - 10 * 60_000) > 5.5 * 60_000 &&
@@ -154,7 +178,7 @@ export function CalendarLiveView({
           <strong>{s.name}</strong>
           <span>
             <Tier series={s} />
-            {s.track.split(" (")[0]}
+            {s.track.replace(/\s*\(([^)]+)\)/gu, " $1")}
             {text.separator}
             {text.minutes(raceMinutes(s))}
           </span>
@@ -181,7 +205,13 @@ export function CalendarLiveView({
             ))
           )}
         </div>
-        <div className="v-calendar-live-next">
+        <div
+          className="v-calendar-live-next"
+          data-soon={
+            (row.next !== undefined && row.next - now < 10 * 60_000) ||
+            undefined
+          }
+        >
           <strong>{row.next === undefined ? "—" : clock(row.next, utc)}</strong>
           <small>
             {row.next === undefined
@@ -192,32 +222,63 @@ export function CalendarLiveView({
           </small>
         </div>
         <div className="v-calendar-live-line">
-          <i className="v-calendar-now" />
-          {visibleStarts.map((at) => (
-            <button
-              type="button"
-              key={at}
-              className="v-calendar-time"
-              data-next={row.next === at || undefined}
-              data-gone={at < now || undefined}
-              data-alert={
-                (alerts.bands.some((band) => band.seriesId === s.id)
-                  ? (row.next === at &&
-                      alertAt(schedule, s, at, alerts, limit)) ||
-                    alerts.slots.some(
-                      (slot) => slot.seriesId === s.id && slot.at * 1000 === at,
-                    )
-                  : alertAt(schedule, s, at, alerts, limit)) || undefined
-              }
+          {Array.from({ length: 7 }, (_, i) => {
+            const at =
+              Math.ceil(lineFrom / (15 * 60_000)) * 15 * 60_000 +
+              i * 15 * 60_000;
+            return (
+              <i
+                key={at}
+                className="v-calendar-grid-line"
+                data-hour={
+                  (utc
+                    ? new Date(at).getUTCMinutes()
+                    : new Date(at).getMinutes()) === 0 || undefined
+                }
+                aria-hidden="true"
+                style={{
+                  left: `${(100 * (at - lineFrom)) / (lineUntil - lineFrom)}%`,
+                }}
+              />
+            );
+          })}
+          {band && bandUntil > bandFrom && (
+            <i
+              className="v-calendar-time-band"
+              aria-hidden="true"
               style={{
-                left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
+                left: `${(100 * (bandFrom - lineFrom)) / (lineUntil - lineFrom)}%`,
+                width: `${(100 * (bandUntil - bandFrom)) / (lineUntil - lineFrom)}%`,
               }}
-              disabled={!onDetail}
-              onClick={() => onDetail?.(s.id, at)}
-            >
-              {clock(at, utc)}
-            </button>
-          ))}
+            />
+          )}
+          <i className="v-calendar-now" />
+          {visibleStarts.map((at) => {
+            const marked = alerts.bands.some((band) => band.seriesId === s.id)
+              ? (row.next === at && alertAt(schedule, s, at, alerts, limit)) ||
+                alerts.slots.some(
+                  (slot) => slot.seriesId === s.id && slot.at * 1000 === at,
+                )
+              : alertAt(schedule, s, at, alerts, limit);
+            return (
+              <button
+                type="button"
+                key={at}
+                className="v-calendar-time"
+                data-next={row.next === at || undefined}
+                data-gone={at < now || undefined}
+                data-alert={marked || undefined}
+                style={{
+                  left: `${(100 * (at - (now - 10 * 60_000))) / (100 * 60_000)}%`,
+                }}
+                disabled={!onDetail}
+                onClick={() => onDetail?.(s.id, at)}
+              >
+                {marked && <Icon name="bell-fill" />}
+                {clock(at, utc)}
+              </button>
+            );
+          })}
           {!future && row.next !== undefined && (
             <button
               type="button"

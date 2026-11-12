@@ -37,6 +37,16 @@ impl std::fmt::Display for StartError {
 }
 impl std::error::Error for StartError {}
 
+fn chain_lock_busy(error: &std::io::Error) -> bool {
+    #[cfg(windows)]
+    return matches!(error.raw_os_error(), Some(32 | 33));
+    #[cfg(not(windows))]
+    {
+        let _ = error;
+        false
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Status {
     Pending,
@@ -260,9 +270,7 @@ impl Chain {
             .open(settings.with_extension("chain-lock"))
             .map_err(|error| {
                 let message = format!("bloquear cadena Launcher: {error}");
-                if error.kind() == std::io::ErrorKind::WouldBlock
-                    || matches!(error.raw_os_error(), Some(32 | 33))
-                {
+                if error.kind() == std::io::ErrorKind::WouldBlock || chain_lock_busy(&error) {
                     StartError::Busy(message)
                 } else {
                     StartError::Io(message)
@@ -595,24 +603,22 @@ fn run(
     context: &RunContext,
 ) -> ChainOutcome {
     run_with(
-        document,
         profile,
-        discovery,
         context,
+        || review_import(document, profile, discovery, context),
         || run_pass(document, profile, discovery, context),
         |delay| context.cancel.wait(delay),
     )
 }
 fn run_with(
-    document: &Document,
     profile: &Profile,
-    discovery: &Discovery,
     context: &RunContext,
+    review: impl FnOnce() -> Result<(), String>,
     mut pass: impl FnMut() -> bool,
     mut wait: impl FnMut(Duration) -> bool,
 ) -> ChainOutcome {
     if profile.imported
-        && let Err(message) = review_import(document, profile, discovery, context)
+        && let Err(message) = review()
     {
         emit(
             &context.sender,
@@ -790,6 +796,9 @@ fn run_pass_with(
             format!("{} · espera {delay} s", step.app_id),
             false,
         ) {
+            if let Ok(mut failure) = context.failure.lock() {
+                *failure = Some(ChainFailure::Internal);
+            }
             return false;
         }
         if wait(Duration::from_secs(u64::from(delay))) {
@@ -828,6 +837,9 @@ fn run_pass_with(
                     app.name.clone(),
                     true,
                 ) {
+                    if let Ok(mut failure) = context.failure.lock() {
+                        *failure = Some(ChainFailure::Internal);
+                    }
                     return false;
                 }
             }
@@ -845,6 +857,9 @@ fn run_pass_with(
                     message,
                     false,
                 ) {
+                    if let Ok(mut failure) = context.failure.lock() {
+                        *failure = Some(ChainFailure::Internal);
+                    }
                     return false;
                 }
                 if cancel.cancelled() {

@@ -518,43 +518,37 @@ mod tests {
     use std::{fs, sync::mpsc};
 
     #[test]
-    fn finished_execution_is_published_once_and_restart_has_another_instance() {
-        let base =
-            PathBuf::from(std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("isolated QA root"));
-        let root = base.join(format!(
+    fn real_launch_emits_one_start_and_terminal_and_withdraws_exhausted_extension() {
+        let root = std::env::temp_dir().join(format!(
             "terminal-resident-{}",
             vantare_services::random_id().unwrap()
         ));
         fs::create_dir_all(&root).unwrap();
         let settings = root.join("launcher.json");
         let mut owner = Owner::new(settings.clone(), false);
+        owner
+            .document
+            .apps
+            .iter_mut()
+            .find(|app| app.id == "obs")
+            .unwrap()
+            .executable = Some(root.join("must-not-exist.exe"));
         let mut profile = launcher::Profile::new("qa".into(), "QA".into());
         profile.steps.push(launcher::Step {
             app_id: "obs".into(),
             delay_seconds: 0,
             args_override: None,
         });
-        profile.max_retries = 0;
-        profile.first_step_delay = 0;
-        let mut chain = Chain::start(
-            Document::default(),
-            profile,
-            |_| Discovery::default(),
-            Arc::clone(&owner.processes),
-            None,
-            &settings,
-        )
-        .unwrap();
-        // The empty discovery cannot resolve an executable. No app or system scan occurs.
+        owner.document.profiles = vec![profile];
+        let instance = owner.status.extension.as_ref().unwrap().instance.clone();
+        owner.launch("qa");
+        let started = owner.status.extension.as_ref().unwrap().events.clone();
+        assert_eq!(started.len(), 1);
+        assert!(matches!(started[0].kind, EventKind::Started { .. }));
+        // An authoritative missing override never falls back to installed OBS.
+        let chain = owner.chain.as_mut().expect("real launch accepted");
         while chain.progress.recv().unwrap().step.is_some() {}
         chain.shutdown().unwrap();
-        owner.active_run = owner
-            .status
-            .extension
-            .as_mut()
-            .and_then(ExecutionStatus::begin);
-        let instance = owner.status.extension.as_ref().unwrap().instance.clone();
-        owner.chain = Some(chain);
         owner.progress();
         let first = owner.status.extension.clone().unwrap();
         assert_eq!(first.events.len(), 2);
@@ -567,10 +561,29 @@ mod tests {
                 ..
             }
         ));
+        // A second real launch exercises progress again rather than an empty Owner.
+        owner.launch("qa");
+        let chain = owner.chain.as_mut().unwrap();
+        while chain.progress.recv().unwrap().step.is_some() {}
+        chain.shutdown().unwrap();
         owner.progress();
-        owner.publish();
-        assert_eq!(owner.status.extension.as_ref(), Some(&first));
-        assert!(!owner.status.running);
+        assert_eq!(owner.status.extension.as_ref().unwrap().events.len(), 4);
+        let mut exhausted = serde_json::to_value(first).unwrap();
+        exhausted["events"] = serde_json::json!([{
+            "seq": u64::MAX.to_string(),
+            "kind": {"kind":"started", "run":u64::MAX.to_string()}
+        }]);
+        exhausted["first_retained_seq"] = u64::MAX.to_string().into();
+        owner.status.extension = Some(serde_json::from_value(exhausted).unwrap());
+        owner.launch("qa");
+        assert!(owner.chain.is_some(), "legacy launch remains available");
+        assert!(
+            owner.status.extension.is_none(),
+            "overflow withdraws optional observation"
+        );
+        owner.chain.as_mut().unwrap().shutdown().unwrap();
+        owner.progress();
+        assert!(owner.status.extension.is_none());
         let restarted = Owner::new(settings, false);
         assert_ne!(restarted.status.extension.unwrap().instance, instance);
         fs::remove_dir_all(root).unwrap();

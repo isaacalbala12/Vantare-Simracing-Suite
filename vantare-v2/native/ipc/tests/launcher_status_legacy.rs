@@ -217,10 +217,7 @@ fn future_or_malformed_extension_never_hides_the_whole_status() {
     let mut future = serde_json::to_value(extension()).unwrap();
     future["future-field"] = true.into();
     malformed.push(future);
-    let base = std::path::PathBuf::from(
-        std::env::var_os("VANTARE_NATIVE_DATA_ROOT").expect("isolated QA root"),
-    );
-    assert!(base.is_absolute());
+    let base = std::env::temp_dir();
     let root = base.join(format!("status-extension-{}", std::process::id()));
     std::fs::create_dir_all(&root).unwrap();
     let settings = root.join("launcher.json");

@@ -46,8 +46,10 @@ pub fn setup(s: &mut State, wake: rune::Waker) {
         .iter()
         .enumerate()
         .map(|(index, bytes)| {
+            let ink=tokens()["themes"]["vantare"]["dark"][if index==6 {"accent-bright"} else {"text-3"}].as_str().unwrap();
+            let svg=std::str::from_utf8(bytes).unwrap().replace("currentColor",ink).into_bytes();
             cache.svg(
-                *bytes,
+                svg,
                 [
                     190.0, 40.0, 136.0, 136.0, 136.0, 454.0, 24.0, 24.0, 24.0, 24.0, 24.0, 580.0, 24.0,24.0,24.0,24.0,
                 ][index],

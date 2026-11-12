@@ -312,6 +312,19 @@ export const calendarScenes: Record<string, VisualScene> = {
       await page.mouse.move(600, 890);
     },
   },
+  "calendario-eventos-desplegada": {
+    mock: "calendar-live-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-eventos-contraida"].prepare(page);
+      await page
+        .getByRole("button", {
+          name: "Contraer o ampliar navegación",
+          exact: true,
+        })
+        .click();
+      await page.mouse.move(600, 890);
+    },
+  },
   "calendario-eventos-contraida": {
     mock: "calendar-live-reference",
     async prepare(page) {

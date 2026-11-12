@@ -17,12 +17,12 @@ export function NotificationsRailLayout({
     <div className="v-notifications-rail">
       <h2>{text.center}</h2>
       {tester && (
-        <section>
+        <section className="v-notifications-context-races">
           <h3>{text.races}</h3>
           <p>{text.noRaces}</p>
         </section>
       )}
-      <section>
+      <section className="v-notifications-context-overlay">
         <h3>{text.overlay}</h3>
         <p>{text.noOverlay}</p>
       </section>

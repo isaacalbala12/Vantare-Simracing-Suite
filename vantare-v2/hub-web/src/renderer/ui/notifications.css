@@ -83,6 +83,7 @@
   border-radius: 6px;
 }
 .v-notifications-filters .v-segment {
+  min-height: 24px;
   height: 24px;
   padding: 0 10px;
   font: 400 14px / 18px var(--font-sans);
@@ -193,7 +194,7 @@
 .v-notification-body strong {
   font-size: 14px;
   font-weight: 500;
-  line-height: 21px;
+  line-height: 1.618;
   flex: 1;
 }
 .v-notification time {
@@ -263,13 +264,16 @@
 .v-notifications-content {
   display: flex;
   flex-direction: column;
-  flex: 1;
   gap: 12px;
   padding: 20px;
-  height: 100%;
+  max-height: calc(100vh - 130px);
   min-height: 0;
   box-sizing: border-box;
 }
+.v-notifications-content[data-visible="true"] {
+  height: calc(100vh - 130px);
+}
+
 .v-shell-main > .v-content-stack:has(> .v-notifications--full) {
   height: 100%;
   min-height: 0;
@@ -345,4 +349,12 @@
 .v-notifications-profile small {
   color: var(--text-3);
   font: 400 11px / 16.5px var(--font-sans);
+}
+
+.v-notifications-rail .v-notifications-context-races {
+  padding-top: 18px;
+  padding-bottom: 14px;
+}
+.v-notifications-rail .v-notifications-context-overlay {
+  padding-bottom: 19px;
 }

@@ -239,3 +239,5 @@ La consulta al aceptar usa un único RPC con plazo total monotónico de unos
 750 ms, también ante lecturas parciales. No usa connect_ready, retries, nonce ni
 un hilo nuevo. El Feed opt-in conserva su caché por época contra autoridades
 antiguas; consumir una petición no inicia un sondeo ni un bucle de diagnóstico.
+
+Los rechazos launch-v2 también consumen huecos del único anillo de 32 eventos. La lectura no consume; una ráfaga de rechazos puede desalojar recibos o terminales. Sin recibo retenido (también tras reinicio o descarte sin extensión) significa **Unknown**, nunca éxito. El anfitrión debe conservar esta semántica.

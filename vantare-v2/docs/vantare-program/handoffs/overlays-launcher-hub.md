@@ -1,3 +1,17 @@
+## VANTA-141 · Umbral de compilación diferido por Isaac
+
+El kit no espera a medir tiempos limpios/incrementales comparables. Se harán
+más adelante en madrugada tranquila, servidor sin otros workers, Rune Release
+-j1 y GPUI con el mismo perfil opt3/lto=false/cgu16/debug0. Rune sigue en Mac
+hasta esa ventana posterior. No comparar los tiempos actuales entre máquinas.
+El analizador acepta declaración explícita pending_authorized, muestra los dos
+checks de compilación como pendientes (pass=null) y nunca los inventa ni los
+cuenta como cumplidos. Si lo demás pasa: cumple_runtime_compilacion_pendiente.
+Una regresión de CPU sigue rechazando; tiempos de máquinas distintas se rechazan
+cuando se declaran verificados. 21 pruebas puras PASS (15 umbrales +6 cruce Rune).
+ANALIZAR.ps1 conserva veredictos anteriores y solo consume JSON normalizado.
+Kit y normalización/campaña aún incompletos; ninguna adopción automática.
+
 ## VANTA-141 · Cruce Rune conservador (en construcción)
 
 Pieza 9+11: cruce puro de encoded con PresentMon normalizado, una ventana y

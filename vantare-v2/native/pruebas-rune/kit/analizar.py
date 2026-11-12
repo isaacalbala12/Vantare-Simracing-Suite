@@ -11,6 +11,7 @@ CHECKLIST = ("click_through", "no_focus", "topmost_borderless", "dpi_100", "dpi_
 METRICS = ("cpu_cycles_s", "private_mib", "vram_mib", "gpu_percent", "frame_p99_ms",
            "dropped_frames", "latency_p95_ms", "load_p99_ms", "visible_s",
            "clean_build_s", "incremental_build_s")
+BUILD_METRICS = ("clean_build_s", "incremental_build_s")
 # Intervalo t bilateral del 95 %, df 7..23 (8..24 rondas), método de PR #2013.
 T95 = {7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179,
        13: 2.160, 14: 2.145, 15: 2.131, 16: 2.120, 17: 2.110, 18: 2.101,
@@ -58,7 +59,7 @@ def block_ratio(observations, metric):
     return math.exp((by * xx - xy * xb) / determinant)
 
 
-def validate_observation(row):
+def validate_observation(row, compilation_pending=False):
     if row.get("windows") != 1:
         raise InvalidEvidence("La comparacion exige una ventana overlay, no N ventanas")
     if row.get("valid") is not True or row.get("telemetry_complete") is not True:
@@ -70,14 +71,16 @@ def validate_observation(row):
     if row.get("trace_overflow") != 0 or row.get("trace_complete") is not True:
         raise InvalidEvidence("Traza incompleta o desbordada")
     for name in METRICS:
-        number(row.get("metrics", {}).get(name), name)
+        if not compilation_pending or name not in BUILD_METRICS:
+            number(row.get("metrics", {}).get(name), name)
 
 
-def compare(baseline, candidate, candidate_name):
+def compare(baseline, candidate, candidate_name, compilation_pending=False):
     """Medianas por ronda ya verificadas; no sustituye los controles A/A."""
     for metrics in (baseline, candidate):
         for name in METRICS:
-            number(metrics.get(name), name)
+            if not compilation_pending or name not in BUILD_METRICS:
+                number(metrics.get(name), name)
     frame = 1000 / PRIMARY["hz"]
     limits = {
         "cpu_cycles_s": baseline["cpu_cycles_s"] * (0.9 if candidate_name == "gpui_fast" else 1.1),
@@ -89,16 +92,19 @@ def compare(baseline, candidate, candidate_name):
         "latency_p95_ms": baseline["latency_p95_ms"] + frame,
         "load_p99_ms": baseline["load_p99_ms"] * 1.03,
         "visible_s": min(baseline["visible_s"] * 1.5, 1.5),
-        "clean_build_s": baseline["clean_build_s"],
-        "incremental_build_s": baseline["incremental_build_s"],
     }
+    if not compilation_pending:
+        limits.update({name: baseline[name] for name in BUILD_METRICS})
     # El texto de §8 exige al fast un 10 % de CPU y no empeorar el resto.
     if candidate_name == "gpui_fast":
-        for name in METRICS:
+        for name in limits:
             if name != "cpu_cycles_s":
                 limits[name] = min(limits[name], baseline[name])
     results = {name: {"value": candidate[name], "limit": limit, "pass": candidate[name] <= limit}
                for name, limit in limits.items()}
+    if compilation_pending:
+        results.update({name: {"value": None, "limit": None, "pass": None, "status": "pendiente_autorizado"}
+                        for name in BUILD_METRICS})
     return results
 
 
@@ -114,11 +120,21 @@ def evaluate(document):
     if document.get("schema") != 1 or document.get("configuration") != PRIMARY:
         raise InvalidEvidence("Falta el escenario principal declarado: 1 ventana con 10 Relative, 60 Hz, sin carga")
     output = {"source": "INFORME-FABLE.md §8, corregido por Isaac: una capa por monitor", "scenario": "1 ventana con 10 Relative, 60 Hz, sin carga", "hub": "pendiente", "overlays": {}, "adopted": False}
+    compilation = document.get("compilation", {})
+    compilation_pending = compilation.get("status") == "pending_authorized"
+    output["compilation"] = {"status": "pendiente_autorizado" if compilation_pending else "sin_verificar",
+                             "plan": compilation.get("plan")}
     for name in ("rune", "gpui_fast"):
         data = document.get("comparisons", {}).get(name)
         if not data:
             output["overlays"][name] = {"verdict": "pendiente", "reason": "comparación ausente"}
             continue
+        if not compilation_pending:
+            machines = compilation.get("machines", {})
+            if (compilation.get("status") != "verified" or not machines.get("gpui")
+                    or machines.get(name) != machines["gpui"]):
+                raise InvalidEvidence("Compilaciones sin verificar en la misma maquina")
+            output["compilation"]["status"] = "verificada_misma_maquina"
         rounds = data.get("rounds", [])
         if not 8 <= len(rounds) <= 24:
             raise InvalidEvidence("Faltan rondas completas")
@@ -129,7 +145,7 @@ def evaluate(document):
                 raise InvalidEvidence("Rondas repetidas o desordenadas")
             controls, comparison = round_.get("aa", []), round_.get("ab", [])
             for row in controls + comparison:
-                validate_observation(row)
+                validate_observation(row, compilation_pending)
                 identity = row.get("id")
                 if not identity or identity in observation_ids:
                     raise InvalidEvidence("Observación reutilizada")
@@ -157,16 +173,16 @@ def evaluate(document):
         if max(abs(math.log(r)) for r in aa) >= math.log(1.025):
             output["overlays"][name] = {"verdict": "invalido_ruido", "aa_ratios": aa, "cpu": stats}
             continue
-        medians = {variant: {metric: statistics.median(row[metric] for row in rows) for metric in METRICS}
+        medians = {variant: {metric: statistics.median(row[metric] for row in rows) for metric in METRICS if not compilation_pending or metric not in BUILD_METRICS}
                    for variant, rows in observed.items()}
-        checks = compare(medians["gpui"], medians[name], name)
+        checks = compare(medians["gpui"], medians[name], name, compilation_pending)
         cpu_limit = 0.9 if name == "gpui_fast" else 1.1
         checks["cpu_cycles_s"].update(normalized_ratio=stats["median"], ratio_limit=cpu_limit,
                                        **{"pass": stats["median"] <= cpu_limit})
         manual = data.get("manual", {})
         correctness = all(manual.get(check) is True for check in CHECKLIST)
         endurance = endurance_pass(data.get("endurance", {}))
-        failed = [key for key, value in checks.items() if not value["pass"]]
+        failed = [key for key, value in checks.items() if value["pass"] is False]
         verdict = "cumple_umbrales" if not failed and correctness and endurance else "no_adoptar"
         manual_pending = any(manual.get(check) is None for check in CHECKLIST)
         manual_failed = any(manual.get(check) is False for check in CHECKLIST)
@@ -182,6 +198,8 @@ def evaluate(document):
                 verdict = "consultar_isaac_solo_memoria"
         if verdict == "cumple_umbrales" and stats["ci95"][1] > cpu_limit:
             verdict = "inconcluso_intervalo_cpu"
+        if verdict == "cumple_umbrales" and compilation_pending:
+            verdict = "cumple_runtime_compilacion_pendiente"
         output["overlays"][name] = {"verdict": verdict, "cpu": stats, "aa_ratios": aa,
                                     "checks": checks, "correctness": correctness, "endurance": endurance}
     electron = document.get("hub", {}).get("electron")

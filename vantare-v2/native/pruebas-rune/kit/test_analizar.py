@@ -32,6 +32,7 @@ def campaign(candidate="rune", ratio=1.05):
                  "monitor_sleep_resume": True, "hide_show": True, "resolution_change": True,
                  "minidump_enabled": True, "memory_drift_fraction": .01}
     return {"schema": 1, "configuration": dict(PRIMARY), "binaries": hashes,
+            "compilation": {"status": "verified", "machines": dict.fromkeys(hashes, "synthetic-same-machine")},
             "comparisons": {candidate: {"rounds": rounds, "manual": dict.fromkeys(CHECKLIST, True),
                                         "endurance": endurance}}}
 
@@ -82,6 +83,26 @@ class ThresholdTests(unittest.TestCase):
             mutation(data["comparisons"]["rune"]["rounds"][0]["ab"][1])
             with self.assertRaises(InvalidEvidence):
                 evaluate(data)
+
+    def test_authorized_pending_build_times_are_not_invented_or_counted_as_pass(self):
+        data = campaign()
+        data["compilation"] = {"status": "pending_authorized", "plan": "Isaac: madrugada aislada, Rune Release -j1"}
+        for round_ in data["comparisons"]["rune"]["rounds"]:
+            for row in round_["aa"] + round_["ab"]:
+                row["metrics"].pop("clean_build_s")
+                row["metrics"].pop("incremental_build_s")
+        result = evaluate(data)
+        self.assertEqual(result["overlays"]["rune"]["verdict"], "cumple_runtime_compilacion_pendiente")
+        self.assertIsNone(result["overlays"]["rune"]["checks"]["clean_build_s"]["pass"])
+        self.assertIs(result["adopted"], False)
+        candidate_metrics(data, "cpu_cycles_s", 120)
+        self.assertEqual(evaluate(data)["overlays"]["rune"]["verdict"], "no_adoptar")
+
+    def test_different_build_machines_cannot_satisfy_compile_thresholds(self):
+        data = campaign()
+        data["compilation"]["machines"]["rune"] = "different-machine"
+        with self.assertRaises(InvalidEvidence):
+            evaluate(data)
 
     def test_native_window_count_cannot_replace_widget_count(self):
         data = campaign()

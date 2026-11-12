@@ -25,11 +25,12 @@ import {
 import { bounded } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
-import { paintWindow, resolveTheme, testNotification } from "./appearance";
+import { paintWindow, resolveTheme } from "./appearance";
 import { calendarExportSession } from "./calendar-export";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
+import { notificationDelivery } from "./notification-delivery";
 import { reportExportSession } from "./report-export";
 import {
   assetPath,
@@ -38,6 +39,7 @@ import {
   fitWindow,
   hasDebuggerArguments,
   isRendererMessage,
+  mockAllowed,
   navigationAllowed,
   QA_DRIVER,
   requireDataDirectory,
@@ -155,7 +157,20 @@ async function start() {
   });
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   let disconnect: (() => void) | undefined;
+  // The same closed QA bootstrap as createHost; captures never emit OS notices.
+  const notices = notificationDelivery({
+    mockRequested: process.env.VANTARE_HUB_HOST === "mock",
+    mockAllowed: mockAllowed(app.isPackaged),
+    qa: QA_DRIVER,
+  });
+  const calendarNotices = notices.calendar;
   const removeHostFailure = host.listen((message) => {
+    if (
+      message.kind === "event" &&
+      message.event.topic === "calendarNotice" &&
+      !currentWindow.isDestroyed()
+    )
+      calendarNotices.receive(message.event.value);
     if (
       message.kind === "response" &&
       (message.result.method === "settings.get" ||
@@ -182,6 +197,7 @@ async function start() {
     disconnect?.();
     ipcMain.removeListener("vantare:connect", connectRenderer);
     removeHostFailure();
+    calendarNotices.close();
     host.close();
   });
   window.on("close", (event) => {
@@ -239,6 +255,9 @@ async function start() {
       return result.canceled ? undefined : result.filePath;
     });
     const unsubscribe = host.listen((message) => {
+      const observed = calendarNotices.observe(message);
+      if (!observed) return;
+      message = observed;
       if (pickExecutable.receive(message)) return;
       message = reportExport.observe(message);
       message = calendarExport.observe(message);
@@ -403,7 +422,7 @@ async function start() {
           id: data.id,
           result: {
             method: "notifications.test",
-            accepted: testNotification(settings),
+            accepted: notices.test(settings),
           },
         });
         return;

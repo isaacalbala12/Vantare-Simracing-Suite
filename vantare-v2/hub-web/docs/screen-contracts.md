@@ -432,3 +432,68 @@ no reutiliza la clasificación diaria de los avisos. El fixture
 `calendar-ics-gpui.json` se mantiene desde el ejemplo y test del propio crate
 GPUI, con el corpus compartido y la publicación real de octubre. El anfitrión
 solo consume los valores esperados; no enlaza GPUI ni cruza crates con `#[path]`.
+
+## Calendario: avisos de escritorio con el Hub abierto (wire v28)
+
+El tick existente del anfitrión replica `Alerts::due` (GPUI
+`native/hub/src/calendar/alerts.rs:266`): salida futura, disparo en `(since, now]`,
+antelación del documento, causa de franja/tanda y zona local. La primera lectura
+no recupera avisos pasados. Las franjas se callan en pista; una tanda explícita
+puede avisar, siempre en silencio en pista. Fuera de pista, `channels.sound`
+controla el sonido del sistema, sin reproductor ni dependencia adicional.
+Calendar no depende de `general.toasts`, como el GPUI.
+
+`calendarNotice` es un evento privado host→main, unión cerrada `start|week|test`
+con `deny_unknown_fields`. No acepta texto, URL, ruta ni fecha del renderer.
+Main lo consume antes del puerto del renderer y presenta texto localizado con
+la API `Notification`; no ejecuta acciones al pulsarlo. El presentador es reutilizable
+por otras fuentes, pero este PR no conecta Launcher, actualizaciones ni informes.
+
+Solo se emite tras aceptar el protocolo, con cuenta verificada, no bloqueada, derecho Calendar y vínculo de
+derechos conectado, documento de avisos legible, horario vigente y canal Windows.
+El reloj y el instante monotónico son inyectables. La deduplicación dura hasta
+la salida/final de semana y está acotada; no hay cola persistente ni hilos nuevos.
+La presentación caduca en 60 s y main deduplica una segunda vez. El cierre del
+Hub detiene el tick. Los avisos ya entregados al sistema pueden permanecer allí.
+No existe garantía de que Windows muestre o reproduzca sonido: depende del SO.
+
+`calendar.noticeTest {}` solo genera un ejemplo fijo, con los mismos derechos,
+documento legible y un límite de una prueba cada 5 s. No requiere horario ni que
+el canal esté marcado: prueba el canal, como el GPUI. Main proyecta `accepted`
+a partir del resultado real de invocar el presentador, sin afirmar que el usuario
+lo haya visto. El evento precede a la respuesta; una presentación ausente o
+rechazada da `accepted:false`. Nunca se envían notificaciones reales en tests.
+
+La nueva semana se anuncia una vez tras observar que la publicación vigente
+avanza, con `notifyWeek` y Windows habilitados. Abrir el Hub por primera vez no
+anuncia retrospectivamente la semana. El lanzamiento automático sigue pendiente
+de #2089 y no cambia en este contrato. Las casillas siguen con la explicación de
+«aún no» hasta el PR de activación posterior a la revisión del emisor.
+
+Límites de entrega: hasta 256 avisos por tick y 16 384 claves vivas en el anfitrión;
+main conserva hasta 1 024 claves dentro del TTL. Un exceso se descarta, no se
+acumula para otro arranque. No se modifica el feed en pista ni su consumidor.
+
+### Refresh del anfitrión y publicación de semana (v28)
+
+El tick sondea por la cola de servicios ya existente aunque Calendario no esté
+montado: cada 15 minutos, o 5 minutos los lunes antes de las 12:00 UTC, como
+GPUI. Comparte el identificador reservado de tareas de fondo con Cuenta; no
+solapa refrescos manuales o automáticos y reintenta una cola ocupada como máximo
+una vez por segundo. Requiere los mismos derechos y servicios conectados. No
+escribe el horario en disco ni crea hilos. `calendarRefreshed` publica la vista
+y un error cerrado opcional; el renderer escucha el resultado y ya no sondea.
+
+La semana nueva solo nace de una publicación vigente recibida por refresh;
+una transición de reloj o una publicación futura no avisa. Si la base inicial
+del disco está caducada, el primer refresh válido establece la base silenciosamente,
+aunque no devuelva horario vigente. Una publicación posterior puede avisar usando
+la última semana caducada como comparación.
+No se persiste una última semana avisada. Un fallo breve de autoridad cancela
+la entrega pendiente, sin borrar la base de refresh ni la deduplicación.
+Main tolera hasta 5 segundos de adelanto del reloj del host y usa ciclo h23.
+La prueba de Ajustes y los avisos comparten el doble solo en QA o mock autorizado.
+
+La primera evaluación habilitada del emisor carga horario y preferencias locales
+solo para lectura, aunque el refresh falle por falta de red. Un sello checked
+futuro o un retroceso del reloj no suspende el sondeo: se considera vencido.

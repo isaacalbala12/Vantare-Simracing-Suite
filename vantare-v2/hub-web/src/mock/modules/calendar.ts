@@ -9,6 +9,8 @@ import {
   type CalendarView,
   calendarDefaultAlerts,
   calendarEmptyRevision,
+  calendarNoticeTestIntervalMs,
+  calendarNoticeTtlMs,
   calendarRevisionLength,
   calendarSeriesLimit,
   calendarStartsLimit,
@@ -115,6 +117,7 @@ export function create(context: MockContext): MockHandler {
     context.visual && context.sceneName === "calendar-live-reference"
       ? calendarReferenceNow
       : Date.now();
+  let lastNoticeTest = -Infinity;
   let icsHash: string | undefined;
   return (message: UiToHost): HostToUi | undefined => {
     if (
@@ -132,6 +135,45 @@ export function create(context: MockContext): MockHandler {
       error: { kind: "calendarConflict", current: structuredClone(config) },
     });
     switch (request.method) {
+      case "calendar.noticeTest": {
+        if (context.core.rights !== "connected")
+          return { kind: "failure", id, error: { kind: "denied" } };
+        if (config.documents.alerts !== "ready")
+          return {
+            kind: "failure",
+            id,
+            error: {
+              kind:
+                config.documents.alerts === "protected"
+                  ? "protected"
+                  : "coreUnavailable",
+            },
+          };
+        const now = Date.now();
+        if (now - lastNoticeTest < calendarNoticeTestIntervalMs)
+          return { kind: "failure", id, error: { kind: "busy" } };
+        lastNoticeTest = now;
+        context.emit?.({
+          kind: "event",
+          event: {
+            topic: "calendarNotice",
+            value: {
+              kind: "test",
+              id: next(),
+              requestId: id,
+              issuedAt: now,
+              expiresAt: now + calendarNoticeTtlMs,
+              silent: !config.alerts.channels.sound || context.core.live,
+            },
+          },
+        });
+        return {
+          kind: "response",
+          id,
+          result: { method: request.method, accepted: true },
+        };
+      }
+
       case "calendar.icsPrepare": {
         icsHash = undefined;
         const prepared = mockCalendarIcs(
@@ -172,6 +214,15 @@ export function create(context: MockContext): MockHandler {
           context.core.services !== "connected"
         )
           return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        if (request.method === "calendar.refresh")
+          context.emit?.({
+            kind: "event",
+            event: {
+              topic: "calendarRefreshed",
+              value: structuredClone(value),
+              error: null,
+            },
+          });
         return {
           kind: "response",
           id,

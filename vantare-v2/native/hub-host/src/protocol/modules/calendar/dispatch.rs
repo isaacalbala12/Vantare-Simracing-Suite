@@ -75,6 +75,43 @@ pub(super) fn dispatch(
             },
         );
     }
+    if matches!(request, Request::CalendarNoticeTest {}) {
+        if session.current.rights != crate::protocol::LinkState::Connected
+            || session.closing.is_some()
+        {
+            return frame::write(
+                pipe,
+                &HostToUi::Failure {
+                    id,
+                    error: HostError::Denied,
+                },
+            );
+        }
+        return match session.calendar_state.notice_test(
+            id,
+            chrono::Utc::now().timestamp_millis(),
+            std::time::Instant::now(),
+            session.current.live,
+        ) {
+            Ok(value) => {
+                // Main consumes the fixed sample before projecting the boolean ACK.
+                frame::write(
+                    pipe,
+                    &HostToUi::Event {
+                        event: crate::protocol::Event::CalendarNotice { value },
+                    },
+                )?;
+                frame::write(
+                    pipe,
+                    &HostToUi::Response {
+                        id,
+                        result: Reply::CalendarNoticeTest { accepted: true },
+                    },
+                )
+            }
+            Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
+        };
+    }
     let local = local(&mut session.calendar_state, request);
     if let Some(result) = local {
         return frame::write(
@@ -95,16 +132,36 @@ pub(super) fn dispatch(
                 },
             },
         ),
+        Request::CalendarRefresh {} if refreshing(session) => frame::write(
+            pipe,
+            &HostToUi::Failure {
+                id,
+                error: HostError::Busy,
+            },
+        ),
         Request::CalendarRefresh {} => match session.request_remote(
             id,
             RemoteKind::CalendarRefresh,
             vantare_ipc::services_protocol::Command::CalendarRefresh,
         ) {
-            Ok(()) => Ok(()),
+            Ok(()) => {
+                session
+                    .calendar_state
+                    .poll_started(chrono::Utc::now().timestamp_millis());
+                Ok(())
+            }
             Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
         },
         _ => Err(io::ErrorKind::InvalidInput.into()),
     }
+}
+pub(super) fn refreshing(session: &Session) -> bool {
+    session.remotes.values().any(|kind| {
+        matches!(
+            kind,
+            RemoteKind::CalendarRefresh | RemoteKind::CalendarBackground
+        )
+    })
 }
 pub(super) fn complete(
     session: &mut Session,
@@ -112,19 +169,48 @@ pub(super) fn complete(
     id: u32,
     result: Result<vantare_ipc::services_protocol::Reply, HostError>,
 ) -> Result<Reply, HostError> {
-    if !crate::calendar::allowed(&session.current.access) {
-        return Err(HostError::Denied);
-    }
-    if !matches!(remote,Some((expected,RemoteKind::CalendarRefresh)) if expected==id) {
+    complete_at(
+        session,
+        remote,
+        id,
+        result,
+        chrono::Utc::now().timestamp_millis(),
+    )
+}
+pub(super) fn complete_at(
+    session: &mut Session,
+    remote: Option<(u32, RemoteKind)>,
+    id: u32,
+    result: Result<vantare_ipc::services_protocol::Reply, HostError>,
+    now: i64,
+) -> Result<Reply, HostError> {
+    if !matches!(remote,Some((expected,RemoteKind::CalendarRefresh|RemoteKind::CalendarBackground)) if expected==id)
+    {
         return Err(HostError::Rejected);
     }
-    match result? {
-        vantare_ipc::services_protocol::Reply::Calendar { schedule, fallback } => session
-            .calendar_state
-            .refreshed(schedule, fallback)
-            .map(|value| Reply::CalendarRefresh {
-                value: Box::new(value),
-            }),
-        _ => Err(HostError::Rejected),
-    }
+    let allowed = crate::calendar::allowed(&session.current.access)
+        && session.current.rights == crate::protocol::LinkState::Connected
+        && session.closing.is_none();
+    let result = if crate::calendar::allowed(&session.current.access) {
+        match result {
+            Ok(vantare_ipc::services_protocol::Reply::Calendar { schedule, fallback }) => session
+                .calendar_state
+                .refresh_notices(schedule, fallback, now, allowed, session.current.live)
+                .map(|value| Reply::CalendarRefresh {
+                    value: Box::new(value),
+                }),
+            Ok(_) => Err(HostError::Rejected),
+            Err(error) => Err(error),
+        }
+    } else {
+        Err(HostError::Denied)
+    };
+    let failure = result.as_ref().err().map(|error| match error {
+        HostError::Busy => crate::calendar::CalendarRefreshFailure::Busy,
+        HostError::CoreUnavailable => crate::calendar::CalendarRefreshFailure::CoreUnavailable,
+        HostError::Denied => crate::calendar::CalendarRefreshFailure::Denied,
+        _ => crate::calendar::CalendarRefreshFailure::Rejected,
+    });
+    session.calendar_state.poll_completed(now, failure);
+    result
 }

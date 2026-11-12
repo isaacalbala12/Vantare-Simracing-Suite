@@ -129,7 +129,7 @@ it("renders an inline decorative drawing when no PNG exists", () => {
 });
 it("keeps the real PNG first and recovers the inline drawing on error", () => {
   assets.widgetRasters["../../assets/widgets/thumbs/delta.png"] =
-    "data:image/png;base64,iVBORw0KGgo=";
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jxmQAAAAASUVORK5CYII=";
   const fallback = vi.fn();
   const { container } = render(
     <WidgetThumb kind="delta" onFallback={fallback} />,

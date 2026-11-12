@@ -35,8 +35,12 @@ assert.ok(theme === "dark" || theme === "light");
 assert.ok(sidebar === "closed" || sidebar === "open");
 assert.ok(size === "1440" || size === "1280" || size === "z125");
 assert.ok(process.env.VANTARE_HUB_QA_ROOT, "VANTARE_HUB_QA_ROOT required");
-const captureLock = process.env.VANTARE_HUB_CAPTURE_LOCK ?? "D:/VantareServer/qa/captura.lock";
-assert.ok((await stat(captureLock)).isDirectory(), "Acquire the global capture lock before launching the prototype viewer");
+const captureLock =
+  process.env.VANTARE_HUB_CAPTURE_LOCK ?? "D:/VantareServer/qa/captura.lock";
+assert.ok(
+  (await stat(captureLock)).isDirectory(),
+  "Acquire the global capture lock before launching the prototype viewer",
+);
 const dimensions = size === "1280" ? [1280, 720] : [1440, 900];
 const require = createRequire(import.meta.url);
 const executable: unknown = require("electron");

@@ -18,7 +18,7 @@
     "tokens": "bun scripts/tokens.ts",
     "fonts": "bun scripts/fonts.ts",
     "icons": "bun scripts/icons.ts",
-    "illustrations": "python scripts/widget-illustrations.py && biome format --write src/renderer/ui/widgets/illustrations",
+    "illustrations": "python scripts/widget-illustrations.py && biome check --write src/renderer/ui/widgets/illustrations",
     "lint:design": "bun scripts/lint-design.ts",
     "lint:i18n": "bun scripts/lint-design.ts",
     "contract:index": "bun scripts/contract-index.ts"

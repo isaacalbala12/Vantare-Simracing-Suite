@@ -72,7 +72,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
                           : !selected?.apps.length
                             ? text.noSteps
                             : !selected.launchable
-                              ? t("shell.favoriteFailed")
+                              ? text.unavailable
                               : undefined
                   : undefined));
     if (reason || !client) {
@@ -115,7 +115,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
       ) {
         cache.setQueryData(["launcher"], failure.detail.current);
         warn(text.changed);
-      } else warn(text.failed);
+      } else warn(profile ? text.failed : t("shell.favoriteFailed"));
     } finally {
       pending.current = false;
       if (alive.current) setWaiting(false);

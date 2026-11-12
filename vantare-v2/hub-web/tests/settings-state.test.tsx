@@ -515,7 +515,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
       loading: "Leyendo los perfiles del Launcher…",
       readFailed:
         "No se pudieron leer los perfiles. Cierra y vuelve a abrir la paleta para reintentar.",
-      unlaunchable: t("shell.favoriteFailed"),
+      unlaunchable: "Este perfil tiene aplicaciones pendientes de configurar",
     };
     await waitFor(() =>
       expect(document.querySelector(".v-toast")?.textContent).toContain(
@@ -585,6 +585,21 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
       }
     },
   );
+  it("explains a failed favorite request using its own action text", async () => {
+    const original = Client.prototype.request;
+    vi.spyOn(Client.prototype, "request").mockImplementation(function (
+      this: Client,
+      value,
+    ) {
+      if (value.method === "launcher.favorite")
+        return Promise.reject(new HostFailure({ kind: "io" }));
+      return original.call(this, value);
+    });
+    const hook = mount("launcher-ready", <Shell />);
+    await loaded(hook);
+    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
+    await screen.findByText(t("shell.favoriteFailed"));
+  });
   it("retries only the losing intent and preserves the winner", async () => {
     const hook = mount("ajustes-conflicto");
     await conflict(hook);

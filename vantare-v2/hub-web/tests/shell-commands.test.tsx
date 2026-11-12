@@ -28,7 +28,6 @@ import { Shell } from "../src/renderer/app/Shell";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { commandsText as text } from "../src/renderer/i18n/commands.es";
-import { t } from "../src/renderer/i18n/es";
 import { zoomText } from "../src/renderer/i18n/zoom.es";
 import type { PaletteCommand } from "../src/renderer/ui/CommandPalette";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
@@ -298,7 +297,7 @@ it.each(["revision", "deleted", "unlaunchable"])(
     expect(launchCalls(spy)).toHaveLength(0);
     expect(
       await screen.findByText(
-        change === "unlaunchable" ? t("shell.favoriteFailed") : text.changed,
+        change === "unlaunchable" ? text.unavailable : text.changed,
       ),
     ).toBeTruthy();
   },

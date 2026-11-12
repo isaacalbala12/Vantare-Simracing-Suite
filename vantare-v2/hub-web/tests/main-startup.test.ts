@@ -12,7 +12,7 @@ afterEach(() => {
   vi.doUnmock("../src/main/host");
 });
 
-async function boot(minimized: boolean) {
+async function boot(minimized: boolean, secondBeforeReady = false) {
   vi.resetModules();
   vi.stubEnv("VANTARE_HUB_DATA_DIR", join(tmpdir(), "vantare-startup-double"));
   vi.stubEnv("ELECTRON_RENDERER_URL", undefined);
@@ -67,6 +67,10 @@ async function boot(minimized: boolean) {
       calls.push("show");
       this.active = this.focusable;
     }
+    restore() {
+      calls.push("restore");
+      this.minimized = false;
+    }
     focus() {
       calls.push("focus");
       this.active = this.focusable;
@@ -81,7 +85,9 @@ async function boot(minimized: boolean) {
     isPackaged: false,
     setPath: vi.fn(),
     requestSingleInstanceLock: () => true,
-    whenReady: async () => {},
+    whenReady: async () => {
+      if (secondBeforeReady) app.emit("second-instance");
+    },
     quit: vi.fn(),
     exit,
   });
@@ -134,7 +140,7 @@ async function boot(minimized: boolean) {
   });
   expect(exit).not.toHaveBeenCalled();
   expect(failure).not.toHaveBeenCalled();
-  return { window: windows[0], calls, send };
+  return { window: windows[0], calls, send, app };
 }
 
 it.each([false, true])(
@@ -182,4 +188,42 @@ it("recalculates only zoom on resize and removes the resize listener when conten
   expect(window.setBackgroundColor).not.toHaveBeenCalled();
   window.webContents.emit("destroyed");
   expect(window.listenerCount("resize")).toBe(0);
+}, 15000);
+
+it.each([false, true])(
+  "remembers a second instance before first paint and shows once (minimized=%s)",
+  async (minimized) => {
+    const { window, calls, app } = await boot(minimized);
+    app.emit("second-instance");
+    expect(calls).toEqual(["create:hidden", "load"]);
+    expect(window.active).toBe(false);
+    window.emit("ready-to-show");
+    expect(calls).toEqual(["create:hidden", "load", "show", "ready"]);
+    expect(window.active).toBe(true);
+    expect(window.minimized).toBe(false);
+    window.webContents.emit("destroyed");
+  },
+  15000,
+);
+it("restores and focuses on a second instance after minimized startup", async () => {
+  const { window, calls, app } = await boot(true);
+  window.emit("ready-to-show");
+  calls.length = 0;
+  app.emit("second-instance");
+  expect(calls).toEqual(["restore", "focus"]);
+  expect(window.minimized).toBe(false);
+  window.destroy();
+  calls.length = 0;
+  app.emit("second-instance");
+  expect(calls).toEqual([]);
+  window.webContents.emit("destroyed");
+}, 15000);
+
+it("remembers activation even before BrowserWindow exists", async () => {
+  const { window, calls } = await boot(true, true);
+  expect(calls).toEqual(["create:hidden", "load"]);
+  window.emit("ready-to-show");
+  expect(calls).toEqual(["create:hidden", "load", "show", "ready"]);
+  expect(window.active).toBe(true);
+  window.webContents.emit("destroyed");
 }, 15000);

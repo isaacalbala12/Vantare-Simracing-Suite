@@ -20,9 +20,17 @@ $dev = Join-Path $installation 'Common7/Tools/VsDevCmd.bat'
 $source = Join-Path $PSScriptRoot 'carga.cpp'
 $binary = Join-Path $target 'vantare-carga-gpu.exe'
 $object = Join-Path $target 'carga.obj'
-$command = '""{0}" -no_logo -arch=x64 -host_arch=x64 && cl.exe /nologo /O2 /MT /EHsc /std:c++17 /W4 /I"{1}" /Fo"{2}" /Fe"{3}" "{4}" user32.lib d3d11.lib d3dcompiler.lib dxgi.lib /link /INCREMENTAL:NO"' -f $dev,$target,$object,$binary,$source
+$batch = Join-Path $target 'compilar.cmd'
+$lines = @(
+    '@echo off',
+    ('call "{0}" -no_logo -arch=x64 -host_arch=x64' -f $dev),
+    'if errorlevel 1 exit /b %errorlevel%',
+    ('cl.exe /nologo /O2 /MT /EHsc /std:c++17 /W4 /I"{0}" /Fo"{1}" /Fe"{2}" "{3}" user32.lib d3d11.lib d3dcompiler.lib dxgi.lib /link /INCREMENTAL:NO' -f $target,$object,$binary,$source),
+    'exit /b %errorlevel%'
+)
+[IO.File]::WriteAllLines($batch, $lines, [Text.Encoding]::ASCII)
 $watch = [Diagnostics.Stopwatch]::StartNew()
-& $env:ComSpec /d /s /c $command
+& $env:ComSpec /d /c $batch
 if ($LASTEXITCODE) { throw "MSVC fallo: $LASTEXITCODE" }
 $watch.Stop()
 $out = [IO.Path]::GetFullPath($ArtifactDirectory)

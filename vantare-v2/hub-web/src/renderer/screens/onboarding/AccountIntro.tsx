@@ -18,6 +18,13 @@ function ConnectedIntro(props: Props) {
   const stagedMail = useOnboardingMail(
     signedIn && !blocked && value?.gate === "none",
     !!props.full,
+    blocked
+      ? text.mailBlocked
+      : value?.session === "pending" ||
+          value?.gate === "checking" ||
+          (signedIn && value?.gate !== "none")
+        ? text.mailAccountPending
+        : text.mailOff,
   );
   const accountPending =
     !value?.configured ||

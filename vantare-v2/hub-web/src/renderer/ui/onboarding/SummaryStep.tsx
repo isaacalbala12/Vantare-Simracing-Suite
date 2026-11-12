@@ -76,12 +76,12 @@ export function SummaryStep({
       text.mail,
       !account.signedIn
         ? text.guestMail
-        : !mail?.available || mail.pending
+        : !mail?.available || mail.pending || mail.unconfirmed
           ? text.unconfirmed
           : mail.consent
             ? text.enabled
             : text.disabled,
-      !!mail?.available && !mail.pending && mail.consent,
+      !!mail?.available && !mail.pending && !mail.unconfirmed && mail.consent,
     ],
   ];
   return (
@@ -97,6 +97,7 @@ export function SummaryStep({
           </div>
         ))}
       </dl>
+      {mail?.unconfirmed && <p role="status">{mail.message}</p>}
       {!layoutReady && <p role="status">{text.notPrepared}</p>}
       <div className="v-ob-summary-actions">
         <Button

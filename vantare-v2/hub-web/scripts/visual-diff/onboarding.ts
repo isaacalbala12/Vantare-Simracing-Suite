@@ -119,7 +119,9 @@ onboardingScenes["onboarding-correo"] = {
     await mail.click();
     assert.equal(await mail.isChecked(), true);
     await page
-      .getByText("Tu elección se guardará al pulsar Terminar.", { exact: true })
+      .getByText("Si cambias tu elección, se guardará al pulsar Terminar.", {
+        exact: true,
+      })
       .waitFor();
   },
 };
@@ -148,6 +150,39 @@ for (const state of ["sesion", "cargando", "error"] as const) {
       } else {
         await page
           .getByText("No se pudo cargar la cuenta.", { exact: true })
+          .waitFor();
+      }
+    },
+  };
+}
+
+for (const state of ["sin-permiso", "con-permiso", "error"] as const) {
+  const scene = `onboarding-correo-${state}`;
+  onboardingScenes[scene] = {
+    mock: scene,
+    async prepare(page) {
+      await onboardingScenes["onboarding-6"].prepare(page);
+      const mail = page.getByRole("switch", {
+        name: "Recibir novedades y ofertas por correo",
+      });
+      await mail.waitFor();
+      assert.equal(await mail.isEnabled(), true);
+      assert.equal(await mail.isChecked(), state === "con-permiso");
+      if (state === "error") {
+        await mail.click();
+        await page
+          .getByRole("button", { name: "Terminar", exact: true })
+          .click();
+        await page
+          .getByText(
+            "Correos sin confirmar. Puedes terminar y reintentarlo en Ajustes › Privacidad",
+            { exact: true },
+          )
+          .waitFor();
+        await page
+          .locator("dl > div")
+          .filter({ has: page.locator("dt", { hasText: /^Correos$/ }) })
+          .getByText("Sin confirmar", { exact: true })
           .waitFor();
       }
     },

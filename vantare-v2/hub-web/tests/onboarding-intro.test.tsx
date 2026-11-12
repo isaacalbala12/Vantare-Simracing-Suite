@@ -8,6 +8,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import settingsFixture from "../fixtures/settings-base.json";
 import type {
@@ -20,6 +21,7 @@ import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { OnboardingIntroPreview } from "../src/renderer/screens/onboarding/IntroPreview";
 import { OnboardingGate } from "../src/renderer/screens/onboarding/OnboardingGate";
+import { useOnboardingMail } from "../src/renderer/screens/onboarding/useMail";
 
 const fake = vi.hoisted(() => ({
   request: vi.fn(),
@@ -32,23 +34,24 @@ const fake = vi.hoisted(() => ({
   listeners: new Set<(message: HostToUi) => void>(),
   unsubscribe: vi.fn(),
 }));
-vi.mock("../src/renderer/app/Host", async () => ({
-  coreKey: ["core"],
-  offline: (await import("../fixtures/core-offline.json")).default,
-  settingsKey: ["settings"],
-  useHost: () => ({
-    client: {
-      request: fake.request,
-      addCloseGuard: (guard: () => Promise<boolean>) =>
-        fake.guardClient?.addCloseGuard(guard) ?? (() => {}),
-      listen: (listener: (message: HostToUi) => void) => {
-        fake.listeners.add(listener);
-        return () => fake.listeners.delete(listener);
-      },
-      subscribe: () => fake.unsubscribe,
+vi.mock("../src/renderer/app/Host", async () => {
+  const client = {
+    request: fake.request,
+    addCloseGuard: (guard: () => Promise<boolean>) =>
+      fake.guardClient?.addCloseGuard(guard) ?? (() => {}),
+    listen: (listener: (message: HostToUi) => void) => {
+      fake.listeners.add(listener);
+      return () => fake.listeners.delete(listener);
     },
-  }),
-}));
+    subscribe: () => fake.unsubscribe,
+  };
+  return {
+    coreKey: ["core"],
+    offline: (await import("../fixtures/core-offline.json")).default,
+    settingsKey: ["settings"],
+    useHost: () => ({ client }),
+  };
+});
 vi.mock("../src/renderer/app/SettingsState", async () => {
   const { default: settings } = await import("../fixtures/settings-base.json");
   const view = {
@@ -106,11 +109,24 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
   vi.unstubAllGlobals();
 });
+function MailIntro(props: ComponentProps<typeof OnboardingIntroPreview>) {
+  const { mail, commitMail } = useOnboardingMail(true, true);
+  return (
+    <OnboardingIntroPreview
+      {...props}
+      account={{ signedIn: true, checking: false, blocked: false }}
+      mail={mail}
+      commitMail={commitMail}
+    />
+  );
+}
 function mount(
   extended = false,
   full = false,
-  commitMail?: () => Promise<void>,
+  commitMail?: () => Promise<"ok" | "failed">,
+  withMail = false,
 ) {
+  const Wizard = withMail ? MailIntro : OnboardingIntroPreview;
   const complete = vi.fn();
   const leave = vi.fn();
   const query = new QueryClient({
@@ -119,7 +135,7 @@ function mount(
   query.setQueryData(["settings"], settingsFixture);
   const view = render(
     <QueryClientProvider client={query}>
-      <OnboardingIntroPreview
+      <Wizard
         onLeave={leave}
         extended={extended}
         full={full}
@@ -404,7 +420,7 @@ function respond(scene: string, recommended?: PerformanceLevel) {
 }
 it("preserves choices through consent and finishes an absent layout once on double click", async () => {
   respond("onboarding-sin-diseno");
-  const commitMail = vi.fn(async () => {});
+  const commitMail = vi.fn(async () => "ok" as const);
   const { complete } = mount(true, true, commitMail);
   const start = await screen.findByRole("button", { name: "Empezar" });
   await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
@@ -841,3 +857,59 @@ it("the real Client addCloseGuard waits for the completion write before answerin
   expect(settled).toBe(true);
   expect(view.complete).toHaveBeenCalledWith(false, true);
 });
+
+it.each(["mail.set", "account.get"])(
+  "keeps optional %s failure nonblocking and labels the summary unconfirmed",
+  async (failedMethod) => {
+    respond("onboarding-sin-diseno");
+    const original = fake.request.getMockImplementation();
+    if (!original) throw new Error("Missing host test implementation");
+    fake.request.mockImplementation(async (request) => {
+      if (request.method === "mail.get")
+        return { method: "mail.get", value: { consent: false } };
+      if (request.method === failedMethod)
+        throw new HostFailure({ kind: "io" });
+      if (request.method === "account.get")
+        return {
+          method: "account.get",
+          value: { session: "signedIn", gate: "none", blocked: false },
+        };
+      return original(request);
+    });
+    const { complete } = mount(true, true, undefined, true);
+    const start = await screen.findByRole("button", { name: "Empezar" });
+    await waitFor(() => expect(start.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(start);
+    for (let step = 1; step <= 5; step++)
+      fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    const mail = await screen.findByRole("switch", {
+      name: "Recibir novedades y ofertas por correo",
+    });
+    const description = mail.getAttribute("aria-describedby");
+    expect(description).toBeTruthy();
+    expect(document.getElementById(description ?? "")?.textContent).toContain(
+      "Terminar",
+    );
+    fireEvent.click(mail);
+    expect(
+      fake.request.mock.calls.filter(
+        ([request]) => request.method === "mail.set",
+      ),
+    ).toHaveLength(0);
+    const finish = screen.getByRole("button", { name: "Terminar" });
+    await waitFor(() => expect(finish.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(finish);
+    await screen.findByText(
+      "Correos sin confirmar. Puedes terminar y reintentarlo en Ajustes › Privacidad",
+    );
+    const row = screen.getByText("Correos").closest("div");
+    expect(row?.textContent).toContain("Sin confirmar");
+    expect(row?.textContent).not.toContain("Activados");
+    const prepare = screen.getByRole("button", {
+      name: "Preparar desde Inicio",
+    });
+    await waitFor(() => expect(prepare.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(prepare);
+    await waitFor(() => expect(complete).toHaveBeenCalledWith(false, true));
+  },
+);

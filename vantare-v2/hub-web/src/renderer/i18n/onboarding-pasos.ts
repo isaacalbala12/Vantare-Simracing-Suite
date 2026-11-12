@@ -92,8 +92,14 @@ export const onboardingStepsText = {
   mailOff: "Sin cuenta: no se activa el envío de correos.",
   mailUnconfirmed:
     "El permiso se confirma en el servidor. Se cambia en Ajustes › Privacidad.",
+  mailLoading: "Consultando permiso de correos…",
   mailSaving: "Guardando permiso de correos…",
-  mailAtFinish: "Tu elección se guardará al pulsar Terminar.",
+  mailNotConfirmed:
+    "Correos sin confirmar. Puedes terminar y reintentarlo en Ajustes › Privacidad",
+  mailBlocked: "Cuenta bloqueada: no se puede cambiar el permiso de correos.",
+  mailAccountPending:
+    "La cuenta está pendiente de confirmar. Espera para cambiar el permiso de correos.",
+  mailAtFinish: "Si cambias tu elección, se guardará al pulsar Terminar.",
   mailUnavailable:
     "No se pudo consultar el permiso de correos. Puedes terminar sin modificarlo y revisarlo en Ajustes › Privacidad.",
   crashNotice:

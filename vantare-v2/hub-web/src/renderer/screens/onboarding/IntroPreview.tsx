@@ -63,7 +63,7 @@ export function OnboardingIntroPreview({
   extended?: boolean;
   full?: boolean;
   mail?: OnboardingMailStatus;
-  commitMail?: () => Promise<void>;
+  commitMail?: () => Promise<"ok" | "failed">;
   studioReason?: string;
   onComplete?: (privateSession: boolean, show: boolean) => void;
   account?: OnboardingAccountStatus;
@@ -149,7 +149,6 @@ export function OnboardingIntroPreview({
     canAdvance(step, simulators, styles) &&
     !(full && step >= 6 && !styles.some(Boolean)) &&
     !settings.pending &&
-    !(full && step === 6 && mail?.pending) &&
     !completion.pending &&
     !(full && step >= 6 && completion.privacy.data?.protected) &&
     !(

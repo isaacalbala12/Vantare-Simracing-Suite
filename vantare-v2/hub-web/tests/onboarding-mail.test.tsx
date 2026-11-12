@@ -21,7 +21,60 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
-it("discards a late mail read after the session disappears", async () => {
+const writes = () =>
+  fake.client.request.mock.calls.filter(
+    ([request]) => request.method === "mail.set",
+  );
+it.each([false, true])(
+  "preserves server consent %s and never writes an untouched choice",
+  async (saved) => {
+    fake.client.request.mockResolvedValueOnce({
+      method: "mail.get",
+      value: { consent: saved },
+    });
+    const hook = renderHook(() => useOnboardingMail(true, true));
+    await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
+    expect(hook.result.current.mail.consent).toBe(saved);
+    await act(async () => {
+      expect(await hook.result.current.commitMail()).toBe("ok");
+    });
+    expect(writes()).toHaveLength(0);
+  },
+);
+it.each([false, true])(
+  "only saves an explicit change from %s, once at Terminar",
+  async (saved) => {
+    fake.client.request.mockResolvedValueOnce({
+      method: "mail.get",
+      value: { consent: saved },
+    });
+    const hook = renderHook(() => useOnboardingMail(true, true));
+    await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
+    act(() => hook.result.current.mail.onChange?.(!saved));
+    expect(writes()).toHaveLength(0);
+    await act(async () => {
+      expect(await hook.result.current.commitMail()).toBe("ok");
+    });
+    expect(writes().map(([request]) => request)).toEqual([
+      { method: "mail.set", consent: !saved, source: "onboarding" },
+    ]);
+    await act(async () => {
+      expect(await hook.result.current.commitMail()).toBe("ok");
+    });
+    expect(writes()).toHaveLength(1);
+  },
+);
+it("does not write when the user returns to the stored value", async () => {
+  const hook = renderHook(() => useOnboardingMail(true, true));
+  await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
+  act(() => hook.result.current.mail.onChange?.(true));
+  act(() => hook.result.current.mail.onChange?.(false));
+  await act(async () => {
+    expect(await hook.result.current.commitMail()).toBe("ok");
+  });
+  expect(writes()).toHaveLength(0);
+});
+it("discards a late read after losing the session and clears a staged choice", async () => {
   let reply!: (value: unknown) => void;
   fake.client.request.mockImplementationOnce(
     () =>
@@ -38,62 +91,47 @@ it("discards a late mail read after the session disappears", async () => {
   );
   expect(hook.result.current.mail.available).toBe(false);
   expect(hook.result.current.mail.consent).toBe(false);
-  expect(fake.client.request).toHaveBeenCalledTimes(1);
-});
-it("starts unchecked, stages changes and saves only on Finish with onboarding origin", async () => {
-  const hook = renderHook(() => useOnboardingMail(true, true));
-  await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
-  expect(hook.result.current.mail.consent).toBe(false);
-  act(() => hook.result.current.mail.onChange?.(true));
-  expect(
-    fake.client.request.mock.calls.map(([request]) => request.method),
-  ).toEqual(["mail.get"]);
-  await act(async () => hook.result.current.commitMail());
-  expect(fake.client.request).toHaveBeenLastCalledWith({
-    method: "mail.set",
-    consent: true,
-    source: "onboarding",
-  });
-  await act(async () => hook.result.current.commitMail());
-  expect(
-    fake.client.request.mock.calls.filter(
-      ([request]) => request.method === "mail.set",
-    ),
-  ).toHaveLength(1);
-});
-it("does not adopt a previous opt-in; an unchecked Finish explicitly turns it off", async () => {
-  fake.client.request.mockResolvedValueOnce({
-    method: "mail.get",
-    value: { consent: true },
-  });
-  const hook = renderHook(() => useOnboardingMail(true, true));
-  await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
-  expect(hook.result.current.mail.consent).toBe(false);
-  await act(async () => hook.result.current.commitMail());
-  expect(fake.client.request).toHaveBeenLastCalledWith({
-    method: "mail.set",
-    consent: false,
-    source: "onboarding",
-  });
-});
-it("disables and explains mail without a session, including after a staged opt-in", async () => {
-  const hook = renderHook(({ allowed }) => useOnboardingMail(allowed, true), {
-    initialProps: { allowed: true },
-  });
-  await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
-  act(() => hook.result.current.mail.onChange?.(true));
-  hook.rerender({ allowed: false });
-  expect(hook.result.current.mail.available).toBe(false);
-  expect(hook.result.current.mail.consent).toBe(false);
   expect(hook.result.current.mail.message).toContain("Sin cuenta");
-  await act(async () => hook.result.current.commitMail());
-  expect(
-    fake.client.request.mock.calls.filter(
-      ([request]) => request.method === "mail.set",
-    ),
-  ).toHaveLength(0);
+  await act(async () => {
+    expect(await hook.result.current.commitMail()).toBe("ok");
+  });
+  expect(writes()).toHaveLength(0);
 });
-it("does not save when account revalidation fails and allows a deliberate retry", async () => {
+it("commit during loading returns failed without writing or throwing", async () => {
+  fake.client.request.mockImplementationOnce(() => new Promise(() => {}));
+  const hook = renderHook(() => useOnboardingMail(true, true));
+  expect(hook.result.current.mail.reading).toBe(true);
+  await act(async () => {
+    expect(await hook.result.current.commitMail()).toBe("failed");
+  });
+  expect(writes()).toHaveLength(0);
+  expect(hook.result.current.mail.unconfirmed).toBe(true);
+});
+it.each(["account.get", "mail.set"])(
+  "%s failure is optional, unconfirmed and retriable",
+  async (method) => {
+    const hook = renderHook(() => useOnboardingMail(true, true));
+    await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
+    act(() => hook.result.current.mail.onChange?.(true));
+    const original = fake.client.request.getMockImplementation();
+    if (!original) throw new Error("Missing host test implementation");
+    fake.client.request.mockImplementation(async (request) => {
+      if (request.method === method) throw new HostFailure({ kind: "io" });
+      return original(request);
+    });
+    await act(async () => {
+      expect(await hook.result.current.commitMail()).toBe("failed");
+    });
+    expect(hook.result.current.mail.unconfirmed).toBe(true);
+    expect(hook.result.current.mail.message).toContain("Correos sin confirmar");
+    fake.client.request.mockImplementation(original);
+    await act(async () => {
+      expect(await hook.result.current.commitMail()).toBe("ok");
+    });
+    expect(hook.result.current.mail.unconfirmed).toBe(false);
+  },
+);
+it("rejects a changed account gate without sending consent", async () => {
   const hook = renderHook(() => useOnboardingMail(true, true));
   await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
   act(() => hook.result.current.mail.onChange?.(true));
@@ -101,43 +139,23 @@ it("does not save when account revalidation fails and allows a deliberate retry"
     method: "account.get",
     value: { session: "signedOut", gate: "choose", blocked: false },
   });
-  await expect(hook.result.current.commitMail()).rejects.toEqual(
-    new HostFailure({ kind: "denied" }),
-  );
-  expect(
-    fake.client.request.mock.calls.filter(
-      ([request]) => request.method === "mail.set",
-    ),
-  ).toHaveLength(0);
-  await act(async () => hook.result.current.commitMail());
-  expect(fake.client.request).toHaveBeenLastCalledWith({
-    method: "mail.set",
-    consent: true,
-    source: "onboarding",
+  await act(async () => {
+    expect(await hook.result.current.commitMail()).toBe("failed");
   });
+  expect(writes()).toHaveLength(0);
+  expect(hook.result.current.mail.unconfirmed).toBe(true);
 });
-it("a failed consent write is retriable and an unavailable read cannot opt in", async () => {
-  const hook = renderHook(() => useOnboardingMail(true, true));
-  await waitFor(() => expect(hook.result.current.mail.available).toBe(true));
-  act(() => hook.result.current.mail.onChange?.(true));
-  fake.client.request
-    .mockImplementationOnce(async () => ({
-      method: "account.get",
-      value: { session: "signedIn", gate: "none", blocked: false },
-    }))
-    .mockRejectedValueOnce(new HostFailure({ kind: "io" }));
-  await expect(hook.result.current.commitMail()).rejects.toEqual(
-    new HostFailure({ kind: "io" }),
-  );
-  await act(async () => hook.result.current.commitMail());
-  hook.unmount();
-  fake.client.request.mockRejectedValueOnce(
-    new HostFailure({ kind: "coreUnavailable" }),
-  );
-  const unavailable = renderHook(() => useOnboardingMail(true, true));
-  await waitFor(() =>
-    expect(unavailable.result.current.mail.pending).toBe(false),
-  );
-  expect(unavailable.result.current.mail.available).toBe(false);
-  expect(unavailable.result.current.mail.message).toContain("sin modificarlo");
-});
+it.each(["coreUnavailable", "denied"] as const)(
+  "%s read keeps the optional setting disabled and unconfirmed",
+  async (kind) => {
+    fake.client.request.mockRejectedValueOnce(new HostFailure({ kind }));
+    const hook = renderHook(() => useOnboardingMail(true, true));
+    await waitFor(() => expect(hook.result.current.mail.pending).toBe(false));
+    expect(hook.result.current.mail.available).toBe(false);
+    expect(hook.result.current.mail.unconfirmed).toBe(true);
+    await act(async () => {
+      expect(await hook.result.current.commitMail()).toBe("ok");
+    });
+    expect(writes()).toHaveLength(0);
+  },
+);

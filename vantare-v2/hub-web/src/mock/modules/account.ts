@@ -39,7 +39,10 @@ export function create(context: MockContext): MockHandler {
   }
   if (context.sceneName === "onboarding-cuenta-cargando")
     current = { ...current, session: "pending", gate: "checking" };
-  if (context.sceneName === "onboarding-cuenta-sesion")
+  if (
+    context.sceneName === "onboarding-cuenta-sesion" ||
+    context.sceneName.startsWith("onboarding-correo-")
+  )
     current = {
       ...current,
       session: "signedIn",

@@ -7,6 +7,7 @@ import {createInterface} from 'node:readline';
 import {cpus,freemem,totalmem,release} from 'node:os';
 import {root,evidence,code,sourceGeneration,require,json,owned,experiments,until,hashFile} from './common.mjs';
 import {fluency} from './fluency.mjs';
+import {imageProof} from './image-proof.mjs';
 const {chromium}=require('playwright-core');
 async function deadline(promise,label,milliseconds=15000){
   let timer;
@@ -35,6 +36,8 @@ const pipe=`vantare-measure-${randomBytes(16).toString('hex')}`;
 const peers=[],samples=[],profiles={};
 let driver,browser,activeProfile;
 const originalToolHash=await hashFile(join(code,'scripts/measure.ps1'));
+const toolHashes=Object.fromEntries(await Promise.all(['measure.mjs','measure-window.ps1','fluency.mjs','image-proof.mjs','measurement-qa.mjs'].map(async name=>[name,await hashFile(join(root,'tools',name))])));
+const toolSource=execFileSync('git',['rev-parse','HEAD'],{cwd:code,encoding:'utf8',windowsHide:true}).trim();
 try{
   for(const [name,role] of [['vantare-core.exe','rights'],['vantare.exe','services']]){
     const peer=spawn(join(generation,'bin',name),['--root',generation,'--pipe',pipe,'--role',role],{env,windowsHide:true,stdio:['pipe','pipe','pipe']});
@@ -51,7 +54,7 @@ try{
   const configuration={runs,evidence:output,apps};
   const config=owned(join(root,`config-${trial}.json`));
   await writeFile(config,JSON.stringify(configuration)); // QA-only ephemeral bootstrap; never log this file.
-  await writeFile(join(output,'provenance.json'),JSON.stringify({...prepared,experiment,runs,trial,sourceMeasureWrapperSha256:originalToolHash,os:release(),logicalCpus:cpus().length,totalMemory:totalmem(),freeMemory:freemem(),initialOrder:apps.map(item=>item.name),method:'Five alternated same-package baseline/variant launches, fresh profiles, Settings then Home, no own compilation, natural OS caches'},null,2));
+  await writeFile(join(output,'provenance.json'),JSON.stringify({...prepared,experiment,runs,trial,toolHashes,toolSource,nodeVersion:process.version,sourceMeasureWrapperSha256:originalToolHash,os:release(),logicalCpus:cpus().length,totalMemory:totalmem(),freeMemory:freemem(),initialOrder:apps.map(item=>item.name),method:'Five alternated same-package baseline/variant launches, fresh profiles, Settings then Home, no own compilation, natural OS caches'},null,2));
   driver=spawn('pwsh',['-NoProfile','-MTA','-File',join(root,'tools/measure-window.ps1'),'-Config',config],{env,windowsHide:true,stdio:['pipe','pipe','pipe']});
   let stderr='';driver.stderr.on('data',chunk=>{stderr+=chunk;});
   const done=new Promise((accept,reject)=>{driver.once('exit',accept);driver.once('error',reject);});
@@ -103,7 +106,8 @@ try{
       const startup=await json(join(activeProfile,'measurement-startup.json'));
       assert.equal(startup.deniedSchemes.length,0,'QA attempted external network access');
       assert.equal(startup.variant,event.app==='baseline'?'baseline':experiment);
-      const detail={event,heap,dom,processes,gpu,paint,startup};
+      const nativeImage=await imageProof(join(output,`${event.app}-${event.section}-${event.iteration}.png`));
+      const detail={event,heap,dom,processes,gpu,paint,startup,nativeImage};
       await writeFile(join(output,`${event.app}-${event.section}-${event.iteration}.json`),JSON.stringify(detail,null,2));
       if(event.section==='home'){
         if(event.app==='variant'&&experiment==='trace'){
@@ -127,6 +131,10 @@ try{
       await browser?.close().catch(()=>{});browser=undefined;
       const profile=profiles[`${event.app}-${event.iteration}`];
       await cp(join(profile,'measurement-startup.json'),join(output,`${event.app}-startup-${event.iteration}.json`));
+      const exercisePath=join(output,`${event.app}-fluency-${event.iteration}.json`);
+      const exercise=await json(exercisePath);
+      exercise.nativeImage=await imageProof(join(output,`${event.app}-fluency-${event.iteration}.png`),720);
+      await writeFile(exercisePath,JSON.stringify(exercise,null,2));
     }
   }
   const status=await done;

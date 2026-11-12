@@ -535,9 +535,15 @@ pub enum CalendarIcsStatus {
 }
 #[cfg(any(test, feature = "bindings"))]
 pub const ICS_CONFIRMATION_MAX_AGE_MS: u32 = 60_000;
-pub(crate) fn deserialize_confirmation_id<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+pub(crate) fn deserialize_confirmation_id<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<String, D::Error> {
     let value = <String as serde::Deserialize>::deserialize(deserializer)?;
-    if value.len() == crate::calendar::config::REVISION_LENGTH && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) {
+    if value.len() == crate::calendar::config::REVISION_LENGTH
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    {
         Ok(value)
     } else {
         Err(serde::de::Error::custom("invalid calendar confirmation id"))
@@ -626,7 +632,13 @@ impl super::State {
 
 #[test]
 fn replacement_request_ids_are_closed() {
-    for id in [String::new(), "a".repeat(63), "a".repeat(65), "G".repeat(64), "a/".repeat(32)] {
+    for id in [
+        String::new(),
+        "a".repeat(63),
+        "a".repeat(65),
+        "G".repeat(64),
+        "a/".repeat(32),
+    ] {
         assert!(serde_json::from_value::<crate::protocol::Request>(serde_json::json!({"method":"calendar.icsReplace","confirmationId":id,"replace":true})).is_err());
     }
     assert!(serde_json::from_value::<crate::protocol::Request>(serde_json::json!({"method":"calendar.icsReplace","confirmationId":"a".repeat(64),"replace":false})).is_ok());

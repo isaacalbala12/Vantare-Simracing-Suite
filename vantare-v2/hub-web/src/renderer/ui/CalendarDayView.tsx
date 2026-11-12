@@ -1,7 +1,7 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
@@ -44,8 +44,6 @@ export function CalendarDayView({
   const previousFull = useRef(false);
   const savedScroll = useRef<number | undefined>(undefined);
   useLayoutEffect(() => {
-    if (scroll.current && savedScroll.current !== undefined)
-      scroll.current.scrollTop = savedScroll.current;
     if (previousFull.current && !full)
       fullToggle.current?.focus({ preventScroll: true });
     previousFull.current = full;
@@ -57,6 +55,11 @@ export function CalendarDayView({
   const selected = chosen ?? Math.max(today, 0);
   const scroll = useRef<HTMLDivElement>(null);
   const scrolled = useRef("");
+  const attachScroll = useCallback((node: HTMLDivElement | null) => {
+    scroll.current = node;
+    if (node && savedScroll.current !== undefined)
+      node.scrollTop = savedScroll.current;
+  }, []);
   const changeFull = (next: boolean) => {
     savedScroll.current = scroll.current?.scrollTop;
     setFull(next);
@@ -193,7 +196,7 @@ export function CalendarDayView({
               </div>
             ))}
           </div>
-          <div className="v-calendar-day-scroll" ref={scroll}>
+          <div className="v-calendar-day-scroll" ref={attachScroll}>
             <div className="v-calendar-day-grid">
               {hours.map((h) => (
                 <div

@@ -699,3 +699,62 @@
 .v-home-templates .v-widget-thumbnail[data-fallback="true"] {
   opacity: 1;
 }
+
+/* GPUI foundations::home_activity and orbit::summary_row. */
+.v-home-card:nth-child(2) {
+  padding: 20px;
+  gap: 12px;
+}
+.v-home-card:nth-child(2) > .v-home-heading {
+  height: 16px;
+}
+.v-home-card:nth-child(2) .v-home-empty {
+  gap: 12px;
+}
+.v-home-activity-list > div {
+  position: relative;
+  min-height: 58px;
+  gap: 8px;
+  padding: 8px 0 8px 48px;
+}
+.v-home-activity-list > div > svg {
+  position: absolute;
+  left: 6px;
+  top: 11px;
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 5px;
+  background: var(--surface-3);
+  color: var(--text-3);
+}
+.v-home-activity-list strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+.v-home-activity-list small {
+  font-size: 12px;
+  margin-top: 0;
+}
+.v-home-activity-list .v-home-badge {
+  align-self: flex-start;
+  margin-top: -8px;
+}
+.v-home-activity-list .v-home-badge[data-launcher="true"] {
+  background: var(--accent-tint);
+  color: var(--accent-bright);
+  border-color: transparent;
+}
+.v-home-template-section > .v-home-heading {
+  height: 20px;
+}
+.v-home-badge {
+  font-weight: 500;
+  height: 28px;
+  padding-block: 0;
+}
+.v-home-error {
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}

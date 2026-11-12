@@ -220,9 +220,7 @@ export function HomeLayout(p: HomeProps) {
       {(core.access.blocked || p.error || v?.protected) && (
         <div className="v-home-error" role="status">
           <span>{p.error ?? (v?.protected ? t.protected : t.accessError)}</span>
-          <Button size="sm" onClick={p.retry}>
-            {t.retry}
-          </Button>
+          <Button onClick={p.retry}>{t.retry}</Button>
         </div>
       )}
       <div className="v-home-lower">
@@ -317,7 +315,12 @@ export function HomeLayout(p: HomeProps) {
                     <strong>{item.text}</strong>
                     <small>{activityDate(item.date)}</small>
                   </span>
-                  <span className="v-home-badge">{item.source}</span>
+                  <span
+                    className="v-home-badge"
+                    data-launcher={item.source === t.sources.launcher}
+                  >
+                    {item.source}
+                  </span>
                 </div>
               ))}
             </div>

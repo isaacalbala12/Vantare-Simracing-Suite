@@ -531,3 +531,9 @@ de ventana operativos; cancelar devuelve al calendario preparado de nuevo.
 La huella se comprueba justo antes de renombrar; no bloquea editores externos.
 La reutilización con report-export y la longitud de su temporal anterior siguen
 fuera de este cambio. Sin IPC/runtime/rights/supervisor, red ni dependencias nuevas.
+
+### Seguimiento de ICS tras #2219
+
+El reloj fijo del selector QA se declara en main sin importar el mock ni el corpus JSON. Un test mantiene su paridad con la escena. Main ya no devuelve `conflict` al exportar: un destino existente exige confirmación; otros fallos del selector se clasifican como `io`. La variante del wire y su lectura permanecen por compatibilidad, sin cambiar v30.
+
+Pendientes deliberados de Isaac: si el archivo desaparece entre EEXIST y la huella, el motivo exacto requiere una variante cerrada nueva; se conserva el error actual, sin ampliar el contrato por esta carrera infrecuente. El diálogo tampoco recibe nombre base ni ruta. Ambos quedan fuera de este seguimiento.

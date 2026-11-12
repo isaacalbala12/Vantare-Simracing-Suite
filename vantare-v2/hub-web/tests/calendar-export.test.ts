@@ -366,3 +366,17 @@ it("accepts a snapshot just before thirty minutes and rejects a backwards clock"
   time--;
   expect(await backwards.export(hash)).toEqual({ error: { kind: "rejected" } });
 });
+
+it("does not mislabel a picker failure as an existing-destination conflict", async () => {
+  const pick = vi
+    .fn()
+    .mockRejectedValue(
+      Object.assign(new Error("picker failed"), { code: "EEXIST" }),
+    );
+  const save = vi.fn();
+  const session = calendarExportSession(pick, save);
+  session.expect(1);
+  session.observe(response());
+  expect(await session.export(hash)).toEqual({ error: { kind: "io" } });
+  expect(save).not.toHaveBeenCalled();
+});

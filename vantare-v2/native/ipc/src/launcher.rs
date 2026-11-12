@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 pub const VERSION: u32 = 2;
 pub const MAX_STATUS_BYTES: usize = 128 * 1024;
 pub mod execution;
+pub mod checked;
+pub use checked::{LaunchChecked, RequestId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
@@ -73,6 +75,8 @@ impl From<Action> for String {
 pub enum Request {
     #[serde(rename = "launch-v1")]
     Launch { profile: String },
+    #[serde(rename = "launch-v2")]
+    LaunchChecked(LaunchChecked),
     #[serde(rename = "answer-v2")]
     Answer { decision: u64, action: Action },
 }

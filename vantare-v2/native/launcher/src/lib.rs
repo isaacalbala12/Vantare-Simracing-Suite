@@ -2,6 +2,7 @@
 #![deny(unsafe_code)]
 
 pub mod chain;
+pub mod snapshot;
 pub mod discovery;
 pub mod legacy;
 pub mod policy;

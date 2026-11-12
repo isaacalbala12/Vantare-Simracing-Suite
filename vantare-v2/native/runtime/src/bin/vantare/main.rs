@@ -358,9 +358,7 @@ enum Outcome {
 }
 
 #[cfg(windows)]
-fn start_remote_services(
-    config: &mut Config,
-) -> io::Result<(vantare_runtime::services::Host, String)> {
+fn core_photo(config: &mut Config) -> io::Result<String> {
     let photo = if let Some(pair) = config.core.args.windows(2).find(|pair| pair[0] == "--pipe") {
         pair[1].clone()
     } else {
@@ -372,6 +370,14 @@ fn start_remote_services(
         config.core.args.extend(["--pipe".into(), photo.clone()]);
         photo
     };
+    Ok(photo)
+}
+
+#[cfg(windows)]
+fn start_remote_services(
+    config: &mut Config,
+) -> io::Result<(vantare_runtime::services::Host, String)> {
+    let photo = core_photo(config)?;
     config.core.args.push("--managed-rights".into());
     if let Some(engineer) = &mut config.engineer
         && !engineer.args.iter().any(|arg| arg == "--pipe-name")
@@ -467,12 +473,17 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
     let grace = config.grace;
     let installation = config.installation.clone();
     let setup = (|| -> io::Result<_> {
+        let photo = core_photo(&mut config)?;
         workers.resident = if config.instance.is_empty() || config.launcher_file.is_some() {
             let path = resident_settings(config.launcher_file.clone())?;
             Some(resident::Resident::start(
                 path,
                 config.launch.clone(),
                 config.instance.is_empty(),
+                vantare_ipc::account_session::AuthorityLink {
+                    pipe: vantare_ipc::control::pipe_name(&photo),
+                    image: config.core.path.clone(),
+                },
             )?)
         } else {
             None
@@ -801,6 +812,19 @@ mod tests {
             assert!(parsed(&["--launch", invalid]).is_err());
         }
         assert!(parsed(&["--launch", "rig", "--parar"]).is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn core_photo_is_idempotent_before_resident_and_services_wiring() {
+        for arguments in [vec![], vec!["--", "--live", "--pipe", "qa-explicit"]] {
+            let mut config = parsed(&arguments).unwrap();
+            let photo = core_photo(&mut config).unwrap();
+            let after = config.core.args.clone();
+            assert_eq!(core_photo(&mut config).unwrap(), photo);
+            assert_eq!(config.core.args, after);
+            assert_eq!(config.core.args.iter().filter(|arg| *arg == "--pipe").count(), 1);
+        }
     }
 
     fn args(list: &[&str]) -> Vec<String> {

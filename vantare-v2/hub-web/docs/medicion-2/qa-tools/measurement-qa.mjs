@@ -28,7 +28,7 @@ let tracePromise;
 if (options.variant === 'trace') {
   mark('trace-requested');
   try {
-    tracePromise = contentTracing.startRecording({ included_categories: ['v8', 'devtools.timeline', 'blink.user_timing', 'loading', 'disabled-by-default-v8.compile'], recording_mode: 'record-until-full', trace_buffer_size_in_kb: 32768 });
+    tracePromise = app.whenReady().then(() => contentTracing.startRecording({ included_categories: ['v8', 'devtools.timeline', 'blink.user_timing', 'loading', 'disabled-by-default-v8.compile'], recording_mode: 'record-until-full', trace_buffer_size_in_kb: 32768 }));
     tracePromise.then(() => { mark('trace-started'); flush(); }, error => { events.push({ name: 'trace-failed', message: String(error) }); flush(); });
   } catch(error) { events.push({ name: 'trace-failed', message: String(error) }); }
   const monitor = watch(data, (_event, name) => {

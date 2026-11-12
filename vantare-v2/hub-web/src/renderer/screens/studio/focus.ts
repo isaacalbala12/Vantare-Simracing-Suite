@@ -66,6 +66,11 @@ export function useStudioFocus() {
       added.revision === view?.revision &&
       lastAdded.current !== added.revision
     ) {
+      // Reveal the added row before selecting and focusing its mounted button.
+      if (activeFilter !== "all") {
+        setFilter("all");
+        return;
+      }
       lastAdded.current = added.revision;
       setCatalogOpen(false);
       select(added.id);

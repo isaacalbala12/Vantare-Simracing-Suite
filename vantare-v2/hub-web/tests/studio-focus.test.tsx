@@ -208,4 +208,20 @@ describe("Studio Foco structure", () => {
       screen.getByRole("button", { name: t.show }).hasAttribute("disabled"),
     ).toBe(true);
   });
+  it("reveals and focuses an added overlay when the hidden filter excluded it", async () => {
+    mount("studio-nueve");
+    const user = userEvent.setup();
+    await listRow("Standings 1");
+    await user.click(
+      screen.getByRole("button", { name: t.filters.hidden, exact: true }),
+    );
+    await user.click(screen.getByRole("button", { name: t.add, exact: true }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Añadir .*Radar/i }),
+    );
+    const radar = await listRow("Radar");
+    await waitFor(() => expect(document.activeElement).toBe(radar));
+    expect(radar.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("searchbox", { name: t.search })).toBeNull();
+  });
 });

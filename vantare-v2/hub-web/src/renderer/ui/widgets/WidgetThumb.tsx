@@ -18,6 +18,19 @@ export function fallbackGeometry(
   const scale = Math.max(Math.min(width / w, height / h), (height * 0.65) / h);
   return { width: w * scale, height: h * scale, cropped: w * scale > width };
 }
+/** Stage drawings fit without cropping; real raster previews still never upscale. */
+export function stageGeometry(kind: WidgetKind, width: number, height: number) {
+  const natural = illustrationSizes[kind];
+  const scale = Math.max(
+    0,
+    Math.min(width / natural.width, height / natural.height, 2.6),
+  );
+  return {
+    width: natural.width * scale,
+    height: natural.height * scale,
+    cropped: false,
+  };
+}
 export function thumbnailGeometry(
   kind: WidgetKind,
   width: number,
@@ -124,6 +137,7 @@ export function WidgetPreview({
   locked = false,
   unverified = false,
   small = false,
+  stage = false,
 }: {
   kind: WidgetKind;
   opacity?: number;
@@ -131,6 +145,7 @@ export function WidgetPreview({
   locked?: boolean;
   unverified?: boolean;
   small?: boolean;
+  stage?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [fallback, setFallback] = useState(
@@ -167,7 +182,7 @@ export function WidgetPreview({
     return () => window.removeEventListener("resize", measure);
   }, []);
   const size = fallback
-    ? fallbackGeometry(kind, area.width, area.height)
+    ? (stage ? stageGeometry : fallbackGeometry)(kind, area.width, area.height)
     : thumbnailGeometry(kind, area.width, area.height, small ? 20 : 32);
   return (
     <div
@@ -175,6 +190,7 @@ export function WidgetPreview({
       className="v-widget-preview"
       data-hidden={!visible}
       data-small={small}
+      data-stage={stage}
     >
       <span
         className="v-widget-thumb-frame"
@@ -182,7 +198,9 @@ export function WidgetPreview({
         style={{
           width: size.cropped ? "100%" : size.width,
           height: size.height,
-          opacity: (opacity / 100) * (!visible || locked ? 0.45 : 1),
+          opacity:
+            (opacity / 100) *
+            (!visible ? (stage ? 0.32 : 0.45) : locked ? 0.45 : 1),
         }}
       >
         <span

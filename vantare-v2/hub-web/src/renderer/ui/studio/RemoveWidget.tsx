@@ -54,7 +54,7 @@ export function RemoveWidget() {
                 const name = widgetName(item, view);
                 const cards = Array.from(
                   document.querySelectorAll<HTMLElement>(
-                    ".v-studio-grid [data-widget]",
+                    ".v-studio-grid [data-widget], .v-studio-list [data-widget]",
                   ),
                 );
                 state.focusAfter.current = {

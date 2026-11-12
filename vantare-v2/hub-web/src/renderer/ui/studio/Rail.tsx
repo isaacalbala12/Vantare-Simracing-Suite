@@ -86,34 +86,7 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
                     actions={<Button onClick={onPlans}>{t.plans}</Button>}
                   />
                 )}
-                <Tabs.Root key={selected.id} defaultValue="track">
-                  <Tabs.List
-                    className="v-studio-tabs"
-                    aria-label={t.inspectorTabs}
-                  >
-                    <DisabledHint label={t.soonTooltip}>
-                      <Tabs.Tab value="content" disabled>
-                        {t.content}
-                      </Tabs.Tab>
-                    </DisabledHint>
-                    {selected.settings ? (
-                      <Tabs.Tab value="appearance">{t.appearance}</Tabs.Tab>
-                    ) : (
-                      <DisabledHint label={t.soonTooltip}>
-                        <Tabs.Tab value="appearance" disabled>
-                          {t.appearance}
-                        </Tabs.Tab>
-                      </DisabledHint>
-                    )}
-                    <Tabs.Tab value="track">{t.track}</Tabs.Tab>
-                  </Tabs.List>
-                  <Tabs.Panel value="appearance">
-                    <AppearanceInspector item={selected} />
-                  </Tabs.Panel>
-                  <Tabs.Panel value="track">
-                    <TrackInspector key={selected.id} item={selected} />
-                  </Tabs.Panel>
-                </Tabs.Root>
+                <StudioInspector item={selected} />
               </>
             ) : (
               <Catalog onPlans={onPlans} />
@@ -132,7 +105,7 @@ export function StudioRail({ onPlans = () => {} }: { onPlans?: () => void }) {
     </aside>
   );
 }
-function Catalog({ onPlans }: { onPlans: () => void }) {
+export function Catalog({ onPlans }: { onPlans: () => void }) {
   const catalog = useRef<HTMLDivElement>(null);
   useLayoutEffect(
     () => catalog.current?.querySelector<HTMLInputElement>("input")?.focus(),
@@ -323,5 +296,39 @@ function Catalog({ onPlans }: { onPlans: () => void }) {
         <Button onClick={onPlans}>{t.plans}</Button>
       )}
     </div>
+  );
+}
+
+export function StudioInspector({
+  item,
+}: {
+  item: import("../../../contract/generated/contract").OverlayInstance;
+}) {
+  return (
+    <Tabs.Root key={item.id} defaultValue="track">
+      <Tabs.List className="v-studio-tabs" aria-label={t.inspectorTabs}>
+        <DisabledHint label={t.soonTooltip}>
+          <Tabs.Tab value="content" disabled>
+            {t.content}
+          </Tabs.Tab>
+        </DisabledHint>
+        {item.settings ? (
+          <Tabs.Tab value="appearance">{t.appearance}</Tabs.Tab>
+        ) : (
+          <DisabledHint label={t.soonTooltip}>
+            <Tabs.Tab value="appearance" disabled>
+              {t.appearance}
+            </Tabs.Tab>
+          </DisabledHint>
+        )}
+        <Tabs.Tab value="track">{t.track}</Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel value="appearance">
+        <AppearanceInspector item={item} />
+      </Tabs.Panel>
+      <Tabs.Panel value="track">
+        <TrackInspector key={item.id} item={item} />
+      </Tabs.Panel>
+    </Tabs.Root>
   );
 }

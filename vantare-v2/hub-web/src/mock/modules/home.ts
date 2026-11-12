@@ -1,3 +1,4 @@
+import homeFixture from "../../../fixtures/inicio-base.json";
 import launcher from "../../../fixtures/launcher-base.json";
 import type { HomeView, UiToHost } from "../../contract/generated/contract";
 import { homeNaturalSizes } from "../../contract/generated/home";
@@ -38,11 +39,26 @@ export function create({ sceneName, core }: MockContext): MockHandler {
     },
     version: "0.0.0",
   };
-  if (sceneName === "inicio-base" || sceneName === "inicio-error")
+  if (sceneName === "inicio-error")
     value.layout.widgets = [
       { kind: "standings", x: 20, y: 20, w: 640, h: 210, opacity: 100 },
       { kind: "pedals", x: 850, y: 20, w: 120, h: 210, opacity: 100 },
     ];
+  if (sceneName === "inicio-base") {
+    value.profiles = homeFixture.profiles.map((profile) => ({
+      id: profile.id,
+      name: profile.name,
+      steps: profile.apps.length,
+      favorite: profile.favorite,
+      lastLaunchedAt: profile.lastLaunchedAt,
+    }));
+    value.favorite =
+      value.profiles.find((profile) => profile.favorite)?.id ?? null;
+    const order = ["standings", "delta", "relative", "pedals"];
+    value.layout.widgets.sort(
+      (a, b) => order.indexOf(a.kind) - order.indexOf(b.kind),
+    );
+  }
   value.layout.widgets = value.layout.widgets.map((widget) => ({
     ...widget,
     ...homeNaturalSizes[widget.kind],

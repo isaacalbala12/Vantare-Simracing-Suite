@@ -30,6 +30,19 @@ export const homeScenes: Record<string, VisualScene> = Object.fromEntries(
               : ".v-home:not(.v-home--loading)",
           )
           .waitFor();
+        if (scene === "inicio-base") {
+          await page
+            .getByRole("button", { name: /^Lanzar Carrera LMU/ })
+            .waitFor();
+          for (const profile of [
+            "Carrera LMU",
+            "Streaming Le Mans",
+            "Entreno rápido",
+          ])
+            await page
+              .getByText(`${profile} · último lanzamiento`, { exact: true })
+              .waitFor();
+        }
         if (scene === "inicio-error")
           await page.locator(".v-home-error").waitFor();
         await page.waitForFunction(() => {

@@ -95,10 +95,10 @@ fn saved(input: &Value, size: &str) -> Result<Value, Box<dyn Error>> {
     match &mut item.settings {
         Settings::Standings(value) => {
             *value.session_columns_mut(Session::Race) =
-                vantare_ui::standings::vantare_template(size)
+                vantare_ui::standings::vantare_template(size);
         }
         Settings::Relative(value) => {
-            value.columns = Some(vantare_ui::relative::vantare_template(size))
+            value.columns = Some(vantare_ui::relative::vantare_template(size));
         }
         _ => return Err("unsupported oracle widget".into()),
     }

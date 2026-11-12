@@ -98,7 +98,7 @@ function code(error: unknown) {
     : undefined;
 }
 type Outcome =
-  | { status: Exclude<CalendarIcsStatus, "replacementRequired"> }
+  | { status: Exclude<CalendarIcsStatus, "replacementRequired" | "conflict"> }
   | { status: "replacementRequired"; confirmationId: string }
   | { error: HostError };
 export function calendarExportSession(
@@ -261,7 +261,6 @@ export function calendarExportSession(
         }
         return { status: "saved" };
       } catch (error) {
-        if (code(error) === "EEXIST") return { status: "conflict" };
         if (code(error) === "VANTARE_ICS_EXTENSION")
           return { error: { kind: "calendarExportExtension" } };
         return { error: { kind: "io" } };

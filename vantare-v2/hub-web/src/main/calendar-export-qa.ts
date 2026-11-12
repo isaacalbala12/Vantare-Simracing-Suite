@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { calendarReferenceNow } from "../mock/calendar-reference";
+
+// Keep the QA clock local: importing the mock would bundle its JSON corpus in main.
+const calendarReferenceNow = Date.parse("2026-10-08T17:47:13Z");
 // Trusted QA bootstrap only. No renderer path, native picker or real user file.
 export function calendarExportQa(
   qa: boolean,

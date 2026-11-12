@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import { calendarDayText as text } from "../src/renderer/i18n/calendarDay";
@@ -14,7 +20,7 @@ const alerts = {
   autoLaunch: false,
   notifyWeek: true,
 };
-it("preserves a manually scrolled position across clock ticks and routes view changes", () => {
+it("preserves a manually scrolled position across clock ticks and routes view changes", async () => {
   const span = vi.fn(),
     full = vi.fn();
   const props = {
@@ -40,6 +46,19 @@ it("preserves a manually scrolled position across clock ticks and routes view ch
   expect(span).toHaveBeenCalledWith("week");
   fireEvent.click(screen.getByRole("button", { name: text.full }));
   expect(full).toHaveBeenCalledOnce();
+  const expanded = screen.getByRole("dialog", { name: text.calendar });
+  const expandedScroll = expanded.querySelector<HTMLDivElement>(
+    ".v-calendar-day-scroll",
+  );
+  if (!expandedScroll) throw new Error("Missing expanded scroller");
+  expect(expandedScroll.scrollTop).toBe(42);
+  expandedScroll.scrollTop = 58;
+  fireEvent.click(screen.getByRole("button", { name: text.exitFull }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(container.querySelector(".v-calendar-day-scroll")).toHaveProperty(
+    "scrollTop",
+    58,
+  );
 });
 it("shows the empty favorites state without replacing the date controls", () => {
   render(
@@ -97,4 +116,92 @@ it("paints bands in local hours even in UTC and disables undelivered actions", (
     "disabled",
     true,
   );
+});
+
+it.each(["escape", "button"])(
+  "keeps window controls and restores focus on expanded day %s exit",
+  async (mode) => {
+    render(
+      <>
+        <div className="v-window-controls">
+          <button type="button">Cerrar ventana QA</button>
+        </div>
+        <CalendarDayView
+          schedule={fixture}
+          alerts={alerts}
+          following={[]}
+          now={Date.parse("2026-07-02T12:00:00Z")}
+          utc
+          limit={1000}
+          onSpan={() => {}}
+        />
+      </>,
+    );
+    const trigger = screen.getByRole("button", { name: text.full });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: text.calendar });
+    const control = screen.getByRole("button", { name: "Cerrar ventana QA" });
+    control.focus();
+    expect(document.activeElement).toBe(control);
+    expect(control.closest('[inert], [aria-hidden="true"]')).toBeNull();
+    dialog.focus();
+    if (mode === "escape")
+      fireEvent.keyDown(dialog, { key: "Escape", code: "Escape" });
+    else fireEvent.click(screen.getByRole("button", { name: text.exitFull }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: text.full }),
+      ),
+    );
+  },
+);
+
+it("restores the inline hour after expansion clamps its shorter scroll range", async () => {
+  // jsdom has no layout: emulate the two viewport scroll ranges.
+  const values = new WeakMap<Element, number>();
+  const get = vi
+    .spyOn(Element.prototype, "scrollTop", "get")
+    .mockImplementation(function (this: Element) {
+      return values.get(this) ?? 0;
+    });
+  const set = vi
+    .spyOn(Element.prototype, "scrollTop", "set")
+    .mockImplementation(function (this: Element, value: number) {
+      values.set(
+        this,
+        Math.min(value, this.closest(".v-calendar-day-full") ? 95 : 168),
+      );
+    });
+  try {
+    const { container } = render(
+      <CalendarDayView
+        schedule={fixture}
+        alerts={alerts}
+        following={[]}
+        now={Date.parse("2026-07-02T19:00:00Z")}
+        utc
+        limit={1000}
+        onSpan={() => {}}
+      />,
+    );
+    expect(container.querySelector(".v-calendar-day-scroll")).toHaveProperty(
+      "scrollTop",
+      168,
+    );
+    fireEvent.click(screen.getByRole("button", { name: text.full }));
+    expect(
+      screen.getByRole("dialog").querySelector(".v-calendar-day-scroll"),
+    ).toHaveProperty("scrollTop", 95);
+    fireEvent.click(screen.getByRole("button", { name: text.exitFull }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(container.querySelector(".v-calendar-day-scroll")).toHaveProperty(
+      "scrollTop",
+      168,
+    );
+  } finally {
+    set.mockRestore();
+    get.mockRestore();
+  }
 });

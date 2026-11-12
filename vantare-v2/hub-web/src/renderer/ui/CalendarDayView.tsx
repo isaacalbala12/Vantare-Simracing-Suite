@@ -1,5 +1,7 @@
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
-import { useLayoutEffect, useRef, useState } from "react";
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
@@ -38,6 +40,15 @@ export function CalendarDayView({
   onDetail?: (id: string, at: number) => void;
 }) {
   const [full, setFull] = useState(false);
+  const fullToggle = useRef<HTMLButtonElement>(null);
+  const previousFull = useRef(false);
+  const savedScroll = useRef<number | undefined>(undefined);
+  const appliedScroll = useRef<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (previousFull.current && !full)
+      fullToggle.current?.focus({ preventScroll: true });
+    previousFull.current = full;
+  }, [full]);
   const dates = weekDates(now, utc),
     today = dates.indexOf(civilDay(now, 0, utc));
   const [chosen, setSelected] = useState<number | null>(null),
@@ -45,6 +56,19 @@ export function CalendarDayView({
   const selected = chosen ?? Math.max(today, 0);
   const scroll = useRef<HTMLDivElement>(null);
   const scrolled = useRef("");
+  const attachScroll = useCallback((node: HTMLDivElement | null) => {
+    scroll.current = node;
+    if (node && savedScroll.current !== undefined) {
+      node.scrollTop = savedScroll.current;
+      appliedScroll.current = node.scrollTop;
+    }
+  }, []);
+  const changeFull = (next: boolean) => {
+    const current = scroll.current?.scrollTop;
+    if (savedScroll.current === undefined || current !== appliedScroll.current)
+      savedScroll.current = current;
+    setFull(next);
+  };
   const at = dates[selected],
     hours = dayHours(at, utc),
     until = civilDay(at, 1, utc);
@@ -101,14 +125,16 @@ export function CalendarDayView({
         </p>
         <Button
           variant="ghost"
-          aria-label={text.full}
+          ref={fullToggle}
+          className="v-calendar-day-full-toggle"
+          aria-label={full ? text.exitFull : text.full}
           aria-pressed={full}
           onClick={() => {
-            setFull(!full);
+            changeFull(!full);
             onFull?.();
           }}
         >
-          <Icon name="expand" />
+          <Icon name={full ? "shrink" : "expand"} />
         </Button>
         <Segmented
           label={text.calendar}
@@ -128,15 +154,25 @@ export function CalendarDayView({
             },
           ]}
         />
-        <Segmented
-          label={text.favorites}
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { value: "all", label: text.all },
-            { value: "favorites", label: text.favorites },
-          ]}
-        />
+        <ToggleGroup
+          className="v-segmented"
+          aria-label={text.favorites}
+          value={[filter]}
+          onValueChange={(values) => {
+            if (values[0]) setFilter(values[0]);
+          }}
+        >
+          <Toggle className="v-segment" value="all">
+            {text.all}
+          </Toggle>
+          <Toggle
+            className="v-segment v-calendar-day-favorites"
+            value="favorites"
+          >
+            <Icon name="star" />
+            {text.favorites}
+          </Toggle>
+        </ToggleGroup>
       </header>
       {!series.length ? (
         <div className="v-calendar-day-empty">
@@ -165,7 +201,7 @@ export function CalendarDayView({
               </div>
             ))}
           </div>
-          <div className="v-calendar-day-scroll" ref={scroll}>
+          <div className="v-calendar-day-scroll" ref={attachScroll}>
             <div className="v-calendar-day-grid">
               {hours.map((h) => (
                 <div
@@ -249,11 +285,16 @@ export function CalendarDayView({
     </section>
   );
   return (
-    <BaseDialog.Root open={full} onOpenChange={setFull}>
+    <BaseDialog.Root modal={false} open={full} onOpenChange={changeFull}>
       {full ? (
         <BaseDialog.Portal>
           <BaseDialog.Backdrop className="v-calendar-day-full-backdrop" />
-          <BaseDialog.Popup className="v-calendar v-calendar-day-full">
+          <BaseDialog.Popup
+            className="v-calendar v-calendar-day-full"
+            finalFocus={() =>
+              fullToggle.current?.isConnected ? fullToggle.current : false
+            }
+          >
             <BaseDialog.Title className="v-sr-only">
               {text.calendar}
             </BaseDialog.Title>

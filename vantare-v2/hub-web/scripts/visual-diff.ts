@@ -238,6 +238,7 @@ async function capture(
   });
   let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
   let cleanupPage: Page | undefined;
+  let cleanupFailed = false;
   try {
     await writeFile(
       join(destination, "instance.json"),
@@ -439,7 +440,13 @@ async function capture(
         ),
       );
     }
-    return await readFile(join(destination, "current.png"));
+    const captured = await readFile(join(destination, "current.png"));
+    // Scene checks exercise focus and keyboard navigation after the screenshot.
+    // Run them before bounded teardown, and propagate failures to the report.
+    cleanupFailed = true;
+    await adapter.cleanup?.(page);
+    cleanupFailed = false;
+    return captured;
   } catch (error) {
     if (cleanupPage && !cleanupPage.isClosed()) {
       await cleanupPage
@@ -461,7 +468,6 @@ async function capture(
     // A dirty native close guard can veto Browser.close. Bound QA teardown and
     // kill only this spawned process tree if scene cleanup cannot release it.
     let forcedKill = false;
-    let cleanupFailed = false;
     const stopTree = () => {
       if (child.pid && child.exitCode === null) {
         try {
@@ -477,10 +483,6 @@ async function capture(
     };
     const deadline = setTimeout(stopTree, 5000);
     try {
-      if (cleanupPage && !cleanupPage.isClosed())
-        await adapter.cleanup?.(cleanupPage).catch(() => {
-          cleanupFailed = true;
-        });
       const close = cleanupPage?.getByRole("button", {
         name: windowText.close,
         exact: true,
@@ -494,7 +496,18 @@ async function capture(
       }
       if (child.exitCode === null)
         await new Promise<void>((accept) => child.once("exit", () => accept()));
-      await browser?.close().catch(() => {});
+      // CDP can already be disconnected after the process exits. Keep a
+      // bounded, referenced timer rather than leaving an unsettled close await.
+      if (browser) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          browser.close().catch(() => {}),
+          new Promise<void>((accept) => {
+            timer = setTimeout(accept, 1000);
+          }),
+        ]);
+        clearTimeout(timer);
+      }
     } finally {
       clearTimeout(deadline);
       if (child.exitCode === null) {

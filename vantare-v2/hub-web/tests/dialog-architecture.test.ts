@@ -23,6 +23,35 @@ const raw = (source: string) =>
     source,
   );
 describe("dialog architecture outside Calendar", () => {
+  it("keeps floating menus non-modal and confines exceptions to the two audited gates", () => {
+    for (const path of files(root).filter((path) => path.endsWith(".tsx"))) {
+      const name = relative(root, path).replaceAll("\\", "/");
+      if (calendar.has(name)) continue;
+      const source = readFileSync(path, "utf8");
+      expect(source.includes('"@base-ui/react/context-menu"'), name).toBe(
+        false,
+      );
+      for (const match of source.matchAll(
+        /import\s*\{\s*(\w+)(?:\s+as\s+(\w+))?\s*\}\s*from\s*["']@base-ui\/react\/(?:menu|select|popover)["']/g,
+      )) {
+        const component = match[2] ?? match[1];
+        for (const root of source.matchAll(
+          new RegExp(`<${component}\\.Root\\b([\\s\\S]*?)>`, "g"),
+        ))
+          expect(
+            root[1],
+            `${name}: floating Root must preserve caption controls`,
+          ).toMatch(/modal=\{false\}/);
+      }
+      if (name !== "ui/WindowDialog.tsx")
+        for (const scope of source.matchAll(/scope="(gate|notice)"/g))
+          expect(name).toBe(
+            scope[1] === "gate"
+              ? "ui/PrivacyQuestion.tsx"
+              : "ui/launcher/ResidentInbox.tsx",
+          );
+    }
+  });
   it("requires the common non-modal root, including aliased or dynamic imports", () => {
     for (const path of files(root).filter((path) => /\.tsx?$/.test(path))) {
       const name = relative(root, path).replaceAll("\\", "/");

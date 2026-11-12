@@ -73,6 +73,7 @@ export function ProfileCardActions({
           children.props.onContextMenu?.(event);
           if (event.defaultPrevented) return;
           event.preventDefault();
+          event.stopPropagation();
           keyboard.current = false;
           origin.current = event.currentTarget;
           setPoint({ x: event.clientX, y: event.clientY });

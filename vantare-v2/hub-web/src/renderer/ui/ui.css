@@ -460,19 +460,19 @@ textarea.v-input:read-only {
 }
 .v-backdrop {
   position: fixed;
-  inset: 0;
+  inset: var(--topbar-h) 0 0;
   z-index: var(--z-modal);
   background: color-mix(in srgb, var(--bg-window) 75%, transparent);
 }
 .v-dialog {
   position: fixed;
-  top: 50%;
+  top: calc(var(--topbar-h) + (100vh - var(--topbar-h)) / 2);
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: var(--z-modal);
   width: var(--palette-w);
   max-width: 90vw;
-  max-height: 85vh;
+  max-height: min(85vh, calc(100vh - var(--topbar-h) - 32px));
   overflow: auto;
   padding: var(--space-9);
   display: flex;

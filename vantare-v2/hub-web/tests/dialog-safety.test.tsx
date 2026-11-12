@@ -41,6 +41,12 @@ describe("partial-window modality", () => {
       expect(
         document.querySelector(".v-titlebar")?.closest("[inert]"),
       ).toBeNull();
+      const backgroundAction = document.createElement("button");
+      document.querySelector(".v-titlebar")?.append(backgroundAction);
+      const action = vi.fn();
+      backgroundAction.addEventListener("click", action);
+      fireEvent.click(backgroundAction);
+      expect(action).not.toHaveBeenCalled();
       for (const button of document.querySelectorAll<HTMLButtonElement>(
         ".v-window-controls button",
       )) {

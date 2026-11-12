@@ -179,3 +179,12 @@
 .v-context:has(.v-performance-pill) .v-rail-block-body p {
   line-height: 19px;
 }
+
+/* orbit::meta uses its font size as line height and tracks characters. */
+.v-performance .v-performance-level-title > span {
+  line-height: 16px;
+  letter-spacing: 0.4px;
+}
+.v-performance .v-frequency-table [data-current] {
+  background: color-mix(in srgb, var(--accent-bright) 7.843137%, transparent);
+}

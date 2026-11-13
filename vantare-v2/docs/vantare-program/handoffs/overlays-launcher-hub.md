@@ -1,3 +1,36 @@
+## VANTA-141 - Esqueleto Windows compilado y Runtime nativo verificado (12-nov-2026)
+
+[#2213](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2213),
+area:overlays-runtime / Project Vantare / Plane **En curso**. Worker F,
+piezas 1-11 de INFORME-FABLE.md; base nightly b71e65cbf.
+
+Por orden de Isaac, Rune se compila en el Mac; el build del servidor se
+cancelo tras el reinicio y por compartir sus 16 GiB con otros workers.
+Target unico ~/target-isa-2213-rune; se para al bajar de 18 GiB libres para
+no alcanzar el minimo de 15 GiB. Rust 1.99.1, perfil Release sin debuginfo,
+cuatro jobs, sccache desactivado. No se toca el toolchain del producto.
+
+Fuente del primer binario: 814cb20db en bare Mac. Windows x64 compila;
+Cargo 2m01s, intento inicial con preparacion xwin 158,52 s; no se usa aun
+como tiempo limpio comparable. Exe 26.580.480 bytes, SHA256
+9bb4c5f8796110bd114692d97af07055129818127033e6431319c70472a45722.
+Test Runtime nativo: 1/1 PASS; compilacion 1m29s, ejecucion 0,00s. Ningun
+binario grafico ejecutado en servidor ni Mac. Minimos libres: 25,04 GiB
+Windows / 24,19 GiB test nativo. Dumpbin exige incluir VCRUNTIME140.dll.
+
+Piezas 2+3: checkpoint 2837d460e, preparado en el Mac, sin build/replay aun.
+Analizador: 12 casos sinteticos en desarrollo; no hay mediciones de producto.
+Evidencia: D:/VantareServer/evidence/rune-vs-gpui/CONSTRUCCION.md.
+Pieza 1 lista para PR draft: fmt y Clippy Windows --all-targets -D warnings PASS.
+Cargo timings del Mac: limpio 92,77 s / incremental cambiando texto 10,90 s;
+SDK y fuentes ya descargados, sccache desactivado, cuatro jobs. Las medidas
+94,44 / 12,14 s del supervisor incluyen arranque y hasta dos segundos de
+sondeo, por eso se conservan aparte. Datos versionados en pruebas-rune/medidas.
+Binario final fuente 53050828b, SHA256
+ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
+Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
+Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
+
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 
 [#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995),

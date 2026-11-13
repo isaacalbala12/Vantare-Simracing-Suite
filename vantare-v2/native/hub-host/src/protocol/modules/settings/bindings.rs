@@ -1,5 +1,6 @@
 use crate::protocol::bindings::{constants, declare};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
+use crate::settings::model::DEFAULT_WINDOWS_NOTIFICATIONS;
 // Bindings and Rust-serialized examples owned by this screen.
 
 pub(crate) fn typescript() -> String {
@@ -16,7 +17,7 @@ pub(crate) fn typescript() -> String {
     constants!(
         &mut text,
         "defaultWindowsNotifications",
-        crate::settings::model::DEFAULT_WINDOWS_NOTIFICATIONS
+        DEFAULT_WINDOWS_NOTIFICATIONS
     );
     declare::<crate::settings::StartupView>(&mut text);
     declare::<crate::settings::SettingsView>(&mut text);

@@ -219,6 +219,32 @@ async function checkExpandedCalendarWeek(page: Page) {
 }
 
 export const calendarScenes: Record<string, VisualScene> = {
+  "calendario-lanzamiento-armado-desplegada": {
+    mock: "calendar-launch-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-r6-proximas"].prepare(page);
+      await page.getByRole("button", { name: /Lanzar a las/u }).click();
+      await page.getByText(/lanzamiento programado a las/u).waitFor();
+      await page.mouse.move(600, 890);
+    },
+  },
+  "calendario-lanzamiento-avisos-desplegada": {
+    mock: "calendar-launch-reference",
+    async prepare(page) {
+      await calendarScenes["calendario-avisos-desplegada"].prepare(page);
+      await page
+        .getByRole("switch", { name: /Lanzar .* autom\u00e1ticamente/u })
+        .click();
+      await page
+        .getByRole("switch", {
+          name: /Lanzar .* autom\u00e1ticamente/u,
+          checked: true,
+        })
+        .waitFor();
+      await assertDetailWindowControls(page);
+      await page.mouse.move(600, 890);
+    },
+  },
   "calendario-lanzamiento-armado": {
     mock: "calendar-launch-reference",
 

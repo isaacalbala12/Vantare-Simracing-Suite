@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
 import {
   type CalendarLaunchView,
   calendarLaunchLeadMs,
 } from "../../contract/generated/calendar";
+import { Icon } from "../assets/icons/Icon";
 import {
   calendarLaunchStops,
   calendarLaunchUnknowns,
@@ -9,10 +11,38 @@ import {
 } from "../i18n/calendarLaunch";
 import { Button } from "./Button";
 import { clock } from "./calendarDate";
-import type {ReactNode} from "react";
-import { Icon } from "../assets/icons/Icon";
 import "./calendar-launch.css";
-function LaunchNotice({title,children,actions,tone="info",latest=false}:{title:string;children?:ReactNode;actions?:ReactNode;tone?:"info"|"warn";latest?:boolean}) {return <div className={`v-callout v-callout--${tone} v-calendar-launch-notice`} role="status" aria-live="polite" aria-atomic="true" data-calendar-launch-result={latest || undefined}><Icon name="clock"/><div><strong>{title}</strong><div>{children}</div></div>{actions}</div>;}
+
+function LaunchNotice({
+  title,
+  children,
+  actions,
+  tone = "info",
+  latest = false,
+}: {
+  title: string;
+  children?: ReactNode;
+  actions?: ReactNode;
+  tone?: "info" | "warn";
+  latest?: boolean;
+}) {
+  return (
+    <div
+      className={`v-callout v-callout--${tone} v-calendar-launch-notice`}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      data-calendar-launch-result={latest || undefined}
+    >
+      <Icon name="clock" />
+      <div>
+        <strong>{title}</strong>
+        <div>{children}</div>
+      </div>
+      {actions}
+    </div>
+  );
+}
 export function CalendarLaunchStatus({
   value,
   busy,
@@ -64,7 +94,11 @@ export function CalendarLaunchStatus({
               }
               actions={
                 <Button
-                  aria-label={plan.mode.kind === "once" ? text.cancelOnce : text.cancelAutomatic}
+                  aria-label={
+                    plan.mode.kind === "once"
+                      ? text.cancelOnce
+                      : text.cancelAutomatic
+                  }
                   size="sm"
                   aria-disabled={busy}
                   onClick={() => {

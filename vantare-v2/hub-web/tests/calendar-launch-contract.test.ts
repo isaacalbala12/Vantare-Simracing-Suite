@@ -4,6 +4,8 @@ import {
   isCalendarLaunchCancel,
   isCalendarLaunchView,
 } from "../src/contract/calendar-launch-validation";
+import type { ProfilePolicy } from "../src/contract/generated/contract";
+import { calendarDecisionRequired } from "../src/mock/calendar-launch";
 
 const arm = {
   method: "calendar.launchArm",
@@ -74,4 +76,25 @@ it("separates queued, running, typed completion and unknown without allowing fre
     expect(
       isCalendarLaunchView({ ...base, latest: { ...attempt, progress } }),
     ).toBe(false);
+});
+
+it("the mock mirrors all five Rust Ask policy checks", () => {
+  const policy: ProfilePolicy = {
+    alreadyRunning: "reuse",
+    failure: "stop",
+    cancel: "leave",
+    exit: "leave",
+    retry: "failed",
+    retries: 0,
+    firstStepDelay: 0,
+  };
+  expect(calendarDecisionRequired(policy)).toBe(false);
+  for (const field of [
+    "alreadyRunning",
+    "failure",
+    "cancel",
+    "exit",
+    "retry",
+  ] as const)
+    expect(calendarDecisionRequired({ ...policy, [field]: "ask" })).toBe(true);
 });

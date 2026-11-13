@@ -36,7 +36,7 @@ it("keeps the host-bound profile, open-Hub and Ask warnings visible and cancels 
   expect(screen.getByText(/Launcher para responder/)).toBeTruthy();
   expect(screen.getByText(/2 min/)).toBeTruthy();
   fireEvent.click(
-    screen.getByRole("button", { name: "Cancelar programaci\u00f3n" }),
+    screen.getByRole("button", { name: "Cancelar lanzamiento puntual" }),
   );
   expect(cancel).toHaveBeenCalledWith(plan.armId);
   h.rerender(
@@ -48,7 +48,7 @@ it("keeps the host-bound profile, open-Hub and Ask warnings visible and cancels 
     />,
   );
   fireEvent.click(
-    screen.getByRole("button", { name: "Cancelar programaci\u00f3n" }),
+    screen.getByRole("button", { name: "Cancelar lanzamiento puntual" }),
   );
   expect(cancel).toHaveBeenCalledOnce();
 });
@@ -96,4 +96,41 @@ it("never presents queued or a missing receipt as completed and preserves typed 
     }),
   );
   expect(screen.getByText("Secuencia completada.")).toBeTruthy();
+});
+
+it("uses distinct cancellation names and an explicit live region for the latest result", () => {
+  render(
+    <CalendarLaunchStatus
+      value={{
+        ...empty,
+        armed: plan,
+        automatic: {
+          ...plan,
+          armId: "b".repeat(64),
+          mode: { kind: "alerts", expectedRevision: "c".repeat(64) },
+        },
+        latest: {
+          armId: plan.armId,
+          profileName: plan.profileName,
+          seriesId: "s",
+          startAt: 1800000180000,
+          progress: { kind: "queued", request: "a".repeat(32) },
+        },
+      }}
+      busy={false}
+      utc
+      onCancel={vi.fn()}
+    />,
+  );
+  expect(
+    screen.getByRole("button", { name: "Cancelar lanzamiento puntual" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("button", {
+      name: "Cancelar lanzamiento autom\u00e1tico",
+    }),
+  ).toBeTruthy();
+  const latest = document.querySelector("[data-calendar-launch-result]");
+  expect(latest?.getAttribute("role")).toBe("status");
+  expect(latest?.getAttribute("aria-live")).toBe("polite");
 });

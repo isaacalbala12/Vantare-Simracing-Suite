@@ -9,5 +9,9 @@
   align-self: center;
   width: max-content;
 }
-.v-calendar-launch-notice p { margin: 0; }
-.v-calendar-launch-notice > svg { color: var(--text-2); }
+.v-calendar-launch-notice p {
+  margin: 0;
+}
+.v-calendar-launch-notice > svg {
+  color: var(--text-2);
+}

@@ -24,10 +24,22 @@ async function noLaunch(page: Page, popup: Locator) {
     0,
     "no launcher.favorite, launcher.launch or launcher.launchChecked escapes the dialog",
   );
-  const background=page.locator(".v-sidebar").getByRole("button",{name:"Calendario",exact:true,includeHidden:true});
-  if(await background.count()) {const box=await background.boundingBox();if(box)await page.mouse.click(box.x+box.width/2,box.y+box.height/2);}
+  const background = page.locator(".v-sidebar").getByRole("button", {
+    name: "Calendario",
+    exact: true,
+    includeHidden: true,
+  });
+  if (await background.count()) {
+    const box = await background.boundingBox();
+    if (box)
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  }
   await page.keyboard.press("Tab");
-  assert.equal(await launchCount(page),0,"background click and Tab cannot arm or cancel");
+  assert.equal(
+    await launchCount(page),
+    0,
+    "background click and Tab cannot arm or cancel",
+  );
   assert.ok(await popup.isVisible());
 }
 async function positiveLaunch(page: Page) {
@@ -161,14 +173,27 @@ export async function checkCalendarDialogSafety(owner: Page, base: string) {
     }
 
     // Positive arm/cancel verifies that both new methods are really counted.
-    await scene(page,base,"calendario-proximas-contraida");
-    await page.getByRole("button",{name:/Lanzar a las/u}).click();
-    await until(async()=>await launchCount(page)===1,5000,"positive calendar.launchArm");
-    await page.getByRole("button",{name:"Cancelar lanzamiento puntual",exact:true}).click();
-    await until(async()=>await launchCount(page)===2,5000,"positive calendar.launchCancel");
-    await page.getByRole("button",{name:/Lanzar a las/u}).focus();
+    await scene(page, base, "calendario-proximas-contraida");
+    await page.getByRole("button", { name: /Lanzar a las/u }).click();
+    await until(
+      async () => (await launchCount(page)) === 1,
+      5000,
+      "positive calendar.launchArm",
+    );
+    await page
+      .getByRole("button", {
+        name: "Cancelar lanzamiento puntual",
+        exact: true,
+      })
+      .click();
+    await until(
+      async () => (await launchCount(page)) === 2,
+      5000,
+      "positive calendar.launchCancel",
+    );
+    await page.getByRole("button", { name: /Lanzar a las/u }).focus();
     await page.keyboard.press("Tab");
-    assert.equal(await launchCount(page),2,"Tab does not arm again");
+    assert.equal(await launchCount(page), 2, "Tab does not arm again");
 
     // Actual nested route: expand Day, open a departure chip, return to that chip.
     await scene(page, base, "calendario-dia-ampliada");

@@ -194,7 +194,10 @@ export default function CalendarEntry() {
       restoreLaunchFocus.current = true;
       setActiveTab("upcoming");
       setSelectedSerie(undefined);
-      if(launchOrigin.current?.isConnected){launchOrigin.current.focus({preventScroll:true});restoreLaunchFocus.current=false;}
+      if (launchOrigin.current?.isConnected) {
+        launchOrigin.current.focus({ preventScroll: true });
+        restoreLaunchFocus.current = false;
+      }
     }
   };
   const ics = useCalendarIcs(icsOpen, state.allowed);

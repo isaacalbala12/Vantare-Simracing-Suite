@@ -223,12 +223,63 @@ fn requesting_window_close_disarms_and_publishes_before_close_requested() {
     pipe.set_position(0);
     let mut reader = frame::Reader::default();
     assert!(
-        matches!(reader.next::<HostToUi>(&mut pipe).unwrap().unwrap(),HostToUi::Event{event:Event::CalendarLaunch{value}} if value.armed.is_none() && value.change.unwrap().reason==CalendarLaunchStop::HubClosed)
+        matches!(reader.next::<HostToUi>(&mut pipe).unwrap().unwrap(),HostToUi::Event{event:Event::CalendarLaunch{value}} if value.armed.is_none() && value.change.as_ref().is_some_and(|change| change.reason==CalendarLaunchStop::HubClosed))
     );
     assert!(matches!(
         reader.next::<HostToUi>(&mut pipe).unwrap().unwrap(),
         HostToUi::CloseRequested {
             reason: CloseReason::Window,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn every_individual_ask_policy_is_projected_by_the_real_arm_path() {
+    use vantare_launcher::policy::{Close, Failure, Policy as LaunchPolicy, Retry, Running};
+    let f = Fixture::new();
+    let (mut session, now, mut request) = configured(&f);
+    for field in 0..5 {
+        let mut policy = LaunchPolicy {
+            already_running: Running::Reuse,
+            failure: Failure::Stop,
+            cancel: Close::Leave,
+            exit: Close::Leave,
+            retry: Retry::Failed,
+            ..Default::default()
+        };
+        match field {
+            0 => policy.already_running = Running::Ask,
+            1 => policy.failure = Failure::Ask,
+            2 => policy.cancel = Close::Ask,
+            3 => policy.exit = Close::Ask,
+            _ => policy.retry = Retry::Ask,
+        }
+        let mut document = vantare_launcher::Document::fresh_install();
+        document.profiles[0].set_policy(policy);
+        let bytes = serde_json::to_vec(&document).unwrap();
+        std::fs::write(&session.launcher, &bytes).unwrap();
+        if let Request::CalendarLaunchArm { base_revision, .. } = &mut request {
+            *base_revision = vantare_services::content_hash(&bytes);
+        }
+        status(&session, "b", false);
+        armed(&mut session, &request, now);
+        assert!(
+            session
+                .calendar_launch
+                .view()
+                .armed
+                .unwrap()
+                .decision_required
+        );
+    }
+    if let Request::CalendarLaunchArm { profile, .. } = &mut request {
+        profile.clear();
+    }
+    assert!(matches!(
+        dispatch(&mut session, &request, now),
+        HostToUi::Failure {
+            error: HostError::Rejected,
             ..
         }
     ));

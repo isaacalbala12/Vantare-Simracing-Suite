@@ -200,11 +200,18 @@ export function useCalendarPreferences(allowed: boolean) {
       config?.documents.following === "ready" &&
       config.followingRevision !== null,
     reload: () => apply(),
-    utc: (value: boolean) => apply({ kind: "utc", value }),
-    notifyWeek: (value: boolean) => apply({ kind: "notifyWeek", value }),
-    follow: (id: string, value: boolean) =>
-      apply({ kind: "follow", id, value }),
-    alert: (change: CalendarAlertChange) => apply({ kind: "alerts", change }),
+    utc: async (value: boolean) => {
+      await apply({ kind: "utc", value });
+    },
+    notifyWeek: async (value: boolean) => {
+      await apply({ kind: "notifyWeek", value });
+    },
+    follow: async (id: string, value: boolean) => {
+      await apply({ kind: "follow", id, value });
+    },
+    alert: async (change: CalendarAlertChange) => {
+      await apply({ kind: "alerts", change });
+    },
     band: async (id: string, value: CalendarBand | undefined) => {
       if (current.current)
         await apply({

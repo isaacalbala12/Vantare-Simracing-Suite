@@ -22,6 +22,12 @@ import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 const render = (ui: ReactNode) => renderTree(ui, { wrapper: ToastProvider });
 const api = vi.hoisted(() => ({
   request: vi.fn(),
+  launchView: undefined as
+    | import("../src/contract/generated/calendar").CalendarLaunchView
+    | undefined,
+  launchCancel: vi.fn(),
+  launchArm: vi.fn(),
+  alertsUnavailable: vi.fn(),
   expired: false,
   toasts: true,
   settingsState: "ready" as "ready" | "loading" | "error",
@@ -106,11 +112,16 @@ vi.mock("../src/renderer/ui/CalendarLiveView", () => ({
   CalendarLiveView: ({
     onSerie,
     onDetail,
+    launchButtonRef,
   }: {
     onSerie: (id: string) => void;
     onDetail: (id: string) => void;
+    launchButtonRef: import("react").Ref<HTMLButtonElement>;
   }) => (
     <>
+      <button type="button" ref={launchButtonRef}>
+        Lanzar a las 20:00
+      </button>
       <button type="button" onClick={() => onSerie(fixture.series[0].id)}>
         Open series
       </button>
@@ -123,6 +134,10 @@ vi.mock("../src/renderer/ui/CalendarLiveView", () => ({
 afterEach(() => {
   cleanup();
   api.request.mockReset();
+  api.launchView = undefined;
+  api.launchCancel.mockReset();
+  api.launchArm.mockReset();
+  api.alertsUnavailable.mockReset();
   api.expired = false;
   api.toasts = true;
   api.settingsState = "ready";
@@ -497,9 +512,106 @@ it("gates noticeTest at the entry while General is off and re-enables it live", 
 
 vi.mock("../src/renderer/screens/calendar/CalendarLaunch", () => ({
   useCalendarLaunch: () => ({
-    view: undefined,
+    view: api.launchView,
     busy: false,
-    arm: vi.fn(),
-    cancel: vi.fn(),
+    arm: api.launchArm,
+    cancel: api.launchCancel,
+    alertsUnavailable: api.alertsUnavailable,
   }),
 }));
+
+function launchConfig(): CalendarConfigView {
+  return {
+    utc: true,
+    prefsRevision: "a".repeat(64),
+    following: [],
+    followingRevision: "b".repeat(64),
+    alerts: {
+      ...calendarDefaultAlerts,
+      autoLaunch: true,
+      bands: [],
+      slots: [],
+      channels: { ...calendarDefaultAlerts.channels },
+    },
+    alertsRevision: "c".repeat(64),
+    documents: { prefs: "ready", following: "ready", alerts: "ready" },
+  };
+}
+function activeLaunch(automatic: boolean): NonNullable<typeof api.launchView> {
+  const plan = {
+    armId: "a".repeat(64),
+    profile: "qa",
+    profileName: "QA",
+    decisionRequired: false,
+    mode: automatic
+      ? { kind: "alerts" as const, expectedRevision: "c".repeat(64) }
+      : {
+          kind: "once" as const,
+          seriesId: fixture.series[0].id,
+          startAt: 1800000180000,
+        },
+  };
+  return {
+    armed: automatic ? null : plan,
+    automatic: automatic ? plan : null,
+    latest: null,
+    change: null,
+  };
+}
+it("deactivation waits for a fresh config and saves false with that revision", async () => {
+  const initial = launchConfig();
+  api.launchView = activeLaunch(true);
+  api.launchCancel.mockResolvedValue(true);
+  let finish: (v: unknown) => void = () => {};
+  let loads = 0;
+  api.request.mockImplementation(async (request) => {
+    if (request.method === "calendar.configLoad") {
+      if (++loads === 1) return { method: request.method, value: initial };
+      return await new Promise((resolve) => {
+        finish = resolve;
+      });
+    }
+    return { method: request.method, value: initial };
+  });
+  render(content());
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("switch", { name: /Lanzar .* autom\u00e1ticamente/u }),
+    ),
+  );
+  expect(api.launchCancel).toHaveBeenCalledWith("a".repeat(64));
+  expect(
+    api.request.mock.calls.filter(([r]) => r.method === "calendar.alertsSave"),
+  ).toHaveLength(0);
+  await act(async () =>
+    finish({
+      method: "calendar.configLoad",
+      value: { ...initial, alertsRevision: "d".repeat(64) },
+    }),
+  );
+  expect(api.request).toHaveBeenLastCalledWith({
+    method: "calendar.alertsSave",
+    expectedRevision: "d".repeat(64),
+    alerts: { ...initial.alerts, autoLaunch: false },
+  });
+});
+it("canceling a scheduled launch restores focus to the timing button", async () => {
+  api.launchView = activeLaunch(false);
+  api.launchCancel.mockResolvedValue(true);
+  api.request.mockResolvedValue({
+    method: "calendar.configLoad",
+    value: launchConfig(),
+  });
+  render(content());
+  await act(async () => {});
+  const cancel = screen.getByRole("button", {
+    name: "Cancelar lanzamiento puntual",
+  });
+  cancel.focus();
+  await act(async () => fireEvent.click(cancel));
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: "Lanzar a las 20:00" }),
+  );
+});

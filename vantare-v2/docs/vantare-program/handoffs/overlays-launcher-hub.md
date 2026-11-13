@@ -1775,3 +1775,93 @@ Node 22.18.0 mediante setup-node fijado por SHA. El test local comprueba Node
 Catálogo --check y formato comprobados; Clippy/tests se repiten por la cola
 antes de publicar. Capturas y ventana visible pendientes del Mac, autorizado
 por el orquestador. Sin cambios de versiones Rust/Rune ni dependencias nuevas.
+
+### VANTA-143 · PR 4 conexión (2026-11-13)
+
+Cliente tipado con frame/protocol de hub-host: autenticación efímera consumida
+y borrada antes de arrancar hilos, hello v31, ready tras on_ready de Rune,
+ACK de cierre y salida cuando se corta el canal. Named pipe Windows con E/S
+overlapped (escrituras de 5 s, lectura por evento y cancelación antes de liberar buffers),
+worker propio cancelable y recogido al cerrar, colas acotadas y waker sin sondeo GUI.
+Solo se ignoran las tres opciones QA de Chromium; otras se rechazan. Las opciones
+de captura de desarrollo solo se admiten en Mac; no se ejecutan en Windows.
+Anfitrión de escena solo debug, leyendo hello y core-offline de Electron. Sin
+servidor productivo en Mac. Windows-sys ya resuelto: uso directo del mismo
+paquete y versión para el pipe, sin nuevos paquetes. No se cambia hub-host.
+Tests: handshake/ready/cierre en memoria, versión incompatible, bootstrap inválido,
+argumentos cerrados, roundtrip del corpus modular completo y escena compartida.
+Formato/catálogo/licencias comprobados; Clippy local solicitado en cola, un slot,
+dos jobs. Windows host real con VANTARE_HUB_UI/hub-ready/EOF y capturas Mac
+siguen pendientes: la prohibición gráfica del servidor se conserva y el Mac duerme.
+No se presentan como hechos. La CI verifica tipos y tests sin ventana; el PR
+recoge resultados definitivos. Sin merge, promoción ni release.
+
+### VANTA-143 · revisión PR 4 (2026-11-13)
+
+Se comprobó Electron antes del cambio: X envía WindowClose con id 0; el cliente
+espera CloseRequested y termina solo después de escribir CloseAnswer. Rune usa
+keep_running/on_close para conservar el proceso durante ese diálogo. El commit
+fijado de Rune oculta la ventana antes del callback; no permite vetar ese ocultado.
+No hay documentos editables en este marco. Test del callback con anfitrión de
+escena, idempotencia de X y ACK antes de publicar el cierre al hilo de interfaz.
+El setup llama al waker tras guardarlo y soltar su mutex; regresión con respuesta
+anterior al registro. La espera de 250 ms se retiró en la segunda revisión:
+lectura overlapped y envíos/parada se esperan juntos por eventos, sin sondeo.
+La lectura se cancela al salir; escrituras de 5 s. CPU real pendiente del corte 2. La regresión de pipe real con contrapresión falla con 200 ms
+(0 PASS/1 FAIL esperado) y pasa con 5 s, conservando una trama de 256 KiB y la siguiente.
+Clippy -D warnings PASS; 13 tests sin ventana PASS antes de propagar el catálogo.
+README enumera default-features=false y los cinco features habilitados, y los
+flags --snap/--frames/--scene/--size/--scale/--out/--theme solo debug+macOS.
+Capturas, cierre con ventana visible y anfitrión Windows real siguen pendientes;
+no se ejecuta gráfica en el servidor. Evidencia en evidence/hub-rune/review-sonnet.
+
+
+### VANTA-143 · segunda revisión PR 4 (2026-11-13)
+
+X tiene un plazo de 3 s con reloj Rune: si no llega respuesta, llega Failure id 0
+o falla el envío, el cliente sale. La escena silenciosa prueba el vencimiento y
+que repetir X no lo retrasa; otra escena prueba rechazo y envío fallido.
+Se retira el sondeo de 250 ms. Un único worker espera WaitForMultipleObjects
+sobre lectura overlapped y evento de envíos/parada. El evento se reinicia antes
+de vaciar la cola para conservar señales que llegan durante el vaciado.
+Drop cancela toda E/S pendiente antes del join; emitir operaciones y cancelar
+se serializan para que ninguna operación arranque después de cancelar. Los
+buffers/OVERLAPPED permanecen vivos hasta el drenaje de la operación cancelada.
+Tests de pipe real: datos y envíos despiertan la espera, cancelación de lectura,
+prohibición de nueva E/S tras cancelar y Drop que recoge el worker sin esperar datos.
+Se mantienen 5 s de escritura y la regresión de contrapresión. Sin nuevos paquetes.
+Node admite sufijos de versión; salida inválida devuelve un error explicativo,
+sin expect/panic del parser. README describe el marco y el transporte actuales.
+Gates por un slot/-j2/D:/--locked; CI y heads definitivos en los PRs. Capturas,
+ventana visible y anfitrión real siguen pendientes del Mac/Windows autorizado.
+
+
+### VANTA-143 · tercera revisión PR 4 (2026-11-13)
+
+#2264 fusionado en 58e5b5ede815ef8a9875771308a9485b84bffe46. #2267 y
+#2268 rebasados en orden con --onto origin/nightly d6bcdb32, preservando la pila.
+El cierre pasa de 3 s a 10 s. Leídos transport/dispatch, session_effects,
+ui_process y ui_tick del host, y report-close de Electron: WindowClose emite
+CloseRequested (no repite si ya hay un cierre con prioridad igual/mayor), y el
+veto es CloseAnswer false enviado por la interfaz para Window/Restart. No existe
+HostToUi de veto. Ante rechazo recuperable id 0 se cancela el plazo y se pide
+AppHandle::open; Rune puede mostrar de nuevo la ventana con keep_running, pero
+la oculta antes del callback. La escena prueba rechazo y plazo cancelado;
+reapertura/foco con ventana visible pendientes del Mac.
+CancelIoEx se comprueba: ERROR_NOT_FOUND benigno, otros errores registrados.
+Drenaje acotado a 1 s y GetOverlappedResult sin espera infinita. Si no se confirma
+la finalización se registra y aborta el proceso, para no liberar memoria usada
+por Windows. Timeout de escritura para la conexión antes de drenar: no se puede
+continuar una trama parcial. Lectura cancelada usa completion_error/ConnectionAborted.
+Tests nuevos para CancelIoEx fallido/no-op, timeout que impide otra trama y
+rechazo de cierre; el test silencioso respeta los 5 s del host y vence a los 10 s.
+Sin nuevas dependencias. Cola local libre para E (L53/contratos v33) hasta su
+aviso; sin compilación local nueva. Formato/comprobaciones ligeras y CI sobre
+los nuevos heads; los 29 tests y gates locales anteriores pertenecen al head
+previo. Capturas y corte 1 siguen pendientes. Plane lo actualiza el orquestador.
+
+
+Base final de la tercera revisión: nightly 07825965f (incluye Calendario v32),
+tras el primer --onto sobre 58e5b5ede. #2267 y #2268 conservan padre común;
+el test Hello usa protocol::VERSION del mismo host, sin fijar una versión
+propia. Solo se rebasó código de otros proyectos, sin modificarlo.

@@ -1,6 +1,12 @@
+mod bootstrap;
 mod catalog;
+#[cfg(any(windows, test))]
+mod client;
 mod design;
+mod host;
 mod icons;
+#[cfg(windows)]
+mod pipe;
 use catalog::{catalog, text};
 use design::{Theme, button, label, menu_item, surface};
 use rune::{AppSpec, Cx, El, col, icon, row};
@@ -9,6 +15,10 @@ struct State {
     dark: bool,
     collapsed: bool,
     section: String,
+    link: Option<host::Link>,
+    closing: bool,
+    close_deadline: Option<f64>,
+    window: Option<rune::AppHandle<State>>,
 }
 fn init() -> State {
     State {
@@ -16,6 +26,10 @@ fn init() -> State {
         dark: true,
         collapsed: false,
         section: "home".into(),
+        link: None,
+        closing: false,
+        close_deadline: None,
+        window: None,
     }
 }
 fn toggle(state: &mut State) {
@@ -109,8 +123,129 @@ fn view(state: &State, _: &mut Cx<State>) -> El {
             ),
         )
 }
-fn main() {
-    let mut spec = AppSpec::new("Vantare · Hub", (1440.0, 900.0), init, view);
+fn setup(state: &mut State, waker: rune::Waker) {
+    if let Some(link) = &mut state.link {
+        link.wake_with(waker);
+    }
+}
+fn request_close(state: &mut State, tx: &mut rune::Tx) {
+    if state.closing {
+        return;
+    }
+    state.closing = true;
+    // Electron's window close handler uses request id 0 and waits for the host.
+    if state.link.as_mut().is_none_or(|link| {
+        link.send(vantare_hub_host::protocol::UiToHost::Request {
+            id: 0,
+            request: vantare_hub_host::protocol::Request::WindowClose {},
+        })
+        .is_err()
+    }) {
+        tx.quit();
+        return;
+    }
+    let deadline = tx.clock() + 10.0;
+    state.close_deadline = Some(deadline);
+    tx.wake_at(deadline);
+    // The scene answers synchronously; the real worker wakes poll after writing CloseAnswer.
+    tx.wake_after(std::time::Duration::ZERO);
+}
+fn close_rejected(state: &mut State, error: &vantare_hub_host::protocol::HostError) -> bool {
+    use vantare_hub_host::protocol::HostError;
+    // The current host has no veto wire variant. Recover a typed rejection of id 0.
+    if !matches!(
+        error,
+        HostError::Busy | HostError::Rejected | HostError::Denied | HostError::Protected
+    ) {
+        return false;
+    }
+    state.closing = false;
+    state.close_deadline = None;
+    if let Some(window) = &state.window {
+        window.open();
+    }
+    true
+}
+fn close_expired(state: &State, now: f64, tx: &mut rune::Tx) -> bool {
+    if let Some(deadline) = state.close_deadline {
+        if now >= deadline {
+            tx.quit();
+            return true;
+        }
+        tx.wake_at(deadline);
+    }
+    false
+}
+fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
+    if close_expired(state, now, tx) {
+        return true;
+    }
+    if let Some(link) = &mut state.link {
+        for _ in 0..64 {
+            match link.receive() {
+                Some(Ok(vantare_hub_host::protocol::HostToUi::CloseRequested { .. }))
+                | Some(Err(_)) => {
+                    state.closing = true;
+                    tx.quit();
+                    return true;
+                }
+                Some(Ok(vantare_hub_host::protocol::HostToUi::Failure { id: 0, error }))
+                    if state.closing =>
+                {
+                    if !close_rejected(state, &error) {
+                        tx.quit();
+                    }
+                    return true;
+                }
+                Some(Ok(_)) => {}
+                None => break,
+            }
+        }
+    }
+    false
+}
+fn start() -> std::io::Result<()> {
+    // Consume and erase ephemeral bootstrap before Rune or workers start threads.
+    let bootstrap = bootstrap::consume()?;
+    let arguments = bootstrap::arguments(std::env::args().skip(1))?;
+    let (link, hello) = host::Link::open(bootstrap)?;
+    let ready = link.sender();
+    let mut state = init();
+    let mut size = (1440.0, 900.0);
+    if let vantare_hub_host::protocol::HostToUi::Hello {
+        version,
+        theme,
+        window,
+        ..
+    } = hello
+    {
+        if version != vantare_hub_host::protocol::VERSION {
+            return Err(std::io::ErrorKind::InvalidData.into());
+        }
+        let palette = serde_json::to_value(theme.palette)?;
+        let scheme = serde_json::to_value(theme.scheme)?;
+        state.dark = scheme.as_str() != Some("light");
+        state.theme = Theme::load(
+            palette.as_str().ok_or(std::io::ErrorKind::InvalidData)?,
+            if state.dark { "dark" } else { "light" },
+        )
+        .map_err(|_| std::io::ErrorKind::InvalidData)?;
+        size = (
+            f32::from(window.width).clamp(1280.0, 3840.0),
+            f32::from(window.height).clamp(720.0, 2160.0),
+        );
+    }
+    let mut link = link;
+    link.send(vantare_hub_host::protocol::UiToHost::Request {
+        id: 1,
+        request: vantare_hub_host::protocol::Request::CoreGet {},
+    })?;
+    link.send(vantare_hub_host::protocol::UiToHost::Subscribe {
+        topic: vantare_hub_host::protocol::Topic::Core,
+    })?;
+    state.link = Some(link);
+
+    let mut spec = AppSpec::new("Vantare · Hub", size, init, view);
     spec.min_size = Some((1280.0, 720.0));
     spec.fonts = design::FONTS;
     spec.families = ("Inter", "Inter");
@@ -123,12 +258,130 @@ fn main() {
         ("dark", |_| {}),
         ("collapsed", |s| s.collapsed = true),
     ];
-    rune::run(spec);
+    spec.setup = Some(setup);
+    spec.poll = Some(poll);
+    let app = rune::App::new(spec)
+        .args(arguments)
+        // Rune hides the window on X; retain its process until the host handshake completes.
+        .keep_running()
+        .on_close(request_close)
+        .tab_visits_controls(true);
+    let handle = app.handle();
+    state.window = Some(handle.clone());
+    app.init(move || state)
+        .on_ready(move |_| {
+            if ready.as_ref().is_some_and(|sender| {
+                sender
+                    .try_send(vantare_hub_host::protocol::UiToHost::Ready {})
+                    .is_err()
+            }) {
+                handle.quit();
+            }
+        })
+        .try_run()
+        .map_err(std::io::Error::other)
+}
+fn main() -> std::process::ExitCode {
+    if start().is_err() {
+        eprintln!("No se pudo preparar el Hub Rune con el anfitrión.");
+        return std::process::ExitCode::FAILURE;
+    }
+    std::process::ExitCode::SUCCESS
 }
 #[cfg(test)]
 mod tests {
     use super::*;
     use rune::{Env, Runtime};
+    #[test]
+    #[cfg(debug_assertions)]
+    fn native_close_waits_for_scene_host_and_acknowledgement() {
+        let (link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let mut state = init();
+        state.link = Some(link);
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.update(request_close);
+        assert!(runtime.state.closing);
+        assert!(runtime.shell_request.is_none(), "X must wait for the host");
+        // Repeated X must not enqueue another WindowClose.
+        runtime.update(request_close);
+        runtime.poll = Some(poll);
+        runtime.frame(0.0);
+        assert!(matches!(runtime.shell_request, Some(rune::Shell::Quit)));
+        assert!(runtime.state.link.as_mut().unwrap().receive().is_none());
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn silent_scene_waits_for_host_guards_but_cannot_live_past_ten_seconds() {
+        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let host::Link::Scene(scene) = &mut link else {
+            unreachable!()
+        };
+        scene.close_reply = host::CloseReply::Silent;
+        let mut state = init();
+        state.link = Some(link);
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.poll = Some(poll);
+        runtime.update(request_close);
+        assert_eq!(runtime.state.close_deadline, Some(10.0));
+        runtime.frame(5.1);
+        assert!(
+            runtime.shell_request.is_none(),
+            "report-close may take five seconds"
+        );
+        runtime.frame(4.89);
+        assert!(runtime.shell_request.is_none());
+        runtime.update(request_close);
+        assert_eq!(
+            runtime.state.close_deadline,
+            Some(10.0),
+            "repeated X must not extend the deadline"
+        );
+        runtime.frame(0.02);
+        assert_eq!(runtime.shell_request, Some(rune::Shell::Quit));
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn failed_close_send_and_host_rejection_quit_immediately() {
+        let mut runtime = Runtime::new(init(), view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.update(request_close);
+        assert_eq!(runtime.shell_request, Some(rune::Shell::Quit));
+        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let host::Link::Scene(scene) = &mut link else {
+            unreachable!()
+        };
+        scene.close_reply = host::CloseReply::Reject;
+        let mut state = init();
+        state.link = Some(link);
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.poll = Some(poll);
+        runtime.update(request_close);
+        runtime.frame(0.0);
+        assert_eq!(runtime.shell_request, Some(rune::Shell::Quit));
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn rejected_close_restores_state_and_disarms_the_exit_deadline() {
+        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let host::Link::Scene(scene) = &mut link else {
+            unreachable!()
+        };
+        scene.close_reply = host::CloseReply::Veto;
+        let mut state = init();
+        state.link = Some(link);
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.poll = Some(poll);
+        runtime.update(request_close);
+        runtime.frame(0.0);
+        assert!(!runtime.state.closing);
+        assert_eq!(runtime.state.close_deadline, None);
+        runtime.frame(11.0);
+        assert_eq!(runtime.shell_request, None);
+        runtime.update(request_close);
+        assert!(
+            runtime.state.closing,
+            "a denied close must permit another attempt"
+        );
+    }
     #[test]
     fn frame_contains_electron_sections_in_both_sidebar_modes() {
         let entries = catalog()["navigation"].as_array().unwrap();

@@ -3598,6 +3598,7 @@ dependencies = [
  "rune",
  "serde_json",
  "vantare-hub-host",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -49,7 +49,7 @@ function setup() {
   const capture = () => ({
     profile: "lmu",
     baseRevision: "b".repeat(64),
-    armedGeneration: core.accountGeneration!,
+    armedGeneration: "a".repeat(64),
   });
   const reload = vi.fn();
   const hook = renderHook(

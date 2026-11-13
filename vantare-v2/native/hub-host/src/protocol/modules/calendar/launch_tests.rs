@@ -541,3 +541,51 @@ fn rejected_receipt_is_terminal_and_never_completed_or_retried() {
     assert!(!s.active());
     assert!(step(&mut s, base, 1200).is_none());
 }
+
+#[test]
+fn failed_and_cancelled_receipts_remain_distinct_terminal_results() {
+    for outcome in [
+        ResidentOutcome::Failed {
+            reason: crate::launcher_resident::ResidentFailure::DecisionExpired,
+        },
+        ResidentOutcome::Cancelled {
+            reason: crate::launcher_resident::ResidentCancellation::User,
+        },
+    ] {
+        let base = Instant::now();
+        let mut s = once(base);
+        queue(&mut s, base);
+        let mut view = resident();
+        view.execution.as_mut().unwrap().events = vec![
+            ResidentExecutionEvent {
+                seq: "1".into(),
+                kind: ResidentEventKind::Received {
+                    request: "d".repeat(32),
+                    receipt: ResidentReceipt::Accepted { run: "1".into() },
+                },
+            },
+            ResidentExecutionEvent {
+                seq: "2".into(),
+                kind: ResidentEventKind::Finished {
+                    run: "1".into(),
+                    outcome: outcome.clone(),
+                },
+            },
+        ];
+        s.step(
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &view,
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &[],
+            },
+            clock(base, 1100),
+        );
+        assert!(
+            matches!(s.view().latest.unwrap().progress,CalendarLaunchProgress::Finished{outcome:actual,..} if actual==outcome)
+        );
+        assert!(!s.active());
+    }
+}

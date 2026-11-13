@@ -140,6 +140,7 @@ impl Home {
         self.next_id
     }
     pub fn retry(&mut self) {
+        self.launch_failed = false;
         self.retry = true;
     }
     pub fn next(&mut self, now: f64, visible: bool) -> Vec<UiToHost> {
@@ -272,6 +273,11 @@ mod tests {
         assert!(!home.finish_launch(id + 1, true));
         assert!(home.finish_launch(id, false));
         assert!(home.launch_failed);
+        home.retry();
+        assert!(
+            !home.launch_failed,
+            "retry clears the displayed launch failure"
+        );
         assert!(!home.next(3.0, true).is_empty());
     }
     #[test]

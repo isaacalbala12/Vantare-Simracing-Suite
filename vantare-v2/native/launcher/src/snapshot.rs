@@ -14,7 +14,7 @@ pub fn read_checked(
     }
     Ok((document, profile))
 }
-/// A valid empty profile is meaningful to rehearsal: its selection is NoSteps.
+/// A valid empty profile is meaningful to rehearsal: its selection is `NoSteps`.
 pub fn read_profile_checked(
     path: &Path,
     profile: &str,

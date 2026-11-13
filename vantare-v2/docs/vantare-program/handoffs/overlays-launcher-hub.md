@@ -128,7 +128,7 @@ Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
 
 #1995. L53 nativo #2281 está en nightly (22448e540). L54 se prepara en
 `vantareapp/isa-1995-resident-control`, protocolo v34 autorizado y capability
-CheckedControl. Estado local: verificación en curso; aún sin PR ni CI verde.
+CheckedControl. Draft #2291 abierto; tipos v34 generados y entregados a D; CI pendiente.
 El microplan aprobado vive en evidence/hub-web/nucleo-launcher-ordenes/MICROPLAN.md.
 
 El Hub puede pedir cancelar la ejecución observada o probar un perfil sin sus
@@ -148,9 +148,12 @@ debe estrechar esos motivos y tratar los ajenos como Unknown. El anfitrión hace
 una primera lectura al ensayar, sin segunda relectura antes del envío; la garantía
 final de la instantánea procede del residente al consumir.
 
-Gates pendientes por cola compartida; sin ejecuciones gráficas ni apps reales
-nuevas en tests. Próximo paso: publicar tipos/corpus, completar gates y abrir draft
-para revisión. L55 y L56 no se han empezado. Sin merge, promoción ni release.
+Exportador Rust 1.99.1, typechecks de producto/scripts, Biome y 41 tests web PASS.
+El primer Clippy local detectó doc_markdown en NoSteps, corregido. El reintento,
+Nextest nativo y telemetría locales se omiten por memoria, por orden expresa del
+orquestador: la cola no admite el segundo slot con unos 5,6 GB libres. La CI hace
+el gate completo antes de revisión. Sin ejecuciones gráficas ni apps reales
+nuevas en tests. L55 y L56 no se han empezado. Sin merge, promoción ni release.
 
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 

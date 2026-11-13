@@ -503,10 +503,16 @@ dependientes directos, y Nextest solo del crate tocado. Los tests de los
 dependientes se reservan a CI, que los ejecuta completos en cada PR. Con `-Full`
 se ejecutan también en local los tests de todos los seleccionados, para antes de
 publicar. Se excluyen siempre `vantare-hub` y `vantare-admin`. Un cambio en el
-núcleo o en `ui` no los compila ni los prueba en local. Cargo resuelve sus
-dependencias; no se activan defaults de paquetes ajenos a la selección. CI de PR a nightly añade los dependientes transitivos y excluye Hub/Admin, salvo
-cambios explícitos en esos productos. Push a nightly/testers, promociones y
-merge_group comprueban el workspace completo.
+núcleo o en `ui` no ejecuta los tests de los dependientes en local, pero Clippy
+sí comprueba sus tipos. Cargo resuelve sus dependencias; no se activan defaults
+de paquetes ajenos a la selección. CI de PR a nightly añade los dependientes
+transitivos y ejecuta sus tests, y excluye Hub/Admin, salvo cambios explícitos
+en esos productos. Push a nightly/testers, promociones y merge_group comprueban
+el workspace completo.
+
+Si tocas `runtime`, `domain`, `ipc`, `ui` o `storage`, el gate rápido imprime un
+aviso: faltan los tests de los dependientes y la telemetría (#1498). Antes de
+publicar, ejecuta `comprobar.ps1 <crate> -Full` y la telemetría.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.

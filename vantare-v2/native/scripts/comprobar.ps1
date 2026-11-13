@@ -12,6 +12,10 @@ $native = Split-Path $PSScriptRoot
 Push-Location $native
 try {
     if ($Crate -notlike 'vantare-*') { $Crate = "vantare-$Crate" }
+    $sensitive = @('vantare-runtime', 'vantare-domain', 'vantare-ipc', 'vantare-ui', 'vantare-storage')
+    if (-not $Full -and $Crate -in $sensitive) {
+        Write-Warning 'gate rápido: faltan tests de dependientes y telemetría (#1498); usa -Full y la telemetría antes de publicar'
+    }
     $selection = & python (Join-Path $PSScriptRoot 'affected-crates.py') --crate $Crate
     if ($LASTEXITCODE -or -not $selection) { throw 'No se pudo seleccionar el camino rápido.' }
     $packages = $selection.Split(',')

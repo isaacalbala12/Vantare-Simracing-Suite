@@ -61,6 +61,36 @@ fn toggle(state: &mut State) {
         );
     }
 }
+// Closed capture presets; no product startup or release environment override.
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+fn capture_preset(state: &mut State, preset: &str) -> Result<(), &'static str> {
+    let (screen, scheme) = preset
+        .rsplit_once('-')
+        .ok_or("capture preset needs a theme")?;
+    if !["light", "dark"].contains(&scheme) {
+        return Err("unknown capture theme");
+    }
+    let (section, collapsed, tab) = match screen {
+        "frame-expanded" => ("home", false, "board"),
+        "frame-collapsed" => ("home", true, "board"),
+        "home" => ("home", true, "board"),
+        "roadmap" => ("roadmap", true, "circuit"),
+        "roadmap-board" => ("roadmap", true, "board"),
+        "roadmap-season" => ("roadmap", true, "season"),
+        _ => return Err("unknown capture screen"),
+    };
+    state.section = section.into();
+    state.collapsed = collapsed;
+    state.roadmap.tab = tab;
+    state.dark = scheme == "dark";
+    state.theme = Theme::load("vantare", scheme).expect("shared capture tokens");
+    Ok(())
+}
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn capture_scene(state: &mut State) {
+    let preset = std::env::var("VANTARE_HUB_CAPTURE").expect("capture preset is required");
+    capture_preset(state, &preset).expect("closed capture preset");
+}
 fn title(state: &State) -> &str {
     catalog()["navigation"]
         .as_array()
@@ -434,6 +464,8 @@ fn start() -> std::io::Result<()> {
         ("collapsed", |s| s.collapsed = true),
         ("roadmap", |s| s.section = "roadmap".into()),
         ("home", |s| s.section = "home".into()),
+        #[cfg(all(debug_assertions, target_os = "macos"))]
+        ("capture", capture_scene),
     ];
     spec.setup = Some(setup);
     spec.poll = Some(poll);
@@ -469,6 +501,37 @@ fn main() -> std::process::ExitCode {
 mod tests {
     use super::*;
     use rune::{Env, Runtime};
+    #[test]
+    fn capture_presets_compose_screen_theme_sidebar_without_changing_host_data() {
+        for screen in [
+            "frame-expanded",
+            "frame-collapsed",
+            "home",
+            "roadmap",
+            "roadmap-board",
+            "roadmap-season",
+        ] {
+            for theme in ["light", "dark"] {
+                let mut state = init();
+                capture_preset(&mut state, &format!("{screen}-{theme}")).unwrap();
+                assert_eq!(state.dark, theme == "dark");
+                assert_eq!(state.collapsed, screen != "frame-expanded");
+                assert_eq!(
+                    state.section,
+                    if screen.starts_with("roadmap") {
+                        "roadmap"
+                    } else {
+                        "home"
+                    }
+                );
+                assert!(state.home.value.is_none());
+                assert!(state.link.is_none());
+            }
+        }
+        for invalid in ["roadmap", "home-blue", "launcher-dark"] {
+            assert!(capture_preset(&mut init(), invalid).is_err());
+        }
+    }
     #[test]
     #[cfg(debug_assertions)]
     fn home_favorite_button_sends_one_scene_launch_and_selected_profile_is_respected() {

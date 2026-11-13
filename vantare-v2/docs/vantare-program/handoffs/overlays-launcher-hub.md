@@ -2235,3 +2235,11 @@ las fuentes corregidas PASS (2 min 11 s). Suite completa repitiéndose por cola.
 CI web bloqueada en check-resident-answer.ts:44, diálogo Eliminar perfil, fuera
 de los cambios Rune. No se declara CI verde. Resultados definitivos y SHA en
 #2287/#2256; logs locales en evidence/hub-rune/inicio-lanzamiento.
+
+
+VANTA-143 · Mac liberado por el orquestador: se prepara matriz de 66 capturas,
+con guion macOS serial, espacio/SHA/otros compiladores comprobados y rechazo en
+Windows. Adaptador de escena capture solo debug+macOS para pantalla/tema/barra;
+helper puro comprobable sin GPU. No se activó nada en el Mac durante la espera.
+Tras el aviso se permite compilar y capturar en el target propio. Capturas/tabla
+no equivalen a aceptar fidelidad ni requisitos exclusivos de Windows.

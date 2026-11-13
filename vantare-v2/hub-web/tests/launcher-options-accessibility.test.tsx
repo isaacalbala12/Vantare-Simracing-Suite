@@ -48,8 +48,17 @@ it("keeps every running-chain option readable by keyboard with its visible reaso
     await user.keyboard(
       control.getAttribute("role") === "switch" ? " " : "{ArrowDown}{Enter}",
     );
+    expect(screen.queryByRole("listbox")).toBeNull();
   }
-  for (const control of controls) await user.click(control);
+  for (const control of controls) {
+    await user.click(control);
+    expect(screen.queryByRole("listbox")).toBeNull();
+  }
+  const section = screen.getByRole("region", { name: text.nextOptions });
+  expect(section.getAttribute("aria-label")).toBeNull();
+  expect(section.getAttribute("aria-labelledby")).toBe(
+    screen.getByRole("heading", { name: text.nextOptions }).id,
+  );
   expect(onOption).not.toHaveBeenCalled();
   expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("false");
 });
@@ -63,10 +72,8 @@ it("preserves focus when the chain starts, then restores editing when it stops",
   expect(document.activeElement).toBe(control);
   await user.keyboard("{ArrowDown}{Enter}");
   expect(onOption).not.toHaveBeenCalled();
-  // A read-only Select can expose its choices for inspection. Close that popup
-  // before testing the end-of-chain transition of the focused trigger.
-  await user.keyboard("{Escape}");
-  await waitFor(() => expect(document.activeElement).toBe(control));
+  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(document.activeElement).toBe(control);
   rerender(view);
   expect(document.activeElement).toBe(control);
   expect(screen.queryByText(text.runningOptionsReadOnly)).toBeNull();
@@ -103,4 +110,33 @@ it("retains the protected-document block", async () => {
     await userEvent.click(control);
   }
   expect(onOption).not.toHaveBeenCalled();
+});
+it("does not promise editing after a chain ends when the document is also protected", async () => {
+  const { onOption } = mount({ running: true, protected: true });
+  expect(screen.queryByText(text.runningOptionsReadOnly)).toBeNull();
+  for (const control of [
+    ...screen.getAllByRole("combobox"),
+    screen.getByRole("switch"),
+  ]) {
+    expect(control.getAttribute("aria-disabled")).toBe("true");
+    expect(control.getAttribute("aria-describedby")).toBeNull();
+    await userEvent.click(control);
+  }
+  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(onOption).not.toHaveBeenCalled();
+});
+it("closes an open Select when a chain starts and does not reopen it when the chain ends", async () => {
+  const { view, onOption, rerender } = mount();
+  const user = userEvent.setup();
+  const control = screen.getByRole("combobox", { name: text.alreadyRunning });
+  await user.click(control);
+  await screen.findByRole("listbox");
+  rerender({ ...view, running: true });
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(control));
+  rerender(view);
+  expect(screen.queryByRole("listbox")).toBeNull();
+  expect(onOption).not.toHaveBeenCalled();
+  await user.click(control);
+  await screen.findByRole("listbox");
 });

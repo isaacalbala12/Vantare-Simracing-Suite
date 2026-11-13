@@ -8,7 +8,7 @@ import { Switch as BaseSwitch } from "@base-ui/react/switch";
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { Icon } from "../assets/icons/Icon";
 import { Button } from "./Button";
 import "./appearance-controls.css";
@@ -101,6 +101,10 @@ export function Select({
   disabled?: boolean;
 }) {
   const id = useId();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (readOnly) setOpen(false);
+  }, [readOnly]);
   return (
     <div className="v-field">
       <label
@@ -112,6 +116,14 @@ export function Select({
       </label>
       <BaseSelect.Root
         modal={false}
+        open={open && !readOnly}
+        onOpenChange={(next, details) => {
+          if (next && readOnly) {
+            details.cancel();
+            return;
+          }
+          setOpen(next);
+        }}
         items={options}
         value={value}
         onValueChange={(v) => {

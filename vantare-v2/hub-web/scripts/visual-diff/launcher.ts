@@ -75,6 +75,13 @@ launcherScenes["launcher-opciones-lectura"] = {
         await page.locator(`[id="${reason}"]`).textContent(),
         text.runningOptionsReadOnly,
       );
+      if (index < 5) {
+        await control.click();
+        assert.equal(await page.getByRole("listbox").count(), 0);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Enter");
+        assert.equal(await page.getByRole("listbox").count(), 0);
+      }
       if (index < 5) await page.keyboard.press("Tab");
     }
     const toggle = controls.last();

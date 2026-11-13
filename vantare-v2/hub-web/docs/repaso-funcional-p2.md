@@ -1,6 +1,7 @@
 # P2 del repaso funcional A y C · contraste con nightly
 
 VANTA-138 / #1995. Base comprobada: `5919e64e0` (13-11-2026).
+Contraste de continuidad con `e689cba4f`: el estado de los hallazgos no cambia.
 Los informes originales A.md y C-launcher.md son lecturas históricas; esta tabla
 contrasta sus hallazgos con el código actual. No certifica hardware ni servicios
 reales. Los IDs L pertenecen a C-launcher.md.
@@ -42,6 +43,9 @@ ampliar contratos del Hub/IPC y, para las órdenes o la propiedad viva, el
 residente. No se modifica runtime ni supervisor en este lote. Se informa al
 orquestador del límite antes de tocar esas rutas. No se habilitan controles que
 prometan acciones ausentes ni se relajan comprobaciones de identidad.
+El orquestador asigna estos cuatro casos al worker de núcleo E, empezando por
+un microplan de contrato. No queda otro P2 sin contrato abierto de ambos repasos
+tras el cierre de L29 en este PR.
 
 ## Verificación de L29
 

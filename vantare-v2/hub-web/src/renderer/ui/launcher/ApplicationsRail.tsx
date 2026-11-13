@@ -66,6 +66,8 @@ export function LauncherApplicationsRail({
   pending?: boolean;
 }) {
   const reasonId = useId();
+  const headingId = useId();
+  const runningReadOnly = view.running && !view.protected;
   const profile =
     view.profiles.find((item) => item.id === selected) ??
     view.profiles.find((item) => item.favorite) ??
@@ -109,16 +111,14 @@ export function LauncherApplicationsRail({
         </div>
       </section>
       {options && (
-        <section
-          aria-label={view.running ? text.nextOptions : text.advancedOptions}
-        >
+        <section aria-labelledby={headingId}>
           <header>
-            <h2>
+            <h2 id={headingId}>
               <Icon name="v-sliders" />
               {view.running ? text.nextOptions : text.advancedOptions}
             </h2>
           </header>
-          {view.running && (
+          {runningReadOnly && (
             <p
               id={reasonId}
               role="status"
@@ -189,8 +189,8 @@ export function LauncherApplicationsRail({
                   value={option.value}
                   disabled={!onOption || view.protected}
                   pending={pending}
-                  readOnly={view.running}
-                  aria-describedby={view.running ? reasonId : undefined}
+                  readOnly={runningReadOnly}
+                  aria-describedby={runningReadOnly ? reasonId : undefined}
                   onChange={(raw) => {
                     if (
                       pending ||
@@ -212,8 +212,8 @@ export function LauncherApplicationsRail({
               checked={options.closeOnExit}
               disabled={!onOption || view.protected}
               pending={pending}
-              readOnly={view.running}
-              aria-describedby={view.running ? reasonId : undefined}
+              readOnly={runningReadOnly}
+              aria-describedby={runningReadOnly ? reasonId : undefined}
               onCheckedChange={(value) =>
                 !pending &&
                 !view.protected &&

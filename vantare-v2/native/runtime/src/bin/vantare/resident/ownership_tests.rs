@@ -3,6 +3,11 @@ use super::*;
 use std::fs;
 use vantare_ipc::launcher::{Request, ownership::RemoveProfileChecked};
 
+fn fixture() -> super::super::control::support::Fixture {
+    let mut f = idle(&[]);
+    enable(&mut f.owner);
+    f
+}
 fn request(owner: &Owner) -> RemoveProfileChecked {
     RemoveProfileChecked {
         request: "d".repeat(32).try_into().unwrap(),
@@ -23,8 +28,15 @@ fn enable(owner: &mut Owner) {
 }
 #[test]
 fn durable_removal_reconciles_cache_before_releasing_chain_lease_and_is_consumed_once() {
-    let mut f = idle(&[]);
+    let mut f = fixture();
     enable(&mut f.owner);
+    f.owner.document.lmu_trigger_profile = Some("qa".into());
+    f.owner.document.profiles[0].launch_on_windows_startup = true;
+    let document = f.owner.document.clone();
+    let apps = document.apps.clone();
+    let bytes = serde_json::to_vec(&document).unwrap();
+    fs::write(&f.owner.path, &bytes).unwrap();
+    f.owner.install_document(bytes, document);
     let command = request(&f.owner);
     let path = f.owner.path.clone();
     let registry = Arc::clone(&f.owner.processes);
@@ -41,6 +53,8 @@ fn durable_removal_reconciles_cache_before_releasing_chain_lease_and_is_consumed
         },
     );
     assert!(f.owner.document.profiles.is_empty());
+    assert!(f.owner.document.lmu_trigger_profile.is_none());
+    assert_eq!(f.owner.document.apps, apps);
     assert!(
         Document::from_bytes(&fs::read(&path).unwrap())
             .unwrap()
@@ -49,7 +63,7 @@ fn durable_removal_reconciles_cache_before_releasing_chain_lease_and_is_consumed
     );
     assert_eq!(f.owner.bytes, Some(fs::read(&path).unwrap()));
     assert!(f.owner.status.profiles.is_empty());
-    assert!(f.owner.hotkeys.is_empty());
+    assert_eq!(f.owner.hotkeys, Vec::new());
     let events = f.owner.status.extension.as_ref().unwrap().events.clone();
     assert!(matches!(
         events[0].kind,
@@ -89,7 +103,7 @@ fn durable_removal_reconciles_cache_before_releasing_chain_lease_and_is_consumed
 #[test]
 fn failed_cas_never_commits_cache_and_finishes_with_a_typed_failure() {
     for conflict in [true, false] {
-        let mut f = idle(&[]);
+        let mut f = fixture();
         let original = fs::read(&f.owner.path).unwrap();
         let command = request(&f.owner);
         f.owner.remove_profile_with(
@@ -115,7 +129,7 @@ fn failed_cas_never_commits_cache_and_finishes_with_a_typed_failure() {
 #[test]
 fn instance_account_revision_and_registry_contention_are_fail_closed() {
     for case in 0..5 {
-        let mut f = idle(&[]);
+        let mut f = fixture();
         enable(&mut f.owner);
         let mut command = request(&f.owner);
         let registry = Arc::clone(&f.owner.processes);
@@ -162,10 +176,10 @@ fn instance_account_revision_and_registry_contention_are_fail_closed() {
 
 #[test]
 fn owned_child_fixture() {
+    use std::io::{Read, Write};
     if std::env::var_os("VANTARE_OWNERSHIP_CHILD").is_none() {
         return;
     }
-    use std::io::{Read, Write};
     println!("OWNERSHIP_READY");
     std::io::stdout().flush().unwrap();
     let _ = std::io::stdin().read(&mut [0]);
@@ -217,10 +231,60 @@ impl Drop for RegistryCleanup {
     }
 }
 #[test]
+fn unreconciled_handles_never_look_empty_or_allow_another_profile_to_be_deleted() {
+    let mut f = fixture();
+    let mut owned = child();
+    let _cleanup = RegistryCleanup(Arc::clone(&f.owner.processes));
+    f.owner.processes.lock().unwrap().record(
+        "qa",
+        "fixture",
+        &std::env::current_exe().unwrap(),
+        owned.0.take().unwrap(),
+    );
+    // Model an old, uncoordinated writer removing the profile while a handle lives.
+    f.owner.document.profiles = vec![vantare_launcher::Profile::new(
+        "other".into(),
+        "Other".into(),
+    )];
+    let document = f.owner.document.clone();
+    let bytes = serde_json::to_vec(&document).unwrap();
+    fs::write(&f.owner.path, &bytes).unwrap();
+    f.owner.install_document(bytes.clone(), document);
+    assert!(matches!(
+        f.owner.status.extension.as_ref().unwrap().ownership,
+        Some(Ownership::Unknown)
+    ));
+    let mut command = request(&f.owner);
+    command.profile = "other".into();
+    f.owner.remove_profile_with(
+        command,
+        || Ok(Some(observed())),
+        |_, _, _| panic!("unreconciled registry must not write"),
+    );
+    assert_eq!(fs::read(&f.owner.path).unwrap(), bytes);
+    assert!(matches!(
+        &f.owner
+            .status
+            .extension
+            .as_ref()
+            .unwrap()
+            .events
+            .last()
+            .unwrap()
+            .kind,
+        EventKind::RemovalReceived {
+            receipt: RemovalReceipt::Rejected {
+                reason: Rejection::OwnershipUnknown
+            },
+            ..
+        }
+    ));
+}
+#[test]
 fn finished_chains_can_own_live_handles_but_external_processes_are_never_claimed() {
-    let mut f = idle(&[]);
+    let mut f = fixture();
     enable(&mut f.owner);
-    let _external = child();
+    let mut external = child();
     f.owner.publish();
     assert!(
         matches!(&f.owner.status.extension.as_ref().unwrap().ownership,Some(Ownership::Known{profiles,..}) if !profiles[0].owned_live)
@@ -264,6 +328,7 @@ fn finished_chains_can_own_live_handles_but_external_processes_are_never_claimed
         .unwrap()
         .close_profile("qa")
         .unwrap();
+    assert!(external.0.as_mut().unwrap().try_wait().unwrap().is_none());
     f.owner.publish();
     assert!(
         matches!(&f.owner.status.extension.as_ref().unwrap().ownership,Some(Ownership::Known{profiles,..}) if !profiles[0].owned_live)
@@ -279,7 +344,7 @@ fn finished_chains_can_own_live_handles_but_external_processes_are_never_claimed
 }
 #[test]
 fn a_concurrent_editor_conflicts_and_a_concurrent_start_cannot_pass_the_same_lease() {
-    let mut f = idle(&[]);
+    let mut f = fixture();
     let original = f.owner.bytes.clone();
     let command = request(&f.owner);
     f.owner.remove_profile_with(
@@ -329,26 +394,63 @@ fn a_concurrent_editor_conflicts_and_a_concurrent_start_cannot_pass_the_same_lea
 #[test]
 fn authority_policy_chain_lease_and_poisoned_registry_never_allow_writes() {
     for case in 0..5 {
-        let mut f=idle(&[]); enable(&mut f.owner);
-        let command=request(&f.owner);
-        let lease=(case==2).then(||vantare_launcher::chain::acquire_lease(&f.owner.path).unwrap());
-        if case==3 {
-            let registry=Arc::clone(&f.owner.processes);
-            assert!(std::panic::catch_unwind(move||{let _guard=registry.lock().unwrap();panic!("injected registry failure")}).is_err());
+        let mut f = fixture();
+        enable(&mut f.owner);
+        let command = request(&f.owner);
+        let lease =
+            (case == 2).then(|| vantare_launcher::chain::acquire_lease(&f.owner.path).unwrap());
+        if case == 3 {
+            let registry = Arc::clone(&f.owner.processes);
+            assert!(
+                std::panic::catch_unwind(move || {
+                    let _guard = registry.lock().unwrap();
+                    panic!("injected registry failure")
+                })
+                .is_err()
+            );
         }
-        if case==4 {
-            let extension=f.owner.status.extension.as_mut().unwrap();
-            extension.events.push(vantare_ipc::launcher::execution::ExecutionEvent{seq:u64::MAX.to_string().try_into().unwrap(),kind:EventKind::RemovalReceived{request:"e".repeat(32).try_into().unwrap(),receipt:RemovalReceipt::Rejected{reason:Rejection::Busy}}});
+        if case == 4 {
+            let extension = f.owner.status.extension.as_mut().unwrap();
+            extension
+                .events
+                .push(vantare_ipc::launcher::execution::ExecutionEvent {
+                    seq: u64::MAX.to_string().try_into().unwrap(),
+                    kind: EventKind::RemovalReceived {
+                        request: "e".repeat(32).try_into().unwrap(),
+                        receipt: RemovalReceipt::Rejected {
+                            reason: Rejection::Busy,
+                        },
+                    },
+                });
         }
-        f.owner.remove_profile_with(command,||{
-            if case==0 {return Err(std::io::ErrorKind::TimedOut.into());}
-            let mut account=observed();
-            if case==1 {account.policy.state=vantare_ipc::control::AccessState::Revoked;}
-            Ok(Some(account))
-        },|_,_,_|panic!("must not write"));
-        if case==4 {assert!(f.owner.status.extension.is_none()); continue;}
-        let expected=match case {0=>Rejection::AuthorityUnavailable,1=>Rejection::Denied,2=>Rejection::Busy,_=>Rejection::OwnershipUnknown};
-        assert!(matches!(&f.owner.status.extension.as_ref().unwrap().events.last().unwrap().kind,EventKind::RemovalReceived{receipt:RemovalReceipt::Rejected{reason},..} if *reason==expected));
-        assert_eq!(f.owner.document.profiles.len(),1); drop(lease);
+        f.owner.remove_profile_with(
+            command,
+            || {
+                if case == 0 {
+                    return Err(std::io::ErrorKind::TimedOut.into());
+                }
+                let mut account = observed();
+                if case == 1 {
+                    account.policy.state = vantare_ipc::control::AccessState::Revoked;
+                }
+                Ok(Some(account))
+            },
+            |_, _, _| panic!("must not write"),
+        );
+        if case == 4 {
+            assert!(f.owner.status.extension.is_none());
+            continue;
+        }
+        let expected = match case {
+            0 => Rejection::AuthorityUnavailable,
+            1 => Rejection::Denied,
+            2 => Rejection::Busy,
+            _ => Rejection::OwnershipUnknown,
+        };
+        assert!(
+            matches!(&f.owner.status.extension.as_ref().unwrap().events.last().unwrap().kind,EventKind::RemovalReceived{receipt:RemovalReceipt::Rejected{reason},..} if *reason==expected)
+        );
+        assert_eq!(f.owner.document.profiles.len(), 1);
+        drop(lease);
     }
 }

@@ -82,8 +82,14 @@ pub enum ChainOutcome {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum EventKind {
-    RemovalReceived { request: super::RequestId, receipt: super::ownership::RemovalReceipt },
-    RemovalFinished { request: super::RequestId, outcome: super::ownership::RemovalOutcome },
+    RemovalReceived {
+        request: super::RequestId,
+        receipt: super::ownership::RemovalReceipt,
+    },
+    RemovalFinished {
+        request: super::RequestId,
+        outcome: super::ownership::RemovalOutcome,
+    },
     Started {
         run: RunId,
     },
@@ -195,7 +201,14 @@ impl ExecutionStatus {
             })
     }
     fn valid(&self) -> bool {
-        if !self.ownership.as_ref().is_none_or(|value| value.valid() && self.capabilities.contains(&Capability::LiveProfileOwnership)) { return false; }
+        if !self.ownership.as_ref().is_none_or(|value| {
+            value.valid()
+                && self
+                    .capabilities
+                    .contains(&Capability::LiveProfileOwnership)
+        }) {
+            return false;
+        }
         self.results.as_ref().is_none_or(|results| {
             self.capabilities.contains(&Capability::StepResultsRetry)
                 && results.valid()
@@ -237,6 +250,9 @@ impl ExecutionStatus {
                 .windows(2)
                 .all(|w| w[0].seq.0.checked_add(1) == Some(w[1].seq.0))
             && self.events.iter().all(|e| match e.kind {
+                EventKind::RemovalReceived { .. } | EventKind::RemovalFinished { .. } => self
+                    .capabilities
+                    .contains(&Capability::LiveProfileOwnership),
                 EventKind::Started { run } | EventKind::Finished { run, .. } => run <= e.seq,
                 EventKind::OrderReceived { ref receipt, .. } => match receipt {
                     super::answer::OrderReceipt::Accepted { run } => *run <= e.seq,

@@ -64,7 +64,17 @@ impl Processes {
     /// A single reap before the bounded profile observation; never discovery/PIDs.
     pub fn live_profiles(&mut self, profiles: &[String]) -> Result<Vec<bool>, String> {
         self.reap()?;
-        Ok(profiles.iter().map(|profile| self.started.iter().any(|s| s.profile == *profile)).collect())
+        if self
+            .started
+            .iter()
+            .any(|process| !profiles.contains(&process.profile))
+        {
+            return Err("registro de procesos con un perfil no reconciliado".into());
+        }
+        Ok(profiles
+            .iter()
+            .map(|profile| self.started.iter().any(|s| s.profile == *profile))
+            .collect())
     }
     pub fn has_profile(&mut self, profile: &str) -> Result<bool, String> {
         self.reap()?;

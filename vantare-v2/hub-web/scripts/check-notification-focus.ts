@@ -76,7 +76,7 @@ export async function checkNotificationFocus(owner: Page, base: string) {
               method === "launcher.resident.cancel" ||
               method === "launcher.resident.rehearse" ||
               method === "launcher.resident.retry" ||
-            method === "launcher.profile.removeChecked" ||
+              method === "launcher.profile.removeChecked" ||
               method === "launcher.favorite",
           ).length,
       );

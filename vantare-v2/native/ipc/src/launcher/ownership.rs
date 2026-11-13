@@ -62,7 +62,6 @@ pub enum RemovalRejection {
     OwnedLive,
     WriteConflict,
     Io,
-    Unavailable,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]

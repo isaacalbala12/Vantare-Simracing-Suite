@@ -29,7 +29,7 @@ const view: ResidentView = {
   online: true,
   running: true,
   error: false,
-  ownership: {kind: "unsupported"},
+  ownership: { kind: "unsupported" },
   registrations: [],
   decision: {
     id: "2",

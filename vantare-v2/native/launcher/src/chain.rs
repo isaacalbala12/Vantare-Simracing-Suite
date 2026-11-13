@@ -18,8 +18,8 @@ use std::{
     time::{Duration, Instant},
 };
 pub use vantare_ipc::launcher::Action;
-mod pending;
 mod lease;
+mod pending;
 pub use lease::acquire as acquire_lease;
 mod results;
 pub use pending::AnswerError;

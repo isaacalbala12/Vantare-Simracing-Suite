@@ -6,9 +6,22 @@ pub(super) fn dispatch(
     request: &Request,
 ) -> io::Result<()> {
     match request {
-        Request::LauncherProfileRemoveChecked {target} => {
-            let result = crate::launcher_resident::ownership::remove(&session.launcher, session.core.account_observation().as_ref(), target);
-            return frame::write(pipe, &match result { Ok(value)=>HostToUi::Response{id,result:Reply::LauncherProfileRemoveChecked{value}}, Err(error)=>HostToUi::Failure{id,error}});
+        Request::LauncherProfileRemoveChecked { target } => {
+            let result = crate::launcher_resident::ownership::remove(
+                &session.launcher,
+                session.core.account_observation().as_ref(),
+                target,
+            );
+            return frame::write(
+                pipe,
+                &match result {
+                    Ok(value) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherProfileRemoveChecked { value },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
+                },
+            );
         }
         Request::LauncherResidentRetry { target } => {
             let result = crate::launcher_resident::results::retry(
@@ -83,7 +96,9 @@ pub(super) fn dispatch(
                 value: if session.current.live {
                     crate::launcher_resident::ResidentView::default()
                 } else {
-                    session.launcher_resident_state.view_for_account(session.core.account_observation().as_ref())
+                    session
+                        .launcher_resident_state
+                        .view_for_account(session.core.account_observation().as_ref())
                 },
             },
         },
@@ -94,9 +109,10 @@ pub(super) fn subscribe(session: &mut Session, pipe: &mut Pipe, _topic: Topic) -
         session.launcher_resident_state.reset();
         return Ok(());
     }
-    let value = session
-        .launcher_resident_state
-        .observed_for_account(std::time::Instant::now(), session.core.account_observation().as_ref());
+    let value = session.launcher_resident_state.observed_for_account(
+        std::time::Instant::now(),
+        session.core.account_observation().as_ref(),
+    );
     frame::write(
         pipe,
         &HostToUi::Event {

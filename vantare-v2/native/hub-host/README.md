@@ -372,3 +372,31 @@ Queued y OrderReceived Accepted siguen separados de Finished. Se usa el plazo
 exportado de 5 s; hueco, reinicio o falta de recibo = Unknown y no se reenvía.
 El resumen no sustituye la correlación de recibo/terminal con cuenta e instancia.
 No hay ACK, historial persistido, propiedad viva L56 ni cambios del supervisor.
+
+## L56 · propiedad por perfil y borrado coordinado (v36)
+ResidentView.ownership distingue unsupported, unknown y known. Known contiene
+instance, accountGeneration, revision y hasta 128 profiles {profile,ownedLive}.
+La foto nativa cubre los handles del residente, independientemente de la cuenta
+que los inició; el anfitrión la vincula a la observación autenticada actual del
+Feed, con su TTL estricto. No renueva cuentas desde el Read legacy ni añade un
+RPC o hilo al bucle residente. Sin cuenta observable/permisos, Known no se publica.
+
+launcher.profile.removeChecked recibe target
+{instance,accountGeneration,profile,revision}; responde Queued{request}. No recibe
+PID, ruta, comandos, argumentos, decisiones ni documentos. El residente vuelve
+a consultar la autoridad al consumir, comparte el lease de arranque y mantiene
+el bloqueo de handles hasta CAS y reconciliación. El anfitrión hace una primera
+lectura para rechazo temprano; no borra tras recibir una foto ni relee por segunda
+vez para fingir la garantía final. launcher.profile.delete legacy queda Unsupported.
+
+RemovalReceived{request,receipt:accepted|rejected} y
+RemovalFinished{request,outcome:removed{revision}|failed} usan el mismo anillo de
+32. No crean una ejecución; Accepted no equivale a Removed. D debe correlacionar
+request, instancia y generación capturadas, invalidar al cambiar cuenta/revisión,
+y usar residentOrderReceiptTimeoutMs; hueco/reinicio/sin recibo = Unknown, sin reenvío.
+Los rechazos también consumen huecos. Unknown no significa que no haya procesos.
+Núcleo anterior => Unsupported sin fallback. Lectores anteriores pueden descartar
+la extensión nueva conservando Status legacy; no reciben la garantía de borrado
+comprobado. No se modifica GPUI ni se promete coordinación con escritores antiguos.
+
+Known también exige que la revisión del documento observado coincida con la del residente. Un documento protegido o un registro de handles no reconciliado produce Unknown.

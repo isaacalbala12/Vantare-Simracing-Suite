@@ -354,25 +354,91 @@ fn ownership_types(text: &mut String) {
     declare::<ResidentRemovalReceipt>(text);
     declare::<ResidentRemovalOutcome>(text);
     declare::<ResidentRemovalRejection>(text);
-    constants!(text, "residentRemovalRejections", ResidentRemovalRejection::ALL);
-    constants!(text, "residentOwnershipProfileLimit", vantare_ipc::launcher::ownership::PROFILE_LIMIT);
+    constants!(
+        text,
+        "residentRemovalRejections",
+        ResidentRemovalRejection::ALL
+    );
+    constants!(
+        text,
+        "residentOwnershipProfileLimit",
+        vantare_ipc::launcher::ownership::PROFILE_LIMIT
+    );
 }
 fn ownership_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
     use crate::launcher_resident::*;
-    ui.push(UiToHost::Request {id:9,request:Request::LauncherProfileRemoveChecked {target:ResidentRemoveTarget {
-        instance:"b".repeat(64),account_generation:"c".repeat(64),profile:"qa".into(),revision:"d".repeat(64),
-    }}});
-    host.push(HostToUi::Response{id:9,result:Reply::LauncherProfileRemoveChecked{value:ResidentQueued::Queued{request:"f".repeat(32)}}});
-    let instance="b".repeat(64);
-    let request="f".repeat(32);
-    let mut execution=vantare_ipc::launcher::execution::ExecutionStatus::new(instance.clone().try_into().unwrap());
-    execution.capabilities.push(vantare_ipc::launcher::execution::Capability::LiveProfileOwnership);
-    execution.record(vantare_ipc::launcher::execution::EventKind::RemovalReceived {request:request.clone().try_into().unwrap(),receipt:vantare_ipc::launcher::ownership::RemovalReceipt::Accepted}).unwrap();
-    execution.record(vantare_ipc::launcher::execution::EventKind::RemovalFinished {request:request.try_into().unwrap(),outcome:vantare_ipc::launcher::ownership::RemovalOutcome::Removed{revision:"e".repeat(64)}}).unwrap();
-    host.push(HostToUi::Event{event:Event::LauncherResident{value:ResidentView{
-        online:true,execution:Some((&execution).into()),ownership:ResidentOwnership::Known{
-            instance,account_generation:"c".repeat(64),revision:"d".repeat(64),profiles:vec![ResidentProfileOwnership{profile:"qa".into(),owned_live:true}],
-        },..Default::default()
-    }}});
-    host.extend(ResidentRemovalRejection::ALL.into_iter().map(|reason|HostToUi::Failure{id:9,error:crate::protocol::HostError::ResidentRemovalRejected{reason}}));
+    ui.push(UiToHost::Request {
+        id: 9,
+        request: Request::LauncherProfileRemoveChecked {
+            target: ResidentRemoveTarget {
+                instance: "b".repeat(64),
+                account_generation: "c".repeat(64),
+                profile: "qa".into(),
+                revision: "d".repeat(64),
+            },
+        },
+    });
+    host.push(HostToUi::Response {
+        id: 9,
+        result: Reply::LauncherProfileRemoveChecked {
+            value: ResidentQueued::Queued {
+                request: "f".repeat(32),
+            },
+        },
+    });
+    let instance = "b".repeat(64);
+    let request = "f".repeat(32);
+    let mut execution = vantare_ipc::launcher::execution::ExecutionStatus::new(
+        instance
+            .clone()
+            .try_into()
+            .expect("valid ownership corpus fixture"),
+    );
+    execution
+        .capabilities
+        .push(vantare_ipc::launcher::execution::Capability::LiveProfileOwnership);
+    execution
+        .record(
+            vantare_ipc::launcher::execution::EventKind::RemovalReceived {
+                request: request
+                    .clone()
+                    .try_into()
+                    .expect("valid ownership corpus fixture"),
+                receipt: vantare_ipc::launcher::ownership::RemovalReceipt::Accepted,
+            },
+        )
+        .expect("valid ownership corpus fixture");
+    execution
+        .record(
+            vantare_ipc::launcher::execution::EventKind::RemovalFinished {
+                request: request.try_into().expect("valid ownership corpus fixture"),
+                outcome: vantare_ipc::launcher::ownership::RemovalOutcome::Removed {
+                    revision: "e".repeat(64),
+                },
+            },
+        )
+        .expect("valid ownership corpus fixture");
+    host.push(HostToUi::Event {
+        event: Event::LauncherResident {
+            value: ResidentView {
+                online: true,
+                execution: Some((&execution).into()),
+                ownership: Box::new(ResidentOwnership::Known {
+                    instance,
+                    account_generation: "c".repeat(64),
+                    revision: "e".repeat(64),
+                    profiles: vec![],
+                }),
+                ..Default::default()
+            },
+        },
+    });
+    host.extend(
+        ResidentRemovalRejection::ALL
+            .into_iter()
+            .map(|reason| HostToUi::Failure {
+                id: 9,
+                error: crate::protocol::HostError::ResidentRemovalRejected { reason },
+            }),
+    );
 }

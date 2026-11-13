@@ -84,7 +84,7 @@ function harness() {
           error: false,
           decision: null,
           execution: null,
-          ownership: {kind: "unsupported"},
+          ownership: { kind: "unsupported" },
           registrations: [],
           ...patch,
         },

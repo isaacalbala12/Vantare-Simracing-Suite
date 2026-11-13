@@ -20,7 +20,7 @@ function fixture(sceneName = "launcher-control-finished") {
     error: false,
     decision: null,
     execution: null,
-    ownership: {kind: "unsupported"},
+    ownership: { kind: "unsupported" },
     registrations: [],
   };
   const emit = vi.fn(),

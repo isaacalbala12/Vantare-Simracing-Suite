@@ -124,6 +124,47 @@ Binario final fuente 53050828b, SHA256
 ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
 Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
 Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
+## VANTA-138 · núcleo L56: propiedad y borrado coordinado (2026-11-13)
+
+#1995. v36 asignada por Isaac. Rama local
+vantareapp/isa-1995-resident-ownership, sobre nightly b2489dedd tras integrar #2298.
+Código y tests escritos antes de solicitar la cola. Draft contra nightly; enlace y HEAD final en #1995.
+
+El contrato nuevo impide borrar un perfil si este residente conserva una
+aplicación propia viva, aunque la secuencia haya terminado. No descubre ni
+mata procesos externos. Un handle que ya no corresponde a ningún perfil del
+documento deja la propiedad en Unknown: no se disfraza de registro vacío.
+El borrado legacy del anfitrión queda Unsupported; D cambiará la interfaz y sus
+escenas de prueba al contrato nuevo. La garantía no cubre GPUI ni otros escritores
+antiguos que no participen en el lease.
+
+Handoff a D: ResidentView.ownership = unsupported | unknown |
+known{instance,accountGeneration,revision,profiles[{profile,ownedLive}]}.
+Known se vincula al Feed autenticado actual y su TTL estricto, después de la E/S.
+Documento protegido, revisión no reconciliada, cuenta vencida o registro no
+observable => Unknown. No se deduce propiedad de running=false.
+
+launcher.profile.removeChecked recibe target
+{instance,accountGeneration,profile,revision}. Queued{request} no confirma borrado.
+RemovalReceived{request,receipt:accepted|rejected} y
+RemovalFinished{request,outcome:removed{revision}|failed} comparten el anillo de 32;
+no crean RunId. D correlaciona request y el contexto capturado; usa el plazo
+exportado residentOrderReceiptTimeoutMs. Hueco/reinicio/sin recibo => Unknown,
+sin reenvío. Un rechazo también ocupa un hueco. Solo Removed confirma el CAS.
+
+El residente consulta otra vez a la autoridad (750 ms), comparte el lease de
+start_checked y conserva el bloqueo de handles hasta CAS y actualización de
+caché, registros y disparadores. La foto no autoriza un borrado en el anfitrión.
+No añade hilos ni RPC al bucle de publicación ni cambia supervisor/rights.
+
+Validación local: contrato v36 exportado desde Rust, ambos typechecks y 91
+regresiones web PASS, más 392 comprobaciones de contrato/corpus. La primera suite detectó expectativas del borrado legacy;
+se adaptaron para exigir Unsupported y se conserva la prueba de CAS/conflicto.
+Gates finales por cola: fmt/Clippy all-targets -D warnings, 1.738 tests nativos y
+34 de telemetría PASS, respetando captura.lock. Slot liberado y G avisado.
+CI completa y review de L56 pendientes al publicar.
+Sin gráficos, cuentas reales, dependencias nuevas, promoción ni release.
+
 ## VANTA-138 · núcleo L55: resultados y repetir los mismos pasos (2026-11-13)
 
 #1995 / VANTA-138. L55 v35 autorizado; preparación local en

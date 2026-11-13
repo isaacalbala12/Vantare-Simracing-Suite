@@ -7,7 +7,9 @@ use ts_rs::TS;
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
     #[serde(rename = "launcher.profile.removeChecked")]
-    LauncherProfileRemoveChecked {target: crate::launcher_resident::ResidentRemoveTarget},
+    LauncherProfileRemoveChecked {
+        target: crate::launcher_resident::ResidentRemoveTarget,
+    },
     #[serde(rename = "launcher.resident.retry")]
     LauncherResidentRetry {
         target: crate::launcher_resident::ResidentRetryTarget,
@@ -32,7 +34,9 @@ pub enum Request {
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
     #[serde(rename = "launcher.profile.removeChecked")]
-    LauncherProfileRemoveChecked {value: crate::launcher_resident::ResidentQueued},
+    LauncherProfileRemoveChecked {
+        value: crate::launcher_resident::ResidentQueued,
+    },
     #[serde(rename = "launcher.resident.retry")]
     LauncherResidentRetry {
         value: crate::launcher_resident::ResidentQueued,
@@ -74,7 +78,9 @@ pub enum Event {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
-    ResidentRemovalRejected {reason: crate::launcher_resident::ResidentRemovalRejection},
+    ResidentRemovalRejected {
+        reason: crate::launcher_resident::ResidentRemovalRejection,
+    },
     ResidentControlRejected {
         reason: crate::launcher_resident::ResidentOrderRejection,
     },

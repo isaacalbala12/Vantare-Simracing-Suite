@@ -14,11 +14,10 @@ mod document_cache;
 mod execution;
 #[path = "mailbox.rs"]
 mod order_mailbox;
-#[path = "results.rs"]
-pub(crate) mod results;
 #[path = "ownership.rs"]
 pub(crate) mod ownership;
-pub use ownership::{ResidentOwnership, ResidentProfileOwnership, ResidentRemoveTarget, ResidentRemovalReceipt, ResidentRemovalOutcome, ResidentRemovalRejection};
+#[path = "results.rs"]
+pub(crate) mod results;
 pub use answer::{ResidentAnswerTarget, ResidentQueued};
 pub use control::{
     ResidentActiveRun, ResidentCancelTarget, ResidentOrderRejection, ResidentRehearseTarget,
@@ -27,6 +26,10 @@ pub use execution::{
     ResidentAnswerRejection, ResidentCancellation, ResidentEventKind, ResidentExecution,
     ResidentExecutionEvent, ResidentFailure, ResidentOrderReceipt, ResidentOutcome,
     ResidentReceipt, ResidentRejection, ResidentScopedQuestion,
+};
+pub use ownership::{
+    ResidentOwnership, ResidentProfileOwnership, ResidentRemovalOutcome, ResidentRemovalReceipt,
+    ResidentRemovalRejection, ResidentRemoveTarget,
 };
 pub use results::{
     ResidentResults, ResidentRetryScope, ResidentRetryTarget, ResidentRunMode, ResidentRunResults,
@@ -129,7 +132,7 @@ pub struct ResidentQuestion {
 #[allow(clippy::struct_excessive_bools)] // Independent document, freshness, execution and error observations.
 pub struct ResidentView {
     pub execution: Option<ResidentExecution>,
-    pub ownership: ResidentOwnership,
+    pub ownership: Box<ResidentOwnership>,
     pub protected: bool,
     pub online: bool,
     pub running: bool,
@@ -193,8 +196,22 @@ impl State {
             status_reads: 0,
         }
     }
-    pub fn view(&mut self) -> ResidentView { self.view_for_account(None) }
-    pub fn view_for_account(&mut self, account: Option<&vantare_ipc::account_session::AccountObservation>) -> ResidentView {
+    pub fn view(&mut self) -> ResidentView {
+        self.view_for_account(None)
+    }
+    pub fn view_for_account(
+        &mut self,
+        account: Option<&vantare_ipc::account_session::AccountObservation>,
+    ) -> ResidentView {
+        self.view_with_clock(account, || {
+            vantare_ipc::control::wall_ms().unwrap_or_default()
+        })
+    }
+    fn view_with_clock(
+        &mut self,
+        account: Option<&vantare_ipc::account_session::AccountObservation>,
+        now: impl FnOnce() -> u64,
+    ) -> ResidentView {
         if self.path.is_absolute() && !vantare_launcher::is_local_path(&self.path) {
             return ResidentView {
                 protected: true,
@@ -207,7 +224,6 @@ impl State {
         }
         let status = mailbox::read_status(&self.path);
         let mut view = ResidentView {
-            ownership: ownership::project(status.as_ref().and_then(|s|s.extension.as_ref()), account, vantare_ipc::control::wall_ms().unwrap_or_default()),
             execution: status
                 .as_ref()
                 .and_then(|s| s.extension.as_ref())
@@ -229,7 +245,20 @@ impl State {
                 status.as_ref(),
             );
         }
+        // Evaluate account TTL after document I/O; cached legacy policy cannot renew it.
+        view.ownership = Box::new(ownership::project(
+            status.as_ref().and_then(|s| s.extension.as_ref()),
+            account,
+            now(),
+        ));
         view.protected = protected;
+        if protected
+            || view.error
+            || matches!(view.ownership.as_ref(), ResidentOwnership::Known{revision,..}
+            if self.document.revision.as_deref() != Some(revision.as_str()))
+        {
+            view.ownership = Box::new(ResidentOwnership::Unknown);
+        }
         view.registrations = registrations;
         view
     }
@@ -238,8 +267,14 @@ impl State {
         (self.status_reads, self.document.reads)
     }
     #[cfg(test)]
-    pub fn observed(&mut self, now: Instant) -> ResidentView { self.observed_for_account(now, None) }
-    pub fn observed_for_account(&mut self, now: Instant, account: Option<&vantare_ipc::account_session::AccountObservation>) -> ResidentView {
+    pub fn observed(&mut self, now: Instant) -> ResidentView {
+        self.observed_for_account(now, None)
+    }
+    pub fn observed_for_account(
+        &mut self,
+        now: Instant,
+        account: Option<&vantare_ipc::account_session::AccountObservation>,
+    ) -> ResidentView {
         let view = self.view_for_account(account);
         self.last = Some(now);
         self.observed = Some(view.clone());
@@ -250,8 +285,14 @@ impl State {
         self.observed = None;
     }
     #[cfg(test)]
-    pub fn changed(&mut self, now: Instant) -> Option<ResidentView> {self.changed_for_account(now,None)}
-    pub fn changed_for_account(&mut self, now: Instant, account: Option<&vantare_ipc::account_session::AccountObservation>) -> Option<ResidentView> {
+    pub fn changed(&mut self, now: Instant) -> Option<ResidentView> {
+        self.changed_for_account(now, None)
+    }
+    pub fn changed_for_account(
+        &mut self,
+        now: Instant,
+        account: Option<&vantare_ipc::account_session::AccountObservation>,
+    ) -> Option<ResidentView> {
         if self
             .last
             .is_some_and(|last| now.saturating_duration_since(last).as_millis() < 500)

@@ -9,8 +9,8 @@ pub mod execution;
 pub use checked::{LaunchChecked, RequestId};
 pub mod answer;
 pub mod control;
-pub mod results;
 pub mod ownership;
+pub mod results;
 pub use answer::AnswerChecked;
 pub use control::{CancelChecked, RehearseChecked};
 

@@ -40,7 +40,7 @@ fn removal_events_deduplicate_without_inventing_runs_and_future_ownership_drops_
             owned_live: true,
         }],
     });
-    let request = "a".repeat(32).try_into().unwrap();
+    let request: launcher::RequestId = "a".repeat(32).try_into().unwrap();
     extension
         .record(EventKind::RemovalReceived {
             request: request.clone(),
@@ -75,4 +75,54 @@ fn removal_events_deduplicate_without_inventing_runs_and_future_ownership_drops_
     assert!(legacy.extension.is_none());
     assert_eq!(legacy.version, launcher::VERSION);
     assert!(!legacy.running);
+}
+
+// Frozen tag-only v35 decoder: all seven existing operations remain recognized,
+// while a future remove-profile-v1 cannot be interpreted as any launch/answer.
+#[derive(serde::Deserialize)]
+enum FrozenV35 {
+    #[serde(rename = "launch-v1")]
+    Launch(serde_json::Value),
+    #[serde(rename = "launch-v2")]
+    LaunchChecked(serde_json::Value),
+    #[serde(rename = "answer-v2")]
+    Answer(serde_json::Value),
+    #[serde(rename = "answer-v3")]
+    AnswerChecked(serde_json::Value),
+    #[serde(rename = "cancel-v1")]
+    Cancel(serde_json::Value),
+    #[serde(rename = "rehearse-v1")]
+    Rehearse(serde_json::Value),
+    #[serde(rename = "retry-v1")]
+    Retry(serde_json::Value),
+}
+impl FrozenV35 {
+    fn payload(self) -> serde_json::Value {
+        match self {
+            Self::Launch(value)
+            | Self::LaunchChecked(value)
+            | Self::Answer(value)
+            | Self::AnswerChecked(value)
+            | Self::Cancel(value)
+            | Self::Rehearse(value)
+            | Self::Retry(value) => value,
+        }
+    }
+}
+#[test]
+fn old_request_decoder_rejects_removal_without_dispatching_an_effect() {
+    assert!(serde_json::from_value::<FrozenV35>(request()).is_err());
+    for tag in [
+        "launch-v1",
+        "launch-v2",
+        "answer-v2",
+        "answer-v3",
+        "cancel-v1",
+        "rehearse-v1",
+        "retry-v1",
+    ] {
+        let old: FrozenV35 =
+            serde_json::from_value(serde_json::json!({(tag):{"frozen":true}})).unwrap();
+        assert_eq!(old.payload(), serde_json::json!({"frozen":true}));
+    }
 }

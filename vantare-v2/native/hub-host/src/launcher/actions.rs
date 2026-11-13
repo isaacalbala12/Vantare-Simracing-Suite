@@ -213,7 +213,7 @@ mod tests {
         let before = Document::from_bytes(&bytes).expect("QA fixture");
         let id = &before.profiles[0].id;
         assert!(matches!(
-            remove(&path, id, &"0".repeat(64)),
+            duplicate(&path, id, &"0".repeat(64)),
             Err(HostError::LauncherConflict { .. })
         ));
         assert_eq!(
@@ -226,18 +226,18 @@ mod tests {
         assert_eq!(std::fs::read(path).expect("QA fixture"), bytes);
     }
     #[test]
-    fn removing_trigger_profile_clears_the_trigger_and_keeps_apps() {
+    fn legacy_removal_cannot_remove_the_trigger_profile_or_its_apps() {
         let (_root, path, bytes, revision) = fixture();
         let before = Document::from_bytes(&bytes).expect("QA fixture");
         let id = &before.profiles[0].id;
         trigger(&path, Some(id), &revision).expect("QA fixture");
         let revision = vantare_services::content_hash(&std::fs::read(&path).expect("QA fixture"));
-        remove(&path, id, &revision).expect("QA fixture");
+        assert_eq!(remove(&path, id, &revision), Err(HostError::Unsupported));
         let after =
             Document::from_bytes(&std::fs::read(path).expect("QA fixture")).expect("QA fixture");
         assert_eq!(after.apps, before.apps);
-        assert!(after.lmu_trigger_profile.is_none());
-        assert!(!after.profiles.iter().any(|profile| &profile.id == id));
+        assert_eq!(after.lmu_trigger_profile.as_ref(), Some(id));
+        assert!(after.profiles.iter().any(|profile| &profile.id == id));
     }
     #[test]
     fn protected_documents_are_never_created_or_rewritten_by_actions() {
@@ -252,9 +252,11 @@ mod tests {
                 std::fs::write(&path, bytes).expect("fixture");
             }
             let revision = "0".repeat(64);
-            assert_eq!(remove(&path, id, &revision), Err(HostError::Unsupported));
-        for result in [
+            assert_eq!(
                 remove(&path, "creator", &revision),
+                Err(HostError::Unsupported)
+            );
+            for result in [
                 duplicate(&path, "creator", &revision),
                 favorite(&path, "creator", false, &revision),
                 option(&path, "creator", ProfileOption::Startup(true), &revision),
@@ -364,7 +366,6 @@ mod tests {
         .unwrap();
         assert_eq!(remove(&path, id, &revision), Err(HostError::Unsupported));
         for result in [
-
             duplicate(&path, id, &revision),
             favorite(&path, id, false, &revision),
             option(&path, id, ProfileOption::Retries(3), &revision),
@@ -425,7 +426,14 @@ mod tests {
             Err(HostError::Denied)
         );
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
-        assert_eq!(remove(&path, &document.profiles[0].id, &vantare_services::content_hash(&bytes)), Err(HostError::Unsupported));
+        assert_eq!(
+            remove(
+                &path,
+                &document.profiles[0].id,
+                &vantare_services::content_hash(&bytes)
+            ),
+            Err(HostError::Unsupported)
+        );
         let after = Document::from_bytes(&std::fs::read(path).unwrap()).unwrap();
         assert_eq!(after.profiles.len(), 1);
         assert!(after.lmu_trigger_profile.is_none());

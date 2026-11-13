@@ -25,8 +25,8 @@ use vantare_ipc::launcher::{Decision, Registration, Request, Status, request_pat
 mod answer;
 mod checked;
 mod control;
-mod results;
 mod ownership;
+mod results;
 
 pub struct Resident {
     stop: Arc<AtomicBool>,
@@ -126,7 +126,9 @@ impl Resident {
             extension
                 .capabilities
                 .push(vantare_ipc::launcher::execution::Capability::StepResultsRetry);
-            extension.capabilities.push(vantare_ipc::launcher::execution::Capability::LiveProfileOwnership);
+            extension
+                .capabilities
+                .push(vantare_ipc::launcher::execution::Capability::LiveProfileOwnership);
         }
         let close_on_exit = Arc::clone(&owner.close_on_exit);
         let worker = thread::Builder::new()

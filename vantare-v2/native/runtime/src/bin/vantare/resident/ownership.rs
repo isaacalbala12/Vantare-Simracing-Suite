@@ -116,12 +116,6 @@ impl Owner {
         let mut registry = processes
             .try_lock()
             .map_err(|_| Rejection::OwnershipUnknown)?;
-        if registry
-            .has_profile(&request.profile)
-            .map_err(|_| Rejection::OwnershipUnknown)?
-        {
-            return Err(Rejection::OwnedLive);
-        }
         let observed = files::read(&self.path, files::MAX_DOCUMENT)
             .map_err(|_| Rejection::DocumentUnavailable)?;
         if vantare_services::content_hash(&observed) != request.revision {
@@ -129,6 +123,21 @@ impl Owner {
         }
         let mut document =
             Document::from_bytes(&observed).map_err(|_| Rejection::DocumentUnavailable)?;
+        let profiles: Vec<_> = document
+            .profiles
+            .iter()
+            .map(|profile| profile.id.clone())
+            .collect();
+        let live = registry
+            .live_profiles(&profiles)
+            .map_err(|_| Rejection::OwnershipUnknown)?;
+        let index = profiles
+            .iter()
+            .position(|profile| *profile == request.profile)
+            .ok_or(Rejection::DocumentUnavailable)?;
+        if live[index] {
+            return Err(Rejection::OwnedLive);
+        }
         document
             .remove_profile(&request.profile)
             .map_err(|_| Rejection::DocumentUnavailable)?;

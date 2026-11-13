@@ -1,7 +1,7 @@
 import {
   residentOrderRejections,
-  residentRemovalRejections,
   residentProfileIdLimit,
+  residentRemovalRejections,
   residentRunModes,
   residentStepLimit,
   residentStepStates,
@@ -105,11 +105,19 @@ export function isResidentOutcome(value: unknown): boolean {
 }
 function isRemovalReceipt(value: unknown): boolean {
   if (!record(value)) return false;
-  return value.kind === "accepted" ? exact(value,["kind"]) : value.kind === "rejected" && exact(value,["kind","reason"]) && oneOf(value.reason,residentRemovalRejections);
+  return value.kind === "accepted"
+    ? exact(value, ["kind"])
+    : value.kind === "rejected" &&
+        exact(value, ["kind", "reason"]) &&
+        oneOf(value.reason, residentRemovalRejections);
 }
 function isRemovalOutcome(value: unknown): boolean {
   if (!record(value)) return false;
-  return value.kind === "removed" ? exact(value,["kind","revision"]) && hex(value.revision,64) : value.kind === "failed" && exact(value,["kind","reason"]) && oneOf(value.reason,residentRemovalRejections);
+  return value.kind === "removed"
+    ? exact(value, ["kind", "revision"]) && hex(value.revision, 64)
+    : value.kind === "failed" &&
+        exact(value, ["kind", "reason"]) &&
+        oneOf(value.reason, residentRemovalRejections);
 }
 function event(value: unknown): boolean {
   if (
@@ -120,8 +128,18 @@ function event(value: unknown): boolean {
   )
     return false;
   const kind = value.kind;
-  if (kind.kind === "removal-received") return exact(kind,["kind","request","receipt"]) && hex(kind.request,32) && isRemovalReceipt(kind.receipt);
-  if (kind.kind === "removal-finished") return exact(kind,["kind","request","outcome"]) && hex(kind.request,32) && isRemovalOutcome(kind.outcome);
+  if (kind.kind === "removal-received")
+    return (
+      exact(kind, ["kind", "request", "receipt"]) &&
+      hex(kind.request, 32) &&
+      isRemovalReceipt(kind.receipt)
+    );
+  if (kind.kind === "removal-finished")
+    return (
+      exact(kind, ["kind", "request", "outcome"]) &&
+      hex(kind.request, 32) &&
+      isRemovalOutcome(kind.outcome)
+    );
   const valueSeq = value.seq;
   const run = (value: unknown) =>
     decimal(value) && BigInt(value) <= BigInt(valueSeq);

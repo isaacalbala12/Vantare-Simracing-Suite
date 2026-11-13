@@ -77,10 +77,9 @@ pub enum ResidentRemovalRejection {
     OwnedLive,
     WriteConflict,
     Io,
-    Unavailable,
 }
 impl ResidentRemovalRejection {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 11] = [
         Self::WrongInstance,
         Self::AccountChanged,
         Self::AuthorityUnavailable,
@@ -92,7 +91,6 @@ impl ResidentRemovalRejection {
         Self::OwnedLive,
         Self::WriteConflict,
         Self::Io,
-        Self::Unavailable,
     ];
 }
 impl From<wire::RemovalRejection> for ResidentRemovalRejection {
@@ -109,7 +107,6 @@ impl From<wire::RemovalRejection> for ResidentRemovalRejection {
             wire::RemovalRejection::OwnedLive => Self::OwnedLive,
             wire::RemovalRejection::WriteConflict => Self::WriteConflict,
             wire::RemovalRejection::Io => Self::Io,
-            wire::RemovalRejection::Unavailable => Self::Unavailable,
         }
     }
 }
@@ -181,7 +178,12 @@ pub(crate) fn remove(
 ) -> Result<super::ResidentQueued, HostError> {
     remove_with_clock(path, current, target, vantare_ipc::control::wall_ms)
 }
-fn remove_with_clock(path: &Path, current: Option<&AccountObservation>, target: &ResidentRemoveTarget, now: impl FnOnce() -> std::io::Result<u64>) -> Result<super::ResidentQueued, HostError> {
+fn remove_with_clock(
+    path: &Path,
+    current: Option<&AccountObservation>,
+    target: &ResidentRemoveTarget,
+    now: impl FnOnce() -> std::io::Result<u64>,
+) -> Result<super::ResidentQueued, HostError> {
     let (status, instance) = super::control::status(
         path,
         &target.instance,

@@ -228,7 +228,14 @@ fn stale_scopes_busy_missing_terminal_and_no_failed_steps_are_closed_rejections(
                 OrderRejection::UnknownRun
             }
             7 => {
-                f.status.extension.as_mut().unwrap().results.as_mut().unwrap().retry_failed = false;
+                f.status
+                    .extension
+                    .as_mut()
+                    .unwrap()
+                    .results
+                    .as_mut()
+                    .unwrap()
+                    .retry_failed = false;
                 f.status
                     .extension
                     .as_mut()

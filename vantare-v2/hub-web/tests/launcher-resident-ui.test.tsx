@@ -28,7 +28,7 @@ const view: ResidentView = {
       { id: "cancel", label: residentActionLabels.cancel },
     ],
   },
-  ownership: {kind: "unsupported"},
+  ownership: { kind: "unsupported" },
   registrations: [],
 };
 afterEach(cleanup);

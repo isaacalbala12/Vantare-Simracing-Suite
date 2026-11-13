@@ -408,3 +408,31 @@ fn a_results_summary_is_discarded_by_the_frozen_decoder_without_losing_legacy_st
             .is_some()
     );
 }
+
+#[test]
+fn frozen_legacy_status_preserves_base_when_ownership_is_added() {
+    use vantare_ipc::launcher::ownership::{Ownership, ProfileOwnership};
+    let mut current = status();
+    let mut ext = extension();
+    ext.capabilities.push(Capability::LiveProfileOwnership);
+    ext.ownership = Some(Ownership::Known {
+        revision: "b".repeat(64),
+        profiles: vec![ProfileOwnership {
+            profile: "qa".into(),
+            owned_live: true,
+        }],
+    });
+    current.extension = Some(ext);
+    let bytes = launcher::status_bytes(&current).unwrap();
+    let old: frozen::Extended = serde_json::from_slice(&bytes).unwrap();
+    assert!(old.extension.is_none());
+    assert_eq!(old.legacy.running, current.running);
+    assert_eq!(old.legacy.version, current.version);
+    assert_eq!(old.legacy.decision.unwrap().id, 42);
+    assert!(
+        serde_json::from_slice::<launcher::Status>(&bytes)
+            .unwrap()
+            .extension
+            .is_some()
+    );
+}

@@ -519,6 +519,14 @@
   .v-home-hero {
     height: 200px;
   }
+  /* GPUI foundations.rs: !adapt.show_optional() uses 38/40 and no subtitle. */
+  .v-home-hero h1 {
+    font-size: 38px;
+    line-height: 40px;
+  }
+  .v-home-hero-description {
+    display: none;
+  }
   .v-home-chips,
   .v-home-metrics {
     display: none;

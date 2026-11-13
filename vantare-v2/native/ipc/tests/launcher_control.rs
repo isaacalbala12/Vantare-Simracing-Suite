@@ -103,7 +103,7 @@ fn control_payloads_are_closed_and_reject_unsafe_or_noncanonical_inputs() {
         assert!(serde_json::from_value::<Request>(value).is_err());
     }
     for bad in [
-        "".to_owned(),
+        String::new(),
         "x".repeat(257),
         "é".repeat(129),
         "bad\0id".into(),

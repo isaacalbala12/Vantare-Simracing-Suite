@@ -201,6 +201,14 @@ impl Cancellation {
     pub fn cancelled(&self) -> bool {
         self.stopped.lock().map_or(true, |guard| *guard)
     }
+    /// Commit to finalization while taking the last cancellation snapshot.
+    /// Cleanup can still ask a closing question, but no new cancellation is accepted.
+    fn commit_terminal(&self) -> bool {
+        let stopped = self.stopped.lock();
+        let cancelled = stopped.as_ref().map_or(true, |guard| **guard);
+        self.finished.store(true, Ordering::Release);
+        cancelled
+    }
     fn wait(&self, delay: Duration) -> bool {
         let Ok(stopped) = self.stopped.lock() else {
             return true;
@@ -211,16 +219,11 @@ impl Cancellation {
     }
 }
 
-/// Serializes normal completion (and unwinding) against checked cancellation.
+/// Fallback for unwinding before the normal terminal commitment.
 struct Completion(Arc<Cancellation>);
 impl Drop for Completion {
     fn drop(&mut self) {
-        let _guard = self
-            .0
-            .stopped
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        self.0.finished.store(true, Ordering::Release);
+        self.0.commit_terminal();
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -697,7 +700,8 @@ fn run_with(
             message,
             false,
         );
-        return if context.cancel.cancelled() || context.trust_declined.load(Ordering::Acquire) {
+        return if context.cancel.commit_terminal() || context.trust_declined.load(Ordering::Acquire)
+        {
             ChainOutcome::Cancelled {
                 reason: cancellation_reason(context),
             }
@@ -947,7 +951,7 @@ fn run_pass_with(
 fn finish(profile: &Profile, context: &RunContext, success: bool) -> ChainOutcome {
     let cancel = &context.cancel;
     let sender = &context.sender;
-    let cancelled = cancel.cancelled();
+    let cancelled = cancel.commit_terminal();
     let mut cleanup_failed = false;
     if cancelled
         && !cancel.shutdown.load(Ordering::Acquire)

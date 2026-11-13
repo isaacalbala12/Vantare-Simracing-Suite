@@ -2,27 +2,30 @@
 use super::*;
 use std::sync::Barrier;
 #[test]
-fn cancel_checked_and_completion_have_a_single_ordering_even_before_the_join_finishes() {
-    for before_completion in [false, true] {
-        let f = fixture();
-        let cancelled = Arc::new(Cancellation::default());
+fn cancel_checked_is_ordered_with_the_real_terminal_before_the_worker_exits() {
+    for (before_completion, imported) in
+        [(false, false), (true, false), (false, true), (true, true)]
+    {
+        let mut f = fixture();
+        f.profile.imported = imported;
+        let cancelled = Arc::clone(&f.context.cancel);
         let worker_cancel = Arc::clone(&cancelled);
         let phases = Arc::new(Barrier::new(2));
         let worker_phases = Arc::clone(&phases);
         let worker = thread::spawn(move || {
-            let completion = Completion(Arc::clone(&worker_cancel));
+            let _completion = Completion(Arc::clone(&worker_cancel));
             worker_phases.wait();
             worker_phases.wait();
-            drop(completion);
+            let outcome = run_with(
+                &f.profile,
+                &f.context,
+                || Err("synthetic review failure".into()),
+                || true,
+                |_| panic!("no retry for a successful pass or failed review"),
+            );
             worker_phases.wait();
             worker_phases.wait();
-            if worker_cancel.cancelled() {
-                ChainOutcome::Cancelled {
-                    reason: CancelReason::User,
-                }
-            } else {
-                ChainOutcome::Completed
-            }
+            outcome
         });
         let mut chain = Chain {
             progress: f.events,
@@ -45,9 +48,11 @@ fn cancel_checked_and_completion_have_a_single_ordering_even_before_the_join_fin
         };
         phases.wait();
         phases.wait();
+        let still_running = !chain.finished();
         let late = chain.cancel_checked();
         phases.wait();
         chain.collect();
+        assert!(still_running, "the terminal was decided before thread exit");
         if before_completion {
             assert_eq!(early, Some(Ok(())));
             assert_eq!(repeated, Some(Ok(())));
@@ -58,6 +63,10 @@ fn cancel_checked_and_completion_have_a_single_ordering_even_before_the_join_fin
             Some(if before_completion {
                 ChainOutcome::Cancelled {
                     reason: CancelReason::User,
+                }
+            } else if imported {
+                ChainOutcome::Failed {
+                    reason: ChainFailure::Internal,
                 }
             } else {
                 ChainOutcome::Completed

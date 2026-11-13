@@ -131,6 +131,13 @@ Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
 CheckedControl. Draft #2291 abierto; tipos v34 generados y entregados a D; CI pendiente.
 El microplan aprobado vive en evidence/hub-web/nucleo-launcher-ordenes/MICROPLAN.md.
 
+Revisión de #2291: el terminal se compromete bajo el lock de cancelación dentro
+del pipeline, antes de salir el hilo; cancelar después se rechaza. El test usa
+run_with real con barreras, también para fallo de revisión de un importado.
+El ensayo filtra app_id != "lmu" exacto, sensible a mayúsculas, como GPUI.
+Leave/Started/Ask y CleanupFailed se apoyan en los tests heredados de tests.rs
+y chain/outcome_tests.rs. El segundo gate llegó a Clippy y señaló String::new
+en un test nuevo: corregido. Nueva validación nativa aún pendiente de cola/CI.
 El Hub puede pedir cancelar la ejecución observada o probar un perfil sin sus
 pasos LMU. El residente comprueba instancia, cuenta y revisión, y aplica la orden.
 Cancelar respeta las políticas de cierre y puede plantear una pregunta L53;

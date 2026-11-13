@@ -71,9 +71,13 @@ $start = [Diagnostics.ProcessStartInfo]::new($binary)
 $start.UseShellExecute = $false
 $start.RedirectStandardInput = $true
 $start.WorkingDirectory = $bankRoot
-$calendarSpec = if ($Scene -eq 'calendario-eventos-contraida') { 'state=ok;view=eventos' } else { $null }
+$calendarViews = @{'calendario-r6-proximas'='proximas';'calendario-r6-mias'='mias';'calendario-r6-semana'='semana';'calendario-r6-mes'='mes';'calendario-eventos-contraida'='eventos'}
+$calendarView = $calendarViews[$Scene]
+$calendarSpec = if ($calendarView) { "state=ok;view=$calendarView" } else { $null }
 if ($calendarSpec) { $start.Environment['VANTARE_CAPTURE_CALENDAR'] = $calendarSpec }
-$nativeScene = if ($gate -or $emailScene) { 'ajustes-privacidad' } elseif ($Scene -in @('roadmap-tablero','roadmap-temporada')) { 'roadmap-base' } elseif ($Scene -eq 'ajustes-cuenta') { 'ajustes-perfil' } elseif ($Scene -eq 'calendario-eventos-contraida') { 'calendario-base' } else { $Scene }
+# R6 capture names force the sidebar by width on every frame. The same public
+# calendar capture fixture on calendario-base preserves the requested sidebar.
+$nativeScene = if ($calendarSpec) { 'calendario-base' } elseif ($gate -or $emailScene) { 'ajustes-privacidad' } elseif ($Scene -in @('roadmap-tablero','roadmap-temporada')) { 'roadmap-base' } elseif ($Scene -eq 'ajustes-cuenta') { 'ajustes-perfil' } else { $Scene }
 foreach ($argument in @('--qa-root',$run,'--capture',$nativeScene,'--qa-size',"${Width}x${Height}",'--qa-catalog','pro','--qa-appearance',(Join-Path $bankRoot "appearance-$Theme.json"),'--control-stdin')) { $start.ArgumentList.Add($argument) }
 if ($gate) {
     $start.ArgumentList.Add('--qa-measure')
@@ -131,8 +135,8 @@ try {
     } while ($true)
     $repliesHash = (Get-FileHash -LiteralPath $replies -Algorithm SHA256).Hash.ToLowerInvariant()
     $pngHash = (Get-FileHash -LiteralPath $Output -Algorithm SHA256).Hash.ToLowerInvariant()
-    [ordered]@{scene=$Scene;theme=$Theme;size=@($Width,$Height);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;qa_measure=$gate;qa_email=$emailScene;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
-    $inputs = [ordered]@{scene=$Scene;appearance="vantare-$Theme";size=@($Width,$Height);zoom=100;bank=$inventory.sha256;replies=$repliesHash} | ConvertTo-Json -Compress
+    [ordered]@{scene=$Scene;native_scene=$nativeScene;calendar_spec=$calendarSpec;theme=$Theme;size=@($Width,$Height);bank_sha256=$inventory.sha256;source_commit=$inventory.source_commit;qa_root=$run;pid=$process.Id;tester=$testing;qa_measure=$gate;qa_email=$emailScene;palette='vantare';zoom=100;dpi=96;replies_sha256=$repliesHash;png_sha256=$pngHash} | ConvertTo-Json | Set-Content -LiteralPath "$Output.bank.json" -Encoding utf8
+    $inputs = [ordered]@{scene=$Scene;native_scene=$nativeScene;calendar_spec=$calendarSpec;appearance="vantare-$Theme";size=@($Width,$Height);zoom=100;bank=$inventory.sha256;replies=$repliesHash} | ConvertTo-Json -Compress
     $inputHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($inputs))).ToLowerInvariant()
     $receiptHash = & node --experimental-strip-types (Join-Path $PSScriptRoot 'reference-receipt.ts') $Output
     if ($LASTEXITCODE -ne 0 -or $receiptHash -cnotmatch '^[0-9a-f]{64}$') { throw "No se pudo calcular el recibo nativo: $Output" }

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { PNG } from "pngjs";
 import { compareImages } from "./visual-diff/image.ts";
 import { referenceReceiptHash } from "./visual-diff/reference-hash.ts";
+import { validateReferenceState } from "./visual-diff/reference-state.ts";
 
 const root = process.argv[2];
 if (!root)
@@ -67,6 +68,29 @@ for (const [index, { screen, scene }] of scenes.entries()) {
             : JSON.parse(await readFile(`${reference}.capture.json`, "utf8"));
           if (receipt && receipt.png !== referenceReceiptHash(original))
             throw new Error("Recibo de referencia incorrecto");
+          if (!scene.startsWith("studio-")) {
+            const template = await readFile(
+              join(
+                root,
+                "referencias",
+                size,
+                theme,
+                `ajustes-aplicacion-${side}.png`,
+              ),
+            );
+            const bank = JSON.parse(
+              await readFile(`${reference}.bank.json`, "utf8").catch(
+                () => "null",
+              ),
+            );
+            validateReferenceState(
+              scene,
+              original,
+              template,
+              expanded,
+              bank ?? undefined,
+            );
+          }
           const result = compareImages(original, candidate);
           await mkdir(destination, { recursive: true });
           await writeFile(join(destination, "diff.png"), result.diff);

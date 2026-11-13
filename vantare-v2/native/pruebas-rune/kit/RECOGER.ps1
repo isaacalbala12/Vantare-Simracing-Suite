@@ -57,7 +57,8 @@ try {
         $entry = $check.GetEntry('resultados/' + $item.path)
         if (-not $entry -or $entry.Length -ne $item.bytes) { throw 'El zip no reproduce todos los archivos.' }
         $input = $entry.Open()
-        try { $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($input)).ToLowerInvariant() } finally { $input.Dispose() }
+        $algorithm = [Security.Cryptography.SHA256]::Create()
+        try { $digest = [BitConverter]::ToString($algorithm.ComputeHash($input)).Replace('-','').ToLowerInvariant() } finally { $algorithm.Dispose(); $input.Dispose() }
         if ($digest -ne $item.sha256) { throw "Hash del zip incorrecto: $($item.path)" }
     }
 } finally { $check.Dispose() }

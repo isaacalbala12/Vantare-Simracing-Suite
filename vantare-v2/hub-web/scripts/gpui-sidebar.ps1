@@ -1,4 +1,4 @@
-param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[ValidateRange(0,1439)][int]$ClientX=38,[ValidateRange(0,899)][int]$ClientY=724)
+param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[ValidateRange(0,1439)][int]$ClientX=38,[ValidateRange(0,899)][int]$ClientY=724,[int]$Width=1440,[int]$Height=900)
 $ErrorActionPreference='Stop'
 $process=Get-Process -Id $ProcessId
 if ([IO.Path]::GetFullPath($process.Path) -ne [IO.Path]::GetFullPath($Executable)) { throw 'Unexpected bank executable' }
@@ -13,11 +13,11 @@ public static class GpuiSidebar {
  [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr window,out Rect rect);
  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
  [DllImport("user32.dll",SetLastError=true)] static extern bool PostMessageW(IntPtr window,uint message,UIntPtr wparam,IntPtr lparam);
- public static long Toggle(uint process,int x,int y) {
+ public static long Toggle(uint process,int x,int y,int width,int height) {
   IntPtr found=IntPtr.Zero;
-  Visitor visitor=(window,data)=>{ uint pid; Rect rect; GetWindowThreadProcessId(window,out pid); if(pid==process && GetClientRect(window,out rect) && rect.Right==1440 && rect.Bottom==900) { found=window; return false; } return true; };
+  Visitor visitor=(window,data)=>{ uint pid; Rect rect; GetWindowThreadProcessId(window,out pid); if(pid==process && GetClientRect(window,out rect) && rect.Right==width && rect.Bottom==height) { found=window; return false; } return true; };
   EnumWindows(visitor,IntPtr.Zero); GC.KeepAlive(visitor);
-  if(found==IntPtr.Zero) throw new InvalidOperationException("QA 1440x900 bank HWND missing");
+  if(found==IntPtr.Zero) throw new InvalidOperationException("QA bank HWND missing at requested size");
   IntPtr point=new IntPtr((y<<16)|x);
   foreach(uint message in new uint[]{0x200,0x201,0x202}) if(!PostMessageW(found,message,new UIntPtr(message==0x201 ? 1u:0u),point)) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
   if(!PostMessageW(found,0x200,UIntPtr.Zero,new IntPtr((890<<16)|1000))) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
@@ -26,7 +26,7 @@ public static class GpuiSidebar {
 }
 '@
 $foreground=[GpuiSidebar]::GetForegroundWindow()
-$window=[GpuiSidebar]::Toggle([uint32]$ProcessId,$ClientX,$ClientY)
+$window=[GpuiSidebar]::Toggle([uint32]$ProcessId,$ClientX,$ClientY,$Width,$Height)
 if (-not $process.WaitForInputIdle(10000)) { throw 'Bank input loop timed out' }
 if ([GpuiSidebar]::GetForegroundWindow() -ne $foreground) { throw 'Foreground changed unexpectedly' }
 @{pid=$ProcessId;hwnd=$window;client=@($ClientX,$ClientY);foreground_unchanged=$true} | ConvertTo-Json -Compress

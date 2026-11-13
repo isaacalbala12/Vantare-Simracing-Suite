@@ -41,7 +41,9 @@ assert.ok(
   (await stat(captureLock)).isDirectory(),
   "Acquire the global capture lock before launching the prototype viewer",
 );
-const dimensions = size === "1280" ? [1280, 720] : [1440, 900];
+const height = Number(option("--height", size === "1280" ? "720" : "900"));
+assert.ok(Number.isInteger(height) && height >= 480 && height <= 2160);
+const dimensions = [size === "1280" ? 1280 : 1440, height];
 const require = createRequire(import.meta.url);
 // Resolve without requiring electron/index.js: that module silently installs a
 // missing binary. Capture tooling must only use an already installed runtime.
@@ -136,8 +138,7 @@ try {
   );
   // The prototype toolbar is outside the application's window, not part of it.
   await page.addStyleTag({
-    content:
-      ".mq{display:none!important}.win{margin:0!important;box-shadow:none!important}body{min-width:0!important}",
+    content: `.mq{display:none!important}.win{--wh:${height}px!important;margin:0!important;box-shadow:none!important}body{min-width:0!important}`,
   });
   const fontCss = await readFile(
     resolve("src/renderer/design/fonts.css"),

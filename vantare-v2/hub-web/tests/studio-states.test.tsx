@@ -167,10 +167,12 @@ describe("Studio A honest states", () => {
         screen.getByRole("button", { name: t.show }).hasAttribute("disabled"),
       ).toBe(true);
       if (scene === "studio-a-protegido") {
+        expect(screen.getByText(t.overlaysCount(4))).toBeTruthy();
         const row = await listRow("Standings");
         fireEvent.keyDown(row, { key: " " });
         fireEvent.keyDown(row, { key: "Delete" });
       } else {
+        expect(screen.queryByText(t.overlaysCount(0))).toBeNull();
         expect(
           screen.queryAllByRole("button", { name: /^Standings, / }),
         ).toHaveLength(0);

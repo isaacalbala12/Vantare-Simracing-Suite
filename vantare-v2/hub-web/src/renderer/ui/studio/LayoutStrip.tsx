@@ -32,7 +32,8 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
       </header>
       <StudioSaveStatus model={model} />
       <div className="v-focus-list-heading">
-        {view?.state === "ready" && (
+        {(view?.state === "ready" ||
+          (view?.state === "protected" && view.instances.length > 0)) && (
           <>
             <span>{t.overlaysCount(view.instances.length)}</span>
             {view.instances.length > 0 && (

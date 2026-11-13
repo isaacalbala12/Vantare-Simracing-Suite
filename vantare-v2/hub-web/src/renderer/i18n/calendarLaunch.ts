@@ -4,6 +4,7 @@ import {
   calendarLaunchLeadMs,
 } from "../../contract/generated/calendar";
 export const calendarLaunchText = {
+  autoHelp: `Lanza ${calendarLaunchLeadMs / 60000} min antes de tus salidas con aviso, solo mientras el Hub est\u00e1 abierto.`,
   onlyOpen: "Funciona solo mientras el Hub está abierto.",
   ask: "Este perfil puede necesitar tu decisión. Si no respondes, esa petición caduca a los 2 min.",
   armed: (profile: string, time: string) =>

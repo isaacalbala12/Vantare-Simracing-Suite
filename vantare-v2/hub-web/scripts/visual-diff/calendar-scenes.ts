@@ -220,23 +220,44 @@ async function checkExpandedCalendarWeek(page: Page) {
 
 export const calendarScenes: Record<string, VisualScene> = {
   "calendario-lanzamiento-armado": {
-    mock:"calendar-launch-reference",
-    async prepare(page){
+    mock: "calendar-launch-reference",
+
+    async prepare(page) {
       await calendarScenes["calendario-proximas-contraida"].prepare(page);
-      await page.getByRole("button",{name:/Lanzar a las/u}).click();
+
+      await page.getByRole("button", { name: /Lanzar a las/u }).click();
+
       await page.getByText(/lanzamiento programado a las/u).waitFor();
-      await page.getByText("Funciona solo mientras el Hub est· abierto.").waitFor();
-      await page.mouse.move(600,890);
+
+      await page
+        .getByText("Funciona solo mientras el Hub est√° abierto.")
+        .first()
+        .waitFor();
+
+      await page.mouse.move(600, 890);
     },
   },
+
   "calendario-lanzamiento-avisos": {
-    mock:"calendar-launch-reference",
-    async prepare(page){
+    mock: "calendar-launch-reference",
+
+    async prepare(page) {
       await calendarScenes["calendario-avisos-contraida"].prepare(page);
-      await page.getByRole("switch",{name:/Lanzar .* autom·ticamente/u}).click();
-      await page.getByRole("switch",{name:/Lanzar .* autom·ticamente/u,checked:true}).waitFor();
+
+      await page
+        .getByRole("switch", { name: /Lanzar .* autom√°ticamente/u })
+        .click();
+
+      await page
+        .getByRole("switch", {
+          name: /Lanzar .* autom√°ticamente/u,
+          checked: true,
+        })
+        .waitFor();
+
       await assertDetailWindowControls(page);
-      await page.mouse.move(600,890);
+
+      await page.mouse.move(600, 890);
     },
   },
 

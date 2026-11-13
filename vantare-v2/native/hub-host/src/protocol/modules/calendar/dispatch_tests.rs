@@ -1036,3 +1036,51 @@ fn calendar_general_off_then_on_never_catches_up_a_departure_from_the_disabled_i
     ));
     assert_eq!(session.core.requests, 0);
 }
+
+#[test]
+fn calendar_launch_requests_cannot_bypass_calendar_rights_or_an_observed_account() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let arm = Request::CalendarLaunchArm {
+        profile: "qa".into(),
+        base_revision: "a".repeat(64),
+        armed_generation: "b".repeat(64),
+        mode: crate::calendar::CalendarLaunchMode::Alerts {
+            expected_revision: "c".repeat(64),
+        },
+    };
+    for request in [
+        &arm,
+        &Request::CalendarLaunchCancel {
+            arm_id: "d".repeat(64),
+        },
+    ] {
+        let mut pipe = Pipe::new(Vec::new());
+        session.request(&mut pipe, 90, request).unwrap();
+        assert_eq!(
+            response(&mut pipe),
+            HostToUi::Failure {
+                id: 90,
+                error: HostError::Denied
+            }
+        );
+    }
+    session.current.rights = protocol::LinkState::Connected;
+    session.current.access.verified = true;
+    session.current.access.calendar = true;
+    session.current.account_generation = Some("b".repeat(64));
+    let mut pipe = Pipe::new(Vec::new());
+    session.request(&mut pipe, 91, &arm).unwrap();
+    assert_eq!(
+        response(&mut pipe),
+        HostToUi::Failure {
+            id: 91,
+            error: HostError::CoreUnavailable
+        }
+    );
+    assert_eq!(
+        session.calendar_launch.view(),
+        crate::calendar::CalendarLaunchView::default()
+    );
+    assert_eq!(session.core.requests, 0);
+}

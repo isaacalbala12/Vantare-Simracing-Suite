@@ -7,6 +7,7 @@ import type {
 import { calendarLaunchLeadMs } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText as text } from "../i18n/calendar";
+import { calendarLaunchText } from "../i18n/calendarLaunch";
 import {
   alertAt,
   board,
@@ -388,9 +389,15 @@ export function CalendarLiveView({
                 className="v-calendar-launch-pending"
                 aria-describedby={launchPendingId}
                 title={armDisabledReason ?? calendarLaunchText.onlyOpen}
-                disabled={!onArm || !!armDisabledReason || hero.at - calendarLaunchLeadMs < now}
+                disabled={
+                  !onArm ||
+                  !!armDisabledReason ||
+                  hero.at - calendarLaunchLeadMs < now
+                }
                 aria-disabled={armBusy}
-                onClick={() => { if (!armBusy) onArm?.(hero.series.id, hero.at); }}
+                onClick={() => {
+                  if (!armBusy) onArm?.(hero.series.id, hero.at);
+                }}
               >
                 <Icon name="clock" />
                 {text.launchAt(clock(hero.at - calendarLaunchLeadMs, utc))}

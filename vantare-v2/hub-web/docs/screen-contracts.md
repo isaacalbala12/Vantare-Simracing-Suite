@@ -564,27 +564,26 @@ El reloj fijo del selector QA se declara en main sin importar el mock ni el corp
 
 Pendientes deliberados de Isaac: si el archivo desaparece entre EEXIST y la huella, el motivo exacto requiere una variante cerrada nueva; se conserva el error actual, sin ampliar el contrato por esta carrera infrecuente. El di谩logo tampoco recibe nombre base ni ruta. Ambos quedan fuera de este seguimiento.
 
-
 ### Calendario: armado de lanzamientos (wire v32)
 
 `calendar.launchArm` fija el perfil, `baseRevision` y `armedGeneration` observados.
 El modo `once` solo acepta serie y salida del horario vigente; `alerts` exige la
-revisi髇 CAS de `calendar-alerts.json` y conserva sus dem醩 campos. El host crea un
+revisi贸n CAS de `calendar-alerts.json` y conserva sus dem谩s campos. El host crea un
 `armId` aleatorio opaco. `calendar.launchCancel` solo recibe ese identificador.
-El tema `calendarLaunch` entrega una instant醤ea al suscribirse y los cambios
+El tema `calendarLaunch` entrega una instant谩nea al suscribirse y los cambios
 posteriores. No contiene rutas, argumentos ni comandos.
 
-Solo hay una programaci髇 puntual en memoria; sustituirla cancela la anterior.
-El modo autom醫ico requiere activaci髇 en esta sesi髇, aunque la preferencia siga
-guardada de una sesi髇 anterior. Ambos funcionan 鷑icamente con el Hub abierto.
-El tick compara reloj de pared y monot髇ico, consume cada intenci髇 antes del env韔
-y llama al mismo `launchChecked` que el Launcher con la generaci髇 capturada.
-Cambio de cuenta/derechos, pista, desconexi髇, cierre, reinicio del residente o
+Solo hay una programaci贸n puntual en memoria; sustituirla cancela la anterior.
+El modo autom谩tico requiere activaci贸n en esta sesi贸n, aunque la preferencia siga
+guardada de una sesi贸n anterior. Ambos funcionan 煤nicamente con el Hub abierto.
+El tick compara reloj de pared y monot贸nico, consume cada intenci贸n antes del env铆o
+y llama al mismo `launchChecked` que el Launcher con la generaci贸n capturada.
+Cambio de cuenta/derechos, pista, desconexi贸n, cierre, reinicio del residente o
 salto de reloj desarman las intenciones. Un perfil modificado no se lanza.
-Cancelar una intenci髇 no cancela una cadena que el residente ya ha recibido.
+Cancelar una intenci贸n no cancela una cadena que el residente ya ha recibido.
 
-`queued` solo confirma el env韔 al buz髇. `running` exige recibo de aceptaci髇;
-`finished` exige un resultado correlacionado con esa ejecuci髇. Sin recibo, con
-hueco en el anillo o reinicio del residente se publica `unknown`, sin reenv韔.
-Los perfiles con pol韙icas Ask avisan de que requieren decisi髇 y pueden caducar
+`queued` solo confirma el env铆o al buz贸n. `running` exige recibo de aceptaci贸n;
+`finished` exige un resultado correlacionado con esa ejecuci贸n. Sin recibo, con
+hueco en el anillo o reinicio del residente se publica `unknown`, sin reenv铆o.
+Los perfiles con pol铆ticas Ask avisan de que requieren decisi贸n y pueden caducar
 a los dos minutos. Sin capacidad revisionCheckedLaunch no hay fallback legado.

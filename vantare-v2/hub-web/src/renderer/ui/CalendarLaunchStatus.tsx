@@ -90,6 +90,9 @@ export function CalendarLaunchStatus({
           }
         >
           {latest?.profileName}
+          {(progress?.kind === "queued" ||
+            progress?.kind === "running" ||
+            progress?.kind === "unknown") && <p>{text.sentCannotCancel}</p>}
         </Callout>
       )}
     </>

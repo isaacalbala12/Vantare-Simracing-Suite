@@ -318,3 +318,13 @@ it("keeps the test focusable and inoperative during cooldown", () => {
   fireEvent.click(button);
   expect(onTest).not.toHaveBeenCalled();
 });
+
+it("arms automatic launch through the dedicated host control, preserving stored values until acknowledgment",()=>{
+ const onChange=vi.fn();const h=show({...props,launchControl:{armed:false,busy:false,onChange},windowsDisabledReason:"Windows apagado"});
+ const toggle=screen.getByRole("switch",{name:text.auto("Carrera LMU")});expect(toggle).toHaveProperty("disabled",false);fireEvent.click(toggle);expect(onChange).toHaveBeenCalledWith(true);expect(props.onChange).not.toHaveBeenCalled();
+ h.rerender(<TooltipProvider><CalendarAlertsDialog {...props} launchControl={{armed:false,busy:true,onChange}}/></TooltipProvider>);fireEvent.click(screen.getByRole("switch",{name:text.auto("Carrera LMU")}));expect(onChange).toHaveBeenCalledOnce();
+});
+it("does not arm an unsupported resident and still allows cancellation of an existing binding",()=>{
+ const onChange=vi.fn();const h=show({...props,launchControl:{armed:false,busy:false,reason:"Residente no compatible",onChange}});const toggle=screen.getByRole("switch",{name:text.auto("Carrera LMU")});expect(toggle).toHaveProperty("disabled",true);fireEvent.click(toggle);expect(onChange).not.toHaveBeenCalled();
+ h.rerender(<TooltipProvider><CalendarAlertsDialog {...props} launchControl={{armed:true,busy:false,reason:"Ocupado",onChange}}/></TooltipProvider>);fireEvent.click(screen.getByRole("switch",{name:text.auto("Carrera LMU")}));expect(onChange).toHaveBeenCalledWith(false);
+});

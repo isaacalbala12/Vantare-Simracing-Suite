@@ -524,6 +524,11 @@ fn launch_types(text: &mut String) {
     );
     constants!(
         text,
+        "calendarLaunchRequestIdLength",
+        crate::calendar::launch_types::REQUEST_ID_LENGTH
+    );
+    constants!(
+        text,
         "calendarLaunchStops",
         [
             "user",

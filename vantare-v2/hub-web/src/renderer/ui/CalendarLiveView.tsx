@@ -387,14 +387,16 @@ export function CalendarLiveView({
               <Button
                 className="v-calendar-launch-pending"
                 aria-describedby={launchPendingId}
-                title={text.launchPending}
-                disabled
+                title={armDisabledReason ?? calendarLaunchText.onlyOpen}
+                disabled={!onArm || !!armDisabledReason || hero.at - calendarLaunchLeadMs < now}
+                aria-disabled={armBusy}
+                onClick={() => { if (!armBusy) onArm?.(hero.series.id, hero.at); }}
               >
                 <Icon name="clock" />
                 {text.launchAt(clock(hero.at - calendarLaunchLeadMs, utc))}
               </Button>
               <span className="v-sr-only" id={launchPendingId}>
-                {text.launchPending}
+                {armDisabledReason ?? calendarLaunchText.onlyOpen}
               </span>
             </div>
           </div>

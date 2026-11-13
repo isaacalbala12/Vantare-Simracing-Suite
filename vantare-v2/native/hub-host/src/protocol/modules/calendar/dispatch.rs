@@ -231,7 +231,7 @@ fn notice_test(session: &mut Session, pipe: &mut Pipe, id: u32) -> io::Result<()
             },
         );
     }
-    return match session.calendar_state.notice_test(
+    match session.calendar_state.notice_test(
         id,
         chrono::Utc::now().timestamp_millis(),
         std::time::Instant::now(),
@@ -254,5 +254,5 @@ fn notice_test(session: &mut Session, pipe: &mut Pipe, id: u32) -> io::Result<()
             )
         }
         Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
-    };
+    }
 }

@@ -467,3 +467,77 @@ fn closing_explicitly_removes_all_intentions_without_claiming_to_cancel_an_accep
         }
     ));
 }
+
+#[test]
+fn invalid_modes_and_additional_fields_never_enter_the_scheduler() {
+    for value in [
+        serde_json::json!({"kind":"once","seriesId":"", "startAt":WALL}),
+        serde_json::json!({"kind":"once","seriesId":"s", "startAt":-1}),
+        serde_json::json!({"kind":"once","seriesId":"s", "startAt":WALL,"path":"C:/x"}),
+        serde_json::json!({"kind":"alerts","expectedRevision":"a"}),
+    ] {
+        assert!(serde_json::from_value::<CalendarLaunchMode>(value).is_err());
+    }
+    let now = clock(Instant::now(), 0);
+    let mut plan = binding(
+        '1',
+        now,
+        CalendarLaunchMode::Once {
+            series_id: "s".into(),
+            start_at: WALL + LEAD_MS,
+        },
+    )
+    .plan;
+    for at in [WALL, WALL + LEAD_MS + MAX_FUTURE_MS + 1] {
+        plan.mode = CalendarLaunchMode::Once {
+            series_id: "s".into(),
+            start_at: at,
+        };
+        assert!(
+            Binding::new(
+                plan.clone(),
+                "a".repeat(64),
+                "b".repeat(64),
+                "c".repeat(64),
+                now
+            )
+            .is_err()
+        );
+    }
+}
+#[test]
+fn rejected_receipt_is_terminal_and_never_completed_or_retried() {
+    let base = Instant::now();
+    let mut s = once(base);
+    queue(&mut s, base);
+    let mut view = resident();
+    view.execution.as_mut().unwrap().events = vec![ResidentExecutionEvent {
+        seq: "1".into(),
+        kind: ResidentEventKind::Received {
+            request: "d".repeat(32),
+            receipt: ResidentReceipt::Rejected {
+                reason: crate::launcher_resident::ResidentRejection::AccountChanged,
+            },
+        },
+    }];
+    s.step(
+        Inputs {
+            core: &core(),
+            closing: false,
+            resident: &view,
+            alerts_ready: true,
+            auto_enabled: true,
+            candidates: &[],
+        },
+        clock(base, 1100),
+    );
+    assert!(matches!(
+        s.view().latest.unwrap().progress,
+        CalendarLaunchProgress::Rejected {
+            reason: crate::launcher_resident::ResidentRejection::AccountChanged,
+            ..
+        }
+    ));
+    assert!(!s.active());
+    assert!(step(&mut s, base, 1200).is_none());
+}

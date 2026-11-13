@@ -657,6 +657,7 @@ export default function CalendarEntry() {
         <CalendarAlertsDialog
           launchControl={{
             armed: !!launchState.view?.automatic,
+            decisionRequired:launchState.view?.automatic?.decisionRequired,
             busy: launchState.busy || preferences.busy,
             reason: launcher.disabledReason,
             onChange: (enabled) => {

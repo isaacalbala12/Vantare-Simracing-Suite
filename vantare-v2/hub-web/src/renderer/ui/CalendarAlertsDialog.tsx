@@ -36,6 +36,7 @@ const hm = (n: number) =>
 type Props = {
   launchControl?: {
     armed: boolean;
+    decisionRequired?: boolean;
     busy: boolean;
     reason?: string;
     onChange: (enabled: boolean) => void;
@@ -175,9 +176,9 @@ export function CalendarAlertsDialog(p: Props) {
                       <Switch
                         hideLabel
                         label={text.auto(p.profile ?? text.defaultProfile)}
-                        checked={p.alerts.autoLaunch}
-                        disabled={disabled || !p.alerts.autoLaunch || legacy}
-                        pending={p.busy}
+                        checked={p.launchControl ? p.launchControl.armed : p.alerts.autoLaunch}
+                        disabled={disabled || legacy || (p.launchControl ? !p.launchControl.armed && !!p.launchControl.reason : !p.alerts.autoLaunch)}
+                        pending={p.busy || p.launchControl?.busy}
                         onCheckedChange={(value) => {
                           if (p.busy || p.launchControl?.busy) return;
                           if (p.launchControl) p.launchControl.onChange(value);
@@ -189,13 +190,13 @@ export function CalendarAlertsDialog(p: Props) {
                           {text.auto(p.profile ?? text.defaultProfile)}
                         </strong>
                         <p>
-                          {p.alerts.autoLaunch
-                            ? text.autoLegacyHint
-                            : text.autoHint}
+                          {p.launchControl ? p.launchControl.reason ?? calendarLaunchText.onlyOpen : p.alerts.autoLaunch ? text.autoLegacyHint : text.autoHint}
                         </p>
                       </div>
                     </div>
                   </Tooltip>
+                  {p.launchControl?.armed && p.launchControl.decisionRequired && <p role="status">{calendarLaunchText.ask}</p>}
+                  {p.launchControl && p.alerts.autoLaunch && !p.launchControl.armed && <p role="status">{calendarLaunchText.stored}</p>}
                   <Caption>{text.what}</Caption>
                   <div className="v-calendar-alerts-help">
                     <b>{text.daily}</b>

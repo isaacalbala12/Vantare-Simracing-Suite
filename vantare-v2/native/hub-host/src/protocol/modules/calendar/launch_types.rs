@@ -7,6 +7,7 @@ pub const RECEIPT_MS: u64 = 5000;
 pub const CLOCK_SKEW_MS: i64 = 5000;
 pub const MAX_FUTURE_MS: i64 = 8 * 86_400_000;
 pub const ARM_ID_LENGTH: usize = 64;
+pub const REQUEST_ID_LENGTH: usize = 32;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]

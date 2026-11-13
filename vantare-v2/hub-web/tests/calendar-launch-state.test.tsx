@@ -20,7 +20,7 @@ vi.mock("../src/renderer/app/Host", async (original) => ({
 const caches: QueryClient[] = [];
 afterEach(() => {
   cleanup();
-  caches.splice(0).forEach((c) => c.clear());
+  for (const cache of caches.splice(0)) cache.clear();
   vi.clearAllMocks();
 });
 const empty: CalendarLaunchView = {

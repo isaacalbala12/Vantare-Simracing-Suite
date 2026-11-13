@@ -563,3 +563,28 @@ fuera de este cambio. Sin IPC/runtime/rights/supervisor, red ni dependencias nue
 El reloj fijo del selector QA se declara en main sin importar el mock ni el corpus JSON. Un test mantiene su paridad con la escena. Main ya no devuelve `conflict` al exportar: un destino existente exige confirmaciÃ³n; otros fallos del selector se clasifican como `io`. La variante del wire y su lectura permanecen por compatibilidad, sin cambiar v30.
 
 Pendientes deliberados de Isaac: si el archivo desaparece entre EEXIST y la huella, el motivo exacto requiere una variante cerrada nueva; se conserva el error actual, sin ampliar el contrato por esta carrera infrecuente. El diÃ¡logo tampoco recibe nombre base ni ruta. Ambos quedan fuera de este seguimiento.
+
+
+### Calendario: armado de lanzamientos (wire v32)
+
+`calendar.launchArm` fija el perfil, `baseRevision` y `armedGeneration` observados.
+El modo `once` solo acepta serie y salida del horario vigente; `alerts` exige la
+revisión CAS de `calendar-alerts.json` y conserva sus demás campos. El host crea un
+`armId` aleatorio opaco. `calendar.launchCancel` solo recibe ese identificador.
+El tema `calendarLaunch` entrega una instantánea al suscribirse y los cambios
+posteriores. No contiene rutas, argumentos ni comandos.
+
+Solo hay una programación puntual en memoria; sustituirla cancela la anterior.
+El modo automático requiere activación en esta sesión, aunque la preferencia siga
+guardada de una sesión anterior. Ambos funcionan únicamente con el Hub abierto.
+El tick compara reloj de pared y monotónico, consume cada intención antes del envío
+y llama al mismo `launchChecked` que el Launcher con la generación capturada.
+Cambio de cuenta/derechos, pista, desconexión, cierre, reinicio del residente o
+salto de reloj desarman las intenciones. Un perfil modificado no se lanza.
+Cancelar una intención no cancela una cadena que el residente ya ha recibido.
+
+`queued` solo confirma el envío al buzón. `running` exige recibo de aceptación;
+`finished` exige un resultado correlacionado con esa ejecución. Sin recibo, con
+hueco en el anillo o reinicio del residente se publica `unknown`, sin reenvío.
+Los perfiles con políticas Ask avisan de que requieren decisión y pueden caducar
+a los dos minutos. Sin capacidad revisionCheckedLaunch no hay fallback legado.

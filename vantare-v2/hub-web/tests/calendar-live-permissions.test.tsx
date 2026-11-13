@@ -168,3 +168,10 @@ it("paints the clipped notice band without making it an interactive control", ()
   expect(band?.getAttribute("aria-hidden")).toBe("true");
   expect(band?.getAttribute("tabindex")).toBeNull();
 });
+
+it("arms the visible departure exactly once and blocks a second click while pending",()=>{
+ const value=calendarReference();if(!value.official)throw new Error("Missing schedule");const arm=vi.fn();
+ const props={schedule:value.official,alerts:alerts as CalendarAlerts,following:value.following,utc:true,now:Date.parse("2026-10-08T17:47:13Z"),limit:10000,onFollow:vi.fn(),onLaunch:vi.fn(),onArm:arm};
+ const h=render(<CalendarLiveView {...props}/>);const button=screen.getByRole("button",{name:/Lanzar a las/});expect(button).toHaveProperty("disabled",false);fireEvent.click(button);expect(arm).toHaveBeenCalledOnce();expect(arm.mock.calls[0][0]).toBeTruthy();expect(arm.mock.calls[0][1]).toBeGreaterThan(props.now);
+ h.rerender(<CalendarLiveView {...props} armBusy/>);fireEvent.click(button);expect(arm).toHaveBeenCalledOnce();
+});

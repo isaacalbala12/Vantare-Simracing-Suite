@@ -1,3 +1,15 @@
+## VANTA-141 / #2213 — Inicio Rune: primera imagen CPU (13/11/2026)
+
+El Mac volvió a quedar sin SSH tras copiar y verificar 5d501bda0. Se prepara
+una corrección de adquisición: Rune puede mostrar Inicio por CPU antes de un
+Present GPU. Callback tras dibujo + DwmFlush marca visible; otro, con imágenes
+listas, marca interactivo. El padre observa JSON con QPC (cotas superiores).
+No cambia Rune d533, tokens, fuentes ni vistas. Solo API Windows existente.
+Rustfmt PASS, nueva compilación/clippy pendientes de acceso Mac; los binarios
+anteriores siguen conservados y nunca se ejecutaron en servidor. La biblioteca
+Runtime no cambia. PC de juego: pendiente comprobar las marcas y la imagen.
+Kit todavía incompleto, compilación comparable pendiente autorizada. Sin merge
+ni release. Reintento SSH cada 30 minutos mientras se completan otras piezas.
 ## VANTA-141 · Inicio Rune: señal de frame interactivo (13/11/2026)
 
 Pieza 8, PR draft #2241. Señal optativa tras frame completo con imágenes

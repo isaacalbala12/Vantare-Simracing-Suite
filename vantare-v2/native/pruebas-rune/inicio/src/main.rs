@@ -16,6 +16,37 @@ const PROVENANCE: &str = concat!(
     env!("VANTARE_BUILD_RUST"),
     ";profile=release;opt-level=3;lto=false;codegen-units=16;debug=false;features=default;scenario=inicio-base-collapsed"
 );
+
+#[cfg(windows)]
+#[link(name = "dwmapi")]
+unsafe extern "system" {
+    #[link_name = "DwmFlush"]
+    fn dwm_flush() -> i32;
+}
+
+fn composed_frame() -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        // SAFETY: no pointers or ownership cross this Windows API. Rune calls
+        // on_frame_drawn after its GDI blit/uncloak or GPU Present, respectively.
+        let status = unsafe { dwm_flush() };
+        if status < 0 {
+            return Err(std::io::Error::other(format!(
+                "DwmFlush HRESULT={status:#x}"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn write_marker(path: &std::path::Path, payload: &[u8]) -> std::io::Result<()> {
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)?
+        .write_all(payload)
+}
+
 fn main() -> std::process::ExitCode {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args != ["--medicion-inicio", "--control-stdin"] {
@@ -25,7 +56,13 @@ fn main() -> std::process::ExitCode {
     eprintln!("{PROVENANCE}");
     let ready_path =
         std::env::var_os("VANTARE_MEASUREMENT_READY_FILE").map(std::path::PathBuf::from);
-    if ready_path.as_ref().is_some_and(|path| !path.is_absolute()) {
+    let visible_path =
+        std::env::var_os("VANTARE_MEASUREMENT_VISIBLE_FILE").map(std::path::PathBuf::from);
+    if ready_path
+        .iter()
+        .chain(visible_path.iter())
+        .any(|path| !path.is_absolute())
+    {
         eprintln!("ruta de medición no absoluta");
         return std::process::ExitCode::from(2);
     }
@@ -47,20 +84,26 @@ fn main() -> std::process::ExitCode {
         let app = App::new(spec);
         let ready_handle = app.handle();
         let mut marked = false;
+        let mut visible_marked = false;
         let app = app.on_frame_drawn(move |runtime| {
-            if !marked && assets_ready(&runtime.state) {
-                marked = true;
-                if let Some(path) = &ready_path {
-                    let result = std::fs::OpenOptions::new()
-                        .write(true)
-                        .create_new(true)
-                        .open(path)
-                        .and_then(|mut file| file.write_all(br#"{"ready":true,"engine":"rune"}"#));
-                    if let Err(error) = result {
-                        eprintln!("VANTARE_MEASUREMENT_READY_FAILED: {error}");
-                        report_failure.store(true, Ordering::Release);
-                        ready_handle.quit();
+            let first = !visible_marked;
+            visible_marked = true;
+            let interactive = !marked && assets_ready(&runtime.state);
+            marked |= interactive;
+            if (first && visible_path.is_some()) || (interactive && ready_path.is_some()) {
+                let result = composed_frame().and_then(|()| {
+                    if first && let Some(path) = &visible_path {
+                        write_marker(path, br#"{"ready":true,"engine":"rune","source":"post_draw_dwm_flush"}"#)?;
                     }
+                    if interactive && let Some(path) = &ready_path {
+                        write_marker(path, br#"{"ready":true,"engine":"rune","source":"assets_post_draw_dwm_flush"}"#)?;
+                    }
+                    Ok(())
+                });
+                if let Err(error) = result {
+                    eprintln!("VANTARE_MEASUREMENT_READY_FAILED: {error}");
+                    report_failure.store(true, Ordering::Release);
+                    ready_handle.quit();
                 }
             }
         });

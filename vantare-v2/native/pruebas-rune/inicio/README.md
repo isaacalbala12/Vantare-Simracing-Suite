@@ -51,3 +51,24 @@ observa su JSON con QPC igual en los tres motores; no se presume equivalencia
 entre otro reloj y QPC. No equivale a una medida de pantalla: PresentMon
 aporta la primera imagen mostrada. La marca nunca sobrescribe archivos.
 El nuevo gate de imágenes y el callback se comprobarán en Mac y el PC.
+
+## Primera imagen CPU y composición Windows
+
+Rune d533 puede abrir una ventana opaca por CPU. cpu_frame.rs:424 muestra,
+copia y levanta el cloak ANTES de App::on_frame_drawn; draw.rs:383/436 presenta
+la imagen GPU antes del mismo hook. Los overlays transparentes quedan fuera
+de opens_on_cpu (cpu_frame.rs:224), por lo que B conserva el cruce PresentMon.
+No se ha invocado el pintor CPU en el servidor.
+
+Inicio añade VANTARE_MEASUREMENT_VISIBLE_FILE, publicado en el primer frame
+tras DwmFlush, y conserva READY_FILE tras datos/imágenes completos y DwmFlush.
+El controlador toma QPC al leer cada JSON: son cotas superiores observadas,
+no tiempos inferidos de la primera presentación GPU ni equivalencias con
+otros relojes. DwmFlush es API Windows existente; no añade crates ni drivers.
+Ambos archivos son nuevos, absolutos y nunca se sobrescriben. Error de
+composición/escritura: salida 2 y ronda inválida.
+
+Nuevo main: rustfmt PASS; build/cross y Clippy pendientes, Mac sin SSH desde
+13/11 03:52 UTC. El binario 5d501bda0 ya verificado se conserva, pero no sirve
+para esta nueva adquisición de T1. Los tres tests Runtime de la biblioteca
+siguen sin cambios. Validación gráfica y precisión física pendientes PC.

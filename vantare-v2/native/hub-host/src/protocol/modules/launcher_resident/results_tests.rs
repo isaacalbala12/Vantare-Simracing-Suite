@@ -173,6 +173,26 @@ fn unsupported_residents_precede_missing_denied_or_changed_accounts() {
     );
     assert!(!native::request_path(&f.path).exists());
 }
+
+#[test]
+fn projection_distinguishes_unsupported_unknown_and_known_results() {
+    let mut f = fixture();
+    let extension = f.status.extension.as_mut().unwrap();
+    let known = crate::launcher_resident::ResidentExecution::from(&*extension);
+    assert!(
+        matches!(known.results,ResidentResults::Known{value} if value.run=="1" && value.account_generation=="a".repeat(64))
+    );
+    extension.results = None;
+    assert_eq!(
+        crate::launcher_resident::ResidentExecution::from(&*extension).results,
+        ResidentResults::Unknown
+    );
+    extension.capabilities.clear();
+    assert_eq!(
+        crate::launcher_resident::ResidentExecution::from(&*extension).results,
+        ResidentResults::Unsupported
+    );
+}
 #[test]
 fn stale_scopes_busy_missing_terminal_and_no_failed_steps_are_closed_rejections() {
     for case in 0..10 {

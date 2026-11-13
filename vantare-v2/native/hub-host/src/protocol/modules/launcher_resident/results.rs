@@ -97,6 +97,14 @@ pub struct ResidentRunResults {
     pub outcome: Option<ResidentOutcome>,
     pub steps: Vec<ResidentStepResult>,
 }
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
+pub enum ResidentResults {
+    Unsupported,
+    Unknown,
+    Known { value: Box<ResidentRunResults> },
+}
 impl From<&wire::RunResults> for ResidentRunResults {
     fn from(value: &wire::RunResults) -> Self {
         Self {

@@ -26,7 +26,7 @@ pub use execution::{
     ResidentReceipt, ResidentRejection, ResidentScopedQuestion,
 };
 pub use results::{
-    ResidentRetryScope, ResidentRetryTarget, ResidentRunMode, ResidentRunResults,
+    ResidentResults, ResidentRetryScope, ResidentRetryTarget, ResidentRunMode, ResidentRunResults,
     ResidentStepResult, ResidentStepState,
 };
 

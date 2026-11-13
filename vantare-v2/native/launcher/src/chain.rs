@@ -93,6 +93,30 @@ struct RunContext {
     trust_declined: AtomicBool,
 }
 impl RunContext {
+    fn emit_step(
+        &self,
+        index: usize,
+        status: Status,
+        pid: Option<u32>,
+        message: String,
+        success: bool,
+    ) -> bool {
+        self.mark_step(
+            index,
+            match status {
+                Status::Pending | Status::Waiting => StepState::Waiting,
+                Status::Launching => StepState::Launching,
+                Status::Ready | Status::Done => StepState::Ready,
+                Status::Failed => StepState::Failed,
+                Status::Cancelled => StepState::Cancelled,
+            },
+        );
+        let sent = emit(&self.sender, Some(index), status, pid, message, success);
+        if !sent && let Ok(mut failure) = self.failure.lock() {
+            *failure = Some(ChainFailure::Internal);
+        }
+        sent
+    }
     fn mark_step(&self, index: usize, state: StepState) {
         if let Ok(mut results) = self.results.lock() {
             results.mark(index, state);
@@ -879,7 +903,6 @@ fn run_pass_with(
         results.reset(&context.selected);
     }
     let cancel = &context.cancel;
-    let sender = &context.sender;
     let policy = profile.effective_policy();
     let mut success = true;
     for (index, step) in profile
@@ -893,18 +916,13 @@ fn run_pass_with(
         } else {
             step.delay_seconds
         };
-        context.mark_step(index, StepState::Waiting);
-        if !emit(
-            sender,
-            Some(index),
+        if !context.emit_step(
+            index,
             Status::Pending,
             None,
             format!("{} · espera {delay} s", step.app_id),
             false,
         ) {
-            if let Ok(mut failure) = context.failure.lock() {
-                *failure = Some(ChainFailure::Internal);
-            }
             return false;
         }
         if wait(Duration::from_secs(u64::from(delay))) {
@@ -936,34 +954,14 @@ fn run_pass_with(
         }
         match result {
             Ok(pid) => {
-                context.mark_step(index, StepState::Ready);
-                if !emit(
-                    sender,
-                    Some(index),
-                    Status::Ready,
-                    Some(pid),
-                    app.name.clone(),
-                    true,
-                ) {
-                    if let Ok(mut failure) = context.failure.lock() {
-                        *failure = Some(ChainFailure::Internal);
-                    }
+                if !context.emit_step(index, Status::Ready, Some(pid), app.name.clone(), true) {
                     return false;
                 }
             }
             Err(message) => {
-                context.mark_step(
-                    index,
-                    if cancel.cancelled() {
-                        StepState::Cancelled
-                    } else {
-                        StepState::Failed
-                    },
-                );
                 success = false;
-                if !emit(
-                    sender,
-                    Some(index),
+                if !context.emit_step(
+                    index,
                     if cancel.cancelled() {
                         Status::Cancelled
                     } else {
@@ -973,9 +971,6 @@ fn run_pass_with(
                     message,
                     false,
                 ) {
-                    if let Ok(mut failure) = context.failure.lock() {
-                        *failure = Some(ChainFailure::Internal);
-                    }
                     return false;
                 }
                 if cancel.cancelled() {
@@ -1142,6 +1137,9 @@ mod trust_tests {
         let (sender, events) = mpsc::channel();
         let (answers, replies) = mpsc::channel();
         let context = RunContext {
+            results: Arc::new(Mutex::new(
+                StepSnapshot::new(1, &[0]).expect("fixture results"),
+            )),
             cancel: Arc::new(Cancellation::default()),
             sender,
             answers: replies,

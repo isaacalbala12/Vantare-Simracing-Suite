@@ -51,6 +51,8 @@ fn request(f: &Fixture) -> RetryChecked {
 #[test]
 fn failed_only_then_all_preserves_the_original_rehearsal_selection_and_exact_snapshot() {
     let mut f = finished();
+    f.owner.document.profiles[0].steps[3].args_override =
+        Some(vec!["stale-cache-must-not-execute".into()]);
     f.owner.run_record.as_mut().unwrap().summary.steps[1].state = StepState::Ready;
     let mut command = request(&f);
     let original = fs::read(&f.owner.path).unwrap();
@@ -337,4 +339,80 @@ fn an_incomplete_worker_snapshot_or_a_new_unscoped_run_cannot_reuse_previous_res
         incomplete_is_unknown,
         "a terminal value without a complete worker snapshot cannot enable retry"
     );
+}
+
+#[cfg(windows)]
+#[test]
+fn real_mailbox_retry_consumes_once_and_keeps_the_original_rehearsal_selection() {
+    use std::time::Duration;
+    use vantare_ipc::{
+        account_session, control,
+        launcher::{Request, request_path},
+        transport::{Event, Listener},
+    };
+    let mut f = finished();
+    let command = request(&f);
+    let link = account_session::AuthorityLink {
+        pipe: format!("retry-owner-{}", vantare_services::random_id().unwrap()),
+        image: std::env::current_exe().unwrap(),
+    };
+    let stop = Arc::new(Event::new().unwrap());
+    let mut listener =
+        Listener::new(&link.pipe, Arc::clone(&stop), Duration::from_secs(2)).unwrap();
+    let mut pipe = listener.instance().unwrap();
+    let (ready, started) = std::sync::mpsc::channel();
+    let server = std::thread::spawn(move || {
+        ready.send(()).unwrap();
+        match pipe.accept() {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => return,
+            Err(error) => panic!("fixture accept: {error}"),
+        }
+        let message = control::read_request(&mut pipe).unwrap();
+        assert!(matches!(
+            message.command,
+            control::Command::ReadAccountSession {}
+        ));
+        assert_eq!(message.nonce, "");
+        control::write(
+            &mut pipe,
+            &account_session::ControlResponse {
+                version: control::VERSION,
+                sequence: message.sequence,
+                observation: Some(observed()),
+            },
+        )
+        .unwrap();
+    });
+    started.recv().unwrap();
+    f.owner.authority = Some(link);
+    let bytes = serde_json::to_vec(&Request::RetryChecked(command)).unwrap();
+    fs::write(request_path(&f.owner.path), &bytes).unwrap();
+    f.owner.request();
+    stop.set();
+    server.join().unwrap();
+    assert!(!request_path(&f.owner.path).exists());
+    let OrderReceipt::Accepted { run } = receipt(&f.owner) else {
+        panic!("accepted retry")
+    };
+    terminal(&mut f.owner);
+    let record = f.owner.run_record.as_ref().unwrap();
+    assert_eq!(record.summary.run, run);
+    assert_eq!(record.original, vec![1, 3]);
+    assert!(matches!(
+        record.summary.steps[0].state,
+        StepState::NotSelected
+    ));
+    assert!(matches!(
+        record.summary.steps[2].state,
+        StepState::NotSelected
+    ));
+    let count = f.owner.status.extension.as_ref().unwrap().events.len();
+    fs::write(request_path(&f.owner.path), bytes).unwrap();
+    f.owner.request();
+    assert_eq!(
+        f.owner.status.extension.as_ref().unwrap().events.len(),
+        count
+    );
+    assert!(!request_path(&f.owner.path).exists());
 }

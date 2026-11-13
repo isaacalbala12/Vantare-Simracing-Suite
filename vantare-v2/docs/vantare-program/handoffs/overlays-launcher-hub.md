@@ -127,8 +127,8 @@ Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
 ## VANTA-138 · núcleo L55: resultados y repetir los mismos pasos (2026-11-13)
 
 #1995 / VANTA-138. L55 v35 autorizado; preparación local en
-vantareapp/isa-1995-resident-results sobre #2291 db93467e5, aún pendiente de
-fusión. No se ha abierto PR ni publicado esta rama. El microplan está aprobado.
+vantareapp/isa-1995-resident-results, rebasada sobre nightly e9ebe62be tras
+#2291/f7f30d3d7. No se ha abierto PR ni publicado esta rama. Microplan aprobado.
 
 El residente conservará solo el resumen de la ejecución activa o la última
 terminada: cuenta, run, perfil, revisión, modo de origen y resultado por índice.
@@ -138,8 +138,9 @@ incluso después de reintentar solo algunos fallos. No incorpora LMU por usar Al
 No manda índices desde la interfaz y no mata procesos desde el renderer.
 
 Handoff D: launcher.resident.retry, target con instance/accountGeneration/run/
-profile/revision/scope (failed|all), Queued{request}. execution.stepResultsRetry y
-results {run,profile,revision,accountGeneration,mode,outcome,steps[{index,state}]}.
+profile/revision/scope (failed|all), Queued{request}. execution.results es
+Unsupported | Unknown | Known{value:{run,profile,revision,accountGeneration,
+mode,outcome,steps[{index,state}]}}. Unknown no es un resultado vacío.
 mode describe el origen profile/rehearsal, también después de un reintento.
 No deducir la selección original de NotSelected del resumen actual. Hace falta
 el terminal retenido y la misma cuenta; sin recibo/hueco/reinicio = Unknown, sin
@@ -149,7 +150,7 @@ de órdenes anteriores deben tratar motivos ajenos como Unknown.
 
 Validación local en curso por la cola, respetando captura.lock y memoria.
 Tipos/corpus v35 se generarán desde Rust; nunca se editan a mano. Rebase sobre
-nightly tras entrar #2291 y después draft con gates locales y CI completa.
+nightly completado; después, draft con gates locales y CI completa.
 L56 no se ha empezado. Sin merge, promoción, release, dependencias ni gráficos.
 
 ## VANTA-138 · núcleo L54: cancelar y ensayar sin LMU (2026-11-13)

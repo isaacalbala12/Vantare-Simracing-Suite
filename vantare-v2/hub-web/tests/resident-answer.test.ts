@@ -64,8 +64,7 @@ describe("checked resident answers", () => {
       revisionCheckedLaunch: true,
       checkedAnswer: true,
       checkedControl: false,
-      stepResultsRetry: false,
-      results: null,
+      results: { kind: "unsupported" },
       active: null,
       question: {
         decision: target.decision,

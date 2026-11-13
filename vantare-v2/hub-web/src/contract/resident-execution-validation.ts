@@ -150,6 +150,16 @@ function event(value: unknown): boolean {
     isResidentRejection(receipt.reason)
   );
 }
+export function isResidentResults(value: unknown): boolean {
+  if (!record(value)) return false;
+  if (value.kind === "unsupported" || value.kind === "unknown")
+    return exact(value, ["kind"]);
+  return (
+    value.kind === "known" &&
+    exact(value, ["kind", "value"]) &&
+    isRunResults(value.value)
+  );
+}
 export function isResidentExecution(value: unknown): boolean {
   if (
     !record(value) ||
@@ -158,7 +168,6 @@ export function isResidentExecution(value: unknown): boolean {
       "revisionCheckedLaunch",
       "checkedAnswer",
       "checkedControl",
-      "stepResultsRetry",
       "results",
       "active",
       "question",
@@ -169,11 +178,7 @@ export function isResidentExecution(value: unknown): boolean {
     typeof value.revisionCheckedLaunch !== "boolean" ||
     typeof value.checkedAnswer !== "boolean" ||
     typeof value.checkedControl !== "boolean" ||
-    typeof value.stepResultsRetry !== "boolean" ||
-    !(
-      value.results === null ||
-      (value.stepResultsRetry && isRunResults(value.results))
-    ) ||
+    !isResidentResults(value.results) ||
     !(
       value.active === null ||
       (value.checkedControl && isActiveRun(value.active))
@@ -188,13 +193,19 @@ export function isResidentExecution(value: unknown): boolean {
     !value.events.every(event)
   )
     return false;
-  if (
+  const summary =
     record(value.results) &&
+    value.results.kind === "known" &&
+    record(value.results.value)
+      ? value.results.value
+      : undefined;
+  if (
+    summary &&
     record(value.active) &&
-    (value.results.outcome !== null ||
-      value.results.run !== value.active.run ||
-      value.results.revision !== value.active.revision ||
-      value.results.accountGeneration !== value.active.accountGeneration)
+    (summary.outcome !== null ||
+      summary.run !== value.active.run ||
+      summary.revision !== value.active.revision ||
+      summary.accountGeneration !== value.active.accountGeneration)
   )
     return false;
   if (
@@ -209,7 +220,7 @@ export function isResidentExecution(value: unknown): boolean {
     return (
       value.firstRetainedSeq === "1" &&
       value.question === null &&
-      value.results === null &&
+      summary === undefined &&
       value.active === null
     );
   let expected = BigInt(value.firstRetainedSeq);
@@ -219,10 +230,7 @@ export function isResidentExecution(value: unknown): boolean {
     expected++;
   }
   return (
-    (value.results === null ||
-      (record(value.results) &&
-        decimal(value.results.run) &&
-        BigInt(value.results.run) < expected)) &&
+    (!summary || (decimal(summary.run) && BigInt(summary.run) < expected)) &&
     (value.active === null ||
       (record(value.active) &&
         decimal(value.active.run) &&

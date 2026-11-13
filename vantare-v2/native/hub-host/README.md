@@ -343,7 +343,9 @@ validar cuenta/permisos. Con soporte fresco, una cuenta no observable devuelve
 CoreUnavailable. Se evita que un Denied por TTL o Live oculte la falta de soporte.
 
 ## L55 · resultados y reintento (v35)
-Capability StepResultsRetry; execution.stepResultsRetry y execution.results.
+Capability nativa StepResultsRetry. execution.results es una unión cerrada:
+Unsupported (sin soporte), Unknown (sin foto fiable) o Known{value:resumen}.
+Unknown nunca significa cero fallos ni historial vacío.
 El resumen contiene run, profile, revision, accountGeneration, mode
 (profile/rehearsal), outcome opcional y hasta 128 steps {index,state}. Los índices
 son posiciones originales, también cuando la misma app aparece varias veces.

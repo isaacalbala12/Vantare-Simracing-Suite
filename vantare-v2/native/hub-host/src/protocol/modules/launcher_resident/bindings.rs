@@ -181,6 +181,7 @@ fn result_types(text: &mut String) {
     declare::<ResidentRunMode>(text);
     declare::<ResidentRetryScope>(text);
     declare::<ResidentRunResults>(text);
+    declare::<ResidentResults>(text);
     declare::<ResidentRetryTarget>(text);
     constants!(text, "residentStepStates", ResidentStepState::ALL);
     constants!(text, "residentRunModes", ResidentRunMode::ALL);

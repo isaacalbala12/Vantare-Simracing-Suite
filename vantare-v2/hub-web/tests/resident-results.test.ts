@@ -35,10 +35,9 @@ const execution = {
   revisionCheckedLaunch: true,
   checkedAnswer: false,
   checkedControl: false,
-  stepResultsRetry: true,
   active: null,
   question: null,
-  results,
+  results: { kind: "known", value: results },
   firstRetainedSeq: run,
   events: [
     { seq: run, kind: { kind: "started", run } },
@@ -133,13 +132,19 @@ describe("resident step results and checked retry", () => {
   });
   it("advertises support explicitly and preserves exact run ids beyond JS integers", () => {
     expect(isResidentExecution(execution)).toBe(true);
-    expect(isResidentExecution({ ...execution, stepResultsRetry: false })).toBe(
-      false,
-    );
     expect(
       isResidentExecution({
         ...execution,
-        results: { ...results, run: "9007199254740995" },
+        results: { kind: "unsupported", value: results },
+      }),
+    ).toBe(false);
+    expect(
+      isResidentExecution({
+        ...execution,
+        results: {
+          kind: "known",
+          value: { ...results, run: "9007199254740995" },
+        },
       }),
     ).toBe(false);
     expect(isResidentExecution({ ...execution, events: [] })).toBe(false);
@@ -163,7 +168,7 @@ describe("resident step results and checked retry", () => {
           revision: target.revision,
           accountGeneration: target.accountGeneration,
         },
-        results: { ...results, outcome: null },
+        results: { kind: "known", value: { ...results, outcome: null } },
       }),
     ).toBe(true);
     expect(
@@ -175,7 +180,7 @@ describe("resident step results and checked retry", () => {
           revision: target.revision,
           accountGeneration: "e".repeat(64),
         },
-        results: { ...results, outcome: null },
+        results: { kind: "known", value: { ...results, outcome: null } },
       }),
     ).toBe(false);
   });

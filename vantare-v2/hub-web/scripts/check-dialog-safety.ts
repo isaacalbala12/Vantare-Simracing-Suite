@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Page } from "playwright-core";
+import { actionText } from "../src/renderer/i18n/launcher-actions.ts";
 import { calendarScenes } from "./visual-diff/calendar-scenes.ts";
 import { launcherScenes } from "./visual-diff/launcher.ts";
 import { until } from "./wait-for.ts";
@@ -77,12 +78,36 @@ export async function checkProfileContextKeys(page: Page) {
 
 /** Runs in the existing Chromium web job, not jsdom, without any new server/dependency. */
 export async function openProfileRemovalWithKeyboard(page: Page) {
-  await page.locator(".v-launcher-profile").first().focus();
+  const card = page.locator(".v-launcher-profile").first();
+  await card.focus();
+  await until(
+    () => card.evaluate((node) => node === document.activeElement),
+    5000,
+    "profile card receives focus before opening its menu",
+  );
   await page.keyboard.press("Shift+F10");
-  const remove = page.getByRole("menuitem", { name: "Eliminar", exact: true });
+  const menu = page.getByRole("menu");
+  await menu.waitFor();
+  // ProfileCardActions.onOpenChangeComplete focuses this first item. Waiting
+  // for visibility alone lets that callback steal focus back from Remove.
+  const first = menu.getByRole("menuitem").first();
+  await until(
+    () => first.evaluate((node) => node === document.activeElement),
+    5000,
+    "profile menu completes opening and places its initial focus",
+  );
+  const remove = menu.getByRole("menuitem", { name: "Eliminar", exact: true });
   await remove.focus();
+  await until(
+    () => remove.evaluate((node) => node === document.activeElement),
+    5000,
+    "Remove owns keyboard focus before Enter",
+  );
   await page.keyboard.press("Enter");
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("dialog", {
+    name: actionText.removeTitle,
+    exact: true,
+  });
   await dialog.waitFor();
   await until(
     () =>

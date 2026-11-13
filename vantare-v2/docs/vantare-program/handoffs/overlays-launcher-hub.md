@@ -2171,3 +2171,38 @@ Emisor y worker comparten el mismo reloj de la pregunta. Regresiones con barrera
 plazo cumplido antes/después del compromiso y publicación fallida de la pregunta;
 la limpieza de directorios en Drop no provoca otro panic. Sin cambios de contrato
 v33 ni del plazo exportado para D. Gates del ajuste y head vigentes en #2281.
+
+
+### VANTA-143 · Inicio Rune, primer corte (2026-11-13)
+
+#2267 fusionado por el orquestador: nightly 393b8b443. #2268 rebasado con
+--onto origin/nightly cc64d915, sin cambios de contenido: a52bc257e71ab00d40a4f5f54067c447b9ca60b3.
+Se verificaron los árboles hub-rune/workflow idénticos antes/después y se
+publicó con lease; CI nueva y revisión pendientes en su PR.
+
+Inicio empieza por orden del orquestador mientras el Mac duerme, con un solo
+worker y sin delegación. Rama vantareapp/isa-2256-hub-rune-inicio, worktree
+D:/VantareServer/worktrees/isa-2256-hub-rune-inicio; creada desde nightly y
+avanzada al padre #2268 porque utiliza su estado del núcleo y conserva Roadmap.
+#2241 (54ef276c de medición) se leyó como referencia, sin integrar sus activos
+copiados ni sus dependencias. El primer corte usa HomeGet/Event::Home del host,
+suscribe al entrar, retira al salir, correlaciona peticiones y eventos y deja
+reintentar con el último estado conservado tras fallo/plazo de 45 s. Sin sondeo.
+
+Bienvenida, layout/miniaturas, métricas conocidas, actividad de perfiles y panel
+de favorito/estado/plantillas. Textos y SVG por las rutas de Electron, fuentes
+compartidas. La función de escenas de Electron se extrae sin cambiar su
+comportamiento y el generador la usa para las seis escenas de Inicio en Rune.
+La CI reacciona también a cambios de la proyección y los SVG compartidos.
+
+Verificación inicial: 30 tests de Inicio Electron en cuatro archivos PASS;
+typecheck Electron PASS; Biome de los tres archivos JS/TS tocados PASS;
+catálogo, formato Rust y 27 tests Python PASS. Rust Clippy/tests/build del nuevo
+código pendientes de CI: se conserva la cesión de cola a E para L53/exportador
+v33 hasta que avise. No se ejecuta ninguna opción gráfica en Windows.
+
+Pendiente del siguiente corte de Inicio: selección/lanzamiento, paleta/atajos,
+nombre/fecha y avisos; acabado/adaptación contra Electron y capturas Mac.
+Este PR no declara Inicio completo ni levanta el corte 1. Sin cambios del host,
+overlays, instalador o distribución; sin nuevas dependencias o cuentas reales.
+PR/head/checks actuales se registran en #2256 y en el PR draft de Inicio.

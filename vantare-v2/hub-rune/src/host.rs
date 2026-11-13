@@ -104,8 +104,12 @@ impl Link {
                 let mut core: vantare_hub_host::protocol::CoreStatus =
                     serde_json::from_str(include_str!("../../hub-web/fixtures/core-offline.json"))
                         .expect("shared fixture");
-                if name.starts_with("roadmap-") {
+                if name.starts_with("roadmap-") || name.starts_with("inicio-") {
                     core.access.verified = true;
+                }
+                if name.starts_with("inicio-") {
+                    core.access.tester = true;
+                    core.rights = vantare_hub_host::protocol::LinkState::Connected;
                 }
                 if name == "core-connected" {
                     core.live = true;
@@ -361,6 +365,33 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
                 messages.push_back(HostToUi::Response { id, result });
             }
         }
+        UiToHost::Subscribe { topic: Topic::Home } => {
+            if state.name != "inicio-cargando" {
+                messages.push_back(HostToUi::Event {
+                    event: Event::Home {
+                        value: home_scene(&state.name)?,
+                    },
+                });
+            }
+        }
+        UiToHost::Request {
+            id,
+            request: Request::HomeGet {},
+        } => {
+            if state.name == "inicio-error" {
+                messages.push_back(HostToUi::Failure {
+                    id,
+                    error: protocol::HostError::CoreUnavailable,
+                });
+            } else if state.name != "inicio-cargando" {
+                messages.push_back(HostToUi::Response {
+                    id,
+                    result: Reply::HomeGet {
+                        value: home_scene(&state.name)?,
+                    },
+                });
+            }
+        }
         UiToHost::Request { id, .. } => messages.push_back(HostToUi::Failure {
             id,
             error: protocol::HostError::Unsupported,
@@ -368,6 +399,12 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
         _ => {}
     }
     Ok(())
+}
+#[cfg(debug_assertions)]
+fn home_scene(name: &str) -> io::Result<vantare_hub_host::home::HomeView> {
+    let scenes = &crate::catalog::catalog()["home"]["scenes"];
+    let value = scenes.get(name).unwrap_or(&scenes["inicio-base"]);
+    serde_json::from_value(value.clone()).map_err(|_| io::ErrorKind::InvalidData.into())
 }
 #[cfg(all(test, debug_assertions))]
 mod tests {

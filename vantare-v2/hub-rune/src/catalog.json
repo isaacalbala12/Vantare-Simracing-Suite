@@ -351,7 +351,451 @@
     "roadmap.noDelivered": "Sin entregas publicadas",
     "roadmap.tasks": "tareas",
     "roadmap.completed": "tareas completadas",
-    "roadmap.dash": "—"
+    "roadmap.dash": "—",
+    "home.decorative": "",
+    "home.errorTag": "Error",
+    "home.warningTag": "Aviso",
+    "home.title": "Inicio",
+    "home.search": "Busca, abre o lanza algo en Vantare…",
+    "home.hints": "«Studio» · «Launcher»",
+    "home.profile": "Perfil de lanzamiento",
+    "home.noProfile": "Sin perfil",
+    "home.selectProfile": "Seleccionar…",
+    "home.noFavorite": "Sin perfil favorito",
+    "home.favoriteApps": "Aplicaciones del perfil favorito",
+    "home.appsFailed": "No se pudieron leer las aplicaciones.",
+    "home.selectedLaunch": "Lanzar perfil seleccionado",
+    "home.selectAvailable": "Selecciona un perfil disponible",
+    "home.unavailable": "Perfil no disponible o lanzamiento en curso",
+    "home.ctrlK": "Ctrl K",
+    "home.ctrlL": "Ctrl L",
+    "home.waiting": "Esperando simulador",
+    "home.connected": "LMU conectado",
+    "home.welcome": "Bienvenido a Vantare",
+    "home.morning": "Buenos días",
+    "home.afternoon": "Buenas tardes",
+    "home.night": "Buenas noches",
+    "home.emptySubtitle": "Crea un perfil para abrir tus aplicaciones en orden.",
+    "home.connectedSubtitle": "Telemetría conectada. Prepara tu próxima sesión.",
+    "home.subtitle": "Tu cabina está lista. Esperando simulador.",
+    "home.launching": "Lanzando…",
+    "home.noLaunches": "Sin lanzamientos",
+    "home.createProfileHint": "Crea un perfil en Launcher",
+    "home.how": "Así funciona",
+    "home.create": "Crear mi primer perfil",
+    "home.studio": "Abrir Studio",
+    "home.overlay": "Overlay en pista",
+    "home.layout": "Layout local",
+    "home.preview": "Vista previa",
+    "home.noWidgets": "Ningún widget visible en tu layout",
+    "home.telemetry": "Telemetría conectada",
+    "home.hz": "Hz",
+    "home.cpu": "CPU",
+    "home.dash": "—",
+    "home.visible": "Widgets visibles",
+    "home.edit": "Editar overlay",
+    "home.stop": "Detener",
+    "home.stopReason": "Control de overlays desde Inicio: próximamente",
+    "home.prepare": "Prepara tu overlay",
+    "home.prepareDescription": "Elige una plantilla y ajusta tu layout en Studio.",
+    "home.templatesAction": "Ver plantillas",
+    "home.activity": "Actividad",
+    "home.all": "Ver todo",
+    "home.noActivity": "Todavía no hay actividad",
+    "home.activityDescription": "Tus avisos y lanzamientos aparecerán aquí.",
+    "home.noDate": "Sin fecha",
+    "home.status": "Estado",
+    "home.lmu": "Le Mans Ultimate",
+    "home.favorite": "Perfil favorito",
+    "home.saved": "Guardado",
+    "home.waitingBadge": "Esperando",
+    "home.connectedBadge": "Conectado",
+    "home.testing": "Testing Center",
+    "home.testerAccess": "Acceso de tester",
+    "home.tester": "Tester",
+    "home.betaTitle": "Beta para testers",
+    "home.beta": "Beta",
+    "home.templates": "Plantillas",
+    "home.localTemplate": "Plantilla local · Abrir Studio",
+    "home.waitingLmu": "Esperando a Le Mans Ultimate",
+    "home.waitingDescription": "Abre LMU y entra en pista para recibir telemetría.",
+    "home.accessError": "No se pudo verificar el acceso. Tus perfiles locales siguen disponibles.",
+    "home.retry": "Reintentar",
+    "home.failed": "No se pudo lanzar el perfil. Revisa el acceso y el estado de Launcher.",
+    "home.loading": "Cargando Inicio",
+    "home.protected": "El archivo de perfiles está protegido. Revísalo en Launcher."
+  },
+  "home": {
+    "widgets": {
+      "standings": "Standings",
+      "radar": "Radar",
+      "pedals": "Pedales",
+      "delta": "Delta",
+      "car-damage-visual": "Daños del coche",
+      "input-telemetry": "Telemetría de entrada",
+      "multiclass-relative": "Relative multiclase",
+      "broadcast-tower": "Torre de posiciones",
+      "delta-trace": "Historial de delta",
+      "track-map": "Mapa del circuito",
+      "track-weather": "Tiempo en pista",
+      "car-damage-numbers": "Daños detallados",
+      "head-to-head": "Cara a cara",
+      "fuel-strategy": "Fuel y stint",
+      "pedals-telemetry": "Telemetría de pedales",
+      "relative": "Relative",
+      "racing-flags": "Banderas",
+      "fastest-lap": "Vuelta rápida",
+      "session-alerts": "Avisos de sesión"
+    },
+    "templates": [
+      "Standings multiclase",
+      "Relative compacto",
+      "Fuel y stint",
+      "Delta y sectores"
+    ],
+    "howSteps": [
+      {
+        "title": "1 · Elige tus apps",
+        "description": "Crea tu perfil en Launcher",
+        "icon": "v-launch"
+      },
+      {
+        "title": "2 · Ajusta tu overlay",
+        "description": "Elige una plantilla en Studio",
+        "icon": "v-studio"
+      },
+      {
+        "title": "3 · Lanza con Ctrl L",
+        "description": "Abre las apps de tu perfil en orden",
+        "icon": "v-keys"
+      }
+    ],
+    "launch": "Lanzar __VANTARE_NAME__",
+    "steps": "917 pasos de lanzamiento",
+    "lastLaunch": "__VANTARE_NAME__ · último lanzamiento",
+    "last": "Último · __VANTARE_NAME__",
+    "plus": "+917",
+    "scenes": {
+      "inicio-base": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "carrera-lmu",
+            "name": "Carrera LMU",
+            "steps": 4,
+            "favorite": true,
+            "lastLaunchedAt": "2026-10-05T18:02:00+02:00"
+          },
+          {
+            "id": "streaming-le-mans",
+            "name": "Streaming Le Mans",
+            "steps": 3,
+            "favorite": false,
+            "lastLaunchedAt": "2026-10-04T20:41:00+02:00"
+          },
+          {
+            "id": "entreno-rapido",
+            "name": "Entreno rápido",
+            "steps": 2,
+            "favorite": false,
+            "lastLaunchedAt": "2026-10-04T20:41:00+02:00"
+          }
+        ],
+        "favorite": "carrera-lmu",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "ready",
+          "width": 1920,
+          "height": 1080,
+          "widgets": [
+            {
+              "kind": "standings",
+              "x": 20,
+              "y": 20,
+              "w": 654,
+              "h": 595,
+              "opacity": 100
+            },
+            {
+              "kind": "delta",
+              "x": 840,
+              "y": 900,
+              "w": 150,
+              "h": 36,
+              "opacity": 100
+            },
+            {
+              "kind": "relative",
+              "x": 1420,
+              "y": 20,
+              "w": 420,
+              "h": 265,
+              "opacity": 100
+            },
+            {
+              "kind": "pedals",
+              "x": 1020,
+              "y": 790,
+              "w": 96,
+              "h": 160,
+              "opacity": 100
+            }
+          ]
+        },
+        "version": "0.0.0"
+      },
+      "inicio-vacio": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [],
+        "favorite": null,
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "missing",
+          "width": 1920,
+          "height": 1080,
+          "widgets": []
+        },
+        "version": "0.0.0"
+      },
+      "inicio-cargando": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "creator",
+            "name": "Creador de Contenido",
+            "steps": 3,
+            "favorite": true,
+            "lastLaunchedAt": null
+          },
+          {
+            "id": "pro",
+            "name": "Pro",
+            "steps": 4,
+            "favorite": false,
+            "lastLaunchedAt": null
+          }
+        ],
+        "favorite": "creator",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "ready",
+          "width": 1920,
+          "height": 1080,
+          "widgets": [
+            {
+              "kind": "standings",
+              "x": 20,
+              "y": 20,
+              "w": 654,
+              "h": 595,
+              "opacity": 100
+            },
+            {
+              "kind": "relative",
+              "x": 1420,
+              "y": 20,
+              "w": 420,
+              "h": 265,
+              "opacity": 100
+            },
+            {
+              "kind": "delta",
+              "x": 840,
+              "y": 900,
+              "w": 150,
+              "h": 36,
+              "opacity": 100
+            },
+            {
+              "kind": "pedals",
+              "x": 1020,
+              "y": 790,
+              "w": 96,
+              "h": 160,
+              "opacity": 100
+            }
+          ]
+        },
+        "version": "0.0.0"
+      },
+      "inicio-error": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "creator",
+            "name": "Creador de Contenido",
+            "steps": 3,
+            "favorite": true,
+            "lastLaunchedAt": null
+          },
+          {
+            "id": "pro",
+            "name": "Pro",
+            "steps": 4,
+            "favorite": false,
+            "lastLaunchedAt": null
+          }
+        ],
+        "favorite": "creator",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "ready",
+          "width": 1920,
+          "height": 1080,
+          "widgets": [
+            {
+              "kind": "standings",
+              "x": 20,
+              "y": 20,
+              "w": 654,
+              "h": 595,
+              "opacity": 100
+            },
+            {
+              "kind": "pedals",
+              "x": 850,
+              "y": 20,
+              "w": 96,
+              "h": 160,
+              "opacity": 100
+            }
+          ]
+        },
+        "version": "0.0.0"
+      },
+      "inicio-sin-diseno": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "creator",
+            "name": "Creador de Contenido",
+            "steps": 3,
+            "favorite": true,
+            "lastLaunchedAt": null
+          },
+          {
+            "id": "pro",
+            "name": "Pro",
+            "steps": 4,
+            "favorite": false,
+            "lastLaunchedAt": null
+          }
+        ],
+        "favorite": "creator",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "missing",
+          "width": 1920,
+          "height": 1080,
+          "widgets": []
+        },
+        "version": "0.0.0"
+      },
+      "inicio-lanzando": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "creator",
+            "name": "Creador de Contenido",
+            "steps": 3,
+            "favorite": true,
+            "lastLaunchedAt": null
+          },
+          {
+            "id": "pro",
+            "name": "Pro",
+            "steps": 4,
+            "favorite": false,
+            "lastLaunchedAt": null
+          }
+        ],
+        "favorite": "creator",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "running",
+          "text": ""
+        },
+        "layout": {
+          "state": "ready",
+          "width": 1920,
+          "height": 1080,
+          "widgets": [
+            {
+              "kind": "standings",
+              "x": 20,
+              "y": 20,
+              "w": 654,
+              "h": 595,
+              "opacity": 100
+            },
+            {
+              "kind": "relative",
+              "x": 1420,
+              "y": 20,
+              "w": 420,
+              "h": 265,
+              "opacity": 100
+            },
+            {
+              "kind": "delta",
+              "x": 840,
+              "y": 900,
+              "w": 150,
+              "h": 36,
+              "opacity": 100
+            },
+            {
+              "kind": "pedals",
+              "x": 1020,
+              "y": 790,
+              "w": 96,
+              "h": 160,
+              "opacity": 100
+            }
+          ]
+        },
+        "version": "0.0.0"
+      }
+    }
   },
   "sections": [
     "home",

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-2256",
+  "type": "feature",
+  "summary": "La vía de pruebas del Hub Rune empieza a mostrar los datos de Inicio.",
+  "technicalNotes": [
+    "Inicio lee la misma proyección del anfitrión que Electron y comparte sus textos, escenas e ilustraciones.",
+    "El primer corte muestra layout, perfiles y estado; las acciones de lanzamiento llegan en el siguiente corte."
+  ],
+  "testing": [
+    "Abrir la escena inicio-base en el Mac autorizado y comparar con Electron.",
+    "Revisar inicio-vacio, inicio-cargando e inicio-error, entrar/salir y reintentar."
+  ],
+  "knownLimitations": [
+    "Solo desarrollo; no se distribuye el Hub Rune.",
+    "Capturas y ventana visible del Mac pendientes; corte 1 sin aceptar.",
+    "Inicio es un primer corte: faltan acciones y acabado visual."
+  ]
+}

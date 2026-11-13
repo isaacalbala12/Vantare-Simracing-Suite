@@ -55,9 +55,11 @@ export function MoreMenu({
           }
         >
           <Menu.Popup className="v-popup v-studio-more">
+            {/* Base UI useMenuItem keeps disabled entries focusable. */}
             <Menu.Item
               className="v-option v-studio-more-item"
               disabled
+              closeOnClick={false}
               aria-describedby={`${id}-edit`}
             >
               <MoreActionIcon action="place" />
@@ -72,6 +74,7 @@ export function MoreMenu({
             <Menu.Item
               className="v-option v-studio-more-item"
               disabled
+              closeOnClick={false}
               aria-describedby={`${id}-obs`}
             >
               <MoreActionIcon action="obs" />

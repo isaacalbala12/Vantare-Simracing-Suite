@@ -354,3 +354,31 @@ it.each(["protected", "unverified", "locked", "pending"] as const)(
     expect(remove).not.toHaveBeenCalled();
   },
 );
+
+it("keeps unavailable More actions in the arrow-key order without activating or closing", async () => {
+  const requests = vi.spyOn(Client.prototype, "request");
+  mount();
+  const user = userEvent.setup();
+  const trigger = await screen.findByRole("button", { name: text.moreLabel });
+  await user.click(trigger);
+  const menu = await screen.findByRole("menu");
+  await waitFor(() => expect(menu.contains(document.activeElement)).toBe(true));
+  await user.keyboard("{Home}");
+  const place = within(menu).getByRole("menuitem", {
+    name: /^Colocar en pantalla/,
+  });
+  const obs = within(menu).getByRole("menuitem", { name: /^Publicar en OBS/ });
+  await waitFor(() => expect(document.activeElement).toBe(place));
+  expect(place.getAttribute("aria-disabled")).toBe("true");
+  await user.keyboard("{Enter}{ArrowDown}");
+  expect(document.activeElement).toBe(obs);
+  expect(obs.getAttribute("aria-disabled")).toBe("true");
+  await user.keyboard(" {ArrowDown}");
+  expect(document.activeElement).toBe(
+    within(menu).getByRole("menuitem", { name: /Eliminar Standings/ }),
+  );
+  expect(menu.isConnected).toBe(true);
+  expect(
+    requests.mock.calls.every(([request]) => request.method === "studio.get"),
+  ).toBe(true);
+});

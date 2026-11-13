@@ -11,6 +11,7 @@ export const studioCatalogText = {
   catalogMove: "moverse",
   catalogKeyAdd: "añadir",
   catalogKeyClose: "cerrar",
+  catalogIncludedCount: (count: number) => `los ${count} widgets`,
   catalogAllIncluded: (plan: string, count: number) =>
     `${plan} incluye los ${count} widgets.`,
   catalogPro: "Incluido en Pro",

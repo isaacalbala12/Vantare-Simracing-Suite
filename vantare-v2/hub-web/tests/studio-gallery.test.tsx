@@ -25,6 +25,7 @@ import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { studioText as t } from "../src/renderer/i18n/studio";
+import { studioCatalogText as catalogText } from "../src/renderer/i18n/studio-catalog";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
@@ -95,7 +96,9 @@ describe("Studio Foco interactions", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: t.moreLabel }));
+    await user.click(
+      await screen.findByRole("button", { name: catalogText.moreLabel }),
+    );
     const action = await screen.findByRole("menuitem", {
       name: /^Colocar en pantalla/,
     });
@@ -157,7 +160,9 @@ describe("Studio Foco interactions", () => {
       baseRevision: expect.stringMatching(/^[a-f0-9]{64}$/),
     });
     expect(screen.queryByRole("spinbutton")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: t.moreLabel }));
+    fireEvent.click(
+      screen.getByRole("button", { name: catalogText.moreLabel }),
+    );
     expect(
       screen
         .getByRole("menuitem", { name: /^Colocar en pantalla/ })

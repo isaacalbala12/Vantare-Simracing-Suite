@@ -82,12 +82,15 @@ export function CatalogDialog({
             </Dialog.Close>
           </header>
           <div className="v-studio-catalog-tools">
-            <SearchInput
-              label={t.search}
-              clearLabel={text.catalogClear}
-              value={search}
-              onChange={setSearch}
-            />
+            <div className="v-studio-catalog-search">
+              <Icon name="search" />
+              <SearchInput
+                label={t.search}
+                clearLabel={text.catalogClear}
+                value={search}
+                onChange={setSearch}
+              />
+            </div>
             <fieldset
               className="v-studio-catalog-categories"
               aria-label={text.catalogCategories}
@@ -267,24 +270,24 @@ export function CatalogDialog({
               )}
           </div>
           <footer>
-            {view?.plan === "unverified"
-              ? t.verify
-              : view?.catalog.some((widget) => !widget.allowed)
-                ? t.planNote(
-                    t.planNames[view.plan],
-                    t.included(
-                      view.catalog
-                        .filter((widget) => widget.allowed)
-                        .map((widget) => widget.name),
-                    ),
-                    view.catalog.filter((widget) => !widget.allowed).length,
-                  )
-                : view
-                  ? text.catalogAllIncluded(
+            <span className="v-studio-catalog-plan">
+              {view?.plan === "unverified"
+                ? t.verify
+                : view?.catalog.some((widget) => !widget.allowed)
+                  ? t.planNote(
                       t.planNames[view.plan],
-                      view.catalog.length,
+                      text.catalogIncludedCount(
+                        view.catalog.filter((widget) => widget.allowed).length,
+                      ),
+                      view.catalog.filter((widget) => !widget.allowed).length,
                     )
-                  : null}
+                  : view
+                    ? text.catalogAllIncluded(
+                        t.planNames[view.plan],
+                        view.catalog.length,
+                      )
+                    : null}
+            </span>
             {view?.catalog.some((widget) => !widget.allowed) && (
               <Button
                 size="sm"

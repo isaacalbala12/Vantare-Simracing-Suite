@@ -47,9 +47,6 @@ export const studioText = {
   layoutLabel: "Layout",
   visibleCount: (n: number) => `${n} ${n === 1 ? "visible" : "visibles"}`,
   overlaysCount: (n: number) => `Overlays · ${n}`,
-  more: "Más",
-  moreLabel: "Más acciones",
-  moreMark: "⋯",
   illustrationNote: "Dibujo orientativo · la vista previa real aparecerá aquí",
   stageLabel: (name: string) => `Dibujo orientativo de ${name}`,
   stageSize: (width: number, height: number) =>

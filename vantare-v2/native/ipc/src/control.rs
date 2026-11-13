@@ -1168,7 +1168,10 @@ mod account_probe_tests {
     }
     fn snapshot() -> AccountObservation {
         AccountObservation {
-            generation: "a".repeat(64).try_into().expect("valid account observation fixture"),
+            generation: "a"
+                .repeat(64)
+                .try_into()
+                .expect("valid account observation fixture"),
             policy: Policy {
                 version: VERSION,
                 epoch: 1,

@@ -23,6 +23,7 @@ import {
   reportExportName,
 } from "../contract/generated/contract";
 import { bounded } from "../contract/validation";
+import { measurementHome, measurementProvenance } from "../measurement";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, zoomWindow } from "./appearance";
@@ -57,6 +58,18 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 async function start() {
+  if (measurementHome) {
+    if (
+      !process.argv.includes("--medicion-inicio") ||
+      !process.argv.includes("--control-stdin")
+    )
+      throw new Error("Measurement requires --medicion-inicio --control-stdin");
+    process.env.VANTARE_HUB_HOST = "mock";
+    process.env.VANTARE_HUB_SCENE = "visual-dark:inicio-base";
+    console.error(measurementProvenance);
+    process.stdin.once("end", () => app.quit());
+    process.stdin.resume();
+  }
   if (app.isPackaged && !QA_DRIVER && hasDebuggerArguments(process.argv)) {
     app.commandLine.removeSwitch("remote-debugging-port");
     app.commandLine.removeSwitch("remote-debugging-pipe");

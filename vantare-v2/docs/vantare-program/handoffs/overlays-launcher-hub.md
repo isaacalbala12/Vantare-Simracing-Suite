@@ -1,3 +1,15 @@
+## VANTA-141 · Pieza 8b: paquete Inicio Electron de medición (13/11/2026)
+
+Issue #2213, Plane En curso; base nightly dfeb9b059. Construcción optativa QA
+que inicia el Hub real en Inicio con el mock visual-dark:inicio-base y fecha
+de presentación fija. No cambia el reloj global, navegación ni paquetes normales.
+Procedencia en PE y contenido; cierre por entrada estándar. Sin dependencias
+nuevas, cuentas reales, ejecución gráfica en servidor, merge ni release.
+Tipos y lint pasan; 116 pruebas dirigidas pasan. Suite completa en comprobación
+serial tras fallos de espera bajo concurrencia; informes íntegros conservados.
+Empaquetado por cola pendiente de captura.lock. La comparación de tiempos de
+compilación queda pendiente autorizada por Isaac, no bloquea el kit.
+
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 
 [#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995),

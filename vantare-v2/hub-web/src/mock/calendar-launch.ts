@@ -114,6 +114,7 @@ export function calendarLaunchMock(
     const key = request.mode.kind === "once" ? "armed" : "automatic";
     const old = view[key];
     if (old) cancel(old, "replaced");
+    else view.change = null;
     const plan: CalendarLaunchPlan = {
       armId: (++sequence).toString(16).padStart(64, "0"),
       profile: request.profile,

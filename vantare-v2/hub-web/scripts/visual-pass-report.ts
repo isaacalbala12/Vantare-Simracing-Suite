@@ -36,8 +36,11 @@ const referenceLimitations: {
   sizes: string[];
   reason: string;
 }[] = JSON.parse(
-  await readFile(join(root, "referencias-defectuosas.json"), "utf8").catch(
-    () => "[]",
+  await readFile(join(root, "referencias-defectuosas.json"), "utf8").catch(() =>
+    readFile(
+      new URL("../docs/pasada-visual-referencias.json", import.meta.url),
+      "utf8",
+    ),
   ),
 );
 const records = [];

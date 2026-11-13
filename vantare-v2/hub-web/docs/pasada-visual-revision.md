@@ -16,3 +16,13 @@ Los candidatos QA combinan únicamente los estilos independientes de estos PR y 
 H-V01 sigue abierto. Inicio ya carga PNG reales cuando existen; faltan los artefactos nativos acreditados. Los cinco tipos que usa Inicio tienen una foto base disponible, pero la receta global actual requiere los 19 tipos y cuatro corpus siguen incompletos. Tampoco hay recibo de Workshop verificado contra nightly. El guard exige todos los worktrees limpios y hay cambios ajenos en el checkout de integración que este worker no puede borrar. La evaluación está en `D:/VantareServer/evidence/hub-web/pasada-visual/H-V01.md`; no se inventan historiales ni se sustituyen PNG reales por recortes de capturas.
 
 El informe general conserva explícitamente las celdas pendientes de referencia o inspección. No se declara terminada la pasada completa.
+
+## Referencia de Studio
+
+REF-ST01 afecta a la maqueta A de SHA-256 `fa9acc97776ef3e65662a0bea8c0eaae51891bb263dfc8376f408682694571c4`, con barra abierta. En `variante-a.html:183`, `.main` es su propio contenedor; la consulta de las líneas 230–232 intenta cambiar la rejilla del mismo `.main`. Los nombres se ocultan, pero la rejilla sigue en 248 px. ESPEC-A §11 exige 72 px en compacto. El producto aplica la consulta a un hijo y cumple esa medida.
+
+La tabla conserva el porcentaje bruto y lo marca como defecto de referencia, no como fallo del producto. El par de prueba está en `D:/VantareServer/evidence/hub-web/pasada-visual/comparaciones/1280x800/light/studio-estado-delta/expanded/comparison-reference-left.png`. El original HTML no se modifica para reducir la diferencia. `pasada-visual-referencias.json` deja la anotación ligada al hash exacto; una maqueta nueva requiere recibos nuevos.
+
+Se han verificado los 104 recibos de Studio: fuente, estado, tamaño, tema, barra, Chromium/V8 y nueve hashes de fuentes. Esa verificación demuestra la procedencia; no oculta el defecto de la maqueta.
+
+Durante la reserva del orquestador no se adquiere el cerrojo hasta las 11:07 CET del 13/11. Las tandas posteriores propias ceden 75 segundos, sin cerrojo, después de cada dos escenas para permitir entrar a la cola nativa.

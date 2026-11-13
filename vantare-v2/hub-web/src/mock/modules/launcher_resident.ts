@@ -100,6 +100,12 @@ export function create(context: MockContext): MockHandler {
         id: message.id,
         error: { kind: "residentAnswerRejected", reason },
       });
+      if (
+        !view.online ||
+        view.protected ||
+        context.core.services !== "connected"
+      )
+        return reject("unavailable");
       if (target.action === "trust") return reject("trust-requires-editor");
       if (target.accountGeneration !== context.core.accountGeneration)
         return reject("account-changed");

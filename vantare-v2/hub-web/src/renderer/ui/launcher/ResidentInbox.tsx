@@ -82,7 +82,11 @@ export function ResidentInbox({
                 {t.question[decision.kind]}
               </Dialog.Description>
               <p id={explanation}>{answer ? t.answerHelp : t.readOnly}</p>
-              {status && <p role="status">{status}</p>}
+              {status && (
+                <p id={`${explanation}-status`} role="status">
+                  {status}
+                </p>
+              )}
               {view?.decision?.actions.map((action) => {
                 const reason =
                   action.id === "trust" && answer
@@ -103,7 +107,9 @@ export function ResidentInbox({
                         aria-describedby={
                           !answer || enabled
                             ? explanation
-                            : `${explanation}-${action.id}`
+                            : phase && action.id !== "trust"
+                              ? `${explanation}-status`
+                              : `${explanation}-${action.id}`
                         }
                         onClick={() => {
                           if (enabled) void answer?.answer(action.id);
@@ -111,9 +117,11 @@ export function ResidentInbox({
                       >
                         {action.label}
                       </Button>
-                      {answer && !enabled && (
-                        <p id={`${explanation}-${action.id}`}>{reason}</p>
-                      )}
+                      {answer &&
+                        !enabled &&
+                        (!phase || action.id === "trust") && (
+                          <p id={`${explanation}-${action.id}`}>{reason}</p>
+                        )}
                     </span>
                   </Tooltip>
                 );

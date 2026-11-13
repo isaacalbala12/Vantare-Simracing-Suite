@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
+import { residentOrderReceiptTimeoutMs } from "../src/contract/generated/launcher_resident.ts";
 import { residentText as text } from "../src/renderer/i18n/launcher-resident.ts";
 import { until } from "./wait-for.ts";
 
@@ -24,6 +25,57 @@ export async function checkResidentAnswer(owner: Page, base: string) {
         );
       };
     });
+    await page.goto(`${base}?escena=visual-dark:launcher-answer-question`);
+    await page.getByRole("button", { name: "Launcher", exact: true }).click();
+    const drawer = page.locator(".v-launcher-resident-drawer");
+    await drawer.waitFor();
+    await page
+      .getByRole("button", { name: "Editar perfil", exact: true })
+      .first()
+      .click();
+    await until(
+      () => drawer.evaluate((node) => !!node.closest("[inert]")),
+      5000,
+      "profile editor makes resident notice inert",
+    );
+    await drawer
+      .getByRole("button", {
+        name: "Reutilizar",
+        exact: true,
+        includeHidden: true,
+      })
+      .evaluate((node) => (node as HTMLButtonElement).click());
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await page.evaluate(
+        () => (Reflect.get(window, "residentAnswers") as unknown[]).length,
+      ),
+      0,
+      "inert notice cannot answer",
+    );
+    assert.equal(
+      await drawer.evaluate((node) => node.contains(document.activeElement)),
+      false,
+      "Tab cannot reach the inert notice",
+    );
+    await page.keyboard.press("Escape");
+    await until(
+      () => drawer.evaluate((node) => !node.closest("[inert]")),
+      5000,
+      "resident notice becomes usable after editor closes",
+    );
+    await drawer
+      .getByRole("button", { name: "Reutilizar", exact: true })
+      .click();
+    await until(
+      () =>
+        page.evaluate(
+          () =>
+            (Reflect.get(window, "residentAnswers") as unknown[]).length === 1,
+        ),
+      5000,
+      "positive control: explicit answer reaches the port",
+    );
     for (const state of [
       "accepted",
       "rejected",
@@ -60,7 +112,7 @@ export async function checkResidentAnswer(owner: Page, base: string) {
         await page
           .getByText(text.answerState.queued, { exact: true })
           .waitFor();
-        await page.clock.runFor(5000);
+        await page.clock.runFor(residentOrderReceiptTimeoutMs);
       }
       await popup.getByText(text.answerState[state], { exact: true }).waitFor();
       assert.equal(

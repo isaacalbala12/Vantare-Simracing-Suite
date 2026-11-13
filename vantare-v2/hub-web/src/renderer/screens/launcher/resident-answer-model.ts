@@ -46,6 +46,8 @@ export function observeAnswer(
 ): AnswerAttempt {
   if (attempt.phase.kind !== "queued" && attempt.phase.kind !== "accepted")
     return attempt;
+  if (attempt.phase.kind === "queued" && now >= attempt.phase.until)
+    return { ...attempt, phase: { kind: "unknown" } };
   const execution = view?.execution;
   const unknown = (): AnswerAttempt => ({
     ...attempt,
@@ -91,7 +93,5 @@ export function observeAnswer(
       return { ...next, phase: { kind: "finished", outcome: value.outcome } };
     }
   }
-  if (next.phase.kind === "queued" && now >= next.phase.until)
-    return { ...next, phase: { kind: "unknown" } };
   return next;
 }

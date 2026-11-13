@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { residentOrderReceiptTimeoutMs } from "../../src/contract/generated/launcher_resident.ts";
 import { residentText as text } from "../../src/renderer/i18n/launcher-resident.ts";
 import type { VisualScene } from "./scenes.ts";
 export const residentAnswerScenes: Record<string, VisualScene> = {};
@@ -32,7 +33,7 @@ for (const state of [
           await page
             .getByText(text.answerState.queued, { exact: true })
             .waitFor();
-          await page.clock.runFor(5000);
+          await page.clock.runFor(residentOrderReceiptTimeoutMs);
         }
         await page
           .getByText(text.answerState[state], { exact: true })

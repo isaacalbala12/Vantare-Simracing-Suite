@@ -116,3 +116,53 @@ describe("checked resident answer receipts", () => {
     expect(observeAnswer(queued, gap, 1).phase.kind).toBe("unknown");
   });
 });
+it("does not acknowledge from a launch receipt or a terminal event without the answer receipt", () => {
+  const queued = queuedAnswer(attempt, request, 0);
+  expect(
+    observeAnswer(
+      queued,
+      view([
+        {
+          seq: String(BigInt(run) + 1n),
+          kind: {
+            kind: "received",
+            request,
+            receipt: { kind: "accepted", run },
+          },
+        },
+        {
+          seq: String(BigInt(run) + 2n),
+          kind: { kind: "finished", run, outcome: { kind: "completed" } },
+        },
+      ]),
+      1,
+    ).phase.kind,
+  ).toBe("queued");
+});
+it("ignores terminal events from a different chain after acceptance", () => {
+  const accepted = observeAnswer(
+    queuedAnswer(attempt, request, 0),
+    view([receipt()]),
+    1,
+  );
+  expect(
+    observeAnswer(
+      accepted,
+      view([
+        receipt(),
+        {
+          seq: String(BigInt(run) + 2n),
+          kind: { kind: "finished", run: "2", outcome: { kind: "completed" } },
+        },
+      ]),
+      2,
+    ).phase.kind,
+  ).toBe("accepted");
+});
+
+it("a matching receipt observed after the deadline remains Unknown", () => {
+  expect(
+    observeAnswer(queuedAnswer(attempt, request, 0), view([receipt()]), 5001)
+      .phase.kind,
+  ).toBe("unknown");
+});

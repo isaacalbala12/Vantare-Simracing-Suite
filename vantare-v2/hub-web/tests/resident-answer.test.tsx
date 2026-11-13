@@ -254,3 +254,36 @@ it("a second scoped question can be answered while the chain is still running", 
   expect(host.client.request).toHaveBeenCalledTimes(2);
   expect(host.client.request.mock.calls[1][0].target.decision).toBe("3");
 });
+
+it("does not resurrect a pending answer after disconnect and reconnect", async () => {
+  const hook = setup();
+  let resolve!: (value: unknown) => void;
+  host.client.request.mockReturnValue(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  let sent!: Promise<void>;
+  act(() => {
+    sent = hook.result.current.answer("cancel");
+  });
+  act(() => {
+    hook.cache.setQueryData(coreKey, { ...hook.core, services: "unavailable" });
+  });
+  hook.rerender({ value: structuredClone(hook.view) });
+  await waitFor(() =>
+    expect(hook.result.current.attempt?.phase.kind).toBe("unknown"),
+  );
+  act(() => {
+    hook.cache.setQueryData(coreKey, hook.core);
+  });
+  hook.rerender({ value: structuredClone(hook.view) });
+  await act(async () => {
+    resolve({
+      method: "launcher.resident.answer",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await sent;
+  });
+  expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+});

@@ -74,7 +74,7 @@ describe("resident decisions are read-only", () => {
       action.getAttribute("aria-describedby") ?? "",
     );
     expect(note?.textContent).toBe(
-      "Responder desde el Hub estará disponible próximamente.",
+      "El residente actual no permite responder desde este Hub.",
     );
     for (const [label, handler] of [
       ["Minimizar", minimize],

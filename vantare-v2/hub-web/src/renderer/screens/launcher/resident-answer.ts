@@ -50,7 +50,7 @@ export function useResidentAnswer(
       epoch.current++;
       pending.current = false;
     };
-  }, [client, core.accountGeneration]);
+  }, [client, core.accountGeneration, core.services, issue]);
   useEffect(() => {
     setAttempt((previous) => {
       if (!previous) return previous;
@@ -101,6 +101,7 @@ export function useResidentAnswer(
       return false;
     return !(
       attempt &&
+      attempt.phase.kind !== "rejected" &&
       attempt.target.instance === execution.instance &&
       attempt.target.accountGeneration === scope.accountGeneration &&
       attempt.target.decision === scope.decision &&

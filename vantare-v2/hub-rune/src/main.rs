@@ -257,14 +257,13 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
     }
     let previous_status = state.roadmap.status();
     if let Some(message) = state.roadmap.next(now, state.section == "roadmap") {
-        if let vantare_hub_host::protocol::UiToHost::Request { id, .. } = &message {
-            if state
+        if let vantare_hub_host::protocol::UiToHost::Request { id, .. } = &message
+            && state
                 .link
                 .as_mut()
                 .is_none_or(|link| link.send(message.clone()).is_err())
-            {
-                state.roadmap.fail(*id);
-            }
+        {
+            state.roadmap.fail(*id);
         }
         changed = true;
         tx.wake_at(now);

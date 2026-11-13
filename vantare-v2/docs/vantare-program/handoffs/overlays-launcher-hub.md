@@ -1865,3 +1865,27 @@ Base final de la tercera revisión: nightly 07825965f (incluye Calendario v32),
 tras el primer --onto sobre 58e5b5ede. #2267 y #2268 conservan padre común;
 el test Hello usa protocol::VERSION del mismo host, sin fijar una versión
 propia. Solo se rebasó código de otros proyectos, sin modificarlo.
+### VANTA-143 · PR 5 pantalla conectada y corte 1 (2026-11-13)
+
+Estado del núcleo/simulador por CoreGet, Core y SimStatus: «Esperando simulador»
+o «LMU conectado», aviso con núcleo no disponible y navegación de testers según
+el acceso observado. Roadmap solo lee: caché y refresco seriales, cada 300 s
+mientras está abierta, IDs correlacionados, plazo de 45 s, descarte de respuestas
+antiguas y conservación de publicación ante error. Tablero/Circuito/Temporada y
+resumen por áreas desde la publicación compartida, sin editor ni escritura.
+Escenas debug del mismo corpus/fixtures Electron para núcleo apagado/conectado
+y Roadmap vacío/publicado/error. Tests con reloj explícito y Runtime sin GPU:
+sondeo, cierre de sección, errores/plazo/respuestas antiguas, publicación literal,
+marco/teclado/nombres a 100/125/150 % y escena conectada completa.
+Clippy Windows local de la pila final PASS (-j2, un slot, D:/targets/slot-0);
+suite sin ventana en compilación. Formato, catálogo y licencias PASS. Los fallos
+anteriores (import color, ScrollSpec y if anidado de ready) se conservan y se han
+corregido sin relajar lints ni tests. CI del SHA definitivo se consulta en PR 5.
+
+CORTE-1.md contiene los cinco requisitos y sus pendientes; **no aceptado**:
+Windows 10/11 reales, campos/AltGr, lector real, comparación visual de Isaac y
+30 minutos de ventana normal siguen pendientes. No se ejecuta gráfica local.
+El Mac duerme; se abrirán los cinco PRs apilados sin esperar, por instrucción
+expresa del orquestador. El resumen para Plane queda en cada PR; lo actualiza
+el orquestador. #2256 conserva area:ui y quedó enlazada al GitHub Project Vantare.
+Sin merge a nightly, promociones de canal, releases o cambios del instalador.

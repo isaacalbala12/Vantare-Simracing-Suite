@@ -434,6 +434,11 @@ jobs:
     needs: [policy, native_build]
     if: needs.policy.outputs.native != 'false'
     runs-on: windows-latest
+    env:
+      # Experimento #1993: 6 hilos de test en el runner de 4 vCPU (antes 4 por
+      # .config/nextest.toml). Los tests con plazo usan threads-required y
+      # corren solos; el resto puede solapar I/O (powershell, procesos).
+      NEXTEST_TEST_THREADS: '6'
     strategy:
       fail-fast: false
       matrix:

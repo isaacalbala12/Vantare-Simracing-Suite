@@ -97,7 +97,7 @@ const scene = (
         await page
           .locator(".v-focus-strip")
           .getByRole("status", {
-            name: t.notSaved,
+            name: mock === "studio-a-cargando" ? t.readFailed : t.notSaved,
             exact: true,
           })
           .waitFor({ timeout: 50000 });

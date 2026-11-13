@@ -17,7 +17,9 @@ export function StudioSaveStatus({
     view?.state === "protected"
       ? t.readOnly
       : state.failure
-        ? t.notSaved
+        ? state.failure.request.method === "studio.get"
+          ? t.readFailed
+          : t.notSaved
         : saving
           ? t.saving
           : view?.state === "ready"
@@ -99,7 +101,9 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
         >
           <Icon name="alert" />
           <div>
-            <strong>{state.failure.message}</strong>
+            <strong>
+              {readingFailure ? t.readFailed : state.failure.message}
+            </strong>
             <p>
               {readingFailure
                 ? t.readFailedHelp

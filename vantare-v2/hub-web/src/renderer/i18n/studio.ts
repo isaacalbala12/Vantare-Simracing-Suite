@@ -8,6 +8,7 @@ export const studioText = {
     "Mientras el diseño esté protegido no se muestran ni se cambian. Nada de lo que ves aquí se ha inventado.",
   readFailedHelp:
     "Vuelve a cargar el diseño para intentarlo de nuevo. No se ha creado ni cambiado nada.",
+  readFailed: "No se pudo leer el diseño.",
   visibilityGroup: "Visibilidad",
   whenGroup: "¿Cuándo se ve?",
   placeGroup: "Posición y tamaño",

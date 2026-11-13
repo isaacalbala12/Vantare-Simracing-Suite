@@ -115,3 +115,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Keep the narrow copy column readable: GPUI wraps track and layout separately
+   at this width. Browser font metrics otherwise join them and shorten the hero. */
+.v-calendar .v-calendar-hero-copy {
+  container: calendar-hero-copy / inline-size;
+}
+@container calendar-hero-copy (max-width: 110px) {
+  .v-calendar-hero-meta > .v-calendar-license {
+    flex-basis: 100%;
+  }
+}

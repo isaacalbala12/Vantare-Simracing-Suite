@@ -2,6 +2,25 @@ import type { Page } from "playwright-core";
 import type { VisualScene } from "./scenes.ts";
 
 async function assertDetailWindowControls(page: Page) {
+  // Visibility precedes Base UI's queued autofocus (microtask + animation frame).
+  // Let the top dialog acquire its initial focus before moving it to the caption;
+  // otherwise that autofocus can steal it between focus() and the assertion.
+  await page.waitForFunction(
+    () => {
+      const dialogs = [
+        ...document.querySelectorAll<HTMLElement>(
+          '[role="dialog"],[role="alertdialog"]',
+        ),
+      ].filter(
+        (node) =>
+          !node.closest('[inert],[hidden],[aria-hidden="true"]') &&
+          node.getClientRects().length > 0,
+      );
+      return dialogs.at(-1)?.contains(document.activeElement) ?? false;
+    },
+    undefined,
+    { timeout: 5000 },
+  );
   const accessible = await page
     .locator(".v-window-controls")
     .evaluate((controls) => {
@@ -28,8 +47,18 @@ async function assertDetailWindowControls(page: Page) {
     throw new Error("Calendar detail blocks native window controls");
   const control = page.locator(".v-window-controls button").first();
   await control.focus();
-  if (!(await control.evaluate((node) => node === document.activeElement)))
-    throw new Error("Calendar detail makes window controls keyboard-inert");
+  await page.waitForFunction(
+    () => {
+      const control = document.querySelector(".v-window-controls button");
+      return (
+        !!control &&
+        control === document.activeElement &&
+        !control.closest('[inert],[aria-hidden="true"]')
+      );
+    },
+    undefined,
+    { timeout: 5000 },
+  );
   await page.getByRole("dialog").focus();
 }
 

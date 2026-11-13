@@ -318,7 +318,7 @@ export function LauncherProfiles({
                 )}
               </div>
             )}
-            <ol className="v-launcher-chain">
+            <ol className="v-launcher-chain" aria-label={resultsText.steps}>
               {apps(profile).map((app, index) => {
                 const state = knownResults?.steps.find(
                   (step) => step.index === index,

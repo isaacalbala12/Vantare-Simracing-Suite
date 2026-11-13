@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
-import { residentOrderReceiptTimeoutMs } from "../src/contract/generated/launcher_resident.ts";
+import {
+  residentOrderReceiptTimeoutMs,
+  residentStepLimit,
+} from "../src/contract/generated/launcher_resident.ts";
 import { controlText } from "../src/renderer/i18n/launcher-control.ts";
+import { resultsText } from "../src/renderer/i18n/launcher-results.ts";
 import { openProfileRemovalWithKeyboard } from "./check-dialog-safety.ts";
 import {
   assertControlCaption,
   observeResidentControls,
 } from "./check-resident-control.ts";
+import { until } from "./wait-for.ts";
 
 export async function prepareResidentResults(page: Page, state: string) {
   await observeResidentControls(page);
@@ -57,7 +62,7 @@ export async function prepareResidentResults(page: Page, state: string) {
         exact: true,
       })
       .waitFor();
-  } else if (state !== "mixed" && state !== "final-pass") {
+  } else if (state !== "mixed" && state !== "final-pass" && state !== "many") {
     await button.focus();
     await page.keyboard.press("Enter");
     const status = page.getByRole("region", {
@@ -90,6 +95,35 @@ export async function prepareResidentResults(page: Page, state: string) {
       .getByText(`${controlText.retryAll}: ${text}`, { exact: true })
       .waitFor();
   }
+  if (state === "many") {
+    const list = page.getByRole("list", {
+      name: resultsText.steps,
+      exact: true,
+    });
+    assert.equal(await list.locator("li").count(), residentStepLimit);
+    await list.focus();
+    await until(
+      () => list.evaluate((node) => node === document.activeElement),
+      5000,
+      "overflow list is keyboard focusable",
+    );
+    await page.keyboard.press("ArrowRight");
+    await until(
+      () => list.evaluate((node) => node.scrollLeft > 0),
+      5000,
+      "ArrowRight scrolls the real step list",
+    );
+    const last = list.locator("li").last();
+    await last.scrollIntoViewIfNeeded();
+    const bounds = await list.boundingBox(),
+      item = await last.boundingBox();
+    assert.ok(bounds && item);
+    assert.ok(
+      item.x >= bounds.x - 1 &&
+        item.x + item.width <= bounds.x + bounds.width + 1,
+      "last step remains accessible",
+    );
+  }
   if (state === "final-pass") {
     assert.equal(
       await page
@@ -112,6 +146,7 @@ export async function prepareResidentResults(page: Page, state: string) {
   );
   const sends = [
     "mixed",
+    "many",
     "final-pass",
     "unknown",
     "unsupported",
@@ -130,6 +165,7 @@ export async function checkResidentResults(owner: Page, base: string) {
   const page = await owner.context().newPage();
   try {
     for (const state of [
+      "many",
       "final-pass",
       "inert",
       "accepted",

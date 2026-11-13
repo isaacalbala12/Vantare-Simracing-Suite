@@ -3,6 +3,7 @@ import type { VisualScene } from "./scenes.ts";
 export const residentResultsScenes: Record<string, VisualScene> = {};
 for (const state of [
   "mixed",
+  "many",
   "final-pass",
   "accepted",
   "rejected",

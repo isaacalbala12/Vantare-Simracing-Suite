@@ -97,6 +97,8 @@
   font-size: 11px;
 }
 .v-launcher-chain {
+  overflow-x: auto;
+  scrollbar-width: none;
   display: flex;
   gap: 22px;
   list-style: none;
@@ -106,7 +108,7 @@
 .v-launcher-chain li {
   position: relative;
   flex: 1;
-  min-width: 0;
+  min-width: 160px;
   border: 1px solid var(--line-1);
   border-radius: 10px;
   background: var(--launcher-step-bg);
@@ -563,4 +565,17 @@ button.v-launcher-app-tile {
 }
 .v-resident-control-notice {
   margin-bottom: 12px;
+}
+
+.v-launcher-chain:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+@media (width < 1400px) {
+  .v-launcher-chain {
+    flex-wrap: nowrap;
+  }
+  .v-launcher-chain li {
+    min-width: 125px;
+  }
 }

@@ -1,5 +1,6 @@
 import type { ResidentStepState } from "../../contract/generated/launcher_resident";
 export const resultsText = {
+  steps: "Pasos de la secuencia",
   title: "Última secuencia",
   unknown:
     "Resultado de la secuencia desconocido. No permite saber qué pasos fallaron.",

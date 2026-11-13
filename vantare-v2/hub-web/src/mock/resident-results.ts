@@ -21,7 +21,11 @@ export function createResidentResultsMock(
   let serial = 1;
   let queued = false;
   // Resident-owned lineage; All must not be reconstructed from the latest NotSelected states.
-  const original = new Set([1, 2]);
+  const original = new Set(
+    doc.profiles[0].apps.flatMap((app, index) =>
+      app === "lmu" ? [] : [index],
+    ),
+  );
   let failed = new Set([1]);
   let summary: ResidentRunResults = {
     run: "1",
@@ -31,11 +35,10 @@ export function createResidentResultsMock(
     mode: "rehearsal",
     outcome: { kind: "failed", reason: "step-failed" },
     retryFailed: true,
-    steps: [
-      { index: 0, state: "not-selected" },
-      { index: 1, state: "failed" },
-      { index: 2, state: "ready" },
-    ],
+    steps: doc.profiles[0].apps.map((_, index) => ({
+      index,
+      state: index === 0 ? "not-selected" : index === 1 ? "failed" : "ready",
+    })),
   };
   if (scene.endsWith("final-pass")) summary.steps[1].state = "not-run";
   view.execution = {

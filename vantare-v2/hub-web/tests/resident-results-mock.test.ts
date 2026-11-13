@@ -7,6 +7,7 @@ import type {
   ResidentRetryTarget,
   ResidentView,
 } from "../src/contract/generated/contract";
+import { residentStepLimit } from "../src/contract/generated/launcher_resident";
 import { isHostMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
 import { createResidentResultsMock } from "../src/mock/resident-results";
@@ -221,4 +222,27 @@ it("passes the strict renderer wire for the published v35 summary, receipt and t
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("keeps a full-size repeated-app profile and all indexed results valid on the wire", () => {
+  const host = createMockHost("visual-dark:launcher-results-many");
+
+  const opened = host({
+    kind: "request",
+    id: 2,
+    request: { method: "launcher.resident.get" },
+  });
+  expect(isHostMessage(opened)).toBe(true);
+  if (
+    opened?.kind !== "response" ||
+    opened.result.method !== "launcher.resident.get" ||
+    opened.result.value.execution?.results.kind !== "known"
+  )
+    throw new Error("known");
+  expect(opened.result.value.execution.results.value.steps).toHaveLength(
+    residentStepLimit,
+  );
+  expect(opened.result.value.execution.results.value.steps.at(-1)?.index).toBe(
+    residentStepLimit - 1,
+  );
 });

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
+import { measurementHome } from "../../measurement";
 import type { Section } from "./sections";
 
 export type { Section } from "./sections";
@@ -31,7 +32,7 @@ interface UiState {
 }
 function createUi() {
   return createStore<UiState>((set) => ({
-    section: "settings",
+    section: measurementHome ? "home" : "settings",
     studioLastSelected: null,
     rememberStudio: (studioLastSelected) => set({ studioLastSelected }),
     sidebarCollapsed: window.innerWidth < 1500,

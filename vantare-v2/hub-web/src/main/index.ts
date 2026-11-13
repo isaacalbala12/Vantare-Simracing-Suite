@@ -1,4 +1,5 @@
-import { join, resolve, sep } from "node:path";
+import { writeFile } from "node:fs/promises";
+import { isAbsolute, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   app,
@@ -23,6 +24,7 @@ import {
   reportExportName,
 } from "../contract/generated/contract";
 import { bounded } from "../contract/validation";
+import { measurementHome, measurementProvenance } from "../measurement";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, zoomWindow } from "./appearance";
@@ -31,6 +33,7 @@ import { calendarExportQa } from "./calendar-export-qa";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
+import { measurementReadyScript } from "./measurement-ready";
 import { notificationDelivery } from "./notification-delivery";
 import { reportExportSession } from "./report-export";
 import {
@@ -57,6 +60,18 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 async function start() {
+  if (measurementHome) {
+    if (
+      !process.argv.includes("--medicion-inicio") ||
+      !process.argv.includes("--control-stdin")
+    )
+      throw new Error("Measurement requires --medicion-inicio --control-stdin");
+    process.env.VANTARE_HUB_HOST = "mock";
+    process.env.VANTARE_HUB_SCENE = "visual-dark:inicio-base";
+    console.error(measurementProvenance);
+    process.stdin.once("end", () => app.quit());
+    process.stdin.resume();
+  }
   if (app.isPackaged && !QA_DRIVER && hasDebuggerArguments(process.argv)) {
     app.commandLine.removeSwitch("remote-debugging-port");
     app.commandLine.removeSwitch("remote-debugging-pipe");
@@ -119,6 +134,7 @@ async function start() {
   const colors = resolveTheme(hello.theme);
   window = new BrowserWindow({
     ...fitWindow(hello.window, screen.getPrimaryDisplay().workAreaSize),
+    ...(measurementHome ? { width: 1440, height: 900 } : {}),
     show: false,
     backgroundColor: colors["bg-window"],
     title: "Vantare · Hub",
@@ -498,6 +514,25 @@ async function start() {
         if (!currentWindow.isDestroyed()) currentWindow.setFocusable(true);
       }
     } else currentWindow.show();
+    if (measurementHome && process.env.VANTARE_MEASUREMENT_READY_FILE) {
+      const destination = process.env.VANTARE_MEASUREMENT_READY_FILE;
+      void (async () => {
+        if (!isAbsolute(destination))
+          throw new Error("Measurement path must be absolute");
+        // Home data, fonts and local images must be ready, then two actual
+        // animation frames. The controller timestamps file observation with
+        // Windows QPC in exactly the same way for all three engines.
+        await contents.executeJavaScript(measurementReadyScript);
+        await writeFile(
+          destination,
+          JSON.stringify({ ready: true, engine: "electron" }),
+          { flag: "wx" },
+        );
+      })().catch((error: unknown) => {
+        console.error("VANTARE_MEASUREMENT_READY_FAILED", error);
+        app.exit(2);
+      });
+    }
     if (compatible) host.send({ kind: "ready" });
   });
   if (devUrl) await window.loadURL(devUrl);

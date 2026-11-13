@@ -2,13 +2,22 @@ import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "electron-vite";
 import { contractIndex } from "./scripts/contract-index.ts";
+import { measurementBuild } from "./scripts/measurement-build.ts";
 
 const qa = process.env.VANTARE_HUB_QA_BUILD === "1";
+const measurement = measurementBuild();
+const measurementDefines = {
+  __VANTARE_MEASUREMENT_HOME__: JSON.stringify(measurement.enabled),
+  __VANTARE_MEASUREMENT_PROVENANCE__: JSON.stringify(measurement.provenance),
+};
 const output = qa ? "out-qa" : "out";
 contractIndex();
 export default defineConfig({
   main: {
-    define: { __VANTARE_QA_DRIVER__: JSON.stringify(qa) },
+    define: {
+      __VANTARE_QA_DRIVER__: JSON.stringify(qa),
+      ...measurementDefines,
+    },
     build: {
       outDir: resolve(output, "main"),
       rollupOptions: { input: resolve("src/main/index.ts") },
@@ -28,6 +37,7 @@ export default defineConfig({
     define: {
       "process.env.NODE_ENV": JSON.stringify("production"),
       __VANTARE_RENDERER_MOCK__: JSON.stringify(qa),
+      ...measurementDefines,
     },
     root: "src/renderer",
     build: {

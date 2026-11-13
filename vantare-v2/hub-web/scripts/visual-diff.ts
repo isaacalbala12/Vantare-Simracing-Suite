@@ -12,6 +12,7 @@ import {
 import { auditFontSources } from "./visual-diff/fonts.ts";
 import { checkFrameParity } from "./visual-diff/frame-parity-check.ts";
 import { compareImages } from "./visual-diff/image.ts";
+import { observeProcessExit } from "./visual-diff/process-exit.ts";
 import { referenceReceiptHash } from "./visual-diff/reference-hash.ts";
 import { visualScenes } from "./visual-diff/scenes.ts";
 import { until } from "./wait-for.ts";
@@ -240,6 +241,7 @@ async function capture(
     ],
     { env, windowsHide: false, stdio: ["ignore", "ignore", "pipe"] },
   );
+  const exited = observeProcessExit(child);
   let stderr = "";
   let spawnError: Error | undefined;
   child.once("error", (error) => {
@@ -523,8 +525,7 @@ async function capture(
         const closing = await browser.newBrowserCDPSession();
         await closing.send("Browser.close").catch(() => {});
       }
-      if (child.exitCode === null)
-        await new Promise<void>((accept) => child.once("exit", () => accept()));
+      if (child.exitCode === null) await exited;
       // CDP can already be disconnected after the process exits. Keep a
       // bounded, referenced timer rather than leaving an unsettled close await.
       if (browser) {
@@ -540,11 +541,8 @@ async function capture(
     } finally {
       clearTimeout(deadline);
       if (child.exitCode === null) {
-        const stopped = new Promise<void>((accept) =>
-          child.once("exit", () => accept()),
-        );
         stopTree();
-        await stopped;
+        await exited;
       }
       await writeFile(
         join(destination, "teardown.json"),

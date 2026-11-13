@@ -167,6 +167,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
         <Button
           className="v-focus-add"
           data-add-widget
+          aria-label={t.add}
           disabled={
             blocked || (view?.instances.length ?? 0) >= studioLimits.instances
           }

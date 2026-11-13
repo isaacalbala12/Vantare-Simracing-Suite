@@ -1,3 +1,13 @@
+## VANTA-141 · Señal de Inicio listo en el Hub mock (13/11/2026)
+
+PR draft #2249. Medición fija 1440x900; espera datos, fuentes, imágenes y
+un frame completo antes de publicar una marca nueva. QPC se toma en el
+controlador común, no mediante una equivalencia inventada con el reloj Node.
+Cinco tests con DOM/reloj simulado PASS sin abrir Electron. Primer informe
+incompleto con exit 1 conservado; repetición completa exit 0. Tipos PASS
+antes de extraer el literal de prueba; comprobación final/build por cola
+pendientes. Producto normal, CSP, sandbox y fuses conservados. Sin release.
+
 ## VANTA-141 · Inicio mock sobre nightly vigente (13/11/2026)
 
 PR draft #2249 rebasado sobre cb8585d2b. Se preservan los nuevos campos de

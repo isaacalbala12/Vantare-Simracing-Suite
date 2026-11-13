@@ -37,3 +37,12 @@ y rememberStudio; solo se condiciona la sección inicial. Tipos y los tres
 tests de medición pasan en esta base. Los informes de suite completa citados
 arriba corresponden a la base anterior dfeb9b059 y no se presentan como una
 suite completa de esta nueva base. CI y empaquetado verificarán el conjunto.
+
+La variante de medición fija 1440x900 y admite
+VANTARE_MEASUREMENT_READY_FILE absoluto. La marca se escribe una sola vez,
+tras datos de Home, fuentes, imágenes y un frame completo. No se usa el
+reloj Node como si fuese QPC: el controlador observa la marca igual en
+los tres motores y declara su intervalo de observación. Visible requiere
+PresentMon. Cinco tests pasan con DOM simulado y reloj virtual, sin Electron;
+el primer intento terminó con exit 1 e informe incompleto (4 tests),
+conservado. Repetición completa 5/5 y exit 0, sin cambiar tests/plazos.

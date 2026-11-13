@@ -5,7 +5,7 @@ import type {
   HomeView,
   LauncherView,
 } from "../../../contract/generated/contract";
-import { homeNow } from "../../../measurement";
+import { homeNow, measurementHome } from "../../../measurement";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { lock } from "../../app/navigation";
 import { SectionChrome } from "../../app/SectionChrome";
@@ -51,6 +51,10 @@ export default function Home() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [now, setNow] = useState(homeNow);
+  useEffect(() => {
+    if (measurementHome && view)
+      document.documentElement.dataset.vantareMeasurementReady = "1";
+  }, [view]);
   const go = useUi((s) => s.navigate);
   async function navigate(section: import("../../app/sections").Section) {
     if (section === "launcher" || section === "studio") {

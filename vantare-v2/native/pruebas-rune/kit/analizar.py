@@ -187,15 +187,20 @@ def evaluate(document):
         manual_pending = any(manual.get(check) is None for check in CHECKLIST)
         manual_failed = any(manual.get(check) is False for check in CHECKLIST)
         endurance_pending = data.get("endurance", {}).get("complete") is not True
+        observed_crash = any(number(value, key) > 0
+                             for key in ("crashes", "bugchecks")
+                             if (value := data.get("endurance", {}).get(key)) is not None)
+        memory_exception = (name == "rune" and bool(failed)
+                            and set(failed) <= {"private_mib", "vram_mib"}
+                            and all(checks[key]["value"] < checks[key]["limit"] * 1.15 for key in failed))
         if manual_pending or endurance_pending:
             verdict = "pendiente_validacion_fisica"
-        if manual_failed or (not endurance_pending and not endurance):
+        if manual_failed or observed_crash or (not endurance_pending and not endurance):
             verdict = "no_adoptar"
-        if "load_p99_ms" in failed:
+        if failed and not memory_exception:
             verdict = "no_adoptar"
-        if name == "rune" and correctness and endurance and failed and set(failed) <= {"private_mib", "vram_mib"}:
-            if all(checks[key]["value"] < checks[key]["limit"] * 1.15 for key in failed):
-                verdict = "consultar_isaac_solo_memoria"
+        if memory_exception and correctness and endurance:
+            verdict = "consultar_isaac_solo_memoria"
         if verdict == "cumple_umbrales" and stats["ci95"][1] > cpu_limit:
             verdict = "inconcluso_intervalo_cpu"
         if verdict == "cumple_umbrales" and compilation_pending:

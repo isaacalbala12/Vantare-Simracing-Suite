@@ -63,6 +63,17 @@ class ThresholdTests(unittest.TestCase):
         del data["comparisons"]["rune"]["manual"]["obs_transparency"]
         self.assertEqual(evaluate(data)["overlays"]["rune"]["verdict"], "no_adoptar")
 
+    def test_an_observed_crash_rejects_even_an_incomplete_endurance_run(self):
+        for field in ("crashes", "bugchecks"):
+            data = campaign()
+            data["comparisons"]["rune"]["endurance"].update(complete=False, **{field: 1})
+            self.assertEqual(evaluate(data)["overlays"]["rune"]["verdict"], "no_adoptar")
+
+    def test_pending_physical_checks_do_not_hide_a_known_cpu_regression(self):
+        data = campaign(ratio=1.20)
+        del data["comparisons"]["rune"]["manual"]["obs_transparency"]
+        self.assertEqual(evaluate(data)["overlays"]["rune"]["verdict"], "no_adoptar")
+
     def test_observed_manual_failure_is_not_reported_as_a_pending_check(self):
         data = campaign()
         data["comparisons"]["rune"]["manual"]["click_through"] = False

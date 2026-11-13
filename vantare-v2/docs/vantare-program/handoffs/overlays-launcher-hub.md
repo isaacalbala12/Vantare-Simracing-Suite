@@ -1,3 +1,15 @@
+## VANTA-141 · Paquete y análisis en preparación (13/11/2026)
+
+Issue #2213, Plane En curso. Constructor de zip exige variantes, grabación,
+guiones, hashes, procedencia incrustada, perfil común y resolución de todas
+las DLL mediante dumpbin, sin ejecutar programas. Recogida conserva fallos.
+25 tests Python PASS; planificador y recogida en seco PASS. Guard de procesos
+rechaza el servidor antes de iniciar hijos. Se corrige que un crash observado
+en aguante incompleto o una regresión conocida quedasen como solo pendientes.
+Tiempos de compilación pendientes autorizados por Isaac; no se dan por PASS.
+Faltan INICIAR, normalización integrada y aguante; todavía no existe kit final.
+Sin merge, release ni ejecución gráfica en servidor.
+
 ## VANTA-141 · Recogida íntegra de campañas (13/11/2026)
 
 Issue #2213, Plane En curso. RECOGER.ps1 comprime exclusivamente la carpeta

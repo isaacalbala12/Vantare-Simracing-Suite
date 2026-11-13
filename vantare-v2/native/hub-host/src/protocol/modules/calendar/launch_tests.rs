@@ -589,3 +589,47 @@ fn failed_and_cancelled_receipts_remain_distinct_terminal_results() {
         assert!(!s.active());
     }
 }
+
+#[test]
+fn a_tolerated_small_clock_rollback_never_replays_an_automatic_departure() {
+    let base = Instant::now();
+    let mut scheduler = Scheduler::default();
+    scheduler.install(
+        binding(
+            '1',
+            clock(base, 0),
+            CalendarLaunchMode::Alerts {
+                expected_revision: "c".repeat(64),
+            },
+        ),
+        clock(base, 0),
+    );
+    let candidates = [Candidate {
+        series_id: "s".into(),
+        start_at: WALL + LEAD_MS + 1000,
+    }];
+    let scope = core();
+    let resident = resident();
+    let inputs = Inputs {
+        core: &scope,
+        closing: false,
+        resident: &resident,
+        alerts_ready: true,
+        auto_enabled: true,
+        candidates: &candidates,
+    };
+    let due = scheduler.step(inputs, clock(base, 1000)).unwrap();
+    scheduler.sent(
+        due,
+        Err(HostError::Busy),
+        &resident,
+        clock(base, 1000).monotonic,
+    );
+    let mut rollback = clock(base, 2000);
+    rollback.wall = WALL + 500;
+    assert!(scheduler.step(inputs, rollback).is_none());
+    let mut recross = clock(base, 2500);
+    recross.wall = WALL + 1000;
+    assert!(scheduler.step(inputs, recross).is_none());
+    assert!(scheduler.view().automatic.is_some());
+}

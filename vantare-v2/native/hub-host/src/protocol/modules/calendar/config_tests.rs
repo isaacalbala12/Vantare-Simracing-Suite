@@ -728,10 +728,15 @@ fn ics_protected_documents_are_isolated_and_source_bytes_are_unchanged() {
 #[test]
 fn arming_automatic_launch_uses_alerts_cas_and_preserves_the_other_preferences() {
     let root = Root::new();
-    let mut alerts = CalendarAlerts::default();
-    alerts.lead_min = 15;
-    alerts.notify_week = false;
-    alerts.channels.sound = false;
+    let mut alerts = CalendarAlerts {
+        lead_min: 15,
+        notify_week: false,
+        channels: CalendarChannels {
+            sound: false,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     root.seed(
         "calendar-alerts.json",
         &serde_json::to_vec(&alerts).unwrap(),

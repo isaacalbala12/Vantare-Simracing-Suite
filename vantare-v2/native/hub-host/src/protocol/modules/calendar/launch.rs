@@ -241,7 +241,8 @@ impl Scheduler {
     }
     fn take_due(&mut self, candidates: &[Candidate], now: Clock) -> Option<Due> {
         let automatic = self.automatic.as_mut().and_then(|binding| {
-            let since = std::mem::replace(&mut binding.since, now.wall);
+            let since = binding.since;
+            binding.since = since.max(now.wall);
             candidates
                 .iter()
                 .filter(|c| {

@@ -59,8 +59,19 @@
 .v-launcher-resident-body .v-button {
   width: 100%;
 }
-.v-launcher-resident-body .v-button:disabled {
+.v-launcher-resident-body .v-button:disabled,
+.v-launcher-resident-body .v-button[aria-disabled="true"] {
   opacity: var(--disabled-opacity);
   color: var(--text-3);
   cursor: not-allowed;
+}
+
+.v-resident-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

@@ -1,6 +1,6 @@
 {
   "base": "56cb2c701a356eafa324e4237626952d259a77f0",
-  "head": "ed02c52a86602c8202612e1110e5cd97a05ba7bf",
+  "head": "eb8c0aa00b54a9b9f0d1dec36869abeaf7dc38b9",
   "feature": "medir-inicio",
   "frozen_views": [
     "native/hub/src/home.rs",
@@ -9,5 +9,5 @@
   "base_engine": "745bd52b847d1c6a53151146a124db4edcf95aa6",
   "previous_instrumentation": "PR #2242 fast/medir-fast.patch",
   "compiled": false,
-  "pending": "Construcci\u00f3n Release por cola y comprobaci\u00f3n DLL"
+  "pending": "Construcción Release por cola y comprobación DLL"
 }

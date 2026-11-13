@@ -202,3 +202,32 @@ it("a profile conflict updates the observed list but never rearms automatically"
   expect(api.request).toHaveBeenCalledOnce();
   expect(h.result.current.failure).toBe("launcherConflict");
 });
+
+it("keeps arm pending until the automatic preference has been reloaded", async () => {
+  const h = setup();
+  let finish: () => void = () => {};
+  h.reload.mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  api.request.mockResolvedValue({
+    method: "calendar.launchArm",
+    value: empty,
+    config: {},
+  });
+  let arm: Promise<unknown>;
+  await act(async () => {
+    arm = h.result.current.arm({
+      kind: "alerts",
+      expectedRevision: "c".repeat(64),
+    });
+  });
+  expect(h.result.current.busy).toBe(true);
+  await act(async () => {
+    finish();
+    await arm;
+  });
+  expect(h.result.current.busy).toBe(false);
+});

@@ -615,3 +615,26 @@ it("canceling a scheduled launch restores focus to the timing button", async () 
     screen.getByRole("button", { name: "Lanzar a las 20:00" }),
   );
 });
+
+it("warns instead of silently ignoring deactivation when the fresh alerts revision is missing", async () => {
+  const initial = launchConfig();
+  api.launchView = activeLaunch(true);
+  api.launchCancel.mockResolvedValue(true);
+  let loads = 0;
+  api.request.mockImplementation(async (request) => ({
+    method: request.method,
+    value: ++loads === 1 ? initial : { ...initial, alertsRevision: null },
+  }));
+  render(content());
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("switch", { name: /Lanzar .* autom\u00e1ticamente/u }),
+    ),
+  );
+  expect(api.alertsUnavailable).toHaveBeenCalledOnce();
+  expect(
+    api.request.mock.calls.filter(([r]) => r.method === "calendar.alertsSave"),
+  ).toHaveLength(0);
+});

@@ -44,6 +44,12 @@ jobs:
           rustup toolchain install 1.99.1 --profile minimal --component clippy --component rustfmt
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           rustc +1.99.1 --version
+          $qa=Join-Path $env:RUNNER_TEMP 'rune-measurement-qa'
+          foreach($entry in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
+            $path=Join-Path $qa $entry[1]
+            [IO.Directory]::CreateDirectory($path)|Out-Null
+            Add-Content -LiteralPath $env:GITHUB_ENV -Value "$($entry[0])=$path"
+          }
       - name: Verify product isolation and materialize measurement copies
         run: |
           python native/pruebas-rune/verificar_aislamiento.py

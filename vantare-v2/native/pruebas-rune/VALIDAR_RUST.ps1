@@ -6,6 +6,10 @@ Set-StrictMode -Version Latest
 if(Test-Path -LiteralPath 'D:\VantareServer\qa\captura.lock'){throw 'Captura activa: no iniciar Rust.'}
 if(-not $env:VANTARE_CARGO_QUEUE_OWNER -or -not $env:CARGO_TARGET_DIR){throw 'Usar native/scripts/compilar.ps1.'}
 $target=$env:CARGO_TARGET_DIR
+$env:VANTARE_NATIVE_DATA_ROOT=Join-Path $target 'rune-measurement-qa/native'
+$env:LOCALAPPDATA=Join-Path $target 'rune-measurement-qa/local'
+$env:APPDATA=Join-Path $target 'rune-measurement-qa/roaming'
+foreach($path in @($env:VANTARE_NATIVE_DATA_ROOT,$env:LOCALAPPDATA,$env:APPDATA)){[IO.Directory]::CreateDirectory($path)|Out-Null}
 $python=@(Get-Command python -CommandType Application -ErrorAction Stop)[0].Source
 & $python (Join-Path $PSScriptRoot 'preparar_fuentes.py') gpui
 if($LASTEXITCODE){throw 'Fuente de medición modificada o incompleta.'}

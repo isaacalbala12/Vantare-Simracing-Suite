@@ -87,6 +87,10 @@ async function openRemove(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: catalogText.moreLabel }));
   await user.click(await screen.findByRole("menuitem", { name: /^Eliminar / }));
 }
+async function openTrack() {
+  await screen.findByRole("button", { name: /^Standings(?: 1)?,/ });
+  fireEvent.click(screen.getByRole("tab", { name: t.track }));
+}
 async function tabTo(
   user: ReturnType<typeof userEvent.setup>,
   element: HTMLElement,
@@ -176,18 +180,18 @@ describe("Studio Foco interactions", () => {
   it("adds from the catalog and undoes only that addition", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-vacio");
-    await screen.findByText(t.empty);
+    await screen.findByRole("heading", { name: t.emptyTitle });
     fireEvent.click(screen.getAllByRole("button", { name: t.add })[0]);
-    const catalogButton = await screen.findByRole("button", {
-      name: "Añadir Standings",
-    });
+    const catalogButton = within(
+      await screen.findByRole("dialog", { name: t.catalog }),
+    ).getByRole("button", { name: "Añadir Standings" });
     fireEvent.click(catalogButton);
     await screen.findByText(t.addedName("Standings"));
     expect(
       await screen.findByRole("button", { name: /^Standings,/ }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: t.undo }));
-    await screen.findByText(t.empty);
+    await screen.findByRole("heading", { name: t.emptyTitle });
     expect(
       requests.mock.calls.filter(([r]) => r.method === "studio.add"),
     ).toHaveLength(1);
@@ -344,6 +348,7 @@ describe("Studio Foco interactions", () => {
     mount();
     await screen.findByRole("button", { name: /^Standings,/ });
     fireEvent.click(screen.getByRole("tab", { name: t.track }));
+    await openTrack();
     const slider = await screen.findByRole("slider", { name: t.opacity });
     expect(slider.getAttribute("min")).toBe("20");
     expect(slider.getAttribute("max")).toBe("100");
@@ -521,8 +526,7 @@ describe("Studio Foco interactions", () => {
       mount();
       const user = userEvent.setup();
       const card = await screen.findByRole("button", { name: /^Standings,/ });
-      if (origin === "inspector")
-        await user.click(screen.getByRole("tab", { name: t.track }));
+      if (origin === "inspector") await openTrack();
       const source =
         origin === "card"
           ? card
@@ -555,7 +559,7 @@ describe("Studio Foco interactions", () => {
       await screen.findByText(t.removedName(name));
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     }
-    await screen.findByText(t.empty);
+    await screen.findByRole("heading", { name: t.emptyTitle });
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getAllByRole("button", { name: t.add })[0],
@@ -609,7 +613,7 @@ describe("Studio Foco interactions", () => {
   it("rolls opacity back after failure and keeps the saved value after discard", async () => {
     mount();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: t.track }));
+    await openTrack();
     const slider = await screen.findByRole("slider", { name: t.opacity });
     const original = Client.prototype.request;
     vi.spyOn(Client.prototype, "request").mockImplementation(function (
@@ -639,7 +643,7 @@ describe("Studio Foco interactions", () => {
   it("uses the fresh saved opacity when a conflicting edit is discarded", async () => {
     mount();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: t.track }));
+    await openTrack();
     const slider = await screen.findByRole("slider", { name: t.opacity });
     const original = Client.prototype.request;
     vi.spyOn(Client.prototype, "request").mockImplementation(async function (
@@ -676,7 +680,7 @@ describe("Studio Foco interactions", () => {
   it("keeps the focused slider enabled and blocks more writes while pending", async () => {
     mount();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: t.track }));
+    await openTrack();
     const slider = await screen.findByRole("slider", { name: t.opacity });
     const original = Client.prototype.request;
     let settle: (() => Promise<void>) | undefined;
@@ -726,13 +730,13 @@ describe("Studio Foco interactions", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: t.track }));
+    await openTrack();
     await screen.findByRole("slider", { name: t.opacity });
     await tabTo(user, screen.getByRole("tab", { name: t.track }));
     await user.keyboard("{ArrowLeft}{Enter}");
     const appearance = screen.getByRole("tab", { name: t.appearance });
     expect(appearance.getAttribute("aria-selected")).toBe("true");
-    await user.click(await screen.findByRole("radio", { name: t.accentGreen }));
+    await user.click(screen.getByRole("radio", { name: t.accentGreen }));
     await waitFor(() =>
       expect(
         requests.mock.calls.some(
@@ -744,18 +748,15 @@ describe("Studio Foco interactions", () => {
         ),
       ).toBe(true),
     );
+    const control = screen.getByRole("radio", { name: t.accentGreen });
     await waitFor(() =>
-      expect(
-        screen
-          .getByRole("radio", { name: t.accentGreen })
-          .getAttribute("aria-checked"),
-      ).toBe("true"),
+      expect(control.getAttribute("aria-checked")).toBe("true"),
     );
   });
-  it("starts Appearance on selecting another typed widget", async () => {
+  it("starts at Apariencia on selecting another typed widget", async () => {
     mount();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: t.track }));
+    await openTrack();
     await screen.findByRole("slider", { name: t.opacity });
     await user.click(screen.getByRole("tab", { name: t.appearance }));
     await user.click(screen.getByRole("button", { name: /^Delta,/ }));
@@ -764,12 +765,12 @@ describe("Studio Foco interactions", () => {
         .getByRole("tab", { name: t.appearance })
         .getAttribute("aria-selected"),
     ).toBe("true");
-    expect(screen.queryByRole("slider", { name: t.opacity })).toBeNull();
+    expect(screen.getByRole("radio", { name: t.lookVantare })).toBeTruthy();
   });
   it("keeps Appearance unavailable for untyped widgets", async () => {
     mount();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: t.track }));
+    await openTrack();
     await screen.findByRole("slider", { name: t.opacity });
     await user.click(screen.getByRole("button", { name: t.add }));
     await user.click(
@@ -788,7 +789,7 @@ describe("Studio Foco interactions", () => {
   it("shows the fresh appearance after a revision conflict and can discard the failed patch", async () => {
     mount();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("tab", { name: t.track }));
+    await openTrack();
     await screen.findByRole("slider", { name: t.opacity });
     await user.click(screen.getByRole("tab", { name: t.appearance }));
     const original = Client.prototype.request;
@@ -810,7 +811,7 @@ describe("Studio Foco interactions", () => {
       }
       return original.call(this, request, onSent);
     });
-    await user.click(await screen.findByRole("radio", { name: t.accentGreen }));
+    await user.click(screen.getByRole("radio", { name: t.accentGreen }));
     await waitFor(() =>
       expect(
         screen

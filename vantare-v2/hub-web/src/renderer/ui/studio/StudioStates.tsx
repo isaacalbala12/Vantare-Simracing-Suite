@@ -13,7 +13,7 @@ export function StudioSaveStatus({
 }) {
   const { state } = model;
   const view = state.view;
-  const saving = !!view && state.pending;
+  const saving = view?.state === "ready" && state.pending;
   const loading = !view && !state.failure;
   const label = state.failure
     ? t.notSaved

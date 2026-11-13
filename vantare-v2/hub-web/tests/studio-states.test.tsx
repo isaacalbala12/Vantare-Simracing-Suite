@@ -8,6 +8,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -132,6 +133,18 @@ describe("Studio A honest states", () => {
     await screen.findByRole("dialog", { name: t.catalog });
     expect(screen.getByRole("searchbox", { name: t.search })).toBeTruthy();
   });
+  it("keeps Add named when the compact strip hides its visual label", async () => {
+    mount("studio-a-vacio");
+    await screen.findByRole("heading", { name: text.firstWidget });
+    const strip = screen.getByRole("complementary", { name: t.layoutLabel });
+    const add = strip.querySelector<HTMLButtonElement>("[data-add-widget]");
+    const label = add?.querySelector<HTMLElement>(".v-button-label > span");
+    if (!add || !label) throw new Error("Missing compact Add button or label");
+    label.hidden = true;
+    expect(within(strip).getByRole("button", { name: t.add })).toBe(add);
+    await userEvent.setup().click(add);
+    await screen.findByRole("dialog", { name: t.catalog });
+  });
   it.each(["studio-a-protegido", "studio-a-ilegible"])(
     "shows only known data and no editable defaults in %s",
     async (scene) => {
@@ -182,7 +195,9 @@ describe("Studio A honest states", () => {
     mount("studio-a-guardando");
     const row = await listRow("Standings");
     fireEvent.keyDown(row, { key: " " });
-    await screen.findByRole("status", { name: t.saving });
+    await within(
+      screen.getByRole("complementary", { name: t.layoutLabel }),
+    ).findByRole("status", { name: t.saving });
     fireEvent.keyDown(row, { key: " " });
     expect(
       spy.mock.calls.filter(([r]) => r.method === "studio.visibility"),

@@ -90,7 +90,7 @@ export function StudioFocus() {
           ) : (
             <LoadingStudio />
           )}
-          <ActionNotice />
+          {view?.state === "ready" && <ActionNotice />}
           {view && view.state !== "missing" && selected && (
             <div className="v-studio-temporary" aria-busy={state.pending}>
               {selected &&

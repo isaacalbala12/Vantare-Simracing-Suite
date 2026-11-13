@@ -348,3 +348,28 @@
     padding: 20px 12px;
   }
 }
+.v-studio-readonly-with-steps .v-studio-readonly-note {
+  margin-bottom: 0;
+  border-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  padding-bottom: 6px;
+}
+.v-studio-readonly-detail {
+  margin: 0;
+  padding: 0 24px 22px;
+  border: 1px dashed var(--line-3);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  color: var(--text-caption);
+  font-size: 12.5px;
+}
+.v-focus-row[data-hidden="true"] > button {
+  opacity: 1;
+}
+.v-focus-row[data-hidden="true"] :is(.v-widget-preview, strong) {
+  opacity: 0.5;
+}
+.v-focus-save[data-failed="true"] {
+  color: var(--err);
+}

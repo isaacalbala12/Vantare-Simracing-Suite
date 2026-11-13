@@ -60,18 +60,28 @@ struct DestroyWindowGuard { HWND value; ~DestroyWindowGuard() { if(value) Destro
 int wmain(int argc, wchar_t** argv) {
     try {
         int hz = 60, seconds = 70;
-        std::wstring output;
+        std::wstring output, ready_path;
+        uint32_t fixed_iterations=0; bool controlled=false;
         for (int i=1;i<argc;i++) {
             std::wstring key(argv[i]);
+            if (key == L"--control-stdin") { controlled=true; continue; }
             if (i+1 >= argc) throw std::runtime_error("Falta valor de opcion");
             std::wstring value(argv[++i]);
             if (key == L"--hz") hz = std::stoi(value);
             else if (key == L"--seconds") seconds = std::stoi(value);
             else if (key == L"--output") output = value;
+            else if (key == L"--ready") ready_path = value;
+            else if (key == L"--iterations") {
+                fixed_iterations=std::stoul(value);
+                if(fixed_iterations<1 || fixed_iterations>4096) throw std::runtime_error("iterations fuera de 1..4096");
+            }
             else throw std::runtime_error("Opcion desconocida");
         }
         if ((hz != 60 && hz != 144) || seconds < 20 || seconds > 180 || output.empty())
             throw std::runtime_error("Uso: --hz 60|144 --seconds 20..180 --output archivo-nuevo.csv");
+        const HANDLE parent_input=GetStdHandle(STD_INPUT_HANDLE);
+        if(controlled && GetFileType(parent_input)!=FILE_TYPE_PIPE)
+            throw std::runtime_error("--control-stdin requiere pipe del controlador");
         DEVMODEW mode {}; mode.dmSize=sizeof(mode);
         if(!EnumDisplaySettingsW(nullptr,ENUM_CURRENT_SETTINGS,&mode) || int(mode.dmDisplayFrequency)!=hz)
             throw std::runtime_error("La frecuencia del monitor principal no coincide con --hz");
@@ -117,15 +127,38 @@ int wmain(int argc, wchar_t** argv) {
             d.Query=D3D11_QUERY_TIMESTAMP; check(device->CreateQuery(&d,&timing.start),"start query"); check(device->CreateQuery(&d,&timing.end),"end query");
         }
         const uint64_t began=qpc(); const double target_ms=700.0/hz;
-        uint32_t iterations=32; bool cancelled=false; std::vector<Sample> samples; samples.reserve(size_t(seconds)*hz+100);
+        uint32_t iterations=fixed_iterations ? fixed_iterations : 32;
+        bool cancelled=false, parent_stopped=false, notified=false, calibration_rejected=false;
+        std::vector<Sample> samples; samples.reserve(size_t(seconds)*hz+100);
         std::vector<double> calibrated; uint64_t frame=0;
+        auto calibrated_median=[&]() {
+            if(calibrated.empty()) return 0.0;
+            auto copy=calibrated; std::sort(copy.begin(),copy.end()); return copy[copy.size()/2];
+        };
         while(double(qpc()-began)/frequency.QuadPart < seconds) {
+            if(controlled && !PeekNamedPipe(parent_input,nullptr,0,nullptr,nullptr,nullptr)) {
+                if(GetLastError()!=ERROR_BROKEN_PIPE) throw std::runtime_error("Fallo del pipe de control");
+                parent_stopped=true; break;
+            }
             MSG message; while(PeekMessageW(&message,nullptr,0,0,PM_REMOVE)) {
                 if(message.message==WM_QUIT) cancelled=true;
                 TranslateMessage(&message); DispatchMessageW(&message);
             }
             if(cancelled) break;
             const double elapsed=double(qpc()-began)/frequency.QuadPart;
+            if(!ready_path.empty() && !notified && elapsed>=14) {
+                const double value=calibrated_median();
+                const bool calibrated_ok=value>=target_ms*0.8 && value<=target_ms*1.2;
+                CloseHandleGuard ready_file {CreateFileW(ready_path.c_str(),GENERIC_WRITE,0,nullptr,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,nullptr)};
+                if(ready_file.value==INVALID_HANDLE_VALUE) throw std::runtime_error("No se puede crear marca nueva de carga");
+                std::ostringstream mark; mark << "{\"ready\":" << (calibrated_ok ? "true" : "false")
+                    << ",\"iterations\":" << iterations << ",\"hz\":" << hz << ",\"qpc\":" << qpc() << "}";
+                const auto bytes=mark.str(); DWORD count=0;
+                if(!WriteFile(ready_file.value,bytes.data(),DWORD(bytes.size()),&count,nullptr) || count!=bytes.size())
+                    throw std::runtime_error("Fallo al guardar marca de carga");
+                notified=true;
+                if(!calibrated_ok) { calibration_rejected=true; break; }
+            }
             auto& timing=timings[frame%timings.size()];
             if(timing.pending) {
                 D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint {}; uint64_t start=0,end=0;
@@ -137,7 +170,7 @@ int wmain(int argc, wchar_t** argv) {
                     if(!disjoint.Disjoint && disjoint.Frequency && end>=start) {
                         double ms=1000.0*double(end-start)/disjoint.Frequency;
                         samples[timing.frame].gpu_ms=ms; samples[timing.frame].measured=true;
-                        if(elapsed<10 && ms>0) {
+                        if(!fixed_iterations && elapsed<10 && ms>0) {
                             const double estimate=double(samples[timing.frame].iterations)*std::clamp(target_ms/ms,0.5,2.0);
                             iterations=uint32_t(std::clamp(0.8*iterations+0.2*estimate,1.0,4096.0));
                         }
@@ -154,11 +187,12 @@ int wmain(int argc, wchar_t** argv) {
             const auto present=qpc(); check(swap->Present(1,0),"Present");
             samples.push_back({frame,begin,present,iterations,0,false}); frame++;
         }
-        double median=0; if(!calibrated.empty()) { std::sort(calibrated.begin(),calibrated.end()); median=calibrated[calibrated.size()/2]; }
-        const bool valid=!cancelled && median>=target_ms*0.8 && median<=target_ms*1.2;
+        const double median=calibrated_median();
+        const bool valid=!cancelled && !calibration_rejected && median>=target_ms*0.8 && median<=target_ms*1.2;
         std::ostringstream csv;
         csv << "# carga-v1,frequency=" << frequency.QuadPart << ",hz=" << hz << ",width=" << width << ",height=" << height
-            << ",calibration_s=10,calibrated_gpu_ms=" << median << ",target_gpu_ms=" << target_ms << "\n";
+            << ",calibration_s=10,calibrated_gpu_ms=" << median << ",target_gpu_ms=" << target_ms
+            << ",frozen_iterations=" << iterations << ",adaptive=" << !fixed_iterations << ",parent_stopped=" << parent_stopped << "\n";
         csv << "frame,begin_qpc,present_qpc,iterations,gpu_ms,gpu_measured\n";
         for(const auto& sample:samples) csv << sample.frame << ',' << sample.begin_qpc << ',' << sample.present_qpc << ',' << sample.iterations << ',' << sample.gpu_ms << ',' << sample.measured << '\n';
         csv << "# end,rows=" << samples.size() << ",valid=" << valid << "\n";

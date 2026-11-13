@@ -97,3 +97,9 @@ generado por el muestreador. No se usa stop_existing_session ni se detienen
 capturas ajenas. Un fallo de limpieza deja INVALIDA y su explicación.
 Sintaxis de PowerShell y compilación de tipos C# verificadas sin llamadas ETW.
 El camino real de cancelación sigue pendiente del PC.
+
+La familia distingue la fecha aproximada del evento WMI de la fecha exacta
+CIM/GetProcessTimes. Puede conservar un padre transitorio y luego refinar
+la fecha de su hijo sin inventar una reutilización de PID. Todas las fechas
+se comparan en UTC. test_familia.ps1 verifica ese caso, zonas horarias y una
+reutilización real con datos sintéticos, sin WMI ni procesos reales.

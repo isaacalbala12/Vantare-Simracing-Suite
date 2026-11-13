@@ -1,3 +1,12 @@
+## VANTA-141 · Carga fija y familias transitorias (13/11/2026)
+
+PR draft #2251. --iterations permite reutilizar el mismo trabajo GPU fijado
+por una calibración sin overlays para todos los motores; --ready y EOF del
+pipe coordinan inicio/cierre sin hilos abandonados. Compilación nueva pendiente.
+El muestreador refina fechas WMI aproximadas con CIM y compara siempre UTC;
+prueba sintética de padre transitorio, zona horaria y PID reutilizado PASS.
+No se ha ejecutado WMI, ETW, PresentMon ni D3D en servidor. Falta PC e integración.
+
 ## VANTA-141 · Piezas 6+7 listas para integración (13/11/2026)
 
 Issue #2213, Plane En curso. Carga sintética Release compilada por cola;

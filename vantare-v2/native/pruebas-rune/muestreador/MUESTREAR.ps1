@@ -13,6 +13,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows -or [IntPtr]::Size -ne 8) { throw 'Usar PowerShell 7 x64 en Windows.' }
 if ([Environment]::MachineName -ieq 'SAPPHIREOS') { throw 'Parada grafica del servidor: ejecutar solo en el PC de juego.' }
+. (Join-Path $PSScriptRoot 'FAMILIA.ps1')
 $out = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $out) { throw 'El directorio de muestra debe ser nuevo.' }
 $null = New-Item -ItemType Directory -Path $out
@@ -46,7 +47,7 @@ $pmStarted=$false; $counter=$null; $thermals=$null; $subscription=$null
 $stdout=$null; $stderr=$null; $failed=$false
 $rows=[Collections.Generic.List[object]]::new(); $rawCounters=[Collections.Generic.List[object]]::new()
 $thermalRows=[Collections.Generic.List[object]]::new(); $processStarts=[Collections.Generic.List[object]]::new()
-$family=@{}; $seenStarts=@{}; $sampler=[Diagnostics.Process]::GetCurrentProcess()
+$family=@{}; $approximateFamily=@{}; $seenStarts=@{}; $sampler=[Diagnostics.Process]::GetCurrentProcess()
 $sourceId='vantare141-start-'+[Guid]::NewGuid().ToString('N')
 try {
     # Subscribe before the UI exists; short-lived Electron children still belong to
@@ -123,23 +124,9 @@ try {
         foreach ($started in $processStarts) { $candidates.Add($started) }
         if (-not $byId.ContainsKey($RootProcessId)) { throw 'El proceso medido termino antes del fin de la muestra.' }
         $rootDate=$byId[$RootProcessId].CreationDate.ToUniversalTime()
-        if ($family.ContainsKey($RootProcessId) -and [math]::Abs(($rootDate-[DateTime]::Parse($family[$RootProcessId])).TotalMilliseconds) -gt 1) { throw 'PID raiz reutilizado.' }
+        if ($family.ContainsKey($RootProcessId) -and [math]::Abs(($rootDate-[DateTime]::Parse($family[$RootProcessId]).ToUniversalTime()).TotalMilliseconds) -gt 1) { throw 'PID raiz reutilizado.' }
         $family[$RootProcessId]=$rootDate.ToString('o')
-        do {
-            $added=$false
-            foreach ($candidate in $candidates) {
-                $id=[int]$candidate.process_id; $parentId=[int]$candidate.parent_id
-                $created=[DateTime]::Parse($candidate.created_utc).ToUniversalTime()
-                if ($family.ContainsKey($id)) {
-                    # WMI event generation time is not GetProcessTimes creation time.
-                    # Compare exact identities only for CIM observations; a second
-                    # process-start event for any PID is rejected above.
-                    if ($candidate.source -eq 'cim' -and [math]::Abs(($created-[DateTime]::Parse($family[$id])).TotalMilliseconds) -gt 1) { throw 'PID de la familia reutilizado.' }
-                } elseif ($family.ContainsKey($parentId) -and $created -ge [DateTime]::Parse($family[$parentId])) {
-                    $family[$id]=$created.ToString('o'); $added=$true
-                }
-            }
-        } while ($added)
+        Update-VantareFamily -Family $family -Approximate $approximateFamily -Candidates $candidates.ToArray() -RootCreated $rootDate
         foreach ($process in $processes) {
             $id=[int]$process.ProcessId
             if (-not $family.ContainsKey($id)) { continue }
@@ -191,7 +178,7 @@ try {
     $rawCounters | Export-Csv -LiteralPath (Join-Path $out 'contadores.csv') -NoTypeInformation -Encoding utf8
     $thermalRows | Export-Csv -LiteralPath (Join-Path $out 'temperaturas.csv') -NoTypeInformation -Encoding utf8
     $processStarts | Export-Csv -LiteralPath (Join-Path $out 'procesos-iniciados.csv') -NoTypeInformation -Encoding utf8
-    [ordered]@{complete=$true;qpc_frequency=[Diagnostics.Stopwatch]::Frequency;process_rows=$rows.Count;counter_rows=$rawCounters.Count;family=$family;seconds=$watch.Elapsed.TotalSeconds;sampler_id=$PID;presentmon_id=if($pmStarted){$pm.Id}else{0};health_only=[bool]$Aguante;cpu_temperature_verified=$false} |
+    [ordered]@{complete=$true;qpc_frequency=[Diagnostics.Stopwatch]::Frequency;process_rows=$rows.Count;counter_rows=$rawCounters.Count;family=$family;family_approximate_ids=@($approximateFamily.Keys);seconds=$watch.Elapsed.TotalSeconds;sampler_id=$PID;presentmon_id=if($pmStarted){$pm.Id}else{0};health_only=[bool]$Aguante;cpu_temperature_verified=$false} |
         ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $out 'completo.json') -Encoding utf8
 } catch {
     $failed=$true

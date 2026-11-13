@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
 import { residentOrderReceiptTimeoutMs } from "../src/contract/generated/launcher_resident.ts";
+import { actionText } from "../src/renderer/i18n/launcher-actions.ts";
 import { residentText as text } from "../src/renderer/i18n/launcher-resident.ts";
 import { until } from "./wait-for.ts";
 
@@ -31,14 +32,29 @@ export async function checkResidentAnswerInert(page: Page) {
   await page.getByRole("button", { name: "Launcher", exact: true }).click();
   const drawer = page.locator(".v-launcher-resident-drawer");
   await drawer.waitFor();
-  await page
-    .getByRole("button", { name: "Editar perfil", exact: true })
-    .first()
-    .click();
+  // Use the real confirmation layer. The profile editor itself is an inline tab.
+  await page.locator(".v-launcher-profile").first().focus();
+  await page.keyboard.press("Shift+F10");
+  await page.getByRole("menuitem", { name: "Eliminar", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  const confirmation = page.getByRole("dialog", {
+    name: actionText.removeTitle,
+    exact: true,
+  });
+  await confirmation.waitFor();
+  await until(
+    () =>
+      confirmation
+        .getByRole("button")
+        .first()
+        .evaluate((node) => node === document.activeElement),
+    5000,
+    "confirmation receives keyboard focus",
+  );
   await until(
     () => drawer.evaluate((node) => !!node.closest("[inert]")),
     5000,
-    "profile editor makes resident notice inert",
+    "profile confirmation makes resident notice inert",
   );
   await drawer
     .getByRole("button", {
@@ -64,7 +80,7 @@ export async function checkResidentAnswerInert(page: Page) {
   await until(
     () => drawer.evaluate((node) => !node.closest("[inert]")),
     5000,
-    "resident notice becomes usable after editor closes",
+    "resident notice becomes usable after confirmation closes",
   );
   await drawer.getByRole("button", { name: "Reutilizar", exact: true }).click();
   await until(

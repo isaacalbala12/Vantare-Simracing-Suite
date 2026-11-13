@@ -50,7 +50,7 @@ export function ResidentInbox({
       {!open && (
         <Callout
           tone="warn"
-          title={t.pending}
+          title={status ?? t.pending}
           actions={
             <Button ref={reopen} onClick={() => setDismissed(undefined)}>
               {t.open}

@@ -5,6 +5,7 @@ import {
   checkResidentAnswerInert,
   observeResidentAnswers,
 } from "../check-resident-answer.ts";
+import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 export const residentAnswerScenes: Record<string, VisualScene> = {};
 for (const state of [
@@ -18,6 +19,7 @@ for (const state of [
   residentAnswerScenes[`launcher-resident-${state}`] = {
     mock: `launcher-answer-${state}`,
     async prepare(page) {
+      await observeResidentAnswers(page);
       if (state === "unknown") await page.clock.install();
       await page.getByRole("button", { name: "Launcher", exact: true }).click();
       await page
@@ -43,6 +45,31 @@ for (const state of [
           .getByText(text.answerState[state], { exact: true })
           .waitFor();
       }
+      const beforeClose = await page.evaluate(
+        () => (Reflect.get(window, "residentAnswers") as unknown[]).length,
+      );
+      await page
+        .getByRole("dialog", { name: text.title, exact: true })
+        .getByRole("button", { name: text.close, exact: true })
+        .click();
+      const reopen = page.getByRole("button", { name: text.open, exact: true });
+      await reopen.waitFor();
+      await until(
+        () => reopen.evaluate((node) => node === document.activeElement),
+        5000,
+        "resident notice restores focus",
+      );
+      await reopen.click();
+      await page
+        .getByRole("heading", { name: text.title, exact: true })
+        .waitFor();
+      assert.equal(
+        await page.evaluate(
+          () => (Reflect.get(window, "residentAnswers") as unknown[]).length,
+        ),
+        beforeClose,
+        "hiding and reopening a notice never answers it",
+      );
       const controls = page.locator(".v-window-controls button");
       assert.equal(await controls.count(), 3);
       for (const control of await controls.all()) {

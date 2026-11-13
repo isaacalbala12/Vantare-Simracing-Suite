@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { launcherText as text } from "../../src/renderer/i18n/launcher";
 import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 export const launcherScenes: Record<string, VisualScene> = {
@@ -16,6 +17,23 @@ export const launcherScenes: Record<string, VisualScene> = {
       if ((await toggle.getAttribute("aria-expanded")) === "true")
         await toggle.click();
     },
+  },
+};
+
+launcherScenes["launcher-opciones-ocupadas"] = {
+  mock: "launcher-ready",
+  async prepare(page) {
+    await launcherScenes["launcher-base"].prepare(page);
+    await page
+      .getByRole("button", { name: text.launch, exact: true })
+      .first()
+      .click();
+    await page
+      .getByRole("heading", { name: text.nextOptions, exact: true })
+      .waitFor();
+    await page
+      .getByText(text.queued, { exact: true })
+      .waitFor({ state: "hidden" });
   },
 };
 

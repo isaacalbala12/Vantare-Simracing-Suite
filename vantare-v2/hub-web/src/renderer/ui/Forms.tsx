@@ -87,7 +87,11 @@ export function Select({
   onChange,
   disabled = false,
   hideLabel = false,
+  readOnly = false,
+  "aria-describedby": describedBy,
 }: {
+  readOnly?: boolean;
+  "aria-describedby"?: string;
   hideLabel?: boolean;
   label: string;
   pending?: boolean;
@@ -111,13 +115,15 @@ export function Select({
         items={options}
         value={value}
         onValueChange={(v) => {
-          if (!pending && v !== null) onChange(v);
+          if (!pending && !readOnly && v !== null) onChange(v);
         }}
         disabled={disabled}
+        readOnly={readOnly}
       >
         <BaseSelect.Trigger
           id={`${id}-control`}
           aria-labelledby={id}
+          aria-describedby={describedBy}
           aria-busy={pending || undefined}
           aria-disabled={disabled || pending || undefined}
           className="v-input v-select-trigger"

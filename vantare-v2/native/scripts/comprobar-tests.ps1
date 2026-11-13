@@ -1,3 +1,4 @@
+param([string]$EvidenceDirectory = '')
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $script = Join-Path $PSScriptRoot 'comprobar.ps1'

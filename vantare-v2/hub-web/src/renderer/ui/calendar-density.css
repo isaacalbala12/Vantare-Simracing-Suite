@@ -101,3 +101,17 @@
     padding-inline: 12px;
   }
 }
+
+.v-calendar .v-calendar-live-series > span {
+  max-width: 100%;
+  min-width: 0;
+}
+.v-calendar .v-calendar-live-series .v-calendar-tier {
+  flex: none;
+}
+.v-calendar .v-calendar-series-caption {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

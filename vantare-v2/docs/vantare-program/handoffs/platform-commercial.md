@@ -15,7 +15,7 @@
   el archivo de tests (11m04s) y pasa lifecycle, pero QA falla por error 206
   en GPUI y Hub pierde sus auxiliares de tests. Esos experimentos se retiran.
 - Pines activos y claves GHA nuevas para 1.99.1. Sin dependencias nuevas,
-  cambios de Cargo.lock ni supresiones de lints. Las 6.143 aserciones de los
+  cambios de Cargo.lock ni supresiones de lints. Las 6.255 aserciones de los
   archivos afectados se conservan. Se actualizan solo las dos huellas de
   fuentes del oráculo de agenda; sus casos y resultados permanecen idénticos.
 - Prueba C++ aislada también de GHA_VERSION, que habilitaba GHA incluso con

@@ -124,7 +124,7 @@ fn r10_active_migration_purges_old_hub_even_if_damaged_without_revoking_its_gran
             Ok(Reply::LoggedOut)
         ));
         assert!(session.account.identity().is_none());
-        assert!(server.finish_observed().is_empty());
+        assert_eq!(server.finish_observed(), [] as [String; 0]);
         drop(session);
         let old = Store::open(&root, "hub-fixture-v1").expect("Store");
         assert!(matches!(
@@ -168,7 +168,7 @@ fn r10_damaged_gestion_blob_blocks_restore_without_network() {
         open(&root, &server, true),
         Err(OpenError::Migration(Error::Storage))
     ));
-    assert!(server.finish_observed().is_empty());
+    assert_eq!(server.finish_observed(), [] as [String; 0]);
     std::fs::remove_dir_all(root).expect("cleanup");
 }
 #[test]

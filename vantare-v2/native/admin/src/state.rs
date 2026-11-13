@@ -935,8 +935,8 @@ mod tests {
         let user = state.user.as_ref().expect("detail");
         assert_eq!(user.plan, crate::client::Plan::Pro);
         assert!(!user.owner && !user.blocked);
-        assert!(!user.payments.is_empty());
-        assert!(!user.module_access.is_empty());
+        assert_ne!(user.payments, [] as [crate::client::Payment; 0]);
+        assert_ne!(user.module_access, [] as [crate::client::ModuleAccess; 0]);
         let promotion = user.report_promotion.as_ref().expect("promotion");
         assert_eq!((promotion.accepted, promotion.tier), (5, 6));
         assert!(promotion.summary().contains("pendiente de revisión"));

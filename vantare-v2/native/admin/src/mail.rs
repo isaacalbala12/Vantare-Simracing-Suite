@@ -511,7 +511,7 @@ mod workflow_tests {
         assert_eq!(state.mail.campaigns[0].state, "draft");
         assert_eq!(state.confirm().expect("Owner confirms"), action);
         state.failed(Error::Denied);
-        assert!(state.mail.campaigns.is_empty());
+        assert_eq!(state.mail.campaigns, [] as [super::Campaign; 0]);
         assert!(state.mail.campaign.is_none());
         assert!(!state.signed_in);
     }

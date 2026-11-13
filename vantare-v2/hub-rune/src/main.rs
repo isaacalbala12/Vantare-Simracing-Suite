@@ -38,7 +38,9 @@ fn view(state: &State, _: &mut Cx<State>) -> El {
         .key("sidebar")
         .w(if state.collapsed { 76.0 } else { 248.0 })
         .h_full()
-        .scroll(rune::ScrollSpec::default())
+        .scroll(rune::ScrollSpec {
+            stick_bottom: false,
+        })
         .padding(12.0)
         .gap(8.0)
         .fill(theme.color("bg-sidebar"))

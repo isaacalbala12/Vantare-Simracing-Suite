@@ -1,3 +1,18 @@
+## VANTA-141 / #2213 — ZIP con hueco autorizado (13/11/2026)
+
+Por encargo del orquestador, preparado ZIP PENDIENTE-INICIO con nueve binarios,
+grabación, PresentMon, CRT, guía PASO_A_PASO_ISAAC y todos los auxiliares.
+221.949.876 bytes; SHA256 b3f7410fb619feb37d56b55b7f73d78c0f38e7945d9a0353d9426a2a88f6333e.
+85 archivos verificados, 17 PE / 270 imports, cero DLL sin resolver; SHA/CRC PASS.
+Falta únicamente Inicio Rune 54ef276c3. ready=false y nota explícita; el lector
+rechaza este paquete antes de medir. El constructor final sigue rechazando huecos.
+32 pruebas Python y contratos de 35 guiones PASS. Corrección de ICU de Windows
+en allowlist respaldada por documentación Microsoft y firma del sistema.
+Mac dormido: no más SSH hasta aviso. COMPLETAR_SERVIDOR -CopiarMac hará un solo
+intento cuando despierte. Clippy B sigue bloqueado por captura.lock; no se inició.
+ORDEN_FUSION.md describe los nueve PR, dependencias y archivos compartidos:
+ninguno está íntegramente sustituido. No se cerró ni fusionó ninguno.
+
 ## VANTA-141 / #2213 — controlador, análisis y paquete 9+11 (13/11/2026)
 
 Campaña B completa/principal, ABBA/BAAB y A/A, máximo tres intentos conservados,

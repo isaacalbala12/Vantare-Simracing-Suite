@@ -4,6 +4,9 @@ function Read-VantareKit {
     $rootPath=[IO.Path]::GetFullPath($Root)
     $manifest=Get-Content -LiteralPath (Join-Path $rootPath 'kit.json') -Raw | ConvertFrom-Json -AsHashtable
     if ($manifest.schema -ne 1) { throw 'Kit no reconocido.' }
+    if (($manifest.ContainsKey('pending_binaries') -and $manifest.pending_binaries.Count) -or ($manifest.ContainsKey('ready') -and -not $manifest.ready)) {
+        throw 'Kit pendiente de Inicio Rune. Esperar el ZIP completo; no iniciar mediciones.'
+    }
     $paths=@{}
     foreach ($entry in $manifest.files) {
         $relative=[string]$entry.path

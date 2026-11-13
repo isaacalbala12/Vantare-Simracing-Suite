@@ -1,0 +1,79 @@
+PRUEBA RUNE / GPUI — PASOS PARA ISAAC
+
+1. Espera el ZIP COMPLETO. Si el nombre contiene PENDIENTE-INICIO, todavía
+   no ejecutes la prueba. Descomprime todo junto; no muevas binarios sueltos.
+   Usa el PC de juego, su escritorio físico y Windows 11. Nada de servidor
+   ni Escritorio remoto. No abras el simulador: solo usaremos la grabación.
+
+2. Reserva el PC: Relative principal dura unas 9–12 horas; Inicio unos
+   90 minutos con intervención; aguante otras 12 horas (4 por motor).
+   Cierra Vantare, juego, navegador, Discord, OBS y captura NVIDIA. Conecta
+   corriente, selecciona Alto rendimiento y deja 20 GB para los resultados
+   (60 GB si se pide matriz completa). No cambies driver ni VRR durante ella.
+   Necesitas PowerShell 7 de 64 bits como administrador. No instales Python
+   ni controladores. Lee LEEME.txt para las condiciones de cada fase.
+
+3. En PowerShell entra en la carpeta descomprimida que contiene INICIAR.ps1.
+   Prepara una carpeta NUEVA de resultados (sustituye D: si ese disco no existe):
+
+   .\INICIAR.ps1 -Resultados 'D:\PruebaRune\campana' -SoloPreparar
+
+   Si falla, guarda el mensaje y detente: no borres archivos ni esquives
+   comprobaciones. El ZIP pendiente debe fallar en este paso sin abrir nada.
+
+4. Inicia Relative principal y deja el PC libre:
+
+   .\INICIAR.ps1 -Resultados 'D:\PruebaRune\campana' -Reanudar
+
+   Selecciona 60 Hz cuando lo pida y escribe LISTO. Espera sus dos minutos
+   de reposo. La carga se calibra una vez y después se usa igual en todos.
+   Espera TERMINÓ y la vuelta al indicador de PowerShell. Conserva todos
+   los intentos, incluso fallidos; el guion elige el primero válido.
+
+5. Primer Inicio tras reiniciar: guarda todo, reinicia Windows, vuelve a
+   PowerShell y a la carpeta del kit. Sin abrir antes ese Hub, dentro de
+   los primeros 15 minutos ejecuta UNO:
+
+   .\INICIO.ps1 -Campana 'D:\PruebaRune\campana' -PrimerArranque rune
+
+   Confirma PRIMERO solo si es cierto. Repite tras otros dos reinicios,
+   cambiando rune por electron y después gpui_fast. Estos datos van aparte.
+
+6. Pon escala de Windows al 100%, tema oscuro y ejecuta Inicio completo:
+
+   .\INICIO.ps1 -Campana 'D:\PruebaRune\campana'
+
+   Sigue los avisos: reposo, desplazar, 30 cambios de sección (15 idas y
+   vueltas) y redimensionar. Confirma 30 solo después de observarlos.
+   Si la pantalla cabe y no se desplaza, anótalo; no inventes movimiento.
+   El guion hace diez arranques nuevos y diez reutilizados por motor,
+   además de cinco rondas de interacción. Espera TERMINÓ.
+
+7. Comprueba el dibujo y la capa:
+
+   .\CORRECCION.ps1 -Campana 'D:\PruebaRune\campana'
+
+   Sigue S/N/P, DPI 100/150%, segundo monitor, clic a través, foco y capturas.
+   OBS solo en esta fase; ciérralo después. Una respuesta pendiente no es sí.
+
+8. Para aguante deja antes activado Volcado de memoria pequeño en Inicio
+   y recuperación de Windows, y un archivo de paginación. Ejecuta una orden
+   cada vez, esperando cuatro horas y TERMINÓ antes de la siguiente:
+
+   .\AGUANTE.ps1 -Variant gpui -OutputDirectory 'D:\PruebaRune\campana\aguante\gpui'
+   .\AGUANTE.ps1 -Variant gpui_fast -OutputDirectory 'D:\PruebaRune\campana\aguante\gpui_fast'
+   .\AGUANTE.ps1 -Variant rune -OutputDirectory 'D:\PruebaRune\campana\aguante\rune'
+
+   En cada una: H oculta, H muestra; apaga físicamente el monitor y vuelve,
+   luego M confirma; cambia resolución, restáurala y R confirma. Q cancela.
+   Si Windows se reinicia, conserva datos y usa RECUPERAR_AGUANTE.ps1
+   -Directory con la carpeta concreta. No repitas por tu cuenta para ocultar
+   el fallo. LEEME.txt explica la recuperación.
+
+9. Cuando TODO haya terminado y no quede ninguna ejecución activa:
+
+   .\RECOGER.ps1 -Resultados 'D:\PruebaRune\campana' -Destino 'D:\PruebaRune\recogida.zip'
+
+   Espera confirmación y envía ese ZIP al orquestador. No quites los locks
+   de una ejecución activa. El análisis se hace en el servidor; ningún dato
+   sintético de prueba se presenta como rendimiento del PC de juego.

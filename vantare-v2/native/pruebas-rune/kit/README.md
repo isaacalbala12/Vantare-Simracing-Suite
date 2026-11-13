@@ -5,6 +5,17 @@ están implementados e integrados con el muestreador. La entrega requiere ademá
 el inventario de binarios, cierre de DLL y ZIP verificado. Los tests sintéticos
 comprueban el análisis; no son mediciones del PC de juego.
 
+Por encargo del orquestador se permite preparar el ZIP PENDIENTE-INICIO con
+todo lo compilado y un hueco explícito únicamente para Inicio Rune. Se exige
+`--pending-inicio-rune` (o `package.ps1 -PendingInicioRune`), ready=false y la
+nota INICIO-RUNE-PENDIENTE.txt; el modo final sigue rechazando cualquier hueco.
+Read-VantareKit rechaza este paquete antes de la medición. La guía para Isaac
+es PASO_A_PASO_ISAAC.txt y el orden de los nueve PR está en ORDEN_FUSION.md.
+GENERAR_MANIFIESTO.py fija las fuentes y artefactos de esta campaña. Cuando
+Isaac despierte el Mac, COMPLETAR_SERVIDOR.ps1 -CopiarMac hace un solo intento
+de copia, genera el inventario completo y cierra un ZIP nuevo sin el hueco.
+No se ha ejecutado esa copia mientras el Mac duerme.
+
 El plan RONDAS.ps1 genera ABBA/BAAB y controles A/A, con registro exclusivo
 de un máximo de tres intentos. Una ventana por monitor contiene 1, 4 o 10
 Relative; el escenario principal es una ventana con diez widgets a 60 Hz.

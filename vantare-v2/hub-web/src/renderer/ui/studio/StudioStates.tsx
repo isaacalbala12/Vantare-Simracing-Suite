@@ -67,7 +67,7 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
         <p>
           {state.failure
             ? state.canRetry
-              ? undefined
+              ? text.retryHelp
               : t.reconfirm
             : text.protectedHelp}
         </p>

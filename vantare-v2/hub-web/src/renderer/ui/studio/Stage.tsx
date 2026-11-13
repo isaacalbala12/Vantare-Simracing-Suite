@@ -3,7 +3,7 @@ import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button } from "../Button";
 import { DisabledHint } from "./DisabledHint";
-import { WidgetPreview } from "./Widgets";
+import { VisibilityIcon, WidgetPreview } from "./Widgets";
 
 export function Stage({
   item,
@@ -53,15 +53,20 @@ export function Stage({
       </div>
       {!item.visible && (
         <div className="v-focus-hidden">
-          <span>{t.hiddenStage}</span>
+          <span>
+            <VisibilityIcon visible={false} />
+            {t.hiddenStage}
+          </span>
           <Button
             size="sm"
+            variant="neutral"
             disabled={blocked || item.locked}
             aria-disabled={pending}
             onClick={() => {
               if (!pending) onShow();
             }}
           >
+            <VisibilityIcon visible />
             {t.showNow}
           </Button>
         </div>

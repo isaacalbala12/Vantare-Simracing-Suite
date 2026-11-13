@@ -8,9 +8,17 @@ export const studioStateVisual =
 export function studioStateScene(scene: string, view: StudioView): MockHandler {
   if (!scene.startsWith("studio-a-")) return () => undefined;
   const delta = view.instances.find((item) => item.kind === "delta");
-  if (delta) delta.opacity = 85;
+  if (delta) {
+    delta.opacity = 85;
+    delta.size = { width: 380, height: 72 };
+    if (delta.settings?.kind === "delta") delta.settings.size = "bar";
+  }
   const relative = view.instances.find((item) => item.kind === "relative");
-  if (relative) relative.visible = false;
+  if (relative) {
+    relative.visible = false;
+    relative.size = { width: 300, height: 196 };
+    relative.showIn = { practice: false, qualifying: false, race: true };
+  }
   if (scene === "studio-a-vacio") view.instances = [];
   if (scene === "studio-a-protegido" || scene === "studio-a-ilegible")
     view.state = "protected";

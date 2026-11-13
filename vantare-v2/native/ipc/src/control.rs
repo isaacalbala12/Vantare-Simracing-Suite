@@ -1261,7 +1261,7 @@ mod account_probe_tests {
                 // No sleep: this deliberately stalled query can only finish on stop.
                 // The long wait and recv_timeout calls are deadlock guards.
                 assert!(
-                    stop.wait(Duration::from_secs(60)),
+                    stop.wait(Duration::from_mins(1)),
                     "feed must cancel account I/O"
                 );
                 cancelled_tx

@@ -3,8 +3,10 @@
 Refs #2213 / Plane VANTA-141 En curso. Rama vantareapp/isa-2213-integracion,
 desde origin/nightly 07825965f (Rust 1.99.1), incorpora por merge #2222, #2224,
 #2238, #2242, #2241, #2249, #2251, #2261 y #2273; sus puntas constan en
-native/pruebas-rune/fuentes-medicion.json. El nuevo draft sustituye los nueve;
-su URL/HEAD/CI se actualizan en #2213. Los antiguos no se cierran hasta su merge.
+native/pruebas-rune/fuentes-medicion.json. El draft
+[#2286](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2286)
+sustituye los nueve; HEAD/CI se actualizan en #2213. Los antiguos no se cierran
+hasta su merge. CI propia de Rust 1.99.1 lanzada, resultado aún pendiente.
 
 El diff final no toca código/configuración de producto: overlays distribuidos,
 hub-host, instalador, Hub web y workspace nativo idénticos a la base. Incluye

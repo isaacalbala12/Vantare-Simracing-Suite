@@ -1,7 +1,9 @@
 # Integración VANTA-141 — Refs #2213
 
 Base: origin/nightly 07825965f30322cca053174bcc17f248dfad1f5e, Rust 1.99.1.
-Rama: vantareapp/isa-2213-integracion. Un único PR sustituye a los nueve
+Rama: vantareapp/isa-2213-integracion. El draft
+[#2286](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2286)
+sustituye a los nueve
 anteriores; no se cierra ninguno hasta que el orquestador fusione el nuevo.
 
 Se incorporaron por merge, en este orden: #2222, #2224, #2238, #2242, #2241,

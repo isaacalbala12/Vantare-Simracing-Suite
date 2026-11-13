@@ -1736,3 +1736,17 @@ Siguiente acción: recuperar la captura Mac, hacer comparación lado a lado,
 terminar gates locales por cola y verificar CI completa de #2260. Solo entonces
 seguir con PR 2 apilado. Los pasos 2–5 y corte 1 siguen pendientes. Plane lo
 actualiza el orquestador con el resumen del PR. Sin merge, promoción o release.
+
+### VANTA-143 · PR 2 sistema de diseño (2026-11-13)
+
+Nueva instrucción del orquestador: seguir con PRs 2–5 sin esperar al Mac ni a
+CI; usar un slot y dos jobs si falta memoria. Capturas y ventana visible quedan
+pendientes del Mac por la mañana, expresamente; no se presentan como verificadas.
+Paso 2: tokens compartidos incluidos directamente, nueve temas claro/oscuro,
+fuentes Inter del producto por ruta, superficie, texto, botón y elemento de menú
+con nombre accesible, foco y acción de teclado de Rune. Muestrario claro/oscuro.
+serde_json pasa a dependencia directa; ya estaba resuelto por hub-host/Rune,
+sin paquete ni versión nuevos. Política de licencias PASS (463 paquetes).
+Tests sin ventana: cobertura de los 18 temas y montaje del muestrario en ambos
+esquemas. Formato PASS; Clippy local solicitado por cola, un slot, -j2, todavía
+sin turno. El PR registra CI vigente y la pila; sin merge/promoción/release.

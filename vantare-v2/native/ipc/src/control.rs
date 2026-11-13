@@ -712,6 +712,8 @@ impl Feed {
         // The independent legacy reader can observe an authority restart while an
         // older account RPC is still in flight. It cannot refresh that generation.
         (policy.epoch == observation.policy.epoch
+            && policy.revision >= observation.policy.revision
+            && (!observation.policy.state.permits_access() || policy.state.permits_access())
             && policy.observable_at(now)
             && observation.policy.observable_at(now))
         .then_some(observation)
@@ -1318,6 +1320,35 @@ mod account_probe_tests {
         assert_eq!(feed.account_observation_at(10_750), Some(observation));
         feed.latest.lock().unwrap().as_mut().unwrap().epoch = 2;
         assert!(feed.account_observation_at(10_750).is_none());
+    }
+    #[test]
+    fn account_observation_requires_current_revision_and_no_legacy_revocation() {
+        use std::sync::{Arc, Mutex};
+        let mut observation = snapshot();
+        observation.policy.revision = 2;
+        let event = Arc::new(crate::transport::Event::new().unwrap());
+        let feed = Feed {
+            latest: Arc::new(Mutex::new(Some(observation.policy.clone()))),
+            account: Arc::new(Mutex::new(Some(observation.clone()))),
+            stop: Arc::clone(&event),
+            initial: event,
+            thread: None,
+            account_thread: None,
+        };
+        let now = 10_750;
+        assert_eq!(feed.account_observation_at(now), Some(observation.clone()));
+        feed.latest.lock().unwrap().as_mut().unwrap().revision = 1;
+        assert!(feed.account_observation_at(now).is_none());
+        {
+            let mut latest = feed.latest.lock().unwrap();
+            let policy = latest.as_mut().unwrap();
+            policy.revision = 3;
+            policy.state = AccessState::Revoked;
+        }
+        assert!(feed.account_observation_at(now).is_none());
+        observation.policy.state = AccessState::Revoked;
+        *feed.account.lock().unwrap() = Some(observation.clone());
+        assert_eq!(feed.account_observation_at(now), Some(observation));
     }
     fn snapshot() -> AccountObservation {
         AccountObservation {

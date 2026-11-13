@@ -1,4 +1,4 @@
-//! Existing resident status, read-only. No answer or launch extension.
+//! Closed resident observations and opt-in, scope-checked answers.
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
@@ -8,11 +8,20 @@ use ts_rs::TS;
 pub enum Request {
     #[serde(rename = "launcher.resident.get")]
     LauncherResidentGet {},
+    #[serde(rename = "launcher.resident.answer")]
+    LauncherResidentAnswer {
+        target: crate::launcher_resident::ResidentAnswerTarget,
+    },
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "launcher.resident.answer")]
+    LauncherResidentAnswer {
+        value: crate::launcher_resident::ResidentQueued,
+    },
+
     #[serde(rename = "launcher.resident.get")]
     LauncherResidentGet {
         value: crate::launcher_resident::ResidentView,
@@ -32,5 +41,15 @@ pub enum Event {
         value: crate::launcher_resident::ResidentView,
     },
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum HostError {
+    ResidentAnswerRejected {
+        reason: crate::launcher_resident::ResidentAnswerRejection,
+    },
+}
+
 #[cfg(any(test, feature = "bindings"))]
 pub(crate) mod bindings;

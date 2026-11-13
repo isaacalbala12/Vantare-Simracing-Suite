@@ -18,6 +18,9 @@ use std::{
     time::{Duration, Instant},
 };
 pub use vantare_ipc::launcher::Action;
+mod pending;
+pub use pending::AnswerError;
+use pending::{Pending, Poll};
 pub use vantare_ipc::launcher::execution::{CancelReason, ChainFailure, ChainOutcome};
 
 #[derive(Debug)]
@@ -78,6 +81,7 @@ struct RunContext {
     cancel: Arc<Cancellation>,
     sender: Sender<Progress>,
     answers: Receiver<(u64, Action)>,
+    pending: Arc<Pending>,
     processes: processes::Shared,
     next_decision: AtomicU64,
     selected: Vec<usize>,
@@ -98,7 +102,7 @@ impl RunContext {
             message,
             actions,
             closing,
-            || started.elapsed(),
+            (started, || started.elapsed()),
             |receiver| receiver.recv_timeout(Duration::from_millis(50)),
         )
     }
@@ -108,10 +112,15 @@ impl RunContext {
         message: String,
         actions: &[Action],
         closing: bool,
-        elapsed: impl Fn() -> Duration,
+        timing: (Instant, impl Fn() -> Duration),
         receive: impl Fn(&Receiver<(u64, Action)>) -> Result<(u64, Action), mpsc::RecvTimeoutError>,
     ) -> Result<Action, String> {
-        let id = self.next_decision.fetch_add(1, Ordering::Relaxed);
+        let (started, elapsed) = timing;
+        let id = self
+            .next_decision
+            .try_update(Ordering::Relaxed, Ordering::Relaxed, |id| id.checked_add(1))
+            .map_err(|_| "identificador de pregunta agotado")?;
+        let _pending = self.pending.open(id, actions, closing, started)?;
         let decision = Decision {
             id,
             message: message.clone(),
@@ -128,6 +137,9 @@ impl RunContext {
             })
             .map_err(|e| format!("publicar decisión: {e}"))?;
         loop {
+            if let Poll::Answer(action) = self.pending.poll(id, false, None)? {
+                return Ok(action);
+            }
             if self.cancel.shutdown.load(Ordering::Acquire) {
                 return Ok(if closing {
                     Action::Leave
@@ -138,11 +150,11 @@ impl RunContext {
             if !closing && self.cancel.cancelled() {
                 return Ok(Action::Cancel);
             }
-            match receive(&self.answers) {
+            let legacy = match receive(&self.answers) {
                 Ok((reply_id, action)) if reply_id == id && actions.contains(&action) => {
-                    return Ok(action);
+                    Some(action)
                 }
-                Ok(_) | Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Ok(_) | Err(mpsc::RecvTimeoutError::Timeout) => None,
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
                     return Ok(if closing {
                         Action::Leave
@@ -150,12 +162,19 @@ impl RunContext {
                         Action::Cancel
                     });
                 }
-            }
-            if elapsed() >= Duration::from_mins(2) {
-                if let Ok(mut failure) = self.failure.lock() {
-                    *failure = Some(ChainFailure::DecisionExpired);
+            };
+            match self
+                .pending
+                .poll(id, elapsed() >= Duration::from_mins(2), legacy)?
+            {
+                Poll::Answer(action) => return Ok(action),
+                Poll::Waiting => {}
+                Poll::Expired => {
+                    if let Ok(mut failure) = self.failure.lock() {
+                        *failure = Some(ChainFailure::DecisionExpired);
+                    }
+                    return Err("decisión caducada; no se ha cerrado ninguna app".into());
                 }
-                return Err("decisión caducada; no se ha cerrado ninguna app".into());
             }
         }
     }
@@ -217,6 +236,7 @@ pub struct Chain {
     pub progress: Receiver<Progress>,
     cancel: Arc<Cancellation>,
     answers: Sender<(u64, Action)>,
+    pending: Arc<Pending>,
     worker: Option<JoinHandle<ChainOutcome>>,
     outcome: Option<ChainOutcome>,
 }
@@ -287,10 +307,12 @@ impl Chain {
         let (sender, progress) = mpsc::channel();
         let cancel = Arc::new(Cancellation::default());
         let (answers, replies) = mpsc::channel();
+        let pending = Arc::new(Pending::default());
         let context = RunContext {
             cancel: cancel.clone(),
             sender,
             answers: replies,
+            pending: Arc::clone(&pending),
             processes,
             next_decision: AtomicU64::new(1),
             selected,
@@ -310,6 +332,7 @@ impl Chain {
             progress,
             cancel,
             answers,
+            pending,
             worker: Some(worker),
             outcome: None,
         })
@@ -321,6 +344,15 @@ impl Chain {
         self.answers
             .send((id, action))
             .map_err(|e| format!("responder decisión: {e}"))
+    }
+    pub fn answer_checked(&self, id: u64, action: Action) -> Result<(), AnswerError> {
+        self.pending.answer(
+            id,
+            action,
+            Instant::now,
+            self.cancel.cancelled(),
+            self.cancel.shutdown.load(Ordering::Acquire),
+        )
     }
     pub fn finished(&self) -> bool {
         self.worker.as_ref().is_none_or(JoinHandle::is_finished)
@@ -1028,6 +1060,7 @@ mod trust_tests {
             cancel: Arc::new(Cancellation::default()),
             sender,
             answers: replies,
+            pending: Arc::new(Pending::default()),
             processes: Arc::new(Mutex::new(processes::Processes::default())),
             next_decision: AtomicU64::new(1),
             selected: vec![0],

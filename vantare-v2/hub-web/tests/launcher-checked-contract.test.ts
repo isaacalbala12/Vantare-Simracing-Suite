@@ -37,6 +37,8 @@ describe("checked launch surface", () => {
     const value = {
       instance: "b".repeat(64),
       revisionCheckedLaunch: true,
+      checkedAnswer: false,
+      question: null,
       firstRetainedSeq: "9007199254740993",
       events: [
         {

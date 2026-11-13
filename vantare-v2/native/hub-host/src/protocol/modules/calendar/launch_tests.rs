@@ -25,6 +25,8 @@ fn resident() -> ResidentView {
         execution: Some(ResidentExecution {
             instance: "b".repeat(64),
             revision_checked_launch: true,
+            checked_answer: false,
+            question: None,
             first_retained_seq: "1".into(),
             events: vec![],
         }),

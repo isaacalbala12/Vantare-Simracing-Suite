@@ -22,6 +22,7 @@ use vantare_ipc::launcher::execution::{
 };
 use vantare_ipc::launcher::{Decision, Registration, Request, Status, request_path, status_path};
 
+mod answer;
 mod checked;
 
 pub struct Resident {
@@ -107,6 +108,11 @@ impl Resident {
                 .capabilities
                 .push(vantare_ipc::launcher::execution::Capability::RevisionCheckedLaunch);
         }
+        if let Some(extension) = &mut owner.status.extension {
+            extension
+                .capabilities
+                .push(vantare_ipc::launcher::execution::Capability::CheckedAnswer);
+        }
         let processes = Arc::clone(&owner.processes);
         let close_on_exit = Arc::clone(&owner.close_on_exit);
         let worker = thread::Builder::new()
@@ -181,6 +187,11 @@ impl Drop for Resident {
     }
 }
 
+#[derive(Clone)]
+struct ActiveScope {
+    revision: String,
+    account: vantare_ipc::account_session::AccountGeneration,
+}
 struct Owner {
     path: PathBuf,
     startup: bool,
@@ -190,6 +201,7 @@ struct Owner {
     status: Status,
     chain: Option<Chain>,
     active_run: Option<RunId>,
+    active_scope: Option<ActiveScope>,
     authority: Option<vantare_ipc::account_session::AuthorityLink>,
     decision_serial: u64,
     chain_decision: Option<u64>,
@@ -214,6 +226,7 @@ impl Owner {
             },
             chain: None,
             active_run: None,
+            active_scope: None,
             authority: None,
             decision_serial: vantare_ipc::launcher::now_ms(),
             chain_decision: None,
@@ -370,6 +383,7 @@ impl Owner {
             self.status.error = Some("perfil inexistente".into());
             return;
         };
+        let scope = self.observe_active_scope();
         match Chain::start(
             self.document.clone(),
             profile,
@@ -388,6 +402,7 @@ impl Owner {
                 if self.active_run.is_none() {
                     self.status.extension = None;
                 }
+                self.active_scope = scope;
                 self.chain = Some(chain);
             }
             Err(error) => self.status.error = Some(error),
@@ -411,6 +426,7 @@ impl Owner {
         match request {
             Ok(Request::Launch { profile }) => self.launch(&profile),
             Ok(Request::LaunchChecked(request)) => self.launch_checked(request),
+            Ok(Request::AnswerChecked(request)) => self.answer_checked(request),
             Ok(Request::Answer { decision, action }) => {
                 // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
                 // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
@@ -441,6 +457,9 @@ impl Owner {
                         Ok(()) => {
                             self.status.decision = None;
                             self.chain_decision = None;
+                            if let Some(extension) = &mut self.status.extension {
+                                extension.question = None;
+                            }
                         }
                         Err(error) => self.status.error = Some(error),
                     }
@@ -461,8 +480,29 @@ impl Owner {
         for progress in chain.progress.try_iter() {
             self.status.progress = progress.message;
             if let Some(decision) = progress.decision {
-                self.decision_serial = self.decision_serial.saturating_add(1);
+                let Some(serial) = self.decision_serial.checked_add(1) else {
+                    self.status.extension = None;
+                    self.status.decision = None;
+                    self.chain_decision = None;
+                    changed = true;
+                    continue;
+                };
+                self.decision_serial = serial;
                 self.chain_decision = Some(decision.id);
+                if let Some(extension) = &mut self.status.extension {
+                    extension.question =
+                        self.active_scope
+                            .as_ref()
+                            .zip(self.active_run)
+                            .map(
+                                |(scope, run)| vantare_ipc::launcher::answer::QuestionScope {
+                                    decision: serial.to_string(),
+                                    run,
+                                    revision: scope.revision.clone(),
+                                    account: scope.account.clone(),
+                                },
+                            );
+                }
                 self.status.decision = Some(Decision {
                     id: self.decision_serial,
                     message: decision.message,
@@ -488,6 +528,10 @@ impl Owner {
     }
 
     fn finish_run(&mut self, chain: &mut Chain) {
+        self.active_scope = None;
+        if let Some(extension) = &mut self.status.extension {
+            extension.question = None;
+        }
         if let Some(run) = self.active_run.take() {
             let outcome = chain.finish().unwrap_or(ChainOutcome::Failed {
                 reason: ChainFailure::Internal,
@@ -653,7 +697,7 @@ mod tests {
         assert!(imported);
     }
 
-    fn failure_decision_owner(root: &std::path::Path) -> Owner {
+    pub(super) fn failure_decision_owner(root: &std::path::Path) -> Owner {
         let mut owner = Owner::new(root.join("launcher.json"), false);
         let mut profile = launcher::Profile::new("qa".into(), "QA".into());
         profile.policy = Some(launcher::policy::Policy {

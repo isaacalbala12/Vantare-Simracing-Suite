@@ -47,7 +47,7 @@ fn profile<'de, D: serde::Deserializer<'de>>(decoder: D) -> Result<String, D::Er
         Ok(value)
     }
 }
-fn revision<'de, D: serde::Deserializer<'de>>(decoder: D) -> Result<String, D::Error> {
+pub(super) fn revision<'de, D: serde::Deserializer<'de>>(decoder: D) -> Result<String, D::Error> {
     let value = String::deserialize(decoder)?;
     if hex(&value, 64) {
         Ok(value)

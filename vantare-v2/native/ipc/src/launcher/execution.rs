@@ -49,6 +49,7 @@ impl From<RunId> for String {
 pub enum Capability {
     TypedTerminal,
     RevisionCheckedLaunch,
+    CheckedAnswer,
     #[serde(other)]
     Unknown,
 }
@@ -89,6 +90,10 @@ pub enum EventKind {
         run: RunId,
         outcome: ChainOutcome,
     },
+    OrderReceived {
+        request: super::RequestId,
+        receipt: super::answer::OrderReceipt,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -103,6 +108,8 @@ pub struct ExecutionStatus {
     pub capabilities: Vec<Capability>,
     pub first_retained_seq: RunId,
     pub events: Vec<ExecutionEvent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub question: Option<super::answer::QuestionScope>,
 }
 impl ExecutionStatus {
     pub fn new(instance: ResidentInstance) -> Self {
@@ -111,6 +118,7 @@ impl ExecutionStatus {
             capabilities: vec![Capability::TypedTerminal],
             first_retained_seq: RunId(1),
             events: Vec::new(),
+            question: None,
         }
     }
     fn next(&self) -> Option<RunId> {
@@ -136,7 +144,8 @@ impl ExecutionStatus {
     pub fn contains_request(&self, request: &super::RequestId) -> bool {
         self.events.iter().any(|event| {
             matches!(&event.kind,
-            EventKind::Received { request: observed, .. } if observed == request)
+            EventKind::Received { request: observed, .. }
+            | EventKind::OrderReceived { request: observed, .. } if observed == request)
         })
     }
     pub fn accept(&mut self, request: super::RequestId) -> Option<RunId> {
@@ -152,7 +161,10 @@ impl ExecutionStatus {
         self.next().and_then(|seq| seq.0.checked_add(1)).is_some()
     }
     fn valid(&self) -> bool {
-        self.events.len() <= EVENT_LIMIT
+        self.question.as_ref().is_none_or(|q| {
+            self.capabilities.contains(&Capability::CheckedAnswer)
+                && self.events.last().is_some_and(|e| q.run <= e.seq)
+        }) && self.events.len() <= EVENT_LIMIT
             && self.capabilities.len() <= EVENT_LIMIT
             && self.first_retained_seq == self.events.first().map_or(RunId(1), |e| e.seq)
             && self
@@ -161,6 +173,10 @@ impl ExecutionStatus {
                 .all(|w| w[0].seq.0.checked_add(1) == Some(w[1].seq.0))
             && self.events.iter().all(|e| match e.kind {
                 EventKind::Started { run } | EventKind::Finished { run, .. } => run <= e.seq,
+                EventKind::OrderReceived { ref receipt, .. } => match receipt {
+                    super::answer::OrderReceipt::Accepted { run } => *run <= e.seq,
+                    super::answer::OrderReceipt::Rejected { .. } => true,
+                },
                 EventKind::Received { ref receipt, .. } => match receipt {
                     super::checked::LaunchReceipt::Accepted { run } => *run <= e.seq,
                     super::checked::LaunchReceipt::Rejected { .. } => true,

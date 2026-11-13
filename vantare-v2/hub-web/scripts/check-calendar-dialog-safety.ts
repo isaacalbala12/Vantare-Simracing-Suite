@@ -122,6 +122,7 @@ export async function checkCalendarDialogSafety(owner: Page, base: string) {
           [
             "launcher.launch",
             "launcher.launchChecked",
+            "launcher.resident.answer",
             "calendar.launchArm",
             "calendar.launchCancel",
             "launcher.favorite",

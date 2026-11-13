@@ -18,9 +18,11 @@ export async function checkCommandPalette(
       MessagePort.prototype.postMessage = function (message, options) {
         if (
           message?.kind === "request" &&
-          ["launcher.launch", "launcher.launchChecked"].includes(
-            message.request?.method,
-          )
+          [
+            "launcher.launch",
+            "launcher.launchChecked",
+            "launcher.resident.answer",
+          ].includes(message.request?.method)
         )
           (Reflect.get(window, "paletteLaunchRequests") as unknown[]).push(
             message.request,

@@ -7,6 +7,8 @@ pub const MAX_STATUS_BYTES: usize = 128 * 1024;
 pub mod checked;
 pub mod execution;
 pub use checked::{LaunchChecked, RequestId};
+pub mod answer;
+pub use answer::AnswerChecked;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
@@ -77,6 +79,8 @@ pub enum Request {
     Launch { profile: String },
     #[serde(rename = "launch-v2")]
     LaunchChecked(LaunchChecked),
+    #[serde(rename = "answer-v3")]
+    AnswerChecked(AnswerChecked),
     #[serde(rename = "answer-v2")]
     Answer { decision: u64, action: Action },
 }

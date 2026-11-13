@@ -3,6 +3,71 @@ use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_ipc::launcher::{checked as checked_native, execution as native};
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "kebab-case")]
+pub enum ResidentAnswerRejection {
+    WrongInstance,
+    AccountChanged,
+    AuthorityUnavailable,
+    Denied,
+    RevisionMismatch,
+    UnscopedRun,
+    WrongRun,
+    StaleQuestion,
+    InvalidAction,
+    TrustRequiresEditor,
+    Unavailable,
+}
+impl ResidentAnswerRejection {
+    pub const ALL: [Self; 11] = [
+        Self::WrongInstance,
+        Self::AccountChanged,
+        Self::AuthorityUnavailable,
+        Self::Denied,
+        Self::RevisionMismatch,
+        Self::UnscopedRun,
+        Self::WrongRun,
+        Self::StaleQuestion,
+        Self::InvalidAction,
+        Self::TrustRequiresEditor,
+        Self::Unavailable,
+    ];
+}
+impl From<vantare_ipc::launcher::answer::AnswerRejection> for ResidentAnswerRejection {
+    fn from(value: vantare_ipc::launcher::answer::AnswerRejection) -> Self {
+        use vantare_ipc::launcher::answer::AnswerRejection as N;
+        match value {
+            N::WrongInstance => Self::WrongInstance,
+            N::AccountChanged => Self::AccountChanged,
+            N::AuthorityUnavailable => Self::AuthorityUnavailable,
+            N::Denied => Self::Denied,
+            N::RevisionMismatch => Self::RevisionMismatch,
+            N::UnscopedRun => Self::UnscopedRun,
+            N::WrongRun => Self::WrongRun,
+            N::StaleQuestion => Self::StaleQuestion,
+            N::InvalidAction => Self::InvalidAction,
+            N::TrustRequiresEditor => Self::TrustRequiresEditor,
+            N::Unavailable => Self::Unavailable,
+        }
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
+pub enum ResidentOrderReceipt {
+    Accepted { run: String },
+    Rejected { reason: ResidentAnswerRejection },
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ResidentScopedQuestion {
+    pub decision: String,
+    pub run: String,
+    pub revision: String,
+    pub account_generation: String,
+}
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "kebab-case")]
@@ -100,6 +165,10 @@ pub enum ResidentReceipt {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum ResidentEventKind {
+    OrderReceived {
+        request: String,
+        receipt: ResidentOrderReceipt,
+    },
     Started {
         run: String,
     },
@@ -125,6 +194,8 @@ pub struct ResidentExecutionEvent {
 pub struct ResidentExecution {
     pub instance: String,
     pub revision_checked_launch: bool,
+    pub checked_answer: bool,
+    pub question: Option<Box<ResidentScopedQuestion>>,
     pub first_retained_seq: String,
     pub events: Vec<ResidentExecutionEvent>,
 }
@@ -135,6 +206,18 @@ impl From<&native::ExecutionStatus> for ResidentExecution {
             revision_checked_launch: value
                 .capabilities
                 .contains(&native::Capability::RevisionCheckedLaunch),
+            checked_answer: value
+                .capabilities
+                .contains(&native::Capability::CheckedAnswer),
+            question: value
+                .question
+                .as_ref()
+                .map(|question| Box::new(ResidentScopedQuestion {
+                    decision: question.decision.clone(),
+                    run: question.run.into(),
+                    revision: question.revision.clone(),
+                    account_generation: question.account.clone().into(),
+                })),
             first_retained_seq: value.first_retained_seq.into(),
             events: value
                 .events
@@ -142,6 +225,22 @@ impl From<&native::ExecutionStatus> for ResidentExecution {
                 .map(|event| ResidentExecutionEvent {
                     seq: event.seq.into(),
                     kind: match &event.kind {
+                        native::EventKind::OrderReceived { request, receipt } => {
+                            ResidentEventKind::OrderReceived {
+                                request: request.clone().into(),
+                                receipt: match receipt {
+                                    vantare_ipc::launcher::answer::OrderReceipt::Accepted {
+                                        run,
+                                    } => ResidentOrderReceipt::Accepted { run: (*run).into() },
+                                    vantare_ipc::launcher::answer::OrderReceipt::Rejected {
+                                        reason,
+                                    } => ResidentOrderReceipt::Rejected {
+                                        reason: (*reason).into(),
+                                    },
+                                },
+                            }
+                        }
+
                         native::EventKind::Started { run } => {
                             ResidentEventKind::Started { run: (*run).into() }
                         }

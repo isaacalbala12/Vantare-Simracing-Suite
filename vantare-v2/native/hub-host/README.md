@@ -255,7 +255,7 @@ Los IDs de ejecución y secuencia son strings decimales exactos, también sobre
 2^53. Solo Received con el RequestId propio correlaciona la ejecución; Finished
 se atribuye usando el run de ese Received y la misma instancia. Started de otro
 consumidor no confirma una intención del Hub. Failed/Cancelled nunca son éxito.
-La lectura no consume. Los rechazos ocupan huecos del mismo anillo de32 y pueden
+La lectura no consume. Los rechazos ocupan huecos del mismo anillo de 32 y pueden
 desalojar recibos/terminales. Falta de extensión, hueco, reinicio o ausencia de
 recibo al vencer el plazo significa **Unknown**, jamás éxito supuesto ni reenvío.
 No hay ACK ni persistencia. Se reservan16KiB en el presupuesto de registros para
@@ -285,3 +285,27 @@ Calendario v32: `calendar.launchArm` / `calendar.launchCancel` y tema
 residente; el tick consume una sola vez la intención. Los recibos siguen
 correlacionándose al entrar en pista; solo la pérdida de cuenta/derechos/conexión
 invalida su alcance. Sin persistencia ni reenvío de resultados desconocidos.
+## L53 · respuestas comprobadas (v33, tras #2259/v32)
+
+launcher.resident.answer recibe target con instance, accountGeneration, run,
+revision de la instantánea en ejecución, decision y action cerrada. El host crea
+request y devuelve Queued; el residente publica OrderReceived Accepted/Rejected
+en el mismo anillo de 32. Accepted compromete una respuesta a una pregunta viva:
+solo Finished termina la ejecución. Hueco, reinicio o falta de recibo = Unknown,
+sin reenvío automático ni fallback a answer-v2.
+
+La capability checkedAnswer y execution.question delimitan la pregunta comprobada.
+La cuenta se captura al arrancar; una cadena legacy sin ámbito observable no
+admite respuestas nuevas. Editar launcher.json no cambia la revisión de la cadena.
+Las acciones que continúan lanzamientos exigen permisos actuales; cancelar/parar
+o resolver el cierre requiere la misma cuenta observable, sin inventar permiso
+para lanzar. El residente revalida y Chain arbitra selección/caducidad bajo un lock.
+
+Trust queda rechazado con residentAnswerRejected / trust-requires-editor.
+El consumidor debe mostrar: «Para confiar en este perfil, usa su editor».
+La revisión segura tiene issue #2274; no enviar rutas/argumentos al renderer.
+No se habilitan cancelar cadena, ensayo, reintentos ni propiedad viva (L54–L56).
+
+El lector antiguo puede descartar solo la extensión nueva, conservando Status
+legacy; las órdenes nuevas requieren capability y no se degradan a v1/v2.
+L53 no modifica supervisor, rights, Services, Hub GPUI ni dependencias.

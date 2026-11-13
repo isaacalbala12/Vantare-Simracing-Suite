@@ -36,35 +36,24 @@ export function ResidentResults({
           revision: value.revision,
         }
       : undefined;
-  function action(scope: ResidentRetryScope) {
-    const target: ResidentRetryTarget | undefined = snapshot
-      ? { ...snapshot, scope }
-      : undefined;
-    const reason = target
-      ? control.reason({ kind: "retry", target })
-      : undefined;
-    const description = reason
-      ? controlText[reason]
-      : !target
-        ? text.unavailable
-        : scope === "all"
-          ? text.sameSteps
-          : text.failedSteps;
-    return (
-      <div className="v-launcher-retry-action" key={scope}>
-        <Button
-          aria-disabled={!target || !!reason}
-          aria-describedby={`${help}-${scope}`}
-          onClick={() => {
-            if (target && !reason) void control.retry(target);
-          }}
-        >
-          {scope === "failed" ? controlText.retryFailed : controlText.retryAll}
-        </Button>
-        <p id={`${help}-${scope}`}>{description}</p>
-      </div>
-    );
-  }
+  const actions = (["failed", "all"] as const).map(
+    (scope: ResidentRetryScope) => {
+      const target: ResidentRetryTarget | undefined = snapshot
+        ? { ...snapshot, scope }
+        : undefined;
+      const reason = target
+        ? control.reason({ kind: "retry", target })
+        : undefined;
+      const description = reason
+        ? controlText[reason]
+        : !target
+          ? text.unavailable
+          : scope === "all"
+            ? text.sameSteps
+            : text.failedSteps;
+      return { scope, target, reason, description };
+    },
+  );
   const Heading = view.profiles.length ? "h3" : "h2";
   return (
     <section
@@ -107,9 +96,30 @@ export function ResidentResults({
         </p>
       )}
       <div className="v-launcher-retry-actions">
-        {action("failed")}
-        {action("all")}
+        {actions.map(({ scope, target, reason }) => (
+          <Button
+            key={scope}
+            aria-disabled={!target || !!reason}
+            aria-describedby={`${help}-${scope}`}
+            onClick={() => {
+              if (target && !reason) void control.retry(target);
+            }}
+          >
+            {scope === "failed"
+              ? controlText.retryFailed
+              : controlText.retryAll}
+          </Button>
+        ))}
       </div>
+      {actions.map(({ scope, description }) => (
+        <p
+          key={scope}
+          className="v-launcher-retry-help"
+          id={`${help}-${scope}`}
+        >
+          {description}
+        </p>
+      ))}
     </section>
   );
 }

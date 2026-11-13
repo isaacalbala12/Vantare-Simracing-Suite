@@ -57,7 +57,7 @@ export async function prepareResidentResults(page: Page, state: string) {
         exact: true,
       })
       .waitFor();
-  } else if (state !== "mixed") {
+  } else if (state !== "mixed" && state !== "final-pass") {
     await button.focus();
     await page.keyboard.press("Enter");
     const status = page.getByRole("region", {
@@ -90,6 +90,19 @@ export async function prepareResidentResults(page: Page, state: string) {
       .getByText(`${controlText.retryAll}: ${text}`, { exact: true })
       .waitFor();
   }
+  if (state === "final-pass") {
+    assert.equal(
+      await page
+        .getByRole("button", { name: controlText.retryFailed, exact: true })
+        .getAttribute("aria-disabled"),
+      "false",
+    );
+    assert.equal(
+      await page.getByText("No ejecutado", { exact: true }).count(),
+      1,
+    );
+    assert.equal(await page.getByText("Falló", { exact: true }).count(), 0);
+  }
   const requests = await page.evaluate(
     () =>
       Reflect.get(window, "residentControlRequests") as {
@@ -97,7 +110,13 @@ export async function prepareResidentResults(page: Page, state: string) {
         target?: { scope: string };
       }[],
   );
-  const sends = ["mixed", "unknown", "unsupported", "stale"].includes(state)
+  const sends = [
+    "mixed",
+    "final-pass",
+    "unknown",
+    "unsupported",
+    "stale",
+  ].includes(state)
     ? 0
     : 1;
   assert.equal(requests.length, sends);
@@ -111,6 +130,7 @@ export async function checkResidentResults(owner: Page, base: string) {
   const page = await owner.context().newPage();
   try {
     for (const state of [
+      "final-pass",
       "inert",
       "accepted",
       "rejected",

@@ -32,15 +32,10 @@
   flex-wrap: wrap;
   gap: 10px;
 }
-.v-launcher-retry-action {
-  flex: 1;
-  min-width: 210px;
-}
-.v-launcher-retry-action p {
-  margin-top: 6px;
+.v-launcher-run-results .v-launcher-retry-help {
   font-size: 12px;
 }
-.v-launcher-retry-action .v-button[aria-disabled="true"] {
+.v-launcher-retry-actions .v-button[aria-disabled="true"] {
   opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }

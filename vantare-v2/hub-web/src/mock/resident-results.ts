@@ -37,6 +37,7 @@ export function createResidentResultsMock(
       { index: 2, state: "ready" },
     ],
   };
+  if (scene.endsWith("final-pass")) summary.steps[1].state = "not-run";
   view.execution = {
     instance: "b".repeat(64),
     revisionCheckedLaunch: true,

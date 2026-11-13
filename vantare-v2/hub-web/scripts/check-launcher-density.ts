@@ -89,6 +89,30 @@ export async function checkLauncherDensity(
               "Profile app count must not be clipped",
             );
           }
+          const warning = page.locator(".v-launcher-warning p");
+          await warning.evaluate((node) => {
+            node.textContent =
+              "Aplicación pendiente con un nombre muy largo que debe poder leerse completo sin recortarse ni ocultar el motivo para no lanzar el perfil. ".repeat(
+                3,
+              );
+          });
+          assert.ok(
+            await warning.evaluate(
+              (node) => node.scrollHeight <= node.clientHeight + 1,
+            ),
+            "Long warnings must remain fully readable",
+          );
+          const carousel = page.locator(".v-launcher-profile-grid");
+          assert.equal(
+            await carousel.evaluate(
+              (node) => getComputedStyle(node).scrollbarWidth,
+            ),
+            "thin",
+            "Overflow must have a visible scroll affordance",
+          );
+          await warning.evaluate((node) => {
+            node.textContent = "";
+          });
           assert.equal(
             layout.cards[0].y,
             layout.cards[1].y,
@@ -112,6 +136,39 @@ export async function checkLauncherDensity(
         results.push({ width, height, expanded, ...layout });
       }
     }
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`${base}?escena=launcher-aplicaciones`);
+    await page.getByRole("button", { name: "Launcher", exact: true }).click();
+    await page.getByRole("tab", { name: "Aplicaciones", exact: true }).click();
+    const catalog = page.locator(".v-launcher-catalog");
+    await catalog.waitFor();
+    assert.ok(
+      await catalog.evaluate(
+        (node) => node.getBoundingClientRect().height > 200,
+      ),
+      "Compact applications catalogue must retain usable height",
+    );
+    assert.ok(
+      await page
+        .getByRole("button", { name: "Editar Vantare Overlay", exact: true })
+        .isVisible(),
+    );
+    await page.getByRole("tab", { name: "Perfiles", exact: true }).click();
+    await page
+      .getByRole("button", { name: "+ Nuevo perfil", exact: true })
+      .first()
+      .click();
+    const name = page.getByRole("textbox", { name: "Nombre", exact: true });
+    await name.waitFor();
+    await name.focus();
+    assert.ok(
+      await name.evaluate((node) => {
+        const r = node.getBoundingClientRect();
+        return r.top >= 52 && r.bottom <= innerHeight;
+      }),
+      "Compact profile editor must keep its first field visible",
+    );
+    await page.keyboard.press("Escape");
     await writeFile(
       join(evidence, "launcher-density.json"),
       JSON.stringify(results, null, 2),

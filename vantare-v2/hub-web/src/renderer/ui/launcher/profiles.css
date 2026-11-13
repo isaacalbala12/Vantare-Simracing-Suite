@@ -560,10 +560,10 @@ div.v-launcher-app-tile {
     flex: 1;
     min-height: 0;
   }
-  .v-launcher-page {
+  .v-launcher-page:has(.v-launcher-profiles) {
     gap: 10px;
   }
-  .v-launcher-page > :not(.v-launcher-profiles) {
+  .v-launcher-page:has(.v-launcher-profiles) > :not(.v-launcher-profiles) {
     flex-shrink: 0;
   }
   .v-launcher-profiles {
@@ -585,9 +585,8 @@ div.v-launcher-app-tile {
   .v-launcher-warning p {
     min-width: 0;
     flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .v-launcher-warning > button {
     flex-shrink: 0;
@@ -595,7 +594,8 @@ div.v-launcher-app-tile {
   .v-launcher-profile-grid {
     display: flex;
     overflow-x: auto;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-3) transparent;
     align-items: stretch;
     flex: 1;
     min-height: 140px;

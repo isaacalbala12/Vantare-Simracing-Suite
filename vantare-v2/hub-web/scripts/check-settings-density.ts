@@ -99,6 +99,7 @@ export async function checkSettingsDensity(page: Page, base: string) {
       }
       await page.goto(`${base}?escena=visual-dark:ajustes-con-diseno`);
       await page.getByRole("tab", { name: "Atajos", exact: true }).click();
+      await page.getByText(t("shortcuts.empty"), { exact: true }).waitFor();
       assert.ok(
         await page.getByText(t("shortcuts.empty"), { exact: true }).isVisible(),
         "Empty shortcut explanation must remain readable",

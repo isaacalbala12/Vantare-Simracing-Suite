@@ -1766,3 +1766,12 @@ solo conserva una petición propia (-j2). Capturas y ventana visible pendientes
 del Mac dormido por orden del orquestador; no se afirma paridad visual probada.
 PR draft apilado tras el sistema de diseño; la issue/PR contienen SHA y checks
 vigentes. Sin merge, promoción, cambios de producto distribuido o release.
+
+### VANTA-143 · revisión PR 3 (2026-11-13)
+
+El catálogo ya no depende del Node preinstalado del runner: hub-rune.yml instala
+Node 22.18.0 mediante setup-node fijado por SHA. El test local comprueba Node
+>=22.18.0 y rustup/Rust 1.99.1/rustfmt, con diagnóstico claro si faltan.
+Catálogo --check y formato comprobados; Clippy/tests se repiten por la cola
+antes de publicar. Capturas y ventana visible pendientes del Mac, autorizado
+por el orquestador. Sin cambios de versiones Rust/Rune ni dependencias nuevas.

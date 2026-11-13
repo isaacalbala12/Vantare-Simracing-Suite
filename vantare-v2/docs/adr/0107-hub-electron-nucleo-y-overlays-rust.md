@@ -8,6 +8,11 @@ Sustituye la parte de interfaz del Hub de [ADR 0099](0099-arquitectura-rust-nati
 **Aceptada por Isaac el 2026-11-10.** No autoriza releases ni promociones de
 canal. Los testers no reciben versiones nuevas hasta nueva orden de Isaac.
 
+**Enmendada por [ADR 0108](0108-hub-rune-via-paralela.md) (2026-11-13):** por
+decisión de Isaac, el Hub se construye también en Rune como vía paralela a
+Electron, con el mismo anfitrión y protocolo. Este ADR sigue vigente; el
+criterio para elegir entre los dos Hubs está en ADR 0108.
+
 ## Contexto
 
 - Las compilaciones de Rust + GPUI frenan todo el desarrollo. El workspace tiene

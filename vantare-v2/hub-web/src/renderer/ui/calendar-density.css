@@ -134,3 +134,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* GPUI permits the decorative word to wrap inside the 300 px poster. */
+.v-calendar .v-calendar-event-poster > i {
+  width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 172px;
+}

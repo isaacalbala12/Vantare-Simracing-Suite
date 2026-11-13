@@ -128,7 +128,7 @@ Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
 
 #1995. v36 asignada por Isaac. Rama local
 vantareapp/isa-1995-resident-ownership, sobre nightly b2489dedd tras integrar #2298.
-Código y tests escritos antes de solicitar la cola. Draft contra nightly; enlace y HEAD final en #1995.
+Código y tests escritos antes de solicitar la cola. Draft [#2304](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2304) contra nightly; HEAD final en #1995.
 
 El contrato nuevo impide borrar un perfil si este residente conserva una
 aplicación propia viva, aunque la secuencia haya terminado. No descubre ni

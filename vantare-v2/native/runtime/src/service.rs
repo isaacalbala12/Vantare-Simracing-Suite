@@ -114,12 +114,38 @@ pub fn run_controlled(
     }
     let mut publisher = Publisher::new(pipe, |_| true)?;
     let demand = publisher.demand_source();
+    #[cfg(feature = "medir-latencia")]
+    wait_for_measurement_subscriber(&demand, stop)?;
     drive_core_demanded(&mut core, adapter, speed, stop, Some(&demand), |core| {
         let snapshot = core.snapshot();
         rights.publish(Arc::clone(&snapshot));
         events.publish(Arc::clone(&snapshot), core.events());
         publisher.publish(snapshot)
     })
+}
+
+/// Barrera de arranque opt-in del replay: ninguna foto antes del suscriptor.
+/// # Errors
+/// Si se cancela o no se negocia demanda en diez segundos.
+#[cfg(feature = "medir-latencia")]
+pub fn wait_for_measurement_subscriber(
+    demand: &vantare_ipc::DemandSource,
+    stop: &AtomicBool,
+) -> std::io::Result<()> {
+    if std::env::var_os("VANTARE_REPLAY_WAIT_SUBSCRIBER").is_none() {
+        return Ok(());
+    }
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while demand.revision() == 0 {
+        if stop.load(Ordering::Relaxed) {
+            return Err(std::io::ErrorKind::Interrupted.into());
+        }
+        if Instant::now() >= deadline {
+            return Err(std::io::ErrorKind::TimedOut.into());
+        }
+        thread::sleep(Duration::from_millis(2));
+    }
+    Ok(())
 }
 
 /// El bucle sin transporte: hasta que `stop` se levante, hace avanzar `core`

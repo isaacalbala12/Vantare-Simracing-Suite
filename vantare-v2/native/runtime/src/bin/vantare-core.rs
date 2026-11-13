@@ -96,7 +96,7 @@ use vantare_ipc::product;
 
 #[cfg(all(any(windows, unix), not(feature = "paint-stats")))]
 fn main() -> std::process::ExitCode {
-    application_main()
+    measured_application_main()
 }
 
 #[cfg(all(any(windows, unix), feature = "paint-stats"))]
@@ -118,7 +118,7 @@ fn main() -> std::process::ExitCode {
         }
         vantare_runtime::profiling::initialize_trace();
     }
-    let result = application_main();
+    let result = measured_application_main();
     #[cfg(feature = "paint-stats")]
     if let Err(error) = vantare_runtime::profiling::flush() {
         let _written = writeln!(std::io::stderr(), "measurement trace: {error}");
@@ -285,6 +285,9 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         stop_on_eof.store(true, Ordering::Release);
     });
 
+    #[cfg(feature = "medir-latencia")]
+    vantare_runtime::service::wait_for_measurement_subscriber(&demand, &stop)?;
+
     vantare_runtime::service::drive_core_demanded(
         &mut core,
         adapter.as_mut(),
@@ -298,6 +301,42 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         },
     )?;
     Ok(())
+}
+
+#[cfg(any(windows, unix))]
+fn measured_application_main() -> std::process::ExitCode {
+    #[cfg(feature = "medir-latencia")]
+    eprintln!(concat!(
+        "VANTARE_LATENCY_BUILD;sha=",
+        env!("VANTARE_MEASUREMENT_SHA"),
+        ";dirty=",
+        env!("VANTARE_MEASUREMENT_DIRTY"),
+        ";profile=",
+        env!("VANTARE_MEASUREMENT_PROFILE"),
+        ";opt-level=",
+        env!("VANTARE_MEASUREMENT_OPT_LEVEL"),
+        ";features=",
+        env!("VANTARE_MEASUREMENT_FEATURES"),
+        ";lto=false;codegen-units=16;incremental=false"
+    ));
+
+    #[cfg(feature = "medir-latencia")]
+    let session = match vantare_profiling::latency::Session::from_env() {
+        Ok(session) => session,
+        Err(error) => {
+            eprintln!("latencia: {error}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    let result = application_main();
+    #[cfg(feature = "medir-latencia")]
+    if let Some(session) = session
+        && let Err(error) = session.finish()
+    {
+        eprintln!("latencia: {error}");
+        return std::process::ExitCode::FAILURE;
+    }
+    result
 }
 
 #[cfg(test)]

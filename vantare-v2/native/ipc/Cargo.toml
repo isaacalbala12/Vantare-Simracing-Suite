@@ -6,6 +6,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
+medir-latencia = ["vantare-profiling/medir-latencia"]
 # Fixtures y defensa de raíz QA para pruebas de consumidores; inactivas en producto.
 test-support = []
 qa-e2e = []

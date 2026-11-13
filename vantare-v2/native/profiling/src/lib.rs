@@ -357,6 +357,18 @@ pub fn frequency() -> Option<u64> {
     Some(1_000_000_000)
 }
 
+#[cfg(feature = "medir-latencia")]
+pub mod latency;
+
+/// No-op eliminado por el compilador fuera de la medición.
+#[inline]
+pub fn latency_submit(window: u64) {
+    #[cfg(feature = "medir-latencia")]
+    latency::submit(window);
+    #[cfg(not(feature = "medir-latencia"))]
+    let _ = window;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

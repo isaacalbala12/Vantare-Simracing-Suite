@@ -368,4 +368,28 @@ mod tests {
             assert!(runtime.find(&format!("car-{}", live.id.0)).is_some());
         }
     }
+    #[test]
+    fn pit_limiter_changes_while_the_pit_banner_stays_visible() {
+        let mut snapshot = scene();
+        snapshot.state.cars[0].in_pits = Quality::Reliable(true);
+        let mut runtime = runtime(&snapshot);
+        assert!(runtime.find("pit-limiter").is_none());
+        snapshot.state.player.as_mut().unwrap().pit_limiter_active = Quality::Reliable(true);
+        assert!(runtime.update_if(|state, _| state.ingest(&snapshot)));
+        runtime.frame(1.0 / 60.0);
+        assert!(runtime.find("pit-limiter").is_some());
+        snapshot.state.player.as_mut().unwrap().pit_limiter_active = Quality::Reliable(false);
+        assert!(runtime.update_if(|state, _| state.ingest(&snapshot)));
+        runtime.frame(2.0 / 60.0);
+        assert!(runtime.find("pit-limiter").is_none());
+    }
+    #[test]
+    fn waiting_scene_retains_product_brand_and_waiting_indicator() {
+        let runtime = runtime(&Snapshot::default());
+        assert!(runtime.find("brand-symbol").is_some());
+        assert!(runtime.find("waiting-dot").is_some());
+        for index in 0..7 {
+            assert!(runtime.find(&format!("skeleton-{index}")).is_some());
+        }
+    }
 }

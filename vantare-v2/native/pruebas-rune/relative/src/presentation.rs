@@ -1,6 +1,6 @@
 //! Fixed standard Vantare preset. Fonts and tokens are copied byte-for-byte from ui.
 use super::*;
-use rune::{Align, Color, Family, Span, TextStyle, col, el, text};
+use rune::{Align, Color, Family, Shape, Span, TextStyle, canvas, col, el, text};
 use std::sync::OnceLock;
 use vantare_domain::{SourceState, relative::Banner};
 
@@ -161,6 +161,7 @@ pub fn same_structure(a: &Board, b: &Board) -> bool {
     waiting(a) == waiting(b)
         && footer(a) == footer(b)
         && a.banner == b.banner
+        && a.pit_limiter == b.pit_limiter
         && a.slots.len() == b.slots.len()
         && a.slots.iter().zip(&b.slots).all(|(a, b)| match (a, b) {
             (None, None) => true,
@@ -316,6 +317,13 @@ fn car_row(state: &Relative, index: usize) -> El {
     );
     if data.lap_delta.is_some_and(|v| v != 0) {
         laps = laps
+            .font(TextStyle {
+                line_height: 16.0,
+                tracking: 0.5,
+                ..font("Inter", 10.0, 600.0)
+            })
+            .h(16.0)
+            .pin(Some(310.0), Some(4.0), None, None)
             .fill(color(
                 "relative",
                 if data.lap_delta.unwrap() < 0 {
@@ -411,7 +419,10 @@ pub fn view(state: &Relative) -> El {
             text(state.labels[0].get().to_string())
                 .key("header-title")
                 .live_text(&state.labels[0])
-                .font(font("Inter", 11.0, 400.0))
+                .font(TextStyle {
+                    line_height: 18.0,
+                    ..font("Inter", 11.0, 400.0)
+                })
                 .color(color("colors", "muted"))
                 .size(230.0, 18.0)
                 .truncate_fade()
@@ -421,7 +432,10 @@ pub fn view(state: &Relative) -> El {
             text(state.labels[1].get().to_string())
                 .key("header-range")
                 .live_text(&state.labels[1])
-                .font(font("Inter", 11.0, 400.0))
+                .font(TextStyle {
+                    line_height: 18.0,
+                    ..font("Inter", 11.0, 400.0)
+                })
                 .color(color("colors", "muted"))
                 .size(80.0, 18.0)
                 .align(Align::End)
@@ -431,6 +445,7 @@ pub fn view(state: &Relative) -> El {
             text("VANTARE")
                 .font(TextStyle {
                     tracking: 1.6,
+                    line_height: 18.0,
                     ..font("Rajdhani", 11.0, 600.0)
                 })
                 .color(color("colors", "muted"))
@@ -438,24 +453,100 @@ pub fn view(state: &Relative) -> El {
                 .align(Align::End)
                 .pin(Some(343.0), Some(header_y), None, None),
         );
+    let scale = 9.0 / 41.0;
+    let points = [
+        [9.0, 51.0],
+        [32.0, 10.0],
+        [55.0, 51.0],
+        [42.0, 51.0],
+        [32.0, 32.0],
+        [22.0, 51.0],
+    ]
+    .map(|[x, y]| [(x - 9.0) * scale, (y - 10.0) * scale]);
+    root = root.child(
+        canvas(Shape::new().fill(points.to_vec(), color("brand", "symbol")))
+            .key("brand-symbol")
+            .size(46.0 * scale, 9.0)
+            .pin(Some(329.0), Some(header_y + 4.5), None, None),
+    );
+    if banner == Some(&Banner::InPits) && board.pit_limiter {
+        root = root.child(
+            text("limitador")
+                .key("pit-limiter")
+                .font(TextStyle {
+                    line_height: 22.0,
+                    ..font("Inter", 12.0, 400.0)
+                })
+                .color(color("colors", "text"))
+                .size(90.0, 22.0)
+                .align(Align::End)
+                .pin(Some(WIDTH - 102.0), Some(0.0), None, None),
+        );
+    }
     let rows = col()
         .w(WIDTH)
         .children((0..state.slots.len()).map(|index| {
             if waiting(board) {
-                el().key(format!("skeleton-{index}"))
-                    .size(WIDTH, ROW_HEIGHT)
-                    .child(
-                        el().size(170.0, 8.0)
-                            .radius(4.0)
-                            .fill(color("colors", "skeleton"))
-                            .pin(Some(61.0), Some(8.0), None, None),
+                let ink = color("colors", "skeleton");
+                let row = el()
+                    .key(format!("skeleton-{index}"))
+                    .size(WIDTH, ROW_HEIGHT);
+                let row = if index == state.slots.len() / 2 {
+                    let accent = color("accents", "red");
+                    row.child(
+                        el().size(WIDTH - 12.0, ROW_HEIGHT)
+                            .radius(6.0)
+                            .linear_gradient(
+                                std::f32::consts::FRAC_PI_2,
+                                [
+                                    (0.0, accent.alpha(0.32 * 0.6)),
+                                    (1.0, accent.alpha(0.06 * 0.6)),
+                                ],
+                            )
+                            .pin(Some(6.0), Some(0.0), None, None),
                     )
+                } else {
+                    row
+                };
+                row.child(el().size(16.0, 8.0).radius(2.0).fill(ink).pin(
+                    Some(12.0),
+                    Some(8.0),
+                    None,
+                    None,
+                ))
+                .child(el().size(7.0, 7.0).radius(3.5).fill(ink).pin(
+                    Some(38.0),
+                    Some(8.5),
+                    None,
+                    None,
+                ))
+                .child(
+                    el().size(110.0 + ((index * 37) % 70) as f32, 8.0)
+                        .radius(2.0)
+                        .fill(ink)
+                        .pin(Some(55.0), Some(8.0), None, None),
+                )
+                .child(el().size(48.0, 8.0).radius(2.0).fill(ink).pin(
+                    Some(WIDTH - 60.0),
+                    Some(8.0),
+                    None,
+                    None,
+                ))
             } else {
                 car_row(state, index)
             }
         }))
         .pin(Some(0.0), Some(rows_y), None, None);
     root = root.child(rows);
+    if footer_kind == Footer::Waiting {
+        root = root.child(
+            el().key("waiting-dot")
+                .size(8.0, 8.0)
+                .radius(4.0)
+                .fill(color("colors", "pulse"))
+                .pin(Some(12.0), Some(footer_y + 13.0), None, None),
+        );
+    }
     if footer_kind != Footer::None {
         root = root
             .child(
@@ -467,16 +558,31 @@ pub fn view(state: &Relative) -> El {
                 text(state.labels[2].get().to_string())
                     .key("footer-left")
                     .live_text(&state.labels[2])
-                    .font(font("Inter", 11.0, 400.0))
+                    .font(TextStyle {
+                        line_height: 18.0,
+                        ..font("Inter", 11.0, 400.0)
+                    })
                     .color(color("colors", "muted"))
                     .size(270.0, 20.0)
-                    .pin(Some(12.0), Some(footer_y + 7.0), None, None),
+                    .pin(
+                        Some(if footer_kind == Footer::Waiting {
+                            30.0
+                        } else {
+                            12.0
+                        }),
+                        Some(footer_y + 7.0),
+                        None,
+                        None,
+                    ),
             )
             .child(
                 text(state.labels[3].get().to_string())
                     .key("footer-right")
                     .live_text(&state.labels[3])
-                    .font(font("Inter", 11.0, 400.0))
+                    .font(TextStyle {
+                        line_height: 18.0,
+                        ..font("Inter", 11.0, 400.0)
+                    })
                     .color(color("colors", "muted"))
                     .size(220.0, 20.0)
                     .align(Align::End)

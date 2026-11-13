@@ -50,6 +50,40 @@ launcherScenes["launcher-opciones-ocupadas"] = {
   },
 };
 
+// At 1080 px high the existing rail also exposes its close-on-exit Switch.
+// Verify the real CSS/Tab path; jsdom alone cannot prove that it is reachable.
+launcherScenes["launcher-opciones-lectura"] = {
+  mock: "launcher-ready",
+  async prepare(page) {
+    await launcherScenes["launcher-opciones-ocupadas"].prepare(page);
+    const controls = page.locator(
+      '.v-launcher-options [role="combobox"],.v-launcher-quick [role="switch"]',
+    );
+    assert.equal(await controls.count(), 6);
+    await controls.first().focus();
+    for (let index = 0; index < 6; index++) {
+      const control = controls.nth(index);
+      assert.ok(await control.isVisible());
+      assert.equal(
+        await control.evaluate((node) => node === document.activeElement),
+        true,
+      );
+      assert.equal(await control.getAttribute("aria-readonly"), "true");
+      const reason = await control.getAttribute("aria-describedby");
+      assert.ok(reason);
+      assert.equal(
+        await page.locator(`[id="${reason}"]`).textContent(),
+        text.runningOptionsReadOnly,
+      );
+      if (index < 5) await page.keyboard.press("Tab");
+    }
+    const toggle = controls.last();
+    const checked = await toggle.getAttribute("aria-checked");
+    await page.keyboard.press("Space");
+    assert.equal(await toggle.getAttribute("aria-checked"), checked);
+  },
+};
+
 launcherScenes["launcher-nuevo-perfil"] = {
   mock: "launcher-base",
   async prepare(page) {

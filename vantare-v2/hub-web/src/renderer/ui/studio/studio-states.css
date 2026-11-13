@@ -1,6 +1,14 @@
-.v-focus-layout-name button svg {
+.v-focus-layout-name :where(button) svg {
   width: 14px;
   height: 14px;
+}
+.v-studio-readonly-detail > svg {
+  position: absolute;
+  left: 24px;
+  top: -8px;
+  width: 20px;
+  height: 20px;
+  color: var(--text-3);
 }
 .v-studio-state-feedback > svg {
   color: var(--err);
@@ -353,15 +361,21 @@
   }
 }
 .v-studio-readonly-with-steps .v-studio-readonly-note {
-  margin-bottom: 0;
+  margin: 14px 0 0;
+  padding: 22px 24px 6px 60px;
+  border: 1px dashed var(--line-3);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  font-size: 13px;
+  font-weight: 600;
   border-bottom: 0;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   padding-bottom: 6px;
 }
 .v-studio-readonly-detail {
+  position: relative;
   margin: 0;
-  padding: 0 24px 22px;
+  padding: 0 24px 22px 60px;
   border: 1px dashed var(--line-3);
   border-top: 0;
   border-radius: 0 0 var(--radius-xl) var(--radius-xl);
@@ -377,8 +391,20 @@
 .v-focus-save[data-failed="true"] {
   color: var(--err);
 }
-.v-studio-focus-layout:has(.v-studio-empty-stage) .v-focus-heading h1 {
+.v-focus-heading h1 {
   margin: 4px 0 0;
+}
+.v-focus-heading p {
+  margin-top: 6px;
+}
+.v-focus-column {
+  gap: 14px;
+}
+[data-scheme="light"] .v-studio-state-feedback[data-tone="warn"] {
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+[data-scheme="light"] .v-studio-state-feedback[data-tone="err"] {
+  background: color-mix(in srgb, var(--err) 10%, transparent);
 }
 .v-focus-add {
   padding: 0 12px;

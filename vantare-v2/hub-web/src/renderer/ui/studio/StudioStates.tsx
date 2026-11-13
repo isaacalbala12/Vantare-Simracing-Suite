@@ -61,7 +61,7 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
       role="alert"
       data-tone={state.failure ? "err" : "warn"}
     >
-      <Icon name="alert" />
+      <Icon name={protectedView ? "lock" : "alert"} />
       <div>
         <strong>{state.failure?.message ?? t.protected}</strong>
         <p>
@@ -125,7 +125,10 @@ export function ReadonlyStudio({ children }: { children?: ReactNode }) {
     return (
       <section className="v-studio-readonly-with-steps">
         {children}
-        <p className="v-studio-readonly-detail">{text.protectedSettings}</p>
+        <p className="v-studio-readonly-detail">
+          <Icon name="lock" />
+          {text.protectedSettings}
+        </p>
       </section>
     );
   return (

@@ -106,6 +106,13 @@ describe("Studio A honest states", () => {
     const quick = screen.getByRole("region", { name: text.quickStart });
     const buttons = quick.querySelectorAll("button");
     expect(buttons.length).toBe(3);
+    expect(
+      Array.from(buttons, (button) => button.getAttribute("aria-label")),
+    ).toEqual([
+      `${t.addShort} Standings`,
+      `${t.addShort} Relative`,
+      `${t.addShort} Delta`,
+    ]);
     const user = userEvent.setup();
     await user.click(buttons[0]);
     await waitFor(() =>

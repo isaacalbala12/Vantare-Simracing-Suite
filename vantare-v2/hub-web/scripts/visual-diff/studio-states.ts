@@ -24,7 +24,35 @@ const scene = (
   mock,
   async prepare(page) {
     await open(page);
+    // QA stress viewport: the product selector correctly forbids 125% at 1440px
+    // because it preserves 1280 logical pixels. Emulate the mockup's smaller
+    // logical viewport without changing that product limit or its preferences.
+    if (process.env.VANTARE_STUDIO_VISUAL_ZOOM === "125") {
+      const session = await page.context().newCDPSession(page);
+      await session.send("Emulation.setDeviceMetricsOverride", {
+        width: 1152,
+        height: 720,
+        deviceScaleFactor: 1,
+        mobile: false,
+        scale: 1.25,
+        screenWidth: 1440,
+        screenHeight: 900,
+      });
+    }
     await prepare(page);
+    const strip = page.locator(".v-focus-strip");
+    if (await strip.count()) {
+      const compact = await page
+        .locator(".v-studio-focus")
+        .evaluate((element) => element.clientWidth - 48 <= 1120);
+      if (compact) {
+        assert.equal(
+          await strip.evaluate((element) => element.clientWidth),
+          72,
+        );
+        await strip.getByRole("button", { name: t.add, exact: true }).waitFor();
+      }
+    }
   },
 });
 const ordinary = "studio-a-oculto";

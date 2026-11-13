@@ -6,15 +6,18 @@ No se ejecutó el binario, una ventana ni una opción gráfica en el servidor.
 
 | Requisito ADR 0108 §4 | Evidencia automática disponible | Pendiente para aceptar |
 | --- | --- | --- |
-| Windows 10 22H2 y 11, 100/125/150 % | Compilación/Clippy Windows; test Runtime a escalas 1/1,25/1,5 preparado, sin dispositivo | Ejecutar la ventana real en ambos Windows y las tres escalas; CI windows-latest no certifica esos sistemas |
+| Windows 10 22H2 y 11, 100/125/150 % | Build del ejecutable y Clippy Windows PASS; test Runtime PASS a escalas 1/1,25/1,5, sin dispositivo | Ejecutar la ventana real en ambos Windows y las tres escalas; CI windows-latest no certifica esos sistemas |
 | Teclado español, acentos y AltGr en campos | Catálogo compartido y casos Unicode de texto dinámico | Entrada física/IME/AltGr en un campo real; el marco no incorpora formularios y no se da este punto por probado |
-| Todo por teclado y controles con nombre | Test Tab/Enter, controles enfocables con nombre y árbol AccessKit, sin gráfica | Recorrido completo real y lector de pantalla Windows/Mac; no basta el árbol simulado |
+| Todo por teclado y controles con nombre | Test Tab/Enter/Espacio PASS, controles enfocables con nombre y árbol AccessKit, sin gráfica | Recorrido completo real y lector de pantalla Windows/Mac; no basta el árbol simulado |
 | Aspecto fiel aprobado por Isaac | Nueve temas claro/oscuro, fuentes/textos/iconos compartidos; fixtures de Electron | Capturas headless del Mac para cada paso y comparación lado a lado; ventana visible y visto bueno de Isaac |
 | Media hora de uso normal sin bloqueos | Tests de protocolo, cierre, mensajes acotados, estados y Roadmap sin ventana | Sesión real continua de 30 minutos y registro de cierres/bloqueos; no se sustituye por tiempo virtual |
 
 Clippy local final usa un solo slot, dos jobs, target persistente en D: y
 `--locked`; los logs están en `D:/VantareServer/evidence/hub-rune/5-roadmap/`.
-Los tests/CI definitivos y SHAs se registran en el PR 5 y #2256. Esta tabla no
+Suite local final: 17/17 tests Rust PASS, cinco tests de licencias y 22 de rutas CI PASS.
+La regresión de Enter (16 PASS / 1 FAIL antes del arreglo) queda conservada.
+Se añadió activación de botón por Enter, sin repetición al mantener pulsado,
+conservando Espacio; no se debilitó la prueba. CI remota y SHAs en PR 5 y #2256. Esta tabla no
 convierte tests preparados o CI pendiente en resultados aprobados.
 
 ## Cola de comprobación cuando vuelva el Mac

@@ -54,23 +54,41 @@ pub fn surface(theme: &Theme) -> El {
         .fill(theme.color("surface-1"))
         .border(1.0, theme.color("line-1"))
 }
+// Rune's native buttons activate on Space; match Electron's focused-button Enter too.
+fn pressable<S: 'static>(element: El, action: impl Fn(&mut S) + 'static) -> El {
+    let action = std::rc::Rc::new(action);
+    let click = action.clone();
+    element
+        .on_press(move |state: &mut S| click(state))
+        .on_key(move |state: &mut S, event, tx| {
+            if event.key != rune::Key::Enter || event.mods != rune::Mods::default() {
+                return false;
+            }
+            if !tx.key_repeat() {
+                action(state);
+            }
+            true
+        })
+}
 pub fn button<S: 'static>(
     theme: &Theme,
     key: &str,
     value: &str,
     action: impl Fn(&mut S) + 'static,
 ) -> El {
-    col()
-        .key(key)
-        .padding(10.0)
-        .radius(8.0)
-        .fill(theme.color("active"))
-        .label(value)
-        .role("button")
-        .focusable(true)
-        .focus_ring(2.0, 2.0, theme.color("focus-ring"))
-        .child(label(theme, value))
-        .on_press(action)
+    pressable(
+        col()
+            .key(key)
+            .padding(10.0)
+            .radius(8.0)
+            .fill(theme.color("active"))
+            .label(value)
+            .role("button")
+            .focusable(true)
+            .focus_ring(2.0, 2.0, theme.color("focus-ring"))
+            .child(label(theme, value)),
+        action,
+    )
 }
 pub fn menu_item<S: 'static>(
     theme: &Theme,
@@ -92,12 +110,11 @@ pub fn menu_item<S: 'static>(
         .role("button")
         .focusable(true)
         .focus_ring(2.0, 2.0, theme.color("focus-ring"))
-        .child(image)
-        .on_press(action);
+        .child(image);
     if !collapsed {
         item = item.child(label(theme, value));
     }
-    item
+    pressable(item, action)
 }
 
 #[cfg(test)]

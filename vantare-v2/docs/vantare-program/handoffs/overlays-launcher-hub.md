@@ -1889,3 +1889,22 @@ El Mac duerme; se abrirán los cinco PRs apilados sin esperar, por instrucción
 expresa del orquestador. El resumen para Plane queda en cada PR; lo actualiza
 el orquestador. #2256 conserva area:ui y quedó enlazada al GitHub Project Vantare.
 Sin merge a nightly, promociones de canal, releases o cambios del instalador.
+
+
+### Cierre local de los cinco PRs · VANTA-143 (2026-11-13)
+
+PRs draft a nightly: #2260 → #2262 → #2264 → #2267 → #2268, pila local
+lineal por contenido (se fusionan solo las ramas padre en sus hijas para
+conservar correcciones, sin force-push ni merge a canales). El PR 5 incluye
+las correcciones de sus padres. GitHub Project Vantare verificado en #2256.
+Clippy final PASS; 17/17 tests Rust sin ventana PASS, cinco tests de licencias
+y 22 de rutas CI PASS. Enter no activaba los botones de Rune: se reprodujo
+16 PASS/1 FAIL, se añadió la activación explícita de Enter sin repetición y
+se mantuvo Espacio. La prueba pasó también a 100/125/150 %, sin tocar un gate.
+Logs fallidos y finales conservados bajo evidence/hub-rune/5-roadmap.
+La CI añade además el enlace del ejecutable Windows sin arrancarlo. Build Windows local PASS (15,52 s, sin ejecución); el
+resultado se adjunta al PR; capturas, smoke real de host y
+aceptación del corte 1 siguen pendientes como indica CORTE-1.md. No se
+confunde suite sin gráfica con ventana Windows real o media hora de uso.
+El resumen para Plane está en los cinco PRs; el orquestador actualiza Plane.
+Sin merge a nightly, promoción, release o actuación sobre cuentas/datos reales.

@@ -528,6 +528,21 @@ mod tests {
             });
             runtime.frame(0.2);
             assert!(runtime.state.collapsed);
+            runtime.repeat_key(rune::KeyEvent {
+                key: rune::Key::Enter,
+                mods: Default::default(),
+            });
+            runtime.frame(0.3);
+            assert!(runtime.state.collapsed, "held Enter must not toggle twice");
+            runtime.key(rune::KeyEvent {
+                key: rune::Key::Text(" ".into()),
+                mods: Default::default(),
+            });
+            runtime.frame(0.4);
+            assert!(
+                !runtime.state.collapsed,
+                "Space must retain native activation"
+            );
         }
     }
     #[test]

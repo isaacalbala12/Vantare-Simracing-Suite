@@ -77,12 +77,29 @@ pub fn menu_item<S: 'static>(
     key: &str,
     value: &str,
     selected: bool,
+    collapsed: bool,
+    image: El,
     action: impl Fn(&mut S) + 'static,
 ) -> El {
-    button(theme, key, value, action)
+    let mut item = rune::row()
+        .key(key)
         .w_full()
+        .padding(10.0)
+        .gap(12.0)
+        .radius(8.0)
         .fill(theme.color(if selected { "active" } else { "bg-sidebar" }))
+        .label(value)
+        .role("button")
+        .focusable(true)
+        .focus_ring(2.0, 2.0, theme.color("focus-ring"))
+        .child(image)
+        .on_press(action);
+    if !collapsed {
+        item = item.child(label(theme, value));
+    }
+    item
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

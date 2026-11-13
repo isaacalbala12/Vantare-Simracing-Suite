@@ -92,6 +92,15 @@ mod tests {
             Some(HostToUi::Hello { .. })
         ));
         client.send(&mut pipe, &UiToHost::Ready {}).unwrap();
+        client
+            .send(
+                &mut pipe,
+                &UiToHost::Request {
+                    id: 0,
+                    request: protocol::Request::WindowClose {},
+                },
+            )
+            .unwrap();
         assert!(matches!(
             client.receive(&mut pipe).unwrap(),
             Some(HostToUi::CloseRequested { .. })
@@ -112,6 +121,13 @@ mod tests {
         assert!(matches!(
             reader.next::<UiToHost>(&mut input).unwrap(),
             Some(UiToHost::Ready {})
+        ));
+        assert!(matches!(
+            reader.next::<UiToHost>(&mut input).unwrap(),
+            Some(UiToHost::Request {
+                id: 0,
+                request: protocol::Request::WindowClose {}
+            })
         ));
         assert!(matches!(
             reader.next::<UiToHost>(&mut input).unwrap(),

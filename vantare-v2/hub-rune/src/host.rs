@@ -24,6 +24,12 @@ pub struct Host {
     thread: Option<JoinHandle<()>>,
     wake: Wake,
 }
+#[cfg(debug_assertions)]
+pub struct Scene {
+    messages: VecDeque<HostToUi>,
+    closing: bool,
+    close_answered: bool,
+}
 impl Drop for Host {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
@@ -42,7 +48,7 @@ pub enum Link {
     )]
     Host(Host),
     #[cfg(debug_assertions)]
-    Scene(VecDeque<HostToUi>),
+    Scene(Scene),
 }
 impl Link {
     pub fn open(bootstrap: Bootstrap) -> io::Result<(Self, HostToUi)> {
@@ -52,7 +58,14 @@ impl Link {
                 let hello: HostToUi =
                     serde_json::from_str(include_str!("../../hub-web/fixtures/ajustes-base.json"))
                         .map_err(|_| io::ErrorKind::InvalidData)?;
-                Ok((Self::Scene(VecDeque::new()), hello))
+                Ok((
+                    Self::Scene(Scene {
+                        messages: VecDeque::new(),
+                        closing: false,
+                        close_answered: false,
+                    }),
+                    hello,
+                ))
             }
             Bootstrap::Host { name, token } => Self::real(name, token),
         }
@@ -81,7 +94,8 @@ impl Link {
                 let deadline = Instant::now() + Duration::from_secs(15);
                 let mut greeted = false;
                 while !cancelled.load(Ordering::Acquire) {
-                    match send.recv_timeout(Duration::from_millis(20)) {
+                    // Four idle wakeups/s instead of fifty. Outgoing requests still wake immediately.
+                    match send.recv_timeout(Duration::from_millis(250)) {
                         Ok(message) => client.send(&mut pipe, &message)?,
                         Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
                         Err(mpsc::RecvTimeoutError::Timeout) => {}
@@ -127,7 +141,11 @@ impl Link {
     }
     pub fn wake_with(&mut self, waker: rune::Waker) {
         match self {
-            Self::Host(host) => *host.wake.lock().unwrap() = Some(waker),
+            Self::Host(host) => {
+                *host.wake.lock().unwrap() = Some(waker.clone());
+                // Incoming messages may predate setup. Signal after releasing the mutex.
+                waker();
+            }
             #[cfg(debug_assertions)]
             Self::Scene(_) => {}
         }
@@ -147,7 +165,16 @@ impl Link {
                 Err(mpsc::TryRecvError::Empty) => None,
             },
             #[cfg(debug_assertions)]
-            Self::Scene(messages) => messages.pop_front().map(Ok),
+            Self::Scene(state) => {
+                let message = state.messages.pop_front()?;
+                if matches!(message, HostToUi::CloseRequested { .. }) {
+                    // Match the real client's write-before-publish close acknowledgement.
+                    if let Err(error) = scene(state, UiToHost::CloseAnswer { allow: true }) {
+                        return Some(Err(error.kind()));
+                    }
+                }
+                Some(Ok(message))
+            }
         }
     }
     pub fn send(&mut self, message: UiToHost) -> io::Result<()> {
@@ -162,12 +189,13 @@ impl Link {
     }
 }
 #[cfg(debug_assertions)]
-fn scene(messages: &mut VecDeque<HostToUi>, message: UiToHost) -> io::Result<()> {
+fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
     use vantare_hub_host::protocol::{self, Event, Reply, Request, Topic};
     let core = || {
         serde_json::from_str(include_str!("../../hub-web/fixtures/core-offline.json"))
             .expect("shared core fixture")
     };
+    let messages = &mut state.messages;
     match message {
         UiToHost::Request {
             id,
@@ -182,9 +210,19 @@ fn scene(messages: &mut VecDeque<HostToUi>, message: UiToHost) -> io::Result<()>
         UiToHost::Request {
             request: Request::WindowClose {},
             ..
-        } => messages.push_back(HostToUi::CloseRequested {
-            reason: protocol::CloseReason::Window,
-        }),
+        } => {
+            state.closing = true;
+            messages.push_back(HostToUi::CloseRequested {
+                reason: protocol::CloseReason::Window,
+            });
+        }
+        UiToHost::CloseAnswer { allow } => {
+            if !state.closing {
+                return Err(io::ErrorKind::InvalidData.into());
+            }
+            state.close_answered = allow;
+            state.closing = allow;
+        }
         UiToHost::Request { id, .. } => messages.push_back(HostToUi::Failure {
             id,
             error: protocol::HostError::Unsupported,
@@ -197,6 +235,30 @@ fn scene(messages: &mut VecDeque<HostToUi>, message: UiToHost) -> io::Result<()>
 mod tests {
     use super::*;
     use vantare_hub_host::protocol::{Reply, Request};
+    #[test]
+    fn setup_wakes_for_messages_queued_before_registration() {
+        let (outgoing, _send) = mpsc::sync_channel(1);
+        let (receive, incoming) = mpsc::sync_channel(1);
+        receive.send(Err(io::ErrorKind::BrokenPipe)).unwrap();
+        let mut link = Link::Host(Host {
+            outgoing,
+            incoming,
+            stop: Arc::new(AtomicBool::new(false)),
+            thread: None,
+            wake: Arc::new(Mutex::new(None)),
+        });
+        let (signal, notified) = mpsc::channel();
+        link.wake_with(Arc::new(move || {
+            signal.send(()).unwrap();
+        }));
+        notified
+            .try_recv()
+            .expect("setup must schedule an initial drain");
+        assert!(matches!(
+            link.receive(),
+            Some(Err(io::ErrorKind::BrokenPipe))
+        ));
+    }
     #[test]
     fn scene_uses_shared_hello_and_core_and_closes_without_graphics() {
         let (mut link, hello) = Link::open(Bootstrap::Scene).unwrap();
@@ -223,5 +285,12 @@ mod tests {
             link.receive(),
             Some(Ok(HostToUi::CloseRequested { .. }))
         ));
+        let Link::Scene(scene) = link else {
+            unreachable!()
+        };
+        assert!(
+            scene.close_answered,
+            "CloseAnswer must precede the GUI's quit"
+        );
     }
 }

@@ -55,7 +55,10 @@ impl Pipe {
                 if error.raw_os_error() != Some(ERROR_IO_PENDING as i32) {
                     return Err(error);
                 }
-                if WaitForSingleObject(ov.hEvent, 200) != WAIT_OBJECT_0 {
+                // A short read cancellation must never interrupt a frame's write_all.
+                // Slow host readers get five seconds to drain a full frame.
+                let timeout = if write { 5_000 } else { 200 };
+                if WaitForSingleObject(ov.hEvent, timeout) != WAIT_OBJECT_0 {
                     CancelIoEx(handle, &ov);
                     GetOverlappedResult(handle, &ov, &mut count, 1);
                     return Err(io::ErrorKind::TimedOut.into());
@@ -102,5 +105,76 @@ impl Write for Pipe {
     }
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{sync::mpsc, time::Duration};
+    use vantare_hub_host::frame;
+    use windows_sys::Win32::{
+        Foundation::{ERROR_PIPE_CONNECTED, INVALID_HANDLE_VALUE},
+        Storage::FileSystem::PIPE_ACCESS_DUPLEX,
+        System::Pipes::{ConnectNamedPipe, CreateNamedPipeW, PIPE_TYPE_BYTE, PIPE_WAIT},
+    };
+    #[test]
+    fn slow_reader_keeps_the_complete_frame_and_the_next_frame() {
+        let name = format!("vantare-hub-rune-test-{}", std::process::id());
+        let path: Vec<u16> = format!(r"\\.\pipe\{name}")
+            .encode_utf16()
+            .chain(Some(0))
+            .collect();
+        // SAFETY: terminated name, null security attributes, owned synchronous server handle.
+        let raw = unsafe {
+            CreateNamedPipeW(
+                path.as_ptr(),
+                PIPE_ACCESS_DUPLEX,
+                PIPE_TYPE_BYTE | PIPE_WAIT,
+                1,
+                1024,
+                1024,
+                0,
+                std::ptr::null(),
+            )
+        };
+        assert_ne!(raw, INVALID_HANDLE_VALUE);
+        let mut server = unsafe { File::from_raw_handle(raw) };
+        let value = serde_json::json!({"data": "x".repeat(256 * 1024)});
+        let expected = value.clone();
+        let (sent, completed) = mpsc::channel();
+        let writer = std::thread::spawn(move || {
+            let result = (|| -> io::Result<()> {
+                let mut pipe = Pipe::open(&name)?;
+                frame::write(&mut pipe, &value)?;
+                frame::write(&mut pipe, &serde_json::json!({"next": true}))
+            })();
+            sent.send(result).unwrap();
+        });
+        // SAFETY: valid server handle, synchronous connect; client may have connected already.
+        if unsafe { ConnectNamedPipe(server.as_raw_handle(), std::ptr::null_mut()) } == 0 {
+            assert_eq!(
+                io::Error::last_os_error().raw_os_error(),
+                Some(ERROR_PIPE_CONNECTED as i32)
+            );
+        }
+        // Deliberately hold back reads past the old 200 ms write deadline. This bounded wait
+        // models backpressure, rather than using timing to synchronize the connection.
+        assert!(matches!(
+            completed.recv_timeout(Duration::from_millis(350)),
+            Err(mpsc::RecvTimeoutError::Timeout)
+        ));
+        let mut reader = frame::Reader::default();
+        let mut next = || loop {
+            if let Some(value) = reader.next::<serde_json::Value>(&mut server).unwrap() {
+                break value;
+            }
+        };
+        assert_eq!(next(), expected);
+        assert_eq!(next(), serde_json::json!({"next": true}));
+        completed
+            .recv_timeout(Duration::from_secs(5))
+            .unwrap()
+            .unwrap();
+        writer.join().unwrap();
     }
 }

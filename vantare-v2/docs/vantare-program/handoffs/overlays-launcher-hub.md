@@ -1795,3 +1795,23 @@ dos jobs. Windows host real con VANTARE_HUB_UI/hub-ready/EOF y capturas Mac
 siguen pendientes: la prohibición gráfica del servidor se conserva y el Mac duerme.
 No se presentan como hechos. La CI verifica tipos y tests sin ventana; el PR
 recoge resultados definitivos. Sin merge, promoción ni release.
+
+### VANTA-143 · revisión PR 4 (2026-11-13)
+
+Se comprobó Electron antes del cambio: X envía WindowClose con id 0; el cliente
+espera CloseRequested y termina solo después de escribir CloseAnswer. Rune usa
+keep_running/on_close para conservar el proceso durante ese diálogo. El commit
+fijado de Rune oculta la ventana antes del callback; no permite vetar ese ocultado.
+No hay documentos editables en este marco. Test del callback con anfitrión de
+escena, idempotencia de X y ACK antes de publicar el cierre al hilo de interfaz.
+El setup llama al waker tras guardarlo y soltar su mutex; regresión con respuesta
+anterior al registro. El worker espera 250 ms, cuatro despertares por segundo en
+reposo frente a cincuenta; falta la medición real de CPU del corte 2. Las peticiones
+salientes despiertan el worker inmediatamente. Lecturas cancelables: 200 ms;
+escrituras: 5 s. La regresión de pipe real con contrapresión falla con 200 ms
+(0 PASS/1 FAIL esperado) y pasa con 5 s, conservando una trama de 256 KiB y la siguiente.
+Clippy -D warnings PASS; 13 tests sin ventana PASS antes de propagar el catálogo.
+README enumera default-features=false y los cinco features habilitados, y los
+flags --snap/--frames/--scene/--size/--scale/--out/--theme solo debug+macOS.
+Capturas, cierre con ventana visible y anfitrión Windows real siguen pendientes;
+no se ejecuta gráfica en el servidor. Evidencia en evidence/hub-rune/review-sonnet.

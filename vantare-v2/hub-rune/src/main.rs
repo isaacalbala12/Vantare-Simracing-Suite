@@ -16,6 +16,7 @@ struct State {
     collapsed: bool,
     section: String,
     link: Option<host::Link>,
+    closing: bool,
 }
 fn init() -> State {
     State {
@@ -24,6 +25,7 @@ fn init() -> State {
         collapsed: false,
         section: "home".into(),
         link: None,
+        closing: false,
     }
 }
 fn toggle(state: &mut State) {
@@ -122,12 +124,31 @@ fn setup(state: &mut State, waker: rune::Waker) {
         link.wake_with(waker);
     }
 }
+fn request_close(state: &mut State, tx: &mut rune::Tx) {
+    if state.closing {
+        return;
+    }
+    state.closing = true;
+    // Electron's window close handler uses request id 0 and waits for the host.
+    if state.link.as_mut().is_none_or(|link| {
+        link.send(vantare_hub_host::protocol::UiToHost::Request {
+            id: 0,
+            request: vantare_hub_host::protocol::Request::WindowClose {},
+        })
+        .is_err()
+    }) {
+        tx.quit();
+    }
+    // The scene answers synchronously; the real worker wakes poll after writing CloseAnswer.
+    tx.wake_after(std::time::Duration::ZERO);
+}
 fn poll(state: &mut State, _: f64, tx: &mut rune::Tx) -> bool {
     if let Some(link) = &mut state.link {
         for _ in 0..64 {
             match link.receive() {
                 Some(Ok(vantare_hub_host::protocol::HostToUi::CloseRequested { .. }))
                 | Some(Err(_)) => {
+                    state.closing = true;
                     tx.quit();
                     return true;
                 }
@@ -197,6 +218,9 @@ fn start() -> std::io::Result<()> {
     let app = rune::App::new(spec)
         .init(move || state)
         .args(arguments)
+        // Rune hides the window on X; retain its process until the host handshake completes.
+        .keep_running()
+        .on_close(request_close)
         .tab_visits_controls(true);
     let handle = app.handle();
     app.on_ready(move |_| {
@@ -222,6 +246,23 @@ fn main() -> std::process::ExitCode {
 mod tests {
     use super::*;
     use rune::{Env, Runtime};
+    #[test]
+    #[cfg(debug_assertions)]
+    fn native_close_waits_for_scene_host_and_acknowledgement() {
+        let (link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let mut state = init();
+        state.link = Some(link);
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.update(request_close);
+        assert!(runtime.state.closing);
+        assert!(runtime.shell_request.is_none(), "X must wait for the host");
+        // Repeated X must not enqueue another WindowClose.
+        runtime.update(request_close);
+        runtime.poll = Some(poll);
+        runtime.frame(0.0);
+        assert!(matches!(runtime.shell_request, Some(rune::Shell::Quit)));
+        assert!(runtime.state.link.as_mut().unwrap().receive().is_none());
+    }
     #[test]
     fn frame_contains_electron_sections_in_both_sidebar_modes() {
         let entries = catalog()["navigation"].as_array().unwrap();

@@ -19,8 +19,9 @@ Windows servidor: **nunca ejecutar el binario**, ni `--snap`, `--frames`,
 persistentes del slot en D:, según la instrucción actual del orquestador.
 
 ```powershell
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo clippy --locked --all-targets --manifest-path hub-rune/Cargo.toml -- -D warnings
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo test --locked --all-targets --manifest-path hub-rune/Cargo.toml
+$env:RUSTUP_TOOLCHAIN = '1.99.1'
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo clippy --locked -j2 --all-targets --manifest-path hub-rune/Cargo.toml -- -D warnings
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo test --locked -j2 --all-targets --manifest-path hub-rune/Cargo.toml
 ```
 
 Desde esta carpeta, `cargo fmt --all -- --check`,
@@ -147,8 +148,9 @@ aprobación; no se da por verificada con los tests de Runtime.
 
 
 Escenas debug: inicio-base, inicio-vacio, inicio-cargando, inicio-error,
-inicio-sin-diseno e inicio-lanzando. Capturas headless y ventana visible del Mac,
-comparación con las referencias Electron y aceptación del corte 1 siguen pendientes.
+inicio-sin-diseno e inicio-lanzando. 66 capturas offscreen por cliente y comparativas completadas. Isaac probó la
+ventana visible y aprobó el funcionamiento; la aprobación visual sigue pendiente
+en [Corte 1](CORTE-1.md).
 El servidor permanece sin ejecutar la aplicación.
 
 
@@ -193,3 +195,10 @@ Es referencia del renderer Electron real del Mac, complementaria al banco HWND
 Windows; no certifica una ventana Windows ni el teclado físico.
 Prueba de arranque oculto PASS: visible=false, focused=false, focusable=false,
 aplicación en primer plano sin cambio. SIGTERM del controlador no continúa la matriz.
+
+
+Evidencia de #2297: 66 comparativas por fase, claro/oscuro y 100/125/150 %,
+con originales y hashes en evidence/hub-rune/corte1 del servidor. Se publican
+seis ejemplos y el registro en [CORTE-1](CORTE-1.md). El target propio del Mac
+se retiró al terminar; el binario debug quedó conservado en ~/orq para una
+revisión coordinada. Nuevas compilaciones necesitan volver a crear el target.

@@ -2277,3 +2277,33 @@ Inter requiere además familias internas W400/W500/W600/W650/W700; los tests
 comparan los archivos efectivamente seleccionados. Clippy Windows PASS en 454a8c7f0,
 Mac 45/45 tests PASS en ese SHA. Retoques de presentación posteriores y guiones
 nuevos se vuelven a verificar; no se atribuyen resultados de padres al nuevo head.
+
+
+### VANTA-143 · #2297: evidencia final de fidelidad (2026-11-13)
+
+Código de presentación f980b5355ed82ec17a620cf7b13eeeda30cb0e5b, sobre #2287
+5e1c70241ccf57378041dc2dcceabacff2bc9447. Ambos PRs draft a nightly, limpios.
+CI de ese código verde: Rune (Clippy, 53 tests y enlace del ejecutable sin correrlo),
+web, calidad y gates. Clippy local final PASS; Mac build y 46 tests PASS.
+Capturas completas: 66 Rune antes, 66 después y 66 referencias Electron QA;
+132 comparativas en claro/oscuro, 100/125/150 %, sin reescalar originales.
+
+Todas las referencias Electron se capturaron ocultas, sin foco ni capacidad de
+recibirlo. Ningún proceso QA fue primer plano. Rune --snap es offscreen;
+no se usó Automatización/System Events ni se ejecutó gráfica en Windows.
+El aviso de núcleo queda en cabecera sin desplazar Inicio; leyendas de plantillas
+acotadas y métricas con etiqueta/valor. Regresión geométrica y fuentes reales
+cubiertas por tests. Registro y seis PNG de revisión en hub-rune/evidence/fidelidad;
+informe completo D:/VantareServer/evidence/hub-rune/corte1/index.html.
+
+Isaac: PASS manual de Tab/Enter/Espacio, tema, Inicio/Roadmap y X en 5e1c7024;
+FALLO visual inicial. Nueva aprobación visual pendiente. Corte 1 sin aceptar:
+Windows 10/11 reales, español/AltGr en campos, lector y 30 minutos siguen pendientes.
+No se avanza a más pantallas. Saludo/nombre, paleta/atajos y avisos del siguiente
+corte no se declaran terminados. Plane lo actualiza el orquestador; resumen en PR.
+
+Limpieza: retirado target Mac propio de 3,16 GiB y 93 perfiles QA; 16,48 → 19,84 GiB
+libres. Binario y hash conservados en ~/orq/isa2256-fidelidad-f980b5355, sin ejecutarlo.
+Cero procesos propios de captura pendientes. Sin targets ajenos, cuentas reales,
+cambios de host/overlays/distribución, merge/promoción/release del worker.
+HEAD y checks del último commit documental se verifican en #2297/#2256.

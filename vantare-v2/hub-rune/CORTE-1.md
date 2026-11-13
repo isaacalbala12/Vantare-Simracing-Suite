@@ -1,112 +1,89 @@
 # Corte 1 · Hub Rune · VANTA-143 / #2256
 
-Estado: **pendiente de aceptación**, no equivale a entregar ni elegir Rune.
-Isaac ha probado la ventana visible en el Mac. Funcional: **PASS manual de Isaac**.
-Aspecto frente a Electron: **FALLO**, no aprobado; PR prioritario de fidelidad del marco e Inicio.
-No se ejecutó el binario, una ventana ni una opción gráfica en el servidor.
+**Pendiente de aceptación.** Isaac aprobó el funcionamiento manual y rechazó
+el aspecto inicial. El PR prioritario [#2297](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2297)
+corrige el marco e Inicio; la nueva aprobación visual sigue pendiente.
 
-| Requisito ADR 0108 §4 | Evidencia automática disponible | Pendiente para aceptar |
+| Requisito ADR 0108 §4 | Resultado verificado | Pendiente para aceptar |
 | --- | --- | --- |
-| Windows 10 22H2 y 11, 100/125/150 % | Build del ejecutable y Clippy Windows PASS; test Runtime PASS a escalas 1/1,25/1,5, sin dispositivo | Ejecutar la ventana real en ambos Windows y las tres escalas; CI windows-latest no certifica esos sistemas |
-| Teclado español, acentos y AltGr en campos | Catálogo compartido y casos Unicode de texto dinámico | Entrada física/IME/AltGr en un campo real; el marco no incorpora formularios y no se da este punto por probado |
-| Todo por teclado y controles con nombre | Test Tab/Enter/Espacio PASS, controles enfocables con nombre y árbol AccessKit, sin gráfica | **PASS manual de Isaac (Mac)**: Tab, Enter, Espacio, tema, Inicio/Roadmap y cierre con X; funciona «súper bien». Lector de pantalla Windows/Mac pendiente |
-| Aspecto fiel aprobado por Isaac | Nueve temas claro/oscuro, fuentes/textos/iconos compartidos; fixtures de Electron | **FALLO visual de Isaac**: raíl cortado, cabecera incompleta, aviso suelto, estados planos, ISO crudo, tipografía/pesos e iconos. Corrección y nuevas comparativas pendientes de aprobar |
-| Media hora de uso normal sin bloqueos | Tests de protocolo, cierre, mensajes acotados, estados y Roadmap sin ventana | Sesión real continua de 30 minutos y registro de cierres/bloqueos; no se sustituye por tiempo virtual |
+| Windows 10 22H2 y 11, 100/125/150 % | Build, Clippy y 53 tests Windows en CI PASS; capturas Mac en las tres escalas | Ventana real en ambos Windows; windows-latest y capturas Mac no certifican esos sistemas |
+| Teclado español, acentos y AltGr en campos | Catálogo y casos Unicode compartidos PASS | Entrada física/IME/AltGr en campos reales; el marco aún no incorpora formularios |
+| Todo por teclado y controles con nombre | **PASS manual de Isaac en Mac:** Tab, Enter, Espacio, tema, Inicio/Roadmap y X; «súper bien». Tests de foco, activación y nombres PASS | Lector de pantalla real; el PASS manual corresponde a 5e1c7024 |
+| Aspecto fiel aprobado por Isaac | **FALLO visual inicial de Isaac.** Nuevas comparativas completas y arreglos en #2297 | Revisión y aprobación visual de Isaac; las capturas no convierten el resultado en PASS |
+| Media hora sin cierres ni bloqueos | Tests de protocolo, cancelación y cierre PASS | Sesión continua real de 30 minutos; no se sustituye por tiempo virtual |
 
-Clippy local final usa un solo slot, dos jobs, target persistente en D: y
-`--locked`; los logs de revisión están en `D:/VantareServer/evidence/hub-rune/review-2/`.
-Última suite local, antes de los retoques de tercera revisión: 29/29 tests Rust PASS (antes 17 iniciales y 22 tras la primera), cinco tests de licencias y 22 de rutas CI PASS.
-La segunda revisión añadió escena silenciosa; la tercera amplía el cierre a 10 s, rechazo/envío fallido,
-espera de lectura/envío por eventos, cancelación durante lectura y escritura y
-Drop que cancela antes del join. Node admite sufijos y devuelve error legible si
-la versión es desconocida.
-Regresiones reproducidas y corregidas: escritura de pipe con lector lento,
-claves repetidas de Roadmap y sección activa tras revocar acceso. Sin Node,
-el catálogo falla con un mensaje de instalación claro, comprobado retirándolo del PATH.
-La regresión de Enter (16 PASS / 1 FAIL antes del arreglo) queda conservada.
-Se añadió activación de botón por Enter, sin repetición al mantener pulsado,
-conservando Espacio; no se debilitó la prueba. CI remota y SHAs en PR 5 y #2256. Esta tabla no
-convierte tests preparados o CI pendiente en resultados aprobados.
+## Evidencia de la corrección visual
 
-## Cola de comprobación cuando vuelva el Mac
+Código capturado: `f980b5355ed82ec17a620cf7b13eeeda30cb0e5b`.
+Antes y referencia Electron QA: `5e1c70241ccf57378041dc2dcceabacff2bc9447`.
+[Registro verificable](evidence/fidelidad/validation.json): hashes, escalas, checks,
+prueba manual, comportamiento en segundo plano y limpieza.
 
-1. Comprobar espacio libre y usar solo el target propio `~/target-isa-2256-hub-rune`.
-2. Repetir formato, Clippy, tests sin dispositivo y build sobre el SHA entregado.
-3. Escenas: muestrario claro/oscuro (PR 2), marco expandido/contraído y temas
-   (PR 3), `core-offline`, `core-connected`, `roadmap-base`,
-   `roadmap-published`, `roadmap-error` (PRs 4–5). Usar las referencias Electron
-   existentes. Guardar cada comparación en `D:/VantareServer/evidence/hub-rune/<paso>/`.
-4. Probar la ventana visible, teclado y lector cuando Isaac desbloquee; después
-   30 minutos de uso normal. Probar también X: WindowClose → CloseRequested →
-   CloseAnswer → salida; Rune oculta la ventana antes del callback y conserva
-   el proceso para completar el protocolo, con un límite de 10 s si no hay respuesta. El smoke real Windows de hub-host sigue pendiente
-   fuera del servidor con parada gráfica: `VANTARE_HUB_UI`, `hub-ready`, EOF y
-   salida 0; comprobar también núcleo apagado y datos reales de QA sin cuentas.
-5. Actualizar esta tabla con máquina, SO, escala, SHA, resultado y evidencia.
-   Retirar únicamente el target Mac propio al cerrar la tanda.
+66 celdas por cliente: marco expandido/contraído, Roadmap publicado/vacío/error
+e Inicio en seis estados, en claro/oscuro y a 100/125/150 %. Viewport lógico
+1440×900; PNG físicos 1440×900, 1800×1125 y 2160×1350. 198 PNG originales y
+132 comparativas antes/después. Sin estirar una referencia 100 % para fabricar otra escala.
 
-Este worker no realiza merges ni promociones, ni modifica instalador/distribución o releases.
+Informe completo: `D:/VantareServer/evidence/hub-rune/corte1/index.html`.
+Originales y manifiestos: `before/`, `after/`, `electron/`; comparativas:
+`comparisons-before/` y `comparisons-after/`. Electron va a la izquierda y Rune
+a la derecha. Estos ejemplos a 100 % permiten revisar el PR desde GitHub:
 
+### Inicio oscuro · antes
 
-## Tercera revisión · cierre y E/S
+![Electron izquierda y Rune antes derecha](evidence/fidelidad/inicio-oscuro-antes.png)
 
-El cierre usa 10 s: supera report-close (5 s) y el cierre forzado Live/ControlEof
-(2 s). En el protocolo actual WindowClose solo emite CloseRequested; el veto es
-CloseAnswer false de la interfaz, sin mensaje HostToUi de veto. Este marco de
-solo lectura confirma el cierre. Ante Failure id 0 Busy/Rejected/Denied/Protected,
-se desarma el plazo y AppHandle::open pide reabrir y enfocar. Rune puede reabrir
-con keep_running, pero no impedir que X oculte antes la ventana: comprobación
-visible de ocultado/reapertura/foco pendiente del Mac. No se afirma hecha.
+### Inicio oscuro · después
 
-CancelIoEx comprueba y registra errores distintos de ERROR_NOT_FOUND. El drenaje
-espera como máximo 1 s, sin GetOverlappedResult con espera infinita. Si Windows
-no confirma la finalización, se registra y aborta el proceso para conservar la
-seguridad de buffers aún en uso. Un timeout de escritura para definitivamente
-la conexión; lectura cancelada usa ConnectionAborted. Esta ruta excepcional y
-el comportamiento de ventana siguen pendientes de comprobación física.
+![Electron izquierda y Rune después derecha](evidence/fidelidad/inicio-oscuro-despues.png)
 
-Se prepararon 32 tests sin ventana (tres nuevos y el plazo actualizado). No se
-han ejecutado localmente estos retoques: cola cedida a E para L53/contratos v33
-hasta su aviso. Formato y comprobaciones ligeras locales; Clippy/tests de los
-nuevos heads se delegan a la CI. Los 29 PASS anteriores conservan su SHA/evidencia.
+### Inicio claro · después
 
+![Inicio claro](evidence/fidelidad/inicio-claro-despues.png)
 
-## Capturas preparadas · Mac
+### Marco expandido
 
-`python3 hub-rune/scripts/corte1.py --output <plan>` solo prepara 66 celdas:
-marco expandido/contraído, Roadmap publicado/vacío/error e Inicio en sus seis
-escenas; cada una en claro/oscuro a 1/1.25/1.5, viewport lógico 1440×900.
-Los píxeles físicos deben ser 1440×900, 1800×1125 y 2160×1350.
-La escena `capture` solo se registra en debug+macOS. VANTARE_HUB_CAPTURE elige
-un preset cerrado de pantalla/tema/barra; --theme no basta para cambiar el
-estado del Hub. No añade un arranque alternativo de producto/release.
+![Marco expandido oscuro](evidence/fidelidad/marco-expandido-oscuro.png)
 
-Tras autorización del orquestador, ejecutar en el Mac:
-`python3 hub-rune/scripts/corte1.py --execute --mac-cleared --checkout <raíz-git> --binary ~/target-isa-2256-hub-rune/debug/vantare-hub-ui-rune --sha <HEAD> --output <directorio-nuevo>`.
-No compila: necesita un debug de ese checkout. Falla con otro Cargo/rustc activo,
-menos de 12 GiB libres, SHA/checkout incorrectos, tamaño PNG o proceso fallido.
-Secuencial: --snap con --frames 181 avanza tres segundos virtuales y exporta
-solo el PNG final, sin --out ni cientos de imágenes intermedias. Conserva log,
-hashes y manifiesto. Nunca retira targets ajenos.
+### Roadmap
 
-Comparar con los PNG Electron originales del mismo tema/escena/escala/tamaño.
-No estirar referencias 100 % para simular 125/150 %. Una referencia ausente o
-una escena sin equivalencia (roadmap-error) queda pendiente explícita. El marco
-se juzga en sidebar/cabecera, no como aprobación del contenido central.
-PNG offscreen propio no requiere permiso de grabación. Ventana real y lector
-necesitan sesión gráfica iniciada/desbloqueada; solo una captura del escritorio
-con APIs del sistema puede pedir permiso adicional. No certifica Windows 10/11.
+![Roadmap oscuro](evidence/fidelidad/roadmap-oscuro.png)
 
+![Roadmap claro](evidence/fidelidad/roadmap-claro.png)
 
-## Prueba visible de Isaac · 2026-11-13
+Se corrigieron raíl, cabecera, iconos, aviso del núcleo, tipografía/pesos,
+fechas locales, estados laterales y leyendas de plantillas. Los tests comprueban
+las fuentes efectivamente seleccionadas y que el aviso no desplaza Inicio ni
+las leyendas invaden otras tarjetas. Saludo/nombre, paleta/atajos y avisos del
+siguiente corte siguen pendientes; no se declara paridad completa.
 
-Ventana «Vantare · Hub», anfitrión de escena, sin cuentas ni datos reales:
-Tab, Enter, Espacio, claro/oscuro, Inicio/Roadmap y X: **PASS manual** comunicado
-por Isaac («súper bien»). No se solicita Automatización ni control de System Events.
-X certifica el cierre observado de la ventana; no se atribuye una medición del
-proceso ni 30 minutos de uso. --snap no requiere Automatización.
+## Ejecución y límites
 
-**FALLO visual** de Isaac: la aceptación del aspecto sigue abierta incluso tras
-los arreglos. Captura original conservada en el adjunto import-claudeagent-db7a1881...
-Las comparativas del PR distinguen antes/después, Electron y Rune, tema, escala,
-SHA y tamaño físico; no se estiran referencias para inventar escalas.
+Rune usa `--snap` offscreen con 181 frames virtuales y un solo PNG final.
+Electron usa un entry QA accessory, ventana oculta, sin foco ni show/activación;
+se verificaron visible=false, focused=false y focusable=false en las 66 celdas.
+Ningún proceso QA fue la aplicación en primer plano. No se usó System Events ni
+permiso de Automatización. La referencia es el renderer Electron QA real en Mac
+con viewport/DPR CDP, complementario al banco HWND Windows; no es una prueba de
+ventana Windows. El antiguo guion que abría ventanas se retiró de esta tanda.
+
+El servidor solo compiló y ejecutó tests CPU, por la cola, un slot y -j2 con
+targets D:. Ninguna ejecución de la aplicación ni opción gráfica de Rune en Windows.
+Rune d5338988, Rust 1.99.1, --locked, 463 paquetes permisivos, sin MPL/ogg-audio.
+Mac: build y 46 tests PASS; 29 avisos existentes de código del host sin uso en esa plataforma.
+Los checks definitivos y HEAD de la entrega están en el PR.
+
+La X observada por Isaac cierra la ventana; no certifica por sí sola la duración
+del proceso. El cliente conserva WindowClose → CloseRequested → CloseAnswer,
+plazo de 10 s, fallo de envío y recuperación de rechazos tipados. Reapertura/foco
+tras un rechazo y smoke del anfitrión real Windows siguen pendientes; detalles
+de E/S cancelable y cierre en [README](README.md).
+
+## Limpieza del Mac
+
+Retirado exclusivamente `~/target-isa-2256-hub-rune` (3,16 GiB lógicos) y 93
+perfiles temporales QA. Espacio libre medido: 16,48 → 19,84 GiB. Cero procesos
+propios de captura pendientes. Se conservó el binario debug y su hash en
+`~/orq/isa2256-fidelidad-f980b5355/`; no se ejecuta automáticamente.
+No se tocaron targets de Isaac ni de otros workers. Sin cuentas ni datos reales,
+cambios de hub-host/overlays/instalador/distribución, merges, promociones o releases.

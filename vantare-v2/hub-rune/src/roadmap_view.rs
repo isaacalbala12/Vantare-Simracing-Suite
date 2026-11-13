@@ -5,10 +5,10 @@ use crate::{
 };
 use rune::{El, TextStyle, col, row};
 use vantare_hub_host::roadmap::RoadmapItem;
-fn card(state: &State, item: &RoadmapItem) -> El {
+fn card(state: &State, item: &RoadmapItem, lane: &str) -> El {
     let theme = &state.theme;
     surface(theme)
-        .key(format!("roadmap-item-{}", item.id))
+        .key(format!("roadmap-item-{lane}-{}", item.id))
         .role("article")
         .label(&item.title)
         .child(label(theme, &item.title).font(TextStyle::new(15.0, 600.0)))
@@ -124,7 +124,7 @@ pub fn view(state: &State) -> El {
             schedule = schedule.child(label(theme, text("roadmap.noSchedule")));
         }
         for item in scheduled {
-            schedule = schedule.child(card(state, item));
+            schedule = schedule.child(card(state, item, "season"));
         }
         content = content.child(schedule);
     } else {
@@ -150,7 +150,7 @@ pub fn view(state: &State) -> El {
                 column = column.child(label(theme, text("roadmap.empty")));
             }
             for item in items {
-                column = column.child(card(state, item));
+                column = column.child(card(state, item, name));
             }
             lanes = lanes.child(column);
         }
@@ -188,7 +188,61 @@ pub fn view(state: &State) -> El {
         rail = rail.child(label(theme, text("roadmap.noDelivered")));
     }
     for item in delivered {
-        rail = rail.child(card(state, item));
+        rail = rail.child(card(state, item, "delivered"));
     }
     page.child(content.child(rail))
+}
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn repeated_done_items_have_unique_keys_in_every_tab() {
+        let publication = serde_json::from_str(include_str!(
+            "../../hub-web/fixtures/roadmap-publication.json"
+        ))
+        .unwrap();
+        let value = vantare_hub_host::roadmap::project(Some(publication), false).unwrap();
+        let mut state = crate::init();
+        state.section = "roadmap".into();
+        state.roadmap.value = value;
+        // Also put the done item in Season, so that both repeated render paths are covered.
+        let done = state
+            .roadmap
+            .value
+            .publication
+            .as_mut()
+            .unwrap()
+            .items
+            .iter_mut()
+            .find(|item| item.section == "done")
+            .unwrap();
+        done.version = Some("0.4.0".into());
+        let id = done.id.clone();
+        for tab in ["board", "circuit", "season"] {
+            state.roadmap.tab = tab;
+            let mut runtime = rune::Runtime::new(
+                state,
+                crate::view,
+                (1440.0, 900.0),
+                rune::Env::new(true, 1.0),
+            );
+            runtime.frame(0.0);
+            let keys: Vec<String> = runtime
+                .elements()
+                .into_iter()
+                .filter_map(|e| e.key)
+                .filter(|key| key.starts_with("roadmap-item-"))
+                .collect();
+            assert_eq!(
+                keys.len(),
+                keys.iter().collect::<std::collections::HashSet<_>>().len(),
+                "duplicate key in {tab}: {keys:?}"
+            );
+            assert_eq!(
+                keys.iter().filter(|key| key.ends_with(&id)).count(),
+                2,
+                "done item must appear in both areas"
+            );
+            state = runtime.state;
+        }
+    }
 }

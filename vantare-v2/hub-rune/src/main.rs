@@ -52,6 +52,21 @@ fn title(state: &State) -> &str {
         .and_then(|e| e["label"].as_str())
         .unwrap_or(text("es.title"))
 }
+fn section_allowed(state: &State, section: &str) -> bool {
+    match section {
+        "testing" => state.core.access.verified && !state.core.access.blocked,
+        "calendar" => {
+            state.core.access.verified && !state.core.access.blocked && state.core.access.tester
+        }
+        _ => true,
+    }
+}
+fn set_core(state: &mut State, value: vantare_hub_host::protocol::CoreStatus) {
+    state.core = value;
+    if !section_allowed(state, &state.section) {
+        state.section = "home".into();
+    }
+}
 fn view(state: &State, _: &mut Cx<State>) -> El {
     let theme = &state.theme;
     let mut sidebar = col()
@@ -86,12 +101,7 @@ fn view(state: &State, _: &mut Cx<State>) -> El {
         ));
     for entry in catalog()["navigation"].as_array().unwrap() {
         let id = entry["id"].as_str().unwrap();
-        if (id == "testing" && (!state.core.access.verified || state.core.access.blocked))
-            || (id == "calendar"
-                && (!state.core.access.verified
-                    || state.core.access.blocked
-                    || !state.core.access.tester))
-        {
+        if !section_allowed(state, id) {
             continue;
         }
         let name = entry["label"].as_str().unwrap();
@@ -236,7 +246,7 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
             | Some(Ok(HostToUi::Event {
                 event: Event::Core { value },
             })) => {
-                state.core = value;
+                set_core(state, value);
                 changed = true;
             }
             Some(Ok(HostToUi::Event {
@@ -370,7 +380,8 @@ mod tests {
     #[test]
     #[cfg(debug_assertions)]
     fn native_close_waits_for_scene_host_and_acknowledgement() {
-        let (link, _) = host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
+        let (link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
         let mut state = init();
         state.link = Some(link);
         let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
@@ -595,5 +606,41 @@ mod tests {
                 .any(|e| e.key.as_deref() == Some("sim-status")
                     && e.text.as_deref() == Some(text("shell.waitingSimulator")))
         );
+    }
+    #[test]
+    fn revoked_access_leaves_the_active_section_but_preserves_allowed_sections() {
+        for section in ["testing", "calendar", "roadmap"] {
+            for revocation in ["unverified", "blocked", "not-tester"] {
+                let mut state = init();
+                state.core.access.verified = true;
+                state.core.access.tester = true;
+                state.section = section.into();
+                let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+                runtime.frame(0.0);
+                let mut core = runtime.state.core.clone();
+                match revocation {
+                    "unverified" => core.access.verified = false,
+                    "blocked" => core.access.blocked = true,
+                    "not-tester" => core.access.tester = false,
+                    _ => unreachable!(),
+                }
+                runtime.update(move |state, _| set_core(state, core));
+                runtime.frame(0.1);
+                let revoked =
+                    section != "roadmap" && (section == "calendar" || revocation != "not-tester");
+                assert_eq!(
+                    runtime.state.section,
+                    if revoked { "home" } else { section },
+                    "{section}: {revocation}"
+                );
+                if revoked {
+                    assert!(runtime.find(&format!("nav-{section}")).is_none());
+                    assert_eq!(
+                        title(&runtime.state),
+                        catalog()["navigation"][0]["label"].as_str().unwrap()
+                    );
+                }
+            }
+        }
     }
 }

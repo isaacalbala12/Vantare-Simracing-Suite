@@ -1935,3 +1935,38 @@ jobs, sin arrancarlo. Los logs del rebase y la CI nueva se adjuntan a
 anteriores: la CI se relanza para los nuevos. Capturas/ventana visible,
 smoke de host real y corte 1 siguen pendientes.
 Sin ejecución gráfica en el servidor, merge a nightly, promoción o release.
+
+### VANTA-143 · revisión PR 5 (2026-11-13)
+
+Las tarjetas de Roadmap usan claves por carril (next/now/done/season/delivered),
+para que un elemento entregado pueda aparecer también en el lateral sin colisión.
+Regresión con el ejemplo compartido en las tres vistas, incluida temporada.
+Cuando el estado del núcleo revoca acceso a Testing o Calendar, la sección
+activa vuelve a Inicio; el menú y la sección usan la misma regla. Regresión
+para pérdida de verificación, bloqueo y retirada de tester, conservando las
+secciones que siguen permitidas. Capturas/ventana Mac y corte 1 siguen pendientes.
+Los gates sin gráfica se repiten antes de publicar; no se ejecuta la app en Windows.
+
+Comprobación local de la revisión completa: formato/catálogo/licencias PASS,
+27 tests Python PASS, Clippy -D warnings PASS y 22/22 tests Rust PASS sin ventana.
+Las tres regresiones (pipe, claves y acceso) se reprodujeron con su comportamiento
+antiguo y se conservaron los fallos esperados. También se probó el diagnóstico
+sin Node retirándolo solo del PATH del proceso y restaurándolo después.
+Logs en D:/VantareServer/evidence/hub-rune/review-sonnet/. El build solo enlaza
+el ejecutable; no se abre ni se renderiza nada en Windows. CI de los nuevos heads pendiente; no se atribuyen checks viejos al siguiente head. Capturas y verificación física del corte 1 siguen pendientes.
+
+
+### VANTA-143 · pila tras squash #2260 (2026-11-13)
+
+#2260 fusionado por el orquestador en 647b353a5c034ec08d21f910061775ca29abd528.
+Los cuatro PRs siguientes se rebasaron en orden con --onto origin/nightly
+56e0d6c51b698b4d016b2b076258dfb6cf0b5a7f, conservando fechas para que los
+padres comunes fueran idénticos. Ancestros nightly → diseño → marco → conexión
+→ Roadmap verificados; árboles hub-rune idénticos antes/después del rebase en
+los cuatro pasos. Se conservaron todas las entradas del handoff al resolver
+los conflictos de propagación de los arreglos. Refs locales de recuperación
+2256-before-review y 2256-review-pre-squash. Push con leases contra heads remotos
+previos; SHA/CI actuales en #2256 y cada PR. Rune sigue fijado y no hay nuevas
+dependencias. Nuevas comprobaciones locales por un slot/-j2 y CI sin gráfica.
+Capturas, X con ventana visible, host Windows real y corte 1 siguen pendientes.
+Este worker no ha fusionado PRs ni promocionado canales o publicado releases.

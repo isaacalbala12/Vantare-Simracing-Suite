@@ -82,7 +82,7 @@ ejemplos que Electron, sin servicios productivos ni cuentas reales.
 El marco usa los nueve temas, Inter, textos e iconos de Electron. El generador
 `node ../hub-web/scripts/rune-catalog.mjs` actualiza catálogo e iconos;
 `--check` detecta diferencias y también se ejecuta en los tests. Requiere Node
-24 y rustfmt 1.99.1 solo en desarrollo, no en la aplicación.
+>=22.18.0 y rustup/rustfmt 1.99.1 solo en desarrollo, no en la aplicación.
 
 Arrancado por hub-host, consume y borra `VANTARE_HUB_PIPE`/`VANTARE_HUB_TOKEN`
 antes de iniciar hilos. El cliente tiene colas acotadas, E/S con plazo y cierre

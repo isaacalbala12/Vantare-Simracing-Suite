@@ -13,8 +13,11 @@ No se ejecutó el binario, una ventana ni una opción gráfica en el servidor.
 | Media hora de uso normal sin bloqueos | Tests de protocolo, cierre, mensajes acotados, estados y Roadmap sin ventana | Sesión real continua de 30 minutos y registro de cierres/bloqueos; no se sustituye por tiempo virtual |
 
 Clippy local final usa un solo slot, dos jobs, target persistente en D: y
-`--locked`; los logs están en `D:/VantareServer/evidence/hub-rune/5-roadmap/`.
-Suite local final: 17/17 tests Rust PASS, cinco tests de licencias y 22 de rutas CI PASS.
+`--locked`; los logs de revisión están en `D:/VantareServer/evidence/hub-rune/review-sonnet/`.
+Suite local tras revisión: 22/22 tests Rust PASS, cinco tests de licencias y 22 de rutas CI PASS.
+Regresiones reproducidas y corregidas: escritura de pipe con lector lento,
+claves repetidas de Roadmap y sección activa tras revocar acceso. Sin Node,
+el catálogo falla con un mensaje de instalación claro, comprobado retirándolo del PATH.
 La regresión de Enter (16 PASS / 1 FAIL antes del arreglo) queda conservada.
 Se añadió activación de botón por Enter, sin repetición al mantener pulsado,
 conservando Espacio; no se debilitó la prueba. CI remota y SHAs en PR 5 y #2256. Esta tabla no
@@ -29,7 +32,9 @@ convierte tests preparados o CI pendiente en resultados aprobados.
    `roadmap-published`, `roadmap-error` (PRs 4–5). Usar las referencias Electron
    existentes. Guardar cada comparación en `D:/VantareServer/evidence/hub-rune/<paso>/`.
 4. Probar la ventana visible, teclado y lector cuando Isaac desbloquee; después
-   30 minutos de uso normal. El smoke real Windows de hub-host sigue pendiente
+   30 minutos de uso normal. Probar también X: WindowClose → CloseRequested →
+   CloseAnswer → salida; Rune oculta la ventana antes del callback y conserva
+   el proceso para completar el protocolo. El smoke real Windows de hub-host sigue pendiente
    fuera del servidor con parada gráfica: `VANTARE_HUB_UI`, `hub-ready`, EOF y
    salida 0; comprobar también núcleo apagado y datos reales de QA sin cuentas.
 5. Actualizar esta tabla con máquina, SO, escala, SHA, resultado y evidencia.

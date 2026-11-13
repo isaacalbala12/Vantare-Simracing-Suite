@@ -11,7 +11,9 @@ use std::{
     time::Duration,
 };
 use windows_sys::Win32::{
-    Foundation::{ERROR_IO_INCOMPLETE, ERROR_IO_PENDING, WAIT_OBJECT_0, WAIT_TIMEOUT},
+    Foundation::{
+        ERROR_IO_INCOMPLETE, ERROR_IO_PENDING, ERROR_NOT_FOUND, WAIT_OBJECT_0, WAIT_TIMEOUT,
+    },
     Storage::FileSystem::{FILE_FLAG_OVERLAPPED, ReadFile, WriteFile},
     System::{
         IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED},
@@ -21,6 +23,57 @@ use windows_sys::Win32::{
         },
     },
 };
+const WRITE_TIMEOUT_MS: u32 = 5_000;
+const CANCEL_DRAIN_MS: u32 = 1_000;
+fn cancel_io(
+    handle: std::os::windows::io::RawHandle,
+    overlapped: *const OVERLAPPED,
+) -> io::Result<()> {
+    // SAFETY: caller retains the handle/OVERLAPPED and drains before releasing their buffers.
+    if unsafe { CancelIoEx(handle, overlapped) } == 0 {
+        let error = io::Error::last_os_error();
+        if error.raw_os_error() != Some(ERROR_NOT_FOUND as i32) {
+            return Err(error);
+        }
+    }
+    Ok(())
+}
+fn drain_cancelled(
+    handle: std::os::windows::io::RawHandle,
+    overlapped: *const OVERLAPPED,
+    event: std::os::windows::io::RawHandle,
+) -> io::Result<usize> {
+    // Cancellation is only a request. Retire a completion already visible without waiting.
+    let completion = || -> io::Result<Option<usize>> {
+        let mut count = 0;
+        if unsafe { GetOverlappedResult(handle, overlapped, &mut count, 0) } != 0 {
+            return Ok(Some(count as usize));
+        }
+        let error = io::Error::last_os_error();
+        if error.raw_os_error() == Some(ERROR_IO_INCOMPLETE as i32) {
+            return Ok(None);
+        }
+        Err(error)
+    };
+    if let Some(count) = completion()? {
+        return Ok(count);
+    }
+    // Bound the wait even after a cancellation failure. A live buffer cannot be freed safely.
+    let wait = unsafe { WaitForSingleObject(event, CANCEL_DRAIN_MS) };
+    if wait != WAIT_OBJECT_0 {
+        eprintln!(
+            "Hub Rune: no se confirmó la cancelación de E/S en {CANCEL_DRAIN_MS} ms (wait={wait}); salida para conservar la seguridad del buffer."
+        );
+        std::process::abort();
+    }
+    if let Some(count) = completion()? {
+        return Ok(count);
+    }
+    eprintln!(
+        "Hub Rune: evento de cancelación señalado con E/S aún pendiente; salida para no liberar su buffer."
+    );
+    std::process::abort()
+}
 fn event() -> io::Result<OwnedHandle> {
     // SAFETY: unnamed manual-reset event, owned by the returned handle.
     let raw = unsafe { CreateEventW(std::ptr::null(), 1, 0, std::ptr::null()) };
@@ -71,17 +124,22 @@ impl Connection {
         }
         Ok(guard)
     }
-    pub fn cancel(&self) {
-        let mut stopped = self.stopped.lock().unwrap();
-        *stopped = true;
-        // SAFETY: the file stays owned by this connection until all operations are drained.
-        // Serializing cancellation with issuing I/O prevents an operation starting after cancel.
-        unsafe {
-            CancelIoEx(self.file.as_raw_handle(), std::ptr::null());
+    pub fn cancel(&self) -> io::Result<()> {
+        let result = {
+            let mut stopped = self.stopped.lock().unwrap();
+            *stopped = true;
+            // Serializing cancellation with issuing I/O prevents a new operation after cancel.
+            cancel_io(self.file.as_raw_handle(), std::ptr::null())
+        };
+        if let Err(error) = &result {
+            eprintln!(
+                "Hub Rune: CancelIoEx falló (código {:?}); drenaje con límite de {CANCEL_DRAIN_MS} ms.",
+                error.raw_os_error()
+            );
         }
+        result
     }
-    fn completion_error(&self) -> io::Error {
-        let error = io::Error::last_os_error();
+    fn completion_error(&self, error: io::Error) -> io::Error {
         if *self.stopped.lock().unwrap() {
             io::ErrorKind::ConnectionAborted.into()
         } else {
@@ -166,7 +224,7 @@ impl Pipe {
         self.read.pending = true;
         Ok(())
     }
-    fn write_chunk(&self, buffer: &[u8]) -> io::Result<usize> {
+    fn write_chunk(&self, buffer: &[u8], timeout_ms: u32) -> io::Result<usize> {
         if buffer.is_empty() {
             return Ok(0);
         }
@@ -198,15 +256,15 @@ impl Pipe {
                 }
             };
             let mut count = 0;
-            if pending && WaitForSingleObject(event.as_raw_handle(), 5_000) != WAIT_OBJECT_0 {
-                CancelIoEx(handle, ov.get());
-                if GetOverlappedResult(handle, ov.get(), &mut count, 1) != 0 {
-                    return Ok(count as usize);
-                }
+            if pending && WaitForSingleObject(event.as_raw_handle(), timeout_ms) != WAIT_OBJECT_0 {
+                // A timed-out frame can already have a prefix in the pipe. Never continue it or
+                // send another frame, even when completion races with cancellation.
+                let _ = self.connection.cancel();
+                let _ = drain_cancelled(handle, ov.get(), event.as_raw_handle());
                 return Err(io::ErrorKind::TimedOut.into());
             }
             if GetOverlappedResult(handle, ov.get(), &mut count, 0) == 0 {
-                return Err(self.connection.completion_error());
+                return Err(self.connection.completion_error(io::Error::last_os_error()));
             }
             Ok(count as usize)
         }
@@ -214,18 +272,13 @@ impl Pipe {
 }
 impl Drop for Pipe {
     fn drop(&mut self) {
-        self.connection.cancel();
+        let _ = self.connection.cancel(); // cancel logs non-ERROR_NOT_FOUND failures.
         if self.read.pending {
-            let mut count = 0;
-            // SAFETY: retain the read buffer and OVERLAPPED until Windows acknowledges cancellation.
-            unsafe {
-                GetOverlappedResult(
-                    self.connection.file.as_raw_handle(),
-                    self.read.overlapped.get(),
-                    &mut count,
-                    1,
-                );
-            }
+            let _ = drain_cancelled(
+                self.connection.file.as_raw_handle(),
+                self.read.overlapped.get(),
+                self.read.event.as_raw_handle(),
+            );
         }
     }
 }
@@ -254,7 +307,7 @@ impl Read for Pipe {
                     return Err(io::ErrorKind::WouldBlock.into());
                 }
                 self.read.pending = false;
-                return Err(error);
+                return Err(self.connection.completion_error(error));
             }
             self.read.pending = false;
             self.read.filled = count as usize;
@@ -270,7 +323,7 @@ impl Read for Pipe {
 }
 impl Write for Pipe {
     fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
-        self.write_chunk(buffer)
+        self.write_chunk(buffer, WRITE_TIMEOUT_MS)
     }
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
@@ -363,12 +416,15 @@ pub(crate) mod tests {
             pipe.read(&mut byte).unwrap_err().kind(),
             io::ErrorKind::WouldBlock
         );
-        connection.cancel();
+        connection.cancel().unwrap();
         assert_eq!(
             pipe.wait(&signal, Some(Duration::from_secs(1))).unwrap(),
             Ready::Read
         );
-        assert!(pipe.read(&mut byte).is_err());
+        assert_eq!(
+            pipe.read(&mut byte).unwrap_err().kind(),
+            io::ErrorKind::ConnectionAborted
+        );
         assert_eq!(
             pipe.write(b"after cancel").unwrap_err().kind(),
             io::ErrorKind::ConnectionAborted
@@ -389,7 +445,7 @@ pub(crate) mod tests {
         // 1 KiB buffer cannot hold it, so cancellation must release the pending operation.
         let mut byte = [0];
         server.read_exact(&mut byte).unwrap();
-        connection.cancel();
+        connection.cancel().unwrap();
         assert!(
             result
                 .recv_timeout(Duration::from_secs(1))
@@ -397,6 +453,32 @@ pub(crate) mod tests {
                 .is_err()
         );
         writer.join().unwrap();
+    }
+    #[test]
+    fn cancel_reports_unexpected_errors_but_accepts_no_pending_request() {
+        let error = cancel_io(INVALID_HANDLE_VALUE, std::ptr::null()).unwrap_err();
+        assert_eq!(
+            error.raw_os_error(),
+            Some(windows_sys::Win32::Foundation::ERROR_INVALID_HANDLE as i32)
+        );
+        let (_server, connection) = connected_pair();
+        // A live pipe with no pending I/O returns ERROR_NOT_FOUND, which is harmless.
+        connection.cancel().unwrap();
+    }
+    #[test]
+    fn timed_out_write_stops_the_connection_before_another_frame() {
+        let (_server, connection) = connected_pair();
+        let mut pipe = Pipe::new(connection).unwrap();
+        let payload = vec![42; 256 * 1024];
+        // Inject a short I/O deadline to exercise real backpressure without a five-second test.
+        assert_eq!(
+            pipe.write_chunk(&payload, 20).unwrap_err().kind(),
+            io::ErrorKind::TimedOut
+        );
+        assert_eq!(
+            pipe.write(b"next frame").unwrap_err().kind(),
+            io::ErrorKind::ConnectionAborted
+        );
     }
     #[test]
     fn slow_reader_keeps_the_complete_frame_and_the_next_frame() {

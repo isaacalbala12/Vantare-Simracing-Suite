@@ -47,14 +47,31 @@ Al pulsar X se envía `WindowClose` (id 0, como Electron); el proceso espera
 `CloseRequested` y escribe `CloseAnswer` antes de salir. En este commit Rune
 oculta la ventana antes de llamar a `on_close`: `keep_running` mantiene el proceso
 para completar el protocolo. Queda pendiente comprobar ese cierre nativo en Mac.
-Si el anfitrión no contesta al cierre en 3 s, rechaza la petición o falla el envío,
-el cliente sale. Ese plazo usa el reloj y la planificación de Rune.
+El plazo de cierre es **10 s**, con el reloj y la planificación de Rune: supera
+los 5 s de report-close y los 2 s del cierre forzado Live/ControlEof. Si vence,
+falla el envío o el enlace falla, el cliente sale.
+En el host actual, WindowClose emite CloseRequested (o no repite un cierre ya
+pendiente); no devuelve una respuesta de éxito ni un mensaje de veto separado.
+El veto de guardas es de la interfaz: CloseAnswer { allow: false } conserva la
+sesión para Window/Restart. Este marco es de solo lectura y confirma el cierre.
+Si llega un Failure id 0 recuperable (Busy/Rejected/Denied/Protected), se anula
+el plazo y se reabre la ventana con AppHandle::open. Otros errores de cierre
+son terminales. Rune permite reabrir con keep_running, aunque oculta la ventana
+antes de on_close: no puede garantizar que siga visible mientras se decide.
+La reapertura y el foco reales siguen pendientes de prueba en el Mac.
 El worker espera a la vez el evento de lectura overlapped y el evento de envíos
 o parada (`WaitForMultipleObjects`), sin sondeo ni retraso periódico de 250 ms.
 Las escrituras mantienen un plazo de 5 s. Las lecturas quedan pendientes hasta
 recibir datos o cancelar; ya no usan el antiguo plazo de 200 ms.
 Antes del join se cancela la E/S pendiente y se señala la parada; los buffers
-permanecen vivos hasta que Windows confirma la cancelación. CPU real: corte 2.
+permanecen vivos hasta que Windows confirma la cancelación. Se comprueba
+CancelIoEx: ERROR_NOT_FOUND es benigno; otros errores se registran sin datos del
+canal. El drenaje espera como máximo 1 s y consulta GetOverlappedResult sin
+bloquear. Si Windows no confirma la finalización, se registra y se aborta el
+proceso: devolver y liberar un buffer aún en uso sería inseguro. Un timeout de
+escritura deja la conexión parada, incluso si se completó parte de la trama;
+no se permite escribir la siguiente. Lecturas canceladas usan ConnectionAborted.
+CPU real: corte 2.
 
 La apertura y capturas se hacen en el Mac. La biblioteca hub-host se consume
 directamente; no se copia el contrato. La escena de desarrollo usa los mismos

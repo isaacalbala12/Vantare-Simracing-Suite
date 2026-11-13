@@ -1834,3 +1834,34 @@ Node admite sufijos de versión; salida inválida devuelve un error explicativo,
 sin expect/panic del parser. README describe el marco y el transporte actuales.
 Gates por un slot/-j2/D:/--locked; CI y heads definitivos en los PRs. Capturas,
 ventana visible y anfitrión real siguen pendientes del Mac/Windows autorizado.
+
+
+### VANTA-143 · tercera revisión PR 4 (2026-11-13)
+
+#2264 fusionado en 58e5b5ede815ef8a9875771308a9485b84bffe46. #2267 y
+#2268 rebasados en orden con --onto origin/nightly d6bcdb32, preservando la pila.
+El cierre pasa de 3 s a 10 s. Leídos transport/dispatch, session_effects,
+ui_process y ui_tick del host, y report-close de Electron: WindowClose emite
+CloseRequested (no repite si ya hay un cierre con prioridad igual/mayor), y el
+veto es CloseAnswer false enviado por la interfaz para Window/Restart. No existe
+HostToUi de veto. Ante rechazo recuperable id 0 se cancela el plazo y se pide
+AppHandle::open; Rune puede mostrar de nuevo la ventana con keep_running, pero
+la oculta antes del callback. La escena prueba rechazo y plazo cancelado;
+reapertura/foco con ventana visible pendientes del Mac.
+CancelIoEx se comprueba: ERROR_NOT_FOUND benigno, otros errores registrados.
+Drenaje acotado a 1 s y GetOverlappedResult sin espera infinita. Si no se confirma
+la finalización se registra y aborta el proceso, para no liberar memoria usada
+por Windows. Timeout de escritura para la conexión antes de drenar: no se puede
+continuar una trama parcial. Lectura cancelada usa completion_error/ConnectionAborted.
+Tests nuevos para CancelIoEx fallido/no-op, timeout que impide otra trama y
+rechazo de cierre; el test silencioso respeta los 5 s del host y vence a los 10 s.
+Sin nuevas dependencias. Cola local libre para E (L53/contratos v33) hasta su
+aviso; sin compilación local nueva. Formato/comprobaciones ligeras y CI sobre
+los nuevos heads; los 29 tests y gates locales anteriores pertenecen al head
+previo. Capturas y corte 1 siguen pendientes. Plane lo actualiza el orquestador.
+
+
+Base final de la tercera revisión: nightly 07825965f (incluye Calendario v32),
+tras el primer --onto sobre 58e5b5ede. #2267 y #2268 conservan padre común;
+el test Hello usa protocol::VERSION del mismo host, sin fijar una versión
+propia. Solo se rebasó código de otros proyectos, sin modificarlo.

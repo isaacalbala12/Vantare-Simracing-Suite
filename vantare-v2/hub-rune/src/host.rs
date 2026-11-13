@@ -52,6 +52,7 @@ pub enum CloseReply {
     Allow,
     Silent,
     Reject,
+    Veto,
 }
 #[cfg(debug_assertions)]
 pub struct Scene {
@@ -67,7 +68,7 @@ impl Drop for Host {
         #[cfg(windows)]
         {
             if let Some(connection) = &self.connection {
-                connection.cancel();
+                let _ = connection.cancel();
             }
             if let Some(signal) = &self.outgoing.signal {
                 let _ = signal.signal();
@@ -287,6 +288,13 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
                     });
                     return Ok(());
                 }
+                CloseReply::Veto => {
+                    messages.push_back(HostToUi::Failure {
+                        id: 0,
+                        error: protocol::HostError::Busy,
+                    });
+                    return Ok(());
+                }
                 CloseReply::Allow => {}
             }
             state.closing = true;
@@ -359,7 +367,7 @@ mod tests {
             if done.recv_timeout(Duration::from_secs(1)).is_ok() {
                 return false;
             }
-            connection.cancel();
+            let _ = connection.cancel();
             control.signal().unwrap();
             true
         });
@@ -407,7 +415,9 @@ mod tests {
     #[test]
     fn scene_uses_shared_hello_and_core_and_closes_without_graphics() {
         let (mut link, hello) = Link::open(Bootstrap::Scene).unwrap();
-        assert!(matches!(hello, HostToUi::Hello { version: 31, .. }));
+        assert!(
+            matches!(hello, HostToUi::Hello { version, .. } if version == vantare_hub_host::protocol::VERSION)
+        );
         link.send(UiToHost::Ready {}).unwrap();
         link.send(UiToHost::Request {
             id: 7,

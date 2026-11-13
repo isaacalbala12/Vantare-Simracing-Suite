@@ -1908,3 +1908,29 @@ aceptación del corte 1 siguen pendientes como indica CORTE-1.md. No se
 confunde suite sin gráfica con ventana Windows real o media hora de uso.
 El resumen para Plane está en los cinco PRs; el orquestador actualiza Plane.
 Sin merge a nightly, promoción, release o actuación sobre cuentas/datos reales.
+
+### VANTA-143 · Pila rebasada sobre Rust 1.99.1 de nightly (2026-11-13)
+
+Autorización del orquestador: rebasar los cinco PRs tras integrar #2248.
+Nueva base: origin/nightly 5919e64e0e0d833f54b56e5864305a1efa80d8a6,
+que incluye Rust 1.99.1 (1806f71f8) y Studio A (#2244). Se conservan esos
+cambios ajenos; no se modifica su implementación.
+La pila mantiene los cinco PRs #2260 → #2262 → #2264 → #2267 → #2268,
+con cada rama hija descendiente de su nuevo padre. Se han conservado refs
+locales de recuperación bajo refs/vantare-backup/2256-before-nightly/.
+Se autoriza actualizar las ramas publicadas como parte del rebase solicitado;
+el push usará leases explícitos contra los cinco heads remotos previamente
+verificados y una transacción atómica para no dejar media pila actualizada.
+
+Los cinco árboles hub-rune resultan idénticos byte a byte a sus versiones
+anteriores. Solo hubo que conservar el formato de App::init con Tab y el
+arreglo de ready al reaplicar el paso 5; no se cambió comportamiento.
+Prueba de árboles, padres y old/new SHA en
+D:/VantareServer/evidence/hub-rune/rebase-nightly/stack.json.
+Formato, catálogo compartido, licencias (463 paquetes), cinco tests de
+licencias y 22 del clasificador CI PASS sobre la nueva base. Se han solicitado
+Clippy, suite Rust y enlace Windows por la cola, un slot y dos jobs; los
+resultados del rebase y la CI nueva se adjuntan a #2256/PR 5. Los resultados
+verdes anteriores siguen siendo evidencia de los SHA anteriores, no de los
+nuevos. Capturas/ventana visible, smoke de host real y corte 1 siguen pendientes.
+Sin ejecución gráfica en el servidor, merge a nightly, promoción o release.

@@ -232,8 +232,8 @@ mod tests {
         );
         b.gap = true;
         let partial = project_laps(&a, &b, &samples, &samples).expect("hueco visible");
-        assert!(partial.delta.is_empty());
-        assert!(!partial.speed[0].is_empty());
+        assert_eq!(partial.delta, [] as [crate::analysis::model::Point; 0]);
+        assert_ne!(partial.speed[0], [] as [crate::analysis::model::Point; 0]);
         b.session = 4;
         assert!(project_laps(&a, &b, &samples, &samples).is_err());
     }
@@ -254,9 +254,12 @@ mod tests {
         );
         assert_eq!(charts.speed[0][0].value.to_bits(), 180.0_f64.to_bits());
         assert_eq!(charts.throttle[0][0].value.to_bits(), 0.0_f64.to_bits());
-        assert!(charts.brake[0].is_empty());
+        assert_eq!(charts.brake[0], [] as [crate::analysis::model::Point; 0]);
         assert_eq!(charts.distance_range, Some((0.0, 200.0)));
-        assert!(project(&a, &b, false).delta.is_empty());
+        assert_eq!(
+            project(&a, &b, false).delta,
+            [] as [crate::analysis::model::Point; 0]
+        );
     }
     #[test]
     fn missing_samples_and_distance_resets_break_paths_and_delta() {

@@ -75,7 +75,10 @@ mod tests {
         assert_eq!(editor.layout().instances.len(), 2);
         editor.selected = Some(mini);
         editor.remove().expect("borrar conjunto");
-        assert!(editor.layout().instances.is_empty());
+        assert_eq!(
+            editor.layout().instances,
+            [] as [vantare_ui::layout::Instance; 0]
+        );
         editor.undo().expect("recuperar");
         assert_eq!(editor.layout().instances.len(), 2);
     }

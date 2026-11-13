@@ -192,7 +192,7 @@ fn internal_chunk_gap_separates_reliable_plot_points_after_storage_roundtrip() {
     assert_eq!(std::fs::read(&db).expect("original intacto"), original);
     std::fs::remove_file(db).expect("limpiar fixture propia");
     std::fs::remove_dir(directory).expect("limpiar temporal propio");
-    assert!(charts.delta.is_empty());
+    assert_eq!(charts.delta, [] as [crate::analysis::model::Point; 0]);
     for points in [&charts.speed[0], &charts.throttle[0], &charts.brake[0]] {
         assert_eq!(points.len(), 2, "conservar ambos extremos fiables");
         assert_eq!(
@@ -211,7 +211,10 @@ fn no_recordings_does_not_create_a_directory() {
     let directory =
         std::env::temp_dir().join(format!("vantare-hub-no-recordings-{}", std::process::id()));
     assert!(!directory.exists());
-    assert!(recordings(&directory).expect("vacío honesto").is_empty());
+    assert_eq!(
+        recordings(&directory).expect("vacío honesto"),
+        [] as [std::path::PathBuf; 0]
+    );
     assert!(!directory.exists());
 }
 

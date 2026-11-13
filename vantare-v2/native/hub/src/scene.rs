@@ -382,7 +382,7 @@ mod tests {
             &Path::new(FIXTURES).join("lmu47.snapshot.json"),
         )
         .expect("catálogo");
-        assert!(!paths.is_empty());
+        assert_ne!(paths, [] as [std::path::PathBuf; 0]);
         for path in paths {
             assert!(!Scene::open(path).expect("fixture válido").is_empty());
         }

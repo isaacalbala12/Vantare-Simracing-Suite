@@ -975,7 +975,7 @@ mod tests {
     fn shortcut_keeps_key_order_and_normalizes_display_names() {
         assert_eq!(hotkey_keys(" CTRL + Alt + l "), ["Ctrl", "Alt", "L"]);
         assert_eq!(hotkey_keys("shift+win+f1"), ["Shift", "Win", "F1"]);
-        assert!(hotkey_keys("").is_empty());
+        assert_eq!(hotkey_keys(""), [] as [std::string::String; 0]);
     }
     #[test]
     fn search_ignores_case_and_whitespace_and_matches_categories() {

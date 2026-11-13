@@ -1394,12 +1394,18 @@ mod home_tests {
     #[test]
     fn home_is_empty_without_events_and_beta_requires_tester() {
         let mut notifications = Notifications::default();
-        assert!(notifications.home_activity().is_empty());
+        assert_eq!(
+            notifications.home_activity(),
+            [] as [(std::string::String, i64, &str, crate::orbit::controls::Tone); 0]
+        );
         let mut record = Record::local_error("hub.launcher", "fallo real".into());
         record.source = Source::Beta;
         record.occurred_at = 123;
         notifications.center.records.push(record);
-        assert!(notifications.home_activity().is_empty());
+        assert_eq!(
+            notifications.home_activity(),
+            [] as [(std::string::String, i64, &str, crate::orbit::controls::Tone); 0]
+        );
         notifications.tester = true;
         let rows = notifications.home_activity();
         assert_eq!(rows.len(), 1);

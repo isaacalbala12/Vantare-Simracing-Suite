@@ -87,7 +87,7 @@ fn step6_pure_migration_preserves_retired_fields_onboarding_and_palette_semantic
                 Some(serde_json::json!(110)),
                 false,
             );
-            assert!(warnings.is_empty());
+            assert_eq!(warnings, [] as [crate::shell::settings::store::Legacy; 0]);
             assert!(doc.general.onboarding_completed);
             assert!(!doc.general.startup);
             assert!(doc.general.minimized);

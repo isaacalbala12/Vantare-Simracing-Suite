@@ -512,11 +512,11 @@ fn r9_damaged_primary_is_archived_exactly_before_normal_save_can_recover() {
         ui_editor.warning.is_none(),
         "the warning is consumed by status"
     );
-    assert!(
+    assert_eq!(
         ui_editor.document.as_ref().expect("empty recovery").value()["events"]
             .as_array()
-            .expect("events")
-            .is_empty()
+            .expect("events"),
+        [] as [serde_json::Value; 0]
     );
     editor.save().expect("normal recovery save");
     assert!(!editor.dirty());

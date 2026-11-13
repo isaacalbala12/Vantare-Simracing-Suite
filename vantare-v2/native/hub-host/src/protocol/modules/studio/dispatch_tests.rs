@@ -56,11 +56,11 @@ fn ticks_without_subscription_or_in_live_emit_nothing() {
     let mut session = fixture.session();
     let mut pipe = Pipe::new(Vec::new());
     studio_tick::tick(&mut session, &mut pipe).unwrap();
-    assert_eq!(pipe.get_ref().as_slice(), []);
+    assert_eq!(pipe.get_ref().as_slice(), [] as [u8; 0]);
     session.subscriptions.insert(Topic::Studio);
     session.current.live = true;
     studio_tick::tick(&mut session, &mut pipe).unwrap();
-    assert_eq!(pipe.get_ref().as_slice(), []);
+    assert_eq!(pipe.get_ref().as_slice(), [] as [u8; 0]);
 }
 #[test]
 fn subscribe_has_one_initial_event_and_immediate_tick_does_not_duplicate_it() {

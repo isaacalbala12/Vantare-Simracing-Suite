@@ -224,7 +224,7 @@ mod tests {
             assert!(copy.included.contains("Nightly"));
             assert!(copy.button.contains("50"));
             assert!(copy.owned.starts_with("Founders"));
-            assert!(!copy.subscription.is_empty());
+            assert_ne!(copy.subscription, "");
         }
     }
 }

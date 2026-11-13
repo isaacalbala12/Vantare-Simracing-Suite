@@ -13,6 +13,11 @@ pub(crate) fn typescript() -> String {
     declare::<crate::settings::model::AppearanceSettings>(&mut text);
     declare::<crate::settings::model::Density>(&mut text);
     declare::<crate::settings::model::Preferences>(&mut text);
+    constants!(
+        &mut text,
+        "defaultWindowsNotifications",
+        crate::settings::model::DEFAULT_WINDOWS_NOTIFICATIONS
+    );
     declare::<crate::settings::StartupView>(&mut text);
     declare::<crate::settings::SettingsView>(&mut text);
     declare::<crate::settings::SettingsPatch>(&mut text);

@@ -5,7 +5,7 @@
     "minimized": false,
     "updates": true,
     "launcher": true,
-    "toasts": false
+    "toasts": true
   },
   "appearance": {
     "palette": "vantare",

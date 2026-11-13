@@ -22,8 +22,11 @@ bytecode, opción ausente aquí; dev y preview quedan fuera del procedimiento.
 Verificación: tipos de renderer/main y scripts, Biome, y las 116 pruebas
 concentradas en reloj, navegación inicial, Ajustes y galería pasan en serie.
 La suite completa con dos workers tuvo cuatro fallos de espera de Ajustes
-y un timeout de importación de galería; se conservan sus informes. Se está
-comprobando toda la suite con un worker, sin cambiar tests ni sus plazos.
+y un timeout de importación de galería; se conservan sus informes. La suite
+completa con un worker pasó 1763/1765; fallaron únicamente dos plazos de
+lectura/build (arquitectura de diálogos y renderer de producción). Diálogos
+pasa al repetirlo aislado; renderer sigue excediendo su plazo de 15 s en el
+servidor. No se cambian tests ni sus plazos. CI y empaquetado quedan pendientes.
 Arranque, pantalla, interacción y medidas físicas quedan pendientes del PC.
 Los tiempos limpios/incrementales comparables quedan pendientes por decisión
 de Isaac: se medirán después en el servidor sin otros workers.

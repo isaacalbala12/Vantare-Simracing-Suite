@@ -423,7 +423,7 @@ import type {
 
 function retryFixture() {
   const hook = setup();
-  const value: ResidentRunResults & { retryFailed: boolean } = {
+  const value: ResidentRunResults = {
     run: "7",
     profile: hook.target.profile,
     revision: hook.target.revision,

@@ -238,12 +238,7 @@ export function useResidentControl(
           )
         )
           return "resultUnknown";
-        if (
-          intent.target.scope === "failed" &&
-          !(
-            "retryFailed" in summary.value && summary.value.retryFailed === true
-          )
-        )
+        if (intent.target.scope === "failed" && !summary.value.retryFailed)
           return "noFailed";
       }
     }

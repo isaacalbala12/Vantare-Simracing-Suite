@@ -23,7 +23,7 @@ export function createResidentResultsMock(
   // Resident-owned lineage; All must not be reconstructed from the latest NotSelected states.
   const original = new Set([1, 2]);
   let failed = new Set([1]);
-  let summary: ResidentRunResults & { retryFailed: boolean } = {
+  let summary: ResidentRunResults = {
     run: "1",
     profile: doc.profiles[0].id,
     revision: doc.revision,

@@ -14,7 +14,7 @@ function setup() {
   const view = structuredClone(fixture) as LauncherView;
   view.revision = "c".repeat(64);
   view.profiles[0].apps = ["lmu", "obs", "obs"];
-  const value: ResidentRunResults & { retryFailed: boolean } = {
+  const value: ResidentRunResults = {
     run: "7",
     profile: view.profiles[0].id,
     revision: view.revision,

@@ -7,6 +7,8 @@ import type {
   ResidentRetryTarget,
   ResidentView,
 } from "../src/contract/generated/contract";
+import { isHostMessage } from "../src/contract/validation";
+import { createMockHost } from "../src/mock/host";
 import { createResidentResultsMock } from "../src/mock/resident-results";
 
 function setup(sceneName = "launcher-results-finished") {
@@ -151,4 +153,72 @@ it("rejects a second queued order as Busy without a legacy fallback", () => {
       },
     }),
   ).toBeUndefined();
+});
+
+it("passes the strict renderer wire for the published v35 summary, receipt and terminal", async () => {
+  vi.useFakeTimers();
+  try {
+    const events: unknown[] = [];
+    const host = createMockHost(
+      "visual-dark:launcher-results-finished",
+      (event) => events.push(event),
+    );
+    const opened = host({
+      kind: "request",
+      id: 1,
+      request: { method: "launcher.resident.get" },
+    });
+    expect(isHostMessage(opened)).toBe(true);
+    if (
+      opened?.kind !== "response" ||
+      opened.result.method !== "launcher.resident.get" ||
+      opened.result.value.execution?.results.kind !== "known"
+    )
+      throw new Error("known snapshot");
+    const execution = opened.result.value.execution;
+    const value =
+      execution.results.kind === "known" ? execution.results.value : undefined;
+    if (!value) throw new Error("known");
+    const queued = host({
+      kind: "request",
+      id: 2,
+      request: {
+        method: "launcher.resident.retry",
+        target: {
+          instance: execution.instance,
+          accountGeneration: value.accountGeneration,
+          profile: value.profile,
+          revision: value.revision,
+          run: value.run,
+          scope: "all",
+        },
+      },
+    });
+    expect(isHostMessage(queued)).toBe(true);
+    expect(queued).toMatchObject({ result: { value: { kind: "queued" } } });
+    await vi.runOnlyPendingTimersAsync();
+    await vi.runOnlyPendingTimersAsync();
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.every(isHostMessage)).toBe(true);
+    expect(
+      host({
+        kind: "request",
+        id: 3,
+        request: { method: "launcher.resident.get" },
+      }),
+    ).toMatchObject({
+      result: {
+        value: {
+          execution: {
+            results: {
+              kind: "known",
+              value: { retryFailed: false, outcome: { kind: "completed" } },
+            },
+          },
+        },
+      },
+    });
+  } finally {
+    vi.useRealTimers();
+  }
 });

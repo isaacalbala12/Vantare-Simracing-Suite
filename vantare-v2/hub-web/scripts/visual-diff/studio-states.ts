@@ -51,7 +51,13 @@ const scene = (
           await strip.evaluate((element) => element.clientWidth),
           72,
         );
-        await strip.getByRole("button", { name: t.add, exact: true }).waitFor();
+        // The catalog deliberately makes this background strip inert. Its Add
+        // still needs a name when the modal closes, but must not be announced
+        // as an accessible background action while the modal is open.
+        assert.equal(
+          await strip.locator("[data-add-widget]").getAttribute("aria-label"),
+          t.add,
+        );
       }
     }
   },

@@ -1,5 +1,7 @@
 use super::{AccountObservation, OrderReceipt, OrderRejection, Owner, authorize, observe};
-use vantare_ipc::launcher::{Action, CancelChecked, answer::permits_answer};
+use vantare_ipc::launcher::{
+    Action, CancelChecked, answer::permits_answer, execution::ExecutionStatus,
+};
 use vantare_launcher::chain::{CancelError, Chain};
 impl Owner {
     pub(in super::super) fn cancel_checked(&mut self, request: CancelChecked) {
@@ -11,7 +13,7 @@ impl Owner {
             .status
             .extension
             .as_ref()
-            .is_some_and(|e| e.can_start())
+            .is_some_and(ExecutionStatus::can_start)
         {
             return Err(OrderRejection::Unavailable);
         }

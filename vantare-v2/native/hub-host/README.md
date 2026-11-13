@@ -336,3 +336,8 @@ revocación sin autorizar nuevos lanzamientos. Ensayar exige permits_launch y
 selecciona en el residente los pasos distintos de LMU. No se envían índices,
 rutas, comandos, argumentos ni PID desde el renderer. La UI corresponde a D;
 L55/L56, supervisor, derechos, GPUI y distribución quedan fuera.
+
+En las órdenes L54 se comprueba primero el Status y su capability fresca. Un
+residente ausente, viejo o con Status vencido devuelve Unsupported antes de
+validar cuenta/permisos. Con soporte fresco, una cuenta no observable devuelve
+CoreUnavailable. Se evita que un Denied por TTL o Live oculte la falta de soporte.

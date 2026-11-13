@@ -122,7 +122,8 @@ fn status(path: &Path, instance: &str) -> Result<(native::Status, ResidentInstan
     if path.is_absolute() && !vantare_launcher::is_local_path(path) {
         return Err(HostError::Denied);
     }
-    let status = native::read_status(path).ok_or(HostError::CoreUnavailable)?;
+    // No fresh capability means this order is unsupported, regardless of account state.
+    let status = native::read_status(path).ok_or(HostError::Unsupported)?;
     let extension = status.extension.as_ref().ok_or(HostError::Unsupported)?;
     if !extension.capabilities.contains(&Capability::CheckedControl) {
         return Err(HostError::Unsupported);
@@ -141,8 +142,8 @@ pub(crate) fn cancel(
     current: Option<&AccountObservation>,
     target: &ResidentCancelTarget,
 ) -> Result<ResidentQueued, HostError> {
-    let (current, account) = observation(current, &target.account_generation)?;
     let (status, instance) = status(path, &target.instance)?;
+    let (current, account) = observation(current, &target.account_generation)?;
     if !status.running {
         return Err(rejected(OrderRejection::WrongRun));
     }
@@ -184,11 +185,11 @@ pub(crate) fn rehearse(
     current: Option<&AccountObservation>,
     target: &ResidentRehearseTarget,
 ) -> Result<ResidentQueued, HostError> {
+    let (status, instance) = status(path, &target.instance)?;
     let (current, account) = observation(current, &target.account_generation)?;
     if !vantare_ipc::control::wall_ms().is_ok_and(|now| current.policy.permits_launch(now)) {
         return Err(rejected(OrderRejection::Denied));
     }
-    let (status, instance) = status(path, &target.instance)?;
     if status.running {
         return Err(rejected(OrderRejection::Busy));
     }

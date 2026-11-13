@@ -1,6 +1,9 @@
 use super::{AccountObservation, OrderReceipt, OrderRejection, Owner, authorize, observe};
 use std::sync::Arc;
-use vantare_ipc::{control::Policy, launcher::RehearseChecked};
+use vantare_ipc::{
+    control::Policy,
+    launcher::{RehearseChecked, execution::ExecutionStatus},
+};
 use vantare_launcher::{
     Document, Profile,
     chain::{Chain, StartError},
@@ -43,7 +46,7 @@ impl Owner {
                 .status
                 .extension
                 .as_ref()
-                .is_some_and(|e| e.can_start())
+                .is_some_and(ExecutionStatus::can_start)
             {
                 return Err(OrderRejection::StartFailed);
             }

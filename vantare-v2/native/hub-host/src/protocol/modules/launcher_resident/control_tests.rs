@@ -94,6 +94,7 @@ fn observed() -> AccountObservation {
     AccountObservation {
         generation: "a".repeat(64).try_into().expect("account"),
         policy: Policy {
+            version: vantare_ipc::control::VERSION,
             epoch: 1,
             revision: 1,
             checked_at_ms: vantare_ipc::control::wall_ms().expect("clock"),
@@ -187,45 +188,51 @@ fn cancel_rejects_stale_instance_account_run_revision_or_unscoped_target_without
 }
 #[test]
 fn old_absent_or_stale_residents_and_missing_authority_never_fall_back() {
+    for resident in 0..4 {
+        let mut f = fixture();
+        match resident {
+            0 => {} // No status file.
+            1 => {
+                f.status.extension = None;
+                f.save();
+            }
+            2 => {
+                f.status.extension = Some(ExecutionStatus::new("b".repeat(64).try_into().unwrap()));
+                f.save();
+            }
+            _ => {
+                f.status.updated_ms = 0;
+                fs::write(
+                    native::status_path(&f.path),
+                    serde_json::to_vec(&f.status).unwrap(),
+                )
+                .unwrap();
+            }
+        }
+        let mut denied = observed();
+        denied.policy.epoch = 0; // Deterministic denial, independent of wall-clock expiry.
+        let mut changed = observed();
+        changed.generation = "f".repeat(64).try_into().unwrap();
+        for current in [None, Some(&denied), Some(&changed)] {
+            assert_eq!(
+                cancel(&f.path, current, &f.cancel),
+                Err(HostError::Unsupported)
+            );
+            assert_eq!(
+                rehearse(&f.path, current, &f.rehearse),
+                Err(HostError::Unsupported)
+            );
+        }
+        assert!(!native::request_path(&f.path).exists());
+    }
     let mut f = fixture();
-    assert_eq!(
-        cancel(&f.path, Some(&observed()), &f.cancel),
-        Err(HostError::CoreUnavailable)
-    );
-    f.status.extension = None;
     f.save();
-    assert_eq!(
-        cancel(&f.path, Some(&observed()), &f.cancel),
-        Err(HostError::Unsupported)
-    );
-    f.status.extension = Some(ExecutionStatus::new("b".repeat(64).try_into().unwrap()));
-    f.save();
-    assert_eq!(
-        cancel(&f.path, Some(&observed()), &f.cancel),
-        Err(HostError::Unsupported)
-    );
-    assert_eq!(
-        rehearse(&f.path, Some(&observed()), &f.rehearse),
-        Err(HostError::Unsupported)
-    );
-    f.status
-        .extension
-        .as_mut()
-        .unwrap()
-        .capabilities
-        .push(Capability::CheckedControl);
-    f.status.updated_ms = 0;
-    fs::write(
-        native::status_path(&f.path),
-        serde_json::to_vec(&f.status).unwrap(),
-    )
-    .unwrap();
-    assert_eq!(
-        cancel(&f.path, Some(&observed()), &f.cancel),
-        Err(HostError::CoreUnavailable)
-    );
     assert_eq!(
         cancel(&f.path, None, &f.cancel),
+        Err(HostError::CoreUnavailable)
+    );
+    assert_eq!(
+        rehearse(&f.path, None, &f.rehearse),
         Err(HostError::CoreUnavailable)
     );
     assert!(!native::request_path(&f.path).exists());

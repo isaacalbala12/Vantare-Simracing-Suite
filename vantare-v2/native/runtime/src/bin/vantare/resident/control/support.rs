@@ -125,6 +125,7 @@ pub(super) fn observed() -> AccountObservation {
     AccountObservation {
         generation: "a".repeat(64).try_into().expect("account"),
         policy: Policy {
+            version: vantare_ipc::control::VERSION,
             epoch: 1,
             revision: 1,
             checked_at_ms: vantare_ipc::control::wall_ms().expect("clock"),

@@ -138,6 +138,16 @@ El ensayo filtra app_id != "lmu" exacto, sensible a mayúsculas, como GPUI.
 Leave/Started/Ask y CleanupFailed se apoyan en los tests heredados de tests.rs
 y chain/outcome_tests.rs. El segundo gate llegó a Clippy y señaló String::new
 en un test nuevo: corregido. Nueva validación nativa aún pendiente de cola/CI.
+Corrección posterior: cancelar y ensayar comprueban primero el soporte fresco del
+residente y después cuenta/permisos. Ausente, viejo o Status vencido = Unsupported;
+con soporte pero sin cuenta = CoreUnavailable. La regresión cruza ambos métodos
+con cuenta ausente, denegada y cambiada, sin depender de caducidades temporales.
+Los lints redundant_closure se corrigen con ExecutionStatus::can_start, sin allows.
+Las observaciones de prueba declaran ahora la versión real de Policy: antes
+quedaban en versión 0 por Default y eran denegadas correctamente. Validación
+local por cola: fmt y Clippy -D warnings de ipc/launcher/runtime/hub-host PASS;
+Nextest 1705 PASS (15 excluidos por el perfil); telemetría 34 PASS (1 excluido).
+Sin gráficos ni cambios de contrato v34. Nuevo head pendiente de CI completa.
 El Hub puede pedir cancelar la ejecución observada o probar un perfil sin sus
 pasos LMU. El residente comprueba instancia, cuenta y revisión, y aplica la orden.
 Cancelar respeta las políticas de cierre y puede plantear una pregunta L53;

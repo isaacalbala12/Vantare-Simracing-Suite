@@ -174,7 +174,7 @@ pub fn commands(state: &State) -> El {
         panel.child(button(
             theme,
             "commands-close",
-            text("es.close"),
+            text("settings.shell.close"),
             |s: &mut State| s.commands_open = false,
         )),
     )
@@ -201,7 +201,7 @@ pub fn activity(state: &State) -> El {
                         button(
                             theme,
                             "activity-close",
-                            text("es.close"),
+                            text("settings.shell.close"),
                             |s: &mut State| s.activity_open = false,
                         )
                         .autofocus(),

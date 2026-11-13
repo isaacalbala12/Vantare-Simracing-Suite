@@ -17,6 +17,7 @@ struct State {
     section: String,
     link: Option<host::Link>,
     closing: bool,
+    close_deadline: Option<f64>,
 }
 fn init() -> State {
     State {
@@ -26,6 +27,7 @@ fn init() -> State {
         section: "home".into(),
         link: None,
         closing: false,
+        close_deadline: None,
     }
 }
 fn toggle(state: &mut State) {
@@ -138,17 +140,40 @@ fn request_close(state: &mut State, tx: &mut rune::Tx) {
         .is_err()
     }) {
         tx.quit();
+        return;
     }
+    let deadline = tx.clock() + 3.0;
+    state.close_deadline = Some(deadline);
+    tx.wake_at(deadline);
     // The scene answers synchronously; the real worker wakes poll after writing CloseAnswer.
     tx.wake_after(std::time::Duration::ZERO);
 }
-fn poll(state: &mut State, _: f64, tx: &mut rune::Tx) -> bool {
+fn close_expired(state: &State, now: f64, tx: &mut rune::Tx) -> bool {
+    if let Some(deadline) = state.close_deadline {
+        if now >= deadline {
+            tx.quit();
+            return true;
+        }
+        tx.wake_at(deadline);
+    }
+    false
+}
+fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
+    if close_expired(state, now, tx) {
+        return true;
+    }
     if let Some(link) = &mut state.link {
         for _ in 0..64 {
             match link.receive() {
                 Some(Ok(vantare_hub_host::protocol::HostToUi::CloseRequested { .. }))
                 | Some(Err(_)) => {
                     state.closing = true;
+                    tx.quit();
+                    return true;
+                }
+                Some(Ok(vantare_hub_host::protocol::HostToUi::Failure { id: 0, .. }))
+                    if state.closing =>
+                {
                     tx.quit();
                     return true;
                 }
@@ -262,6 +287,50 @@ mod tests {
         runtime.frame(0.0);
         assert!(matches!(runtime.shell_request, Some(rune::Shell::Quit)));
         assert!(runtime.state.link.as_mut().unwrap().receive().is_none());
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn silent_scene_cannot_keep_the_hidden_client_alive_past_three_seconds() {
+        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let host::Link::Scene(scene) = &mut link else {
+            unreachable!()
+        };
+        scene.close_reply = host::CloseReply::Silent;
+        let mut state = init();
+        state.link = Some(link);
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.poll = Some(poll);
+        runtime.update(request_close);
+        assert_eq!(runtime.state.close_deadline, Some(3.0));
+        runtime.frame(2.99);
+        assert!(runtime.shell_request.is_none());
+        runtime.update(request_close);
+        assert_eq!(
+            runtime.state.close_deadline,
+            Some(3.0),
+            "repeated X must not extend the deadline"
+        );
+        runtime.frame(0.02);
+        assert_eq!(runtime.shell_request, Some(rune::Shell::Quit));
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn failed_close_send_and_host_rejection_quit_immediately() {
+        let mut runtime = Runtime::new(init(), view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.update(request_close);
+        assert_eq!(runtime.shell_request, Some(rune::Shell::Quit));
+        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let host::Link::Scene(scene) = &mut link else {
+            unreachable!()
+        };
+        scene.close_reply = host::CloseReply::Reject;
+        let mut state = init();
+        state.link = Some(link);
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.poll = Some(poll);
+        runtime.update(request_close);
+        runtime.frame(0.0);
+        assert_eq!(runtime.shell_request, Some(rune::Shell::Quit));
     }
     #[test]
     fn frame_contains_electron_sections_in_both_sidebar_modes() {

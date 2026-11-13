@@ -1781,7 +1781,7 @@ por el orquestador. Sin cambios de versiones Rust/Rune ni dependencias nuevas.
 Cliente tipado con frame/protocol de hub-host: autenticación efímera consumida
 y borrada antes de arrancar hilos, hello v31, ready tras on_ready de Rune,
 ACK de cierre y salida cuando se corta el canal. Named pipe Windows con E/S
-overcapped (200 ms por operación, cancelación completada antes de liberar buffers),
+overlapped (escrituras de 5 s, lectura por evento y cancelación antes de liberar buffers),
 worker propio cancelable y recogido al cerrar, colas acotadas y waker sin sondeo GUI.
 Solo se ignoran las tres opciones QA de Chromium; otras se rechazan. Las opciones
 de captura de desarrollo solo se admiten en Mac; no se ejecutan en Windows.
@@ -1805,13 +1805,32 @@ fijado de Rune oculta la ventana antes del callback; no permite vetar ese oculta
 No hay documentos editables en este marco. Test del callback con anfitrión de
 escena, idempotencia de X y ACK antes de publicar el cierre al hilo de interfaz.
 El setup llama al waker tras guardarlo y soltar su mutex; regresión con respuesta
-anterior al registro. El worker espera 250 ms, cuatro despertares por segundo en
-reposo frente a cincuenta; falta la medición real de CPU del corte 2. Las peticiones
-salientes despiertan el worker inmediatamente. Lecturas cancelables: 200 ms;
-escrituras: 5 s. La regresión de pipe real con contrapresión falla con 200 ms
+anterior al registro. La espera de 250 ms se retiró en la segunda revisión:
+lectura overlapped y envíos/parada se esperan juntos por eventos, sin sondeo.
+La lectura se cancela al salir; escrituras de 5 s. CPU real pendiente del corte 2. La regresión de pipe real con contrapresión falla con 200 ms
 (0 PASS/1 FAIL esperado) y pasa con 5 s, conservando una trama de 256 KiB y la siguiente.
 Clippy -D warnings PASS; 13 tests sin ventana PASS antes de propagar el catálogo.
 README enumera default-features=false y los cinco features habilitados, y los
 flags --snap/--frames/--scene/--size/--scale/--out/--theme solo debug+macOS.
 Capturas, cierre con ventana visible y anfitrión Windows real siguen pendientes;
 no se ejecuta gráfica en el servidor. Evidencia en evidence/hub-rune/review-sonnet.
+
+
+### VANTA-143 · segunda revisión PR 4 (2026-11-13)
+
+X tiene un plazo de 3 s con reloj Rune: si no llega respuesta, llega Failure id 0
+o falla el envío, el cliente sale. La escena silenciosa prueba el vencimiento y
+que repetir X no lo retrasa; otra escena prueba rechazo y envío fallido.
+Se retira el sondeo de 250 ms. Un único worker espera WaitForMultipleObjects
+sobre lectura overlapped y evento de envíos/parada. El evento se reinicia antes
+de vaciar la cola para conservar señales que llegan durante el vaciado.
+Drop cancela toda E/S pendiente antes del join; emitir operaciones y cancelar
+se serializan para que ninguna operación arranque después de cancelar. Los
+buffers/OVERLAPPED permanecen vivos hasta el drenaje de la operación cancelada.
+Tests de pipe real: datos y envíos despiertan la espera, cancelación de lectura,
+prohibición de nueva E/S tras cancelar y Drop que recoge el worker sin esperar datos.
+Se mantienen 5 s de escritura y la regresión de contrapresión. Sin nuevos paquetes.
+Node admite sufijos de versión; salida inválida devuelve un error explicativo,
+sin expect/panic del parser. README describe el marco y el transporte actuales.
+Gates por un slot/-j2/D:/--locked; CI y heads definitivos en los PRs. Capturas,
+ventana visible y anfitrión real siguen pendientes del Mac/Windows autorizado.

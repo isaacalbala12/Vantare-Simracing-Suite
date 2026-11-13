@@ -2,7 +2,7 @@
 
 Vía paralela de desarrollo según ADR 0108. Workspace independiente de native;
 no cambia los overlays, Electron ni la distribución. Ejecutable:
-`vantare-hub-ui-rune`. El primer paso solo abre una ventana vacía.
+`vantare-hub-ui-rune`: marco con temas, navegación y conexión al anfitrión.
 
 Rune y sus cuatro parches están fijados a
 `d5338988a7c1b3377adb60853815b6d0843dae7c`, Rust 1.99.1.
@@ -47,10 +47,15 @@ Al pulsar X se envía `WindowClose` (id 0, como Electron); el proceso espera
 `CloseRequested` y escribe `CloseAnswer` antes de salir. En este commit Rune
 oculta la ventana antes de llamar a `on_close`: `keep_running` mantiene el proceso
 para completar el protocolo. Queda pendiente comprobar ese cierre nativo en Mac.
-El worker espera hasta 250 ms entre lecturas (cuatro despertares/s en reposo,
-sin medir aún CPU real); las peticiones salientes lo despiertan inmediatamente.
-Las escrituras tienen un plazo de 5 s y las lecturas cancelables de 200 ms.
+Si el anfitrión no contesta al cierre en 3 s, rechaza la petición o falla el envío,
+el cliente sale. Ese plazo usa el reloj y la planificación de Rune.
+El worker espera a la vez el evento de lectura overlapped y el evento de envíos
+o parada (`WaitForMultipleObjects`), sin sondeo ni retraso periódico de 250 ms.
+Las escrituras mantienen un plazo de 5 s. Las lecturas quedan pendientes hasta
+recibir datos o cancelar; ya no usan el antiguo plazo de 200 ms.
+Antes del join se cancela la E/S pendiente y se señala la parada; los buffers
+permanecen vivos hasta que Windows confirma la cancelación. CPU real: corte 2.
 
 La apertura y capturas se hacen en el Mac. La biblioteca hub-host se consume
-directamente; no se copia el contrato. Pasos siguientes: sistema de diseño,
-marco, conexión y anfitrión de escena, estado del núcleo y Roadmap de solo lectura.
+directamente; no se copia el contrato. La escena de desarrollo usa los mismos
+ejemplos que Electron, sin servicios productivos ni cuentas reales.

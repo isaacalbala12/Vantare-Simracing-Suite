@@ -17,22 +17,62 @@ use std::{
 use vantare_hub_host::protocol::{HostToUi, UiToHost};
 type Message = Result<HostToUi, io::ErrorKind>;
 type Wake = Arc<Mutex<Option<rune::Waker>>>;
+#[derive(Clone)]
+pub struct Sender {
+    channel: SyncSender<UiToHost>,
+    #[cfg(windows)]
+    signal: Option<Arc<crate::pipe::Signal>>,
+}
+impl Sender {
+    pub fn try_send(&self, message: UiToHost) -> io::Result<()> {
+        self.channel
+            .try_send(message)
+            .map_err(|error| match error {
+                mpsc::TrySendError::Full(_) => io::Error::from(io::ErrorKind::WouldBlock),
+                mpsc::TrySendError::Disconnected(_) => io::Error::from(io::ErrorKind::BrokenPipe),
+            })?;
+        #[cfg(windows)]
+        if let Some(signal) = &self.signal {
+            signal.signal()?;
+        }
+        Ok(())
+    }
+}
 pub struct Host {
-    pub outgoing: SyncSender<UiToHost>,
+    pub outgoing: Sender,
     incoming: Receiver<Message>,
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
     wake: Wake,
+    #[cfg(windows)]
+    connection: Option<Arc<crate::pipe::Connection>>,
+}
+#[cfg(all(test, debug_assertions))]
+pub enum CloseReply {
+    Allow,
+    Silent,
+    Reject,
 }
 #[cfg(debug_assertions)]
 pub struct Scene {
     messages: VecDeque<HostToUi>,
     closing: bool,
     close_answered: bool,
+    #[cfg(test)]
+    pub close_reply: CloseReply,
 }
 impl Drop for Host {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
+        #[cfg(windows)]
+        {
+            if let Some(connection) = &self.connection {
+                connection.cancel();
+            }
+            if let Some(signal) = &self.outgoing.signal {
+                let _ = signal.signal();
+            }
+        }
         if let Some(thread) = self.thread.take() {
             let _ = thread.join();
         }
@@ -63,6 +103,8 @@ impl Link {
                         messages: VecDeque::new(),
                         closing: false,
                         close_answered: false,
+                        #[cfg(test)]
+                        close_reply: CloseReply::Allow,
                     }),
                     hello,
                 ))
@@ -72,7 +114,15 @@ impl Link {
     }
     #[cfg(windows)]
     fn real(name: String, token: String) -> io::Result<(Self, HostToUi)> {
+        let connection = crate::pipe::Connection::open(&name)?;
+        let worker_connection = connection.clone();
+        let control = crate::pipe::Signal::new()?;
+        let worker_control = control.clone();
         let (outgoing, send) = mpsc::sync_channel(64);
+        let outgoing = Sender {
+            channel: outgoing,
+            signal: Some(control),
+        };
         let (receive, incoming) = mpsc::sync_channel(64);
         let stop = Arc::new(AtomicBool::new(false));
         let cancelled = stop.clone();
@@ -87,18 +137,27 @@ impl Link {
                 accepted
             };
             let result = (|| -> io::Result<()> {
-                let mut pipe = crate::pipe::Pipe::open(&name)?;
+                let mut pipe = crate::pipe::Pipe::new(worker_connection)?;
                 Client::authenticate(&mut pipe, &token)?;
                 drop(token);
                 let mut client = Client::default();
                 let deadline = Instant::now() + Duration::from_secs(15);
                 let mut greeted = false;
                 while !cancelled.load(Ordering::Acquire) {
-                    // Four idle wakeups/s instead of fifty. Outgoing requests still wake immediately.
-                    match send.recv_timeout(Duration::from_millis(250)) {
-                        Ok(message) => client.send(&mut pipe, &message)?,
-                        Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
-                        Err(mpsc::RecvTimeoutError::Timeout) => {}
+                    // Reset before draining: an enqueue racing with the drain leaves the event set.
+                    worker_control.reset()?;
+                    if cancelled.load(Ordering::Acquire) {
+                        return Ok(());
+                    }
+                    for _ in 0..64 {
+                        if cancelled.load(Ordering::Acquire) {
+                            return Ok(());
+                        }
+                        match send.try_recv() {
+                            Ok(message) => client.send(&mut pipe, &message)?,
+                            Err(mpsc::TryRecvError::Disconnected) => return Ok(()),
+                            Err(mpsc::TryRecvError::Empty) => break,
+                        }
                     }
                     for _ in 0..16 {
                         if cancelled.load(Ordering::Acquire) {
@@ -112,7 +171,16 @@ impl Link {
                             return Err(io::ErrorKind::OutOfMemory.into());
                         }
                     }
-                    if !greeted && Instant::now() >= deadline {
+                    let timeout = if greeted {
+                        None
+                    } else {
+                        Some(
+                            deadline
+                                .checked_duration_since(Instant::now())
+                                .ok_or(io::ErrorKind::TimedOut)?,
+                        )
+                    };
+                    if pipe.wait(&worker_control, timeout)? == crate::pipe::Ready::Timeout {
                         return Err(io::ErrorKind::TimedOut.into());
                     }
                 }
@@ -128,6 +196,7 @@ impl Link {
             stop,
             thread: Some(thread),
             wake,
+            connection: Some(connection),
         };
         match host.incoming.recv_timeout(Duration::from_secs(16)) {
             Ok(Ok(hello @ HostToUi::Hello { .. })) => Ok((Self::Host(host), hello)),
@@ -150,7 +219,7 @@ impl Link {
             Self::Scene(_) => {}
         }
     }
-    pub fn sender(&self) -> Option<SyncSender<UiToHost>> {
+    pub fn sender(&self) -> Option<Sender> {
         match self {
             Self::Host(h) => Some(h.outgoing.clone()),
             #[cfg(debug_assertions)]
@@ -179,10 +248,7 @@ impl Link {
     }
     pub fn send(&mut self, message: UiToHost) -> io::Result<()> {
         match self {
-            Self::Host(h) => h
-                .outgoing
-                .try_send(message)
-                .map_err(|_| io::ErrorKind::WouldBlock.into()),
+            Self::Host(h) => h.outgoing.try_send(message),
             #[cfg(debug_assertions)]
             Self::Scene(messages) => scene(messages, message),
         }
@@ -211,6 +277,18 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
             request: Request::WindowClose {},
             ..
         } => {
+            #[cfg(test)]
+            match state.close_reply {
+                CloseReply::Silent => return Ok(()),
+                CloseReply::Reject => {
+                    messages.push_back(HostToUi::Failure {
+                        id: 0,
+                        error: protocol::HostError::CoreUnavailable,
+                    });
+                    return Ok(());
+                }
+                CloseReply::Allow => {}
+            }
             state.closing = true;
             messages.push_back(HostToUi::CloseRequested {
                 reason: protocol::CloseReason::Window,
@@ -236,13 +314,80 @@ mod tests {
     use super::*;
     use vantare_hub_host::protocol::{Reply, Request};
     #[test]
+    #[cfg(windows)]
+    fn drop_cancels_the_pending_read_before_joining_the_worker() {
+        use std::io::{Read, Write};
+        let (_server, connection) = crate::pipe::tests::connected_pair();
+        let control = crate::pipe::Signal::new().unwrap();
+        let worker_connection = connection.clone();
+        let worker_control = control.clone();
+        let (armed, ready) = mpsc::channel();
+        let (cancelled, observed_cancel) = mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            let mut pipe = crate::pipe::Pipe::new(worker_connection).unwrap();
+            let mut byte = [0];
+            assert_eq!(
+                pipe.read(&mut byte).unwrap_err().kind(),
+                io::ErrorKind::WouldBlock
+            );
+            armed.send(()).unwrap();
+            pipe.wait(&worker_control, None).unwrap();
+            // An event alone is insufficient: Drop must have made I/O terminal before join.
+            cancelled
+                .send(matches!(pipe.write(b"must not be sent"),
+                Err(error) if error.kind() == io::ErrorKind::ConnectionAborted))
+                .unwrap();
+        });
+        ready.recv().unwrap();
+        let (channel, _receiver) = mpsc::sync_channel(1);
+        let (_publish, incoming) = mpsc::sync_channel(1);
+        let host = Host {
+            outgoing: Sender {
+                channel,
+                signal: Some(control.clone()),
+            },
+            incoming,
+            stop: Arc::new(AtomicBool::new(false)),
+            thread: Some(thread),
+            wake: Arc::new(Mutex::new(None)),
+            connection: Some(connection.clone()),
+        };
+        // Rescue a broken implementation instead of hanging the test runner on join forever.
+        // The channel establishes ordering; the timeout is only a failure bound.
+        let (dropped, done) = mpsc::channel();
+        let watchdog = std::thread::spawn(move || {
+            if done.recv_timeout(Duration::from_secs(1)).is_ok() {
+                return false;
+            }
+            connection.cancel();
+            control.signal().unwrap();
+            true
+        });
+        drop(host);
+        dropped.send(()).unwrap();
+        assert!(
+            !watchdog.join().unwrap(),
+            "Drop must cancel before waiting for the worker"
+        );
+        assert!(
+            observed_cancel.recv().unwrap(),
+            "I/O must be cancelled before join"
+        );
+    }
+    #[test]
     fn setup_wakes_for_messages_queued_before_registration() {
         let (outgoing, _send) = mpsc::sync_channel(1);
         let (receive, incoming) = mpsc::sync_channel(1);
         receive.send(Err(io::ErrorKind::BrokenPipe)).unwrap();
         let mut link = Link::Host(Host {
-            outgoing,
+            outgoing: Sender {
+                channel: outgoing,
+                #[cfg(windows)]
+                signal: None,
+            },
             incoming,
+            #[cfg(windows)]
+            connection: None,
             stop: Arc::new(AtomicBool::new(false)),
             thread: None,
             wake: Arc::new(Mutex::new(None)),

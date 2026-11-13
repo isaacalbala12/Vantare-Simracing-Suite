@@ -171,11 +171,7 @@ export function General() {
         </SettingRow>
         <SettingRow
           label={t("general.toasts")}
-          note={
-            <GeneralAvailabilityNote>
-              {t("general.toastsHelp")}
-            </GeneralAvailabilityNote>
-          }
+          description={t("general.toastsHelp")}
         >
           {toggle("toasts", t("general.toasts"), view.general.toasts)}
         </SettingRow>

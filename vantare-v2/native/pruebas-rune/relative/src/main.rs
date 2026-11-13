@@ -195,7 +195,23 @@ fn application() -> Result<(), Box<dyn std::error::Error>> {
     let reader = Reader::start(&name)?;
     let shared = reader.shared.clone();
     let excluded = std::env::var("VANTARE_MEASUREMENT_EXCLUDE_CAPTURE").is_ok_and(|v| v == "1");
-    rune::run_windows_with(RunOptions { accessory: true }, move |_displays| {
+    let monitor_origin = std::env::var("VANTARE_MEASUREMENT_MONITOR_ORIGIN")
+        .ok()
+        .map(|value| -> Result<(i32, i32), Box<dyn std::error::Error>> {
+            let (x, y) = value
+                .split_once(',')
+                .ok_or("origen de monitor: usar x,y físicos")?;
+            Ok((x.trim().parse()?, y.trim().parse()?))
+        })
+        .transpose()?;
+    rune::run_windows_with(RunOptions { accessory: true }, move |displays| {
+        let display = monitor_origin.map_or(rune::DisplayTarget::Primary, |origin| {
+            let display = displays
+                .iter()
+                .find(|display| display.position == origin)
+                .unwrap_or_else(|| panic!("monitor de medición no encontrado en {origin:?}"));
+            rune::DisplayTarget::Id(display.id.clone().expect("monitor Windows sin identidad"))
+        });
         let spec = AppSpec {
             fonts: presentation::FONTS,
             families: ("Inter", "Inter"),
@@ -230,6 +246,7 @@ fn application() -> Result<(), Box<dyn std::error::Error>> {
             OverlaySpec::new("Vantare Relative Rune", (WIDTH, HEIGHT), view)
                 .options(OverlayOptions {
                     placement: Some(OverlayPlacement::FullScreen),
+                    display,
                     input: OverlayInput::Regions,
                     exclude_from_capture: excluded,
                     ..Default::default()

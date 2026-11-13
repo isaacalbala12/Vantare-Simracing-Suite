@@ -61,3 +61,11 @@ Windows cruzado Release 24,87 s incremental (no comparable entre máquinas);
 29.349.376 bytes, SHA256 438326b048bc641d4e74f421dfce79e4975ba3267c7be2de2d3c890ca07e05de.
 Mínimo libre de esta compilación 10,9477 GiB; ningún límite vulnerado.
 PE/procedencia y dumpbin comprobados; dibujo físico pendiente del PC.
+
+Para comprobar otro monitor, el controlador puede indicar
+VANTARE_MEASUREMENT_MONITOR_ORIGIN=x,y con su origen físico exacto
+(anotado en el entorno). Selecciona una sola ventana overlay en ese monitor;
+si no existe, el proceso falla en lugar de medir silenciosamente el principal.
+En GPUI se usa el desplazamiento existente VANTARE_DESPLAZAMIENTO con el
+mismo origen. Esta opción es únicamente para la lista manual, fuera de la
+campaña principal a 60 Hz. No se ha ejecutado en servidor.

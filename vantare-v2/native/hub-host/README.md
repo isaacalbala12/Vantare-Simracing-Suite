@@ -347,7 +347,7 @@ Capability nativa StepResultsRetry. execution.results es una unión cerrada:
 Unsupported (sin soporte), Unknown (sin foto fiable) o Known{value:resumen}.
 Unknown nunca significa cero fallos ni historial vacío.
 El resumen contiene run, profile, revision, accountGeneration, mode
-(profile/rehearsal), outcome opcional y hasta 128 steps {index,state}. Los índices
+(profile/rehearsal), outcome opcional, retryFailed y hasta 128 steps {index,state}. Los índices
 son posiciones originales, también cuando la misma app aparece varias veces.
 No incluye rutas, argumentos, documentos ni mensajes. Solo hay un resumen en
 memoria; al iniciar otra cadena se sustituye, y un reinicio lo pierde.
@@ -364,7 +364,9 @@ con terminal retenido y una primera lectura del documento. El residente relee
 una sola instantánea, exige el hash original, consulta a la autoridad y arranca
 por valor. No se vuelve al documento cacheado ni a métodos legacy. UnknownRun,
 NoFailedSteps y los demás rechazos son cerrados. Estado incompleto o panic no
-produce una foto completa inventada. Cancelled no entra en Failed.
+produce una foto completa inventada. El resumen describe la pasada final;
+retryFailed refleja por separado el criterio legacy de reintento. No deducirlo
+de los estados visibles ni convertir Cancelled/NotRun en fallos.
 
 Queued y OrderReceived Accepted siguen separados de Finished. Se usa el plazo
 exportado de 5 s; hueco, reinicio o falta de recibo = Unknown y no se reenvía.

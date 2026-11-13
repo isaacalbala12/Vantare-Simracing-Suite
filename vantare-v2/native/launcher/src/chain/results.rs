@@ -39,6 +39,15 @@ impl StepSnapshot {
         }
         self.complete = false;
     }
+    /// Same last-terminal-per-index criterion as legacy `retry_steps`, independent
+    /// of the visible final pass (which may not have reached an earlier failure).
+    pub fn failed_indices(&self) -> Vec<usize> {
+        self.last_terminal
+            .iter()
+            .enumerate()
+            .filter_map(|(index, state)| (*state == Some(StepState::Failed)).then_some(index))
+            .collect()
+    }
     pub(super) fn mark(&mut self, index: usize, state: StepState) {
         if let Some(step) = self.steps.get_mut(index) {
             if step.state == StepState::NotSelected {
@@ -61,13 +70,13 @@ impl StepSnapshot {
     pub(super) fn finish(&mut self, cancelled: bool) {
         for step in &mut self.steps {
             step.state = match step.state {
-                StepState::Pending | StepState::Waiting | StepState::Launching => self
-                    .last_terminal[usize::from(step.index)]
-                .unwrap_or(if cancelled && step.state != StepState::Pending {
-                    StepState::Cancelled
-                } else {
-                    StepState::NotRun
-                }),
+                StepState::Pending | StepState::Waiting | StepState::Launching => {
+                    if cancelled && step.state != StepState::Pending {
+                        StepState::Cancelled
+                    } else {
+                        StepState::NotRun
+                    }
+                }
                 state => state,
             };
         }
@@ -100,9 +109,10 @@ mod tests {
         result.mark(1, StepState::Launching);
         result.mark(4, StepState::Waiting);
         result.finish(true);
-        assert_eq!(result.steps[1].state, StepState::Ready);
-        assert_eq!(result.steps[3].state, StepState::Failed);
+        assert_eq!(result.steps[1].state, StepState::Cancelled);
+        assert_eq!(result.steps[3].state, StepState::NotRun);
         assert_eq!(result.steps[4].state, StepState::Cancelled);
+        assert_eq!(result.failed_indices(), vec![3]);
         assert!(StepSnapshot::new(129, &[0]).is_none());
     }
 }

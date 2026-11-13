@@ -238,6 +238,7 @@ fn result_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
         account: "c".repeat(64).try_into().expect("account"),
         mode: RunMode::Rehearsal,
         outcome: Some(outcome),
+        retry_failed: true,
         steps: vec![
             StepResult {
                 index: 0,

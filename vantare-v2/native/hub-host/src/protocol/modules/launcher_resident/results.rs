@@ -95,6 +95,7 @@ pub struct ResidentRunResults {
     pub account_generation: String,
     pub mode: ResidentRunMode,
     pub outcome: Option<ResidentOutcome>,
+    pub retry_failed: bool,
     pub steps: Vec<ResidentStepResult>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -117,6 +118,7 @@ impl From<&wire::RunResults> for ResidentRunResults {
                 wire::RunMode::Rehearsal => ResidentRunMode::Rehearsal,
             },
             outcome: value.outcome.map(ResidentOutcome::from),
+            retry_failed: value.retry_failed,
             steps: value
                 .steps
                 .iter()
@@ -194,12 +196,7 @@ pub(crate) fn retry(
     {
         return Err(reject(native::control::OrderRejection::DocumentUnavailable));
     }
-    if target.scope == ResidentRetryScope::Failed
-        && !summary
-            .steps
-            .iter()
-            .any(|step| step.state == wire::StepState::Failed)
-    {
+    if target.scope == ResidentRetryScope::Failed && !summary.retry_failed {
         return Err(reject(native::control::OrderRejection::NoFailedSteps));
     }
     super::order_mailbox::enqueue(path, |request| {

@@ -54,6 +54,7 @@ pub struct RunResults {
     pub account: AccountGeneration,
     pub mode: RunMode,
     pub outcome: Option<ChainOutcome>,
+    pub retry_failed: bool,
     pub steps: Vec<StepResult>,
 }
 impl RunResults {

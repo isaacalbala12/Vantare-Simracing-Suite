@@ -24,6 +24,7 @@ const results = {
   revision: target.revision,
   accountGeneration: target.accountGeneration,
   mode: "rehearsal",
+  retryFailed: true,
   outcome: { kind: "failed", reason: "step-failed" },
   steps: [
     { index: 0, state: "not-selected" },

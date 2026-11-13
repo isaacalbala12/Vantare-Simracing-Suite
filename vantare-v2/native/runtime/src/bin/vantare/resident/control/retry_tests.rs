@@ -54,6 +54,7 @@ fn failed_only_then_all_preserves_the_original_rehearsal_selection_and_exact_sna
     f.owner.document.profiles[0].steps[3].args_override =
         Some(vec!["stale-cache-must-not-execute".into()]);
     f.owner.run_record.as_mut().unwrap().summary.steps[1].state = StepState::Ready;
+    f.owner.run_record.as_mut().unwrap().failed = vec![3];
     let mut command = request(&f);
     let original = fs::read(&f.owner.path).unwrap();
     let path = f.owner.path.clone();
@@ -217,6 +218,8 @@ fn only_failed_steps_are_eligible_and_document_changes_never_fall_back_to_cache(
         let command = request(&f);
         let reason = match case {
             0 => {
+                f.owner.run_record.as_mut().unwrap().failed.clear();
+                f.owner.run_record.as_mut().unwrap().summary.retry_failed = false;
                 for step in &mut f.owner.run_record.as_mut().unwrap().summary.steps {
                     if step.state == StepState::Failed {
                         step.state = StepState::Cancelled;

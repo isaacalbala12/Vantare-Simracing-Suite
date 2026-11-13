@@ -486,6 +486,7 @@
                   "reason": "step-failed"
                 },
                 "profile": "qa",
+                "retryFailed": true,
                 "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
                 "run": "1",
                 "steps": [

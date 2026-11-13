@@ -140,7 +140,7 @@ No manda índices desde la interfaz y no mata procesos desde el renderer.
 Handoff D: launcher.resident.retry, target con instance/accountGeneration/run/
 profile/revision/scope (failed|all), Queued{request}. execution.results es
 Unsupported | Unknown | Known{value:{run,profile,revision,accountGeneration,
-mode,outcome,steps[{index,state}]}}. Unknown no es un resultado vacío.
+mode,outcome,retryFailed,steps[{index,state}]}}. Unknown no es un resultado vacío.
 mode describe el origen profile/rehearsal, también después de un reintento.
 No deducir la selección original de NotSelected del resumen actual. Hace falta
 el terminal retenido y la misma cuenta; sin recibo/hueco/reinicio = Unknown, sin
@@ -148,8 +148,14 @@ reenvío. El resumen no sustituye la correlación de recibos y terminales.
 Los nuevos rechazos comunes son unknown-run y no-failed-steps; los consumidores
 de órdenes anteriores deben tratar motivos ajenos como Unknown.
 
+Ajuste de revisión #2298: steps describe solo la pasada final, sin recuperar
+Ready de una pasada anterior si el paso ya no se alcanza. El criterio de
+retry_steps se conserva aparte en memoria; retryFailed indica la elegibilidad
+real para reintentar fallidos. D no debe deducirla de los estados visibles.
+El archivo de estado se sobrescribe; no genera un historial de ejecuciones.
+
 Validación local por la cola: fmt y Clippy all-targets -D warnings PASS;
-1.721 tests nativos y 34 de telemetría PASS. Tras rebasar la UI L54, ambos
+1.722 tests nativos y 34 de telemetría PASS tras el ajuste de revisión. Ambos
 typechecks, Biome y 52 regresiones web PASS. Tipos/corpus v35 exportados desde
 Rust. Comprobación final tras reforzar dos tests: Clippy y 95 tests del binario
 residente PASS. Slot liberado y G avisado para reanudar. Draft contra nightly;

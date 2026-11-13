@@ -48,6 +48,7 @@ export function isRunResults(value: unknown): boolean {
       "accountGeneration",
       "mode",
       "outcome",
+      "retryFailed",
       "steps",
     ]) &&
     decimal(value.run) &&
@@ -56,6 +57,7 @@ export function isRunResults(value: unknown): boolean {
     hex(value.accountGeneration, 64) &&
     oneOf(value.mode, residentRunModes) &&
     (value.outcome === null || isResidentOutcome(value.outcome)) &&
+    typeof value.retryFailed === "boolean" &&
     Array.isArray(value.steps) &&
     value.steps.length > 0 &&
     value.steps.length <= residentStepLimit &&

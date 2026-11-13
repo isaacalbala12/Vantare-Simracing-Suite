@@ -386,6 +386,7 @@ fn a_results_summary_is_discarded_by_the_frozen_decoder_without_losing_legacy_st
         account: "c".repeat(64).try_into().unwrap(),
         mode: RunMode::Rehearsal,
         outcome: Some(outcome),
+        retry_failed: true,
         steps: vec![StepResult {
             index: 0,
             state: StepState::Failed,

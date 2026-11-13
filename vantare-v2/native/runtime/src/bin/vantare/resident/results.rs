@@ -5,18 +5,13 @@ use vantare_ipc::launcher::results::{RetryScope, RunMode, RunResults, StepState}
 pub(super) struct RunRecord {
     pub summary: RunResults,
     pub original: Vec<usize>,
+    pub failed: Vec<usize>,
 }
 impl RunRecord {
     pub(super) fn selection(&self, scope: RetryScope) -> Vec<usize> {
         match scope {
             RetryScope::All => self.original.clone(),
-            RetryScope::Failed => self
-                .summary
-                .steps
-                .iter()
-                .filter(|step| step.state == StepState::Failed)
-                .map(|step| usize::from(step.index))
-                .collect(),
+            RetryScope::Failed => self.failed.clone(),
         }
     }
 }
@@ -44,6 +39,7 @@ impl Owner {
         });
         self.run_record = Some(RunRecord {
             original,
+            failed: Vec::new(),
             summary: RunResults {
                 run,
                 profile,
@@ -51,6 +47,7 @@ impl Owner {
                 account: scope.account.clone(),
                 mode,
                 outcome: None,
+                retry_failed: false,
                 steps: snapshot.steps,
             },
         });
@@ -79,8 +76,10 @@ impl Owner {
             && let Some(record) = &mut self.run_record
             && record.summary.run == run
         {
+            record.failed = snapshot.failed_indices();
             record.summary.steps = snapshot.steps;
             record.summary.outcome = Some(outcome);
+            record.summary.retry_failed = !record.failed.is_empty();
         } else {
             self.run_record = None;
         }

@@ -133,3 +133,21 @@ it("cancels only the active captured run", () => {
     outcome: { kind: "cancelled" },
   });
 });
+
+it("rejects a queued rehearsal if the observed account changes before consumption", () => {
+  const f = fixture();
+  f.handle({
+    kind: "request",
+    id: 1,
+    request: { method: "launcher.resident.rehearse", target: f.target },
+  });
+  f.core.accountGeneration = "e".repeat(64);
+  f.tasks.shift()?.();
+  expect(f.value.execution?.events.at(-1)?.kind).toMatchObject({
+    kind: "order-received",
+    receipt: { kind: "rejected", reason: "account-changed" },
+  });
+  expect(f.value.execution?.active).toBeNull();
+  expect(f.value.running).toBe(false);
+  expect(f.tasks).toHaveLength(0);
+});

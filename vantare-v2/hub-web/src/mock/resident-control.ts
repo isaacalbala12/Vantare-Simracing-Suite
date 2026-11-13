@@ -123,7 +123,25 @@ export function createResidentControlMock(
           doc?.profiles
             .find((profile) => profile.id === request.target.profile)
             ?.apps.every((app) => app === "lmu");
-        const rejected = scene === "launcher-control-rejected" || empty;
+        let rejection: ResidentOrderRejection | undefined = empty
+          ? "no-steps"
+          : scene === "launcher-control-rejected"
+            ? "start-failed"
+            : undefined;
+        if (target.accountGeneration !== context.core.accountGeneration)
+          rejection = "account-changed";
+        else if (target.instance !== view.execution?.instance)
+          rejection = "wrong-instance";
+        else if (
+          !cancelling &&
+          (!context.core.access.verified ||
+            context.core.access.blocked ||
+            context.core.live)
+        )
+          rejection = "denied";
+        else if (!cancelling && doc?.revision !== target.revision)
+          rejection = "revision-mismatch";
+        const rejected = rejection !== undefined;
         let run = execution.active?.run;
         if (!rejected && !run) {
           run = seq();
@@ -137,7 +155,7 @@ export function createResidentControlMock(
             receipt: rejected
               ? {
                   kind: "rejected",
-                  reason: empty ? "no-steps" : "start-failed",
+                  reason: rejection ?? "start-failed",
                 }
               : { kind: "accepted", run: run ?? "1" },
           },
@@ -152,6 +170,7 @@ export function createResidentControlMock(
           if (doc) doc.running = true;
         }
         if (
+          !rejected &&
           cancelling &&
           scene === "launcher-control-closing" &&
           execution.active

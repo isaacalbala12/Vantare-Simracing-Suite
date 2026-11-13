@@ -6,7 +6,7 @@ corrige el marco e Inicio; la nueva aprobación visual sigue pendiente.
 
 | Requisito ADR 0108 §4 | Resultado verificado | Pendiente para aceptar |
 | --- | --- | --- |
-| Windows 10 22H2 y 11, 100/125/150 % | Clippy Windows local PASS en 4186911d; build/tests nuevos pendientes de CI/cola; 66 capturas Mac en las tres escalas | Ventana real en ambos Windows; windows-latest y capturas Mac no certifican esos sistemas |
+| Windows 10 22H2 y 11, 100/125/150 % | Build/Clippy y 59 tests Windows CI PASS en e553d9fb; 66 capturas Mac en las tres escalas | Ventana real en ambos Windows; windows-latest y capturas Mac no certifican esos sistemas |
 | Teclado español, acentos y AltGr en campos | Catálogo Unicode y escritura/pegado Unicode en la búsqueda CPU PASS | Entrada física/IME/AltGr en la búsqueda real |
 | Todo por teclado y controles con nombre | **PASS manual de Isaac en Mac:** Tab, Enter, Espacio, tema, Inicio/Roadmap y X; «súper bien». Tests de foco, activación y nombres PASS | Lector de pantalla real; el PASS manual corresponde a 5e1c7024 |
 | Aspecto fiel aprobado por Isaac | **FALLO visual inicial de Isaac.** Nuevas comparativas completas y arreglos en #2297 | Revisión y aprobación visual de Isaac; las capturas no convierten el resultado en PASS |
@@ -57,10 +57,12 @@ targets D:. Ninguna ejecución de la aplicación ni opción gráfica de Rune en 
 Rune d5338988, Rust 1.99.1, --locked, 463 paquetes permisivos, sin MPL/ogg-audio.
 Mac e6fcb3271: build y 52 tests PASS; 29 avisos existentes del host sin uso
 en esa plataforma. Clippy Windows 4186911d PASS en cola, -j2. TypeScript y Biome
-PASS. CI web e6fcb3271 PASS. Prueba web local: un archivo/3 tests PASS, otros tres
+PASS. CI web e553d9fb PASS. Prueba web local: un archivo/3 tests PASS, otros tres
 workers no arrancaron a tiempo; registro conservado, no se considera gate PASS.
 La CI web sí pasó typecheck, lint, tests, build y pruebas de navegador.
-Los checks definitivos y HEAD de la entrega están en el PR.
+CI Rune e553d9fb PASS: Clippy, 59 tests y enlace del ejecutable Windows sin
+ejecutarlo. CI web, calidad y gates PASS en el mismo SHA. El último cambio
+documental conserva ese código; HEAD/checks definitivos se consultan en el PR.
 
 La X observada por Isaac cierra la ventana; no certifica por sí sola la duración
 del proceso. El cliente conserva WindowClose → CloseRequested → CloseAnswer,

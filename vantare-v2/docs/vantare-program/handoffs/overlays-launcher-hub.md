@@ -2324,8 +2324,10 @@ deshabilitado como Electron, avatar demo IA y Studio al final del raíl derecho.
 Fecha congelada de referencia Electron: 30/09. Revisión e6fcb3271: 52 tests Mac
 PASS y 66 capturas/66 parejas completas; originales, hashes y tamaños comprobados
 en D:/VantareServer/evidence/hub-rune/review-2297-r2/index.html.
-Clippy local en cola PASS en 4186911d. Tests Windows y CI del head pendientes.
-TypeScript/Biome/catálogo/licencias PASS; CI web e6fcb3271 PASS. Tests web locales:
+Clippy local en cola PASS en 4186911d. CI e553d9fb verde: Rune (Clippy, 59 tests Windows y enlace sin ejecución),
+web, calidad y gates. El cierre documental no modifica el código verificado;
+HEAD/checks finales y tests locales de Windows se consultan en #2297.
+TypeScript/Biome/catálogo/licencias PASS; CI web e553d9fb PASS. Tests web locales:
 3 PASS y tres workers agotaron su arranque; se conserva el fallo de entorno,
 no se declara PASS local. La CI web sí completó toda su batería.
 Mac: target propio retirado (1,93 GiB), 15,53 → 17,27 GiB libres; binario/hash

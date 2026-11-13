@@ -548,3 +548,19 @@ div.v-launcher-app-tile {
 button.v-launcher-app-tile {
   font-size: 14px;
 }
+
+.v-launcher-actions .v-button[aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+.v-launcher-control-help {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 18px;
+}
+.v-launcher-control-help p {
+  margin: 8px 0 0;
+}
+.v-resident-control-notice {
+  margin-bottom: 12px;
+}

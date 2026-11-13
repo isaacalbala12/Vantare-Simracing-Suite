@@ -11,11 +11,11 @@ import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/calendar-demo.json";
 import freshSettings from "../fixtures/settings-base.json";
-import {defaultWindowsNotifications} from "../src/contract/generated/settings";
 import {
   type CalendarConfigView,
   calendarDefaultAlerts,
 } from "../src/contract/generated/calendar";
+import { defaultWindowsNotifications } from "../src/contract/generated/settings";
 import { SectionChromeProvider } from "../src/renderer/app/SectionChrome";
 import { calendarAlertsText as text } from "../src/renderer/i18n/calendarAlerts";
 import CalendarEntry from "../src/renderer/screens/calendar/entry";
@@ -683,12 +683,27 @@ it("a new installation can use Windows alerts without an off-in-General warning"
   expect(freshSettings.general.toasts).toBe(defaultWindowsNotifications);
   expect(defaultWindowsNotifications).toBe(true);
   api.toasts = freshSettings.general.toasts;
-  api.request.mockResolvedValue({method:"calendar.configLoad",value:{utc:true,prefsRevision:"a".repeat(64),following:[],followingRevision:"b".repeat(64),alerts:{...calendarDefaultAlerts,bands:[],slots:[]},alertsRevision:"c".repeat(64),documents:{prefs:"ready",following:"ready",alerts:"ready"}}});
+  api.request.mockResolvedValue({
+    method: "calendar.configLoad",
+    value: {
+      utc: true,
+      prefsRevision: "a".repeat(64),
+      following: [],
+      followingRevision: "b".repeat(64),
+      alerts: { ...calendarDefaultAlerts, bands: [], slots: [] },
+      alertsRevision: "c".repeat(64),
+      documents: { prefs: "ready", following: "ready", alerts: "ready" },
+    },
+  });
   render(content());
   await act(async () => {});
-  fireEvent.click(screen.getByRole("button",{name:"Avisos"}));
+  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
   await act(async () => {});
   expect(screen.queryByText(text.windowsDisabled)).toBeNull();
-  expect(screen.getByRole("checkbox",{name:text.windows}).getAttribute("aria-disabled")).not.toBe("true");
+  expect(
+    screen
+      .getByRole("checkbox", { name: text.windows })
+      .getAttribute("aria-disabled"),
+  ).not.toBe("true");
   expect(api.noticeAllowed).toHaveBeenLastCalledWith(true);
 });

@@ -1591,10 +1591,16 @@ describe("honest notification preferences", () => {
     expect(screen.getByText(t("general.toastsHelp"))).toBeTruthy();
     expect(hook.result.current.view?.general.toasts).toBe(true);
     await userEvent.setup().click(control);
-    await waitFor(() => expect(hook.result.current.view?.general.toasts).toBe(false));
-    expect(screen.queryByRole("button", {name:t("general.testNotice")})).toBeNull();
+    await waitFor(() =>
+      expect(hook.result.current.view?.general.toasts).toBe(false),
+    );
+    expect(
+      screen.queryByRole("button", { name: t("general.testNotice") }),
+    ).toBeNull();
     await userEvent.setup().click(control);
-    await waitFor(() => expect(hook.result.current.view?.general.toasts).toBe(true));
+    await waitFor(() =>
+      expect(hook.result.current.view?.general.toasts).toBe(true),
+    );
     const test = screen.getByRole("button", { name: t("general.testNotice") });
     await userEvent.setup().click(test);
     await waitFor(() =>

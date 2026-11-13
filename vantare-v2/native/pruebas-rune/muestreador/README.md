@@ -87,3 +87,13 @@ unknown y cpu_temperature_verified=false. Requiere confirmación física/manual;
 no se inventa temperatura ni se declara comprobación térmica completa.
 Soporte de contadores, sesiones ETW, driver, parentesco y los nuevos modos
 sigue sin ejecutar hasta el PC. Falta integrar estos datos con la campaña.
+
+## Cancelaciones y evidencia incompleta
+
+Si falla una muestra se conservan procesos, contadores, temperaturas y eventos
+de creación ya recogidos, además de salida y errores de PresentMon. Al cerrar
+se termina únicamente el PresentMon propio y su sesión ETW de nombre GUID
+generado por el muestreador. No se usa stop_existing_session ni se detienen
+capturas ajenas. Un fallo de limpieza deja INVALIDA y su explicación.
+Sintaxis de PowerShell y compilación de tipos C# verificadas sin llamadas ETW.
+El camino real de cancelación sigue pendiente del PC.

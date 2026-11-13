@@ -1,3 +1,15 @@
+## VANTA-141 · Piezas 6+7 listas para integración (13/11/2026)
+
+Issue #2213, Plane En curso. Carga sintética Release compilada por cola;
+muestreador con PresentMon 2.6.0 oficial, contadores por familia, temperaturas
+GPU, detección de pérdidas ETW y modo salud de aguante. Once tests puros de
+agregación PASS. Tipos C# compilados y tamaños ABI verificados; ningún contador,
+adaptador ni sesión ETW se ha abierto en el servidor. Cancelación conserva
+CSV parciales y logs, y cierra exclusivamente la sesión propia de GUID.
+CPU térmica desconocida requiere verificación manual: no se inventa un sensor.
+El PC verificará contadores, driver, pérdidas, captura y calibración de carga.
+Falta integrar la campaña y el kit final. Sin merge ni release.
+
 ## VANTA-141 · Piezas 6+7 preparadas para integración
 
 Carga D3D11 compilada por cola MSVC /O2 /MT, fuente 5521fd669, 282.624 bytes,

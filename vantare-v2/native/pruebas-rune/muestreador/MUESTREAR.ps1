@@ -43,6 +43,7 @@ $info.RedirectStandardOutput=$true; $info.RedirectStandardError=$true
 foreach ($argument in @('--output_file',(Join-Path $out 'presentmon.csv'),'--qpc_time','--timed',[string]$Seconds,'--terminate_after_timed','--no_console_stats','--write_display_metadata','--session_name',$sessionName)) { $info.ArgumentList.Add($argument) }
 $pm=[Diagnostics.Process]::new(); $pm.StartInfo=$info
 $pmStarted=$false; $counter=$null; $thermals=$null; $subscription=$null
+$stdout=$null; $stderr=$null; $failed=$false
 $rows=[Collections.Generic.List[object]]::new(); $rawCounters=[Collections.Generic.List[object]]::new()
 $thermalRows=[Collections.Generic.List[object]]::new(); $processStarts=[Collections.Generic.List[object]]::new()
 $family=@{}; $seenStarts=@{}; $sampler=[Diagnostics.Process]::GetCurrentProcess()
@@ -193,15 +194,36 @@ try {
     [ordered]@{complete=$true;qpc_frequency=[Diagnostics.Stopwatch]::Frequency;process_rows=$rows.Count;counter_rows=$rawCounters.Count;family=$family;seconds=$watch.Elapsed.TotalSeconds;sampler_id=$PID;presentmon_id=if($pmStarted){$pm.Id}else{0};health_only=[bool]$Aguante;cpu_temperature_verified=$false} |
         ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $out 'completo.json') -Encoding utf8
 } catch {
+    $failed=$true
     $_.Exception.Message | Set-Content -LiteralPath (Join-Path $out 'INVALIDA.txt') -Encoding utf8
     $rows | Export-Csv -LiteralPath (Join-Path $out 'procesos-incompletos.csv') -NoTypeInformation -Encoding utf8
     $rawCounters | Export-Csv -LiteralPath (Join-Path $out 'contadores-incompletos.csv') -NoTypeInformation -Encoding utf8
+    $thermalRows | Export-Csv -LiteralPath (Join-Path $out 'temperaturas-incompletas.csv') -NoTypeInformation -Encoding utf8
+    $processStarts | Export-Csv -LiteralPath (Join-Path $out 'procesos-iniciados-incompletos.csv') -NoTypeInformation -Encoding utf8
     throw
 } finally {
     if ($subscription) { Unregister-Event -SourceIdentifier $sourceId }
     foreach ($processEvent in @(Get-Event -SourceIdentifier $sourceId -ErrorAction SilentlyContinue)) { Remove-Event -EventIdentifier $processEvent.EventIdentifier }
     if ($thermals) { $thermals.Dispose() }
     if ($counter) { $counter.Dispose() }
-    if ($pmStarted -and -not $pm.HasExited) { $pm.Kill(); $pm.WaitForExit() }
+    $cleanupErrors=[Collections.Generic.List[string]]::new()
+    if ($pmStarted) {
+        try {
+            if (-not $pm.HasExited) { $pm.Kill() }
+            if (-not $pm.WaitForExit(5000)) { throw 'PresentMon propio no terminó al cancelar.' }
+            if ($stdout) { [IO.File]::WriteAllText((Join-Path $out 'presentmon.stdout.txt'),$stdout.GetAwaiter().GetResult()) }
+            if ($stderr) { [IO.File]::WriteAllText((Join-Path $out 'presentmon.stderr.txt'),$stderr.GetAwaiter().GetResult()) }
+        } catch { $cleanupErrors.Add($_.Exception.Message) }
+        try {
+            # Nombre GUID creado arriba por este proceso; nunca parar capturas ajenas.
+            $status=[Vantare141.CaptureSession]::StopOwned($sessionName)
+            if ($status -ne 0 -and $status -ne 4201) { throw "No se pudo cerrar la sesión ETW propia: $status" }
+        } catch { $cleanupErrors.Add($_.Exception.Message) }
+    }
     $pm.Dispose(); $sampler.Dispose()
+    if ($cleanupErrors.Count) {
+        $cleanupErrors | Set-Content -LiteralPath (Join-Path $out 'limpieza-incompleta.txt') -Encoding utf8
+        'Limpieza incompleta; consultar limpieza-incompleta.txt.' | Add-Content -LiteralPath (Join-Path $out 'INVALIDA.txt') -Encoding utf8
+        if (-not $failed) { throw 'La muestra no es válida: limpieza incompleta.' }
+    }
 }

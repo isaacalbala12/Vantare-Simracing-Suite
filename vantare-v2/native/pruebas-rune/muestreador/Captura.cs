@@ -1,5 +1,5 @@
 // Windows SDK 10.0.26100.0 shared/evntrace.h, EVENT_TRACE_PROPERTIES (x64).
-// Only QUERY of our own unique session; never stops someone else's capture.
+// QUERY and cleanup of the unique session created by this sampler.
 // Loading/compiling this type makes no native calls and creates no device.
 using System;
 using System.Runtime.InteropServices;
@@ -17,10 +17,14 @@ namespace Vantare141 {
         [DllImport("advapi32.dll", CharSet=CharSet.Unicode)]
         static extern uint ControlTraceW(ulong handle, string name, IntPtr properties, uint control);
 
-        public static CaptureState Query(string name) {
+        public static CaptureState Query(string name) { return Control(name,0); }
+        public static uint StopOwned(string name) { return Control(name,1).Status; }
+        static CaptureState Control(string name, uint control) {
             if(IntPtr.Size != 8) throw new PlatformNotSupportedException("Usar PowerShell x64");
-            if(String.IsNullOrEmpty(name) || !name.StartsWith("vantare141-",StringComparison.Ordinal))
-                throw new ArgumentException("Solo consultar la sesion propia");
+            Guid identity;
+            if(String.IsNullOrEmpty(name) || !name.StartsWith("vantare141-",StringComparison.Ordinal)
+                || !Guid.TryParseExact(name.Substring(11),"N",out identity))
+                throw new ArgumentException("Solo operar la sesion propia con GUID completo");
             const int size=65536;
             IntPtr memory=Marshal.AllocHGlobal(size);
             try {
@@ -30,7 +34,7 @@ namespace Vantare141 {
                 Marshal.WriteInt32(memory,116,120); // LoggerNameOffset
                 Marshal.WriteInt32(memory,112,120+label.Length); // LogFileNameOffset
                 Marshal.Copy(label,0,IntPtr.Add(memory,120),label.Length);
-                uint status=ControlTraceW(0,name,memory,0); // EVENT_TRACE_CONTROL_QUERY
+                uint status=ControlTraceW(0,name,memory,control); // QUERY=0, STOP=1
                 return new CaptureState {
                     Active=status==0, Status=status,
                     EventsLost=status==0 ? unchecked((uint)Marshal.ReadInt32(memory,88)) : 0,

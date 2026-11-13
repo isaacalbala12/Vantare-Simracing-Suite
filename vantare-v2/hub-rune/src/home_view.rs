@@ -1,4 +1,4 @@
-//! First Home slice: host data, preview and navigation. Launch actions follow separately.
+//! Home uses the host projection and launch contract; assets and labels come from Electron.
 use crate::{
     State,
     catalog::{catalog, text},
@@ -20,6 +20,7 @@ impl Assets {
             images: BTreeMap::new(),
         };
         assets.update(theme);
+        assets.track(theme, None);
         assets
     }
     pub fn update(&mut self, theme: &Theme) {
@@ -43,6 +44,23 @@ impl Assets {
             ),
         );
     }
+    pub fn track(&mut self, theme: &Theme, track: Option<&str>) {
+        self.images.retain(|key, _| !key.starts_with("track-"));
+        if let Some(key) = track_key(track) {
+            let resource = &catalog()["home"]["tracks"][key];
+            let svg = format!(
+                r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="{}"><path d="{}" fill="none" stroke="var(--accent-tint)" stroke-width="10"/><path d="{}" fill="none" stroke="var(--hero-ring)" stroke-width="2.5"/></svg>"#,
+                resource[0].as_str().unwrap(),
+                resource[1].as_str().unwrap(),
+                resource[1].as_str().unwrap()
+            );
+            self.images.insert(
+                format!("track-{key}"),
+                self.cache
+                    .svg(resolve_svg(&svg, theme).into_bytes(), 400.0, 1.5),
+            );
+        }
+    }
     fn picture(&self, key: &str, width: f32, height: f32, fill: bool) -> El {
         let element = el().size(width, height);
         self.images.get(key).map_or(element.clone(), |image| {
@@ -55,6 +73,17 @@ impl Assets {
                 },
             )
         })
+    }
+}
+fn track_key(track: Option<&str>) -> Option<&'static str> {
+    match track {
+        None => Some("lemans_h"),
+        Some(track) => catalog()["home"]["trackAliases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|pair| track.to_lowercase().contains(pair[0].as_str().unwrap()))
+            .and_then(|pair| pair[1].as_str()),
     }
 }
 fn resolve_svg(svg: &str, theme: &Theme) -> String {
@@ -190,18 +219,79 @@ fn studio_button(state: &State, key: &str, title: &str) -> El {
     button(&state.theme, key, title, studio)
         .disabled(!state.core.access.verified || state.core.access.blocked)
 }
+fn launch_button(state: &State, favorite: bool) -> El {
+    let theme = &state.theme;
+    let title = if state
+        .home
+        .value
+        .as_ref()
+        .is_some_and(|v| v.profiles.is_empty())
+        && favorite
+    {
+        text("home.create").to_owned()
+    } else if state.home.launching() {
+        text("home.launching").to_owned()
+    } else if favorite {
+        catalog()["home"]["launch"].as_str().unwrap().replace(
+            "__VANTARE_NAME__",
+            state
+                .home
+                .choice(true)
+                .map_or(text("home.noFavorite"), |p| &p.name),
+        )
+    } else {
+        text("home.selectedLaunch").to_owned()
+    };
+    let empty = favorite
+        && state
+            .home
+            .value
+            .as_ref()
+            .is_some_and(|v| v.profiles.is_empty() && !v.protected);
+    let allowed = if empty {
+        state.core.access.verified && !state.core.access.blocked
+    } else {
+        state.home.can_launch(&state.core, favorite)
+    };
+    button(
+        theme,
+        if favorite {
+            "home-launch-favorite"
+        } else {
+            "home-launch-selected"
+        },
+        &title,
+        move |s: &mut State| {
+            if empty {
+                if s.core.access.verified && !s.core.access.blocked {
+                    s.section = "launcher".into();
+                }
+            } else {
+                s.home.queue_launch(&s.core, favorite);
+            }
+        },
+    )
+    .disabled(!allowed)
+    .fill(theme.color(if allowed { "accent-fill" } else { "surface-2" }))
+}
 pub fn view(state: &State, cx: &Cx<State>) -> El {
     let theme = &state.theme;
     let data = state.home.value.as_ref();
     let mut page = col().key("home").w_full().gap(12.0).padding(24.0);
-    if state.home.failed || state.core.access.blocked || data.is_some_and(|v| v.protected) {
+    if state.home.failed
+        || state.home.launch_failed
+        || state.core.access.blocked
+        || data.is_some_and(|v| v.protected)
+    {
         page = page.child(
             surface(theme)
                 .key("home-error")
                 .role("status")
                 .child(label(
                     theme,
-                    text(if data.is_some_and(|v| v.protected) {
+                    text(if state.home.launch_failed {
+                        "home.failed"
+                    } else if data.is_some_and(|v| v.protected) {
                         "home.protected"
                     } else {
                         "home.accessError"
@@ -222,10 +312,62 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
     } else {
         "home.waiting"
     });
-    let hero = col()
+    let selected = state
+        .home
+        .choice(false)
+        .map_or(text("home.selectProfile"), |p| p.name.as_str());
+    let mut composer = row()
+        .key("home-composer")
+        .w_full()
+        .min_h(52.0)
+        .padding(8.0)
+        .gap(10.0)
+        .center_y()
+        .radius(10.0)
+        .fill(theme.color("surface-1"))
+        .child(label(theme, text("home.profile")).grow(1.0))
+        .child(
+            button(theme, "home-select", selected, |s: &mut State| {
+                s.home.choosing = !s.home.choosing
+            })
+            .disabled(data.is_none_or(|v| v.profiles.is_empty())),
+        )
+        .child(launch_button(state, false));
+    if state.home.choosing
+        && let Some(value) = data
+    {
+        let mut options = col()
+            .key("home-profile-options")
+            .role("group")
+            .label(text("home.profile"));
+        for profile in &value.profiles {
+            let id = profile.id.clone();
+            options = options.child(button(
+                theme,
+                &format!("home-profile-{}", profile.id),
+                &profile.name,
+                move |s: &mut State| {
+                    s.home.selected = id.clone();
+                    s.home.choosing = false;
+                },
+            ));
+        }
+        composer = composer.child(options);
+    }
+    page = page.child(composer);
+    let (window_width, window_height) = cx.window_viewport();
+    let hero_height = if window_height >= 1000.0 {
+        300.0
+    } else if window_height < 820.0 {
+        200.0
+    } else {
+        236.0
+    };
+    let hero_width = cx.layout_size("home-hero").map_or(600.0, |size| size[0]);
+    let mut hero = col()
         .key("home-hero")
         .w_full()
-        .h(236.0)
+        .h(hero_height)
         .padding(24.0)
         .gap(8.0)
         .radius(12.0)
@@ -247,7 +389,27 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             }),
         ))
         .child(el().grow(1.0))
-        .child(studio_button(state, "home-studio", text("home.studio")));
+        .child(
+            row()
+                .gap(8.0)
+                .child(launch_button(state, true))
+                .child(studio_button(state, "home-studio", text("home.studio"))),
+        );
+    let track = data.and_then(|v| v.sim.track.as_deref());
+    let track_key = track_key(track);
+    if let Some(key) = track_key {
+        hero = hero.child(
+            picture(
+                state,
+                &format!("track-{key}"),
+                hero_width * 0.58,
+                hero_height,
+                false,
+            )
+            .a11y_hidden()
+            .pin(None, Some(0.0), Some(0.0), None),
+        );
+    }
     page = page.child(hero);
     let mut overlay = card(theme, "home-overlay", text("home.overlay"));
     let mut activity = card(theme, "home-activity", text("home.activity"));
@@ -398,23 +560,36 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         rail = rail.child(message(theme, text("home.loading")));
     }
     rail = rail.child(heading(theme, text("home.templates")));
-    for (index, kind) in ["standings", "relative", "fuel-strategy", "delta"]
+    for (line, kinds) in [["standings", "relative"], ["fuel-strategy", "delta"]]
         .into_iter()
         .enumerate()
     {
-        let title = catalog()["home"]["templates"][index].as_str().unwrap();
-        rail = rail
-            .child(
-                picture(state, kind, 260.0, 92.0, false)
-                    .role("img")
-                    .label(title),
-            )
-            .child(studio_button(
-                state,
-                &format!("home-template-{kind}"),
-                title,
-            ));
+        let mut pair = row().gap(12.0);
+        for (column, kind) in kinds.into_iter().enumerate() {
+            let title = catalog()["home"]["templates"][line * 2 + column]
+                .as_str()
+                .unwrap();
+            pair = pair.child(
+                col()
+                    .grow(1.0)
+                    .min_w(0.0)
+                    .gap(8.0)
+                    .child(
+                        picture(state, kind, 124.0, 92.0, false)
+                            .role("img")
+                            .label(title),
+                    )
+                    .child(studio_button(
+                        state,
+                        &format!("home-template-{kind}"),
+                        title,
+                    )),
+            );
+        }
+        rail = rail.child(pair);
     }
+    let rail_width = (window_width * 0.22).clamp(300.0, 400.0);
+    rail = rail.w(rail_width);
     row()
         .key("home-screen")
         .grow(1.0)
@@ -460,7 +635,10 @@ mod tests {
             home_assets::WIDGETS.len(),
             vantare_hub_host::home::HomeWidgetKind::ALL.len()
         );
-        assert_eq!(assets.images.len(), home_assets::WIDGETS.len() + 1);
+        assert_eq!(
+            assets.images.len(),
+            home_assets::WIDGETS.len() + 1 + catalog()["home"]["tracks"].as_object().unwrap().len()
+        );
         for (kind, image) in assets.images {
             image
                 .wait()

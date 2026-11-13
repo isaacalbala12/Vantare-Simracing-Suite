@@ -78,6 +78,8 @@ pub struct Scene {
     close_answered: bool,
     #[cfg(test)]
     pub close_reply: CloseReply,
+    #[cfg(test)]
+    pub launches: Vec<vantare_hub_host::protocol::Request>,
     name: String,
     core: vantare_hub_host::protocol::CoreStatus,
 }
@@ -126,6 +128,8 @@ impl Link {
                         close_answered: false,
                         #[cfg(test)]
                         close_reply: CloseReply::Allow,
+                        #[cfg(test)]
+                        launches: Vec::new(),
                         name,
                         core,
                     }),
@@ -391,6 +395,31 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
                     },
                 });
             }
+        }
+        UiToHost::Request {
+            id,
+            request: request @ Request::LauncherLaunch { .. },
+        } => {
+            #[cfg(test)]
+            state.launches.push(request.clone());
+            let Request::LauncherLaunch {
+                profile,
+                base_revision,
+            } = request
+            else {
+                unreachable!()
+            };
+            let home = home_scene(&state.name)?;
+            let accepted = !home.protected
+                && state.core.access.verified
+                && !state.core.access.blocked
+                && !state.core.live
+                && home.revision == base_revision
+                && home.profiles.iter().any(|p| p.id == profile);
+            messages.push_back(HostToUi::Response {
+                id,
+                result: Reply::LauncherLaunch { accepted },
+            });
         }
         UiToHost::Request { id, .. } => messages.push_back(HostToUi::Failure {
             id,

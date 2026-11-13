@@ -11,6 +11,11 @@ struct Pending {
 pub struct Home {
     pub value: Option<HomeView>,
     pub failed: bool,
+    pub launch_failed: bool,
+    pub selected: String,
+    pub choosing: bool,
+    launch_queued: Option<bool>,
+    launch_pending: Option<Pending>,
     active: bool,
     retry: bool,
     next_id: u32,
@@ -21,6 +26,11 @@ impl Default for Home {
         Self {
             value: None,
             failed: false,
+            launch_failed: false,
+            selected: String::new(),
+            choosing: false,
+            launch_queued: None,
+            launch_pending: None,
             active: false,
             retry: false,
             next_id: 0x8000_0000,
@@ -29,6 +39,98 @@ impl Default for Home {
     }
 }
 impl Home {
+    pub fn choice(&self, favorite: bool) -> Option<&vantare_hub_host::home::HomeProfile> {
+        let value = self.value.as_ref()?;
+        if !favorite && let Some(profile) = value.profiles.iter().find(|p| p.id == self.selected) {
+            return Some(profile);
+        }
+        value
+            .profiles
+            .iter()
+            .find(|p| Some(&p.id) == value.favorite.as_ref())
+            .or_else(|| {
+                if favorite {
+                    None
+                } else {
+                    value.profiles.first()
+                }
+            })
+    }
+    pub fn launching(&self) -> bool {
+        self.launch_queued.is_some()
+            || self.launch_pending.is_some()
+            || self.value.as_ref().is_some_and(|v| {
+                matches!(
+                    v.launch,
+                    vantare_hub_host::home::LaunchProgress::Running { .. }
+                )
+            })
+    }
+    pub fn can_launch(
+        &self,
+        core: &vantare_hub_host::protocol::CoreStatus,
+        favorite: bool,
+    ) -> bool {
+        core.access.verified
+            && !core.access.blocked
+            && !core.live
+            && !self.launching()
+            && self.value.as_ref().is_some_and(|v| !v.protected)
+            && self.choice(favorite).is_some()
+    }
+    pub fn queue_launch(&mut self, core: &vantare_hub_host::protocol::CoreStatus, favorite: bool) {
+        if self.can_launch(core, favorite) {
+            self.launch_queued = Some(favorite);
+        }
+    }
+    pub fn next_launch(
+        &mut self,
+        now: f64,
+        core: &vantare_hub_host::protocol::CoreStatus,
+    ) -> Option<UiToHost> {
+        if self
+            .launch_pending
+            .as_ref()
+            .is_some_and(|p| now >= p.deadline)
+        {
+            self.launch_pending = None;
+            self.launch_failed = true;
+            self.retry = true;
+        }
+        let favorite = self.launch_queued.take()?;
+        if !self.can_launch(core, favorite) {
+            return None;
+        }
+        let profile = self.choice(favorite)?.id.clone();
+        let base_revision = self.value.as_ref()?.revision.clone();
+        let id = self.next_id;
+        self.next_id = id.checked_add(1)?;
+        self.launch_failed = false;
+        self.launch_pending = Some(Pending {
+            id,
+            deadline: now + f64::from(REQUEST_TIMEOUT_MS) / 1000.0,
+        });
+        Some(UiToHost::Request {
+            id,
+            request: Request::LauncherLaunch {
+                profile,
+                base_revision,
+            },
+        })
+    }
+    pub fn finish_launch(&mut self, id: u32, accepted: bool) -> bool {
+        if self.launch_pending.as_ref().is_none_or(|p| p.id != id) {
+            return false;
+        }
+        self.launch_pending = None;
+        self.launch_failed = !accepted;
+        self.retry = true;
+        true
+    }
+    #[cfg(test)]
+    pub fn last_request_id(&self) -> u32 {
+        self.next_id
+    }
     pub fn retry(&mut self) {
         self.retry = true;
     }
@@ -104,7 +206,11 @@ impl Home {
         true
     }
     pub fn due(&self) -> Option<f64> {
-        self.pending.as_ref().map(|p| p.deadline)
+        self.pending
+            .iter()
+            .chain(self.launch_pending.iter())
+            .map(|p| p.deadline)
+            .min_by(f64::total_cmp)
     }
 }
 
@@ -122,6 +228,75 @@ mod tests {
                 _ => None,
             })
             .unwrap()
+    }
+    fn ready() -> (Home, vantare_hub_host::protocol::CoreStatus) {
+        let mut home = Home::default();
+        let id = request(&home.next(0.0, true));
+        let value = serde_json::from_value(
+            crate::catalog::catalog()["home"]["scenes"]["inicio-base"].clone(),
+        )
+        .unwrap();
+        home.accept(id, Reply::HomeGet { value });
+        let mut core = vantare_hub_host::protocol::CoreStatus::default();
+        core.access.verified = true;
+        (home, core)
+    }
+    #[test]
+    fn launch_uses_the_profile_and_revision_once_and_refreshes_after_answer() {
+        let (mut home, core) = ready();
+        home.selected = "entreno-rapido".into();
+        home.queue_launch(&core, false);
+        home.queue_launch(&core, true);
+        let UiToHost::Request {
+            id,
+            request:
+                Request::LauncherLaunch {
+                    profile,
+                    base_revision,
+                },
+        } = home.next_launch(1.0, &core).unwrap()
+        else {
+            panic!("launch contract")
+        };
+        assert_eq!(profile, "entreno-rapido");
+        assert_eq!(base_revision, home.value.as_ref().unwrap().revision);
+        assert!(home.next_launch(2.0, &core).is_none());
+        assert!(!home.finish_launch(id + 1, true));
+        assert!(home.finish_launch(id, false));
+        assert!(home.launch_failed);
+        assert!(!home.next(3.0, true).is_empty());
+    }
+    #[test]
+    fn launch_rechecks_revocation_and_timeout_never_relaunches_automatically() {
+        let (mut home, mut core) = ready();
+        home.queue_launch(&core, true);
+        core.access.blocked = true;
+        assert!(home.next_launch(1.0, &core).is_none());
+        core.access.blocked = false;
+        home.queue_launch(&core, true);
+        let UiToHost::Request { id, .. } = home.next_launch(2.0, &core).unwrap() else {
+            unreachable!()
+        };
+        assert!(home.next_launch(48.0, &core).is_none());
+        assert!(home.launch_failed);
+        assert!(!home.finish_launch(id, true));
+        assert!(home.next_launch(100.0, &core).is_none());
+        for restriction in ["live", "unverified", "protected", "running"] {
+            let (mut home, mut core) = ready();
+            match restriction {
+                "live" => core.live = true,
+                "unverified" => core.access.verified = false,
+                "protected" => home.value.as_mut().unwrap().protected = true,
+                _ => {
+                    home.value.as_mut().unwrap().launch =
+                        vantare_hub_host::home::LaunchProgress::Running {
+                            text: String::new(),
+                        }
+                }
+            }
+            home.queue_launch(&core, true);
+            assert!(home.next_launch(0.0, &core).is_none(), "{restriction}");
+        }
     }
     #[test]
     fn subscriptions_follow_visibility_without_periodic_polling() {

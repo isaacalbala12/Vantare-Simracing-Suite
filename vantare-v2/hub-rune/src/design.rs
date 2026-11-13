@@ -10,6 +10,8 @@ pub const COLORS: &[&str] = &[
     "accent-fill",
     "hero-ring",
     "wine",
+    "text-on-accent",
+    "accent-tint",
     "ill-bad",
     "ill-best",
     "ill-edge",

@@ -51,6 +51,14 @@ fn toggle(state: &mut State) {
         Theme::load("vantare", if state.dark { "dark" } else { "light" }).expect("shared tokens");
     if let Some(assets) = &mut state.home_assets {
         assets.update(&state.theme);
+        assets.track(
+            &state.theme,
+            state
+                .home
+                .value
+                .as_ref()
+                .and_then(|v| v.sim.track.as_deref()),
+        );
     }
 }
 fn title(state: &State) -> &str {
@@ -279,6 +287,12 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
             }
             Some(Ok(HostToUi::Response {
                 id,
+                result: Reply::LauncherLaunch { accepted },
+            })) => {
+                changed |= state.home.finish_launch(id, accepted);
+            }
+            Some(Ok(HostToUi::Response {
+                id,
                 result: reply @ Reply::HomeGet { .. },
             })) => {
                 changed |= state.home.accept(id, reply);
@@ -289,11 +303,38 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
             Some(Ok(HostToUi::Failure { id, .. })) => {
                 changed |= state.roadmap.fail(id);
                 changed |= state.home.fail(id);
+                changed |= state.home.finish_launch(id, false);
             }
             Some(Ok(_)) => {}
             None => break,
         }
     }
+    if changed && let Some(assets) = &mut state.home_assets {
+        assets.track(
+            &state.theme,
+            state
+                .home
+                .value
+                .as_ref()
+                .and_then(|v| v.sim.track.as_deref()),
+        );
+    }
+    let previous_launch_failure = state.home.launch_failed;
+    if let Some(message) = state.home.next_launch(now, &state.core) {
+        if let vantare_hub_host::protocol::UiToHost::Request { id, .. } = &message {
+            let id = *id;
+            if state
+                .link
+                .as_mut()
+                .is_none_or(|link| link.send(message).is_err())
+            {
+                state.home.finish_launch(id, false);
+            }
+        }
+        changed = true;
+        tx.wake_at(now);
+    }
+    changed |= previous_launch_failure != state.home.launch_failed;
     let previous_failure = state.home.failed;
     for message in state.home.next(now, state.section == "home") {
         let id = match &message {
@@ -430,6 +471,52 @@ mod tests {
     use rune::{Env, Runtime};
     #[test]
     #[cfg(debug_assertions)]
+    fn home_favorite_button_sends_one_scene_launch_and_selected_profile_is_respected() {
+        use vantare_hub_host::protocol::{Request, UiToHost};
+        let (mut link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("inicio-base".into())).unwrap();
+        link.send(UiToHost::Request {
+            id: 1,
+            request: Request::CoreGet {},
+        })
+        .unwrap();
+        let mut state = init();
+        state.link = Some(link);
+        let mut rt = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        rt.poll = Some(poll);
+        for _ in 0..4 {
+            rt.frame(0.0);
+        }
+        let (x, y) = rt.find("home-launch-favorite").unwrap();
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.state.home.queue_launch(&rt.state.core, true);
+        for _ in 0..4 {
+            rt.frame(0.0);
+        }
+        let Some(host::Link::Scene(scene)) = rt.state.link.as_ref() else {
+            unreachable!()
+        };
+        assert!(
+            matches!(scene.launches.as_slice(), [Request::LauncherLaunch { profile, .. }] if profile == "carrera-lmu")
+        );
+        assert!(!rt.state.home.launch_failed);
+        rt.update(|s, _| {
+            s.home.selected = "entreno-rapido".into();
+            s.home.queue_launch(&s.core, false);
+        });
+        for _ in 0..4 {
+            rt.frame(0.0);
+        }
+        let Some(host::Link::Scene(scene)) = rt.state.link.as_ref() else {
+            unreachable!()
+        };
+        assert!(
+            matches!(&scene.launches[1], Request::LauncherLaunch { profile, .. } if profile == "entreno-rapido")
+        );
+    }
+    #[test]
+    #[cfg(debug_assertions)]
     fn home_scenes_load_empty_fail_and_reenter_without_losing_core_or_roadmap() {
         use vantare_hub_host::protocol::{Request, UiToHost};
         for scene in [
@@ -526,16 +613,22 @@ mod tests {
             runtime.frame(0.0);
         }
         assert!(runtime.state.home.failed);
+        let before = runtime.state.home.last_request_id();
         let (x, y) = runtime.find("home-retry").unwrap();
         runtime.pointer_down(x, y);
         runtime.pointer_up(x, y);
         runtime.frame(0.0);
+        for _ in 0..4 {
+            runtime.frame(0.0);
+        }
         assert!(
-            !runtime.state.home.failed,
-            "retry enters loading before the reply"
+            runtime.state.home.last_request_id() > before,
+            "retry must send a fresh request"
         );
-        runtime.frame(0.0);
-        assert!(runtime.state.home.failed);
+        assert!(
+            runtime.state.home.failed,
+            "the error scene still rejects the retry"
+        );
         let (x, y) = runtime.find("home-studio").unwrap();
         runtime.pointer_down(x, y);
         runtime.pointer_up(x, y);

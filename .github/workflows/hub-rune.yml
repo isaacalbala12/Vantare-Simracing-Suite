@@ -15,6 +15,8 @@ on:
       - 'vantare-v2/hub-web/src/renderer/assets/icons/Icon.tsx'
       - 'vantare-v2/hub-web/scripts/rune-catalog.mjs'
       - 'vantare-v2/hub-web/src/mock/home-scene.ts'
+      - 'vantare-v2/hub-web/src/renderer/ui/home/Circuit.tsx'
+      - 'vantare-v2/hub-web/src/renderer/assets/tracks/tracks.json'
       - 'vantare-v2/hub-web/src/renderer/assets/widgets/**'
       - '.github/workflows/hub-rune.yml'
   pull_request:
@@ -32,6 +34,8 @@ on:
       - 'vantare-v2/hub-web/src/renderer/assets/icons/Icon.tsx'
       - 'vantare-v2/hub-web/scripts/rune-catalog.mjs'
       - 'vantare-v2/hub-web/src/mock/home-scene.ts'
+      - 'vantare-v2/hub-web/src/renderer/ui/home/Circuit.tsx'
+      - 'vantare-v2/hub-web/src/renderer/assets/tracks/tracks.json'
       - 'vantare-v2/hub-web/src/renderer/assets/widgets/**'
       - '.github/workflows/hub-rune.yml'
 permissions:

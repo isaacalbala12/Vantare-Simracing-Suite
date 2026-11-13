@@ -48,6 +48,8 @@ const sentinel = "__VANTARE_NAME__";
 const catalog = {
   strings,
   home: {
+    tracks: JSON.parse(read("../src/renderer/assets/tracks/tracks.json")),
+    trackAliases: [...read("../src/renderer/ui/home/Circuit.tsx").matchAll(/\["([^"\n]+)", "([^"\n]+)"\]/g)].map(([,alias,key])=>[alias,key]),
     widgets: homeText.widgets,
     templates: homeText.templateNames,
     howSteps: homeText.howSteps,

@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText as text } from "../i18n/calendar";
 import { Button, IconButton } from "./Button";
 import "../design/generated/calendar-tokens.css";
 import "./calendar-layout.css";
+import "./calendar-density.css";
 export function CalendarFrame({
   subtitle,
   count,
@@ -21,24 +22,40 @@ export function CalendarFrame({
   onRefresh: () => void;
   children: ReactNode;
 }) {
+  const alertsCountId = useId();
   return (
     <div className="v-calendar">
       <header className="v-calendar-header">
         <div>
           <h1>{text.title}</h1>
-          <p>{subtitle}</p>
+          <p title={subtitle}>{subtitle}</p>
         </div>
         <div className="v-calendar-header-actions">
-          <Button onClick={onAlerts} disabled={!onAlerts}>
+          <Button
+            onClick={onAlerts}
+            disabled={!onAlerts}
+            aria-label={text.alerts}
+            aria-describedby={alertsCountId}
+          >
             <Icon name="bell-fill" />
-            {text.alerts}
-            <span className="v-calendar-pill v-calendar-pill--accent">
+            <span className="v-calendar-header-long">{text.alerts}</span>
+            <span
+              id={alertsCountId}
+              className="v-calendar-pill v-calendar-pill--accent"
+            >
               {count}
             </span>
           </Button>
-          <Button onClick={onExport} disabled={!onExport}>
+          <Button
+            onClick={onExport}
+            disabled={!onExport}
+            aria-label={text.export}
+          >
             <Icon name="v-calendar" />
-            {text.export}
+            <span className="v-calendar-header-long">{text.export}</span>
+            <span className="v-calendar-header-short" aria-hidden="true">
+              {text.calendar}
+            </span>
           </Button>
           <IconButton
             label={text.refresh}

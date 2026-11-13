@@ -10,9 +10,15 @@ export function EmptyStudio({ model }: { model: ReturnTypeOfStudioFocus }) {
   const { state, blocked } = model;
   const view = state.view;
   if (view?.state !== "ready" || view.instances.length) return null;
-  const suggestions = view.catalog
-    .filter((widget) => widget.allowed && widget.suggested)
-    .slice(0, 3);
+  // The three starter cards are the approved visual order, not a new entitlement rule.
+  const suggestions = (["standings", "relative", "delta"] as const).flatMap(
+    (kind) => {
+      const widget = view.catalog.find(
+        (item) => item.kind === kind && item.allowed,
+      );
+      return widget ? [widget] : [];
+    },
+  );
   return (
     <section
       className="v-studio-empty-stage"

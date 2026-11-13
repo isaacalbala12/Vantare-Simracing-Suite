@@ -35,11 +35,13 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
         {view?.state === "ready" && (
           <>
             <span>{t.overlaysCount(view.instances.length)}</span>
-            <span>
-              {t.visibleCount(
-                view.instances.filter((item) => item.visible).length,
-              )}
-            </span>
+            {view.instances.length > 0 && (
+              <span>
+                {t.visibleCount(
+                  view.instances.filter((item) => item.visible).length,
+                )}
+              </span>
+            )}
           </>
         )}
       </div>

@@ -1,3 +1,7 @@
+.v-focus-layout-name button svg {
+  width: 14px;
+  height: 14px;
+}
 .v-studio-state-feedback > svg {
   color: var(--err);
   flex: none;
@@ -372,4 +376,39 @@
 }
 .v-focus-save[data-failed="true"] {
   color: var(--err);
+}
+.v-studio-focus-layout:has(.v-studio-empty-stage) .v-focus-heading h1 {
+  margin: 4px 0 0;
+}
+.v-focus-add {
+  padding: 0 12px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+.v-focus-add .v-button-label {
+  justify-content: flex-start;
+  width: 100%;
+  gap: 10px;
+}
+.v-focus-add .v-button-label > svg {
+  width: 26px;
+  height: 26px;
+  padding: 5px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+}
+.v-focus-add[data-empty="true"] .v-button-label > svg {
+  background: var(--grad-button);
+  color: var(--text-on-accent);
+}
+.v-studio-empty-stage > .v-button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13.5px;
+}
+@container studio-main (max-width: 1120px) {
+  .v-focus-add .v-button-label {
+    justify-content: center;
+  }
 }

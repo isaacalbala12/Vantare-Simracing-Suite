@@ -1928,9 +1928,10 @@ arreglo de ready al reaplicar el paso 5; no se cambió comportamiento.
 Prueba de árboles, padres y old/new SHA en
 D:/VantareServer/evidence/hub-rune/rebase-nightly/stack.json.
 Formato, catálogo compartido, licencias (463 paquetes), cinco tests de
-licencias y 22 del clasificador CI PASS sobre la nueva base. Se han solicitado
-Clippy, suite Rust y enlace Windows por la cola, un slot y dos jobs; los
-resultados del rebase y la CI nueva se adjuntan a #2256/PR 5. Los resultados
-verdes anteriores siguen siendo evidencia de los SHA anteriores, no de los
-nuevos. Capturas/ventana visible, smoke de host real y corte 1 siguen pendientes.
+licencias y 22 del clasificador CI PASS sobre la nueva base. Clippy, 17/17
+tests Rust y enlace del ejecutable Windows PASS por la cola, un slot y dos
+jobs, sin arrancarlo. Los logs del rebase y la CI nueva se adjuntan a
+#2256/PR 5. Los checks remotos anteriores siguen siendo evidencia de los SHA
+anteriores: la CI se relanza para los nuevos. Capturas/ventana visible,
+smoke de host real y corte 1 siguen pendientes.
 Sin ejecución gráfica en el servidor, merge a nightly, promoción o release.

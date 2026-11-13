@@ -1,4 +1,6 @@
 export const performanceText = {
+  compactSummary: (level: string, widgets: number, tables: number) =>
+    `${level} · widgets ${widgets === 0 ? "cada foto" : `${widgets} Hz`} · Relative y tablas ${tables} Hz; banderas al instante`,
   applied: "Nivel aplicado:",
 
   automaticHelp: "Próximamente · La app usa el nivel elegido",

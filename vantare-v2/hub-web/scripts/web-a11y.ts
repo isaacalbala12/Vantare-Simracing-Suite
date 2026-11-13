@@ -16,6 +16,7 @@ import {
   checkOnboarding,
   checkOnboardingGuardedExit,
 } from "./check-onboarding.ts";
+import { checkPerformanceDensity } from "./check-performance-density";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
 import { checkResidentAnswer } from "./check-resident-answer.ts";
 import { checkResidentControls } from "./check-resident-control.ts";
@@ -164,6 +165,7 @@ try {
   await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
+  await checkPerformanceDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkCommandPalette(page, server.resolvedUrls?.local[0] ?? "");
   await checkNotificationFocus(page, server.resolvedUrls?.local[0] ?? "");
   await checkPrivacyGate(page, server.resolvedUrls?.local[0] ?? "", evidence);

@@ -57,6 +57,18 @@ export async function checkCalendarDensity(page: Page, base: string) {
               ),
               "Departure columns must fit without clipping the timeline",
             );
+          if (width < 1400 && expanded) {
+            const track = await page
+              .locator(".v-calendar-hero-meta > strong")
+              .boundingBox();
+            const layout = await page
+              .locator(".v-calendar-hero-meta > .v-calendar-license")
+              .boundingBox();
+            assert.ok(
+              track && layout && layout.y > track.y,
+              "Narrow hero keeps track and layout on separate readable lines, as GPUI",
+            );
+          }
           if (width < 1400) {
             assert.equal(
               await page

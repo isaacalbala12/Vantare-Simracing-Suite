@@ -2222,3 +2222,16 @@ regresión. Clippy encolado tras E/exportador v34: turno obtenido tras 82 s. Un
 solo compilador propio; gates y heads exactos en #2287 y #2256. Sin dependencias
 nuevas ni cambios de host/distribución. Paleta/atajos, nombre/fecha y avisos aún
 pendientes; no se declara paridad visual ni corte 1 aceptado.
+
+
+Correcciones verificadas durante gates de #2287: el prefijo de imágenes de
+circuito era igual al de widgets track-map/track-weather y retiraba ambas
+miniaturas. Ahora usa circuit-; se conserva la aserción de inventario y la
+decodificación CPU de todos los recursos. El fallo de Reintentar se diagnosticó
+con hit-test: botón a opacidad 0 por entrada animada con reloj virtual parado.
+La prueba avanza dos segundos de frames virtuales, exige visibilidad y mantiene
+la comprobación de petición nueva/error final. Prueba dirigida PASS; Clippy de
+las fuentes corregidas PASS (2 min 11 s). Suite completa repitiéndose por cola.
+CI web bloqueada en check-resident-answer.ts:44, diálogo Eliminar perfil, fuera
+de los cambios Rune. No se declara CI verde. Resultados definitivos y SHA en
+#2287/#2256; logs locales en evidence/hub-rune/inicio-lanzamiento.

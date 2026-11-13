@@ -610,17 +610,25 @@ mod tests {
         state.link = Some(link);
         let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
         runtime.poll = Some(poll);
-        for _ in 0..4 {
-            runtime.frame(0.0);
+        // Two seconds of injected frame time let Rune's entering opacity spring settle.
+        for _ in 0..120 {
+            runtime.frame(1.0 / 60.0);
         }
         assert!(runtime.state.home.failed);
         let before = runtime.state.home.last_request_id();
         let (x, y) = runtime.find("home-retry").unwrap();
+        assert!(
+            runtime
+                .elements()
+                .iter()
+                .any(|e| e.key.as_deref() == Some("home-retry") && e.opacity > 0.99),
+            "advance the injected clock until the entering error panel is visible"
+        );
         runtime.pointer_down(x, y);
         runtime.pointer_up(x, y);
-        runtime.frame(0.0);
-        for _ in 0..4 {
-            runtime.frame(0.0);
+        runtime.frame(0.1);
+        for _ in 0..120 {
+            runtime.frame(1.0 / 60.0);
         }
         assert!(
             runtime.state.home.last_request_id() > before,
@@ -633,17 +641,17 @@ mod tests {
         let (x, y) = runtime.find("home-studio").unwrap();
         runtime.pointer_down(x, y);
         runtime.pointer_up(x, y);
-        runtime.frame(0.0);
+        runtime.frame(0.1);
         assert_eq!(
             runtime.state.section, "home",
             "revoked access blocks Studio"
         );
         runtime.update(|state, _| state.core.access.verified = true);
-        runtime.frame(0.0);
+        runtime.frame(0.1);
         let (x, y) = runtime.find("home-studio").unwrap();
         runtime.pointer_down(x, y);
         runtime.pointer_up(x, y);
-        runtime.frame(0.0);
+        runtime.frame(0.1);
         assert_eq!(runtime.state.section, "studio");
     }
     #[test]

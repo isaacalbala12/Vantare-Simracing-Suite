@@ -45,7 +45,7 @@ impl Assets {
         );
     }
     pub fn track(&mut self, theme: &Theme, track: Option<&str>) {
-        self.images.retain(|key, _| !key.starts_with("track-"));
+        self.images.retain(|key, _| !key.starts_with("circuit-"));
         if let Some(key) = track_key(track) {
             let resource = &catalog()["home"]["tracks"][key];
             let svg = format!(
@@ -55,7 +55,7 @@ impl Assets {
                 resource[1].as_str().unwrap()
             );
             self.images.insert(
-                format!("track-{key}"),
+                format!("circuit-{key}"),
                 self.cache
                     .svg(resolve_svg(&svg, theme).into_bytes(), 400.0, 1.5),
             );
@@ -367,7 +367,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
     let circuit = track_key(data.and_then(|v| v.sim.track.as_deref())).map_or_else(el, |key| {
         picture(
             state,
-            &format!("track-{key}"),
+            &format!("circuit-{key}"),
             hero_width * 0.58,
             hero_height,
             false,

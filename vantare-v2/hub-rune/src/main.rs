@@ -224,7 +224,9 @@ fn close_expired(state: &State, now: f64, tx: &mut rune::Tx) -> bool {
 }
 fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
     use vantare_hub_host::protocol::{Event, HostToUi, Reply};
-    if close_expired(state, now, tx) { return true; }
+    if close_expired(state, now, tx) {
+        return true;
+    }
     let mut changed = false;
     for _ in 0..64 {
         let message = state.link.as_mut().and_then(host::Link::receive);
@@ -432,7 +434,8 @@ mod tests {
         let mut runtime = Runtime::new(init(), view, (1440.0, 900.0), Env::new(true, 1.0));
         runtime.update(request_close);
         assert_eq!(runtime.shell_request, Some(rune::Shell::Quit));
-        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
+        let (mut link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
         let host::Link::Scene(scene) = &mut link else {
             unreachable!()
         };

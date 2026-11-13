@@ -2,7 +2,7 @@
 
 Vía paralela de desarrollo según ADR 0108. Workspace independiente de native;
 no cambia los overlays, Electron ni la distribución. Ejecutable:
-`vantare-hub-ui-rune`: marco con temas, navegación y conexión al anfitrión.
+`vantare-hub-ui-rune`: marco conectado con estado del núcleo y Roadmap de solo lectura.
 
 Rune y sus cuatro parches están fijados a
 `d5338988a7c1b3377adb60853815b6d0843dae7c`, Rust 1.99.1.

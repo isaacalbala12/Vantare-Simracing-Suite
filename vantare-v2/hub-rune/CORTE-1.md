@@ -13,8 +13,12 @@ No se ejecutó el binario, una ventana ni una opción gráfica en el servidor.
 | Media hora de uso normal sin bloqueos | Tests de protocolo, cierre, mensajes acotados, estados y Roadmap sin ventana | Sesión real continua de 30 minutos y registro de cierres/bloqueos; no se sustituye por tiempo virtual |
 
 Clippy local final usa un solo slot, dos jobs, target persistente en D: y
-`--locked`; los logs de revisión están en `D:/VantareServer/evidence/hub-rune/review-sonnet/`.
-Suite local tras revisión: 22/22 tests Rust PASS, cinco tests de licencias y 22 de rutas CI PASS.
+`--locked`; los logs de revisión están en `D:/VantareServer/evidence/hub-rune/review-2/`.
+Suite local tras segunda revisión: 29/29 tests Rust PASS (antes 17 iniciales y 22 tras la primera), cinco tests de licencias y 22 de rutas CI PASS.
+La segunda revisión añade escena silenciosa con cierre de 3 s, rechazo/envío fallido,
+espera de lectura/envío por eventos, cancelación durante lectura y escritura y
+Drop que cancela antes del join. Node admite sufijos y devuelve error legible si
+la versión es desconocida.
 Regresiones reproducidas y corregidas: escritura de pipe con lector lento,
 claves repetidas de Roadmap y sección activa tras revocar acceso. Sin Node,
 el catálogo falla con un mensaje de instalación claro, comprobado retirándolo del PATH.
@@ -34,10 +38,10 @@ convierte tests preparados o CI pendiente en resultados aprobados.
 4. Probar la ventana visible, teclado y lector cuando Isaac desbloquee; después
    30 minutos de uso normal. Probar también X: WindowClose → CloseRequested →
    CloseAnswer → salida; Rune oculta la ventana antes del callback y conserva
-   el proceso para completar el protocolo. El smoke real Windows de hub-host sigue pendiente
+   el proceso para completar el protocolo, con un límite de 3 s si no hay respuesta. El smoke real Windows de hub-host sigue pendiente
    fuera del servidor con parada gráfica: `VANTARE_HUB_UI`, `hub-ready`, EOF y
    salida 0; comprobar también núcleo apagado y datos reales de QA sin cuentas.
 5. Actualizar esta tabla con máquina, SO, escala, SHA, resultado y evidencia.
    Retirar únicamente el target Mac propio al cerrar la tanda.
 
-Sin merge a nightly, promociones, instalador, distribución ni releases.
+Este worker no realiza merges ni promociones, ni modifica instalador/distribución o releases.

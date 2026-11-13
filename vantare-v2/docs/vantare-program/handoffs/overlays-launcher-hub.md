@@ -1897,7 +1897,7 @@ PRs draft a nightly: #2260 → #2262 → #2264 → #2267 → #2268, pila local
 lineal por contenido (se fusionan solo las ramas padre en sus hijas para
 conservar correcciones, sin force-push ni merge a canales). El PR 5 incluye
 las correcciones de sus padres. GitHub Project Vantare verificado en #2256.
-Clippy final PASS; 17/17 tests Rust sin ventana PASS, cinco tests de licencias
+Clippy PASS; 22/22 tests Rust sin ventana PASS tras la primera revisión, cinco tests de licencias
 y 22 de rutas CI PASS. Enter no activaba los botones de Rune: se reprodujo
 16 PASS/1 FAIL, se añadió la activación explícita de Enter sin repetición y
 se mantuvo Espacio. La prueba pasó también a 100/125/150 %, sin tocar un gate.
@@ -1928,8 +1928,8 @@ arreglo de ready al reaplicar el paso 5; no se cambió comportamiento.
 Prueba de árboles, padres y old/new SHA en
 D:/VantareServer/evidence/hub-rune/rebase-nightly/stack.json.
 Formato, catálogo compartido, licencias (463 paquetes), cinco tests de
-licencias y 22 del clasificador CI PASS sobre la nueva base. Clippy, 17/17
-tests Rust y enlace del ejecutable Windows PASS por la cola, un slot y dos
+licencias y 22 del clasificador CI PASS sobre la nueva base. Clippy, 22/22
+tests Rust tras la primera revisión y enlace del ejecutable Windows PASS por la cola, un slot y dos
 jobs, sin arrancarlo. Los logs del rebase y la CI nueva se adjuntan a
 #2256/PR 5. Los checks remotos anteriores siguen siendo evidencia de los SHA
 anteriores: la CI se relanza para los nuevos. Capturas/ventana visible,
@@ -1970,3 +1970,33 @@ previos; SHA/CI actuales en #2256 y cada PR. Rune sigue fijado y no hay nuevas
 dependencias. Nuevas comprobaciones locales por un slot/-j2 y CI sin gráfica.
 Capturas, X con ventana visible, host Windows real y corte 1 siguen pendientes.
 Este worker no ha fusionado PRs ni promocionado canales o publicado releases.
+
+
+### VANTA-143 · segunda revisión propagada a PR 5 (2026-11-13)
+
+El estado del núcleo y Roadmap conservan el transporte del PR 4 actualizado:
+cierre de 3 s, Failure id 0/envío fallido, espera de eventos de lectura y salida,
+cancelación antes de join y operaciones pendientes drenadas. El test de Drop
+comprueba que la cancelación impide una nueva escritura antes de devolver join;
+se añade también cancelación de una escritura retenida por el servidor.
+La suite de la primera revisión fue de 22 tests (superó los 17 iniciales).
+La nueva suite amplía esos casos; resultados definitivos y heads en #2267/#2268.
+README ya describe el marco conectado; se retiran ventana vacía y pasos futuros
+ya realizados, y el plazo antiguo de 200 ms para escrituras/lecturas por sondeo.
+#2264 tuvo que rebasarse después del squash #2262 para resolver conflictos:
+head d6bcdb325771e538e26776f3754d069a096e85fc, árbol de hub-rune idéntico al
+anterior e7c43dc60b5e36e571bf13e00e404db73f94954f. #2267/#2268 conservan ese
+padre; cuando #2264 se fusione, se retirará ese prefijo mediante --onto nightly.
+Sin nuevos paquetes ni ejecución gráfica; capturas y corte 1 pendientes del Mac.
+
+
+Verificación local de segunda revisión: Clippy -D warnings PASS y 29/29 tests
+sin ventana PASS (20 del paso 4 y nueve más del paso 5); siete casos añadidos
+frente a los 22 de la primera revisión. Formato/catálogo/licencias y 27 tests
+Python PASS. Primer intento interrumpido sin diagnóstico, repetición sin sccache
+PASS conservada; no se detuvo el sccache global ni se rebajaron gates.
+Un slot, dos jobs, target persistente D:/VantareServer/targets/slot-0, --locked,
+Rust 1.99.1 y Rune fijado. Logs: D:/VantareServer/evidence/hub-rune/review-2/.
+El ejecutable solo se enlaza, sin arrancarlo. CI de los nuevos heads y rebase
+final sobre el squash de #2264 se registran en #2256 y los PRs. Corte 1 y todas
+las capturas/pruebas físicas siguen pendientes; no se sustituyen por estos tests.

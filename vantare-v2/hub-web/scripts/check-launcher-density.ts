@@ -56,12 +56,15 @@ export async function checkLauncherDensity(
                 const heading = card.querySelector("strong");
                 if (!heading) throw new Error("Profile heading missing");
                 const title = heading.getBoundingClientRect();
+                const detail = card.querySelector("small");
+                if (!detail) throw new Error("Profile detail missing");
                 return {
                   x: bounds.x,
                   y: bounds.y,
                   width: bounds.width,
                   height: bounds.height,
                   titleBottom: title.bottom,
+                  detailBottom: detail.getBoundingClientRect().bottom,
                   bottom: bounds.bottom,
                 };
               }),
@@ -80,6 +83,10 @@ export async function checkLauncherDensity(
             assert.ok(
               card.titleBottom <= card.bottom,
               "Profile label must not be clipped",
+            );
+            assert.ok(
+              card.detailBottom <= card.bottom,
+              "Profile app count must not be clipped",
             );
           }
           assert.equal(

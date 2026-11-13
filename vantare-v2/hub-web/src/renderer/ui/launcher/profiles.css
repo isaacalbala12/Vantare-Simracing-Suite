@@ -556,6 +556,10 @@ div.v-launcher-app-tile {
     height: 100%;
     min-height: 0;
   }
+  .v-shell-main [role="tabpanel"]:has(.v-launcher-profiles) {
+    flex: 1;
+    min-height: 0;
+  }
   .v-launcher-page {
     gap: 10px;
   }

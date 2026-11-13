@@ -1,0 +1,9 @@
+[package]
+name = "vantare-inicio-rune"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+rune.workspace = true
+serde_json = "1"

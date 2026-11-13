@@ -3393,6 +3393,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vantare-inicio-rune"
+version = "0.0.0"
+dependencies = [
+ "rune",
+ "serde_json",
+]
+
+[[package]]
 name = "vantare-rune-hola"
 version = "0.0.0"
 dependencies = [

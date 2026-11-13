@@ -1,3 +1,30 @@
+## VANTA-141 / #2213 — Inicio Rune: primera imagen CPU (13/11/2026)
+
+El Mac volvió a quedar sin SSH tras copiar y verificar 5d501bda0. Se prepara
+una corrección de adquisición: Rune puede mostrar Inicio por CPU antes de un
+Present GPU. Callback tras dibujo + DwmFlush marca visible; otro, con imágenes
+listas, marca interactivo. El padre observa JSON con QPC (cotas superiores).
+No cambia Rune d533, tokens, fuentes ni vistas. Solo API Windows existente.
+Rustfmt PASS, nueva compilación/clippy pendientes de acceso Mac; los binarios
+anteriores siguen conservados y nunca se ejecutaron en servidor. La biblioteca
+Runtime no cambia. PC de juego: pendiente comprobar las marcas y la imagen.
+Kit todavía incompleto, compilación comparable pendiente autorizada. Sin merge
+ni release. Reintento SSH cada 30 minutos mientras se completan otras piezas.
+## VANTA-141 · Inicio Rune: señal de frame interactivo (13/11/2026)
+
+Pieza 8, PR draft #2241. Señal optativa tras frame completo con imágenes
+listas; error de escritura cierra con fallo, sin sobrescribir evidencia.
+Nuevo test del gate de imágenes sin ventana. Formato PASS; Runtime, Clippy
+y cruce Release pendientes de ejecutar en el Mac recuperado. No se ejecuta
+Rune en servidor. Telemetría de campaña exclusivamente grabada; sin merge/release.
+
+## VANTA-141 · Pieza 8 Inicio Rune compilada
+
+- Pantalla local Inicio, tokens y fuentes del Hub, recursos SVG y fixture inicio-base incrustados. Ventana 1440×900 sin entrada animada, navegación sencilla y scroll Rune real. Sin red ni servicios reales.
+- Fuente Windows 69d2a5cc78aadc06b5dda900afc269f313b8c487; Rust 1.99.1 Release opt3/lto=false/cgu16/debug0, target único Mac. 2 tests puros de árbol y pulsación pasan; fmt y clippy all-targets -D warnings pasan.
+- Cruce incremental 11,16 s, 27.247.616 bytes; mínimo libre 11,75 GiB sobre el nuevo límite autorizado 10. Guardián cancela a 10,25.
+- Binario copiado al servidor; procedencia incrustada y dumpbin comprobados sin ejecutarlo. Sin imagen física ni medidas de pantalla. A-Electron/A-GPUI fast, campaña completa y kit pendientes; no merge ni release.
+
 ## VANTA-141 - Esqueleto Windows compilado y Runtime nativo verificado (12-nov-2026)
 
 [#2213](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2213),

@@ -123,3 +123,9 @@ cola /O2 /MT, 7,279 s de compilador y 178 s de espera. 286.720 bytes; SHA256
 57a76337d2fea3b4c3822db51102a231bd143305b122ba3e5ea0814f135011a5.
 Procedencia dentro del PE y dumpbin verificados sin ejecutarlo. El aviso
 preexistente de VsDevCmd sobre vswhere se conserva; cl finaliza con código 0.
+
+13/11: CAPTURA-LISTA se publica atómicamente (temporal + Move), después de
+activar ETW y antes de la interfaz. Se corrige Set-Content -NoClobber por
+Out-File -NoClobber; el contrato de parámetros PowerShell pasa en servidor.
+No se han ejecutado sensores, PDH ni PresentMon aquí. C# y ABI sin cambios
+respecto a la compilación af3f611f5 ya verificada. Ejecución física pendiente PC.

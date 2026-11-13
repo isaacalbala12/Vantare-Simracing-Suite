@@ -72,8 +72,11 @@ try {
         } while ($true)
     }
     $captureQpc=[Diagnostics.Stopwatch]::GetTimestamp(); $captureUtc=[DateTime]::UtcNow
+    $readyFile=Join-Path $out 'CAPTURA-LISTA.json'
+    $readyTemporary=$readyFile+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
     [ordered]@{ready=$true;sampler_id=$PID;presentmon_id=if($pmStarted){$pm.Id}else{0};session=$sessionName;qpc=$captureQpc;frequency=[Diagnostics.Stopwatch]::Frequency;health_only=[bool]$Aguante} |
-        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $out 'CAPTURA-LISTA.json') -NoClobber -Encoding utf8
+        ConvertTo-Json | Out-File -Width 2147483647 -LiteralPath $readyTemporary -NoClobber -Encoding utf8
+    [IO.File]::Move($readyTemporary,$readyFile)
     if ($PSCmdlet.ParameterSetName -eq 'Deferred') {
         $deadline=[DateTime]::UtcNow.AddSeconds(15)
         while (-not (Test-Path -LiteralPath $RootInfoFile)) {

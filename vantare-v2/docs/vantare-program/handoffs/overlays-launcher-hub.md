@@ -1,3 +1,12 @@
+## VANTA-141 / #2213 — muestreador: publicación atómica (13/11/2026)
+
+Piezas 6+7/PR #2251: marca CAPTURA-LISTA atómica para que el controlador no
+lea JSON parcial; guardado exclusivo con Out-File (Set-Content no admite
+NoClobber). Contratos de parámetros PS PASS. C# conserva exactamente las
+fuentes ya compiladas/ABI comprobada af3f611f5; no se han llamado sensores,
+PDH ni PresentMon en servidor. GPU y contadores CPU; temperatura CPU no
+disponible, sin nuevos controladores. Kit/ejecución PC pendientes. Sin merge
+ni release; tiempos comparables de compilación pendientes autorizados.
 ## VANTA-141 · Control térmico sin controlador añadido (13/11/2026)
 
 Isaac acepta GPU y contadores CPU; temperatura CPU no_disponible. Se invalida

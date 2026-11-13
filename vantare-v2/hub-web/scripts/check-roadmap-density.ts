@@ -51,6 +51,7 @@ export async function checkRoadmapDensity(page: Page, base: string) {
                 ? ".v-roadmap-season"
                 : ".v-roadmap-lanes > section",
             );
+            await columns.first().waitFor();
             assert.equal(
               await columns.count(),
               tab === "Temporada" ? 1 : 3,

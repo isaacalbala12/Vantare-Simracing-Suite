@@ -326,9 +326,11 @@ describe("Studio A honest states", () => {
         const trigger = add.closest(".v-tooltip-trigger");
         if (!trigger) throw new Error("Missing Add tooltip trigger");
         await userEvent.hover(trigger);
-        expect((await screen.findByRole("tooltip")).textContent).toContain(
+        fireEvent.mouseMove(trigger, { clientX: 1, clientY: 1 });
+        const tooltip = await screen.findByText(
           t.atLimit(studioLimits.instances),
         );
+        expect(tooltip.closest(".v-tooltip")).not.toBeNull();
       } else
         expect(
           screen.getByText(t.verifyWidget, { selector: "strong" }),

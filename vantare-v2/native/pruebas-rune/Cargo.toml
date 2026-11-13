@@ -1,0 +1,23 @@
+[workspace]
+resolver = "3"
+members = ["hola", "contador", "relative", "inicio"]
+exclude = ["fuentes-generadas"]
+
+[workspace.dependencies]
+rune = { default-features = false, features = ["accessibility", "dbus", "embedded-fonts", "metal-backend", "svg"], git = "https://github.com/anomalyco/rune", rev = "d5338988a7c1b3377adb60853815b6d0843dae7c" }
+
+[patch.crates-io]
+wgpu-hal = { git = "https://github.com/anomalyco/rune", rev = "d5338988a7c1b3377adb60853815b6d0843dae7c" }
+winit = { git = "https://github.com/anomalyco/rune", rev = "d5338988a7c1b3377adb60853815b6d0843dae7c" }
+parley_engine = { git = "https://github.com/anomalyco/rune", rev = "d5338988a7c1b3377adb60853815b6d0843dae7c" }
+accesskit_windows = { git = "https://github.com/anomalyco/rune", rev = "d5338988a7c1b3377adb60853815b6d0843dae7c" }
+
+[profile.release]
+opt-level = 3
+lto = false
+codegen-units = 16
+incremental = false
+debug = false
+
+[profile.dev]
+debug = 0

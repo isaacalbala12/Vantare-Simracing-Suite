@@ -1,0 +1,454 @@
+diff --git a/vantare-v2/hub-web/electron.vite.config.ts b/vantare-v2/hub-web/electron.vite.config.ts
+index 5cf1ef3231dfcd49822ca5273b0e4dc04849101a..c2c1545e8a0f8a88a8be2ac6d94e016fb37b1c4e 100644
+--- a/vantare-v2/hub-web/electron.vite.config.ts
++++ b/vantare-v2/hub-web/electron.vite.config.ts
+@@ -2,13 +2,22 @@ import { resolve } from "node:path";
+ import tailwindcss from "@tailwindcss/vite";
+ import { defineConfig } from "electron-vite";
+ import { contractIndex } from "./scripts/contract-index.ts";
++import { measurementBuild } from "./scripts/measurement-build.ts";
+ 
+ const qa = process.env.VANTARE_HUB_QA_BUILD === "1";
++const measurement = measurementBuild();
++const measurementDefines = {
++  __VANTARE_MEASUREMENT_HOME__: JSON.stringify(measurement.enabled),
++  __VANTARE_MEASUREMENT_PROVENANCE__: JSON.stringify(measurement.provenance),
++};
+ const output = qa ? "out-qa" : "out";
+ contractIndex();
+ export default defineConfig({
+   main: {
+-    define: { __VANTARE_QA_DRIVER__: JSON.stringify(qa) },
++    define: {
++      __VANTARE_QA_DRIVER__: JSON.stringify(qa),
++      ...measurementDefines,
++    },
+     build: {
+       outDir: resolve(output, "main"),
+       rollupOptions: { input: resolve("src/main/index.ts") },
+@@ -28,6 +37,7 @@ export default defineConfig({
+     define: {
+       "process.env.NODE_ENV": JSON.stringify("production"),
+       __VANTARE_RENDERER_MOCK__: JSON.stringify(qa),
++      ...measurementDefines,
+     },
+     root: "src/renderer",
+     build: {
+diff --git a/vantare-v2/hub-web/scripts/measurement-build.ts b/vantare-v2/hub-web/scripts/measurement-build.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0e9a3e13380423e5b5486ea6794e40be01a2a904
+--- /dev/null
++++ b/vantare-v2/hub-web/scripts/measurement-build.ts
+@@ -0,0 +1,33 @@
++import { execFileSync } from "node:child_process";
++import { resolve } from "node:path";
++
++export function hasMeasurementSourceChanges(status: string): boolean {
++  // electron-vite 6 creates this module while importing the tracked config,
++  // then removes it. Keep every other untracked file and all tracked changes.
++  const temporaryConfig =
++    /^\?\? vantare-v2\/hub-web\/electron\.vite\.config\.ts\.\d+-[a-f0-9]+\.mjs$/u;
++  return status
++    .split(/\r?\n/u)
++    .some((line) => line.trim() !== "" && !temporaryConfig.test(line));
++}
++
++export function measurementBuild() {
++  const enabled = process.env.VANTARE_HUB_MEASUREMENT_HOME === "1";
++  if (!enabled) return { enabled: false, provenance: "" };
++  if (process.env.VANTARE_HUB_QA_BUILD !== "1")
++    throw new Error("Measurement requires the isolated QA build");
++  const cwd = resolve(import.meta.dirname, "..");
++  const git = (...args: string[]) =>
++    execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
++  const sha = git("rev-parse", "HEAD");
++  if (
++    hasMeasurementSourceChanges(
++      git("status", "--porcelain", "--untracked-files=all"),
++    )
++  )
++    throw new Error("Commit measurement sources before building");
++  return {
++    enabled: true,
++    provenance: `VANTARE_BUILD;sha=${sha};dirty=false;profile=release;electron=45.2.3;mock=1;home=1`,
++  };
++}
+diff --git a/vantare-v2/hub-web/scripts/package.ts b/vantare-v2/hub-web/scripts/package.ts
+index 827011e8175f228ba6148f89b2bdbc89a3b441d8..a74a05a542bd44736befc5bcab69998343b40b7d 100644
+--- a/vantare-v2/hub-web/scripts/package.ts
++++ b/vantare-v2/hub-web/scripts/package.ts
+@@ -2,6 +2,9 @@ import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+ import { dirname, join, resolve } from "node:path";
+ import { FuseV1Options, FuseVersion, flipFuses } from "@electron/fuses";
+ import { packager } from "@electron/packager";
++import { measurementBuild } from "./measurement-build";
++
++const measurement = measurementBuild();
+ 
+ const qa = process.env.VANTARE_HUB_QA_BUILD === "1";
+ const project = resolve(import.meta.dirname, "..");
+@@ -30,6 +33,9 @@ const paths = await packager({
+   platform: "win32",
+   arch: "x64",
+   electronVersion: "45.2.3",
++  ...(measurement.enabled
++    ? { win32metadata: { FileDescription: measurement.provenance } }
++    : {}),
+   asar: true,
+   overwrite: true,
+   prune: false,
+diff --git a/vantare-v2/hub-web/src/main/index.ts b/vantare-v2/hub-web/src/main/index.ts
+index 8b8228c86d70ff8837bf94d4d27be2138bea0ac2..26dd5d7b278ebb8e306d344b7ba6821f03503e67 100644
+--- a/vantare-v2/hub-web/src/main/index.ts
++++ b/vantare-v2/hub-web/src/main/index.ts
+@@ -1,4 +1,5 @@
+-import { join, resolve, sep } from "node:path";
++import { writeFile } from "node:fs/promises";
++import { isAbsolute, join, resolve, sep } from "node:path";
+ import { pathToFileURL } from "node:url";
+ import {
+   app,
+@@ -23,6 +24,7 @@ import {
+   reportExportName,
+ } from "../contract/generated/contract";
+ import { bounded } from "../contract/validation";
++import { measurementHome, measurementProvenance } from "../measurement";
+ import { es } from "../renderer/i18n/es";
+ import { appText } from "../renderer/i18n/launcher-apps";
+ import { paintWindow, resolveTheme, zoomWindow } from "./appearance";
+@@ -31,6 +33,7 @@ import { calendarExportQa } from "./calendar-export-qa";
+ import { externalPages } from "./external-pages";
+ import { createHost } from "./host";
+ import { executablePicker } from "./launcher-picker";
++import { measurementReadyScript } from "./measurement-ready";
+ import { notificationDelivery } from "./notification-delivery";
+ import { reportExportSession } from "./report-export";
+ import {
+@@ -57,6 +60,18 @@ protocol.registerSchemesAsPrivileged([
+   },
+ ]);
+ async function start() {
++  if (measurementHome) {
++    if (
++      !process.argv.includes("--medicion-inicio") ||
++      !process.argv.includes("--control-stdin")
++    )
++      throw new Error("Measurement requires --medicion-inicio --control-stdin");
++    process.env.VANTARE_HUB_HOST = "mock";
++    process.env.VANTARE_HUB_SCENE = "visual-dark:inicio-base";
++    console.error(measurementProvenance);
++    process.stdin.once("end", () => app.quit());
++    process.stdin.resume();
++  }
+   if (app.isPackaged && !QA_DRIVER && hasDebuggerArguments(process.argv)) {
+     app.commandLine.removeSwitch("remote-debugging-port");
+     app.commandLine.removeSwitch("remote-debugging-pipe");
+@@ -119,6 +134,7 @@ async function start() {
+   const colors = resolveTheme(hello.theme);
+   window = new BrowserWindow({
+     ...fitWindow(hello.window, screen.getPrimaryDisplay().workAreaSize),
++    ...(measurementHome ? { width: 1440, height: 900 } : {}),
+     show: false,
+     backgroundColor: colors["bg-window"],
+     title: "Vantare · Hub",
+@@ -498,6 +514,25 @@ async function start() {
+         if (!currentWindow.isDestroyed()) currentWindow.setFocusable(true);
+       }
+     } else currentWindow.show();
++    if (measurementHome && process.env.VANTARE_MEASUREMENT_READY_FILE) {
++      const destination = process.env.VANTARE_MEASUREMENT_READY_FILE;
++      void (async () => {
++        if (!isAbsolute(destination))
++          throw new Error("Measurement path must be absolute");
++        // Home data, fonts and local images must be ready, then two actual
++        // animation frames. The controller timestamps file observation with
++        // Windows QPC in exactly the same way for all three engines.
++        await contents.executeJavaScript(measurementReadyScript);
++        await writeFile(
++          destination,
++          JSON.stringify({ ready: true, engine: "electron" }),
++          { flag: "wx" },
++        );
++      })().catch((error: unknown) => {
++        console.error("VANTARE_MEASUREMENT_READY_FAILED", error);
++        app.exit(2);
++      });
++    }
+     if (compatible) host.send({ kind: "ready" });
+   });
+   if (devUrl) await window.loadURL(devUrl);
+diff --git a/vantare-v2/hub-web/src/main/measurement-ready.ts b/vantare-v2/hub-web/src/main/measurement-ready.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..7b6d2c9a13d37abe271c9abced09b24a8003617b
+--- /dev/null
++++ b/vantare-v2/hub-web/src/main/measurement-ready.ts
+@@ -0,0 +1,16 @@
++// Only executed by the explicitly instrumented QA build, inside its local renderer.
++export const measurementReadyScript = `(async () => {
++          let timer;
++          try {
++            await Promise.race([
++              (async () => {
++                while (document.documentElement.dataset.vantareMeasurementReady !== "1")
++                  await new Promise(resolve => setTimeout(resolve, 10));
++                await document.fonts.ready;
++                await Promise.all([...document.images].map(image => image.decode()));
++                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
++              })(),
++              new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("Home readiness timed out")), 10000); })
++            ]);
++          } finally { clearTimeout(timer); }
++        })()`;
+diff --git a/vantare-v2/hub-web/src/measurement.ts b/vantare-v2/hub-web/src/measurement.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5a94923ba8775a10798d0da1f8a13aa8c82ef26c
+--- /dev/null
++++ b/vantare-v2/hub-web/src/measurement.ts
+@@ -0,0 +1,13 @@
++// VANTA-141: constants exist only in the dedicated measurement build.
++declare const __VANTARE_MEASUREMENT_HOME__: boolean;
++declare const __VANTARE_MEASUREMENT_PROVENANCE__: string;
++export const measurementHome =
++  typeof __VANTARE_MEASUREMENT_HOME__ === "boolean" &&
++  __VANTARE_MEASUREMENT_HOME__;
++export const measurementProvenance =
++  typeof __VANTARE_MEASUREMENT_PROVENANCE__ === "string"
++    ? __VANTARE_MEASUREMENT_PROVENANCE__
++    : "";
++export function homeNow(): Date {
++  return measurementHome ? new Date("2026-09-30T17:00:00Z") : new Date();
++}
+diff --git a/vantare-v2/hub-web/src/renderer/app/UiState.tsx b/vantare-v2/hub-web/src/renderer/app/UiState.tsx
+index e52dce58a720eace6a2454764ae39cd28c37996b..ed5cd9b24a37875afd5ec60cae6b0def363bb057 100644
+--- a/vantare-v2/hub-web/src/renderer/app/UiState.tsx
++++ b/vantare-v2/hub-web/src/renderer/app/UiState.tsx
+@@ -7,6 +7,7 @@ import {
+ } from "react";
+ import { useStore } from "zustand";
+ import { createStore } from "zustand/vanilla";
++import { measurementHome } from "../../measurement";
+ import type { Section } from "./sections";
+ 
+ export type { Section } from "./sections";
+@@ -31,7 +32,7 @@ interface UiState {
+ }
+ function createUi() {
+   return createStore<UiState>((set) => ({
+-    section: "settings",
++    section: measurementHome ? "home" : "settings",
+     studioLastSelected: null,
+     rememberStudio: (studioLastSelected) => set({ studioLastSelected }),
+     sidebarCollapsed: window.innerWidth < 1500,
+diff --git a/vantare-v2/hub-web/src/renderer/screens/home/entry.tsx b/vantare-v2/hub-web/src/renderer/screens/home/entry.tsx
+index ca6af077f50a3969f8011359f4f841eb96a4a4a5..77cf857a7b46183cbd75080762a9eaac78dcbd72 100644
+--- a/vantare-v2/hub-web/src/renderer/screens/home/entry.tsx
++++ b/vantare-v2/hub-web/src/renderer/screens/home/entry.tsx
+@@ -5,6 +5,7 @@ import type {
+   HomeView,
+   LauncherView,
+ } from "../../../contract/generated/contract";
++import { homeNow, measurementHome } from "../../../measurement";
+ import { coreKey, offline, useHost } from "../../app/Host";
+ import { lock } from "../../app/navigation";
+ import { SectionChrome } from "../../app/SectionChrome";
+@@ -49,7 +50,11 @@ export default function Home() {
+   const launching = useRef(false);
+   const [pending, setPending] = useState(false);
+   const [error, setError] = useState<string>();
+-  const [now, setNow] = useState(() => new Date());
++  const [now, setNow] = useState(homeNow);
++  useEffect(() => {
++    if (measurementHome && view)
++      document.documentElement.dataset.vantareMeasurementReady = "1";
++  }, [view]);
+   const go = useUi((s) => s.navigate);
+   async function navigate(section: import("../../app/sections").Section) {
+     if (section === "launcher" || section === "studio") {
+@@ -129,7 +134,7 @@ export default function Home() {
+     };
+   }, [client, reload, hello?.demoName]);
+   useEffect(() => {
+-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
++    const timer = window.setInterval(() => setNow(homeNow()), 60_000);
+     return () => clearInterval(timer);
+   }, []);
+   const choice = profileChoice(
+diff --git a/vantare-v2/hub-web/tests/measurement-build.test.ts b/vantare-v2/hub-web/tests/measurement-build.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..83b481f92af52addf2cddbebb426e5178b7444bd
+--- /dev/null
++++ b/vantare-v2/hub-web/tests/measurement-build.test.ts
+@@ -0,0 +1,24 @@
++import { expect, test } from "vitest";
++import { hasMeasurementSourceChanges } from "../scripts/measurement-build";
++
++test("the active Vite config bundle does not make tracked measurement sources dirty", () => {
++  expect(hasMeasurementSourceChanges("")).toBe(false);
++  expect(
++    hasMeasurementSourceChanges(
++      "?? vantare-v2/hub-web/electron.vite.config.ts.1794545637308-63e560812cdd98.mjs",
++    ),
++  ).toBe(false);
++});
++
++test("tracked changes and other untracked files still block the build", () => {
++  for (const status of [
++    " M vantare-v2/hub-web/src/measurement.ts",
++    "?? vantare-v2/hub-web/scripts/uncommitted.ts",
++    "?? vantare-v2/hub-web/electron.vite.config.ts",
++    "?? vantare-v2/hub-web/not-the-config.1794545637308-63e560812cdd98.mjs",
++    " M vantare-v2/hub-web/electron.vite.config.ts.1794545637308-63e560812cdd98.mjs",
++    "?? vantare-v2/hub-web/electron.vite.config.ts.1794545637308-63e560812cdd98.mjs\n M AGENTS.md",
++  ]) {
++    expect(hasMeasurementSourceChanges(status)).toBe(true);
++  }
++});
+diff --git a/vantare-v2/hub-web/tests/measurement-clock.test.ts b/vantare-v2/hub-web/tests/measurement-clock.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..011d77c1350c5874130a442126f94a62279d3f83
+--- /dev/null
++++ b/vantare-v2/hub-web/tests/measurement-clock.test.ts
+@@ -0,0 +1,25 @@
++import { afterEach, expect, it, vi } from "vitest";
++
++afterEach(() => {
++  vi.unstubAllGlobals();
++  vi.useRealTimers();
++  vi.resetModules();
++});
++it("keeps the live product clock outside the measurement build", async () => {
++  vi.resetModules();
++  vi.useFakeTimers();
++  vi.setSystemTime(new Date("2026-11-13T08:00:00Z"));
++  const module = await import("../src/measurement");
++  expect(module.measurementHome).toBe(false);
++  expect(module.homeNow().getTime()).toBe(Date.now());
++});
++it("freezes only the display date in the dedicated build, without changing timers", async () => {
++  vi.resetModules();
++  vi.stubGlobal("__VANTARE_MEASUREMENT_HOME__", true);
++  vi.useFakeTimers();
++  vi.setSystemTime(new Date("2026-11-13T08:00:00Z"));
++  const module = await import("../src/measurement");
++  expect(module.measurementHome).toBe(true);
++  expect(module.homeNow().toISOString()).toBe("2026-09-30T17:00:00.000Z");
++  expect(new Date().toISOString()).toBe("2026-11-13T08:00:00.000Z");
++});
+diff --git a/vantare-v2/hub-web/tests/measurement-home.test.tsx b/vantare-v2/hub-web/tests/measurement-home.test.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..09c45f800a479661fa9a1d4ee98655fb28acf9a2
+--- /dev/null
++++ b/vantare-v2/hub-web/tests/measurement-home.test.tsx
+@@ -0,0 +1,37 @@
++// @vitest-environment jsdom
++import { cleanup, render, screen } from "@testing-library/react";
++import userEvent from "@testing-library/user-event";
++import { afterEach, expect, it, vi } from "vitest";
++
++vi.mock("../src/measurement", () => ({ measurementHome: true }));
++
++import { UiProvider, useUi } from "../src/renderer/app/UiState";
++
++afterEach(cleanup);
++function Probe() {
++  const section = useUi((s) => s.section);
++  const navigate = useUi((s) => s.navigate);
++  return (
++    <>
++      <output>{section}</output>
++      <button type="button" onClick={() => navigate("roadmap")}>
++        Roadmap
++      </button>
++      <button type="button" onClick={() => navigate("home")}>
++        Inicio
++      </button>
++    </>
++  );
++}
++it("starts directly at Home and preserves real navigation", async () => {
++  render(
++    <UiProvider>
++      <Probe />
++    </UiProvider>,
++  );
++  expect(screen.getByRole("status").textContent).toBe("home");
++  await userEvent.click(screen.getByRole("button", { name: "Roadmap" }));
++  expect(screen.getByRole("status").textContent).toBe("roadmap");
++  await userEvent.click(screen.getByRole("button", { name: "Inicio" }));
++  expect(screen.getByRole("status").textContent).toBe("home");
++});
+diff --git a/vantare-v2/hub-web/tests/measurement-ready.test.ts b/vantare-v2/hub-web/tests/measurement-ready.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fc65bcc5c68cdaac8798ad9a3fd87b9f79927e0a
+--- /dev/null
++++ b/vantare-v2/hub-web/tests/measurement-ready.test.ts
+@@ -0,0 +1,69 @@
++import { runInNewContext } from "node:vm";
++import { afterEach, expect, it, vi } from "vitest";
++import { measurementReadyScript } from "../src/main/measurement-ready";
++
++afterEach(() => {
++  vi.clearAllTimers();
++  vi.useRealTimers();
++});
++function deferred() {
++  let resolve!: () => void;
++  const promise = new Promise<void>((done) => {
++    resolve = done;
++  });
++  return { promise, resolve };
++}
++it("waits for Home data, fonts, images and two frames before announcing readiness", async () => {
++  vi.useFakeTimers();
++  const fonts = deferred(),
++    image = deferred();
++  const dataset: Record<string, string> = {};
++  const frames: Array<() => void> = [];
++  let done = false;
++  const ready = runInNewContext(measurementReadyScript, {
++    document: {
++      documentElement: { dataset },
++      fonts: { ready: fonts.promise },
++      images: [{ decode: () => image.promise }],
++    },
++    setTimeout,
++    clearTimeout,
++    requestAnimationFrame: (callback: () => void) => frames.push(callback),
++  }) as Promise<void>;
++  void ready.then(() => {
++    done = true;
++  });
++  await vi.advanceTimersByTimeAsync(10);
++  expect(done).toBe(false);
++  dataset.vantareMeasurementReady = "1";
++  await vi.advanceTimersByTimeAsync(10);
++  expect(frames).toHaveLength(0);
++  fonts.resolve();
++  await vi.advanceTimersByTimeAsync(0);
++  expect(frames).toHaveLength(0);
++  image.resolve();
++  await vi.advanceTimersByTimeAsync(0);
++  expect(frames).toHaveLength(1);
++  frames.shift()?.();
++  expect(done).toBe(false);
++  expect(frames).toHaveLength(1);
++  frames.shift()?.();
++  await ready;
++  expect(done).toBe(true);
++});
++it("rejects a stalled initialization instead of reporting it as interactive", async () => {
++  vi.useFakeTimers();
++  const ready = runInNewContext(measurementReadyScript, {
++    document: {
++      documentElement: { dataset: { vantareMeasurementReady: "1" } },
++      fonts: { ready: deferred().promise },
++      images: [],
++    },
++    setTimeout,
++    clearTimeout,
++    requestAnimationFrame: vi.fn(),
++  }) as Promise<void>;
++  const rejected = expect(ready).rejects.toThrow("Home readiness timed out");
++  await vi.advanceTimersByTimeAsync(10000);
++  await rejected;
++});

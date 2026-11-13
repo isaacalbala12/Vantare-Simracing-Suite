@@ -1,3 +1,130 @@
+## VANTA-141 · Segunda revisión #2286 (13/11/2026)
+
+Copia Mac verifica SHA de fuente explícito y hash del binario, sin exigir
+source_dirty=false. Empaquetado Electron usa preparar_fuentes --json y su
+source_sha; el sello de su copia aislada recibe ese SHA por entorno y declara
+dirty=not_applicable, sin consultar Git. Producto intacto.
+
+A/A fallido después de dos reparaciones iniciadas termina «inconcluso: A/A
+agotado», sin nueva solicitud. El presupuesto de la familia con carga se
+conserva separado, incluso tras interrupción. aa_loaded pasa los mismos
+controles de calidad, métricas, hash y variante GPUI, con IDs no reutilizados.
+68 pruebas Python PASS (8+46+11+3). CI anterior: producto y Hub Rune PASS;
+gate de medición falló solo por línea en blanco generada: corregida en el
+materializador. Nueva CI pendiente. No se compiló ni ejecutó gráfica aquí.
+El checker first_party opcional es reutilización compartida aceptada por Isaac.
+Kit sigue pendiente de reconstruir los tres Rune en el Mac despierto.
+
+## VANTA-141 · Correcciones de revisión #2286 (13/11/2026)
+
+Rune: default-features=false y las cinco features de Hub Rune; lock regenerado
+sin Symphonia. Gate de licencias reutilizado (solo parámetro opcional para
+rutas first-party en su herramienta compartida); 428 paquetes auditados PASS,
+5 tests del checker Hub PASS. relative publish=false. Los tres Rune antiguos
+se retiran del ZIP: requieren reconstrucción Mac con esta configuración.
+
+CPU sostenida >10% con mínimos calibrados 95–98%; ruido ajeno medio por PID;
+TemperatureWarning obligatorio detectado en calibración, deriva GPU 5–8°C
+calibrada y referencias persistidas. A/A y tolerancias para todas las métricas,
+sin eliminar outliers; solicitudes de repetir parejas de bloques concretas,
+no rechazar variante ni elegir mejor A/B. M declarativo; R necesita cambio de
+píxeles observado y restauración (monitor apagado no cuenta). DWM CPU excluido
+de la familia y declarado en el informe. AttributeError produce evidencia inválida.
+
+Procedencia de CONSTRUIR desde snapshot JSON, sin Git/dirty falso. Adaptación
+determinista de build-support solo para el sello de fuentes; dibujo intacto.
+Parches antiguos .historico.txt. Nuevos criterios y guía en kit/CRITERIOS.md.
+62 tests Python, 43 contratos PS y casos térmicos/ruido/resolución puros PASS;
+fmt 1.99.1 PASS. No gráficos ni SSH al Mac. ZIP regenerado pendiente de los tres
+Rune, nunca incluye COPIAR_MAC.py ni compilar_mac.py. Fuente/CI actual en #2286.
+
+## VANTA-141 · Integración única de las nueve piezas (13/11/2026)
+
+Refs #2213 / Plane VANTA-141 En curso. Rama vantareapp/isa-2213-integracion,
+desde origin/nightly 07825965f (Rust 1.99.1), incorpora por merge #2222, #2224,
+#2238, #2242, #2241, #2249, #2251, #2261 y #2273; sus puntas constan en
+native/pruebas-rune/fuentes-medicion.json. El draft
+[#2286](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2286)
+sustituye los nueve; HEAD/CI se actualizan en #2213. Los antiguos no se cierran
+hasta su merge. CI propia de Rust 1.99.1 lanzada, resultado aún pendiente.
+
+El diff final no toca código/configuración de producto: overlays distribuidos,
+hub-host, instalador, Hub web y workspace nativo idénticos a la base. Incluye
+solo pruebas-rune, su CI propia y este handoff. La instrumentación de producto
+de los PR antiguos pasa a parches aplicables únicamente a fuentes-generadas,
+ignoradas dentro del banco. Fast nunca se aplica a los overlays distribuidos.
+Los constructores rechazan otro SourceRoot; Rune/contador usan el mismo IPC y
+domain de la copia GPUI fijada, con cuatro miembros propios y lock integrado.
+
+Cuatro copias preparadas y contrastadas por blobs Git; 54 tests Python,
+formato Rust 1.99.1 y contratos de 39 guiones PASS. Primer intento de cola falló
+por selección múltiple de Python (corregido); el segundo se detuvo por
+captura.lock antes de Cargo. Validación Rust restante a la CI, sin desactivar
+lints: IPC/profiling/contador y metadatos Rune, sin compilar renderizadores.
+No se ejecutó gráfica ni otro SSH. ZIP preparado con hueco de Inicio Rune;
+binarios existentes y sus hashes intactos. Medición solo PC con grabación.
+Sin merge, cierre de PR, release ni promoción de canales.
+
+## VANTA-141 / #2213 — Inicio Rune: primera imagen CPU (13/11/2026)
+
+El Mac volvió a quedar sin SSH tras copiar y verificar 5d501bda0. Se prepara
+una corrección de adquisición: Rune puede mostrar Inicio por CPU antes de un
+Present GPU. Callback tras dibujo + DwmFlush marca visible; otro, con imágenes
+listas, marca interactivo. El padre observa JSON con QPC (cotas superiores).
+No cambia Rune d533, tokens, fuentes ni vistas. Solo API Windows existente.
+Rustfmt PASS, nueva compilación/clippy pendientes de acceso Mac; los binarios
+anteriores siguen conservados y nunca se ejecutaron en servidor. La biblioteca
+Runtime no cambia. PC de juego: pendiente comprobar las marcas y la imagen.
+Kit todavía incompleto, compilación comparable pendiente autorizada. Sin merge
+ni release. Reintento SSH cada 30 minutos mientras se completan otras piezas.
+## VANTA-141 · Inicio Rune: señal de frame interactivo (13/11/2026)
+
+Pieza 8, PR draft #2241. Señal optativa tras frame completo con imágenes
+listas; error de escritura cierra con fallo, sin sobrescribir evidencia.
+Nuevo test del gate de imágenes sin ventana. Formato PASS; Runtime, Clippy
+y cruce Release pendientes de ejecutar en el Mac recuperado. No se ejecuta
+Rune en servidor. Telemetría de campaña exclusivamente grabada; sin merge/release.
+
+## VANTA-141 · Pieza 8 Inicio Rune compilada
+
+- Pantalla local Inicio, tokens y fuentes del Hub, recursos SVG y fixture inicio-base incrustados. Ventana 1440×900 sin entrada animada, navegación sencilla y scroll Rune real. Sin red ni servicios reales.
+- Fuente Windows 69d2a5cc78aadc06b5dda900afc269f313b8c487; Rust 1.99.1 Release opt3/lto=false/cgu16/debug0, target único Mac. 2 tests puros de árbol y pulsación pasan; fmt y clippy all-targets -D warnings pasan.
+- Cruce incremental 11,16 s, 27.247.616 bytes; mínimo libre 11,75 GiB sobre el nuevo límite autorizado 10. Guardián cancela a 10,25.
+- Binario copiado al servidor; procedencia incrustada y dumpbin comprobados sin ejecutarlo. Sin imagen física ni medidas de pantalla. A-Electron/A-GPUI fast, campaña completa y kit pendientes; no merge ni release.
+
+## VANTA-141 - Esqueleto Windows compilado y Runtime nativo verificado (12-nov-2026)
+
+[#2213](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2213),
+area:overlays-runtime / Project Vantare / Plane **En curso**. Worker F,
+piezas 1-11 de INFORME-FABLE.md; base nightly b71e65cbf.
+
+Por orden de Isaac, Rune se compila en el Mac; el build del servidor se
+cancelo tras el reinicio y por compartir sus 16 GiB con otros workers.
+Target unico ~/target-isa-2213-rune; se para al bajar de 18 GiB libres para
+no alcanzar el minimo de 15 GiB. Rust 1.99.1, perfil Release sin debuginfo,
+cuatro jobs, sccache desactivado. No se toca el toolchain del producto.
+
+Fuente del primer binario: 814cb20db en bare Mac. Windows x64 compila;
+Cargo 2m01s, intento inicial con preparacion xwin 158,52 s; no se usa aun
+como tiempo limpio comparable. Exe 26.580.480 bytes, SHA256
+9bb4c5f8796110bd114692d97af07055129818127033e6431319c70472a45722.
+Test Runtime nativo: 1/1 PASS; compilacion 1m29s, ejecucion 0,00s. Ningun
+binario grafico ejecutado en servidor ni Mac. Minimos libres: 25,04 GiB
+Windows / 24,19 GiB test nativo. Dumpbin exige incluir VCRUNTIME140.dll.
+
+Piezas 2+3: checkpoint 2837d460e, preparado en el Mac, sin build/replay aun.
+Analizador: 12 casos sinteticos en desarrollo; no hay mediciones de producto.
+Evidencia: D:/VantareServer/evidence/rune-vs-gpui/CONSTRUCCION.md.
+Pieza 1 lista para PR draft: fmt y Clippy Windows --all-targets -D warnings PASS.
+Cargo timings del Mac: limpio 92,77 s / incremental cambiando texto 10,90 s;
+SDK y fuentes ya descargados, sccache desactivado, cuatro jobs. Las medidas
+94,44 / 12,14 s del supervisor incluyen arranque y hasta dos segundos de
+sondeo, por eso se conservan aparte. Datos versionados en pruebas-rune/medidas.
+Binario final fuente 53050828b, SHA256
+ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
+Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
+Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
+
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 
 [#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995),

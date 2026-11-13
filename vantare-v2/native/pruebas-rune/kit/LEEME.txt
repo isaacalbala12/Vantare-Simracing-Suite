@@ -1,0 +1,121 @@
+VANTARE — PRUEBA RUNE / GPUI (VANTA-141)
+
+Este kit mide pantallas con datos grabados. NO abrir LMU ni conectar una
+cuenta. No publica nada ni cambia el motor de Vantare. Nunca usarlo en el
+servidor. Necesita Windows 11, escritorio abierto y PowerShell 7 de 64 bits.
+PresentMon incluido: versión oficial 2.6.0, con hash comprobado.
+Si el ZIP dice PENDIENTE-RUNE, faltan los tres Rune reconstruidos sin audio/MPL:
+no ejecutar la campaña. Los binarios antiguos se han retirado del paquete.
+
+ANTES DE EMPEZAR
+Cierra Vantare, el juego, navegador, Discord, OBS y grabadores (también la
+captura NVIDIA). Conecta el PC a corriente y elige Alto rendimiento en
+Windows. Conserva driver, resolución, escala y VRR/G-Sync durante la campaña.
+No cambies el antivirus ni instales controladores para esta prueba.
+Descomprime la carpeta completa en un disco con espacio para los CSV.
+Usa la sesión física del PC, sin Escritorio remoto.
+Abre PowerShell 7 como administrador (PresentMon necesita acceso a ETW).
+Sitúate en la carpeta que contiene INICIAR.ps1.
+
+CUÁNTO TARDA
+B principal: aproximadamente 9–12 horas (10 Relative, 60 Hz, con/sin carga,
+Rune y GPUI fast frente a GPUI actual). B completa: varios días, al añadir
+1/4/10 widgets y 60/144 Hz. Inicio A: unos 90 minutos y necesita que sigas
+las instrucciones de interacción. Aguante: 4 horas POR motor, 12 en total.
+No es una prueba de unos minutos. Deja el PC disponible y evita usar otras
+aplicaciones. Las familias fallidas se repiten completas hasta tres intentos.
+
+1. PREPARAR Y MEDIR RELATIVE
+  .\INICIAR.ps1 -Resultados 'D:\PruebaRune\campana' -SoloPreparar
+La preparación comprueba todos los archivos y no abre interfaces.
+  .\INICIAR.ps1 -Resultados 'D:\PruebaRune\campana' -Reanudar
+Escribe LISTO cuando lo pida. Espera dos minutos de reposo. El guion calibra
+una carga gráfica y reutiliza el MISMO trabajo en todos los motores.
+Se ve una sola capa con diez widgets, no diez ventanas nativas.
+Para la matriz completa, prepara una campaña nueva con -Campana Completa.
+Para reanudarla usa también -Campana Completa y -Reanudar.
+Reserva al menos 20 GB para la principal y 60 GB para la completa (estimación;
+crece con los procesos y contadores del PC).
+No retires EN-CURSO.lock sin comprobar antes que la campaña terminó y que
+no quedan sus procesos. Ese archivo impide recoger una ejecución activa.
+
+2. INICIO DEL HUB
+  .\INICIO.ps1 -Campana 'D:\PruebaRune\campana'
+DPI de Windows al 100%, contenido de ventana 1440x900, tema oscuro. Se usan
+mock/demo locales. Diez procesos con perfil nuevo y diez con perfil QA
+reutilizado por motor; NO se limpian cachés globales del sistema.
+Cinco rondas de interacción por motor, intercaladas: 20 s sin tocar, 10 s
+desplazando, 30 cambios de sección (15 idas y vueltas Inicio/otra pestaña
+simple) y 10 s redimensionando. Coloca la consola al lado para leer los avisos.
+Si no se mueve el contenido al desplazar, anótalo; no inventar una prueba de
+scroll. Las pantallas simples del Hub congelado y del nuevo no son idénticas.
+El tiempo interactivo es una cota superior observada, esperando datos,
+fuentes, imágenes y un frame. Visible usa PresentMon; Rune además marca su
+primer dibujo tras vaciar GDI y componer con DWM, porque puede aparecer por
+CPU antes de un Present. Se conserva cada método por separado.
+
+El primer arranque tras reiniciar va APARTE. Tras preparar la campaña,
+reinicia y, antes de abrir ese Hub, ejecuta (primeros 15 minutos):
+  .\INICIO.ps1 -Campana 'D:\PruebaRune\campana' -PrimerArranque rune
+Repite con electron y gpui_fast, reiniciando antes de cada uno. PRIMERO es
+una confirmación manual: el kit registra la hora de arranque de Windows.
+No mezcla estos tres registros con las series de diez.
+
+3. CORRECCIÓN VISUAL
+  .\CORRECCION.ps1 -Campana 'D:\PruebaRune\campana'
+Conserva las capturas y completa las comprobaciones de clic a través de la
+capa, ausencia de foco robado, encima/sin bordes, DPI 100/150%, segundo
+monitor, transparencia OBS y exclusión de captura. No dar por correcto lo
+que no se haya observado. OBS se usa en esta comprobación aparte, nunca en
+las rondas de consumo. Una comprobación pendiente impide aprobar el motor.
+
+4. AGUANTE (una orden cada vez)
+Activa previamente Volcado de memoria pequeño en Inicio y recuperación de
+Windows y deja archivo de paginación. El kit solo lo comprueba.
+  .\AGUANTE.ps1 -Variant gpui -OutputDirectory 'D:\PruebaRune\campana\aguante\gpui'
+  .\AGUANTE.ps1 -Variant gpui_fast -OutputDirectory 'D:\PruebaRune\campana\aguante\gpui_fast'
+  .\AGUANTE.ps1 -Variant rune -OutputDirectory 'D:\PruebaRune\campana\aguante\rune'
+H oculta y H muestra la capa sin activarla. Apaga físicamente el monitor y
+comprueba la vuelta; pulsa M para confirmarlo. Cambia la resolución, vuelve
+a la original y pulsa R. Esas pulsaciones son tus confirmaciones físicas.
+Si Windows se reinicia durante el aguante, conserva la carpeta y ejecuta:
+  .\RECUPERAR_AGUANTE.ps1 -Directory CARPETA_DEL_AGUANTE
+Recoge los incidentes como prueba incompleta, sin repetir ni aprobarla.
+Q cancela conservando los datos. El núcleo repite la misma grabación,
+reiniciando cada 65 s. Se registran esos cortes; no es una carrera en vivo.
+
+CÓMO SABER QUE TERMINÓ Y RECOGER
+Cada guion muestra TERMINÓ y vuelve al indicador de PowerShell. Si aparece
+un error, conserva toda la carpeta; no borres intentos ni escojas resultados.
+El mensaje de fin de campaña B no significa que A, corrección y aguante estén
+hechos. Cuando todas las ejecuciones hayan cerrado:
+  .\RECOGER.ps1 -Resultados 'D:\PruebaRune\campana' -Destino 'D:\PruebaRune\recogida.zip'
+La recogida verifica cada archivo y no sobrescribe otro zip. Copia el zip al
+servidor para ANALIZAR.ps1. No hace falta Python en el PC de juego.
+
+LÍMITES DEL RESULTADO
+Solo grabación y carga sintética: no mide FPS de LMU ni G-Sync dentro del
+juego real. Las fotos omitidas intencionadamente por la demanda de 33 ms
+no se cuentan como pérdidas: se comparan envíos reales y recepciones.
+Temperatura CPU: no disponible. Se usan temperatura GPU y contadores de
+limitación/rendimiento CPU. Si faltan datos o aparece limitación, se invalida
+la ronda; no se atribuye automáticamente esa limitación al calor.
+Las tres variantes usan los mismos archivos Inter, Rajdhani y Space Mono.
+El umbral principal es UNA ventana con DIEZ Relative (corrige el informe).
+Tiempos de compilación comparables pendientes autorizados: se medirán luego
+en una ventana nocturna en el servidor, mismo perfil y máquina, Rune -j1.
+El analizador nunca presenta ese pendiente como aprobado ni adopta un motor.
+
+REVISIÓN DE LOS CONTROLES
+La calibración comprueba TemperatureWarning y los sensores ANTES de medir.
+Un pico CPU de un segundo no invalida: se exige más del 10% de muestras con
+limitación, con mínimos calibrados. El ruido ajeno usa la media por PID de
+toda la ronda, no su peor segundo. Se controla también la deriva GPU entre
+rondas. La CPU de dwm.exe NO se suma a la familia del overlay.
+CRITERIOS.md explica márgenes, outliers y evidencias declarativas del aguante.
+M es declarativo; R requiere que Windows haya observado una resolución distinta
+durante al menos tres segundos y su restauración. Si R avisa, puedes continuar.
+Si ANALIZAR solicita repetir bloques, copia el veredicto al PC y ejecuta:
+  .\REPETIR_BLOQUES.ps1 -Campana 'D:\PruebaRune\campana' -Informe 'D:\PruebaRune\veredicto.json'
+No repitas la variante entera. Se conservan todos los intentos y se vuelve a
+recoger y analizar en el servidor. No se borran outliers numéricos.

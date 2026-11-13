@@ -1,0 +1,19 @@
+{
+  "base": "56cb2c701a356eafa324e4237626952d259a77f0",
+  "head": "eb8c0aa00b54a9b9f0d1dec36869abeaf7dc38b9",
+  "feature": "medir-inicio",
+  "frozen_views": [
+    "native/hub/src/home.rs",
+    "native/hub/src/demo.rs"
+  ],
+  "base_engine": "745bd52b847d1c6a53151146a124db4edcf95aa6",
+  "previous_instrumentation": "Hist\u00f3rico: fast/medir-fast.patch.historico.txt",
+  "compiled": true,
+  "pending": "Ejecuci\u00c3\u00b3n y medici\u00c3\u00b3n en PC de juego; tiempos de compilaci\u00c3\u00b3n comparables pendientes autorizados",
+  "binary_sha256": "e398fa5d717d85b9a6d1b1dfe2464866891c4018ad6d36d2760e0a26105b9aae",
+  "binary_bytes": 40735232,
+  "build_elapsed_s": 793,
+  "dumpbin_verified": true,
+  "executed": false,
+  "active_recipe": "fuentes-medicion.json#hub-fast"
+}

@@ -1,0 +1,821 @@
+diff --git a/vantare-v2/native/build-support/src/lib.rs b/vantare-v2/native/build-support/src/lib.rs
+index d3f375609628c66bb82ad588d0820e5a868d81a7..06a6b444202265ca2616931cc63a11b420c97884 100644
+--- a/vantare-v2/native/build-support/src/lib.rs
++++ b/vantare-v2/native/build-support/src/lib.rs
+@@ -140,3 +140,70 @@ END
+     }
+     Ok(())
+ }
++
++/// Embed compilation provenance only in explicitly instrumented packages.
++/// Product builds do not acquire a dependency on a Git checkout.
++pub fn measurement_provenance() -> Result<(), Box<dyn std::error::Error>> {
++    let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("manifest ausente")?);
++    let sha = measurement_git(&manifest, &["rev-parse", "HEAD"])?;
++    let dirty = !measurement_git(
++        &manifest,
++        &["status", "--porcelain", "--untracked-files=normal"],
++    )?
++    .is_empty();
++    // Re-evaluate provenance when native sources or dependencies change without
++    // a commit, rather than reusing the previous build script's clean marker.
++    if let Some(workspace) = manifest.parent() {
++        println!("cargo:rerun-if-changed={}", workspace.display());
++    }
++    let head = measurement_git(&manifest, &["rev-parse", "--git-path", "HEAD"])?;
++    println!("cargo:rerun-if-changed={}", manifest.join(head).display());
++    let reference = Command::new("git")
++        .args(["symbolic-ref", "-q", "HEAD"])
++        .current_dir(&manifest)
++        .output()?;
++    if reference.status.success() {
++        let reference = String::from_utf8(reference.stdout)?;
++        let path = measurement_git(&manifest, &["rev-parse", "--git-path", reference.trim()])?;
++        println!("cargo:rerun-if-changed={}", manifest.join(path).display());
++    }
++    println!("cargo:rerun-if-env-changed=CARGO_PROFILE_RELEASE_LTO");
++    println!("cargo:rerun-if-env-changed=CARGO_PROFILE_RELEASE_CODEGEN_UNITS");
++    let mut features: Vec<_> = env::vars()
++        .filter_map(|(key, _)| key.strip_prefix("CARGO_FEATURE_").map(str::to_owned))
++        .collect();
++    features.sort();
++    for (name, value) in [
++        ("SHA", sha),
++        ("DIRTY", dirty.to_string()),
++        ("PROFILE", env::var("PROFILE")?),
++        ("OPT_LEVEL", env::var("OPT_LEVEL")?),
++        ("DEBUG", env::var("DEBUG")?),
++        ("FEATURES", features.join(",")),
++        (
++            "LTO",
++            env::var("CARGO_PROFILE_RELEASE_LTO").unwrap_or_else(|_| "false".into()),
++        ),
++        (
++            "CODEGEN_UNITS",
++            env::var("CARGO_PROFILE_RELEASE_CODEGEN_UNITS").unwrap_or_else(|_| "16".into()),
++        ),
++    ] {
++        println!("cargo:rustc-env=VANTARE_MEASUREMENT_{name}={value}");
++    }
++    Ok(())
++}
++
++fn measurement_git(
++    directory: &std::path::Path,
++    args: &[&str],
++) -> Result<String, Box<dyn std::error::Error>> {
++    let output = Command::new("git")
++        .args(args)
++        .current_dir(directory)
++        .output()?;
++    if !output.status.success() {
++        return Err("cannot identify compiled measurement source".into());
++    }
++    Ok(String::from_utf8(output.stdout)?.trim().to_owned())
++}
+diff --git a/vantare-v2/native/ipc/Cargo.toml b/vantare-v2/native/ipc/Cargo.toml
+index b5f88508d86d0fea11aa579d777ef604990943ee..bf2f47802cc54c9d0fe69e804e9dcd1d430b45d8 100644
+--- a/vantare-v2/native/ipc/Cargo.toml
++++ b/vantare-v2/native/ipc/Cargo.toml
+@@ -6,6 +6,7 @@ rust-version.workspace = true
+ publish.workspace = true
+ 
+ [features]
++medir-latencia = ["vantare-profiling/medir-latencia"]
+ # Fixtures y defensa de raíz QA para pruebas de consumidores; inactivas en producto.
+ test-support = []
+ qa-e2e = []
+diff --git a/vantare-v2/native/ipc/src/lib.rs b/vantare-v2/native/ipc/src/lib.rs
+index 9d1e29de7e91679b33b571f240987b06fdf9d9a3..a286e4e2382e0a043b7939e0232021756397669f 100644
+--- a/vantare-v2/native/ipc/src/lib.rs
++++ b/vantare-v2/native/ipc/src/lib.rs
+@@ -176,6 +176,28 @@ impl From<serde_json::Error> for Error {
+ #[cfg(all(any(test, feature = "test-support"), any(windows, unix)))]
+ pub mod test_support;
+ 
++/// Demanda exacta de Relative Vantare usada por las tres variantes de VANTA-141.
++/// Solo existe en binarios de medicion; no cambia ajustes ni cadencias de producto.
++#[cfg(feature = "medir-latencia")]
++pub fn relative_measurement_demand() -> Demand {
++    let mut demand = Demand::default();
++    for signal in [
++        Signal::Cars,
++        Signal::Relative,
++        Signal::Positions,
++        Signal::PitStatus,
++        Signal::SessionInfo,
++        Signal::TrackName,
++        Signal::Flags,
++        Signal::LapTimes,
++    ] {
++        demand.request(signal, 33);
++    }
++    demand.request(Signal::SessionClock, 250);
++    demand.request(Signal::Weather, 500);
++    demand
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+diff --git a/vantare-v2/native/ipc/src/publisher.rs b/vantare-v2/native/ipc/src/publisher.rs
+index 50e049c30133747e3c0aa242bef1f3465e201c79..b04be7059c782682766313b298baf842c83f367c 100644
+--- a/vantare-v2/native/ipc/src/publisher.rs
++++ b/vantare-v2/native/ipc/src/publisher.rs
+@@ -86,6 +86,8 @@ impl Publisher {
+             return Err(Error::NotNewer);
+         }
+         self.last = Some(revision);
++        #[cfg(feature = "medir-latencia")]
++        vantare_profiling::latency::mark("origin", snapshot.epoch, snapshot.sequence, 0);
+         self.shared.latest.put(snapshot);
+         Ok(())
+     }
+@@ -267,6 +269,10 @@ fn serve(mut pipe: Pipe, shared: &Shared) -> Result<(), Error> {
+                     } else {
+                         transmit(&Message::Snapshot(SnapshotDto::from(&*snapshot)))?;
+                     }
++                    // Only a successfully written snapshot counts as sent. Cadence
++                    // omissions remain in origin, without being mislabeled as IPC loss.
++                    #[cfg(feature = "medir-latencia")]
++                    vantare_profiling::latency::mark("sent", snapshot.epoch, snapshot.sequence, 0);
+                     last_message = Instant::now();
+                     sent = Some(revision);
+                 }
+diff --git a/vantare-v2/native/ipc/src/subscriber.rs b/vantare-v2/native/ipc/src/subscriber.rs
+index d5b6832f38380d4e48758b255fb307590a1c38e9..fae2a3ad7b08b2b1326c208a0b2080d41c4a6adb 100644
+--- a/vantare-v2/native/ipc/src/subscriber.rs
++++ b/vantare-v2/native/ipc/src/subscriber.rs
+@@ -169,6 +169,13 @@ impl Subscriber {
+         match self.latest.wait(self.seen, timeout) {
+             Wait::Value(snapshot, generation) => {
+                 self.seen = generation;
++                #[cfg(feature = "medir-latencia")]
++                vantare_profiling::latency::mark(
++                    "received",
++                    snapshot.snapshot.epoch,
++                    snapshot.snapshot.sequence,
++                    0,
++                );
+                 Some((*snapshot).clone())
+             }
+             Wait::Timeout | Wait::Closed => None,
+@@ -276,6 +283,8 @@ fn session(
+                 };
+                 if revision.is_newer(*cursor) {
+                     let decoded = Snapshot::try_from(dto)?;
++                    #[cfg(feature = "medir-latencia")]
++                    vantare_profiling::latency::mark("decoded", decoded.epoch, decoded.sequence, 0);
+                     connection.received();
+                     latest.put(Arc::new(Photo::full(Arc::new(decoded))));
+                     *cursor = Some(revision);
+@@ -310,6 +319,8 @@ fn session(
+                     }
+                     snapshot.restore(previous.as_ref(), &requested, &delivered)?;
+                     let decoded = Snapshot::try_from(&snapshot)?;
++                    #[cfg(feature = "medir-latencia")]
++                    vantare_profiling::latency::mark("decoded", decoded.epoch, decoded.sequence, 0);
+                     connection.received();
+                     previous = Some(snapshot);
+                     latest.put(Arc::new(Photo {
+@@ -329,6 +340,71 @@ fn session(
+ mod tests {
+     use super::*;
+ 
++    #[cfg(feature = "medir-latencia")]
++    #[test]
++    fn measurement_counts_delivered_photos_instead_of_hiding_latest_slot_loss() {
++        use crate::Publisher;
++        let epoch = vantare_profiling::clock().expect("reloj de prueba");
++        let path = std::env::temp_dir().join(format!(
++            "vantare-latency-{}-{epoch}.csv",
++            std::process::id()
++        ));
++        let session = vantare_profiling::latency::Session::open(&path).expect("traza nueva");
++        let name = format!("vantare-latency-loss-{}", std::process::id());
++        let mut publisher = Publisher::new(&name, |_| true).expect("publicador");
++        let mut subscriber = Subscriber::connect(&name, |_| true).expect("suscriptor");
++        let mut generation = 0;
++        for sequence in 1..=3 {
++            publisher
++                .publish(Arc::new(Snapshot {
++                    epoch,
++                    sequence,
++                    ..Snapshot::default()
++                }))
++                .expect("foto");
++            match subscriber.latest.wait(generation, Duration::from_secs(3)) {
++                Wait::Value(photo, next) => {
++                    assert_eq!(photo.snapshot.sequence, sequence);
++                    generation = next;
++                }
++                _ => panic!("la foto debe llegar al transporte antes de publicar la siguiente"),
++            }
++        }
++        assert_eq!(
++            subscriber
++                .next(Duration::ZERO)
++                .expect("ultima foto")
++                .sequence,
++            3
++        );
++        drop(subscriber);
++        drop(publisher);
++        session.finish().expect("cierre completo");
++        let trace = std::fs::read_to_string(&path).expect("CSV");
++        let sequences = |phase| {
++            trace
++                .lines()
++                .filter_map(|line| {
++                    let cells: Vec<_> = line.split(',').collect();
++                    if cells.len() == 5 && cells[0] == phase && cells[2] == epoch.to_string() {
++                        Some(cells[3].parse::<u64>().expect("secuencia"))
++                    } else {
++                        None
++                    }
++                })
++                .collect::<Vec<_>>()
++        };
++        assert_eq!(sequences("origin"), [1, 2, 3]);
++        assert_eq!(sequences("sent"), [1, 2, 3]);
++        assert_eq!(sequences("decoded"), [1, 2, 3]);
++        assert_eq!(
++            sequences("received"),
++            [3],
++            "el contador debe ver que el consumidor perdio dos fotos"
++        );
++        std::fs::remove_file(&path).expect("retirar solo el fichero de esta prueba");
++    }
++
+     #[test]
+     fn mismatch_survives_retries_until_a_compatible_photo_arrives() {
+         let status = ConnectionStatus::default();
+diff --git a/vantare-v2/native/profiling/Cargo.toml b/vantare-v2/native/profiling/Cargo.toml
+index 7ab3b9a68e86c36f7a02953a9d461732f04e6518..b85599105f8bcb67e71262bf5a6b5ab140d65e35 100644
+--- a/vantare-v2/native/profiling/Cargo.toml
++++ b/vantare-v2/native/profiling/Cargo.toml
+@@ -5,6 +5,9 @@ edition.workspace = true
+ rust-version.workspace = true
+ publish.workspace = true
+ 
++[features]
++medir-latencia = []
++
+ [dependencies]
+ 
+ [lints]
+diff --git a/vantare-v2/native/profiling/src/latency.rs b/vantare-v2/native/profiling/src/latency.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..c81cd8eafa3c11bd5561579cc3c2c8d54970c97b
+--- /dev/null
++++ b/vantare-v2/native/profiling/src/latency.rs
+@@ -0,0 +1,172 @@
++//! VANTA-141: QPC común entre procesos; nunca confundir envío con pantalla.
++use std::collections::BTreeMap;
++use std::fs::{File, OpenOptions};
++use std::io::{self, Write};
++use std::path::Path;
++use std::sync::{Mutex, OnceLock};
++
++const LIMIT: usize = 131_072;
++
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub struct Stamp {
++    pub phase: &'static str,
++    pub qpc: u64,
++    pub epoch: u64,
++    pub sequence: u64,
++    pub window: u64,
++}
++
++#[derive(Default)]
++struct Buffer {
++    rows: Vec<Stamp>,
++    pending: BTreeMap<u64, (u64, u64)>,
++    overflow: u64,
++    active: bool,
++}
++
++static BUFFER: OnceLock<Mutex<Buffer>> = OnceLock::new();
++
++/// Un descriptor por proceso, abierto antes de la ronda y escrito al cerrarla.
++/// No activar en aguante: su memoria crece durante la ronda de 60 s.
++pub struct Session(File);
++
++impl Session {
++    /// Abre la ruta explícita, si se activó el registro.
++    /// # Errors
++    /// Si la ruta ya existe o no se puede abrir.
++    pub fn from_env() -> io::Result<Option<Self>> {
++        std::env::var_os("VANTARE_LATENCY_FILE")
++            .map(|path| Self::open(Path::new(&path)))
++            .transpose()
++    }
++
++    /// Abre un archivo nuevo, sin sobrescribir evidencia.
++    /// # Errors
++    /// Si no se puede abrir o ya hay una sesión activa.
++    pub fn open(path: &Path) -> io::Result<Self> {
++        let file = OpenOptions::new().write(true).create_new(true).open(path)?;
++        let mut buffer = BUFFER
++            .get_or_init(Mutex::default)
++            .lock()
++            .map_err(|_| io::Error::other("traza de latencia dañada"))?;
++        if buffer.active {
++            return Err(io::Error::other("una sola sesión de latencia por proceso"));
++        }
++        *buffer = Buffer {
++            active: true,
++            ..Buffer::default()
++        };
++        Ok(Self(file))
++    }
++
++    /// Escribe una traza completa y sincroniza disco.
++    /// # Errors
++    /// Ante fallos de escritura o sincronización.
++    pub fn finish(mut self) -> io::Result<()> {
++        let mut buffer = BUFFER
++            .get_or_init(Mutex::default)
++            .lock()
++            .map_err(|_| io::Error::other("traza de latencia dañada"))?;
++        buffer.active = false;
++        write_trace(
++            &mut self.0,
++            crate::frequency().unwrap_or(0),
++            buffer.overflow,
++            &buffer.rows,
++        )?;
++        self.0.sync_all()
++    }
++}
++
++pub fn mark(phase: &'static str, epoch: u64, sequence: u64, window: u64) {
++    let Some(buffer) = BUFFER.get() else { return };
++    let Ok(mut buffer) = buffer.lock() else {
++        return;
++    };
++    if !buffer.active {
++        return;
++    }
++    let row = Stamp {
++        phase,
++        qpc: crate::clock().unwrap_or(0),
++        epoch,
++        sequence,
++        window,
++    };
++    if buffer.rows.len() < LIMIT {
++        buffer.rows.push(row);
++    } else {
++        buffer.overflow += 1;
++    }
++}
++
++/// Se llama desde el canvas realmente pintado, con el HWND de ese canvas.
++pub fn painted(window: u64, epoch: u64, sequence: u64) {
++    if let Some(buffer) = BUFFER.get()
++        && let Ok(mut buffer) = buffer.lock()
++        && buffer.active
++    {
++        buffer.pending.insert(window, (epoch, sequence));
++    }
++}
++
++/// Se llama inmediatamente antes de Present; no implica que Windows lo muestre.
++pub fn submit(window: u64) {
++    let photo = BUFFER
++        .get()
++        .and_then(|buffer| buffer.lock().ok()?.pending.remove(&window));
++    if let Some((epoch, sequence)) = photo {
++        mark("submit", epoch, sequence, window);
++    }
++}
++
++/// Serializa la traza con cabecera y pie verificables.
++/// # Errors
++/// Si el destino falla al escribir.
++pub fn write_trace(
++    output: &mut impl Write,
++    frequency: u64,
++    overflow: u64,
++    rows: &[Stamp],
++) -> io::Result<()> {
++    writeln!(
++        output,
++        "# latency-v1,frequency={frequency},overflow={overflow}"
++    )?;
++    writeln!(output, "phase,qpc,epoch,sequence,window")?;
++    for row in rows {
++        writeln!(
++            output,
++            "{},{},{},{},{}",
++            row.phase, row.qpc, row.epoch, row.sequence, row.window
++        )?;
++    }
++    writeln!(output, "# end,rows={}", rows.len())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn trace_has_explicit_clock_overflow_and_complete_footer() {
++        let mut output = Vec::new();
++        write_trace(
++            &mut output,
++            10_000_000,
++            2,
++            &[Stamp {
++                phase: "origin",
++                qpc: 123,
++                epoch: 42,
++                sequence: 7,
++                window: 0,
++            }],
++        )
++        .unwrap();
++        assert_eq!(
++            String::from_utf8(output).unwrap(),
++            "# latency-v1,frequency=10000000,overflow=2\nphase,qpc,epoch,sequence,window\norigin,123,42,7,0\n# end,rows=1\n"
++        );
++    }
++}
+diff --git a/vantare-v2/native/profiling/src/lib.rs b/vantare-v2/native/profiling/src/lib.rs
+index e85e5255616a3d106d559a37e2674f5d24511540..6f884188654aa9cd72725b46e2921d11f6f2289a 100644
+--- a/vantare-v2/native/profiling/src/lib.rs
++++ b/vantare-v2/native/profiling/src/lib.rs
+@@ -240,6 +240,18 @@ pub fn frequency() -> Option<u64> {
+     Some(1_000_000_000)
+ }
+ 
++#[cfg(feature = "medir-latencia")]
++pub mod latency;
++
++/// No-op eliminado por el compilador fuera de la medición.
++#[inline]
++pub fn latency_submit(window: u64) {
++    #[cfg(feature = "medir-latencia")]
++    latency::submit(window);
++    #[cfg(not(feature = "medir-latencia"))]
++    let _ = window;
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+diff --git a/vantare-v2/native/ui/Cargo.toml b/vantare-v2/native/ui/Cargo.toml
+index 7ba951c5cf9cd47257681bf8d42bf48e8041ce38..2d02321cd2252bc075beeb34f3042002058c9b0d 100644
+--- a/vantare-v2/native/ui/Cargo.toml
++++ b/vantare-v2/native/ui/Cargo.toml
+@@ -6,6 +6,7 @@ rust-version.workspace = true
+ publish.workspace = true
+ 
+ [features]
++medir-latencia = ["vantare-profiling/medir-latencia", "vantare-ipc/medir-latencia"]
+ # Captura con alfa de la ventana (dos pasadas GDI) para la prueba de paridad.
+ parity-capture = []
+ # Imprime cada segundo cuántos fotogramas, `render` y pintados hace cada widget.
+diff --git a/vantare-v2/native/ui/build.rs b/vantare-v2/native/ui/build.rs
+index c355eb02ce3c862d19606b4cfe24076aacc1be02..48620eb8bfc61bf98d213a829158f2be2281b4f1 100644
+--- a/vantare-v2/native/ui/build.rs
++++ b/vantare-v2/native/ui/build.rs
+@@ -2,6 +2,9 @@
+ use std::{env, fmt::Write, fs, path::PathBuf};
+ 
+ fn main() -> Result<(), Box<dyn std::error::Error>> {
++    if env::var_os("CARGO_FEATURE_MEDIR_LATENCIA").is_some() {
++        vantare_build_support::measurement_provenance()?;
++    }
+     vantare_build_support::embed()?;
+     println!("cargo:rerun-if-changed=styles/standings.json");
+     let json: serde_json::Value =
+diff --git a/vantare-v2/native/ui/src/app.rs b/vantare-v2/native/ui/src/app.rs
+index baa1d179aa9278277fbf1b6d0a11a989e8fd5958..a5a86442df85906f8bdb0a3b82fc5c78fc2b897b 100644
+--- a/vantare-v2/native/ui/src/app.rs
++++ b/vantare-v2/native/ui/src/app.rs
+@@ -149,6 +149,8 @@ pub struct Overlay {
+     session: Option<crate::session::Session>,
+     #[cfg(feature = "paint-stats")]
+     profile_photo: Option<(u64, u64)>,
++    #[cfg(feature = "medir-latencia")]
++    latency_photo: Option<(u64, u64)>,
+     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
+     #[cfg(feature = "parity-capture")]
+     pub(crate) backdrop: Option<gpui::Hsla>,
+@@ -252,6 +254,8 @@ impl Overlay {
+             session: None,
+             #[cfg(feature = "paint-stats")]
+             profile_photo: None,
++            #[cfg(feature = "medir-latencia")]
++            latency_photo: None,
+             #[cfg(feature = "parity-capture")]
+             backdrop: None,
+         }
+@@ -384,7 +388,12 @@ impl Overlay {
+         if crate::rights::denied(self.kind, cx) {
+             return;
+         }
+-        if self.project_snapshot(snapshot) {
++        let changed = self.project_snapshot(snapshot);
++        #[cfg(feature = "medir-latencia")]
++        if changed {
++            self.latency_photo = Some((snapshot.epoch, snapshot.sequence));
++        }
++        if changed {
+             #[cfg(feature = "paint-stats")]
+             {
+                 self.profile_photo = Some((snapshot.epoch, snapshot.sequence));
+@@ -507,6 +516,8 @@ impl Render for Overlay {
+         let profile_photo = self.profile_photo.take();
+         #[cfg(feature = "parity-capture")]
+         let backdrop = self.backdrop;
++        #[cfg(feature = "medir-latencia")]
++        let latency_photo = self.latency_photo.take();
+         let element = canvas(
+             |_, _, _| (),
+             move |bounds, (), window, cx| {
+@@ -514,6 +525,12 @@ impl Render for Overlay {
+                 let _span = crate::profiling::begin(crate::profiling::Stage::Paint);
+                 #[cfg(feature = "paint-stats")]
+                 crate::stats::paint(kind);
++                #[cfg(feature = "medir-latencia")]
++                if let Some((epoch, sequence)) = latency_photo
++                    && let Some(hwnd) = overlay::hwnd_of(window)
++                {
++                    vantare_profiling::latency::painted(hwnd as u64, epoch, sequence);
++                }
+                 let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
+                 text::with_origin(origin, || {
+                     let mut window = PaintWindow::new(window, bounds.origin, scale, scale_y);
+@@ -1419,6 +1436,62 @@ pub fn run_with_connection(
+     run_placed_authorized(placed, snapshots, prefs, rights, connection, shutdown);
+ }
+ 
++/// Relative real en mosaico para VANTA-141; mismo host, widget y proyeccion.
++#[cfg(feature = "medir-latencia")]
++pub fn run_relative_measurement(
++    copies: usize,
++    snapshots: flume::Receiver<Arc<Snapshot>>,
++    connection: vantare_ipc::ConnectionStatus,
++    shutdown: Option<flume::Receiver<()>>,
++) {
++    let layout = relative_measurement_layout(copies);
++    run_host(
++        HostLayout {
++            layout,
++            watched: None,
++            connection: Some(connection),
++        },
++        snapshots,
++        None,
++        vantare_ipc::Photo::full,
++        None,
++        false,
++        shutdown,
++    );
++}
++
++#[cfg(feature = "medir-latencia")]
++fn relative_measurement_layout(copies: usize) -> crate::layout::Layout {
++    assert!(matches!(copies, 1 | 4 | 10));
++    let prefs = Preferences::default();
++    let settings = crate::look::Look::default().workshop_defaults(Kind::Relative);
++    let size = Widget::new(&settings, prefs).size();
++    let (dx, dy) = layout_offset();
++    let columns = if copies == 1 {
++        1
++    } else if copies == 4 {
++        2
++    } else {
++        4
++    };
++    let placed = (0..copies)
++        .map(|index| {
++            (
++                Kind::Relative,
++                (
++                    dx + 20.0 + (index % columns) as f32 * (size.0 + 12.0),
++                    dy + 20.0 + (index / columns) as f32 * (size.1 + 12.0),
++                ),
++            )
++        })
++        .collect();
++    let mut layout = campaign_layout(placed, prefs);
++    for instance in &mut layout.instances {
++        instance.settings = settings.clone();
++    }
++    layout
++}
++
+ fn run_placed_authorized(
+     placed: Vec<(Kind, (f32, f32))>,
+     snapshots: flume::Receiver<Arc<Snapshot>>,
+@@ -1469,6 +1542,36 @@ fn campaign_layout(placed: Vec<(Kind, (f32, f32))>, prefs: Preferences) -> crate
+ 
+ #[cfg(test)]
+ mod tests {
++    #[cfg(feature = "medir-latencia")]
++    #[test]
++    fn measurement_is_relative_vantare_without_overlap_and_every_photo() {
++        for copies in [1, 4, 10] {
++            let layout = relative_measurement_layout(copies);
++            assert_eq!(
++                layout.instances[0].settings.demand(),
++                vantare_ipc::relative_measurement_demand()
++            );
++            assert_eq!(layout.instances.len(), copies);
++            for (index, instance) in layout.instances.iter().enumerate() {
++                assert_eq!(instance.settings.kind(), Kind::Relative);
++                assert_eq!(
++                    instance.settings.appearance().unwrap().0,
++                    crate::look::Look::Vantare
++                );
++                assert_eq!(layout.performance.widgets.get(&instance.id), Some(&0));
++                let size = Widget::new(&instance.settings, layout.preferences).size();
++                for other in layout.instances.iter().skip(index + 1) {
++                    assert!(
++                        other.x >= instance.x + size.0
++                            || instance.x >= other.x + size.0
++                            || other.y >= instance.y + size.1
++                            || instance.y >= other.y + size.1
++                    );
++                }
++            }
++        }
++    }
++
+     #[test]
+     fn campaign_preserves_placements_duplicates_and_every_photo_cadence() {
+         let prefs = Preferences {
+diff --git a/vantare-v2/native/ui/src/bin/vantare-overlays.rs b/vantare-v2/native/ui/src/bin/vantare-overlays.rs
+index dc260e424db12f15a6ff8e1b169e4cc952427b8b..866397b8e73e5aa2e74ce5571dc0959d7974f386 100644
+--- a/vantare-v2/native/ui/src/bin/vantare-overlays.rs
++++ b/vantare-v2/native/ui/src/bin/vantare-overlays.rs
+@@ -108,7 +108,7 @@ fn snapshot_feed(
+     Ok((snapshots?, connection))
+ }
+ 
+-fn main() -> ExitCode {
++fn application_main() -> ExitCode {
+     if product::print_version() {
+         return ExitCode::SUCCESS;
+     }
+@@ -131,6 +131,10 @@ fn main() -> ExitCode {
+     {
+         return vantare_ui::capture::run(path.into());
+     }
++    #[cfg(feature = "medir-latencia")]
++    if args.first().is_some_and(|arg| arg == "--medicion-relative") {
++        return measurement_main(&args[1..], controlled);
++    }
+     let Some((windows, layout, feed)) = parse(&args) else {
+         let _written = writeln!(std::io::stderr(), "{USAGE}");
+         return ExitCode::from(2);
+@@ -191,6 +195,32 @@ fn main() -> ExitCode {
+     ExitCode::SUCCESS
+ }
+ 
++#[cfg(feature = "medir-latencia")]
++fn measurement_main(args: &[String], controlled: bool) -> ExitCode {
++    let [count, flag, source] = args else {
++        return failure("uso: --medicion-relative 1|4|10 --fuente pipe[:nombre] --control-stdin");
++    };
++    let Ok(copies @ (1 | 4 | 10)) = count.parse::<usize>() else {
++        return failure("copias invalidas");
++    };
++    if flag != "--fuente" || !controlled {
++        return failure("medicion requiere pipe y control stdin");
++    }
++    let Ok(Feed::Pipe(name)) = source.parse::<Feed>() else {
++        return failure("medicion requiere IPC real");
++    };
++    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
++        let name = name.map_or_else(vantare_ipc::default_pipe_name, Ok)?;
++        let demand = vantare_ipc::relative_measurement_demand();
++        let handle = vantare_ui::source::DemandHandle::new(demand);
++        let connection = handle.connection();
++        let photos = vantare_ui::source::pipe_feed_observed(&name, Some(handle))?;
++        vantare_ui::run_relative_measurement(copies, photos, connection, parent_shutdown(true)?);
++        Ok(())
++    })();
++    result.map_or_else(failure, |()| ExitCode::SUCCESS)
++}
++
+ fn failure(error: impl std::fmt::Display) -> ExitCode {
+     let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
+     ExitCode::FAILURE
+@@ -231,6 +261,45 @@ fn parent_shutdown(controlled: bool) -> std::io::Result<Option<flume::Receiver<(
+     Ok(Some(receive))
+ }
+ 
++fn main() -> ExitCode {
++    #[cfg(feature = "medir-latencia")]
++    eprintln!(concat!(
++        "VANTARE_LATENCY_BUILD;sha=",
++        env!("VANTARE_MEASUREMENT_SHA"),
++        ";dirty=",
++        env!("VANTARE_MEASUREMENT_DIRTY"),
++        ";profile=",
++        env!("VANTARE_MEASUREMENT_PROFILE"),
++        ";opt-level=",
++        env!("VANTARE_MEASUREMENT_OPT_LEVEL"),
++        ";features=",
++        env!("VANTARE_MEASUREMENT_FEATURES"),
++        ";lto=",
++        env!("VANTARE_MEASUREMENT_LTO"),
++        ";codegen_units=",
++        env!("VANTARE_MEASUREMENT_CODEGEN_UNITS"),
++        ";lto=false;codegen-units=16;incremental=false"
++    ));
++
++    #[cfg(feature = "medir-latencia")]
++    let session = match vantare_profiling::latency::Session::from_env() {
++        Ok(session) => session,
++        Err(error) => {
++            eprintln!("latencia: {error}");
++            return ExitCode::FAILURE;
++        }
++    };
++    let result = application_main();
++    #[cfg(feature = "medir-latencia")]
++    if let Some(session) = session
++        && let Err(error) = session.finish()
++    {
++        eprintln!("latencia: {error}");
++        return ExitCode::FAILURE;
++    }
++    result
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::{Feed, parse, take_control_stdin};
+diff --git a/vantare-v2/native/ui/src/lib.rs b/vantare-v2/native/ui/src/lib.rs
+index 31881cf6a7621a643ee06b63f7160da9ec0f6b72..ba7cef94c444ee1549c38031f32b52d957745823 100644
+--- a/vantare-v2/native/ui/src/lib.rs
++++ b/vantare-v2/native/ui/src/lib.rs
+@@ -140,3 +140,6 @@ pub mod performance;
+ 
+ #[cfg(all(windows, feature = "parity-capture"))]
+ pub mod benchmark;
++
++#[cfg(feature = "medir-latencia")]
++pub use app::run_relative_measurement;
+diff --git a/vantare-v2/native/ui/src/overlay.rs b/vantare-v2/native/ui/src/overlay.rs
+index 34f22f26f240a5fdd73d4e6e8816cd9a4ee395b4..635a7f68447b08665a6afe8a847edb6344b5081d 100644
+--- a/vantare-v2/native/ui/src/overlay.rs
++++ b/vantare-v2/native/ui/src/overlay.rs
+@@ -36,6 +36,8 @@ pub(crate) mod ffi {
+             flags: u32,
+         ) -> i32;
+         pub fn GetClientRect(hwnd: Hwnd, rect: *mut Rect) -> i32;
++        #[cfg(feature = "medir-latencia")]
++        pub fn SetWindowDisplayAffinity(hwnd: Hwnd, affinity: u32) -> i32;
+     }
+     #[link(name = "dwmapi")]
+     unsafe extern "system" {
+@@ -122,6 +124,18 @@ pub fn apply(hwnd: Hwnd, origin: (i32, i32)) {
+             4,
+         );
+         DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, (&raw const no_border).cast(), 4);
++        // VANTA-141: solo la variante instrumentada y con petición explícita.
++        // Windows exige que el HWND pertenezca a quien hace esta llamada.
++        #[cfg(feature = "medir-latencia")]
++        if std::env::var("VANTARE_MEASUREMENT_EXCLUDE_CAPTURE").is_ok_and(|v| v == "1")
++            && ffi::SetWindowDisplayAffinity(hwnd, 0x11) == 0
++        {
++            eprintln!(
++                "VANTARE_EXCLUDE_CAPTURE_FAILED: {}",
++                std::io::Error::last_os_error()
++            );
++            std::process::exit(2);
++        }
+     }
+ }
+ 
+diff --git a/vantare-v2/native/vendor/gpui-fast-windows/src/directx_renderer.rs b/vantare-v2/native/vendor/gpui-fast-windows/src/directx_renderer.rs
+index 68d36970d41ef852f1c574deb7d95b8a990e72cb..eb966bed2dd7b4e4596bbfde0c2444a62d33e386 100644
+--- a/vantare-v2/native/vendor/gpui-fast-windows/src/directx_renderer.rs
++++ b/vantare-v2/native/vendor/gpui-fast-windows/src/directx_renderer.rs
+@@ -255,6 +255,7 @@ impl DirectXRenderer {
+         if span.is_some() {
+             eprintln!("perf present clock={:?}", crate::profiling::clock());
+         }
++        vantare_profiling::latency_submit(self.hwnd.0 as usize as u64);
+         let result = unsafe {
+             self.resources
+                 .as_ref()
+diff --git a/vantare-v2/native/vendor/gpui-pre-windows/src/directx_renderer.rs b/vantare-v2/native/vendor/gpui-pre-windows/src/directx_renderer.rs
+index 03fed5a8f5e64afc59082a2909e5e553f8d85a90..b2128f736945ff175c2df0d467bcf544be16a017 100644
+--- a/vantare-v2/native/vendor/gpui-pre-windows/src/directx_renderer.rs
++++ b/vantare-v2/native/vendor/gpui-pre-windows/src/directx_renderer.rs
+@@ -248,6 +248,7 @@ impl DirectXRenderer {
+         if span.is_some() {
+             eprintln!("perf present clock={:?}", crate::profiling::clock());
+         }
++        vantare_profiling::latency_submit(self.hwnd.0 as usize as u64);
+         let result = unsafe {
+             self.resources
+                 .as_ref()

@@ -1,0 +1,16 @@
+{
+  "base": "745bd52b847d1c6a53151146a124db4edcf95aa6",
+  "source": "a4271dd6f4701089f4bb3f74a7f5e690bd8b8341",
+  "patch_sha256": "424b49ea2f49312a7d9c2dbb60ce0d90ec7bc1edd91f5235f14f7f021c0d383b",
+  "product_changes": "solo opcion medir-latencia, mosaico del anfitrion real e instrumentacion; sin cambios de renderer fuera del registro opt-in",
+  "compiled": true,
+  "previous_verified_source": "194880d709e51b5eeb4e37642de4803069a9ebd5",
+  "apply_option": "--unidiff-zero",
+  "binary_sha256": "e46ef8c25888db8c1db4695b4a11ed3b09a38cbae89a2686b47ea1d18ae15cb4",
+  "binary_bytes": 17795584,
+  "build_elapsed_s": 233.9525794,
+  "scope": "Solo copias aisladas de medicion; no overlays distribuidos",
+  "historical_patch_original_sha256": "1e4f8f366cad95f8b7c9c5b5d5448e8471bfe877bf1a8ef521a5b7f0a18bb79e",
+  "historical_patch_file": "medir-fast.patch.historico.txt",
+  "active_recipe": "fuentes-medicion.json#gpui-fast"
+}

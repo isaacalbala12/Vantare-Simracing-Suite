@@ -1,0 +1,11 @@
+PAQUETE INCOMPLETO — NO EJECUTAR LA CAMPAÑA
+
+Faltan Hola Rune, Relative Rune e Inicio Rune. Los binarios antiguos se
+construyeron con features por defecto que incluían ogg-audio/Symphonia/MPL.
+No se incluyen ni se reutilizan. El código usa ahora exactamente las features
+permitidas de Hub Rune, sin default-features; el gate de licencias compartido
+verifica todas las plataformas sin compilar ni crear dispositivos gráficos.
+
+Los tres deben reconstruirse en el Mac y auditarse antes de cerrar el ZIP final.
+Este ZIP conserva los otros binarios y los guiones corregidos, pero lleva
+ready=false y sus controladores se detienen antes de medir.

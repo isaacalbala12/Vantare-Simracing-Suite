@@ -1,0 +1,90 @@
+HISTÓRICO: NO APLICAR EN PRODUCTO. La receta activa solo opera en fuentes-generadas.
+
+diff --git a/vantare-v2/native/hub/Cargo.toml b/vantare-v2/native/hub/Cargo.toml
+index 5fcb32f85..b589eb2e6 100644
+--- a/vantare-v2/native/hub/Cargo.toml
++++ b/vantare-v2/native/hub/Cargo.toml
+@@ -8,0 +9 @@ publish.workspace = true
++medir-inicio = ["vantare-ui/gpui-fast"] # VANTA-141: procedencia; vistas congeladas.
+diff --git a/vantare-v2/native/hub/build.rs b/vantare-v2/native/hub/build.rs
+index d82b6c2f4..2a9586063 100644
+--- a/vantare-v2/native/hub/build.rs
++++ b/vantare-v2/native/hub/build.rs
+@@ -2 +2,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
+-    vantare_build_support::embed()
++    vantare_build_support::embed()?;
++    #[cfg(feature = "medir-inicio")]
++    vantare_build_support::measurement_provenance()?;
++    Ok(())
+diff --git a/vantare-v2/native/hub/src/main.rs b/vantare-v2/native/hub/src/main.rs
+index 7de66b297..88133df4b 100644
+--- a/vantare-v2/native/hub/src/main.rs
++++ b/vantare-v2/native/hub/src/main.rs
+@@ -452,0 +453,19 @@ fn main() -> ExitCode {
++    #[cfg(feature = "medir-inicio")]
++    eprintln!(concat!(
++        "VANTARE_HOME_BUILD;sha=",
++        env!("VANTARE_MEASUREMENT_SHA"),
++        ";dirty=",
++        env!("VANTARE_MEASUREMENT_DIRTY"),
++        ";profile=",
++        env!("VANTARE_MEASUREMENT_PROFILE"),
++        ";opt-level=",
++        env!("VANTARE_MEASUREMENT_OPT_LEVEL"),
++        ";debug=",
++        env!("VANTARE_MEASUREMENT_DEBUG"),
++        ";features=",
++        env!("VANTARE_MEASUREMENT_FEATURES"),
++        ";lto=",
++        env!("VANTARE_MEASUREMENT_LTO"),
++        ";codegen-units=",
++        env!("VANTARE_MEASUREMENT_CODEGEN_UNITS")
++    ));
+diff --git a/vantare-v2/native/hub/src/shell.rs b/vantare-v2/native/hub/src/shell.rs
+index a18a4d5d9..abe983b83 100644
+--- a/vantare-v2/native/hub/src/shell.rs
++++ b/vantare-v2/native/hub/src/shell.rs
+@@ -1651,0 +1652,5 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
++                #[cfg(feature = "medir-inicio")]
++                window_bounds: Some(gpui::WindowBounds::Windowed(gpui::Bounds::new(
++                    gpui::point(px(20.0), px(20.0)),
++                    gpui::size(px(1440.0), px(900.0)),
++                ))),
+@@ -1706,0 +1712,37 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
++                    #[cfg(feature = "medir-inicio")]
++                    if let Some(path) = std::env::var_os("VANTARE_MEASUREMENT_READY_FILE") {
++                        let path = PathBuf::from(path);
++                        if !path.is_absolute() {
++                            *failure.borrow_mut() = Some("ruta de medición no absoluta".into());
++                            cx.quit();
++                            return;
++                        }
++                        let ready_failure = failure.clone();
++                        if let Err(error) = window.update(cx, move |_, window, _| {
++                            window.on_next_frame(move |window, _| {
++                                // First frame has been drawn before the next callback.
++                                window.on_next_frame(move |_, cx| {
++                                    let result = std::fs::OpenOptions::new()
++                                        .write(true)
++                                        .create_new(true)
++                                        .open(path)
++                                        .and_then(|mut file| {
++                                            std::io::Write::write_all(
++                                                &mut file,
++                                                br#"{"ready":true,"engine":"gpui_fast"}"#,
++                                            )
++                                        });
++                                    if let Err(error) = result {
++                                        *ready_failure.borrow_mut() =
++                                            Some(format!("marca de Inicio: {error}"));
++                                        cx.quit();
++                                    }
++                                });
++                            });
++                        }) {
++                            *failure.borrow_mut() =
++                                Some(format!("programar marca de Inicio: {error}"));
++                            cx.quit();
++                            return;
++                        }
++                    }

@@ -447,7 +447,7 @@ mod tests {
         // Ya se avisó: no se repite en la siguiente comprobación.
         assert_eq!(
             alerts.due(&schedule, fire + Duration::seconds(30), fire, false),
-            [] as [crate::calendar::alerts::Due; 0]
+            [] as [super::Due; 0]
         );
         // Todavía no toca.
         assert_eq!(
@@ -457,12 +457,12 @@ mod tests {
                 fire - Duration::minutes(3),
                 false
             ),
-            [] as [crate::calendar::alerts::Due; 0]
+            [] as [super::Due; 0]
         );
         // En pista, la franja se calla.
         assert_eq!(
             alerts.due(&schedule, fire, fire - Duration::seconds(30), true),
-            [] as [crate::calendar::alerts::Due; 0]
+            [] as [super::Due; 0]
         );
     }
 
@@ -481,7 +481,7 @@ mod tests {
         assert!(alerts.slots.is_empty(), "caduca con su evento");
         alerts.toggle_slot(&series.id, start).expect("poner");
         alerts.toggle_slot(&series.id, start).expect("quitar");
-        assert_eq!(alerts.slots, [] as [crate::calendar::alerts::Slot; 0]);
+        assert_eq!(alerts.slots, [] as [super::Slot; 0]);
     }
 
     #[test]

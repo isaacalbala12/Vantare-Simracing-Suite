@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
 import { studioText as t } from "../../src/renderer/i18n/studio.ts";
+import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 
 async function open(page: Page) {
@@ -16,6 +17,21 @@ async function select(page: Page, name: string) {
 async function appearance(page: Page, name: string) {
   await select(page, name);
   await page.getByRole("tab", { name: t.appearance, exact: true }).click();
+}
+async function catalog(page: Page, expanded: boolean) {
+  await appearance(page, "Delta");
+  const sidebar = page.locator(".v-sidebar");
+  const collapsed = await sidebar.evaluate((node) =>
+    node.classList.contains("v-sidebar--collapsed"),
+  );
+  if (collapsed === expanded) await page.keyboard.press("Control+b");
+  await until(
+    async () => (await sidebar.boundingBox())?.width === (expanded ? 272 : 76),
+    5000,
+    "sidebar before catalog",
+  );
+  await page.locator("[data-add-widget]").click();
+  await page.getByRole("dialog", { name: t.catalog, exact: true }).waitFor();
 }
 const scene = (
   mock: string,
@@ -104,9 +120,11 @@ export const studioStateScenes: Record<string, VisualScene> = {
     await page.getByRole("menu").waitFor();
   }),
   "studio-estado-add": scene(ordinary, async (page) => {
-    await appearance(page, "Delta");
-    await page.locator("[data-add-widget]").click();
-    await page.getByRole("dialog", { name: t.catalog, exact: true }).waitFor();
+    await catalog(page, false);
+  }),
+  // Do not toggle a background shortcut through the catalog's safety layer.
+  "studio-estado-add-abierto": scene(ordinary, async (page) => {
+    await catalog(page, true);
   }),
   "studio-estado-vacio": scene("studio-a-vacio", async (page) => {
     await page

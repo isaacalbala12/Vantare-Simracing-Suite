@@ -81,7 +81,6 @@ export function FocusHeader({
             variant={view.instances.length ? "primary" : "neutral"}
             disabled={unavailable}
             aria-disabled={pending}
-            aria-busy={pending}
             onClick={() => {
               if (!pending) onTrack();
             }}

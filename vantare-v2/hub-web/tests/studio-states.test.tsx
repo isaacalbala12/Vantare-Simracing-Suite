@@ -214,6 +214,10 @@ describe("Studio A honest states", () => {
     expect(
       document.querySelector('.v-studio-temporary[aria-busy="true"]'),
     ).toBeTruthy();
+    // A different control is being saved: keep the track action's label visible.
+    const track = screen.getByRole("button", { name: t.show });
+    expect(track.getAttribute("aria-disabled")).toBe("true");
+    expect(track.getAttribute("aria-busy")).toBeNull();
   });
   it("reports a failed save, retries the same intent and returns to the real saved state", async () => {
     const spy = vi.spyOn(Client.prototype, "request");

@@ -446,7 +446,7 @@ index c355eb02c..48620eb8b 100644
 +        vantare_build_support::measurement_provenance()?;
 +    }
 diff --git a/vantare-v2/native/ui/src/app.rs b/vantare-v2/native/ui/src/app.rs
-index baa1d179a..a418d7ee0 100644
+index baa1d179a..a5a86442d 100644
 --- a/vantare-v2/native/ui/src/app.rs
 +++ b/vantare-v2/native/ui/src/app.rs
 @@ -151,0 +152,2 @@ pub struct Overlay {
@@ -502,7 +502,7 @@ index baa1d179a..a418d7ee0 100644
 +fn relative_measurement_layout(copies: usize) -> crate::layout::Layout {
 +    assert!(matches!(copies, 1 | 4 | 10));
 +    let prefs = Preferences::default();
-+    let settings = crate::look::Look::Vantare.workshop_defaults(Kind::Relative);
++    let settings = crate::look::Look::default().workshop_defaults(Kind::Relative);
 +    let size = Widget::new(&settings, prefs).size();
 +    let (dx, dy) = layout_offset();
 +    let columns = if copies == 1 {

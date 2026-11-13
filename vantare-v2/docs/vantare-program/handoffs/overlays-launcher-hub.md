@@ -1,3 +1,12 @@
+## VANTA-141 / #2213 — guard de Looks respetado (13/11/2026)
+
+PR #2242: fallo CI real por Look::Vantare en app.rs. Se sustituye por el
+predeterminado del catálogo, que el dominio declara Vantare, sin modificar
+comportamiento ni debilitar el test de arquitectura. Misma corrección en fast
+a4271dd6f, parche regenerado. Nuevos Release/Clippy pendientes por cola.
+Se conservan 1f1f5b2ea y 194880d70 compilados con SHA/PE/dumpbin verificados.
+Sin gráfica en servidor, merge ni release. Mac compiló Inicio 54ef276c3 pero
+se durmió antes de copiarlo; nueva transferencia acotada pendiente.
 ## VANTA-141 · Captura excluida y monitor en el mosaico real (13/11/2026)
 
 Issue #2213, PR draft #2242. Opciones únicamente instrumentadas para la lista

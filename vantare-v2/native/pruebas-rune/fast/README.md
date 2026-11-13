@@ -33,3 +33,10 @@ quedan para Isaac. Sin merge ni release.
 
 Clippy Release all-targets -D warnings con gpui-fast,medir-latencia PASS
 (3m06s) en el paquete UI; conserva las dos advertencias vendor descritas.
+
+13/11: CI detectó la selección concreta del Look dentro del anfitrión, prohibida
+por el contrato arquitectónico. Se usa Look::default(), que el dominio declara
+Vantare: mismo contenido, tamaño y comportamiento. No se toca el guard ni se
+exceptúa la medición. Fast a4271dd6f pendiente de reconstruir; artefacto 194880d70
+anterior verificado se conserva. Parche regenerado, sin contexto. Fuente baseline
+y fast reciben exactamente la misma corrección de selección.

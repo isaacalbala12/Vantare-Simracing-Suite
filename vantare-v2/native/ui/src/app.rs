@@ -1478,7 +1478,7 @@ fn relative_measurement_layout(copies: usize) -> crate::layout::Layout {
     use crate::look::WorkshopLook as _;
     assert!(matches!(copies, 1 | 4 | 10));
     let prefs = Preferences::default();
-    let settings = crate::look::Look::Vantare.workshop_defaults(Kind::Relative);
+    let settings = crate::look::Look::default().workshop_defaults(Kind::Relative);
     let size = Widget::new(&settings, prefs).size();
     let (dx, dy) = layout_offset();
     let columns = if copies == 1 {

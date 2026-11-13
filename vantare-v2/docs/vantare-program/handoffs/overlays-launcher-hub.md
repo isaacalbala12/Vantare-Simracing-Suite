@@ -1,3 +1,15 @@
+## VANTA-141 · Piezas 6+7 preparadas para integración
+
+Carga D3D11 compilada por cola MSVC /O2 /MT, fuente 5521fd669, 282.624 bytes,
+4,10 s; dumpbin solo Windows. No ejecutada/calibrada. Muestreador con arranque
+ETW antes del proceso, parentesco por CIM/eventos, rechazo de PID reutilizado,
+contadores multicore sin recorte, temperaturas GPU por APIs Windows y modo
+salud sin PresentMon para 4 h. Hash del PE fuera del intervalo medido.
+Once tests puros de agregación PASS. C# tres archivos compilan, ABI x64 verificada
+sin instanciar APIs. CPU temperatura desconocida requiere confirmación manual.
+Guion PowerShell parseado, nunca ejecutado en servidor. Integración campaña,
+soporte real de driver/ETW y operaciones de aguante pendientes del PC/kit.
+
 ## VANTA-141 · Agregación inicial piezas 6+7
 
 Siete pruebas puras PASS: unidades PresentMon QPC/duraciones, descartados,

@@ -1,5 +1,5 @@
 import unittest
-from agregar import frame_metrics, presentmon, process_metrics
+from agregar import frame_metrics, presentmon, process_metrics, gpu_metrics, noise_metrics
 
 
 HEADER = 'ProcessID,SwapChainAddress,CPUStartQPC,MsCPUBusy,DisplayLatency,DisplayedTime,MsBetweenPresents\n'
@@ -55,6 +55,52 @@ class AggregationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 process_metrics(rows, 42, 1000, 0, 2000)
 
+
+
+class CounterAggregationTests(unittest.TestCase):
+    @staticmethod
+    def gpu_rows():
+        rows=[]
+        for qpc in (1000,2000):
+            for pid,engine,value in ((42,0,30),(43,0,20),(42,1,40),(99,0,100)):
+                rows.append(dict(qpc=qpc,counter='gpu_engine',instance=f'pid_{pid}_luid_0x0_0x1_phys_0_eng_{engine}_engtype_3D',value=value,status=0))
+            for pid,mib in ((42,20),(43,30)):
+                rows.append(dict(qpc=qpc,counter='gpu_memory',instance=f'pid_{pid}_luid_0x0_0x1_phys_0',value=mib*2**20,status=0))
+        return rows
+
+    def test_gpu_uses_busiest_engine_and_sums_only_family_memory(self):
+        result=gpu_metrics(self.gpu_rows(),{42,43},1000,0,3000)
+        self.assertEqual(result['gpu_percent'],50)
+        self.assertEqual(result['vram_mib'],50)
+
+    def test_gpu_missing_memory_duplicate_or_bad_status_is_not_zero_use(self):
+        for mutation in ('memory','duplicate','status'):
+            rows=self.gpu_rows()
+            if mutation=='memory': rows=[r for r in rows if r['counter']!='gpu_memory']
+            elif mutation=='duplicate': rows.append(dict(rows[0]))
+            else: rows[0]['status']=0xC0000BC6
+            with self.assertRaises(ValueError): gpu_metrics(rows,{42,43},1000,0,3000)
+
+    @staticmethod
+    def noise_rows(value=32):
+        rows=[]
+        for qpc in (1000,2000):
+            for instance,pid,cpu in (('measured',42,1600),('background',88,value)):
+                rows.extend([dict(qpc=qpc,counter='process_id',instance=instance,value=pid,status=0),
+                             dict(qpc=qpc,counter='process_cpu',instance=instance,value=cpu,status=0)])
+        return rows
+
+    def test_noise_normalizes_multicore_and_keeps_strict_two_percent_boundary(self):
+        result=noise_metrics(self.noise_rows(),{42},16,1000,0,3000)
+        self.assertTrue(result['noise_ok'])
+        self.assertEqual(result['max_other_cpu_percent'],2)
+        result=noise_metrics(self.noise_rows(32.001),{42},16,1000,0,3000)
+        self.assertFalse(result['noise_ok'])
+        self.assertEqual({row['process_id'] for row in result['offenders']},{88})
+
+    def test_unidentified_background_cpu_cannot_be_reported_as_quiet(self):
+        rows=[r for r in self.noise_rows() if not (r['counter']=='process_id' and r['instance']=='background')]
+        with self.assertRaises(ValueError): noise_metrics(rows,{42},16,1000,0,3000)
 
 if __name__ == '__main__':
     unittest.main()

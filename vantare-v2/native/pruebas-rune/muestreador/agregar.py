@@ -6,6 +6,7 @@ or combined into artificial FPS. No graphics APIs are imported here.
 import csv
 import io
 import math
+import re
 import statistics
 from collections import defaultdict
 
@@ -139,3 +140,103 @@ def process_metrics(rows, root_process_id, frequency, start_qpc, end_qpc):
     return {"cpu_cycles_s": statistics.median(rates), "cpu_percent_one_core": statistics.median(times),
             "private_mib": statistics.median(private), "private_peak_mib": max(private),
             "working_set_mib": statistics.median(working), "samples": len(clocks), "family_processes": len(pids)}
+
+
+GPU_INSTANCE = re.compile(r"^pid_(\d+)_(luid_0x[0-9a-f]+_0x[0-9a-f]+)_phys_(\d+)(?:_eng_(\d+)_engtype_(.+))?$", re.I)
+
+
+def counter_ticks(rows, frequency, start_qpc, end_qpc):
+    groups = defaultdict(list)
+    for row in rows:
+        clock = integer(row["qpc"], "qpc")
+        if start_qpc <= clock <= end_qpc:
+            groups[clock].append(row)
+    clocks = sorted(groups)
+    if (frequency <= 0 or start_qpc >= end_qpc or len(clocks) < 2
+            or clocks[0] - start_qpc > 1.5 * frequency or end_qpc - clocks[-1] > 1.5 * frequency
+            or any(not .25 <= (b-a)/frequency <= 1.75 for a,b in zip(clocks,clocks[1:]))):
+        raise ValueError("Contadores incompletos o fuera de cadencia")
+    return groups
+
+
+def gpu_metrics(rows, process_ids, frequency, start_qpc, end_qpc):
+    utilization, memory = [], []
+    for clock, samples in counter_ticks(rows, frequency, start_qpc, end_qpc).items():
+        engines, allocations, seen = defaultdict(float), {}, set()
+        for row in samples:
+            kind = row["counter"]
+            if kind not in ("gpu_engine", "gpu_memory"):
+                continue
+            match = GPU_INSTANCE.fullmatch(row["instance"])
+            if not match:
+                if row["instance"].lower().startswith("pid_"):
+                    raise ValueError("Instancia GPU desconocida; no inferir su identidad")
+                continue
+            pid = int(match[1])
+            if pid not in process_ids:
+                continue
+            if integer(row["status"], "status") not in (0,1):
+                raise ValueError("Contador GPU sin valor valido")
+            identity = (kind,row["instance"].lower())
+            if identity in seen:
+                raise ValueError("Contador GPU repetido")
+            seen.add(identity)
+            value = finite(row["value"], "GPU")
+            adapter, physical, engine = match[2].lower(), int(match[3]), match[4]
+            if kind == "gpu_engine":
+                if engine is None:
+                    raise ValueError("Motor GPU sin identidad")
+                engines[(adapter,physical,int(engine))] += value
+            else:
+                allocations[(pid,adapter,physical)] = value
+        if not engines or not allocations:
+            raise ValueError("Faltan muestras GPU o memoria de la familia")
+        busy = max(engines.values())
+        if busy > 100.5:
+            raise ValueError("Porcentaje GPU incoherente; no recortarlo a cien")
+        utilization.append(busy)
+        memory.append(sum(allocations.values()) / 2**20)
+    return {"gpu_percent": statistics.median(utilization), "vram_mib": statistics.median(memory),
+            "gpu_aggregation": "busiest physical engine; sum family PIDs within an engine",
+            "vram_aggregation": "sum PID Dedicated Usage, including cross-process shared allocations",
+            "gpu_samples": len(utilization)}
+
+
+def noise_metrics(rows, excluded_process_ids, logical_processors, frequency, start_qpc, end_qpc):
+    if isinstance(logical_processors,bool) or not isinstance(logical_processors,int) or logical_processors <= 0:
+        raise ValueError("Numero de procesadores logicos no valido")
+    offenders, maxima = [], []
+    for clock, samples in counter_ticks(rows, frequency, start_qpc, end_qpc).items():
+        ids, cpus = {}, {}
+        for row in samples:
+            if row["counter"] not in ("process_id", "process_cpu"):
+                continue
+            table = ids if row["counter"] == "process_id" else cpus
+            if row["instance"] in table:
+                raise ValueError("Instancia de proceso duplicada")
+            table[row["instance"]] = row
+        if not ids or not cpus:
+            raise ValueError("No hay comprobacion de ruido por proceso")
+        maximum = 0.0
+        for instance, cpu in cpus.items():
+            if instance in ("_Total", "Idle"):
+                continue
+            identity = ids.get(instance)
+            if identity is None or integer(identity["status"], "status") not in (0,1):
+                raise ValueError("CPU sin identidad de proceso verificable")
+            pid = finite(identity["value"], "PID")
+            if not pid.is_integer():
+                raise ValueError("PID no entero en el contador")
+            pid = int(pid)
+            if pid == 0 or pid in excluded_process_ids:
+                continue
+            if integer(cpu["status"], "status") not in (0,1):
+                raise ValueError("Ruido de CPU sin valor verificable")
+            # PDH_FMT_NOCAP100 preserves multicore use. Normalize to whole-machine
+            # percent before applying Fable's strictly-above-two-percent rule.
+            percent = finite(cpu["value"], "CPU de otro proceso") / logical_processors
+            maximum = max(maximum,percent)
+            if percent > 2:
+                offenders.append({"qpc":clock,"process_id":pid,"percent_machine":percent})
+        maxima.append(maximum)
+    return {"noise_ok":not offenders,"max_other_cpu_percent":max(maxima),"offenders":offenders}

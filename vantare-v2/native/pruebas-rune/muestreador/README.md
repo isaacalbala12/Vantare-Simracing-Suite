@@ -39,3 +39,51 @@ Pendientes antes del kit: iniciar PresentMon antes del proceso medido para
 capturar su primer Present; ruido de otros procesos por encima del 2 %;
 comprobación térmica verificable y normalización completa de contadores GPU.
 Estos pendientes no se dan por cubiertos por las pruebas sintéticas.
+
+## Arranque antes de la interfaz y recogida completa
+
+El modo Deferred recibe -RootInfoFile, que escribe el controlador después de
+arrancar la interfaz. Primero registra Win32_ProcessStartTrace y activa una
+sesión PresentMon con nombre único. CAPTURA-LISTA.json solo aparece tras
+confirmar la sesión ETW propia mediante ControlTrace QUERY; entonces el
+controlador puede lanzar la interfaz. Nunca se detiene una captura ajena.
+La consulta verifica pérdidas ETW; PID reutilizado o desaparición temprana del
+proceso anulan la muestra. No se guardan líneas de comandos ni credenciales.
+El hash del PE se comprueba DESPUÉS de muestrear para no calentar su caché
+ni añadir lectura/CPU al arranque medido.
+
+RootInfoFile contiene process_id, created_utc, start_qpc, image_name e
+image_sha256; se publica atómicamente por el controlador. NoiseExclusionsFile
+contiene únicamente una lista process_id/created_utc de núcleo/carga propios.
+La interfaz permanece viva hasta terminar el muestreador. El análisis recorta
+el intervalo real de 60 s del replay principal, separado del calentamiento.
+
+Aguante usa -Aguante -Seconds 14400: no inicia PresentMon ni acumula trazas de
+fotos; conserva salud y memoria cada diez segundos. No equivale todavía al
+guion completo de operaciones de la pieza 10.
+
+## GPU, ruido y temperaturas
+
+Contadores de proceso con PDH_FMT_NOCAP100 (0x8000, SDK pdh.h) para conservar
+CPU multicore; se divide por procesadores lógicos antes de aplicar >2 % de
+ruido externo. Once tests de agregación pasan: GPU por motor físico más
+ocupado, suma de PIDs de familia dentro de ese motor, memoria dedicada de
+familia, unidades QPC, descartados, ruido, identidades y rechazo de huecos.
+No se suman motores paralelos para inventar un porcentaje GPU superior al real.
+La suma de Dedicated Usage por PID puede contar recursos compartidos varias
+veces; se declara como suma de familia, no VRAM física exclusiva. Criterio de
+[Microsoft DirectX](https://devblogs.microsoft.com/directx/gpus-in-the-task-manager/).
+
+Temperatura GPU y umbral térmico del driver mediante D3DKMT_ADAPTER_PERFDATA
+(62) y PERFDATACAPS (63); unidades deci-Celsius, del SDK 10.0.26100.0.
+Se consultan adaptadores sin crear un dispositivo D3D y se cierran los handles
+propios. Fuentes oficiales: [EnumAdapters2](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/d3dkmthk/nf-d3dkmthk-d3dkmtenumadapters2),
+[PERFDATACAPS](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/d3dkmthk/ns-d3dkmthk-_d3dkmt_adapter_perfdatacaps).
+En servidor solo se compilaron los tres tipos C# y se comprobaron tamaños ABI;
+no se instanciaron contadores, adaptadores, ETW ni PresentMon.
+
+CPU no dispone aquí de un sensor fiable sin driver añadido: se registra
+unknown y cpu_temperature_verified=false. Requiere confirmación física/manual;
+no se inventa temperatura ni se declara comprobación térmica completa.
+Soporte de contadores, sesiones ETW, driver, parentesco y los nuevos modos
+sigue sin ejecutar hasta el PC. Falta integrar estos datos con la campaña.

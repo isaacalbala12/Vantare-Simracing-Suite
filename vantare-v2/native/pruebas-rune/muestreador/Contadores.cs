@@ -33,6 +33,8 @@ namespace Vantare141 {
             try {
                 Add("gpu_engine",@"\GPU Engine(*)\Utilization Percentage");
                 Add("gpu_memory",@"\GPU Process Memory(*)\Dedicated Usage");
+                Add("process_cpu",@"\Process(*)\% Processor Time");
+                Add("process_id",@"\Process(*)\ID Process");
                 Add("system_cpu",@"\Processor(*)\% Processor Time");
                 Add("cpu_frequency",@"\Processor Information(*)\Processor Frequency");
                 Add("cpu_performance",@"\Processor Information(*)\% Processor Performance");
@@ -46,13 +48,15 @@ namespace Vantare141 {
         }
         public void Collect() { Check(PdhCollectQueryData(query),"Muestrear PDH"); }
         public CounterSample[] Read(string name) {
+            uint format=0x200; // PDH_FMT_DOUBLE, Windows SDK pdh.h
+            if(name=="process_cpu" || name=="cpu_performance") format |= 0x8000; // PDH_FMT_NOCAP100
             uint bytes=0, count;
-            uint status=PdhGetFormattedCounterArrayW(counters[name],0x200,ref bytes,out count,IntPtr.Zero);
+            uint status=PdhGetFormattedCounterArrayW(counters[name],format,ref bytes,out count,IntPtr.Zero);
             if(status != 0x800007D2 && status != 0) Check(status,"Dimensionar " + name);
             if(bytes==0) return new CounterSample[0];
             IntPtr memory=Marshal.AllocHGlobal(checked((int)bytes));
             try {
-                Check(PdhGetFormattedCounterArrayW(counters[name],0x200,ref bytes,out count,memory),"Leer " + name);
+                Check(PdhGetFormattedCounterArrayW(counters[name],format,ref bytes,out count,memory),"Leer " + name);
                 var result=new CounterSample[count];
                 int stride=Marshal.SizeOf(typeof(Item));
                 for(int index=0;index<count;index++) {

@@ -431,14 +431,16 @@ studioScenes["studio-a-apariencia"] = {
     await studioScenes["studio-base"].prepare(page);
     await page.getByRole("button", { name: /^Relative, / }).click();
     await page.getByRole("tab", { name: "En pista", exact: true }).click();
-    await page.getByRole("switch", { name: "Visible", exact: true }).click();
+    await page
+      .getByRole("switch", { name: "Visible en pista", exact: true })
+      .click();
     await page.getByRole("button", { name: /^Relative, Oculto/ }).waitFor();
     await page.getByRole("button", { name: /^Fuel y stint, / }).click();
     await page.getByRole("tab", { name: "En pista", exact: true }).click();
-    for (const name of ["Mostrar en práctica", "Mostrar en qualy"]) {
-      await page.getByRole("switch", { name, exact: true }).click();
+    for (const name of ["Práctica", "Qualy"]) {
+      await page.getByRole("button", { name, exact: true }).click();
       await page
-        .getByRole("switch", { name, exact: true, checked: false })
+        .getByRole("button", { name, exact: true, pressed: false })
         .waitFor();
     }
     await page.getByRole("button", { name: /^Delta, / }).click();
@@ -488,3 +490,15 @@ for (const [scene, widget, look] of [
     },
   };
 }
+
+studioScenes["studio-a-pista"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-a-apariencia"].prepare(page);
+    await page.getByRole("tab", { name: "En pista", exact: true }).click();
+    await page
+      .getByRole("region", { name: "Visibilidad", exact: true })
+      .getByText("Visible · 85 %", { exact: true })
+      .waitFor();
+  },
+};

@@ -22,23 +22,13 @@ async function noLaunch(page: Page, popup: Locator) {
   assert.equal(
     await launchCount(page),
     0,
-    "no launcher.favorite, launcher.launch or launcher.launchChecked escapes the dialog",
+    "no launch, arm or cancel escapes the dialog",
   );
-  const background = page.locator(".v-sidebar").getByRole("button", {
-    name: "Calendario",
-    exact: true,
-    includeHidden: true,
-  });
-  if (await background.count()) {
-    const box = await background.boundingBox();
-    if (box)
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  }
   await page.keyboard.press("Tab");
   assert.equal(
     await launchCount(page),
     0,
-    "background click and Tab cannot arm or cancel",
+    "Tab inside the dialog cannot arm or cancel",
   );
   assert.ok(await popup.isVisible());
 }
@@ -119,7 +109,7 @@ async function scene(page: Page, base: string, name: string) {
   await calendarScenes[name].prepare(page);
 }
 
-/** Chromium exercises actual inert, both launch methods and both focus-cycle boundaries. */
+/** Chromium exercises actual inert, all launch methods and both focus-cycle boundaries. */
 export async function checkCalendarDialogSafety(owner: Page, base: string) {
   const page = await owner.context().newPage();
   try {
@@ -171,6 +161,27 @@ export async function checkCalendarDialogSafety(owner: Page, base: string) {
       );
       await positiveLaunch(page);
     }
+
+    // A physical click reaches the backdrop, never the inert timing button.
+    // Pointer dismissal is allowed: the invariant is that it cannot arm.
+    await scene(page, base, "calendario-avisos-contraida");
+    assert.equal(await page.locator(".v-sidebar[inert]").count(), 1);
+    const timing = page.getByRole("button", {
+      name: /Lanzar a las/u,
+      includeHidden: true,
+    });
+    const timingBox = await timing.boundingBox();
+    assert.ok(timingBox, "the actual background timing button exists");
+    await page.mouse.click(
+      timingBox.x + timingBox.width / 2,
+      timingBox.y + timingBox.height / 2,
+    );
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await launchCount(page),
+      0,
+      "inert timing button cannot arm through the backdrop or Tab",
+    );
 
     // Positive arm/cancel verifies that both new methods are really counted.
     await scene(page, base, "calendario-proximas-contraida");

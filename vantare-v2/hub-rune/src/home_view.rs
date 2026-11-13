@@ -1005,8 +1005,16 @@ mod tests {
     fn hero_keeps_the_shared_red_gradient_in_the_cpu_image_atlas() {
         for scheme in ["light", "dark"] {
             let theme = Theme::load("vantare", scheme).unwrap();
-            let cache = ImageCache::new(std::sync::Arc::new(|| {}));
+            let (ready, decoded) = std::sync::mpsc::channel();
+            let cache = ImageCache::new(std::sync::Arc::new(move || {
+                let _ = ready.send(());
+            }));
             let image = cache.svg(theme.hero_svg().into_bytes(), 1000.0, 1.0);
+            // Image::wait publishes the decode before Pixels receives its mips.
+            // The cache waker is the barrier after both have been installed.
+            decoded
+                .recv_timeout(std::time::Duration::from_secs(5))
+                .unwrap();
             image.wait().unwrap();
             let mut rt =
                 rune::Runtime::new((), |_, _| el(), (1000.0, 236.0), rune::Env::new(true, 1.0));

@@ -149,6 +149,21 @@ export async function checkLauncherDensity(
       "Compact applications catalogue must retain usable height",
     );
     assert.ok(
+      await catalog.evaluate((node) => {
+        const main = node.closest(".v-shell-main");
+        const page = node.closest(".v-launcher-applications");
+        if (!main || !page) return false;
+        const footer =
+          main.getBoundingClientRect().bottom -
+          parseFloat(getComputedStyle(main).paddingBottom);
+        return (
+          Math.abs(node.getBoundingClientRect().bottom - footer) <= 2 &&
+          getComputedStyle(page).gap === "12px"
+        );
+      }),
+      "Compact catalogue reaches its footer without inheriting profile spacing",
+    );
+    assert.ok(
       await page
         .getByRole("button", { name: "Editar Vantare Overlay", exact: true })
         .isVisible(),

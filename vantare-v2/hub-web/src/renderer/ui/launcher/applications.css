@@ -288,3 +288,10 @@
   border: 0;
   border-radius: 0;
 }
+
+/* Compact shell uses 12 px above and 14 px below the content, not 16/18. */
+@media (max-height: 819px) {
+  .v-launcher-applications {
+    height: calc(100vh - var(--topbar-h) - 12px - 14px);
+  }
+}

@@ -2037,3 +2037,10 @@ release propios, ni cambios del supervisor/rights/Services/GPUI.
 D consume L53 sobre #2281. residentOrderReceiptTimeoutMs exporta los mismos 5 s
 de la política Rust de Calendario. Al vencer sin OrderReceived, mostrar Unknown
 y no reenviar; ese plazo no es un límite de duración de la cadena.
+
+Revisión L53: el cierre por cancelación, shutdown o desconexión consume bajo
+el lock una selección ya comprometida, o cierra la pregunta a respuestas tardías.
+Emisor y worker comparten el mismo reloj de la pregunta. Regresiones con barrera,
+plazo cumplido antes/después del compromiso y publicación fallida de la pregunta;
+la limpieza de directorios en Drop no provoca otro panic. Sin cambios de contrato
+v33 ni del plazo exportado para D. Gates del ajuste y head vigentes en #2281.

@@ -18,7 +18,7 @@ struct Fixture {
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        std::fs::remove_dir_all(&self.root).unwrap();
+        let _ = std::fs::remove_dir_all(&self.root);
     }
 }
 fn fixture() -> Fixture {

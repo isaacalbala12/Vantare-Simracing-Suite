@@ -210,7 +210,7 @@ fn decision_expiry_is_typed_with_an_injected_clock_and_receiver() {
                 "QA".into(),
                 &[Action::Stop, Action::Continue],
                 false,
-                (Instant::now(), || Duration::from_mins(2)),
+                Arc::new(|| Duration::from_mins(2)),
                 |_| Err(mpsc::RecvTimeoutError::Timeout)
             )
             .is_err()
@@ -424,7 +424,7 @@ fn exhausted_question_ids_emit_no_reused_question() {
                 "QA".into(),
                 &[Action::Stop],
                 false,
-                (Instant::now(), || Duration::ZERO),
+                Arc::new(|| Duration::ZERO),
                 |_| panic!("an exhausted question must not wait for a reply"),
             )
             .is_err()
@@ -432,3 +432,6 @@ fn exhausted_question_ids_emit_no_reused_question() {
     assert_eq!(f.context.next_decision.load(Ordering::Relaxed), u64::MAX);
     assert!(f.events.try_recv().is_err());
 }
+
+#[path = "question_tests.rs"]
+mod question_tests;

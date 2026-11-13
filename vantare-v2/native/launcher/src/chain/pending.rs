@@ -1,5 +1,8 @@
 //! One pending question. Selection and expiry commit under the same lock.
-use super::{Action, Arc, Instant, Mutex};
+use super::{Action, Arc, Mutex};
+use std::time::Duration;
+/// Elapsed time since this question opened, shared by sender and worker.
+pub(super) type Clock = Arc<dyn Fn() -> Duration + Send + Sync>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnswerError {
     StaleQuestion,
@@ -10,7 +13,7 @@ pub enum AnswerError {
 struct Question {
     id: u64,
     actions: Vec<Action>,
-    deadline: Instant,
+    clock: Clock,
     closing: bool,
     selected: Option<Action>,
 }
@@ -40,16 +43,14 @@ impl Pending {
         id: u64,
         actions: &[Action],
         closing: bool,
-        started: Instant,
+        clock: Clock,
     ) -> Result<Lease, String> {
         let mut slot = self.0.lock().map_err(|_| "pregunta no disponible")?;
         *slot = Some(Question {
             id,
             actions: actions.to_vec(),
             closing,
-            deadline: started
-                .checked_add(std::time::Duration::from_mins(2))
-                .ok_or("plazo de pregunta no disponible")?,
+            clock,
             selected: None,
         });
         Ok(Lease {
@@ -61,18 +62,17 @@ impl Pending {
         &self,
         id: u64,
         action: Action,
-        now: impl FnOnce() -> Instant,
-        cancelled: bool,
-        shutdown: bool,
+        state: impl FnOnce() -> (bool, bool),
     ) -> Result<(), AnswerError> {
         if action == Action::Trust {
             return Err(AnswerError::TrustRequiresEditor);
         }
         let mut slot = self.0.lock().map_err(|_| AnswerError::Unavailable)?;
         let q = slot.as_mut().ok_or(AnswerError::StaleQuestion)?;
+        let (cancelled, shutdown) = state();
         if q.id != id
             || q.selected.is_some()
-            || now() >= q.deadline
+            || (q.clock)() >= Duration::from_mins(2)
             || shutdown
             || (cancelled && !q.closing)
         {
@@ -87,152 +87,167 @@ impl Pending {
     pub(super) fn poll(
         &self,
         id: u64,
-        expired: bool,
+        check_expiry: bool,
         legacy: Option<Action>,
+        stop: impl FnOnce() -> Option<Action>,
     ) -> Result<Poll, String> {
         let mut slot = self.0.lock().map_err(|_| "pregunta no disponible")?;
         let q = slot
             .as_mut()
             .filter(|q| q.id == id)
             .ok_or("pregunta caducada")?;
-        if let Some(action) = q.selected.take().or(legacy) {
+        if let Some(action) = q.selected.take().or(legacy).or_else(stop) {
             *slot = None;
             return Ok(Poll::Answer(action));
         }
-        if expired {
+        if check_expiry && (q.clock)() >= Duration::from_mins(2) {
             *slot = None;
             return Ok(Poll::Expired);
         }
         Ok(Poll::Waiting)
     }
+    /// Close atomically: consume an already committed choice, or reject later senders.
+    pub(super) fn close(&self, id: u64, fallback: Action) -> Result<Action, String> {
+        let mut slot = self.0.lock().map_err(|_| "pregunta no disponible")?;
+        let q = slot
+            .as_ref()
+            .filter(|q| q.id == id)
+            .ok_or("pregunta caducada")?;
+        let action = q.selected.unwrap_or(fallback);
+        *slot = None;
+        Ok(action)
+    }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    fn clock() -> (Clock, Arc<AtomicU64>) {
+        let elapsed = Arc::new(AtomicU64::new(0));
+        let read = Arc::clone(&elapsed);
+        (
+            Arc::new(move || Duration::from_secs(read.load(Ordering::Acquire))),
+            elapsed,
+        )
+    }
     #[test]
     fn commitment_wins_over_later_expiry_and_cannot_be_replaced() {
         let pending = Arc::new(Pending::default());
-        let start = Instant::now();
+        let (clock, elapsed) = clock();
         let _lease = pending
-            .open(1, &[Action::Stop, Action::Continue], false, start)
+            .open(1, &[Action::Stop, Action::Continue], false, clock)
             .unwrap();
         assert_eq!(
-            pending.answer(1, Action::Trust, || start, false, false),
+            pending.answer(1, Action::Trust, || (false, false)),
             Err(AnswerError::TrustRequiresEditor)
         );
         assert_eq!(
-            pending.answer(2, Action::Stop, || start, false, false),
+            pending.answer(2, Action::Stop, || (false, false)),
             Err(AnswerError::StaleQuestion)
         );
         assert_eq!(
-            pending.answer(1, Action::Restart, || start, false, false),
+            pending.answer(1, Action::Restart, || (false, false)),
             Err(AnswerError::InvalidAction)
         );
+        elapsed.store(119, Ordering::Release);
         pending
-            .answer(
-                1,
-                Action::Continue,
-                || start + Duration::from_secs(119),
-                false,
-                false,
-            )
+            .answer(1, Action::Continue, || (false, false))
             .unwrap();
         assert_eq!(
-            pending.answer(1, Action::Stop, || start, false, false),
+            pending.answer(1, Action::Stop, || (false, false)),
             Err(AnswerError::StaleQuestion)
         );
+        elapsed.store(120, Ordering::Release);
         assert!(matches!(
-            pending.poll(1, true, Some(Action::Stop)).unwrap(),
+            pending.poll(1, true, Some(Action::Stop), || None).unwrap(),
             Poll::Answer(Action::Continue)
         ));
     }
     #[test]
     fn cancellation_rejects_continuation_but_keeps_the_closing_question_answerable() {
         let pending = Arc::new(Pending::default());
-        let start = Instant::now();
-        let lease = pending.open(1, &[Action::Continue], false, start).unwrap();
+        let (clock, _) = clock();
+        let lease = pending
+            .open(1, &[Action::Continue], false, Arc::clone(&clock))
+            .unwrap();
         assert_eq!(
-            pending.answer(1, Action::Continue, || start, true, false),
+            pending.answer(1, Action::Continue, || (true, false)),
             Err(AnswerError::StaleQuestion)
         );
         drop(lease);
         let _closing = pending
-            .open(2, &[Action::Leave, Action::CloseStarted], true, start)
+            .open(2, &[Action::Leave, Action::CloseStarted], true, clock)
             .unwrap();
         assert_eq!(
-            pending.answer(2, Action::CloseStarted, || start, true, true),
+            pending.answer(2, Action::CloseStarted, || (true, true)),
             Err(AnswerError::StaleQuestion)
         );
         pending
-            .answer(2, Action::CloseStarted, || start, true, false)
+            .answer(2, Action::CloseStarted, || (true, false))
             .unwrap();
         assert!(matches!(
-            pending.poll(2, false, None).unwrap(),
+            pending.poll(2, false, None, || None).unwrap(),
             Poll::Answer(Action::CloseStarted)
         ));
     }
     #[test]
     fn exact_deadline_expiry_and_question_replacement_reject_old_answers() {
         let pending = Arc::new(Pending::default());
-        let start = Instant::now();
-        let lease = pending.open(1, &[Action::Stop], false, start).unwrap();
+        let (clock, elapsed) = clock();
+        let lease = pending
+            .open(1, &[Action::Stop], false, Arc::clone(&clock))
+            .unwrap();
+        elapsed.store(120, Ordering::Release);
         assert_eq!(
-            pending.answer(
-                1,
-                Action::Stop,
-                || start + Duration::from_mins(2),
-                false,
-                false
-            ),
+            pending.answer(1, Action::Stop, || (false, false)),
             Err(AnswerError::StaleQuestion)
         );
         assert!(matches!(
-            pending.poll(1, true, None).unwrap(),
+            pending.poll(1, true, None, || None).unwrap(),
             Poll::Expired
         ));
+        elapsed.store(0, Ordering::Release);
         assert_eq!(
-            pending.answer(1, Action::Stop, || start, false, false),
+            pending.answer(1, Action::Stop, || (false, false)),
             Err(AnswerError::StaleQuestion)
         );
-        let _next = pending.open(2, &[Action::Leave], true, start).unwrap();
+        let _next = pending.open(2, &[Action::Leave], true, clock).unwrap();
         drop(lease);
         assert_eq!(
-            pending.answer(1, Action::Leave, || start, true, false),
+            pending.answer(1, Action::Leave, || (true, false)),
             Err(AnswerError::StaleQuestion)
         );
-        pending
-            .answer(2, Action::Leave, || start, true, false)
-            .unwrap();
+        pending.answer(2, Action::Leave, || (true, false)).unwrap();
         assert!(matches!(
-            pending.poll(2, false, None).unwrap(),
+            pending.poll(2, false, None, || None).unwrap(),
             Poll::Answer(Action::Leave)
         ));
     }
-}
-
-#[cfg(test)]
-mod ordering_tests {
-    use super::*;
-    use std::sync::mpsc;
     #[test]
-    fn expiry_committed_on_the_worker_cannot_be_resurrected_by_a_late_sender() {
+    fn closure_without_selection_rejects_late_answers() {
         let pending = Arc::new(Pending::default());
-        let start = Instant::now();
-        let _lease = pending.open(1, &[Action::Stop], false, start).unwrap();
-        let other = Arc::clone(&pending);
-        let (expired_tx, expired_rx) = mpsc::channel();
-        let worker = std::thread::spawn(move || {
-            assert!(matches!(other.poll(1, true, None).unwrap(), Poll::Expired));
-            expired_tx.send(()).unwrap();
-        });
-        expired_rx
-            .recv_timeout(std::time::Duration::from_secs(5))
-            .unwrap();
+        let (clock, _) = clock();
+        let _lease = pending.open(1, &[Action::Continue], false, clock).unwrap();
+        assert_eq!(pending.close(1, Action::Cancel).unwrap(), Action::Cancel);
         assert_eq!(
-            pending.answer(1, Action::Stop, || start, false, false),
+            pending.answer(1, Action::Continue, || (false, false)),
             Err(AnswerError::StaleQuestion)
         );
-        worker.join().unwrap();
+    }
+    #[test]
+    fn interruption_closes_the_question_before_a_late_commit() {
+        let pending = Arc::new(Pending::default());
+        let (clock, _) = clock();
+        let _lease = pending.open(1, &[Action::Continue], false, clock).unwrap();
+        assert!(matches!(
+            pending
+                .poll(1, false, None, || Some(Action::Cancel))
+                .unwrap(),
+            Poll::Answer(Action::Cancel)
+        ));
+        assert_eq!(
+            pending.answer(1, Action::Continue, || (false, false)),
+            Err(AnswerError::StaleQuestion)
+        );
     }
 }

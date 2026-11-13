@@ -102,7 +102,7 @@ impl RunContext {
             message,
             actions,
             closing,
-            (started, || started.elapsed()),
+            Arc::new(move || started.elapsed()),
             |receiver| receiver.recv_timeout(Duration::from_millis(50)),
         )
     }
@@ -112,15 +112,14 @@ impl RunContext {
         message: String,
         actions: &[Action],
         closing: bool,
-        timing: (Instant, impl Fn() -> Duration),
+        clock: pending::Clock,
         receive: impl Fn(&Receiver<(u64, Action)>) -> Result<(u64, Action), mpsc::RecvTimeoutError>,
     ) -> Result<Action, String> {
-        let (started, elapsed) = timing;
         let id = self
             .next_decision
             .try_update(Ordering::Relaxed, Ordering::Relaxed, |id| id.checked_add(1))
             .map_err(|_| "identificador de pregunta agotado")?;
-        let _pending = self.pending.open(id, actions, closing, started)?;
+        let _pending = self.pending.open(id, actions, closing, clock)?;
         let decision = Decision {
             id,
             message: message.clone(),
@@ -136,19 +135,22 @@ impl RunContext {
                 decision: Some(decision),
             })
             .map_err(|e| format!("publicar decisión: {e}"))?;
-        loop {
-            if let Poll::Answer(action) = self.pending.poll(id, false, None)? {
-                return Ok(action);
-            }
+        let interrupted = || {
             if self.cancel.shutdown.load(Ordering::Acquire) {
-                return Ok(if closing {
+                Some(if closing {
                     Action::Leave
                 } else {
                     Action::Cancel
-                });
+                })
+            } else if !closing && self.cancel.cancelled() {
+                Some(Action::Cancel)
+            } else {
+                None
             }
-            if !closing && self.cancel.cancelled() {
-                return Ok(Action::Cancel);
+        };
+        loop {
+            if let Poll::Answer(action) = self.pending.poll(id, false, None, interrupted)? {
+                return Ok(action);
             }
             let legacy = match receive(&self.answers) {
                 Ok((reply_id, action)) if reply_id == id && actions.contains(&action) => {
@@ -156,17 +158,17 @@ impl RunContext {
                 }
                 Ok(_) | Err(mpsc::RecvTimeoutError::Timeout) => None,
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    return Ok(if closing {
-                        Action::Leave
-                    } else {
-                        Action::Cancel
-                    });
+                    return self.pending.close(
+                        id,
+                        if closing {
+                            Action::Leave
+                        } else {
+                            Action::Cancel
+                        },
+                    );
                 }
             };
-            match self
-                .pending
-                .poll(id, elapsed() >= Duration::from_mins(2), legacy)?
-            {
+            match self.pending.poll(id, true, legacy, || None)? {
                 Poll::Answer(action) => return Ok(action),
                 Poll::Waiting => {}
                 Poll::Expired => {
@@ -346,13 +348,12 @@ impl Chain {
             .map_err(|e| format!("responder decisión: {e}"))
     }
     pub fn answer_checked(&self, id: u64, action: Action) -> Result<(), AnswerError> {
-        self.pending.answer(
-            id,
-            action,
-            Instant::now,
-            self.cancel.cancelled(),
-            self.cancel.shutdown.load(Ordering::Acquire),
-        )
+        self.pending.answer(id, action, || {
+            (
+                self.cancel.cancelled(),
+                self.cancel.shutdown.load(Ordering::Acquire),
+            )
+        })
     }
     pub fn finished(&self) -> bool {
         self.worker.as_ref().is_none_or(JoinHandle::is_finished)

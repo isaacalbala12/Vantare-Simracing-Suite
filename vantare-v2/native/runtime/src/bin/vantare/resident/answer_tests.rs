@@ -16,7 +16,7 @@ impl Drop for Fixture {
             chain.shutdown().unwrap();
         }
         self.owner.chain.take();
-        fs::remove_dir_all(&self.root).unwrap();
+        let _ = fs::remove_dir_all(&self.root);
     }
 }
 fn fixture() -> Fixture {

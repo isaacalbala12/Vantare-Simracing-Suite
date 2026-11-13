@@ -232,10 +232,10 @@ impl Home {
         if running {
             self.launch_pending = None;
         }
-        if let Some(LaunchProblem::Uncertain { read_from }) = self.launch_problem {
-            if running || request_id.is_none_or(|id| id >= read_from) {
-                self.launch_problem = None;
-            }
+        if let Some(LaunchProblem::Uncertain { read_from }) = self.launch_problem
+            && (running || request_id.is_none_or(|id| id >= read_from))
+        {
+            self.launch_problem = None;
         }
     }
     pub fn fail(&mut self, id: u32) -> bool {

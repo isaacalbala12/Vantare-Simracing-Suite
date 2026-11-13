@@ -1,3 +1,12 @@
+## VANTA-141 · Captura excluida y monitor en el mosaico real (13/11/2026)
+
+Issue #2213, PR draft #2242. Opciones únicamente instrumentadas para la lista
+manual: desplazamiento global existente y WDA_EXCLUDEFROMCAPTURE dentro del
+proceso propietario, con salida fallida si Windows lo rechaza. Dibujo y
+campaña principal sin cambios. Parche fast 194880d70 verificado con índice
+Git aislado: reproduce exactamente native desde 745bd52b8. Formato PASS;
+Release y Clippy nuevos pendientes de captura.lock. Sin ejecución gráfica.
+
 ## VANTA-141 · Pieza 5 compilada, sin ejecutar GPUI
 
 B-GPUI d15993da3 y B-fast 56cb2c701 compilaron Release por cola -j2,

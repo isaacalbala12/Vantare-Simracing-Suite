@@ -1480,6 +1480,7 @@ fn relative_measurement_layout(copies: usize) -> crate::layout::Layout {
     let prefs = Preferences::default();
     let settings = crate::look::Look::Vantare.workshop_defaults(Kind::Relative);
     let size = Widget::new(&settings, prefs).size();
+    let (dx, dy) = layout_offset();
     let columns = if copies == 1 {
         1
     } else if copies == 4 {
@@ -1492,8 +1493,8 @@ fn relative_measurement_layout(copies: usize) -> crate::layout::Layout {
             (
                 Kind::Relative,
                 (
-                    20.0 + (index % columns) as f32 * (size.0 + 12.0),
-                    20.0 + (index / columns) as f32 * (size.1 + 12.0),
+                    dx + 20.0 + (index % columns) as f32 * (size.0 + 12.0),
+                    dy + 20.0 + (index / columns) as f32 * (size.1 + 12.0),
                 ),
             )
         })

@@ -59,3 +59,12 @@ features de medición pasa en las dos variantes (4m04s y 3m06s). Se conservan
 las dos advertencias de dependencias vendor de fast; el paquete UI pasa. Tests de interfaz,
 paridad gráfica, segundo monitor, DPI, OBS y latencia hasta pantalla siguen
 pendientes de CI/PC. El kit está incompleto. Ningún merge ni release.
+
+### Lista manual: captura y segundo monitor
+
+Las variantes instrumentadas pueden usar VANTARE_DESPLAZAMIENTO=x,y con
+el origen físico del otro monitor. No cambia el mosaico ni el pintor. Para
+OBS, VANTARE_MEASUREMENT_EXCLUDE_CAPTURE=1 solicita WDA_EXCLUDEFROMCAPTURE
+desde el propio proceso; si la API falla, se registra el error y sale con 2.
+La campaña principal deja ambas opciones sin definir. Código formateado;
+reconstrucción y Clippy pendientes de captura.lock. No se ha ejecutado.

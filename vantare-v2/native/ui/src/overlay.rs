@@ -36,6 +36,8 @@ pub(crate) mod ffi {
             flags: u32,
         ) -> i32;
         pub fn GetClientRect(hwnd: Hwnd, rect: *mut Rect) -> i32;
+        #[cfg(feature = "medir-latencia")]
+        pub fn SetWindowDisplayAffinity(hwnd: Hwnd, affinity: u32) -> i32;
     }
     #[link(name = "dwmapi")]
     unsafe extern "system" {
@@ -122,6 +124,18 @@ pub fn apply(hwnd: Hwnd, origin: (i32, i32)) {
             4,
         );
         DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, (&raw const no_border).cast(), 4);
+        // VANTA-141: solo la variante instrumentada y con petición explícita.
+        // Windows exige que el HWND pertenezca a quien hace esta llamada.
+        #[cfg(feature = "medir-latencia")]
+        if std::env::var("VANTARE_MEASUREMENT_EXCLUDE_CAPTURE").is_ok_and(|v| v == "1")
+            && ffi::SetWindowDisplayAffinity(hwnd, 0x11) == 0
+        {
+            eprintln!(
+                "VANTARE_EXCLUDE_CAPTURE_FAILED: {}",
+                std::io::Error::last_os_error()
+            );
+            std::process::exit(2);
+        }
     }
 }
 

@@ -565,7 +565,8 @@ jobs:
     env:
       VANTARE_CI_TARGET: '1'
       CARGO_INCREMENTAL: '0'
-      CARGO_BUILD_JOBS: '4'
+      # Experimento #1993: 6 jobs para el candidato Release (4 vCPU, 16 GB).
+      CARGO_BUILD_JOBS: '6'
     defaults:
       run:
         shell: pwsh

@@ -167,6 +167,8 @@ try {
   await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentResults(page, server.resolvedUrls?.local[0] ?? "");
+  const { checkRoadmapDensity } = await import("./check-roadmap-density.ts");
+  await checkRoadmapDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   await checkPerformanceDensity(page, server.resolvedUrls?.local[0] ?? "");

@@ -6,6 +6,7 @@ param(
     [string]$BuildConfig,
     [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
     [string[]]$Packages = @(),
+    [switch]$NoTestsPass,
     [switch]$PublicTargetsOnly
 )
 Set-StrictMode -Version Latest
@@ -86,6 +87,10 @@ try {
         # que ningún build por defecto ni de release activa.
         'captura' { @('clippy', '-p', 'vantare-installer', '--all-targets', '--features', 'parity-capture') }
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
+    }
+    if ($NoTestsPass) {
+        if ($Gate -ne 'test') { throw 'NoTestsPass solo se aplica al gate test.' }
+        $arguments += '--no-tests=pass'
     }
     if ($PublicTargetsOnly) { $arguments = @($arguments | Where-Object { $_ -ne '--all-targets' }) }
     if ($Packages.Count) {

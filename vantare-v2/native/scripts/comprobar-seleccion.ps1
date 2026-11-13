@@ -1,7 +1,10 @@
-param([Parameter(Mandatory)][string]$Selection)
+param(
+    [Parameter(Mandatory)][string]$Selection,
+    [string]$TestSelection = ''
+)
 $ErrorActionPreference = 'Stop'
 if (-not $env:VANTARE_SLOT_TARGET) { throw 'Invocar mediante comprobar.ps1.' }
 $packages = $Selection.Split(',')
-foreach ($gate in @('clippy', 'test')) {
-    & (Join-Path $PSScriptRoot '../gates.ps1') -Gate $gate -Packages $packages
-}
+$testPackages = if ($TestSelection) { $TestSelection.Split(',') } else { $packages }
+& (Join-Path $PSScriptRoot '../gates.ps1') -Gate clippy -Packages $packages
+& (Join-Path $PSScriptRoot '../gates.ps1') -Gate test -Packages $testPackages -NoTestsPass

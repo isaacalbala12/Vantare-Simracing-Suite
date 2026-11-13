@@ -125,7 +125,9 @@ it("keeps scheduled launch visible but inactive while immediate launch remains e
     />,
   );
   const scheduled = screen.getByRole("button", { name: /Lanzar a las/u });
-  expect(scheduled.hasAttribute("disabled")).toBe(true);
+  expect(scheduled.getAttribute("aria-disabled")).toBe("true");
+  scheduled.focus();
+  expect(document.activeElement).toBe(scheduled);
   fireEvent.click(scheduled);
   expect(launch).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: /Lanzar «QA»/u }));

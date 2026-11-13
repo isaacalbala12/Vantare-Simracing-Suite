@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import validationCorpus from "../fixtures/calendar-validation.json";
 import coreFixture from "../fixtures/core-offline.json";
+import launcherFixture from "../fixtures/launcher-base.json";
 import {
   isCalendarAlerts,
   isCalendarConfig,
@@ -452,4 +453,63 @@ it("mock noops keep all revisions and distinguish absence of a current schedule"
       },
     }),
   ).toMatchObject({ error: { kind: "calendarScheduleUnavailable" } });
+});
+
+it("mock fallback uses Rust legacy policy defaults and rearming clears cancellation", () => {
+  const core = structuredClone(coreFixture) as CoreStatus;
+  core.rights = "connected";
+  core.accountGeneration = "a".repeat(64);
+  core.access.verified = true;
+  core.access.blocked = false;
+  core.access.calendar = true;
+  const host = create({
+    core,
+    sceneName: "calendar-launch-reference",
+    visual: null,
+    notes: [],
+    note: () => {},
+  });
+  const arm = () =>
+    host({
+      kind: "request",
+      id: 1,
+      request: {
+        method: "calendar.launchArm",
+        profile: launcherFixture.profiles[0].id,
+        baseRevision: launcherFixture.revision,
+        armedGeneration: "a".repeat(64),
+        mode: {
+          kind: "once",
+          seriesId: "beginner-lmgt3-fixed",
+          startAt: Date.parse("2026-10-08T18:00:00Z"),
+        },
+      },
+    });
+  const first = arm();
+  if (
+    first?.kind !== "response" ||
+    first.result.method !== "calendar.launchArm" ||
+    !first.result.value.armed
+  )
+    throw new Error("missing mock arm");
+  expect(first.result.value.armed.decisionRequired).toBe(false);
+  const id = first.result.value.armed.armId;
+  expect(
+    host({
+      kind: "request",
+      id: 2,
+      request: { method: "calendar.launchCancel", armId: id },
+    }),
+  ).toMatchObject({
+    kind: "response",
+    result: { value: { armed: null, change: { reason: "user" } } },
+  });
+  const second = arm();
+  if (
+    second?.kind !== "response" ||
+    second.result.method !== "calendar.launchArm"
+  )
+    throw new Error("missing rearm");
+  expect(second.result.value.change).toBeNull();
+  expect(second.result.value.armed?.armId).not.toBe(id);
 });

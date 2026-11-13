@@ -573,3 +573,12 @@ it.each([true, false])(
     }
   },
 );
+
+vi.mock("../src/renderer/screens/calendar/CalendarLaunch", () => ({
+  useCalendarLaunch: () => ({
+    view: undefined,
+    busy: false,
+    arm: vi.fn(),
+    cancel: vi.fn(),
+  }),
+}));

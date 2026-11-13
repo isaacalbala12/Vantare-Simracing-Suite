@@ -872,6 +872,45 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "config": null,
+        "method": "calendar.launchArm",
+        "value": {
+          "armed": null,
+          "automatic": null,
+          "change": null,
+          "latest": null
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "calendar.launchCancel",
+        "value": {
+          "armed": null,
+          "automatic": null,
+          "change": null,
+          "latest": null
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "calendarLaunch",
+        "value": {
+          "armed": null,
+          "automatic": null,
+          "change": null,
+          "latest": null
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "calendar.alertsSave",
         "value": {
           "alerts": {
@@ -1169,6 +1208,47 @@
       "request": {
         "method": "calendar.refresh"
       }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "armedGeneration": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method": "calendar.launchArm",
+        "mode": {
+          "kind": "once",
+          "seriesId": "beginner-lmgt3-fixed",
+          "startAt": 1800000180000
+        },
+        "profile": "lmu"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "armedGeneration": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "baseRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method": "calendar.launchArm",
+        "mode": {
+          "expectedRevision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "kind": "alerts"
+        },
+        "profile": "lmu"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "armId": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "method": "calendar.launchCancel"
+      }
+    },
+    {
+      "kind": "subscribe",
+      "topic": "calendarLaunch"
     },
     {
       "id": 1,

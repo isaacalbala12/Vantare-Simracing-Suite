@@ -44,16 +44,31 @@ function setup() {
   });
   const core = structuredClone(coreFixture) as CoreStatus;
   core.rights = "connected";
+  core.accountGeneration = "a".repeat(64);
   core.access.verified = true;
   const cache = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   caches.push(cache);
   cache.setQueryData(coreKey, core);
-  host.client.request.mockResolvedValue({
-    method: "launcher.get",
-    value: view,
-  });
+  host.client.request.mockImplementation(async (request) =>
+    request.method === "launcher.resident.get"
+      ? {
+          method: request.method,
+          value: {
+            online: true,
+            protected: false,
+            running: false,
+            execution: {
+              instance: "b".repeat(64),
+              revisionCheckedLaunch: true,
+              firstRetainedSeq: "1",
+              events: [],
+            },
+          },
+        }
+      : { method: "launcher.get", value: view },
+  );
   const hook = renderHook(({ allowed }) => useCalendarLauncher(allowed), {
     initialProps: { allowed: true },
     wrapper: ({ children }) => (
@@ -100,16 +115,20 @@ it("launches the selected profile with its observed revision and blocks a second
   });
   expect(
     host.client.request.mock.calls.filter(
-      ([request]) => request.method === "launcher.launch",
+      ([request]) => request.method === "launcher.launchChecked",
     ),
   ).toHaveLength(1);
   expect(host.client.request).toHaveBeenLastCalledWith({
-    method: "launcher.launch",
+    method: "launcher.launchChecked",
     profile: hook.view.profiles[0].id,
     baseRevision: hook.view.revision,
+    armedGeneration: hook.core.accountGeneration,
   });
   await act(async () => {
-    finish({ method: "launcher.launch", accepted: true });
+    finish({
+      method: "launcher.launchChecked",
+      value: { kind: "queued", request: "c".repeat(32) },
+    });
   });
   expect(host.toast).toHaveBeenCalledOnce();
   expect(hook.result.current.busy).toBe(false);
@@ -129,7 +148,10 @@ it("drops an old acknowledgment when rights change and never launches while live
   });
   hook.rerender({ allowed: false });
   await act(async () => {
-    finish({ method: "launcher.launch", accepted: true });
+    finish({
+      method: "launcher.launchChecked",
+      value: { kind: "queued", request: "c".repeat(32) },
+    });
   });
   expect(host.toast).not.toHaveBeenCalled();
   expect(hook.result.current.busy).toBe(false);

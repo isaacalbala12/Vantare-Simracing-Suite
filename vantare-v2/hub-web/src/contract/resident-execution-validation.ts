@@ -14,7 +14,7 @@ function hex(value: unknown, length: number): boolean {
     /^[0-9a-f]+$/.test(value)
   );
 }
-function outcome(value: unknown): boolean {
+export function isResidentOutcome(value: unknown): boolean {
   if (!record(value)) return false;
   if (value.kind === "completed") return exact(value, ["kind"]);
   return (
@@ -49,7 +49,7 @@ function event(value: unknown): boolean {
     return (
       exact(kind, ["kind", "run", "outcome"]) &&
       run(kind.run) &&
-      outcome(kind.outcome)
+      isResidentOutcome(kind.outcome)
     );
   if (
     kind.kind !== "received" ||
@@ -64,16 +64,7 @@ function event(value: unknown): boolean {
   return (
     receipt.kind === "rejected" &&
     exact(receipt, ["kind", "reason"]) &&
-    oneOf(receipt.reason, [
-      "busy",
-      "wrong-instance",
-      "revision-mismatch",
-      "document-unavailable",
-      "account-changed",
-      "authority-unavailable",
-      "denied",
-      "start-failed",
-    ])
+    isResidentRejection(receipt.reason)
   );
 }
 export function isResidentExecution(value: unknown): boolean {
@@ -101,4 +92,17 @@ export function isResidentExecution(value: unknown): boolean {
     expected++;
   }
   return true;
+}
+
+export function isResidentRejection(value: unknown): boolean {
+  return oneOf(value, [
+    "busy",
+    "wrong-instance",
+    "revision-mismatch",
+    "document-unavailable",
+    "account-changed",
+    "authority-unavailable",
+    "denied",
+    "start-failed",
+  ]);
 }

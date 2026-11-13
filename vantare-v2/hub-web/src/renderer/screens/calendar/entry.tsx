@@ -21,6 +21,7 @@ import { useSettings } from "../../app/SettingsState";
 import { calendarText as text } from "../../i18n/calendar";
 import { calendarAlertsText } from "../../i18n/calendarAlerts";
 import { calendarIcsText } from "../../i18n/calendarIcs";
+import { calendarLaunchText } from "../../i18n/calendarLaunch";
 import { useCalendarQARuns } from "../../qa/calendar-runs";
 import { Button } from "../../ui/Button";
 import { CalendarAlertsDialog } from "../../ui/CalendarAlertsDialog";
@@ -30,6 +31,7 @@ import { CalendarDetail } from "../../ui/CalendarDetail";
 import { CalendarEventsView } from "../../ui/CalendarEventsView";
 import { CalendarFrame } from "../../ui/CalendarFrame";
 import { CalendarIcsDialog } from "../../ui/CalendarIcsDialog";
+import { CalendarLaunchStatus } from "../../ui/CalendarLaunchStatus";
 import {
   type CalendarLiveFilters,
   CalendarLiveView,
@@ -48,6 +50,7 @@ import { weekLongTitle, weekTitle } from "../../ui/calendarDate";
 import { useToastManager } from "../../ui/Layers";
 import { useCalendarHistory } from "./CalendarHistory";
 import { useCalendarIcs } from "./CalendarIcsState";
+import { useCalendarLaunch } from "./CalendarLaunch";
 import { useCalendarLauncher } from "./CalendarLauncher";
 import { useCalendarNoticeTest } from "./CalendarNoticeTest";
 import { useCalendarPreferences } from "./CalendarPreferences";
@@ -88,6 +91,8 @@ export default function CalendarEntry() {
   const returnAlertsFocus = () =>
     alertsOrigin.current?.isConnected ? alertsOrigin.current : false;
   const [activeTab, setActiveTab] = useState("upcoming");
+  const launchOrigin = useRef<HTMLButtonElement | null>(null);
+  const [launchFocusRequest, requestLaunchFocus] = useState(0);
   const [calendarSpan, setCalendarSpan] = useState("week");
   const liveFilters = useRef<CalendarLiveFilters>({
     searchOpen: false,
@@ -168,6 +173,25 @@ export default function CalendarEntry() {
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
+  const launchState = useCalendarLaunch(state.allowed, launcher.capture, () =>
+    preferences.reload(),
+  );
+  useLayoutEffect(() => {
+    if (!launchFocusRequest) return;
+    const target = launchOrigin.current?.isConnected
+      ? launchOrigin.current
+      : document.querySelector<HTMLElement>(
+          '[role="tab"][aria-selected="true"]',
+        );
+    target?.focus({ preventScroll: true });
+  }, [launchFocusRequest]);
+  const cancelLaunch = async (id: string) => {
+    if (await launchState.cancel(id)) {
+      setActiveTab("upcoming");
+      setSelectedSerie(undefined);
+      requestLaunchFocus((value) => value + 1);
+    }
+  };
   const ics = useCalendarIcs(icsOpen, state.allowed);
   useEffect(() => {
     if (!state.allowed) {
@@ -310,6 +334,22 @@ export default function CalendarEntry() {
         }
       />
       <SectionPanel activeTab={activeTab}>
+        {state.allowed && (
+          <CalendarLaunchStatus
+            value={launchState.view}
+            busy={launchState.busy}
+            utc={view?.utc ?? false}
+            onCancel={(id) => void cancelLaunch(id)}
+          />
+        )}
+        {launchState.failure && (
+          <p role="alert">
+            {launchState.failure === "launcherConflict" ||
+            launchState.failure === "calendarConflict"
+              ? calendarLaunchText.changed
+              : calendarLaunchText.rejected}
+          </p>
+        )}
         {!state.allowed ? (
           <p role="status">{text.noAccess}</p>
         ) : selectedSerie && schedule && view ? (
@@ -525,6 +565,12 @@ export default function CalendarEntry() {
               />
             ) : schedule && view ? (
               <CalendarLiveView
+                launchButtonRef={launchOrigin}
+                onArm={(seriesId, startAt) =>
+                  void launchState.arm({ kind: "once", seriesId, startAt })
+                }
+                armBusy={launchState.busy}
+                armDisabledReason={launcher.disabledReason}
                 onDetail={openDetail}
                 initialFilters={liveFilters.current}
                 onFiltersChange={rememberLive}
@@ -631,6 +677,31 @@ export default function CalendarEntry() {
       )}
       {alertsOpen && state.allowed && (
         <CalendarAlertsDialog
+          launchControl={{
+            armed: !!launchState.view?.automatic,
+            decisionRequired: launchState.view?.automatic?.decisionRequired,
+            busy: launchState.busy || preferences.busy,
+            reason: launcher.disabledReason,
+            onChange: (enabled) => {
+              if (enabled) {
+                const expectedRevision = preferences.config?.alertsRevision;
+                if (expectedRevision)
+                  void launchState.arm({ kind: "alerts", expectedRevision });
+                else launchState.alertsUnavailable();
+              } else {
+                void (async () => {
+                  const id = launchState.view?.automatic?.armId;
+                  if (id) await launchState.cancel(id);
+                  const fresh = await preferences.reload();
+                  if (!fresh?.alertsRevision) {
+                    launchState.alertsUnavailable();
+                    return;
+                  }
+                  await preferences.alert({ kind: "autoLaunchOff" });
+                })();
+              }
+            },
+          }}
           schedule={schedule}
           alerts={alerts}
           alertsState={alertsState}
@@ -639,7 +710,9 @@ export default function CalendarEntry() {
           now={state.now}
           utc={view?.utc ?? false}
           limit={calendarStartsLimit}
-          profile={launcher.profile?.name}
+          profile={
+            launchState.view?.automatic?.profileName ?? launcher.profile?.name
+          }
           canEdit={preferences.canAlerts}
           busy={preferences.busy}
           onChange={(change) => void preferences.alert(change)}
@@ -666,9 +739,15 @@ export default function CalendarEntry() {
             ) : undefined
           }
           failure={
-            preferences.failureIntent === "alerts"
-              ? preferencesFailure
-              : undefined
+            launchState.failure ? (
+              <p role="alert">
+                {launchState.failure === "protected"
+                  ? calendarLaunchText.alertsUnavailable
+                  : calendarLaunchText.rejected}
+              </p>
+            ) : preferences.failureIntent === "alerts" ? (
+              preferencesFailure
+            ) : undefined
           }
         />
       )}

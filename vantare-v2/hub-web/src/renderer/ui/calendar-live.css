@@ -486,7 +486,8 @@
   height: 12px;
 }
 /* Issue 2089: keep the frozen appearance while the deferred action is unavailable. */
-.v-calendar-hero-actions .v-button.v-calendar-launch-pending:disabled {
+.v-calendar-hero-actions
+  .v-button.v-calendar-launch-pending:is(:disabled, [data-disabled]) {
   opacity: 0.45;
 }
 

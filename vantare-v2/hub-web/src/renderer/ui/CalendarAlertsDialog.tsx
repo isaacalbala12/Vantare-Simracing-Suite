@@ -11,10 +11,10 @@ import {
   calendarDays,
 } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
-import { calendarText } from "../i18n/calendar";
 import { calendarStartNoticeText } from "../i18n/calendar-notices";
 import { calendarAlertsText as text } from "../i18n/calendarAlerts";
 import { calendarBandText as bandText } from "../i18n/calendarBands";
+import { calendarLaunchText } from "../i18n/calendarLaunch";
 import type { CalendarAlertChange } from "../screens/calendar/AlertChange";
 import { daily, nextStart, raceMinutes } from "../screens/calendar/rows";
 import { relativeDay } from "../screens/calendar/series";
@@ -34,6 +34,13 @@ import "./calendar-alerts.css";
 const hm = (n: number) =>
   `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
 type Props = {
+  launchControl?: {
+    armed: boolean;
+    decisionRequired?: boolean;
+    busy: boolean;
+    reason?: string;
+    onChange: (enabled: boolean) => void;
+  };
   schedule: CalendarSchedule | null;
   alertsState?: AlertsDocumentState;
   windowsDisabledReason?: string;
@@ -160,16 +167,32 @@ export function CalendarAlertsDialog(p: Props) {
                     />
                   ))}
                   <Caption>{text.when}</Caption>
-                  <Tooltip label={calendarText.launchPending}>
+                  <Tooltip
+                    label={
+                      p.launchControl?.reason ?? calendarLaunchText.onlyOpen
+                    }
+                  >
                     <div className="v-calendar-alerts-auto">
                       <Switch
                         hideLabel
                         label={text.auto(p.profile ?? text.defaultProfile)}
-                        checked={p.alerts.autoLaunch}
-                        disabled={disabled || !p.alerts.autoLaunch || legacy}
-                        pending={p.busy}
+                        checked={
+                          p.launchControl
+                            ? p.launchControl.armed
+                            : p.alerts.autoLaunch
+                        }
+                        disabled={
+                          disabled ||
+                          legacy ||
+                          (p.launchControl
+                            ? !p.launchControl.armed && !!p.launchControl.reason
+                            : !p.alerts.autoLaunch)
+                        }
+                        pending={p.busy || p.launchControl?.busy}
                         onCheckedChange={(value) => {
-                          if (!value) change({ kind: "autoLaunchOff" });
+                          if (p.busy || p.launchControl?.busy) return;
+                          if (p.launchControl) p.launchControl.onChange(value);
+                          else if (!value) change({ kind: "autoLaunchOff" });
                         }}
                       />
                       <div>
@@ -177,13 +200,25 @@ export function CalendarAlertsDialog(p: Props) {
                           {text.auto(p.profile ?? text.defaultProfile)}
                         </strong>
                         <p>
-                          {p.alerts.autoLaunch
-                            ? text.autoLegacyHint
-                            : text.autoHint}
+                          {p.launchControl
+                            ? (p.launchControl.reason ??
+                              calendarLaunchText.onlyOpen)
+                            : p.alerts.autoLaunch
+                              ? text.autoLegacyHint
+                              : text.autoHint}
                         </p>
                       </div>
                     </div>
                   </Tooltip>
+                  {p.launchControl?.armed &&
+                    p.launchControl.decisionRequired && (
+                      <p role="status">{calendarLaunchText.ask}</p>
+                    )}
+                  {p.launchControl &&
+                    p.alerts.autoLaunch &&
+                    !p.launchControl.armed && (
+                      <p role="status">{calendarLaunchText.stored}</p>
+                    )}
                   <Caption>{text.what}</Caption>
                   <div className="v-calendar-alerts-help">
                     <b>{text.daily}</b>

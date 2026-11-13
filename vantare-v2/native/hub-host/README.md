@@ -232,10 +232,10 @@ en `hub-web/docs/screen-contracts.md`.
 La auditoría de escritores y los oráculos de bytes con ambos mapas de serde_json
 están en [docs/json-order.md](docs/json-order.md).
 
-## Lanzamientos comprobados · protocolo Hub v31
+## Lanzamientos comprobados · protocolo Hub v32
 
 `core.accountGeneration` es una generación opaca de sesión, no una identidad,
-credencial ni permiso. Puede faltar con un núcleo antiguo o desconectado. D
+credencial ni permiso. Puede faltar con un núcleo antiguo o desconectado. Calendario
 captura generación, perfil y revisión AL ARMAR. `launcher.launchChecked` exige
 esos tres valores (`armedGeneration`, `profile`, `baseRevision`); el helper nunca
 sustituye la generación armada por la observación al disparar. Solo una acción
@@ -247,7 +247,7 @@ El envío exige Status fresco con `RevisionCheckedLaunch`, genera RequestId
 aleatorio de32 hex y devuelve `{kind:"queued",request}`. Significa encolado;
 no significa aceptado, completado ni «aplicaciones listas». No hay fallback a v1.
 Los consumidores legacy (incluido el método previo, favorito, CLI y atajos)
-conservan v1; D debe usar exclusivamente el método comprobado para Calendario.
+conservan v1; los lanzamientos del Calendario usan exclusivamente el método comprobado.
 
 `launcher.resident.get` y sus eventos incluyen `execution` opcional: instancia,
 soporte comprobado, primer cursor retenido y el anillo cerrado de eventos.
@@ -262,7 +262,7 @@ No hay ACK ni persistencia. Se reservan16KiB en el presupuesto de registros para
 la extensión cerrada de32 eventos. No salen rutas, argumentos, documentos,
 identidades personales ni mensajes libres por esta superficie nueva.
 
-D implementa armar/cancelar/textos/casillas y descarta intenciones/correlaciones
+Calendario permite armar/cancelar y descarta intenciones/correlaciones
 al cambiar de cuenta. Cancelar deja de tener efecto tras el envío; una cadena
 aceptada no se mata. Ask/confianza puede esperar hasta2min y acabar
 DecisionExpired: avisar al armar. Sin agenda con el Hub cerrado.
@@ -279,3 +279,9 @@ anterior solo si aún no han vencido sus 2 s y sigue siendo la misma autoridad.
 Si la consulta agota los 2 s, la cuenta pasa a None. Una respuesta legacy fresca
 no renueva la generación de cuenta. Ok(None) también la borra inmediatamente.
 Cerrar el Feed cancela y recoge ambos hilos. El residente mantiene 750 ms al consumir.
+
+Calendario v32: `calendar.launchArm` / `calendar.launchCancel` y tema
+`calendarLaunch`. El host fija perfil, revisión, generación e instancia del
+residente; el tick consume una sola vez la intención. Los recibos siguen
+correlacionándose al entrar en pista; solo la pérdida de cuenta/derechos/conexión
+invalida su alcance. Sin persistencia ni reenvío de resultados desconocidos.

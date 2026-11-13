@@ -3,6 +3,7 @@ use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
     notice_types(&mut text);
+    launch_types(&mut text);
     declare::<crate::calendar::CalendarIcsScope>(&mut text);
     declare::<crate::calendar::CalendarIcsStatus>(&mut text);
     constants!(
@@ -278,6 +279,7 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
 
 pub(crate) fn corpus() -> serde_json::Value {
     let (mut host, mut ui) = samples();
+    launch_samples(&mut host, &mut ui);
     let mut config = sample_config();
     config.alerts = sample_alerts();
     host.push(sample_response(Reply::CalendarAlertsSave {
@@ -484,4 +486,123 @@ fn notice_types(text: &mut String) {
         "calendarNoticeTestIntervalMs",
         crate::calendar::NOTICE_TEST_INTERVAL_MS
     );
+}
+
+fn launch_types(text: &mut String) {
+    declare::<crate::calendar::CalendarLaunchMode>(text);
+    declare::<crate::calendar::CalendarLaunchStop>(text);
+    declare::<crate::calendar::CalendarLaunchUnknown>(text);
+    declare::<crate::calendar::CalendarLaunchPlan>(text);
+    declare::<crate::calendar::CalendarLaunchProgress>(text);
+    declare::<crate::calendar::CalendarLaunchAttempt>(text);
+    declare::<crate::calendar::CalendarLaunchChange>(text);
+    declare::<crate::calendar::CalendarLaunchView>(text);
+    constants!(
+        text,
+        "calendarLaunchLeadMs",
+        crate::calendar::launch_types::LEAD_MS
+    );
+    constants!(
+        text,
+        "calendarLaunchReceiptMs",
+        crate::calendar::launch_types::RECEIPT_MS
+    );
+    constants!(
+        text,
+        "calendarLaunchClockSkewMs",
+        crate::calendar::launch_types::CLOCK_SKEW_MS
+    );
+    constants!(
+        text,
+        "calendarLaunchMaxFutureMs",
+        crate::calendar::launch_types::MAX_FUTURE_MS
+    );
+    constants!(
+        text,
+        "calendarLaunchArmIdLength",
+        crate::calendar::launch_types::ARM_ID_LENGTH
+    );
+    constants!(
+        text,
+        "calendarLaunchRequestIdLength",
+        crate::calendar::launch_types::REQUEST_ID_LENGTH
+    );
+    constants!(
+        text,
+        "calendarLaunchStops",
+        [
+            "user",
+            "replaced",
+            "punctualPriority",
+            "accountChanged",
+            "rightsLost",
+            "live",
+            "coreDisconnected",
+            "hubClosed",
+            "clockChanged",
+            "residentUnavailable",
+            "revisionChanged",
+            "alertsUnavailable",
+            "disabled",
+            "scheduleUnavailable",
+            "expired",
+            "busy",
+            "io"
+        ]
+    );
+    constants!(
+        text,
+        "calendarLaunchUnknowns",
+        [
+            "noReceipt",
+            "ringGap",
+            "residentRestarted",
+            "residentUnavailable",
+            "scopeLost",
+            "unconfirmedWrite"
+        ]
+    );
+}
+
+fn launch_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
+    host.push(sample_response(Reply::CalendarLaunchArm {
+        value: Box::default(),
+        config: None,
+    }));
+    host.push(sample_response(Reply::CalendarLaunchCancel {
+        value: Box::default(),
+    }));
+    host.push(HostToUi::Event {
+        event: crate::protocol::Event::CalendarLaunch {
+            value: Box::default(),
+        },
+    });
+    for mode in [
+        crate::calendar::CalendarLaunchMode::Once {
+            series_id: "beginner-lmgt3-fixed".into(),
+            start_at: 1_800_000_180_000,
+        },
+        crate::calendar::CalendarLaunchMode::Alerts {
+            expected_revision: "c".repeat(64),
+        },
+    ] {
+        ui.push(UiToHost::Request {
+            id: 1,
+            request: Request::CalendarLaunchArm {
+                profile: "lmu".into(),
+                base_revision: "a".repeat(64),
+                armed_generation: "b".repeat(64),
+                mode,
+            },
+        });
+    }
+    ui.push(UiToHost::Request {
+        id: 1,
+        request: Request::CalendarLaunchCancel {
+            arm_id: "d".repeat(64),
+        },
+    });
+    ui.push(UiToHost::Subscribe {
+        topic: crate::protocol::Topic::CalendarLaunch,
+    });
 }

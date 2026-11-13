@@ -55,8 +55,16 @@ export function create(context: MockContext): MockHandler {
       options: { ...options },
     }));
   }
-  if (sceneName === "calendar-live-reference") {
+  if (
+    sceneName === "calendar-live-reference" ||
+    sceneName === "calendar-launch-reference"
+  ) {
     core.rights = "connected";
+    if (sceneName === "calendar-launch-reference") {
+      core.accountGeneration = "a".repeat(64);
+      core.access.verified = true;
+      core.access.calendar = true;
+    }
     launcher.profiles[0].name = "Carrera LMU";
     launcher.profiles[0].favorite = true;
     launcher.profiles[0].launchable = true;
@@ -111,6 +119,7 @@ export function create(context: MockContext): MockHandler {
       } as ProfileDraft,
     ]),
   );
+  context.launcherPolicy = (id) => drafts.get(id)?.policy;
   if (sceneName === "launcher-shortcuts") {
     for (const [id, hotkey] of [
       ["creator", "ctrl+shift+1"],

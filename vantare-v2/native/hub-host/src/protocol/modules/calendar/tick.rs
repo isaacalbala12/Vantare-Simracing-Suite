@@ -14,6 +14,14 @@ pub(super) fn tick_with_clock(
     monotonic: Instant,
 ) -> io::Result<()> {
     tick_at(session, now, monotonic);
+    super::calendar::launch_tick(
+        session,
+        pipe,
+        crate::calendar::launch::Clock {
+            wall: now,
+            monotonic,
+        },
+    )?;
     let enabled = session.handshaken
         && crate::calendar::allowed(&session.current.access)
         && session.current.rights == crate::protocol::LinkState::Connected

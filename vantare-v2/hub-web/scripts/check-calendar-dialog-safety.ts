@@ -22,7 +22,13 @@ async function noLaunch(page: Page, popup: Locator) {
   assert.equal(
     await launchCount(page),
     0,
-    "no launcher.favorite, launcher.launch or launcher.launchChecked escapes the dialog",
+    "no launch, arm or cancel escapes the dialog",
+  );
+  await page.keyboard.press("Tab");
+  assert.equal(
+    await launchCount(page),
+    0,
+    "Tab inside the dialog cannot arm or cancel",
   );
   assert.ok(await popup.isVisible());
 }
@@ -89,7 +95,7 @@ async function boundaryCycle(page: Page, popup: Locator) {
   );
 }
 async function scene(page: Page, base: string, name: string) {
-  await page.goto(`${base}?escena=visual-dark:calendar-live-reference`);
+  await page.goto(`${base}?escena=visual-dark:calendar-launch-reference`);
   await until(
     async () => (await page.locator(".v-sidebar").count()) === 1,
     5000,
@@ -103,7 +109,7 @@ async function scene(page: Page, base: string, name: string) {
   await calendarScenes[name].prepare(page);
 }
 
-/** Chromium exercises actual inert, both launch methods and both focus-cycle boundaries. */
+/** Chromium exercises actual inert, all launch methods and both focus-cycle boundaries. */
 export async function checkCalendarDialogSafety(owner: Page, base: string) {
   const page = await owner.context().newPage();
   try {
@@ -116,6 +122,8 @@ export async function checkCalendarDialogSafety(owner: Page, base: string) {
           [
             "launcher.launch",
             "launcher.launchChecked",
+            "calendar.launchArm",
+            "calendar.launchCancel",
             "launcher.favorite",
           ].includes(message.request?.method)
         )
@@ -153,6 +161,50 @@ export async function checkCalendarDialogSafety(owner: Page, base: string) {
       );
       await positiveLaunch(page);
     }
+
+    // A physical click reaches the backdrop, never the inert timing button.
+    // Pointer dismissal is allowed: the invariant is that it cannot arm.
+    await scene(page, base, "calendario-avisos-contraida");
+    assert.equal(await page.locator(".v-sidebar[inert]").count(), 1);
+    const timing = page.getByRole("button", {
+      name: /Lanzar a las/u,
+      includeHidden: true,
+    });
+    const timingBox = await timing.boundingBox();
+    assert.ok(timingBox, "the actual background timing button exists");
+    await page.mouse.click(
+      timingBox.x + timingBox.width / 2,
+      timingBox.y + timingBox.height / 2,
+    );
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await launchCount(page),
+      0,
+      "inert timing button cannot arm through the backdrop or Tab",
+    );
+
+    // Positive arm/cancel verifies that both new methods are really counted.
+    await scene(page, base, "calendario-proximas-contraida");
+    await page.getByRole("button", { name: /Lanzar a las/u }).click();
+    await until(
+      async () => (await launchCount(page)) === 1,
+      5000,
+      "positive calendar.launchArm",
+    );
+    await page
+      .getByRole("button", {
+        name: "Cancelar lanzamiento puntual",
+        exact: true,
+      })
+      .click();
+    await until(
+      async () => (await launchCount(page)) === 2,
+      5000,
+      "positive calendar.launchCancel",
+    );
+    await page.getByRole("button", { name: /Lanzar a las/u }).focus();
+    await page.keyboard.press("Tab");
+    assert.equal(await launchCount(page), 2, "Tab does not arm again");
 
     // Actual nested route: expand Day, open a departure chip, return to that chip.
     await scene(page, base, "calendario-dia-ampliada");

@@ -5,6 +5,30 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "calendar.launchArm")]
+    CalendarLaunchArm {
+        #[serde(deserialize_with = "crate::calendar::launch_types::deserialize_profile")]
+        profile: String,
+        #[serde(
+            rename = "baseRevision",
+            deserialize_with = "crate::calendar::launch_types::deserialize_token"
+        )]
+        base_revision: String,
+        #[serde(
+            rename = "armedGeneration",
+            deserialize_with = "crate::calendar::launch_types::deserialize_token"
+        )]
+        armed_generation: String,
+        mode: crate::calendar::CalendarLaunchMode,
+    },
+    #[serde(rename = "calendar.launchCancel")]
+    CalendarLaunchCancel {
+        #[serde(
+            rename = "armId",
+            deserialize_with = "crate::calendar::launch_types::deserialize_token"
+        )]
+        arm_id: String,
+    },
     #[serde(rename = "calendar.noticeTest")]
     CalendarNoticeTest {},
     #[serde(rename = "calendar.alertsSave")]
@@ -66,6 +90,15 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "calendar.launchArm")]
+    CalendarLaunchArm {
+        value: Box<crate::calendar::CalendarLaunchView>,
+        config: Option<Box<crate::calendar::CalendarConfigView>>,
+    },
+    #[serde(rename = "calendar.launchCancel")]
+    CalendarLaunchCancel {
+        value: Box<crate::calendar::CalendarLaunchView>,
+    },
     #[serde(rename = "calendar.noticeTest")]
     CalendarNoticeTest { accepted: bool },
     #[serde(rename = "calendar.alertsSave")]
@@ -144,6 +177,10 @@ pub enum HostError {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "topic", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Event {
+    #[serde(rename = "calendarLaunch")]
+    CalendarLaunch {
+        value: Box<crate::calendar::CalendarLaunchView>,
+    },
     #[serde(rename = "calendarRefreshed")]
     CalendarRefreshed {
         value: Box<crate::calendar::CalendarView>,
@@ -153,6 +190,12 @@ pub enum Event {
     CalendarNotice {
         value: crate::calendar::CalendarNotice,
     },
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Topic {
+    CalendarLaunch,
 }
 #[cfg(any(test, feature = "bindings"))]
 pub(crate) mod bindings;

@@ -724,3 +724,106 @@ fn ics_protected_documents_are_isolated_and_source_bytes_are_unchanged() {
         br#"{"unexpected":true}"#
     );
 }
+
+#[test]
+fn arming_automatic_launch_uses_alerts_cas_and_preserves_the_other_preferences() {
+    let root = Root::new();
+    let mut alerts = CalendarAlerts {
+        lead_min: 15,
+        notify_week: false,
+        channels: CalendarChannels {
+            sound: false,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    root.seed(
+        "calendar-alerts.json",
+        &serde_json::to_vec(&alerts).unwrap(),
+    );
+    let mut state = root.state();
+    let initial = state.config();
+    let revision = initial.alerts_revision.unwrap();
+    let saved = state.arm_auto_launch(&revision).unwrap();
+    assert!(saved.alerts.auto_launch);
+    alerts.auto_launch = true;
+    assert_eq!(saved.alerts, alerts);
+    assert_ne!(saved.alerts_revision.as_deref(), Some(revision.as_str()));
+    let bytes = root.bytes("calendar-alerts.json");
+    assert!(matches!(
+        state.arm_auto_launch(&revision),
+        Err(HostError::CalendarConflict { .. })
+    ));
+    assert_eq!(root.bytes("calendar-alerts.json"), bytes);
+    let current = saved.alerts_revision.unwrap();
+    assert_eq!(
+        state.arm_auto_launch(&current).unwrap().alerts_revision,
+        Some(current.clone())
+    );
+    assert_eq!(root.bytes("calendar-alerts.json"), bytes);
+    root.seed("calendar-alerts.json", br#"{"future":true}"#);
+    assert!(state.arm_auto_launch(&current).is_err());
+    assert_eq!(root.bytes("calendar-alerts.json"), br#"{"future":true}"#);
+}
+
+#[test]
+fn a_punctual_arm_must_identify_an_actual_future_departure_in_the_current_publication() {
+    let root = Root::new();
+    let mut state = root.state();
+    let (id, now) = publication(&mut state);
+    let schedule = state.view.official.as_ref().unwrap();
+    let start = super::super::agenda::starts(
+        schedule,
+        &schedule.series[0],
+        now + super::super::launch_types::LEAD_MS,
+        now + 86_400_000,
+    )
+    .unwrap()[0];
+    let clock = super::super::launch::Clock {
+        wall: now,
+        monotonic: std::time::Instant::now(),
+    };
+    assert!(
+        state
+            .prepare_launch(
+                &super::super::CalendarLaunchMode::Once {
+                    series_id: id.clone(),
+                    start_at: start
+                },
+                clock
+            )
+            .unwrap()
+            .is_none()
+    );
+    assert!(matches!(
+        state.prepare_launch(
+            &super::super::CalendarLaunchMode::Once {
+                series_id: "missing".into(),
+                start_at: start
+            },
+            clock
+        ),
+        Err(HostError::CalendarScheduleUnavailable)
+    ));
+    assert!(matches!(
+        state.prepare_launch(
+            &super::super::CalendarLaunchMode::Once {
+                series_id: id.clone(),
+                start_at: start + 1
+            },
+            clock
+        ),
+        Err(HostError::Rejected)
+    ));
+    assert!(matches!(
+        state.prepare_launch(
+            &super::super::CalendarLaunchMode::Once {
+                series_id: id,
+                start_at: now
+            },
+            clock
+        ),
+        Err(HostError::Rejected)
+    ));
+    assert!(!root.0.join("calendar-alerts.json").exists());
+}

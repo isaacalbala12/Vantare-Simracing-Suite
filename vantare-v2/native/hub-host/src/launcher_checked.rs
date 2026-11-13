@@ -23,6 +23,35 @@ pub fn launch(
     profile: &str,
     revision: &str,
 ) -> Result<LaunchQueued, HostError> {
+    launch_inner(path, observation, armed_generation, profile, revision, None)
+}
+
+/// Pins a scheduled launch to the resident observed when it was armed.
+pub fn launch_for_instance(
+    path: &Path,
+    observation: Option<&AccountObservation>,
+    armed_generation: &AccountGeneration,
+    profile: &str,
+    revision: &str,
+    instance: &str,
+) -> Result<LaunchQueued, HostError> {
+    launch_inner(
+        path,
+        observation,
+        armed_generation,
+        profile,
+        revision,
+        Some(instance),
+    )
+}
+fn launch_inner(
+    path: &Path,
+    observation: Option<&AccountObservation>,
+    armed_generation: &AccountGeneration,
+    profile: &str,
+    revision: &str,
+    instance: Option<&str>,
+) -> Result<LaunchQueued, HostError> {
     let observation = observation.ok_or(HostError::CoreUnavailable)?;
     if observation.generation != *armed_generation
         || !vantare_ipc::control::wall_ms().is_ok_and(|now| observation.policy.permits_launch(now))
@@ -47,6 +76,9 @@ pub fn launch(
     }
     let status = mailbox::read_status(path).ok_or(HostError::CoreUnavailable)?;
     let extension = status.extension.ok_or(HostError::Unsupported)?;
+    if instance.is_some_and(|armed| String::from(extension.instance.clone()) != armed) {
+        return Err(HostError::CoreUnavailable);
+    }
     if !extension
         .capabilities
         .contains(&mailbox::execution::Capability::RevisionCheckedLaunch)

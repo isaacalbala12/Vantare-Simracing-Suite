@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import alerts from "../fixtures/calendar-alerts-reference.json";
 import type { CalendarAlerts } from "../src/contract/generated/calendar";
 import { calendarReference } from "../src/mock/calendar-reference";
-import { calendarText } from "../src/renderer/i18n/calendar";
+import { calendarLaunchText } from "../src/renderer/i18n/calendarLaunch";
 import {
   type CalendarLiveFilters,
   CalendarLiveView,
@@ -33,11 +33,13 @@ it("keeps the profile visible while launch and protected favorite writes are dis
   );
   expect(screen.getAllByText(/Sebring WEC/)).toHaveLength(2);
   const deferred = screen.getByRole("button", { name: /Lanzar a las/ });
-  expect(deferred).toHaveProperty("disabled", true);
+  expect(deferred.getAttribute("aria-disabled")).toBe("true");
+  deferred.focus();
+  expect(document.activeElement).toBe(deferred);
   expect(
     document.getElementById(deferred.getAttribute("aria-describedby") ?? "")
       ?.textContent,
-  ).toBe(calendarText.launchPending);
+  ).toBe(calendarLaunchText.onlyOpen);
   expect(screen.getByText(/\d{2}:\d{2} WEC Weekly/)).toBeTruthy();
   const axis = document.querySelectorAll(".v-calendar-timeline-axis time");
   expect(axis.length).toBe(7);
@@ -167,4 +169,94 @@ it("paints the clipped notice band without making it an interactive control", ()
   expect(band?.style.width).toBe("100%");
   expect(band?.getAttribute("aria-hidden")).toBe("true");
   expect(band?.getAttribute("tabindex")).toBeNull();
+});
+
+it("arms the visible departure exactly once and blocks a second click while pending", () => {
+  const value = calendarReference();
+  if (!value.official) throw new Error("Missing schedule");
+  const arm = vi.fn();
+  const props = {
+    schedule: value.official,
+    alerts: alerts as CalendarAlerts,
+    following: value.following,
+    utc: true,
+    now: Date.parse("2026-10-08T17:47:13Z"),
+    limit: 10000,
+    onFollow: vi.fn(),
+    onLaunch: vi.fn(),
+    onArm: arm,
+  };
+  const h = render(<CalendarLiveView {...props} />);
+  const button = screen.getByRole("button", { name: /Lanzar a las/ });
+  expect(button).toHaveProperty("disabled", false);
+  fireEvent.click(button);
+  expect(arm).toHaveBeenCalledOnce();
+  expect(arm.mock.calls[0][0]).toBeTruthy();
+  expect(arm.mock.calls[0][1]).toBeGreaterThan(props.now);
+  h.rerender(<CalendarLiveView {...props} armBusy />);
+  fireEvent.click(button);
+  expect(arm).toHaveBeenCalledOnce();
+});
+
+it("arms the same instant shown in the Madrid/UTC button through the DST gap and fold", () => {
+  const NativeFormatter = Intl.DateTimeFormat;
+  const formatter = vi
+    .spyOn(Intl, "DateTimeFormat")
+    .mockImplementation(function madridFormatter(locales, options) {
+      return new NativeFormatter(locales, {
+        ...options,
+        timeZone: options?.timeZone ?? "Europe/Madrid",
+      });
+    });
+  try {
+    for (const [date, madrid, utcLabel] of [
+      ["2026-03-29T01:01:00Z", "01:58", "00:58"],
+      ["2026-10-25T00:04:00Z", "02:01", "00:01"],
+      ["2026-10-25T01:04:00Z", "02:01", "01:01"],
+    ]) {
+      for (const utc of [false, true]) {
+        const value = calendarReference();
+        if (!value.official) throw new Error("Missing schedule");
+        const at = Date.parse(date),
+          onArm = vi.fn();
+        const series = {
+          ...value.official.series[0],
+          recurrence: {
+            kind: "weekly",
+            intervalMinutes: 0,
+            days: ["Sun"],
+            timesUTC: [date.slice(11, 16)],
+          },
+        };
+        const schedule = {
+          ...value.official,
+          validFrom: `${date.slice(0, 10)}T00:00:00Z`,
+          validUntil: `${date.slice(0, 10)}T23:59:59Z`,
+          series: [series],
+        };
+        const ui = render(
+          <CalendarLiveView
+            schedule={schedule}
+            alerts={{ ...(alerts as CalendarAlerts), bands: [], slots: [] }}
+            following={[series.id]}
+            utc={utc}
+            now={at - 240000}
+            limit={10000}
+            onFollow={vi.fn()}
+            onLaunch={vi.fn()}
+            onArm={onArm}
+          />,
+        );
+        fireEvent.click(
+          screen.getByRole("button", {
+            name: `Lanzar a las ${utc ? utcLabel : madrid}`,
+          }),
+        );
+        expect(onArm).toHaveBeenCalledExactlyOnceWith(series.id, at);
+        ui.unmount();
+      }
+    }
+  } finally {
+    formatter.mockRestore();
+  }
 });

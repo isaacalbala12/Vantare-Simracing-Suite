@@ -439,7 +439,7 @@ fn companions_are_hidden_and_follow_visibility_and_removal_without_being_fabrica
     assert_eq!(removed.instances, [] as [crate::studio::OverlayInstance; 0]);
     assert_eq!(
         layout(&path)["instances"].as_array().unwrap().as_slice(),
-        [] as [Value; 0]
+        [] as [serde_json::Value; 0]
     );
     let (added, id) = state
         .add(WidgetKind::SessionAlerts, &removed.revision, access)

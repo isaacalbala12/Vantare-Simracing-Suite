@@ -2321,8 +2321,15 @@ El catálogo usa marcador de contador explícito, sin el centinela numérico 917
 Inicio incorpora saludo/fecha compartidos, Ctrl K / Ctrl L, píldoras, VER TODO,
 badges Launcher/Tester rojos y conectado verde, Editar overlay blanco y Detener
 deshabilitado como Electron, avatar demo IA y Studio al final del raíl derecho.
-Fecha congelada de referencia Electron: 30/09. Capturas de revisión y gates
-pendientes; evidencia nueva en D:/VantareServer/evidence/hub-rune/review-2297-r2.
+Fecha congelada de referencia Electron: 30/09. Revisión e6fcb3271: 52 tests Mac
+PASS y 66 capturas/66 parejas completas; originales, hashes y tamaños comprobados
+en D:/VantareServer/evidence/hub-rune/review-2297-r2/index.html.
+Clippy local en cola PASS en 4186911d. Tests Windows y CI del head pendientes.
+TypeScript/Biome/catálogo/licencias PASS; CI web e6fcb3271 PASS. Tests web locales:
+3 PASS y tres workers agotaron su arranque; se conserva el fallo de entorno,
+no se declara PASS local. La CI web sí completó toda su batería.
+Mac: target propio retirado (1,93 GiB), 15,53 → 17,27 GiB libres; binario/hash
+conservados en ~/orq/isa2256-review-r2-binary-e6fcb3271, cero capturas activas.
 El PASS manual de Isaac y el FALLO visual inicial conservan sus SHAs originales.
 
 Excepción ADR declarada: función pura del mock Electron extraída a home-scene.ts

@@ -14,7 +14,7 @@ pub struct Home {
     pub launch_failed: bool,
     pub selected: String,
     pub choosing: bool,
-    launch_queued: Option<bool>,
+    launch_queued: Option<(String, String)>,
     launch_pending: Option<Pending>,
     active: bool,
     retry: bool,
@@ -80,7 +80,10 @@ impl Home {
     }
     pub fn queue_launch(&mut self, core: &vantare_hub_host::protocol::CoreStatus, favorite: bool) {
         if self.can_launch(core, favorite) {
-            self.launch_queued = Some(favorite);
+            self.launch_queued = Some((
+                self.choice(favorite).unwrap().id.clone(),
+                self.value.as_ref().unwrap().revision.clone(),
+            ));
         }
     }
     pub fn next_launch(
@@ -97,12 +100,17 @@ impl Home {
             self.launch_failed = true;
             self.retry = true;
         }
-        let favorite = self.launch_queued.take()?;
-        if !self.can_launch(core, favorite) {
+        let (profile, base_revision) = self.launch_queued.take()?;
+        if !self.can_launch(core, false) {
             return None;
         }
-        let profile = self.choice(favorite)?.id.clone();
-        let base_revision = self.value.as_ref()?.revision.clone();
+        if !self.value.as_ref().is_some_and(|v| {
+            v.revision == base_revision && v.profiles.iter().any(|p| p.id == profile)
+        }) {
+            self.launch_failed = true;
+            self.retry = true;
+            return None;
+        }
         let id = self.next_id;
         self.next_id = id.checked_add(1)?;
         self.launch_failed = false;
@@ -297,6 +305,14 @@ mod tests {
             home.queue_launch(&core, true);
             assert!(home.next_launch(0.0, &core).is_none(), "{restriction}");
         }
+    }
+    #[test]
+    fn changed_projection_cannot_launch_a_different_profile_than_the_clicked_one() {
+        let (mut home, core) = ready();
+        home.queue_launch(&core, true);
+        home.value.as_mut().unwrap().revision = "changed".into();
+        assert!(home.next_launch(0.0, &core).is_none());
+        assert!(home.launch_failed);
     }
     #[test]
     fn subscriptions_follow_visibility_without_periodic_polling() {

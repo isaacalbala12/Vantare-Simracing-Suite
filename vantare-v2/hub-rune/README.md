@@ -131,10 +131,18 @@ no inventa Hz ni CPU. Los textos y las 19 ilustraciones proceden de Electron,
 y las escenas se generan desde la misma función pura que usa su anfitrión simulado.
 Las ilustraciones se decodifican por CPU; ninguna prueba crea una ventana o GPU.
 
-Es un primer corte: quedan para el siguiente PR las acciones de lanzar/seleccionar,
-paleta/atajos, nombre y fecha locales, avisos de actividad y acabado visual contra
-Electron (circuito, columnas/adaptación, fechas y espaciados). No se afirma paridad
-completa de Inicio ni se muestran controles de lanzamiento sin conectar.
+El selector y el favorito lanzan con launcher.launch { profile, baseRevision },
+igual que Electron. Un doble clic no duplica peticiones. Se comprueban acceso,
+protegido, live y progreso al pulsar y al enviar. Un rechazo, Failure o plazo de
+45 s muestra el error y refresca Inicio, sin repetir el lanzamiento. Se conserva
+el perfil/revisión pulsados y se rechaza enviar si cambian antes del despacho.
+El anfitrión conserva la ejecución y las comprobaciones definitivas.
+
+Circuito/alias compartidos, solo un circuito decodificado, plantillas en parejas,
+panel adaptable y hero de 200/236/300 px según altura. Paleta/atajos, nombre/fecha
+y avisos siguen pendientes. La fidelidad visual requiere capturas del Mac y
+aprobación; no se da por verificada con los tests de Runtime.
+
 
 Escenas debug: inicio-base, inicio-vacio, inicio-cargando, inicio-error,
 inicio-sin-diseno e inicio-lanzando. Capturas headless y ventana visible del Mac,

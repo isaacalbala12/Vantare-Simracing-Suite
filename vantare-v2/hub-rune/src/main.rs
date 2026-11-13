@@ -490,7 +490,8 @@ mod tests {
         let (x, y) = rt.find("home-launch-favorite").unwrap();
         rt.pointer_down(x, y);
         rt.pointer_up(x, y);
-        rt.state.home.queue_launch(&rt.state.core, true);
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
         for _ in 0..4 {
             rt.frame(0.0);
         }

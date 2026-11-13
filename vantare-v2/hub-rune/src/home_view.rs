@@ -355,7 +355,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         composer = composer.child(options);
     }
     page = page.child(composer);
-    let (window_width, window_height) = cx.window_viewport();
+    let [window_width, window_height] = cx.layout_size("hub").unwrap_or([1440.0, 900.0]);
     let hero_height = if window_height >= 1000.0 {
         300.0
     } else if window_height < 820.0 {
@@ -364,7 +364,18 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         236.0
     };
     let hero_width = cx.layout_size("home-hero").map_or(600.0, |size| size[0]);
-    let mut hero = col()
+    let circuit = track_key(data.and_then(|v| v.sim.track.as_deref())).map_or_else(el, |key| {
+        picture(
+            state,
+            &format!("track-{key}"),
+            hero_width * 0.58,
+            hero_height,
+            false,
+        )
+        .a11y_hidden()
+        .pin(None, Some(0.0), Some(0.0), None)
+    });
+    let hero = col()
         .key("home-hero")
         .w_full()
         .h(hero_height)
@@ -373,6 +384,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         .radius(12.0)
         .gradient(theme.color("wine"), theme.color("bg-base"))
         .border(1.0, theme.color("hero-ring"))
+        .child(circuit)
         .child(message(theme, sim))
         .child(label(theme, text("home.welcome")).font(TextStyle {
             family: Family::Named("Rajdhani"),
@@ -395,21 +407,6 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                 .child(launch_button(state, true))
                 .child(studio_button(state, "home-studio", text("home.studio"))),
         );
-    let track = data.and_then(|v| v.sim.track.as_deref());
-    let track_key = track_key(track);
-    if let Some(key) = track_key {
-        hero = hero.child(
-            picture(
-                state,
-                &format!("track-{key}"),
-                hero_width * 0.58,
-                hero_height,
-                false,
-            )
-            .a11y_hidden()
-            .pin(None, Some(0.0), Some(0.0), None),
-        );
-    }
     page = page.child(hero);
     let mut overlay = card(theme, "home-overlay", text("home.overlay"));
     let mut activity = card(theme, "home-activity", text("home.activity"));
@@ -635,10 +632,7 @@ mod tests {
             home_assets::WIDGETS.len(),
             vantare_hub_host::home::HomeWidgetKind::ALL.len()
         );
-        assert_eq!(
-            assets.images.len(),
-            home_assets::WIDGETS.len() + 1 + catalog()["home"]["tracks"].as_object().unwrap().len()
-        );
+        assert_eq!(assets.images.len(), home_assets::WIDGETS.len() + 2);
         for (kind, image) in assets.images {
             image
                 .wait()
@@ -657,6 +651,46 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn home_hero_adapts_to_three_viewports_without_graphics() {
+        for (width, height, expected) in [
+            (1280.0, 720.0, 200.0),
+            (1440.0, 900.0, 236.0),
+            (1920.0, 1080.0, 300.0),
+        ] {
+            let mut state = crate::init();
+            state.core.access.verified = true;
+            let mut rt = rune::Runtime::new(
+                state,
+                crate::view,
+                (width, height),
+                rune::Env::new(true, 1.0),
+            );
+            for _ in 0..4 {
+                rt.frame(0.0);
+            }
+            let hero = rt
+                .elements()
+                .into_iter()
+                .find(|e| e.key.as_deref() == Some("home-hero"))
+                .unwrap();
+            assert!(
+                (hero.rect[3] - expected).abs() < 0.1,
+                "{width}x{height}: {:?}",
+                hero.rect
+            );
+            for control in rt.elements().into_iter().filter(|e| e.focusable) {
+                assert!(control.label.is_some_and(|label| !label.is_empty()));
+            }
+        }
+    }
+    #[test]
+    fn circuit_aliases_match_electron_and_unknown_tracks_are_not_invented() {
+        assert_eq!(track_key(None), Some("lemans_h"));
+        assert_eq!(track_key(Some("Circuit de la Sarthe")), Some("lemans_h"));
+        assert_eq!(track_key(Some("SPA Francorchamps")), Some("spa_h"));
+        assert_eq!(track_key(Some("unknown track")), None);
     }
     #[test]
     fn preview_centers_the_union_and_preserves_the_relative_positions() {

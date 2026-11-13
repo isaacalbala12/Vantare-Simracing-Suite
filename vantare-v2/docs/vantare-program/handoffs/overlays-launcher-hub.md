@@ -2206,3 +2206,19 @@ nombre/fecha y avisos; acabado/adaptación contra Electron y capturas Mac.
 Este PR no declara Inicio completo ni levanta el corte 1. Sin cambios del host,
 overlays, instalador o distribución; sin nuevas dependencias o cuentas reales.
 PR/head/checks actuales se registran en #2256 y en el PR draft de Inicio.
+
+
+### VANTA-143 · #2287: lanzamiento y composición (2026-11-13)
+
+Rebase sobre nightly 5a6b75691; Inicio usa launcher.launch con profile/baseRevision,
+como Electron. Selector y favorito, guarda contra doble clic, comprobación actual
+de acceso/protegido/live/progreso al enviar y rechazo/plazo 45 s sin relanzamiento
+automático. Refresco al terminar. La escena solo acusa recibo; no abre programas.
+Circuito y alias compartidos, solo un circuito decodificado; plantillas en parejas,
+panel adaptable y hero de 200/236/300 px. Capturas pendientes del Mac apagado.
+CI anterior: 39 PASS/1 FAIL en Reintentar, que esperaba un estado intermedio de
+frame. Ahora se comprueba una petición nueva y el error final, conservando la
+regresión. Clippy encolado tras E/exportador v34: turno obtenido tras 82 s. Un
+solo compilador propio; gates y heads exactos en #2287 y #2256. Sin dependencias
+nuevas ni cambios de host/distribución. Paleta/atajos, nombre/fecha y avisos aún
+pendientes; no se declara paridad visual ni corte 1 aceptado.

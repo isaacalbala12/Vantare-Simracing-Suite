@@ -1,7 +1,11 @@
 import type { HostToUi, ResidentView } from "../../contract/generated/contract";
 import { residentActionLabels } from "../../contract/generated/launcher_resident";
 import type { MockContext, MockHandler } from "../context";
-export function create(context: MockContext): MockHandler {
+export const residentMockFinishDelayMs = 1000;
+export function create(
+  context: MockContext,
+  schedule: (callback: () => void, delay: number) => unknown = setTimeout,
+): MockHandler {
   const offline = context.sceneName === "launcher-offline";
   const view: ResidentView = {
     protected: false,
@@ -126,33 +130,46 @@ export function create(context: MockContext): MockHandler {
       )
         return reject("denied");
       const request = "d".repeat(32);
-      if (context.sceneName !== "launcher-answer-unknown" && view.execution) {
-        view.execution.events.push({
-          seq: "2",
-          kind: {
-            kind: "order-received",
-            request,
-            receipt:
-              context.sceneName === "launcher-answer-rejected"
-                ? { kind: "rejected", reason: "stale-question" }
-                : { kind: "accepted", run: "1" },
-          },
-        });
-        view.execution.question = null;
-        view.decision = null;
-        if (context.sceneName === "launcher-answer-finished") {
+      if (context.sceneName !== "launcher-answer-unknown")
+        schedule(() => {
+          if (!view.execution) return;
           view.execution.events.push({
-            seq: "3",
+            seq: "2",
             kind: {
-              kind: "finished",
-              run: "1",
-              outcome: { kind: "completed" },
+              kind: "order-received",
+              request,
+              receipt: context.sceneName.includes("-rejected")
+                ? {
+                    kind: "rejected",
+                    reason: context.sceneName.endsWith("-account")
+                      ? "account-changed"
+                      : context.sceneName.endsWith("-denied")
+                        ? "denied"
+                        : context.sceneName.endsWith("-unavailable")
+                          ? "unavailable"
+                          : "stale-question",
+                  }
+                : { kind: "accepted", run: "1" },
             },
           });
-          view.running = false;
-        }
-        context.emit?.(event());
-      }
+          view.execution.question = null;
+          view.decision = null;
+          context.emit?.(event());
+          if (context.sceneName === "launcher-answer-finished")
+            schedule(() => {
+              if (!view.execution) return;
+              view.execution.events.push({
+                seq: "3",
+                kind: {
+                  kind: "finished",
+                  run: "1",
+                  outcome: { kind: "completed" },
+                },
+              });
+              view.running = false;
+              context.emit?.(event());
+            }, residentMockFinishDelayMs);
+        }, 0);
       return {
         kind: "response",
         id: message.id,

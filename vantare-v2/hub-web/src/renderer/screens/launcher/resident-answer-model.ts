@@ -6,11 +6,33 @@ import {
   residentOrderReceiptTimeoutMs,
 } from "../../../contract/generated/launcher_resident";
 
+export type AnswerScope = Omit<ResidentAnswerTarget, "action">;
+export function answerScope(view?: ResidentView): AnswerScope | undefined {
+  const execution = view?.execution;
+  return execution?.question &&
+    view?.decision?.id === execution.question.decision
+    ? { ...execution.question, instance: execution.instance }
+    : undefined;
+}
+export function sameAnswerScope(a: AnswerScope, b: AnswerScope) {
+  return (
+    a.instance === b.instance &&
+    a.accountGeneration === b.accountGeneration &&
+    a.run === b.run &&
+    a.decision === b.decision &&
+    a.revision === b.revision
+  );
+}
+export type AnswerRejection =
+  | ResidentAnswerRejection
+  | "busy"
+  | "unsupported"
+  | "rejected";
 export type AnswerPhase =
   | { kind: "sending" }
   | { kind: "queued"; request: string; until: number }
   | { kind: "accepted"; request: string }
-  | { kind: "rejected"; reason: ResidentAnswerRejection }
+  | { kind: "rejected"; reason: AnswerRejection }
   | { kind: "unknown" }
   | { kind: "finished"; outcome: ResidentOutcome };
 export type AnswerAttempt = {

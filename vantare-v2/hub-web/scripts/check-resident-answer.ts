@@ -133,12 +133,23 @@ export async function checkResidentAnswer(owner: Page, base: string) {
       await reuse.focus();
       await page.keyboard.press("Enter");
       if (state === "unknown") {
-        await page
+        await popup
           .getByText(text.answerState.queued, { exact: true })
           .waitFor();
         await page.clock.runFor(residentOrderReceiptTimeoutMs);
       }
-      await popup.getByText(text.answerState[state], { exact: true }).waitFor();
+      if (state === "finished")
+        await popup
+          .getByText(text.answerState.accepted, { exact: true })
+          .waitFor();
+      await popup
+        .getByText(
+          state === "rejected"
+            ? `${text.answerState.rejected} ${text.rejection["stale-question"]}`
+            : text.answerState[state],
+          { exact: true },
+        )
+        .waitFor();
       assert.equal(
         await page.evaluate(
           () => (Reflect.get(window, "residentAnswers") as unknown[]).length,
@@ -146,7 +157,11 @@ export async function checkResidentAnswer(owner: Page, base: string) {
         1,
         "one explicit answer, no fallback/retry",
       );
-      assert.ok(await popup.getByRole("status").isVisible());
+      assert.ok(
+        await page
+          .getByRole("status", { name: text.answerStatusLabel, exact: true })
+          .isVisible(),
+      );
       if (state !== "finished")
         assert.equal(
           await popup

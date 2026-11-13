@@ -2,6 +2,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { ResidentView } from "../../../contract/generated/contract";
 import { residentText as t } from "../../i18n/launcher-resident";
 import type { ResidentAnswerController } from "../../screens/launcher/resident-answer";
+import {
+  answerScope,
+  sameAnswerScope,
+} from "../../screens/launcher/resident-answer-model";
 import { Button } from "../Button";
 import { Callout } from "../Data";
 import { Tooltip } from "../Layers";
@@ -18,11 +22,28 @@ export function ResidentInbox({
   const popup = useRef<HTMLDivElement>(null);
   const reopen = useRef<HTMLButtonElement>(null);
   const [dismissed, setDismissed] = useState<string>();
-  const retained = useRef(view?.decision);
-  if (view?.decision) retained.current = view.decision;
+  const rendered = answerScope(view);
+  const retained = useRef<
+    | {
+        scope: NonNullable<ReturnType<typeof answerScope>>;
+        decision: NonNullable<ResidentView["decision"]>;
+      }
+    | undefined
+  >(undefined);
+  if (rendered && view?.decision)
+    retained.current = { scope: rendered, decision: view.decision };
+  const attempt = answer?.attempt;
+  if (!attempt && !view?.decision) retained.current = undefined;
+  const matches =
+    !!attempt &&
+    (rendered
+      ? sameAnswerScope(rendered, attempt.target)
+      : !!retained.current &&
+        sameAnswerScope(retained.current.scope, attempt.target) &&
+        view?.execution?.instance === attempt.target.instance);
   const decision =
-    view?.decision ?? (answer?.attempt ? retained.current : null);
-  const phase = answer?.attempt?.phase;
+    view?.decision ?? (matches ? retained.current?.decision : null);
+  const phase = matches ? attempt?.phase : undefined;
   const status = phase
     ? phase.kind === "finished"
       ? t.answerState[
@@ -32,7 +53,9 @@ export function ResidentInbox({
               ? "failed"
               : "cancelled"
         ]
-      : t.answerState[phase.kind]
+      : phase.kind === "rejected"
+        ? `${t.answerState.rejected} ${t.rejection[phase.reason]}`
+        : t.answerState[phase.kind]
     : undefined;
   const identity = `${view?.execution?.instance ?? "legacy"}:${view?.execution?.question?.accountGeneration ?? ""}:${decision?.id ?? ""}`;
   useEffect(() => {
@@ -42,11 +65,28 @@ export function ResidentInbox({
     if (phase && document.activeElement === document.body)
       popup.current?.focus();
   }, [phase]);
+  const liveStatus = (
+    <span
+      className="v-resident-live"
+      role="status"
+      aria-label={t.answerStatusLabel}
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {status ?? ""}
+    </span>
+  );
   if (!decision)
-    return view?.error ? <Callout tone="err" title={t.failed} /> : null;
+    return (
+      <>
+        {liveStatus}
+        {view?.error ? <Callout tone="err" title={t.failed} /> : null}
+      </>
+    );
   const open = dismissed !== identity;
   return (
     <>
+      {liveStatus}
       {!open && (
         <Callout
           tone="warn"
@@ -82,11 +122,7 @@ export function ResidentInbox({
                 {t.question[decision.kind]}
               </Dialog.Description>
               <p id={explanation}>{answer ? t.answerHelp : t.readOnly}</p>
-              {status && (
-                <p id={`${explanation}-status`} role="status">
-                  {status}
-                </p>
-              )}
+              {status && <p id={`${explanation}-status`}>{status}</p>}
               {view?.decision?.actions.map((action) => {
                 const reason =
                   action.id === "trust" && answer
@@ -112,7 +148,8 @@ export function ResidentInbox({
                               : `${explanation}-${action.id}`
                         }
                         onClick={() => {
-                          if (enabled) void answer?.answer(action.id);
+                          if (enabled && rendered)
+                            void answer?.answer(action.id, rendered);
                         }}
                       >
                         {action.label}

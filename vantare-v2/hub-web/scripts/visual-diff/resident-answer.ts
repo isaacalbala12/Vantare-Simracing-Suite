@@ -12,6 +12,9 @@ for (const state of [
   "question",
   "accepted",
   "rejected",
+  "rejected-account",
+  "rejected-denied",
+  "rejected-unavailable",
   "finished",
   "unknown",
   "trust",
@@ -37,12 +40,29 @@ for (const state of [
           .click();
         if (state === "unknown") {
           await page
+            .locator(".v-launcher-resident-body")
             .getByText(text.answerState.queued, { exact: true })
             .waitFor();
           await page.clock.runFor(residentOrderReceiptTimeoutMs);
         }
+        if (state === "finished")
+          await page
+            .locator(".v-launcher-resident-body")
+            .getByText(text.answerState.accepted, { exact: true })
+            .waitFor();
+        const rejection = {
+          rejected: "stale-question",
+          "rejected-account": "account-changed",
+          "rejected-denied": "denied",
+          "rejected-unavailable": "unavailable",
+        } as const;
+        const expected =
+          state in rejection
+            ? `${text.answerState.rejected} ${text.rejection[rejection[state as keyof typeof rejection]]}`
+            : text.answerState[state as "accepted" | "finished" | "unknown"];
         await page
-          .getByText(text.answerState[state], { exact: true })
+          .locator(".v-launcher-resident-body")
+          .getByText(expected, { exact: true })
           .waitFor();
       }
       const beforeClose = await page.evaluate(
@@ -102,6 +122,9 @@ residentAnswerScenes["launcher-resident-inert"] = {
   async prepare(page) {
     await observeResidentAnswers(page);
     await checkResidentAnswerInert(page);
-    await page.getByText(text.answerState.accepted, { exact: true }).waitFor();
+    await page
+      .locator(".v-launcher-resident-body")
+      .getByText(text.answerState.accepted, { exact: true })
+      .waitFor();
   },
 };

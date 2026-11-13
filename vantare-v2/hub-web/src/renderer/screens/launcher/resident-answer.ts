@@ -8,9 +8,12 @@ import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import {
   type AnswerAttempt,
+  type AnswerScope,
   answerCursor,
+  answerScope,
   observeAnswer,
   queuedAnswer,
+  sameAnswerScope,
 } from "./resident-answer-model";
 export interface AnswerClock {
   now(): number;
@@ -49,7 +52,12 @@ export function useResidentAnswer(
     epoch.current++;
     pending.current = false;
     const previous = latest.current;
-    if (previous) publish({ ...previous, phase: { kind: "unknown" } });
+    if (previous)
+      publish(
+        ["finished", "rejected"].includes(previous.phase.kind)
+          ? undefined
+          : { ...previous, phase: { kind: "unknown" } },
+      );
     return () => {
       epoch.current++;
       pending.current = false;
@@ -58,6 +66,13 @@ export function useResidentAnswer(
   useEffect(() => {
     const previous = latest.current;
     if (!previous) return;
+    const question = answerScope(view);
+    if (question && !sameAnswerScope(question, previous.target)) {
+      epoch.current++;
+      pending.current = false;
+      publish(undefined);
+      return;
+    }
     const next =
       issue ||
       core.services !== "connected" ||
@@ -111,8 +126,9 @@ export function useResidentAnswer(
       attempt.target.run === scope.run
     );
   }
-  async function answer(action: ResidentAction) {
-    if (!available(action)) return;
+  async function answer(action: ResidentAction, rendered: AnswerScope) {
+    const live = answerScope(current.current.view);
+    if (!live || !sameAnswerScope(rendered, live) || !available(action)) return;
     const { view, client } = current.current;
     const execution = view?.execution,
       scope = execution?.question;
@@ -154,8 +170,11 @@ export function useResidentAnswer(
                 )
               ? {
                   kind: "rejected",
-                  reason:
-                    error.detail.kind === "denied" ? "denied" : "unavailable",
+                  reason: error.detail.kind as
+                    | "busy"
+                    | "denied"
+                    | "unsupported"
+                    | "rejected",
                 }
               : { kind: "unknown" },
       });

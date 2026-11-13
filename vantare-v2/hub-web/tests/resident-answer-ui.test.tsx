@@ -9,7 +9,19 @@ import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { ResidentInbox } from "../src/renderer/ui/launcher/ResidentInbox";
 
 const view: ResidentView = {
-  execution: null,
+  execution: {
+    instance: "b".repeat(64),
+    checkedAnswer: true,
+    revisionCheckedLaunch: true,
+    firstRetainedSeq: "1",
+    events: [{ seq: "1", kind: { kind: "started", run: "1" } }],
+    question: {
+      decision: "2",
+      run: "1",
+      revision: "c".repeat(64),
+      accountGeneration: "a".repeat(64),
+    },
+  },
   protected: false,
   online: true,
   running: true,
@@ -50,7 +62,10 @@ it("Trust explains the editor requirement and cannot answer, while offered Cance
   fireEvent.click(trust);
   expect(answer).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-  expect(answer).toHaveBeenCalledExactlyOnceWith("cancel");
+  expect(answer).toHaveBeenCalledExactlyOnceWith("cancel", {
+    ...view.execution?.question,
+    instance: view.execution?.instance,
+  });
 });
 it.each(["accepted", "rejected", "unknown", "finished"] as const)(
   "announces %s without calling it success early",
@@ -78,8 +93,57 @@ it.each(["accepted", "rejected", "unknown", "finished"] as const)(
                 : { kind },
       },
     });
-    expect(screen.getByRole("status").textContent).toBe(text.answerState[kind]);
+    expect(screen.getByRole("status").textContent).toBe(
+      kind === "rejected"
+        ? `${text.answerState.rejected} ${text.rejection["stale-question"]}`
+        : text.answerState[kind],
+    );
     if (kind !== "finished")
       expect(screen.queryByText(text.answerState.finished)).toBeNull();
   },
 );
+
+it("keeps the live region mounted empty, then announces while the panel is closed", () => {
+  const controller: ResidentAnswerController = {
+    answer: vi.fn(),
+    available: () => true,
+    attempt: undefined,
+  };
+  const content = (value: ResidentView, answer: ResidentAnswerController) => (
+    <CSPProvider disableStyleElements>
+      <TooltipProvider>
+        <ResidentInbox view={value} answer={answer} />
+      </TooltipProvider>
+    </CSPProvider>
+  );
+  const mounted = render(content(view, controller));
+  const live = screen.getByRole("status");
+  expect(live.textContent).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: text.close }));
+  const accepted: ResidentAnswerController = {
+    ...controller,
+    attempt: {
+      cursor: 1n,
+      target: {
+        decision: "2",
+        run: "1",
+        revision: "c".repeat(64),
+        accountGeneration: "a".repeat(64),
+        instance: "b".repeat(64),
+        action: "cancel",
+      },
+      phase: { kind: "accepted", request: "d".repeat(32) },
+    },
+  };
+  mounted.rerender(content(view, accepted));
+  expect(screen.getByRole("status")).toBe(live);
+  expect(live.textContent).toBe(text.answerState.accepted);
+  const next = structuredClone(view);
+  if (!next.execution?.question || !next.decision) throw new Error("fixture");
+  next.execution.question.decision = "3";
+  next.decision.id = "3";
+  mounted.rerender(content(next, accepted));
+  expect(screen.getByRole("status")).toBe(live);
+  expect(live.textContent).toBe("");
+  expect(screen.queryByText(text.answerState.accepted)).toBeNull();
+});

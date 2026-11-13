@@ -10,6 +10,7 @@ import { checkAccountDensity } from "./check-account-density.ts";
 import { checkCalendarDialogSafety } from "./check-calendar-dialog-safety.ts";
 import { checkCommandPalette } from "./check-command-palette.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
+import { checkHomeDensity } from "./check-home-density";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
 import { checkNotificationFocus } from "./check-notification-focus.ts";
 import {
@@ -161,6 +162,7 @@ try {
   await page.keyboard.press("F6");
   await toast.getByRole("button", { name: "Cerrar" }).click();
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
+  await checkHomeDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkTestingDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkAccountDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);

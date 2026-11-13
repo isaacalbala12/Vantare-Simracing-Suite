@@ -51,7 +51,7 @@ const lines = [
   "",
   "Porcentaje perceptual: pixelmatch 8.0.0, umbral 0,1 y antialias incluido, ventana completa sin máscaras, escalado ni alineación. Se valida el recibo de cada referencia GPUI. Studio usa la maqueta A vigente con las mismas fuentes y Chromium. Una referencia ausente no recibe un porcentaje inventado. P1: roto/ilegible; P2: claramente distinto; P3: detalle. Las cifras no sustituyen la inspección visual.",
   "",
-  "Cada celda enlaza referencia, producto y diferencia. D/C = oscuro/claro; P/A = barra plegada/abierta. Pendiente de inspección no significa ausencia de defectos.",
+  "Cada celda enlaza referencia, producto y diferencia RGBA exacta; la cifra es perceptual. Los cierres QA forzados o sin recibo se señalan y se conservan en metricas.json. D/C = oscuro/claro; P/A = barra plegada/abierta. Pendiente de inspección no significa ausencia de defectos.",
   "",
   "| Pantalla / escena | 1440 D/P | 1440 D/A | 1440 C/P | 1440 C/A | 1280 D/P | 1280 D/A | 1280 C/P | 1280 C/A | Defectos concretos |",
   "|---|---|---|---|---|---|---|---|---|---|",
@@ -167,6 +167,24 @@ for (const [index, { screen, scene }] of scenes.entries()) {
               "utf8",
             ).catch(() => "null"),
           );
+          const combinedTeardown = JSON.parse(
+            await readFile(
+              join(dirname(current), "teardown.json"),
+              "utf8",
+            ).catch(() => "null"),
+          );
+          const teardown = Array.isArray(combinedTeardown?.sessions)
+            ? (combinedTeardown.sessions.find((entry: { session: string }) =>
+                entry.session
+                  .replaceAll("\\", "/")
+                  .includes(`/sesion-${side}/`),
+              ) ?? combinedTeardown)
+            : combinedTeardown;
+          const terminationWarning =
+            !teardown ||
+            teardown.forcedKill ||
+            teardown.cleanupFailed ||
+            teardown.exitCode !== 0;
           const result = compareImages(original, candidate);
           await mkdir(destination, { recursive: true });
           await writeFile(join(destination, "diff.png"), result.diff);
@@ -186,6 +204,9 @@ for (const [index, { screen, scene }] of scenes.entries()) {
             theme,
             side,
             percent: result.perceptualPercent,
+            exactPercent: result.exactPercent,
+            captureExit: teardown,
+            terminationWarning,
             phase,
             productAsar: instance?.asarSha256,
             productSource: instance?.qaSource,
@@ -198,7 +219,7 @@ for (const [index, { screen, scene }] of scenes.entries()) {
             currentSha256: createHash("sha256").update(candidate).digest("hex"),
           });
           cells.push(
-            `${phase} ${result.perceptualPercent.toFixed(2)} %${limitation ? ` · ${limitation.id} (referencia contradictoria; cifra bruta)` : ""} · ${link("R", reference)} ${link("P", current)} ${link("par", join(destination, "par.png"))} ${link("Δ", join(destination, "diff.png"))}${existsSync(join(dirname(current), `focus-${side}.png`)) ? ` ${link("foco", join(dirname(current), `focus-${side}.png`))}` : ""}`,
+            `${phase} ${result.perceptualPercent.toFixed(2)} %${limitation ? ` · ${limitation.id} (referencia contradictoria; cifra bruta)` : ""} · ${link("R", reference)} ${link("P", current)} ${link("par", join(destination, "par.png"))} ${link("Δ", join(destination, "diff.png"))}${existsSync(join(dirname(current), `focus-${side}.png`)) ? ` ${link("foco", join(dirname(current), `focus-${side}.png`))}` : ""}${terminationWarning ? " · ⚠ cierre QA no normal/sin recibo" : ""}`,
           );
         } catch (error) {
           const message =

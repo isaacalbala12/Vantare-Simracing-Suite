@@ -25,4 +25,4 @@ La tabla conserva el porcentaje bruto y lo marca como defecto de referencia, no 
 
 Se han verificado los 104 recibos de Studio: fuente, estado, tamaño, tema, barra, Chromium/V8 y nueve hashes de fuentes. Esa verificación demuestra la procedencia; no oculta el defecto de la maqueta.
 
-Durante la reserva del orquestador no se adquiere el cerrojo hasta las 11:07 CET del 13/11. Las tandas posteriores propias ceden 75 segundos, sin cerrojo, después de cada dos escenas para permitir entrar a la cola nativa.
+La reserva del orquestador comenzó al terminar la escena a las 10:41:48 CET del 13/11 y se levantó por aviso expreso a las 11:01; no hubo adquisiciones propias durante esa reserva. Las tandas posteriores propias ceden 75 segundos, sin cerrojo, después de cada dos escenas para permitir entrar a la cola nativa.

@@ -5,6 +5,7 @@ import type {
   CalendarLaunchPlan,
   CalendarLaunchView,
 } from "../src/contract/generated/calendar";
+import { calendarLaunchText } from "../src/renderer/i18n/calendarLaunch";
 import { CalendarLaunchStatus } from "../src/renderer/ui/CalendarLaunchStatus";
 
 afterEach(cleanup);
@@ -135,4 +136,38 @@ it("uses distinct cancellation names and an explicit live region for the latest 
     "status",
   );
   expect(latest?.getAttribute("aria-live")).toBe("polite");
+});
+
+it("announces the discarded punctual and coincident automatic departures while the original chain remains pending", () => {
+  const value: CalendarLaunchView = {
+    ...empty,
+    automatic: {
+      ...plan,
+      armId: "b".repeat(64),
+      mode: { kind: "alerts", expectedRevision: "c".repeat(64) },
+    },
+    change: { plan, reason: "busy" },
+    latest: {
+      armId: "d".repeat(64),
+      profileName: "Cadena anterior",
+      seriesId: "old",
+      startAt: 1800000180000,
+      progress: { kind: "queued", request: "e".repeat(32) },
+    },
+  };
+  render(
+    <CalendarLaunchStatus value={value} busy={false} utc onCancel={vi.fn()} />,
+  );
+  expect(
+    screen.getByText(calendarLaunchText.punctualBusy).getAttribute("role"),
+  ).toBe("status");
+  expect(screen.getByText(calendarLaunchText.queued)).toBeTruthy();
+  expect(screen.getByText("Cadena anterior")).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: calendarLaunchText.cancelOnce }),
+  ).toBeNull();
+  expect(
+    screen.getByRole("button", { name: calendarLaunchText.cancelAutomatic }),
+  ).toBeTruthy();
+  expect(screen.queryByText(/tiene prioridad/)).toBeNull();
 });

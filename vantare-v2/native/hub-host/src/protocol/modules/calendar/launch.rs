@@ -281,7 +281,6 @@ impl Scheduler {
         if manual.is_some() || automatic.is_some() {
             self.change = None;
         }
-        let both_due = manual.is_some() && automatic.is_some();
         let due = if let Some(candidate) = manual {
             let binding = self.armed.take()?;
             if candidate.start_at <= now.wall {
@@ -308,9 +307,7 @@ impl Scheduler {
             automatic
         };
         if self.pending.is_some() {
-            if let Some(due) = due
-                && !both_due
-            {
+            if let Some(due) = due {
                 self.change = Some(CalendarLaunchChange {
                     plan: due.binding.plan,
                     reason: CalendarLaunchStop::Busy,

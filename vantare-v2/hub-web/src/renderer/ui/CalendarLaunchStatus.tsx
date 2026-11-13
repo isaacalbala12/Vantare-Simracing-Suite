@@ -113,7 +113,12 @@ export function CalendarLaunchStatus({
           ),
       )}
       {value.change && (
-        <p role="status">{calendarLaunchStops[value.change.reason]}</p>
+        <p role="status">
+          {value.change.reason === "busy" &&
+          value.change.plan.mode.kind === "once"
+            ? text.punctualBusy
+            : calendarLaunchStops[value.change.reason]}
+        </p>
       )}
       {summary && (
         <LaunchNotice

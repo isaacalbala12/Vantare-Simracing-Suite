@@ -156,7 +156,7 @@ try {
         [ordered]@{inputs=$inputHash;png=$otherHash} | ConvertTo-Json -Compress | Set-Content -LiteralPath "$OtherSidebarOutput.capture.json" -Encoding utf8
         $bankReceipt = Get-Content -LiteralPath "$Output.bank.json" -Raw | ConvertFrom-Json -AsHashtable
         $bankReceipt.png_sha256 = (Get-FileHash -LiteralPath $OtherSidebarOutput -Algorithm SHA256).Hash.ToLowerInvariant()
-        $bankReceipt.sidebar_input = 'client-click-38-724'
+        $bankReceipt.sidebar_input = "client-click-38-$($Height - 176)"
         $bankReceipt | ConvertTo-Json | Set-Content -LiteralPath "$OtherSidebarOutput.bank.json" -Encoding utf8
     }
 } finally {

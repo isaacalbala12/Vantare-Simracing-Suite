@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { windowText } from "../src/renderer/i18n/window.es.ts";
 import {
@@ -281,6 +281,10 @@ async function capture(
           dataDirectory: data,
           userDataDirectory: join(data, "hub-ui"),
           executable,
+          asarSha256: digest(
+            await readFile(join(dirname(executable), "resources/app.asar")),
+          ),
+          qaSource: process.env.VANTARE_HUB_QA_SOURCE,
         },
         null,
         2,

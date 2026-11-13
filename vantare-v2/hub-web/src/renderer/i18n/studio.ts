@@ -56,6 +56,7 @@ export const studioText = {
   lookVantare: "Vantare",
   styleNeo: "Neo",
   styleNeutral: "Neutro",
+  transparentHelp: "Solo el número, sin panel detrás",
   transparentBackground: "Fondo transparente",
   deltaFormat: "Formato Delta",
   deltaPill: "Cápsula",

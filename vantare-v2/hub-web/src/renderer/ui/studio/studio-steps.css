@@ -1,3 +1,10 @@
+.v-studio-transparent-help small {
+  display: block;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-caption);
+}
+
 .v-studio-temporary:has(.v-studio-steps) {
   max-height: none;
   overflow: visible;
@@ -196,6 +203,8 @@
 .v-choice-card:disabled {
   cursor: not-allowed;
 }
+.v-choice-card:disabled .v-choice-picture,
+.v-choice-card:disabled strong,
 .v-choice-card[data-disabled] .v-choice-picture,
 .v-choice-card[data-disabled] strong {
   opacity: 0.45;
@@ -326,4 +335,8 @@
 .v-studio-appearance-group .v-switch-field label {
   font-size: 13px;
   color: var(--text-2);
+}
+
+.v-choice-card:disabled .v-choice-apply {
+  display: none;
 }

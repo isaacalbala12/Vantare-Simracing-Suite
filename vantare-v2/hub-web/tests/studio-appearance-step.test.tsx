@@ -165,7 +165,15 @@ it.each(["standings", "delta"] as const)(
       kind,
       templateId: kind === "standings" ? "broadcast" : "capsule",
     });
-    expect(screen.queryByRole("group", { name: t.tablePreset })).toBeNull();
+    if (kind === "standings") {
+      const group = screen.getByRole("group", { name: t.tablePreset });
+      expect(
+        within(group)
+          .getAllByRole("button")
+          .every((button) => button.hasAttribute("disabled")),
+      ).toBe(true);
+    } else
+      expect(screen.queryByRole("group", { name: t.tablePreset })).toBeNull();
   },
 );
 it("Fuel and Pedals keep format and transparency patches", async () => {

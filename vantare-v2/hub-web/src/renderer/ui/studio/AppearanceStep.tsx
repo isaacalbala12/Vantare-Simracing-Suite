@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import type {
   DeltaSize,
   DeltaTemplate,
@@ -20,6 +20,7 @@ const formats: Record<TableSize, string> = {
 };
 export function AppearanceStep({ item }: { item: OverlayInstance }) {
   const model = useAppearance(item);
+  const transparentHelp = useId();
   const s = item.settings;
   if (!s || !model.readable) return <p>{t.appearanceUnavailable}</p>;
   const { disabled, pending, saving, patch } = model;
@@ -72,18 +73,22 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
           />
         </div>
         {s.kind === "delta" && (
-          <Switch
-            label={t.transparentBackground}
-            checked={s.transparentBackground ?? false}
-            disabled={disabled}
-            pending={pending}
-            onCheckedChange={(transparentBackground) =>
-              void patch(
-                { kind: "delta", transparentBackground },
-                "transparent",
-              )
-            }
-          />
+          <div className="v-studio-transparent-help">
+            <Switch
+              aria-describedby={transparentHelp}
+              label={t.transparentBackground}
+              checked={s.transparentBackground ?? false}
+              disabled={disabled}
+              pending={pending}
+              onCheckedChange={(transparentBackground) =>
+                void patch(
+                  { kind: "delta", transparentBackground },
+                  "transparent",
+                )
+              }
+            />
+            <small id={transparentHelp}>{t.transparentHelp}</small>
+          </div>
         )}
         {s.kind === "standings" && brand}
       </Group>
@@ -275,6 +280,18 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
       {color}
       {s.kind === "standings" && s.designSystem === "eficiencia" && (
         <Group title={t.tablePreset}>
+          <ChoiceCards<TableSize>
+            action
+            label={t.tablePreset}
+            options={studioWidgetOptions.tableSizes.map((value) => ({
+              value,
+              label: formats[value],
+              art: `table-${value}`,
+            }))}
+            disabled
+            pending={false}
+            onChange={() => {}}
+          />
           <p>{t.tablePresetVantareOnly}</p>
         </Group>
       )}

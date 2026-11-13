@@ -3611,6 +3611,22 @@
     },
     "testdata/rust-port/README.md": {
       "source": "testdata/rust-port/README.md",
+      "source_sha256": "ba3a0b896984406659f6aab8be827c6aa3aa7b9763eeb5885e1f08f7bae98291",
+      "sha256": "63f051ecd6e4890b47141868483d217b75abb504cd34ae20a35a97d4c8d6f352",
+      "revisions": [
+        {
+          "base_commit": "1806f71f862026e336f733ca87df53bb99025065",
+          "issues": [
+            "#2263",
+            "#2247"
+          ],
+          "archived_original": "native/retirement/legacy-evidence/rust-port-before-2263/README.md.txt",
+          "reason": "Authorized documentation clarification: commands reproduce the retired Go/Rust port with Rust 1.95.0; original bytes and hash retained unchanged."
+        }
+      ]
+    },
+    "native/retirement/legacy-evidence/rust-port-before-2263/README.md.txt": {
+      "source": "testdata/rust-port/README.md",
       "sha256": "ba3a0b896984406659f6aab8be827c6aa3aa7b9763eeb5885e1f08f7bae98291"
     },
     "testdata/rust-port/lmu47-high-rate-60s.tar.gz": {

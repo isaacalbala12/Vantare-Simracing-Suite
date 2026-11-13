@@ -1,4 +1,4 @@
-# Cargo 1.95 can treat equal package names in different checkouts as fresh.
+# Cargo can treat equal package names in different checkouts as fresh.
 # Invalidate local packages on a checkout change; keep registry/git dependencies.
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
 function Set-VantareSlotWorkspace {
@@ -31,10 +31,20 @@ function Set-VantareSlotWorkspace {
     # the verified cache above, under the queue lease and with no links/active Cargo.
     $tag = Join-Path $Target 'CACHEDIR.TAG'
     if (-not (Test-Path -LiteralPath $tag)) {
-        $buildLock = [IO.File]::Open((Join-Path $Target 'debug/.cargo-lock'), 'Open', 'ReadWrite', 'None')
+        $buildLocks = @()
         try {
+            # Legacy validation requires debug's lock. Release may coexist;
+            # hold both existing locks before writing, under the queue lease.
+            foreach ($profile in @('debug', 'release')) {
+                $lockPath = Join-Path $Target "$profile/.cargo-lock"
+                if ($profile -eq 'debug' -or (Test-Path -LiteralPath $lockPath)) {
+                    $buildLocks += [IO.File]::Open($lockPath, 'Open', 'ReadWrite', 'None')
+                }
+            }
             [IO.File]::WriteAllText($tag, "Signature: 8a477f597d28d172789f06886806bc55`n", [Text.Encoding]::ASCII)
-        } finally { $buildLock.Dispose() }
+        } finally {
+            foreach ($buildLock in $buildLocks) { $buildLock.Dispose() }
+        }
     }
     # --manifest-path does not select rustup's toolchain. Enter the native root
     # so clean uses the same pinned Cargo that produced the artifacts.

@@ -1,9 +1,11 @@
-## VANTA-142 / #2247 — Rust 1.99.1, PR draft #2248 (2026-11-13)
+## VANTA-142 / #2247 — Rust 1.99.1 en nightly; seguimiento #2263 (2026-11-13)
 
 - Worker H; rama `vantareapp/isa-2247-rust-estable`, base nightly
   `5d53a645798fb5c236ab3f4de2b87e9a9a1798d7`, worktree propio en D:.
-  [PR draft #2248](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2248)
-  contra nightly. SHA y resultados vigentes en su descripción y checks;
+  [PR #2248](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2248)
+  fusionado por Isaac en nightly: `1806f71f862026e336f733ca87df53bb99025065`.
+  CI del PR completa verde; primera nightly completa: run `43356386756`.
+  SHA y resultados vigentes en su descripción y checks;
   [issue #2247](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2247)
   y Plane VANTA-142 recogen el estado de revisión y los siguientes pasos.
 - Objetivo ajustado por el orquestador a **1.99.1**, conservando caché Rust/C++.
@@ -23,8 +25,9 @@
   tras validar caché, ausencia de enlaces y lock exclusivo, bajo la cola.
 - Fmt y Clippy local con `-D warnings` correctos para 13 crates, incluida
   runtime/bench. Build-support no contiene tests. Hub/Admin, lifecycle,
-  distribución QA y matriz de instalación se validan en CI; no ejecutar GUI
-  en el servidor. Resultados completos de tests y telemetría en el PR/issue.
+  distribución QA y matriz de instalación pasaron en CI del PR. Tests locales
+  de crates correctos; telemetría local 34/34 con dos jobs. No se ejecuta GUI
+  de producto en el servidor. Aviso leaky del test preexistente: #2258.
 - Mediciones finales, dos repeticiones por modo y versión, mismo domain base,
   comando y servidor Ryzen 5 1500X/16 GB, `-j 2`, incremental explícito y caché
   desactivada solo dentro del benchmark: limpia **26,843 → 23,982 s**;
@@ -36,9 +39,14 @@
 - Windows conserva 1.95.0 junto a 1.99.1 y el ensayo 1.100.0, sin cambiar
   el default. Mac tenía 1.99.1 y recibió 1.100 mínimo; después se apagó y no
   permite completar validación remota. Clippy/rustfmt 1.99.1 verificados en Windows.
-- Sin merge ni release. Siguiente acción: revisión del PR con CI verde y
-  decisión de fusión de Isaac; tras fusionar, el orquestador avisa a todos los
-  workers para que actualicen su toolchain. No se retira 1.95.0 antes.
+- Seguimiento autorizado #2263 desde esa nightly: aclaración del replay
+  histórico 1.95.0 (original archivado y pin conservado), comentario de cola
+  actualizado y migración protegida también por release/.cargo-lock.
+  Tests con debug/release ocupados y liberación tras fallo correctos; 472
+  huellas exactas. Rama `vantareapp/isa-2263-rust-seguimiento`; PR en su issue.
+- Canal alcanzado: nightly por merge de Isaac; sin release ni promoción a
+  testers/master. El orquestador avisa a los workers para actualizar toolchain.
+  Vigilar primera nightly completa antes del cierre de revisión.
 
 > **VANTA-132:** estado vigente y despliegue en [el cierre de la tanda](#vanta-132--cierre-de-la-tanda-adminowner-2026-11-05). Sus entradas anteriores son evidencia histórica.
 

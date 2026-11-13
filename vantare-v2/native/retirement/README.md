@@ -86,3 +86,9 @@ source_sha256, migration y todas sus revisiones; se añade la revisión de esta
 migración y el pin actual. Los otros 388 archivos, PNG, corpus y goldens no
 cambian. verify.py sigue exigiendo el hash exacto de las 468 entradas, sin
 ensanchar tolerancias ni recalibrar baselines de analizadores.
+
+#2263 aclara que los comandos de `testdata/rust-port/README.md` reproducen
+el port retirado con Rust 1.95.0. Su original exacto, con el hash anterior,
+se conserva como `legacy-evidence/rust-port-before-2263/README.md.txt`.
+Solo cambia el pin del documento activo y se añade la copia histórica:
+472 archivos verificados, sin cambiar corpus, goldens ni baselines.

@@ -9,6 +9,7 @@ import { checkAccount } from "./check-account.ts";
 import { checkCalendarDialogSafety } from "./check-calendar-dialog-safety.ts";
 import { checkCommandPalette } from "./check-command-palette.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
+import { checkLauncherDensity } from "./check-launcher-density.ts";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
 import { checkNotificationFocus } from "./check-notification-focus.ts";
 import {
@@ -154,6 +155,11 @@ try {
   await page.keyboard.press("F6");
   await toast.getByRole("button", { name: "Cerrar" }).click();
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
+  await checkLauncherDensity(
+    page,
+    server.resolvedUrls?.local[0] ?? "",
+    evidence,
+  );
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   await checkCommandPalette(page, server.resolvedUrls?.local[0] ?? "");

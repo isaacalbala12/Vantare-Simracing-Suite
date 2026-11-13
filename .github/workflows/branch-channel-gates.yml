@@ -147,6 +147,10 @@ jobs:
       - name: Test Testing Center deterministic diff gate
         run: python .github/scripts/test_testing_center_diff_gate.py
 
+      - name: Verify native crate groups
+        timeout-minutes: 5
+        run: python vantare-v2/native/scripts/ci-groups.py --verify
+
       - name: Test native gate path scope
         run: |
           python .github/scripts/test_native_gate_scope.py
@@ -311,7 +315,7 @@ jobs:
         run: |
           $evidence = Join-Path $env:RUNNER_TEMP 'native-tooling'
           New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-          foreach ($test in @('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests')) {
+          foreach ($test in @('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests', 'ci-groups-tests', 'ci-scope-tests')) {
             pwsh -NoProfile -File "native/scripts/$test.ps1" -EvidenceDirectory $evidence
             if ($LASTEXITCODE) { throw "Worker tooling: $test failed" }
           }
@@ -415,8 +419,10 @@ jobs:
           $telemetry = @()
           if ($env:TELEMETRIA_SCOPE -ne 'false') { $telemetry = @('-Telemetry') }
           # El grupo surface se compila y ejecuta en `native_surface_tests`;
-          # aquí solo queda el núcleo para el archivo compartido.
-          $surface = 'vantare-ui,vantare-installer,vantare-hub-host,vantare-hub,vantare-admin'
+          # aquí solo queda el núcleo para el archivo compartido. La lista se
+          # deriva de ci-groups.py para no duplicarla.
+          $surface = & python scripts/ci-groups.py --group surface --members
+          if ($LASTEXITCODE -or -not $surface) { throw 'No se pudo leer el grupo surface' }
           pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry -ArchiveOnly -ExcludePackages $surface
           if ($LASTEXITCODE) { throw 'Native test archive failed' }
 
@@ -434,7 +440,7 @@ jobs:
 
   native_surface_tests:
     name: Run native surface tests
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: policy
     if: needs.policy.outputs.native != 'false'
     runs-on: windows-latest

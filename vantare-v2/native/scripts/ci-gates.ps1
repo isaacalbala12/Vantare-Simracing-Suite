@@ -8,6 +8,7 @@ if ($LintOnly -and $ArchiveOnly) { throw 'Elegir -LintOnly o -ArchiveOnly, nunca
 $ExcludePackages = @($ExcludePackages | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 if (-not $env:VANTARE_SLOT_TARGET) { throw 'Invocar por compilar.ps1.' }
 Push-Location (Split-Path $PSScriptRoot)
+. (Join-Path $PSScriptRoot 'ci-scope.ps1')
 try {
     $packages = @()
     $legacyChecks = @()
@@ -55,14 +56,13 @@ try {
         if (-not $archiveEmpty) {
             $lifecycle = @(Get-Content (Join-Path $env:VANTARE_SLOT_TARGET 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)
         }
-        [ordered]@{
-            revision = $revision
-            workspace = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
-            target = $env:VANTARE_SLOT_TARGET
-            telemetry = [bool]$Telemetry
-            overlays = (-not $archivePackages.Count -or 'vantare-runtime' -cin $archivePackages)
-            lifecycle = ($lifecycle.Count -gt 0)
-            packages = $archivePackages
-        } | ConvertTo-Json | Set-Content (Join-Path $env:VANTARE_SLOT_TARGET 'ci-scope.json') -Encoding utf8
+        $scope = New-VantareCiScope -Revision $revision `
+            -Workspace ([IO.Path]::GetFullPath((Split-Path $PSScriptRoot))) `
+            -Target $env:VANTARE_SLOT_TARGET `
+            -Telemetry ([bool]$Telemetry) `
+            -Packages $archivePackages `
+            -LifecycleCount $lifecycle.Count `
+            -ArchiveEmpty $archiveEmpty
+        $scope | ConvertTo-Json | Set-Content (Join-Path $env:VANTARE_SLOT_TARGET 'ci-scope.json') -Encoding utf8
     }
 } finally { Pop-Location }

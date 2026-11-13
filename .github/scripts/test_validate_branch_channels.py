@@ -77,10 +77,14 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn("scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1", workflow)
         for gate in ("clippy", "captura", "archive"):
             self.assertIn(f"-Gate {gate}", gates)
-        self.assertIn("telemetry = [bool]$Telemetry", gates)
+        scope = (native / "scripts/ci-scope.ps1").read_text(encoding="utf-8")
+        self.assertIn("New-VantareCiScope", gates)
+        self.assertIn("telemetry = $Telemetry", scope)
+        self.assertIn("lifecycle = $LifecycleCount -gt 0", scope)
+        self.assertIn("if (-not $ArchiveEmpty)", scope)
+        self.assertIn("'ci-groups-tests', 'ci-scope-tests'", workflow)
         self.assertIn('--legacy-check', gates)
         self.assertIn('-Gate check -Packages $legacyChecks -PublicTargetsOnly', gates)
-        self.assertIn('lifecycle = ($lifecycle.Count -gt 0)', gates)
         self.assertIn("if ($env:TELEMETRIA_SCOPE -ne 'false')", workflow)
         self.assertIn(
             "telemetria: ${{ steps.native_scope.outputs.telemetria }}", workflow
@@ -132,6 +136,8 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn('needs: [policy, native_lint, native_build, native_surface_tests, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]', workflow)
         self.assertIn('-ExcludePackages $surface', workflow)
         self.assertIn('ci-group-tests.ps1 -Group surface', workflow)
+        self.assertIn('ci-groups.py --group surface --members', workflow)
+        self.assertIn('ci-groups.py --verify', workflow)
         distribution = re.split(r'\n  \S', workflow.split('\n  native_distribution:\n', 1)[1], maxsplit=1)[0]
         installation = re.split(r'\n  \S', workflow.split('\n  native_installation:\n', 1)[1], maxsplit=1)[0]
         self.assertIn('-Gate distribution', distribution)

@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -29,6 +30,18 @@ class GroupsTest(unittest.TestCase):
         ]
         self.assertEqual(groups.group_names(members, "core"), ["vantare-ipc"])
         self.assertEqual(groups.group_names(members, "surface"), ["vantare-ui"])
+
+    def test_cli_members_uses_group_flag(self):
+        native = Path(__file__).resolve().parents[1]
+        script = Path(__file__).with_name("ci-groups.py")
+        core = subprocess.check_output(
+            [sys.executable, str(script), "--group", "core", "--members"], cwd=native, text=True)
+        self.assertIn("vantare-runtime", core)
+        self.assertNotIn("vantare-ui", core)
+        surface = subprocess.check_output(
+            [sys.executable, str(script), "--group", "surface", "--members"], cwd=native, text=True)
+        self.assertIn("vantare-ui", surface)
+        self.assertNotIn("vantare-runtime", surface)
 
     def test_unknown_member_fails_closed(self):
         members = [

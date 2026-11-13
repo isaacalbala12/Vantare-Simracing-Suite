@@ -6,9 +6,8 @@ no puede quedar fuera de la cobertura por olvido.
 from __future__ import annotations
 
 import argparse
-import json
-import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 GROUPS: dict[str, tuple[str, ...]] = {
@@ -29,11 +28,25 @@ GROUPS: dict[str, tuple[str, ...]] = {
 
 
 def workspace_members(native: Path) -> list[dict]:
-    metadata = json.loads(subprocess.check_output(
-        ["cargo", "metadata", "--locked", "--offline", "--no-deps", "--format-version", "1"],
-        cwd=native,
-    ))
-    return [p for p in metadata["packages"] if p["id"] in metadata["workspace_members"]]
+    """Lee los miembros del workspace sin invocar Cargo.
+
+    `--verify` corre en el trabajo `policy`, que no instala Rust: los manifiestos
+    son la fuente de verdad y basta con leerlos.
+    """
+    manifest = tomllib.loads((native / "Cargo.toml").read_text(encoding="utf-8"))
+    members: list[dict] = []
+    for pattern in manifest["workspace"]["members"]:
+        for directory in sorted(native.glob(pattern)):
+            crate = directory / "Cargo.toml"
+            if not crate.is_file():
+                continue
+            package = tomllib.loads(crate.read_text(encoding="utf-8"))
+            if "package" not in package:
+                continue
+            members.append({"name": package["package"]["name"], "manifest_path": str(crate)})
+    if not members:
+        raise ValueError("el workspace no declara miembros legibles")
+    return members
 
 
 def directory(package: dict) -> str:

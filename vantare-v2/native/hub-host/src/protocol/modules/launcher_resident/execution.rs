@@ -200,6 +200,7 @@ pub struct ResidentExecution {
     pub revision_checked_launch: bool,
     pub checked_answer: bool,
     pub checked_control: bool,
+    pub results: super::ResidentResults,
     pub active: Option<Box<super::ResidentActiveRun>>,
     pub question: Option<Box<ResidentScopedQuestion>>,
     pub first_retained_seq: String,
@@ -209,6 +210,19 @@ impl From<&native::ExecutionStatus> for ResidentExecution {
     fn from(value: &native::ExecutionStatus) -> Self {
         Self {
             instance: value.instance.clone().into(),
+            results: if value
+                .capabilities
+                .contains(&native::Capability::StepResultsRetry)
+            {
+                match value.results.as_ref() {
+                    Some(results) => super::ResidentResults::Known {
+                        value: Box::new(results.into()),
+                    },
+                    None => super::ResidentResults::Unknown,
+                }
+            } else {
+                super::ResidentResults::Unsupported
+            },
             revision_checked_launch: value
                 .capabilities
                 .contains(&native::Capability::RevisionCheckedLaunch),

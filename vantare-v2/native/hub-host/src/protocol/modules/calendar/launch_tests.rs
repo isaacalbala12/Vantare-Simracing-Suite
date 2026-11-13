@@ -27,6 +27,7 @@ fn resident() -> ResidentView {
             revision_checked_launch: true,
             checked_answer: false,
             checked_control: false,
+            results: crate::launcher_resident::ResidentResults::Unsupported,
             active: None,
             question: None,
             first_retained_seq: "1".into(),

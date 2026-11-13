@@ -87,6 +87,11 @@ impl Owner {
                     account: request.account,
                 });
                 self.chain = Some(chain);
+                self.begin_results(
+                    request.profile,
+                    vantare_ipc::launcher::results::RunMode::Rehearsal,
+                    None,
+                );
             }
             Err(reason) => self.record_order(request.request, OrderReceipt::Rejected { reason }),
         }

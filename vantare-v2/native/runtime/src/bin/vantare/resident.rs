@@ -25,6 +25,7 @@ use vantare_ipc::launcher::{Decision, Registration, Request, Status, request_pat
 mod answer;
 mod checked;
 mod control;
+mod results;
 
 pub struct Resident {
     stop: Arc<AtomicBool>,
@@ -120,6 +121,11 @@ impl Resident {
                 .push(vantare_ipc::launcher::execution::Capability::CheckedControl);
         }
         let processes = Arc::clone(&owner.processes);
+        if let Some(extension) = &mut owner.status.extension {
+            extension
+                .capabilities
+                .push(vantare_ipc::launcher::execution::Capability::StepResultsRetry);
+        }
         let close_on_exit = Arc::clone(&owner.close_on_exit);
         let worker = thread::Builder::new()
             .name("launcher-residente".into())
@@ -199,6 +205,7 @@ struct ActiveScope {
     account: vantare_ipc::account_session::AccountGeneration,
 }
 struct Owner {
+    run_record: Option<results::RunRecord>,
     path: PathBuf,
     startup: bool,
     bytes: Option<Vec<u8>>,
@@ -218,6 +225,7 @@ struct Owner {
 impl Owner {
     fn new(path: PathBuf, startup: bool) -> Self {
         Self {
+            run_record: None,
             path,
             startup,
             bytes: None,
@@ -410,6 +418,11 @@ impl Owner {
                 }
                 self.active_scope = scope;
                 self.chain = Some(chain);
+                self.begin_results(
+                    id.to_owned(),
+                    vantare_ipc::launcher::results::RunMode::Profile,
+                    None,
+                );
             }
             Err(error) => self.status.error = Some(error),
         }
@@ -435,6 +448,7 @@ impl Owner {
             Ok(Request::AnswerChecked(request)) => self.answer_checked(request),
             Ok(Request::CancelChecked(request)) => self.cancel_checked(request),
             Ok(Request::RehearseChecked(request)) => self.rehearse_checked(request),
+            Ok(Request::RetryChecked(request)) => self.retry_checked(request),
             Ok(Request::Answer { decision, action }) => {
                 // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
                 // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
@@ -544,6 +558,7 @@ impl Owner {
             let outcome = chain.finish().unwrap_or(ChainOutcome::Failed {
                 reason: ChainFailure::Internal,
             });
+            self.finish_results(run, outcome, chain);
             let recorded = self
                 .status
                 .extension
@@ -556,7 +571,18 @@ impl Owner {
     }
 
     fn publish(&mut self) {
+        self.refresh_results();
         if let Some(extension) = &mut self.status.extension {
+            extension.results = if extension
+                .capabilities
+                .contains(&vantare_ipc::launcher::execution::Capability::StepResultsRetry)
+            {
+                self.run_record
+                    .as_ref()
+                    .map(|record| record.summary.clone())
+            } else {
+                None
+            };
             extension.active = if extension
                 .capabilities
                 .contains(&vantare_ipc::launcher::execution::Capability::CheckedControl)

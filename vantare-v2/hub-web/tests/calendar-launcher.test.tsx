@@ -64,6 +64,7 @@ function setup() {
               revisionCheckedLaunch: true,
               checkedAnswer: false,
               checkedControl: false,
+              results: { kind: "unsupported" },
               active: null,
               question: null,
               firstRetainedSeq: "1",

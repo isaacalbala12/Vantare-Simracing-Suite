@@ -55,6 +55,8 @@ pub enum OrderRejection {
     DocumentUnavailable,
     NoSteps,
     StartFailed,
+    UnknownRun,
+    NoFailedSteps,
 }
 impl From<AnswerRejection> for OrderRejection {
     fn from(value: AnswerRejection) -> Self {

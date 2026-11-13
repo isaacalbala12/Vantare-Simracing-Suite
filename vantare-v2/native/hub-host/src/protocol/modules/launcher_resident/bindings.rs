@@ -5,6 +5,7 @@ use crate::protocol::bindings::{constants, declare};
 use crate::protocol::{Event, HostToUi, Reply, Request, Topic, UiToHost};
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    result_types(&mut text);
     declare::<ResidentAction>(&mut text);
     declare::<ResidentQuestionKind>(&mut text);
     declare::<ResidentChoice>(&mut text);
@@ -169,7 +170,95 @@ pub(crate) fn corpus() -> serde_json::Value {
         },
     ];
     control_samples(&mut host, &mut ui);
+    result_samples(&mut host, &mut ui);
     serde_json::json!({"host":host,"ui":ui})
+}
+
+fn result_types(text: &mut String) {
+    use crate::launcher_resident::*;
+    declare::<ResidentStepState>(text);
+    declare::<ResidentStepResult>(text);
+    declare::<ResidentRunMode>(text);
+    declare::<ResidentRetryScope>(text);
+    declare::<ResidentRunResults>(text);
+    declare::<ResidentResults>(text);
+    declare::<ResidentRetryTarget>(text);
+    constants!(text, "residentStepStates", ResidentStepState::ALL);
+    constants!(text, "residentRunModes", ResidentRunMode::ALL);
+    constants!(text, "residentRetryScopes", ResidentRetryScope::ALL);
+    constants!(
+        text,
+        "residentStepLimit",
+        vantare_ipc::launcher::results::STEP_LIMIT
+    );
+}
+
+fn result_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
+    use crate::launcher_resident::{ResidentQueued, ResidentRetryScope, ResidentRetryTarget};
+    use vantare_ipc::launcher::{
+        execution::{Capability, ChainFailure, ChainOutcome, EventKind, ExecutionStatus},
+        results::{RunMode, RunResults, StepResult, StepState},
+    };
+    for scope in [ResidentRetryScope::Failed, ResidentRetryScope::All] {
+        ui.push(UiToHost::Request {
+            id: 7,
+            request: Request::LauncherResidentRetry {
+                target: ResidentRetryTarget {
+                    instance: "b".repeat(64),
+                    account_generation: "c".repeat(64),
+                    run: "1".into(),
+                    profile: "qa".into(),
+                    revision: "d".repeat(64),
+                    scope,
+                },
+            },
+        });
+    }
+    host.push(HostToUi::Response {
+        id: 7,
+        result: Reply::LauncherResidentRetry {
+            value: ResidentQueued::Queued {
+                request: "f".repeat(32),
+            },
+        },
+    });
+    let mut extension = ExecutionStatus::new("b".repeat(64).try_into().expect("instance"));
+    extension.capabilities.push(Capability::StepResultsRetry);
+    let run = extension.begin().expect("run");
+    let outcome = ChainOutcome::Failed {
+        reason: ChainFailure::StepFailed,
+    };
+    extension
+        .record(EventKind::Finished { run, outcome })
+        .expect("terminal");
+    extension.results = Some(RunResults {
+        run,
+        profile: "qa".into(),
+        revision: "d".repeat(64),
+        account: "c".repeat(64).try_into().expect("account"),
+        mode: RunMode::Rehearsal,
+        outcome: Some(outcome),
+        retry_failed: true,
+        steps: vec![
+            StepResult {
+                index: 0,
+                state: StepState::NotSelected,
+            },
+            StepResult {
+                index: 1,
+                state: StepState::Failed,
+            },
+        ],
+    });
+    host.push(HostToUi::Event {
+        event: Event::LauncherResident {
+            value: ResidentView {
+                online: true,
+                execution: Some((&extension).into()),
+                ..Default::default()
+            },
+        },
+    });
 }
 
 fn control_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {

@@ -62,6 +62,9 @@
             "firstRetainedSeq": "1",
             "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "question": null,
+            "results": {
+              "kind": "unsupported"
+            },
             "revisionCheckedLaunch": true
           },
           "online": true,
@@ -120,6 +123,9 @@
             "firstRetainedSeq": "1",
             "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "question": null,
+            "results": {
+              "kind": "unsupported"
+            },
             "revisionCheckedLaunch": true
           },
           "online": true,
@@ -361,6 +367,22 @@
       "kind": "failure"
     },
     {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "unknown-run"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "no-failed-steps"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
       "event": {
         "topic": "launcherResident",
         "value": {
@@ -397,12 +419,94 @@
             "firstRetainedSeq": "1",
             "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "question": null,
+            "results": {
+              "kind": "unsupported"
+            },
             "revisionCheckedLaunch": false
           },
           "online": true,
           "protected": false,
           "registrations": [],
           "running": true
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "id": 7,
+      "kind": "response",
+      "result": {
+        "method": "launcher.resident.retry",
+        "value": {
+          "kind": "queued",
+          "request": "ffffffffffffffffffffffffffffffff"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "launcherResident",
+        "value": {
+          "decision": null,
+          "error": false,
+          "execution": {
+            "active": null,
+            "checkedAnswer": false,
+            "checkedControl": false,
+            "events": [
+              {
+                "kind": {
+                  "kind": "started",
+                  "run": "1"
+                },
+                "seq": "1"
+              },
+              {
+                "kind": {
+                  "kind": "finished",
+                  "outcome": {
+                    "kind": "failed",
+                    "reason": "step-failed"
+                  },
+                  "run": "1"
+                },
+                "seq": "2"
+              }
+            ],
+            "firstRetainedSeq": "1",
+            "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "question": null,
+            "results": {
+              "kind": "known",
+              "value": {
+                "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "mode": "rehearsal",
+                "outcome": {
+                  "kind": "failed",
+                  "reason": "step-failed"
+                },
+                "profile": "qa",
+                "retryFailed": true,
+                "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                "run": "1",
+                "steps": [
+                  {
+                    "index": 0,
+                    "state": "not-selected"
+                  },
+                  {
+                    "index": 1,
+                    "state": "failed"
+                  }
+                ]
+              }
+            },
+            "revisionCheckedLaunch": false
+          },
+          "online": true,
+          "protected": false,
+          "registrations": [],
+          "running": false
         }
       },
       "kind": "event"
@@ -462,6 +566,36 @@
           "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "profile": "qa",
           "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "kind": "request",
+      "request": {
+        "method": "launcher.resident.retry",
+        "target": {
+          "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "profile": "qa",
+          "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "run": "1",
+          "scope": "failed"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "kind": "request",
+      "request": {
+        "method": "launcher.resident.retry",
+        "target": {
+          "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "profile": "qa",
+          "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "run": "1",
+          "scope": "all"
         }
       }
     }

@@ -13,6 +13,7 @@ const view: ResidentView = {
     instance: "b".repeat(64),
     checkedAnswer: true,
     checkedControl: false,
+    results: { kind: "unsupported" },
     active: null,
     revisionCheckedLaunch: true,
     firstRetainedSeq: "1",

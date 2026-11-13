@@ -124,6 +124,44 @@ Binario final fuente 53050828b, SHA256
 ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
 Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
 Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
+## VANTA-138 · núcleo L55: resultados y repetir los mismos pasos (2026-11-13)
+
+#1995 / VANTA-138. L55 v35 autorizado; preparación local en
+vantareapp/isa-1995-resident-results, rebasada sobre nightly 1ec31b109 tras
+#2291/f7f30d3d7 y la UI L54 #2293. Microplan aprobado.
+
+El residente conserva solo el resumen de la ejecución activa o la última
+terminada: cuenta, run, perfil, revisión, modo de origen y resultado por índice.
+Un estado incompleto no permite reintentar. «Reintentar fallidos» excluye pasos
+cancelados; «Repetir los mismos pasos» conserva la selección original del ensayo,
+incluso después de reintentar solo algunos fallos. No incorpora LMU por usar All.
+No manda índices desde la interfaz y no mata procesos desde el renderer.
+
+Handoff D: launcher.resident.retry, target con instance/accountGeneration/run/
+profile/revision/scope (failed|all), Queued{request}. execution.results es
+Unsupported | Unknown | Known{value:{run,profile,revision,accountGeneration,
+mode,outcome,retryFailed,steps[{index,state}]}}. Unknown no es un resultado vacío.
+mode describe el origen profile/rehearsal, también después de un reintento.
+No deducir la selección original de NotSelected del resumen actual. Hace falta
+el terminal retenido y la misma cuenta; sin recibo/hueco/reinicio = Unknown, sin
+reenvío. El resumen no sustituye la correlación de recibos y terminales.
+Los nuevos rechazos comunes son unknown-run y no-failed-steps; los consumidores
+de órdenes anteriores deben tratar motivos ajenos como Unknown.
+
+Ajuste de revisión #2298: steps describe solo la pasada final, sin recuperar
+Ready de una pasada anterior si el paso ya no se alcanza. El criterio de
+retry_steps se conserva aparte en memoria; retryFailed indica la elegibilidad
+real para reintentar fallidos. D no debe deducirla de los estados visibles.
+El archivo de estado se sobrescribe; no genera un historial de ejecuciones.
+
+Validación local por la cola: fmt y Clippy all-targets -D warnings PASS;
+1.722 tests nativos y 34 de telemetría PASS tras el ajuste de revisión. Ambos
+typechecks, Biome y 52 regresiones web PASS. Tipos/corpus v35 exportados desde
+Rust. Comprobación final tras reforzar dos tests: Clippy y 95 tests del binario
+residente PASS. Slot liberado y G avisado para reanudar. Draft contra nightly;
+enlace, HEAD final y CI completa se registran en #1995. CI pendiente al publicar.
+L56 no se ha empezado. Sin merge, promoción, release, dependencias ni gráficos.
+
 ## VANTA-138 · núcleo L54: cancelar y ensayar sin LMU (2026-11-13)
 
 #1995. L53 nativo #2281 está en nightly (22448e540). L54 se prepara en

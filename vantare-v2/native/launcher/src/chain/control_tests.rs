@@ -8,6 +8,7 @@ fn cancel_checked_is_ordered_with_the_real_terminal_before_the_worker_exits() {
     {
         let mut f = fixture();
         f.profile.imported = imported;
+        let results = Arc::clone(&f.context.results);
         let cancelled = Arc::clone(&f.context.cancel);
         let worker_cancel = Arc::clone(&cancelled);
         let phases = Arc::new(Barrier::new(2));
@@ -28,6 +29,7 @@ fn cancel_checked_is_ordered_with_the_real_terminal_before_the_worker_exits() {
             outcome
         });
         let mut chain = Chain {
+            results,
             progress: f.events,
             cancel: cancelled,
             answers: f.answers,
@@ -83,6 +85,7 @@ fn poisoned_cancellation_state_is_unavailable_and_does_not_claim_acceptance() {
         panic!("fixture poison");
     }));
     let chain = Chain {
+        results: Arc::clone(&f.context.results),
         progress: f.events,
         cancel,
         answers: f.answers,

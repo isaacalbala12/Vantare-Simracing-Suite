@@ -32,9 +32,11 @@ pub enum ResidentOrderRejection {
     DocumentUnavailable,
     NoSteps,
     StartFailed,
+    UnknownRun,
+    NoFailedSteps,
 }
 impl ResidentOrderRejection {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 17] = [
         Self::WrongInstance,
         Self::AccountChanged,
         Self::AuthorityUnavailable,
@@ -50,6 +52,8 @@ impl ResidentOrderRejection {
         Self::DocumentUnavailable,
         Self::NoSteps,
         Self::StartFailed,
+        Self::UnknownRun,
+        Self::NoFailedSteps,
     ];
 }
 impl From<OrderRejection> for ResidentOrderRejection {
@@ -70,6 +74,8 @@ impl From<OrderRejection> for ResidentOrderRejection {
             OrderRejection::DocumentUnavailable => Self::DocumentUnavailable,
             OrderRejection::NoSteps => Self::NoSteps,
             OrderRejection::StartFailed => Self::StartFailed,
+            OrderRejection::UnknownRun => Self::UnknownRun,
+            OrderRejection::NoFailedSteps => Self::NoFailedSteps,
         }
     }
 }
@@ -99,12 +105,12 @@ pub struct ResidentRehearseTarget {
     pub profile: String,
     pub revision: String,
 }
-fn rejected(reason: OrderRejection) -> HostError {
+pub(super) fn rejected(reason: OrderRejection) -> HostError {
     HostError::ResidentControlRejected {
         reason: reason.into(),
     }
 }
-fn observation<'a>(
+pub(super) fn observation<'a>(
     current: Option<&'a AccountObservation>,
     captured: &str,
 ) -> Result<(&'a AccountObservation, AccountGeneration), HostError> {
@@ -118,14 +124,18 @@ fn observation<'a>(
     }
     Ok((current, captured))
 }
-fn status(path: &Path, instance: &str) -> Result<(native::Status, ResidentInstance), HostError> {
+pub(super) fn status(
+    path: &Path,
+    instance: &str,
+    capability: Capability,
+) -> Result<(native::Status, ResidentInstance), HostError> {
     if path.is_absolute() && !vantare_launcher::is_local_path(path) {
         return Err(HostError::Denied);
     }
     // No fresh capability means this order is unsupported, regardless of account state.
     let status = native::read_status(path).ok_or(HostError::Unsupported)?;
     let extension = status.extension.as_ref().ok_or(HostError::Unsupported)?;
-    if !extension.capabilities.contains(&Capability::CheckedControl) {
+    if !extension.capabilities.contains(&capability) {
         return Err(HostError::Unsupported);
     }
     let instance = instance
@@ -142,7 +152,7 @@ pub(crate) fn cancel(
     current: Option<&AccountObservation>,
     target: &ResidentCancelTarget,
 ) -> Result<ResidentQueued, HostError> {
-    let (status, instance) = status(path, &target.instance)?;
+    let (status, instance) = status(path, &target.instance, Capability::CheckedControl)?;
     let (current, account) = observation(current, &target.account_generation)?;
     if !status.running {
         return Err(rejected(OrderRejection::WrongRun));
@@ -185,7 +195,7 @@ pub(crate) fn rehearse(
     current: Option<&AccountObservation>,
     target: &ResidentRehearseTarget,
 ) -> Result<ResidentQueued, HostError> {
-    let (status, instance) = status(path, &target.instance)?;
+    let (status, instance) = status(path, &target.instance, Capability::CheckedControl)?;
     let (current, account) = observation(current, &target.account_generation)?;
     if !vantare_ipc::control::wall_ms().is_ok_and(|now| current.policy.permits_launch(now)) {
         return Err(rejected(OrderRejection::Denied));

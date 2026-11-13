@@ -15,6 +15,7 @@ import { answerCursor } from "./resident-answer-model";
 import {
   type ControlAttempt,
   type ControlIntent,
+  isControlRejection,
   observeControl as observeReceipt,
   queuedControl,
   residentTerminalNoticeMs,
@@ -259,7 +260,8 @@ export function useResidentControl(
         ...next,
         phase:
           error instanceof HostFailure &&
-          error.detail.kind === "residentControlRejected"
+          error.detail.kind === "residentControlRejected" &&
+          isControlRejection(error.detail.reason)
             ? { kind: "rejected", reason: error.detail.reason }
             : error instanceof HostFailure &&
                 (error.detail.kind === "busy" ||

@@ -23,6 +23,7 @@ export function create(
       revisionCheckedLaunch: true,
       checkedAnswer: false,
       checkedControl: false,
+      results: { kind: "unsupported" },
       active: null,
       question: null,
       firstRetainedSeq: "1",
@@ -59,6 +60,7 @@ export function create(
       revisionCheckedLaunch: true,
       checkedAnswer: true,
       checkedControl: false,
+      results: { kind: "unsupported" },
       active: null,
       question: {
         decision: "2",

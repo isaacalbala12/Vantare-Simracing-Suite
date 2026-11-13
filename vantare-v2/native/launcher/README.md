@@ -117,4 +117,31 @@ El ensayo relee una sola instantánea validada al consumir y selecciona todos
 los índices cuyo app_id != "lmu", con comparación exacta que distingue
 mayúsculas y minúsculas, igual que GPUI. Conserva posiciones y pasos repetidos;
 un perfil vacío o solo LMU devuelve NoSteps. No detecta juegos personalizados.
-No incorpora aún resultados por paso ni reintentos (L55).
+El contrato v34 no incorpora resultados por paso ni reintentos; L55 los añade
+con soporte opt-in, como se describe a continuación.
+
+### Resultados por paso y reintento L55
+El worker conserva una foto tipada y acotada de sus pasos, sin analizar mensajes.
+Chain::step_results devuelve una copia; un bloqueo dañado o un final incompleto
+no autoriza reintentos. Las transiciones no consumen eventos del anillo.
+El resumen visible corresponde solo a la pasada final: un paso que no se alcanza
+queda NotRun, aunque estuviese Ready en una pasada anterior. Por separado, el
+worker conserva el criterio de retry_steps para reintentar fallidos: el último
+terminal por índice. retryFailed informa de esa elegibilidad, sin inferirla del
+resumen visible. Una pregunta tras fallar conserva el estado Failed.
+La foto se escribe en el archivo de estado del residente y se sobrescribe;
+no deja histórico. La selección privada de reintento vive solo en memoria.
+
+El residente guarda solo la ejecución activa o la última terminada, con cuenta,
+perfil, revisión, modo de origen y los índices originales privados. Retry Failed
+selecciona los fallidos según retry_steps, sin tratar Cancelled/NotRun visibles
+como prueba de fallo. Retry All significa
+«Repetir los mismos pasos»: restaura esa selección original incluso después de
+un Failed parcial. Un ensayo nunca recupera LMU por usar All; es una diferencia
+intencionada respecto a All del GPUI, que recorre el perfil entero.
+
+Se exige la última ejecución terminada, foto completa y terminal aún retenido;
+reinicio, hueco, ejecución desconocida o información incompleta = UnknownRun.
+Una nueva lectura debe conservar el SHA-256 de origen y la autoridad debe seguir
+observando la misma cuenta con permiso de lanzamiento. Accepted inicia un run
+nuevo; no reescribe el resultado anterior ni lo convierte en éxito.

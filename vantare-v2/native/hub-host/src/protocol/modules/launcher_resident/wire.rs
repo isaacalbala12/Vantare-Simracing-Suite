@@ -6,6 +6,10 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "launcher.resident.retry")]
+    LauncherResidentRetry {
+        target: crate::launcher_resident::ResidentRetryTarget,
+    },
     #[serde(rename = "launcher.resident.cancel")]
     LauncherResidentCancel {
         target: crate::launcher_resident::ResidentCancelTarget,
@@ -25,6 +29,10 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "launcher.resident.retry")]
+    LauncherResidentRetry {
+        value: crate::launcher_resident::ResidentQueued,
+    },
     #[serde(rename = "launcher.resident.cancel")]
     LauncherResidentCancel {
         value: crate::launcher_resident::ResidentQueued,

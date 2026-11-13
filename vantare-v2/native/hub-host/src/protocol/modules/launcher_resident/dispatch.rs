@@ -6,6 +6,21 @@ pub(super) fn dispatch(
     request: &Request,
 ) -> io::Result<()> {
     match request {
+        Request::LauncherResidentRetry { target } => {
+            let result = crate::launcher_resident::results::retry(
+                &session.launcher,
+                session.core.account_observation().as_ref(),
+                target,
+            );
+            let message = match result {
+                Ok(value) => HostToUi::Response {
+                    id,
+                    result: Reply::LauncherResidentRetry { value },
+                },
+                Err(error) => HostToUi::Failure { id, error },
+            };
+            return frame::write(pipe, &message);
+        }
         Request::LauncherResidentCancel { target } => {
             let result = crate::launcher_resident::control::cancel(
                 &session.launcher,

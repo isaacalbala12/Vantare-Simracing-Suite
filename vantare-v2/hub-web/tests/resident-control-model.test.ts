@@ -34,6 +34,7 @@ function view(events: ResidentExecutionEvent[]): ResidentView {
       revisionCheckedLaunch: true,
       checkedAnswer: true,
       checkedControl: true,
+      results: { kind: "unsupported" },
       active: null,
       question: null,
       firstRetainedSeq: "1",
@@ -49,6 +50,26 @@ const accepted: ResidentExecutionEvent = {
     receipt: { kind: "accepted", run: "1" },
   },
 };
+it.each(["unknown-run", "no-failed-steps"] as const)(
+  "L54 treats retry-only rejection %s as Unknown",
+  (reason) => {
+    const state = observeControl(
+      queuedControl(attempt, request, 0),
+      view([
+        {
+          seq: "1",
+          kind: {
+            kind: "order-received",
+            request,
+            receipt: { kind: "rejected", reason },
+          },
+        },
+      ]),
+      1,
+    );
+    expect(state.phase.kind).toBe("unknown");
+  },
+);
 it("Queued does not imply Accepted, and Accepted has no chain deadline", () => {
   const queued = queuedControl(attempt, request, 0);
   expect(observeControl(queued, view([]), 1).phase.kind).toBe("queued");

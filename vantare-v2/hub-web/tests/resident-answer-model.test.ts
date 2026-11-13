@@ -36,6 +36,7 @@ function view(events: ResidentExecutionEvent[]): ResidentView {
       revisionCheckedLaunch: true,
       checkedAnswer: true,
       checkedControl: false,
+      results: { kind: "unsupported" },
       active: null,
       question: null,
       firstRetainedSeq: run,

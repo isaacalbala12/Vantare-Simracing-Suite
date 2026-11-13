@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
 import { residentOrderReceiptTimeoutMs } from "../src/contract/generated/launcher_resident.ts";
 import { controlText as text } from "../src/renderer/i18n/launcher-control.ts";
+import { openProfileRemovalWithKeyboard } from "./check-dialog-safety.ts";
 import { until } from "./wait-for.ts";
 export async function observeResidentControls(page: Page) {
   await page.evaluate(() => {
@@ -56,15 +57,7 @@ export async function assertControlCaption(page: Page) {
 export async function checkResidentControlInert(page: Page) {
   await observeResidentControls(page);
   await page.getByRole("button", { name: "Launcher", exact: true }).click();
-  await page.locator(".v-launcher-profile").first().focus();
-  await page.keyboard.press("Shift+F10");
-  await page.getByRole("menuitem", { name: "Eliminar", exact: true }).focus();
-  await page.keyboard.press("Enter");
-  const confirmation = page.getByRole("dialog", {
-    name: "Eliminar perfil",
-    exact: true,
-  });
-  await confirmation.waitFor();
+  const confirmation = await openProfileRemovalWithKeyboard(page);
   const rehearsal = page.getByRole("button", {
     name: "Probar sin el juego",
     exact: true,

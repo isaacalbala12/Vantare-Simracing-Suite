@@ -20,6 +20,12 @@ runs:
         # Installation invokes Cargo from vantare-v2/, above rust-toolchain.toml.
         # Use the same compiler as archive/overlays, independent of runner defaults.
         "RUSTUP_TOOLCHAIN=1.99.1" >> $env:GITHUB_ENV
+    - name: Cache pinned Rust toolchain
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: ~/.rustup
+        key: rustup-${{ runner.os }}-${{ hashFiles('vantare-v2/native/rust-toolchain.toml') }}
+        restore-keys: rustup-${{ runner.os }}-
     - name: Install pinned prebuilt compiler and lint components
       shell: pwsh
       run: |

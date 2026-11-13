@@ -737,7 +737,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             if value.layout.widgets.len() > 3 {
                 chips = chips.child(badge(
                     theme,
-                    catalog()["home"]["plus"].as_str().unwrap().replace(
+                    &catalog()["home"]["plus"].as_str().unwrap().replace(
                         "__VANTARE_COUNT__",
                         &(value.layout.widgets.len() - 3).to_string(),
                     ),

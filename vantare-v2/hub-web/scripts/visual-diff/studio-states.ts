@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { CDPSession, Page } from "playwright-core";
 import { studioText as t } from "../../src/renderer/i18n/studio.ts";
+import { studioCatalogText } from "../../src/renderer/i18n/studio-catalog.ts";
 import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 
@@ -141,7 +142,9 @@ export const studioStateScenes: Record<string, VisualScene> = {
   }),
   "studio-estado-menu": scene(ordinary, async (page) => {
     await appearance(page, "Delta");
-    await page.getByRole("button", { name: t.moreLabel, exact: true }).click();
+    await page
+      .getByRole("button", { name: studioCatalogText.moreLabel, exact: true })
+      .click();
     await page.getByRole("menu").waitFor();
   }),
   "studio-estado-add": scene(ordinary, async (page) => {

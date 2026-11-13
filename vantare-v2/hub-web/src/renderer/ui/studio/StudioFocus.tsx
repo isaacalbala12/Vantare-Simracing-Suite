@@ -2,7 +2,7 @@ import { useUi } from "../../app/UiState";
 import { studioText as t } from "../../i18n/studio";
 import { useStudioFocus } from "../../screens/studio/focus";
 import { Button } from "../Button";
-import { Callout, Skeleton } from "../Data";
+import { Callout } from "../Data";
 import { ActionNotice } from "./ActionNotice";
 import { CatalogDialog } from "./CatalogDialog";
 import { EmptyStudio } from "./EmptyStudio";
@@ -27,7 +27,7 @@ export function StudioFocus() {
       <div
         className="v-studio-focus-layout"
         data-missing={view?.state === "missing"}
-        data-state={view?.state ?? "loading"}
+        data-state={view?.state ?? (state.failure ? "error" : "loading")}
         ref={model.root}
       >
         <RemoveWidget />
@@ -53,9 +53,9 @@ export function StudioFocus() {
                 })
               }
             />
-          ) : (
-            <Skeleton label={t.loading} />
-          )}
+          ) : !state.failure ? (
+            <span className="v-skeleton" aria-hidden="true" />
+          ) : null}
           <StudioFeedback model={model} />
           {view?.state === "missing" ? (
             <div className="v-studio-unavailable">
@@ -87,9 +87,9 @@ export function StudioFocus() {
             <ReadonlyStudio />
           ) : view ? (
             <EmptyStudio model={model} />
-          ) : (
+          ) : !state.failure ? (
             <LoadingStudio />
-          )}
+          ) : null}
           {view?.state === "ready" && <ActionNotice />}
           {view && view.state !== "missing" && selected && (
             <div className="v-studio-temporary" aria-busy={state.pending}>

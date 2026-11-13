@@ -16,6 +16,7 @@ import {
   checkOnboardingGuardedExit,
 } from "./check-onboarding.ts";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
+import { checkStudioStates } from "./check-studio-states.ts";
 import { until } from "./wait-for";
 
 async function focused(locator: Locator) {
@@ -169,6 +170,7 @@ try {
       evidence,
       mode,
     );
+  await checkStudioStates(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await writeFile(
     resolve(evidence, "interactions.json"),
     JSON.stringify({

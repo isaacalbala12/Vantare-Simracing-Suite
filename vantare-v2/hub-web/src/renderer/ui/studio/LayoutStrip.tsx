@@ -2,7 +2,6 @@ import { studioLimits } from "../../../contract/generated/studio";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button, IconButton } from "../Button";
-import { Skeleton } from "../Data";
 import { Tooltip } from "../Layers";
 import type { ReturnTypeOfStudioFocus } from "./StudioFocus";
 import { StudioSaveStatus } from "./StudioStates";
@@ -64,9 +63,13 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           ))}
         </fieldset>
       )}
-      <section className="v-studio-list" aria-label={t.title}>
+      <section className="v-studio-list" aria-label={t.title} tabIndex={-1}>
         {!view
-          ? [0, 1, 2, 3].map((n) => <Skeleton key={n} label={t.loading} />)
+          ? state.failure
+            ? null
+            : [0, 1, 2, 3].map((n) => (
+                <span key={n} className="v-skeleton" aria-hidden="true" />
+              ))
           : items.map((item, index) => (
               <div
                 key={item.id}

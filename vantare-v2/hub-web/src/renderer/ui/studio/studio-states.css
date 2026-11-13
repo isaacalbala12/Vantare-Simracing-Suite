@@ -2,6 +2,13 @@
   width: 14px;
   height: 14px;
 }
+.v-studio-list:empty {
+  min-height: 40px;
+}
+.v-studio-list:focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
 .v-studio-readonly-detail > svg {
   position: absolute;
   left: 24px;

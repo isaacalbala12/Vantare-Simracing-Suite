@@ -1,7 +1,6 @@
 import { studioAddAvailable } from "../../../contract/generated/studio";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
-import { studioStateText as text } from "../../i18n/studio-states.es";
 import { Button } from "../Button";
 import type { ReturnTypeOfStudioFocus } from "./StudioFocus";
 import { WidgetPreview } from "./Widgets";
@@ -27,7 +26,7 @@ export function EmptyStudio({ model }: { model: ReturnTypeOfStudioFocus }) {
       <span className="v-studio-empty-ring">
         <Icon name="plus" />
       </span>
-      <h2 id="studio-first-widget">{text.firstWidget}</h2>
+      <h2 id="studio-first-widget">{t.firstWidget}</h2>
       <p>{t.emptyHelp}</p>
       <Button
         variant="primary"
@@ -41,8 +40,8 @@ export function EmptyStudio({ model }: { model: ReturnTypeOfStudioFocus }) {
         {t.add}
       </Button>
       {!blocked && studioAddAvailable && suggestions.length > 0 && (
-        <section className="v-studio-empty-quick" aria-label={text.quickStart}>
-          <h3>{text.quickStart}</h3>
+        <section className="v-studio-empty-quick" aria-label={t.quickStart}>
+          <h3>{t.quickStart}</h3>
           {suggestions.map((widget) => (
             <button
               type="button"

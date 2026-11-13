@@ -22,6 +22,13 @@ pub(crate) fn typescript() -> String {
     declare::<crate::launcher_resident::ResidentScopedQuestion>(&mut text);
     declare::<crate::launcher_resident::ResidentAnswerTarget>(&mut text);
     declare::<crate::launcher_resident::ResidentQueued>(&mut text);
+    declare::<crate::launcher_resident::ResidentOrderRejection>(&mut text);
+    declare::<crate::launcher_resident::ResidentActiveRun>(&mut text);
+    declare::<crate::launcher_resident::ResidentCancelTarget>(&mut text);
+    declare::<crate::launcher_resident::ResidentRehearseTarget>(&mut text);
+    constants!(&mut text, "residentOrderRejections", crate::launcher_resident::ResidentOrderRejection::ALL);
+    constants!(&mut text, "residentProfileIdLimit", vantare_ipc::launcher::checked::ID_LIMIT);
+
     declare::<ResidentView>(&mut text);
     constants!(
         &mut text,
@@ -137,7 +144,7 @@ pub(crate) fn corpus() -> serde_json::Value {
                 error: crate::protocol::HostError::ResidentAnswerRejected { reason },
             }),
     );
-    let ui = vec![
+    let mut ui = vec![
         UiToHost::Request {
             id: 2,
             request: Request::LauncherResidentAnswer { target },
@@ -153,5 +160,22 @@ pub(crate) fn corpus() -> serde_json::Value {
             topic: Topic::LauncherResident,
         },
     ];
+    control_samples(&mut host, &mut ui);
     serde_json::json!({"host":host,"ui":ui})
+}
+
+fn control_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
+    use crate::launcher_resident::{ResidentCancelTarget, ResidentRehearseTarget, ResidentQueued, ResidentOrderRejection};
+    use vantare_ipc::launcher::{execution::{ExecutionStatus, Capability, EventKind}, control::{RunScope, OrderRejection}, answer::OrderReceipt};
+    ui.push(UiToHost::Request { id: 4, request: Request::LauncherResidentCancel { target: ResidentCancelTarget { instance: "b".repeat(64), account_generation: "c".repeat(64), run: "1".into(), revision: "d".repeat(64) } } });
+    ui.push(UiToHost::Request { id: 5, request: Request::LauncherResidentRehearse { target: ResidentRehearseTarget { instance: "b".repeat(64), account_generation: "c".repeat(64), profile: "qa".into(), revision: "d".repeat(64) } } });
+    host.push(HostToUi::Response { id: 4, result: Reply::LauncherResidentCancel { value: ResidentQueued::Queued { request: "f".repeat(32) } } });
+    host.push(HostToUi::Response { id: 5, result: Reply::LauncherResidentRehearse { value: ResidentQueued::Queued { request: "e".repeat(32) } } });
+    host.extend(ResidentOrderRejection::ALL.into_iter().map(|reason| HostToUi::Failure { id: 6, error: crate::protocol::HostError::ResidentControlRejected { reason } }));
+    let mut execution = ExecutionStatus::new("b".repeat(64).try_into().expect("instance"));
+    execution.capabilities.push(Capability::CheckedControl);
+    let run = execution.begin().expect("run");
+    execution.active = Some(RunScope { run, revision: "d".repeat(64), account: "c".repeat(64).try_into().expect("account") });
+    execution.record(EventKind::OrderReceived { request: "f".repeat(32).try_into().expect("request"), receipt: OrderReceipt::Rejected { reason: OrderRejection::NoSteps } }).expect("receipt");
+    host.push(HostToUi::Event { event: Event::LauncherResident { value: ResidentView { online: true, running: true, execution: Some((&execution).into()), ..Default::default() } } });
 }

@@ -21,6 +21,8 @@ export function create(
       instance: "b".repeat(64),
       revisionCheckedLaunch: true,
       checkedAnswer: false,
+      checkedControl: false,
+      active: null,
       question: null,
       firstRetainedSeq: "1",
       events: [],

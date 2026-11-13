@@ -124,6 +124,33 @@ Binario final fuente 53050828b, SHA256
 ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
 Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
 Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
+## VANTA-138 · núcleo L54: cancelar y ensayar sin LMU (2026-11-13)
+
+#1995. L53 nativo #2281 está en nightly (22448e540). L54 se prepara en
+`vantareapp/isa-1995-resident-control`, protocolo v34 autorizado y capability
+CheckedControl. Estado local: verificación en curso; aún sin PR ni CI verde.
+El microplan aprobado vive en evidence/hub-web/nucleo-launcher-ordenes/MICROPLAN.md.
+
+El Hub puede pedir cancelar la ejecución observada o probar un perfil sin sus
+pasos LMU. El residente comprueba instancia, cuenta y revisión, y aplica la orden.
+Cancelar respeta las políticas de cierre y puede plantear una pregunta L53;
+aceptar la petición no significa haber terminado. Un ensayo conserva los pasos
+repetidos y sus posiciones; vacío o solo LMU se rechaza. Nada mata procesos desde
+la interfaz, y no se cambian supervisor, derechos, GPUI ni dependencias.
+
+Handoff D: métodos launcher.resident.cancel/rehearse, targets cerrados en los
+tipos generados. execution.active da run/revision/accountGeneration, incluso sin
+pregunta. Queued se correlaciona con OrderReceived por request + cuenta/instancia;
+Finished se correlaciona con run. Sin recibo tras los 5 s exportados, hueco o
+reinicio significa Unknown, nunca éxito ni reenvío. ResidentOrderRejection es
+común a las órdenes; el error RPC L53 sigue limitado a sus 11 motivos. La UI L53
+debe estrechar esos motivos y tratar los ajenos como Unknown. El anfitrión hace
+una primera lectura al ensayar, sin segunda relectura antes del envío; la garantía
+final de la instantánea procede del residente al consumir.
+
+Gates pendientes por cola compartida; sin ejecuciones gráficas ni apps reales
+nuevas en tests. Próximo paso: publicar tipos/corpus, completar gates y abrir draft
+para revisión. L55 y L56 no se han empezado. Sin merge, promoción ni release.
 
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 

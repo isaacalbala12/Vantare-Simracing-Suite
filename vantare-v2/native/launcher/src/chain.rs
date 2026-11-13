@@ -186,6 +186,7 @@ impl RunContext {
 pub struct Cancellation {
     stopped: Mutex<bool>,
     shutdown: AtomicBool,
+    finished: AtomicBool,
     wake: Condvar,
 }
 impl Cancellation {
@@ -208,6 +209,24 @@ impl Cancellation {
             .wait_timeout_while(stopped, delay, |stopped| !*stopped)
             .map_or(true, |(stopped, _)| *stopped)
     }
+}
+
+/// Serializes normal completion (and unwinding) against checked cancellation.
+struct Completion(Arc<Cancellation>);
+impl Drop for Completion {
+    fn drop(&mut self) {
+        let _guard = self
+            .0
+            .stopped
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        self.0.finished.store(true, Ordering::Release);
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CancelError {
+    Finished,
+    Unavailable,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -324,6 +343,7 @@ impl Chain {
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
             .spawn(move || {
+                let _completion = Completion(Arc::clone(&context.cancel));
                 let discovery = found(&document.apps);
                 let outcome = run(&document, &profile, &discovery, &context);
                 drop(lease);
@@ -341,6 +361,22 @@ impl Chain {
     }
     pub fn cancel(&self) {
         self.cancel.cancel();
+    }
+    /// Acceptance sets the cancellation flag; it does not promise a terminal outcome.
+    pub fn cancel_checked(&self) -> Result<(), CancelError> {
+        let mut stopped = self
+            .cancel
+            .stopped
+            .lock()
+            .map_err(|_| CancelError::Unavailable)?;
+        if self.cancel.finished.load(Ordering::Acquire) || self.finished() {
+            return Err(CancelError::Finished);
+        }
+        if !*stopped {
+            *stopped = true;
+            self.cancel.wake.notify_all();
+        }
+        Ok(())
     }
     pub fn answer(&self, id: u64, action: Action) -> Result<(), String> {
         self.answers

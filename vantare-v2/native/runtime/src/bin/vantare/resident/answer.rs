@@ -112,7 +112,9 @@ impl Owner {
         }
         let receipt = match result {
             Ok(()) => OrderReceipt::Accepted { run: request.run },
-            Err(reason) => OrderReceipt::Rejected { reason },
+            Err(reason) => OrderReceipt::Rejected {
+                reason: reason.into(),
+            },
         };
         let recorded = self.status.extension.as_mut().and_then(|extension| {
             extension.record(EventKind::OrderReceived {

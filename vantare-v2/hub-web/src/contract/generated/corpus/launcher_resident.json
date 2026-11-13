@@ -33,7 +33,9 @@
           },
           "error": false,
           "execution": {
+            "active": null,
             "checkedAnswer": false,
+            "checkedControl": false,
             "events": [
               {
                 "kind": {
@@ -89,7 +91,9 @@
           },
           "error": false,
           "execution": {
+            "active": null,
             "checkedAnswer": false,
+            "checkedControl": false,
             "events": [
               {
                 "kind": {
@@ -213,6 +217,195 @@
       },
       "id": 3,
       "kind": "failure"
+    },
+    {
+      "id": 4,
+      "kind": "response",
+      "result": {
+        "method": "launcher.resident.cancel",
+        "value": {
+          "kind": "queued",
+          "request": "ffffffffffffffffffffffffffffffff"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "kind": "response",
+      "result": {
+        "method": "launcher.resident.rehearse",
+        "value": {
+          "kind": "queued",
+          "request": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      }
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "wrong-instance"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "account-changed"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "authority-unavailable"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "denied"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "revision-mismatch"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "unscoped-run"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "wrong-run"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "stale-question"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "invalid-action"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "trust-requires-editor"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "unavailable"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "busy"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "document-unavailable"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "no-steps"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentControlRejected",
+        "reason": "start-failed"
+      },
+      "id": 6,
+      "kind": "failure"
+    },
+    {
+      "event": {
+        "topic": "launcherResident",
+        "value": {
+          "decision": null,
+          "error": false,
+          "execution": {
+            "active": {
+              "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "run": "1"
+            },
+            "checkedAnswer": false,
+            "checkedControl": true,
+            "events": [
+              {
+                "kind": {
+                  "kind": "started",
+                  "run": "1"
+                },
+                "seq": "1"
+              },
+              {
+                "kind": {
+                  "kind": "order-received",
+                  "receipt": {
+                    "kind": "rejected",
+                    "reason": "no-steps"
+                  },
+                  "request": "ffffffffffffffffffffffffffffffff"
+                },
+                "seq": "2"
+              }
+            ],
+            "firstRetainedSeq": "1",
+            "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "question": null,
+            "revisionCheckedLaunch": false
+          },
+          "online": true,
+          "protected": false,
+          "registrations": [],
+          "running": true
+        }
+      },
+      "kind": "event"
     }
   ],
   "ui": [
@@ -245,6 +438,32 @@
     {
       "kind": "unsubscribe",
       "topic": "launcherResident"
+    },
+    {
+      "id": 4,
+      "kind": "request",
+      "request": {
+        "method": "launcher.resident.cancel",
+        "target": {
+          "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "run": "1"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "kind": "request",
+      "request": {
+        "method": "launcher.resident.rehearse",
+        "target": {
+          "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "profile": "qa",
+          "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      }
     }
   ]
 }

@@ -8,6 +8,18 @@ pub fn read_checked(
     profile: &str,
     revision: &str,
 ) -> Result<(Document, Profile), LaunchRejection> {
+    let (document, profile) = read_profile_checked(path, profile, revision)?;
+    if profile.steps.is_empty() {
+        return Err(LaunchRejection::DocumentUnavailable);
+    }
+    Ok((document, profile))
+}
+/// A valid empty profile is meaningful to rehearsal: its selection is NoSteps.
+pub fn read_profile_checked(
+    path: &Path,
+    profile: &str,
+    revision: &str,
+) -> Result<(Document, Profile), LaunchRejection> {
     let bytes = vantare_ipc::files::read(path, vantare_ipc::files::MAX_DOCUMENT)
         .map_err(|_| LaunchRejection::DocumentUnavailable)?;
     if vantare_services::content_hash(&bytes) != revision {
@@ -19,7 +31,6 @@ pub fn read_checked(
         .profiles
         .iter()
         .find(|candidate| candidate.id == profile)
-        .filter(|profile| !profile.steps.is_empty())
         .cloned()
         .ok_or(LaunchRejection::DocumentUnavailable)?;
     Ok((document, profile))

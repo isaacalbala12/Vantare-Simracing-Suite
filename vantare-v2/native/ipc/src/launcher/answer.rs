@@ -58,8 +58,12 @@ pub enum AnswerRejection {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum OrderReceipt {
-    Accepted { run: RunId },
-    Rejected { reason: AnswerRejection },
+    Accepted {
+        run: RunId,
+    },
+    Rejected {
+        reason: super::control::OrderRejection,
+    },
 }
 pub fn permits_answer(policy: &crate::control::Policy, action: Action, now: u64) -> bool {
     policy.epoch > 0

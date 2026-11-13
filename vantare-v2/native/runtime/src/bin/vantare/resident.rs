@@ -24,6 +24,7 @@ use vantare_ipc::launcher::{Decision, Registration, Request, Status, request_pat
 
 mod answer;
 mod checked;
+mod control;
 
 pub struct Resident {
     stop: Arc<AtomicBool>,
@@ -112,6 +113,11 @@ impl Resident {
             extension
                 .capabilities
                 .push(vantare_ipc::launcher::execution::Capability::CheckedAnswer);
+        }
+        if let Some(extension) = &mut owner.status.extension {
+            extension
+                .capabilities
+                .push(vantare_ipc::launcher::execution::Capability::CheckedControl);
         }
         let processes = Arc::clone(&owner.processes);
         let close_on_exit = Arc::clone(&owner.close_on_exit);
@@ -427,6 +433,8 @@ impl Owner {
             Ok(Request::Launch { profile }) => self.launch(&profile),
             Ok(Request::LaunchChecked(request)) => self.launch_checked(request),
             Ok(Request::AnswerChecked(request)) => self.answer_checked(request),
+            Ok(Request::CancelChecked(request)) => self.cancel_checked(request),
+            Ok(Request::RehearseChecked(request)) => self.rehearse_checked(request),
             Ok(Request::Answer { decision, action }) => {
                 // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
                 // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
@@ -548,6 +556,24 @@ impl Owner {
     }
 
     fn publish(&mut self) {
+        if let Some(extension) = &mut self.status.extension {
+            extension.active = if extension
+                .capabilities
+                .contains(&vantare_ipc::launcher::execution::Capability::CheckedControl)
+                && self.chain.is_some()
+            {
+                self.active_scope
+                    .as_ref()
+                    .zip(self.active_run)
+                    .map(|(scope, run)| vantare_ipc::launcher::control::RunScope {
+                        run,
+                        revision: scope.revision.clone(),
+                        account: scope.account.clone(),
+                    })
+            } else {
+                None
+            };
+        }
         self.status.version = vantare_ipc::launcher::VERSION;
         self.status.running = self.chain.is_some();
         self.status.updated_ms = vantare_ipc::launcher::now_ms();

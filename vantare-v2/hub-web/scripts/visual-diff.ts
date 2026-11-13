@@ -42,6 +42,11 @@ const currentOnly = option("--current");
 const captureOnly = args.includes("--capture-only");
 const invalidReason = option("--invalid-reference-reason");
 const selected = option("--scene");
+const initialSidebar = option("--initial-sidebar");
+assert.ok(
+  !initialSidebar || initialSidebar === "open" || initialSidebar === "closed",
+);
+assert.ok(!args.includes("--capture-one-sidebar") || initialSidebar);
 const width = Number(option("--width", "1440"));
 const height = Number(option("--height", "900"));
 assert.ok(
@@ -322,6 +327,22 @@ async function capture(
       5000,
       `${width}x${height} CSS client`,
     );
+    if (initialSidebar) {
+      const sidebar = page.locator(".v-sidebar");
+      if (await sidebar.count()) {
+        const expanded = await sidebar.evaluate(
+          (node) => !node.classList.contains("v-sidebar--collapsed"),
+        );
+        if (expanded !== (initialSidebar === "open"))
+          await page
+            .getByRole("button", {
+              name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+              exact: true,
+            })
+            .first()
+            .click();
+      }
+    }
     await adapter.prepare(page);
     await page.evaluate(async () => {
       await document.fonts.ready;
@@ -390,12 +411,17 @@ async function capture(
         { windowsHide: true },
       );
     saveWindow("current.png");
-    if (args.includes("--capture-sidebar-matrix")) {
+    if (
+      args.includes("--capture-sidebar-matrix") ||
+      args.includes("--capture-one-sidebar")
+    ) {
       const nav = page.locator(".v-sidebar");
       const applicable = (await nav.count()) > 0;
       const matrix = [];
       const frameChecks = [];
-      for (const expanded of [false, true]) {
+      for (const expanded of args.includes("--capture-one-sidebar")
+        ? [initialSidebar === "open"]
+        : [false, true]) {
         if (applicable) {
           const current = await nav.evaluate(
             (node) => !node.classList.contains("v-sidebar--collapsed"),

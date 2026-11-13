@@ -11,6 +11,9 @@ if (!root)
 const scenes: { screen: string; scene: string }[] = JSON.parse(
   await readFile(join(root, "escenas.json"), "utf8"),
 );
+const limit = Number(process.argv[3] ?? scenes.length);
+if (!Number.isInteger(limit) || limit < 1)
+  throw new Error("Invalid scene limit");
 const defects: Record<string, string[]> = JSON.parse(
   await readFile(join(root, "defectos.json"), "utf8").catch(() => "{}"),
 );
@@ -29,7 +32,13 @@ const lines = [
   "| Pantalla / escena | 1440 D/P | 1440 D/A | 1440 C/P | 1440 C/A | 1280 D/P | 1280 D/A | 1280 C/P | 1280 C/A | Defectos concretos |",
   "|---|---|---|---|---|---|---|---|---|---|",
 ];
-for (const { screen, scene } of scenes) {
+for (const [index, { screen, scene }] of scenes.entries()) {
+  if (index >= limit) {
+    lines.push(
+      `| ${screen} · ${scene} | ${Array(8).fill("Métrica pendiente").join(" | ")} | ${(defects[scene] ?? ["Pendiente de inspección visual"]).join("<br>")} |`,
+    );
+    continue;
+  }
   const cells = [];
   for (const width of [1440, 1280]) {
     const size = `${width}x${width === 1440 ? 900 : 800}`;
@@ -102,6 +111,11 @@ for (const { screen, scene } of scenes) {
   }
   lines.push(
     `| ${screen} · ${scene} | ${cells.join(" | ")} | ${(defects[scene] ?? ["Pendiente de inspección visual"]).join("<br>")} |`,
+  );
+  await writeFile(join(root, "TABLA.md"), `${lines.join("\n")}\n`);
+  await writeFile(
+    join(root, "metricas.json"),
+    JSON.stringify(records, null, 2),
   );
 }
 await writeFile(join(root, "TABLA.md"), `${lines.join("\n")}\n`);

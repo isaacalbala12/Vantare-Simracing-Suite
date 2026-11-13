@@ -19,6 +19,7 @@ export type ResidentAnswerTarget = { instance: string, accountGeneration: string
 export type ResidentQueued = { "kind": "queued", request: string, };
 export type ResidentView = { execution: ResidentExecution | null, protected: boolean, online: boolean, running: boolean, error: boolean, decision: ResidentQuestion | null, registrations: Array<ProfileShortcut>, };
 export const residentAnswerRejections = ["wrong-instance","account-changed","authority-unavailable","denied","revision-mismatch","unscoped-run","wrong-run","stale-question","invalid-action","trust-requires-editor","unavailable"] as const;
+export const residentOrderReceiptTimeoutMs = 5000 as const;
 export const residentActions = ["trust","reuse","restart","cancel","stop","continue","leave","close-started"] as const;
 export const residentQuestionKinds = ["authorization","alreadyRunning","failure","closing","generic"] as const;
 export const residentIdLimit = 20 as const;

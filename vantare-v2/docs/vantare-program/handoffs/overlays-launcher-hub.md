@@ -2033,3 +2033,7 @@ responder por este contrato.
 L53 usa v33, asignada por el orquestador, sobre #2259/v32 ya fusionado.
 Rama, SHA, pruebas y estado de CI se consignan en el PR de L53. No hay merge ni
 release propios, ni cambios del supervisor/rights/Services/GPUI.
+
+D consume L53 sobre #2281. residentOrderReceiptTimeoutMs exporta los mismos 5 s
+de la política Rust de Calendario. Al vencer sin OrderReceived, mostrar Unknown
+y no reenviar; ese plazo no es un límite de duración de la cadena.

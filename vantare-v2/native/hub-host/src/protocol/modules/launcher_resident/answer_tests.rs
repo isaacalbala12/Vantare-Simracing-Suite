@@ -198,3 +198,16 @@ fn continuing_is_denied_without_permission_and_allowed_only_with_a_fresh_launch_
         Ok(ResidentQueued::Queued { .. })
     ));
 }
+
+#[test]
+fn a_new_observed_account_cannot_answer_the_previous_accounts_question() {
+    let mut f = fixture();
+    f.save();
+    let mut current = observation();
+    current.generation = "e".repeat(64).try_into().unwrap();
+    assert_eq!(
+        answer(&f.path, Some(&current), &f.target),
+        Err(HostError::ResidentAnswerRejected { reason: R::AccountChanged })
+    );
+    assert!(!native::request_path(&f.path).exists());
+}

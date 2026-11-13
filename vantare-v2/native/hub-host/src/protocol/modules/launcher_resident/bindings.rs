@@ -28,6 +28,11 @@ pub(crate) fn typescript() -> String {
         "residentAnswerRejections",
         crate::launcher_resident::ResidentAnswerRejection::ALL
     );
+    constants!(
+        &mut text,
+        "residentOrderReceiptTimeoutMs",
+        crate::calendar::launch_types::RECEIPT_MS
+    );
     constants!(&mut text, "residentActions", ResidentAction::ALL);
     constants!(
         &mut text,

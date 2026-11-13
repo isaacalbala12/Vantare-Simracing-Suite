@@ -309,3 +309,7 @@ No se habilitan cancelar cadena, ensayo, reintentos ni propiedad viva (L54–L56
 El lector antiguo puede descartar solo la extensión nueva, conservando Status
 legacy; las órdenes nuevas requieren capability y no se degradan a v1/v2.
 L53 no modifica supervisor, rights, Services, Hub GPUI ni dependencias.
+
+El consumidor de L53 usa residentOrderReceiptTimeoutMs, exportada desde la misma
+política Rust de 5 s que Calendario: sin recibo al vencer = Unknown, nunca
+Finished ni un reenvío automático. El plazo solo espera OrderReceived.

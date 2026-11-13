@@ -169,7 +169,27 @@ hub-host y en Cargo.lock, con las mismas funciones; no entra ningún paquete nue
 Los valores inválidos conservan el texto compartido sin fecha.
 
 El orquestador detuvo las capturas de Electron porque abrían ventanas. No volver
-a ejecutar el guion antiguo: la referencia debe arrancar con activación prohibida,
+a ejecutar el guion antiguo: la referencia debe arrancar con política accessory,
 ventana oculta y foco deshabilitado antes de ready-to-show, o usar el banco existente.
 Las capturas Rune emplean --snap offscreen, sin Automatización ni System Events.
 El corte 1 mantiene FALLO visual hasta la aprobación de Isaac, aun con CI verde.
+
+
+### Referencia Electron sin ventanas visibles
+
+`scripts/electron-corte1.mjs <hub-web> <salida-nueva> <plan.json> <SHA-build-QA>`
+se ejecuta con Bun solo en macOS y con el QA build ya preparado. Exige
+LSUIElement=true en el bundle Electron de ese checkout propio. Nunca modificar
+un Electron instalado de otra tarea ni usar un perfil real.
+Copia un entry QA junto al original e importa primero electron-capture-guard.mjs:
+accessory, sin foco, sin show/showInactive/focus/restore/moveTop y sin diálogos
+nativos de error. Ningún archivo de Electron de producto se modifica.
+
+El guion falla si una ventana es visible, tiene foco, puede recibirlo o Electron
+es la aplicación en primer plano. Registra esos valores y el PID anterior/posterior;
+si Isaac cambia de aplicación por su cuenta, no se interpreta como activación de QA.
+CDP usa viewport lógico 1440×900 y DPR 1/1.25/1.5; no redimensiona PNG posteriores.
+Es referencia del renderer Electron real del Mac, complementaria al banco HWND
+Windows; no certifica una ventana Windows ni el teclado físico.
+Prueba de arranque oculto PASS: visible=false, focused=false, focusable=false,
+aplicación en primer plano sin cambio. SIGTERM del controlador no continúa la matriz.

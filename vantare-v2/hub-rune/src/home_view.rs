@@ -35,6 +35,10 @@ impl Assets {
             })
             .collect();
         self.images.insert(
+            "hero".into(),
+            self.cache.svg(theme.hero_svg().into_bytes(), 1000.0, 2.0),
+        );
+        self.images.insert(
             "brand".into(),
             self.cache.svg(
                 include_str!("../../hub-web/src/renderer/assets/brand/wordmark.svg")
@@ -357,6 +361,7 @@ fn launch_button(state: &State, favorite: bool) -> El {
         },
     )
     .disabled(!allowed)
+    .h(if favorite { 46.0 } else { 36.0 })
     .fill(theme.color(if allowed { "accent-fill" } else { "surface-2" }))
     .border(1.0, theme.color("accent-bright"))
 }
@@ -475,10 +480,16 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         .padding(24.0)
         .gap(8.0)
         .radius(12.0)
-        .gradient(theme.color("wine"), theme.color("bg-base"))
+        .clip_rounded(12.0)
+        .fill(theme.color("bg-base"))
         .border(1.0, theme.color("hero-ring"))
+        .child(
+            picture(state, "hero", hero_width, hero_height, true)
+                .a11y_hidden()
+                .pin(Some(0.0), Some(0.0), None, None),
+        )
         .child(circuit)
-        .child(message(theme, sim))
+        .child(small(theme, sim))
         .child(display(theme, text("home.welcome"), 46.0))
         .child(label(
             theme,
@@ -735,7 +746,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                         .label(title),
                 )
                 .child(label(theme, title).font(body_style(13.0, 650.0)))
-                .child(small(theme, text("home.localTemplate")));
+                .child(small(theme, text("home.localTemplate")).w_full().truncate());
             pair = pair.child(
                 button_content(
                     theme,
@@ -819,7 +830,7 @@ mod tests {
             home_assets::WIDGETS.len(),
             vantare_hub_host::home::HomeWidgetKind::ALL.len()
         );
-        assert_eq!(assets.images.len(), home_assets::WIDGETS.len() + 3);
+        assert_eq!(assets.images.len(), home_assets::WIDGETS.len() + 4);
         for (kind, image) in assets.images {
             image
                 .wait()

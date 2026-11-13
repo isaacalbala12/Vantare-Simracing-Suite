@@ -117,9 +117,11 @@ fn set_core(state: &mut State, value: vantare_hub_host::protocol::CoreStatus) {
 }
 fn view(state: &State, cx: &mut Cx<State>) -> El {
     let theme = &state.theme;
-    let mut brand = row().h(40.0).center_y().gap(12.0);
+    let mut brand = row().w_full().h(40.0).center_y().gap(12.0);
     if state.collapsed {
-        brand = brand.child(design::symbol(theme, "mark", 24.0).color(theme.color("accent")));
+        brand = brand
+            .center()
+            .child(design::symbol(theme, "mark", 24.0).color(theme.color("accent")));
     } else {
         brand = brand.child(home_view::brand(state));
     }
@@ -145,7 +147,11 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
         let name = entry["label"].as_str().unwrap();
         let target = id.to_owned();
         let image = icon(icons::shared_icon(entry["icon"].as_str().unwrap()), 20.0)
-            .color(theme.color("text-1"))
+            .color(theme.color(if id == state.section {
+                "accent-bright"
+            } else {
+                "text-3"
+            }))
             .a11y_hidden();
         let item = menu_item(
             theme,

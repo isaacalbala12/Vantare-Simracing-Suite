@@ -2265,3 +2265,15 @@ Ruta Rune --snap verificada en fuente fijada: offscreen, sin window::run ni foco
 Guion viejo de referencia Electron prohibido hasta arrancar oculto y sin activación.
 66 PNG Rune anteriores se conservan como antes, sin afirmar fidelidad aprobada.
 Comparativas después y revisión de Isaac pendientes; no se avanza a más pantallas.
+
+
+Captura sin molestar a Isaac: Rune --snap confirmado offscreen en d533898 y
+captura de prueba completada sin ventana. Referencia Electron con entry QA
+accessory y LSUIElement, show/foco bloqueados antes de ready-to-show: prueba
+PASS con visible/focused/focusable=false y mismo PID en primer plano antes/después.
+El controlador comprueba estos estados por celda; no usa System Events ni permiso
+de Automatización. No se reanuda el antiguo guion con ventanas visibles.
+Inter requiere además familias internas W400/W500/W600/W650/W700; los tests
+comparan los archivos efectivamente seleccionados. Clippy Windows PASS en 454a8c7f0,
+Mac 45/45 tests PASS en ese SHA. Retoques de presentación posteriores y guiones
+nuevos se vuelven a verificar; no se atribuyen resultados de padres al nuevo head.

@@ -44,7 +44,7 @@ pub const FONTS: &[&[u8]] = &[
     include_bytes!("../../native/ui/assets/fonts/SpaceMono.ttf"),
 ];
 #[derive(Clone)]
-pub struct Theme(BTreeMap<&'static str, Color>);
+pub struct Theme(BTreeMap<&'static str, Color>, [String; 3]);
 impl Theme {
     pub fn load(palette: &str, scheme: &str) -> Result<Self, String> {
         let tokens: serde_json::Value = serde_json::from_str(TOKENS).map_err(|e| e.to_string())?;
@@ -58,7 +58,51 @@ impl Theme {
                 Ok((name, value))
             })
             .collect::<Result<BTreeMap<_, _>, String>>()
-            .map(Self)
+            .map(|colors| {
+                Self(
+                    colors,
+                    [
+                        tokens["themes"][palette][scheme]["grad-hero"]
+                            .as_str()
+                            .expect("shared hero gradient")
+                            .to_owned(),
+                        tokens["themes"][palette][scheme]["grad-hero-wash"]
+                            .as_str()
+                            .expect("shared hero wash")
+                            .to_owned(),
+                        tokens["primitives"]["css"]["hero-stripe"]
+                            .as_str()
+                            .expect("shared hero stripe")
+                            .to_owned(),
+                    ],
+                )
+            })
+    }
+    pub fn hero_svg(&self) -> String {
+        // Both shared CSS gradients have two hex color stops. Keep their authored colors;
+        // only their native SVG representation belongs to Rune.
+        let stops = |value: &str| {
+            let colors: Vec<_> = value
+                .split('#')
+                .skip(1)
+                .map(|c| {
+                    format!(
+                        "#{}",
+                        c.chars()
+                            .take_while(char::is_ascii_hexdigit)
+                            .collect::<String>()
+                    )
+                })
+                .collect();
+            let [a, b]: [String; 2] = colors.try_into().expect("two shared hero stops");
+            [a, b]
+        };
+        let [a, b] = stops(&self.1[0]);
+        let [c, d] = stops(&self.1[1]);
+        format!(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 236" preserveAspectRatio="none"><defs><linearGradient id="base" x1="0" y1="0" x2="1" y2="1"><stop stop-color="{a}"/><stop offset="1" stop-color="{b}"/></linearGradient><linearGradient id="wash" x1="0" y1="0" x2="0.36" y2="1"><stop stop-color="{c}"/><stop offset="0.5" stop-color="{d}"/></linearGradient><pattern id="stripe" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M-3 12L9 0M9 12L21 0" stroke="{}" stroke-width="1"/></pattern></defs><rect width="1000" height="236" fill="url(#base)"/><rect width="1000" height="236" fill="url(#wash)"/><rect width="1000" height="236" fill="url(#stripe)"/></svg>"##,
+            self.1[2]
+        )
     }
     pub fn color(&self, name: &str) -> Color {
         self.0[name]

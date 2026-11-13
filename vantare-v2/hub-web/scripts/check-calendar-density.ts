@@ -107,6 +107,24 @@ export async function checkCalendarDensity(page: Page, base: string) {
             );
           }
           await page.getByRole("tab", { name: /^Eventos/ }).click();
+          const watermark = page
+            .locator(".v-calendar-event-poster > i")
+            .first();
+          await watermark.waitFor({ state: "attached" });
+          assert.equal(
+            await watermark.textContent(),
+            "WEC",
+            "Positive control: weekly poster decoration",
+          );
+          assert.ok(
+            await watermark.evaluate((node, compact) => {
+              const bounds = node.getBoundingClientRect();
+              return compact
+                ? bounds.height > 172
+                : Math.abs(bounds.height - 172) <= 1;
+            }, width < 1400),
+            "Decorative WEC wraps inside the compact poster as GPUI does",
+          );
           const facts = page.locator(".v-calendar-event-facts strong");
           await facts.first().waitFor();
           assert.ok(

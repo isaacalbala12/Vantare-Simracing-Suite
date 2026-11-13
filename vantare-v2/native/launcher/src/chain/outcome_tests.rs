@@ -435,3 +435,6 @@ fn exhausted_question_ids_emit_no_reused_question() {
 
 #[path = "question_tests.rs"]
 mod question_tests;
+
+#[path = "control_tests.rs"]
+mod control_tests;

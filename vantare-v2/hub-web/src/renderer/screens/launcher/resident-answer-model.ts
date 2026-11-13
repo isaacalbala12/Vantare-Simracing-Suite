@@ -3,6 +3,7 @@ import {
   type ResidentAnswerTarget,
   type ResidentOutcome,
   type ResidentView,
+  residentAnswerRejections,
   residentOrderReceiptTimeoutMs,
 } from "../../../contract/generated/launcher_resident";
 
@@ -28,6 +29,14 @@ export type AnswerRejection =
   | "busy"
   | "unsupported"
   | "rejected";
+function isAnswerRejection(
+  value: string,
+): value is ResidentAnswerRejection | "busy" {
+  return (
+    value === "busy" ||
+    residentAnswerRejections.some((reason) => reason === value)
+  );
+}
 export type AnswerPhase =
   | { kind: "sending" }
   | { kind: "queued"; request: string; until: number }
@@ -100,7 +109,9 @@ export function observeAnswer(
       if (value.receipt.kind === "rejected")
         return {
           ...next,
-          phase: { kind: "rejected", reason: value.receipt.reason },
+          phase: isAnswerRejection(value.receipt.reason)
+            ? { kind: "rejected", reason: value.receipt.reason }
+            : { kind: "unknown" },
         };
       if (value.receipt.run !== next.target.run) return unknown();
       next = {

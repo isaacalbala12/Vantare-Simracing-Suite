@@ -186,6 +186,7 @@ impl RunContext {
 pub struct Cancellation {
     stopped: Mutex<bool>,
     shutdown: AtomicBool,
+    finished: AtomicBool,
     wake: Condvar,
 }
 impl Cancellation {
@@ -200,6 +201,14 @@ impl Cancellation {
     pub fn cancelled(&self) -> bool {
         self.stopped.lock().map_or(true, |guard| *guard)
     }
+    /// Commit to finalization while taking the last cancellation snapshot.
+    /// Cleanup can still ask a closing question, but no new cancellation is accepted.
+    fn commit_terminal(&self) -> bool {
+        let stopped = self.stopped.lock();
+        let cancelled = stopped.as_ref().map_or(true, |guard| **guard);
+        self.finished.store(true, Ordering::Release);
+        cancelled
+    }
     fn wait(&self, delay: Duration) -> bool {
         let Ok(stopped) = self.stopped.lock() else {
             return true;
@@ -208,6 +217,19 @@ impl Cancellation {
             .wait_timeout_while(stopped, delay, |stopped| !*stopped)
             .map_or(true, |(stopped, _)| *stopped)
     }
+}
+
+/// Fallback for unwinding before the normal terminal commitment.
+struct Completion(Arc<Cancellation>);
+impl Drop for Completion {
+    fn drop(&mut self) {
+        self.0.commit_terminal();
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CancelError {
+    Finished,
+    Unavailable,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -324,6 +346,7 @@ impl Chain {
         let worker = thread::Builder::new()
             .name("hub-launch-chain".into())
             .spawn(move || {
+                let _completion = Completion(Arc::clone(&context.cancel));
                 let discovery = found(&document.apps);
                 let outcome = run(&document, &profile, &discovery, &context);
                 drop(lease);
@@ -341,6 +364,22 @@ impl Chain {
     }
     pub fn cancel(&self) {
         self.cancel.cancel();
+    }
+    /// Acceptance sets the cancellation flag; it does not promise a terminal outcome.
+    pub fn cancel_checked(&self) -> Result<(), CancelError> {
+        let mut stopped = self
+            .cancel
+            .stopped
+            .lock()
+            .map_err(|_| CancelError::Unavailable)?;
+        if self.cancel.finished.load(Ordering::Acquire) || self.finished() {
+            return Err(CancelError::Finished);
+        }
+        if !*stopped {
+            *stopped = true;
+            self.cancel.wake.notify_all();
+        }
+        Ok(())
     }
     pub fn answer(&self, id: u64, action: Action) -> Result<(), String> {
         self.answers
@@ -661,7 +700,8 @@ fn run_with(
             message,
             false,
         );
-        return if context.cancel.cancelled() || context.trust_declined.load(Ordering::Acquire) {
+        return if context.cancel.commit_terminal() || context.trust_declined.load(Ordering::Acquire)
+        {
             ChainOutcome::Cancelled {
                 reason: cancellation_reason(context),
             }
@@ -911,7 +951,7 @@ fn run_pass_with(
 fn finish(profile: &Profile, context: &RunContext, success: bool) -> ChainOutcome {
     let cancel = &context.cancel;
     let sender = &context.sender;
-    let cancelled = cancel.cancelled();
+    let cancelled = cancel.commit_terminal();
     let mut cleanup_failed = false;
     if cancelled
         && !cancel.shutdown.load(Ordering::Acquire)

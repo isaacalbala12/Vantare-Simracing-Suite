@@ -1,4 +1,4 @@
-import { residentAnswerRejections } from "./generated/launcher_resident";
+import { residentOrderRejections } from "./generated/launcher_resident";
 import { exact, oneOf, record } from "./validation-common";
 
 export function decimal(value: unknown): value is string {
@@ -13,6 +13,15 @@ export function hex(value: unknown, length: number): boolean {
     typeof value === "string" &&
     value.length === length &&
     /^[0-9a-f]+$/.test(value)
+  );
+}
+export function isActiveRun(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, ["run", "revision", "accountGeneration"]) &&
+    decimal(value.run) &&
+    hex(value.revision, 64) &&
+    hex(value.accountGeneration, 64)
   );
 }
 export function isScopedQuestion(value: unknown): boolean {
@@ -74,7 +83,7 @@ function event(value: unknown): boolean {
       ? exact(receipt, ["kind", "run"]) && run(receipt.run)
       : receipt.kind === "rejected" &&
           exact(receipt, ["kind", "reason"]) &&
-          oneOf(receipt.reason, residentAnswerRejections);
+          oneOf(receipt.reason, residentOrderRejections);
   }
   if (
     kind.kind !== "received" ||
@@ -99,6 +108,8 @@ export function isResidentExecution(value: unknown): boolean {
       "instance",
       "revisionCheckedLaunch",
       "checkedAnswer",
+      "checkedControl",
+      "active",
       "question",
       "firstRetainedSeq",
       "events",
@@ -106,6 +117,11 @@ export function isResidentExecution(value: unknown): boolean {
     !hex(value.instance, 64) ||
     typeof value.revisionCheckedLaunch !== "boolean" ||
     typeof value.checkedAnswer !== "boolean" ||
+    typeof value.checkedControl !== "boolean" ||
+    !(
+      value.active === null ||
+      (value.checkedControl && isActiveRun(value.active))
+    ) ||
     !(
       value.question === null ||
       (value.checkedAnswer && isScopedQuestion(value.question))
@@ -116,8 +132,20 @@ export function isResidentExecution(value: unknown): boolean {
     !value.events.every(event)
   )
     return false;
+  if (
+    record(value.active) &&
+    record(value.question) &&
+    (value.active.run !== value.question.run ||
+      value.active.revision !== value.question.revision ||
+      value.active.accountGeneration !== value.question.accountGeneration)
+  )
+    return false;
   if (value.events.length === 0)
-    return value.firstRetainedSeq === "1" && value.question === null;
+    return (
+      value.firstRetainedSeq === "1" &&
+      value.question === null &&
+      value.active === null
+    );
   let expected = BigInt(value.firstRetainedSeq);
   for (const item of value.events) {
     if (!record(item) || !decimal(item.seq) || BigInt(item.seq) !== expected)
@@ -125,10 +153,14 @@ export function isResidentExecution(value: unknown): boolean {
     expected++;
   }
   return (
-    value.question === null ||
-    (record(value.question) &&
-      decimal(value.question.run) &&
-      BigInt(value.question.run) < expected)
+    (value.active === null ||
+      (record(value.active) &&
+        decimal(value.active.run) &&
+        BigInt(value.active.run) < expected)) &&
+    (value.question === null ||
+      (record(value.question) &&
+        decimal(value.question.run) &&
+        BigInt(value.question.run) < expected))
   );
 }
 

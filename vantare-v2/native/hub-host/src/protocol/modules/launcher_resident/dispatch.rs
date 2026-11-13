@@ -5,6 +5,39 @@ pub(super) fn dispatch(
     id: u32,
     request: &Request,
 ) -> io::Result<()> {
+    match request {
+        Request::LauncherResidentCancel { target } => {
+            let result = crate::launcher_resident::control::cancel(
+                &session.launcher,
+                session.core.account_observation().as_ref(),
+                target,
+            );
+            let message = match result {
+                Ok(value) => HostToUi::Response {
+                    id,
+                    result: Reply::LauncherResidentCancel { value },
+                },
+                Err(error) => HostToUi::Failure { id, error },
+            };
+            return frame::write(pipe, &message);
+        }
+        Request::LauncherResidentRehearse { target } => {
+            let result = crate::launcher_resident::control::rehearse(
+                &session.launcher,
+                session.core.account_observation().as_ref(),
+                target,
+            );
+            let message = match result {
+                Ok(value) => HostToUi::Response {
+                    id,
+                    result: Reply::LauncherResidentRehearse { value },
+                },
+                Err(error) => HostToUi::Failure { id, error },
+            };
+            return frame::write(pipe, &message);
+        }
+        _ => {}
+    }
     if let Request::LauncherResidentAnswer { target } = request {
         let result = crate::launcher_resident::answer::answer(
             &session.launcher,

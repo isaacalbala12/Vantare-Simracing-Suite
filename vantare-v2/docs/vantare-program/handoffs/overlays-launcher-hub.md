@@ -124,6 +124,53 @@ Binario final fuente 53050828b, SHA256
 ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
 Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
 Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
+## VANTA-138 · núcleo L54: cancelar y ensayar sin LMU (2026-11-13)
+
+#1995. L53 nativo #2281 está en nightly (22448e540). L54 se prepara en
+`vantareapp/isa-1995-resident-control`, protocolo v34 autorizado y capability
+CheckedControl. Draft #2291 abierto; tipos v34 generados y entregados a D; CI pendiente.
+El microplan aprobado vive en evidence/hub-web/nucleo-launcher-ordenes/MICROPLAN.md.
+
+Revisión de #2291: el terminal se compromete bajo el lock de cancelación dentro
+del pipeline, antes de salir el hilo; cancelar después se rechaza. El test usa
+run_with real con barreras, también para fallo de revisión de un importado.
+El ensayo filtra app_id != "lmu" exacto, sensible a mayúsculas, como GPUI.
+Leave/Started/Ask y CleanupFailed se apoyan en los tests heredados de tests.rs
+y chain/outcome_tests.rs. El segundo gate llegó a Clippy y señaló String::new
+en un test nuevo: corregido. Nueva validación nativa aún pendiente de cola/CI.
+Corrección posterior: cancelar y ensayar comprueban primero el soporte fresco del
+residente y después cuenta/permisos. Ausente, viejo o Status vencido = Unsupported;
+con soporte pero sin cuenta = CoreUnavailable. La regresión cruza ambos métodos
+con cuenta ausente, denegada y cambiada, sin depender de caducidades temporales.
+Los lints redundant_closure se corrigen con ExecutionStatus::can_start, sin allows.
+Las observaciones de prueba declaran ahora la versión real de Policy: antes
+quedaban en versión 0 por Default y eran denegadas correctamente. Validación
+local por cola: fmt y Clippy -D warnings de ipc/launcher/runtime/hub-host PASS;
+Nextest 1705 PASS (15 excluidos por el perfil); telemetría 34 PASS (1 excluido).
+Sin gráficos ni cambios de contrato v34. Nuevo head pendiente de CI completa.
+El Hub puede pedir cancelar la ejecución observada o probar un perfil sin sus
+pasos LMU. El residente comprueba instancia, cuenta y revisión, y aplica la orden.
+Cancelar respeta las políticas de cierre y puede plantear una pregunta L53;
+aceptar la petición no significa haber terminado. Un ensayo conserva los pasos
+repetidos y sus posiciones; vacío o solo LMU se rechaza. Nada mata procesos desde
+la interfaz, y no se cambian supervisor, derechos, GPUI ni dependencias.
+
+Handoff D: métodos launcher.resident.cancel/rehearse, targets cerrados en los
+tipos generados. execution.active da run/revision/accountGeneration, incluso sin
+pregunta. Queued se correlaciona con OrderReceived por request + cuenta/instancia;
+Finished se correlaciona con run. Sin recibo tras los 5 s exportados, hueco o
+reinicio significa Unknown, nunca éxito ni reenvío. ResidentOrderRejection es
+común a las órdenes; el error RPC L53 sigue limitado a sus 11 motivos. La UI L53
+debe estrechar esos motivos y tratar los ajenos como Unknown. El anfitrión hace
+una primera lectura al ensayar, sin segunda relectura antes del envío; la garantía
+final de la instantánea procede del residente al consumir.
+
+Exportador Rust 1.99.1, typechecks de producto/scripts, Biome y 41 tests web PASS.
+El primer Clippy local detectó doc_markdown en NoSteps, corregido. El reintento,
+Nextest nativo y telemetría locales se omiten por memoria, por orden expresa del
+orquestador: la cola no admite el segundo slot con unos 5,6 GB libres. La CI hace
+el gate completo antes de revisión. Sin ejecuciones gráficas ni apps reales
+nuevas en tests. L55 y L56 no se han empezado. Sin merge, promoción ni release.
 
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 

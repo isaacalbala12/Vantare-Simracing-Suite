@@ -314,7 +314,7 @@ fn frozen_readers_keep_legacy_status_when_checked_answers_add_future_extension_d
         .record(EventKind::OrderReceived {
             request: "d".repeat(32).try_into().unwrap(),
             receipt: OrderReceipt::Rejected {
-                reason: AnswerRejection::TrustRequiresEditor,
+                reason: AnswerRejection::TrustRequiresEditor.into(),
             },
         })
         .unwrap();
@@ -326,4 +326,42 @@ fn frozen_readers_keep_legacy_status_when_checked_answers_add_future_extension_d
     assert_eq!(old.legacy.running, current.running);
     assert_eq!(old.legacy.progress, current.progress);
     assert_eq!(old.legacy.decision.unwrap().id, 42);
+}
+
+#[test]
+fn active_control_scope_and_new_order_reason_do_not_hide_legacy_status() {
+    use vantare_ipc::launcher::{
+        answer::OrderReceipt,
+        control::{OrderRejection, RunScope},
+    };
+    let mut current = status();
+    let mut extension = extension();
+    extension.capabilities.push(Capability::CheckedControl);
+    let run = extension.begin().unwrap();
+    extension.active = Some(RunScope {
+        run,
+        revision: "b".repeat(64),
+        account: "c".repeat(64).try_into().unwrap(),
+    });
+    extension
+        .record(EventKind::OrderReceived {
+            request: "d".repeat(32).try_into().unwrap(),
+            receipt: OrderReceipt::Rejected {
+                reason: OrderRejection::NoSteps,
+            },
+        })
+        .unwrap();
+    current.extension = Some(extension);
+    let bytes = launcher::status_bytes(&current).unwrap();
+    let old: frozen::Extended = serde_json::from_slice(&bytes).unwrap();
+    assert!(old.extension.is_none());
+    assert_eq!(old.legacy.version, current.version);
+    assert_eq!(old.legacy.running, current.running);
+    assert_eq!(old.legacy.progress, current.progress);
+    assert!(
+        serde_json::from_slice::<launcher::Status>(&bytes)
+            .unwrap()
+            .extension
+            .is_some()
+    );
 }

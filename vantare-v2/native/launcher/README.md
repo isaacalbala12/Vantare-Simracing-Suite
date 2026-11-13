@@ -102,3 +102,19 @@ o estado no disponible. Una selección comprometida y la caducidad comparten el
 estado de la pregunta pendiente; se consume la selección antes de declarar su
 vencimiento. No interpreta mensajes de progreso. Los tests inyectan el reloj;
 no arrancan aplicaciones reales para comprobar ese arbitraje.
+
+### Control comprobado L54
+`Chain::cancel_checked` arbitra la petición con el fin del worker bajo el mismo
+bloqueo al comprometer la finalización en el pipeline, antes de salir del hilo:
+una cancelación posterior se rechaza. El Drop solo cubre un panic previo.
+Aceptar solo fija la cancelación;
+el terminal conserva el resultado real y las políticas Leave/Started/Ask.
+No se llama a shutdown ni se mata desde el anfitrión. Las preguntas de cierre
+se responden mediante L53. Cancelar usa la revisión de la ejecución, aunque
+launcher.json haya sido editado, protegido o borrado después.
+
+El ensayo relee una sola instantánea validada al consumir y selecciona todos
+los índices cuyo app_id != "lmu", con comparación exacta que distingue
+mayúsculas y minúsculas, igual que GPUI. Conserva posiciones y pasos repetidos;
+un perfil vacío o solo LMU devuelve NoSteps. No detecta juegos personalizados.
+No incorpora aún resultados por paso ni reintentos (L55).

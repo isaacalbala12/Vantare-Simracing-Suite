@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
-use vantare_ipc::{account_session::AccountObservation, files, launcher as native};
+use vantare_ipc::{account_session::AccountObservation, launcher as native};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -112,39 +112,17 @@ pub(crate) fn answer(
     {
         return Err(rejected(AnswerRejection::Denied));
     }
-    let request = vantare_services::random_id()
-        .map_err(|_| HostError::Io)?
-        .chars()
-        .take(32)
-        .collect::<String>()
-        .try_into()
-        .map_err(|_| HostError::Io)?;
-    let payload = native::AnswerChecked {
-        request,
-        instance,
-        account,
-        run: scope.run,
-        revision: scope.revision,
-        decision: scope.decision,
-        action,
-    };
-    let id = payload.request.clone().into();
-    let bytes =
-        serde_json::to_vec(&native::Request::AnswerChecked(payload)).map_err(|_| HostError::Io)?;
-    files::save(
-        &native::request_path(path),
-        &bytes,
-        files::Mode::Observed(None),
-        &files::Options::default(),
-    )
-    .map_err(|error| {
-        if error.kind().is_conflict() || error.kind() == files::Kind::Busy {
-            HostError::Busy
-        } else {
-            HostError::Io
-        }
-    })?;
-    Ok(ResidentQueued::Queued { request: id })
+    super::order_mailbox::enqueue(path, |request| {
+        native::Request::AnswerChecked(native::AnswerChecked {
+            request,
+            instance,
+            account,
+            run: scope.run,
+            revision: scope.revision,
+            decision: scope.decision,
+            action,
+        })
+    })
 }
 #[cfg(test)]
 #[path = "answer_tests.rs"]

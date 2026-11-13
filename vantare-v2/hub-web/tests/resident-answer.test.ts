@@ -63,6 +63,8 @@ describe("checked resident answers", () => {
       instance: target.instance,
       revisionCheckedLaunch: true,
       checkedAnswer: true,
+      checkedControl: false,
+      active: null,
       question: {
         decision: target.decision,
         run: "1",

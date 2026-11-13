@@ -892,7 +892,9 @@ fn failure_ask_continues_or_stops_and_cancel_closes_only_started_children() {
             .status
             != Status::Launching
         {}
-        chain.cancel();
+        chain
+            .cancel_checked()
+            .expect("checked cancellation of this active fixture");
         if close == policy::Close::Ask {
             loop {
                 if let Some(decision) = chain

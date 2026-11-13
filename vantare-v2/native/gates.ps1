@@ -78,8 +78,6 @@ try {
         if ($packagesSpecified) {
             $Packages = @($Packages | Where-Object { $_ -notin $ExcludePackages })
             if (-not $Packages.Count) { throw 'La selección no deja paquetes para este gate.' }
-        } else {
-            $Packages = @($members | Where-Object { $_.name -notin $ExcludePackages } | ForEach-Object name)
         }
     }
     # /default conserva también los defaults de crates futuros, aunque estén vacíos.
@@ -102,6 +100,13 @@ try {
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
     }
     if ($PublicTargetsOnly) { $arguments = @($arguments | Where-Object { $_ -ne '--all-targets' }) }
+    if ($ExcludePackages.Count -and -not $packagesSpecified -and
+        $Gate -in @('check', 'clippy', 'test', 'telemetria', 'completa', 'archive', 'lifecycle')) {
+        # `--workspace --exclude` conserva el grafo de features completo. Con -p
+        # cambian las claves de sccache y el archive pierde los aciertos del build
+        # de nightly (#1993: 91 % -> 58 % de aciertos al repartir por grupos).
+        foreach ($package in $ExcludePackages) { $arguments += @('--exclude', $package) }
+    }
     if ($Packages.Count) {
         $arguments = @($arguments | Where-Object { $_ -ne '--workspace' })
         foreach ($package in $Packages) { $arguments += @('-p', $package) }

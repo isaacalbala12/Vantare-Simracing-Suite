@@ -36,8 +36,22 @@ try {
         return
     }
     if (-not $env:VANTARE_SLOT_TARGET) { throw 'Invocar por compilar.ps1.' }
-    $packages = $groupSelection.Split(',')
-    Write-Host "Grupo ${Group}: $($packages -join ', ')"
-    & (Join-Path $PSScriptRoot '../gates.ps1') -Gate test -Packages $packages
+    if ($isPullRequest) {
+        $packages = $groupSelection.Split(',')
+        Write-Host "Grupo ${Group}: $($packages -join ', ')"
+        & (Join-Path $PSScriptRoot '../gates.ps1') -Gate test -Packages $packages
+    } else {
+        # Sin diff que acote (push, merge_group o PR a testers/master) se prueba
+        # el grupo entero. Se excluye el otro grupo en vez de listar -p para
+        # conservar el grafo de features y los aciertos de sccache del build
+        # completo de nightly.
+        $all = & python (Join-Path $PSScriptRoot 'ci-groups.py') --members
+        if ($LASTEXITCODE -or -not $all) { throw 'No se pudo leer el workspace.' }
+        $members = $groupSelection.Split(',')
+        $excludes = @($all.Split(',') | Where-Object { $_ -notin $members })
+        if (-not $excludes.Count) { throw 'El grupo cubre el workspace entero.' }
+        Write-Host "Grupo ${Group}: $($members -join ', ')"
+        & (Join-Path $PSScriptRoot '../gates.ps1') -Gate test -ExcludePackages $excludes
+    }
     if ($LASTEXITCODE) { throw "Tests del grupo $Group fallaron." }
 } finally { Pop-Location }

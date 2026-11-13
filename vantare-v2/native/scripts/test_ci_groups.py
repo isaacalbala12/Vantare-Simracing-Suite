@@ -43,6 +43,14 @@ class GroupsTest(unittest.TestCase):
         self.assertIn("vantare-ui", surface)
         self.assertNotIn("vantare-runtime", surface)
 
+    def test_cli_members_without_group_lists_workspace(self):
+        native = Path(__file__).resolve().parents[1]
+        script = Path(__file__).with_name("ci-groups.py")
+        listed = subprocess.check_output(
+            [sys.executable, str(script), "--members"], cwd=native, text=True)
+        self.assertIn("vantare-runtime", listed)
+        self.assertIn("vantare-ui", listed)
+
     def test_unknown_member_fails_closed(self):
         members = [
             {"name": "vantare-ipc", "manifest_path": "D:/r/native/ipc/Cargo.toml"},

@@ -90,6 +90,9 @@ def main() -> int:
         print("grupos completos")
         return 0
     if not args.group:
+        if args.members:
+            print(",".join(sorted(package["name"] for package in members)))
+            return 0
         parser.error("--group o --verify requerido")
     names = group_names(members, args.group)
     if args.packages is not None:

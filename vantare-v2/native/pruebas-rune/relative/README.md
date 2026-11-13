@@ -49,3 +49,15 @@ build --release --locked --offline --target x86_64-pc-windows-msvc
 El render visual, segundo monitor, DPI, foco, clics, transparencia y OBS,
 la latencia hasta pantalla y el aguante siguen sin verificar hasta el PC.
 No hay integración, migración de motor ni release.
+
+## Revisión del pintor 13/11
+
+Fuente 9ac390c75992f1f4db64a7de2e07a6988f7ae93b: incorpora el polígono
+de marca del producto, líneas de cabecera, píldora de vueltas a 16 px,
+limitador dinámico de boxes y los esqueletos e indicador de espera.
+Runtime Release en Mac: 12/12 PASS, incluida activación/desactivación del
+limitador sin cambiar de banner. Clippy estricto all-targets PASS.
+Windows cruzado Release 24,87 s incremental (no comparable entre máquinas);
+29.349.376 bytes, SHA256 438326b048bc641d4e74f421dfce79e4975ba3267c7be2de2d3c890ca07e05de.
+Mínimo libre de esta compilación 10,9477 GiB; ningún límite vulnerado.
+PE/procedencia y dumpbin comprobados; dibujo físico pendiente del PC.

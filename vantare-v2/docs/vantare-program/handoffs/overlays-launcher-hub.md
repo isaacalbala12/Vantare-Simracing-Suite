@@ -1,3 +1,14 @@
+## VANTA-141 · Relative Rune revisado (13/11/2026)
+
+Issue #2213, Plane En curso, PR draft #2238. Fuente 9ac390c75: marca,
+cabecera, píldora, limitador dinámico y espera comparados con el pintor GPUI.
+12 tests Runtime Release y Clippy all-targets estricto pasan en Mac; cruzado
+Windows PASS. 29.349.376 bytes, SHA256 438326b048bc641d4e74f421dfce79e4975ba3267c7be2de2d3c890ca07e05de.
+Disco mínimo 10,9477 GiB. Artefacto y logs en evidencia/pieza4-9ac390c75;
+procedencia PE y dumpbin verificados sin ejecución gráfica. CI anterior verde;
+este cambio requiere nueva CI y paridad física del PC. Sin merge/release.
+Los tiempos comparables siguen pendientes autorizados por Isaac.
+
 ## VANTA-141 · Pieza 4, Relative Rune compilado
 
 - Fuente Windows 5b45c86119530c3d13b750e2d85e12d88c85e9a1; Release opt3/lto=false/cgu16/debug0, Rust 1.99.1. Cruce Mac cargo-xwin 48,97 s incremental, mínimo 12,34 GiB libres; target único. Límite nuevo de Isaac 10 GiB, guardián 10,25.

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
+import { calendarScenes } from "./visual-diff/calendar-scenes";
 
 export async function checkCalendarDensity(page: Page, base: string) {
   const original = page.viewportSize();
@@ -9,7 +10,8 @@ export async function checkCalendarDensity(page: Page, base: string) {
       [1280, 800],
     ]) {
       await page.setViewportSize({ width, height });
-      await page.goto(`${base}?escena=calendario-r6-proximas`);
+      await page.goto(`${base}?escena=visual-dark:calendar-live-reference`);
+      await calendarScenes["calendario-r6-proximas"].prepare(page);
       await page.locator(".v-calendar-hero").waitFor();
       for (const scheme of ["dark", "light"]) {
         await page.evaluate((value) => {

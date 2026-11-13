@@ -24,6 +24,7 @@ export const calendarLaunchReceiptMs = 5000 as const;
 export const calendarLaunchClockSkewMs = 5000 as const;
 export const calendarLaunchMaxFutureMs = 691200000 as const;
 export const calendarLaunchArmIdLength = 64 as const;
+export const calendarLaunchRequestIdLength = 32 as const;
 export const calendarLaunchStops = ["user","replaced","accountChanged","rightsLost","live","coreDisconnected","hubClosed","clockChanged","residentUnavailable","revisionChanged","alertsUnavailable","disabled","scheduleUnavailable","expired","busy","io"] as const;
 export const calendarLaunchUnknowns = ["noReceipt","ringGap","residentRestarted","residentUnavailable","scopeLost","unconfirmedWrite"] as const;
 export type CalendarIcsScope = "favs" | "events" | "all";

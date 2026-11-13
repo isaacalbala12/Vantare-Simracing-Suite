@@ -7,6 +7,7 @@ import type {
 import type { HostError, Request } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
+import { launcherKey } from "../launcher/state";
 export type CalendarLaunchCapture = Pick<
   Extract<Request, { method: "calendar.launchArm" }>,
   "profile" | "baseRevision" | "armedGeneration"
@@ -85,6 +86,12 @@ export function useCalendarLaunch(
         callbacks.current.reloadConfig();
     } catch (error) {
       if (current()) {
+        if (
+          error instanceof HostFailure &&
+          error.detail.kind === "launcherConflict"
+        )
+          cache.setQueryData(launcherKey, error.detail.current);
+
         if (
           error instanceof HostFailure &&
           error.detail.kind === "calendarConflict"

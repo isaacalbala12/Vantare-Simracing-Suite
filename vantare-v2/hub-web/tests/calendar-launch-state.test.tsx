@@ -3,10 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import coreFixture from "../fixtures/core-offline.json";
+import launcher from "../fixtures/launcher-base.json";
 import type { CalendarLaunchView } from "../src/contract/generated/calendar";
 import type { CoreStatus, HostToUi } from "../src/contract/generated/contract";
 import { coreKey } from "../src/renderer/app/Host";
+import { HostFailure } from "../src/renderer/bridge/client";
 import { useCalendarLaunch } from "../src/renderer/screens/calendar/CalendarLaunch";
+import { launcherKey } from "../src/renderer/screens/launcher/state";
 
 const api = vi.hoisted(() => ({
   request: vi.fn(),
@@ -185,4 +188,17 @@ it("cancels only the opaque identifier and refreshes config after an automatic a
     method: "calendar.launchCancel",
     armId: "f".repeat(64),
   });
+});
+
+it("a profile conflict updates the observed list but never rearms automatically", async () => {
+  const h = setup();
+  api.request.mockRejectedValue(
+    new HostFailure({ kind: "launcherConflict", current: launcher }),
+  );
+  await act(async () =>
+    h.result.current.arm({ kind: "alerts", expectedRevision: "c".repeat(64) }),
+  );
+  expect(h.cache.getQueryData(launcherKey)).toEqual(launcher);
+  expect(api.request).toHaveBeenCalledOnce();
+  expect(h.result.current.failure).toBe("launcherConflict");
 });

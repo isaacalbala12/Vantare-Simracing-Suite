@@ -753,7 +753,7 @@ fn arming_automatic_launch_uses_alerts_cas_and_preserves_the_other_preferences()
     let current = saved.alerts_revision.unwrap();
     assert_eq!(
         state.arm_auto_launch(&current).unwrap().alerts_revision,
-        Some(current)
+        Some(current.clone())
     );
     assert_eq!(root.bytes("calendar-alerts.json"), bytes);
     root.seed("calendar-alerts.json", br#"{"future":true}"#);

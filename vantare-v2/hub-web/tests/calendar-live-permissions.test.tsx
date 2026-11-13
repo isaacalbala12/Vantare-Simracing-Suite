@@ -33,7 +33,9 @@ it("keeps the profile visible while launch and protected favorite writes are dis
   );
   expect(screen.getAllByText(/Sebring WEC/)).toHaveLength(2);
   const deferred = screen.getByRole("button", { name: /Lanzar a las/ });
-  expect(deferred).toHaveProperty("disabled", true);
+  expect(deferred.getAttribute("aria-disabled")).toBe("true");
+  deferred.focus();
+  expect(document.activeElement).toBe(deferred);
   expect(
     document.getElementById(deferred.getAttribute("aria-describedby") ?? "")
       ?.textContent,

@@ -387,6 +387,7 @@ export function CalendarLiveView({
               </Button>
               <Button
                 className="v-calendar-launch-pending"
+                focusableWhenDisabled
                 aria-describedby={launchPendingId}
                 title={armDisabledReason ?? calendarLaunchText.onlyOpen}
                 disabled={

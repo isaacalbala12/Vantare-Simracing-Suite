@@ -327,7 +327,12 @@ export default function CalendarEntry() {
           />
         )}
         {launchState.failure && (
-          <p role="alert">{calendarLaunchText.rejected}</p>
+          <p role="alert">
+            {launchState.failure === "launcherConflict" ||
+            launchState.failure === "calendarConflict"
+              ? calendarLaunchText.changed
+              : calendarLaunchText.rejected}
+          </p>
         )}
         {!state.allowed ? (
           <p role="status">{text.noAccess}</p>
@@ -682,7 +687,9 @@ export default function CalendarEntry() {
           now={state.now}
           utc={view?.utc ?? false}
           limit={calendarStartsLimit}
-          profile={launcher.profile?.name}
+          profile={
+            launchState.view?.automatic?.profileName ?? launcher.profile?.name
+          }
           canEdit={preferences.canAlerts}
           busy={preferences.busy}
           onChange={(change) => void preferences.alert(change)}

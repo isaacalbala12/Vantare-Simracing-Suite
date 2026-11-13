@@ -1,6 +1,7 @@
 import { isCalendarRevision, number, text } from "./calendar-common";
 import {
   calendarLaunchArmIdLength,
+  calendarLaunchRequestIdLength,
   calendarLaunchStops,
   calendarLaunchUnknowns,
   calendarTimestampLimit,
@@ -29,7 +30,7 @@ const name = (value: unknown) =>
   text(value) &&
   value.trim().length > 0 &&
   new TextEncoder().encode(value).length <= profileLimits.name;
-const requestId = (value: unknown) => hex(value, 32);
+const requestId = (value: unknown) => hex(value, calendarLaunchRequestIdLength);
 const runId = (value: unknown) =>
   typeof value === "string" &&
   value !== "0" &&

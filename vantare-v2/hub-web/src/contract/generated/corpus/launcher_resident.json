@@ -1,6 +1,17 @@
 {
   "host": [
     {
+      "id": 2,
+      "kind": "response",
+      "result": {
+        "method": "launcher.resident.answer",
+        "value": {
+          "kind": "queued",
+          "request": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      }
+    },
+    {
       "id": 1,
       "kind": "response",
       "result": {
@@ -22,6 +33,7 @@
           },
           "error": false,
           "execution": {
+            "checkedAnswer": false,
             "events": [
               {
                 "kind": {
@@ -47,6 +59,7 @@
             ],
             "firstRetainedSeq": "1",
             "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "question": null,
             "revisionCheckedLaunch": true
           },
           "online": true,
@@ -76,6 +89,7 @@
           },
           "error": false,
           "execution": {
+            "checkedAnswer": false,
             "events": [
               {
                 "kind": {
@@ -101,6 +115,7 @@
             ],
             "firstRetainedSeq": "1",
             "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "question": null,
             "revisionCheckedLaunch": true
           },
           "online": true,
@@ -110,9 +125,112 @@
         }
       },
       "kind": "event"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "wrong-instance"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "account-changed"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "authority-unavailable"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "denied"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "revision-mismatch"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "unscoped-run"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "wrong-run"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "stale-question"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "invalid-action"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "trust-requires-editor"
+      },
+      "id": 3,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentAnswerRejected",
+        "reason": "unavailable"
+      },
+      "id": 3,
+      "kind": "failure"
     }
   ],
   "ui": [
+    {
+      "id": 2,
+      "kind": "request",
+      "request": {
+        "method": "launcher.resident.answer",
+        "target": {
+          "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "action": "stop",
+          "decision": "18446744073709551615",
+          "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "run": "1"
+        }
+      }
+    },
     {
       "id": 1,
       "kind": "request",

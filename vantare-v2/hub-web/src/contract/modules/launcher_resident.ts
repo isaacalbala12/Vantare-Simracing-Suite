@@ -1,12 +1,17 @@
 import {
   residentActionLabels,
   residentActions,
+  residentAnswerRejections,
   residentIdLimit,
   residentIdMaximum,
   residentIdPattern,
   residentQuestionKinds,
 } from "../generated/launcher_resident";
-import { isResidentExecution } from "../resident-execution-validation";
+import {
+  decimal,
+  hex,
+  isResidentExecution,
+} from "../resident-execution-validation";
 import { exact, oneOf, record } from "../validation-common";
 import { isReply as isShortcutsReply } from "./shortcuts";
 
@@ -64,9 +69,41 @@ export function isResident(value: unknown): boolean {
   );
 }
 export function isRequest(value: Record<string, unknown>): boolean {
-  return value.method === "launcher.resident.get" && exact(value, ["method"]);
+  if (value.method === "launcher.resident.get") return exact(value, ["method"]);
+  if (
+    value.method !== "launcher.resident.answer" ||
+    !exact(value, ["method", "target"]) ||
+    !record(value.target)
+  )
+    return false;
+  const target = value.target;
+  return (
+    exact(target, [
+      "instance",
+      "accountGeneration",
+      "run",
+      "revision",
+      "decision",
+      "action",
+    ]) &&
+    hex(target.instance, 64) &&
+    hex(target.accountGeneration, 64) &&
+    decimal(target.run) &&
+    hex(target.revision, 64) &&
+    decimal(target.decision) &&
+    oneOf(target.action, residentActions)
+  );
 }
 export function isReply(value: Record<string, unknown>): boolean {
+  if (value.method === "launcher.resident.answer") {
+    return (
+      exact(value, ["method", "value"]) &&
+      record(value.value) &&
+      exact(value.value, ["kind", "request"]) &&
+      value.value.kind === "queued" &&
+      hex(value.value.request, 32)
+    );
+  }
   return (
     value.method === "launcher.resident.get" &&
     exact(value, ["method", "value"]) &&
@@ -80,6 +117,10 @@ export function isEvent(value: Record<string, unknown>): boolean {
     isResident(value.value)
   );
 }
-export function isError(_value: Record<string, unknown>): boolean {
-  return false;
+export function isError(value: Record<string, unknown>): boolean {
+  return (
+    value.kind === "residentAnswerRejected" &&
+    exact(value, ["kind", "reason"]) &&
+    oneOf(value.reason, residentAnswerRejections)
+  );
 }

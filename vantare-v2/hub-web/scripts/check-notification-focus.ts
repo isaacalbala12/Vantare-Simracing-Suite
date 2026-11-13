@@ -72,6 +72,7 @@ export async function checkNotificationFocus(owner: Page, base: string) {
             ({ method }) =>
               method === "launcher.launch" ||
               method === "launcher.launchChecked" ||
+              method === "launcher.resident.answer" ||
               method === "launcher.favorite",
           ).length,
       );

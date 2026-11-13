@@ -177,6 +177,7 @@ export async function checkDialogZoom(page: Page, base: string) {
             method === "launcher.favorite" ||
             method === "launcher.launch" ||
             method === "launcher.launchChecked" ||
+            method === "launcher.resident.answer" ||
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel",
         ).length,
@@ -436,6 +437,7 @@ async function checkIsolatedDialogs(
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel" ||
             method === "launcher.launchChecked" ||
+            method === "launcher.resident.answer" ||
             method === "launcher.favorite",
         ).length,
     ),
@@ -465,6 +467,7 @@ async function checkIsolatedDialogs(
             method === "launcher.favorite" ||
             method === "launcher.launch" ||
             method === "launcher.launchChecked" ||
+            method === "launcher.resident.answer" ||
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel",
         ).length,
@@ -483,6 +486,7 @@ async function checkIsolatedDialogs(
             method === "launcher.favorite" ||
             method === "launcher.launch" ||
             method === "launcher.launchChecked" ||
+            method === "launcher.resident.answer" ||
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel",
         ).length,

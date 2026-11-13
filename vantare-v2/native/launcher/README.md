@@ -94,3 +94,11 @@ persistencia ni agenda. Un hueco o un reinicio no demuestra éxito.
 SHA-256 completo y devuelve Document/Profile por valor. Un error, versión
 protegida, perfil ausente/vacío o revisión distinta rechaza sin recargar el Store,
 reparar archivos ni volver al documento cacheado. El motor ejecuta esa instantánea.
+
+### Respuestas comprobadas L53
+Chain.answer conserva el canal legacy. Chain.answer_checked devuelve un error
+tipado para pregunta caducada, acción no ofrecida, confianza que requiere editor
+o estado no disponible. Una selección comprometida y la caducidad comparten el
+estado de la pregunta pendiente; se consume la selección antes de declarar su
+vencimiento. No interpreta mensajes de progreso. Los tests inyectan el reloj;
+no arrancan aplicaciones reales para comprobar ese arbitraje.

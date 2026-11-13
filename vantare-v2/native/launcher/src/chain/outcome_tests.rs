@@ -38,6 +38,7 @@ fn fixture() -> Fixture {
             cancel: Arc::new(Cancellation::default()),
             sender,
             answers: replies,
+            pending: Arc::new(Pending::default()),
             processes: Arc::new(Mutex::new(processes::Processes::default())),
             next_decision: AtomicU64::new(1),
             selected: vec![0, 1],
@@ -209,7 +210,7 @@ fn decision_expiry_is_typed_with_an_injected_clock_and_receiver() {
                 "QA".into(),
                 &[Action::Stop, Action::Continue],
                 false,
-                || Duration::from_mins(2),
+                Arc::new(|| Duration::from_mins(2)),
                 |_| Err(mpsc::RecvTimeoutError::Timeout)
             )
             .is_err()
@@ -411,3 +412,26 @@ fn disconnected_progress_is_an_internal_failure_before_or_after_execution() {
         );
     }
 }
+
+#[test]
+fn exhausted_question_ids_emit_no_reused_question() {
+    let f = fixture();
+    f.context.next_decision.store(u64::MAX, Ordering::Relaxed);
+    assert!(
+        f.context
+            .ask_with(
+                None,
+                "QA".into(),
+                &[Action::Stop],
+                false,
+                Arc::new(|| Duration::ZERO),
+                |_| panic!("an exhausted question must not wait for a reply"),
+            )
+            .is_err()
+    );
+    assert_eq!(f.context.next_decision.load(Ordering::Relaxed), u64::MAX);
+    assert!(f.events.try_recv().is_err());
+}
+
+#[path = "question_tests.rs"]
+mod question_tests;

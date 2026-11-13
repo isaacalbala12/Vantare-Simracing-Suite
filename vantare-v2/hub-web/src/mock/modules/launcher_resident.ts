@@ -16,6 +16,8 @@ export function create(context: MockContext): MockHandler {
     view.execution = {
       instance: "b".repeat(64),
       revisionCheckedLaunch: true,
+      checkedAnswer: false,
+      question: null,
       firstRetainedSeq: "1",
       events: [],
     };

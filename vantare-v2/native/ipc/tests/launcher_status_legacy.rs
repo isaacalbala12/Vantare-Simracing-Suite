@@ -296,3 +296,34 @@ fn checked_receipt_is_tolerated_by_the_frozen_terminal_reader_without_hiding_sta
     assert_eq!(previous.legacy.running, value.running);
     assert_eq!(previous.legacy.progress, value.progress);
 }
+
+#[test]
+fn frozen_readers_keep_legacy_status_when_checked_answers_add_future_extension_data() {
+    use launcher::answer::{AnswerRejection, OrderReceipt, QuestionScope};
+    let mut current = status();
+    let mut extension = extension();
+    let run = extension.events[0].seq;
+    extension.question = Some(QuestionScope {
+        decision: "42".into(),
+        run,
+        revision: "b".repeat(64),
+        account: "c".repeat(64).try_into().unwrap(),
+    });
+    extension.capabilities.push(Capability::CheckedAnswer);
+    extension
+        .record(EventKind::OrderReceived {
+            request: "d".repeat(32).try_into().unwrap(),
+            receipt: OrderReceipt::Rejected {
+                reason: AnswerRejection::TrustRequiresEditor,
+            },
+        })
+        .unwrap();
+    current.extension = Some(extension);
+    let bytes = launcher::status_bytes(&current).unwrap();
+    let old: frozen::Extended = serde_json::from_slice(&bytes).unwrap();
+    assert!(old.extension.is_none());
+    assert_eq!(old.legacy.version, current.version);
+    assert_eq!(old.legacy.running, current.running);
+    assert_eq!(old.legacy.progress, current.progress);
+    assert_eq!(old.legacy.decision.unwrap().id, 42);
+}

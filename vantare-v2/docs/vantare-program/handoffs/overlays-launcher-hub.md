@@ -2016,3 +2016,31 @@ formato y comprobaciones ligeras para esta entrega. Ambos PRs parten de nightly
 58e5b5ede815ef8a9875771308a9485b84bffe46 tras retirar d6bcdb32 con --onto;
 el rebase pendiente descrito en la segunda revisión ya está completado. Capturas,
 ventana visible, smoke Windows real y aceptación del corte 1 pendientes.
+### L53 · respuestas comprobadas del residente (worker E)
+
+VANTA-138 / #1995. Microplan de órdenes aprobado; L54–L56 no se implementan aquí.
+El host v33 añade launcher.resident.answer con alcance de instancia, cuenta,
+ejecución, revisión y pregunta. Queued confirma solo el buzón; OrderReceived
+confirma/rechaza la respuesta; Finished sigue indicando el final de la cadena.
+Chain decide respuesta/caducidad bajo el mismo estado pendiente.
+
+Trust queda rechazado: trust-requires-editor. El consumidor de UI debe mostrar
+«Para confiar en este perfil, usa su editor». La revisión segura se diseña aparte
+en #2274, sin rutas/argumentos en renderer. Sin fallback a answer-v2, sin acciones
+generales de matar procesos. Una pregunta sin cuenta de origen válida no se puede
+responder por este contrato.
+
+L53 usa v33, asignada por el orquestador, sobre #2259/v32 ya fusionado.
+Rama, SHA, pruebas y estado de CI se consignan en el PR de L53. No hay merge ni
+release propios, ni cambios del supervisor/rights/Services/GPUI.
+
+D consume L53 sobre #2281. residentOrderReceiptTimeoutMs exporta los mismos 5 s
+de la política Rust de Calendario. Al vencer sin OrderReceived, mostrar Unknown
+y no reenviar; ese plazo no es un límite de duración de la cadena.
+
+Revisión L53: el cierre por cancelación, shutdown o desconexión consume bajo
+el lock una selección ya comprometida, o cierra la pregunta a respuestas tardías.
+Emisor y worker comparten el mismo reloj de la pregunta. Regresiones con barrera,
+plazo cumplido antes/después del compromiso y publicación fallida de la pregunta;
+la limpieza de directorios en Drop no provoca otro panic. Sin cambios de contrato
+v33 ni del plazo exportado para D. Gates del ajuste y head vigentes en #2281.

@@ -5,6 +5,21 @@ pub(super) fn dispatch(
     id: u32,
     request: &Request,
 ) -> io::Result<()> {
+    if let Request::LauncherResidentAnswer { target } = request {
+        let result = crate::launcher_resident::answer::answer(
+            &session.launcher,
+            session.core.account_observation().as_ref(),
+            target,
+        );
+        let message = match result {
+            Ok(value) => HostToUi::Response {
+                id,
+                result: Reply::LauncherResidentAnswer { value },
+            },
+            Err(error) => HostToUi::Failure { id, error },
+        };
+        return frame::write(pipe, &message);
+    }
     if !matches!(request, Request::LauncherResidentGet {}) {
         return Err(io::ErrorKind::InvalidInput.into());
     }

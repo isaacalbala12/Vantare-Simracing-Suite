@@ -1,17 +1,28 @@
+import { residentAnswerRejections } from "./generated/launcher_resident";
 import { exact, oneOf, record } from "./validation-common";
 
-function decimal(value: unknown): value is string {
+export function decimal(value: unknown): value is string {
   return (
     typeof value === "string" &&
     /^[1-9][0-9]{0,19}$/.test(value) &&
     BigInt(value) <= 18446744073709551615n
   );
 }
-function hex(value: unknown, length: number): boolean {
+export function hex(value: unknown, length: number): boolean {
   return (
     typeof value === "string" &&
     value.length === length &&
     /^[0-9a-f]+$/.test(value)
+  );
+}
+export function isScopedQuestion(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, ["decision", "run", "revision", "accountGeneration"]) &&
+    decimal(value.decision) &&
+    decimal(value.run) &&
+    hex(value.revision, 64) &&
+    hex(value.accountGeneration, 64)
   );
 }
 export function isResidentOutcome(value: unknown): boolean {
@@ -51,6 +62,20 @@ function event(value: unknown): boolean {
       run(kind.run) &&
       isResidentOutcome(kind.outcome)
     );
+  if (kind.kind === "order-received") {
+    if (
+      !exact(kind, ["kind", "request", "receipt"]) ||
+      !hex(kind.request, 32) ||
+      !record(kind.receipt)
+    )
+      return false;
+    const receipt = kind.receipt;
+    return receipt.kind === "accepted"
+      ? exact(receipt, ["kind", "run"]) && run(receipt.run)
+      : receipt.kind === "rejected" &&
+          exact(receipt, ["kind", "reason"]) &&
+          oneOf(receipt.reason, residentAnswerRejections);
+  }
   if (
     kind.kind !== "received" ||
     !exact(kind, ["kind", "request", "receipt"]) ||
@@ -73,25 +98,38 @@ export function isResidentExecution(value: unknown): boolean {
     !exact(value, [
       "instance",
       "revisionCheckedLaunch",
+      "checkedAnswer",
+      "question",
       "firstRetainedSeq",
       "events",
     ]) ||
     !hex(value.instance, 64) ||
     typeof value.revisionCheckedLaunch !== "boolean" ||
+    typeof value.checkedAnswer !== "boolean" ||
+    !(
+      value.question === null ||
+      (value.checkedAnswer && isScopedQuestion(value.question))
+    ) ||
     !decimal(value.firstRetainedSeq) ||
     !Array.isArray(value.events) ||
     value.events.length > 32 ||
     !value.events.every(event)
   )
     return false;
-  if (value.events.length === 0) return value.firstRetainedSeq === "1";
+  if (value.events.length === 0)
+    return value.firstRetainedSeq === "1" && value.question === null;
   let expected = BigInt(value.firstRetainedSeq);
   for (const item of value.events) {
     if (!record(item) || !decimal(item.seq) || BigInt(item.seq) !== expected)
       return false;
     expected++;
   }
-  return true;
+  return (
+    value.question === null ||
+    (record(value.question) &&
+      decimal(value.question.run) &&
+      BigInt(value.question.run) < expected)
+  );
 }
 
 export function isResidentRejection(value: unknown): boolean {

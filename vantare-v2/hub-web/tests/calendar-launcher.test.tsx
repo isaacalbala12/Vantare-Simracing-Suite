@@ -62,6 +62,8 @@ function setup() {
             execution: {
               instance: "b".repeat(64),
               revisionCheckedLaunch: true,
+              checkedAnswer: false,
+              question: null,
               firstRetainedSeq: "1",
               events: [],
             },

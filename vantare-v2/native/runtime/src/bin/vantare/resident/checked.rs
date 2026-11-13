@@ -93,6 +93,10 @@ impl Owner {
                 if self.active_run.is_none() {
                     self.status.extension = None;
                 }
+                self.active_scope = Some(super::ActiveScope {
+                    revision: request.revision,
+                    account: request.account,
+                });
                 self.chain = Some(chain);
             }
             Err(reason) => self.reject_checked(request.request, reason),

@@ -1,16 +1,20 @@
-//! Read-only resident mailbox projection. No request writer or process ownership.
+//! Closed resident projection and checked answer writer. No process ownership.
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Instant};
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_ipc::launcher as mailbox;
+#[path = "answer.rs"]
+pub(crate) mod answer;
 #[path = "document_cache.rs"]
 mod document_cache;
 #[path = "execution.rs"]
 mod execution;
+pub use answer::{ResidentAnswerTarget, ResidentQueued};
 pub use execution::{
-    ResidentCancellation, ResidentEventKind, ResidentExecution, ResidentExecutionEvent,
-    ResidentFailure, ResidentOutcome, ResidentReceipt, ResidentRejection,
+    ResidentAnswerRejection, ResidentCancellation, ResidentEventKind, ResidentExecution,
+    ResidentExecutionEvent, ResidentFailure, ResidentOrderReceipt, ResidentOutcome,
+    ResidentReceipt, ResidentRejection, ResidentScopedQuestion,
 };
 
 pub const DECISION_ID_MAX: usize = 20;

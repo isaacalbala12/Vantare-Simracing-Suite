@@ -17,7 +17,22 @@ pub(crate) fn typescript() -> String {
     declare::<crate::launcher_resident::ResidentEventKind>(&mut text);
     declare::<crate::launcher_resident::ResidentExecutionEvent>(&mut text);
     declare::<crate::launcher_resident::ResidentExecution>(&mut text);
+    declare::<crate::launcher_resident::ResidentAnswerRejection>(&mut text);
+    declare::<crate::launcher_resident::ResidentOrderReceipt>(&mut text);
+    declare::<crate::launcher_resident::ResidentScopedQuestion>(&mut text);
+    declare::<crate::launcher_resident::ResidentAnswerTarget>(&mut text);
+    declare::<crate::launcher_resident::ResidentQueued>(&mut text);
     declare::<ResidentView>(&mut text);
+    constants!(
+        &mut text,
+        "residentAnswerRejections",
+        crate::launcher_resident::ResidentAnswerRejection::ALL
+    );
+    constants!(
+        &mut text,
+        "residentOrderReceiptTimeoutMs",
+        crate::calendar::launch_types::RECEIPT_MS
+    );
     constants!(&mut text, "residentActions", ResidentAction::ALL);
     constants!(
         &mut text,
@@ -87,7 +102,23 @@ pub(crate) fn corpus() -> serde_json::Value {
         }),
         ..Default::default()
     };
-    let host = vec![
+    let target = crate::launcher_resident::ResidentAnswerTarget {
+        instance: "b".repeat(64),
+        account_generation: "c".repeat(64),
+        run: "1".into(),
+        revision: "d".repeat(64),
+        decision: u64::MAX.to_string(),
+        action: ResidentAction::Stop,
+    };
+    let mut host = vec![
+        HostToUi::Response {
+            id: 2,
+            result: Reply::LauncherResidentAnswer {
+                value: crate::launcher_resident::ResidentQueued::Queued {
+                    request: "e".repeat(32),
+                },
+            },
+        },
         HostToUi::Response {
             id: 1,
             result: Reply::LauncherResidentGet {
@@ -98,7 +129,19 @@ pub(crate) fn corpus() -> serde_json::Value {
             event: Event::LauncherResident { value },
         },
     ];
+    host.extend(
+        crate::launcher_resident::ResidentAnswerRejection::ALL
+            .into_iter()
+            .map(|reason| HostToUi::Failure {
+                id: 3,
+                error: crate::protocol::HostError::ResidentAnswerRejected { reason },
+            }),
+    );
     let ui = vec![
+        UiToHost::Request {
+            id: 2,
+            request: Request::LauncherResidentAnswer { target },
+        },
         UiToHost::Request {
             id: 1,
             request: Request::LauncherResidentGet {},

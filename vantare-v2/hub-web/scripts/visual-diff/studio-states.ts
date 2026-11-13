@@ -35,6 +35,7 @@ const scene = (
         deviceScaleFactor: 1,
         mobile: false,
         scale: 1.25,
+        dontSetVisibleSize: true,
         screenWidth: 1440,
         screenHeight: 900,
       });

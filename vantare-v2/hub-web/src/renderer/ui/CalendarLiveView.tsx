@@ -1,11 +1,10 @@
-import { calendarLaunchLeadMs } from "../../contract/generated/calendar";
-import { calendarLaunchText } from "../i18n/calendarLaunch";
 import { useEffect, useId, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
   CalendarSeries,
 } from "../../contract/generated/calendar";
+import { calendarLaunchLeadMs } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText as text } from "../i18n/calendar";
 import {
@@ -69,7 +68,9 @@ export function CalendarLiveView({
   onSerie,
   onDetail,
   onLaunch,
-  onArm, armBusy = false, armDisabledReason,
+  onArm,
+  armBusy = false,
+  armDisabledReason,
 }: {
   schedule: CalendarSchedule;
   alerts: CalendarAlerts;
@@ -86,9 +87,9 @@ export function CalendarLiveView({
   onSerie?: (id: string) => void;
   onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
-  onArm?: (seriesId:string,startAt:number)=>void;
-  armBusy?:boolean;
-  armDisabledReason?:string;
+  onArm?: (seriesId: string, startAt: number) => void;
+  armBusy?: boolean;
+  armDisabledReason?: string;
 }) {
   const launchPendingId = useId();
   const [searchOpen, setSearchOpen] = useState(

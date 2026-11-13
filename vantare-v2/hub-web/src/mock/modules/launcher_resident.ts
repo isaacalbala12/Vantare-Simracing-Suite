@@ -12,7 +12,13 @@ export function create(context: MockContext): MockHandler {
     execution: null,
     registrations: [],
   };
-  if(context.sceneName === "calendar-launch-reference") view.execution={instance:"b".repeat(64),revisionCheckedLaunch:true,firstRetainedSeq:"1",events:[]};
+  if (context.sceneName === "calendar-launch-reference")
+    view.execution = {
+      instance: "b".repeat(64),
+      revisionCheckedLaunch: true,
+      firstRetainedSeq: "1",
+      events: [],
+    };
   if (context.sceneName === "launcher-decision") {
     view.running = true;
     view.decision = {

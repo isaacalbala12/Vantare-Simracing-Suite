@@ -494,3 +494,12 @@ it("gates noticeTest at the entry while General is off and re-enables it live", 
   expect(api.noticeAllowed).toHaveBeenLastCalledWith(true);
   expect(screen.getByText(text.sample)).toBeTruthy();
 });
+
+vi.mock("../src/renderer/screens/calendar/CalendarLaunch", () => ({
+  useCalendarLaunch: () => ({
+    view: undefined,
+    busy: false,
+    arm: vi.fn(),
+    cancel: vi.fn(),
+  }),
+}));

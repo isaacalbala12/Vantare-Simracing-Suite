@@ -1,4 +1,3 @@
-import { isCalendarLaunchArm, isCalendarLaunchCancel, isCalendarLaunchView } from "../calendar-launch-validation";
 import {
   duration,
   isCalendarRevision,
@@ -12,6 +11,11 @@ import {
   isCalendarConfig,
 } from "../calendar-config-validation";
 import { isCalendarHistory } from "../calendar-history-validation";
+import {
+  isCalendarLaunchArm,
+  isCalendarLaunchCancel,
+  isCalendarLaunchView,
+} from "../calendar-launch-validation";
 import { isCalendarNotice } from "../calendar-notice-validation";
 import {
   calendarDateLimit,
@@ -265,8 +269,14 @@ export function isRequest(v: Record<string, unknown>) {
   }
 }
 export function isReply(v: Record<string, unknown>) {
-  if (v.method === "calendar.launchArm") return exact(v,["method","value","config"]) && isCalendarLaunchView(v.value) && (v.config === null || isCalendarConfig(v.config));
-  if (v.method === "calendar.launchCancel") return exact(v,["method","value"]) && isCalendarLaunchView(v.value);
+  if (v.method === "calendar.launchArm")
+    return (
+      exact(v, ["method", "value", "config"]) &&
+      isCalendarLaunchView(v.value) &&
+      (v.config === null || isCalendarConfig(v.config))
+    );
+  if (v.method === "calendar.launchCancel")
+    return exact(v, ["method", "value"]) && isCalendarLaunchView(v.value);
   if (v.method === "calendar.noticeTest")
     return exact(v, ["method", "accepted"]) && typeof v.accepted === "boolean";
   if (v.method === "calendar.icsExport" || v.method === "calendar.icsReplace")
@@ -305,11 +315,13 @@ export const isError = (v: Record<string, unknown>) =>
       exact(v, ["kind", "current"]) &&
       isCalendarConfig(v.current);
 export const isEvent = (v: Record<string, unknown>) =>
-  v.topic === "calendarLaunch" ? exact(v,["topic","value"]) && isCalendarLaunchView(v.value) : v.topic === "calendarRefreshed"
-    ? exact(v, ["topic", "value", "error"]) &&
-      isCalendarView(v.value) &&
-      (v.error === null ||
-        calendarRefreshFailures.some((error) => error === v.error))
-    : v.topic === "calendarNotice" &&
-      exact(v, ["topic", "value"]) &&
-      isCalendarNotice(v.value);
+  v.topic === "calendarLaunch"
+    ? exact(v, ["topic", "value"]) && isCalendarLaunchView(v.value)
+    : v.topic === "calendarRefreshed"
+      ? exact(v, ["topic", "value", "error"]) &&
+        isCalendarView(v.value) &&
+        (v.error === null ||
+          calendarRefreshFailures.some((error) => error === v.error))
+      : v.topic === "calendarNotice" &&
+        exact(v, ["topic", "value"]) &&
+        isCalendarNotice(v.value);

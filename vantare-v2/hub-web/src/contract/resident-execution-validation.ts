@@ -64,7 +64,7 @@ function event(value: unknown): boolean {
   return (
     receipt.kind === "rejected" &&
     exact(receipt, ["kind", "reason"]) &&
-isResidentRejection(receipt.reason)
+    isResidentRejection(receipt.reason)
   );
 }
 export function isResidentExecution(value: unknown): boolean {
@@ -95,5 +95,14 @@ export function isResidentExecution(value: unknown): boolean {
 }
 
 export function isResidentRejection(value: unknown): boolean {
-  return oneOf(value, ["busy", "wrong-instance", "revision-mismatch", "document-unavailable", "account-changed", "authority-unavailable", "denied", "start-failed"]);
+  return oneOf(value, [
+    "busy",
+    "wrong-instance",
+    "revision-mismatch",
+    "document-unavailable",
+    "account-changed",
+    "authority-unavailable",
+    "denied",
+    "start-failed",
+  ]);
 }

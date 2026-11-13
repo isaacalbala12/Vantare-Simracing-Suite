@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import alerts from "../fixtures/calendar-alerts-reference.json";
 import type { CalendarAlerts } from "../src/contract/generated/calendar";
 import { calendarReference } from "../src/mock/calendar-reference";
-import { calendarText } from "../src/renderer/i18n/calendar";
+import { calendarLaunchText } from "../src/renderer/i18n/calendarLaunch";
 import {
   type CalendarLiveFilters,
   CalendarLiveView,
@@ -37,7 +37,7 @@ it("keeps the profile visible while launch and protected favorite writes are dis
   expect(
     document.getElementById(deferred.getAttribute("aria-describedby") ?? "")
       ?.textContent,
-  ).toBe(calendarText.launchPending);
+  ).toBe(calendarLaunchText.onlyOpen);
   expect(screen.getByText(/\d{2}:\d{2} WEC Weekly/)).toBeTruthy();
   const axis = document.querySelectorAll(".v-calendar-timeline-axis time");
   expect(axis.length).toBe(7);

@@ -7,8 +7,8 @@ import type {
 } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
-import { calendarLaunchText } from "../../i18n/calendarLaunch";
 import { calendarText as text } from "../../i18n/calendar";
+import { calendarLaunchText } from "../../i18n/calendarLaunch";
 import { useToastManager } from "../../ui/Layers";
 import { launcherKey, useLauncherSnapshot } from "../launcher/state";
 
@@ -52,7 +52,7 @@ export function useCalendarLauncher(allowed: boolean) {
   const [ready, setReady] = useState(false),
     [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
-  const [resident,setResident]=useState<ResidentView>();
+  const [resident, setResident] = useState<ResidentView>();
   const generation = useRef(0),
     pending = useRef(false),
     access = useRef(allowed);
@@ -65,20 +65,35 @@ export function useCalendarLauncher(allowed: boolean) {
     setFailure(undefined);
     setResident(undefined);
     if (!client || !allowed) return;
-    let residentUpdates=0;
+    let residentUpdates = 0;
     const off = client.listen((message) => {
       if (epoch !== generation.current || !access.current) return;
-      if(message.kind === "event" && message.event.topic === "launcherResident") {residentUpdates++;setResident(message.event.value);}
+      if (
+        message.kind === "event" &&
+        message.event.topic === "launcherResident"
+      ) {
+        residentUpdates++;
+        setResident(message.event.value);
+      }
       if (message.kind === "event" && message.event.topic === "launcher") {
         cache.setQueryData(launcherKey, message.event.value);
         setReady(true);
       }
     });
     const unsubscribe = client.subscribe("launcher");
-    const unsubscribeResident=client.subscribe("launcherResident");
-    void client.request({method:"launcher.resident.get"}).then((reply)=>{
-      if(epoch===generation.current&&access.current&&residentUpdates===0&&reply.method==="launcher.resident.get")setResident(reply.value);
-    }).catch(()=>{});
+    const unsubscribeResident = client.subscribe("launcherResident");
+    void client
+      .request({ method: "launcher.resident.get" })
+      .then((reply) => {
+        if (
+          epoch === generation.current &&
+          access.current &&
+          residentUpdates === 0 &&
+          reply.method === "launcher.resident.get"
+        )
+          setResident(reply.value);
+      })
+      .catch(() => {});
     void client
       .request({ method: "launcher.get" })
       .then((reply) => {
@@ -102,7 +117,7 @@ export function useCalendarLauncher(allowed: boolean) {
       unsubscribe();
       unsubscribeResident();
     };
-  }, [allowed, client, cache,core.accountGeneration]);
+  }, [allowed, client, cache]);
   // Same selection as frozen launcher/view.rs::default_profile: favorites, then name.
   const profile = defaultCalendarProfile(view?.profiles ?? []);
   const canLaunch = !!(
@@ -116,13 +131,24 @@ export function useCalendarLauncher(allowed: boolean) {
     !busy &&
     core.rights === "connected" &&
     core.accountGeneration &&
-    resident?.online && !resident.protected && !resident.running && resident.execution?.revisionCheckedLaunch &&
+    resident?.online &&
+    !resident.protected &&
+    !resident.running &&
+    resident.execution?.revisionCheckedLaunch &&
     core.access.verified &&
     !core.access.blocked &&
     !core.live
   );
   async function launch() {
-    if (!canLaunch || !client || !view || !profile || !core.accountGeneration || pending.current) return;
+    if (
+      !canLaunch ||
+      !client ||
+      !view ||
+      !profile ||
+      !core.accountGeneration ||
+      pending.current
+    )
+      return;
     const epoch = generation.current;
     pending.current = true;
     setBusy(true);
@@ -132,7 +158,7 @@ export function useCalendarLauncher(allowed: boolean) {
         method: "launcher.launchChecked",
         profile: profile.id,
         baseRevision: view.revision,
-        armedGeneration:core.accountGeneration,
+        armedGeneration: core.accountGeneration,
       });
       if (epoch !== generation.current || !access.current) return;
       if (reply.method !== "launcher.launchChecked")
@@ -156,8 +182,23 @@ export function useCalendarLauncher(allowed: boolean) {
   return {
     profile: ready ? profile : undefined,
     canLaunch,
-    disabledReason: canLaunch ? undefined : core.live ? calendarLaunchText.live : !core.accountGeneration ? calendarLaunchText.noGeneration : !resident?.execution?.revisionCheckedLaunch ? calendarLaunchText.noCapability : calendarLaunchText.unavailable,
-    capture:()=>canLaunch && profile && view && core.accountGeneration ? {profile:profile.id,baseRevision:view.revision,armedGeneration:core.accountGeneration}:undefined,
+    disabledReason: canLaunch
+      ? undefined
+      : core.live
+        ? calendarLaunchText.live
+        : !core.accountGeneration
+          ? calendarLaunchText.noGeneration
+          : !resident?.execution?.revisionCheckedLaunch
+            ? calendarLaunchText.noCapability
+            : calendarLaunchText.unavailable,
+    capture: () =>
+      canLaunch && profile && view && core.accountGeneration
+        ? {
+            profile: profile.id,
+            baseRevision: view.revision,
+            armedGeneration: core.accountGeneration,
+          }
+        : undefined,
     busy,
     failure,
     launch,

@@ -211,3 +211,16 @@ fn a_new_observed_account_cannot_answer_the_previous_accounts_question() {
     );
     assert!(!native::request_path(&f.path).exists());
 }
+
+#[test]
+fn failed_mailbox_write_returns_io_without_claiming_queued_or_replacing_existing_data() {
+    let mut f = fixture();
+    let mailbox = native::request_path(&f.path);
+    std::fs::create_dir(&mailbox).unwrap();
+    let sentinel = mailbox.join("keep");
+    std::fs::write(&sentinel, b"unchanged").unwrap();
+    f.save();
+    assert_eq!(answer(&f.path, Some(&observation()), &f.target), Err(HostError::Io));
+    assert!(mailbox.is_dir());
+    assert_eq!(std::fs::read(sentinel).unwrap(), b"unchanged");
+}

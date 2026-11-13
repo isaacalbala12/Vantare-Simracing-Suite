@@ -207,6 +207,7 @@ export async function checkDialogZoom(page: Page, base: string) {
             method === "launcher.resident.rehearse" ||
             method === "launcher.resident.retry" ||
             method === "launcher.resident.retry" ||
+            method === "launcher.profile.removeChecked" ||
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel",
         ).length,
@@ -471,6 +472,7 @@ async function checkIsolatedDialogs(
             method === "launcher.resident.rehearse" ||
             method === "launcher.resident.retry" ||
             method === "launcher.resident.retry" ||
+            method === "launcher.profile.removeChecked" ||
             method === "launcher.favorite",
         ).length,
     ),
@@ -505,6 +507,7 @@ async function checkIsolatedDialogs(
             method === "launcher.resident.rehearse" ||
             method === "launcher.resident.retry" ||
             method === "launcher.resident.retry" ||
+            method === "launcher.profile.removeChecked" ||
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel",
         ).length,
@@ -528,6 +531,7 @@ async function checkIsolatedDialogs(
             method === "launcher.resident.rehearse" ||
             method === "launcher.resident.retry" ||
             method === "launcher.resident.retry" ||
+            method === "launcher.profile.removeChecked" ||
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel",
         ).length,

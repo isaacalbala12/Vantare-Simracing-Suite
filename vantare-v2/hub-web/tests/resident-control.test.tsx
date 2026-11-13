@@ -51,6 +51,7 @@ function setup(running = false) {
     protected: false,
     running,
     error: false,
+    ownership: {kind: "unsupported"},
     registrations: [],
     decision: null,
     execution: {

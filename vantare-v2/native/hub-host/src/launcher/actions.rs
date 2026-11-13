@@ -55,11 +55,10 @@ fn edit(
     }
     apps::edit(path, revision, change)
 }
-pub fn remove(path: &Path, id: &str, revision: &str) -> Result<(), HostError> {
+/// Deletion requires the resident lease/handle check; legacy cannot bypass it.
+pub fn remove(_path: &Path, id: &str, _revision: &str) -> Result<(), HostError> {
     valid_id(id)?;
-    edit(path, revision, |document| {
-        document.remove_profile(id).map_err(|_| HostError::Denied)
-    })
+    Err(HostError::Unsupported)
 }
 pub fn duplicate(path: &Path, id: &str, revision: &str) -> Result<(), HostError> {
     edit(path, revision, |document| {
@@ -253,7 +252,8 @@ mod tests {
                 std::fs::write(&path, bytes).expect("fixture");
             }
             let revision = "0".repeat(64);
-            for result in [
+            assert_eq!(remove(&path, id, &revision), Err(HostError::Unsupported));
+        for result in [
                 remove(&path, "creator", &revision),
                 duplicate(&path, "creator", &revision),
                 favorite(&path, "creator", false, &revision),
@@ -362,8 +362,9 @@ mod tests {
             serde_json::to_vec(&status).unwrap(),
         )
         .unwrap();
+        assert_eq!(remove(&path, id, &revision), Err(HostError::Unsupported));
         for result in [
-            remove(&path, id, &revision),
+
             duplicate(&path, id, &revision),
             favorite(&path, id, false, &revision),
             option(&path, id, ProfileOption::Retries(3), &revision),
@@ -424,14 +425,9 @@ mod tests {
             Err(HostError::Denied)
         );
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
-        remove(
-            &path,
-            &document.profiles[0].id,
-            &vantare_services::content_hash(&bytes),
-        )
-        .unwrap();
+        assert_eq!(remove(&path, &document.profiles[0].id, &vantare_services::content_hash(&bytes)), Err(HostError::Unsupported));
         let after = Document::from_bytes(&std::fs::read(path).unwrap()).unwrap();
-        assert!(after.profiles.is_empty());
+        assert_eq!(after.profiles.len(), 1);
         assert!(after.lmu_trigger_profile.is_none());
     }
 }

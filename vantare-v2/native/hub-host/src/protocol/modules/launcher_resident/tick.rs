@@ -6,7 +6,7 @@ pub(super) fn tick(session: &mut Session, pipe: &mut Pipe) -> io::Result<()> {
     }
     if let Some(value) = session
         .launcher_resident_state
-        .changed(std::time::Instant::now())
+        .changed_for_account(std::time::Instant::now(), session.core.account_observation().as_ref())
     {
         frame::write(
             pipe,

@@ -9,7 +9,7 @@ use vantare_ipc::{
     control::{AccessState, Policy},
     launcher::{CancelChecked, RehearseChecked, execution::Capability},
 };
-pub(super) struct Fixture {
+pub(in super::super) struct Fixture {
     pub root: PathBuf,
     pub owner: Owner,
     pub account: AccountGeneration,
@@ -24,7 +24,7 @@ impl Drop for Fixture {
         let _ = fs::remove_dir_all(&self.root);
     }
 }
-pub(super) fn idle(steps: &[&str]) -> Fixture {
+pub(in super::super) fn idle(steps: &[&str]) -> Fixture {
     let root = std::env::temp_dir().join(format!(
         "resident-control-{}",
         vantare_services::random_id().expect("fixture id")
@@ -70,7 +70,7 @@ pub(super) fn idle(steps: &[&str]) -> Fixture {
         revision: vantare_services::content_hash(&bytes),
     }
 }
-pub(super) fn active() -> Fixture {
+pub(in super::super) fn active() -> Fixture {
     let mut f = idle(&["obs", "obs"]);
     f.owner = super::super::tests::failure_decision_owner(&f.root);
     let bytes = serde_json::to_vec(&f.owner.document).expect("snapshot bytes");
@@ -121,7 +121,7 @@ impl Fixture {
         }
     }
 }
-pub(super) fn observed() -> AccountObservation {
+pub(in super::super) fn observed() -> AccountObservation {
     AccountObservation {
         generation: "a".repeat(64).try_into().expect("account"),
         policy: Policy {
@@ -134,7 +134,7 @@ pub(super) fn observed() -> AccountObservation {
         },
     }
 }
-pub(super) fn receipt(owner: &Owner) -> OrderReceipt {
+pub(in super::super) fn receipt(owner: &Owner) -> OrderReceipt {
     match &owner
         .status
         .extension
@@ -150,7 +150,7 @@ pub(super) fn receipt(owner: &Owner) -> OrderReceipt {
     }
 }
 /// The timeout is a deadlock watchdog, not a timed scheduling assertion.
-pub(super) fn drain(receiver: &Receiver<launcher::chain::Progress>) {
+pub(in super::super) fn drain(receiver: &Receiver<launcher::chain::Progress>) {
     loop {
         match receiver.recv_timeout(Duration::from_secs(5)) {
             Ok(_) => {}
@@ -159,7 +159,7 @@ pub(super) fn drain(receiver: &Receiver<launcher::chain::Progress>) {
         }
     }
 }
-pub(super) fn terminal(owner: &mut Owner) {
+pub(in super::super) fn terminal(owner: &mut Owner) {
     let chain: &mut Chain = owner.chain.as_mut().expect("chain");
     drain(&chain.progress);
     chain.shutdown().expect("completed worker join");

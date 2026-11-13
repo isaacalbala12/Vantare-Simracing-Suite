@@ -26,6 +26,7 @@ mod answer;
 mod checked;
 mod control;
 mod results;
+mod ownership;
 
 pub struct Resident {
     stop: Arc<AtomicBool>,
@@ -125,6 +126,7 @@ impl Resident {
             extension
                 .capabilities
                 .push(vantare_ipc::launcher::execution::Capability::StepResultsRetry);
+            extension.capabilities.push(vantare_ipc::launcher::execution::Capability::LiveProfileOwnership);
         }
         let close_on_exit = Arc::clone(&owner.close_on_exit);
         let worker = thread::Builder::new()
@@ -301,6 +303,10 @@ impl Owner {
                 return;
             }
         };
+        self.install_document(bytes, document);
+    }
+
+    fn install_document(&mut self, bytes: Vec<u8>, document: Document) {
         self.clear_hotkeys();
         self.status.error = None;
         self.status.profiles.clear();
@@ -449,6 +455,7 @@ impl Owner {
             Ok(Request::CancelChecked(request)) => self.cancel_checked(request),
             Ok(Request::RehearseChecked(request)) => self.rehearse_checked(request),
             Ok(Request::RetryChecked(request)) => self.retry_checked(request),
+            Ok(Request::RemoveProfileChecked(request)) => self.remove_profile_checked(request),
             Ok(Request::Answer { decision, action }) => {
                 // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
                 // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.
@@ -572,6 +579,7 @@ impl Owner {
 
     fn publish(&mut self) {
         self.refresh_results();
+        self.refresh_ownership();
         if let Some(extension) = &mut self.status.extension {
             extension.results = if extension
                 .capabilities

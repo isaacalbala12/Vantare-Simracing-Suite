@@ -169,6 +169,8 @@ pub enum ResidentReceipt {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum ResidentEventKind {
+    RemovalReceived {request: String, receipt: super::ResidentRemovalReceipt},
+    RemovalFinished {request: String, outcome: super::ResidentRemovalOutcome},
     OrderReceived {
         request: String,
         receipt: ResidentOrderReceipt,
@@ -270,6 +272,8 @@ impl From<&native::ExecutionStatus> for ResidentExecution {
                             }
                         }
 
+                        native::EventKind::RemovalReceived{request,receipt}=>ResidentEventKind::RemovalReceived{request:request.clone().into(),receipt:receipt.into()},
+                        native::EventKind::RemovalFinished{request,outcome}=>ResidentEventKind::RemovalFinished{request:request.clone().into(),outcome:outcome.into()},
                         native::EventKind::Started { run } => {
                             ResidentEventKind::Started { run: (*run).into() }
                         }

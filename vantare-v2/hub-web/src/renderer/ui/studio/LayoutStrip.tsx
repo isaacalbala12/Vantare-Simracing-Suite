@@ -171,7 +171,6 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           data-empty={view?.state === "ready" && !view.instances.length}
           aria-label={t.add}
           data-add-widget
-          aria-label={t.add}
           disabled={
             blocked || (view?.instances.length ?? 0) >= studioLimits.instances
           }

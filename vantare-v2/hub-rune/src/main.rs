@@ -301,6 +301,15 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
 }
 
 fn setup(state: &mut State, waker: rune::Waker) {
+    #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+    {
+        state.home_assets = Some(if state.now_override.is_some() {
+            home_view::Assets::ready_for_capture(waker.clone(), &state.theme)
+        } else {
+            home_view::Assets::new(waker.clone(), &state.theme)
+        });
+    }
+    #[cfg(not(any(test, all(debug_assertions, target_os = "macos"))))]
     state.home_assets = Some(home_view::Assets::new(waker.clone(), &state.theme));
     if let Some(link) = &mut state.link {
         link.wake_with(waker);

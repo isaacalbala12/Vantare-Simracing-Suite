@@ -14,6 +14,28 @@ pub struct Assets {
     images: BTreeMap<String, Image>,
 }
 impl Assets {
+    #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+    pub fn ready_for_capture(waker: rune::Waker, theme: &Theme) -> Self {
+        let (ready, decoded) = std::sync::mpsc::channel();
+        let assets = Self::new(
+            std::sync::Arc::new(move || {
+                let _ = ready.send(());
+                waker();
+            }),
+            theme,
+        );
+        // Headless frames advance virtual time faster than SVG decoders run.
+        // Each waker follows publication of both the decode and its Pixels.
+        for _ in 0..assets.images.len() {
+            decoded
+                .recv_timeout(std::time::Duration::from_secs(30))
+                .expect("capture image worker did not finish");
+        }
+        for image in assets.images.values() {
+            image.wait().expect("capture image could not be decoded");
+        }
+        assets
+    }
     pub fn new(waker: rune::Waker, theme: &Theme) -> Self {
         let mut assets = Self {
             cache: ImageCache::new(waker),
@@ -1033,6 +1055,46 @@ mod tests {
             );
             assert_ne!(left, right, "{scheme}: gradient must vary across the hero");
         }
+    }
+    #[test]
+    fn capture_setup_draws_the_red_hero_image_on_the_first_frame() {
+        let mut state = crate::init();
+        crate::capture_preset(&mut state, "home-dark").unwrap();
+        state.home.value = Some(
+            serde_json::from_value(catalog()["home"]["scenes"]["inicio-base"].clone()).unwrap(),
+        );
+        crate::setup(&mut state, std::sync::Arc::new(|| {}));
+        let mut rt = rune::Runtime::new(
+            state,
+            crate::view,
+            (1440.0, 900.0),
+            rune::Env::new(true, 1.0),
+        );
+        rt.frame(0.0);
+        let hero = rt
+            .elements()
+            .into_iter()
+            .find(|e| e.key.as_deref() == Some("home-hero"))
+            .unwrap()
+            .rect;
+        let image = rt
+            .instances
+            .iter()
+            .find(|i| {
+                (i.rect[0] - hero[0]).abs() < 1.0
+                    && (i.rect[1] - hero[1]).abs() < 1.0
+                    && i.uv[2] > 500.0
+            })
+            .expect("hero image must reach the draw list");
+        let page = &rt.images.pages[image.params[0] as usize];
+        let x = image.uv[0] as u32 + 30;
+        let y = image.uv[1] as u32 + 118;
+        let offset = ((y * page.width + x) * 4) as usize;
+        let rgba = &page.data[offset..offset + 4];
+        assert!(
+            u16::from(rgba[0]) > u16::from(rgba[1]) + 30,
+            "hero image in draw list must be red"
+        );
     }
     #[test]
     fn inicio_base_composer_matches_electron_geometry_in_both_schemes_at_three_scales() {

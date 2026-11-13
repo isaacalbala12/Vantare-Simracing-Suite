@@ -64,12 +64,18 @@ export async function assertQuestionnaireUsesFreeHeight(page: Page) {
   const root = page.locator(".v-testing-questionnaires");
   const list = await root.locator(":scope > section").first().boundingBox();
   const form = await root.locator(":scope > section").last().boundingBox();
-  const viewportHeight = await page.evaluate(() => innerHeight);
+  const footer = await page
+    .locator(".v-shell-main")
+    .evaluate(
+      (node) =>
+        node.getBoundingClientRect().bottom -
+        Number.parseFloat(getComputedStyle(node).paddingBottom),
+    );
   if (
     !list ||
     !form ||
     list.height < 200 ||
-    Math.abs(form.y + form.height - (viewportHeight - 18)) > 2
+    Math.abs(form.y + form.height - footer) > 2
   )
     throw new Error(
       "Questionnaire list lost free height or answer form left the footer",

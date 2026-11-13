@@ -2,7 +2,6 @@
 import argparse
 import csv
 import json
-import math
 import statistics
 from collections import defaultdict
 from pathlib import Path
@@ -40,9 +39,9 @@ def memory_drift(rows, frequency, start, end, root_pid):
         raise ValueError("Ventanas estables incompletas")
     initial, final = statistics.median(first), statistics.median(last)
     signed = final / initial - 1
-    return {"memory_drift_fraction": max(0, signed), "signed_memory_drift_fraction": signed,
+    return {"memory_drift_fraction": abs(signed), "signed_memory_drift_fraction": signed,
             "initial_private_bytes": initial, "final_private_bytes": final,
-            "method": "mediana familiar minutos 10–20 frente a últimos 10 minutos; crecimiento sobre base"}
+            "method": "mediana familiar minutos 10–20 frente a últimos 10 minutos; variación absoluta sobre base"}
 
 
 def summarize(folder):

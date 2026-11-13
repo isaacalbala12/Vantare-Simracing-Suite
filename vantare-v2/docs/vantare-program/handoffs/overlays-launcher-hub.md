@@ -1,3 +1,13 @@
+## VANTA-141 / #2213 — aguante: recuperar un reinicio (13/11/2026)
+
+Pieza 10/PR #2261: checkpoint antes de iniciar la gráfica, recuperación de
+incidentes/minidumps como ejecución incompleta y preservación de bugchecks
+sin depender de que sobrevivieran los CSV. Variación de memoria absoluta;
+se conserva su signo, sin convertir descensos en cero. Mutex común con
+campañas/recogida. Guardado sin sobrescritura corregido a Out-File.
+Tres pruebas Python y sintaxis/contrato de parámetros PASS, sin gráfica.
+Ejecución física cuatro horas/monitor/resolución sigue pendiente PC de juego.
+No hay merge, release ni veredicto de adopción. Kit aún no terminado.
 ## VANTA-141 / #2213 — pieza 10 preparada, ejecución pendiente (13/11/2026)
 
 Worker F: guion de aguante cuatro horas, una ventana con diez Relative por motor.

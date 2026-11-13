@@ -10,6 +10,8 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'PROCESOS.ps1')
 . (Join-Path $PSScriptRoot 'PREPARAR.ps1')
 Assert-VantareGamePc
+$campaignLease=Enter-VantareCampaignLease
+try {
 $kit=Read-VantareKit $PSScriptRoot
 $crashControl=Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Control\CrashControl'
 if ($crashControl.CrashDumpEnabled -ne 3) { throw 'Activar antes Volcado de memoria pequeño en Windows. No se cambia la configuración desde el kit.' }
@@ -27,12 +29,14 @@ $pipe='vantare141-aguante-'+[guid]::NewGuid().ToString('N')
 $core=$null; $ui=$null; $sampler=$null; $hidden=$false
 $startUtc=[DateTime]::UtcNow
 $initialDisplay=@(Get-CimInstance Win32_VideoController | Select-Object Name,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate)
-$initialDisplay | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $out 'pantallas-iniciales.json') -NoClobber
+$initialDisplay | ConvertTo-Json -Depth 4 | Out-File -Width 2147483647 (Join-Path $out 'pantallas-iniciales.json') -NoClobber
 $run=[ordered]@{schema=1;variant=$Variant;binary_sha256=$binary.sha256;manifest_sha256=$kit.ManifestSha256
  duration_s=0;crashes=0;bugchecks=0;finished=$false;monitor_sleep_resume=$false;hide_show=$false
  resolution_change=$false;minidump_enabled=$true;frequency=[Diagnostics.Stopwatch]::Frequency
- start_qpc=0;end_qpc=0;root_process_id=0;replay_cycles=0;cpu_temperature='no_disponible'}
+ start_qpc=0;end_qpc=0;root_process_id=0;replay_cycles=0;cpu_temperature='no_disponible';started_utc=$startUtc.ToString('o')}
 $events=[Collections.Generic.List[object]]::new()
+$checkpoint=Join-Path $out 'ejecucion-inicial.json'
+$run | ConvertTo-Json -Depth 6 | Out-File -Width 2147483647 $checkpoint -NoClobber -Encoding utf8
 try {
  Add-Type -Path (Join-Path $PSScriptRoot 'VENTANAS.cs') -CompilerOptions @('/optimize+','/debug-')
  $core=Start-VantareChild -Binary $coreBinary.path -Arguments @('--replay',$corpus,'--pipe',$pipe) -LogPrefix (Join-Path $out 'nucleo-000') -Variables @{
@@ -51,7 +55,7 @@ try {
   Start-Sleep -Milliseconds 100
  } while ($true)
  $window=$windows[0]
- $window | ConvertTo-Json | Set-Content (Join-Path $out 'ventana.json') -NoClobber
+ $window | ConvertTo-Json | Out-File -Width 2147483647 (Join-Path $out 'ventana.json') -NoClobber
  $sampler=Start-VantareChild -Binary $pwsh -Arguments @('-NoProfile','-File',(Join-Path $PSScriptRoot 'muestreador/MUESTREAR.ps1'),'-RootProcessId',[string]$ui.Process.Id,'-PresentMon',$presentmon,'-OutputDirectory',(Join-Path $out 'muestreo'),'-Seconds','14400','-Aguante') -LogPrefix (Join-Path $out 'muestreador')
  $deadline=[DateTime]::UtcNow.AddSeconds(30)
  $capture=Join-Path $out 'muestreo/CAPTURA-LISTA.json'
@@ -60,6 +64,9 @@ try {
   Start-Sleep -Milliseconds 100
  }
  $run.start_qpc=(Get-Content $capture -Raw | ConvertFrom-Json).qpc
+ $checkpointTemp=$checkpoint+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
+ $run | ConvertTo-Json -Depth 6 | Out-File -Width 2147483647 $checkpointTemp -NoClobber -Encoding utf8
+ [IO.File]::Move($checkpointTemp,$checkpoint,$true)
  Write-Host 'Aguante de 4 h. H: ocultar/mostrar la capa (dos veces).'
  Write-Host 'Tras apagar físicamente el monitor y volver: M. Tras cambiar resolución y restaurarla: R.'
  Write-Host 'M y R son confirmaciones de lo que has observado. Q cancela conservando los datos.'
@@ -111,13 +118,13 @@ try {
  }
  try {
   $systemEvents=@(Get-WinEvent -FilterHashtable @{LogName='System';StartTime=$startUtc;Id=@(41,1001)} -ErrorAction Stop | Select-Object Id,ProviderName,TimeCreated,RecordId)
-  $systemEvents | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $out 'incidentes-sistema.json') -NoClobber
+  $systemEvents | ConvertTo-Json -Depth 4 | Out-File -Width 2147483647 (Join-Path $out 'incidentes-sistema.json') -NoClobber
   $run.bugchecks=@($systemEvents | Where-Object { $_.Id -eq 41 -or $_.ProviderName -match 'WER-SystemErrorReporting|BugCheck' }).Count
  } catch {
   if ($_.FullyQualifiedErrorId -notlike 'NoMatchingEventsFound*') { $run.finished=$false; $run.eventlog_error=$_.Exception.Message }
  }
- $events.ToArray() | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $out 'acciones.json') -NoClobber
- Get-ChildItem -LiteralPath (Join-Path $env:SystemRoot 'Minidump') -File -ErrorAction SilentlyContinue | Where-Object LastWriteTimeUtc -ge $startUtc | Select-Object Name,Length,LastWriteTimeUtc | ConvertTo-Json | Set-Content (Join-Path $out 'volcados-metadatos.json') -NoClobber
+ $events.ToArray() | ConvertTo-Json -Depth 4 | Out-File -Width 2147483647 (Join-Path $out 'acciones.json') -NoClobber
+ Get-ChildItem -LiteralPath (Join-Path $env:SystemRoot 'Minidump') -File -ErrorAction SilentlyContinue | Where-Object LastWriteTimeUtc -ge $startUtc | Select-Object Name,Length,LastWriteTimeUtc | ConvertTo-Json | Out-File -Width 2147483647 (Join-Path $out 'volcados-metadatos.json') -NoClobber
  if (Test-Path -LiteralPath (Join-Path $out 'muestreo/completo.json')) {
   try {
    . (Join-Path $PSScriptRoot 'muestreador/TERMICA.ps1')
@@ -126,12 +133,14 @@ try {
    $thermal | Add-Member -NotePropertyName source_sha256 -NotePropertyValue @{
     'contadores.csv'=(Get-FileHash (Join-Path $out 'muestreo/contadores.csv')).Hash.ToLowerInvariant()
     'temperaturas.csv'=(Get-FileHash (Join-Path $out 'muestreo/temperaturas.csv')).Hash.ToLowerInvariant()}
-   $thermal | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $out 'termica.json') -NoClobber
+   $thermal | ConvertTo-Json -Depth 8 | Out-File -Width 2147483647 (Join-Path $out 'termica.json') -NoClobber
    if (-not $thermal.valid) { $run.finished=$false; $run.thermal_error='Limitación CPU o temperatura GPU' }
   } catch { $run.finished=$false; $run.thermal_error=$_.Exception.Message }
  }
- $run | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $out 'ejecucion.json') -NoClobber -Encoding utf8
+ $run | ConvertTo-Json -Depth 6 | Out-File -Width 2147483647 (Join-Path $out 'ejecucion.json') -NoClobber -Encoding utf8
  $lock.Dispose(); Remove-Item -LiteralPath (Join-Path $out 'EN-CURSO.lock')
 }
 if (-not $run.finished) { throw 'Aguante incompleto: consultar ejecucion.json; no cuenta como aprobado.' }
 Write-Host 'Terminó la ejecución. Conserva esta carpeta completa para el análisis en servidor.'
+
+} finally { Exit-VantareCampaignLease $campaignLease }

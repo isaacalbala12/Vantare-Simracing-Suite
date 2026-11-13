@@ -138,23 +138,25 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                 </IconButton>
               </div>
             ))}
-        {view && !items.length && (
-          <p
-            className={
-              view.state === "ready" && !view.instances.length
-                ? "v-focus-empty-list"
-                : undefined
-            }
-          >
-            {view.instances.length
-              ? model.filter === "hidden"
-                ? t.noHidden
-                : t.noVisible
-              : view.state === "ready"
-                ? t.emptyList
-                : t.readOnly}
-          </p>
-        )}
+        {view &&
+          !items.length &&
+          (view.state === "ready" || view.instances.length > 0) && (
+            <p
+              className={
+                view.state === "ready" && !view.instances.length
+                  ? "v-focus-empty-list"
+                  : undefined
+              }
+            >
+              {view.instances.length
+                ? model.filter === "hidden"
+                  ? t.noHidden
+                  : t.noVisible
+                : view.state === "ready"
+                  ? t.emptyList
+                  : t.readOnly}
+            </p>
+          )}
       </section>
       <Tooltip
         label={

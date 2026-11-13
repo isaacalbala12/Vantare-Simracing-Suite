@@ -174,6 +174,11 @@ describe("Studio A honest states", () => {
       } else {
         expect(screen.queryByText(t.overlaysCount(0))).toBeNull();
         expect(
+          within(
+            screen.getByRole("complementary", { name: t.layoutLabel }),
+          ).queryByText(t.empty),
+        ).toBeNull();
+        expect(
           screen.queryAllByRole("button", { name: /^Standings, / }),
         ).toHaveLength(0);
       }

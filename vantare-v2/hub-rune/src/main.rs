@@ -5,6 +5,7 @@ mod client;
 mod design;
 mod home;
 mod home_assets;
+mod home_chrome;
 mod home_view;
 mod host;
 mod icons;
@@ -28,6 +29,12 @@ struct State {
     roadmap: roadmap::Roadmap,
     home: home::Home,
     home_assets: Option<home_view::Assets>,
+    display_name: String,
+    now_override: Option<chrono::NaiveDateTime>,
+    clock_minute: i64,
+    commands_open: bool,
+    command_query: rune::TextEdit,
+    activity_open: bool,
 }
 fn init() -> State {
     State {
@@ -43,6 +50,12 @@ fn init() -> State {
         roadmap: Default::default(),
         home: Default::default(),
         home_assets: None,
+        display_name: String::new(),
+        now_override: None,
+        clock_minute: chrono::Local::now().timestamp() / 60,
+        commands_open: false,
+        command_query: Default::default(),
+        activity_open: false,
     }
 }
 fn toggle(state: &mut State) {
@@ -79,6 +92,19 @@ fn capture_preset(state: &mut State, preset: &str) -> Result<(), &'static str> {
         "roadmap-season" => ("roadmap", true, "season"),
         _ => return Err("unknown capture screen"),
     };
+    state.now_override = Some(
+        chrono::DateTime::parse_from_rfc3339(
+            catalog()["home"]["captureTime"]
+                .as_str()
+                .expect("shared capture clock"),
+        )
+        .unwrap()
+        .naive_local(),
+    );
+    state.display_name = catalog()["home"]["demoIdentity"]["name"]
+        .as_str()
+        .unwrap()
+        .to_owned();
     state.section = section.into();
     state.collapsed = collapsed;
     state.roadmap.tab = tab;
@@ -175,6 +201,26 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
         "v-side",
         |s: &mut State| s.collapsed = !s.collapsed,
     ));
+    sidebar = sidebar.child(
+        row().w_full().center().h(36.0).child(
+            row()
+                .key("account-avatar")
+                .size(32.0, 32.0)
+                .center()
+                .radius(16.0)
+                .fill(theme.color("surface-2"))
+                .role("img")
+                .label(if state.display_name.is_empty() {
+                    text("commands.account")
+                } else {
+                    &state.display_name
+                })
+                .child(
+                    label(theme, home_chrome::initials(&state.display_name))
+                        .font(design::body_style(12.0, 500.0)),
+                ),
+        ),
+    );
     let core_warning = if state.core.services != vantare_hub_host::protocol::LinkState::Connected {
         row()
             .key("core-warning")
@@ -238,13 +284,20 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
             .grow(1.0)
             .child(label(theme, title(state)))
     };
-    row()
+    let mut root = row()
         .key("hub")
         .w_full()
         .h_full()
         .fill(theme.color("bg-window"))
         .child(sidebar)
-        .child(body.child(content))
+        .child(body.child(content));
+    if state.commands_open {
+        root = root.child(home_chrome::commands(state));
+    }
+    if state.activity_open {
+        root = root.child(home_chrome::activity(state));
+    }
+    root
 }
 
 fn setup(state: &mut State, waker: rune::Waker) {
@@ -377,7 +430,13 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
                 .and_then(|v| v.sim.track.as_deref()),
         );
     }
-    let previous_launch_failure = state.home.launch_failed;
+    if state.section == "home" && state.now_override.is_none() {
+        let minute = chrono::Local::now().timestamp() / 60;
+        changed |= minute != state.clock_minute;
+        state.clock_minute = minute;
+        tx.wake_at(now + 60.0);
+    }
+    let previous_launch_failure = state.home.launch_problem;
     if let Some(message) = state.home.next_launch(now, &state.core) {
         if let vantare_hub_host::protocol::UiToHost::Request { id, .. } = &message {
             let id = *id;
@@ -392,7 +451,7 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
         changed = true;
         tx.wake_at(now);
     }
-    changed |= previous_launch_failure != state.home.launch_failed;
+    changed |= previous_launch_failure != state.home.launch_problem;
     let previous_failure = state.home.failed;
     for message in state.home.next(now, state.section == "home") {
         let id = match &message {
@@ -446,11 +505,15 @@ fn start() -> std::io::Result<()> {
         version,
         theme,
         window,
-        ..
+        demo,
+        demo_name,
     } = hello
     {
         if version != vantare_hub_host::protocol::VERSION {
             return Err(std::io::ErrorKind::InvalidData.into());
+        }
+        if demo {
+            state.display_name = demo_name.unwrap_or_default();
         }
         let palette = serde_json::to_value(theme.palette)?;
         let scheme = serde_json::to_value(theme.scheme)?;
@@ -497,6 +560,7 @@ fn start() -> std::io::Result<()> {
     ];
     spec.setup = Some(setup);
     spec.poll = Some(poll);
+    spec.on_key = Some(home_chrome::shortcuts);
     let app = rune::App::new(spec)
         .args(arguments)
         // Rune hides the window on X; retain its process until the host handshake completes.
@@ -529,6 +593,132 @@ fn main() -> std::process::ExitCode {
 mod tests {
     use super::*;
     use rune::{Env, Runtime};
+    #[test]
+    #[cfg(debug_assertions)]
+    fn home_shortcuts_open_an_editable_focus_trap_and_launch_only_once() {
+        use vantare_hub_host::protocol::{Request, UiToHost};
+        let (mut link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("inicio-base".into())).unwrap();
+        link.send(UiToHost::Request {
+            id: 1,
+            request: Request::CoreGet {},
+        })
+        .unwrap();
+        let mut state = init();
+        state.link = Some(link);
+        let mut rt = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        rt.poll = Some(poll);
+        rt.on_key = Some(home_chrome::shortcuts);
+        for _ in 0..4 {
+            rt.frame(0.0);
+        }
+        let ctrl = rune::Mods {
+            ctrl: true,
+            cmd: true,
+            ..Default::default()
+        };
+        rt.key(rune::KeyEvent {
+            key: rune::Key::Text("k".into()),
+            mods: ctrl,
+        });
+        rt.frame(0.0);
+        assert!(rt.state.commands_open);
+        assert!(
+            rt.elements()
+                .iter()
+                .any(|e| e.key.as_deref() == Some("commands-query") && e.focused)
+        );
+        rt.paste("María Ñúñez @ €");
+        rt.frame(0.0);
+        assert_eq!(rt.state.command_query.text, "María Ñúñez @ €");
+        for _ in 0..5 {
+            rt.key(rune::KeyEvent {
+                key: rune::Key::Tab,
+                mods: Default::default(),
+            });
+            rt.frame(0.0);
+            assert!(
+                rt.elements()
+                    .iter()
+                    .filter(|e| e.focused)
+                    .all(|e| matches!(e.key.as_deref(), Some("commands-query" | "commands-close")))
+            );
+        }
+        rt.key(rune::KeyEvent {
+            key: rune::Key::Escape,
+            mods: Default::default(),
+        });
+        rt.frame(0.0);
+        assert!(!rt.state.commands_open);
+        rt.key(rune::KeyEvent {
+            key: rune::Key::Text("l".into()),
+            mods: ctrl,
+        });
+        rt.repeat_key(rune::KeyEvent {
+            key: rune::Key::Text("l".into()),
+            mods: ctrl,
+        });
+        for _ in 0..4 {
+            rt.frame(0.0);
+        }
+        let Some(host::Link::Scene(scene)) = &rt.state.link else {
+            unreachable!()
+        };
+        assert!(
+            matches!(scene.launches.as_slice(), [Request::LauncherLaunch { profile, .. }] if profile == "carrera-lmu")
+        );
+        rt.update(|s, _| {
+            s.home.launch_problem = Some(home::LaunchProblem::Uncertain {
+                read_from: u32::MAX,
+            })
+        });
+        rt.key(rune::KeyEvent {
+            key: rune::Key::Text("l".into()),
+            mods: ctrl,
+        });
+        rt.frame(0.0);
+        let Some(host::Link::Scene(scene)) = &rt.state.link else {
+            unreachable!()
+        };
+        assert_eq!(
+            scene.launches.len(),
+            1,
+            "Ctrl L cannot retry an uncertain launch"
+        );
+        assert!(
+            rt.elements()
+                .iter()
+                .any(|e| e.text.as_deref() == Some(text("home.launchUncertain")))
+        );
+        assert!(
+            rt.elements()
+                .iter()
+                .any(|e| e.key.as_deref() == Some("home-launch-favorite") && !e.focusable)
+        );
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    fn home_all_activity_opens_a_named_keyboard_dismissible_panel() {
+        let mut state = init();
+        state.home.value = Some(
+            serde_json::from_value(catalog()["home"]["scenes"]["inicio-base"].clone()).unwrap(),
+        );
+        let mut rt = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        rt.frame(0.0);
+        let (x, y) = rt.find("home-activity-all").unwrap();
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.frame(0.0);
+        assert!(rt.state.activity_open);
+        assert!(rt.find("home-activity-panel").is_some());
+        rt.key(rune::KeyEvent {
+            key: rune::Key::Escape,
+            mods: Default::default(),
+        });
+        rt.frame(0.0);
+        assert!(!rt.state.activity_open);
+    }
     #[test]
     fn collapsed_rail_has_no_clipped_text_toggle_and_header_stays_above_content() {
         for scale in [1.0, 1.25, 1.5] {
@@ -629,7 +819,7 @@ mod tests {
         assert!(
             matches!(scene.launches.as_slice(), [Request::LauncherLaunch { profile, .. }] if profile == "carrera-lmu")
         );
-        assert!(!rt.state.home.launch_failed);
+        assert!(rt.state.home.launch_problem.is_none());
         rt.update(|s, _| {
             s.home.selected = "entreno-rapido".into();
             s.home.queue_launch(&s.core, false);

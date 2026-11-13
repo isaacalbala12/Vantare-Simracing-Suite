@@ -9,11 +9,15 @@ import {
 } from "../src/contract/generated/home.ts";
 import { homeScene } from "../src/mock/home-scene.ts";
 import { sectionIds } from "../src/renderer/app/sections.ts";
+import { commandsText } from "../src/renderer/i18n/commands.es.ts";
 import { es, settingsText } from "../src/renderer/i18n/es.ts";
 import { homeText } from "../src/renderer/i18n/home.ts";
 import { roadmap } from "../src/renderer/i18n/roadmap.ts";
 import { shellText } from "../src/renderer/i18n/shell.es.ts";
+import { greeting } from "../src/renderer/ui/home/model.ts";
+import { initials } from "../src/renderer/ui/initials.ts";
 
+process.env.TZ = "UTC";
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const navigation = [
   ...read("../src/renderer/app/navigation.ts").matchAll(
@@ -40,14 +44,37 @@ for (const [namespace, values] of Object.entries({
   settings: settingsText,
   roadmap,
   home: homeText,
+  commands: commandsText,
 })) {
   for (const [key, value] of Object.entries(values))
     if (typeof value === "string") strings[`${namespace}.${key}`] = value;
 }
 const sentinel = "__VANTARE_NAME__";
+const countMarker = "__VANTARE_COUNT__";
 const catalog = {
   strings,
   home: {
+    demoIdentity: JSON.parse(read("../fixtures/demo-identity.json")),
+    captureTime: read("./visual-diff/home.ts").match(
+      /time: new Date\("([^"\n]+)"\)/,
+    )?.[1],
+    greetings: [8, 16, 22].map((hour) =>
+      greeting(sentinel, new Date(Date.UTC(2026, 8, 30, hour))),
+    ),
+    greetingCases: ["", "Isaac", "María Ñúñez"].flatMap((name) =>
+      [0, 11, 12, 19, 20, 23].map((hour) => ({
+        name,
+        hour,
+        output: greeting(
+          name.split(/\s+/)[0] ?? "",
+          new Date(Date.UTC(2026, 8, 30, hour)),
+        ),
+      })),
+    ),
+    initialsCases: ["", "Isaac Albalá", "María Ñúñez"].map((name) => ({
+      name,
+      output: initials(name),
+    })),
     tracks: JSON.parse(read("../src/renderer/assets/tracks/tracks.json")),
     trackAliases: [
       ...read("../src/renderer/ui/home/Circuit.tsx").matchAll(
@@ -59,10 +86,10 @@ const catalog = {
     templates: homeText.templateNames,
     howSteps: homeText.howSteps,
     launch: homeText.launch(sentinel),
-    steps: homeText.steps(917),
+    steps: homeText.steps(countMarker),
     lastLaunch: homeText.lastLaunch(sentinel),
     last: homeText.last(sentinel),
-    plus: homeText.plus(917),
+    plus: homeText.plus(countMarker),
     scenes: Object.fromEntries(
       [
         "inicio-base",

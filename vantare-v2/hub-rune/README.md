@@ -136,14 +136,19 @@ Las ilustraciones se decodifican por CPU; ninguna prueba crea una ventana o GPU.
 
 El selector y el favorito lanzan con launcher.launch { profile, baseRevision },
 igual que Electron. Un doble clic no duplica peticiones. Se comprueban acceso,
-protegido, live y progreso al pulsar y al enviar. Un rechazo, Failure o plazo de
-45 s muestra el error y refresca Inicio, sin repetir el lanzamiento. Se conserva
+protegido, live y progreso al pulsar y al enviar. Un rechazo o Failure muestra el error. Sin respuesta tras 45 s, el lanzamiento
+queda incierto: botones y Ctrl L permanecen bloqueados hasta que una publicación
+Home o una lectura nueva informe Running o Idle. Actualizar estado solo consulta;
+no reintenta el lanzamiento. Una lectura pendiente anterior no certifica Idle. Se conserva
 el perfil/revisión pulsados y se rechaza enviar si cambian antes del despacho.
 El anfitrión conserva la ejecución y las comprobaciones definitivas.
 
 Circuito/alias compartidos, solo un circuito decodificado, plantillas en parejas,
-panel adaptable y hero de 200/236/300 px según altura. Paleta/atajos, nombre/fecha
-y avisos siguen pendientes. La fidelidad visual requiere capturas del Mac y
+panel adaptable y hero de 200/236/300 px según altura. El saludo y la fecha usan
+los casos compartidos de Electron. Ctrl K abre una búsqueda con foco modal y
+Ctrl L lanza el favorito con las mismas restricciones. VER TODO abre la actividad
+disponible en Inicio. Detener sigue deshabilitado con el mismo motivo que Electron.
+Los avisos del siguiente corte siguen pendientes. La fidelidad visual requiere capturas del Mac y
 aprobación; no se da por verificada con los tests de Runtime.
 
 
@@ -199,6 +204,13 @@ aplicación en primer plano sin cambio. SIGTERM del controlador no continúa la 
 
 Evidencia de #2297: 66 comparativas por fase, claro/oscuro y 100/125/150 %,
 con originales y hashes en evidence/hub-rune/corte1 del servidor. Se publican
-seis ejemplos y el registro en [CORTE-1](CORTE-1.md). El target propio del Mac
+las rutas del informe y del registro en [CORTE-1](CORTE-1.md), sin PNG en Git. El target propio del Mac
 se retiró al terminar; el binario debug quedó conservado en ~/orq para una
 revisión coordinada. Nuevas compilaciones necesitan volver a crear el target.
+
+
+Excepción acotada de ADR 0108: se extrae la función pura del mock de Inicio de
+`hub-web/src/mock/modules/home.ts` a `src/mock/home-scene.ts`, compartida por el
+mock Electron y el generador del catálogo Rune. Conserva los datos y el contrato
+del anfitrión; evita dos fuentes de escenas. No cambia el producto Electron ni
+hub-host. La revisión del PR declara esta excepción expresamente.

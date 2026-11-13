@@ -16,8 +16,7 @@ corrige el marco e Inicio; la nueva aprobación visual sigue pendiente.
 
 Código capturado: `f980b5355ed82ec17a620cf7b13eeeda30cb0e5b`.
 Antes y referencia Electron QA: `5e1c70241ccf57378041dc2dcceabacff2bc9447`.
-[Registro verificable](evidence/fidelidad/validation.json): hashes, escalas, checks,
-prueba manual, comportamiento en segundo plano y limpieza.
+Registro anterior extraído del repositorio a `D:/VantareServer/evidence/hub-rune/review-2297-r2/previous-repo-evidence/validation.json`. Las imágenes y registros pertenecen al servidor, no a Git.
 
 66 celdas por cliente: marco expandido/contraído, Roadmap publicado/vacío/error
 e Inicio en seis estados, en claro/oscuro y a 100/125/150 %. Viewport lógico
@@ -27,35 +26,15 @@ e Inicio en seis estados, en claro/oscuro y a 100/125/150 %. Viewport lógico
 Informe completo: `D:/VantareServer/evidence/hub-rune/corte1/index.html`.
 Originales y manifiestos: `before/`, `after/`, `electron/`; comparativas:
 `comparisons-before/` y `comparisons-after/`. Electron va a la izquierda y Rune
-a la derecha. Estos ejemplos a 100 % permiten revisar el PR desde GitHub:
+a la derecha. Los seis ejemplos antes versionados se conservan en
+`D:/VantareServer/evidence/hub-rune/review-2297-r2/previous-repo-evidence/`.
 
-### Inicio oscuro · antes
-
-![Electron izquierda y Rune antes derecha](evidence/fidelidad/inicio-oscuro-antes.png)
-
-### Inicio oscuro · después
-
-![Electron izquierda y Rune después derecha](evidence/fidelidad/inicio-oscuro-despues.png)
-
-### Inicio claro · después
-
-![Inicio claro](evidence/fidelidad/inicio-claro-despues.png)
-
-### Marco expandido
-
-![Marco expandido oscuro](evidence/fidelidad/marco-expandido-oscuro.png)
-
-### Roadmap
-
-![Roadmap oscuro](evidence/fidelidad/roadmap-oscuro.png)
-
-![Roadmap claro](evidence/fidelidad/roadmap-claro.png)
-
-Se corrigieron raíl, cabecera, iconos, aviso del núcleo, tipografía/pesos,
-fechas locales, estados laterales y leyendas de plantillas. Los tests comprueban
-las fuentes efectivamente seleccionadas y que el aviso no desplaza Inicio ni
-las leyendas invaden otras tarjetas. Saludo/nombre, paleta/atajos y avisos del
-siguiente corte siguen pendientes; no se declara paridad completa.
+Revisión 2 de #2297: saludo y fecha desde Electron, búsqueda y Ctrl K / Ctrl L,
+widgets en píldoras, VER TODO y badges Launcher, Editar overlay blanco / Detener,
+avatar y Studio al final del raíl y badges de estado con color. La fecha de la
+referencia congelada de Electron es **30/09**, no 30/90. Capturas nuevas pendientes
+en `D:/VantareServer/evidence/hub-rune/review-2297-r2/`; los resultados anteriores
+no se atribuyen al código nuevo. Aprobación visual de Isaac pendiente.
 
 ## Ejecución y límites
 

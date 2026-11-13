@@ -2293,7 +2293,8 @@ recibirlo. Ningún proceso QA fue primer plano. Rune --snap es offscreen;
 no se usó Automatización/System Events ni se ejecutó gráfica en Windows.
 El aviso de núcleo queda en cabecera sin desplazar Inicio; leyendas de plantillas
 acotadas y métricas con etiqueta/valor. Regresión geométrica y fuentes reales
-cubiertas por tests. Registro y seis PNG de revisión en hub-rune/evidence/fidelidad;
+cubiertas por tests. Registro y seis PNG de revisión extraídos a D:/VantareServer/evidence/hub-rune/
+review-2297-r2/previous-repo-evidence; no quedan PNG de fidelidad en Git;
 informe completo D:/VantareServer/evidence/hub-rune/corte1/index.html.
 
 Isaac: PASS manual de Tab/Enter/Espacio, tema, Inicio/Roadmap y X en 5e1c7024;
@@ -2307,3 +2308,24 @@ libres. Binario y hash conservados en ~/orq/isa2256-fidelidad-f980b5355, sin eje
 Cero procesos propios de captura pendientes. Sin targets ajenos, cuentas reales,
 cambios de host/overlays/distribución, merge/promoción/release del worker.
 HEAD y checks del último commit documental se verifican en #2297/#2256.
+
+
+### VANTA-143 · #2297: segunda revisión (2026-11-13)
+
+Sin ack tras 45 s, lanzamiento incierto y bloqueado hasta Home Running/Idle
+fresco; Actualizar estado no repite el lanzamiento. La revocación al despachar
+explica por qué no se envió. Tests cubren respuesta tardía, lectura antigua,
+Running/Idle, revocación, Ctrl L repetido y búsqueda Unicode con foco modal.
+El catálogo usa marcador de contador explícito, sin el centinela numérico 917.
+
+Inicio incorpora saludo/fecha compartidos, Ctrl K / Ctrl L, píldoras, VER TODO,
+badges Launcher/Tester rojos y conectado verde, Editar overlay blanco y Detener
+deshabilitado como Electron, avatar demo IA y Studio al final del raíl derecho.
+Fecha congelada de referencia Electron: 30/09. Capturas de revisión y gates
+pendientes; evidencia nueva en D:/VantareServer/evidence/hub-rune/review-2297-r2.
+El PASS manual de Isaac y el FALLO visual inicial conservan sus SHAs originales.
+
+Excepción ADR declarada: función pura del mock Electron extraída a home-scene.ts
+para compartir escenas con el generador Rune, sin cambio de contrato ni host.
+El orquestador fusionará #2297 con squash y cerrará #2287 como incluido.
+Sin merge, release ni actualización de Plane por el worker.

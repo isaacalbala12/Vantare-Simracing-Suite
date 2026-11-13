@@ -422,10 +422,163 @@
     "home.accessError": "No se pudo verificar el acceso. Tus perfiles locales siguen disponibles.",
     "home.retry": "Reintentar",
     "home.failed": "No se pudo lanzar el perfil. Revisa el acceso y el estado de Launcher.",
+    "home.checkLaunch": "Actualizar estado",
+    "home.launchUncertainLabel": "Estado del lanzamiento incierto",
+    "home.launchUncertain": "No se ha confirmado el lanzamiento. Puede haberse iniciado; esperamos el estado de Inicio antes de permitir otro intento.",
+    "home.launchChanged": "El lanzamiento se ha cancelado porque han cambiado el acceso, el perfil o el estado del simulador. Revisa el estado antes de intentarlo de nuevo.",
     "home.loading": "Cargando Inicio",
-    "home.protected": "El archivo de perfiles está protegido. Revísalo en Launcher."
+    "home.protected": "El archivo de perfiles está protegido. Revísalo en Launcher.",
+    "commands.placeholder": "Busca una sección o una acción…",
+    "commands.destinations": "IR A",
+    "commands.actions": "ACCIONES",
+    "commands.navigate": "↑↓ navegar",
+    "commands.execute": "↵ ejecutar",
+    "commands.lockedHelp": "Los destinos bloqueados muestran el motivo",
+    "commands.profile": "Perfil de Launcher",
+    "commands.running": "Ya hay una cadena de lanzamiento activa",
+    "commands.loading": "Leyendo los perfiles del Launcher…",
+    "commands.scanning": "Buscando aplicaciones del perfil…",
+    "commands.noResident": "El Launcher no está disponible",
+    "commands.noSteps": "Este perfil no tiene pasos de lanzamiento",
+    "commands.accessUnavailable": "No se pudo verificar el acceso",
+    "commands.readFailed": "No se pudieron leer los perfiles. Cierra y vuelve a abrir la paleta para reintentar.",
+    "commands.pending": "Ya hay una petición de lanzamiento en curso",
+    "commands.included": "Incluida en Pro",
+    "commands.soon": "Próximamente",
+    "commands.context": "Mostrar / ocultar contexto",
+    "commands.contextMeta": "Columna de contexto",
+    "commands.settingsSaving": "Guardando ajustes…",
+    "commands.settingsError": "Resuelve el error de guardado en Ajustes",
+    "commands.settingsProtected": "Ajustes de solo lectura",
+    "commands.settingsLoading": "Leyendo ajustes…",
+    "commands.live": "No se puede lanzar un perfil mientras estás en pista",
+    "commands.unavailable": "Este perfil tiene aplicaciones pendientes de configurar",
+    "commands.changed": "Los perfiles han cambiado. Abre de nuevo la paleta y vuelve a intentarlo.",
+    "commands.sent": "Lanzamiento solicitado",
+    "commands.failed": "No se pudo lanzar el perfil",
+    "commands.strategy": "Estrategia",
+    "commands.engineer": "Ingeniero",
+    "commands.account": "Cuenta",
+    "commands.notifications": "Notificaciones",
+    "commands.accountMeta": "Sesión, plan y dispositivos",
+    "commands.notificationsMeta": "Avisos del Hub"
   },
   "home": {
+    "demoIdentity": {
+      "name": "Isaac Albalá"
+    },
+    "captureTime": "2026-09-30T16:30:00+02:00",
+    "greetings": [
+      "Buenos días, __VANTARE_NAME__",
+      "Buenas tardes, __VANTARE_NAME__",
+      "Buenas noches, __VANTARE_NAME__"
+    ],
+    "greetingCases": [
+      {
+        "name": "",
+        "hour": 0,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 11,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 12,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 19,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 20,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 23,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "Isaac",
+        "hour": 0,
+        "output": "Buenos días, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 11,
+        "output": "Buenos días, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 12,
+        "output": "Buenas tardes, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 19,
+        "output": "Buenas tardes, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 20,
+        "output": "Buenas noches, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 23,
+        "output": "Buenas noches, Isaac"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 0,
+        "output": "Buenos días, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 11,
+        "output": "Buenos días, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 12,
+        "output": "Buenas tardes, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 19,
+        "output": "Buenas tardes, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 20,
+        "output": "Buenas noches, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 23,
+        "output": "Buenas noches, María"
+      }
+    ],
+    "initialsCases": [
+      {
+        "name": "",
+        "output": "·"
+      },
+      {
+        "name": "Isaac Albalá",
+        "output": "IA"
+      },
+      {
+        "name": "María Ñúñez",
+        "output": "MÑ"
+      }
+    ],
     "tracks": {
       "lemans": [
         "0 0 504 1000",
@@ -618,10 +771,10 @@
       }
     ],
     "launch": "Lanzar __VANTARE_NAME__",
-    "steps": "917 pasos de lanzamiento",
+    "steps": "__VANTARE_COUNT__ pasos de lanzamiento",
     "lastLaunch": "__VANTARE_NAME__ · último lanzamiento",
     "last": "Último · __VANTARE_NAME__",
-    "plus": "+917",
+    "plus": "+__VANTARE_COUNT__",
     "scenes": {
       "inicio-base": {
         "sim": {

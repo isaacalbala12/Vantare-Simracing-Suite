@@ -134,11 +134,33 @@ fn small(theme: &Theme, value: impl Into<String>) -> El {
         .color(theme.color("text-3"))
 }
 fn badge(theme: &Theme, value: &str) -> El {
+    badge_tone(theme, value, false)
+}
+fn badge_tone(theme: &Theme, value: &str, accent: bool) -> El {
+    let (background, foreground) = if accent {
+        ("accent-tint", "accent-bright")
+    } else if value == text("home.connectedBadge") {
+        ("ok-tint", "ok")
+    } else {
+        ("bg-sidebar", "text-1")
+    };
     row()
         .padding(6.0)
         .radius(4.0)
-        .border(1.0, theme.color("line-1"))
-        .child(label(theme, value).font(body_style(12.0, 500.0)))
+        .fill(theme.color(background))
+        .border(
+            1.0,
+            theme.color(if accent || value == text("home.connectedBadge") {
+                background
+            } else {
+                "line-1"
+            }),
+        )
+        .child(
+            label(theme, value)
+                .font(body_style(12.0, 500.0))
+                .color(theme.color(foreground)),
+        )
 }
 fn metric(theme: &Theme, value: &str, name: &str) -> El {
     col()
@@ -172,7 +194,7 @@ fn status_row(theme: &Theme, key: &str, name: &str, title: &str, subtitle: &str,
                 .child(label(theme, title).font(body_style(14.0, 650.0)))
                 .child(small(theme, subtitle)),
         )
-        .child(badge(theme, tag))
+        .child(badge_tone(theme, tag, tag == text("home.tester")))
 }
 fn parsed_date(value: &str) -> Option<chrono::DateTime<chrono::FixedOffset>> {
     chrono::DateTime::parse_from_rfc3339(value).ok()
@@ -205,7 +227,26 @@ fn card(theme: &Theme, key: &str, title: &str) -> El {
                 },
                 16.0,
             ))
-            .child(heading(theme, title)),
+            .child(heading(theme, title).grow(1.0))
+            .child(if key == "home-activity" {
+                button_content(
+                    theme,
+                    "home-activity-all",
+                    text("home.all"),
+                    small(theme, text("home.all").to_uppercase())
+                        .font(body_style(11.0, 400.0).family(rune::Family::Named("Space Mono"))),
+                    |s: &mut State| {
+                        s.activity_open = true;
+                        s.commands_open = false;
+                    },
+                )
+                .padding(0.0)
+                .min_h(20.0)
+                .h(20.0)
+                .fill(theme.color("surface-1"))
+            } else {
+                el()
+            }),
     )
 }
 fn picture(state: &State, kind: &str, width: f32, height: f32, fill: bool) -> El {
@@ -312,6 +353,11 @@ fn launch_button(state: &State, favorite: bool) -> El {
         && favorite
     {
         text("home.create").to_owned()
+    } else if matches!(
+        state.home.launch_problem,
+        Some(crate::home::LaunchProblem::Uncertain { .. })
+    ) {
+        text("home.launchUncertainLabel").to_owned()
     } else if state.home.launching() {
         text("home.launching").to_owned()
     } else if favorite {
@@ -332,7 +378,7 @@ fn launch_button(state: &State, favorite: bool) -> El {
             .as_ref()
             .is_some_and(|v| v.profiles.is_empty() && !v.protected);
     let allowed = if empty {
-        state.core.access.verified && !state.core.access.blocked
+        state.core.access.verified && !state.core.access.blocked && !state.home.launching()
     } else {
         state.home.can_launch(&state.core, favorite)
     };
@@ -347,6 +393,9 @@ fn launch_button(state: &State, favorite: bool) -> El {
                 .font(body_style(14.0, 600.0))
                 .color(foreground),
         );
+        if !empty {
+            content = content.child(shortcut(theme, text("home.ctrlL")).color(foreground));
+        }
     }
     button_content(
         theme,
@@ -372,12 +421,80 @@ fn launch_button(state: &State, favorite: bool) -> El {
     .fill(theme.color(if allowed { "accent-fill" } else { "surface-2" }))
     .border(1.0, theme.color("accent-bright"))
 }
+fn shortcut(theme: &Theme, value: &str) -> El {
+    label(theme, value)
+        .font(body_style(10.0, 400.0).family(rune::Family::Named("Space Mono")))
+        .color(theme.color("text-3"))
+}
+pub fn activity_rows(state: &State, limit: usize) -> El {
+    let theme = &state.theme;
+    let mut content = col().w_full().gap(8.0);
+    if let Some(value) = &state.home.value {
+        let mut profiles: Vec<_> = value
+            .profiles
+            .iter()
+            .filter(|p| p.last_launched_at.is_some())
+            .collect();
+        profiles.sort_by_cached_key(|p| {
+            std::cmp::Reverse(
+                p.last_launched_at
+                    .as_deref()
+                    .and_then(parsed_date)
+                    .map_or(0, |d| d.timestamp_millis()),
+            )
+        });
+        if profiles.is_empty() {
+            content = content
+                .child(message(theme, text("home.noActivity")))
+                .child(label(theme, text("home.activityDescription")));
+        }
+        for profile in profiles.into_iter().take(limit) {
+            content = content.child(
+                row()
+                    .key(format!("home-activity-{}", profile.id))
+                    .w_full()
+                    .min_h(58.0)
+                    .gap(10.0)
+                    .center_y()
+                    .child(symbol(theme, "clock", 18.0))
+                    .child(
+                        col()
+                            .grow(1.0)
+                            .min_w(0.0)
+                            .gap(4.0)
+                            .child(
+                                label(
+                                    theme,
+                                    catalog()["home"]["lastLaunch"]
+                                        .as_str()
+                                        .unwrap()
+                                        .replace("__VANTARE_NAME__", &profile.name),
+                                )
+                                .font(body_style(14.0, 650.0)),
+                            )
+                            .child(small(
+                                theme,
+                                activity_date(profile.last_launched_at.as_deref().unwrap_or("")),
+                            )),
+                    )
+                    .child(badge_tone(
+                        theme,
+                        catalog()["home"]["sources"]["launcher"].as_str().unwrap(),
+                        true,
+                    )),
+            );
+        }
+    } else {
+        content = content.child(message(theme, text("home.loading")));
+    }
+    content
+}
 pub fn view(state: &State, cx: &Cx<State>) -> El {
     let theme = &state.theme;
     let data = state.home.value.as_ref();
     let mut page = col().key("home").w_full().gap(12.0).px(24.0).py(16.0);
     if state.home.failed
-        || state.home.launch_failed
+        || state.home.launch_problem.is_some()
         || state.core.access.blocked
         || data.is_some_and(|v| v.protected)
     {
@@ -385,20 +502,45 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             surface(theme)
                 .key("home-error")
                 .role("status")
-                .child(label(
-                    theme,
-                    text(if state.home.launch_failed {
-                        "home.failed"
-                    } else if data.is_some_and(|v| v.protected) {
-                        "home.protected"
-                    } else {
-                        "home.accessError"
-                    }),
-                ))
+                .child(
+                    label(
+                        theme,
+                        text(
+                            if matches!(
+                                state.home.launch_problem,
+                                Some(crate::home::LaunchProblem::Uncertain { .. })
+                            ) {
+                                "home.launchUncertain"
+                            } else if matches!(
+                                state.home.launch_problem,
+                                Some(crate::home::LaunchProblem::ConditionsChanged)
+                            ) {
+                                "home.launchChanged"
+                            } else if state.home.launch_problem.is_some() {
+                                "home.failed"
+                            } else if data.is_some_and(|v| v.protected) {
+                                "home.protected"
+                            } else {
+                                "home.accessError"
+                            },
+                        ),
+                    )
+                    .w_full()
+                    .wrap(),
+                )
                 .child(button(
                     theme,
                     "home-retry",
-                    text("home.retry"),
+                    text(
+                        if matches!(
+                            state.home.launch_problem,
+                            Some(crate::home::LaunchProblem::Uncertain { .. })
+                        ) {
+                            "home.checkLaunch"
+                        } else {
+                            "home.retry"
+                        },
+                    ),
                     |s: &mut State| s.home.retry(),
                 )),
         );
@@ -424,12 +566,20 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         .radius(10.0)
         .fill(theme.color("surface-1"))
         .child(
-            row()
-                .grow(1.0)
-                .gap(10.0)
-                .center_y()
-                .child(symbol(theme, "search", 16.0))
-                .child(label(theme, text("home.profile")).color(theme.color("text-3"))),
+            button_content(
+                theme,
+                "home-search",
+                text("home.search"),
+                row()
+                    .gap(10.0)
+                    .center_y()
+                    .child(symbol(theme, "search", 16.0))
+                    .child(label(theme, text("home.search")).color(theme.color("text-3"))),
+                crate::home_chrome::open_commands,
+            )
+            .grow(1.0)
+            .min_w(0.0)
+            .fill(theme.color("surface-1")),
         )
         .child(
             button(theme, "home-select", selected, |s: &mut State| {
@@ -437,6 +587,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             })
             .disabled(data.is_none_or(|v| v.profiles.is_empty())),
         )
+        .child(shortcut(theme, text("home.ctrlK")))
         .child(launch_button(state, false));
     if state.home.choosing
         && let Some(value) = data
@@ -496,8 +647,33 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                 .pin(Some(0.0), Some(0.0), None, None),
         )
         .child(circuit)
-        .child(small(theme, sim))
-        .child(display(theme, text("home.welcome"), 46.0))
+        .child(
+            small(
+                theme,
+                format!(
+                    "{} · {}",
+                    crate::home_chrome::now(state).format("%d/%m"),
+                    sim
+                )
+                .to_uppercase(),
+            )
+            .key("home-session")
+            .font(rune::TextStyle {
+                tracking: 0.8,
+                ..body_style(10.0, 400.0).family(rune::Family::Named("Space Mono"))
+            }),
+        )
+        .child(
+            display(
+                theme,
+                crate::home_chrome::greeting(
+                    if empty { "" } else { &state.display_name },
+                    crate::home_chrome::now(state),
+                ),
+                46.0,
+            )
+            .key("home-greeting"),
+        )
         .child(label(
             theme,
             text(if empty {
@@ -549,7 +725,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             let mut chips = row().gap(6.0);
             for (index, widget) in value.layout.widgets.iter().take(3).enumerate() {
                 chips = chips.child(
-                    label(
+                    badge(
                         theme,
                         catalog()["home"]["widgets"][widget.kind.key()]
                             .as_str()
@@ -559,12 +735,12 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                 );
             }
             if value.layout.widgets.len() > 3 {
-                chips = chips.child(label(
+                chips = chips.child(badge(
                     theme,
-                    catalog()["home"]["plus"]
-                        .as_str()
-                        .unwrap()
-                        .replace("917", &(value.layout.widgets.len() - 3).to_string()),
+                    catalog()["home"]["plus"].as_str().unwrap().replace(
+                        "__VANTARE_COUNT__",
+                        &(value.layout.widgets.len() - 3).to_string(),
+                    ),
                 ));
             }
             overlay = overlay
@@ -580,61 +756,30 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                         ))
                         .child(metric(theme, text("home.dash"), text("home.cpu"))),
                 )
-                .child(studio_button(state, "home-edit", text("home.edit")));
-        }
-        let mut profiles: Vec<_> = value
-            .profiles
-            .iter()
-            .filter(|p| p.last_launched_at.is_some())
-            .collect();
-        profiles.sort_by_cached_key(|p| {
-            std::cmp::Reverse(
-                p.last_launched_at
-                    .as_deref()
-                    .and_then(parsed_date)
-                    .map_or(0, |d| d.timestamp_millis()),
-            )
-        });
-        if profiles.is_empty() {
-            activity = activity
-                .child(message(theme, text("home.noActivity")))
-                .child(label(theme, text("home.activityDescription")));
-        }
-        for profile in profiles.into_iter().take(8) {
-            activity = activity.child(
-                row()
-                    .key(format!("home-activity-{}", profile.id))
-                    .w_full()
-                    .min_h(58.0)
-                    .gap(10.0)
-                    .center_y()
-                    .child(symbol(theme, "clock", 18.0))
-                    .child(
-                        col()
-                            .grow(1.0)
-                            .min_w(0.0)
-                            .gap(4.0)
-                            .child(
-                                label(
-                                    theme,
-                                    catalog()["home"]["lastLaunch"]
-                                        .as_str()
-                                        .unwrap()
-                                        .replace("__VANTARE_NAME__", &profile.name),
-                                )
-                                .font(body_style(14.0, 650.0)),
-                            )
-                            .child(small(
+                .child(
+                    row()
+                        .gap(8.0)
+                        .child(
+                            button_content(
                                 theme,
-                                activity_date(profile.last_launched_at.as_deref().unwrap_or("")),
-                            )),
-                    )
-                    .child(badge(
-                        theme,
-                        catalog()["home"]["sources"]["launcher"].as_str().unwrap(),
-                    )),
-            );
+                                "home-edit",
+                                text("home.edit"),
+                                label(theme, text("home.edit"))
+                                    .font(body_style(14.0, 600.0))
+                                    .color(theme.color("bg-base")),
+                                studio,
+                            )
+                            .fill(theme.color("text-1"))
+                            .disabled(!state.core.access.verified || state.core.access.blocked),
+                        )
+                        .child(
+                            button(theme, "home-stop", text("home.stop"), |_: &mut State| {})
+                                .disabled(true)
+                                .help(text("home.stopReason")),
+                        ),
+                );
         }
+        activity = activity.child(activity_rows(state, 8));
     } else {
         overlay = overlay.child(message(theme, text("home.loading")));
         activity = activity.child(message(theme, text("home.loading")));
@@ -774,7 +919,15 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         }
         rail = rail.child(pair);
     }
-    rail = rail.w(rail_width);
+    rail = rail
+        .w(rail_width)
+        .child(el().grow(1.0))
+        .child(studio_button(
+            state,
+            "home-rail-studio",
+            text("home.studio"),
+        ));
+
     row()
         .key("home-screen")
         .grow(1.0)

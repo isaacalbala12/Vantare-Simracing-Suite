@@ -30,3 +30,13 @@ La reserva del orquestador comenzó al terminar la escena a las 10:41:48 CET del
 ## Cobertura calculada
 
 La primera matriz completa contiene 352 comparaciones (44 escenas × dos tamaños × dos temas × dos barras), sin errores de generación. Hay 104 recibos de Studio verificados. La inspección humana sigue abierta: una cifra disponible no acredita por sí sola ausencia de defectos. Calendario compacto se corrige en #2296; las miniaturas de Inicio y el defecto REF-ST01 siguen señalados explícitamente.
+
+## Reserva para L56 · 13/11
+
+La tanda se detuvo a las 13:50:37 CET, al cerrar normalmente la ventana que ya estaba en curso. No se adquiere ningún turno gráfico antes de las 14:15:26 CET (más de veinte minutos libres). El guard se aplica también a los comprobadores locales y al empaquetado que usa el candado como reserva. No hay trabajos gráficos propios en espera que puedan arrancar por su cuenta.
+
+Al reanudar, cada dos escenas se ceden tres minutos completos sin candado. El presupuesto de bloque persiste entre las invocaciones propias; antes de otra adquisición, un bloque de ocho minutos también fuerza ese hueco. No se interrumpe el turno de otro worker.
+
+Calendario #2296 está listo: 40 pares, media de 1280×800 13,55 → 10,32 %, sin condiciones que empeoren. El cierre forzado intermedio se conserva con su repetición normal. Inicio #2299 ya tiene validación real de 32 combinaciones; solo 12/32 capturas finales estaban hechas al aplicar la pausa. Apariencia #2301 y el resumen compacto de Rendimiento #2303 tienen su código separado y esperan validación gráfica.
+
+La matriz versionada de 352 métricas es una instantánea de la línea base y de los candidatos registrados al calcularla; no se atribuyen a ella las capturas posteriores aún incompletas. La generación final se hará cuando estén completas. H-V01 (PNG nativos) y REF-ST01 (maqueta de Studio contradictoria) permanecen documentados.

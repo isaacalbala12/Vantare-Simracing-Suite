@@ -334,10 +334,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-ics-replace-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -418,10 +420,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "false")
         await sidebar.click();
       await page
@@ -443,10 +447,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "false")
         await sidebar.click();
       await page
@@ -465,10 +471,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "false")
         await sidebar.click();
       await page
@@ -488,10 +496,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -511,10 +521,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -533,10 +545,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -560,9 +574,10 @@ export const calendarScenes: Record<string, VisualScene> = {
       await calendarScenes["calendario-eventos-contraida"].prepare(page);
       await page
         .getByRole("button", {
-          name: "Contraer o ampliar navegación",
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
           exact: true,
         })
+        .first()
         .click();
       await page.mouse.move(600, 890);
     },
@@ -571,10 +586,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -594,9 +611,10 @@ export const calendarScenes: Record<string, VisualScene> = {
       await calendarScenes["calendario-dia-contraida"].prepare(page);
       await page
         .getByRole("button", {
-          name: "Contraer o ampliar navegación",
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
           exact: true,
         })
+        .first()
         .click();
       await page.mouse.move(600, 890);
     },
@@ -619,10 +637,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -642,9 +662,10 @@ export const calendarScenes: Record<string, VisualScene> = {
       await calendarScenes["calendario-mes-contraida"].prepare(page);
       await page
         .getByRole("button", {
-          name: "Contraer o ampliar navegación",
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
           exact: true,
         })
+        .first()
         .click();
       await page.mouse.move(600, 890);
     },
@@ -667,10 +688,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -690,10 +713,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -716,10 +741,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "false")
         await sidebar.click();
       await page
@@ -758,10 +785,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page
@@ -784,10 +813,12 @@ export const calendarScenes: Record<string, VisualScene> = {
     mock: "calendar-live-reference",
     async prepare(page) {
       await page.clock.setFixedTime(new Date("2026-10-08T17:47:13Z"));
-      const sidebar = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const sidebar = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await sidebar.getAttribute("aria-expanded")) === "true")
         await sidebar.click();
       await page

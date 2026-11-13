@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { windowText } from "../src/renderer/i18n/window.es.ts";
 import {
@@ -42,6 +42,11 @@ const currentOnly = option("--current");
 const captureOnly = args.includes("--capture-only");
 const invalidReason = option("--invalid-reference-reason");
 const selected = option("--scene");
+const initialSidebar = option("--initial-sidebar");
+assert.ok(
+  !initialSidebar || initialSidebar === "open" || initialSidebar === "closed",
+);
+assert.ok(!args.includes("--capture-one-sidebar") || initialSidebar);
 const width = Number(option("--width", "1440"));
 const height = Number(option("--height", "900"));
 assert.ok(
@@ -242,6 +247,12 @@ async function capture(
     { env, windowsHide: false, stdio: ["ignore", "ignore", "pipe"] },
   );
   const exited = observeProcessExit(child);
+  const lifecycle: { event: string; at: number; detail?: string }[] = [
+    { event: "spawn", at: Date.now() },
+  ];
+  child.once("exit", (code) =>
+    lifecycle.push({ event: "exit", at: Date.now(), detail: String(code) }),
+  );
   let stderr = "";
   let spawnError: Error | undefined;
   child.once("error", (error) => {
@@ -249,9 +260,17 @@ async function capture(
   });
   child.stderr.on("data", (chunk) => {
     stderr += chunk.toString();
+    for (const marker of [
+      "HUB_QA_CLOSE_REQUESTED",
+      "HUB_QA_CLOSE_ALLOWED",
+      "HUB_QA_CLOSE_BLOCKED",
+    ])
+      if (chunk.toString().includes(marker))
+        lifecycle.push({ event: marker, at: Date.now() });
   });
   let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
   let cleanupPage: Page | undefined;
+  let pageClosed: Promise<void> | undefined;
   let cleanupFailed = false;
   try {
     await writeFile(
@@ -262,6 +281,10 @@ async function capture(
           dataDirectory: data,
           userDataDirectory: join(data, "hub-ui"),
           executable,
+          asarSha256: digest(
+            await readFile(join(dirname(executable), "resources/app.asar")),
+          ),
+          qaSource: process.env.VANTARE_HUB_QA_SOURCE,
         },
         null,
         2,
@@ -289,6 +312,15 @@ async function capture(
     await versionSession.detach();
     const context = browser.contexts()[0];
     const page = context.pages()[0] ?? (await context.waitForEvent("page"));
+    pageClosed = new Promise<void>((accept) =>
+      page.once("close", () => accept()),
+    );
+    page.once("close", () =>
+      lifecycle.push({ event: "page-close", at: Date.now() }),
+    );
+    browser.once("disconnected", () =>
+      lifecycle.push({ event: "disconnected", at: Date.now() }),
+    );
     cleanupPage = page;
     await page
       .getByRole("button", { name: windowText.close, exact: true })
@@ -322,6 +354,22 @@ async function capture(
       5000,
       `${width}x${height} CSS client`,
     );
+    if (initialSidebar) {
+      const sidebar = page.locator(".v-sidebar");
+      if (await sidebar.count()) {
+        const expanded = await sidebar.evaluate(
+          (node) => !node.classList.contains("v-sidebar--collapsed"),
+        );
+        if (expanded !== (initialSidebar === "open"))
+          await page
+            .getByRole("button", {
+              name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+              exact: true,
+            })
+            .first()
+            .click();
+      }
+    }
     await adapter.prepare(page);
     await page.evaluate(async () => {
       await document.fonts.ready;
@@ -390,23 +438,35 @@ async function capture(
         { windowsHide: true },
       );
     saveWindow("current.png");
-    if (args.includes("--capture-sidebar-matrix")) {
+    if (
+      args.includes("--capture-sidebar-matrix") ||
+      args.includes("--capture-one-sidebar")
+    ) {
       const nav = page.locator(".v-sidebar");
       const applicable = (await nav.count()) > 0;
       const matrix = [];
       const frameChecks = [];
-      for (const expanded of [false, true]) {
+      for (const expanded of args.includes("--capture-one-sidebar")
+        ? [initialSidebar === "open"]
+        : [false, true]) {
         if (applicable) {
           const current = await nav.evaluate(
             (node) => !node.classList.contains("v-sidebar--collapsed"),
           );
-          if (current !== expanded)
+          if (current !== expanded) {
+            assert.ok(
+              !(await nav.evaluate((node) => node.closest("[inert]"))) &&
+                (await page.getByRole("menu").count()) === 0,
+              "Prepare the sidebar before opening a layer: use --initial-sidebar and --capture-one-sidebar",
+            );
             await page
               .getByRole("button", {
-                name: "Contraer o ampliar navegación",
+                name: /^(Contraer o ampliar navegación|Contraer barra)$/,
                 exact: true,
               })
+              .first()
               .click();
+          }
           await until(
             async () =>
               (await nav.boundingBox())?.width === (expanded ? 272 : 76),
@@ -421,6 +481,50 @@ async function capture(
         if (process.env.VANTARE_HUB_FRAME_ASSERT === "1")
           frameChecks.push(await checkFrameParity(page, expanded));
         saveWindow(filename);
+        if (args.includes("--capture-focus")) {
+          const dialogs = page.getByRole("dialog");
+          const area = (await dialogs.count())
+            ? dialogs.last()
+            : page.locator(".v-shell-main");
+          const target = area
+            .locator(
+              'button:enabled:visible, input:enabled:visible, a[href]:visible, [tabindex="0"]:visible',
+            )
+            .first();
+          if (await target.count()) {
+            await target.focus();
+            await page.keyboard.press("Shift+Tab");
+          }
+          await page.keyboard.press("Tab");
+          const focus = await page.evaluate(() => {
+            const node = document.activeElement;
+            if (!(node instanceof HTMLElement)) return null;
+            const style = getComputedStyle(node);
+            const rect = node.getBoundingClientRect();
+            return {
+              tag: node.tagName,
+              label:
+                node.getAttribute("aria-label") ?? node.textContent?.trim(),
+              focusVisible: node.matches(":focus-visible"),
+              outline: style.outline,
+              shadow: style.boxShadow,
+              rect: {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+              },
+            };
+          });
+          saveWindow(`focus-${expanded ? "expanded" : "collapsed"}.png`);
+          await writeFile(
+            join(
+              destination,
+              `focus-${expanded ? "expanded" : "collapsed"}.json`,
+            ),
+            JSON.stringify(focus, null, 2),
+          );
+        }
         matrix.push({
           expanded,
           applicable,
@@ -501,6 +605,15 @@ async function capture(
     let forcedKill = false;
     const stopTree = () => {
       if (child.pid && child.exitCode === null) {
+        lifecycle.push({
+          event: "stop-tree",
+          at: Date.now(),
+          detail: execFileSync(
+            "tasklist",
+            ["/FI", `PID eq ${child.pid}`, "/FO", "CSV", "/NH"],
+            { windowsHide: true, encoding: "utf8" },
+          ).trim(),
+        });
         try {
           execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
             windowsHide: true,
@@ -513,6 +626,7 @@ async function capture(
       }
     };
     const deadline = setTimeout(stopTree, 5000);
+    lifecycle.push({ event: "teardown-start", at: Date.now() });
     try {
       const close = cleanupPage?.getByRole("button", {
         name: windowText.close,
@@ -524,6 +638,21 @@ async function capture(
       } else if (browser && child.exitCode === null) {
         const closing = await browser.newBrowserCDPSession();
         await closing.send("Browser.close").catch(() => {});
+      }
+      // A connected CDP client can keep Electron's main process alive after its
+      // guarded window has already closed. Disconnect only after that real close,
+      // never in place of its closeAnswer/unsaved-work guards.
+      if (pageClosed) await Promise.race([pageClosed, exited]);
+      if (browser && cleanupPage?.isClosed()) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          browser.close().catch(() => {}),
+          new Promise<void>((accept) => {
+            timer = setTimeout(accept, 1000);
+          }),
+        ]);
+        clearTimeout(timer);
+        browser = undefined;
       }
       if (child.exitCode === null) await exited;
       // CDP can already be disconnected after the process exits. Keep a
@@ -553,6 +682,10 @@ async function capture(
         ),
       );
       await writeFile(join(destination, "stderr.log"), stderr);
+      await writeFile(
+        join(destination, "lifecycle.json"),
+        JSON.stringify(lifecycle, null, 2),
+      );
     }
   }
 }

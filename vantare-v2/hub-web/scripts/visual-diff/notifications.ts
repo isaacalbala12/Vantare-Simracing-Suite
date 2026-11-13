@@ -112,9 +112,10 @@ notificationScenes["notificaciones-completa-expandida"] = {
     await notificationScenes["notificaciones-completa"].prepare(page);
     await page
       .getByRole("button", {
-        name: "Contraer o ampliar navegación",
+        name: /^(Contraer o ampliar navegación|Contraer barra)$/,
         exact: true,
       })
+      .first()
       .click();
     await page.waitForFunction(
       () =>

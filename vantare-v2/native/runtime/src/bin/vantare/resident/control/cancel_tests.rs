@@ -5,7 +5,7 @@ use vantare_ipc::{
     control::AccessState,
     launcher::{
         Request,
-        execution::{CancelReason, ChainOutcome},
+        execution::{CancelReason, ChainOutcome, EventKind},
     },
 };
 #[test]

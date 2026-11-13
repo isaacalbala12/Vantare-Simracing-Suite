@@ -12,10 +12,13 @@ Constructor exige todas las variantes, guiones, hashes, procedencia y DLL.
 35 guiones PASS. Corregido Set-Content -NoClobber -> Out-File. Auxiliar C# de
 ventanas compilado por cola: RECT 16 / MONITORINFOEXW 104, sin invocar APIs.
 Inicio Rune con marca CPU/DWM compilado en Mac, Runtime 3 y Clippy PASS;
-falta transferir el nuevo PE en una sesión caffeinate. Electron empaquetado,
+falta transferir el nuevo PE en una sesión caffeinate: SSH volvió a dar timeout
+a las 05:27 UTC y Tailscale indica desconectado. Electron empaquetado,
 tipos y siete tests específicos PASS, sin ejecutar Electron. Replay Windows:
 1592 envíos reales / 1592 recibidos / 3840 publicaciones. Quedan el cierre
-GPUI, verificaciones finales y ZIP. Tiempos comparables
+de DLL y ZIP. Ambos B-GPUI finales compilados y guardados con procedencia y
+dumpbin PASS (2752dff7c / fast a4271dd6f). Clippy local final pendiente mientras
+captura.lock está activo; no quedan compilaciones propias en marcha. Tiempos comparables
 pendientes autorizados para ventana nocturna. Sin medición PC, merge ni release.
 ## VANTA-141 · Paquete y análisis en preparación (13/11/2026)
 

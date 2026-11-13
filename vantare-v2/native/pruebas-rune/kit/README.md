@@ -83,7 +83,7 @@ Verificación actual: 30 pruebas Python, plan/recogida/IPC/ruido/A-A/mutex en se
 sintaxis y parámetros de 35 guiones PASS. Se corrigió el uso inválido de
 Set-Content -NoClobber: Out-File mantiene creación sin sobrescritura y UTF-8.
 Identidad JSON y rechazo de sobrescritura PASS con datos, sin proceso real.
-VALIDAR_VENTANAS pendiente por cola: solo Roslyn y Marshal.SizeOf, sin Win32.
+VALIDAR_VENTANAS pasó por cola: solo Roslyn y Marshal.SizeOf, sin Win32.
 No se ejecutó ninguna interfaz ni PresentMon en servidor. El ZIP final aún no existe.
 
 13/11, verificación final de auxiliares: VENTANAS.cs compilado por cola con

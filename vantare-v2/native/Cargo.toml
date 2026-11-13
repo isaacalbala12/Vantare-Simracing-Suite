@@ -110,3 +110,6 @@ incremental = false
 # El solver conserva el mismo requisito que en dev/test.
 [profile.prueba.package.vantare-strategy]
 opt-level = 3
+
+# Medicion A/B #1993: entrada nativa inocua para igualar ambito y telemetria.
+

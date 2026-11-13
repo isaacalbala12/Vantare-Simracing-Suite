@@ -814,7 +814,7 @@ fn expired_punctual_still_reports_the_discarded_automatic() {
     assert!(s.view().change.is_none());
 }
 #[test]
-fn busy_punctual_does_not_overwrite_the_automatic_discard_notice() {
+fn pending_chain_reports_punctual_busy_and_consumes_both_due_intentions_once() {
     let base = Instant::now();
     let mut s = once(base);
     queue(&mut s, base);
@@ -858,12 +858,39 @@ fn busy_punctual_does_not_overwrite_the_automatic_discard_notice() {
         .is_none()
     );
     let change = s.view().change.unwrap();
-    assert_eq!(change.plan.arm_id, "2".repeat(64));
-    assert_eq!(change.reason, CalendarLaunchStop::PunctualPriority);
+    assert_eq!(change.plan.arm_id, "3".repeat(64));
+    assert_eq!(change.reason, CalendarLaunchStop::Busy);
+    assert!(matches!(change.plan.mode, CalendarLaunchMode::Once { .. }));
+    assert!(s.view().armed.is_none());
+    assert_eq!(s.view().automatic.unwrap().arm_id, "2".repeat(64));
+    assert_eq!(s.view().latest.unwrap().arm_id, "1".repeat(64));
     assert!(matches!(
         s.view().latest.unwrap().progress,
         CalendarLaunchProgress::Queued { .. }
     ));
+    // Repeating this tick sends neither departure again and keeps the notice visible.
+    assert!(
+        s.step(
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &resident(),
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &candidates
+            },
+            clock(base, 2000)
+        )
+        .is_none()
+    );
+    assert_eq!(
+        s.view().change.as_ref().unwrap().plan.arm_id,
+        "3".repeat(64)
+    );
+    assert_eq!(
+        s.view().change.as_ref().unwrap().reason,
+        CalendarLaunchStop::Busy
+    );
     // A later, distinct automatic departure supersedes the previous notice.
     let candidates = [Candidate {
         series_id: "later".into(),

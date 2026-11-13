@@ -16,6 +16,8 @@ export const calendarLaunchText = {
   alertsUnavailable:
     "No se pueden leer los avisos ni su revisión. No se ha cambiado la preferencia.",
   cancel: "Cancelar programación",
+  punctualBusy:
+    "Se ha descartado el lanzamiento puntual porque hay otra petición pendiente. Cualquier salida automática coincidente también se omite, sin reintentos.",
   queued: "Enviado al residente; esperando recibo. Aún no está terminado.",
   running: "Secuencia aceptada y en curso.",
   completed: "Secuencia completada.",

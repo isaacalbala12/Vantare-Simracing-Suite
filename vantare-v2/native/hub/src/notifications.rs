@@ -1396,7 +1396,7 @@ mod home_tests {
         let mut notifications = Notifications::default();
         assert_eq!(
             notifications.home_activity(),
-            [] as [(std::string::String, i64, &str, crate::orbit::controls::Tone); 0]
+            [] as [(std::string::String, i64, &str, crate::orbit::Tone); 0]
         );
         let mut record = Record::local_error("hub.launcher", "fallo real".into());
         record.source = Source::Beta;
@@ -1404,7 +1404,7 @@ mod home_tests {
         notifications.center.records.push(record);
         assert_eq!(
             notifications.home_activity(),
-            [] as [(std::string::String, i64, &str, crate::orbit::controls::Tone); 0]
+            [] as [(std::string::String, i64, &str, crate::orbit::Tone); 0]
         );
         notifications.tester = true;
         let rows = notifications.home_activity();

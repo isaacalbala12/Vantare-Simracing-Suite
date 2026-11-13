@@ -515,7 +515,8 @@ fn r9_damaged_primary_is_archived_exactly_before_normal_save_can_recover() {
     assert_eq!(
         ui_editor.document.as_ref().expect("empty recovery").value()["events"]
             .as_array()
-            .expect("events"),
+            .expect("events")
+            .as_slice(),
         [] as [serde_json::Value; 0]
     );
     editor.save().expect("normal recovery save");

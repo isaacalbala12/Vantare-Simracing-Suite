@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { Page } from "playwright-core";
+import type { CDPSession, Page } from "playwright-core";
 import { studioText as t } from "../../src/renderer/i18n/studio.ts";
 import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
@@ -36,50 +36,73 @@ async function catalog(page: Page, expanded: boolean) {
 const scene = (
   mock: string,
   prepare: (page: Page) => Promise<void>,
-): VisualScene => ({
-  mock,
-  async prepare(page) {
-    await open(page);
-    await prepare(page);
-    // QA stress viewport: the product selector correctly forbids 125% at 1440px
-    // because it preserves 1280 logical pixels. Emulate the mockup's smaller
-    // logical viewport without changing that product limit or its preferences.
-    // Prepare through real controls first: CDP's visual scale does not apply
-    // the same coordinate transform to Playwright pointer input on Windows.
-    if (process.env.VANTARE_STUDIO_VISUAL_ZOOM === "125") {
-      const session = await page.context().newCDPSession(page);
-      await session.send("Emulation.setDeviceMetricsOverride", {
-        width: 1152,
-        height: 720,
-        deviceScaleFactor: 1,
-        mobile: false,
-        scale: 1.25,
-        dontSetVisibleSize: true,
-        screenWidth: 1440,
-        screenHeight: 900,
-      });
-    }
-    const strip = page.locator(".v-focus-strip");
-    if (await strip.count()) {
-      const compact = await page
-        .locator(".v-studio-focus")
-        .evaluate((element) => element.clientWidth - 48 <= 1120);
-      if (compact) {
-        assert.equal(
-          await strip.evaluate((element) => element.clientWidth),
-          72,
-        );
-        // The catalog deliberately makes this background strip inert. Its Add
-        // still needs a name when the modal closes, but must not be announced
-        // as an accessible background action while the modal is open.
-        assert.equal(
-          await strip.locator("[data-add-widget]").getAttribute("aria-label"),
-          t.add,
-        );
+): VisualScene => {
+  let stress: CDPSession | undefined;
+  return {
+    mock,
+    async prepare(page) {
+      stress = undefined;
+      await open(page);
+      await prepare(page);
+      // QA stress viewport: the product selector correctly forbids 125% at 1440px
+      // because it preserves 1280 logical pixels. Emulate the mockup's smaller
+      // logical viewport without changing that product limit or its preferences.
+      // Prepare through real controls first: CDP's visual scale does not apply
+      // the same coordinate transform to Playwright pointer input on Windows.
+      if (process.env.VANTARE_STUDIO_VISUAL_ZOOM === "125") {
+        stress = await page.context().newCDPSession(page);
+        await stress.send("Emulation.setDeviceMetricsOverride", {
+          width: 1152,
+          height: 720,
+          deviceScaleFactor: 1,
+          mobile: false,
+          scale: 1.25,
+          dontSetVisibleSize: true,
+          screenWidth: 1440,
+          screenHeight: 900,
+        });
       }
-    }
-  },
-});
+      const strip = page.locator(".v-focus-strip");
+      if (await strip.count()) {
+        const compact = await page
+          .locator(".v-studio-focus")
+          .evaluate((element) => element.clientWidth - 48 <= 1120);
+        if (compact) {
+          assert.equal(
+            await strip.evaluate((element) => element.clientWidth),
+            72,
+          );
+          // The catalog deliberately makes this background strip inert. Its Add
+          // still needs a name when the modal closes, but must not be announced
+          // as an accessible background action while the modal is open.
+          assert.equal(
+            await strip.locator("[data-add-widget]").getAttribute("aria-label"),
+            t.add,
+          );
+        }
+      }
+    },
+    async cleanup(page) {
+      if (stress) {
+        await stress.send("Emulation.clearDeviceMetricsOverride");
+        await stress.detach();
+        stress = undefined;
+      }
+      await page.keyboard.press("Escape");
+      // These scenes deliberately leave a real request unanswered. Let the normal
+      // Client deadline settle it after capturing, so answerWhenIdle can close the
+      // window; do not force-close or bypass its pending-request guard.
+      if (mock === "studio-a-guardando" || mock === "studio-a-cargando")
+        await page
+          .locator(".v-focus-strip")
+          .getByRole("status", {
+            name: t.notSaved,
+            exact: true,
+          })
+          .waitFor({ timeout: 50000 });
+    },
+  };
+};
 const ordinary = "studio-a-oculto";
 // The 13 states of variante-a.html, with the same real bridge and renderer.
 // Width/theme/sidebar variants are supplied by visual-diff, not by these scenes.

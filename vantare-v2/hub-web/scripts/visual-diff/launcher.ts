@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { launcherText as text } from "../../src/renderer/i18n/launcher";
+import { launcherText as text } from "../../src/renderer/i18n/launcher.ts";
 import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 export const launcherScenes: Record<string, VisualScene> = {

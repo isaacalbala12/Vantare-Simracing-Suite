@@ -800,3 +800,25 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* GPUI foundations.rs:1308,1450: align templates below the compact hero;
+   normal/empty/error show one row, while loading keeps its four placeholders. */
+@media (max-height: 819px) {
+  .v-home {
+    gap: 10px;
+  }
+  .v-home-rail-status {
+    height: 274px; /* 12 top + 52 composer + 10 gap + 200 hero. */
+  }
+  .v-home-rail--error .v-home-rail-status {
+    height: 344px;
+  }
+  .v-home-rail:not(:has(.v-home-loading-status)) .v-home-templates {
+    gap: 10px;
+  }
+  .v-home-rail:not(:has(.v-home-loading-status))
+    .v-home-templates
+    > button:nth-child(n + 3) {
+    display: none;
+  }
+}

@@ -285,7 +285,9 @@ export function LauncherProfiles({
               )}
             </div>
             {control && (
-              <div className="v-launcher-control-help">
+              <div
+                className={`v-launcher-control-help${(showCancel ? cancelReason : rehearseReason) ? "" : " v-resident-live"}`}
+              >
                 {!showCancel && (
                   <p
                     id={`${help}-rehearse`}

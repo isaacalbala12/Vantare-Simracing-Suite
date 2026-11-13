@@ -278,6 +278,10 @@ impl Scheduler {
                 }
                 _ => None,
             });
+        if manual.is_some() || automatic.is_some() {
+            self.change = None;
+        }
+        let both_due = manual.is_some() && automatic.is_some();
         let due = if let Some(candidate) = manual {
             let binding = self.armed.take()?;
             if candidate.start_at <= now.wall {
@@ -285,6 +289,12 @@ impl Scheduler {
                     plan: binding.plan,
                     reason: CalendarLaunchStop::Expired,
                 });
+                if let Some(skipped) = automatic {
+                    self.change = Some(CalendarLaunchChange {
+                        plan: skipped.binding.plan,
+                        reason: CalendarLaunchStop::PunctualPriority,
+                    });
+                }
                 return None;
             }
             if let Some(skipped) = automatic {
@@ -298,7 +308,9 @@ impl Scheduler {
             automatic
         };
         if self.pending.is_some() {
-            if let Some(due) = due {
+            if let Some(due) = due
+                && !both_due
+            {
                 self.change = Some(CalendarLaunchChange {
                     plan: due.binding.plan,
                     reason: CalendarLaunchStop::Busy,

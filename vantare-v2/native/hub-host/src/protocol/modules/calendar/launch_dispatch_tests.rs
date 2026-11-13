@@ -11,7 +11,7 @@ use vantare_ipc::{
 fn configured(f: &Fixture) -> (Session, Clock, Request) {
     let mut s = f.session();
     let now = Clock {
-        wall: chrono::Utc::now().timestamp_millis(),
+        wall: 1_800_000_000_000,
         monotonic: Instant::now(),
     };
     s.current.rights = protocol::LinkState::Connected;

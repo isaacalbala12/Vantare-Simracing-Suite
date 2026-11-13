@@ -1610,14 +1610,14 @@ Seguimiento de review: compartir RPC autenticado y probar imagen incorrecta,
 desbordamiento de cursor y decoder antiguo; no cambia el wire.
 Los rechazos también ocupan huecos del anillo único de 32; pueden desalojar
 recibos/terminales. Lectura no consume; sin recibo = Unknown, jamás éxito supuesto.
-PR4 autorizado con protocolo Hub v31: armed_generation como parámetro,
+PR4 autorizado con protocolo Hub v32: armed_generation como parámetro,
 Queued{request}, capability RevisionCheckedLaunch obligatoria, permisos mediante
 Policy::permits_launch y sin fallback v1. UI/Calendario corresponde a D después;
 Ask/confianza puede esperar hasta 2 min y acabar DecisionExpired. Cancelar solo
 hasta el envío; una cadena aceptada no se mata. Sin agenda con Hub cerrado.
 Sin promoción, release, instalador, dependencia nueva ni ejecución gráfica local.
 
-### Superficie v31 preparada · worker E
+### Superficie v32 · lanzamientos comprobados y Calendario
 
 Método opt-in launcher.launchChecked con generación armada obligatoria, revisión
 y perfil. Respuesta Queued{request}; Policy::permits_launch y comparación de
@@ -1652,7 +1652,7 @@ fue confirmada por Isaac durante la revisión del PR.
 Antes de enviar un lanzamiento, el anfitrión sigue leyendo el documento una vez:
 rechaza una revisión antigua, un perfil ausente o vacío y un documento protegido.
 No lo relee una segunda vez justo antes de enviar. El residente hace la comprobación
-definitiva al recibirlo. El protocolo v31 y el plazo del residente de 750 ms siguen igual.
+definitiva al recibirlo. El protocolo v32 y el plazo del residente de 750 ms siguen igual.
 
 Las cuatro guardas de diálogos, paleta y notificaciones cuentan launchChecked.
 D debe esperar a que #2254 entre en nightly para activar Calendario; E avisará

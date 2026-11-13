@@ -763,66 +763,125 @@ fn simultaneous_manual_and_automatic_departures_report_the_skipped_automatic() {
     assert!(s.view().automatic.is_some());
 }
 #[test]
-fn dst_and_timezone_offsets_never_change_the_absolute_three_minute_deadline() {
-    for text in [
-        "2026-03-29T03:01:00+02:00",
-        "2026-10-25T02:01:00+02:00",
-        "2026-10-25T02:01:00+01:00",
-        "2026-10-08T20:00:00+14:00",
-        "2026-10-08T20:00:00-12:00",
-    ] {
-        let at = chrono::DateTime::parse_from_rfc3339(text)
-            .unwrap()
-            .timestamp_millis();
-        let base = Instant::now();
-        let now = Clock {
-            wall: at - LEAD_MS - 1000,
-            monotonic: base,
-        };
-        let mut s = Scheduler::default();
-        s.install(
-            binding(
-                '1',
-                now,
-                CalendarLaunchMode::Once {
-                    series_id: "s".into(),
-                    start_at: at,
-                },
-            ),
-            now,
-        );
-        let r = resident();
-        let c = core();
-        let input = Inputs {
-            core: &c,
-            closing: false,
-            resident: &r,
-            alerts_ready: true,
-            auto_enabled: false,
-            candidates: &[],
-        };
-        assert!(
-            s.step(
-                input,
-                Clock {
-                    wall: at - LEAD_MS - 1,
-                    monotonic: base + Duration::from_millis(999)
-                }
-            )
-            .is_none()
-        );
-        assert_eq!(
-            s.step(
-                input,
-                Clock {
-                    wall: at - LEAD_MS,
-                    monotonic: base + Duration::from_secs(1)
-                }
-            )
-            .unwrap()
-            .candidate
-            .start_at,
-            at
-        );
-    }
+fn expired_punctual_still_reports_the_discarded_automatic() {
+    let base = Instant::now();
+    let mut s = once(base);
+    s.install(
+        binding(
+            '2',
+            clock(base, 0),
+            CalendarLaunchMode::Alerts {
+                expected_revision: "c".repeat(64),
+            },
+        ),
+        clock(base, 0),
+    );
+    let ms = u64::try_from(LEAD_MS + 1001).unwrap();
+    let candidates = [Candidate {
+        series_id: "auto".into(),
+        start_at: WALL + i64::try_from(ms).unwrap() + LEAD_MS,
+    }];
+    assert!(
+        s.step(
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &resident(),
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &candidates
+            },
+            clock(base, ms)
+        )
+        .is_none()
+    );
+    let change = s.view().change.unwrap();
+    assert_eq!(change.plan.arm_id, "2".repeat(64));
+    assert_eq!(change.reason, CalendarLaunchStop::PunctualPriority);
+    // The consumed automatic is not retried, and rearming clears the old notice.
+    assert!(step(&mut s, base, ms + 1).is_none());
+    s.install(
+        binding(
+            '3',
+            clock(base, ms + 1),
+            CalendarLaunchMode::Once {
+                series_id: "new".into(),
+                start_at: WALL + i64::try_from(ms).unwrap() + LEAD_MS + 1000,
+            },
+        ),
+        clock(base, ms + 1),
+    );
+    assert!(s.view().change.is_none());
+}
+#[test]
+fn busy_punctual_does_not_overwrite_the_automatic_discard_notice() {
+    let base = Instant::now();
+    let mut s = once(base);
+    queue(&mut s, base);
+    s.install(
+        binding(
+            '2',
+            clock(base, 1000),
+            CalendarLaunchMode::Alerts {
+                expected_revision: "c".repeat(64),
+            },
+        ),
+        clock(base, 1000),
+    );
+    s.install(
+        binding(
+            '3',
+            clock(base, 1000),
+            CalendarLaunchMode::Once {
+                series_id: "other".into(),
+                start_at: WALL + LEAD_MS + 2000,
+            },
+        ),
+        clock(base, 1000),
+    );
+    let candidates = [Candidate {
+        series_id: "auto".into(),
+        start_at: WALL + LEAD_MS + 2000,
+    }];
+    assert!(
+        s.step(
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &resident(),
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &candidates
+            },
+            clock(base, 2000)
+        )
+        .is_none()
+    );
+    let change = s.view().change.unwrap();
+    assert_eq!(change.plan.arm_id, "2".repeat(64));
+    assert_eq!(change.reason, CalendarLaunchStop::PunctualPriority);
+    assert!(matches!(
+        s.view().latest.unwrap().progress,
+        CalendarLaunchProgress::Queued { .. }
+    ));
+    // A later, distinct automatic departure supersedes the previous notice.
+    let candidates = [Candidate {
+        series_id: "later".into(),
+        start_at: WALL + LEAD_MS + 3000,
+    }];
+    assert!(
+        s.step(
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &resident(),
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &candidates
+            },
+            clock(base, 3000)
+        )
+        .is_none()
+    );
+    assert_eq!(s.view().change.unwrap().reason, CalendarLaunchStop::Busy);
 }

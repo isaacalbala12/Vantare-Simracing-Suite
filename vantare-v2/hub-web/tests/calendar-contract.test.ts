@@ -455,7 +455,7 @@ it("mock noops keep all revisions and distinguish absence of a current schedule"
   ).toMatchObject({ error: { kind: "calendarScheduleUnavailable" } });
 });
 
-it("mock cancellation followed by rearming does not retain a stale cancellation label", () => {
+it("mock fallback uses Rust legacy policy defaults and rearming clears cancellation", () => {
   const core = structuredClone(coreFixture) as CoreStatus;
   core.rights = "connected";
   core.accountGeneration = "a".repeat(64);
@@ -492,6 +492,7 @@ it("mock cancellation followed by rearming does not retain a stale cancellation 
     !first.result.value.armed
   )
     throw new Error("missing mock arm");
+  expect(first.result.value.armed.decisionRequired).toBe(false);
   const id = first.result.value.armed.armId;
   expect(
     host({

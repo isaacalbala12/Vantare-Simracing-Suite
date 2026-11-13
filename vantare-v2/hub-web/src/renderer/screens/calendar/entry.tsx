@@ -92,7 +92,7 @@ export default function CalendarEntry() {
     alertsOrigin.current?.isConnected ? alertsOrigin.current : false;
   const [activeTab, setActiveTab] = useState("upcoming");
   const launchOrigin = useRef<HTMLButtonElement | null>(null);
-  const restoreLaunchFocus = useRef(false);
+  const [launchFocusRequest, requestLaunchFocus] = useState(0);
   const [calendarSpan, setCalendarSpan] = useState("week");
   const liveFilters = useRef<CalendarLiveFilters>({
     searchOpen: false,
@@ -177,27 +177,19 @@ export default function CalendarEntry() {
     preferences.reload(),
   );
   useLayoutEffect(() => {
-    if (restoreLaunchFocus.current) {
-      const target =
-        launchOrigin.current ??
-        document.querySelector<HTMLElement>(
+    if (!launchFocusRequest) return;
+    const target = launchOrigin.current?.isConnected
+      ? launchOrigin.current
+      : document.querySelector<HTMLElement>(
           '[role="tab"][aria-selected="true"]',
         );
-      if (target) {
-        target.focus({ preventScroll: true });
-        restoreLaunchFocus.current = false;
-      }
-    }
-  });
+    target?.focus({ preventScroll: true });
+  }, [launchFocusRequest]);
   const cancelLaunch = async (id: string) => {
     if (await launchState.cancel(id)) {
-      restoreLaunchFocus.current = true;
       setActiveTab("upcoming");
       setSelectedSerie(undefined);
-      if (launchOrigin.current?.isConnected) {
-        launchOrigin.current.focus({ preventScroll: true });
-        restoreLaunchFocus.current = false;
-      }
+      requestLaunchFocus((value) => value + 1);
     }
   };
   const ics = useCalendarIcs(icsOpen, state.allowed);

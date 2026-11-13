@@ -11,6 +11,7 @@ import {
 } from "../i18n/calendarLaunch";
 import { Button } from "./Button";
 import { clock } from "./calendarDate";
+import { Callout } from "./Data";
 import "./calendar-launch.css";
 
 function LaunchNotice({
@@ -28,18 +29,15 @@ function LaunchNotice({
 }) {
   return (
     <div
-      className={`v-callout v-callout--${tone} v-calendar-launch-notice`}
-      role="status"
+      className="v-calendar-launch-notice"
       aria-live="polite"
       aria-atomic="true"
       data-calendar-launch-result={latest || undefined}
     >
       <Icon name="clock" />
-      <div>
-        <strong>{title}</strong>
-        <div>{children}</div>
-      </div>
-      {actions}
+      <Callout title={title} tone={tone} actions={actions}>
+        {children}
+      </Callout>
     </div>
   );
 }

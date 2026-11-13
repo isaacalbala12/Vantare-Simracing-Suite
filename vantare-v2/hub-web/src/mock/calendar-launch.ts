@@ -1,6 +1,5 @@
 // Deterministic UI double only: no mailbox writer, processes, timers or system notifications.
 import launcher from "../../fixtures/launcher-base.json";
-import editor from "../../fixtures/launcher-editor.json";
 import {
   type CalendarConfigView,
   type CalendarLaunchPlan,
@@ -139,7 +138,10 @@ export function calendarLaunchMock(
       decisionRequired: calendarDecisionRequired(
         context.launcherPolicy?.(request.profile) ??
           ({
-            ...editor.draft.policy,
+            cancel: "leave",
+            retry: "failed",
+            retries: profile.options.retries,
+            firstStepDelay: profile.options.firstStepDelay,
             alreadyRunning: profile.options.alreadyRunning,
             failure: profile.options.failure,
             exit: profile.options.closeOnExit ? "closeStarted" : "leave",

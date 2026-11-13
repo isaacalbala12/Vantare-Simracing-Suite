@@ -29,6 +29,7 @@ const api = vi.hoisted(() => ({
   launchArm: vi.fn(),
   alertsUnavailable: vi.fn(),
   expired: false,
+  hideLaunch: false,
   toasts: true,
   settingsState: "ready" as "ready" | "loading" | "error",
   noticeAllowed: vi.fn(),
@@ -119,9 +120,11 @@ vi.mock("../src/renderer/ui/CalendarLiveView", () => ({
     launchButtonRef: import("react").Ref<HTMLButtonElement>;
   }) => (
     <>
-      <button type="button" ref={launchButtonRef}>
-        Lanzar a las 20:00
-      </button>
+      {!api.hideLaunch && (
+        <button type="button" ref={launchButtonRef}>
+          Lanzar a las 20:00
+        </button>
+      )}
       <button type="button" onClick={() => onSerie(fixture.series[0].id)}>
         Open series
       </button>
@@ -139,6 +142,7 @@ afterEach(() => {
   api.launchArm.mockReset();
   api.alertsUnavailable.mockReset();
   api.expired = false;
+  api.hideLaunch = false;
   api.toasts = true;
   api.settingsState = "ready";
   api.noticeAllowed.mockReset();
@@ -637,4 +641,38 @@ it("warns instead of silently ignoring deactivation when the fresh alerts revisi
   expect(
     api.request.mock.calls.filter(([r]) => r.method === "calendar.alertsSave"),
   ).toHaveLength(0);
+});
+
+it("does not defer focus indefinitely when the real timing button has unmounted", async () => {
+  api.launchView = activeLaunch(false);
+  let finish: (value: boolean) => void = () => {};
+  api.launchCancel.mockImplementation(
+    () =>
+      new Promise<boolean>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  api.request.mockResolvedValue({
+    method: "calendar.configLoad",
+    value: launchConfig(),
+  });
+  const ui = render(content());
+  await act(async () => {});
+  const timing = screen.getByRole("button", { name: "Lanzar a las 20:00" });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Cancelar lanzamiento puntual" }),
+  );
+  api.hideLaunch = true;
+  ui.rerender(content());
+  expect(timing.isConnected).toBe(false);
+  await act(async () => finish(true));
+  // No tab exists in this isolated chrome fixture either. The request must be
+  // consumed, rather than stealing focus when a new timing button mounts later.
+  const sentinel = document.createElement("button");
+  document.body.append(sentinel);
+  sentinel.focus();
+  api.hideLaunch = false;
+  ui.rerender(content());
+  expect(document.activeElement).toBe(sentinel);
+  sentinel.remove();
 });

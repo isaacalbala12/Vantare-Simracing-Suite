@@ -1,11 +1,25 @@
 .v-calendar-launch-notice {
-  display: grid;
-  grid-template-columns: var(--space-8) minmax(0, 1fr) max-content;
-  align-items: start;
-  gap: var(--space-4);
-  padding: var(--space-5) var(--space-7);
+  position: relative;
 }
-.v-calendar-launch-notice > .v-button {
+.v-calendar-launch-notice > .v-callout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: start;
+  column-gap: var(--space-4);
+  padding: var(--space-5) var(--space-7);
+  padding-left: calc(var(--space-7) + var(--space-8) + var(--space-4));
+}
+.v-calendar-launch-notice > .v-callout > strong {
+  grid-column: 1;
+  grid-row: 1;
+}
+.v-calendar-launch-notice > .v-callout > div {
+  grid-column: 1;
+  grid-row: 2;
+}
+.v-calendar-launch-notice > .v-callout > .v-button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   align-self: center;
   width: max-content;
 }
@@ -13,5 +27,8 @@
   margin: 0;
 }
 .v-calendar-launch-notice > svg {
+  position: absolute;
+  top: var(--space-5);
+  left: var(--space-7);
   color: var(--text-2);
 }

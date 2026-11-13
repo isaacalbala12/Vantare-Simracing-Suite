@@ -131,6 +131,8 @@ it("uses distinct cancellation names and an explicit live region for the latest 
     }),
   ).toBeTruthy();
   const latest = document.querySelector("[data-calendar-launch-result]");
-  expect(latest?.getAttribute("role")).toBe("status");
+  expect(latest?.querySelector(".v-callout")?.getAttribute("role")).toBe(
+    "status",
+  );
   expect(latest?.getAttribute("aria-live")).toBe("polite");
 });

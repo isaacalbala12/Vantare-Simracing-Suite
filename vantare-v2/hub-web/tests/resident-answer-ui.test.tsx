@@ -156,3 +156,31 @@ it("keeps the live region mounted empty, then announces while the panel is close
   expect(live.querySelector("strong")?.textContent).toBe("");
   expect(screen.queryByText(text.answerState.accepted)).toBeNull();
 });
+it.each([
+  [
+    "busy",
+    "Respuesta rechazada. No se ha aplicado. Hay otra orden pendiente. Espera antes de volver a responder.",
+  ],
+  [
+    "unsupported",
+    "Respuesta rechazada. No se ha aplicado. El residente actual no admite esta operación.",
+  ],
+] as const)("renders the literal %s explanation", (reason, expected) => {
+  mount({
+    answer: vi.fn(),
+    available: () => false,
+    attempt: {
+      cursor: 1n,
+      target: {
+        instance: "b".repeat(64),
+        accountGeneration: "a".repeat(64),
+        revision: "c".repeat(64),
+        run: "1",
+        decision: "2",
+        action: "cancel",
+      },
+      phase: { kind: "rejected", reason },
+    },
+  });
+  expect(screen.getByRole("status").textContent).toBe(expected);
+});

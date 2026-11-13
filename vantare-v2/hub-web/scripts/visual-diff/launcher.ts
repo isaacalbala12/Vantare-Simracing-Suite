@@ -10,10 +10,12 @@ export const launcherScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Creador de Contenido", exact: true })
         .waitFor();
-      const toggle = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const toggle = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await toggle.getAttribute("aria-expanded")) === "true")
         await toggle.click();
     },
@@ -142,10 +144,12 @@ launcherScenes["launcher-aplicaciones"] = {
 launcherScenes["launcher-decision"] = {
   mock: "launcher-decision",
   async prepare(page) {
-    const toggle = page.getByRole("button", {
-      name: "Contraer o ampliar navegación",
-      exact: true,
-    });
+    const toggle = page
+      .getByRole("button", {
+        name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+        exact: true,
+      })
+      .first();
     if ((await toggle.getAttribute("aria-expanded")) === "true")
       await toggle.click();
     await page.getByRole("button", { name: "Launcher", exact: true }).click();

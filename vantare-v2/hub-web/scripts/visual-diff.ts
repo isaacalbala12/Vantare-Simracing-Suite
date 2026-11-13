@@ -403,9 +403,10 @@ async function capture(
           if (current !== expanded)
             await page
               .getByRole("button", {
-                name: "Contraer o ampliar navegación",
+                name: /^(Contraer o ampliar navegación|Contraer barra)$/,
                 exact: true,
               })
+              .first()
               .click();
           await until(
             async () =>
@@ -421,6 +422,37 @@ async function capture(
         if (process.env.VANTARE_HUB_FRAME_ASSERT === "1")
           frameChecks.push(await checkFrameParity(page, expanded));
         saveWindow(filename);
+        if (args.includes("--capture-focus")) {
+          await page.keyboard.press("Tab");
+          const focus = await page.evaluate(() => {
+            const node = document.activeElement;
+            if (!(node instanceof HTMLElement)) return null;
+            const style = getComputedStyle(node);
+            const rect = node.getBoundingClientRect();
+            return {
+              tag: node.tagName,
+              label:
+                node.getAttribute("aria-label") ?? node.textContent?.trim(),
+              focusVisible: node.matches(":focus-visible"),
+              outline: style.outline,
+              shadow: style.boxShadow,
+              rect: {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+              },
+            };
+          });
+          saveWindow(`focus-${expanded ? "expanded" : "collapsed"}.png`);
+          await writeFile(
+            join(
+              destination,
+              `focus-${expanded ? "expanded" : "collapsed"}.json`,
+            ),
+            JSON.stringify(focus, null, 2),
+          );
+        }
         matrix.push({
           expanded,
           applicable,

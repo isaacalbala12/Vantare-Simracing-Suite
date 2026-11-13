@@ -1633,3 +1633,32 @@ se registran en el PR de esta rama. Sin integración, promoción ni release prop
 Seguimiento #2229 listo para review: 9685935ef, CI completa verde15/15.
 La superficie no depende de cambios de API de ese seguimiento; integrar su
 arreglo y regresiones antes de activar Calendario.
+
+### Seguimiento de review · Cuenta y lanzamientos
+
+#2229, #2235 y el arreglo del test del pipe #2246 ya están en nightly.
+El seguimiento está en el PR draft #2254; su cuerpo recoge el SHA y los checks.
+
+Los permisos habituales se actualizan en su propio hilo. Una consulta de cuenta
+lenta no retrasa esos permisos ni la señal de que llegó la primera respuesta.
+Al cerrar el Feed se cancelan y recogen los dos hilos.
+
+La cuenta vale como máximo 2 s desde su última respuesta. Si un error llega antes,
+se conserva solo el tiempo que le quedaba. Si la consulta consume los 2 s completos,
+la cuenta pasa a None: los permisos habituales no renuevan su generación.
+Un reinicio de la autoridad también invalida la cuenta anterior. Esta decisión
+fue confirmada por Isaac durante la revisión del PR.
+
+Antes de enviar un lanzamiento, el anfitrión sigue leyendo el documento una vez:
+rechaza una revisión antigua, un perfil ausente o vacío y un documento protegido.
+No lo relee una segunda vez justo antes de enviar. El residente hace la comprobación
+definitiva al recibirlo. El protocolo v31 y el plazo del residente de 750 ms siguen igual.
+
+Las cuatro guardas de diálogos, paleta y notificaciones cuentan launchChecked.
+D debe esperar a que #2254 entre en nightly para activar Calendario; E avisará
+cuando esté integrado. Sin recibo significa Unknown, nunca éxito supuesto.
+No se han ejecutado interfaces gráficas ni publicado una release.
+
+El Mac está desconectado y H tiene prioridad en la cola del servidor.
+Tras el gate local anterior, las correcciones de esta revisión se dejan a CI;
+no se lanza otra compilación local. Los nuevos tests solo afectan a IPC.

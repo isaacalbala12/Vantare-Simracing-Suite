@@ -151,8 +151,7 @@ mod tests {
         let bytes = serde_json::to_vec(&document).unwrap();
         std::fs::write(&path, &bytes).unwrap();
         let revision = vantare_services::content_hash(&bytes);
-        let observed = observation();
-        let armed = observed.generation.clone();
+        let armed = observation().generation;
         let profile = &document.profiles[0].id;
         let mut status = mailbox::Status {
             version: mailbox::VERSION,
@@ -168,13 +167,13 @@ mod tests {
         };
         save(&status);
         assert_eq!(
-            launch(&path, Some(&observed), &armed, profile, &revision),
+            launch(&path, Some(&observation()), &armed, profile, &revision),
             Err(HostError::Unsupported)
         );
         status.extension = Some(ExecutionStatus::new("b".repeat(64).try_into().unwrap()));
         save(&status);
         assert_eq!(
-            launch(&path, Some(&observed), &armed, profile, &revision),
+            launch(&path, Some(&observation()), &armed, profile, &revision),
             Err(HostError::Unsupported)
         );
         status
@@ -186,21 +185,21 @@ mod tests {
         status.updated_ms = 0;
         save(&status);
         assert_eq!(
-            launch(&path, Some(&observed), &armed, profile, &revision),
+            launch(&path, Some(&observation()), &armed, profile, &revision),
             Err(HostError::CoreUnavailable)
         );
         status.updated_ms = mailbox::now_ms();
         status.running = true;
         save(&status);
         assert_eq!(
-            launch(&path, Some(&observed), &armed, profile, &revision),
+            launch(&path, Some(&observation()), &armed, profile, &revision),
             Err(HostError::Busy)
         );
         assert!(!mailbox::request_path(&path).exists());
         status.running = false;
         save(&status);
         let LaunchQueued::Queued { request } =
-            launch(&path, Some(&observed), &armed, profile, &revision).unwrap();
+            launch(&path, Some(&observation()), &armed, profile, &revision).unwrap();
         assert_eq!(request.len(), 32);
         let wire: mailbox::Request =
             serde_json::from_slice(&std::fs::read(mailbox::request_path(&path)).unwrap()).unwrap();
@@ -213,9 +212,81 @@ mod tests {
         assert_eq!(payload.revision, revision);
         assert_eq!(payload.instance, status.extension.unwrap().instance);
         assert_eq!(
-            launch(&path, Some(&observed), &armed, profile, &revision),
+            launch(&path, Some(&observation()), &armed, profile, &revision),
             Err(HostError::Busy)
         );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn obsolete_revision_missing_empty_and_protected_profiles_never_enqueue() {
+        let root = std::env::temp_dir().join(format!(
+            "host-checked-negative-{}",
+            vantare_services::random_id().unwrap()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("launcher.json");
+        let mut document = vantare_launcher::Document::fresh_install();
+        let original = serde_json::to_vec(&document).unwrap();
+        let revision = vantare_services::content_hash(&original);
+        let armed = observation().generation;
+        // Every other launch precondition is valid, so deleting the hash guard queues
+        // this stale snapshot and fails the regression instead of another guard hiding it.
+        let mut extension = ExecutionStatus::new("b".repeat(64).try_into().unwrap());
+        extension
+            .capabilities
+            .push(Capability::RevisionCheckedLaunch);
+        let status = mailbox::Status {
+            version: mailbox::VERSION,
+            updated_ms: mailbox::now_ms(),
+            extension: Some(extension),
+            ..Default::default()
+        };
+        std::fs::write(
+            mailbox::status_path(&path),
+            serde_json::to_vec(&status).unwrap(),
+        )
+        .unwrap();
+        let mut changed = original.clone();
+        changed.push(b'\n');
+        std::fs::write(&path, &changed).unwrap();
+        assert!(matches!(
+            launch(&path, Some(&observation()), &armed, "creator", &revision),
+            Err(HostError::LauncherConflict { .. })
+        ));
+        assert!(!mailbox::request_path(&path).exists());
+        std::fs::write(&path, &original).unwrap();
+        assert_eq!(
+            launch(&path, Some(&observation()), &armed, "missing", &revision),
+            Err(HostError::Denied)
+        );
+        document.profiles[0].steps.clear();
+        let empty = serde_json::to_vec(&document).unwrap();
+        std::fs::write(&path, &empty).unwrap();
+        assert_eq!(
+            launch(
+                &path,
+                Some(&observation()),
+                &armed,
+                "creator",
+                &vantare_services::content_hash(&empty)
+            ),
+            Err(HostError::Denied)
+        );
+        for protected in [b"{broken".as_slice(), br#"{"version":999}"#] {
+            std::fs::write(&path, protected).unwrap();
+            assert_eq!(
+                launch(
+                    &path,
+                    Some(&observation()),
+                    &armed,
+                    "creator",
+                    &vantare_services::content_hash(protected)
+                ),
+                Err(HostError::Protected)
+            );
+            assert_eq!(std::fs::read(&path).unwrap(), protected);
+        }
+        assert!(!mailbox::request_path(&path).exists());
         std::fs::remove_dir_all(root).unwrap();
     }
 }

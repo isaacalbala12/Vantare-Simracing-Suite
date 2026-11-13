@@ -75,7 +75,7 @@ pub fn request_cancelled(
     link: &AuthorityLink,
     stop: &std::sync::Arc<crate::transport::Event>,
 ) -> io::Result<Option<AccountObservation>> {
-    request_with_deadline(link, stop, std::time::Duration::from_millis(150))
+    request_cancelled_within(link, stop, std::time::Duration::from_millis(150))
 }
 
 /// Bounded consume-time observation. One RPC, no retries, no mutator nonce.
@@ -85,10 +85,11 @@ pub fn read_account_session(
     timeout: std::time::Duration,
 ) -> io::Result<Option<AccountObservation>> {
     let stop = std::sync::Arc::new(crate::transport::Event::new()?);
-    request_with_deadline(link, &stop, timeout)
+    request_cancelled_within(link, &stop, timeout)
 }
+/// One authenticated RPC with a total deadline, including partial reads/writes.
 #[cfg(any(windows, unix))]
-fn request_with_deadline(
+pub(crate) fn request_cancelled_within(
     link: &AuthorityLink,
     stop: &std::sync::Arc<crate::transport::Event>,
     timeout: std::time::Duration,

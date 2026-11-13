@@ -266,3 +266,16 @@ D implementa armar/cancelar/textos/casillas y descarta intenciones/correlaciones
 al cambiar de cuenta. Cancelar deja de tener efecto tras el envío; una cadena
 aceptada no se mata. Ask/confianza puede esperar hasta2min y acabar
 DecisionExpired: avisar al armar. Sin agenda con el Hub cerrado.
+
+El anfitrión v2 conserva una primera lectura para rechazar pronto revisiones
+obsoletas (LauncherConflict), perfiles ausentes/vacíos y documentos Protected.
+No hace una segunda relectura justo antes de enviar. La garantía final procede
+del residente al consumir: lee una sola instantánea, valida revisión/cuenta y
+arranca con esos bytes por valor. La primera comprobación del anfitrión no la sustituye.
+La consulta de cuenta tiene un plazo total de 2 s y corre en un hilo separado:
+no retrasa la actualización de permisos habituales ni la primera respuesta del Feed.
+Ante TimedOut, Interrupted, ConnectionAborted o WouldBlock, conserva la cuenta
+anterior solo si aún no han vencido sus 2 s y sigue siendo la misma autoridad.
+Si la consulta agota los 2 s, la cuenta pasa a None. Una respuesta legacy fresca
+no renueva la generación de cuenta. Ok(None) también la borra inmediatamente.
+Cerrar el Feed cancela y recoge ambos hilos. El residente mantiene 750 ms al consumir.

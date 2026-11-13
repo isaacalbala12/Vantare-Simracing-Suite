@@ -229,13 +229,20 @@ fn account_feed_stops_after_three_failed_probes_per_epoch_and_preserves_legacy_p
     let worker = std::thread::spawn(move || {
         let mut first = Some(first);
         let mut probes = 0;
-        for index in 0..8 {
+        let mut legacy_reads_after_probes = 0;
+        // A legacy Read can expire before the feed observes its first epoch. That
+        // adds a Read without an account probe, so physical connection indices are
+        // not a protocol guarantee. Require three probes and continued legacy reads.
+        for revision in 1..=16 {
             let mut pipe = first.take().unwrap_or_else(|| listener.instance().unwrap());
             pipe.accept().unwrap();
             let request = control::read_request(&mut pipe).unwrap();
             if matches!(request.command, control::Command::ReadAccountSession { .. }) {
                 probes += 1;
-                assert!([1, 3, 5].contains(&index));
+                assert!(
+                    probes <= 3,
+                    "cached legacy authority received another probe"
+                );
                 // Frozen core: unknown operation closes this connection without a reply.
                 continue;
             }
@@ -248,15 +255,22 @@ fn account_feed_stops_after_three_failed_probes_per_epoch_and_preserves_legacy_p
                     error: None,
                     policy: control::Policy {
                         epoch: 1,
-                        revision: index + 1,
+                        revision,
                         checked_at_ms: control::wall_ms().unwrap(),
                         ..control::Policy::denied(control::AccessState::NoCredential)
                     },
                 },
             )
             .unwrap();
+            if probes == 3 {
+                legacy_reads_after_probes += 1;
+                if legacy_reads_after_probes == 2 {
+                    break;
+                }
+            }
         }
         assert_eq!(probes, 3);
+        assert_eq!(legacy_reads_after_probes, 2);
     });
     let feed = control::Feed::connect_account(&photo, std::env::current_exe().unwrap()).unwrap();
     assert!(feed.wait_initial(Duration::from_secs(5)));

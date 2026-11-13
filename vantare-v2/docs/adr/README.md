@@ -30,4 +30,5 @@ Leer el estado, las enmiendas y el ámbito de cada decisión. Un ADR propuesto n
 - [ADR 0104: Identidad de Gestión y sesión en memoria](0104-identidad-admin-y-sesion-en-memoria.md) — aceptado en #1910; activación del cliente reservada a Isaac.
 - [ADR 0105: informe v2 del Testing Center](0105-testing-center-report-v2.md) — aceptado para 7a de #1896; retirada de tablas y RPC antiguos pendiente de 7b.
 - [ADR 0106: una cadena de migraciones Supabase y un esquema derivado](0106-migraciones-supabase-historia-unica.md) — Fase A de #1896, compartida con R3; sin compactación ni despliegue.
-- [ADR 0107: Hub en Electron; núcleo y overlays en Rust](0107-hub-electron-nucleo-y-overlays-rust.md) — aceptada por Isaac el 2026-11-10; Hub GPUI congelado.
+- [ADR 0107: Hub en Electron; núcleo y overlays en Rust](0107-hub-electron-nucleo-y-overlays-rust.md) — aceptada por Isaac el 2026-11-10; Hub GPUI congelado; enmendada por ADR 0108.
+- [ADR 0108: Hub en Rune como vía paralela a Electron](0108-hub-rune-via-paralela.md) — vía decidida por Isaac el 2026-11-13; no sustituye a ADR 0107 ni autoriza distribución.

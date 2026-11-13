@@ -12,9 +12,18 @@ import { answerCursor } from "./resident-answer-model";
 // UI notice lifetime; independent of the native order-receipt deadline.
 export const residentTerminalNoticeMs = 10000;
 export type ControlRejection =
-  | ResidentOrderRejection
+  | Exclude<ResidentOrderRejection, "unknown-run" | "no-failed-steps">
   | "unsupported"
   | "rejected";
+export function isControlRejection(
+  value: ResidentOrderRejection,
+): value is Exclude<ResidentOrderRejection, "unknown-run" | "no-failed-steps"> {
+  return (
+    value !== "unknown-run" &&
+    value !== "no-failed-steps" &&
+    residentOrderRejections.some((allowed) => allowed === value)
+  );
+}
 export type ControlIntent =
   | { kind: "cancel"; target: ResidentCancelTarget }
   | { kind: "rehearse"; target: ResidentRehearseTarget };
@@ -80,8 +89,7 @@ export function observeControl(
     ) {
       if (value.receipt.kind === "rejected") {
         const reason = value.receipt.reason;
-        if (!residentOrderRejections.some((allowed) => allowed === reason))
-          return unknown();
+        if (!isControlRejection(reason)) return unknown();
         return { ...next, phase: { kind: "rejected", reason } };
       }
       if (next.kind === "cancel" && value.receipt.run !== next.target.run)

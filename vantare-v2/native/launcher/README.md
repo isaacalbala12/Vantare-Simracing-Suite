@@ -117,7 +117,8 @@ El ensayo relee una sola instantánea validada al consumir y selecciona todos
 los índices cuyo app_id != "lmu", con comparación exacta que distingue
 mayúsculas y minúsculas, igual que GPUI. Conserva posiciones y pasos repetidos;
 un perfil vacío o solo LMU devuelve NoSteps. No detecta juegos personalizados.
-No incorpora aún resultados por paso ni reintentos (L55).
+El contrato v34 no incorpora resultados por paso ni reintentos; L55 los añade
+con soporte opt-in, como se describe a continuación.
 
 ### Resultados por paso y reintento L55
 El worker conserva una foto tipada y acotada de sus pasos, sin analizar mensajes.

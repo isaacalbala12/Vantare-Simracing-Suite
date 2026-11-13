@@ -127,10 +127,10 @@ Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
 ## VANTA-138 · núcleo L55: resultados y repetir los mismos pasos (2026-11-13)
 
 #1995 / VANTA-138. L55 v35 autorizado; preparación local en
-vantareapp/isa-1995-resident-results, rebasada sobre nightly e9ebe62be tras
-#2291/f7f30d3d7. No se ha abierto PR ni publicado esta rama. Microplan aprobado.
+vantareapp/isa-1995-resident-results, rebasada sobre nightly 1ec31b109 tras
+#2291/f7f30d3d7 y la UI L54 #2293. Microplan aprobado.
 
-El residente conservará solo el resumen de la ejecución activa o la última
+El residente conserva solo el resumen de la ejecución activa o la última
 terminada: cuenta, run, perfil, revisión, modo de origen y resultado por índice.
 Un estado incompleto no permite reintentar. «Reintentar fallidos» excluye pasos
 cancelados; «Repetir los mismos pasos» conserva la selección original del ensayo,
@@ -148,9 +148,12 @@ reenvío. El resumen no sustituye la correlación de recibos y terminales.
 Los nuevos rechazos comunes son unknown-run y no-failed-steps; los consumidores
 de órdenes anteriores deben tratar motivos ajenos como Unknown.
 
-Validación local en curso por la cola, respetando captura.lock y memoria.
-Tipos/corpus v35 se generarán desde Rust; nunca se editan a mano. Rebase sobre
-nightly completado; después, draft con gates locales y CI completa.
+Validación local por la cola: fmt y Clippy all-targets -D warnings PASS;
+1.721 tests nativos y 34 de telemetría PASS. Tras rebasar la UI L54, ambos
+typechecks, Biome y 52 regresiones web PASS. Tipos/corpus v35 exportados desde
+Rust. Comprobación final tras reforzar dos tests: Clippy y 95 tests del binario
+residente PASS. Slot liberado y G avisado para reanudar. Draft contra nightly;
+enlace, HEAD final y CI completa se registran en #1995. CI pendiente al publicar.
 L56 no se ha empezado. Sin merge, promoción, release, dependencias ni gráficos.
 
 ## VANTA-138 · núcleo L54: cancelar y ensayar sin LMU (2026-11-13)

@@ -19,6 +19,7 @@ export function createResidentControlMock(
     revisionCheckedLaunch: true,
     checkedAnswer: true,
     checkedControl: scene !== "launcher-control-unsupported",
+    results: { kind: "unsupported" },
     active: null,
     question: null,
     firstRetainedSeq: "1",

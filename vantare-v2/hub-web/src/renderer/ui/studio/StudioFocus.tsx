@@ -58,7 +58,12 @@ export function StudioFocus() {
           ) : null}
           <StudioFeedback model={model} />
           {view?.state === "missing" ? (
-            <div className="v-studio-unavailable">
+            <div
+              className="v-studio-unavailable"
+              role="region"
+              aria-label={t.missing}
+              tabIndex={-1}
+            >
               <Callout title={t.missing}>{t.missingHelp}</Callout>
             </div>
           ) : selected && view ? (

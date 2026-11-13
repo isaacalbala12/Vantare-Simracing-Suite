@@ -92,7 +92,8 @@ export function useStudioFocus() {
           root.current?.querySelector<HTMLElement>(
             ".v-studio-list [data-widget]",
           ) ??
-          root.current?.querySelector<HTMLElement>(".v-studio-list"))
+          root.current?.querySelector<HTMLElement>(".v-studio-list") ??
+          root.current?.querySelector<HTMLElement>(".v-studio-unavailable"))
         : root.current?.querySelector<HTMLElement>("[data-studio-reload]");
       target?.focus();
       setFocusReload(false);

@@ -82,9 +82,23 @@ propios. Fuentes oficiales: [EnumAdapters2](https://learn.microsoft.com/en-us/wi
 En servidor solo se compilaron los tres tipos C# y se comprobaron tamaños ABI;
 no se instanciaron contadores, adaptadores, ETW ni PresentMon.
 
-CPU no dispone aquí de un sensor fiable sin driver añadido: se registra
-unknown y cpu_temperature_verified=false. Requiere confirmación física/manual;
-no se inventa temperatura ni se declara comprobación térmica completa.
+Decisión de Isaac: temperatura CPU como no_disponible, sin controladores ni
+dependencias nuevas. TERMICA.ps1 invalida la ronda si Performance Limit Flags
+no es cero, el límite es <100% del nominal o Processor Performance baja del
+100% en un procesador lógico activo. No se confunde un núcleo sin instrucciones
+con una caída de frecuencia. Se mantienen los MHz crudos como información,
+porque pueden no reflejar el reloj autónomo del hardware; no se usa el máximo
+SMBIOS como si fuese la frecuencia base. El porcentaje nominal sí contempla
+el rendimiento efectivo mientras ejecuta instrucciones. Una limitación es una
+señal de invalidación, no una lectura de temperatura ni prueba de sobrecalentamiento.
+La GPU usada por la familia debe tener sensor y aviso del driver verificables;
+se invalida si llega a ese aviso. Otros adaptadores inactivos se conservan en
+el CSV, sin confundirlos con la GPU usada. Datos ausentes nunca equivalen a cero.
+El cálculo se aplica al intervalo medido, después del calentamiento.
+
+Fuentes: [PerfLib de Microsoft](https://learn.microsoft.com/en-us/windows/win32/perfctrs/using-the-perflib-functions-to-consume-counter-data)
+y descripciones inglesas locales de Windows Perflib\009 para los contadores
+24/30/31. Su lectura es metadato, sin abrir contadores o sensores en servidor.
 Soporte de contadores, sesiones ETW, driver, parentesco y los nuevos modos
 sigue sin ejecutar hasta el PC. Falta integrar estos datos con la campaña.
 
@@ -103,3 +117,9 @@ CIM/GetProcessTimes. Puede conservar un padre transitorio y luego refinar
 la fecha de su hijo sin inventar una reutilización de PID. Todas las fechas
 se comparan en UTC. test_familia.ps1 verifica ese caso, zonas horarias y una
 reutilización real con datos sintéticos, sin WMI ni procesos reales.
+
+Carga nueva fuente 2654079143211ab09e2bd0ddff64c514e97b92db: Release por
+cola /O2 /MT, 7,279 s de compilador y 178 s de espera. 286.720 bytes; SHA256
+57a76337d2fea3b4c3822db51102a231bd143305b122ba3e5ea0814f135011a5.
+Procedencia dentro del PE y dumpbin verificados sin ejecutarlo. El aviso
+preexistente de VsDevCmd sobre vswhere se conserva; cl finaliza con código 0.

@@ -37,8 +37,10 @@ namespace Vantare141 {
                 Add("process_id",@"\Process(*)\ID Process");
                 Add("system_cpu",@"\Processor(*)\% Processor Time");
                 Add("cpu_frequency",@"\Processor Information(*)\Processor Frequency");
+                Add("cpu_active_time",@"\Processor Information(*)\% Processor Time");
                 Add("cpu_performance",@"\Processor Information(*)\% Processor Performance");
                 Add("cpu_limit",@"\Processor Information(*)\% Performance Limit");
+                Add("cpu_limit_flags",@"\Processor Information(*)\Performance Limit Flags");
             } catch { Dispose(); throw; }
         }
         void Add(string name, string path) {

@@ -1,3 +1,14 @@
+## VANTA-141 · Control térmico sin controlador añadido (13/11/2026)
+
+Isaac acepta GPU y contadores CPU; temperatura CPU no_disponible. Se invalida
+por limitación o rendimiento efectivo por debajo del nominal en CPU activa.
+TERMICA.ps1 es cálculo puro: turbo, núcleos inactivos, límites, frecuencia,
+GPU y datos ausentes probados con datos sintéticos PASS. Faltan PC y contadores
+reales. Tipos C# Release se validarán por cola sin instanciar APIs nativas.
+Carga fija de fuente 265407914 compilada: 286.720 bytes, 7,279 s; SHA256
+57a76337d2fea3b4c3822db51102a231bd143305b122ba3e5ea0814f135011a5. PE y
+dumpbin PASS. Sin ejecución gráfica, merge ni release. PR draft #2251.
+
 ## VANTA-141 · Carga fija y familias transitorias (13/11/2026)
 
 PR draft #2251. --iterations permite reutilizar el mismo trabajo GPU fijado

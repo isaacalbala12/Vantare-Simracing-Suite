@@ -1,4 +1,5 @@
 # Solo PC de juego; este guion nunca se ejecuta en el servidor.
+#requires -Version 7.0
 [CmdletBinding(DefaultParameterSetName='Direct')]
 param(
     [Parameter(Mandatory,ParameterSetName='Direct')][ValidateRange(1,2147483647)][int]$RootProcessId,
@@ -22,7 +23,7 @@ if ((Get-FileHash -LiteralPath $PresentMon -Algorithm SHA256).Hash.ToLowerInvari
 if (-not $Aguante -and @(Get-Process PresentMon* -ErrorAction SilentlyContinue).Count) { throw 'Cerrar el otro PresentMon antes de empezar.' }
 foreach ($file in @('Contadores','Captura','Temperatura')) {
     if (-not (('Vantare141.' + @{Contadores='Counters';Captura='CaptureSession';Temperatura='GpuThermals'}[$file]) -as [type])) {
-        Add-Type -Path (Join-Path $PSScriptRoot ($file+'.cs'))
+        Add-Type -Path (Join-Path $PSScriptRoot ($file+'.cs')) -CompilerOptions @('/optimize+','/debug-')
     }
 }
 $environment = [ordered]@{
@@ -33,7 +34,8 @@ $environment = [ordered]@{
     cpu=@(Get-CimInstance Win32_Processor | Select-Object Name,NumberOfLogicalProcessors,MaxClockSpeed)
     logical_processors=[Environment]::ProcessorCount
     power_scheme=(& powercfg /getactivescheme | Out-String).Trim()
-    started_utc=[DateTime]::UtcNow.ToString('o');cpu_temperature='unknown: requires manual thermal confirmation'
+    started_utc=[DateTime]::UtcNow.ToString('o');cpu_temperature='no_disponible: decisión de Isaac, sin sensor/controlador añadido'
+    cpu_thermal_policy='TERMICA.ps1: flags no cero, límite <100% o rendimiento nominal <100% en CPU activa invalidan la ronda'
     gpu_metric='raw PDH; family utilization uses busiest physical engine, not sum of parallel engines'
     health_only=[bool]$Aguante
 }
@@ -141,7 +143,7 @@ try {
             } finally { if($measured){$measured.Dispose()} }
         }
         $counter.Collect()
-        $names=if($Aguante){@('system_cpu','cpu_frequency','cpu_performance','cpu_limit')}else{@('gpu_engine','gpu_memory','system_cpu','cpu_frequency','cpu_performance','cpu_limit','process_cpu','process_id')}
+        $names=if($Aguante){@('gpu_engine','system_cpu','cpu_frequency','cpu_active_time','cpu_performance','cpu_limit','cpu_limit_flags')}else{@('gpu_engine','gpu_memory','system_cpu','cpu_frequency','cpu_active_time','cpu_performance','cpu_limit','cpu_limit_flags','process_cpu','process_id')}
         foreach ($name in $names) {
             foreach ($value in $counter.Read($name)) {
                 $rawCounters.Add([pscustomobject]@{qpc=$clock;counter=$name;instance=$value.Name;value=$value.Value.ToString('R',[Globalization.CultureInfo]::InvariantCulture);status=$value.Status})

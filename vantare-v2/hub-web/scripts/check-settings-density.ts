@@ -50,7 +50,7 @@ export async function checkSettingsDensity(page: Page, base: string) {
             );
           const reasons = general.locator(".v-setting-important-help");
           assert.ok(
-            (await reasons.count()) >= 2,
+            (await reasons.count()) === 2,
             "Availability reasons must be present, not an empty assertion",
           );
           for (const reason of await reasons.all())
@@ -60,6 +60,34 @@ export async function checkSettingsDensity(page: Page, base: string) {
               "Availability reasons stay visible in the compact layout",
             );
         }
+      }
+      await page.getByRole("tab", { name: "Atajos", exact: true }).click();
+      const descriptions = page.locator(".v-setting-row .v-muted");
+      await descriptions.first().waitFor();
+      assert.ok(
+        (await descriptions.count()) > 0,
+        "Shortcuts must contain status/help text",
+      );
+      for (const description of await descriptions.all())
+        assert.equal(
+          await description.isVisible(),
+          true,
+          "Compact General rules must not hide shortcut statuses or empty-state explanations",
+        );
+      for (const name of ["Privacidad", "Diagnóstico"]) {
+        await page.getByRole("tab", { name, exact: true }).click();
+        const help = page.locator(".v-setting-row .v-muted");
+        await help.first().waitFor();
+        assert.ok(
+          (await help.count()) > 0,
+          `${name} must exercise real help text`,
+        );
+        for (const description of await help.all())
+          assert.equal(
+            await description.isVisible(),
+            true,
+            `${name} help must remain visible`,
+          );
       }
     }
   } finally {

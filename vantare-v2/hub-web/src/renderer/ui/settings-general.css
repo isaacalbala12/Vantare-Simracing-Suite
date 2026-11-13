@@ -48,9 +48,9 @@
 /* Native Adapt B: optional explanations disappear, availability reasons stay. */
 @media (max-height: 819px) {
   .v-settings-general {
-    gap: 10px;
+    gap: 12px;
   }
   .v-settings-general .v-setting-row:has(.v-setting-important-help) {
-    padding-block: 4px;
+    padding-block: 5px;
   }
 }

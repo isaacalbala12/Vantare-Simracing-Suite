@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { launcherText as text } from "../../src/renderer/i18n/launcher.ts";
 import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 export const launcherScenes: Record<string, VisualScene> = {
@@ -16,6 +17,77 @@ export const launcherScenes: Record<string, VisualScene> = {
       if ((await toggle.getAttribute("aria-expanded")) === "true")
         await toggle.click();
     },
+  },
+};
+
+launcherScenes["launcher-opciones-ocupadas"] = {
+  mock: "launcher-ready",
+  async prepare(page) {
+    await launcherScenes["launcher-base"].prepare(page);
+    await page
+      .getByRole("button", { name: new RegExp(`^${text.launch}`) })
+      .first()
+      .click();
+    // The local mock does not run the native 500 ms status publisher. Opening
+    // the palette performs its normal launcher.get instead of fabricating a view.
+    await page.getByText(text.queued, { exact: true }).waitFor();
+    await page.keyboard.press("Control+k");
+    await until(
+      async () =>
+        (await page.locator(".v-launcher-rail").textContent())?.includes(
+          text.nextOptions,
+        ) ?? false,
+      5000,
+      "fresh running snapshot",
+    );
+    await page.keyboard.press("Escape");
+    await page
+      .getByRole("heading", { name: text.nextOptions, exact: true })
+      .waitFor();
+    await page
+      .getByText(text.queued, { exact: true })
+      .waitFor({ state: "hidden" });
+  },
+};
+
+// At 1080 px high the existing rail also exposes its close-on-exit Switch.
+// Verify the real CSS/Tab path; jsdom alone cannot prove that it is reachable.
+launcherScenes["launcher-opciones-lectura"] = {
+  mock: "launcher-ready",
+  async prepare(page) {
+    await launcherScenes["launcher-opciones-ocupadas"].prepare(page);
+    const controls = page.locator(
+      '.v-launcher-options [role="combobox"],.v-launcher-quick [role="switch"]',
+    );
+    assert.equal(await controls.count(), 6);
+    await controls.first().focus();
+    for (let index = 0; index < 6; index++) {
+      const control = controls.nth(index);
+      assert.ok(await control.isVisible());
+      assert.equal(
+        await control.evaluate((node) => node === document.activeElement),
+        true,
+      );
+      assert.equal(await control.getAttribute("aria-readonly"), "true");
+      const reason = await control.getAttribute("aria-describedby");
+      assert.ok(reason);
+      assert.equal(
+        await page.locator(`[id="${reason}"]`).textContent(),
+        text.runningOptionsReadOnly,
+      );
+      if (index < 5) {
+        await control.click();
+        assert.equal(await page.getByRole("listbox").count(), 0);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Enter");
+        assert.equal(await page.getByRole("listbox").count(), 0);
+      }
+      if (index < 5) await page.keyboard.press("Tab");
+    }
+    const toggle = controls.last();
+    const checked = await toggle.getAttribute("aria-checked");
+    await page.keyboard.press("Space");
+    assert.equal(await toggle.getAttribute("aria-checked"), checked);
   },
 };
 

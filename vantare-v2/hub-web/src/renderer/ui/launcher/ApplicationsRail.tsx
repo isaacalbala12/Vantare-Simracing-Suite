@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type {
   LauncherView,
   ProfileOption,
@@ -64,6 +65,9 @@ export function LauncherApplicationsRail({
   onOption?: (id: string, value: ProfileOption) => void;
   pending?: boolean;
 }) {
+  const reasonId = useId();
+  const headingId = useId();
+  const runningReadOnly = view.running && !view.protected;
   const profile =
     view.profiles.find((item) => item.id === selected) ??
     view.profiles.find((item) => item.favorite) ??
@@ -107,13 +111,22 @@ export function LauncherApplicationsRail({
         </div>
       </section>
       {options && (
-        <section>
+        <section aria-labelledby={headingId}>
           <header>
-            <h2>
+            <h2 id={headingId}>
               <Icon name="v-sliders" />
               {view.running ? text.nextOptions : text.advancedOptions}
             </h2>
           </header>
+          {runningReadOnly && (
+            <p
+              id={reasonId}
+              role="status"
+              className="v-launcher-options-readonly v-muted"
+            >
+              {text.runningOptionsReadOnly}
+            </p>
+          )}
           <div className="v-launcher-options">
             {[
               {
@@ -174,11 +187,18 @@ export function LauncherApplicationsRail({
                   hideLabel
                   options={option.choices}
                   value={option.value}
-                  disabled={
-                    !onOption || pending || view.protected || view.running
-                  }
+                  disabled={!onOption || view.protected}
+                  pending={pending}
+                  readOnly={runningReadOnly}
+                  aria-describedby={runningReadOnly ? reasonId : undefined}
                   onChange={(raw) => {
-                    if (raw === option.value) return;
+                    if (
+                      pending ||
+                      view.protected ||
+                      view.running ||
+                      raw === option.value
+                    )
+                      return;
                     const value = patch(option.field, raw);
                     if (value && profile) onOption?.(profile.id, value);
                   }}
@@ -190,8 +210,14 @@ export function LauncherApplicationsRail({
             <Switch
               label={actionText.closeOnExit}
               checked={options.closeOnExit}
-              disabled={!onOption || pending || view.protected || view.running}
+              disabled={!onOption || view.protected}
+              pending={pending}
+              readOnly={runningReadOnly}
+              aria-describedby={runningReadOnly ? reasonId : undefined}
               onCheckedChange={(value) =>
+                !pending &&
+                !view.protected &&
+                !view.running &&
                 profile &&
                 onOption?.(profile.id, { option: "closeOnExit", value })
               }

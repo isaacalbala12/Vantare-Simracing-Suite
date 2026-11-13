@@ -1,4 +1,6 @@
 export const launcherText = {
+  runningOptionsReadOnly:
+    "Solo lectura durante el lanzamiento. Podrás cambiar estos ajustes cuando termine.",
   title: "Launcher",
   profilesTab: "Perfiles",
   profileTab: "Perfil",

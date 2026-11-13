@@ -9,6 +9,23 @@ export const residentText = {
   pending: "Hay una decisión de lanzamiento pendiente.",
   open: "Ver decisión",
   readOnly: "Responder desde el Hub estará disponible próximamente.",
+  answerHelp:
+    "Elige una respuesta para la pregunta actual. Cerrar este panel no responde ni cancela la secuencia.",
+  trustUnavailable:
+    "La autorización de aplicaciones requiere revisar el perfil en el editor. No se puede conceder desde esta pregunta.",
+  answerUnavailable:
+    "Esta pregunta no está disponible para responder con la cuenta y el residente actuales.",
+  answerState: {
+    sending: "Enviando la respuesta al residente…",
+    queued: "Respuesta enviada. Esperando el recibo del residente…",
+    accepted: "Respuesta aceptada. La secuencia sigue en curso.",
+    rejected: "El residente ha rechazado la respuesta. No se ha aplicado.",
+    unknown:
+      "Resultado desconocido: no se ha podido confirmar la respuesta. No se repetirá automáticamente.",
+    finished: "La secuencia ha terminado.",
+    failed: "La secuencia ha terminado con un fallo.",
+    cancelled: "La secuencia se ha cancelado.",
+  },
   failed: "El residente ha informado de un error.",
   question: {
     authorization:

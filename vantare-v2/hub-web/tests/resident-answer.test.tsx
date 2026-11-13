@@ -1,0 +1,175 @@
+// @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import coreFixture from "../fixtures/core-offline.json";
+import type {
+  CoreStatus,
+  ResidentView,
+} from "../src/contract/generated/contract";
+import { coreKey } from "../src/renderer/app/Host";
+import {
+  type AnswerClock,
+  useResidentAnswer,
+} from "../src/renderer/screens/launcher/resident-answer";
+
+const host = vi.hoisted(() => ({ client: { request: vi.fn() } }));
+vi.mock("../src/renderer/app/Host", async (original) => ({
+  ...(await original<typeof import("../src/renderer/app/Host")>()),
+  useHost: () => host,
+}));
+const caches: QueryClient[] = [];
+afterEach(() => {
+  cleanup();
+  for (const cache of caches) cache.clear();
+  caches.length = 0;
+  host.client.request.mockReset();
+});
+function setup() {
+  const core = {
+    ...structuredClone(coreFixture),
+    services: "connected",
+    accountGeneration: "a".repeat(64),
+  } as CoreStatus;
+  core.access.verified = true;
+  const view: ResidentView = {
+    protected: false,
+    online: true,
+    running: true,
+    error: false,
+    registrations: [],
+    decision: {
+      id: "2",
+      kind: "alreadyRunning",
+      actions: [
+        { id: "reuse", label: "Reutilizar" },
+        { id: "cancel", label: "Cancelar" },
+        { id: "trust", label: "Confiar y lanzar" },
+      ],
+    },
+    execution: {
+      instance: "b".repeat(64),
+      checkedAnswer: true,
+      revisionCheckedLaunch: true,
+      question: {
+        decision: "2",
+        run: "1",
+        revision: "c".repeat(64),
+        accountGeneration: core.accountGeneration as string,
+      },
+      firstRetainedSeq: "1",
+      events: [{ seq: "1", kind: { kind: "started", run: "1" } }],
+    },
+  };
+  const cache = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  caches.push(cache);
+  cache.setQueryData(coreKey, core);
+  let now = 0;
+  let timeout: (() => void) | undefined;
+  const time: AnswerClock = {
+    now: () => now,
+    schedule: (callback) => {
+      timeout = callback;
+      return () => {
+        timeout = undefined;
+      };
+    },
+  };
+  const hook = renderHook(({ value }) => useResidentAnswer(value, time), {
+    initialProps: { value: view },
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={cache}>{children}</QueryClientProvider>
+    ),
+  });
+  return {
+    ...hook,
+    view,
+    core,
+    cache,
+    expire: () => {
+      now = 5000;
+      timeout?.();
+    },
+  };
+}
+it("captures the exact question scope and blocks a second click before Queued", async () => {
+  const hook = setup();
+  let resolve!: (value: unknown) => void;
+  host.client.request.mockReturnValue(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  let sent!: Promise<void>;
+  act(() => {
+    sent = hook.result.current.answer("reuse");
+    void hook.result.current.answer("reuse");
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(1);
+  expect(host.client.request).toHaveBeenCalledWith({
+    method: "launcher.resident.answer",
+    target: {
+      ...hook.view.execution?.question,
+      instance: "b".repeat(64),
+      action: "reuse",
+    },
+  });
+  await act(async () => {
+    resolve({
+      method: "launcher.resident.answer",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await sent;
+  });
+  expect(hook.result.current.attempt?.phase.kind).toBe("queued");
+  act(hook.expire);
+  expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+  expect(host.client.request).toHaveBeenCalledTimes(1);
+});
+it("Trust never issues a request, and reducing actions remain available after rights revocation", () => {
+  const hook = setup();
+  act(() => {
+    void hook.result.current.answer("trust");
+  });
+  expect(host.client.request).not.toHaveBeenCalled();
+  act(() => {
+    hook.cache.setQueryData(coreKey, {
+      ...hook.core,
+      access: { ...hook.core.access, verified: false, blocked: true },
+    });
+  });
+  hook.rerender({ value: structuredClone(hook.view) });
+  expect(hook.result.current.available("reuse")).toBe(false);
+  expect(hook.result.current.available("cancel")).toBe(true);
+});
+it("does not attach a late Queued response to a different account", async () => {
+  const hook = setup();
+  let resolve!: (value: unknown) => void;
+  host.client.request.mockReturnValue(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  let sent!: Promise<void>;
+  act(() => {
+    sent = hook.result.current.answer("cancel");
+  });
+  act(() => {
+    hook.cache.setQueryData(coreKey, {
+      ...hook.core,
+      accountGeneration: "e".repeat(64),
+    });
+  });
+  hook.rerender({ value: structuredClone(hook.view) });
+  await act(async () => {
+    resolve({
+      method: "launcher.resident.answer",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await sent;
+  });
+  expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+  expect(hook.result.current.available("cancel")).toBe(false);
+});

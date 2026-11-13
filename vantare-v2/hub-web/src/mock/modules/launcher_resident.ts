@@ -42,6 +42,43 @@ export function create(context: MockContext): MockHandler {
       },
       { id: "pro", name: "Pro", hotkey: "ctrl+shift+2", state: "error" },
     ];
+  const checked = context.sceneName.startsWith("launcher-answer-");
+  if (checked) {
+    context.core.accountGeneration = "a".repeat(64);
+    context.core.services = "connected";
+    view.running = true;
+    view.execution = {
+      instance: "b".repeat(64),
+      revisionCheckedLaunch: true,
+      checkedAnswer: true,
+      question: {
+        decision: "2",
+        run: "1",
+        revision: "c".repeat(64),
+        accountGeneration: "a".repeat(64),
+      },
+      firstRetainedSeq: "1",
+      events: [{ seq: "1", kind: { kind: "started", run: "1" } }],
+    };
+    view.decision = {
+      id: "2",
+      kind: "alreadyRunning",
+      actions: [
+        { id: "reuse", label: residentActionLabels.reuse },
+        { id: "restart", label: residentActionLabels.restart },
+        { id: "cancel", label: residentActionLabels.cancel },
+      ],
+    };
+    if (context.sceneName === "launcher-answer-trust")
+      view.decision = {
+        id: "2",
+        kind: "authorization",
+        actions: [
+          { id: "trust", label: residentActionLabels.trust },
+          { id: "cancel", label: residentActionLabels.cancel },
+        ],
+      };
+  }
   const event = (): HostToUi => ({
     kind: "event",
     event: { topic: "launcherResident", value: structuredClone(view) },
@@ -49,6 +86,76 @@ export function create(context: MockContext): MockHandler {
   return (message) => {
     if (message.kind === "subscribe" && message.topic === "launcherResident")
       return event();
+    if (
+      message.kind === "request" &&
+      message.request.method === "launcher.resident.answer" &&
+      checked
+    ) {
+      const target = message.request.target;
+      const scope = view.execution?.question;
+      const reject = (
+        reason: import("../../contract/generated/launcher_resident").ResidentAnswerRejection,
+      ): HostToUi => ({
+        kind: "failure",
+        id: message.id,
+        error: { kind: "residentAnswerRejected", reason },
+      });
+      if (target.action === "trust") return reject("trust-requires-editor");
+      if (target.accountGeneration !== context.core.accountGeneration)
+        return reject("account-changed");
+      if (target.instance !== view.execution?.instance)
+        return reject("wrong-instance");
+      if (
+        !scope ||
+        target.decision !== scope.decision ||
+        target.run !== scope.run ||
+        target.revision !== scope.revision
+      )
+        return reject("stale-question");
+      if (!view.decision?.actions.some((choice) => choice.id === target.action))
+        return reject("invalid-action");
+      if (
+        ["reuse", "restart", "continue"].includes(target.action) &&
+        (!context.core.access.verified || context.core.access.blocked)
+      )
+        return reject("denied");
+      const request = "d".repeat(32);
+      if (context.sceneName !== "launcher-answer-unknown" && view.execution) {
+        view.execution.events.push({
+          seq: "2",
+          kind: {
+            kind: "order-received",
+            request,
+            receipt:
+              context.sceneName === "launcher-answer-rejected"
+                ? { kind: "rejected", reason: "stale-question" }
+                : { kind: "accepted", run: "1" },
+          },
+        });
+        view.execution.question = null;
+        view.decision = null;
+        if (context.sceneName === "launcher-answer-finished") {
+          view.execution.events.push({
+            seq: "3",
+            kind: {
+              kind: "finished",
+              run: "1",
+              outcome: { kind: "completed" },
+            },
+          });
+          view.running = false;
+        }
+        context.emit?.(event());
+      }
+      return {
+        kind: "response",
+        id: message.id,
+        result: {
+          method: "launcher.resident.answer",
+          value: { kind: "queued", request },
+        },
+      };
+    }
     if (
       message.kind !== "request" ||
       message.request.method !== "launcher.resident.get"

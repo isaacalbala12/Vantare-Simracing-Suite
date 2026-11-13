@@ -34,12 +34,13 @@ jobs:
     env:
       CARGO_BUILD_JOBS: '4'
       RUSTUP_TOOLCHAIN: '1.99.1'
-      CARGO_TARGET_DIR: ${{ runner.temp }}/hub-rune-target
     defaults:
       run:
         working-directory: vantare-v2/hub-rune
         shell: pwsh
     steps:
+      - name: Configure temporary target
+        run: '"CARGO_TARGET_DIR=$env:RUNNER_TEMP/hub-rune-target" >> $env:GITHUB_ENV'
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false

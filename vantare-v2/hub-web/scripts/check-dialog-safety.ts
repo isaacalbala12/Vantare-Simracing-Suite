@@ -205,8 +205,6 @@ export async function checkDialogZoom(page: Page, base: string) {
             method === "launcher.resident.answer" ||
             method === "launcher.resident.cancel" ||
             method === "launcher.resident.rehearse" ||
-            method === "launcher.resident.cancel" ||
-            method === "launcher.resident.rehearse" ||
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel",
         ).length,
@@ -469,8 +467,6 @@ async function checkIsolatedDialogs(
             method === "launcher.resident.answer" ||
             method === "launcher.resident.cancel" ||
             method === "launcher.resident.rehearse" ||
-            method === "launcher.resident.cancel" ||
-            method === "launcher.resident.rehearse" ||
             method === "launcher.favorite",
         ).length,
     ),
@@ -503,8 +499,6 @@ async function checkIsolatedDialogs(
             method === "launcher.resident.answer" ||
             method === "launcher.resident.cancel" ||
             method === "launcher.resident.rehearse" ||
-            method === "launcher.resident.cancel" ||
-            method === "launcher.resident.rehearse" ||
             method === "calendar.launchArm" ||
             method === "calendar.launchCancel",
         ).length,
@@ -524,8 +518,6 @@ async function checkIsolatedDialogs(
             method === "launcher.launch" ||
             method === "launcher.launchChecked" ||
             method === "launcher.resident.answer" ||
-            method === "launcher.resident.cancel" ||
-            method === "launcher.resident.rehearse" ||
             method === "launcher.resident.cancel" ||
             method === "launcher.resident.rehearse" ||
             method === "calendar.launchArm" ||

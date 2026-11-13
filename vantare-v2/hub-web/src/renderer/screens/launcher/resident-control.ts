@@ -15,7 +15,7 @@ import { answerCursor } from "./resident-answer-model";
 import {
   type ControlAttempt,
   type ControlIntent,
-  observeControl,
+  observeControl as observeReceipt,
   queuedControl,
   residentTerminalNoticeMs,
   sameControlIntent,
@@ -29,6 +29,18 @@ const clock: AnswerClock = {
     return () => clearTimeout(id);
   },
 };
+function observeControl(
+  attempt: ControlAttempt,
+  resident: ResidentView | undefined,
+  now: number,
+): ControlAttempt {
+  const next = observeReceipt(attempt, resident, now);
+  // A stopped/replaced run releases the UI lock, but is not proof of its outcome.
+  return next.phase.kind === "accepted" &&
+    (!resident?.running || resident.execution?.active?.run !== next.phase.run)
+    ? { ...next, phase: { kind: "unknown" } }
+    : next;
+}
 export function useResidentControl(
   resident: ResidentView | undefined,
   time: AnswerClock = clock,
@@ -60,10 +72,11 @@ export function useResidentControl(
     const previous = latest.current;
     if (previous)
       publish(
-        previous.target.accountGeneration !== core.accountGeneration ||
-          ["finished", "rejected"].includes(previous.phase.kind)
+        previous.target.accountGeneration !== core.accountGeneration
           ? undefined
-          : { ...previous, phase: { kind: "unknown" } },
+          : ["sending", "queued", "accepted"].includes(previous.phase.kind)
+            ? { ...previous, phase: { kind: "unknown" } }
+            : previous,
       );
     return () => {
       epoch.current++;
@@ -80,14 +93,18 @@ export function useResidentControl(
   ]);
   useEffect(() => {
     const previous = latest.current;
-    if (!previous) return;
-    publish(
+    if (
+      !previous ||
+      !["sending", "queued", "accepted"].includes(previous.phase.kind)
+    )
+      return;
+    const next: ControlAttempt =
       issue ||
-        core.services !== "connected" ||
-        core.accountGeneration !== previous.target.accountGeneration
+      core.services !== "connected" ||
+      core.accountGeneration !== previous.target.accountGeneration
         ? { ...previous, phase: { kind: "unknown" } }
-        : observeControl(previous, resident, time.now()),
-    );
+        : observeControl(previous, resident, time.now());
+    publish(next);
   }, [resident, issue, core.services, core.accountGeneration, time, publish]);
   useEffect(() => {
     if (!attempt) return;
@@ -257,7 +274,7 @@ export function useResidentControl(
     }
   }
   const busy =
-    !!execution?.active ||
+    !!resident?.running ||
     (!!attempt &&
       ["sending", "queued", "accepted"].includes(attempt.phase.kind));
   return {

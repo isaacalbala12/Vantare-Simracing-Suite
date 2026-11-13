@@ -18,6 +18,7 @@ import { launcherKey } from "../src/renderer/screens/launcher/state";
 const host = vi.hoisted(() => ({
   client: { request: vi.fn() },
   launch: { busy: vi.fn(() => false) },
+  issue: undefined as string | undefined,
 }));
 vi.mock("../src/renderer/app/Host", async (original) => ({
   ...(await original<typeof import("../src/renderer/app/Host")>()),
@@ -32,6 +33,7 @@ afterEach(() => {
   for (const cache of caches) cache.clear();
   caches.length = 0;
   host.client.request.mockReset();
+  host.issue = undefined;
   host.launch.busy.mockReturnValue(false);
 });
 function setup(running = false) {
@@ -254,6 +256,12 @@ it("Accepted is not Finished and a terminal notice expires", async () => {
   });
   const accepted = structuredClone(hook.resident);
   if (!accepted.execution) throw new Error("fixture");
+  accepted.running = true;
+  accepted.execution.active = {
+    run: "1",
+    revision: hook.target.revision,
+    accountGeneration: hook.target.accountGeneration,
+  };
   accepted.execution.events = [
     {
       seq: "1",
@@ -318,3 +326,92 @@ it("drops a late Queued after a resident restart", async () => {
   });
   expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
 });
+it.each(["finished", "rejected"] as const)(
+  "keeps %s across disconnection and host issues",
+  async (terminal) => {
+    const hook = setup(true);
+    const target = hook.result.current.cancelTarget;
+    if (!target) throw new Error("active fixture");
+    host.client.request.mockResolvedValue({
+      method: "launcher.resident.cancel",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await act(async () => {
+      await hook.result.current.cancel(target);
+    });
+    const next = structuredClone(hook.resident);
+    if (!next.execution) throw new Error("execution fixture");
+    next.execution.events.push({
+      seq: "2",
+      kind: {
+        kind: "order-received",
+        request: "d".repeat(32),
+        receipt:
+          terminal === "rejected"
+            ? { kind: "rejected", reason: "wrong-run" }
+            : { kind: "accepted", run: "1" },
+      },
+    });
+    if (terminal === "finished")
+      next.execution.events.push({
+        seq: "3",
+        kind: {
+          kind: "finished",
+          run: "1",
+          outcome: { kind: "cancelled", reason: "user" },
+        },
+      });
+    hook.rerender({ value: next });
+    const phase = hook.result.current.attempt?.phase;
+    expect(phase?.kind).toBe(terminal);
+    act(() => {
+      hook.cache.setQueryData(coreKey, { ...hook.core, services: "offline" });
+    });
+    next.online = false;
+    hook.rerender({ value: structuredClone(next) });
+    expect(hook.result.current.attempt?.phase).toEqual(phase);
+    host.issue = "Disconnected host";
+    hook.rerender({ value: structuredClone(next) });
+    expect(hook.result.current.attempt?.phase).toEqual(phase);
+    act(() => hook.advance(10000));
+    expect(hook.result.current.attempt).toBeUndefined();
+  },
+);
+it.each(["stopped", "replaced"] as const)(
+  "releases an Accepted attempt when its run is %s without inventing Finished",
+  async (transition) => {
+    const hook = setup(true);
+    const target = hook.result.current.cancelTarget;
+    if (!target) throw new Error("active fixture");
+    host.client.request.mockResolvedValue({
+      method: "launcher.resident.cancel",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await act(async () => {
+      await hook.result.current.cancel(target);
+    });
+    const next = structuredClone(hook.resident);
+    if (!next.execution?.active) throw new Error("execution fixture");
+    next.execution.events.push({
+      seq: "2",
+      kind: {
+        kind: "order-received",
+        request: "d".repeat(32),
+        receipt: { kind: "accepted", run: "1" },
+      },
+    });
+    hook.rerender({ value: structuredClone(next) });
+    expect(hook.result.current.busy).toBe(true);
+    expect(hook.result.current.attempt?.phase.kind).toBe("accepted");
+    if (transition === "replaced") next.execution.active.run = "2";
+    else next.running = false;
+    hook.rerender({ value: structuredClone(next) });
+    expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+    expect(hook.result.current.busy).toBe(transition === "replaced");
+    next.running = false;
+    next.execution.active = null;
+    hook.rerender({ value: structuredClone(next) });
+    expect(hook.result.current.busy).toBe(false);
+    expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+  },
+);

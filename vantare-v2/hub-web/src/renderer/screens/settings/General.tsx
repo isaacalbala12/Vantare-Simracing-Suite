@@ -9,7 +9,7 @@ import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
 import { Callout, Pill, SettingGroup, SettingRow } from "../../ui/Data";
 import { Segmented, Switch } from "../../ui/Forms";
-import { GeneralGroups } from "../../ui/GeneralGroups";
+import { GeneralAvailabilityNote, GeneralGroups } from "../../ui/GeneralGroups";
 import { useToastManager } from "../../ui/Layers";
 import { ZoomControl } from "../../ui/ZoomControl";
 export function General() {
@@ -111,9 +111,9 @@ export function General() {
           }
           note={
             !view.startup.supported && (
-              <p className="v-setting-important-help">
+              <GeneralAvailabilityNote>
                 {t("general.startupUnavailable")}
-              </p>
+              </GeneralAvailabilityNote>
             )
           }
         >
@@ -162,9 +162,9 @@ export function General() {
         <SettingRow
           label={t("general.launcher")}
           note={
-            <p className="v-setting-important-help">
+            <GeneralAvailabilityNote>
               {t("general.launcherHelp")}
-            </p>
+            </GeneralAvailabilityNote>
           }
         >
           {toggle("launcher", t("general.launcher"), view.general.launcher)}
@@ -172,9 +172,9 @@ export function General() {
         <SettingRow
           label={t("general.toasts")}
           note={
-            <p className="v-setting-important-help">
+            <GeneralAvailabilityNote>
               {t("general.toastsHelp")}
-            </p>
+            </GeneralAvailabilityNote>
           }
         >
           {toggle("toasts", t("general.toasts"), view.general.toasts)}

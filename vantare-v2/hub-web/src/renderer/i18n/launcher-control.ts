@@ -4,6 +4,7 @@ export const controlText = {
   title: "Estado de la orden del Launcher",
   rehearse: "Prueba sin el juego",
   cancel: "Cancelación",
+  cancelAction: "Cancelar secuencia actual",
   rehearseHelp:
     "Prueba los pasos del perfil salvo Le Mans Ultimate. No cambia el perfil ni sus disparadores. Puede pedirte una decisión.",
   cancelHelp:

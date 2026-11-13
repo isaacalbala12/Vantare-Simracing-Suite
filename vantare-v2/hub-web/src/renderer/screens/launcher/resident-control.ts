@@ -60,7 +60,8 @@ export function useResidentControl(
     const previous = latest.current;
     if (previous)
       publish(
-        previous.target.accountGeneration !== core.accountGeneration
+        previous.target.accountGeneration !== core.accountGeneration ||
+          ["finished", "rejected"].includes(previous.phase.kind)
           ? undefined
           : { ...previous, phase: { kind: "unknown" } },
       );
@@ -261,6 +262,7 @@ export function useResidentControl(
     attempt,
     scope,
     capable: execution?.checkedControl === true,
+    hasProfiles: !!document?.profiles.length,
     cancelTarget,
     busy,
     reason: (intent: ControlIntent) =>

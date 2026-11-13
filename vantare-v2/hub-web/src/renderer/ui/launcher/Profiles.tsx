@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef } from "react";
 import type {
   LauncherApp,
   LauncherProfile,
@@ -90,6 +91,17 @@ export function LauncherProfiles({
   onLaunch: (profile: LauncherProfile) => void;
   onReload: () => void;
 }) {
+  const help = useId();
+  const rehearseButton = useRef<HTMLButtonElement>(null);
+  const cancelledHere = useRef(false);
+  const showCancel = !!(view.running || control?.cancelTarget);
+  useEffect(() => {
+    if (showCancel) return;
+    const restore = cancelledHere.current;
+    cancelledHere.current = false;
+    if (restore && document.activeElement === document.body)
+      rehearseButton.current?.focus();
+  }, [showCancel]);
   const profile =
     view.profiles.find((item) => item.id === selected) ??
     view.profiles.find((item) => item.favorite) ??
@@ -174,7 +186,7 @@ export function LauncherProfiles({
             <h2>{profile.name}</h2>
             <p>{profile.description || text.defaultDescription}</p>
             <div className="v-launcher-actions">
-              {(view.running || cancelTarget) && (
+              {showCancel && (
                 <Tooltip
                   label={
                     cancelReason
@@ -186,10 +198,19 @@ export function LauncherProfiles({
                     <Button
                       disabled={!control}
                       aria-disabled={!!cancelReason}
-                      aria-describedby="launcher-cancel-help"
+                      aria-describedby={control ? `${help}-cancel` : undefined}
+                      onBlur={(event) => {
+                        if (
+                          event.relatedTarget instanceof HTMLElement &&
+                          event.relatedTarget !== document.body
+                        )
+                          cancelledHere.current = false;
+                      }}
                       onClick={() => {
-                        if (control && cancelTarget && !cancelReason)
+                        if (control && cancelTarget && !cancelReason) {
+                          cancelledHere.current = true;
                           void control.cancel(cancelTarget);
+                        }
                       }}
                     >
                       {text.cancel}
@@ -240,9 +261,10 @@ export function LauncherProfiles({
               >
                 <span>
                   <Button
+                    ref={rehearseButton}
                     disabled={!control}
                     aria-disabled={!!rehearseReason || pending}
-                    aria-describedby="launcher-rehearse-help"
+                    aria-describedby={control ? `${help}-rehearse` : undefined}
                     onClick={() => {
                       if (
                         control &&
@@ -261,16 +283,16 @@ export function LauncherProfiles({
             {control && (
               <div className="v-launcher-control-help">
                 <p
-                  id="launcher-rehearse-help"
+                  id={`${help}-rehearse`}
                   className={rehearseReason ? undefined : "v-resident-live"}
                 >
                   {rehearseReason
                     ? controlText[rehearseReason]
                     : controlText.rehearseHelp}
                 </p>
-                {(view.running || cancelTarget) && (
+                {showCancel && (
                   <p
-                    id="launcher-cancel-help"
+                    id={`${help}-cancel`}
                     className={cancelReason ? undefined : "v-resident-live"}
                   >
                     {cancelReason

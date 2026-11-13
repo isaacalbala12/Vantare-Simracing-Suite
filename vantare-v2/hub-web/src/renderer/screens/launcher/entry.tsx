@@ -42,13 +42,18 @@ function LauncherContent() {
         rail={<LauncherRail residentStatus={resident} />}
       />
       <SectionPanel activeTab={activeTab}>
+        <ResidentControlNotice
+          control={control}
+          showCancel={
+            !!editor.value ||
+            editor.tab === "applications" ||
+            !control.hasProfiles
+          }
+        />
         {editor.tab === "applications" && !editor.value ? (
           <Applications />
         ) : (
-          <>
-            <ResidentControlNotice control={control} />
-            <Launcher control={control} />
-          </>
+          <Launcher control={control} />
         )}
       </SectionPanel>
       <ResidentInbox view={resident} answer={answer} />

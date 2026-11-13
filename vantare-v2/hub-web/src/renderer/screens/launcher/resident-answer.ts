@@ -136,7 +136,7 @@ export function useResidentAnswer(
     pending.current = true;
     const token = epoch.current;
     const next: AnswerAttempt = {
-      target: { ...scope, instance: execution.instance, action },
+      target: { ...rendered, action },
       cursor: answerCursor(view),
       phase: { kind: "sending" },
     };

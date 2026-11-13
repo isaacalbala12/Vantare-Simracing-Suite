@@ -36,11 +36,12 @@ export function ResidentInbox({
   if (!attempt && !view?.decision) retained.current = undefined;
   const matches =
     !!attempt &&
-    (rendered
-      ? sameAnswerScope(rendered, attempt.target)
+    (view?.decision
+      ? !!rendered && sameAnswerScope(rendered, attempt.target)
       : !!retained.current &&
         sameAnswerScope(retained.current.scope, attempt.target) &&
-        view?.execution?.instance === attempt.target.instance);
+        (!view?.execution ||
+          view.execution.instance === attempt.target.instance));
   const decision =
     view?.decision ?? (matches ? retained.current?.decision : null);
   const phase = matches ? attempt?.phase : undefined;
@@ -57,7 +58,11 @@ export function ResidentInbox({
         ? `${t.answerState.rejected} ${t.rejection[phase.reason]}`
         : t.answerState[phase.kind]
     : undefined;
-  const identity = `${view?.execution?.instance ?? "legacy"}:${view?.execution?.question?.accountGeneration ?? ""}:${decision?.id ?? ""}`;
+  const panelScope =
+    rendered ?? (matches ? retained.current?.scope : undefined);
+  const identity = panelScope
+    ? `${panelScope.instance}:${panelScope.accountGeneration}:${panelScope.run}:${panelScope.decision}:${panelScope.revision}`
+    : `${view?.execution?.instance ?? "legacy"}:${decision?.id ?? ""}`;
   useEffect(() => {
     if (!decision) setDismissed(undefined);
   }, [decision]);

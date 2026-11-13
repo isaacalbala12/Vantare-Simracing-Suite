@@ -135,7 +135,12 @@ it("keeps the live region mounted empty, then announces while the panel is close
       phase: { kind: "accepted", request: "d".repeat(32) },
     },
   };
-  mounted.rerender(content(view, accepted));
+  const acknowledged = structuredClone(view);
+  acknowledged.decision = null;
+  if (acknowledged.execution) acknowledged.execution.question = null;
+  mounted.rerender(content(acknowledged, accepted));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByRole("button", { name: text.open })).toBeTruthy();
   expect(screen.getByRole("status")).toBe(live);
   expect(live.textContent).toBe(text.answerState.accepted);
   const next = structuredClone(view);

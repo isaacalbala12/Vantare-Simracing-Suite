@@ -498,8 +498,11 @@ pwsh -NoProfile -File native/scripts/comprobar.ps1 runtime
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare-core -j 4
 ```
 
-`comprobar` ejecuta Clippy (incluye tipos) y Nextest del crate y sus dependientes
-directos, excluyendo siempre `vantare-hub` y `vantare-admin`. Un cambio en el
+`comprobar` ejecuta Clippy (incluye tipos, también de los tests) del crate y sus
+dependientes directos, y Nextest solo del crate tocado. Los tests de los
+dependientes se reservan a CI, que los ejecuta completos en cada PR. Con `-Full`
+se ejecutan también en local los tests de todos los seleccionados, para antes de
+publicar. Se excluyen siempre `vantare-hub` y `vantare-admin`. Un cambio en el
 núcleo o en `ui` no los compila ni los prueba en local. Cargo resuelve sus
 dependencias; no se activan defaults de paquetes ajenos a la selección. CI de PR a nightly añade los dependientes transitivos y excluye Hub/Admin, salvo
 cambios explícitos en esos productos. Push a nightly/testers, promociones y

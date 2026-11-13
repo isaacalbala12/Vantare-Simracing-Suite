@@ -127,7 +127,7 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
                 {t.retry}
               </Button>
             )}
-            {(!readingFailure || state.view) && (
+            {(!readingFailure || (!!state.view && !protectedView)) && (
               <Button
                 size="sm"
                 aria-disabled={state.pending}

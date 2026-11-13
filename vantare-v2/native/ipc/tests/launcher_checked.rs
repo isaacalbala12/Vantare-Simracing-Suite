@@ -200,9 +200,13 @@ fn both_account_observers_reject_a_different_peer_image_before_writing() {
         account_session::{self, AuthorityLink},
         transport::{Event, Listener},
     };
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
     for consume in [false, true] {
         let link = AuthorityLink {
-            pipe: format!("checked-impostor-{}-{consume}", std::process::id()),
+            pipe: format!("checked-impostor-{}-{nonce}-{consume}", std::process::id()),
             image: std::env::current_exe()
                 .unwrap()
                 .with_file_name("not-the-authority.exe"),
@@ -214,10 +218,18 @@ fn both_account_observers_reject_a_different_peer_image_before_writing() {
         let (ready, listening) = mpsc::channel();
         let worker = std::thread::spawn(move || {
             ready.send(()).unwrap();
-            pipe.accept().unwrap();
-            // A missing identity check would send ReadAccountSession and get EOF,
-            // which must not be mistaken for the expected PermissionDenied.
-            let _ = vantare_ipc::control::read_request(&mut pipe);
+            match pipe.accept() {
+                Ok(()) => vantare_ipc::control::read_request(&mut pipe).is_ok(),
+                // Rejection closes the client before accept may finish. Windows
+                // ERROR_NO_DATA (232) is BrokenPipe; Unix credentials may see ENOTCONN.
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::BrokenPipe
+                        || (cfg!(unix) && error.kind() == std::io::ErrorKind::NotConnected) =>
+                {
+                    false
+                }
+                Err(error) => panic!("unexpected accept failure: {error:?}"),
+            }
         });
         listening.recv().unwrap();
         let result = if consume {
@@ -225,7 +237,8 @@ fn both_account_observers_reject_a_different_peer_image_before_writing() {
         } else {
             account_session::request_cancelled(&link, &stop)
         };
-        worker.join().unwrap();
+        let received = worker.join().unwrap();
+        assert!(!received, "untrusted peer must receive no request");
         assert_eq!(
             result.unwrap_err().kind(),
             std::io::ErrorKind::PermissionDenied

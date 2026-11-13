@@ -106,11 +106,16 @@ export function General() {
       <SettingGroup number={2} title={t("general.start")}>
         <SettingRow
           label={t("general.startup")}
-          description={t(
-            view.startup.supported
-              ? "general.startupHelp"
-              : "general.startupUnavailable",
-          )}
+          description={
+            view.startup.supported ? t("general.startupHelp") : undefined
+          }
+          note={
+            !view.startup.supported && (
+              <p className="v-setting-important-help">
+                {t("general.startupUnavailable")}
+              </p>
+            )
+          }
         >
           <Switch
             label={t("general.startup")}
@@ -156,13 +161,21 @@ export function General() {
         </SettingRow>
         <SettingRow
           label={t("general.launcher")}
-          description={t("general.launcherHelp")}
+          note={
+            <p className="v-setting-important-help">
+              {t("general.launcherHelp")}
+            </p>
+          }
         >
           {toggle("launcher", t("general.launcher"), view.general.launcher)}
         </SettingRow>
         <SettingRow
           label={t("general.toasts")}
-          description={t("general.toastsHelp")}
+          note={
+            <p className="v-setting-important-help">
+              {t("general.toastsHelp")}
+            </p>
+          }
         >
           {toggle("toasts", t("general.toasts"), view.general.toasts)}
         </SettingRow>

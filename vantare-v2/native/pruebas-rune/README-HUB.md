@@ -1,5 +1,11 @@
 # VANTA-141: Inicio Electron en modo de medición
 
+Integración: no se modifican archivos del Hub web del producto. El parche se
+materializa con `preparar_fuentes.py electron` exclusivamente en
+`fuentes-generadas/electron`. EMPAQUETAR_HUB.ps1 usa esa copia y rechaza otro
+SourceRoot. Se mantiene la referencia congelada de fuentes-medicion.json.
+Las validaciones siguientes conservan el historial de construcción anterior.
+
 Esta pieza construye el Hub actual de nightly, sin cambiar sus pantallas.
 La opción de construcción VANTARE_HUB_MEASUREMENT_HOME=1 exige también
 VANTARE_HUB_QA_BUILD=1. Solo ese paquete inicia directamente en Inicio,

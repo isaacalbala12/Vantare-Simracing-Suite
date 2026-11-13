@@ -1,5 +1,13 @@
 # VANTA-141: orden propuesto de revisión y fusión
 
+**Sustituido por un único PR de integración desde nightly**, rama
+vantareapp/isa-2213-integracion, por instrucción del orquestador. Los nueve
+PR se incorporaron en el orden de esta tabla; no se deben fusionar ahora
+por separado. Permanecen abiertos hasta que el orquestador fusione el nuevo.
+El producto queda intacto y la instrumentación se conserva como parches
+aplicables solo a copias de medición. La tabla siguiente es la procedencia
+histórica, no una segunda cola de merges pendiente.
+
 Solo cuando el kit esté completo y el orquestador autorice la integración.
 Todos los destinos son nightly. Esta tabla no autoriza ni realiza merges.
 

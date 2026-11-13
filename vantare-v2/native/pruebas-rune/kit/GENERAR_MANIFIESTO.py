@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 
 ROOT = Path('D:/VantareServer/evidence/rune-vs-gpui')
-WT = Path('D:/VantareServer/worktrees')
-KIT = WT/'isa-2213-rondas-paquete/vantare-v2/native/pruebas-rune/kit'
-SAMPLER = WT/'isa-2213-carga-muestreador/vantare-v2/native/pruebas-rune/muestreador'
-ENDURANCE = WT/'isa-2213-aguante/vantare-v2/native/pruebas-rune/aguante'
-REPLAY = WT/'isa-2213-replay-latencia/vantare-v2'
+KIT = Path(__file__).resolve().parent
+BENCH = KIT.parent
+SAMPLER = BENCH/'muestreador'
+ENDURANCE = BENCH/'aguante'
+REPLAY = BENCH.parents[1]
 PROFILE = dict(name='release', opt_level=3, lto=False, codegen_units=16, debug=False)
 
 def sha(path):

@@ -13,7 +13,7 @@ required-features = ["medir-latencia"]
 
 [dependencies]
 rune.workspace = true
-vantare-domain = { path = "../../domain" }
-vantare-ipc = { path = "../../ipc" }
-vantare-profiling = { path = "../../profiling" }
+vantare-domain = { path = "../fuentes-generadas/gpui/vantare-v2/native/domain" }
+vantare-ipc = { path = "../fuentes-generadas/gpui/vantare-v2/native/ipc" }
+vantare-profiling = { path = "../fuentes-generadas/gpui/vantare-v2/native/profiling" }
 serde_json = "1"

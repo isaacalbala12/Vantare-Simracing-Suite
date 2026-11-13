@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$ArtifactDirectory,
+    [string]$SourceRoot,
     [string]$Bun = 'D:\VantareServer\tools\bun-1.4.4\bun-windows-x64\bun.exe'
 )
 $ErrorActionPreference = 'Stop'
@@ -13,7 +14,12 @@ $repo = [IO.Path]::GetFullPath((& git -C $PSScriptRoot rev-parse --show-toplevel
 if ($LASTEXITCODE) { throw 'No se encontro el worktree.' }
 if (@(& git -C $repo status --porcelain).Count) { throw 'Commit antes de construir el paquete.' }
 $sha = (& git -C $repo rev-parse HEAD).Trim()
-$hub = [IO.Path]::GetFullPath((Join-Path $repo 'vantare-v2/hub-web'))
+$expected=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'fuentes-generadas/electron/vantare-v2'))
+if($SourceRoot -and [IO.Path]::GetFullPath($SourceRoot) -ne $expected){throw 'Empaquetar solo la copia aislada; nunca el Hub de producto.'}
+$python=@(Get-Command python -CommandType Application -ErrorAction Stop)[0].Source
+& $python (Join-Path $PSScriptRoot 'preparar_fuentes.py') electron
+if($LASTEXITCODE){throw 'No se pudo verificar la copia Electron.'}
+$hub = Join-Path $expected 'hub-web'
 if ([IO.Path]::GetFullPath($hub) -notlike 'D:\VantareServer\worktrees\*') { throw 'El Hub debe estar en un worktree propio en D:.' }
 foreach ($relative in @('release','release/staging-qa','release/package-qa','release/package-qa/vantare-hub-ui-win32-x64','out-qa')) {
     $path = [IO.Path]::GetFullPath((Join-Path $hub $relative))

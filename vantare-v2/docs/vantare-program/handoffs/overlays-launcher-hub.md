@@ -1,3 +1,28 @@
+## VANTA-141 · Integración única de las nueve piezas (13/11/2026)
+
+Refs #2213 / Plane VANTA-141 En curso. Rama vantareapp/isa-2213-integracion,
+desde origin/nightly 07825965f (Rust 1.99.1), incorpora por merge #2222, #2224,
+#2238, #2242, #2241, #2249, #2251, #2261 y #2273; sus puntas constan en
+native/pruebas-rune/fuentes-medicion.json. El nuevo draft sustituye los nueve;
+su URL/HEAD/CI se actualizan en #2213. Los antiguos no se cierran hasta su merge.
+
+El diff final no toca código/configuración de producto: overlays distribuidos,
+hub-host, instalador, Hub web y workspace nativo idénticos a la base. Incluye
+solo pruebas-rune, su CI propia y este handoff. La instrumentación de producto
+de los PR antiguos pasa a parches aplicables únicamente a fuentes-generadas,
+ignoradas dentro del banco. Fast nunca se aplica a los overlays distribuidos.
+Los constructores rechazan otro SourceRoot; Rune/contador usan el mismo IPC y
+domain de la copia GPUI fijada, con cuatro miembros propios y lock integrado.
+
+Cuatro copias preparadas y contrastadas por blobs Git; 54 tests Python,
+formato Rust 1.99.1 y contratos de 39 guiones PASS. Primer intento de cola falló
+por selección múltiple de Python (corregido); el segundo se detuvo por
+captura.lock antes de Cargo. Validación Rust restante a la CI, sin desactivar
+lints: IPC/profiling/contador y metadatos Rune, sin compilar renderizadores.
+No se ejecutó gráfica ni otro SSH. ZIP preparado con hueco de Inicio Rune;
+binarios existentes y sus hashes intactos. Medición solo PC con grabación.
+Sin merge, cierre de PR, release ni promoción de canales.
+
 ## VANTA-141 / #2213 — Inicio Rune: primera imagen CPU (13/11/2026)
 
 El Mac volvió a quedar sin SSH tras copiar y verificar 5d501bda0. Se prepara

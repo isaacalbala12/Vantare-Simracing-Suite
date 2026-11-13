@@ -6,7 +6,6 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
-medir-latencia = ["vantare-profiling/medir-latencia", "vantare-ipc/medir-latencia"]
 # Ablaciones de diagnóstico opt-in; nunca en builds de producto/distribución.
 bench = []
 qa-e2e = ["vantare-services/qa-e2e", "vantare-ipc/qa-e2e"]

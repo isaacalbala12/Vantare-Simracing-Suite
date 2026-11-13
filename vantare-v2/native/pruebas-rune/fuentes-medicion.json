@@ -1,0 +1,82 @@
+{
+  "integration_base": "07825965f30322cca053174bcc17f248dfad1f5e",
+  "variants": {
+    "gpui": {
+      "base": "b71e65cbf87b138ea5b3dbaf471f7797fc9c0bc9",
+      "source": "2752dff7cb8f78af4949c81c010690284d123665",
+      "patch": "parches/gpui-medicion.patch",
+      "patch_sha256": "a3dfe2c1b3827e6ffde0b5e1c6d80b566e7f005bdbbfec1d8ffde16ccceb8152",
+      "archive_paths": [
+        "vantare-v2/native",
+        "vantare-v2/testdata"
+      ]
+    },
+    "gpui-fast": {
+      "base": "745bd52b847d1c6a53151146a124db4edcf95aa6",
+      "source": "a4271dd6f4701089f4bb3f74a7f5e690bd8b8341",
+      "patch": "parches/gpui-fast-medicion.patch",
+      "patch_sha256": "2322c4a9c41a15a0e3c6473d73bb7804ed365d37597001767966fb915a504175",
+      "archive_paths": [
+        "vantare-v2/native",
+        "vantare-v2/testdata"
+      ]
+    },
+    "hub-fast": {
+      "base": "56cb2c701a356eafa324e4237626952d259a77f0",
+      "source": "eb8c0aa00b54a9b9f0d1dec36869abeaf7dc38b9",
+      "patch": "parches/hub-fast-medicion.patch",
+      "patch_sha256": "5894690a79c0feba8daef9da3ed1eae51cfbb2f9ab56217c193db46ec9ba75a0",
+      "archive_paths": [
+        "vantare-v2/native",
+        "vantare-v2/testdata"
+      ]
+    },
+    "electron": {
+      "base": "cb8585d2bbc1c7c004a1ca6575015227bbd81f0c",
+      "source": "e1ba4aa57a9279c0532ca3d68217df2ddbe470c3",
+      "patch": "parches/electron-medicion.patch",
+      "patch_sha256": "09c385126570f4aa071eace5fb07593b08570e9ceb9b4194ab99041e7d1250f9",
+      "archive_paths": [
+        "vantare-v2/hub-web"
+      ]
+    }
+  },
+  "pull_requests": [
+    {
+      "number": 2222,
+      "head": "842f440b19d084489860104c38f7cbafecd0c4ad"
+    },
+    {
+      "number": 2224,
+      "head": "4f2add4ff6718622a215e741e6c1bae7024c59a5"
+    },
+    {
+      "number": 2238,
+      "head": "3633964e03eebbd72ffa2540bc325b9dad008002"
+    },
+    {
+      "number": 2242,
+      "head": "2752dff7cb8f78af4949c81c010690284d123665"
+    },
+    {
+      "number": 2241,
+      "head": "54ef276c38ed4e7f70ed220db57257898f56ec2c"
+    },
+    {
+      "number": 2249,
+      "head": "e1ba4aa57a9279c0532ca3d68217df2ddbe470c3"
+    },
+    {
+      "number": 2251,
+      "head": "9dc107916c822817cf848acf52ede7de9c603b2e"
+    },
+    {
+      "number": 2261,
+      "head": "9e68b533cb333ab9da7cd1ed1d0dc5cf9f7b6165"
+    },
+    {
+      "number": 2273,
+      "head": "446fd7ce4a403ef749497e1c303b7b6c6fce79c5"
+    }
+  ]
+}

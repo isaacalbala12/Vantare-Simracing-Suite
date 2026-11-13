@@ -5,5 +5,5 @@ edition = "2024"
 publish = false
 
 [dependencies]
-vantare-ipc = { path = "../../ipc", features = ["medir-latencia"] }
-vantare-profiling = { path = "../../profiling", features = ["medir-latencia"] }
+vantare-ipc = { path = "../fuentes-generadas/gpui/vantare-v2/native/ipc", features = ["medir-latencia"] }
+vantare-profiling = { path = "../fuentes-generadas/gpui/vantare-v2/native/profiling", features = ["medir-latencia"] }

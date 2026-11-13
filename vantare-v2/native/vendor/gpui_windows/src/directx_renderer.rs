@@ -249,7 +249,6 @@ impl DirectXRenderer {
         if span.is_some() && !crate::profiling::buffered() {
             eprintln!("perf present clock={:?}", crate::profiling::clock());
         }
-        vantare_profiling::latency_submit(self.hwnd.0 as usize as u64);
         let result = unsafe {
             self.resources
                 .as_ref()

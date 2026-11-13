@@ -2,9 +2,7 @@
 use std::{env, fmt::Write, fs, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if env::var_os("CARGO_FEATURE_PAINT_STATS").is_some()
-        || env::var_os("CARGO_FEATURE_MEDIR_LATENCIA").is_some()
-    {
+    if env::var_os("CARGO_FEATURE_PAINT_STATS").is_some() {
         vantare_build_support::measurement_provenance()?;
     }
     vantare_build_support::embed()?;

@@ -1,5 +1,11 @@
 # VANTA-141: Inicio del Hub congelado con GPUI fast
 
+Integración: `preparar_fuentes.py hub-fast` materializa y verifica la copia
+`fuentes-generadas/hub-fast`. La construcción usa por cola
+kit/CONSTRUIR_VARIANTE.ps1 -Variant hub_fast -ArtifactDirectory DIR_NUEVO.
+No aplicar el parche manualmente sobre native/hub ni sobre el producto.
+Las instrucciones de worktrees y git apply siguientes son históricas.
+
 Base archivada: 56cb2c701a356eafa324e4237626952d259a77f0, que conserva
 el motor fast fijado para la pieza 5. La opción medir-inicio activa el mismo
 motor fast, procedencia, ventana 1440x900 y marca tras un frame completo. home.rs, demo.rs y

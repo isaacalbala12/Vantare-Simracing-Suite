@@ -1,9 +1,10 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string[]]$Roots)
+param([Parameter(Mandatory)][string[]]$Roots,[switch]$ExcludeGenerated)
 $ErrorActionPreference='Stop'
 $issues=[Collections.Generic.List[string]]::new();$files=0
 foreach($root in $Roots){
  foreach($file in Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.ps1'){
+  if($ExcludeGenerated -and $file.FullName -match '[\\/]fuentes-generadas[\\/]'){continue}
   $files++;$tokens=$null;$errors=$null
   $ast=[Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$tokens,[ref]$errors)
   foreach($error_ in $errors){$issues.Add("$($file.Name):$($error_.Extent.StartLineNumber): $($error_.Message)")}

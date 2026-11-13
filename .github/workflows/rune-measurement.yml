@@ -1,0 +1,81 @@
+name: Rune measurement isolation
+
+on:
+  pull_request:
+    branches: [nightly]
+    paths:
+      - 'vantare-v2/native/pruebas-rune/**'
+      - '.github/workflows/rune-measurement.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rune-measurement-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  measurement:
+    name: Validate isolated measurement kit (Rust 1.99.1)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_PROFILE_RELEASE_DEBUG: 'false'
+      CARGO_PROFILE_RELEASE_OPT_LEVEL: '3'
+      CARGO_PROFILE_RELEASE_LTO: 'false'
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+      CARGO_INCREMENTAL: '0'
+      CARGO_TARGET_DIR: ${{ runner.temp }}/rune-measurement-target
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: vantare-v2
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Install pinned Rust without building Rune
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal --component clippy --component rustfmt
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          rustc +1.99.1 --version
+      - name: Verify product isolation and materialize measurement copies
+        run: |
+          python native/pruebas-rune/verificar_aislamiento.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          foreach ($variant in @('gpui','gpui-fast','hub-fast','electron')) {
+            python native/pruebas-rune/preparar_fuentes.py $variant
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+      - name: Validate scripts and synthetic analysis
+        run: |
+          $bench=(Resolve-Path native/pruebas-rune).Path
+          $env:PYTHONPATH=@($bench,"$bench/kit","$bench/muestreador","$bench/aguante") -join [IO.Path]::PathSeparator
+          foreach ($directory in @($bench,"$bench/kit","$bench/muestreador","$bench/aguante")) {
+            python -m unittest discover -s $directory -p 'test_*.py'
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+          & "$bench/kit/VALIDAR_GUIONES.ps1" -Roots @($bench) -ExcludeGenerated
+      - name: Validate isolated IPC instrumentation with Rust 1.99.1
+        run: |
+          $manifest='native/pruebas-rune/fuentes-generadas/gpui/vantare-v2/native/Cargo.toml'
+          cargo +1.99.1 clippy --manifest-path $manifest --locked --release -p vantare-ipc -p vantare-profiling --features medir-latencia --lib -j 2 -- -D warnings
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo +1.99.1 test --manifest-path $manifest --locked --release -p vantare-ipc -p vantare-profiling --features medir-latencia --lib -j 2
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Verify the combined Rune workspace without compiling its renderer
+        run: |
+          cargo +1.99.1 metadata --manifest-path native/pruebas-rune/Cargo.toml --locked --no-deps --format-version 1 | Out-File "$env:RUNNER_TEMP/rune-workspace.json"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo +1.99.1 fmt --manifest-path native/pruebas-rune/Cargo.toml --all -- --check
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo +1.99.1 clippy --manifest-path native/pruebas-rune/Cargo.toml --locked --release -p vantare-contador-replay --all-targets -j 2 -- -D warnings
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cargo +1.99.1 test --manifest-path native/pruebas-rune/Cargo.toml --locked --release -p vantare-contador-replay -j 2
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python native/pruebas-rune/verificar_aislamiento.py

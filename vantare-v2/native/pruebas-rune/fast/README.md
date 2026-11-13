@@ -1,5 +1,19 @@
 # B-GPUI fast · VANTA-141, pieza 5
 
+## Integración actual
+
+El parche fast se aplica SOLO a `fuentes-generadas/gpui-fast/` mediante
+`preparar_fuentes.py gpui-fast`. No modifica los overlays distribuidos ni
+el vendor de native/. El constructor rechaza cualquier SourceRoot diferente.
+Base/fuente/hash del parche: fuentes-medicion.json. Rust 1.99.1 por la cola:
+kit/CONSTRUIR_VARIANTE.ps1 -Variant gpui_fast -ArtifactDirectory DIR_NUEVO.
+El artefacto final a4271dd6f ya compilado mide 17.795.584 bytes, SHA256
+e46ef8c25888db8c1db4695b4a11ed3b09a38cbae89a2686b47ea1d18ae15cb4.
+Los comandos manuales y tiempos siguientes son historia de la construcción
+aislada anterior; no deben aplicarse al checkout de producto.
+
+## Evidencia histórica
+
 El parche se aplica al SHA de la rama fast indicado en procedencia.json:
 745bd52b847d1c6a53151146a124db4edcf95aa6. Contiene solo la instrumentación y
 el mosaico de medición. No arrastra al PR contra nightly la divergencia histórica

@@ -1,0 +1,114 @@
+diff --git a/vantare-v2/native/hub/Cargo.toml b/vantare-v2/native/hub/Cargo.toml
+index 5fcb32f851c23225fca65a3fafce1b0a25d3b0c6..b589eb2e67bc75389c91e961953b1ed439981985 100644
+--- a/vantare-v2/native/hub/Cargo.toml
++++ b/vantare-v2/native/hub/Cargo.toml
+@@ -6,6 +6,7 @@ rust-version.workspace = true
+ publish.workspace = true
+ 
+ [features]
++medir-inicio = ["vantare-ui/gpui-fast"] # VANTA-141: procedencia; vistas congeladas.
+ parity-capture = ["vantare-ui/parity-capture"]
+ installer-qa = [] # Diagnóstico de rutas sin abrir ventana ni acceder al registro.
+ 
+diff --git a/vantare-v2/native/hub/build.rs b/vantare-v2/native/hub/build.rs
+index d82b6c2f4b1227f33a16f84c0d0a61d430ce79a7..2a9586063e0c2f9f3af5a80b1fd9ef1e66d93624 100644
+--- a/vantare-v2/native/hub/build.rs
++++ b/vantare-v2/native/hub/build.rs
+@@ -1,3 +1,6 @@
+ fn main() -> Result<(), Box<dyn std::error::Error>> {
+-    vantare_build_support::embed()
++    vantare_build_support::embed()?;
++    #[cfg(feature = "medir-inicio")]
++    vantare_build_support::measurement_provenance()?;
++    Ok(())
+ }
+diff --git a/vantare-v2/native/hub/src/main.rs b/vantare-v2/native/hub/src/main.rs
+index 7de66b2973fb6d1629861974d9226150284d8a1e..88133df4b06d1a70023e93bece855cb3411f0c37 100644
+--- a/vantare-v2/native/hub/src/main.rs
++++ b/vantare-v2/native/hub/src/main.rs
+@@ -450,6 +450,25 @@ fn capture_batch(path: &Path) -> Result<(), String> {
+ 
+ #[allow(clippy::too_many_lines)] // El probe QA sale antes de abrir ventana; conserva el arranque en un punto.
+ fn main() -> ExitCode {
++    #[cfg(feature = "medir-inicio")]
++    eprintln!(concat!(
++        "VANTARE_HOME_BUILD;sha=",
++        env!("VANTARE_MEASUREMENT_SHA"),
++        ";dirty=",
++        env!("VANTARE_MEASUREMENT_DIRTY"),
++        ";profile=",
++        env!("VANTARE_MEASUREMENT_PROFILE"),
++        ";opt-level=",
++        env!("VANTARE_MEASUREMENT_OPT_LEVEL"),
++        ";debug=",
++        env!("VANTARE_MEASUREMENT_DEBUG"),
++        ";features=",
++        env!("VANTARE_MEASUREMENT_FEATURES"),
++        ";lto=",
++        env!("VANTARE_MEASUREMENT_LTO"),
++        ";codegen-units=",
++        env!("VANTARE_MEASUREMENT_CODEGEN_UNITS")
++    ));
+     let Ok(executable) = std::env::current_exe()
+         .and_then(|path| vantare_hub::canonical_executable(&path))
+         .inspect_err(|error| log_start_error(None, &format!("resolver ejecutable: {error}")))
+diff --git a/vantare-v2/native/hub/src/shell.rs b/vantare-v2/native/hub/src/shell.rs
+index a18a4d5d9dcda9f66bfe79969c2345609e39dfde..abe983b833f0abcb3b0abd82f4bddf4e4222d940 100644
+--- a/vantare-v2/native/hub/src/shell.rs
++++ b/vantare-v2/native/hub/src/shell.rs
+@@ -1649,6 +1649,11 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
+                 crate::installation::initial_window(minimized, interactive, background);
+             let activate = activate && options.capture.is_none();
+             let window_options = WindowOptions {
++                #[cfg(feature = "medir-inicio")]
++                window_bounds: Some(gpui::WindowBounds::Windowed(gpui::Bounds::new(
++                    gpui::point(px(20.0), px(20.0)),
++                    gpui::size(px(1440.0), px(900.0)),
++                ))),
+                 focus: activate,
+                 window_min_size: Some(minimum),
+                 kind: if options.capture.is_some() {
+@@ -1704,6 +1709,43 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
+             });
+             let window = match window {
+                 Ok(window) => {
++                    #[cfg(feature = "medir-inicio")]
++                    if let Some(path) = std::env::var_os("VANTARE_MEASUREMENT_READY_FILE") {
++                        let path = PathBuf::from(path);
++                        if !path.is_absolute() {
++                            *failure.borrow_mut() = Some("ruta de medición no absoluta".into());
++                            cx.quit();
++                            return;
++                        }
++                        let ready_failure = failure.clone();
++                        if let Err(error) = window.update(cx, move |_, window, _| {
++                            window.on_next_frame(move |window, _| {
++                                // First frame has been drawn before the next callback.
++                                window.on_next_frame(move |_, cx| {
++                                    let result = std::fs::OpenOptions::new()
++                                        .write(true)
++                                        .create_new(true)
++                                        .open(path)
++                                        .and_then(|mut file| {
++                                            std::io::Write::write_all(
++                                                &mut file,
++                                                br#"{"ready":true,"engine":"gpui_fast"}"#,
++                                            )
++                                        });
++                                    if let Err(error) = result {
++                                        *ready_failure.borrow_mut() =
++                                            Some(format!("marca de Inicio: {error}"));
++                                        cx.quit();
++                                    }
++                                });
++                            });
++                        }) {
++                            *failure.borrow_mut() =
++                                Some(format!("programar marca de Inicio: {error}"));
++                            cx.quit();
++                            return;
++                        }
++                    }
+                     if activate {
+                         let _ = window.update(cx, |_, window, _| {
+                             window.on_next_frame(|window, _| {

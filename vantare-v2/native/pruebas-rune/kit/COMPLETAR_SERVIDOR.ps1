@@ -6,7 +6,7 @@ $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $root='D:/VantareServer/evidence/rune-vs-gpui'
 $artifact=Join-Path $root 'artefactos/pieza8-54ef276c3-transfer03'
-$python=(Get-Command python -CommandType Application -ErrorAction Stop).Source
+$python=@(Get-Command python -CommandType Application -ErrorAction Stop)[0].Source
 if($CopiarMac){
  & $python (Join-Path $PSScriptRoot 'COPIAR_MAC.py') --host 100.91.91.82 --user isaacalbala --source-sha 54ef276c38ed4e7f70ed220db57257898f56ec2c --output $artifact
  if($LASTEXITCODE){throw 'No se pudo copiar Inicio Rune; sin reintentos automáticos.'}

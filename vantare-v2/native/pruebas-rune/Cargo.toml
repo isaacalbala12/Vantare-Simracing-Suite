@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["hola", "inicio"]
+members = ["hola", "contador", "relative", "inicio"]
+exclude = ["fuentes-generadas"]
 
 [workspace.dependencies]
 rune = { git = "https://github.com/anomalyco/rune", rev = "d5338988a7c1b3377adb60853815b6d0843dae7c" }

@@ -13,6 +13,7 @@ $env:CARGO_PROFILE_RELEASE_CODEGEN_UNITS = '16'
 $env:CARGO_PROFILE_RELEASE_DEBUG = 'false'
 $env:CARGO_PROFILE_RELEASE_INCREMENTAL = 'false'
 $env:CARGO_BUILD_JOBS = '2'
+$env:RUSTUP_TOOLCHAIN = '1.99.1'
 # Cargo's explicit path avoids making CARGO_TARGET_DIR part of sccache's key.
 Remove-Item Env:CARGO_TARGET_DIR
 $command = @($args)

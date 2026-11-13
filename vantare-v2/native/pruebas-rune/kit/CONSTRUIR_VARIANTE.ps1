@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
  [Parameter(Mandatory)][ValidateSet('gpui','gpui_fast','hub_fast')][string]$Variant,
- [Parameter(Mandatory)][string]$SourceRoot,
+ [string]$SourceRoot,
  [Parameter(Mandatory)][string]$ArtifactDirectory,
  [switch]$Clippy
 )
@@ -11,8 +11,14 @@ Set-StrictMode -Version Latest
 if(Test-Path -LiteralPath 'D:\VantareServer\qa\captura.lock'){throw 'Captura activa: no compilar.'}
 if(-not $env:VANTARE_CARGO_QUEUE_OWNER -or -not $env:CARGO_TARGET_DIR){throw 'Usar la cola canónica.'}
 if((Get-PSDrive C).Free -lt 8GB -or (Get-PSDrive D).Free -lt 40GB){throw 'Disco por debajo de C 8 / D 40 GiB.'}
-$root=[IO.Path]::GetFullPath($SourceRoot)
-if($root -notlike 'D:\VantareServer\worktrees\isa-2213-*\vantare-v2'){throw 'Usar un worktree propio de #2213.'}
+$bench=Split-Path $PSScriptRoot
+$recipe=$Variant.Replace('_','-')
+$expected=[IO.Path]::GetFullPath((Join-Path $bench ('fuentes-generadas/'+$recipe+'/vantare-v2')))
+if($SourceRoot -and [IO.Path]::GetFullPath($SourceRoot) -ne $expected){throw 'Solo se construyen copias aisladas del banco; nunca el workspace de producto.'}
+$python=@(Get-Command python -CommandType Application -ErrorAction Stop)[0].Source
+& $python (Join-Path $bench 'preparar_fuentes.py') $recipe
+if($LASTEXITCODE){throw 'No se pudo verificar la fuente aislada.'}
+$root=$expected
 if(@(& git -C $root status --porcelain).Count){throw 'La fuente debe estar limpia.'}
 $sha=(& git -C $root rev-parse HEAD).Trim()
 $targetRoot=$env:CARGO_TARGET_DIR
@@ -23,7 +29,7 @@ $command=if($Clippy){'clippy'}else{'build'}
 $cargoArgs=@($command,'--manifest-path',(Join-Path $root 'native/Cargo.toml'),'--release','--locked','-p',$package,'--features',$features,'-j','2')
 if($Clippy){$cargoArgs+=@('--all-targets','--','-D','warnings')}else{$cargoArgs+=@('--bin',$binary)}
 $watch=[Diagnostics.Stopwatch]::StartNew()
-& (Join-Path $root 'native/pruebas-rune/compilar_windows.ps1') @cargoArgs
+& (Join-Path $bench 'compilar_windows.ps1') @cargoArgs
 if($LASTEXITCODE){throw "Cargo terminó con $LASTEXITCODE"}
 $watch.Stop()
 if($Clippy){Write-Output "PASS: Clippy estricto $Variant ($($watch.Elapsed.TotalSeconds) s)";return}

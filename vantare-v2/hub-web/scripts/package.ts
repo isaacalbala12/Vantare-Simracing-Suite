@@ -2,9 +2,6 @@ import { cp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { FuseV1Options, FuseVersion, flipFuses } from "@electron/fuses";
 import { packager } from "@electron/packager";
-import { measurementBuild } from "./measurement-build";
-
-const measurement = measurementBuild();
 
 const qa = process.env.VANTARE_HUB_QA_BUILD === "1";
 const project = resolve(import.meta.dirname, "..");
@@ -33,9 +30,6 @@ const paths = await packager({
   platform: "win32",
   arch: "x64",
   electronVersion: "45.2.3",
-  ...(measurement.enabled
-    ? { win32metadata: { FileDescription: measurement.provenance } }
-    : {}),
   asar: true,
   overwrite: true,
   prune: false,

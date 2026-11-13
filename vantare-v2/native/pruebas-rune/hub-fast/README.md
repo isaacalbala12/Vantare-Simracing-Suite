@@ -2,7 +2,7 @@
 
 Base archivada: 56cb2c701a356eafa324e4237626952d259a77f0, que conserva
 el motor fast fijado para la pieza 5. La opción medir-inicio activa el mismo
-motor fast y añade únicamente procedencia al binario. home.rs, demo.rs y
+motor fast, procedencia, ventana 1440x900 y marca tras un frame completo. home.rs, demo.rs y
 la carga y dibujo de las pantallas no reciben cambios.
 
 Construir por la cola actual de nightly con el wrapper absoluto de este
@@ -19,5 +19,8 @@ locales a la carpeta nueva de resultados; nunca a los datos de Isaac.
 El modo demo carga el fixture, omite analytics y usa privacidad de demostración.
 El pipe privado evita conectarse al núcleo o cuenta reales.
 
-Pendiente: construir, verificar PE/DLL y ejecutar únicamente en el PC.
+Release eb8c0aa00 compilado por cola: 40.735.232 bytes, 793 s no comparables.
+SHA/perfil dentro del PE y dumpbin PASS, sin ejecución. Fuentes congeladas
+home.rs/demo.rs sin cambios contra 56cb2c701/745bd52b8. Aplicar el parche desde
+la raíz Git con git apply --unidiff-zero. Ejecución y medición pendientes PC.
 La comparación de tiempos de compilación queda pendiente autorizada por Isaac.

@@ -1,3 +1,13 @@
+## VANTA-141 / #2213 — Hub fast Release guardado (13/11/2026)
+
+Pieza 8b/PR #2249: Hub congelado eb8c0aa00 compilado por cola, Release -j2,
+opt3/ltofalse/cgu16/debugfalse. 40.735.232 bytes, SHA256 e398fa5d717d85b9a6d1b1dfe2464866891c4018ad6d36d2760e0a26105b9aae.
+SHA/perfil PE y dumpbin PASS. home.rs y demo.rs no cambian. Parche cero contexto
+reproducible contra 56cb2c701; fuente archivada, no PR histórico para fusionar.
+Hub Electron añade gates de tipos antes de empaquetar; cinco tests específicos
+ya pasan. Empaquetado y DLL finales pendientes. Ningún Hub fue ejecutado aquí.
+Mac sin SSH: marca CPU/DWM de Inicio Rune pendiente. No ZIP listo, merge ni release.
+Tiempos comparables siguen pendientes autorizados para la ventana nocturna.
 ## VANTA-141 · Señal de Inicio listo en el Hub mock (13/11/2026)
 
 PR draft #2249. Medición fija 1440x900; espera datos, fuentes, imágenes y

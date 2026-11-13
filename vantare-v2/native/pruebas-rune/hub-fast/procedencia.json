@@ -8,6 +8,11 @@
   ],
   "base_engine": "745bd52b847d1c6a53151146a124db4edcf95aa6",
   "previous_instrumentation": "PR #2242 fast/medir-fast.patch",
-  "compiled": false,
-  "pending": "Construcción Release por cola y comprobación DLL"
+  "compiled": true,
+  "pending": "Ejecución y medición en PC de juego; tiempos de compilación comparables pendientes autorizados",
+  "binary_sha256": "e398fa5d717d85b9a6d1b1dfe2464866891c4018ad6d36d2760e0a26105b9aae",
+  "binary_bytes": 40735232,
+  "build_elapsed_s": 793,
+  "dumpbin_verified": true,
+  "executed": false
 }

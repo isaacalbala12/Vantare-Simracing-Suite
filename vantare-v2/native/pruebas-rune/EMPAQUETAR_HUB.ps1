@@ -38,6 +38,10 @@ try {
     # electron-vite 6 build without bytecode only runs Vite. Its source was
     # inspected: startElectron belongs to dev/preview; BytecodeCompiler.start
     # is conditional on bytecode, absent from this configuration.
+    & $Bun run typecheck
+    if ($LASTEXITCODE) { throw "Tipos del Hub fallaron: $LASTEXITCODE" }
+    & $Bun run typecheck:scripts
+    if ($LASTEXITCODE) { throw "Tipos de scripts fallaron: $LASTEXITCODE" }
     & $Bun run build
     if ($LASTEXITCODE) { throw "Build del Hub fallo: $LASTEXITCODE" }
     & $Bun run package

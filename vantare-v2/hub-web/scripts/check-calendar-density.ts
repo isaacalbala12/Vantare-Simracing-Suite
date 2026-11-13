@@ -12,6 +12,9 @@ export async function checkCalendarDensity(page: Page, base: string) {
       await page.setViewportSize({ width, height });
       await page.goto(`${base}?escena=visual-dark:calendar-live-reference`);
       await calendarScenes["calendario-r6-proximas"].prepare(page);
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+      });
       await page.locator(".v-calendar-hero").waitFor();
       for (const scheme of ["dark", "light"]) {
         await page.evaluate((value) => {

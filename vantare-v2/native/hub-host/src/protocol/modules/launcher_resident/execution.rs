@@ -56,8 +56,12 @@ impl From<vantare_ipc::launcher::answer::AnswerRejection> for ResidentAnswerReje
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum ResidentOrderReceipt {
-    Accepted { run: String },
-    Rejected { reason: super::ResidentOrderRejection },
+    Accepted {
+        run: String,
+    },
+    Rejected {
+        reason: super::ResidentOrderRejection,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -211,19 +215,24 @@ impl From<&native::ExecutionStatus> for ResidentExecution {
             checked_answer: value
                 .capabilities
                 .contains(&native::Capability::CheckedAnswer),
-            checked_control: value.capabilities.contains(&native::Capability::CheckedControl),
-            active: value.active.as_ref().map(|active| Box::new(super::ResidentActiveRun {
-                run: active.run.into(), revision: active.revision.clone(), account_generation: active.account.clone().into(),
-            })),
-            question: value
-                .question
-                .as_ref()
-                .map(|question| Box::new(ResidentScopedQuestion {
+            checked_control: value
+                .capabilities
+                .contains(&native::Capability::CheckedControl),
+            active: value.active.as_ref().map(|active| {
+                Box::new(super::ResidentActiveRun {
+                    run: active.run.into(),
+                    revision: active.revision.clone(),
+                    account_generation: active.account.clone().into(),
+                })
+            }),
+            question: value.question.as_ref().map(|question| {
+                Box::new(ResidentScopedQuestion {
                     decision: question.decision.clone(),
                     run: question.run.into(),
                     revision: question.revision.clone(),
                     account_generation: question.account.clone().into(),
-                })),
+                })
+            }),
             first_retained_seq: value.first_retained_seq.into(),
             events: value
                 .events

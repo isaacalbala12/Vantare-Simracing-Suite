@@ -57,6 +57,8 @@ export function create(
       instance: "b".repeat(64),
       revisionCheckedLaunch: true,
       checkedAnswer: true,
+      checkedControl: false,
+      active: null,
       question: {
         decision: "2",
         run: "1",

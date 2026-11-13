@@ -4,18 +4,20 @@ use std::{path::PathBuf, time::Instant};
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_ipc::launcher as mailbox;
-#[path = "control.rs"]
-pub(crate) mod control;
-#[path = "mailbox.rs"]
-mod order_mailbox;
 #[path = "answer.rs"]
 pub(crate) mod answer;
+#[path = "control.rs"]
+pub(crate) mod control;
 #[path = "document_cache.rs"]
 mod document_cache;
 #[path = "execution.rs"]
 mod execution;
+#[path = "mailbox.rs"]
+mod order_mailbox;
 pub use answer::{ResidentAnswerTarget, ResidentQueued};
-pub use control::{ResidentCancelTarget, ResidentRehearseTarget, ResidentActiveRun, ResidentOrderRejection};
+pub use control::{
+    ResidentActiveRun, ResidentCancelTarget, ResidentOrderRejection, ResidentRehearseTarget,
+};
 pub use execution::{
     ResidentAnswerRejection, ResidentCancellation, ResidentEventKind, ResidentExecution,
     ResidentExecutionEvent, ResidentFailure, ResidentOrderReceipt, ResidentOutcome,

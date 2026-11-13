@@ -12,6 +12,8 @@ const view: ResidentView = {
   execution: {
     instance: "b".repeat(64),
     checkedAnswer: true,
+    checkedControl: false,
+    active: null,
     revisionCheckedLaunch: true,
     firstRetainedSeq: "1",
     events: [{ seq: "1", kind: { kind: "started", run: "1" } }],

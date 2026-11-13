@@ -35,6 +35,8 @@ function view(events: ResidentExecutionEvent[]): ResidentView {
       instance: attempt.target.instance,
       revisionCheckedLaunch: true,
       checkedAnswer: true,
+      checkedControl: false,
+      active: null,
       question: null,
       firstRetainedSeq: run,
       events: [{ seq: run, kind: { kind: "started", run } }, ...events],
@@ -165,4 +167,30 @@ it("a matching receipt observed after the deadline remains Unknown", () => {
     observeAnswer(queuedAnswer(attempt, request, 0), view([receipt()]), 5001)
       .phase.kind,
   ).toBe("unknown");
+});
+
+it("keeps known answer rejection labels and treats control-only reasons as Unknown", () => {
+  for (const reason of [
+    "document-unavailable",
+    "no-steps",
+    "start-failed",
+    "busy",
+    "denied",
+  ] as const) {
+    const event: ResidentExecutionEvent = {
+      seq: String(BigInt(run) + 1n),
+      kind: {
+        kind: "order-received",
+        request,
+        receipt: { kind: "rejected", reason },
+      },
+    };
+    expect(
+      observeAnswer(queuedAnswer(attempt, request, 0), view([event]), 1).phase,
+    ).toEqual(
+      reason === "busy" || reason === "denied"
+        ? { kind: "rejected", reason }
+        : { kind: "unknown" },
+    );
+  }
 });

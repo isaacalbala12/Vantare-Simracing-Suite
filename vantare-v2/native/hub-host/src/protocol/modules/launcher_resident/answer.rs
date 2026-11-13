@@ -112,9 +112,17 @@ pub(crate) fn answer(
     {
         return Err(rejected(AnswerRejection::Denied));
     }
-    super::order_mailbox::enqueue(path, |request| native::Request::AnswerChecked(native::AnswerChecked {
-        request, instance, account, run: scope.run, revision: scope.revision, decision: scope.decision, action,
-    }))
+    super::order_mailbox::enqueue(path, |request| {
+        native::Request::AnswerChecked(native::AnswerChecked {
+            request,
+            instance,
+            account,
+            run: scope.run,
+            revision: scope.revision,
+            decision: scope.decision,
+            action,
+        })
+    })
 }
 #[cfg(test)]
 #[path = "answer_tests.rs"]

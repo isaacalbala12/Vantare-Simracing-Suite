@@ -7,8 +7,8 @@ de esa rama (1.413 archivos), ni cambia el comportamiento del motor.
 
 El código compilado completo se conserva en la rama
 vantareapp/isa-2213-gpui-fast, SHA 56cb2c701a356eafa324e4237626952d259a77f0.
-`git apply --check medir-fast.patch` se ejecuta desde un checkout limpio de
-la base exacta; después `git apply medir-fast.patch`. El parche excluye solo
+`git apply --unidiff-zero --check medir-fast.patch` se ejecuta desde un checkout limpio de
+la base exacta; después `git apply --unidiff-zero medir-fast.patch`. El parche excluye solo
 el handoff documental; incluye todos los archivos de código modificados.
 
 Compilar siempre en servidor por la cola actual de nightly. La cola antigua

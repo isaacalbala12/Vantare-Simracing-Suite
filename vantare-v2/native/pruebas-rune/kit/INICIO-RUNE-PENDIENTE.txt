@@ -1,0 +1,13 @@
+PAQUETE PREPARADO, TODAVIA INCOMPLETO
+
+Falta exclusivamente bin/vantare-inicio-rune.exe, ya compilado en el Mac.
+Fuente esperada: 54ef276c38ed4e7f70ed220db57257898f56ec2c.
+El Mac debe estar despierto para copiarlo y comprobar su hash.
+
+No poner aqui el binario antiguo: carece de la marca de primera imagen CPU/DWM.
+No iniciar la campaña con este ZIP. INICIAR, INICIO, CORRECCION y AGUANTE
+rechazan el manifiesto incompleto antes de abrir programas de medición.
+
+El worker completará el paquete en el servidor, verificará de nuevo todas
+las DLL y hashes, y entregará otro ZIP sin PENDIENTE-INICIO en su nombre.
+Isaac solo debe ejecutar el ZIP completo y seguir PASO_A_PASO_ISAAC.txt.

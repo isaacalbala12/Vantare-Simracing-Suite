@@ -1,3 +1,16 @@
+## VANTA-141 / #2213 — pieza 10 preparada, ejecución pendiente (13/11/2026)
+
+Worker F: guion de aguante cuatro horas, una ventana con diez Relative por motor.
+Solo grabación LMU y pipe privado; reinicio controlado del núcleo cada 65 s.
+Sin PresentMon ni trazas por foto durante el aguante. H oculta/muestra la ventana
+propia sin activarla; M/R registran confirmaciones físicas de monitor y resolución.
+Exige volcado pequeño y paginación sin modificar Windows. Conserva CSV, cierres,
+acciones y metadatos de incidentes; caída observada nunca equivale a pendiente.
+CPU térmica no disponible: GPU y contadores CPU según decisión de Isaac.
+Dos pruebas Python sintéticas y sintaxis PS PASS, sin gráfica en servidor.
+Depende del auxiliar de ventanas/controlador de piezas 9+11 y del muestreador
+PR #2251. Auxiliar C# pendiente de compilación por cola; todo uso gráfico y
+aguante físico siguen pendientes PC de juego. Sin merge ni release.
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 
 [#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995),

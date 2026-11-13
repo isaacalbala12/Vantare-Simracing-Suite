@@ -83,6 +83,10 @@ function mount(scene = "studio-base") {
     </QueryClientProvider>,
   );
 }
+async function openRemove(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: catalogText.moreLabel }));
+  await user.click(await screen.findByRole("menuitem", { name: /^Eliminar / }));
+}
 async function tabTo(
   user: ReturnType<typeof userEvent.setup>,
   element: HTMLElement,
@@ -276,7 +280,7 @@ describe("Studio Foco interactions", () => {
     mount("studio-error");
     await screen.findByRole("button", { name: /^Standings,/ });
     fireEvent.click(screen.getByRole("tab", { name: t.track }));
-    fireEvent.click(await screen.findByRole("button", { name: t.remove }));
+    await openRemove(userEvent.setup());
     const dialog = await screen.findByRole("dialog", { name: t.removeTitle });
     fireEvent.click(within(dialog).getByRole("button", { name: t.remove }));
     await screen.findByText(t.reconfirm);
@@ -292,7 +296,9 @@ describe("Studio Foco interactions", () => {
     mount();
     await screen.findByRole("button", { name: /^Standings,/ });
     fireEvent.click(screen.getByRole("tab", { name: t.track }));
-    fireEvent.click(await screen.findByRole("switch", { name: t.practice }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: t.practiceShort }),
+    );
     await waitFor(() =>
       expect(
         requests.mock.calls.some(
@@ -466,7 +472,7 @@ describe("Studio Foco interactions", () => {
     const user = userEvent.setup();
     await screen.findByRole("button", { name: /^Standings,/ });
     await user.click(screen.getByRole("tab", { name: t.track }));
-    await user.click(screen.getByRole("button", { name: t.remove }));
+    await openRemove(user);
     await user.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
         name: t.remove,
@@ -520,11 +526,11 @@ describe("Studio Foco interactions", () => {
       const source =
         origin === "card"
           ? card
-          : screen.getByRole("button", { name: t.remove });
+          : screen.getByRole("button", { name: catalogText.moreLabel });
       if (origin === "card") {
         await tabTo(user, card);
         await user.keyboard("{Delete}");
-      } else await user.click(source);
+      } else await openRemove(user);
       const dialog = await screen.findByRole("dialog");
       await user.click(within(dialog).getByRole("button", { name: t.cancel }));
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -584,7 +590,7 @@ describe("Studio Foco interactions", () => {
     await screen.findByRole("button", { name: /^Standings 1,/ });
     await user.click(screen.getByRole("button", { name: t.filters.visible }));
     await user.click(screen.getByRole("tab", { name: t.track }));
-    await user.click(screen.getByRole("button", { name: t.remove }));
+    await openRemove(user);
     await user.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
         name: t.remove,

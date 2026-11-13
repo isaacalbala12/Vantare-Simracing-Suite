@@ -102,6 +102,7 @@ export function useResidentAnswer(
     return !(
       attempt &&
       attempt.target.instance === execution.instance &&
+      attempt.target.accountGeneration === scope.accountGeneration &&
       attempt.target.decision === scope.decision &&
       attempt.target.run === scope.run
     );
@@ -143,7 +144,16 @@ export function useResidentAnswer(
           error instanceof HostFailure &&
           error.detail.kind === "residentAnswerRejected"
             ? { kind: "rejected", reason: error.detail.reason }
-            : { kind: "unknown" },
+            : error instanceof HostFailure &&
+                ["busy", "denied", "unsupported", "rejected"].includes(
+                  error.detail.kind,
+                )
+              ? {
+                  kind: "rejected",
+                  reason:
+                    error.detail.kind === "denied" ? "denied" : "unavailable",
+                }
+              : { kind: "unknown" },
       });
     } finally {
       if (token === epoch.current) pending.current = false;

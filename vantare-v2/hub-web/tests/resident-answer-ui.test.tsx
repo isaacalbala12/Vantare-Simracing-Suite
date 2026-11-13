@@ -49,9 +49,7 @@ it("Trust explains the editor requirement and cannot answer, while offered Cance
   ).toBe(text.trustUnavailable);
   fireEvent.click(trust);
   expect(answer).not.toHaveBeenCalled();
-  fireEvent.click(
-    screen.getByRole("button", { name: "Cancelar", exact: true }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
   expect(answer).toHaveBeenCalledExactlyOnceWith("cancel");
 });
 it.each(["accepted", "rejected", "unknown", "finished"] as const)(

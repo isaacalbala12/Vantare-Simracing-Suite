@@ -16,6 +16,7 @@ import {
   checkOnboardingGuardedExit,
 } from "./check-onboarding.ts";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
+import { checkResidentAnswer } from "./check-resident-answer.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { until } from "./wait-for";
 
@@ -155,6 +156,7 @@ try {
   await toast.getByRole("button", { name: "Cerrar" }).click();
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   await checkCommandPalette(page, server.resolvedUrls?.local[0] ?? "");
   await checkNotificationFocus(page, server.resolvedUrls?.local[0] ?? "");

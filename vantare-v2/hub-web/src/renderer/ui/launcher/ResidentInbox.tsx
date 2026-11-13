@@ -15,6 +15,8 @@ export function ResidentInbox({
   answer?: ResidentAnswerController;
 }) {
   const explanation = useId();
+  const popup = useRef<HTMLDivElement>(null);
+  const reopen = useRef<HTMLButtonElement>(null);
   const [dismissed, setDismissed] = useState<string>();
   const retained = useRef(view?.decision);
   if (view?.decision) retained.current = view.decision;
@@ -36,6 +38,10 @@ export function ResidentInbox({
   useEffect(() => {
     if (!decision) setDismissed(undefined);
   }, [decision]);
+  useEffect(() => {
+    if (phase && document.activeElement === document.body)
+      popup.current?.focus();
+  }, [phase]);
   if (!decision)
     return view?.error ? <Callout tone="err" title={t.failed} /> : null;
   const open = dismissed !== identity;
@@ -46,7 +52,9 @@ export function ResidentInbox({
           tone="warn"
           title={t.pending}
           actions={
-            <Button onClick={() => setDismissed(undefined)}>{t.open}</Button>
+            <Button ref={reopen} onClick={() => setDismissed(undefined)}>
+              {t.open}
+            </Button>
           }
         />
       )}
@@ -59,7 +67,12 @@ export function ResidentInbox({
         }}
       >
         <Dialog.Portal>
-          <Dialog.Popup className="v-launcher-resident-drawer">
+          <Dialog.Popup
+            ref={popup}
+            tabIndex={-1}
+            finalFocus={() => reopen.current ?? false}
+            className="v-launcher-resident-drawer"
+          >
             <header>
               <Dialog.Title>{t.title}</Dialog.Title>
               <Dialog.Close aria-label={t.close}>{t.closeSymbol}</Dialog.Close>

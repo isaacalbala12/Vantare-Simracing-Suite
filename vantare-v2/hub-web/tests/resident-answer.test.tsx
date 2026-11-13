@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import coreFixture from "../fixtures/core-offline.json";
 import type {
@@ -128,7 +128,7 @@ it("captures the exact question scope and blocks a second click before Queued", 
   expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
   expect(host.client.request).toHaveBeenCalledTimes(1);
 });
-it("Trust never issues a request, and reducing actions remain available after rights revocation", () => {
+it("Trust never issues a request, and reducing actions remain available after rights revocation", async () => {
   const hook = setup();
   act(() => {
     void hook.result.current.answer("trust");
@@ -141,7 +141,9 @@ it("Trust never issues a request, and reducing actions remain available after ri
     });
   });
   hook.rerender({ value: structuredClone(hook.view) });
-  expect(hook.result.current.available("reuse")).toBe(false);
+  await waitFor(() =>
+    expect(hook.result.current.available("reuse")).toBe(false),
+  );
   expect(hook.result.current.available("cancel")).toBe(true);
 });
 it("does not attach a late Queued response to a different account", async () => {
@@ -172,4 +174,83 @@ it("does not attach a late Queued response to a different account", async () => 
   });
   expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
   expect(hook.result.current.available("cancel")).toBe(false);
+});
+it("observes a receipt that arrived before Queued and never infers Finished from running=false", async () => {
+  const hook = setup();
+  let resolve!: (value: unknown) => void;
+  host.client.request.mockReturnValue(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  let sent!: Promise<void>;
+  act(() => {
+    sent = hook.result.current.answer("reuse");
+  });
+  const received = structuredClone(hook.view);
+  if (!received.execution) throw new Error("fixture execution");
+  received.execution.events.push({
+    seq: "2",
+    kind: {
+      kind: "order-received",
+      request: "d".repeat(32),
+      receipt: { kind: "accepted", run: "1" },
+    },
+  });
+  received.execution.question = null;
+  received.decision = null;
+  received.running = false;
+  hook.rerender({ value: received });
+  await act(async () => {
+    resolve({
+      method: "launcher.resident.answer",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await sent;
+  });
+  expect(hook.result.current.attempt?.phase.kind).toBe("accepted");
+  const finished = structuredClone(received);
+  finished.execution?.events.push({
+    seq: "3",
+    kind: {
+      kind: "finished",
+      run: "1",
+      outcome: { kind: "cancelled", reason: "user" },
+    },
+  });
+  hook.rerender({ value: finished });
+  expect(hook.result.current.attempt?.phase).toEqual({
+    kind: "finished",
+    outcome: { kind: "cancelled", reason: "user" },
+  });
+});
+it("a second scoped question can be answered while the chain is still running", async () => {
+  const hook = setup();
+  host.client.request.mockResolvedValue({
+    method: "launcher.resident.answer",
+    value: { kind: "queued", request: "d".repeat(32) },
+  });
+  await act(async () => {
+    await hook.result.current.answer("reuse");
+  });
+  const next = structuredClone(hook.view);
+  if (!next.execution?.question || !next.decision)
+    throw new Error("fixture question");
+  next.execution.question.decision = "3";
+  next.decision.id = "3";
+  next.execution.events.push({
+    seq: "2",
+    kind: {
+      kind: "order-received",
+      request: "d".repeat(32),
+      receipt: { kind: "accepted", run: "1" },
+    },
+  });
+  hook.rerender({ value: next });
+  expect(hook.result.current.available("cancel")).toBe(true);
+  await act(async () => {
+    await hook.result.current.answer("cancel");
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(2);
+  expect(host.client.request.mock.calls[1][0].target.decision).toBe("3");
 });

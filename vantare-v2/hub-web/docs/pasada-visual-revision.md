@@ -26,3 +26,7 @@ La tabla conserva el porcentaje bruto y lo marca como defecto de referencia, no 
 Se han verificado los 104 recibos de Studio: fuente, estado, tamaño, tema, barra, Chromium/V8 y nueve hashes de fuentes. Esa verificación demuestra la procedencia; no oculta el defecto de la maqueta.
 
 La reserva del orquestador comenzó al terminar la escena a las 10:41:48 CET del 13/11 y se levantó por aviso expreso a las 11:01; no hubo adquisiciones propias durante esa reserva. Las tandas posteriores propias ceden 75 segundos, sin cerrojo, después de cada dos escenas para permitir entrar a la cola nativa.
+
+## Cobertura calculada
+
+La primera matriz completa contiene 352 comparaciones (44 escenas × dos tamaños × dos temas × dos barras), sin errores de generación. Hay 104 recibos de Studio verificados. La inspección humana sigue abierta: una cifra disponible no acredita por sí sola ausencia de defectos. Calendario compacto se corrige en #2296; las miniaturas de Inicio y el defecto REF-ST01 siguen señalados explícitamente.

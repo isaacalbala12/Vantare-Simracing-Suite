@@ -1,5 +1,6 @@
 import type { ResidentStepState } from "../../contract/generated/launcher_resident";
 export const resultsText = {
+  summary: (mode: string, outcome: string) => `${mode} · ${outcome}`,
   steps: "Pasos de la secuencia",
   title: "Última secuencia",
   unknown:

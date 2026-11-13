@@ -68,8 +68,10 @@ export function ResidentResults({
       {value ? (
         <>
           <p>
-            {text[value.mode]} ·{" "}
-            {value.outcome ? text[value.outcome.kind] : text.running}
+            {text.summary(
+              text[value.mode],
+              value.outcome ? text[value.outcome.kind] : text.running,
+            )}
           </p>
           {!profile && <p>{text.stale}</p>}
           {(!profile || value.profile !== profileId) && (

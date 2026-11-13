@@ -218,40 +218,51 @@ fn new_operations_are_opt_in_and_never_legacy_response_fields() {
 }
 
 #[test]
-fn account_feed_stops_after_three_failed_probes_per_epoch_and_preserves_legacy_policy() {
-    use std::{sync::Arc, time::Duration};
+fn legacy_policy_continues_after_an_unknown_account_operation_closes() {
+    use std::{
+        sync::{Arc, mpsc},
+        time::Duration,
+    };
     use vantare_ipc::transport::{Event, Listener};
     let photo = format!("old-account-core-{}", std::process::id());
     let name = control::pipe_name(&photo);
     let stop = Arc::new(Event::new().unwrap());
     let mut listener = Listener::new(&name, Arc::clone(&stop), Duration::from_secs(5)).unwrap();
     let first = listener.instance().unwrap();
+    let (closed_tx, closed_rx) = mpsc::sync_channel(0);
+    let (legacy_tx, legacy_rx) = mpsc::sync_channel(0);
     let worker = std::thread::spawn(move || {
         let mut first = Some(first);
-        let mut probes = 0;
-        let mut legacy_reads_after_probes = 0;
-        // A legacy Read can expire before the feed observes its first epoch. That
-        // adds a Read without an account probe, so physical connection indices are
-        // not a protocol guarantee. Require three probes and continued legacy reads.
-        for revision in 1..=16 {
+        let mut closed_tx = Some(closed_tx);
+        let mut revision = 0;
+        // The exact three-consecutive-failures cache is covered deterministically
+        // by single_disconnect_recovers_and_only_consecutive_failures_disable_old_core.
+        // Real I/O may invalidate the epoch
+        // or interrupt that streak, so total probes are not a protocol guarantee.
+        loop {
             let mut pipe = first.take().unwrap_or_else(|| listener.instance().unwrap());
             pipe.accept().unwrap();
             let request = control::read_request(&mut pipe).unwrap();
             if matches!(request.command, control::Command::ReadAccountSession { .. }) {
-                probes += 1;
                 assert!(
-                    probes <= 3,
-                    "cached legacy authority received another probe"
+                    revision > 0,
+                    "account probe requires an observed legacy epoch"
                 );
                 // Frozen core: unknown operation closes this connection without a reply.
+                drop(pipe);
+                if let Some(closed_tx) = closed_tx.take() {
+                    // Rendezvous proves the close precedes the legacy continuation.
+                    closed_tx.send(()).unwrap();
+                }
                 continue;
             }
             assert!(matches!(request.command, control::Command::Read));
+            revision += 1;
             control::write(
                 &mut pipe,
                 &control::Response {
                     version: 7,
-                    sequence: 1,
+                    sequence: request.sequence,
                     error: None,
                     policy: control::Policy {
                         epoch: 1,
@@ -262,20 +273,21 @@ fn account_feed_stops_after_three_failed_probes_per_epoch_and_preserves_legacy_p
                 },
             )
             .unwrap();
-            if probes == 3 {
-                legacy_reads_after_probes += 1;
-                if legacy_reads_after_probes == 2 {
-                    break;
-                }
+            if closed_tx.is_none() {
+                legacy_tx.send(()).unwrap();
+                break;
             }
         }
-        assert_eq!(probes, 3);
-        assert_eq!(legacy_reads_after_probes, 2);
     });
     let feed = control::Feed::connect_account(&photo, std::env::current_exe().unwrap()).unwrap();
+    // Deadlock guards only; channels establish the order, without sleeps or
+    // assumptions about the relative polling rates of the two Feed threads.
     assert!(feed.wait_initial(Duration::from_secs(5)));
+    closed_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+    legacy_rx.recv_timeout(Duration::from_secs(5)).unwrap();
     worker.join().unwrap();
     assert_eq!(feed.policy().epoch, 1);
+    assert_eq!(feed.policy().state, control::AccessState::NoCredential);
     assert!(feed.account_observation().is_none());
     drop(feed);
 }

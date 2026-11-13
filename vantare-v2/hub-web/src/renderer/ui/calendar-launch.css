@@ -1,0 +1,13 @@
+.v-calendar-launch-notice {
+  display: grid;
+  grid-template-columns: var(--space-8) minmax(0, 1fr) max-content;
+  align-items: start;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-7);
+}
+.v-calendar-launch-notice > .v-button {
+  align-self: center;
+  width: max-content;
+}
+.v-calendar-launch-notice p { margin: 0; }
+.v-calendar-launch-notice > svg { color: var(--text-2); }

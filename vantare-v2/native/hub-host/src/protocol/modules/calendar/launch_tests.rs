@@ -458,13 +458,11 @@ fn closing_explicitly_removes_all_intentions_without_claiming_to_cancel_an_accep
     let mut s = once(base);
     queue(&mut s, base);
     s.close();
-    assert!(!s.active());
+    assert!(s.active());
+    assert!(s.view().armed.is_none());
     assert!(matches!(
         s.view().latest.unwrap().progress,
-        CalendarLaunchProgress::Unknown {
-            reason: CalendarLaunchUnknown::ScopeLost,
-            ..
-        }
+        CalendarLaunchProgress::Queued { .. }
     ));
 }
 
@@ -632,4 +630,199 @@ fn a_tolerated_small_clock_rollback_never_replays_an_automatic_departure() {
     recross.wall = WALL + 1000;
     assert!(scheduler.step(inputs, recross).is_none());
     assert!(scheduler.view().automatic.is_some());
+}
+
+#[test]
+fn live_and_closing_keep_the_owned_receipt_correlated() {
+    let base = Instant::now();
+    let mut s = once(base);
+    queue(&mut s, base);
+    s.close();
+    let mut scope = core();
+    scope.live = true;
+    let mut view = resident();
+    view.execution.as_mut().unwrap().events = vec![
+        ResidentExecutionEvent {
+            seq: "1".into(),
+            kind: ResidentEventKind::Received {
+                request: "d".repeat(32),
+                receipt: ResidentReceipt::Accepted { run: "1".into() },
+            },
+        },
+        ResidentExecutionEvent {
+            seq: "2".into(),
+            kind: ResidentEventKind::Finished {
+                run: "1".into(),
+                outcome: ResidentOutcome::Completed,
+            },
+        },
+    ];
+    s.step(
+        Inputs {
+            core: &scope,
+            closing: true,
+            resident: &view,
+            alerts_ready: true,
+            auto_enabled: true,
+            candidates: &[],
+        },
+        clock(base, 1100),
+    );
+    assert!(matches!(
+        s.view().latest.unwrap().progress,
+        CalendarLaunchProgress::Finished {
+            outcome: ResidentOutcome::Completed,
+            ..
+        }
+    ));
+}
+#[test]
+fn resident_restart_unavailability_and_protected_alerts_disarm_future_intentions() {
+    for cause in 0..5 {
+        let base = Instant::now();
+        let mut s = once(base);
+        s.install(
+            binding(
+                '2',
+                clock(base, 0),
+                CalendarLaunchMode::Alerts {
+                    expected_revision: "c".repeat(64),
+                },
+            ),
+            clock(base, 0),
+        );
+        let mut r = resident();
+        match cause {
+            0 => r.online = false,
+            1 => r.execution = None,
+            2 => r.execution.as_mut().unwrap().instance = "e".repeat(64),
+            3 => r.protected = true,
+            _ => {}
+        }
+        s.step(
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &r,
+                alerts_ready: cause != 4,
+                auto_enabled: true,
+                candidates: &[],
+            },
+            clock(base, 1),
+        );
+        assert!(s.view().automatic.is_none());
+        assert_eq!(
+            s.view().change.unwrap().reason,
+            if cause == 4 {
+                CalendarLaunchStop::AlertsUnavailable
+            } else {
+                CalendarLaunchStop::ResidentUnavailable
+            }
+        );
+        if cause != 4 {
+            assert!(s.view().armed.is_none());
+        }
+    }
+}
+#[test]
+fn simultaneous_manual_and_automatic_departures_report_the_skipped_automatic() {
+    let base = Instant::now();
+    let mut s = once(base);
+    s.install(
+        binding(
+            '2',
+            clock(base, 0),
+            CalendarLaunchMode::Alerts {
+                expected_revision: "c".repeat(64),
+            },
+        ),
+        clock(base, 0),
+    );
+    let candidates = [Candidate {
+        series_id: "auto".into(),
+        start_at: WALL + LEAD_MS + 1000,
+    }];
+    let due = s
+        .step(
+            Inputs {
+                core: &core(),
+                closing: false,
+                resident: &resident(),
+                alerts_ready: true,
+                auto_enabled: true,
+                candidates: &candidates,
+            },
+            clock(base, 1000),
+        )
+        .unwrap();
+    assert_eq!(due.candidate.series_id, "series");
+    assert_eq!(
+        s.view().change.unwrap().reason,
+        CalendarLaunchStop::PunctualPriority
+    );
+    assert!(s.view().automatic.is_some());
+}
+#[test]
+fn dst_and_timezone_offsets_never_change_the_absolute_three_minute_deadline() {
+    for text in [
+        "2026-03-29T03:01:00+02:00",
+        "2026-10-25T02:01:00+02:00",
+        "2026-10-25T02:01:00+01:00",
+        "2026-10-08T20:00:00+14:00",
+        "2026-10-08T20:00:00-12:00",
+    ] {
+        let at = chrono::DateTime::parse_from_rfc3339(text)
+            .unwrap()
+            .timestamp_millis();
+        let base = Instant::now();
+        let now = Clock {
+            wall: at - LEAD_MS - 1000,
+            monotonic: base,
+        };
+        let mut s = Scheduler::default();
+        s.install(
+            binding(
+                '1',
+                now,
+                CalendarLaunchMode::Once {
+                    series_id: "s".into(),
+                    start_at: at,
+                },
+            ),
+            now,
+        );
+        let r = resident();
+        let c = core();
+        let input = Inputs {
+            core: &c,
+            closing: false,
+            resident: &r,
+            alerts_ready: true,
+            auto_enabled: false,
+            candidates: &[],
+        };
+        assert!(
+            s.step(
+                input,
+                Clock {
+                    wall: at - LEAD_MS - 1,
+                    monotonic: base + Duration::from_millis(999)
+                }
+            )
+            .is_none()
+        );
+        assert_eq!(
+            s.step(
+                input,
+                Clock {
+                    wall: at - LEAD_MS,
+                    monotonic: base + Duration::from_millis(1000)
+                }
+            )
+            .unwrap()
+            .candidate
+            .start_at,
+            at
+        );
+    }
 }

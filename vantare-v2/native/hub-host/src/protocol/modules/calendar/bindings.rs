@@ -533,6 +533,7 @@ fn launch_types(text: &mut String) {
         [
             "user",
             "replaced",
+            "punctualPriority",
             "accountChanged",
             "rightsLost",
             "live",

@@ -9,7 +9,10 @@ import {
 } from "../i18n/calendarLaunch";
 import { Button } from "./Button";
 import { clock } from "./calendarDate";
-import { Callout } from "./Data";
+import type {ReactNode} from "react";
+import { Icon } from "../assets/icons/Icon";
+import "./calendar-launch.css";
+function LaunchNotice({title,children,actions,tone="info",latest=false}:{title:string;children?:ReactNode;actions?:ReactNode;tone?:"info"|"warn";latest?:boolean}) {return <div className={`v-callout v-callout--${tone} v-calendar-launch-notice`} role="status" aria-live="polite" aria-atomic="true" data-calendar-launch-result={latest || undefined}><Icon name="clock"/><div><strong>{title}</strong><div>{children}</div></div>{actions}</div>;}
 export function CalendarLaunchStatus({
   value,
   busy,
@@ -49,7 +52,7 @@ export function CalendarLaunchStatus({
       {[value.armed, value.automatic].map(
         (plan) =>
           plan && (
-            <Callout
+            <LaunchNotice
               key={plan.armId}
               title={
                 plan.mode.kind === "once"
@@ -61,6 +64,8 @@ export function CalendarLaunchStatus({
               }
               actions={
                 <Button
+                  aria-label={plan.mode.kind === "once" ? text.cancelOnce : text.cancelAutomatic}
+                  size="sm"
                   aria-disabled={busy}
                   onClick={() => {
                     if (!busy) onCancel(plan.armId);
@@ -72,14 +77,15 @@ export function CalendarLaunchStatus({
             >
               <p>{text.onlyOpen}</p>
               {plan.decisionRequired && <p>{text.ask}</p>}
-            </Callout>
+            </LaunchNotice>
           ),
       )}
       {value.change && (
         <p role="status">{calendarLaunchStops[value.change.reason]}</p>
       )}
       {summary && (
-        <Callout
+        <LaunchNotice
+          latest
           title={summary}
           tone={
             progress?.kind === "unknown" ||
@@ -93,7 +99,7 @@ export function CalendarLaunchStatus({
           {(progress?.kind === "queued" ||
             progress?.kind === "running" ||
             progress?.kind === "unknown") && <p>{text.sentCannotCancel}</p>}
-        </Callout>
+        </LaunchNotice>
       )}
     </>
   );

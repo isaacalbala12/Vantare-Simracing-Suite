@@ -232,7 +232,7 @@ en `hub-web/docs/screen-contracts.md`.
 La auditoría de escritores y los oráculos de bytes con ambos mapas de serde_json
 están en [docs/json-order.md](docs/json-order.md).
 
-## Lanzamientos comprobados · protocolo Hub v31
+## Lanzamientos comprobados · protocolo Hub v32
 
 `core.accountGeneration` es una generación opaca de sesión, no una identidad,
 credencial ni permiso. Puede faltar con un núcleo antiguo o desconectado. D
@@ -279,3 +279,5 @@ anterior solo si aún no han vencido sus 2 s y sigue siendo la misma autoridad.
 Si la consulta agota los 2 s, la cuenta pasa a None. Una respuesta legacy fresca
 no renueva la generación de cuenta. Ok(None) también la borra inmediatamente.
 Cerrar el Feed cancela y recoge ambos hilos. El residente mantiene 750 ms al consumir.
+
+Calendario v32: `calendar.launchArm` / `calendar.launchCancel` y tema `calendarLaunch`. El host fija perfil, revisión, generación e instancia del residente; el tick consume una sola vez la intención. Los recibos siguen correlacionándose al entrar en pista; solo la pérdida de cuenta/derechos/conexión invalida su alcance. Sin persistencia ni reenvío de resultados desconocidos.

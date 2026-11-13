@@ -137,6 +137,7 @@ export function useCalendarPreferences(allowed: boolean) {
         setFailure(undefined);
         setFailureIntent(undefined);
         intent.current = undefined;
+        return reply.value;
       } catch (error) {
         if (epoch !== generation.current || !access.current) return;
         if (error instanceof HostFailure) {

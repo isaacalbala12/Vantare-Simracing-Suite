@@ -30,6 +30,7 @@ pub enum CalendarLaunchMode {
 pub enum CalendarLaunchStop {
     User,
     Replaced,
+    PunctualPriority,
     AccountChanged,
     RightsLost,
     Live,

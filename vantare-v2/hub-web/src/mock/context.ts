@@ -7,6 +7,9 @@ import type {
   UiToHost,
 } from "../contract/generated/contract";
 export interface MockContext {
+  launcherPolicy?: (
+    profile: string,
+  ) => import("../contract/generated/contract").ProfilePolicy | undefined;
   testingData?: TestingView;
   windowsNotificationsEnabled?: boolean;
   onboarding?: {

@@ -9,7 +9,6 @@ use crate::{
     },
     protocol::{Event, Topic},
 };
-use std::time::Instant;
 pub(super) fn publish(session: &mut Session, pipe: &mut Pipe, force: bool) -> io::Result<()> {
     let value = session.calendar_launch.view();
     if session.subscriptions.contains(&Topic::CalendarLaunch)
@@ -109,11 +108,12 @@ fn arm(
     session.calendar_launch.install(binding, now);
     Ok((session.calendar_launch.view(), config))
 }
-pub(super) fn dispatch(
+pub(super) fn dispatch_at(
     session: &mut Session,
     pipe: &mut Pipe,
     id: u32,
     request: &Request,
+    now: Clock,
 ) -> io::Result<()> {
     let result = match request {
         Request::CalendarLaunchArm {
@@ -121,21 +121,12 @@ pub(super) fn dispatch(
             base_revision,
             armed_generation,
             mode,
-        } => arm(
-            session,
-            profile,
-            base_revision,
-            armed_generation,
-            mode,
-            Clock {
-                wall: chrono::Utc::now().timestamp_millis(),
-                monotonic: Instant::now(),
+        } => arm(session, profile, base_revision, armed_generation, mode, now).map(
+            |(value, config)| Reply::CalendarLaunchArm {
+                value: Box::new(value),
+                config,
             },
-        )
-        .map(|(value, config)| Reply::CalendarLaunchArm {
-            value: Box::new(value),
-            config,
-        }),
+        ),
         Request::CalendarLaunchCancel { arm_id } => {
             session.calendar_launch.cancel(arm_id);
             Ok(Reply::CalendarLaunchCancel {
@@ -192,12 +183,13 @@ pub(super) fn tick(session: &mut Session, pipe: &mut Pipe, now: Clock) -> io::Re
                     .clone()
                     .try_into()
                     .map_err(|_| HostError::Denied)?;
-                crate::launcher::checked::launch(
+                crate::launcher::checked::launch_for_instance(
                     &session.launcher,
                     session.core.account_observation().as_ref(),
                     &generation,
                     &due.binding.plan.profile,
                     &due.binding.revision,
+                    &due.binding.instance,
                 )
             });
         session

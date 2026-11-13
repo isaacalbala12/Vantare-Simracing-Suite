@@ -119,6 +119,7 @@ export function create(context: MockContext): MockHandler {
       } as ProfileDraft,
     ]),
   );
+  context.launcherPolicy = (id) => drafts.get(id)?.policy;
   if (sceneName === "launcher-shortcuts") {
     for (const [id, hotkey] of [
       ["creator", "ctrl+shift+1"],

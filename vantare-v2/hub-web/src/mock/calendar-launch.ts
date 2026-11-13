@@ -1,5 +1,6 @@
 // Deterministic UI double only: no mailbox writer, processes, timers or system notifications.
 import launcher from "../../fixtures/launcher-base.json";
+import editor from "../../fixtures/launcher-editor.json";
 import {
   type CalendarConfigView,
   type CalendarLaunchPlan,
@@ -7,8 +8,21 @@ import {
   calendarLaunchLeadMs,
   calendarLaunchMaxFutureMs,
 } from "../contract/generated/calendar";
-import type { HostToUi, UiToHost } from "../contract/generated/contract";
+import type {
+  HostToUi,
+  ProfilePolicy,
+  UiToHost,
+} from "../contract/generated/contract";
 import type { MockContext } from "./context";
+export function calendarDecisionRequired(policy: ProfilePolicy) {
+  return (
+    policy.alreadyRunning === "ask" ||
+    policy.failure === "ask" ||
+    policy.cancel === "ask" ||
+    policy.exit === "ask" ||
+    policy.retry === "ask"
+  );
+}
 export function calendarLaunchMock(
   context: MockContext,
   config: () => CalendarConfigView,
@@ -122,9 +136,15 @@ export function calendarLaunchMock(
         context.sceneName === "calendar-launch-reference"
           ? "Carrera LMU"
           : profile.name,
-      decisionRequired:
-        profile.options.alreadyRunning === "ask" ||
-        profile.options.failure === "ask",
+      decisionRequired: calendarDecisionRequired(
+        context.launcherPolicy?.(request.profile) ??
+          ({
+            ...editor.draft.policy,
+            alreadyRunning: profile.options.alreadyRunning,
+            failure: profile.options.failure,
+            exit: profile.options.closeOnExit ? "closeStarted" : "leave",
+          } as ProfilePolicy),
+      ),
       mode: structuredClone(request.mode),
     };
     generations.set(plan.armId, request.armedGeneration);

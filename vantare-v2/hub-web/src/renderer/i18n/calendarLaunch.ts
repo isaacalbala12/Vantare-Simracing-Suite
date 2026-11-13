@@ -11,6 +11,10 @@ export const calendarLaunchText = {
     `${profile} · lanzamiento programado a las ${time}`,
   automatic: (profile: string) =>
     `${profile} · lanzamiento automático ${calendarLaunchLeadMs / 60000} min antes de tus salidas con aviso`,
+  cancelOnce: "Cancelar lanzamiento puntual",
+  cancelAutomatic: "Cancelar lanzamiento automático",
+  alertsUnavailable:
+    "No se pueden leer los avisos ni su revisión. No se ha cambiado la preferencia.",
   cancel: "Cancelar programación",
   queued: "Enviado al residente; esperando recibo. Aún no está terminado.",
   running: "Secuencia aceptada y en curso.",
@@ -36,6 +40,8 @@ export const calendarLaunchText = {
 };
 export const calendarLaunchStops: Record<CalendarLaunchStop, string> = {
   user: "Programación cancelada.",
+  punctualPriority:
+    "La salida automática se ha omitido porque la programación puntual tiene prioridad.",
   replaced: "La nueva programación ha sustituido a la anterior.",
   accountChanged: "Programación desarmada: ha cambiado la cuenta.",
   rightsLost: "Programación desarmada: ya no tienes los derechos necesarios.",

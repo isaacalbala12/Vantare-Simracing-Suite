@@ -68,6 +68,24 @@ pub(super) fn dispatch(
     id: u32,
     request: &Request,
 ) -> io::Result<()> {
+    dispatch_with_clock(
+        session,
+        pipe,
+        id,
+        request,
+        crate::calendar::launch::Clock {
+            wall: chrono::Utc::now().timestamp_millis(),
+            monotonic: std::time::Instant::now(),
+        },
+    )
+}
+pub(super) fn dispatch_with_clock(
+    session: &mut Session,
+    pipe: &mut Pipe,
+    id: u32,
+    request: &Request,
+    now: crate::calendar::launch::Clock,
+) -> io::Result<()> {
     if !crate::calendar::allowed(&session.current.access) {
         return frame::write(
             pipe,
@@ -81,7 +99,7 @@ pub(super) fn dispatch(
         request,
         Request::CalendarLaunchArm { .. } | Request::CalendarLaunchCancel { .. }
     ) {
-        return launches::dispatch(session, pipe, id, request);
+        return launches::dispatch_at(session, pipe, id, request, now);
     }
     if matches!(request, Request::CalendarNoticeTest {}) {
         return notice_test(session, pipe, id);

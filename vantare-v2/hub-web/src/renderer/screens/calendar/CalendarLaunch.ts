@@ -15,7 +15,7 @@ export type CalendarLaunchCapture = Pick<
 export function useCalendarLaunch(
   allowed: boolean,
   capture: () => CalendarLaunchCapture | undefined,
-  reloadConfig: () => void,
+  reloadConfig: () => unknown | Promise<unknown>,
 ) {
   const { client } = useHost();
   const cache = useQueryClient();
@@ -83,7 +83,8 @@ export function useCalendarLaunch(
         throw new HostFailure({ kind: "rejected" });
       if (update === updates.current) setView(reply.value);
       if (reply.method === "calendar.launchArm" && reply.config)
-        callbacks.current.reloadConfig();
+        await callbacks.current.reloadConfig();
+      return true;
     } catch (error) {
       if (current()) {
         if (
@@ -111,6 +112,7 @@ export function useCalendarLaunch(
   return {
     view,
     failure,
+    alertsUnavailable: () => setFailure("protected"),
     busy,
     arm: (mode: CalendarLaunchMode) => {
       const scope = callbacks.current.capture();

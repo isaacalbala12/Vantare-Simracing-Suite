@@ -1084,3 +1084,6 @@ fn calendar_launch_requests_cannot_bypass_calendar_rights_or_an_observed_account
     );
     assert_eq!(session.core.requests, 0);
 }
+
+#[path = "launch_dispatch_tests.rs"]
+mod launch_dispatch_tests;

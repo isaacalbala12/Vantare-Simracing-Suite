@@ -161,7 +161,6 @@ impl Scheduler {
     pub fn close(&mut self) {
         self.stop_once(CalendarLaunchStop::HubClosed);
         self.stop_auto(CalendarLaunchStop::HubClosed);
-        self.unknown(CalendarLaunchUnknown::ScopeLost);
     }
     fn unknown(&mut self, reason: CalendarLaunchUnknown) {
         if let Some(pending) = self.pending.take()
@@ -205,11 +204,11 @@ impl Scheduler {
         if let Some(reason) = self.automatic.as_ref().and_then(scope) {
             self.stop_auto(reason);
         }
-        if self
-            .pending
-            .as_ref()
-            .is_some_and(|p| scope_stop(core, closing, &p.generation).is_some())
-        {
+        if self.pending.as_ref().is_some_and(|p| {
+            core.rights != LinkState::Connected
+                || core.account_generation.as_deref() != Some(p.generation.as_str())
+                || !super::allowed(&core.access)
+        }) {
             self.unknown(CalendarLaunchUnknown::ScopeLost);
         }
         self.observe_receipts(resident, now.monotonic);
@@ -287,6 +286,12 @@ impl Scheduler {
                     reason: CalendarLaunchStop::Expired,
                 });
                 return None;
+            }
+            if let Some(skipped) = automatic {
+                self.change = Some(CalendarLaunchChange {
+                    plan: skipped.binding.plan,
+                    reason: CalendarLaunchStop::PunctualPriority,
+                });
             }
             Some(Due { binding, candidate })
         } else {

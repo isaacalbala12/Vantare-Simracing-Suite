@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { type Ref, useEffect, useId, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
@@ -70,6 +70,7 @@ export function CalendarLiveView({
   onDetail,
   onLaunch,
   onArm,
+  launchButtonRef,
   armBusy = false,
   armDisabledReason,
 }: {
@@ -89,6 +90,7 @@ export function CalendarLiveView({
   onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
   onArm?: (seriesId: string, startAt: number) => void;
+  launchButtonRef?: Ref<HTMLButtonElement>;
   armBusy?: boolean;
   armDisabledReason?: string;
 }) {
@@ -387,6 +389,7 @@ export function CalendarLiveView({
               </Button>
               <Button
                 className="v-calendar-launch-pending"
+                ref={launchButtonRef}
                 focusableWhenDisabled
                 aria-describedby={launchPendingId}
                 title={armDisabledReason ?? calendarLaunchText.onlyOpen}

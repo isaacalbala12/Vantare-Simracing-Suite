@@ -159,7 +159,8 @@ export async function checkResidentAnswer(owner: Page, base: string) {
       );
       assert.ok(
         await page
-          .getByRole("status", { name: text.answerStatusLabel, exact: true })
+          .getByRole("region", { name: text.answerStatusLabel, exact: true })
+          .getByRole("status")
           .isVisible(),
       );
       if (state !== "finished")

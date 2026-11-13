@@ -67,7 +67,10 @@ export function useResidentAnswer(
     const previous = latest.current;
     if (!previous) return;
     const question = answerScope(view);
-    if (question && !sameAnswerScope(question, previous.target)) {
+    if (
+      view?.decision &&
+      (!question || !sameAnswerScope(question, previous.target))
+    ) {
       epoch.current++;
       pending.current = false;
       publish(undefined);

@@ -30,8 +30,10 @@ export function ResidentInbox({
       }
     | undefined
   >(undefined);
-  if (rendered && view?.decision)
-    retained.current = { scope: rendered, decision: view.decision };
+  if (view?.decision)
+    retained.current = rendered
+      ? { scope: rendered, decision: view.decision }
+      : undefined;
   const attempt = answer?.attempt;
   if (!attempt && !view?.decision) retained.current = undefined;
   const matches =
@@ -70,39 +72,37 @@ export function ResidentInbox({
     if (phase && document.activeElement === document.body)
       popup.current?.focus();
   }, [phase]);
-  const liveStatus = (
-    <span
-      className="v-resident-live"
-      role="status"
+  const open = !!decision && dismissed !== identity;
+  // Keep the existing Callout live region mounted even when its visual summary
+  // is clipped. This avoids a second, competing status region when closed.
+  const announcement = (
+    <section
       aria-label={t.answerStatusLabel}
-      aria-live="polite"
-      aria-atomic="true"
+      className={`v-resident-announcement${open || !decision ? " v-resident-live" : ""}`}
     >
-      {status ?? ""}
-    </span>
+      <Callout
+        tone="warn"
+        title={status ?? (decision && !open ? t.pending : "")}
+        actions={
+          decision && !open ? (
+            <Button ref={reopen} onClick={() => setDismissed(undefined)}>
+              {t.open}
+            </Button>
+          ) : undefined
+        }
+      />
+    </section>
   );
   if (!decision)
     return (
       <>
-        {liveStatus}
+        {announcement}
         {view?.error ? <Callout tone="err" title={t.failed} /> : null}
       </>
     );
-  const open = dismissed !== identity;
   return (
     <>
-      {liveStatus}
-      {!open && (
-        <Callout
-          tone="warn"
-          title={status ?? t.pending}
-          actions={
-            <Button ref={reopen} onClick={() => setDismissed(undefined)}>
-              {t.open}
-            </Button>
-          }
-        />
-      )}
+      {announcement}
       <Dialog.Root
         scope="notice"
         modal={false}

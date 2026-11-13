@@ -118,7 +118,7 @@ it("keeps the live region mounted empty, then announces while the panel is close
   );
   const mounted = render(content(view, controller));
   const live = screen.getByRole("status");
-  expect(live.textContent).toBe("");
+  expect(live.querySelector("strong")?.textContent).toBe("");
   fireEvent.click(screen.getByRole("button", { name: text.close }));
   const accepted: ResidentAnswerController = {
     ...controller,
@@ -142,13 +142,15 @@ it("keeps the live region mounted empty, then announces while the panel is close
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(screen.getByRole("button", { name: text.open })).toBeTruthy();
   expect(screen.getByRole("status")).toBe(live);
-  expect(live.textContent).toBe(text.answerState.accepted);
+  expect(live.querySelector("strong")?.textContent).toBe(
+    text.answerState.accepted,
+  );
   const next = structuredClone(view);
   if (!next.execution?.question || !next.decision) throw new Error("fixture");
   next.execution.question.decision = "3";
   next.decision.id = "3";
   mounted.rerender(content(next, accepted));
   expect(screen.getByRole("status")).toBe(live);
-  expect(live.textContent).toBe("");
+  expect(live.querySelector("strong")?.textContent).toBe("");
   expect(screen.queryByText(text.answerState.accepted)).toBeNull();
 });

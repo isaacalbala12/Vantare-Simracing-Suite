@@ -252,44 +252,50 @@ export function LauncherProfiles({
               >
                 {text.edit}
               </Button>
-              <Tooltip
-                label={
-                  rehearseReason
-                    ? controlText[rehearseReason]
-                    : controlText.rehearseHelp
-                }
-              >
-                <span>
-                  <Button
-                    ref={rehearseButton}
-                    disabled={!control}
-                    aria-disabled={!!rehearseReason || pending}
-                    aria-describedby={control ? `${help}-rehearse` : undefined}
-                    onClick={() => {
-                      if (
-                        control &&
-                        rehearseTarget &&
-                        !rehearseReason &&
-                        !pending
-                      )
-                        void control.rehearse(rehearseTarget);
-                    }}
-                  >
-                    {text.rehearse}
-                  </Button>
-                </span>
-              </Tooltip>
+              {!showCancel && (
+                <Tooltip
+                  label={
+                    rehearseReason
+                      ? controlText[rehearseReason]
+                      : controlText.rehearseHelp
+                  }
+                >
+                  <span>
+                    <Button
+                      ref={rehearseButton}
+                      disabled={!control}
+                      aria-disabled={!!rehearseReason || pending}
+                      aria-describedby={
+                        control ? `${help}-rehearse` : undefined
+                      }
+                      onClick={() => {
+                        if (
+                          control &&
+                          rehearseTarget &&
+                          !rehearseReason &&
+                          !pending
+                        )
+                          void control.rehearse(rehearseTarget);
+                      }}
+                    >
+                      {text.rehearse}
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
             </div>
             {control && (
               <div className="v-launcher-control-help">
-                <p
-                  id={`${help}-rehearse`}
-                  className={rehearseReason ? undefined : "v-resident-live"}
-                >
-                  {rehearseReason
-                    ? controlText[rehearseReason]
-                    : controlText.rehearseHelp}
-                </p>
+                {!showCancel && (
+                  <p
+                    id={`${help}-rehearse`}
+                    className={rehearseReason ? undefined : "v-resident-live"}
+                  >
+                    {rehearseReason
+                      ? controlText[rehearseReason]
+                      : controlText.rehearseHelp}
+                  </p>
+                )}
                 {showCancel && (
                   <p
                     id={`${help}-cancel`}

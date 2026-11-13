@@ -189,6 +189,7 @@ it.each([
   "denied",
   "live",
   "protected",
+  "scanning",
 ])("rejects stale or unavailable rehearse intent: %s", async (kind) => {
   const hook = setup();
   const next = structuredClone(hook.resident);
@@ -220,6 +221,13 @@ it.each([
       hook.cache.setQueryData(launcherKey, {
         ...hook.document,
         revision: "e".repeat(64),
+      });
+    });
+  if (kind === "scanning")
+    act(() => {
+      hook.cache.setQueryData(launcherKey, {
+        ...hook.document,
+        scanning: true,
       });
     });
   if (kind === "protected")

@@ -19,7 +19,7 @@ export const controlText = {
   cancelled: "La secuencia ha terminado cancelada.",
   failed: "La secuencia ha terminado con un fallo.",
   cleanupFailed:
-    "No se pudieron cerrar las aplicaciones. La cancelación no se ha completado.",
+    "La secuencia ha terminado con un fallo al cerrar aplicaciones.",
   unavailable: "No se puede comprobar el residente o la conexión actual.",
   unsupported:
     "El residente actual no admite cancelar ni probar perfiles de forma comprobada.",
@@ -28,6 +28,7 @@ export const controlText = {
     "Necesitas permisos vigentes y estar fuera de pista para probar el perfil.",
   busy: "Hay una orden pendiente o una secuencia en curso. Espera antes de volver a probar.",
   changed: "El perfil o la ejecución han cambiado. Revisa el estado actual.",
+  scanning: "Espera a que termine la detección de aplicaciones.",
   active: "No hay una ejecución comprobada que se pueda cancelar.",
   rejection: {
     ...residentText.rejection,

@@ -27,7 +27,8 @@ export function createResidentControlMock(
   const doc = context.launcherData;
   if (
     scene === "launcher-control-cancel" ||
-    scene === "launcher-control-closing"
+    scene === "launcher-control-closing" ||
+    scene === "launcher-control-missing-document"
   ) {
     view.running = true;
     view.execution.active = {
@@ -40,6 +41,10 @@ export function createResidentControlMock(
       kind: { kind: "started", run: "1" },
     });
     if (doc) doc.running = true;
+  }
+  if (scene === "launcher-control-missing-document" && doc) {
+    doc.protected = true;
+    doc.profiles = [];
   }
   let queued = false,
     serial = 0;

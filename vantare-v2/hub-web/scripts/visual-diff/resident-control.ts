@@ -18,6 +18,7 @@ for (const state of [
   "unsupported",
   "cancel",
   "closing",
+  "missing-document",
 ] as const) {
   residentControlScenes[`launcher-control-${state}`] = {
     mock: `launcher-control-${state}`,
@@ -26,7 +27,11 @@ for (const state of [
       if (state === "unknown") await page.clock.install();
       await page.getByRole("button", { name: "Launcher", exact: true }).click();
       await page
-        .getByRole("heading", { name: "Creador de Contenido", exact: true })
+        .getByRole("heading", {
+          name:
+            state === "missing-document" ? "Launcher" : "Creador de Contenido",
+          exact: true,
+        })
         .waitFor();
       const toggle = page.getByRole("button", {
         name: "Contraer o ampliar navegación",
@@ -54,8 +59,12 @@ for (const state of [
         await page
           .getByRole("button", {
             name:
-              state === "cancel" || state === "closing"
-                ? "Cancelar"
+              state === "cancel" ||
+              state === "closing" ||
+              state === "missing-document"
+                ? state === "missing-document"
+                  ? "Cancelar secuencia actual"
+                  : "Cancelar"
                 : "Probar sin el juego",
             exact: true,
           })
@@ -82,7 +91,7 @@ for (const state of [
         else {
           await notice
             .getByText(
-              `${state === "cancel" || state === "closing" ? text.cancel : text.rehearse}: ${text.accepted}`,
+              `${state === "cancel" || state === "closing" || state === "missing-document" ? text.cancel : text.rehearse}: ${text.accepted}`,
               { exact: true },
             )
             .waitFor();
@@ -93,10 +102,14 @@ for (const state of [
                 exact: true,
               })
               .waitFor();
-          if (state === "finished" || state === "cancel")
+          if (
+            state === "finished" ||
+            state === "cancel" ||
+            state === "missing-document"
+          )
             await notice
               .getByText(
-                `${state === "cancel" ? text.cancel : text.rehearse}: ${state === "cancel" ? text.cancelled : text.completed}`,
+                `${state === "cancel" || state === "missing-document" ? text.cancel : text.rehearse}: ${state === "cancel" || state === "missing-document" ? text.cancelled : text.completed}`,
                 { exact: true },
               )
               .waitFor();
@@ -110,7 +123,9 @@ for (const state of [
         assert.equal(requests.length, 1);
         assert.equal(
           requests[0].method,
-          state === "cancel" || state === "closing"
+          state === "cancel" ||
+            state === "closing" ||
+            state === "missing-document"
             ? "launcher.resident.cancel"
             : "launcher.resident.rehearse",
         );

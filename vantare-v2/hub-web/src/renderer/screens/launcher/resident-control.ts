@@ -131,6 +131,7 @@ export function useResidentControl(
     | "busy"
     | "changed"
     | "active"
+    | "scanning"
     | undefined {
     const execution = live.resident?.execution;
     if (
@@ -173,6 +174,7 @@ export function useResidentControl(
         live.core.live
       )
         return "denied";
+      if (live.document?.scanning) return "scanning";
       if (
         execution.active ||
         live.resident?.running ||

@@ -10,18 +10,19 @@ import { LauncherProfiles } from "../src/renderer/ui/launcher/Profiles";
 import { ResidentControlNotice } from "../src/renderer/ui/launcher/ResidentControlNotice";
 
 afterEach(cleanup);
+const activeTarget = {
+  instance: "b".repeat(64),
+  accountGeneration: "a".repeat(64),
+  run: "1",
+  revision: "c".repeat(64),
+};
 function controller(): ResidentControlController {
   return {
     attempt: undefined,
     scope: { instance: "b".repeat(64), accountGeneration: "a".repeat(64) },
     capable: true,
     hasProfiles: true,
-    cancelTarget: {
-      instance: "b".repeat(64),
-      accountGeneration: "a".repeat(64),
-      run: "1",
-      revision: "c".repeat(64),
-    },
+    cancelTarget: undefined,
     busy: false,
     reason: () => undefined,
     cancel: vi.fn(),
@@ -64,6 +65,7 @@ it("the visible rehearsal button submits its rendered profile and revision only"
 it("cancel uses the active execution revision, not the current document revision", () => {
   const control = controller(),
     view = structuredClone(fixture) as LauncherView;
+  control.cancelTarget = activeTarget;
   view.running = true;
   view.revision = "e".repeat(64);
   mount(control, view);
@@ -88,6 +90,7 @@ it("disabled capability has a keyboard-readable reason and never sends", () => {
 });
 it("exposes cancellation when the document has no visible profile", () => {
   const control = controller();
+  control.cancelTarget = activeTarget;
   render(<ResidentControlNotice control={control} showCancel />);
   fireEvent.click(
     screen.getByRole("button", { name: "Cancelar secuencia actual" }),
@@ -100,7 +103,7 @@ it.each(["accepted", "rejected", "unknown", "finished"] as const)(
     const control = controller();
     control.attempt = {
       kind: "cancel",
-      target: control.cancelTarget as NonNullable<typeof control.cancelTarget>,
+      target: activeTarget,
       cursor: 1n,
       phase:
         kind === "accepted"
@@ -124,7 +127,7 @@ it.each(["accepted", "rejected", "unknown", "finished"] as const)(
     if (kind === "unknown") expect(status).toContain("Resultado desconocido");
     if (kind === "finished")
       expect(status).toBe(
-        "Cancelación: No se pudieron cerrar las aplicaciones. La cancelación no se ha completado.",
+        "Cancelación: La secuencia ha terminado con un fallo al cerrar aplicaciones.",
       );
   },
 );

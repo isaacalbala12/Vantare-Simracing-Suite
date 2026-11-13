@@ -1,8 +1,8 @@
 import type { HostToUi, ResidentView } from "../../contract/generated/contract";
 import { residentActionLabels } from "../../contract/generated/launcher_resident";
 import type { MockContext, MockHandler } from "../context";
-import { createResidentResultsMock } from "../resident-results";
 import { createResidentControlMock } from "../resident-control";
+import { createResidentResultsMock } from "../resident-results";
 export const residentMockFinishDelayMs = 1000;
 export function create(
   context: MockContext,

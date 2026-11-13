@@ -25,9 +25,22 @@ launcherScenes["launcher-opciones-ocupadas"] = {
   async prepare(page) {
     await launcherScenes["launcher-base"].prepare(page);
     await page
-      .getByRole("button", { name: text.launch, exact: true })
+      .getByRole("button", { name: new RegExp(`^${text.launch}`) })
       .first()
       .click();
+    // The local mock does not run the native 500 ms status publisher. Opening
+    // the palette performs its normal launcher.get instead of fabricating a view.
+    await page.getByText(text.queued, { exact: true }).waitFor();
+    await page.keyboard.press("Control+k");
+    await until(
+      async () =>
+        (await page.locator(".v-launcher-rail").textContent())?.includes(
+          text.nextOptions,
+        ) ?? false,
+      5000,
+      "fresh running snapshot",
+    );
+    await page.keyboard.press("Escape");
     await page
       .getByRole("heading", { name: text.nextOptions, exact: true })
       .waitFor();

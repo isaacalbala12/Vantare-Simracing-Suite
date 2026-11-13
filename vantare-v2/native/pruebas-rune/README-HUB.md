@@ -30,3 +30,10 @@ servidor. No se cambian tests ni sus plazos. CI y empaquetado quedan pendientes.
 Arranque, pantalla, interacción y medidas físicas quedan pendientes del PC.
 Los tiempos limpios/incrementales comparables quedan pendientes por decisión
 de Isaac: se medirán después en el servidor sin otros workers.
+
+Base actualizada a nightly cb8585d2bbc1c7c004a1ca6575015227bbd81f0c para
+resolver el conflicto de UiState con Studio. Se conservan studioLastSelected
+y rememberStudio; solo se condiciona la sección inicial. Tipos y los tres
+tests de medición pasan en esta base. Los informes de suite completa citados
+arriba corresponden a la base anterior dfeb9b059 y no se presentan como una
+suite completa de esta nueva base. CI y empaquetado verificarán el conjunto.

@@ -1,3 +1,11 @@
+## VANTA-141 · Inicio mock sobre nightly vigente (13/11/2026)
+
+PR draft #2249 rebasado sobre cb8585d2b. Se preservan los nuevos campos de
+Studio en UiState y se mantiene el inicio optativo de medición en Home.
+Tipos y 3 tests de medición PASS. Suite completa previa documentada con sus
+fallos de plazo, sin adjudicarla a esta base nueva. Empaquetado por cola
+pendiente de captura.lock. Sin ejecución gráfica en servidor ni merge/release.
+
 ## VANTA-141 · Pieza 8b: paquete Inicio Electron de medición (13/11/2026)
 
 Issue #2213, Plane En curso; base nightly dfeb9b059. Construcción optativa QA

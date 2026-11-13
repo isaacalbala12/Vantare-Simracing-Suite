@@ -2000,3 +2000,19 @@ Rust 1.99.1 y Rune fijado. Logs: D:/VantareServer/evidence/hub-rune/review-2/.
 El ejecutable solo se enlaza, sin arrancarlo. CI de los nuevos heads y rebase
 final sobre el squash de #2264 se registran en #2256 y los PRs. Corte 1 y todas
 las capturas/pruebas físicas siguen pendientes; no se sustituyen por estos tests.
+
+
+### VANTA-143 · tercera revisión propagada a PR 5 (2026-11-13)
+
+Se conserva el cierre de 10 s y la reapertura ante rechazo recuperable, junto
+con el estado del núcleo/Roadmap. CORTE-1 documenta que el host no envía un veto
+separado y que Rune puede reabrir, pero no evitar el ocultado inicial. Drenaje
+cancelado acotado a 1 s, errores registrados y aborto solo si no puede confirmarse
+la finalización (evita liberar buffers aún en uso); trama con timeout no se
+continúa y la lectura cancelada usa ConnectionAborted. Preparados 32 tests.
+No hay gates de compilación locales nuevos mientras E termina su tanda L53;
+los 29 tests anteriores son evidencia del head previo. CI en nuevos heads,
+formato y comprobaciones ligeras para esta entrega. Ambos PRs parten de nightly
+58e5b5ede815ef8a9875771308a9485b84bffe46 tras retirar d6bcdb32 con --onto;
+el rebase pendiente descrito en la segunda revisión ya está completado. Capturas,
+ventana visible, smoke Windows real y aceptación del corte 1 pendientes.

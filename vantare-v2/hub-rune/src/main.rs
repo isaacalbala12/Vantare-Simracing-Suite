@@ -238,7 +238,9 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
                 return true;
             }
             Some(Ok(HostToUi::Failure { id: 0, error })) if state.closing => {
-                if !close_rejected(state, &error) { tx.quit(); }
+                if !close_rejected(state, &error) {
+                    tx.quit();
+                }
                 return true;
             }
             Some(Ok(HostToUi::Response {
@@ -401,7 +403,8 @@ mod tests {
     #[test]
     #[cfg(debug_assertions)]
     fn silent_scene_waits_for_host_guards_but_cannot_live_past_ten_seconds() {
-        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
+        let (mut link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
         let host::Link::Scene(scene) = &mut link else {
             unreachable!()
         };
@@ -451,7 +454,8 @@ mod tests {
     #[test]
     #[cfg(debug_assertions)]
     fn rejected_close_restores_state_and_disarms_the_exit_deadline() {
-        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
+        let (mut link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
         let host::Link::Scene(scene) = &mut link else {
             unreachable!()
         };

@@ -162,9 +162,9 @@ try {
   await page.keyboard.press("F6");
   await toast.getByRole("button", { name: "Cerrar" }).click();
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
-  await checkAppearanceDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkTestingDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkAccountDensity(page, server.resolvedUrls?.local[0] ?? "");
+  await checkAppearanceDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? "");

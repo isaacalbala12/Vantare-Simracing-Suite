@@ -224,7 +224,7 @@ fn personal_data_is_removed_before_writing_a_crash() {
         serde_json::from_slice(&fs::read(root.join("crashes/00.json")).expect("file"))
             .expect("json");
     assert_eq!(crash.message, "native_panic");
-    assert!(crash.backtrace.is_empty());
+    assert_eq!(crash.backtrace, "");
     // La limpieza histórica sigue disponible para otros consumidores locales.
     assert_redacted(&clean_paths(&sensitive_text()));
     fs::remove_dir_all(root).expect("cleanup");
@@ -416,9 +416,9 @@ fn real_hook_writes_a_small_sanitized_crash() {
     assert_eq!(crash.binary, "native");
     assert_eq!(crash.message, "native_panic");
     assert!(!crash.message.contains("test-user"));
-    assert!(crash.backtrace.is_empty());
+    assert_eq!(crash.backtrace, "");
     #[cfg(windows)]
-    assert!(!crash.frames.is_empty());
+    assert_ne!(crash.frames, [] as [u64; 0]);
     assert!(crash.timestamp > 0);
     fs::remove_dir_all(root).expect("cleanup");
 }

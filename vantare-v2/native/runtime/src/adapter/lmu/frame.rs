@@ -959,7 +959,7 @@ mod tests {
         // La captura real aún no tiene vueltas: todo ausente, como antes.
         let untouched = &admit(REAL_44, "1.3.0.0").unwrap().vehicles[0];
         assert_eq!(untouched.best_sectors_s, [None; 3]);
-        assert!(untouched.current_sectors_s.is_empty());
+        assert_eq!(untouched.current_sectors_s, [] as [f64; 0]);
         assert_eq!(split_current(68.98, 141.0), vec![68.98, 141.0 - 68.98]);
         assert_eq!(split_current(-1.0, -1.0), Vec::<f64>::new());
     }

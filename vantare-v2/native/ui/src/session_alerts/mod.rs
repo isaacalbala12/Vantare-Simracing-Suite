@@ -263,7 +263,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&photo, prefs));
-        assert!(widget.frame(prefs, false).1 != Wake::Idle);
+        assert_ne!(widget.frame(prefs, false).1, Wake::Idle);
         photo.state.source_state = vantare_domain::SourceState::Stale;
         vantare_domain::degrade(&mut photo.state);
         assert!(widget.ingest(&photo, prefs));
@@ -317,7 +317,10 @@ mod tests {
             panic!("la mini oculta no anima el aviso principal");
         };
         assert!(delay > Duration::from_secs(7));
-        assert!(widget.view.minis.is_empty());
+        assert_eq!(
+            widget.view.minis,
+            [] as [vantare_domain::session_alerts::Mini; 0]
+        );
         widget.wall += 8000;
         let Wake::At(delay) = widget.frame(prefs, false).1 else {
             panic!("la mini visible actualiza su cuenta");

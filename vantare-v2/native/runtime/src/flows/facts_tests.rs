@@ -132,7 +132,10 @@ fn quality_gaps_counter_jumps_and_source_stall_never_invent_transitions() {
     core.observe(missing).unwrap();
     core.observe(photo(3, 4, true)).unwrap();
     core.observe(photo(4, 7, true)).unwrap();
-    assert!(core.events().retained().is_empty());
+    assert_eq!(
+        core.events().retained(),
+        [] as [crate::flows::event::Event; 0]
+    );
     core.tick(Duration::from_secs(1));
     let events = core.events().retained();
     assert_eq!(events.len(), 1);

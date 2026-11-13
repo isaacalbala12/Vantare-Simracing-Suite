@@ -1159,21 +1159,16 @@ mod tests {
         let mut t = translator();
         let body = standings(REAL_44, |vehicle| vehicle.name.clone());
         t.rest.accept_standings(&body, ms(100)).unwrap();
-        assert!(
-            !observe(&mut t, REAL_44, ms(200)).state.cars[0]
-                .number
-                .is_empty()
-        );
+        assert_ne!(observe(&mut t, REAL_44, ms(200)).state.cars[0].number, "");
         let mut other_track = REAL_44.to_vec();
         other_track[1_632..1_640].copy_from_slice(b"Otro\0\0\0\0");
         let changed = observe(&mut t, &other_track, ms(300));
         assert!(changed.state.cars.iter().all(|car| car.number.is_empty()));
         // Una consulta iniciada tras el cambio sí vale.
         t.rest.accept_standings(&body, ms(310)).unwrap();
-        assert!(
-            !observe(&mut t, &other_track, ms(320)).state.cars[0]
-                .number
-                .is_empty()
+        assert_ne!(
+            observe(&mut t, &other_track, ms(320)).state.cars[0].number,
+            ""
         );
     }
 

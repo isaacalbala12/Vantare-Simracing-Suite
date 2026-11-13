@@ -115,8 +115,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
                 SourceState::Waiting | SourceState::Lost
             )
         })
-        .map(|p| p.telemetry)
-        .unwrap_or_default();
+        .map_or_default(|p| p.telemetry);
     let pedals = [
         pedal(telemetry.clutch),
         pedal(telemetry.brake),
@@ -321,7 +320,10 @@ mod tests {
                         }
                     );
                     assert_eq!(project(&data, prefs).steering, None);
-                    assert!(crate::radar::project(&data).cars.is_empty());
+                    assert_eq!(
+                        crate::radar::project(&data).cars,
+                        [] as [crate::radar::Car; 0]
+                    );
                     assert_eq!(crate::pedals::project(&data, prefs).throttle, None);
                     assert_eq!(crate::delta::project(&data, prefs).progress, None);
                 }

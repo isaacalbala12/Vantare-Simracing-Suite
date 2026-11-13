@@ -874,7 +874,7 @@ mod tests {
             store.quarantine_dated("oauth-metadata", 0),
             Err(Error::Storage)
         );
-        assert!(fs::read(&path).expect("preserved") == original);
+        assert_eq!(fs::read(&path).expect("preserved"), original);
         drop(lock);
         store
             .quarantine_dated("oauth-metadata", 0)

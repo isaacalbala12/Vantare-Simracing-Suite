@@ -1298,7 +1298,7 @@ mod tests {
             }
             let vm = project(&snapshot, Preferences::default());
             assert!(vm.slots.iter().all(Option::is_none));
-            assert!(vm.player_badge.is_empty());
+            assert_eq!(vm.player_badge, "");
             assert_eq!(vm.status.as_deref(), Some("SIN DATOS"));
         }
     }
@@ -1342,7 +1342,7 @@ mod tests {
         assert_eq!(vm.remaining, "01:59:58");
         assert_eq!(vm.air, "21°");
         assert_eq!(vm.wind, "14 km/h");
-        assert!(vm.track_temperature.is_empty());
+        assert_eq!(vm.track_temperature, "");
         let mut next = snapshot.clone();
         next.epoch += 1;
         next.sequence += 100;

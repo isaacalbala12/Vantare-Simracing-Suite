@@ -309,11 +309,11 @@ mod tests {
         assert_eq!(messages.len(), 1);
         families.started(&messages[0]);
         s.sequence += 1;
-        assert!(
+        assert_eq!(
             families
                 .evaluate(&s, &Applied::default(), Locale::Es, Duration::ZERO)
-                .0
-                .is_empty()
+                .0,
+            [] as [crate::radio::Message; 0]
         );
         let mut queue = Queue::default();
         assert!(queue.submit(messages[0].clone()));
@@ -353,7 +353,7 @@ mod tests {
         worker
             .ingest(&s, &Applied::default(), Duration::from_millis(1), &mut out)
             .expect("estable");
-        assert!(out.is_empty());
+        assert_eq!(out, [] as [u8; 0]);
         s.sequence += 1;
         s.state.cars[1].velocity_mps = Quality::Unavailable;
         worker

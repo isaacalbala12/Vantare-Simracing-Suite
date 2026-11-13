@@ -624,7 +624,9 @@ impl Widget {
     }
 
     fn frame_at(&mut self, prefs: Preferences, reduced: bool, now: Instant) -> (Paint, Wake) {
-        let elapsed = self.yellow_since.map(|start| now.saturating_duration_since(start));
+        let elapsed = self
+            .yellow_since
+            .map(|start| now.saturating_duration_since(start));
         let (pulse, wake) = if reduced {
             (0.0, Wake::Idle)
         } else {
@@ -735,9 +737,8 @@ mod tests {
 
     #[test]
     fn variant_scenes_cover_sector_filter_and_green_hiding() {
-        let sectors =
-            vantare_ipc::snapshot_from_json(include_str!("scenes/sectors.snapshot.json"))
-                .expect("sectores reconstruidos en DTO v4");
+        let sectors = vantare_ipc::snapshot_from_json(include_str!("scenes/sectors.snapshot.json"))
+            .expect("sectores reconstruidos en DTO v4");
         let prefs = Preferences::default();
         let vm = Settings::default().project(&sectors, prefs);
         assert_eq!(vm.flag, Some(FlagKind::Yellow));
@@ -749,10 +750,12 @@ mod tests {
             show_sector_flags: false,
             ..Settings::default()
         };
-        assert!(settings.project(&sectors, prefs).sectors.is_empty());
-        let green =
-            vantare_ipc::snapshot_from_json(include_str!("scenes/green.snapshot.json"))
-                .expect("verde reconstruido en DTO v4");
+        assert_eq!(
+            settings.project(&sectors, prefs).sectors,
+            [] as [std::option::Option<vantare_domain::FlagKind>; 0]
+        );
+        let green = vantare_ipc::snapshot_from_json(include_str!("scenes/green.snapshot.json"))
+            .expect("verde reconstruido en DTO v4");
         let settings = Settings {
             hide_when_green: true,
             ..Settings::default()
@@ -817,9 +820,12 @@ mod tests {
         let vm = racing_flags::project(&snapshot, Preferences::default());
         assert_eq!(vm.flag, Some(FlagKind::Green));
         assert_eq!((vm.heading, vm.message), ("BANDERA", "VERDE"));
-        assert!(vm.sectors.is_empty());
+        assert_eq!(
+            vm.sectors,
+            [] as [std::option::Option<vantare_domain::FlagKind>; 0]
+        );
         assert!(!vm.hidden);
-        assert!(snapshot.state.cars.is_empty());
+        assert_eq!(snapshot.state.cars, [] as [vantare_domain::Car; 0]);
         assert!(snapshot.state.player.is_none());
     }
 

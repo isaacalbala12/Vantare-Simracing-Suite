@@ -19,14 +19,22 @@ function Set-VantareSlotWorkspace {
             [IO.File]::WriteAllText($stamp, $root)
             return
         }
-        # Cargo 1.95 targets predate CACHEDIR.TAG. A genuine compiler cache and
-        # its build lock identify that older layout; never fabricate the tag.
+        # Legacy targets are accepted only with compiler metadata and a build lock.
         if (-not (Test-VantareCargoCache $Target)) {
             throw 'Target sin CACHEDIR.TAG con contenido desconocido; no se limpia.'
         }
     }
     if (Get-ChildItem -LiteralPath $Target -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
         throw 'Hay enlaces dentro del target; no se invalidan paquetes.'
+    }
+    # Newer Cargo refuses clean on legacy caches without its tag. Migrate only
+    # the verified cache above, under the queue lease and with no links/active Cargo.
+    $tag = Join-Path $Target 'CACHEDIR.TAG'
+    if (-not (Test-Path -LiteralPath $tag)) {
+        $buildLock = [IO.File]::Open((Join-Path $Target 'debug/.cargo-lock'), 'Open', 'ReadWrite', 'None')
+        try {
+            [IO.File]::WriteAllText($tag, "Signature: 8a477f597d28d172789f06886806bc55`n", [Text.Encoding]::ASCII)
+        } finally { $buildLock.Dispose() }
     }
     # --manifest-path does not select rustup's toolchain. Enter the native root
     # so clean uses the same pinned Cargo that produced the artifacts.

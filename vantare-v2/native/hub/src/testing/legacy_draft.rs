@@ -205,7 +205,7 @@ impl LegacyDraft {
         for source in &self.sources {
             let target = source.path.with_extension("json.imported");
             let current = fs::symlink_metadata(&source.path).ok();
-            let target_matches = fs::symlink_metadata(&target).ok().is_some_and(|info| {
+            let target_matches = fs::symlink_metadata(&target).is_ok_and(|info| {
                 info.is_file()
                     && !info.file_type().is_symlink()
                     && files::read(&target, source.bytes.len() as u64)
@@ -241,8 +241,7 @@ impl LegacyDraft {
                     .map_err(|_| "No se pudo archivar el borrador antiguo")?;
             }
             if !fs::symlink_metadata(&target)
-                .ok()
-                .is_some_and(|info| info.is_file() && !info.file_type().is_symlink())
+                .is_ok_and(|info| info.is_file() && !info.file_type().is_symlink())
                 || files::read(&target, source.bytes.len() as u64)
                     .ok()
                     .as_deref()

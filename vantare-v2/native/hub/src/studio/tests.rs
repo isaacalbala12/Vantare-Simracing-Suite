@@ -301,7 +301,10 @@ fn clicking_resize_handle_without_motion_does_not_write_geometry_or_history() {
             studio.finish_drag(gpui::point(px(100.0), px(100.0)), cx);
             assert_eq!(studio.editor.layout(), &layout);
             studio.editor.undo().expect("undo adding");
-            assert!(studio.editor.layout().instances.is_empty());
+            assert_eq!(
+                studio.editor.layout().instances,
+                [] as [vantare_ui::layout::Instance; 0]
+            );
         });
         crate::quit_headless_test(cx);
     });
@@ -384,7 +387,10 @@ fn geometry_changes_cancel_manual_and_fitted_gestures_without_a_document_edit() 
                         &original
                     );
                     studio.editor.undo().expect("solo se deshace añadir");
-                    assert!(studio.editor.layout().instances.is_empty());
+                    assert_eq!(
+                        studio.editor.layout().instances,
+                        [] as [vantare_ui::layout::Instance; 0]
+                    );
                 });
             }
         }
@@ -1033,7 +1039,10 @@ fn held_arrows_repeat_accelerate_and_commit_once_on_release() {
             studio.history(false, cx);
             assert_eq!(studio.editor.layout(), &original);
             studio.editor.undo().expect("añadir");
-            assert!(studio.editor.layout().instances.is_empty());
+            assert_eq!(
+                studio.editor.layout().instances,
+                [] as [vantare_ui::layout::Instance; 0]
+            );
         });
         crate::quit_headless_test(cx);
     });
@@ -1078,7 +1087,10 @@ fn opacity_preview_keeps_renderers_and_disk_then_commits_one_undoable_edit() {
             studio.history(false, cx);
             assert_eq!(studio.editor.layout(), &original);
             studio.editor.undo().expect("añadir");
-            assert!(studio.editor.layout().instances.is_empty());
+            assert_eq!(
+                studio.editor.layout().instances,
+                [] as [vantare_ui::layout::Instance; 0]
+            );
         });
         crate::quit_headless_test(cx);
     });
@@ -1128,7 +1140,10 @@ fn click_and_pointer_noise_leave_position_disk_and_history_unchanged() {
                 );
             }
             studio.editor.undo().expect("solo deshace añadir");
-            assert!(studio.editor.layout().instances.is_empty());
+            assert_eq!(
+                studio.editor.layout().instances,
+                [] as [vantare_ui::layout::Instance; 0]
+            );
         });
         crate::quit_headless_test(cx);
     });
@@ -1198,7 +1213,10 @@ fn hidden_capture_without_selection_is_an_explicit_noop() {
     let mut editor = Editor::open(file.path.clone()).expect("editor vacío");
     assert!(editor.selected.is_none());
     hide_selected_for_capture(&mut editor).expect("no-op sin selección");
-    assert!(editor.layout().instances.is_empty());
+    assert_eq!(
+        editor.layout().instances,
+        [] as [vantare_ui::layout::Instance; 0]
+    );
     editor.add(Kind::Standings).expect("widget");
     hide_selected_for_capture(&mut editor).expect("ocultar");
     assert!(!editor.layout().instances[0].visible);

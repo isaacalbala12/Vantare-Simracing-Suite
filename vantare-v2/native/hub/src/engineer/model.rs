@@ -405,13 +405,12 @@ mod tests {
                 .len(),
             2
         );
-        assert!(
-            model
-                .history(Filter {
-                    query: "missing",
-                    ..Filter::default()
-                })
-                .is_empty()
+        assert_eq!(
+            model.history(Filter {
+                query: "missing",
+                ..Filter::default()
+            }),
+            [] as [&crate::engineer::model::ObservedDelivery; 0]
         );
         assert_eq!(
             model
@@ -424,13 +423,12 @@ mod tests {
         );
         report.runtime.as_mut().expect("runtime").epoch = Some(2);
         model.observe(Some(&bytes(&report)), 100);
-        assert!(
-            model
-                .history(Filter {
-                    current_cycle_only: true,
-                    ..Filter::default()
-                })
-                .is_empty()
+        assert_eq!(
+            model.history(Filter {
+                current_cycle_only: true,
+                ..Filter::default()
+            }),
+            [] as [&crate::engineer::model::ObservedDelivery; 0]
         );
     }
     #[test]

@@ -362,8 +362,7 @@ impl Scenario {
 
     fn lines(&self, name: &str) -> Vec<String> {
         fs::read_to_string(self.file(name))
-            .map(|text| text.lines().map(String::from).collect())
-            .unwrap_or_default()
+            .map_or_default(|text| text.lines().map(String::from).collect())
     }
 
     /// `(identidad de proceso, época)` de cada arranque de `who` en `status`.

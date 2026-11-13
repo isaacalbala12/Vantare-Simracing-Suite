@@ -17,7 +17,9 @@ pub(super) fn config(bytes: &[u8]) -> io::Result<Config> {
             return Err(invalid("configuración UTF-16 truncada"));
         }
         let units: Vec<_> = bytes
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|b| u16::from_le_bytes([b[0], b[1]]))
             .collect();
         String::from_utf16(&units).map_err(|_| invalid("configuración UTF-16 inválida"))?

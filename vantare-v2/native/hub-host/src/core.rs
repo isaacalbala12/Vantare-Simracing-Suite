@@ -264,9 +264,7 @@ impl Core {
             self.last_activity = activity;
         }
         let policy = self.rights.policy();
-        let access = control::wall_ms()
-            .map(|now| access_view(&policy, now))
-            .unwrap_or_default();
+        let access = control::wall_ms().map_or_default(|now| access_view(&policy, now));
         self.observe_account_generation(self.rights.account_observation().map(|o| o.generation));
         self.observe_authority(access.clone());
         CoreStatus {

@@ -348,7 +348,7 @@ mod tests {
                 ..Config::default()
             },
         );
-        assert!(vm.sectors.is_empty());
+        assert_eq!(vm.sectors, [] as [std::option::Option<crate::FlagKind>; 0]);
         let vm = project(
             &snapshot(Quality::Reliable(vec![Flag {
                 kind: FlagKind::Blue,

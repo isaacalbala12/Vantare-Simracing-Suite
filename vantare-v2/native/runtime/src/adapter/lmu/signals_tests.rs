@@ -186,7 +186,9 @@ fn scoring_velocity_rotates_into_pose_axes_and_penalties_are_pending_counts() {
     );
     assert_eq!(first.state.cars[0].pending_penalties, Quality::Reliable(3));
     let player_index = bytes[2192..2192 + 44 * 584]
-        .chunks_exact(584)
+        .as_chunks::<584>()
+        .0
+        .iter()
         .position(|row| row[196] == 1)
         .expect("jugador");
     assert_eq!(

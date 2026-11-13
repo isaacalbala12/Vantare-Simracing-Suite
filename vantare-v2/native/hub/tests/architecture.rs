@@ -162,8 +162,8 @@ fn every_current_hub_section_has_an_honest_entry_point() {
     use vantare_hub::Section;
     assert_eq!(Section::ALL.len(), 14);
     for (index, section) in Section::ALL.iter().enumerate() {
-        assert!(!section.label().is_empty());
-        assert!(!section.subtitle().is_empty());
+        assert_ne!(section.label(), "");
+        assert_ne!(section.subtitle(), "");
         assert!(!Section::ALL[..index].contains(section));
     }
 }
@@ -195,7 +195,7 @@ fn version_cli_uses_the_shared_product_identity_without_opening_a_window() {
             vantare_ipc::product::CHANNEL
         )
     );
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stderr, [] as [u8; 0]);
 }
 
 #[test]

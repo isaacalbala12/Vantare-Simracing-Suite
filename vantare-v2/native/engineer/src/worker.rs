@@ -370,6 +370,6 @@ mod status_tests {
         let last = status.delivery.last().expect("última entrega");
         assert!(last.text_emitted);
         assert_eq!(last.audio, AudioOutcome::Disabled);
-        assert!(!output.is_empty());
+        assert_ne!(output, [] as [u8; 0]);
     }
 }

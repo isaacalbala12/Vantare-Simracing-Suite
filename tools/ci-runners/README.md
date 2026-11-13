@@ -13,7 +13,7 @@ El script Windows exige nombre de equipo esperado para evitar el PC de juego.
 Descargar solo assets oficiales y comprobar sus SHA256 fijados.
 El operador privilegiado prepara cuenta/directorio; el proceso de jobs no recibe
 privilegios de instalación. Linux necesita WSL2/VM dedicada Ubuntu y las librerías
-de quality.yml, Rust 1.95.0 del rust-toolchain, Nextest 0.9.146, Python, Deno, Git,
+de quality.yml, Rust 1.99.1 del rust-toolchain, Nextest 0.9.146, Python, Deno, Git,
 Node y PowerShell según los gates. Windows necesita Git Bash, Rust/Nextest,
 Python, Deno y DuckDB según native/README.md. No instalar prerequisitos a escondidas.
 Docker/Postgres y publicación con secretos permanecen en runners alojados;

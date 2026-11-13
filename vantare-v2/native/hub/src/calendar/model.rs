@@ -498,15 +498,15 @@ mod tests {
                 at("2026-10-06T00:45:00Z")
             ]
         );
-        assert!(
+        assert_eq!(
             schedule
                 .starts(
                     daily,
                     at("2026-10-13T00:00:00Z"),
                     at("2026-10-14T00:00:00Z")
                 )
-                .expect("fuera")
-                .is_empty()
+                .expect("fuera"),
+            [] as [chrono::DateTime<chrono::Utc>; 0]
         );
         assert_eq!(daily.minutes_of_hour(), vec![0, 15, 30, 45]);
     }

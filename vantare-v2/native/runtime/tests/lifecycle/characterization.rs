@@ -314,7 +314,7 @@ fn hub_matrix() {
         };
         let actions = session.paso(event, now);
         if state == SourceState::Live {
-            assert!(actions.is_empty());
+            assert_eq!(actions, [] as [crate::session::Action; 0]);
             assert!(!session.stopping());
             assert_eq!(session.paso(Event::OpenHub(2), now), vec![Action::Spawn(2)]);
         } else {
@@ -491,7 +491,7 @@ fn normal_ignores_qa() {
     let overlay = real.ready();
     assert_eq!(tray_actions::invoke(&real, 2), 0);
     assert_eq!(tray_actions::invoke(&real, 3), 0);
-    assert!(real.scenario.starts("hub").is_empty());
+    assert_eq!(real.scenario.starts("hub"), [] as [(Process, u64); 0]);
     assert!(
         alive(overlay),
         "el binario normal no tiene entrada de prueba"

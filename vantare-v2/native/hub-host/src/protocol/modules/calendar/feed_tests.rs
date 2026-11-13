@@ -73,34 +73,34 @@ fn only_current_alerted_departures_are_published_and_bands_are_silent_in_track()
     assert_eq!(feed.events[0].label, "QA · Spa");
     assert!(feed.events[0].id.starts_with("qa:"));
     for (enabled, in_track) in [(false, false), (true, true)] {
-        assert!(
+        assert_eq!(
             build(&view, &alerts, now(), enabled, in_track)
                 .unwrap()
-                .events
-                .is_empty()
+                .events,
+            [] as [vantare_ipc::session_alerts::Event; 0]
         );
     }
-    assert!(
+    assert_eq!(
         build(&view, &CalendarAlerts::default(), now(), true, false)
             .unwrap()
-            .events
-            .is_empty()
+            .events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
-    assert!(
+    assert_eq!(
         build(&view, &alerts, now() + 7 * 86_400_000, true, false)
             .unwrap()
-            .events
-            .is_empty()
+            .events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
     let previous = CalendarView {
         previous: view.official.clone(),
         ..Default::default()
     };
-    assert!(
+    assert_eq!(
         build(&previous, &alerts, now(), true, false)
             .unwrap()
-            .events
-            .is_empty()
+            .events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
 }
 #[test]
@@ -124,11 +124,9 @@ fn a_specific_weekly_slot_remains_visible_in_track_and_channels_disable_it() {
     assert_eq!(feed.events.len(), 1);
     assert_eq!(feed.events[0].starts_at_ms, millis(now() + 1_800_000));
     alerts.channels.in_track = false;
-    assert!(
-        build(&view, &alerts, now(), true, true)
-            .unwrap()
-            .events
-            .is_empty()
+    assert_eq!(
+        build(&view, &alerts, now(), true, true).unwrap().events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
 }
 #[test]
@@ -203,7 +201,10 @@ fn unchanged_feed_uses_five_second_heartbeat_and_clock_rollback_is_immediate() {
     assert!(publish(&root.layout(), &feed).unwrap());
     assert_eq!(root.saved(), feed);
     assert_eq!(feed.current(feed.updated_at_ms).len(), 2);
-    assert!(feed.current(feed.updated_at_ms + 10_001).is_empty());
+    assert_eq!(
+        feed.current(feed.updated_at_ms + 10_001),
+        [] as [vantare_domain::session_alerts::CalendarInput; 0]
+    );
 }
 #[test]
 fn tick_reads_calendar_without_visiting_the_section_and_clears_on_lost_rights() {
@@ -221,7 +222,10 @@ fn tick_reads_calendar_without_visiting_the_section_and_clears_on_lost_rights() 
     state.tick_feed(now(), tick, true, false);
     assert_eq!(root.saved().events.len(), 2);
     state.tick_feed(now() + 100, tick + Duration::from_millis(100), false, false);
-    assert!(root.saved().events.is_empty());
+    assert_eq!(
+        root.saved().events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
+    );
     assert_eq!(
         std::fs::read(root.0.join("calendar-alerts.json")).unwrap(),
         original
@@ -244,7 +248,10 @@ fn protected_alert_preferences_clear_previous_feed_without_rewriting_them() {
     .unwrap();
     let mut state = State::new(root.0.clone()).with_layout(root.layout());
     state.tick_feed(now() + 1000, Instant::now(), true, false);
-    assert!(root.saved().events.is_empty());
+    assert_eq!(
+        root.saved().events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
+    );
     assert_eq!(
         std::fs::read(root.0.join("calendar-alerts.json")).unwrap(),
         bad
@@ -290,7 +297,10 @@ fn a_busy_writer_preserves_the_old_feed_and_can_retry_without_waiting() {
     assert_eq!(root.saved(), original);
     drop(lock);
     assert!(publish(&root.layout(), &feed).unwrap());
-    assert!(root.saved().events.is_empty());
+    assert_eq!(
+        root.saved().events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
+    );
 }
 #[cfg(windows)]
 #[test]
@@ -416,7 +426,10 @@ fn source_agenda_and_limit_errors_clear_old_events_and_can_recover() {
         let mut state = State::new(root.0.clone()).with_layout(root.layout());
         let tick = Instant::now();
         state.tick_feed(now(), tick, true, false);
-        assert!(!root.saved().events.is_empty());
+        assert_ne!(
+            root.saved().events,
+            [] as [vantare_ipc::session_alerts::Event; 0]
+        );
         if error == FeedError::Agenda {
             state.view.official.as_mut().unwrap().series[0]
                 .recurrence
@@ -439,11 +452,17 @@ fn source_agenda_and_limit_errors_clear_old_events_and_can_recover() {
             now() + 1000
         };
         state.tick_feed(when, tick + Duration::from_secs(1), true, false);
-        assert!(root.saved().events.is_empty());
+        assert_eq!(
+            root.saved().events,
+            [] as [vantare_ipc::session_alerts::Event; 0]
+        );
         assert_eq!(state.feed.last_error, Some(error));
         state.view.official = Some(schedule());
         state.tick_feed(now() + 2000, tick + Duration::from_secs(2), true, false);
-        assert!(!root.saved().events.is_empty());
+        assert_ne!(
+            root.saved().events,
+            [] as [vantare_ipc::session_alerts::Event; 0]
+        );
         assert_eq!(state.feed.last_error, None);
     }
 }

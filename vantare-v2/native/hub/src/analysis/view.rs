@@ -310,8 +310,7 @@ impl Analysis {
             matches!(capture_name, Some("telemetria-demo" | "telemetria-trazas"));
         let sessions = demo
             .filter(|demo| show_demo_sessions && demo.telemetry.synthetic)
-            .map(|demo| demo.telemetry.sessions.as_slice())
-            .unwrap_or_default();
+            .map_or_default(|demo| demo.telemetry.sessions.as_slice());
         let mut rows = div()
             .id("telemetry-context-sessions")
             .role(gpui::Role::ListBox)

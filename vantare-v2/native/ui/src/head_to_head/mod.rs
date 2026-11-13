@@ -365,10 +365,9 @@ mod tests {
         assert_eq!(vm.rows[0].name, "Luca Pirri");
         assert_eq!(vm.rows[0].sectors, ["37.860", "41.505", "38.987"]);
         assert_eq!(vm.rows[0].best_lap, "1:58.352");
-        assert!(
-            head_to_head::project(&snapshot, Preferences::default(), Target::Behind)
-                .rows
-                .is_empty()
+        assert_eq!(
+            head_to_head::project(&snapshot, Preferences::default(), Target::Behind).rows,
+            [] as [vantare_domain::head_to_head::Row; 0]
         );
         let hidden = Settings {
             show_sectors: false,
@@ -505,10 +504,9 @@ mod tests {
             snapshot.state.player_car().expect("jugador").driver.name,
             "André Lotterer"
         );
-        assert!(
-            head_to_head::project(&snapshot, prefs, Target::Ahead)
-                .rows
-                .is_empty()
+        assert_eq!(
+            head_to_head::project(&snapshot, prefs, Target::Ahead).rows,
+            [] as [vantare_domain::head_to_head::Row; 0]
         );
         let behind = head_to_head::project(&snapshot, prefs, Target::Behind);
         assert_eq!(behind.rows[1].name, "Ben Hanley");
@@ -529,7 +527,7 @@ mod tests {
             vantare_domain::Quality::Reliable(2)
         );
         let vm = head_to_head::project(&snapshot, Preferences::default(), Target::Ahead);
-        assert!(!vm.rows.is_empty());
+        assert_ne!(vm.rows, [] as [vantare_domain::head_to_head::Row; 0]);
         assert!(vm.rows.iter().any(|row| row.name == "André Lotterer"));
     }
 

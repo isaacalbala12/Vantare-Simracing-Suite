@@ -61,7 +61,10 @@ fn negative_native_lmu_lap_clock_does_not_break_the_series_codec() {
         "el reloj nativo inválido no rompe la grabación"
     );
     assert!(chunk.block.gap);
-    assert!(chunk.block.samples.is_empty());
+    assert_eq!(
+        chunk.block.samples,
+        [] as [vantare_ipc::series::LapSample; 0]
+    );
 }
 
 #[test]
@@ -117,7 +120,10 @@ fn invalid_numeric_signals_cannot_poison_the_recording_feed() {
     car.lap_distance_m = Quality::Reliable(-1.0);
     car.lap_elapsed_s = Quality::Reliable(-2.0);
     core.observe(input).unwrap();
-    assert!(core.series().active().unwrap().samples.is_empty());
+    assert_eq!(
+        core.series().active().unwrap().samples,
+        [] as [vantare_ipc::series::LapSample; 0]
+    );
     let mut input = photo(2, 0);
     let telemetry = &mut input.state.player.as_mut().unwrap().telemetry;
     telemetry.speed_mps = Quality::Reliable(-3.0);
@@ -188,7 +194,10 @@ fn a_full_queue_reports_losses_and_acquisition_continues() {
     core.observe(photo(128, 1)).unwrap();
     let seal = receiver.try_recv().unwrap();
     assert_eq!((seal.index, seal.offset, seal.lost_before), (3, 128, 1));
-    assert!(seal.block.samples.is_empty());
+    assert_eq!(
+        seal.block.samples,
+        [] as [vantare_ipc::series::LapSample; 0]
+    );
     assert_eq!(seal.block.sealed_at, Some(129));
 }
 
@@ -258,12 +267,15 @@ fn an_empty_gap_marker_is_published_once_and_an_exact_chunk_still_gets_a_seal() 
     core.series_mut().flush();
     let gap = receiver.try_recv().unwrap();
     assert!(gap.block.gap);
-    assert!(gap.block.samples.is_empty());
+    assert_eq!(gap.block.samples, [] as [vantare_ipc::series::LapSample; 0]);
     core.series_mut().flush();
     assert_eq!(receiver.try_recv().unwrap_err(), TryRecvError::Empty);
     core.observe(photo(128, 1)).unwrap();
     let seal = receiver.try_recv().unwrap();
     assert_eq!(seal.block.sealed_at, Some(66));
-    assert!(seal.block.samples.is_empty());
+    assert_eq!(
+        seal.block.samples,
+        [] as [vantare_ipc::series::LapSample; 0]
+    );
     assert!(seal.block.gap);
 }

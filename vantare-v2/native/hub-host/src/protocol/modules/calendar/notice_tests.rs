@@ -29,18 +29,27 @@ fn due_window_is_open_on_left_and_closed_on_right() {
         due_in(schedule, &alerts, now, now - 1, false, &Utc).len(),
         1
     );
-    assert!(due_in(schedule, &alerts, now, now, false, &Utc).is_empty());
-    assert!(due_in(schedule, &alerts, now - 1, now - 2, false, &Utc).is_empty());
-    assert!(due_in(schedule, &alerts, now, now - 1, true, &Utc).is_empty());
+    assert_eq!(
+        due_in(schedule, &alerts, now, now, false, &Utc),
+        [] as [(i64, usize); 0]
+    );
+    assert_eq!(
+        due_in(schedule, &alerts, now - 1, now - 2, false, &Utc),
+        [] as [(i64, usize); 0]
+    );
+    assert_eq!(
+        due_in(schedule, &alerts, now, now - 1, true, &Utc),
+        [] as [(i64, usize); 0]
+    );
 }
 #[test]
 fn initial_tick_does_not_replay_and_clock_rollback_does_not_duplicate() {
     let (view, alerts, now) = setup();
     let mut s = Scheduler::default();
     let clock = Instant::now();
-    assert!(
-        s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc)
-            .is_empty()
+    assert_eq!(
+        s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
     let notices = s.tick(
         &view,
@@ -54,7 +63,7 @@ fn initial_tick_does_not_replay_and_clock_rollback_does_not_duplicate() {
     assert!(
         matches!(&notices[0],CalendarNotice::Start{series,track,silent:true,..} if series=="QA"&&track=="Spa")
     );
-    assert!(
+    assert_eq!(
         s.tick(
             &view,
             &alerts,
@@ -62,10 +71,10 @@ fn initial_tick_does_not_replay_and_clock_rollback_does_not_duplicate() {
             true,
             false,
             &Utc
-        )
-        .is_empty()
+        ),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
-    assert!(
+    assert_eq!(
         s.tick(
             &view,
             &alerts,
@@ -73,8 +82,8 @@ fn initial_tick_does_not_replay_and_clock_rollback_does_not_duplicate() {
             true,
             false,
             &Utc
-        )
-        .is_empty()
+        ),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
 }
 #[test]
@@ -83,13 +92,13 @@ fn loss_of_authority_resets_the_due_window_without_replaying() {
     let mut s = Scheduler::default();
     let clock = Instant::now();
     s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc);
-    assert!(
-        s.tick(&view, &alerts, (now, clock), false, false, &Utc)
-            .is_empty()
+    assert_eq!(
+        s.tick(&view, &alerts, (now, clock), false, false, &Utc),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
-    assert!(
-        s.tick(&view, &alerts, (now + 1000, clock), true, false, &Utc)
-            .is_empty()
+    assert_eq!(
+        s.tick(&view, &alerts, (now + 1000, clock), true, false, &Utc),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
 }
 #[test]
@@ -99,7 +108,7 @@ fn windows_channel_and_valid_current_schedule_are_required() {
     alerts.channels.windows = false;
     let mut s = Scheduler::default();
     s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc);
-    assert!(
+    assert_eq!(
         s.tick(
             &view,
             &alerts,
@@ -107,14 +116,14 @@ fn windows_channel_and_valid_current_schedule_are_required() {
             true,
             false,
             &Utc
-        )
-        .is_empty()
+        ),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
     alerts.channels.windows = true;
     view.previous = view.official.take();
     let mut s = Scheduler::default();
     s.tick(&view, &alerts, (now - 1000, clock), true, false, &Utc);
-    assert!(
+    assert_eq!(
         s.tick(
             &view,
             &alerts,
@@ -122,8 +131,8 @@ fn windows_channel_and_valid_current_schedule_are_required() {
             true,
             false,
             &Utc
-        )
-        .is_empty()
+        ),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
 }
 #[test]
@@ -195,9 +204,15 @@ fn bands_use_injected_local_zone_days_and_first_departure() {
         due_in(schedule, &alerts, now, now - 1, false, &zone).len(),
         1
     );
-    assert!(due_in(schedule, &alerts, now, now - 1, false, &Utc).is_empty());
+    assert_eq!(
+        due_in(schedule, &alerts, now, now - 1, false, &Utc),
+        [] as [(i64, usize); 0]
+    );
     alerts.bands[0].days = CalendarDays::Weekend;
-    assert!(due_in(schedule, &alerts, now, now - 1, false, &zone).is_empty());
+    assert_eq!(
+        due_in(schedule, &alerts, now, now - 1, false, &zone),
+        [] as [(i64, usize); 0]
+    );
 }
 #[test]
 fn history_is_bounded_and_test_notice_silence_is_explicit() {
@@ -225,11 +240,13 @@ fn protected_or_unavailable_documents_cannot_emit_default_notifications() {
         state.config_view.alerts = alerts;
         state.config_view.documents.alerts = document;
         let clock = Instant::now();
-        assert!(state.notice_tick(now - 1000, clock, true, false).is_empty());
-        assert!(
-            state
-                .notice_tick(now, clock + Duration::from_secs(1), true, false)
-                .is_empty()
+        assert_eq!(
+            state.notice_tick(now - 1000, clock, true, false),
+            [] as [crate::calendar::notice::CalendarNotice; 0]
+        );
+        assert_eq!(
+            state.notice_tick(now, clock + Duration::from_secs(1), true, false),
+            [] as [crate::calendar::notice::CalendarNotice; 0]
         );
     }
 }
@@ -276,10 +293,9 @@ fn stale_disk_bootstrap_is_quiet_but_a_later_refresh_announces_once_without_pers
     state
         .refresh_notices(Some(raw(&current)), None, now, true, false)
         .unwrap();
-    assert!(
-        state
-            .notice_tick(now, clock + Duration::from_secs(1), true, false)
-            .is_empty()
+    assert_eq!(
+        state.notice_tick(now, clock + Duration::from_secs(1), true, false),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
     let mut next = current.clone();
     next.valid_from = "2026-11-16T00:00:00Z".into();
@@ -297,10 +313,9 @@ fn stale_disk_bootstrap_is_quiet_but_a_later_refresh_announces_once_without_pers
     state
         .refresh_notices(Some(raw(&next)), None, arrival + 1000, true, false)
         .unwrap();
-    assert!(
-        state
-            .notice_tick(arrival + 1000, clock + Duration::from_secs(3), true, false)
-            .is_empty()
+    assert_eq!(
+        state.notice_tick(arrival + 1000, clock + Duration::from_secs(3), true, false),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
     assert_eq!(
         std::fs::read_to_string(root.0.join("official-schedule.json")).unwrap(),
@@ -311,10 +326,9 @@ fn stale_disk_bootstrap_is_quiet_but_a_later_refresh_announces_once_without_pers
         .refresh_notices(Some(raw(&current)), None, now, true, false)
         .unwrap();
     restarted.notice_tick(now, clock, true, false);
-    assert!(
-        restarted
-            .notice_tick(now + 1000, clock + Duration::from_secs(1), true, false)
-            .is_empty()
+    assert_eq!(
+        restarted.notice_tick(now + 1000, clock + Duration::from_secs(1), true, false),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
 }
 #[test]
@@ -334,10 +348,9 @@ fn future_publications_and_clock_crossings_never_create_week_notices() {
     let clock = Instant::now();
     state.notice_tick(now, clock, true, false);
     let crossed = date_millis("2026-11-16T00:00:01Z").unwrap();
-    assert!(
-        state
-            .notice_tick(crossed, clock + Duration::from_secs(1), true, false)
-            .is_empty()
+    assert_eq!(
+        state.notice_tick(crossed, clock + Duration::from_secs(1), true, false),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
     state
         .refresh_notices(Some(raw(&future)), None, crossed, true, false)
@@ -499,7 +512,10 @@ fn an_empty_successful_monday_refresh_initializes_the_later_publication_notice()
     state
         .refresh_notices(None, None, morning, true, false)
         .unwrap();
-    assert!(state.notice_tick(morning, clock, true, false).is_empty());
+    assert_eq!(
+        state.notice_tick(morning, clock, true, false),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
+    );
     state
         .refresh_notices(Some(raw(&current)), None, arrival, true, false)
         .unwrap();

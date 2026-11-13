@@ -16,7 +16,7 @@ fn launcher_demo_loads_wails_catalog_without_machine_discovery_or_launch_paths()
             .iter()
             .any(|app| app.executable.is_some())
     );
-    assert!(discovery.warnings.is_empty());
+    assert_eq!(discovery.warnings, [] as [std::string::String; 0]);
     assert!(
         discovery
             .apps

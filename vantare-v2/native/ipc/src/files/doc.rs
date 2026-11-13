@@ -143,7 +143,7 @@ mod tests {
         std::fs::write(sibling(&path, ".invalid"), b"older corruption").unwrap();
         for _ in 0..2 {
             let opened = Doc::open_or_quarantine(&path, &options, broken, Vec::new);
-            assert!(opened.value.is_empty());
+            assert_eq!(opened.value, [] as [u8; 0]);
             assert!(opened.warning.unwrap().contains(".1.invalid"));
             assert_eq!(
                 opened.observed.as_deref(),

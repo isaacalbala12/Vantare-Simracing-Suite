@@ -218,11 +218,9 @@ fn following_a_series_is_saved_and_toggles() {
     calendar
         .follow("beginner-lmgt3-fixed".into())
         .expect("deja de seguir");
-    assert!(
-        Calendar::load(&dir)
-            .expect("recarga")
-            .favorites()
-            .is_empty()
+    assert_eq!(
+        Calendar::load(&dir).expect("recarga").favorites(),
+        [] as [String; 0]
     );
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -337,7 +335,7 @@ fn an_unreadable_following_file_degrades_and_a_copy_is_kept() {
     for (index, garbage) in bad.into_iter().enumerate() {
         std::fs::write(&file, garbage).expect("escribe");
         let mut calendar = Calendar::load(&dir).expect("el Hub abre igualmente");
-        assert!(calendar.favorites().is_empty());
+        assert_eq!(calendar.favorites(), [] as [String; 0]);
         let notice = calendar.error.clone().expect("se avisa").to_string();
         assert!(notice.contains("series seguidas") && notice.contains(".invalid"));
         // La copia conserva el contenido malo, sin pisar la anterior.
@@ -369,12 +367,9 @@ fn overlay_feed_uses_calendar_slots_channels_and_current_publication() {
     calendar
         .apply_publication(Some(OFFICIAL), None, now())
         .expect("publica");
-    assert!(
-        calendar
-            .alert_feed(now())
-            .expect("sin avisos")
-            .events
-            .is_empty()
+    assert_eq!(
+        calendar.alert_feed(now()).expect("sin avisos").events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
     let start = at("2026-10-08T18:00:00Z");
     calendar
@@ -410,23 +405,23 @@ fn overlay_feed_uses_calendar_slots_channels_and_current_publication() {
         1
     );
     calendar.alerts.channels.in_track = false;
-    assert!(
-        calendar
-            .alert_feed(now())
-            .expect("canal apagado")
-            .events
-            .is_empty()
+    assert_eq!(
+        calendar.alert_feed(now()).expect("canal apagado").events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
     calendar.alerts.channels.in_track = true;
     calendar.demo_now = Some(now());
-    assert!(calendar.alert_feed(now()).expect("demo").events.is_empty());
+    assert_eq!(
+        calendar.alert_feed(now()).expect("demo").events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
+    );
     calendar.demo_now = None;
-    assert!(
+    assert_eq!(
         calendar
             .alert_feed(now() + Duration::days(8))
             .expect("caducado")
-            .events
-            .is_empty()
+            .events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -450,20 +445,14 @@ fn overlay_feed_obeys_bands_and_suppresses_them_in_track() {
             }),
         )
         .expect("franja");
-    assert!(
-        !calendar
-            .alert_feed(now())
-            .expect("franja")
-            .events
-            .is_empty()
+    assert_ne!(
+        calendar.alert_feed(now()).expect("franja").events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
     calendar.in_track = true;
-    assert!(
-        calendar
-            .alert_feed(now())
-            .expect("en pista")
-            .events
-            .is_empty()
+    assert_eq!(
+        calendar.alert_feed(now()).expect("en pista").events,
+        [] as [vantare_ipc::session_alerts::Event; 0]
     );
     let _ = std::fs::remove_dir_all(dir);
 }

@@ -56,8 +56,11 @@ fn check_board(photo: &Snapshot, board: &relative::Board, same_class: bool) {
     );
     let rows: Vec<_> = board.slots.iter().flatten().collect();
     if !live || player.is_none() {
-        assert!(rows.is_empty());
-        assert!(board.strip.is_empty());
+        assert_eq!(
+            rows,
+            [] as [&std::sync::Arc<vantare_domain::relative::Row>; 0]
+        );
+        assert_eq!(board.strip, [] as [vantare_domain::relative::Dot; 0]);
         assert!(board.banner.is_none());
         return;
     }

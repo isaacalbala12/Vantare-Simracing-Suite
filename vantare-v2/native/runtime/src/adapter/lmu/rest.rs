@@ -251,7 +251,7 @@ fn decode_session_info(body: &[u8]) -> Result<SessionInfo, DecodeError> {
         sector_flags: property(row, "sectorFlag")
             .and_then(Value::as_array)
             .filter(|flags| flags.len() == 3)
-            .map(|flags| {
+            .map_or_default(|flags| {
                 flags
                     .iter()
                     .zip(0_u8..3)
@@ -262,8 +262,7 @@ fn decode_session_info(body: &[u8]) -> Result<SessionInfo, DecodeError> {
                         })
                     })
                     .collect()
-            })
-            .unwrap_or_default(),
+            }),
     })
 }
 
@@ -294,7 +293,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(rows.len(), 1);
-        assert!(rows[0].number.is_empty());
+        assert_eq!(rows[0].number, "");
         assert_eq!(rows[0].pit_stops, Some(2));
         assert_eq!(rows[0].energy, Some(0.5));
         assert_eq!(rows[0].flag, Some(FlagKind::Black));
@@ -330,7 +329,10 @@ mod tests {
             br#"{"sectorFlag":[2,3,4]}"#.as_slice(),
             br#"{"sectorFlag":["YELLOW"]}"#,
         ] {
-            assert!(decode_session_info(shape).unwrap().sector_flags.is_empty());
+            assert_eq!(
+                decode_session_info(shape).unwrap().sector_flags,
+                [] as [vantare_domain::Flag; 0]
+            );
         }
     }
 

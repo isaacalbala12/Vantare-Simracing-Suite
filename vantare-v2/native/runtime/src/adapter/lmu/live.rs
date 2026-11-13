@@ -499,7 +499,10 @@ mod tests {
 
         // Menú principal: un frame válido sin coches.
         *script.lock().unwrap() = Ok(MENU.to_vec());
-        assert!(lmu.poll(MS(740)).unwrap().unwrap().state.cars.is_empty());
+        assert_eq!(
+            lmu.poll(MS(740)).unwrap().unwrap().state.cars,
+            [] as [vantare_domain::Car; 0]
+        );
         // Lectura que no se estabiliza: se reintenta sin cerrar la fuente.
         *script.lock().unwrap() = Err(io::ErrorKind::WouldBlock);
         assert_eq!(lmu.poll(MS(760)), Ok(None));

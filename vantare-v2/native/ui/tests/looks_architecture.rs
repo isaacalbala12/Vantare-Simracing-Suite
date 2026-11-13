@@ -138,7 +138,10 @@ fn guard_rejects_indirect_style_predicates_and_whitespace_variants() {
     ] {
         assert!(!violations(source).is_empty(), "no se acepta {source}");
     }
-    assert!(violations("settings.appearance(); settings.editable_columns();").is_empty());
+    assert_eq!(
+        violations("settings.appearance(); settings.editable_columns();"),
+        [] as [std::string::String; 0]
+    );
     let ui = Path::new("native/ui/src");
     assert!(allowed(
         Path::new("native/domain/src/widget_settings/delta.rs"),

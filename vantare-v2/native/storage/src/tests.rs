@@ -72,7 +72,10 @@ fn paged_history_is_read_only_and_matches_live_analysis_with_quality_intact() {
         assert_eq!(count, 40);
         assert_eq!(replay.recent(), live.recent());
         assert_eq!(replay.active(), live.active());
-        assert!(store.page(u64::MAX, 1).unwrap().is_empty());
+        assert_eq!(
+            store.page(u64::MAX, 1).unwrap(),
+            [] as [vantare_runtime::flows::SeriesChunk; 0]
+        );
     }
     assert_eq!(std::fs::read(&db.0).unwrap(), original);
 }

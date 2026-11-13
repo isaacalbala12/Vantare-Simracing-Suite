@@ -420,7 +420,7 @@ fn server_receipts_keep_identity_state_and_date_without_duplicating_retries() {
     assert_eq!(receipts.len(), 1);
     assert_eq!(receipts[0].0.action_text, "Título enviado");
     assert_eq!(receipts[0].0.module, "hub");
-    assert!(receipts[0].0.observed_text.is_empty());
+    assert_eq!(receipts[0].0.observed_text, "");
     assert_eq!(receipts[0].1.report_state, receipt.report_state);
     assert_eq!(receipts[0].1.created_at, receipt.created_at);
     assert!(receipts[0].1.idempotent);

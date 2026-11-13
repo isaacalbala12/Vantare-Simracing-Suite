@@ -7,7 +7,7 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) { throw 'Ejecutar la prueba sin reserva exte
 $root = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('config-queue-' + [guid]::NewGuid().ToString('N'))
 foreach ($name in @('src', 'scripts', '.cargo')) { [IO.Directory]::CreateDirectory((Join-Path $root $name)) | Out-Null }
 [IO.File]::WriteAllText((Join-Path $root 'Cargo.toml'), "[package]`nname='config-queue-probe'`nversion='0.0.0'`nedition='2024'`n")
-[IO.File]::WriteAllText((Join-Path $root 'rust-toolchain.toml'), "[toolchain]`nchannel='1.95.0'`n")
+[IO.File]::WriteAllText((Join-Path $root 'rust-toolchain.toml'), "[toolchain]`nchannel='1.99.1'`n")
 [IO.File]::WriteAllText((Join-Path $root 'src/main.rs'), 'fn main() {}')
 foreach ($name in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $root "scripts/$name")

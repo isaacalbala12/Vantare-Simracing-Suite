@@ -733,7 +733,7 @@ mod tests {
             capture.hashes["http-000001.bin"],
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         );
-        assert!(capture.rests.is_empty());
+        assert_eq!(capture.rests, [] as [std::string::String; 0]);
         assert_eq!(capture.events.len(), 1);
         assert!(Capture::new(capture.dir.clone(), UNIX_EPOCH, "x".into()).is_err());
     }
@@ -936,7 +936,7 @@ mod tests {
             ])
             .unwrap();
         assert_eq!(capture.responses.len(), 2);
-        assert!(capture.rests.is_empty());
+        assert_eq!(capture.rests, [] as [std::string::String; 0]);
         let url = {
             let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
             format!(
@@ -947,6 +947,6 @@ mod tests {
         let record = fetch(&http_agent(), &url, Instant::now());
         assert!(record.status.is_none());
         assert!(record.error.is_some());
-        assert!(record.body.is_empty());
+        assert_eq!(record.body, [] as [u8; 0]);
     }
 }

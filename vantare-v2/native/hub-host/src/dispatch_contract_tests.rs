@@ -283,7 +283,7 @@ fn resident_subscription_and_live_gates_do_not_read_or_emit_implicitly() {
     let mut pipe = Pipe::new(Vec::new());
     launcher_resident_tick::tick(&mut session, &mut pipe).unwrap();
     assert_eq!(session.launcher_resident_state.io_counts(), (0, 0));
-    assert!(pipe.get_ref().is_empty());
+    assert_eq!(pipe.get_ref().as_slice(), [] as [u8; 0]);
     session.current.live = true;
     launcher_resident::subscribe(&mut session, &mut pipe, Topic::LauncherResident).unwrap();
     session
@@ -338,7 +338,7 @@ fn resident_subscription_and_live_gates_do_not_read_or_emit_implicitly() {
     let counts = session.launcher_resident_state.io_counts();
     launcher_resident_tick::tick(&mut session, &mut pipe).unwrap();
     assert_eq!(session.launcher_resident_state.io_counts(), counts);
-    assert!(pipe.get_ref().is_empty());
+    assert_eq!(pipe.get_ref().as_slice(), [] as [u8; 0]);
 }
 
 #[path = "close_priority_tests.rs"]

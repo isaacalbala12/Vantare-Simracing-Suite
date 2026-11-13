@@ -230,11 +230,11 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
             Duration::ZERO,
         )
         .expect("restore credential");
-    assert!(
+    assert_eq!(
         restarted
             .rights(date("2026-09-30T11:59:59Z").expect("date"), Duration::ZERO)
-            .expect("without confirmed game")
-            .is_empty()
+            .expect("without confirmed game"),
+        [] as [std::string::String; 0]
     );
     restarted
         .enter_game_identified(
@@ -252,14 +252,14 @@ fn core_policy_keeps_exact_hour_only_for_existing_game_survives_restart_and_logo
             .len(),
         1
     );
-    assert!(
+    assert_eq!(
         restarted
             .rights(
                 date("2026-09-30T12:00:00Z").expect("date"),
                 Duration::from_secs(1)
             )
-            .expect("exact end")
-            .is_empty()
+            .expect("exact end"),
+        [] as [std::string::String; 0]
     );
     assert!(matches!(
         restarted.rights(
@@ -307,10 +307,10 @@ fn no_offline_grace_outside_game_or_for_already_expired_game_entry() {
         Duration::ZERO,
     )
     .expect("install");
-    assert!(
+    assert_eq!(
         core.rights(date("2026-09-30T11:00:00Z").expect("date"), Duration::ZERO)
-            .expect("outside")
-            .is_empty()
+            .expect("outside"),
+        [] as [std::string::String; 0]
     );
     core.enter_game(
         2,
@@ -318,10 +318,10 @@ fn no_offline_grace_outside_game_or_for_already_expired_game_entry() {
         Duration::ZERO,
     )
     .expect("entry");
-    assert!(
+    assert_eq!(
         core.rights(date("2026-09-30T11:00:00Z").expect("date"), Duration::ZERO)
-            .expect("expired at entry")
-            .is_empty()
+            .expect("expired at entry"),
+        [] as [std::string::String; 0]
     );
     core.persist(&store).expect("persist");
     drop(store);
@@ -362,11 +362,9 @@ fn recycled_local_session_id_cannot_confirm_grace_after_restart() {
     restarted
         .enter_game(7, resumed, Duration::ZERO)
         .expect("recycled id");
-    assert!(
-        restarted
-            .rights(resumed, Duration::ZERO)
-            .expect("rights")
-            .is_empty()
+    assert_eq!(
+        restarted.rights(resumed, Duration::ZERO).expect("rights"),
+        [] as [std::string::String; 0]
     );
     drop(store);
     cleanup_store(&root, "recycled-session", &["authority"]);
@@ -515,13 +513,13 @@ fn forward_wall_clock_drift_does_not_reject_repeated_authority_observation() {
     );
     // Fuera de juego no hay gracia; la deriva no alarga el vencimiento.
     core.leave_game();
-    assert!(
+    assert_eq!(
         core.rights(
             start + chrono::TimeDelta::seconds(1799),
             Duration::from_mins(30)
         )
-        .expect("exact monotonic expiry")
-        .is_empty()
+        .expect("exact monotonic expiry"),
+        [] as [std::string::String; 0]
     );
     core.persist(&store).expect("persist");
     let mut restored = Authority::restore(&store, 1_700_000_000_123).expect("restore");
@@ -588,13 +586,13 @@ fn signed_future_issuance_is_bounded_and_never_extends_the_paid_deadline() {
                 .len(),
                 1
             );
-            assert!(
+            assert_eq!(
                 core.rights(
                     wall + chrono::TimeDelta::seconds(60),
                     Duration::from_secs(59)
                 )
-                .expect("exact real expiry")
-                .is_empty()
+                .expect("exact real expiry"),
+                [] as [std::string::String; 0]
             );
             assert!(
                 matches!(
@@ -676,10 +674,10 @@ fn out_of_range_saved_clock_is_quarantined_and_allows_a_fresh_signed_login() {
         let mut core = Authority::restore(&store, 1_700_000_000_123)
             .expect("recover instead of blocking every startup");
         assert!(!core.credential_current());
-        assert!(
+        assert_eq!(
             core.rights(now, Duration::ZERO)
-                .expect("invalidated default")
-                .is_empty()
+                .expect("invalidated default"),
+            [] as [std::string::String; 0]
         );
         let saved = store
             .fixture::<serde_json::Value>("authority")
@@ -766,11 +764,11 @@ fn logout_tombstone_survives_forward_adjustment_and_cold_restore() {
         Err(Error::Denied)
     ));
     assert!(!restored.credential_current());
-    assert!(
+    assert_eq!(
         restored
             .rights(wall + chrono::TimeDelta::seconds(2), Duration::ZERO)
-            .expect("no rights after logout")
-            .is_empty()
+            .expect("no rights after logout"),
+        [] as [std::string::String; 0]
     );
     let mut fresh = credential;
     fresh.claims.issued_at = (issued + chrono::TimeDelta::seconds(3)).to_rfc3339();

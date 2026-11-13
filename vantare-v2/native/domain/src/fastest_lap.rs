@@ -91,9 +91,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
             snapshot.epoch,
             snapshot.state.session.id,
             player.map(|car| car.id),
-            player
-                .map(|car| car.driver.name.clone())
-                .unwrap_or_default(),
+            player.map_or_default(|car| car.driver.name.clone()),
             class_id,
         ),
         sequence: snapshot.sequence,

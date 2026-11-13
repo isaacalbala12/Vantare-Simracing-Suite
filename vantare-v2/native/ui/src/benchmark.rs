@@ -84,14 +84,14 @@ impl Render for Panel {
         let start = Instant::now();
         let changed = self.widget.ingest(photo, self.prefs);
         let ingest = ns(start);
-        let ingest_alloc = self.count.map(|count| count(false)).unwrap_or_default();
+        let ingest_alloc = self.count.map_or_default(|count| count(false));
         if let Some(count) = self.count {
             count(true);
         }
         let start = Instant::now();
         let (paint, _) = self.widget.frame(self.prefs, false);
         let preparation = ns(start);
-        let preparation_alloc = self.count.map(|count| count(false)).unwrap_or_default();
+        let preparation_alloc = self.count.map_or_default(|count| count(false));
         let count = self.count;
         let extent = self.widget.size();
         let samples = self.samples.clone();
@@ -105,7 +105,7 @@ impl Render for Panel {
                 let mut target=PaintWindow::new(window,bounds.origin,1.0,1.0); paint(&mut target,cx);
             });
             let elapsed=ns(start);
-            let paint_alloc=count.map(|count| count(false)).unwrap_or_default();
+            let paint_alloc=count.map_or_default(|count| count(false));
             if index > WARMUP {
                 let mut stats=samples.borrow_mut(); stats.preparation.push(preparation); for (index,alloc) in [ingest_alloc,preparation_alloc,paint_alloc].into_iter().enumerate() { stats.allocations[index].push(alloc); } stats.ingest.push(ingest); stats.frame.push(preparation+elapsed); stats.paint.push(elapsed); stats.invalidations+=usize::from(changed);
                 if stats.frame.len()==SAMPLES {

@@ -644,7 +644,10 @@ mod tests {
             .expect("vaciar explícitamente");
         let mut reopened = Document::open(path).expect("vacío guardado por el usuario");
         reopened.initialize(monitor).expect("respetar vacío");
-        assert!(reopened.layout().instances.is_empty());
+        assert_eq!(
+            reopened.layout().instances,
+            [] as [crate::layout::Instance; 0]
+        );
         fs::remove_dir_all(dir).expect("limpiar");
     }
 
@@ -943,7 +946,10 @@ mod tests {
             .set_modified(partial_stamp)
             .expect("misma resolución de mtime");
         assert!(document.poll().expect("reintentar la lectura fallida"));
-        assert!(document.layout().instances.is_empty());
+        assert_eq!(
+            document.layout().instances,
+            [] as [crate::layout::Instance; 0]
+        );
         fs::remove_dir_all(dir).expect("limpiar");
     }
 
@@ -963,7 +969,10 @@ mod tests {
         fs::write(&path, b"{\"version\":1,\"instances\":[]}").expect("recuperar");
         document.modified = None;
         assert!(document.poll().expect("recarga"));
-        assert!(document.layout().instances.is_empty());
+        assert_eq!(
+            document.layout().instances,
+            [] as [crate::layout::Instance; 0]
+        );
         fs::remove_dir_all(dir).expect("limpiar");
     }
 }
@@ -1137,6 +1146,9 @@ mod bridge_characterization {
         assert_eq!(mini.off_track, OffTrack::Hide);
         let mut orphan = layout.clone();
         orphan.instances.remove(0);
-        assert!(orphan.normalized().unwrap().instances.is_empty());
+        assert_eq!(
+            orphan.normalized().unwrap().instances,
+            [] as [crate::layout::Instance; 0]
+        );
     }
 }

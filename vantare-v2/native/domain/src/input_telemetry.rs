@@ -88,11 +88,7 @@ impl Trace {
             }
         }
         self.last_seen = Some((snapshot.sequence, at));
-        let telemetry = snapshot
-            .state
-            .player
-            .map(|p| p.telemetry)
-            .unwrap_or_default();
+        let telemetry = snapshot.state.player.map_or_default(|p| p.telemetry);
         let [throttle, brake, clutch] = [telemetry.throttle, telemetry.brake, telemetry.clutch]
             .map(|q| {
                 q.current()
@@ -162,8 +158,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
                 SourceState::Waiting | SourceState::Lost
             )
         })
-        .map(|p| p.telemetry)
-        .unwrap_or_default();
+        .map_or_default(|p| p.telemetry);
     let pedals = [telemetry.clutch, telemetry.brake, telemetry.throttle].map(|q| {
         displayed(&q)
             .filter(|v| v.is_finite())

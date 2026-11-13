@@ -788,11 +788,11 @@ mod tests {
             );
         }
         for name in ["inicio-base", "engineer-base", "telemetria-base"] {
-            assert!(
+            assert_eq!(
                 CaptureState::parse(name)
                     .expect("escena Hub")
-                    .locked_sections()
-                    .is_empty()
+                    .locked_sections(),
+                []
             );
         }
     }

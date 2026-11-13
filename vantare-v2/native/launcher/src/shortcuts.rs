@@ -156,7 +156,7 @@ mod warning_tests {
         let mut links = Vec::new();
         gather(&root, 2, &mut 20_000, &mut links, &mut warnings);
         fs::remove_file(&root).expect("cleanup");
-        assert!(links.is_empty());
+        assert_eq!(links, [] as [std::path::PathBuf; 0]);
         assert!(
             warnings
                 .iter()

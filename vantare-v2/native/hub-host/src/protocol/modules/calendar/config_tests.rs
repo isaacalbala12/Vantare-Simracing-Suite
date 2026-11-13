@@ -111,7 +111,7 @@ fn strict_following_matches_load_and_never_rewrites_protected_content() {
         assert!(config.following_revision.is_none());
         let read = state.load();
         assert!(read.invalid_cache);
-        assert!(read.following.is_empty());
+        assert_eq!(read.following, [] as [std::string::String; 0]);
         assert_eq!(
             state.follow_set("unknown", false, &empty_revision()),
             Err(HostError::Protected)
@@ -264,12 +264,12 @@ fn following_noops_preserve_revision_and_can_remove_retired_series() {
         root.bytes("calendar-following.json"),
         br#"{"seriesIds":["retired"]}"#
     );
-    assert!(
+    assert_eq!(
         state
             .follow_set("retired", false, &revision)
             .unwrap()
-            .following
-            .is_empty()
+            .following,
+        [] as [std::string::String; 0]
     );
 }
 #[test]

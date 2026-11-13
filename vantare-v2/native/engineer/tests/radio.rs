@@ -182,7 +182,7 @@ fn locales_have_closed_catalog_and_independent_visible_metadata() {
             Intent::CarRight,
             Intent::ThreeWide,
         ] {
-            assert!(!intent.text(locale).is_empty());
+            assert_ne!(intent.text(locale), "");
         }
     }
     assert!(Locale::parse("pt").is_none());
@@ -240,11 +240,11 @@ fn fuel_uses_only_reliable_current_levels_and_rearms_after_condition_ends() {
         for message in &messages {
             families.started(message);
         }
-        assert!(
+        assert_eq!(
             families
                 .evaluate(&snapshot, &Applied::default(), Locale::En, Duration::ZERO)
-                .0
-                .is_empty()
+                .0,
+            [] as [vantare_engineer::radio::Message; 0]
         );
     }
     snapshot.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(1.0);
@@ -253,11 +253,11 @@ fn fuel_uses_only_reliable_current_levels_and_rearms_after_condition_ends() {
         .0;
     families.started(&first[0]);
     snapshot.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(30.0);
-    assert!(
+    assert_eq!(
         families
             .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
-            .0
-            .is_empty()
+            .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
     snapshot.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(1.0);
     assert_eq!(
@@ -295,11 +295,11 @@ fn flags_respect_quality_scope_and_ack_without_announcing_sector_ahead() {
     for message in &messages {
         families.started(message);
     }
-    assert!(
+    assert_eq!(
         families
             .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
-            .0
-            .is_empty()
+            .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
     for flags in [
         Quality::Estimated(vec![Flag {
@@ -317,11 +317,11 @@ fn flags_respect_quality_scope_and_ack_without_announcing_sector_ahead() {
         Quality::Unavailable,
     ] {
         snapshot.state.flags = flags;
-        assert!(
+        assert_eq!(
             families
                 .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
-                .0
-                .is_empty()
+                .0,
+            [] as [vantare_engineer::radio::Message; 0]
         );
         assert!(!messages[0].is_current(&snapshot));
     }
@@ -353,11 +353,11 @@ fn boxes_never_come_from_photo_gap_historical_event_or_other_subject() {
             fact: None,
         },
     ] {
-        assert!(
+        assert_eq!(
             families
                 .evaluate(&snapshot, &applied, Locale::Es, Duration::ZERO)
-                .0
-                .is_empty()
+                .0,
+            [] as [vantare_engineer::radio::Message; 0]
         );
     }
     let event = PitEvent {
@@ -398,19 +398,19 @@ fn boxes_never_come_from_photo_gap_historical_event_or_other_subject() {
             event: Some(event),
             ..Applied::default()
         };
-        assert!(
+        assert_eq!(
             families
                 .evaluate(&snapshot, &applied, Locale::Es, Duration::ZERO)
-                .0
-                .is_empty()
+                .0,
+            [] as [vantare_engineer::radio::Message; 0]
         );
     }
     snapshot.state.cars[0].in_pits = Quality::Estimated(true);
-    assert!(
+    assert_eq!(
         families
             .evaluate(&snapshot, &applied, Locale::Es, Duration::ZERO)
-            .0
-            .is_empty()
+            .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
 }
 
@@ -523,7 +523,7 @@ fn radio_deduplicates_and_clears_at_freeze_gap_quality_and_identity() {
             &mut output,
         )
         .unwrap();
-    assert!(output.is_empty());
+    assert_eq!(output, [] as [u8; 0]);
     worker
         .ingest(
             &snapshot,
@@ -772,15 +772,15 @@ fn limiter_deduplicates_revalidates_and_respects_cadence() {
         .0;
     assert_eq!(intents(&notices), [Intent::EngageLimiter]);
     f.started(&notices[0]);
-    assert!(
+    assert_eq!(
         f.evaluate(
             &snapshot,
             &Applied::default(),
             Locale::Es,
             Duration::from_secs(1)
         )
-        .0
-        .is_empty()
+        .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
     let mut q = Queue::default();
     assert!(q.submit(notices[0].clone()));
@@ -796,15 +796,15 @@ fn limiter_deduplicates_revalidates_and_respects_cadence() {
     );
     snapshot.state.cars[0].in_pits = Quality::Reliable(false);
     snapshot.state.cars[0].current_sector = Quality::Reliable(0);
-    assert!(
+    assert_eq!(
         f.evaluate(
             &snapshot,
             &Applied::default(),
             Locale::Es,
             Duration::from_secs(2)
         )
-        .0
-        .is_empty()
+        .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
     let exit = f
         .evaluate(
@@ -833,11 +833,11 @@ fn limiter_requires_reliable_quality_speed_sector_and_source() {
     ] {
         snapshot.state.player.as_mut().unwrap().pit_limiter_active = quality;
         assert!(!exit[0].is_current(&snapshot));
-        assert!(
+        assert_eq!(
             Families::default()
                 .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
-                .0
-                .is_empty()
+                .0,
+            [] as [vantare_engineer::radio::Message; 0]
         );
     }
     snapshot.state.player.as_mut().unwrap().pit_limiter_active = Quality::Reliable(true);
@@ -866,15 +866,15 @@ fn limiter_requires_reliable_quality_speed_sector_and_source() {
     snapshot.state.cars[0].current_sector = Quality::Reliable(0);
     snapshot.state.source_state = vantare_domain::SourceState::Stale;
     assert!(!exit[0].is_current(&snapshot));
-    assert!(
+    assert_eq!(
         f.evaluate(
             &snapshot,
             &Applied::default(),
             Locale::Es,
             Duration::from_secs(31)
         )
-        .0
-        .is_empty()
+        .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
 }
 
@@ -886,27 +886,27 @@ fn stopped_state_never_invents_service_completion_and_pit_settings_gate_limiter(
     player.pit_stop_stopped = Quality::Reliable(true);
     player.pit_limiter_active = Quality::Reliable(false);
     player.telemetry.speed_mps = Quality::Reliable(0.0);
-    assert!(
+    assert_eq!(
         Families::default()
             .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
-            .0
-            .is_empty()
+            .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
     // Un stopped fiable contradice velocidad móvil: tampoco autoriza aviso.
     snapshot.state.player.as_mut().unwrap().telemetry.speed_mps = Quality::Reliable(10.0);
-    assert!(
+    assert_eq!(
         Families::default()
             .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
-            .0
-            .is_empty()
+            .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
     snapshot.state.player.as_mut().unwrap().telemetry.speed_mps = Quality::Reliable(0.0);
     snapshot.state.player.as_mut().unwrap().pit_stop_stopped = Quality::Reliable(false);
-    assert!(
+    assert_eq!(
         Families::default()
             .evaluate(&snapshot, &Applied::default(), Locale::Es, Duration::ZERO)
-            .0
-            .is_empty()
+            .0,
+        [] as [vantare_engineer::radio::Message; 0]
     );
     snapshot.state.player.as_mut().unwrap().telemetry.speed_mps = Quality::Reliable(10.0);
     let mut worker = RadioWorker::new(Locale::Es, None).unwrap();

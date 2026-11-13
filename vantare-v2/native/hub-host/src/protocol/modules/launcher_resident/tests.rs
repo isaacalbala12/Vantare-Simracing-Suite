@@ -308,7 +308,10 @@ fn repeated_status_deduplicates_and_restart_or_stale_status_cannot_reuse_a_recei
         first.execution.as_ref().unwrap().instance,
         restarted.execution.as_ref().unwrap().instance
     );
-    assert!(restarted.execution.unwrap().events.is_empty());
+    assert_eq!(
+        restarted.execution.unwrap().events,
+        [] as [crate::launcher_resident::execution::ResidentExecutionEvent; 0]
+    );
     status.updated_ms = 0;
     save(&status);
     let offline_view = state

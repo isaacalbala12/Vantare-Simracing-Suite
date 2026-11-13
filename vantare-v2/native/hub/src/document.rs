@@ -513,7 +513,10 @@ pub(crate) mod tests {
             (640.0, 300.0, Kind::Radar)
         );
         editor.undo().expect("deshacer");
-        assert!(editor.layout().instances.is_empty());
+        assert_eq!(
+            editor.layout().instances,
+            [] as [vantare_ui::layout::Instance; 0]
+        );
         assert_eq!(editor.selected, None);
     }
     #[test]
@@ -747,7 +750,10 @@ pub(crate) mod tests {
         editor.persist().expect("Ctrl S");
         assert_eq!(editor.layout(), &before);
         editor.undo().expect("guardar no añade historial");
-        assert!(editor.layout().instances.is_empty());
+        assert_eq!(
+            editor.layout().instances,
+            [] as [vantare_ui::layout::Instance; 0]
+        );
         editor.redo().expect("rehacer");
         std::fs::write(&file.path, b"{}").expect("edición externa");
         assert!(editor.persist().is_err());

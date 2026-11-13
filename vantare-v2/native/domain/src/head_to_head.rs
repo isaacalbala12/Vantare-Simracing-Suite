@@ -487,8 +487,8 @@ mod tests {
         let duel = project(&snapshot, Preferences::default(), Target::Ahead)
             .duel
             .expect("pareja sin ritmo");
-        assert!(duel.trend.is_empty());
-        assert!(duel.catch.is_empty());
+        assert_eq!(duel.trend, "");
+        assert_eq!(duel.catch, "");
     }
 
     #[test]
@@ -608,17 +608,15 @@ mod tests {
                 ready
             );
         }
-        assert!(
-            project(&Snapshot::default(), Preferences::default(), Target::Ahead)
-                .rows
-                .is_empty()
+        assert_eq!(
+            project(&Snapshot::default(), Preferences::default(), Target::Ahead).rows,
+            [] as [crate::head_to_head::Row; 0]
         );
         let mut snapshot = scene(2);
         snapshot.state.player = None;
-        assert!(
-            project(&snapshot, Preferences::default(), Target::Ahead)
-                .rows
-                .is_empty()
+        assert_eq!(
+            project(&snapshot, Preferences::default(), Target::Ahead).rows,
+            [] as [crate::head_to_head::Row; 0]
         );
     }
 

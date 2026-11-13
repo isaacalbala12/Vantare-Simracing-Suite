@@ -276,7 +276,12 @@ async fn save_frame(
             .timer(Duration::from_millis(120))
             .await;
         let (_, _, pixels) = vantare_ui::capture::capture_client(hwnd, width, height)?;
-        if previous.as_ref() == Some(&pixels) && pixels.chunks_exact(4).any(|p| p[..3] != [0, 0, 0])
+        if previous.as_ref() == Some(&pixels)
+            && pixels
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|p| p[..3] != [0, 0, 0])
         {
             stable = Some(pixels);
             break;
@@ -284,7 +289,7 @@ async fn save_frame(
         previous = Some(pixels);
     }
     let mut pixels = stable.ok_or("el render del Hub no se estabilizó en 4,8 s")?;
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0.iter_mut() {
         pixel.swap(0, 2);
         pixel[3] = 255;
     }

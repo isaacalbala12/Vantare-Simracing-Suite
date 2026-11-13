@@ -480,7 +480,7 @@ mod tests {
                 assert_eq!(form.stage, EmailStage::Form);
                 assert!(form.restarted);
                 assert_eq!(form.submit_label(false), "Pedir otro código");
-                assert!(form.code.read(cx).value.is_empty());
+                assert_eq!(form.code.read(cx).value, "");
                 assert!(matches!(form.action(cx), Some(EmailAction::Begin { email, .. }) if email == "pilot@example.invalid"));
                 assert!(form.email.read(cx).enabled);
             });
@@ -504,7 +504,7 @@ mod tests {
                     form.email.read(cx).enabled,
                     "cola llena: se puede editar de nuevo"
                 );
-                assert!(!form.message.is_empty());
+                assert_ne!(form.message, "");
                 remote.inflight = Inflight::Idle;
                 remote.queued = None;
                 drop(requests);

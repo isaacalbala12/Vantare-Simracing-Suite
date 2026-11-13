@@ -202,7 +202,10 @@ mod tests {
         changed.updated_at_ms = 9001;
         changed.events.clear();
         assert!(Calendar::publish_alert_feed(&layout, &changed).expect("disabled alerts"));
-        assert!(saved(&layout).events.is_empty());
+        assert_eq!(
+            saved(&layout).events,
+            [] as [vantare_ipc::session_alerts::Event; 0]
+        );
         std::fs::remove_dir_all(root).expect("QA cleanup");
     }
 

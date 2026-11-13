@@ -280,7 +280,7 @@ mod tests {
         );
         assert!(server.requests.try_recv().is_err());
         drop(lock);
-        assert!(std::fs::read(&path).expect("preserved") == bytes);
+        assert_eq!(std::fs::read(&path).expect("preserved"), bytes);
         assert_eq!(
             attempt(&store, identity, BillingProduct::ProMonthly, "sandbox")
                 .expect("unlocked retry")

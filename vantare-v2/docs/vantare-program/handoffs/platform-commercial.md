@@ -1,3 +1,45 @@
+## VANTA-142 / #2247 — Rust 1.99.1, PR draft #2248 (2026-11-13)
+
+- Worker H; rama `vantareapp/isa-2247-rust-estable`, base nightly
+  `5d53a645798fb5c236ab3f4de2b87e9a9a1798d7`, worktree propio en D:.
+  [PR draft #2248](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2248)
+  contra nightly. SHA y resultados vigentes en su descripción y checks;
+  [issue #2247](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2247)
+  y Plane VANTA-142 recogen el estado de revisión y los siguientes pasos.
+- Objetivo ajustado por el orquestador a **1.99.1**, conservando caché Rust/C++.
+  Rust 1.100.0 es la última estable publicada, pero el layout nuevo de Cargo
+  queda separado en [#2252](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2252).
+  El parche 1.99.1 corrige el bool por FFI x86_64; el MSRV exige ese parche.
+- Ensayo 1.100: run 43334835533 falla por error 206 en storage (359 rutas,
+  33.567 caracteres). Run 43337781090 con sccache 0.19 y rutas cortas construye
+  el archivo de tests (11m04s) y pasa lifecycle, pero QA falla por error 206
+  en GPUI y Hub pierde sus auxiliares de tests. Esos experimentos se retiran.
+- Pines activos y claves GHA nuevas para 1.99.1. Sin dependencias nuevas,
+  cambios de Cargo.lock ni supresiones de lints. Las 6.255 aserciones de los
+  archivos afectados se conservan. Se actualizan solo las dos huellas de
+  fuentes del oráculo de agenda; sus casos y resultados permanecen idénticos.
+- Prueba C++ aislada también de GHA_VERSION, que habilitaba GHA incluso con
+  ENABLED=false; exige backend local. Migración de CACHEDIR.TAG legacy solo
+  tras validar caché, ausencia de enlaces y lock exclusivo, bajo la cola.
+- Fmt y Clippy local con `-D warnings` correctos para 13 crates, incluida
+  runtime/bench. Build-support no contiene tests. Hub/Admin, lifecycle,
+  distribución QA y matriz de instalación se validan en CI; no ejecutar GUI
+  en el servidor. Resultados completos de tests y telemetría en el PR/issue.
+- Mediciones finales, dos repeticiones por modo y versión, mismo domain base,
+  comando y servidor Ryzen 5 1500X/16 GB, `-j 2`, incremental explícito y caché
+  desactivada solo dentro del benchmark: limpia **26,843 → 23,982 s**;
+  edición incremental de una constante **1,831 → 2,030 s**. Son unos 2,9 s
+  menos en limpio y 0,2 s más en incremental en este caso pequeño; no se
+  extrapola al workspace ni a CI. Muestras y método completos en el PR.
+- Evidencia local: `D:/VantareServer/evidence/isa-2247/`. El gate obtuvo slot
+  tras esperar a E sin interrumpirlo; se respetan cola y `captura.lock`.
+- Windows conserva 1.95.0 junto a 1.99.1 y el ensayo 1.100.0, sin cambiar
+  el default. Mac tenía 1.99.1 y recibió 1.100 mínimo; después se apagó y no
+  permite completar validación remota. Clippy/rustfmt 1.99.1 verificados en Windows.
+- Sin merge ni release. Siguiente acción: revisión del PR con CI verde y
+  decisión de fusión de Isaac; tras fusionar, el orquestador avisa a todos los
+  workers para que actualicen su toolchain. No se retira 1.95.0 antes.
+
 > **VANTA-132:** estado vigente y despliegue en [el cierre de la tanda](#vanta-132--cierre-de-la-tanda-adminowner-2026-11-05). Sus entradas anteriores son evidencia histórica.
 
 ## VANTA-126 / #1878 — tests independientes del tiempo encendido del runner

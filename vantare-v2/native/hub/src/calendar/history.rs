@@ -138,7 +138,10 @@ mod tests {
         }
         assert_eq!(history.weeks.len(), MAX_WEEKS);
         assert_eq!(history.rotation("beginner-lmgt3-fixed").len(), MAX_WEEKS);
-        assert!(history.rotation("nope").is_empty());
+        assert_eq!(
+            history.rotation("nope"),
+            [] as [(chrono::DateTime<chrono::Utc>, std::string::String); 0]
+        );
     }
 
     #[test]

@@ -189,7 +189,7 @@ fn selection_is_bound_to_its_app_and_replacement_clears_old_arguments() {
         saved.apps[0].executable,
         Some(canonical_executable(&exe).unwrap())
     );
-    assert!(saved.apps[0].args.is_empty());
+    assert_eq!(saved.apps[0].args, [] as [std::string::String; 0]);
     assert_eq!(saved.apps[1], document.apps[1]);
     assert!(
         saved
@@ -223,7 +223,7 @@ fn discovery_reset_clears_only_the_app_and_its_profile_overrides_in_one_cas() {
     let bytes = serde_json::to_vec(&document).unwrap();
     std::fs::write(&path, &bytes).unwrap();
     let mut editor = get(&path, Some(&document.apps[0].id)).unwrap();
-    assert!(document.apps[0].args.is_empty());
+    assert_eq!(document.apps[0].args, [] as [std::string::String; 0]);
     assert!(editor.has_custom_arguments);
     assert_eq!(editor.custom_profiles, 1);
     editor.draft.use_discovery = true;

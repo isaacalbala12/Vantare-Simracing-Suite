@@ -1562,7 +1562,7 @@ mod tests {
     #[test]
     fn unavailable_layout_never_supplies_mockup_widgets() {
         let mut layout = vantare_ui::layout::Layout::default();
-        assert!(visible_settings(&layout).is_empty());
+        assert_eq!(visible_settings(&layout), [] as [&vantare_ui::Settings; 0]);
         layout.instances.push(vantare_ui::layout::Instance {
             off_track: vantare_ui::layout::OffTrack::default(),
             geometry: vantare_ui::geometry::Geometry::default(),

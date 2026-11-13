@@ -26,8 +26,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let telemetry = state
         .player
         .filter(|_| !matches!(state.source_state, SourceState::Waiting | SourceState::Lost))
-        .map(|p| p.telemetry)
-        .unwrap_or_default();
+        .map_or_default(|p| p.telemetry);
     let throttle = fraction(&telemetry.throttle);
     let brake = fraction(&telemetry.brake);
     let clutch = fraction(&telemetry.clutch);

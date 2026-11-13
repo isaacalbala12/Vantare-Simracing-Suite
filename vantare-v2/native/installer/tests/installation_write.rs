@@ -1461,7 +1461,7 @@ fn denied_state_restoration_preserves_committed_state_and_does_not_project_an_ol
         Some("1.0.1")
     );
     assert!(fixture.root.join("boot-pending.json").is_file());
-    assert!(!warnings.is_empty());
+    assert_ne!(warnings, [] as [std::string::String; 0]);
 }
 
 #[test]

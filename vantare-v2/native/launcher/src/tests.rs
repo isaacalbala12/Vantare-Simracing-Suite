@@ -273,10 +273,9 @@ fn actual_lnk_is_read_without_modification_or_execution() {
     );
     assert_eq!(fs::read(&link).expect("unchanged"), original);
     assert!(!marker.exists());
-    assert!(
-        discovery::running_all(&target)
-            .expect("not executed")
-            .is_empty()
+    assert_eq!(
+        discovery::running_all(&target).expect("not executed"),
+        [] as [u32; 0]
     );
     let found = Discovery::scan(
         &Document::default().apps,
@@ -366,7 +365,7 @@ fn editor_rejects_missing_steps_apps_duplicates_and_preserves_advanced_copies() 
     assert_eq!(copy.name, "Profile (copia)");
     assert_eq!(copy.description, profile.description);
     assert_eq!(copy.notes, profile.notes);
-    assert!(copy.hotkey.is_empty());
+    assert_eq!(copy.hotkey, "");
     assert!(!copy.launch_on_windows_startup);
     assert!(!copy.favorite);
     assert_eq!(copy.launch_count, 0);
@@ -991,10 +990,9 @@ fn restart_requires_original_child_handle_and_transfers_ownership_to_new_child()
             .has_profile("test")
             .expect("closed")
     );
-    assert!(
-        discovery::running_all(&executable)
-            .expect("Win32")
-            .is_empty()
+    assert_eq!(
+        discovery::running_all(&executable).expect("Win32"),
+        [] as [u32; 0]
     );
 }
 

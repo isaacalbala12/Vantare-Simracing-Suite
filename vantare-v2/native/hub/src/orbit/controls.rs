@@ -1298,7 +1298,7 @@ mod tests {
         assert_ne!(Tone::Danger.color_in(&t), Tone::Neutral.color_in(&t));
         let states = [Tone::Success, Tone::Warning, Tone::Danger, Tone::Reference];
         for (index, tone) in states.iter().enumerate() {
-            assert!(!tone.symbol().is_empty());
+            assert_ne!(tone.symbol(), "");
             for other in &states[..index] {
                 assert_ne!(tone.symbol(), other.symbol());
                 assert_ne!(tone.status_shape(), other.status_shape());

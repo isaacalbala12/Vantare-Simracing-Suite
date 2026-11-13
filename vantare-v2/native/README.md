@@ -447,9 +447,10 @@ cargo test --workspace --offline -j 2
 44 coches y con el corpus de 47 y comprueba, con un `Subscriber` de `ipc`, que
 llegan fotos con revisión creciente y el número de coches de la captura.
 
-`rust-toolchain.toml` fija 1.95.0. `.github/workflows/quality.yml` ejecuta los
-gates del workspace en Ubuntu; #1437 no cambia los jobs ni el código de
-Windows, cuya validación se ejecuta en el entorno Windows del orquestador.
+`rust-toolchain.toml` fija 1.99.1 (estable adoptada para conservar la caché; VANTA-142).
+`.github/workflows/branch-channel-gates.yml` valida el producto en
+`windows-latest`; `quality.yml` comprueba retirada y tooling. La versión anterior
+puede permanecer instalada para los workers cuyas ramas todavía la fijan.
 
 ## DuckDB precompilado para desarrollo (#1465)
 
@@ -578,7 +579,7 @@ la limpieza por slot es independiente. Los targets de medición de VANTA-137
 se dejan para Isaac, conforme a su instrucción.
 
 Opcional en Mac: con LLVM en PATH, cargo-xwin 0.23.1 y el target MSVC de Rust
-1.95 instalados, `bash native/scripts/xwin-check-core.sh ~/target-<worker>`
+1.99.1 instalados, `bash native/scripts/xwin-check-core.sh ~/target-<worker>`
 comprueba bibliotecas del núcleo para Windows. Usa un target propio; bórralo al
 terminar. No ejecuta Windows ni sustituye su CI. El build nativo macOS completo
 conserva el fallo Unix registrado en #2004.

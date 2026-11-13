@@ -121,7 +121,7 @@ fn shadow_strip(style: &Style, width: f32, height: u32) -> Vec<u8> {
             * (0.254_829_6
                 + t * (-0.284_496_74 + t * (1.421_413_8 + t * (-1.453_152_1 + t * 1.061_405_4))));
         let erf = 1.0 - poly * (-z * z).exp();
-        0.5 * (1.0 + erf.copysign(x))
+        f32::midpoint(1.0, erf.copysign(x))
     }
     let (sigma, edge_x, top, bottom) = (
         style.shadow.sigma,
@@ -1871,7 +1871,10 @@ mod tests {
                 .all(|&(x, y)| (-0.01..=130.01).contains(&x) && (-0.01..=50.01).contains(&y))
         );
         // Un semiplano que deja fuera todo el rectangulo da un poligono vacio.
-        assert!(clip_half_plane(&base, dx, dy, 1000.0).is_empty());
+        assert_eq!(
+            clip_half_plane(&base, dx, dy, 1000.0),
+            [] as [(f32, f32); 0]
+        );
     }
 
     #[test]
@@ -1883,7 +1886,9 @@ mod tests {
         let mut buffer = vec![0u8; reader.output_buffer_size().unwrap()];
         reader.next_frame(&mut buffer).unwrap();
         let partial = buffer
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|p| p[3] > 0 && p[3] < 255)
             .count();
         assert!(

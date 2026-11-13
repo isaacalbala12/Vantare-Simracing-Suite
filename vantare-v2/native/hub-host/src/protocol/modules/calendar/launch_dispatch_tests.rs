@@ -118,6 +118,8 @@ fn arm_and_driver_tick_send_exactly_once_through_checked_launch() {
         monotonic: now.monotonic + Duration::from_millis(delay),
     };
     let mut pipe = Pipe::new(Vec::new());
+    s.core.observation.as_mut().unwrap().policy.checked_at_ms =
+        vantare_ipc::control::wall_ms().unwrap();
     status(&s, "b", false);
     calendar::launch_tick(&mut s, &mut pipe, fire).unwrap();
     let bytes = std::fs::read(mailbox::request_path(&s.launcher)).unwrap();
@@ -154,6 +156,8 @@ fn changing_instance_between_cached_tick_and_send_never_enqueues() {
     };
     let old = s.launcher_resident_state.view();
     s.calendar_launch.resident(fire.monotonic, || old);
+    s.core.observation.as_mut().unwrap().policy.checked_at_ms =
+        vantare_ipc::control::wall_ms().unwrap();
     status(&s, "c", false);
     calendar::launch_tick(&mut s, &mut Pipe::new(Vec::new()), fire).unwrap();
     assert!(!mailbox::request_path(&s.launcher).exists());

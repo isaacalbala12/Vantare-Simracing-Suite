@@ -816,7 +816,7 @@ fn dst_and_timezone_offsets_never_change_the_absolute_three_minute_deadline() {
                 input,
                 Clock {
                     wall: at - LEAD_MS,
-                    monotonic: base + Duration::from_millis(1000)
+                    monotonic: base + Duration::from_secs(1)
                 }
             )
             .unwrap()

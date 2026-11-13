@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Page } from "playwright-core";
+import { calendarScenes } from "./visual-diff/calendar-scenes.ts";
 import { launcherScenes } from "./visual-diff/launcher.ts";
 import { until } from "./wait-for.ts";
 
@@ -470,6 +471,35 @@ async function checkIsolatedDialogs(
     ),
     1,
     "positive control: Ctrl L launches exactly once without a dialog",
+  );
+
+  await page.goto(`${base}?escena=visual-dark:calendar-launch-reference`);
+  await calendarScenes["calendario-proximas-contraida"].prepare(page);
+  const calendarIntents = () =>
+    page.evaluate(
+      () =>
+        (Reflect.get(window, "dialogRequestMethods") as string[]).filter(
+          (method) =>
+            method === "launcher.favorite" ||
+            method === "launcher.launch" ||
+            method === "launcher.launchChecked" ||
+            method === "calendar.launchArm" ||
+            method === "calendar.launchCancel",
+        ).length,
+    );
+  await page.getByRole("button", { name: /Lanzar a las/u }).click();
+  await until(
+    async () => (await calendarIntents()) === 1,
+    5000,
+    "positive calendar arm is counted",
+  );
+  await page
+    .getByRole("button", { name: "Cancelar lanzamiento puntual", exact: true })
+    .click();
+  await until(
+    async () => (await calendarIntents()) === 2,
+    5000,
+    "positive calendar cancellation is counted",
   );
 
   await page.goto(`${base}?escena=visual-dark:ajustes-con-diseno`);

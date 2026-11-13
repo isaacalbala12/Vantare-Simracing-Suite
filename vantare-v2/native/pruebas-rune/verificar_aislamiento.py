@@ -8,6 +8,7 @@ BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parents[2]
 PREFIX = 'vantare-v2/native/pruebas-rune/'
 EXCEPTIONS = {
+    'vantare-v2/hub-rune/scripts/check_dependencies.py',
     'vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md',
     '.github/workflows/rune-measurement.yml',
 }

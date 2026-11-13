@@ -12,6 +12,33 @@ METRICS = ("cpu_cycles_s", "private_mib", "vram_mib", "gpu_percent", "frame_p99_
            "dropped_frames", "latency_p95_ms", "load_p99_ms", "visible_s",
            "clean_build_s", "incremental_build_s")
 BUILD_METRICS = ("clean_build_s", "incremental_build_s")
+ABS_NOISE = dict(cpu_cycles_s=0, private_mib=.5, vram_mib=.5, gpu_percent=.1,
+                 frame_p99_ms=.1, dropped_frames=1, latency_p95_ms=.1,
+                 load_p99_ms=.1, visible_s=.01, clean_build_s=.05, incremental_build_s=.05)
+
+
+def noise_margin(metric, baseline):
+    return max(.025*baseline, ABS_NOISE[metric])
+
+
+def aa_check(rows, metric):
+    """Same detrending for every metric; linear contrast also permits zero drops."""
+    if len(rows) != 4 or ''.join(row['role'] for row in rows) not in ('ABBA','BAAB'):
+        raise InvalidEvidence('Control A/A incompleto')
+    times=[number(row['midpoint_qpc'],'midpoint_qpc') for row in rows]
+    if times != sorted(set(times)):
+        raise InvalidEvidence('Control A/A fuera de orden')
+    values=[number(row['metrics'].get(metric),metric) for row in rows]
+    x=[value-statistics.mean(times) for value in times]
+    b=[float(row['role']=='B')-.5 for row in rows]
+    y=[value-statistics.mean(values) for value in values]
+    xx,bb,xb=sum(v*v for v in x),sum(v*v for v in b),sum(a*c for a,c in zip(x,b))
+    determinant=xx*bb-xb*xb
+    if determinant<=0:raise InvalidEvidence('Control A/A sin separación temporal verificable')
+    beta=(sum(a*c for a,c in zip(b,y))*xx-sum(a*c for a,c in zip(x,y))*xb)/determinant
+    baseline=statistics.mean(row['metrics'][metric] for row in rows if row['role']=='A')
+    margin=noise_margin(metric,baseline)
+    return {'effect':beta,'tolerance':margin,'pass':abs(beta)<=margin+1e-12}
 # Intervalo t bilateral del 95 %, df 7..23 (8..24 rondas), método de PR #2013.
 T95 = {7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179,
        13: 2.160, 14: 2.145, 15: 2.131, 16: 2.120, 17: 2.110, 18: 2.101,
@@ -100,7 +127,10 @@ def compare(baseline, candidate, candidate_name, compilation_pending=False):
         for name in limits:
             if name != "cpu_cycles_s":
                 limits[name] = min(limits[name], baseline[name])
-    results = {name: {"value": candidate[name], "limit": limit, "pass": candidate[name] <= limit}
+    results = {name: {"value": candidate[name], "limit": limit,
+                      "noise_tolerance":noise_margin(name,baseline[name]),
+                      "nominal_exceeded":candidate[name]>limit,
+                      "pass": candidate[name] <= limit+noise_margin(name,baseline[name])}
                for name, limit in limits.items()}
     if compilation_pending:
         results.update({name: {"value": None, "limit": None, "pass": None, "status": "pendiente_autorizado"}
@@ -113,6 +143,7 @@ def endurance_pass(data):
             and data.get("crashes") == 0 and data.get("bugchecks") == 0
             and data.get("monitor_sleep_resume") is True and data.get("hide_show") is True
             and data.get("resolution_change") is True and data.get("minidump_enabled") is True
+            and data.get('resolution_observed') is True
             and 0 <= number(data.get("memory_drift_fraction"), "deriva de memoria") < 0.05)
 
 
@@ -121,10 +152,16 @@ def evaluate(document):
         raise InvalidEvidence("Falta el escenario principal declarado: 1 ventana con 10 Relative, 60 Hz, sin carga")
     output = {"source": "INFORME-FABLE.md §8, corregido por Isaac: una capa por monitor", "scenario": "1 ventana con 10 Relative, 60 Hz, sin carga", "hub": "pendiente", "overlays": {}, "adopted": False}
     output["measurement_contract"] = {"relative_demand_ms": 33,
+        "cpu_scope":"measured process family only; dwm.exe CPU is NOT counted",
         "ipc_loss_comparison": "actual pipe sends versus subscriber receives; all origin publications retained",
         "fonts": ["Inter", "Rajdhani", "Space Mono"],
         "frame_time": "PresentMon MsBetweenPresents; presentation intervals, including on-demand cadence",
         "synthetic_load_limit": "does not measure live-game FPS or physical G-Sync"}
+    output['outlier_policy']='No numeric outliers removed or winsorized. All valid samples/rounds retained; medians and detrended blocks. Only predeclared validity failures trigger whole paired-block retries, max 3; first complete attempt, never best.'
+    output['endurance_method']={'M':'declarativo: confirmación del usuario, no prueba automática de suspensión',
+        'R':'confirmación declarativa más cambio real de resolución y restauración observados por Windows'}
+    output['noise_policy']={'relative':.025,'absolute':ABS_NOISE,'aa':'every available metric; failed round pairs requested again, variant not rejected'}
+    output['retry_request']={'schema':1,'manifest_sha256':document.get('manifest_sha256'),'blocks':[]}
     output["thermal_control"] = {"cpu_temperature": None, "cpu_temperature_status": "no_disponible",
         "signals": "GPU temperature and CPU active nominal performance, performance limit and limit flags",
         "limitation": "CPU limit signals can also reflect power or policy; they do not identify heat exclusively"}
@@ -147,6 +184,7 @@ def evaluate(document):
         if not 8 <= len(rounds) <= 24:
             raise InvalidEvidence("Faltan rondas completas")
         aa, ab, observed = [], [], {"gpui": [], name: []}
+        aa_metrics=[];repeat=[]
         observation_ids = set()
         for round_index, round_ in enumerate(rounds, 1):
             if round_.get("id") != round_index:
@@ -173,20 +211,30 @@ def evaluate(document):
                     raise InvalidEvidence("Variante distinta de la declaración")
                 observed[expected].append(row["metrics"])
             aa.append(block_ratio(controls, "cpu_cycles_s"))
+            control={metric:aa_check(controls,metric) for metric in METRICS if not compilation_pending or metric not in BUILD_METRICS}
+            aa_metrics.append(control)
+            failed_controls=[metric for metric,value in control.items() if not value['pass']]
+            if round_.get('aa_loaded'):
+                loaded_control={metric:aa_check(round_['aa_loaded'],metric) for metric in METRICS if metric in round_['aa_loaded'][0]['metrics']}
+                control['loaded']=loaded_control
+                failed_controls.extend('loaded.'+metric for metric,value in loaded_control.items() if not value['pass'])
+            if failed_controls:repeat.append({'comparison':name,'round':round_index,'metrics':failed_controls})
             ab.append(block_ratio(comparison, "cpu_cycles_s"))
             first, second = (controls, comparison) if round_index % 2 else (comparison, controls)
             if max(row["midpoint_qpc"] for row in first) >= min(row["midpoint_qpc"] for row in second):
                 raise InvalidEvidence("Los bloques no están intercalados en el orden declarado")
         stats = interval(ab)
-        if max(abs(math.log(r)) for r in aa) >= math.log(1.025):
-            output["overlays"][name] = {"verdict": "invalido_ruido", "aa_ratios": aa, "cpu": stats}
+        if repeat:
+            known_failure=any(number(data.get('endurance',{}).get(key,0),key)>0 for key in ('crashes','bugchecks')) or any(data.get('manual',{}).get(key) is False for key in CHECKLIST)
+            if not known_failure:output['retry_request']['blocks'].extend(repeat)
+            output["overlays"][name] = {"verdict": "no_adoptar" if known_failure else "repetir_bloques", "aa_ratios": aa, "aa_metrics":aa_metrics,"retry_blocks":repeat,"cpu":stats}
             continue
         medians = {variant: {metric: statistics.median(row[metric] for row in rows) for metric in METRICS if not compilation_pending or metric not in BUILD_METRICS}
                    for variant, rows in observed.items()}
         checks = compare(medians["gpui"], medians[name], name, compilation_pending)
         cpu_limit = 0.9 if name == "gpui_fast" else 1.1
         checks["cpu_cycles_s"].update(normalized_ratio=stats["median"], ratio_limit=cpu_limit,
-                                       **{"pass": stats["median"] <= cpu_limit})
+                                       **{"pass": stats["median"] <= cpu_limit+.025})
         manual = data.get("manual", {})
         correctness = all(manual.get(check) is True for check in CHECKLIST)
         endurance = endurance_pass(data.get("endurance", {}))
@@ -194,7 +242,7 @@ def evaluate(document):
         verdict = "cumple_umbrales" if not failed and correctness and endurance else "no_adoptar"
         manual_pending = any(manual.get(check) is None for check in CHECKLIST)
         manual_failed = any(manual.get(check) is False for check in CHECKLIST)
-        endurance_pending = data.get("endurance", {}).get("complete") is not True
+        endurance_pending = data.get("endurance", {}).get("complete") is not True or data.get('endurance',{}).get('resolution_observed') is not True
         observed_crash = any(number(value, key) > 0
                              for key in ("crashes", "bugchecks")
                              if (value := data.get("endurance", {}).get(key)) is not None)
@@ -213,7 +261,8 @@ def evaluate(document):
             verdict = "inconcluso_intervalo_cpu"
         if verdict == "cumple_umbrales" and compilation_pending:
             verdict = "cumple_runtime_compilacion_pendiente"
-        output["overlays"][name] = {"verdict": verdict, "cpu": stats, "aa_ratios": aa,
+        output["overlays"][name] = {"verdict": verdict, "cpu": stats, "aa_ratios": aa, "aa_metrics":aa_metrics,
+                                    "endurance_action_evidence":data.get('endurance',{}).get('action_evidence',{'monitor_sleep_resume':'declarativo','resolution_change':'R declarativa; cambio/restauración debe estar observado por Windows'}),
                                     "checks": checks, "correctness": correctness, "endurance": endurance}
     electron = document.get("hub", {}).get("electron")
     if electron:
@@ -232,7 +281,7 @@ def main():
     args = parser.parse_args()
     try:
         result = evaluate(json.loads(args.input.read_text(encoding="utf-8-sig")))
-    except (ValueError, KeyError, TypeError) as error:
+    except (ValueError, KeyError, TypeError, AttributeError) as error:
         result = {"adopted": False, "verdict": "evidencia_invalida", "reason": str(error)}
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2))

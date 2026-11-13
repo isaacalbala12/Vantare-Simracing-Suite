@@ -48,6 +48,10 @@ def summarize(folder):
     run = json.loads((folder / "ejecucion.json").read_text(encoding="utf-8-sig"))
     result = {key: run.get(key) for key in ("duration_s", "crashes", "bugchecks", "monitor_sleep_resume", "hide_show", "resolution_change", "minidump_enabled")}
     result.update(complete=False, cpu_temperature=None, cpu_temperature_status="no_disponible")
+    result['resolution_observed']=run.get('resolution_observed') is True
+    result['action_evidence'] = {'monitor_sleep_resume':'declarativo: M del usuario',
+        'resolution_change':'R del usuario + cambio/restauración observados por Windows',
+        'resolution_observed':run.get('resolution_observed') is True}
     # Un fallo observado nunca se convierte en pendiente por faltar muestras.
     if run.get("crashes", 0) or run.get("bugchecks", 0):
         result["reason"] = "Caída o incidente del sistema observado"
@@ -61,7 +65,7 @@ def summarize(folder):
         thermal = json.loads((folder / "termica.json").read_text(encoding="utf-8-sig"))
         if sample.get("complete") is not True or thermal.get("valid") is not True:
             raise ValueError("Muestreo incompleto o control térmico inválido")
-        result["complete"] = all(result[key] is True for key in ("monitor_sleep_resume", "hide_show", "resolution_change", "minidump_enabled"))
+        result["complete"] = run.get('resolution_observed') is True and all(result[key] is True for key in ("monitor_sleep_resume", "hide_show", "resolution_change", "minidump_enabled"))
         result["thermal"] = thermal
     except (KeyError, ValueError, OSError) as error:
         result["reason"] = str(error)

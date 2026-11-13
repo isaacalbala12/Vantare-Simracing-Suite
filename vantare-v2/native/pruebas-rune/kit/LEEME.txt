@@ -4,6 +4,8 @@ Este kit mide pantallas con datos grabados. NO abrir LMU ni conectar una
 cuenta. No publica nada ni cambia el motor de Vantare. Nunca usarlo en el
 servidor. Necesita Windows 11, escritorio abierto y PowerShell 7 de 64 bits.
 PresentMon incluido: versión oficial 2.6.0, con hash comprobado.
+Si el ZIP dice PENDIENTE-RUNE, faltan los tres Rune reconstruidos sin audio/MPL:
+no ejecutar la campaña. Los binarios antiguos se han retirado del paquete.
 
 ANTES DE EMPEZAR
 Cierra Vantare, el juego, navegador, Discord, OBS y grabadores (también la
@@ -103,3 +105,17 @@ El umbral principal es UNA ventana con DIEZ Relative (corrige el informe).
 Tiempos de compilación comparables pendientes autorizados: se medirán luego
 en una ventana nocturna en el servidor, mismo perfil y máquina, Rune -j1.
 El analizador nunca presenta ese pendiente como aprobado ni adopta un motor.
+
+REVISIÓN DE LOS CONTROLES
+La calibración comprueba TemperatureWarning y los sensores ANTES de medir.
+Un pico CPU de un segundo no invalida: se exige más del 10% de muestras con
+limitación, con mínimos calibrados. El ruido ajeno usa la media por PID de
+toda la ronda, no su peor segundo. Se controla también la deriva GPU entre
+rondas. La CPU de dwm.exe NO se suma a la familia del overlay.
+CRITERIOS.md explica márgenes, outliers y evidencias declarativas del aguante.
+M es declarativo; R requiere que Windows haya observado una resolución distinta
+durante al menos tres segundos y su restauración. Si R avisa, puedes continuar.
+Si ANALIZAR solicita repetir bloques, copia el veredicto al PC y ejecuta:
+  .\REPETIR_BLOQUES.ps1 -Campana 'D:\PruebaRune\campana' -Informe 'D:\PruebaRune\veredicto.json'
+No repitas la variante entera. Se conservan todos los intentos y se vuelve a
+recoger y analizar en el servidor. No se borran outliers numéricos.

@@ -7,6 +7,7 @@ from pathlib import Path, PurePosixPath
 import subprocess
 import tarfile
 import stat
+import re
 
 BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parents[2]
@@ -14,6 +15,32 @@ REPO = BENCH.parents[2]
 
 def git(*args):
     return subprocess.check_output(['git', *args], cwd=REPO)
+
+
+def provenance_source(data):
+    """Only build provenance changes; rendering source remains byte-identical."""
+    text = data.decode('utf-8')
+    start = text.index('    let manifest =', text.index('pub fn measurement_provenance()'))
+    end = text.index('    println!("cargo:rerun-if-env-changed=CARGO_PROFILE_RELEASE_LTO")', start)
+    text = text[:start] + ('    let sha = env::var("VANTARE_MEASUREMENT_SOURCE_SHA")?;\n'
+                          '    println!("cargo:rerun-if-env-changed=VANTARE_MEASUREMENT_SOURCE_SHA");\n') + text[end:]
+    text = text.replace('("DIRTY", dirty.to_string())', '("DIRTY", "not_applicable".into())')
+    text,count=re.subn(r'fn measurement_git\([\s\S]*?\n}\n','',text,count=1)
+    if count!=1:raise ValueError('No se identificó la función histórica de Git')
+    return text.encode('utf-8')
+
+
+def stamp_source(destination, recipe):
+    name = 'vantare-v2/native/build-support/src/lib.rs'
+    path = destination/name
+    if not path.exists():
+        return
+    original = git('show', recipe['source']+':'+name)
+    stamped = provenance_source(original)
+    if path.read_bytes() == original:
+        path.write_bytes(stamped)
+    elif path.read_bytes() != stamped:
+        raise ValueError('La fuente de procedencia fue modificada fuera del banco')
 
 
 def check_destination(destination):
@@ -38,6 +65,9 @@ def verify(destination, recipe):
         if kind != b'blob' or mode not in (b'100644', b'100755'):
             raise ValueError('Las fuentes deben ser archivos normales')
         path = destination/name.decode('utf-8')
+        if name == b'vantare-v2/native/build-support/src/lib.rs':
+            data = provenance_source(git('show', recipe['source']+':'+name.decode()))
+            expected = hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest().encode()
         if path.is_symlink() or not path.resolve().is_relative_to(destination.resolve()) or not path.is_file():
             raise ValueError('Falta un archivo de la fuente fijada: '+str(path))
         digest = hashlib.sha1(b'blob '+str(path.stat().st_size).encode()+b'\0')
@@ -60,6 +90,7 @@ def prepare(variant):
     if destination.exists():
         if not marker.is_file() or json.loads(marker.read_text(encoding='utf-8')) != recipe:
             raise ValueError('Conservar fuentes anteriores; el destino no coincide o quedó incompleto')
+        stamp_source(destination, recipe)
         verify(destination, recipe)
         return destination/'vantare-v2'
     paths = recipe['archive_paths']
@@ -77,6 +108,7 @@ def prepare(variant):
     for options in (['--check'], []):
         subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', *options, '--directory='+prefix, str(patch)],
                        cwd=REPO, check=True)
+    stamp_source(destination, recipe)
     verify(destination, recipe)
     marker.write_text(json.dumps(recipe, indent=2)+'\n', encoding='utf-8')
     return destination/'vantare-v2'
@@ -85,4 +117,8 @@ def prepare(variant):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('variant', choices=('gpui', 'gpui-fast', 'hub-fast', 'electron'))
-    print(prepare(parser.parse_args().variant))
+    parser.add_argument('--json', action='store_true')
+    args=parser.parse_args()
+    path=prepare(args.variant)
+    recipe=json.loads((BENCH/'fuentes-medicion.json').read_text())['variants'][args.variant]
+    print(json.dumps(dict(path=str(path),source_sha=recipe['source'],base_sha=recipe['base'],patch_sha256=recipe['patch_sha256'],provenance='verified_snapshot_env_v1')) if args.json else path)

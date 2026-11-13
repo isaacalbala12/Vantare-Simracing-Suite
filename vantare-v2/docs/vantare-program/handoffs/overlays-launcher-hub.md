@@ -1,3 +1,26 @@
+## VANTA-141 · Correcciones de revisión #2286 (13/11/2026)
+
+Rune: default-features=false y las cinco features de Hub Rune; lock regenerado
+sin Symphonia. Gate de licencias reutilizado (solo parámetro opcional para
+rutas first-party en su herramienta compartida); 428 paquetes auditados PASS,
+5 tests del checker Hub PASS. relative publish=false. Los tres Rune antiguos
+se retiran del ZIP: requieren reconstrucción Mac con esta configuración.
+
+CPU sostenida >10% con mínimos calibrados 95–98%; ruido ajeno medio por PID;
+TemperatureWarning obligatorio detectado en calibración, deriva GPU 5–8°C
+calibrada y referencias persistidas. A/A y tolerancias para todas las métricas,
+sin eliminar outliers; solicitudes de repetir parejas de bloques concretas,
+no rechazar variante ni elegir mejor A/B. M declarativo; R necesita cambio de
+píxeles observado y restauración (monitor apagado no cuenta). DWM CPU excluido
+de la familia y declarado en el informe. AttributeError produce evidencia inválida.
+
+Procedencia de CONSTRUIR desde snapshot JSON, sin Git/dirty falso. Adaptación
+determinista de build-support solo para el sello de fuentes; dibujo intacto.
+Parches antiguos .historico.txt. Nuevos criterios y guía en kit/CRITERIOS.md.
+62 tests Python, 43 contratos PS y casos térmicos/ruido/resolución puros PASS;
+fmt 1.99.1 PASS. No gráficos ni SSH al Mac. ZIP regenerado pendiente de los tres
+Rune, nunca incluye COPIAR_MAC.py ni compilar_mac.py. Fuente/CI actual en #2286.
+
 ## VANTA-141 · Integración única de las nueve piezas (13/11/2026)
 
 Refs #2213 / Plane VANTA-141 En curso. Rama vantareapp/isa-2213-integracion,

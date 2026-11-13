@@ -16,11 +16,12 @@ $recipe=$Variant.Replace('_','-')
 $expected=[IO.Path]::GetFullPath((Join-Path $bench ('fuentes-generadas/'+$recipe+'/vantare-v2')))
 if($SourceRoot -and [IO.Path]::GetFullPath($SourceRoot) -ne $expected){throw 'Solo se construyen copias aisladas del banco; nunca el workspace de producto.'}
 $python=@(Get-Command python -CommandType Application -ErrorAction Stop)[0].Source
-& $python (Join-Path $bench 'preparar_fuentes.py') $recipe
+$source=& $python (Join-Path $bench 'preparar_fuentes.py') $recipe --json
 if($LASTEXITCODE){throw 'No se pudo verificar la fuente aislada.'}
+$source=$source|ConvertFrom-Json
 $root=$expected
-if(@(& git -C $root status --porcelain).Count){throw 'La fuente debe estar limpia.'}
-$sha=(& git -C $root rev-parse HEAD).Trim()
+$sha=$source.source_sha
+$env:VANTARE_MEASUREMENT_SOURCE_SHA=$sha
 $targetRoot=$env:CARGO_TARGET_DIR
 $package=if($Variant -eq 'hub_fast'){'vantare-hub'}else{'vantare-ui'}
 $binary=if($Variant -eq 'hub_fast'){'vantare-hub'}else{'vantare-overlays'}
@@ -43,7 +44,7 @@ try{
  if(-not $match.Success){throw 'El PE no contiene procedencia.'}
  $values=@{}
  foreach($field in $match.Value.Split(';')|Select-Object -Skip 1){$key,$value=$field.Split('=',2);$values[$key]=$value}
- foreach($pair in @{sha=$sha;dirty='false';profile='release';'opt-level'='3';lto='false';'codegen-units'='16'}.GetEnumerator()){
+ foreach($pair in @{sha=$sha;profile='release';'opt-level'='3';lto='false';'codegen-units'='16'}.GetEnumerator()){
   if($values[$pair.Key] -ne $pair.Value){throw "Procedencia o perfil distintos: $($pair.Key)"}
  }
  foreach($feature in $features.Split(',')){
@@ -52,7 +53,7 @@ try{
  $dump='C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\dumpbin.exe'
  & $dump /dependents $target | Set-Content -LiteralPath (Join-Path $ArtifactDirectory 'dumpbin.txt')
  if($LASTEXITCODE){throw 'dumpbin falló.'}
- [ordered]@{source_sha=$sha;variant=$Variant;sha256=(Get-FileHash -LiteralPath $target).Hash.ToLowerInvariant()
+ [ordered]@{source_sha=$sha;source_snapshot=$source;variant=$Variant;sha256=(Get-FileHash -LiteralPath $target).Hash.ToLowerInvariant()
   bytes=(Get-Item $target).Length;embedded_provenance=$values;build_elapsed_s=$watch.Elapsed.TotalSeconds
   profile='release';opt_level=3;lto=$false;codegen_units=16;debug=$false;incremental=$false
   target=$targetRoot;comparable_build_time=$false;executed=$false}|

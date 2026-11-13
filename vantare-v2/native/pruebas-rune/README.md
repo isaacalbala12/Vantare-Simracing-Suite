@@ -1,5 +1,25 @@
 # Pruebas Rune - VANTA-141 / #2213
 
+## Revisión de #2286
+
+Rune desactiva default-features y usa exactamente accessibility, dbus,
+embedded-fonts, metal-backend y svg como hub-rune. check_dependencies.py
+reutiliza su política de licencias; no copia el analizador SPDX. El lock no
+incluye Symphonia/MPL. Los tres Rune anteriores requieren reconstrucción en
+Mac y no se incluyen en el ZIP provisional PENDIENTE-RUNE. No ejecutar ese ZIP.
+
+kit/CRITERIOS.md fija proporción sostenida CPU, calibración previa de sensores,
+deriva GPU, ruido medio por PID, tolerancia en todas las métricas, outliers y
+repetición selectiva. El coste CPU de dwm.exe no está incluido en la familia.
+M de aguante es declarativo; R necesita cambio y restauración observados.
+
+La procedencia de CONSTRUIR_VARIANTE sale del snapshot verificado por
+preparar_fuentes.py. La única adaptación adicional de build-support es un
+sello determinista desde VANTARE_MEASUREMENT_SOURCE_SHA; no consulta .git ni
+inventa un estado dirty del snapshot. El código de dibujo sigue fijado.
+Los dos parches antiguos se conservan solo como .patch.historico.txt; no se
+aplican ni empaquetan. La receta activa está en parches/ y protege destinos.
+
 ## Integración aislada de los nueve PR
 
 Este banco reúne #2222, #2224, #2238, #2242, #2241, #2249, #2251, #2261 y

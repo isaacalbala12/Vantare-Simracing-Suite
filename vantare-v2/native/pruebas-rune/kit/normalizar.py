@@ -11,7 +11,7 @@ import math
 from pathlib import Path
 
 from agregar import frame_metrics, gpu_metrics, noise_metrics, percentile, presentmon, process_metrics
-from analizar import PRIMARY, block_ratio
+from analizar import PRIMARY, METRICS, block_ratio, aa_check
 from cruce_rune import cross_encoded, first_display
 from latencia import complete_replay, cross_display, read_trace
 from normalizar_inicio import normalize_home
@@ -121,7 +121,7 @@ def normalize_observation(folder):
                midpoint_qpc=(start+end)//2, noise_ok=True, environment_ok=True,
                trace_overflow=0, trace_complete=True, metrics=metrics,
                source_folder=str(folder), sent_photos=sent_count, source_publications=len(published),
-               first_display_photos=len(latency), thermal=thermal)
+               first_display_photos=len(latency), thermal=thermal, family=meta['family'])
     return row
 
 
@@ -136,9 +136,24 @@ def normalize(root):
     observations = []
     for descriptor in sorted(root.rglob("observacion.json")):
         meta = read_json(descriptor)
-        if selected.get(meta["family"]) == meta["attempt"]:
+        if selected.get(meta["family"]) == meta["attempt"] and not meta.get('repair_attempt'):
             observations.append(normalize_observation(descriptor.parent))
-    output = {"schema": 1, "configuration": PRIMARY, "binaries": campaign["binaries"],
+    repair_ledger=root/'repeticiones.jsonl'
+    accepted=set()
+    if repair_ledger.exists():
+        for record in (json.loads(line) for line in repair_ledger.read_text(encoding='utf-8-sig').splitlines() if line.strip()):
+            key=(record['family'],record['round'])
+            if record.get('event')!='end' or record.get('status')!='complete' or key in accepted:
+                continue
+            folder=(root/record['folder']).resolve()
+            require(folder.is_relative_to(root.resolve()),'Repetición fuera de la campaña')
+            repaired=[normalize_observation(path.parent) for path in sorted(folder.rglob('observacion.json'))]
+            require(all((row['family'],row['round'])==key for row in repaired),'Repetición de otra ronda/familia')
+            if not valid_control_repair(repaired):
+                continue
+            observations=[row for row in observations if (row['family'],row['round'])!=key]
+            observations.extend(repaired);accepted.add(key)
+    output = {"schema": 1, "configuration": PRIMARY, "binaries": campaign["binaries"], "manifest_sha256":campaign.get('manifest_sha256'),
               "compilation": {"status": "pending_authorized", "plan": campaign["compilation_plan"]},
               "comparisons": {}, "additional_observations": [], "failed_attempts": [row for row in records if row.get("status") in ("invalid", "cancelled")]}
     for comparison in ("rune", "gpui_fast"):
@@ -156,8 +171,7 @@ def normalize(root):
                 base = sorted((row for row in primary if row["round"] == index and row["block"] == block), key=lambda row: row["midpoint_qpc"])
                 companion = sorted((row for row in loaded if row["round"] == index and row["block"] == block), key=lambda row: row["midpoint_qpc"])
                 require(len(base) == len(companion) == 4, "Bloque con carga incompleto")
-                if block == "aa":
-                    require(abs(math.log(block_ratio(companion, "load_p99_ms"))) < math.log(1.025), "Control A/A de la carga supera 2,5%")
+                if block == 'aa':round_['aa_loaded']=companion
                 for row, load in zip(base, companion):
                     require(row["role"] == load["role"] and row["variant"] == load["variant"]
                             and row["binary_sha256"] == load["binary_sha256"], "Pareja de carga distinta")
@@ -180,6 +194,12 @@ def normalize(root):
     elif hub.exists():
         output["hub"] = read_json(hub)
     return output
+
+
+def valid_control_repair(rows):
+    controls=sorted((row for row in rows if row['block']=='aa'),key=lambda row:row['midpoint_qpc'])
+    return (len(rows)==8 and len(controls)==4 and sum(row['block']=='ab' for row in rows)==4
+            and all(aa_check(controls,metric)['pass'] for metric in controls[0]['metrics'] if metric in METRICS))
 
 
 if __name__ == "__main__":

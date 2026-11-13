@@ -92,13 +92,13 @@ try {
          $controls.Add($result)
          if($controls.Count -eq 4){
           $ratio=Get-VantareControlRatio -Rows $controls.ToArray()
-          if([math]::Abs([math]::Log($ratio)) -ge [math]::Log(1.025)){throw 'Control A/A de CPU supera el 2,5%.'}
-          if($loaded){$loadRatio=Get-VantareControlRatio -Rows $controls.ToArray() -Metric 'load_control_p99_ms';if([math]::Abs([math]::Log($loadRatio)) -ge [math]::Log(1.025)){throw 'Control A/A de la carga supera el 2,5%.'}}
+          if([math]::Abs([math]::Log($ratio)) -gt [math]::Log(1.025)){Write-Warning 'A/A CPU ruidoso: se conserva y el análisis solicitará repetir solo estos bloques.'}
+          if($loaded){$loadRatio=Get-VantareControlRatio -Rows $controls.ToArray() -Metric 'load_control_p99_ms';if([math]::Abs([math]::Log($loadRatio)) -gt [math]::Log(1.025)){Write-Warning 'A/A carga ruidoso: se conserva para repetición selectiva.'}}
           $controls.Clear()
          }
         }
        }
-       Complete-VantareAttempt -Ledger $ledger -Family $family -Attempt $attempt.attempt -Status complete -Reason "$($plan.Count) observaciones capturadas; ruido, A/A y térmica correctos, cruce crudo pendiente del servidor"
+       Complete-VantareAttempt -Ledger $ledger -Family $family -Attempt $attempt.attempt -Status complete -Reason "$($plan.Count) observaciones capturadas; IPC, ruido medio y térmica comprobados; A/A de todas las métricas y cruce pendientes del servidor"
        $done=$true
       } catch {
        Complete-VantareAttempt -Ledger $ledger -Family $family -Attempt $attempt.attempt -Status invalid -Reason $_.Exception.Message

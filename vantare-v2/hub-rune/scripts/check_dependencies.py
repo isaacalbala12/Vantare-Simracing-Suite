@@ -85,11 +85,11 @@ def permissive(expression):
         return False
 
 
-def audit(metadata):
+def audit(metadata, first_party=None):
     first_party = {
         (ROOT.parent / "native" / crate / "Cargo.toml").resolve()
         for crate in LOCAL_CRATES
-    } | {(ROOT / "Cargo.toml").resolve()}
+    } | {(ROOT / "Cargo.toml").resolve()} if first_party is None else {Path(path).resolve() for path in first_party}
     errors = []
     for package in metadata["packages"]:
         name = package["name"]

@@ -13,6 +13,9 @@ Assert-VantareGamePc
 $campaignLease=Enter-VantareCampaignLease
 try {
 $kit=Read-VantareKit $PSScriptRoot
+. (Join-Path $PSScriptRoot 'muestreador/TERMICA.ps1')
+. (Join-Path $PSScriptRoot 'RESOLUCION.ps1')
+$thermalCalibration=Read-VantareThermalCalibration -Directory $OutputDirectory
 $crashControl=Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Control\CrashControl'
 if ($crashControl.CrashDumpEnabled -ne 3) { throw 'Activar antes Volcado de memoria pequeño en Windows. No se cambia la configuración desde el kit.' }
 if (-not @(Get-CimInstance Win32_PageFileUsage).Count) { throw 'Se necesita archivo de paginación para el volcado pequeño.' }
@@ -70,7 +73,19 @@ try {
  Write-Host 'Aguante de 4 h. H: ocultar/mostrar la capa (dos veces).'
  Write-Host 'Tras apagar físicamente el monitor y volver: M. Tras cambiar resolución y restaurarla: R.'
  Write-Host 'M y R son confirmaciones de lo que has observado. Q cancela conservando los datos.'
+ $observedResolution=$false;$nextDisplayPoll=0L
+ $run.monitor_sleep_resume_evidence='declarativo: confirmación M del usuario'
+ $run.resolution_change_evidence='confirmación R + cambio y restauración observados por Windows'
  while (([Diagnostics.Stopwatch]::GetTimestamp()-$run.start_qpc)/$run.frequency -lt 14400) {
+  $clock=[Diagnostics.Stopwatch]::GetTimestamp()
+  if($clock -ge $nextDisplayPoll){
+   $display=@(Get-CimInstance Win32_VideoController|Select-Object Name,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate)
+   if(Test-VantareActualResolutionChange $initialDisplay $display){
+    if(-not $observedResolution){$events.Add([pscustomobject]@{qpc=$clock;kind='resolution_change_observed';display=$display})}
+    $observedResolution=$true;$run.resolution_observed=$true
+   }
+   $nextDisplayPoll=$clock+2*$run.frequency
+  }
   if ($ui.Process.HasExited) { $run.crashes++; throw 'Caída de la interfaz durante el aguante.' }
   if ($sampler.Process.HasExited) { throw 'El muestreador terminó antes de cuatro horas.' }
   if ($core.Process.HasExited) { throw 'El núcleo terminó inesperadamente.' }
@@ -89,7 +104,8 @@ try {
     M { $run.monitor_sleep_resume=$true }
     R {
      $current=@(Get-CimInstance Win32_VideoController | Select-Object Name,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate)
-     if (($current | ConvertTo-Json -Compress) -ne ($initialDisplay | ConvertTo-Json -Compress)) { throw 'Restaurar primero la resolución y frecuencia iniciales.' }
+     if(-not(Test-VantareResolutionConfirmation $observedResolution $initialDisplay $current)){Write-Warning 'No se observó cambio real y restauración. Mantener el cambio al menos tres segundos y restaurar antes de R.';break}
+     if (($current | ConvertTo-Json -Compress) -ne ($initialDisplay | ConvertTo-Json -Compress)) { Write-Warning 'Restaurar primero la resolución y frecuencia iniciales.';break }
      $run.resolution_change=$true
     }
     Q { throw 'Cancelado por Isaac.' }
@@ -129,7 +145,7 @@ try {
   try {
    . (Join-Path $PSScriptRoot 'muestreador/TERMICA.ps1')
    $complete=Get-Content (Join-Path $out 'muestreo/completo.json') -Raw | ConvertFrom-Json -AsHashtable
-   $thermal=Measure-VantareThermals -Counters @(Import-Csv (Join-Path $out 'muestreo/contadores.csv')) -Temperatures @(Import-Csv (Join-Path $out 'muestreo/temperaturas.csv')) -ProcessIds @($complete.family.Keys | ForEach-Object {[int]$_}) -Frequency $run.frequency -StartQpc $run.start_qpc -EndQpc ($run.start_qpc+14400*$run.frequency) -IntervalSeconds 10
+   $thermal=Measure-VantareThermals -Counters @(Import-Csv (Join-Path $out 'muestreo/contadores.csv')) -Temperatures @(Import-Csv (Join-Path $out 'muestreo/temperaturas.csv')) -ProcessIds @($complete.family.Keys | ForEach-Object {[int]$_}) -Frequency $run.frequency -StartQpc $run.start_qpc -EndQpc ($run.start_qpc+14400*$run.frequency) -IntervalSeconds 10 -Policy $thermalCalibration.Policy
    $thermal | Add-Member -NotePropertyName source_sha256 -NotePropertyValue @{
     'contadores.csv'=(Get-FileHash (Join-Path $out 'muestreo/contadores.csv')).Hash.ToLowerInvariant()
     'temperaturas.csv'=(Get-FileHash (Join-Path $out 'muestreo/temperaturas.csv')).Hash.ToLowerInvariant()}

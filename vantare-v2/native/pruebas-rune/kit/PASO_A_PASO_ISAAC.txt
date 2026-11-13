@@ -1,6 +1,6 @@
 PRUEBA RUNE / GPUI — PASOS PARA ISAAC
 
-1. Espera el ZIP COMPLETO. Si el nombre contiene PENDIENTE-INICIO, todavía
+1. Espera el ZIP COMPLETO. Si el nombre contiene PENDIENTE, todavía
    no ejecutes la prueba. Descomprime todo junto; no muevas binarios sueltos.
    Usa el PC de juego, su escritorio físico y Windows 11. Nada de servidor
    ni Escritorio remoto. No abras el simulador: solo usaremos la grabación.

@@ -9,7 +9,7 @@ function Test-VantareRawThermals {
   $endurance=$file.Name -eq 'ejecucion.json'
   if(($endurance -and -not $meta.finished) -or (-not $endurance -and $meta.status -ne 'complete')){continue}
   $folder=$file.DirectoryName
-  $thermal=Get-Content -LiteralPath (Join-Path $folder 'termica.json') -Raw | ConvertFrom-Json
+  $thermal=Get-Content -LiteralPath (Join-Path $folder 'termica.json') -Raw | ConvertFrom-Json -AsHashtable
   $sample=Join-Path $folder 'muestreo'
   $complete=Get-Content -LiteralPath (Join-Path $sample 'completo.json') -Raw | ConvertFrom-Json -AsHashtable
   if($complete.complete -ne $true){throw 'Muestreo térmico incompleto.'}
@@ -25,7 +25,10 @@ function Test-VantareRawThermals {
    if((Get-FileHash -LiteralPath (Join-Path $sample $name)).Hash.ToLowerInvariant() -ne $thermal.source_sha256.$name){throw 'Cambió la evidencia térmica.'}
   }
   $interval=if($endurance){10.0}else{1.0}
-  $recomputed=Measure-VantareThermals -Counters @(Import-Csv (Join-Path $sample 'contadores.csv')) -Temperatures @(Import-Csv (Join-Path $sample 'temperaturas.csv')) -ProcessIds @($complete.family.Keys|ForEach-Object {[int]$_}) -Frequency $frequency -StartQpc $start -EndQpc $end -IntervalSeconds $interval
+  $hz=if($meta.ContainsKey('hz')){[int]$meta.hz}else{60}
+  $calibration=Read-VantareThermalCalibration -Directory $Root -Hz $hz
+  foreach($key in $calibration.Policy.Keys){if($thermal.policy_parameters[$key] -ne $calibration.Policy[$key]){throw 'Política térmica diferente de la calibración congelada.'}}
+  $recomputed=Measure-VantareThermals -Counters @(Import-Csv (Join-Path $sample 'contadores.csv')) -Temperatures @(Import-Csv (Join-Path $sample 'temperaturas.csv')) -ProcessIds @($complete.family.Keys|ForEach-Object {[int]$_}) -Frequency $frequency -StartQpc $start -EndQpc $end -IntervalSeconds $interval -Policy $calibration.Policy -ReferenceGpu $thermal.reference_gpu_c
   if(-not $recomputed.valid -or -not $thermal.valid){throw 'Limitación CPU o temperatura GPU: evidencia inválida.'}
  }
 }

@@ -13,6 +13,7 @@ try {
 $kit=Read-VantareKit $PSScriptRoot
 $env:PATH=(Join-Path $kit.Root 'bin')+[IO.Path]::PathSeparator+$env:PATH
 $root=[IO.Path]::GetFullPath($Campana)
+$thermalCalibration=Read-VantareThermalCalibration -Directory $root
 $campaign=Get-Content (Join-Path $root 'campana.json') -Raw | ConvertFrom-Json
 if ($campaign.manifest_sha256 -ne $kit.ManifestSha256) { throw 'Usar el mismo kit de la campaña B.' }
 $lockPath=Join-Path $root 'EN-CURSO.lock'
@@ -90,7 +91,10 @@ function Capture-Inicio($variant,$phase,$index,$qaProfile) {
   $counters=@(Import-Csv (Join-Path $folder 'muestreo/contadores.csv'))
   $start=$meta.ready_observed_qpc+$meta.frequency
   $end=[long]($counters | Measure-Object -Property qpc -Maximum).Maximum
-  $thermal=Measure-VantareThermals -Counters $counters -Temperatures @(Import-Csv (Join-Path $folder 'muestreo/temperaturas.csv')) -ProcessIds @($complete.family.Keys | ForEach-Object {[int]$_}) -Frequency $meta.frequency -StartQpc $start -EndQpc $end
+  $referenceFile=Join-Path $out 'gpu-referencia.json'
+  $reference=if(Test-Path $referenceFile){(Get-Content $referenceFile -Raw|ConvertFrom-Json -AsHashtable).gpu_start_c}else{@{}}
+  $thermal=Measure-VantareThermals -Counters $counters -Temperatures @(Import-Csv (Join-Path $folder 'muestreo/temperaturas.csv')) -ProcessIds @($complete.family.Keys | ForEach-Object {[int]$_}) -Frequency $meta.frequency -StartQpc $start -EndQpc $end -Policy $thermalCalibration.Policy -ReferenceGpu $reference
+  if($thermal.valid -and -not(Test-Path $referenceFile)){@{gpu_start_c=$thermal.gpu_start_c;source_folder=$folder}|ConvertTo-Json -Depth 5|Out-File -LiteralPath $referenceFile -NoClobber -Encoding utf8}
   $thermal | Add-Member -NotePropertyName source_sha256 -NotePropertyValue @{
    'contadores.csv'=(Get-FileHash (Join-Path $folder 'muestreo/contadores.csv')).Hash.ToLowerInvariant()
    'temperaturas.csv'=(Get-FileHash (Join-Path $folder 'muestreo/temperaturas.csv')).Hash.ToLowerInvariant()}

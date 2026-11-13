@@ -1,7 +1,13 @@
 import copy
 import unittest
+import json
+import tempfile
+import sys
+from pathlib import Path
+from unittest.mock import patch
 
 from analizar import CHECKLIST, METRICS, PRIMARY, InvalidEvidence, block_ratio, compare, evaluate, interval
+from analizar import main
 
 
 BASE = dict(zip(METRICS, [100, 80, 64, 2, 10, 0, 10, 10, .5, 100, 10]))
@@ -29,7 +35,7 @@ def campaign(candidate="rune", ratio=1.05):
             rowsets[block] = rows
         rounds.append({"id": index, **rowsets})
     endurance = {"complete": True, "duration_s": 14400, "crashes": 0, "bugchecks": 0,
-                 "monitor_sleep_resume": True, "hide_show": True, "resolution_change": True,
+                 "monitor_sleep_resume": True, "hide_show": True, "resolution_change": True, "resolution_observed":True,
                  "minidump_enabled": True, "memory_drift_fraction": .01}
     return {"schema": 1, "configuration": dict(PRIMARY), "binaries": hashes,
             "compilation": {"status": "verified", "machines": dict.fromkeys(hashes, "synthetic-same-machine")},
@@ -45,6 +51,13 @@ def candidate_metrics(document, field, value, candidate="rune"):
 
 
 class ThresholdTests(unittest.TestCase):
+    def test_attribute_error_is_reported_as_invalid_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source=Path(folder)/'input.json';output=Path(folder)/'output.json'
+            source.write_text('[]')
+            with patch.object(sys,'argv',['analizar',str(source),'--output',str(output)]):
+                self.assertEqual(main(),2)
+            self.assertEqual(json.loads(output.read_text())['verdict'],'evidencia_invalida')
     def test_complete_campaign_passes_without_adopting_a_technology(self):
         result = evaluate(campaign())
         self.assertEqual(result["overlays"]["rune"]["verdict"], "cumple_umbrales")
@@ -137,14 +150,18 @@ class ThresholdTests(unittest.TestCase):
             for row in round_["aa"]:
                 if row["role"] == "B":
                     row["metrics"]["cpu_cycles_s"] *= 1.026
-        self.assertEqual(evaluate(data)["overlays"]["rune"]["verdict"], "invalido_ruido")
+        result=evaluate(data)
+        self.assertEqual(result["overlays"]["rune"]["verdict"], "repetir_bloques")
+        self.assertEqual(len(result['retry_request']['blocks']),8)
 
     def test_fast_needs_ten_percent_cpu_and_no_other_regression(self):
         self.assertEqual(evaluate(campaign("gpui_fast", .85))["overlays"]["gpui_fast"]["verdict"], "cumple_umbrales")
         data = campaign("gpui_fast", .91)
-        self.assertEqual(evaluate(data)["overlays"]["gpui_fast"]["verdict"], "no_adoptar")
+        self.assertEqual(evaluate(data)["overlays"]["gpui_fast"]["verdict"], "inconcluso_intervalo_cpu")
         data = campaign("gpui_fast", .85)
         candidate_metrics(data, "visible_s", .51, "gpui_fast")
+        self.assertEqual(evaluate(data)["overlays"]["gpui_fast"]["verdict"], "cumple_umbrales")
+        candidate_metrics(data, "visible_s", .53, "gpui_fast")
         self.assertEqual(evaluate(data)["overlays"]["gpui_fast"]["verdict"], "no_adoptar")
 
     def test_boundary_limits_are_not_rounded_before_comparison(self):
@@ -153,7 +170,33 @@ class ThresholdTests(unittest.TestCase):
                       visible_s=.75)
         self.assertTrue(all(row["pass"] for row in compare(BASE, values, "rune").values()))
         values["private_mib"] += .0001
+        self.assertTrue(compare(BASE, values, "rune")["private_mib"]["pass"])
+        values['private_mib']=102.0001
         self.assertFalse(compare(BASE, values, "rune")["private_mib"]["pass"])
+
+    def test_aa_checks_every_metric_including_zero_drops(self):
+        for metric in METRICS:
+            data=campaign()
+            for row in data['comparisons']['rune']['rounds'][0]['aa']:
+                if row['role']=='B':row['metrics'][metric]+=max(BASE[metric]*.1,3)
+            result=evaluate(data)
+            self.assertEqual(result['overlays']['rune']['verdict'],'repetir_bloques',metric)
+            self.assertEqual(result['retry_request']['blocks'][0]['round'],1)
+            self.assertIn(metric,result['retry_request']['blocks'][0]['metrics'])
+
+    def test_bad_control_never_hides_an_observed_crash(self):
+        data=campaign()
+        data['comparisons']['rune']['endurance']['crashes']=1
+        for row in data['comparisons']['rune']['rounds'][0]['aa']:
+            if row['role']=='B':row['metrics']['private_mib']*=2
+        result=evaluate(data)
+        self.assertEqual(result['overlays']['rune']['verdict'],'no_adoptar')
+        self.assertEqual(result['retry_request']['blocks'],[])
+
+    def test_declarative_r_alone_cannot_complete_endurance(self):
+        data=campaign()
+        del data['comparisons']['rune']['endurance']['resolution_observed']
+        self.assertEqual(evaluate(data)['overlays']['rune']['verdict'],'pendiente_validacion_fisica')
 
     def test_block_removes_linear_time_drift(self):
         rows = [{"role": role, "midpoint_qpc": i+1, "metrics": {"cpu_cycles_s":

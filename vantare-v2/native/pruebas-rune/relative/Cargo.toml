@@ -2,6 +2,7 @@
 name = "vantare-overlays-rune"
 version = "0.0.0"
 edition = "2024"
+publish = false
 
 [features]
 medir-latencia = ["vantare-ipc/medir-latencia", "vantare-profiling/medir-latencia"]

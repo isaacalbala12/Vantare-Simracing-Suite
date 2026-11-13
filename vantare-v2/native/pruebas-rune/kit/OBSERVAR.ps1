@@ -3,6 +3,9 @@ function Invoke-VantareOverlayObservation {
  param([Parameter(Mandatory)]$Kit,[Parameter(Mandatory)]$Observation,
        [Parameter(Mandatory)][string]$OutputDirectory,[int]$LoadIterations=0)
  Assert-VantareGamePc
+ $calibration=Read-VantareThermalCalibration -Directory $OutputDirectory -Hz $Observation.hz
+ $referenceFile=Join-Path (Split-Path $calibration.Path) ('gpu-ref-n'+$Observation.copies+'-carga'+[int]$Observation.load+'.json')
+ $reference=if(Test-Path $referenceFile){(Get-Content $referenceFile -Raw|ConvertFrom-Json -AsHashtable).gpu_start_c}else{@{}}
  $out=[IO.Path]::GetFullPath($OutputDirectory)
  if (Test-Path -LiteralPath $out) { throw 'La observación necesita una carpeta nueva.' }
  $null=New-Item -ItemType Directory -Path $out
@@ -92,18 +95,19 @@ function Invoke-VantareOverlayObservation {
   if ($origin.Count -ne 3840) { throw 'La grabación no produjo las 3840 publicaciones.' }
   $start=[long]($origin | Measure-Object -Property qpc -Minimum).Minimum
   $complete=Get-Content (Join-Path $out 'muestreo/completo.json') -Raw | ConvertFrom-Json -AsHashtable
-  $thermal=Measure-VantareThermals -Counters @(Import-Csv (Join-Path $out 'muestreo/contadores.csv')) -Temperatures @(Import-Csv (Join-Path $out 'muestreo/temperaturas.csv')) -ProcessIds @($complete.family.Keys | ForEach-Object {[int]$_}) -Frequency $frequency -StartQpc $start -EndQpc ($start+60*$frequency)
+  $thermal=Measure-VantareThermals -Counters @(Import-Csv (Join-Path $out 'muestreo/contadores.csv')) -Temperatures @(Import-Csv (Join-Path $out 'muestreo/temperaturas.csv')) -ProcessIds @($complete.family.Keys | ForEach-Object {[int]$_}) -Frequency $frequency -StartQpc $start -EndQpc ($start+60*$frequency) -Policy $calibration.Policy -ReferenceGpu $reference
   $thermal | Add-Member -NotePropertyName source_sha256 -NotePropertyValue @{
    'contadores.csv'=(Get-FileHash (Join-Path $out 'muestreo/contadores.csv')).Hash.ToLowerInvariant()
    'temperaturas.csv'=(Get-FileHash (Join-Path $out 'muestreo/temperaturas.csv')).Hash.ToLowerInvariant()}
   $thermal | ConvertTo-Json -Depth 8 | Out-File -Width 2147483647 (Join-Path $out 'termica.json') -NoClobber
   if (-not $thermal.valid) { throw 'Limitación CPU o temperatura GPU: observación inválida.' }
+  if(-not(Test-Path $referenceFile)){@{gpu_start_c=$thermal.gpu_start_c;source_folder=$out}|ConvertTo-Json -Depth 5|Out-File -LiteralPath $referenceFile -NoClobber -Encoding utf8}
   $exclusions.ToArray() | ConvertTo-Json -AsArray | Out-File -Width 2147483647 (Join-Path $out 'muestreo/ruido-exclusiones.json') -NoClobber
   $environment=Get-Content (Join-Path $out 'muestreo/entorno.json') -Raw | ConvertFrom-Json
   $excluded=@($exclusions | ForEach-Object {[int]$_.process_id})+@($complete.family.Keys | ForEach-Object {[int]$_})+@([int]$complete.sampler_id,[int]$complete.presentmon_id)
   $noise=Measure-VantareNoise -Counters @(Import-Csv (Join-Path $out 'muestreo/contadores.csv')) -ExcludedProcessIds $excluded -LogicalProcessors $environment.logical_processors -StartQpc $start -EndQpc ($start+60*$frequency) -Frequency $frequency
   $noise | ConvertTo-Json -Depth 6 | Out-File -Width 2147483647 (Join-Path $out 'ruido.json') -NoClobber
-  if (-not $noise.noise_ok) { throw 'Otro proceso superó el 2% de CPU: familia inválida.' }
+  if (-not $noise.noise_ok) { throw 'Otro proceso superó el 2% medio de CPU de toda la ronda: familia inválida.' }
   $rootIdentity=Get-Content (Join-Path $out 'raiz.json') -Raw|ConvertFrom-Json
   $meta.cpu_control_cycles_s=Get-VantareCpuControl -Rows @(Import-Csv (Join-Path $out 'muestreo/procesos.csv')) -RootProcessId $rootIdentity.process_id -Frequency $frequency -StartQpc $start -EndQpc ($start+60*$frequency)
   $meta.midpoint_qpc=$start+30*$frequency

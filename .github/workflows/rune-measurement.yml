@@ -61,12 +61,25 @@ jobs:
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
           & "$bench/kit/VALIDAR_GUIONES.ps1" -Roots @($bench) -ExcludeGenerated
+          & "$bench/muestreador/test_termica.ps1"
+          & "$bench/muestreador/test_termica_sostenida.ps1"
+          & "$bench/kit/test_resolucion.ps1"
+          & "$bench/kit/test_ruido.ps1" "$bench/muestreador/TERMICA.ps1"
+      - name: Enforce shared Hub Rune license policy
+        run: python native/pruebas-rune/check_dependencies.py
       - name: Validate isolated IPC instrumentation with Rust 1.99.1
         run: |
           $manifest='native/pruebas-rune/fuentes-generadas/gpui/vantare-v2/native/Cargo.toml'
           cargo +1.99.1 clippy --manifest-path $manifest --locked --release -p vantare-ipc -p vantare-profiling --features medir-latencia --lib -j 2 -- -D warnings
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           cargo +1.99.1 test --manifest-path $manifest --locked --release -p vantare-ipc -p vantare-profiling --features medir-latencia --lib -j 2
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check snapshot source provenance without running overlays
+        run: |
+          $source=python native/pruebas-rune/preparar_fuentes.py gpui --json | ConvertFrom-Json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $env:VANTARE_MEASUREMENT_SOURCE_SHA=$source.source_sha
+          cargo +1.99.1 check --manifest-path "$($source.path)/native/Cargo.toml" --locked --release -p vantare-ui --bin vantare-overlays --features medir-latencia -j 2
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Verify the combined Rune workspace without compiling its renderer
         run: |

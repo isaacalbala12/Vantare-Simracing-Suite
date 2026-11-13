@@ -34,4 +34,7 @@ if ((Run-ThermalCase @(Samples) $thermal).valid) { throw 'No se detectó el avis
 $rejected=$false
 try { Run-ThermalCase @((Samples) | Where-Object counter -ne 'cpu_limit_flags') @(Temperatures) | Out-Null } catch { $rejected=$true }
 if (-not $rejected) { throw 'Datos CPU ausentes se trataron como sin limitación.' }
+$missing=@(Temperatures);$missing[0].warning_c='';$rejected=$false
+try{Run-ThermalCase @(Samples) $missing|Out-Null}catch{$rejected=$_.Exception.Message -match 'TemperatureWarning'}
+if(-not $rejected){throw 'Sensor sin TemperatureWarning no se detectó antes de las rondas.'}
 Write-Output 'PASS: turbo, reposo, throttling, frecuencia nominal, GPU y ausencia de sensor CPU; sin API nativa.'

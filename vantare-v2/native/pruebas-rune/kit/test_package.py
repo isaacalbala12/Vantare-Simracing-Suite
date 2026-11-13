@@ -11,6 +11,11 @@ class PackageIntegrityTests(unittest.TestCase):
             pending_roles({"pending_binaries": ["inicio_rune"]}, False)
         self.assertEqual(pending_roles({}, False), set())
 
+    def test_unrebuilt_rune_binaries_are_all_omitted(self):
+        roles=['hello','relative_rune','inicio_rune']
+        self.assertEqual(pending_roles({'pending_binaries':roles},False,True),set(roles))
+        with self.assertRaises(ValueError):pending_roles({'pending_binaries':roles+['core']},False,True)
+
     def test_provisional_package_allows_only_the_authorized_missing_role(self):
         self.assertEqual(pending_roles({"pending_binaries": ["inicio_rune"]}, True), {"inicio_rune"})
         for roles in ([], ["relative_rune"], ["inicio_rune", "core"]):

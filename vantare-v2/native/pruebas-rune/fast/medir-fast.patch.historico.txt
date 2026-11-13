@@ -1,3 +1,5 @@
+HISTÓRICO: NO APLICAR EN PRODUCTO. La receta activa solo opera en fuentes-generadas.
+
 diff --git a/vantare-v2/native/build-support/src/lib.rs b/vantare-v2/native/build-support/src/lib.rs
 index d3f375609..06a6b4442 100644
 --- a/vantare-v2/native/build-support/src/lib.rs

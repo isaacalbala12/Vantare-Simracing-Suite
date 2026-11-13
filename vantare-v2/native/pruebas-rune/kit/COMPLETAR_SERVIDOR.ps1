@@ -1,18 +1,14 @@
-# Una sola copia cuando el orquestador confirme que el Mac está despierto.
-# No compila, no reintenta SSH, no ejecuta ningún PE.
+# Cierra el kit con los tres Rune reconstruidos sin audio/MPL y ya copiados.
+# No compila, no hace SSH y no ejecuta ningún PE.
 [CmdletBinding()]
-param([switch]$CopiarMac)
+param([switch]$CopiarMac,[string]$RuneArtifacts,[string]$RuneSourceSha)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $root='D:/VantareServer/evidence/rune-vs-gpui'
-$artifact=Join-Path $root 'artefactos/pieza8-54ef276c3-transfer03'
 $python=@(Get-Command python -CommandType Application -ErrorAction Stop)[0].Source
-if($CopiarMac){
- & $python (Join-Path $PSScriptRoot 'COPIAR_MAC.py') --host 100.91.91.82 --user isaacalbala --source-sha 54ef276c38ed4e7f70ed220db57257898f56ec2c --output $artifact
- if($LASTEXITCODE){throw 'No se pudo copiar Inicio Rune; sin reintentos automáticos.'}
-}
-if(-not(Test-Path -LiteralPath (Join-Path $artifact 'vantare-inicio-rune.exe'))){throw 'Falta el binario nuevo de Inicio Rune.'}
-& $python (Join-Path $PSScriptRoot 'GENERAR_MANIFIESTO.py')
+if($CopiarMac){throw 'No reutilizar el Inicio antiguo. Reconstruir los tres Rune sin audio/MPL y copiar sus artefactos auditados.'}
+if(-not $RuneArtifacts -or $RuneSourceSha -notmatch '^[a-f0-9]{40}$'){throw 'Indicar RuneArtifacts y RuneSourceSha de la reconstrucción auditada en Mac.'}
+& $python (Join-Path $PSScriptRoot 'GENERAR_MANIFIESTO.py') --rune-artifact-root $RuneArtifacts --rune-source-sha $RuneSourceSha
 if($LASTEXITCODE){throw 'Manifiesto final incompleto; conservar cualquier intento anterior.'}
 & (Join-Path $PSScriptRoot 'package.ps1') -Manifest (Join-Path $root 'manifiesto-kit-20261113.json') -Staging (Join-Path $root 'kit/staging-20261113-FINAL') -Output (Join-Path $root 'kit/kit-rune-vs-gpui-2026-11-13.zip')
 if($LASTEXITCODE){throw 'No se pudo cerrar el ZIP final.'}

@@ -205,8 +205,9 @@ def gpu_metrics(rows, process_ids, frequency, start_qpc, end_qpc):
 def noise_metrics(rows, excluded_process_ids, logical_processors, frequency, start_qpc, end_qpc):
     if isinstance(logical_processors,bool) or not isinstance(logical_processors,int) or logical_processors <= 0:
         raise ValueError("Numero de procesadores logicos no valido")
-    offenders, maxima = [], []
-    for clock, samples in counter_ticks(rows, frequency, start_qpc, end_qpc).items():
+    offenders, maxima, totals = [], [], defaultdict(float)
+    ticks = counter_ticks(rows, frequency, start_qpc, end_qpc)
+    for clock, samples in ticks.items():
         ids, cpus = {}, {}
         for row in samples:
             if row["counter"] not in ("process_id", "process_cpu"):
@@ -236,7 +237,10 @@ def noise_metrics(rows, excluded_process_ids, logical_processors, frequency, sta
             # percent before applying Fable's strictly-above-two-percent rule.
             percent = finite(cpu["value"], "CPU de otro proceso") / logical_processors
             maximum = max(maximum,percent)
-            if percent > 2:
-                offenders.append({"qpc":clock,"process_id":pid,"percent_machine":percent})
+            totals[pid] += percent
         maxima.append(maximum)
-    return {"noise_ok":not offenders,"max_other_cpu_percent":max(maxima),"offenders":offenders}
+    means = {pid: value/len(ticks) for pid, value in totals.items()}
+    offenders = [{"process_id":pid,"mean_percent_machine":value} for pid, value in means.items() if value > 2]
+    return {"noise_ok":not offenders,"max_other_cpu_percent":max(maxima),
+            "max_other_mean_cpu_percent":max(means.values(),default=0),"offenders":offenders,
+            "policy":"per PID mean over full round; absent process contributes zero"}

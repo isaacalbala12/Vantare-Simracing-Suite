@@ -1,6 +1,7 @@
 """Inventario del kit: solo lee fuentes y artefactos; no ejecuta programas."""
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 ROOT = Path('D:/VantareServer/evidence/rune-vs-gpui')
@@ -19,8 +20,16 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--pending-inicio-rune', action='store_true')
+    parser.add_argument('--pending-rune',action='store_true')
+    parser.add_argument('--rune-artifact-root',type=Path)
+    parser.add_argument('--rune-source-sha')
+    parser.add_argument('--output',type=Path)
     parser.add_argument('--inicio-artifact', default='pieza8-54ef276c3-transfer03/vantare-inicio-rune.exe')
     options = parser.parse_args()
+    if options.pending_rune and not options.rune_source_sha:
+        options.rune_source_sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=BENCH,text=True).strip()
+    if not options.pending_rune and (not options.rune_artifact_root or not options.rune_source_sha):
+        parser.error('Indicar los binarios Rune RECONSTRUIDOS y su SHA fuente; no se reutilizan los antiguos con audio/MPL')
     import sys
     sys.path.insert(0, str(KIT))
     from package import SCRIPTS
@@ -59,8 +68,11 @@ def main():
     ]
     binaries = {}
     for role, artifact, name, source_sha in specs:
-        if not (role == 'inicio_rune' and options.pending_inicio_rune):
-            add(ROOT/'artefactos'/artifact, 'bin/'+name)
+        is_rune=role in ('hello','relative_rune','inicio_rune')
+        if not ((is_rune and options.pending_rune) or (role == 'inicio_rune' and options.pending_inicio_rune)):
+            source=options.rune_artifact_root/name if is_rune else ROOT/'artefactos'/artifact
+            add(source, 'bin/'+name)
+        if is_rune and options.rune_source_sha:source_sha=options.rune_source_sha
         binaries[role] = dict(path='bin/'+name, source_sha=source_sha, profile=PROFILE)
     electron = ROOT/'artefactos/pieza8b-electron-e1ba4aa57/hub-electron'
     for file in sorted(electron.rglob('*')):
@@ -69,12 +81,13 @@ def main():
     binaries['inicio_electron'] = dict(path='bin/hub-electron/vantare-hub-ui.exe', source_sha='e1ba4aa57a9279c0532ca3d68217df2ddbe470c3', profile='release')
     if options.pending_inicio_rune:
         add(KIT/'INICIO-RUNE-PENDIENTE.txt', 'INICIO-RUNE-PENDIENTE.txt')
+    if options.pending_rune:add(KIT/'RUNE-PENDIENTE.txt','RUNE-PENDIENTE.txt')
     manifest = dict(schema=1, task='VANTA-141', issue=2213, binaries=binaries, files=rows,
-                    ready=not options.pending_inicio_rune,
-                    pending_binaries=['inicio_rune'] if options.pending_inicio_rune else [],
+                    ready=not (options.pending_inicio_rune or options.pending_rune),
+                    pending_binaries=['hello','relative_rune','inicio_rune'] if options.pending_rune else ['inicio_rune'] if options.pending_inicio_rune else [],
                     measurement='PC de juego, telemetría grabada exclusivamente',
                     compilation=dict(status='pending_authorized', plan='Servidor sin otros workers en madrugada; Rune Release -j1 y GPUI mismo perfil; limpia e incremental en la misma máquina.'))
-    output = ROOT/('manifiesto-kit-20261113-PENDIENTE-INICIO.json' if options.pending_inicio_rune else 'manifiesto-kit-20261113.json')
+    output = options.output or ROOT/('manifiesto-kit-20261113-REVISION-PENDIENTE-RUNE.json' if options.pending_rune else 'manifiesto-kit-20261113-PENDIENTE-INICIO.json' if options.pending_inicio_rune else 'manifiesto-kit-20261113.json')
     with output.open('x', encoding='utf-8') as stream:
         json.dump(manifest, stream, ensure_ascii=False, indent=2)
     print(json.dumps(dict(manifest=str(output), files=len(rows))))

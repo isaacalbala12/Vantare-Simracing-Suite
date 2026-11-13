@@ -1,6 +1,7 @@
 import type { HostToUi, ResidentView } from "../../contract/generated/contract";
 import { residentActionLabels } from "../../contract/generated/launcher_resident";
 import type { MockContext, MockHandler } from "../context";
+import { createResidentControlMock } from "../resident-control";
 export const residentMockFinishDelayMs = 1000;
 export function create(
   context: MockContext,
@@ -87,17 +88,20 @@ export function create(
         ],
       };
   }
+  const control = createResidentControlMock(context, view, schedule);
   const event = (): HostToUi => ({
     kind: "event",
     event: { topic: "launcherResident", value: structuredClone(view) },
   });
   return (message) => {
+    const controlled = control(message);
+    if (controlled) return controlled;
     if (message.kind === "subscribe" && message.topic === "launcherResident")
       return event();
     if (
       message.kind === "request" &&
       message.request.method === "launcher.resident.answer" &&
-      checked
+      (checked || context.sceneName === "launcher-control-closing")
     ) {
       const target = message.request.target;
       const scope = view.execution?.question;
@@ -153,24 +157,46 @@ export function create(
                           ? "unavailable"
                           : "stale-question",
                   }
-                : { kind: "accepted", run: "1" },
+                : { kind: "accepted", run: scope.run },
             },
           });
           view.execution.question = null;
           view.decision = null;
           context.emit?.(event());
-          if (context.sceneName === "launcher-answer-finished")
+          if (
+            context.sceneName === "launcher-answer-finished" ||
+            context.sceneName === "launcher-control-closing"
+          )
             schedule(() => {
               if (!view.execution) return;
               view.execution.events.push({
-                seq: "3",
+                seq: String(
+                  BigInt(view.execution.events.at(-1)?.seq ?? "0") + 1n,
+                ),
                 kind: {
                   kind: "finished",
-                  run: "1",
-                  outcome: { kind: "completed" },
+                  run: scope.run,
+                  outcome:
+                    context.sceneName === "launcher-control-closing"
+                      ? { kind: "cancelled", reason: "user" }
+                      : { kind: "completed" },
                 },
               });
               view.running = false;
+              view.execution.active = null;
+              if (
+                context.launcherData &&
+                context.sceneName === "launcher-control-closing"
+              ) {
+                context.launcherData.running = false;
+                context.emit?.({
+                  kind: "event",
+                  event: {
+                    topic: "launcher",
+                    value: structuredClone(context.launcherData),
+                  },
+                });
+              }
               context.emit?.(event());
             }, residentMockFinishDelayMs);
         }, 0);

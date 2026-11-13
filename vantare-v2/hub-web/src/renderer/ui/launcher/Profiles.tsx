@@ -10,6 +10,8 @@ import {
 } from "../../../contract/generated/contract";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import { launcherText as text } from "../../i18n/launcher";
+import { controlText } from "../../i18n/launcher-control";
+import type { ResidentControlController } from "../../screens/launcher/resident-control";
 import { Button } from "../Button";
 import { Callout } from "../Data";
 import { Tooltip } from "../Layers";
@@ -72,12 +74,14 @@ export function LauncherProfiles({
   onNew,
   onApplications,
   onAction,
+  control,
 }: {
   view: LauncherView;
   selected?: string;
   pending: boolean;
   error?: string;
   accepted: boolean;
+  control?: ResidentControlController;
   onEdit?: (id: string) => void;
   onNew?: () => void;
   onApplications?: () => void;
@@ -90,6 +94,23 @@ export function LauncherProfiles({
     view.profiles.find((item) => item.id === selected) ??
     view.profiles.find((item) => item.favorite) ??
     view.profiles[0];
+  const cancelTarget = control?.cancelTarget;
+  const rehearseTarget =
+    profile && control?.scope
+      ? { ...control.scope, profile: profile.id, revision: view.revision }
+      : undefined;
+  const cancelReason =
+    control && cancelTarget
+      ? control.reason({ kind: "cancel", target: cancelTarget })
+      : control?.capable
+        ? "active"
+        : "unsupported";
+  const rehearseReason =
+    control && rehearseTarget
+      ? control.reason({ kind: "rehearse", target: rehearseTarget })
+      : control?.capable
+        ? "unavailable"
+        : "unsupported";
   const apps = (item: LauncherProfile) =>
     item.apps.flatMap((id) => {
       const app = view.apps.find((app) => app.id === id);
@@ -153,10 +174,26 @@ export function LauncherProfiles({
             <h2>{profile.name}</h2>
             <p>{profile.description || text.defaultDescription}</p>
             <div className="v-launcher-actions">
-              {view.running && (
-                <Tooltip label={text.cancelUnavailable}>
+              {(view.running || cancelTarget) && (
+                <Tooltip
+                  label={
+                    cancelReason
+                      ? controlText[cancelReason]
+                      : controlText.cancelHelp
+                  }
+                >
                   <span>
-                    <Button disabled>{text.cancel}</Button>
+                    <Button
+                      disabled={!control}
+                      aria-disabled={!!cancelReason}
+                      aria-describedby="launcher-cancel-help"
+                      onClick={() => {
+                        if (control && cancelTarget && !cancelReason)
+                          void control.cancel(cancelTarget);
+                      }}
+                    >
+                      {text.cancel}
+                    </Button>
                   </span>
                 </Tooltip>
               )}
@@ -166,6 +203,7 @@ export function LauncherProfiles({
                     variant="primary"
                     className="v-launcher-launch"
                     disabled={
+                      !!control?.busy ||
                       !profile.launchable ||
                       view.protected ||
                       pending ||
@@ -182,17 +220,66 @@ export function LauncherProfiles({
               </Tooltip>
               <Button
                 data-launcher-edit
-                disabled={!onEdit || pending || view.running || view.protected}
+                disabled={
+                  !onEdit ||
+                  pending ||
+                  view.running ||
+                  view.protected ||
+                  control?.busy
+                }
                 onClick={() => onEdit?.(profile.id)}
               >
                 {text.edit}
               </Button>
-              <Tooltip label={text.rehearseUnavailable}>
+              <Tooltip
+                label={
+                  rehearseReason
+                    ? controlText[rehearseReason]
+                    : controlText.rehearseHelp
+                }
+              >
                 <span>
-                  <Button disabled>{text.rehearse}</Button>
+                  <Button
+                    disabled={!control}
+                    aria-disabled={!!rehearseReason || pending}
+                    aria-describedby="launcher-rehearse-help"
+                    onClick={() => {
+                      if (
+                        control &&
+                        rehearseTarget &&
+                        !rehearseReason &&
+                        !pending
+                      )
+                        void control.rehearse(rehearseTarget);
+                    }}
+                  >
+                    {text.rehearse}
+                  </Button>
                 </span>
               </Tooltip>
             </div>
+            {control && (
+              <div className="v-launcher-control-help">
+                <p
+                  id="launcher-rehearse-help"
+                  className={rehearseReason ? undefined : "v-resident-live"}
+                >
+                  {rehearseReason
+                    ? controlText[rehearseReason]
+                    : controlText.rehearseHelp}
+                </p>
+                {(view.running || cancelTarget) && (
+                  <p
+                    id="launcher-cancel-help"
+                    className={cancelReason ? undefined : "v-resident-live"}
+                  >
+                    {cancelReason
+                      ? controlText[cancelReason]
+                      : controlText.cancelHelp}
+                  </p>
+                )}
+              </div>
+            )}
             <ol className="v-launcher-chain">
               {apps(profile).map((app, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: Read-only sequence slots; repeated apps are valid.

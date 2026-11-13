@@ -15,6 +15,7 @@ import {
   queuedAnswer,
   sameAnswerScope,
 } from "./resident-answer-model";
+import { residentTerminalNoticeMs } from "./resident-control-model";
 export interface AnswerClock {
   now(): number;
   schedule(callback: () => void, delay: number): () => void;
@@ -94,6 +95,16 @@ export function useResidentAnswer(
       },
       Math.max(0, attempt.phase.until - time.now()),
     );
+  }, [attempt, time, publish]);
+  useEffect(() => {
+    if (
+      !attempt ||
+      (attempt.phase.kind !== "finished" && attempt.phase.kind !== "rejected")
+    )
+      return;
+    return time.schedule(() => {
+      if (latest.current === attempt) publish(undefined);
+    }, residentTerminalNoticeMs);
   }, [attempt, time, publish]);
   function available(action: ResidentAction) {
     const { view, core, client, issue } = current.current;

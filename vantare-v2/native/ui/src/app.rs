@@ -1449,6 +1449,63 @@ pub fn run_with_connection(
     run_placed_authorized(placed, snapshots, prefs, rights, connection, shutdown);
 }
 
+/// Relative real en mosaico para VANTA-141; mismo host, widget y proyeccion.
+#[cfg(feature = "medir-latencia")]
+pub fn run_relative_measurement(
+    copies: usize,
+    snapshots: flume::Receiver<Arc<Snapshot>>,
+    connection: vantare_ipc::ConnectionStatus,
+    shutdown: Option<flume::Receiver<()>>,
+) {
+    let layout = relative_measurement_layout(copies);
+    run_host(
+        HostLayout {
+            layout,
+            watched: None,
+            connection: Some(connection),
+        },
+        snapshots,
+        None,
+        vantare_ipc::Photo::full,
+        None,
+        false,
+        shutdown,
+    );
+}
+
+#[cfg(feature = "medir-latencia")]
+fn relative_measurement_layout(copies: usize) -> crate::layout::Layout {
+    use crate::look::WorkshopLook as _;
+    assert!(matches!(copies, 1 | 4 | 10));
+    let prefs = Preferences::default();
+    let settings = crate::look::Look::default().workshop_defaults(Kind::Relative);
+    let size = Widget::new(&settings, prefs).size();
+    let (dx, dy) = layout_offset();
+    let columns = if copies == 1 {
+        1
+    } else if copies == 4 {
+        2
+    } else {
+        4
+    };
+    let placed = (0..copies)
+        .map(|index| {
+            (
+                Kind::Relative,
+                (
+                    dx + 20.0 + (index % columns) as f32 * (size.0 + 12.0),
+                    dy + 20.0 + (index / columns) as f32 * (size.1 + 12.0),
+                ),
+            )
+        })
+        .collect();
+    let mut layout = campaign_layout(placed, prefs);
+    for instance in &mut layout.instances {
+        instance.settings = settings.clone();
+    }
+    layout
+}
+
 fn run_placed_authorized(
     placed: Vec<(Kind, (f32, f32))>,
     snapshots: flume::Receiver<Arc<Snapshot>>,
@@ -1499,6 +1556,36 @@ fn campaign_layout(placed: Vec<(Kind, (f32, f32))>, prefs: Preferences) -> crate
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "medir-latencia")]
+    #[test]
+    fn measurement_is_relative_vantare_without_overlap_and_every_photo() {
+        for copies in [1, 4, 10] {
+            let layout = relative_measurement_layout(copies);
+            assert_eq!(
+                layout.instances[0].settings.demand(),
+                vantare_ipc::relative_measurement_demand()
+            );
+            assert_eq!(layout.instances.len(), copies);
+            for (index, instance) in layout.instances.iter().enumerate() {
+                assert_eq!(instance.settings.kind(), Kind::Relative);
+                assert_eq!(
+                    instance.settings.appearance().unwrap().0,
+                    crate::look::Look::Vantare
+                );
+                assert_eq!(layout.performance.widgets.get(&instance.id), Some(&0));
+                let size = Widget::new(&instance.settings, layout.preferences).size();
+                for other in layout.instances.iter().skip(index + 1) {
+                    assert!(
+                        other.x >= instance.x + size.0
+                            || instance.x >= other.x + size.0
+                            || other.y >= instance.y + size.1
+                            || instance.y >= other.y + size.1
+                    );
+                }
+            }
+        }
+    }
+
     #[test]
     fn campaign_preserves_placements_duplicates_and_every_photo_cadence() {
         let prefs = Preferences {

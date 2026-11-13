@@ -1,0 +1,38 @@
+[
+  {
+    "file": "Inter-400.ttf",
+    "sha256": "68de6c5ca72566ecbef77b4928f200bc3209db8450e6d78eb03596d218839d57"
+  },
+  {
+    "file": "Inter-500.ttf",
+    "sha256": "ddc1ed2b17bd6137d3d2be996282d045e779b3170f37393046133e4dd3243291"
+  },
+  {
+    "file": "Inter-600.ttf",
+    "sha256": "3752f1ad27e7895daba32b9122a8c26aa42edb638e32a28db41588db14ebc15a"
+  },
+  {
+    "file": "Inter-650.ttf",
+    "sha256": "d723325fe65e64550590352441818c78a963220cc9608743a90528b28e338712"
+  },
+  {
+    "file": "Inter-700.ttf",
+    "sha256": "126d9557fd3ff8961656347b8aed9df31933e839e3c40b1594843c141ae3e696"
+  },
+  {
+    "file": "Inter-750.ttf",
+    "sha256": "c05db589aad9d989c938aae480e51598554da09bb87cf1fab6ae64b15d78f79e"
+  },
+  {
+    "file": "Inter-800.ttf",
+    "sha256": "a5d7976ab14aa771d4995c8e4070d81f27f3ac441ab3c10ecebb19792c1a4c12"
+  },
+  {
+    "file": "Rajdhani.ttf",
+    "sha256": "89be8d3d12966c2c5a491f24e5f3d6729c5181b47cc2f7d93734e2778422a199"
+  },
+  {
+    "file": "SpaceMono.ttf",
+    "sha256": "c9f1ba6b9514538b4b8ea88881a1ebe07c2792482f7e97cc79386174579a242e"
+  }
+]

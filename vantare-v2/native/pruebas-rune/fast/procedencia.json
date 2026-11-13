@@ -1,0 +1,9 @@
+{
+  "base": "745bd52b847d1c6a53151146a124db4edcf95aa6",
+  "source": "a4271dd6f4701089f4bb3f74a7f5e690bd8b8341",
+  "patch_sha256": "1e4f8f366cad95f8b7c9c5b5d5448e8471bfe877bf1a8ef521a5b7f0a18bb79e",
+  "product_changes": "solo opcion medir-latencia, mosaico del anfitrion real e instrumentacion; sin cambios de renderer fuera del registro opt-in",
+  "compiled": false,
+  "previous_verified_source": "194880d709e51b5eeb4e37642de4803069a9ebd5",
+  "apply_option": "--unidiff-zero"
+}

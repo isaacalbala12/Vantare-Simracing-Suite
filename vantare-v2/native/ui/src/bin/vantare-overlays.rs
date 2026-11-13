@@ -131,6 +131,10 @@ fn application_main() -> ExitCode {
     {
         return vantare_ui::capture::run(path.into());
     }
+    #[cfg(feature = "medir-latencia")]
+    if args.first().is_some_and(|arg| arg == "--medicion-relative") {
+        return measurement_main(&args[1..], controlled);
+    }
     let Some((windows, layout, feed)) = parse(&args) else {
         let _written = writeln!(std::io::stderr(), "{USAGE}");
         return ExitCode::from(2);
@@ -191,6 +195,32 @@ fn application_main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+#[cfg(feature = "medir-latencia")]
+fn measurement_main(args: &[String], controlled: bool) -> ExitCode {
+    let [count, flag, source] = args else {
+        return failure("uso: --medicion-relative 1|4|10 --fuente pipe[:nombre] --control-stdin");
+    };
+    let Ok(copies @ (1 | 4 | 10)) = count.parse::<usize>() else {
+        return failure("copias invalidas");
+    };
+    if flag != "--fuente" || !controlled {
+        return failure("medicion requiere pipe y control stdin");
+    }
+    let Ok(Feed::Pipe(name)) = source.parse::<Feed>() else {
+        return failure("medicion requiere IPC real");
+    };
+    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+        let name = name.map_or_else(vantare_ipc::default_pipe_name, Ok)?;
+        let demand = vantare_ipc::relative_measurement_demand();
+        let handle = vantare_ui::source::DemandHandle::new(demand);
+        let connection = handle.connection();
+        let photos = vantare_ui::source::pipe_feed_observed(&name, Some(handle))?;
+        vantare_ui::run_relative_measurement(copies, photos, connection, parent_shutdown(true)?);
+        Ok(())
+    })();
+    result.map_or_else(failure, |()| ExitCode::SUCCESS)
+}
+
 fn failure(error: impl std::fmt::Display) -> ExitCode {
     let _written = writeln!(std::io::stderr(), "vantare-overlays: {error}");
     ExitCode::FAILURE
@@ -244,6 +274,10 @@ fn main() -> ExitCode {
         env!("VANTARE_MEASUREMENT_OPT_LEVEL"),
         ";features=",
         env!("VANTARE_MEASUREMENT_FEATURES"),
+        ";lto=",
+        env!("VANTARE_MEASUREMENT_LTO"),
+        ";codegen_units=",
+        env!("VANTARE_MEASUREMENT_CODEGEN_UNITS"),
         ";lto=false;codegen-units=16;incremental=false"
     ));
 

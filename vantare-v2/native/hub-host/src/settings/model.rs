@@ -118,6 +118,8 @@ pub enum Density {
     Comfortable,
 }
 
+pub const DEFAULT_WINDOWS_NOTIFICATIONS: bool = true;
+
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -130,6 +132,8 @@ pub struct Preferences {
     pub minimized: bool,
     pub updates: bool,
     pub launcher: bool,
+    // Existing documents without this field retain the former disabled default.
+    #[serde(default)]
     pub toasts: bool,
 }
 impl Default for Preferences {
@@ -142,7 +146,7 @@ impl Default for Preferences {
             minimized: false,
             updates: true,
             launcher: true,
-            toasts: false,
+            toasts: DEFAULT_WINDOWS_NOTIFICATIONS,
         }
     }
 }

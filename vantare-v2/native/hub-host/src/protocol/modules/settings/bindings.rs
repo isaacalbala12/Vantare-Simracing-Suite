@@ -1,5 +1,6 @@
 use crate::protocol::bindings::{constants, declare};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
+use crate::settings::model::{DEFAULT_WINDOWS_NOTIFICATIONS, DEFAULT_ZOOM};
 // Bindings and Rust-serialized examples owned by this screen.
 
 pub(crate) fn typescript() -> String {
@@ -13,6 +14,11 @@ pub(crate) fn typescript() -> String {
     declare::<crate::settings::model::AppearanceSettings>(&mut text);
     declare::<crate::settings::model::Density>(&mut text);
     declare::<crate::settings::model::Preferences>(&mut text);
+    constants!(
+        &mut text,
+        "defaultWindowsNotifications",
+        DEFAULT_WINDOWS_NOTIFICATIONS
+    );
     declare::<crate::settings::StartupView>(&mut text);
     declare::<crate::settings::SettingsView>(&mut text);
     declare::<crate::settings::SettingsPatch>(&mut text);
@@ -66,11 +72,7 @@ pub(crate) fn typescript() -> String {
         ]
     );
     constants!(&mut text, "zoomLevels", crate::settings::model::ZOOM_LEVELS);
-    constants!(
-        &mut text,
-        "defaultZoom",
-        crate::settings::model::DEFAULT_ZOOM
-    );
+    constants!(&mut text, "defaultZoom", DEFAULT_ZOOM);
     constants!(
         &mut text,
         "contrastRange",

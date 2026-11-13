@@ -232,6 +232,7 @@ describe("Studio A honest states", () => {
     expect(screen.getByText(t.protectedHelp)).toBeTruthy();
     expect(screen.getByRole("button", { name: t.reload })).toBeTruthy();
     expect(screen.queryByRole("button", { name: t.retry })).toBeNull();
+    expect(screen.queryByRole("button", { name: t.discard })).toBeNull();
     expect(
       within(
         screen.getByRole("complementary", { name: t.layoutLabel }),
@@ -318,9 +319,19 @@ describe("Studio A honest states", () => {
       await screen.findAllByRole("button", { name: /^Standings(?: \d+)?,/ });
       const add = await screen.findByRole("button", { name: t.add });
       expect(add.hasAttribute("disabled")).toBe(true);
-      if (scene === "studio-a-limite")
+      if (scene === "studio-a-limite") {
         expect(
           screen.getByText(t.overlaysCount(studioLimits.instances)),
+        ).toBeTruthy();
+        const trigger = add.closest(".v-tooltip-trigger");
+        if (!trigger) throw new Error("Missing Add tooltip trigger");
+        await userEvent.hover(trigger);
+        expect((await screen.findByRole("tooltip")).textContent).toContain(
+          t.atLimit(studioLimits.instances),
+        );
+      } else
+        expect(
+          screen.getByText(t.verifyWidget, { selector: "strong" }),
         ).toBeTruthy();
       fireEvent.click(add);
       expect(requests.mock.calls.some(([r]) => r.method === "studio.add")).toBe(

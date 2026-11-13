@@ -347,7 +347,6 @@ describe("Studio Foco interactions", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     await screen.findByRole("button", { name: /^Standings,/ });
-    fireEvent.click(screen.getByRole("tab", { name: t.track }));
     await openTrack();
     const slider = await screen.findByRole("slider", { name: t.opacity });
     expect(slider.getAttribute("min")).toBe("20");
@@ -523,6 +522,7 @@ describe("Studio Foco interactions", () => {
   it.each(["card", "menu"])(
     "returns focus to the %s when deletion is cancelled",
     async (origin) => {
+      const requests = vi.spyOn(Client.prototype, "request");
       mount();
       const user = userEvent.setup();
       const card = await screen.findByRole("button", { name: /^Standings,/ });
@@ -533,11 +533,21 @@ describe("Studio Foco interactions", () => {
       if (origin === "card") {
         await tabTo(user, card);
         await user.keyboard("{Delete}");
-      } else await openRemove(user);
+      } else {
+        await openTrack();
+        expect(screen.queryByRole("button", { name: t.remove })).toBeNull();
+        await openRemove(user);
+      }
       const dialog = await screen.findByRole("dialog");
       await user.click(within(dialog).getByRole("button", { name: t.cancel }));
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       await waitFor(() => expect(document.activeElement).toBe(source));
+      expect(screen.getByRole("button", { name: /^Standings,/ })).toBe(card);
+      expect(
+        requests.mock.calls.some(
+          ([request]) => request.method === "studio.remove",
+        ),
+      ).toBe(false);
     },
   );
   it("focuses Add after removing the final widget", async () => {

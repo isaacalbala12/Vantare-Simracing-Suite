@@ -397,7 +397,7 @@ fn launch_button(state: &State, favorite: bool) -> El {
             content = content.child(shortcut(theme, text("home.ctrlL")).color(foreground));
         }
     }
-    button_content(
+    let button = button_content(
         theme,
         if favorite {
             "home-launch-favorite"
@@ -419,7 +419,12 @@ fn launch_button(state: &State, favorite: bool) -> El {
     .disabled(!allowed)
     .h(if favorite { 46.0 } else { 36.0 })
     .fill(theme.color(if allowed { "accent-fill" } else { "surface-2" }))
-    .border(1.0, theme.color("accent-bright"))
+    .border(1.0, theme.color("accent-bright"));
+    if favorite {
+        button
+    } else {
+        button.w(36.0).min_w(36.0).padding(0.0)
+    }
 }
 fn shortcut(theme: &Theme, value: &str) -> El {
     label(theme, value)
@@ -560,34 +565,80 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         .key("home-composer")
         .w_full()
         .h(52.0)
-        .padding(8.0)
+        .px(12.0)
         .gap(10.0)
         .center_y()
         .radius(10.0)
         .fill(theme.color("surface-1"))
+        .border(1.0, theme.color("line-1"))
+        .border_layout()
         .child(
             button_content(
                 theme,
                 "home-search",
                 text("home.search"),
                 row()
-                    .gap(10.0)
+                    .w_full()
+                    .gap(12.0)
                     .center_y()
-                    .child(symbol(theme, "search", 16.0))
-                    .child(label(theme, text("home.search")).color(theme.color("text-3"))),
+                    .child(symbol(theme, "search", 16.0).key("home-search-icon"))
+                    .child(
+                        label(theme, text("home.search"))
+                            .key("home-search-placeholder")
+                            .color(theme.color("text-3"))
+                            .grow(1.0)
+                            .min_w(0.0)
+                            .truncate(),
+                    ),
                 crate::home_chrome::open_commands,
             )
             .grow(1.0)
             .min_w(0.0)
+            .h(36.0)
+            .padding(0.0)
+            .px(8.0)
+            .justify_start()
             .fill(theme.color("surface-1")),
         )
         .child(
-            button(theme, "home-select", selected, |s: &mut State| {
-                s.home.choosing = !s.home.choosing
-            })
+            button_content(
+                theme,
+                "home-select",
+                selected,
+                row()
+                    .w_full()
+                    .gap(8.0)
+                    .center_y()
+                    .child(
+                        label(theme, selected)
+                            .font(body_style(14.0, 400.0))
+                            .color(theme.color("text-2"))
+                            .grow(1.0)
+                            .min_w(0.0)
+                            .truncate(),
+                    )
+                    .child(symbol(theme, "down", 12.0).key("home-select-arrow")),
+                |s: &mut State| s.home.choosing = !s.home.choosing,
+            )
+            .w(168.0)
+            .min_w(168.0)
+            .h(38.0)
+            .padding(0.0)
+            .px(12.0)
+            .fill(theme.color("surface-1"))
+            .border(1.0, theme.color("line-1"))
+            .border_layout()
+            .expanded(state.home.choosing)
             .disabled(data.is_none_or(|v| v.profiles.is_empty())),
         )
-        .child(shortcut(theme, text("home.ctrlK")))
+        .child(
+            shortcut(theme, text("home.ctrlK"))
+                .px(5.0)
+                .py(2.0)
+                .border(1.0, theme.color("line-1"))
+                .border_layout()
+                .fill(theme.color("surface-2")),
+        )
         .child(launch_button(state, false));
     if state.home.choosing
         && let Some(value) = data
@@ -631,7 +682,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         .a11y_hidden()
         .pin(None, Some(0.0), Some(0.0), None)
     });
-    let hero = col()
+    let mut hero = col()
         .key("home-hero")
         .w_full()
         .h(hero_height)
@@ -640,12 +691,16 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         .radius(12.0)
         .clip_rounded(12.0)
         .fill(theme.color("bg-base"))
-        .border(1.0, theme.color("hero-ring"))
-        .child(
-            picture(state, "hero", hero_width, hero_height, true)
-                .a11y_hidden()
-                .pin(Some(0.0), Some(0.0), None, None),
-        )
+        .border(1.0, theme.color("hero-ring"));
+    // Paint the image as the hero's background, below the circuit and content.
+    if let Some(image) = state
+        .home_assets
+        .as_ref()
+        .and_then(|a| a.images.get("hero"))
+    {
+        hero = hero.pixels_fit(image.pixels(), SurfaceFit::Fill);
+    }
+    let hero = hero
         .child(circuit)
         .child(
             small(
@@ -685,9 +740,13 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             }),
         ))
         .child(el().grow(1.0))
-        .child(row().gap(8.0).child(launch_button(state, true)).child(
-            studio_button(state, "home-studio", text("home.studio")).fill(theme.color("bg-base")),
-        ));
+        .child(
+            row().gap(8.0).child(launch_button(state, true)).child(
+                studio_button(state, "home-studio", text("home.studio"))
+                    .fill(theme.color("bg-base").alpha(0.0))
+                    .border(1.0, theme.color("line-3")),
+            ),
+        );
     page = page.child(hero);
     let mut overlay = card(theme, "home-overlay", text("home.overlay"));
     let mut activity = card(theme, "home-activity", text("home.activity"));
@@ -919,14 +978,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         }
         rail = rail.child(pair);
     }
-    rail = rail
-        .w(rail_width)
-        .child(el().grow(1.0))
-        .child(studio_button(
-            state,
-            "home-rail-studio",
-            text("home.studio"),
-        ));
+    rail = rail.w(rail_width);
 
     row()
         .key("home-screen")
@@ -949,6 +1001,87 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hero_keeps_the_shared_red_gradient_in_the_cpu_image_atlas() {
+        for scheme in ["light", "dark"] {
+            let theme = Theme::load("vantare", scheme).unwrap();
+            let cache = ImageCache::new(std::sync::Arc::new(|| {}));
+            let image = cache.svg(theme.hero_svg().into_bytes(), 1000.0, 1.0);
+            image.wait().unwrap();
+            let mut rt =
+                rune::Runtime::new((), |_, _| el(), (1000.0, 236.0), rune::Env::new(true, 1.0));
+            let placed = rt.images.place(image.pixels(), [1000.0, 236.0]).unwrap();
+            let page = &rt.images.pages[placed.page];
+            let [x, y, _, _] = placed.rect;
+            let pixel = |dx, dy| {
+                let offset = (((y + dy) * page.width + x + dx) * 4) as usize;
+                <[u8; 4]>::try_from(&page.data[offset..offset + 4]).unwrap()
+            };
+            let left = pixel(30, 118);
+            let right = pixel(970, 118);
+            assert!(
+                left[0] > left[1] + 30,
+                "{scheme}: hero must stay red, {left:?} -> {right:?}"
+            );
+            assert_ne!(left, right, "{scheme}: gradient must vary across the hero");
+        }
+    }
+    #[test]
+    fn inicio_base_composer_matches_electron_geometry_in_both_schemes_at_three_scales() {
+        for scheme in ["light", "dark"] {
+            for scale in [1.0, 1.25, 1.5] {
+                let mut state = crate::init();
+                crate::capture_preset(&mut state, &format!("home-{scheme}")).unwrap();
+                state.core.access.verified = true;
+                state.home.value = Some(
+                    serde_json::from_value(catalog()["home"]["scenes"]["inicio-base"].clone())
+                        .unwrap(),
+                );
+                let fonts =
+                    rune::text::TextSystem::new(crate::design::FONTS, ("Inter W400", "Space Mono"));
+                let mut rt = rune::Runtime::with_text(
+                    state,
+                    crate::view,
+                    (1440.0, 900.0),
+                    rune::Env::new(true, scale),
+                    fonts,
+                );
+                for _ in 0..4 {
+                    rt.frame(0.0);
+                }
+                let elements = rt.elements();
+                let rect = |key: &str| {
+                    elements
+                        .iter()
+                        .find(|e| e.key.as_deref() == Some(key))
+                        .unwrap()
+                        .rect
+                };
+                let composer = rect("home-composer");
+                let icon = rect("home-search-icon");
+                let placeholder = rect("home-search-placeholder");
+                let selector = rect("home-select");
+                let arrow = rect("home-select-arrow");
+                let play = rect("home-launch-selected");
+                // Electron: 1px border + 12px inset, then search icon at 8px and text at 36px.
+                assert!(
+                    (icon[0] - composer[0] - 21.0).abs() <= 1.0,
+                    "{scheme}/{scale}: {icon:?}"
+                );
+                assert!((placeholder[0] - composer[0] - 49.0).abs() <= 1.0);
+                assert!((selector[2] - 168.0).abs() <= 1.0);
+                assert!((selector[3] - 38.0).abs() <= 1.0);
+                assert!(placeholder[0] + placeholder[2] < selector[0]);
+                assert!(
+                    arrow[0] > selector[0] + 140.0
+                        && arrow[0] + arrow[2] < selector[0] + selector[2]
+                );
+                assert!((play[2] - 36.0).abs() <= 1.0);
+                assert!(rt.find("home-studio").is_some());
+                assert!(rt.find("home-rail-studio").is_none());
+            }
+        }
+    }
     #[test]
     fn unavailable_core_keeps_home_in_place_and_template_captions_stay_in_their_tiles() {
         for width in [1280.0, 1440.0, 1920.0] {

@@ -131,6 +131,7 @@ const sharedIcons = [
     "v-helmet",
     "play",
     "search",
+    "down",
     "warn",
   ]),
 ];

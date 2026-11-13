@@ -2338,3 +2338,19 @@ Excepción ADR declarada: función pura del mock Electron extraída a home-scene
 para compartir escenas con el generador Rune, sin cambio de contrato ni host.
 El orquestador fusionará #2297 con squash y cerrará #2287 como incluido.
 Sin merge, release ni actualización de Plane por el worker.
+
+### VANTA-143 · #2297: ajuste de hero y buscador (2026-11-13)
+
+Isaac acepta el código de e3749fa6, incluido el estado incierto, y pide igualar
+el aspecto antes de integrar. Sin cambios de lanzamiento ni anfitrión.
+Hero con la imagen de degradado compartida en el fondo del propio contenedor,
+debajo del circuito; la traducción SVG conserva ángulos, paradas y alfa de CSS.
+Studio del hero con borde y fondo transparente. Retirado el botón ancho inferior
+de Plantillas, ausente en Electron. Búsqueda alineada a la izquierda y selector
+de 168×38 con flecha del catálogo de iconos compartido.
+
+Tests CPU del color del degradado y de geometría del buscador/selector en claro,
+oscuro y tres escalas. Comparativas nuevas de inicio-base (seis celdas) previstas
+en D:/VantareServer/evidence/hub-rune/review-2297-r3; capturas solo offscreen en Mac.
+Resultados y SHA de captura se completan en el PR; no se atribuye la CI de e3749fa6
+al nuevo código. El corte 1 mantiene la aprobación visual pendiente de Isaac.

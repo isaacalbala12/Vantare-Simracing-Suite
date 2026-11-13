@@ -33,6 +33,7 @@ pub const COLORS: &[&str] = &[
     "accent",
     "focus-ring",
     "line-1",
+    "line-3",
     "hover",
     "active",
 ];
@@ -81,29 +82,54 @@ impl Theme {
             })
     }
     pub fn hero_svg(&self) -> String {
-        // Both shared CSS gradients have two hex color stops. Keep their authored colors;
-        // only their native SVG representation belongs to Rune.
-        let stops = |value: &str| {
-            let colors: Vec<_> = value
-                .split('#')
-                .skip(1)
-                .map(|c| {
-                    format!(
-                        "#{}",
-                        c.chars()
-                            .take_while(char::is_ascii_hexdigit)
-                            .collect::<String>()
-                    )
-                })
-                .collect();
-            let [a, b]: [String; 2] = colors.try_into().expect("two shared hero stops");
-            [a, b]
+        // Translate the two authored CSS gradients, including their angle and stops.
+        // CSS angles are clockwise from up; SVG uses coordinates in the hero's box.
+        let gradient = |id: &str, css: &str| {
+            let mut parts = css
+                .strip_prefix("linear-gradient(")
+                .unwrap()
+                .strip_suffix(')')
+                .unwrap()
+                .split(',');
+            let angle: f32 = parts
+                .next()
+                .unwrap()
+                .trim()
+                .strip_suffix("deg")
+                .unwrap()
+                .parse()
+                .unwrap();
+            let (dx, dy) = (angle.to_radians().sin(), -angle.to_radians().cos());
+            let length = 1000.0 * dx.abs() + 236.0 * dy.abs();
+            let (x1, y1) = (500.0 - dx * length / 2.0, 118.0 - dy * length / 2.0);
+            let (x2, y2) = (500.0 + dx * length / 2.0, 118.0 + dy * length / 2.0);
+            let mut svg = format!(
+                r#"<linearGradient id="{id}" gradientUnits="userSpaceOnUse" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">"#
+            );
+            for stop in parts {
+                let mut values = stop.split_whitespace();
+                let color = values.next().unwrap();
+                let percent = values.next().unwrap().strip_suffix('%').unwrap();
+                // Explicit alpha also works with SVG consumers that only accept RGB hex.
+                let opacity = if color.len() == 9 {
+                    u8::from_str_radix(&color[7..], 16).unwrap() as f32 / 255.0
+                } else {
+                    1.0
+                };
+                svg.push_str(&format!(
+                    r#"<stop offset="{percent}%" stop-color="{}" stop-opacity="{opacity}"/>"#,
+                    &color[..7]
+                ));
+            }
+            svg + "</linearGradient>"
         };
-        let [a, b] = stops(&self.1[0]);
-        let [c, d] = stops(&self.1[1]);
+        let stripe = &self.1[2];
+        let alpha = u8::from_str_radix(&stripe[7..], 16).unwrap() as f32 / 255.0;
         format!(
-            r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 236" preserveAspectRatio="none"><defs><linearGradient id="base" x1="0" y1="0" x2="1" y2="1"><stop stop-color="{a}"/><stop offset="1" stop-color="{b}"/></linearGradient><linearGradient id="wash" x1="0" y1="0" x2="0.36" y2="1"><stop stop-color="{c}"/><stop offset="0.5" stop-color="{d}"/></linearGradient><pattern id="stripe" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M-3 12L9 0M9 12L21 0" stroke="{}" stroke-width="1"/></pattern></defs><rect width="1000" height="236" fill="url(#base)"/><rect width="1000" height="236" fill="url(#wash)"/><rect width="1000" height="236" fill="url(#stripe)"/></svg>"##,
-            self.1[2]
+            r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 236" preserveAspectRatio="none"><defs>{}{}<pattern id="stripe" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M-3 12L9 0M9 12L21 0" fill="none" stroke="{}" stroke-opacity="{alpha}" stroke-width="1"/></pattern></defs><rect width="1000" height="236" fill="url(#base)"/><rect width="1000" height="236" fill="url(#wash)"/><rect width="1000" height="236" fill="url(#stripe)"/></svg>"##,
+            gradient("base", &self.1[0]),
+            gradient("wash", &self.1[1]),
+            &stripe[..7]
         )
     }
     pub fn color(&self, name: &str) -> Color {

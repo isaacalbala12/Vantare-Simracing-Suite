@@ -89,6 +89,11 @@ pub static SEARCH: rune::Icon = rune::Icon {
     view: 24.0,
     body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></g>"##,
 };
+pub static DOWN: rune::Icon = rune::Icon {
+    name: "down",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></g>"##,
+};
 pub static WARN: rune::Icon = rune::Icon {
     name: "warn",
     view: 24.0,
@@ -114,6 +119,7 @@ pub fn shared_icon(name: &str) -> &'static rune::Icon {
         "v-helmet" => &V_HELMET,
         "play" => &PLAY,
         "search" => &SEARCH,
+        "down" => &DOWN,
         "warn" => &WARN,
         _ => unreachable!("generated navigation icon"),
     }

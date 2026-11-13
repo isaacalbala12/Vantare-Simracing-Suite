@@ -250,7 +250,6 @@ it("arms the same instant shown in the Madrid/UTC button through the DST gap and
         fireEvent.click(
           screen.getByRole("button", {
             name: `Lanzar a las ${utc ? utcLabel : madrid}`,
-            exact: true,
           }),
         );
         expect(onArm).toHaveBeenCalledExactlyOnceWith(series.id, at);

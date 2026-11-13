@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import type {
   InstancePatch,
   OverlayInstance,
@@ -29,6 +29,7 @@ const offTrackOptions: { value: OffTrack; label: string }[] = [
 ];
 export function TrackStep({ item }: { item: OverlayInstance }) {
   const model = useTrack(item);
+  const visibleHelp = useId();
   if (!model.readable) return <p>{t.appearanceUnavailable}</p>;
   const { disabled, pending, saving } = model;
   return (
@@ -39,14 +40,21 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
         visible={item.visible}
         active={saving === "visible" || saving === "opacity"}
       >
-        <Switch
-          label={t.visibleOnTrack}
-          checked={item.visible}
-          disabled={disabled}
-          pending={pending}
-          onCheckedChange={(value) => void model.visibility(value)}
-        />
-        <p>{t.visibleOnTrackHelp}</p>
+        <div className="v-studio-track-pair">
+          <span>
+            {t.visibleOnTrack}
+            <small id={visibleHelp}>{t.visibleOnTrackHelp}</small>
+          </span>
+          <Switch
+            hideLabel
+            aria-describedby={visibleHelp}
+            label={t.visibleOnTrack}
+            checked={item.visible}
+            disabled={disabled}
+            pending={pending}
+            onCheckedChange={(value) => void model.visibility(value)}
+          />
+        </div>
         <Slider
           label={t.opacity}
           value={model.opacity}
@@ -87,21 +95,27 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
             </Button>
           ))}
         </fieldset>
-        <Select
-          label={t.offTrack}
-          value={item.offTrack}
-          options={offTrackOptions}
-          disabled={disabled}
-          pending={pending}
-          onChange={(value) => {
-            const option = offTrackOptions.find(
-              (option) => option.value === value,
-            );
-            if (option)
-              void model.patch({ field: "offTrack", value: option.value });
-          }}
-        />
-        <p>{t.offTrackHelp}</p>
+        <div className="v-studio-track-pair">
+          <span>
+            {t.offTrack}
+            <small>{t.offTrackHelp}</small>
+          </span>
+          <Select
+            hideLabel
+            label={t.offTrack}
+            value={item.offTrack}
+            options={offTrackOptions}
+            disabled={disabled}
+            pending={pending}
+            onChange={(value) => {
+              const option = offTrackOptions.find(
+                (option) => option.value === value,
+              );
+              if (option)
+                void model.patch({ field: "offTrack", value: option.value });
+            }}
+          />
+        </div>
       </Group>
       <Group
         title={t.placeGroup}

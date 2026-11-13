@@ -54,14 +54,6 @@ pub enum CloseReply {
     Reject,
     Veto,
 }
-#[cfg(debug_assertions)]
-pub struct Scene {
-    messages: VecDeque<HostToUi>,
-    closing: bool,
-    close_answered: bool,
-    #[cfg(test)]
-    pub close_reply: CloseReply,
-}
 impl Drop for Host {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
@@ -79,6 +71,16 @@ impl Drop for Host {
         }
     }
 }
+#[cfg(debug_assertions)]
+pub struct Scene {
+    messages: VecDeque<HostToUi>,
+    closing: bool,
+    close_answered: bool,
+    #[cfg(test)]
+    pub close_reply: CloseReply,
+    name: String,
+    core: vantare_hub_host::protocol::CoreStatus,
+}
 pub enum Link {
     #[cfg_attr(
         not(windows),
@@ -95,10 +97,24 @@ impl Link {
     pub fn open(bootstrap: Bootstrap) -> io::Result<(Self, HostToUi)> {
         match bootstrap {
             #[cfg(debug_assertions)]
-            Bootstrap::Scene => {
+            Bootstrap::Scene(name) => {
                 let hello: HostToUi =
                     serde_json::from_str(include_str!("../../hub-web/fixtures/ajustes-base.json"))
                         .map_err(|_| io::ErrorKind::InvalidData)?;
+                let mut core: vantare_hub_host::protocol::CoreStatus =
+                    serde_json::from_str(include_str!("../../hub-web/fixtures/core-offline.json"))
+                        .expect("shared fixture");
+                if name.starts_with("roadmap-") {
+                    core.access.verified = true;
+                }
+                if name == "core-connected" {
+                    core.live = true;
+                    core.photos = vantare_hub_host::protocol::LinkState::Connected;
+                    core.services = vantare_hub_host::protocol::LinkState::Connected;
+                    core.rights = vantare_hub_host::protocol::LinkState::Connected;
+                    core.access.verified = true;
+                    core.access.tester = true;
+                }
                 Ok((
                     Self::Scene(Scene {
                         messages: VecDeque::new(),
@@ -106,6 +122,8 @@ impl Link {
                         close_answered: false,
                         #[cfg(test)]
                         close_reply: CloseReply::Allow,
+                        name,
+                        core,
                     }),
                     hello,
                 ))
@@ -251,17 +269,14 @@ impl Link {
         match self {
             Self::Host(h) => h.outgoing.try_send(message),
             #[cfg(debug_assertions)]
-            Self::Scene(messages) => scene(messages, message),
+            Self::Scene(state) => scene(state, message),
         }
     }
 }
 #[cfg(debug_assertions)]
 fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
     use vantare_hub_host::protocol::{self, Event, Reply, Request, Topic};
-    let core = || {
-        serde_json::from_str(include_str!("../../hub-web/fixtures/core-offline.json"))
-            .expect("shared core fixture")
-    };
+    let core = || state.core.clone();
     let messages = &mut state.messages;
     match message {
         UiToHost::Request {
@@ -308,6 +323,43 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
             }
             state.close_answered = allow;
             state.closing = allow;
+        }
+        UiToHost::Subscribe {
+            topic: Topic::SimStatus,
+        } => messages.push_back(HostToUi::Event {
+            event: Event::SimStatus { live: core().live },
+        }),
+        UiToHost::Request {
+            id,
+            request: request @ (Request::RoadmapCached {} | Request::RoadmapRefresh {}),
+        } => {
+            let refresh = matches!(request, Request::RoadmapRefresh {});
+            if refresh && state.name == "roadmap-error" {
+                messages.push_back(HostToUi::Failure {
+                    id,
+                    error: protocol::HostError::CoreUnavailable,
+                });
+            } else {
+                let publication = if state.name == "roadmap-base" {
+                    None
+                } else {
+                    Some(
+                        serde_json::from_str(include_str!(
+                            "../../hub-web/fixtures/roadmap-publication.json"
+                        ))
+                        .expect("shared roadmap fixture"),
+                    )
+                };
+                let value =
+                    vantare_hub_host::roadmap::project(publication, state.name == "roadmap-error")
+                        .map_err(|_| io::ErrorKind::InvalidData)?;
+                let result = if refresh {
+                    Reply::RoadmapRefresh { value }
+                } else {
+                    Reply::RoadmapCached { value }
+                };
+                messages.push_back(HostToUi::Response { id, result });
+            }
         }
         UiToHost::Request { id, .. } => messages.push_back(HostToUi::Failure {
             id,
@@ -414,7 +466,7 @@ mod tests {
     }
     #[test]
     fn scene_uses_shared_hello_and_core_and_closes_without_graphics() {
-        let (mut link, hello) = Link::open(Bootstrap::Scene).unwrap();
+        let (mut link, hello) = Link::open(Bootstrap::Scene("core-offline".into())).unwrap();
         assert!(
             matches!(hello, HostToUi::Hello { version, .. } if version == vantare_hub_host::protocol::VERSION)
         );

@@ -6,7 +6,7 @@ pub enum Bootstrap {
         token: String,
     },
     #[cfg(debug_assertions)]
-    Scene,
+    Scene(String),
 }
 fn hex64(value: &str) -> bool {
     value.len() == 64
@@ -30,7 +30,20 @@ pub fn consume() -> io::Result<Bootstrap> {
     }
     #[cfg(debug_assertions)]
     if std::env::var("VANTARE_HUB_HOST").as_deref() == Ok("mock") {
-        return Ok(Bootstrap::Scene);
+        let scene = std::env::var("VANTARE_HUB_SCENE").unwrap_or_else(|_| "ajustes-base".into());
+        if ![
+            "ajustes-base",
+            "core-offline",
+            "core-connected",
+            "roadmap-base",
+            "roadmap-published",
+            "roadmap-error",
+        ]
+        .contains(&scene.as_str())
+        {
+            return Err(io::ErrorKind::InvalidInput.into());
+        }
+        return Ok(Bootstrap::Scene(scene));
     }
     let (name, token) = name.zip(token).ok_or(io::ErrorKind::PermissionDenied)?;
     validate(&name, &token)?;

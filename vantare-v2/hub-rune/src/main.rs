@@ -7,6 +7,8 @@ mod host;
 mod icons;
 #[cfg(windows)]
 mod pipe;
+mod roadmap;
+mod roadmap_view;
 use catalog::{catalog, text};
 use design::{Theme, button, label, menu_item, surface};
 use rune::{AppSpec, Cx, El, col, icon, row};
@@ -19,6 +21,8 @@ struct State {
     closing: bool,
     close_deadline: Option<f64>,
     window: Option<rune::AppHandle<State>>,
+    core: vantare_hub_host::protocol::CoreStatus,
+    roadmap: roadmap::Roadmap,
 }
 fn init() -> State {
     State {
@@ -30,6 +34,8 @@ fn init() -> State {
         closing: false,
         close_deadline: None,
         window: None,
+        core: Default::default(),
+        roadmap: Default::default(),
     }
 }
 fn toggle(state: &mut State) {
@@ -80,6 +86,14 @@ fn view(state: &State, _: &mut Cx<State>) -> El {
         ));
     for entry in catalog()["navigation"].as_array().unwrap() {
         let id = entry["id"].as_str().unwrap();
+        if (id == "testing" && (!state.core.access.verified || state.core.access.blocked))
+            || (id == "calendar"
+                && (!state.core.access.verified
+                    || state.core.access.blocked
+                    || !state.core.access.tester))
+        {
+            continue;
+        }
         let name = entry["label"].as_str().unwrap();
         let target = id.to_owned();
         let image = icon(icons::shared_icon(entry["icon"].as_str().unwrap()), 20.0)
@@ -102,27 +116,49 @@ fn view(state: &State, _: &mut Cx<State>) -> El {
         .padding(16.0)
         .gap(24.0)
         .child(label(theme, title(state)).grow(1.0))
+        .child(
+            label(
+                theme,
+                text(if state.core.live {
+                    "shell.simulatorConnected"
+                } else {
+                    "shell.waitingSimulator"
+                }),
+            )
+            .key("sim-status")
+            .role("status"),
+        )
         .child(button(
             theme,
             "theme-toggle",
             text("settings.shell.toggleTheme"),
             toggle,
         ));
+    let mut body = col().grow(1.0).min_h(0.0).h_full().child(header);
+    if state.core.services != vantare_hub_host::protocol::LinkState::Connected {
+        body = body.child(
+            label(theme, text("es.coreUnavailable"))
+                .key("core-warning")
+                .role("status"),
+        );
+    }
+    let content = if state.section == "roadmap" {
+        roadmap_view::view(state)
+    } else {
+        surface(theme)
+            .key("section")
+            .grow(1.0)
+            .child(label(theme, title(state)))
+    };
     row()
         .key("hub")
         .w_full()
         .h_full()
         .fill(theme.color("bg-window"))
         .child(sidebar)
-        .child(
-            col().grow(1.0).h_full().child(header).child(
-                surface(theme)
-                    .key("section")
-                    .grow(1.0)
-                    .child(label(theme, title(state))),
-            ),
-        )
+        .child(body.child(content))
 }
+
 fn setup(state: &mut State, waker: rune::Waker) {
     if let Some(link) = &mut state.link {
         link.wake_with(waker);
@@ -177,33 +213,69 @@ fn close_expired(state: &State, now: f64, tx: &mut rune::Tx) -> bool {
     false
 }
 fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
-    if close_expired(state, now, tx) {
-        return true;
-    }
-    if let Some(link) = &mut state.link {
-        for _ in 0..64 {
-            match link.receive() {
-                Some(Ok(vantare_hub_host::protocol::HostToUi::CloseRequested { .. }))
-                | Some(Err(_)) => {
-                    state.closing = true;
-                    tx.quit();
-                    return true;
-                }
-                Some(Ok(vantare_hub_host::protocol::HostToUi::Failure { id: 0, error }))
-                    if state.closing =>
-                {
-                    if !close_rejected(state, &error) {
-                        tx.quit();
-                    }
-                    return true;
-                }
-                Some(Ok(_)) => {}
-                None => break,
+    use vantare_hub_host::protocol::{Event, HostToUi, Reply};
+    if close_expired(state, now, tx) { return true; }
+    let mut changed = false;
+    for _ in 0..64 {
+        let message = state.link.as_mut().and_then(host::Link::receive);
+        match message {
+            Some(Ok(HostToUi::CloseRequested { .. })) | Some(Err(_)) => {
+                state.closing = true;
+                state.core = Default::default();
+                tx.quit();
+                return true;
             }
+            Some(Ok(HostToUi::Failure { id: 0, error })) if state.closing => {
+                if !close_rejected(state, &error) { tx.quit(); }
+                return true;
+            }
+            Some(Ok(HostToUi::Response {
+                id: 1,
+                result: Reply::Core { value },
+            }))
+            | Some(Ok(HostToUi::Event {
+                event: Event::Core { value },
+            })) => {
+                state.core = value;
+                changed = true;
+            }
+            Some(Ok(HostToUi::Event {
+                event: Event::SimStatus { live },
+            })) => {
+                state.core.live = live;
+                changed = true;
+            }
+            Some(Ok(HostToUi::Response { id, result })) => {
+                changed |= state.roadmap.accept(id, result);
+            }
+            Some(Ok(HostToUi::Failure { id, .. })) => {
+                changed |= state.roadmap.fail(id);
+            }
+            Some(Ok(_)) => {}
+            None => break,
         }
     }
-    false
+    let previous_status = state.roadmap.status();
+    if let Some(message) = state.roadmap.next(now, state.section == "roadmap") {
+        if let vantare_hub_host::protocol::UiToHost::Request { id, .. } = &message {
+            if state
+                .link
+                .as_mut()
+                .is_none_or(|link| link.send(message.clone()).is_err())
+            {
+                state.roadmap.fail(*id);
+            }
+        }
+        changed = true;
+        tx.wake_at(now);
+    }
+    changed |= previous_status != state.roadmap.status();
+    if let Some(due) = state.roadmap.due() {
+        tx.wake_at(due);
+    }
+    changed
 }
+
 fn start() -> std::io::Result<()> {
     // Consume and erase ephemeral bootstrap before Rune or workers start threads.
     let bootstrap = bootstrap::consume()?;
@@ -243,6 +315,9 @@ fn start() -> std::io::Result<()> {
     link.send(vantare_hub_host::protocol::UiToHost::Subscribe {
         topic: vantare_hub_host::protocol::Topic::Core,
     })?;
+    link.send(vantare_hub_host::protocol::UiToHost::Subscribe {
+        topic: vantare_hub_host::protocol::Topic::SimStatus,
+    })?;
     state.link = Some(link);
 
     let mut spec = AppSpec::new("Vantare · Hub", size, init, view);
@@ -257,6 +332,7 @@ fn start() -> std::io::Result<()> {
         }),
         ("dark", |_| {}),
         ("collapsed", |s| s.collapsed = true),
+        ("roadmap", |s| s.section = "roadmap".into()),
     ];
     spec.setup = Some(setup);
     spec.poll = Some(poll);
@@ -295,7 +371,7 @@ mod tests {
     #[test]
     #[cfg(debug_assertions)]
     fn native_close_waits_for_scene_host_and_acknowledgement() {
-        let (link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let (link, _) = host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
         let mut state = init();
         state.link = Some(link);
         let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
@@ -309,10 +385,11 @@ mod tests {
         assert!(matches!(runtime.shell_request, Some(rune::Shell::Quit)));
         assert!(runtime.state.link.as_mut().unwrap().receive().is_none());
     }
+
     #[test]
     #[cfg(debug_assertions)]
     fn silent_scene_waits_for_host_guards_but_cannot_live_past_ten_seconds() {
-        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
         let host::Link::Scene(scene) = &mut link else {
             unreachable!()
         };
@@ -345,7 +422,7 @@ mod tests {
         let mut runtime = Runtime::new(init(), view, (1440.0, 900.0), Env::new(true, 1.0));
         runtime.update(request_close);
         assert_eq!(runtime.shell_request, Some(rune::Shell::Quit));
-        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
         let host::Link::Scene(scene) = &mut link else {
             unreachable!()
         };
@@ -361,7 +438,7 @@ mod tests {
     #[test]
     #[cfg(debug_assertions)]
     fn rejected_close_restores_state_and_disarms_the_exit_deadline() {
-        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene).unwrap();
+        let (mut link, _) = host::Link::open(bootstrap::Bootstrap::Scene("core-offline".into())).unwrap();
         let host::Link::Scene(scene) = &mut link else {
             unreachable!()
         };
@@ -398,6 +475,8 @@ mod tests {
         for collapsed in [true, false] {
             let mut state = init();
             state.collapsed = collapsed;
+            state.core.access.verified = true;
+            state.core.access.tester = true;
             let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
             runtime.frame(0.0);
             for entry in entries {
@@ -413,5 +492,94 @@ mod tests {
             runtime.frame(0.1);
             assert_eq!(runtime.state.section, "roadmap");
         }
+    }
+    #[test]
+    fn frame_controls_have_names_and_keyboard_works_at_three_scales() {
+        for scale in [1.0, 1.25, 1.5] {
+            let mut state = init();
+            state.core.access.verified = true;
+            state.core.access.tester = true;
+            let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, scale));
+            runtime.frame(0.0);
+            for element in runtime.elements().into_iter().filter(|e| e.focusable) {
+                assert!(
+                    element
+                        .label
+                        .as_ref()
+                        .is_some_and(|label| !label.is_empty()),
+                    "unnamed control {}",
+                    element.path
+                );
+            }
+            assert!(!runtime.accessibility_json().is_null());
+            runtime.key(rune::KeyEvent {
+                key: rune::Key::Tab,
+                mods: Default::default(),
+            });
+            runtime.frame(0.1);
+            assert!(
+                runtime
+                    .elements()
+                    .iter()
+                    .any(|e| e.key.as_deref() == Some("sidebar-toggle") && e.focused)
+            );
+            runtime.key(rune::KeyEvent {
+                key: rune::Key::Enter,
+                mods: Default::default(),
+            });
+            runtime.frame(0.2);
+            assert!(runtime.state.collapsed);
+        }
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn connected_scene_populates_core_and_read_only_roadmap() {
+        use vantare_hub_host::protocol::{Request, UiToHost};
+        let (mut link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("core-connected".into())).unwrap();
+        link.send(UiToHost::Request {
+            id: 1,
+            request: Request::CoreGet {},
+        })
+        .unwrap();
+        let mut state = init();
+        state.link = Some(link);
+        state.section = "roadmap".into();
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.poll = Some(poll);
+        for frame in 0..4 {
+            runtime.frame(f64::from(frame) / 60.0);
+        }
+        assert!(runtime.state.core.live);
+        assert!(runtime.state.roadmap.value.publication.is_some());
+        assert!(
+            runtime
+                .elements()
+                .iter()
+                .any(|e| e.key.as_deref() == Some("sim-status")
+                    && e.text.as_deref() == Some(text("shell.simulatorConnected")))
+        );
+        assert!(runtime.find("roadmap-lane-next").is_some());
+        assert!(
+            runtime
+                .elements()
+                .iter()
+                .any(|e| e.text.as_deref() == Some("Rework - Roadmap"))
+        );
+    }
+    #[test]
+    fn unavailable_core_removes_privileged_navigation_and_shows_warning() {
+        let mut runtime = Runtime::new(init(), view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.frame(0.0);
+        assert!(runtime.find("core-warning").is_some());
+        assert!(runtime.find("nav-testing").is_none());
+        assert!(runtime.find("nav-calendar").is_none());
+        assert!(
+            runtime
+                .elements()
+                .iter()
+                .any(|e| e.key.as_deref() == Some("sim-status")
+                    && e.text.as_deref() == Some(text("shell.waitingSimulator")))
+        );
     }
 }

@@ -1662,3 +1662,43 @@ No se han ejecutado interfaces gráficas ni publicado una release.
 El Mac está desconectado y H tiene prioridad en la cola del servidor.
 Tras el gate local anterior, las correcciones de esta revisión se dejan a CI;
 no se lanza otra compilación local. Los nuevos tests solo afectan a IPC.
+
+## VANTA-143 · Hub Rune: PR 1 detenido por licencia (2026-11-13)
+
+Worker Sol R1, #2256, area:ui. Base origin/nightly
+0cf70079b5ed8659455a0a4fe7c8ff1c8161af10 (ADR 0108 completo leído).
+Worktree D:/VantareServer/worktrees/isa-2256-hub-rune-esqueleto,
+rama vantareapp/isa-2256-hub-rune-esqueleto. HEAD sigue en esa base;
+esqueleto preliminar sin commit, push ni PR. No se ha compilado ni ejecutado GPU.
+
+La resolución con Rust 1.99.1 y Rune d5338988a7c1b3377adb60853815b6d0843dae7c
+produce 475 paquetes contando la raíz. En macOS, Rune activa ogg-audio por
+defecto y depende directamente de symphonia 0.5.5 y opuscule 0.2.2, MPL-2.0.
+Son ocho paquetes exclusivamente MPL-2.0 contando los subcrates de symphonia.
+Se para conforme al encargo y al ADR: solo se aprobaron licencias permisivas.
+No afecta al árbol Windows activo de estos paquetes. r-efi ofrece MIT/Apache
+como alternativas y no es el bloqueo. Evidencia y lista completa:
+D:/VantareServer/evidence/hub-rune/1-esqueleto/licencias.md,
+licencias.json, metadata.json y cadenas *-macos.txt.
+
+Siguiente paso del orquestador: decidir si se desactiva ogg-audio, manteniendo
+explícitamente los demás features necesarios, o revisar la autorización de
+licencias. Esa modificación no se ha aplicado por la orden expresa de parar.
+Tras resolver: terminar CI/esqueleto, verificar hub-host como biblioteca en
+Windows/Mac, gates sin ventana y captura Mac antes de abrir PR 1.
+Los PRs 2–5 y corte 1 no se han iniciado. Sin merge, release ni promoción.
+Plane --ver falló: «No se pudo conectar a Plane o su respuesta no es JSON válido»;
+no se afirma estado remoto verificado. GitHub recoge el bloqueo con evidencia.
+
+### Reanudación autorizada · PR 1 (2026-11-13)
+
+El orquestador ordena desactivar ogg-audio y prohíbe MPL-2.0. Aplicado:
+se conservan accessibility, dbus, embedded-fonts, metal-backend y svg.
+El lock resuelve 463 paquetes contando la raíz; control multiplataforma de
+licencias y arquitectura PASS, cinco tests de la política PASS y 22 tests del
+clasificador CI PASS. Sin dependencias nuevas para el control Python.
+Lista completa versionada en hub-rune/LICENCIAS.md. El código propio conserva
+la licencia del repositorio; no se relicencia. Windows check espera memoria en
+la cola compartida, cuatro jobs. Mac SSH disponible con 42 GiB libres; gates
+y apertura de ventana pendientes. PR 1 todavía en preparación, no se presenta
+como terminado. Plane lo actualiza el orquestador; resumen en el PR.

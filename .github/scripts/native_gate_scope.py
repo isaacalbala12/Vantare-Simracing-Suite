@@ -47,7 +47,9 @@ IGNORED_PREFIXES = (
     "tools/",
     "vantare-v2/docs/",
     "vantare-v2/hub-web/",
+    "vantare-v2/hub-rune/",
     ".github/workflows/hub-web.yml",
+    ".github/workflows/hub-rune.yml",
 )
 # Excepciones dentro de las zonas ignoradas: el trabajo de Windows ejecuta los
 # tests de `tools/ci-runners` y no puede saltárselos. Los tests de hub-host y

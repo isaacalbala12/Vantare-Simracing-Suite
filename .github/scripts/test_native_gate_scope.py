@@ -17,6 +17,15 @@ from native_gate_scope import classify_paths  # noqa: E402
 
 
 class ClassifyPathsTest(unittest.TestCase):
+    def test_rune_is_independent_but_host_and_shared_contract_still_run_native(self):
+        paths = ['vantare-v2/hub-rune/src/main.rs', '.github/workflows/hub-rune.yml']
+        self.assertFalse(classify_paths(paths).native)
+        for shared in ('vantare-v2/native/hub-host/src/protocol.rs',
+                       'vantare-v2/hub-web/design/tokens.json',
+                       'vantare-v2/hub-web/fixtures/roadmap.json'):
+            with self.subTest(shared=shared):
+                self.assertTrue(classify_paths(paths + [shared]).native)
+
     def test_workflow_diff_keeps_native_deletion_alongside_web_change(self) -> None:
         workflow = (Path(__file__).resolve().parents[1] / 'workflows/branch-channel-gates.yml').read_text(encoding='utf-8')
         line = next(line.strip() for line in workflow.splitlines() if 'if ! git diff' in line)

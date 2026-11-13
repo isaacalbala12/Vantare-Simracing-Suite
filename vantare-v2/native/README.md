@@ -447,7 +447,7 @@ cargo test --workspace --offline -j 2
 44 coches y con el corpus de 47 y comprueba, con un `Subscriber` de `ipc`, que
 llegan fotos con revisión creciente y el número de coches de la captura.
 
-`rust-toolchain.toml` fija 1.95.0. `.github/workflows/quality.yml` ejecuta los
+`rust-toolchain.toml` fija 1.100.0. `.github/workflows/quality.yml` ejecuta los
 gates del workspace en Ubuntu; #1437 no cambia los jobs ni el código de
 Windows, cuya validación se ejecuta en el entorno Windows del orquestador.
 
@@ -578,7 +578,7 @@ la limpieza por slot es independiente. Los targets de medición de VANTA-137
 se dejan para Isaac, conforme a su instrucción.
 
 Opcional en Mac: con LLVM en PATH, cargo-xwin 0.23.1 y el target MSVC de Rust
-1.95 instalados, `bash native/scripts/xwin-check-core.sh ~/target-<worker>`
+1.100 instalados, `bash native/scripts/xwin-check-core.sh ~/target-<worker>`
 comprueba bibliotecas del núcleo para Windows. Usa un target propio; bórralo al
 terminar. No ejecuta Windows ni sustituye su CI. El build nativo macOS completo
 conserva el fallo Unix registrado en #2004.

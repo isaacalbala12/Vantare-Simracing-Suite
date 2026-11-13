@@ -1,3 +1,16 @@
+## VANTA-142 / #2247 — actualización del toolchain (en curso, 2026-11-13)
+
+- Worker H; rama `vantareapp/isa-2247-rust-estable`, base nightly
+  `5d53a645798fb5c236ab3f4de2b87e9a9a1798d7`, worktree en D:.
+- Rust estable 1.100.0, publicado el 12-11-2026, confirmado con rustup y anuncio
+  oficial. Instalado con rustfmt/Clippy en Windows y Mac; 1.95.0 conservado.
+- Pines activos y claves de caché actualizados. Las referencias históricas y el
+  corpus congelado conservan su versión y sus huellas.
+- Cargo nuevo exige un marcador para limpiar targets antiguos: migración bajo
+  reserva de cola, con metadata/lock comprobados y sin enlaces.
+- Pendientes: mediciones repetidas, gates locales y CI, revisión del diff y PR
+  draft a nightly. Sin merge ni release. Aviso de adopción tras el merge.
+
 > **VANTA-132:** estado vigente y despliegue en [el cierre de la tanda](#vanta-132--cierre-de-la-tanda-adminowner-2026-11-05). Sus entradas anteriores son evidencia histórica.
 
 ## VANTA-126 / #1878 — tests independientes del tiempo encendido del runner

@@ -77,3 +77,5 @@ jobs:
       - run: cargo clippy --locked --all-targets -- -D warnings
       - name: Tests without windows or graphics devices
         run: cargo test --locked --all-targets
+      - name: Link Windows UI executable without running it
+        run: cargo build --locked --bin vantare-hub-ui-rune

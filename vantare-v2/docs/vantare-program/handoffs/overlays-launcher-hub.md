@@ -1865,3 +1865,154 @@ Base final de la tercera revisión: nightly 07825965f (incluye Calendario v32),
 tras el primer --onto sobre 58e5b5ede. #2267 y #2268 conservan padre común;
 el test Hello usa protocol::VERSION del mismo host, sin fijar una versión
 propia. Solo se rebasó código de otros proyectos, sin modificarlo.
+### VANTA-143 · PR 5 pantalla conectada y corte 1 (2026-11-13)
+
+Estado del núcleo/simulador por CoreGet, Core y SimStatus: «Esperando simulador»
+o «LMU conectado», aviso con núcleo no disponible y navegación de testers según
+el acceso observado. Roadmap solo lee: caché y refresco seriales, cada 300 s
+mientras está abierta, IDs correlacionados, plazo de 45 s, descarte de respuestas
+antiguas y conservación de publicación ante error. Tablero/Circuito/Temporada y
+resumen por áreas desde la publicación compartida, sin editor ni escritura.
+Escenas debug del mismo corpus/fixtures Electron para núcleo apagado/conectado
+y Roadmap vacío/publicado/error. Tests con reloj explícito y Runtime sin GPU:
+sondeo, cierre de sección, errores/plazo/respuestas antiguas, publicación literal,
+marco/teclado/nombres a 100/125/150 % y escena conectada completa.
+Clippy Windows local de la pila final PASS (-j2, un slot, D:/targets/slot-0);
+suite sin ventana en compilación. Formato, catálogo y licencias PASS. Los fallos
+anteriores (import color, ScrollSpec y if anidado de ready) se conservan y se han
+corregido sin relajar lints ni tests. CI del SHA definitivo se consulta en PR 5.
+
+CORTE-1.md contiene los cinco requisitos y sus pendientes; **no aceptado**:
+Windows 10/11 reales, campos/AltGr, lector real, comparación visual de Isaac y
+30 minutos de ventana normal siguen pendientes. No se ejecuta gráfica local.
+El Mac duerme; se abrirán los cinco PRs apilados sin esperar, por instrucción
+expresa del orquestador. El resumen para Plane queda en cada PR; lo actualiza
+el orquestador. #2256 conserva area:ui y quedó enlazada al GitHub Project Vantare.
+Sin merge a nightly, promociones de canal, releases o cambios del instalador.
+
+
+### Cierre local de los cinco PRs · VANTA-143 (2026-11-13)
+
+PRs draft a nightly: #2260 → #2262 → #2264 → #2267 → #2268, pila local
+lineal por contenido (se fusionan solo las ramas padre en sus hijas para
+conservar correcciones, sin force-push ni merge a canales). El PR 5 incluye
+las correcciones de sus padres. GitHub Project Vantare verificado en #2256.
+Clippy PASS; 22/22 tests Rust sin ventana PASS tras la primera revisión, cinco tests de licencias
+y 22 de rutas CI PASS. Enter no activaba los botones de Rune: se reprodujo
+16 PASS/1 FAIL, se añadió la activación explícita de Enter sin repetición y
+se mantuvo Espacio. La prueba pasó también a 100/125/150 %, sin tocar un gate.
+Logs fallidos y finales conservados bajo evidence/hub-rune/5-roadmap.
+La CI añade además el enlace del ejecutable Windows sin arrancarlo. Build Windows local PASS (15,52 s, sin ejecución); el
+resultado se adjunta al PR; capturas, smoke real de host y
+aceptación del corte 1 siguen pendientes como indica CORTE-1.md. No se
+confunde suite sin gráfica con ventana Windows real o media hora de uso.
+El resumen para Plane está en los cinco PRs; el orquestador actualiza Plane.
+Sin merge a nightly, promoción, release o actuación sobre cuentas/datos reales.
+
+### VANTA-143 · Pila rebasada sobre Rust 1.99.1 de nightly (2026-11-13)
+
+Autorización del orquestador: rebasar los cinco PRs tras integrar #2248.
+Nueva base: origin/nightly 5919e64e0e0d833f54b56e5864305a1efa80d8a6,
+que incluye Rust 1.99.1 (1806f71f8) y Studio A (#2244). Se conservan esos
+cambios ajenos; no se modifica su implementación.
+La pila mantiene los cinco PRs #2260 → #2262 → #2264 → #2267 → #2268,
+con cada rama hija descendiente de su nuevo padre. Se han conservado refs
+locales de recuperación bajo refs/vantare-backup/2256-before-nightly/.
+Se autoriza actualizar las ramas publicadas como parte del rebase solicitado;
+el push usará leases explícitos contra los cinco heads remotos previamente
+verificados y una transacción atómica para no dejar media pila actualizada.
+
+Los cinco árboles hub-rune resultan idénticos byte a byte a sus versiones
+anteriores. Solo hubo que conservar el formato de App::init con Tab y el
+arreglo de ready al reaplicar el paso 5; no se cambió comportamiento.
+Prueba de árboles, padres y old/new SHA en
+D:/VantareServer/evidence/hub-rune/rebase-nightly/stack.json.
+Formato, catálogo compartido, licencias (463 paquetes), cinco tests de
+licencias y 22 del clasificador CI PASS sobre la nueva base. Clippy, 22/22
+tests Rust tras la primera revisión y enlace del ejecutable Windows PASS por la cola, un slot y dos
+jobs, sin arrancarlo. Los logs del rebase y la CI nueva se adjuntan a
+#2256/PR 5. Los checks remotos anteriores siguen siendo evidencia de los SHA
+anteriores: la CI se relanza para los nuevos. Capturas/ventana visible,
+smoke de host real y corte 1 siguen pendientes.
+Sin ejecución gráfica en el servidor, merge a nightly, promoción o release.
+
+### VANTA-143 · revisión PR 5 (2026-11-13)
+
+Las tarjetas de Roadmap usan claves por carril (next/now/done/season/delivered),
+para que un elemento entregado pueda aparecer también en el lateral sin colisión.
+Regresión con el ejemplo compartido en las tres vistas, incluida temporada.
+Cuando el estado del núcleo revoca acceso a Testing o Calendar, la sección
+activa vuelve a Inicio; el menú y la sección usan la misma regla. Regresión
+para pérdida de verificación, bloqueo y retirada de tester, conservando las
+secciones que siguen permitidas. Capturas/ventana Mac y corte 1 siguen pendientes.
+Los gates sin gráfica se repiten antes de publicar; no se ejecuta la app en Windows.
+
+Comprobación local de la revisión completa: formato/catálogo/licencias PASS,
+27 tests Python PASS, Clippy -D warnings PASS y 22/22 tests Rust PASS sin ventana.
+Las tres regresiones (pipe, claves y acceso) se reprodujeron con su comportamiento
+antiguo y se conservaron los fallos esperados. También se probó el diagnóstico
+sin Node retirándolo solo del PATH del proceso y restaurándolo después.
+Logs en D:/VantareServer/evidence/hub-rune/review-sonnet/. El build solo enlaza
+el ejecutable; no se abre ni se renderiza nada en Windows. CI de los nuevos heads pendiente; no se atribuyen checks viejos al siguiente head. Capturas y verificación física del corte 1 siguen pendientes.
+
+
+### VANTA-143 · pila tras squash #2260 (2026-11-13)
+
+#2260 fusionado por el orquestador en 647b353a5c034ec08d21f910061775ca29abd528.
+Los cuatro PRs siguientes se rebasaron en orden con --onto origin/nightly
+56e0d6c51b698b4d016b2b076258dfb6cf0b5a7f, conservando fechas para que los
+padres comunes fueran idénticos. Ancestros nightly → diseño → marco → conexión
+→ Roadmap verificados; árboles hub-rune idénticos antes/después del rebase en
+los cuatro pasos. Se conservaron todas las entradas del handoff al resolver
+los conflictos de propagación de los arreglos. Refs locales de recuperación
+2256-before-review y 2256-review-pre-squash. Push con leases contra heads remotos
+previos; SHA/CI actuales en #2256 y cada PR. Rune sigue fijado y no hay nuevas
+dependencias. Nuevas comprobaciones locales por un slot/-j2 y CI sin gráfica.
+Capturas, X con ventana visible, host Windows real y corte 1 siguen pendientes.
+Este worker no ha fusionado PRs ni promocionado canales o publicado releases.
+
+
+### VANTA-143 · segunda revisión propagada a PR 5 (2026-11-13)
+
+El estado del núcleo y Roadmap conservan el transporte del PR 4 actualizado:
+cierre de 3 s, Failure id 0/envío fallido, espera de eventos de lectura y salida,
+cancelación antes de join y operaciones pendientes drenadas. El test de Drop
+comprueba que la cancelación impide una nueva escritura antes de devolver join;
+se añade también cancelación de una escritura retenida por el servidor.
+La suite de la primera revisión fue de 22 tests (superó los 17 iniciales).
+La nueva suite amplía esos casos; resultados definitivos y heads en #2267/#2268.
+README ya describe el marco conectado; se retiran ventana vacía y pasos futuros
+ya realizados, y el plazo antiguo de 200 ms para escrituras/lecturas por sondeo.
+#2264 tuvo que rebasarse después del squash #2262 para resolver conflictos:
+head d6bcdb325771e538e26776f3754d069a096e85fc, árbol de hub-rune idéntico al
+anterior e7c43dc60b5e36e571bf13e00e404db73f94954f. #2267/#2268 conservan ese
+padre; cuando #2264 se fusione, se retirará ese prefijo mediante --onto nightly.
+Sin nuevos paquetes ni ejecución gráfica; capturas y corte 1 pendientes del Mac.
+
+
+Verificación local de segunda revisión: Clippy -D warnings PASS y 29/29 tests
+sin ventana PASS (20 del paso 4 y nueve más del paso 5); siete casos añadidos
+frente a los 22 de la primera revisión. Formato/catálogo/licencias y 27 tests
+Python PASS. Primer intento interrumpido sin diagnóstico, repetición sin sccache
+PASS conservada; no se detuvo el sccache global ni se rebajaron gates.
+Un slot, dos jobs, target persistente D:/VantareServer/targets/slot-0, --locked,
+Rust 1.99.1 y Rune fijado. Logs: D:/VantareServer/evidence/hub-rune/review-2/.
+El ejecutable solo se enlaza, sin arrancarlo. CI de los nuevos heads y rebase
+final sobre el squash de #2264 se registran en #2256 y los PRs. Corte 1 y todas
+las capturas/pruebas físicas siguen pendientes; no se sustituyen por estos tests.
+
+
+### VANTA-143 · tercera revisión propagada a PR 5 (2026-11-13)
+
+Se conserva el cierre de 10 s y la reapertura ante rechazo recuperable, junto
+con el estado del núcleo/Roadmap. CORTE-1 documenta que el host no envía un veto
+separado y que Rune puede reabrir, pero no evitar el ocultado inicial. Drenaje
+cancelado acotado a 1 s, errores registrados y aborto solo si no puede confirmarse
+la finalización (evita liberar buffers aún en uso); trama con timeout no se
+continúa y la lectura cancelada usa ConnectionAborted. Preparados 32 tests.
+No hay gates de compilación locales nuevos mientras E termina su tanda L53;
+los 29 tests anteriores son evidencia del head previo. CI en nuevos heads,
+formato y comprobaciones ligeras para esta entrega. Ambos PRs parten de nightly
+58e5b5ede815ef8a9875771308a9485b84bffe46 tras retirar d6bcdb32 con --onto;
+el rebase pendiente descrito en la segunda revisión ya está completado. Capturas,
+ventana visible, smoke Windows real y aceptación del corte 1 pendientes.

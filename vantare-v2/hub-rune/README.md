@@ -2,7 +2,7 @@
 
 Vía paralela de desarrollo según ADR 0108. Workspace independiente de native;
 no cambia los overlays, Electron ni la distribución. Ejecutable:
-`vantare-hub-ui-rune`: marco con temas, navegación y conexión al anfitrión.
+`vantare-hub-ui-rune`: marco conectado con estado del núcleo y Roadmap de solo lectura.
 
 Rune y sus cuatro parches están fijados a
 `d5338988a7c1b3377adb60853815b6d0843dae7c`, Rust 1.99.1.
@@ -76,3 +76,41 @@ CPU real: corte 2.
 La apertura y capturas se hacen en el Mac. La biblioteca hub-host se consume
 directamente; no se copia el contrato. La escena de desarrollo usa los mismos
 ejemplos que Electron, sin servicios productivos ni cuentas reales.
+
+## Marco conectado (pasos 2–5)
+
+El marco usa los nueve temas, Inter, textos e iconos de Electron. El generador
+`node ../hub-web/scripts/rune-catalog.mjs` actualiza catálogo e iconos;
+`--check` detecta diferencias y también se ejecuta en los tests. Requiere Node
+>=22.18.0 y rustup/rustfmt 1.99.1 solo en desarrollo, no en la aplicación.
+
+Arrancado por hub-host, consume y borra `VANTARE_HUB_PIPE`/`VANTARE_HUB_TOKEN`
+antes de iniciar hilos. El cliente tiene colas acotadas, E/S con plazo y cierre
+con cancelación/recogida del worker. No se registran los valores del bootstrap.
+Se conserva el contrato Rust del host; no se copia un DTO del núcleo.
+
+En un Mac de desarrollo, el anfitrión de escena solo existe en debug. Las
+escenas comparten los JSON de `hub-web/fixtures` y no usan servicios ni cuentas:
+
+```sh
+VANTARE_HUB_HOST=mock VANTARE_HUB_SCENE=roadmap-published \
+  ~/target-isa-2256-hub-rune/debug/vantare-hub-ui-rune \
+  --scene roadmap --snap ~/orq/roadmap-rune.png
+```
+
+Otras escenas: `core-offline`, `core-connected`, `roadmap-base`,
+`roadmap-error`, `ajustes-base`. Opciones visuales Rune solo admitidas en Mac
+con debug; en el servidor no ejecutar ninguna. Los tres argumentos QA de
+Chromium del anfitrión se validan e ignoran; otros argumentos se rechazan.
+
+Roadmap conserva la última publicación si falla el refresco, ignora respuestas
+antiguas, expira peticiones a 45 s y refresca cada 300 s solo mientras la sección
+está abierta. No hace peticiones en paralelo ni permite editar o publicar.
+Tablero, Circuito y Temporada se calculan desde la misma publicación; `later`
+se agrupa en Planeado. El estado del simulador y el aviso de núcleo apagado se
+actualizan desde el protocolo del anfitrión.
+
+Las capturas, el smoke gráfico Windows y la ventana visible se han aplazado
+por orden del orquestador. [Corte 1](CORTE-1.md) separa cobertura automática y
+aceptación real pendiente. No se afirma fidelidad visual o soporte Windows 10
+probado a partir de mocks o de una compilación.

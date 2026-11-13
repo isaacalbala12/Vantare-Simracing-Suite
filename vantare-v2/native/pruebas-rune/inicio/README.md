@@ -42,3 +42,12 @@ Rune fijados a d5338988a7c1b3377adb60853815b6d0843dae7c.
 Pendiente: ejecución física, paridad visual, primera ventana/estado interactivo
 medidos por la campaña común, comparación A-Electron/A-GPUI fast y kit final.
 No hay veredicto de adopción, integración ni release.
+
+## Marca de interactividad para la campaña A
+
+VANTARE_MEASUREMENT_READY_FILE absoluto se publica una sola vez después de
+un frame completo con todas las imágenes locales decodificadas. El controlador
+observa su JSON con QPC igual en los tres motores; no se presume equivalencia
+entre otro reloj y QPC. No equivale a una medida de pantalla: PresentMon
+aporta la primera imagen mostrada. La marca nunca sobrescribe archivos.
+El nuevo gate de imágenes y el callback se comprobarán en Mac y el PC.

@@ -1,3 +1,11 @@
+## VANTA-141 · Inicio Rune: señal de frame interactivo (13/11/2026)
+
+Pieza 8, PR draft #2241. Señal optativa tras frame completo con imágenes
+listas; error de escritura cierra con fallo, sin sobrescribir evidencia.
+Nuevo test del gate de imágenes sin ventana. Formato PASS; Runtime, Clippy
+y cruce Release pendientes de ejecutar en el Mac recuperado. No se ejecuta
+Rune en servidor. Telemetría de campaña exclusivamente grabada; sin merge/release.
+
 ## VANTA-141 · Pieza 8 Inicio Rune compilada
 
 - Pantalla local Inicio, tokens y fuentes del Hub, recursos SVG y fixture inicio-base incrustados. Ventana 1440×900 sin entrada animada, navegación sencilla y scroll Rune real. Sin red ni servicios reales.

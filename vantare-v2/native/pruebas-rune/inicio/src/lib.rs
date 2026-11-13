@@ -81,6 +81,15 @@ pub fn setup(s: &mut State, wake: rune::Waker) {
         images,
     });
 }
+/// Ready only after every local preview/icon decoded successfully on the CPU.
+pub fn assets_ready(state: &State) -> bool {
+    state.assets.as_ref().is_some_and(|assets| {
+        assets
+            .images
+            .iter()
+            .all(|image| image.is_ready() && image.error().is_none())
+    })
+}
 fn tokens() -> &'static serde_json::Value {
     static TOKENS: OnceLock<serde_json::Value> = OnceLock::new();
     TOKENS.get_or_init(|| serde_json::from_str(include_str!("../assets/tokens.json")).unwrap())
@@ -421,6 +430,17 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn local_images_decode_before_interactive_readiness() {
+        let mut state = super::State::default();
+        assert!(!super::assets_ready(&state));
+        super::setup(&mut state, std::sync::Arc::new(|| {}));
+        for image in &state.assets.as_ref().unwrap().images {
+            image.wait().expect("SVG local decodificable sin ventana");
+        }
+        assert!(super::assets_ready(&state));
+    }
+
     use super::*;
     use rune::{Env, Runtime};
     fn runtime() -> Runtime<State> {

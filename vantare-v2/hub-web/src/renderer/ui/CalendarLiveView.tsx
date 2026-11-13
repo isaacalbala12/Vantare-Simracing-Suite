@@ -1,13 +1,11 @@
-import { type Ref, useEffect, useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarSchedule,
   CalendarSeries,
 } from "../../contract/generated/calendar";
-import { calendarLaunchLeadMs } from "../../contract/generated/calendar";
 import { Icon } from "../assets/icons/Icon";
 import { calendarText as text } from "../i18n/calendar";
-import { calendarLaunchText } from "../i18n/calendarLaunch";
 import {
   alertAt,
   board,
@@ -69,10 +67,6 @@ export function CalendarLiveView({
   onSerie,
   onDetail,
   onLaunch,
-  onArm,
-  launchButtonRef,
-  armBusy = false,
-  armDisabledReason,
 }: {
   schedule: CalendarSchedule;
   alerts: CalendarAlerts;
@@ -89,10 +83,6 @@ export function CalendarLiveView({
   onSerie?: (id: string) => void;
   onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
-  onArm?: (seriesId: string, startAt: number) => void;
-  launchButtonRef?: Ref<HTMLButtonElement>;
-  armBusy?: boolean;
-  armDisabledReason?: string;
 }) {
   const launchPendingId = useId();
   const [searchOpen, setSearchOpen] = useState(
@@ -389,35 +379,15 @@ export function CalendarLiveView({
               </Button>
               <Button
                 className="v-calendar-launch-pending"
-                ref={launchButtonRef}
-                focusableWhenDisabled
                 aria-describedby={launchPendingId}
-                title={armDisabledReason ?? calendarLaunchText.onlyOpen}
-                disabled={
-                  !onArm ||
-                  !!armDisabledReason ||
-                  hero.at - calendarLaunchLeadMs < now
-                }
-                aria-disabled={
-                  armBusy ||
-                  !onArm ||
-                  !!armDisabledReason ||
-                  hero.at - calendarLaunchLeadMs < now
-                }
-                onClick={() => {
-                  if (
-                    !armBusy &&
-                    !armDisabledReason &&
-                    hero.at - calendarLaunchLeadMs >= now
-                  )
-                    onArm?.(hero.series.id, hero.at);
-                }}
+                title={text.launchPending}
+                disabled
               >
                 <Icon name="clock" />
-                {text.launchAt(clock(hero.at - calendarLaunchLeadMs, utc))}
+                {text.launchAt(clock(hero.at - 3 * 60_000, utc))}
               </Button>
               <span className="v-sr-only" id={launchPendingId}>
-                {armDisabledReason ?? calendarLaunchText.onlyOpen}
+                {text.launchPending}
               </span>
             </div>
           </div>
@@ -540,3 +510,4 @@ export function CalendarLiveView({
     </div>
   );
 }
+

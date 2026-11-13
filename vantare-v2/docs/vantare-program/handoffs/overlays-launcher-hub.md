@@ -1,3 +1,15 @@
+## VANTA-141 · Recogida íntegra de campañas (13/11/2026)
+
+Issue #2213, Plane En curso. RECOGER.ps1 comprime exclusivamente la carpeta
+marcada campana.json, conserva intentos fallidos e incluye inventario SHA256.
+Rechaza campañas activas, enlaces, .env y destinos existentes; verifica el
+contenido del zip sin abrir ninguna interfaz. Prueba sintética de ida y vuelta,
+con bytes binarios y fallo conservado, PASS. No constituye todavía el kit final.
+Comparación de tiempos de compilación pendiente autorizada por Isaac; se medirá
+en el servidor en una madrugada sin otros workers, Rune Release -j1 y el mismo
+perfil para GPUI. El analizador conserva ese estado como pendiente, nunca PASS.
+Sin merge ni release. Faltan integración de rondas, aguante y paquete completo.
+
 ## VANTA-141 · Umbral de compilación diferido por Isaac
 
 El kit no espera a medir tiempos limpios/incrementales comparables. Se harán

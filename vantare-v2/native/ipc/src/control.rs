@@ -563,6 +563,7 @@ pub struct Feed {
     stop: std::sync::Arc<crate::transport::Event>,
     initial: std::sync::Arc<crate::transport::Event>,
     thread: Option<std::thread::JoinHandle<()>>,
+    account_thread: Option<std::thread::JoinHandle<()>>,
 }
 #[cfg(any(windows, unix))]
 impl Feed {
@@ -578,64 +579,61 @@ impl Feed {
         core_image: std::path::PathBuf,
         observe_account: bool,
     ) -> io::Result<Self> {
+        let authority = crate::account_session::AuthorityLink {
+            pipe: pipe_name(photo),
+            image: core_image.clone(),
+        };
+        let link = CoreLink {
+            pipe: authority.pipe.clone(),
+            image: core_image,
+            nonce: String::new(),
+        };
+        Self::connect_with(
+            move |stop| request_cancelled(&link, Command::Read, stop),
+            observe_account.then_some(move |stop: &std::sync::Arc<crate::transport::Event>| {
+                crate::account_session::request_cancelled_within(
+                    &authority,
+                    stop,
+                    std::time::Duration::from_secs(2),
+                )
+            }),
+        )
+    }
+    fn connect_with(
+        read_policy: impl Fn(&std::sync::Arc<crate::transport::Event>) -> io::Result<Policy>
+        + Send
+        + 'static,
+        read_account: Option<
+            impl Fn(
+                &std::sync::Arc<crate::transport::Event>,
+            ) -> io::Result<Option<crate::account_session::AccountObservation>>
+            + Send
+            + 'static,
+        >,
+    ) -> io::Result<Self> {
         use crate::transport::Event;
         let latest = std::sync::Arc::new(std::sync::Mutex::new(None));
         let account = std::sync::Arc::new(std::sync::Mutex::new(None));
-        let account_target = std::sync::Arc::clone(&account);
         let stop = std::sync::Arc::new(Event::new()?);
         let initial = std::sync::Arc::new(Event::new()?);
         let ready = std::sync::Arc::clone(&initial);
         let target = std::sync::Arc::clone(&latest);
         let cancel = std::sync::Arc::clone(&stop);
-        let link = CoreLink {
-            pipe: pipe_name(photo),
-            image: core_image,
-            nonce: String::new(),
-        };
         let thread = std::thread::Builder::new()
             .name("rights-feed".into())
             .spawn(move || {
                 let mut cursor = (0, 0);
-                let mut account_probe = AccountProbe::default();
                 while !cancel.is_set() {
-                    let result = request_cancelled(&link, Command::Read, &cancel);
-                    // Publish legacy policy first, including its bounded transient fallback.
-                    // Never hold either observation lock during the account RPC.
-                    let epoch = if let Ok(mut slot) = target.lock() {
+                    let result = read_policy(&cancel);
+                    if let Ok(mut slot) = target.lock() {
                         *slot = feed_observation(
                             result,
                             slot.take(),
                             &mut cursor,
                             wall_ms().unwrap_or(u64::MAX),
                         );
-                        slot.as_ref().map(|policy| policy.epoch)
                     } else {
                         break;
-                    };
-                    if observe_account {
-                        let previous = match account_target.lock() {
-                            Ok(slot) => slot.clone(),
-                            Err(_) => break,
-                        };
-                        let observation = account_probe.observe(
-                            epoch,
-                            previous,
-                            || {
-                                let authority = crate::account_session::AuthorityLink {
-                                    pipe: link.pipe.clone(),
-                                    image: link.image.clone(),
-                                };
-                                crate::account_session::request_cancelled_within(
-                                    &authority,
-                                    &cancel,
-                                    std::time::Duration::from_secs(2),
-                                )
-                            },
-                            || wall_ms().unwrap_or(u64::MAX),
-                        );
-                        if let Ok(mut slot) = account_target.lock() {
-                            *slot = observation;
-                        }
                     }
                     ready.set();
                     if cancel.wait(std::time::Duration::from_millis(250)) {
@@ -643,20 +641,80 @@ impl Feed {
                     }
                 }
             })?;
+        let account_thread = if let Some(read_account) = read_account {
+            let target = std::sync::Arc::clone(&latest);
+            let account_target = std::sync::Arc::clone(&account);
+            let cancel = std::sync::Arc::clone(&stop);
+            match std::thread::Builder::new()
+                .name("account-feed".into())
+                .spawn(move || {
+                    let mut probe = AccountProbe::default();
+                    while !cancel.is_set() {
+                        let epoch = match target.lock() {
+                            Ok(slot) => slot
+                                .as_ref()
+                                .filter(|policy| {
+                                    wall_ms().is_ok_and(|now| policy.observable_at(now))
+                                })
+                                .map(|policy| policy.epoch),
+                            Err(_) => break,
+                        };
+                        let previous = match account_target.lock() {
+                            Ok(slot) => slot.clone(),
+                            Err(_) => break,
+                        };
+                        let observation = probe.observe(
+                            epoch,
+                            previous,
+                            || read_account(&cancel),
+                            || wall_ms().unwrap_or(u64::MAX),
+                        );
+                        if let Ok(mut slot) = account_target.lock() {
+                            *slot = observation;
+                        } else {
+                            break;
+                        }
+                        if cancel.wait(std::time::Duration::from_millis(250)) {
+                            break;
+                        }
+                    }
+                }) {
+                Ok(thread) => Some(thread),
+                Err(error) => {
+                    stop.set();
+                    let _joined = thread.join();
+                    return Err(error);
+                }
+            }
+        } else {
+            None
+        };
         Ok(Self {
             latest,
             account,
             stop,
             initial,
             thread: Some(thread),
+            account_thread,
         })
     }
     pub fn account_observation(&self) -> Option<crate::account_session::AccountObservation> {
-        self.account
-            .lock()
+        wall_ms()
             .ok()
-            .and_then(|slot| slot.clone())
-            .filter(|o| wall_ms().is_ok_and(|now| o.policy.observable_at(now)))
+            .and_then(|now| self.account_observation_at(now))
+    }
+    fn account_observation_at(
+        &self,
+        now: u64,
+    ) -> Option<crate::account_session::AccountObservation> {
+        let observation = self.account.lock().ok()?.clone()?;
+        let policy = self.latest.lock().ok()?.clone()?;
+        // The independent legacy reader can observe an authority restart while an
+        // older account RPC is still in flight. It cannot refresh that generation.
+        (policy.epoch == observation.policy.epoch
+            && policy.observable_at(now)
+            && observation.policy.observable_at(now))
+        .then_some(observation)
     }
     pub fn policy(&self) -> Policy {
         self.latest
@@ -680,6 +738,9 @@ impl Drop for Feed {
     fn drop(&mut self) {
         self.stop.set();
         if let Some(thread) = self.thread.take() {
+            let _joined = thread.join();
+        }
+        if let Some(thread) = self.account_thread.take() {
             let _joined = thread.join();
         }
     }
@@ -1166,6 +1227,98 @@ mod account_probe_tests {
         assert!(probe.observe(Some(2), None, || Ok(None), || 0).is_none());
         assert_eq!(probe.failures, 0, "new authority can be probed again");
     }
+    #[test]
+    fn stalled_account_rpc_does_not_block_legacy_publication_or_initial_ready_and_drop_cancels_it()
+    {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicU64, Ordering},
+            mpsc,
+        };
+        use std::time::Duration;
+        let (reads_tx, reads_rx) = mpsc::channel();
+        let (started_tx, started_rx) = mpsc::channel();
+        let (cancelled_tx, cancelled_rx) = mpsc::channel();
+        let revision = AtomicU64::new(0);
+        let feed = Feed::connect_with(
+            move |_| {
+                let revision = revision.fetch_add(1, Ordering::Relaxed) + 1;
+                let policy = Policy {
+                    epoch: 1,
+                    revision,
+                    checked_at_ms: wall_ms()?,
+                    ..Policy::denied(AccessState::NoCredential)
+                };
+                reads_tx
+                    .send(revision)
+                    .expect("legacy receiver remains alive");
+                Ok(policy)
+            },
+            Some(move |stop: &Arc<crate::transport::Event>| {
+                started_tx.send(()).expect("account receiver remains alive");
+                // No sleep: this deliberately stalled query can only finish on stop.
+                // The long wait and recv_timeout calls are deadlock guards.
+                assert!(
+                    stop.wait(Duration::from_secs(60)),
+                    "feed must cancel account I/O"
+                );
+                cancelled_tx
+                    .send(())
+                    .expect("cancellation receiver remains alive");
+                Err(io::ErrorKind::ConnectionAborted.into())
+            }),
+        )
+        .expect("feed");
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("account query entered");
+        for expected in 1..=3 {
+            assert_eq!(
+                reads_rx
+                    .recv_timeout(Duration::from_secs(5))
+                    .expect("legacy advances"),
+                expected,
+            );
+        }
+        assert!(feed.wait_initial(Duration::ZERO));
+        // Seeing query 3 proves query 2 was published before starting it,
+        // while the account query is still blocked.
+        assert!(feed.latest.lock().unwrap().as_ref().unwrap().revision >= 2);
+        assert!(cancelled_rx.try_recv().is_err());
+        let (closed_tx, closed_rx) = mpsc::channel();
+        let closer = std::thread::spawn(move || {
+            drop(feed);
+            closed_tx.send(()).expect("close receiver remains alive");
+        });
+        cancelled_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("account cancellation");
+        closed_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("both threads joined");
+        closer.join().expect("feed closes");
+    }
+    #[test]
+    fn independent_legacy_refresh_does_not_renew_account_ttl_or_accept_an_old_epoch() {
+        use std::sync::{Arc, Mutex};
+        let observation = snapshot();
+        let mut refreshed = observation.policy.clone();
+        refreshed.checked_at_ms = 12_000;
+        let event = Arc::new(crate::transport::Event::new().unwrap());
+        let feed = Feed {
+            latest: Arc::new(Mutex::new(Some(refreshed))),
+            account: Arc::new(Mutex::new(Some(observation.clone()))),
+            stop: Arc::clone(&event),
+            initial: event,
+            thread: None,
+            account_thread: None,
+        };
+        assert!(feed.account_observation_at(12_250).is_none());
+        feed.latest.lock().unwrap().as_mut().unwrap().checked_at_ms = 10_000;
+        assert_eq!(feed.account_observation_at(10_750), Some(observation));
+        feed.latest.lock().unwrap().as_mut().unwrap().epoch = 2;
+        assert!(feed.account_observation_at(10_750).is_none());
+    }
     fn snapshot() -> AccountObservation {
         AccountObservation {
             generation: "a"
@@ -1196,12 +1349,18 @@ mod account_probe_tests {
                 epoch: Some(1),
                 failures: 2,
             };
+            // Previous account response at 10_000; next poll at 10_250,
+            // followed by an early transport error after 500 ms.
+            let clock = std::cell::Cell::new(10_250);
             assert_eq!(
                 probe.observe(
                     Some(1),
                     Some(previous.clone()),
-                    || Err(kind.into()),
-                    || 11_999
+                    || {
+                        clock.set(clock.get() + 500);
+                        Err(kind.into())
+                    },
+                    || clock.get()
                 ),
                 Some(previous)
             );
@@ -1236,14 +1395,16 @@ mod account_probe_tests {
                     .is_none()
             );
         }
-        let clock = std::cell::Cell::new(10_000);
+        // The same next poll spends its entire 2 s budget: age is now 2_250 ms.
+        // Fresh legacy rights cannot renew the cached account generation.
+        let clock = std::cell::Cell::new(10_250);
         assert!(
             probe
                 .observe(
                     Some(1),
                     Some(snapshot()),
                     || {
-                        clock.set(12_000);
+                        clock.set(clock.get() + 2_000);
                         Err(io::ErrorKind::TimedOut.into())
                     },
                     || clock.get()

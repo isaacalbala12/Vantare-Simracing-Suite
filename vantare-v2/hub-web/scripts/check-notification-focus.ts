@@ -70,7 +70,9 @@ export async function checkNotificationFocus(owner: Page, base: string) {
             Reflect.get(window, "noticeFocusRequests") as { method: string }[]
           ).filter(
             ({ method }) =>
-              method === "launcher.launch" || method === "launcher.favorite",
+              method === "launcher.launch" ||
+              method === "launcher.launchChecked" ||
+              method === "launcher.favorite",
           ).length,
       );
     assert.equal(await launchCount(), 0);
@@ -84,7 +86,7 @@ export async function checkNotificationFocus(owner: Page, base: string) {
     assert.equal(
       await launchCount(),
       0,
-      "Neither launch method can escape the bell",
+      "No launch method can escape the bell",
     );
     assert.equal(
       await sidebar.getAttribute("class"),

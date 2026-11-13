@@ -89,7 +89,7 @@ pub fn read_account_session(
 }
 /// One authenticated RPC with a total deadline, including partial reads/writes.
 #[cfg(any(windows, unix))]
-pub fn request_cancelled_within(
+pub(crate) fn request_cancelled_within(
     link: &AuthorityLink,
     stop: &std::sync::Arc<crate::transport::Event>,
     timeout: std::time::Duration,

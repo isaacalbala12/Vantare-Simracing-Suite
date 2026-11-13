@@ -509,7 +509,9 @@ impl AccountProbe {
     fn observe(
         &mut self,
         epoch: Option<u64>,
+        previous: Option<crate::account_session::AccountObservation>,
         read: impl FnOnce() -> io::Result<Option<crate::account_session::AccountObservation>>,
+        now: impl FnOnce() -> u64,
     ) -> Option<crate::account_session::AccountObservation> {
         if epoch != self.epoch {
             self.epoch = epoch;
@@ -534,7 +536,21 @@ impl AccountProbe {
                 } else {
                     self.failures = 0;
                 }
-                None
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::TimedOut
+                        | io::ErrorKind::Interrupted
+                        | io::ErrorKind::ConnectionAborted
+                        | io::ErrorKind::WouldBlock
+                ) {
+                    let now_ms = now();
+                    previous.filter(|observation| {
+                        Some(observation.policy.epoch) == epoch
+                            && observation.policy.observable_at(now_ms)
+                    })
+                } else {
+                    None
+                }
             }
         }
     }
@@ -583,28 +599,43 @@ impl Feed {
                 let mut account_probe = AccountProbe::default();
                 while !cancel.is_set() {
                     let result = request_cancelled(&link, Command::Read, &cancel);
-                    if observe_account {
-                        let epoch = result.as_ref().ok().map(|p| p.epoch);
-                        let observation = account_probe.observe(epoch, || {
-                            let authority = crate::account_session::AuthorityLink {
-                                pipe: link.pipe.clone(),
-                                image: link.image.clone(),
-                            };
-                            crate::account_session::request_cancelled(&authority, &cancel)
-                        });
-                        if let Ok(mut slot) = account_target.lock() {
-                            *slot = observation;
-                        }
-                    }
-                    if let Ok(mut slot) = target.lock() {
+                    // Publish legacy policy first, including its bounded transient fallback.
+                    // Never hold either observation lock during the account RPC.
+                    let epoch = if let Ok(mut slot) = target.lock() {
                         *slot = feed_observation(
                             result,
                             slot.take(),
                             &mut cursor,
                             wall_ms().unwrap_or(u64::MAX),
                         );
+                        slot.as_ref().map(|policy| policy.epoch)
                     } else {
                         break;
+                    };
+                    if observe_account {
+                        let previous = match account_target.lock() {
+                            Ok(slot) => slot.clone(),
+                            Err(_) => break,
+                        };
+                        let observation = account_probe.observe(
+                            epoch,
+                            previous,
+                            || {
+                                let authority = crate::account_session::AuthorityLink {
+                                    pipe: link.pipe.clone(),
+                                    image: link.image.clone(),
+                                };
+                                crate::account_session::request_cancelled_within(
+                                    &authority,
+                                    &cancel,
+                                    std::time::Duration::from_secs(2),
+                                )
+                            },
+                            || wall_ms().unwrap_or(u64::MAX),
+                        );
+                        if let Ok(mut slot) = account_target.lock() {
+                            *slot = observation;
+                        }
                     }
                     ready.set();
                     if cancel.wait(std::time::Duration::from_millis(250)) {
@@ -1094,7 +1125,12 @@ mod account_probe_tests {
         let mut probe = AccountProbe::default();
         assert!(
             probe
-                .observe(Some(1), || Err(io::ErrorKind::UnexpectedEof.into()))
+                .observe(
+                    Some(1),
+                    None,
+                    || Err(io::ErrorKind::UnexpectedEof.into()),
+                    || 0
+                )
                 .is_none()
         );
         let observation = AccountObservation {
@@ -1102,7 +1138,7 @@ mod account_probe_tests {
             policy: Policy::denied(AccessState::NoCredential),
         };
         assert_eq!(
-            probe.observe(Some(1), || Ok(Some(observation.clone()))),
+            probe.observe(Some(1), None, || Ok(Some(observation.clone())), || 0),
             Some(observation)
         );
         assert_eq!(probe.failures, 0);
@@ -1110,10 +1146,15 @@ mod account_probe_tests {
         for _ in 0..8 {
             assert!(
                 probe
-                    .observe(Some(1), || {
-                        calls.set(calls.get() + 1);
-                        Err(io::ErrorKind::UnexpectedEof.into())
-                    })
+                    .observe(
+                        Some(1),
+                        None,
+                        || {
+                            calls.set(calls.get() + 1);
+                            Err(io::ErrorKind::UnexpectedEof.into())
+                        },
+                        || 0
+                    )
                     .is_none()
             );
         }
@@ -1122,7 +1163,90 @@ mod account_probe_tests {
             3,
             "legacy core stops receiving unknown commands"
         );
-        assert!(probe.observe(Some(2), || Ok(None)).is_none());
+        assert!(probe.observe(Some(2), None, || Ok(None), || 0).is_none());
         assert_eq!(probe.failures, 0, "new authority can be probed again");
+    }
+    fn snapshot() -> AccountObservation {
+        AccountObservation {
+            generation: "a".repeat(64).try_into().expect("valid account observation fixture"),
+            policy: Policy {
+                version: VERSION,
+                epoch: 1,
+                revision: 1,
+                checked_at_ms: 10_000,
+                state: AccessState::Active,
+                ..Default::default()
+            },
+        }
+    }
+    #[test]
+    fn transient_account_errors_keep_only_an_observable_snapshot_without_counting_a_probe_failure()
+    {
+        for kind in [
+            io::ErrorKind::TimedOut,
+            io::ErrorKind::Interrupted,
+            io::ErrorKind::ConnectionAborted,
+            io::ErrorKind::WouldBlock,
+        ] {
+            let previous = snapshot();
+            let mut probe = AccountProbe {
+                epoch: Some(1),
+                failures: 2,
+            };
+            assert_eq!(
+                probe.observe(
+                    Some(1),
+                    Some(previous.clone()),
+                    || Err(kind.into()),
+                    || 11_999
+                ),
+                Some(previous)
+            );
+            assert_eq!(
+                probe.failures, 0,
+                "transient I/O breaks the unsupported-probe streak"
+            );
+            assert!(
+                probe
+                    .observe(Some(1), Some(snapshot()), || Err(kind.into()), || 12_000)
+                    .is_none()
+            );
+            assert!(
+                probe
+                    .observe(Some(2), Some(snapshot()), || Err(kind.into()), || 10_000)
+                    .is_none()
+            );
+        }
+    }
+    #[test]
+    fn absence_identity_and_protocol_errors_are_definitive_and_ttl_is_checked_after_io() {
+        let mut probe = AccountProbe::default();
+        assert!(
+            probe
+                .observe(Some(1), Some(snapshot()), || Ok(None), || 10_000)
+                .is_none()
+        );
+        for kind in [io::ErrorKind::PermissionDenied, io::ErrorKind::InvalidData] {
+            assert!(
+                probe
+                    .observe(Some(1), Some(snapshot()), || Err(kind.into()), || 10_000)
+                    .is_none()
+            );
+        }
+        let clock = std::cell::Cell::new(10_000);
+        assert!(
+            probe
+                .observe(
+                    Some(1),
+                    Some(snapshot()),
+                    || {
+                        clock.set(12_000);
+                        Err(io::ErrorKind::TimedOut.into())
+                    },
+                    || clock.get()
+                )
+                .is_none()
+        );
+        assert_eq!(probe.failures, 0);
     }
 }

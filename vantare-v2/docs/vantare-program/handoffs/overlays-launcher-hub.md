@@ -1633,3 +1633,16 @@ se registran en el PR de esta rama. Sin integración, promoción ni release prop
 Seguimiento #2229 listo para review: 9685935ef, CI completa verde15/15.
 La superficie no depende de cambios de API de ese seguimiento; integrar su
 arreglo y regresiones antes de activar Calendario.
+
+### Seguimiento de review · Feed y preflight
+
+#2229 integradoe13f7801d y #2235 integrado6eba49d7f; rebase36e597a2e con CI18checks verdes y lógica v31 intacta. Este seguimiento cambia el presupuesto del
+Feed a2s y conserva únicamente observaciones aún observables de la misma autoridad
+ante errores transitorios permitidos; Ok(None) sigue limpiando la cuenta. El
+residente mantiene750ms. Los tests crean observación fresca después de cada E/S,
+y exigen LauncherConflict/rechazos de perfil y Protected antes de cualquier envío.
+Los tres scripts de seguridad incluyen launcher.launchChecked. Como aclaró Isaac:
+hay una primera lectura del anfitrión; no una segunda justo antes de enviar; la
+garantía final es del residente. D debe esperar la integración de este seguimiento
+antes de activar Calendario; worker E le avisará cuando esté realmente en nightly.
+Estado en desarrollo, sin integración de este seguimiento ni acciones de release.

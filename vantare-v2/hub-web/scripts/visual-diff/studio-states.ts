@@ -80,6 +80,12 @@ const scene = (
             await strip.locator("[data-add-widget]").getAttribute("aria-label"),
             t.add,
           );
+          assert.equal(
+            await strip
+              .locator(".v-focus-add .v-button-label > span")
+              .evaluate((node) => getComputedStyle(node).display),
+            "none",
+          );
         }
       }
     },

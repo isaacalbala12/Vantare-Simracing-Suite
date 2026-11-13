@@ -189,6 +189,30 @@ describe("Studio A honest states", () => {
     ).toHaveLength(2);
     expect(screen.queryByRole("alert")).toBeNull();
   });
+  it("focuses the unavailable notice if retrying the read confirms the core is missing", async () => {
+    const original = Client.prototype.request;
+    vi.spyOn(Client.prototype, "request").mockImplementation(async function (
+      this: Client,
+      request,
+      onSent,
+    ) {
+      const reply = await original.call(this, request, onSent);
+      if (reply.method === "studio.get")
+        return {
+          ...reply,
+          value: { ...reply.value, state: "missing" as const, instances: [] },
+        };
+      return reply;
+    });
+    mount("studio-a-fallo-lectura");
+    await screen.findByRole("alert");
+    await userEvent.click(screen.getByRole("button", { name: t.reload }));
+    const notice = await screen.findByRole("region", { name: t.missing });
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(
+      screen.queryByRole("complementary", { name: t.layoutLabel }),
+    ).toBeNull();
+  });
   it("keeps protection, reload and Solo lectura visible after a failed reload", async () => {
     const original = Client.prototype.request;
     let reads = 0;

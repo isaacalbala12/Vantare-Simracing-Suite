@@ -6,9 +6,10 @@ import { Callout, Skeleton } from "../Data";
 import { ActionNotice } from "./ActionNotice";
 import { FocusHeader } from "./FocusHeader";
 import { LayoutStrip } from "./LayoutStrip";
-import { Catalog, StudioInspector } from "./Rail";
+import { Catalog } from "./Rail";
 import { RemoveWidget } from "./RemoveWidget";
 import { Stage } from "./Stage";
+import { StudioSteps as StudioInspector } from "./StudioSteps";
 import { widgetName } from "./Widgets";
 import "./focus.css";
 

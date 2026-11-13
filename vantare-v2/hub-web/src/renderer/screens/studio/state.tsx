@@ -29,7 +29,7 @@ function useStateValue() {
       revision: string;
     }>(),
     [notice, setNotice] = useState<{
-      kind: "added" | "removed";
+      kind: "added" | "removed" | "preset";
       name: string;
       revision: string;
     }>(),
@@ -74,6 +74,24 @@ function useStateValue() {
           response.method.startsWith("studio.")
         ) {
           update(response.value as StudioView);
+          if (
+            request.method === "studio.instance" &&
+            request.patch.field === "settings" &&
+            "tablePreset" in request.patch.value &&
+            request.patch.value.tablePreset &&
+            (response.value as StudioView).revision !== request.baseRevision
+          ) {
+            const name = {
+              compact: t.formatCompact,
+              standard: t.formatStandard,
+              expanded: t.formatExpanded,
+            }[request.patch.value.tablePreset];
+            setNotice({
+              kind: "preset",
+              name,
+              revision: (response.value as StudioView).revision,
+            });
+          }
           if (response.method === "studio.add") {
             const item = response.value.instances.find(
               (item) => item.id === response.added,

@@ -125,3 +125,12 @@
     flex-basis: 100%;
   }
 }
+/* ContextRail already supplies the horizontal gutter. */
+.v-calendar-rail section {
+  padding-inline: 0;
+}
+.v-calendar .v-calendar-event-facts strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

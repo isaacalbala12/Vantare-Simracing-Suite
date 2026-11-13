@@ -1702,3 +1702,37 @@ la licencia del repositorio; no se relicencia. Windows check espera memoria en
 la cola compartida, cuatro jobs. Mac SSH disponible con 42 GiB libres; gates
 y apertura de ventana pendientes. PR 1 todavía en preparación, no se presenta
 como terminado. Plane lo actualiza el orquestador; resumen en el PR.
+
+### PR 1 abierto · validación parcial y Mac dormido (2026-11-13)
+
+PR draft #2260 a nightly, base 0cf70079b. Código de esqueleto validado en Mac
+cb359cdfe6a4af247a27ea7e365f1a5906270f44: test Runtime 1/1, formato,
+Clippy -D warnings, build, política de dependencias y sus cinco tests PASS.
+El head posterior solo corrige el orden checkout/configuración del workflow;
+el SHA actual y checks se consultan en #2260 y #2256.
+
+Para permitir el consumo portable del modelo Updates se añade en hub-host
+únicamente una dependencia cfg(not(windows)) del lector del instalador, sin
+features de escritura/UI. No se toca el instalador ni cambia Windows.
+Linux portable-dispatch también PASS en CI. CI propia Rune y gates Windows
+siguen en ejecución; no se afirma CI verde ni PR listo.
+
+La sesión Mac estaba bloqueada. El orquestador autoriza capturas headless por
+ahora y deja la ventana visible para cuando Isaac desbloquee por la mañana.
+El render Mac con --snap terminó correctamente (1 frame, 1 nodo, sin texto),
+pero antes de copiar la imagen el Mac dejó de responder por SSH/Tailscale.
+Imagen remota: ~/orq/isa2256-pr1-captura/escena.png. Aún no está adjuntada ni
+comparada con Electron. Intento de ventana visible conservado: no se observó
+una ventana visible con la sesión bloqueada; no es una prueba de aceptación.
+
+Logs Mac copiados en D:/VantareServer/evidence/hub-rune/1-esqueleto/;
+target propio Mac ~/target-isa-2256-hub-rune (aprox. 2 GiB), última lectura:
+39,6 GiB libres. No se borran targets ajenos. Falta retirar el propio al cerrar.
+El check Windows local no llegó a adquirir slot por falta de RAM (cuatro jobs,
+7 GiB pedidos); no se rebajan guardas ni se ocupa el segundo slot. No se ha
+compilado ni ejecutado gráfica en el servidor.
+
+Siguiente acción: recuperar la captura Mac, hacer comparación lado a lado,
+terminar gates locales por cola y verificar CI completa de #2260. Solo entonces
+seguir con PR 2 apilado. Los pasos 2–5 y corte 1 siguen pendientes. Plane lo
+actualiza el orquestador con el resumen del PR. Sin merge, promoción o release.

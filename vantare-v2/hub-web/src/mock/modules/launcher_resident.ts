@@ -142,7 +142,7 @@ export function create(
         schedule(() => {
           if (!view.execution) return;
           view.execution.events.push({
-            seq: "2",
+            seq: String(BigInt(view.execution.events.at(-1)?.seq ?? "0") + 1n),
             kind: {
               kind: "order-received",
               request,

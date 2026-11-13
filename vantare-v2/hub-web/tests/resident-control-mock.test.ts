@@ -151,3 +151,69 @@ it("rejects a queued rehearsal if the observed account changes before consumptio
   expect(f.value.running).toBe(false);
   expect(f.tasks).toHaveLength(0);
 });
+
+import { create as createResidentMock } from "../src/mock/modules/launcher_resident";
+
+it("keeps the event ring valid when cancellation asks how to close applications", () => {
+  const f = fixture();
+  const tasks: (() => void)[] = [];
+  const handle = createResidentMock(
+    {
+      sceneName: "launcher-control-closing",
+      core: f.core,
+      launcherData: f.document,
+      visual: null,
+      notes: [],
+      note: () => {},
+    },
+    (callback) => tasks.push(callback),
+  );
+  function snapshot() {
+    const reply = handle({
+      kind: "request",
+      id: 1,
+      request: { method: "launcher.resident.get" },
+    });
+    if (
+      reply?.kind !== "response" ||
+      !("result" in reply) ||
+      reply.result.method !== "launcher.resident.get"
+    )
+      throw new Error("resident snapshot missing");
+    return reply.result.value;
+  }
+  const initial = snapshot().execution;
+  if (!initial?.active) throw new Error("active execution missing");
+  handle({
+    kind: "request",
+    id: 2,
+    request: {
+      method: "launcher.resident.cancel",
+      target: { instance: initial.instance, ...initial.active },
+    },
+  });
+  tasks.shift()?.();
+  const question = snapshot().execution?.question;
+  if (!question) throw new Error("closing question missing");
+  handle({
+    kind: "request",
+    id: 3,
+    request: {
+      method: "launcher.resident.answer",
+      target: { instance: initial.instance, ...question, action: "leave" },
+    },
+  });
+  tasks.shift()?.();
+  tasks.shift()?.();
+  const final = snapshot().execution;
+  if (!final) throw new Error("final execution missing");
+  const seq = final.events.map((event) => BigInt(event.seq));
+  expect(
+    seq.every((value, index) => index === 0 || value > seq[index - 1]),
+  ).toBe(true);
+  expect(final.events.at(-1)?.kind).toMatchObject({
+    kind: "finished",
+    outcome: { kind: "cancelled" },
+  });
+  expect(final.active).toBeNull();
+});

@@ -624,8 +624,7 @@ fn initial_info(args: &Args, capture: bool) -> Result<(Info, Option<String>), St
                 probe_error = Some(error);
                 let root = args.root.clone().unwrap_or_else(|| {
                     std::env::var_os("LOCALAPPDATA")
-                        .map(PathBuf::from)
-                        .unwrap_or_default()
+                        .map_or_default(PathBuf::from)
                         .join("Programs/Vantare")
                 });
                 Info {

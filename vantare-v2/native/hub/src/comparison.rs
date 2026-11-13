@@ -31,7 +31,12 @@ pub fn different_percent(candidate: &[u8], reference: &[u8]) -> Result<f64, Stri
     }
     let mut changed = 0_u32;
     let mut total = 0_u32;
-    for (candidate, reference) in candidate.chunks_exact(4).zip(reference.chunks_exact(4)) {
+    for (candidate, reference) in candidate
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(reference.as_chunks::<4>().0.iter())
+    {
         let alpha_c = f32::from(candidate[3]) / 255.0;
         let alpha_r = f32::from(reference[3]) / 255.0;
         let rgb_diff = (0..3).any(|channel| {

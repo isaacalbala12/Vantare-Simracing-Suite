@@ -27,7 +27,7 @@ pub fn photo(value: Option<&str>) -> Option<String> {
         return None;
     }
     let mut bytes = Vec::with_capacity(value.len() / 4 * 3);
-    let chunks = value.as_bytes().chunks_exact(4);
+    let chunks = value.as_bytes().as_chunks::<4>().0.iter();
     let count = value.len() / 4;
     for (index, chunk) in chunks.enumerate() {
         let mut bits = 0u32;

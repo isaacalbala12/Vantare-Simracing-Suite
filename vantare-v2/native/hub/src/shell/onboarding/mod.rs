@@ -90,8 +90,7 @@ impl State {
                     crate::scene::Scene::open(root.join(format!("{}.snapshot.json", kind.name())))
                         .ok()
                 })
-                .map(|scene| scene.snapshot().clone())
-                .unwrap_or_default();
+                .map_or_default(|scene| scene.snapshot().clone());
             let mut settings = vantare_ui::Settings::default_for(kind);
             if let vantare_ui::Settings::Standings(s) = &mut settings {
                 s.row_count = 6;

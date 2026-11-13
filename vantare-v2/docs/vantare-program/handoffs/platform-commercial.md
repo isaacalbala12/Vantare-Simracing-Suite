@@ -8,8 +8,20 @@
   corpus congelado conservan su versión y sus huellas.
 - Cargo nuevo exige un marcador para limpiar targets antiguos: migración bajo
   reserva de cola, con metadata/lock comprobados y sin enlaces.
-- Pendientes: mediciones repetidas, gates locales y CI, revisión del diff y PR
-  draft a nightly. Sin merge ni release. Aviso de adopción tras el merge.
+- PR draft #2248 abierto a nightly; primer SHA `d71e26213`. Primer Clippy CI
+  detecta `map_unwrap_or`: sustituciones equivalentes por `map_or_default`, sin
+  cambiar dependencias ni desactivar lints. Gates locales en curso, a dos jobs.
+- Caché C++: CI detectó que `SCCACHE_GHA_VERSION` activa GHA aunque ENABLED sea
+  false; la prueba aislada retira/restaura esa variable y exige backend local.
+  Fuente: sccache v0.19.0 `src/config.rs`, líneas 985–993.
+- Dos repeticiones limpias y dos sin cambios de domain con cada compilador,
+  misma máquina, `-j 2`, sin sccache; datos en evidencia local isa-2247.
+- Primer archivo de CI falla con sccache 0.18: Windows error 206, 359 rutas de
+  dependencias y comando expandido mayor de 32K. Se prueba 0.19 (última estable)
+  y se acorta solo el target de GitHub a RUNNER_TEMP/v/ci, conservando el backend.
+  La comparación local de ambas versiones/rutas espera el slot de hub-fast.
+- Pendientes: gates y CI verdes, revisión del diff y tiempos finales en el PR.
+  Sin merge ni release. Aviso de adopción tras el merge.
 
 > **VANTA-132:** estado vigente y despliegue en [el cierre de la tanda](#vanta-132--cierre-de-la-tanda-adminowner-2026-11-05). Sus entradas anteriores son evidencia histórica.
 

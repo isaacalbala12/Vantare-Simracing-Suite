@@ -198,7 +198,7 @@ impl Options {
                 vantare_domain::widget_settings::standings::STANDINGS_ROWS_MIN,
                 vantare_domain::widget_settings::standings::STANDINGS_ROWS_MAX,
             ),
-            name_mode: driver.map(|c| c.format.mode.clone()).unwrap_or_default(),
+            name_mode: driver.map_or_default(|c| c.format.mode.clone()),
             name_max: driver
                 .and_then(|c| c.format.max_chars)
                 .unwrap_or(16)
@@ -394,8 +394,7 @@ fn shown_group(board: &Board) -> Option<usize> {
 fn rows(board: &Board, options: &Options) -> Vec<(usize, usize)> {
     let mut ordered: Vec<(usize, usize)> = match options.mode {
         Mode::PlayerClass => shown_group(board)
-            .map(|g| (0..board.groups[g].rows.len()).map(|r| (g, r)).collect())
-            .unwrap_or_default(),
+            .map_or_default(|g| (0..board.groups[g].rows.len()).map(|r| (g, r)).collect()),
         Mode::AllClasses | Mode::Multiclass => board
             .groups
             .iter()

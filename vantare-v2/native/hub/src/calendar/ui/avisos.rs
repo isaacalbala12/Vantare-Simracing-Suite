@@ -625,7 +625,7 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
                 Some((first, s.next_start(series, first + Duration::seconds(1))))
             })
     });
-    let sample_at = sample_start.map(|(at, _)| zone.hm(at)).unwrap_or_default();
+    let sample_at = sample_start.map_or_default(|(at, _)| zone.hm(at));
     let sample_next = sample_start
         .and_then(|(_, next)| next)
         .map(|at| zone.hm(at));
@@ -636,8 +636,9 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
                 .iter()
                 .find_map(|x| alerts.band(&x.id).map(|b| (x, b)))
         })
-        .map(|(_, b)| format!(" · tu franja {}–{}", minutes_txt(b.from), minutes_txt(b.to)))
-        .unwrap_or_default();
+        .map_or_default(|(_, b)| {
+            format!(" · tu franja {}–{}", minutes_txt(b.from), minutes_txt(b.to))
+        });
     let preview = div()
         .flex_none()
         .p(px(18.0))

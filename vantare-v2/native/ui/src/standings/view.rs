@@ -1883,7 +1883,9 @@ mod tests {
         let mut buffer = vec![0u8; reader.output_buffer_size().unwrap()];
         reader.next_frame(&mut buffer).unwrap();
         let partial = buffer
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|p| p[3] > 0 && p[3] < 255)
             .count();
         assert!(

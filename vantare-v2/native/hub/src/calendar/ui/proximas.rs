@@ -1209,14 +1209,12 @@ pub(super) fn expired(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
         .last_week
         .as_ref()
         .and_then(|s| s.window().ok())
-        .map(|(from, _)| clock::week_title(&clock::week_days(from)))
-        .unwrap_or_default();
+        .map_or_default(|(from, _)| clock::week_title(&clock::week_days(from)));
     let next = cal
         .last_week
         .as_ref()
         .and_then(|s| s.window().ok())
-        .map(|(_, to)| clock::week_title(&clock::week_days(to)))
-        .unwrap_or_default();
+        .map_or_default(|(_, to)| clock::week_title(&clock::week_days(to)));
     let favs = cal.favorites().len();
     let banner = orbit::neo_card(cx)
         .flex_none()

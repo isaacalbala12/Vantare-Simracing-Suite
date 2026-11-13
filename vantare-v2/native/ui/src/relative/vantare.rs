@@ -157,7 +157,7 @@ impl Options {
                 .range_behind
                 .min(vantare_domain::widget_settings::relative::RELATIVE_RANGE_MAX),
             same_class: settings.class_scope == "sameClass",
-            name_mode: driver.map(|c| c.format.mode.clone()).unwrap_or_default(),
+            name_mode: driver.map_or_default(|c| c.format.mode.clone()),
             name_max: driver
                 .and_then(|c| c.format.max_chars)
                 .unwrap_or(16)

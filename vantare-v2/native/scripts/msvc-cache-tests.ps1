@@ -12,7 +12,7 @@ $source=Join-Path $root 'probe.cc'
 [IO.File]::WriteAllText($source, "#include <vector>`nextern `"C`" int probe() { std::vector<int> x(4096, 42); int n=0; for(int v:x) n+=v; return n; }")
 # A correctness gate must not depend on GitHub cache availability or quota.
 # Use a private disk backend/daemon; real GHA counters remain in Release timings.
-$cacheVariables=@('SCCACHE_SERVER_PORT','SCCACHE_GHA_ENABLED','SCCACHE_DIR','SCCACHE_CACHE_SIZE')
+$cacheVariables=@('SCCACHE_SERVER_PORT','SCCACHE_GHA_ENABLED','SCCACHE_GHA_VERSION','SCCACHE_DIR','SCCACHE_CACHE_SIZE')
 $previous=@{}
 foreach($name in $cacheVariables){$previous[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
@@ -20,11 +20,14 @@ $listener.Start()
 $port=$listener.LocalEndpoint.Port
 $listener.Stop()
 $env:SCCACHE_SERVER_PORT=[string]$port
+# SCCACHE_GHA_VERSION enables GHA even when SCCACHE_GHA_ENABLED is false.
+Remove-Item Env:SCCACHE_GHA_VERSION -ErrorAction SilentlyContinue
 $env:SCCACHE_GHA_ENABLED='false'
 $env:SCCACHE_DIR=Join-Path $root 'compiler-cache'
 $env:SCCACHE_CACHE_SIZE='10M'
 try {
     $before=& sccache --show-stats --stats-format=json | ConvertFrom-Json
+    if ($before.cache_location -notlike 'Local disk:*') { throw 'La prueba MSVC exige caché local aislada.' }
     $records=@()
     foreach($name in @('first','second')) {
         $output=Join-Path $root "$name.obj"

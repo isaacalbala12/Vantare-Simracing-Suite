@@ -11,7 +11,7 @@ if ($Partition -and $Partition -notmatch '^(hash|count|slice):[0-9]+/[0-9]+$') {
     throw 'Partición de nextest inválida.'
 }
 if ($Suite -eq 'lifecycle' -and $Partition) { throw 'lifecycle no acepta particiones.' }
-$target = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'vantare-targets/ci'))
+$target = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'v/ci'))
 $download = (Join-Path $env:RUNNER_TEMP 'vantare-test-archive')
 $native = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
 $scope = Get-Content -LiteralPath (Join-Path $download 'ci-scope.json') -Raw | ConvertFrom-Json

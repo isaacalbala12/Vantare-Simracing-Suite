@@ -591,8 +591,7 @@ impl Admin {
                             .demo_creator_lines
                             .iter()
                             .find(|(id, _)| id == &creator.creator_id)
-                            .map(|(_, lines)| lines.clone())
-                            .unwrap_or_default();
+                            .map_or_default(|(_, lines)| lines.clone());
                         self.state.creator = Some(creator);
                     } else {
                         self.read(Action::GetCreator {

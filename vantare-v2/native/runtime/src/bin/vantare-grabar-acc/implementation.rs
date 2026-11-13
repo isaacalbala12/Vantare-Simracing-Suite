@@ -712,7 +712,9 @@ fn utf8(bytes: &[u8]) -> io::Result<Vec<u8>> {
         ));
     }
     let unidades: Vec<u16> = bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|par| u16::from_le_bytes([par[0], par[1]]))
         .collect();
     Ok(String::from_utf16(&unidades)
@@ -1074,7 +1076,9 @@ fn versiones_del_estatico(estatico: &[u8]) -> (String, String) {
 /// Cadena UTF-16 de bytes little-endian, cortada en el primer NUL.
 fn cadena_utf16(bytes: &[u8]) -> String {
     let unidades: Vec<u16> = bytes
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|par| u16::from_le_bytes([par[0], par[1]]))
         .take_while(|unidad| *unidad != 0)
         .collect();

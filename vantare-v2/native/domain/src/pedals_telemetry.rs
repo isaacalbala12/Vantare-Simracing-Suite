@@ -115,8 +115,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
                 SourceState::Waiting | SourceState::Lost
             )
         })
-        .map(|p| p.telemetry)
-        .unwrap_or_default();
+        .map_or_default(|p| p.telemetry);
     let pedals = [
         pedal(telemetry.clutch),
         pedal(telemetry.brake),

@@ -203,7 +203,12 @@ impl Drop for GdiResources {
 /// RGBA con alfa recto: `Cb = a F`, `Cw = a F + (1-a) 255`.
 fn solve_alpha(black: &[u8], white: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(black.len());
-    for (b, w) in black.chunks_exact(4).zip(white.chunks_exact(4)) {
+    for (b, w) in black
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(white.as_chunks::<4>().0.iter())
+    {
         let diff: f32 = (0..3)
             .map(|i| (f32::from(w[i]) - f32::from(b[i])).max(0.0))
             .sum::<f32>()

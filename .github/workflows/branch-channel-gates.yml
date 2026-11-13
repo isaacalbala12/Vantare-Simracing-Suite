@@ -422,8 +422,8 @@ jobs:
           name: native-tests-${{ github.sha }}
           overwrite: true
           path: |
-            ${{ runner.temp }}/vantare-targets/ci/nextest-tests.tar.zst
-            ${{ runner.temp }}/vantare-targets/ci/ci-scope.json
+            ${{ runner.temp }}/v/ci/nextest-tests.tar.zst
+            ${{ runner.temp }}/v/ci/ci-scope.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
@@ -509,7 +509,7 @@ jobs:
         with:
           name: native-overlays-${{ github.sha }}
           overwrite: true
-          path: ${{ runner.temp }}/vantare-targets/ci/debug/lifecycle
+          path: ${{ runner.temp }}/v/ci/debug/lifecycle
           if-no-files-found: error
           retention-days: 1
           compression-level: 1
@@ -607,7 +607,7 @@ jobs:
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}
         run: |
-          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/vantare-targets/qa-exclusion"
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/v/qa-exclusion"
           if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
       - name: Preserve distribution timings and live compiler cache statistics
         if: always()
@@ -619,8 +619,8 @@ jobs:
           if-no-files-found: ignore
           path: |
             ${{ runner.temp }}/msvc-cache-probe/*.json
-            ${{ runner.temp }}/vantare-targets/qa-exclusion/distribution-*.json
-            ${{ runner.temp }}/vantare-targets/qa-exclusion/cargo-timings/*.html
+            ${{ runner.temp }}/v/qa-exclusion/distribution-*.json
+            ${{ runner.temp }}/v/qa-exclusion/cargo-timings/*.html
 
   native_installation:
     # Retain the existing check name; product also requires native_distribution.

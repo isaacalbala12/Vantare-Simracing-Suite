@@ -211,7 +211,7 @@ async fn capture_jobs(
 }
 
 fn rgba(mut pixels: Vec<u8>) -> Vec<u8> {
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0.iter_mut() {
         pixel.swap(0, 2);
         pixel[3] = 255;
     }
@@ -226,7 +226,12 @@ async fn still(cx: &AsyncApp, hwnd: isize, output: &Path) -> Result<(), String> 
             .timer(Duration::from_millis(120))
             .await;
         let (_, _, pixels) = capture::capture_client(hwnd, WIDTH, HEIGHT)?;
-        if previous.as_ref() == Some(&pixels) && pixels.chunks_exact(4).any(|p| p[..3] != [0, 0, 0])
+        if previous.as_ref() == Some(&pixels)
+            && pixels
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|p| p[..3] != [0, 0, 0])
         {
             return write(output, &rgba(pixels));
         }

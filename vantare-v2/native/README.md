@@ -447,9 +447,10 @@ cargo test --workspace --offline -j 2
 44 coches y con el corpus de 47 y comprueba, con un `Subscriber` de `ipc`, que
 llegan fotos con revisión creciente y el número de coches de la captura.
 
-`rust-toolchain.toml` fija 1.100.0. `.github/workflows/quality.yml` ejecuta los
-gates del workspace en Ubuntu; #1437 no cambia los jobs ni el código de
-Windows, cuya validación se ejecuta en el entorno Windows del orquestador.
+`rust-toolchain.toml` fija 1.100.0 (estable del 12-11-2026).
+`.github/workflows/branch-channel-gates.yml` valida el producto en
+`windows-latest`; `quality.yml` comprueba retirada y tooling. La versión anterior
+puede permanecer instalada para los workers cuyas ramas todavía la fijan.
 
 ## DuckDB precompilado para desarrollo (#1465)
 

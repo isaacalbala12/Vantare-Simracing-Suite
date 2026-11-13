@@ -16,7 +16,9 @@ pub(super) fn f32_at(bytes: &[u8], offset: usize) -> f64 {
 
 pub(super) fn wide_at(bytes: &[u8], offset: usize, size: usize) -> String {
     let units: Vec<_> = bytes[offset..offset + size]
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|b| u16::from_le_bytes([b[0], b[1]]))
         .take_while(|u| *u != 0)
         .collect();

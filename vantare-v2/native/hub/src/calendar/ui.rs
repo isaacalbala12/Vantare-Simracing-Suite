@@ -559,8 +559,7 @@ impl Calendar {
         let mut body = div().flex().flex_col();
         let items = self
             .schedule()
-            .map(|schedule| self.alerts.upcoming(schedule, now))
-            .unwrap_or_default();
+            .map_or_default(|schedule| self.alerts.upcoming(schedule, now));
         if items.is_empty() {
             body = body.child(
                 t(
@@ -583,8 +582,7 @@ impl Calendar {
             let lead = series
                 .class_chips()
                 .first()
-                .map(|c| c.name.clone())
-                .unwrap_or_default();
+                .map_or_default(|c| c.name.clone());
             let (sub, when) = match &item.band {
                 Some(band) => (
                     format!(
@@ -727,8 +725,7 @@ pub(super) fn render(
         let until = cal
             .schedule()
             .and_then(|s| s.window().ok())
-            .map(|(_, to)| cal.zone().day_long(to - chrono::Duration::days(1)))
-            .unwrap_or_default();
+            .map_or_default(|(_, to)| cal.zone().day_long(to - chrono::Duration::days(1)));
         page = page.child(banner(
             Tone::Warn,
             "wifi-off",

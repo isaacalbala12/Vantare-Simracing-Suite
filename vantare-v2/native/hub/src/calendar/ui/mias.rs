@@ -534,8 +534,7 @@ fn entry_row(
     let class = series
         .class_chips()
         .first()
-        .map(|c| c.name.clone())
-        .unwrap_or_default();
+        .map_or_default(|c| c.name.clone());
     row_shell(("calendar-mias-row", key), compact)
         .border_b_1()
         .border_color(orbit::alpha(skin.line1))

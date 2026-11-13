@@ -195,7 +195,6 @@ pub enum Event {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Topic {
-    #[serde(rename = "calendarLaunch")]
     CalendarLaunch,
 }
 #[cfg(any(test, feature = "bindings"))]

@@ -3,6 +3,17 @@
 .v-calendar .v-calendar-header-short {
   display: none;
 }
+.v-calendar .v-calendar-hero-actions > .v-button {
+  padding-inline: 18px;
+  font-size: 14px;
+}
+.v-calendar .v-calendar-hero-actions kbd {
+  flex: none;
+  padding-inline: 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text-on-accent) 18%, transparent);
+  font: 400 10px / 13px var(--font-mono);
+}
 @media (max-width: 1399px) {
   .v-calendar .v-calendar-header {
     min-height: 34px;
@@ -89,4 +100,18 @@
     gap: 10px;
     padding-inline: 12px;
   }
+}
+
+.v-calendar .v-calendar-live-series > span {
+  max-width: 100%;
+  min-width: 0;
+}
+.v-calendar .v-calendar-live-series .v-calendar-tier {
+  flex: none;
+}
+.v-calendar .v-calendar-series-caption {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

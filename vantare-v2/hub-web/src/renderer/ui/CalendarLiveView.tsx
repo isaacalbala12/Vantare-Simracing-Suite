@@ -178,9 +178,11 @@ export function CalendarLiveView({
           <strong>{s.name}</strong>
           <span>
             <Tier series={s} />
-            {s.track.replace(/\s*\(([^)]+)\)/gu, " $1")}
-            {text.separator}
-            {text.minutes(raceMinutes(s))}
+            <span className="v-calendar-series-caption" title={`${s.track}${text.separator}${text.minutes(raceMinutes(s))}`}>
+              {s.track.replace(/\s*\(([^)]+)\)/gu, " $1")}
+              {text.separator}
+              {text.minutes(raceMinutes(s))}
+            </span>
           </span>
         </button>
         <div className="v-calendar-live-classes">

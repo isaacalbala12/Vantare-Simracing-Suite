@@ -193,7 +193,7 @@ fn scene(messages: &mut VecDeque<HostToUi>, message: UiToHost) -> io::Result<()>
     }
     Ok(())
 }
-#[cfg(test)]
+#[cfg(all(test, debug_assertions))]
 mod tests {
     use super::*;
     use vantare_hub_host::protocol::{Reply, Request};

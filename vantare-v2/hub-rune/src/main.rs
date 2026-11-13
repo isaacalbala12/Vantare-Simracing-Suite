@@ -194,16 +194,18 @@ fn start() -> std::io::Result<()> {
     ];
     spec.setup = Some(setup);
     spec.poll = Some(poll);
-    let app = rune::App::new(spec).init(move || state).args(arguments);
+    let app = rune::App::new(spec)
+        .init(move || state)
+        .args(arguments)
+        .tab_visits_controls(true);
     let handle = app.handle();
     app.on_ready(move |_| {
-        if let Some(sender) = &ready {
-            if sender
+        if ready.as_ref().is_some_and(|sender| {
+            sender
                 .try_send(vantare_hub_host::protocol::UiToHost::Ready {})
                 .is_err()
-            {
-                handle.quit();
-            }
+        }) {
+            handle.quit();
         }
     })
     .try_run()

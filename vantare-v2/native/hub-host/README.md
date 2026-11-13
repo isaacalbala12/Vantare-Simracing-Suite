@@ -272,7 +272,7 @@ obsoletas (LauncherConflict), perfiles ausentes/vacíos y documentos Protected.
 No hace una segunda relectura justo antes de enviar. La garantía final procede
 del residente al consumir: lee una sola instantánea, valida revisión/cuenta y
 arranca con esos bytes por valor. La primera comprobación del anfitrión no la sustituye.
-El Feed dispone de2s totales para observar la sesión. Ante TimedOut, Interrupted,
+El Feed dispone de 2 s totales para observar la sesión. Ante TimedOut, Interrupted,
 ConnectionAborted o WouldBlock conserva la observación previa solo mientras su
-política siga observable y pertenezca a la misma autoridad; no alarga su TTL de2s.
-Ok(None) es definitivo. El residente conserva su plazo total de750ms al consumir.
+política siga observable y pertenezca a la misma autoridad; no alarga su TTL de 2 s.
+Ok(None) es definitivo. El residente conserva su plazo total de 750 ms al consumir.

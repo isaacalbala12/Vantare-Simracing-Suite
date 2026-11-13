@@ -1646,6 +1646,8 @@ Los tres scripts de seguridad incluyen launcher.launchChecked. Como aclaró Isaa
 hay una primera lectura del anfitrión; no una segunda justo antes de enviar; la
 garantía final es del residente. D debe esperar la integración de este seguimiento
 antes de activar Calendario; worker E le avisará cuando esté realmente en nightly.
-Estado: PR draft #2254, gates locales por la cola del servidor (Mac desconectado,
-autorizado por Isaac); CI completa pendiente. Los tests de ui se excluyen solo en
-local por la parada gráfica. Sin integración de este seguimiento ni acciones de release.
+Estado: PR draft #2254; el SHA y los resultados de gates se registran en su cuerpo.
+Gates locales por la cola del servidor autorizados por Isaac (Mac desconectado).
+Los tests de ui se excluyen solo en local por la parada gráfica. Tras ese gate,
+las comprobaciones restantes quedan a CI para liberar el slot al worker H.
+Sin integración de este seguimiento ni acciones de release.

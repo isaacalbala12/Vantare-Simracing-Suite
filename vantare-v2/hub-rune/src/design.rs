@@ -1,4 +1,5 @@
-use rune::{Color, El, TextStyle, col, hex, text};
+use rune::color::hex;
+use rune::{Color, El, TextStyle, col, text};
 use std::collections::BTreeMap;
 const TOKENS: &str = include_str!("../../hub-web/design/tokens.json");
 pub const COLORS: &[&str] = &[

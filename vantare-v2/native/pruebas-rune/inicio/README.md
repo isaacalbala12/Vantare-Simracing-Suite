@@ -72,3 +72,9 @@ Nuevo main: rustfmt PASS; build/cross y Clippy pendientes, Mac sin SSH desde
 13/11 03:52 UTC. El binario 5d501bda0 ya verificado se conserva, pero no sirve
 para esta nueva adquisición de T1. Los tres tests Runtime de la biblioteca
 siguen sin cambios. Validación gráfica y precisión física pendientes PC.
+
+La marca vacía primero el lote GDI del hilo (GdiFlush) y después espera la
+presentación de las actualizaciones de la aplicación con DwmFlush. Windows
+documenta que esta última espera a la aplicación llamante, no a toda la sesión:
+https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmflush
+Solo se usan estos callbacks dentro de la app en el PC; nunca en el servidor.

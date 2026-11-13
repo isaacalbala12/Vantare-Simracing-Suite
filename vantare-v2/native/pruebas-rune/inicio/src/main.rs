@@ -23,10 +23,20 @@ unsafe extern "system" {
     #[link_name = "DwmFlush"]
     fn dwm_flush() -> i32;
 }
+#[cfg(windows)]
+#[link(name = "gdi32")]
+unsafe extern "system" {
+    #[link_name = "GdiFlush"]
+    fn gdi_flush() -> i32;
+}
 
 fn composed_frame() -> std::io::Result<()> {
     #[cfg(windows)]
     {
+        // SAFETY: flushes this thread's GDI batch without pointers or ownership.
+        if unsafe { gdi_flush() } == 0 {
+            return Err(std::io::Error::other("GdiFlush failed"));
+        }
         // SAFETY: no pointers or ownership cross this Windows API. Rune calls
         // on_frame_drawn after its GDI blit/uncloak or GPU Present, respectively.
         let status = unsafe { dwm_flush() };

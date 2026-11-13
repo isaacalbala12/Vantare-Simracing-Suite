@@ -3,7 +3,7 @@ import { studioLimits } from "../contract/generated/studio";
 import type { MockHandler } from "./context";
 
 export const studioStateVisual =
-  /^visual-(dark|light):(studio-a-(?:vacio|protegido|ilegible|guardando|error|oculto|cargando|missing|fallo-lectura|recargar|limite|no-verificado))$/;
+  /^visual-(dark|light):(studio-a-(?:vacio|protegido|ilegible|guardando|error|oculto|cargando|missing|fallo-lectura|recargar|limite|no-verificado|protegido-error))$/;
 
 /** QA scenes exercise the real renderer state machine; never imported by production. */
 export function studioStateScene(scene: string, view: StudioView): MockHandler {
@@ -24,6 +24,7 @@ export function studioStateScene(scene: string, view: StudioView): MockHandler {
   if (scene === "studio-a-protegido" || scene === "studio-a-ilegible")
     view.state = "protected";
   if (scene === "studio-a-ilegible") view.instances = [];
+  if (scene === "studio-a-protegido-error") view.state = "protected";
   const recovered = structuredClone(view.instances[0]);
   if (scene === "studio-a-recargar") {
     view.state = "protected";
@@ -53,6 +54,8 @@ export function studioStateScene(scene: string, view: StudioView): MockHandler {
     if (message.kind === "request" && message.request.method === "studio.get") {
       reads++;
       if (scene === "studio-a-fallo-lectura" && reads === 1)
+        return { kind: "failure", id: message.id, error: { kind: "io" } };
+      if (scene === "studio-a-protegido-error" && reads > 1)
         return { kind: "failure", id: message.id, error: { kind: "io" } };
       if (scene === "studio-a-recargar" && reads > 1) {
         view.state = "ready";

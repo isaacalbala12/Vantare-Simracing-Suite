@@ -194,4 +194,41 @@ export const studioStateScenes: Record<string, VisualScene> = {
   "studio-estado-missing": scene("studio-a-missing", async (page) => {
     await page.getByText(t.missing, { exact: true }).waitFor();
   }),
+  "studio-estado-error-lectura": scene(
+    "studio-a-fallo-lectura",
+    async (page) => {
+      await page.getByRole("alert").waitFor();
+      assert.equal(
+        await page.locator('.v-studio-focus [aria-busy="true"]').count(),
+        0,
+      );
+      await page.getByRole("button", { name: t.reload, exact: true }).waitFor();
+    },
+  ),
+  "studio-estado-protegido-error": scene(
+    "studio-a-protegido-error",
+    async (page) => {
+      await page.getByRole("alert").waitFor();
+      await page.getByRole("button", { name: t.reload, exact: true }).click();
+      await until(
+        async () => (await page.getByRole("alert").count()) === 2,
+        5000,
+        "protected warning and read error",
+      );
+      assert.equal(
+        await page.getByRole("button", { name: t.retry, exact: true }).count(),
+        0,
+      );
+    },
+  ),
+  "studio-estado-recarga": scene("studio-a-recargar", async (page) => {
+    await page.getByRole("alert").waitFor();
+    await page.getByRole("button", { name: t.reload, exact: true }).click();
+    const row = page.getByRole("button", { name: /^Standings, / });
+    await until(
+      () => row.evaluate((node) => node === document.activeElement),
+      5000,
+      "reloaded row focus",
+    );
+  }),
 };

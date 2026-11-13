@@ -197,3 +197,67 @@ it("arms the visible departure exactly once and blocks a second click while pend
   fireEvent.click(button);
   expect(arm).toHaveBeenCalledOnce();
 });
+
+it("arms the same instant shown in the Madrid/UTC button through the DST gap and fold", () => {
+  const NativeFormatter = Intl.DateTimeFormat;
+  const formatter = vi
+    .spyOn(Intl, "DateTimeFormat")
+    .mockImplementation(function madridFormatter(locales, options) {
+      return new NativeFormatter(locales, {
+        ...options,
+        timeZone: options?.timeZone ?? "Europe/Madrid",
+      });
+    });
+  try {
+    for (const [date, madrid, utcLabel] of [
+      ["2026-03-29T01:01:00Z", "01:58", "00:58"],
+      ["2026-10-25T00:04:00Z", "02:01", "00:01"],
+      ["2026-10-25T01:04:00Z", "02:01", "01:01"],
+    ]) {
+      for (const utc of [false, true]) {
+        const value = calendarReference();
+        if (!value.official) throw new Error("Missing schedule");
+        const at = Date.parse(date),
+          onArm = vi.fn();
+        const series = {
+          ...value.official.series[0],
+          recurrence: {
+            kind: "weekly",
+            intervalMinutes: 0,
+            days: ["Sun"],
+            timesUTC: [date.slice(11, 16)],
+          },
+        };
+        const schedule = {
+          ...value.official,
+          validFrom: `${date.slice(0, 10)}T00:00:00Z`,
+          validUntil: `${date.slice(0, 10)}T23:59:59Z`,
+          series: [series],
+        };
+        const ui = render(
+          <CalendarLiveView
+            schedule={schedule}
+            alerts={{ ...(alerts as CalendarAlerts), bands: [], slots: [] }}
+            following={[series.id]}
+            utc={utc}
+            now={at - 240000}
+            limit={10000}
+            onFollow={vi.fn()}
+            onLaunch={vi.fn()}
+            onArm={onArm}
+          />,
+        );
+        fireEvent.click(
+          screen.getByRole("button", {
+            name: `Lanzar a las ${utc ? utcLabel : madrid}`,
+            exact: true,
+          }),
+        );
+        expect(onArm).toHaveBeenCalledExactlyOnceWith(series.id, at);
+        ui.unmount();
+      }
+    }
+  } finally {
+    formatter.mockRestore();
+  }
+});

@@ -4,78 +4,86 @@ import { residentOrderReceiptTimeoutMs } from "../src/contract/generated/launche
 import { residentText as text } from "../src/renderer/i18n/launcher-resident.ts";
 import { until } from "./wait-for.ts";
 
+function recordAnswerRequests() {
+  Reflect.set(window, "residentAnswers", []);
+  const send = MessagePort.prototype.postMessage;
+  MessagePort.prototype.postMessage = function (message, options) {
+    if (
+      message?.kind === "request" &&
+      message.request?.method === "launcher.resident.answer"
+    )
+      (Reflect.get(window, "residentAnswers") as unknown[]).push(
+        message.request,
+      );
+    send.call(
+      this,
+      message,
+      Array.isArray(options) ? { transfer: options } : options,
+    );
+  };
+}
+
+export async function observeResidentAnswers(page: Page) {
+  await page.evaluate(recordAnswerRequests);
+}
+
+export async function checkResidentAnswerInert(page: Page) {
+  await page.getByRole("button", { name: "Launcher", exact: true }).click();
+  const drawer = page.locator(".v-launcher-resident-drawer");
+  await drawer.waitFor();
+  await page
+    .getByRole("button", { name: "Editar perfil", exact: true })
+    .first()
+    .click();
+  await until(
+    () => drawer.evaluate((node) => !!node.closest("[inert]")),
+    5000,
+    "profile editor makes resident notice inert",
+  );
+  await drawer
+    .getByRole("button", {
+      name: "Reutilizar",
+      exact: true,
+      includeHidden: true,
+    })
+    .evaluate((node) => (node as HTMLButtonElement).click());
+  await page.keyboard.press("Tab");
+  assert.equal(
+    await page.evaluate(
+      () => (Reflect.get(window, "residentAnswers") as unknown[]).length,
+    ),
+    0,
+    "inert notice cannot answer",
+  );
+  assert.equal(
+    await drawer.evaluate((node) => node.contains(document.activeElement)),
+    false,
+    "Tab cannot reach the inert notice",
+  );
+  await page.keyboard.press("Escape");
+  await until(
+    () => drawer.evaluate((node) => !node.closest("[inert]")),
+    5000,
+    "resident notice becomes usable after editor closes",
+  );
+  await drawer.getByRole("button", { name: "Reutilizar", exact: true }).click();
+  await until(
+    () =>
+      page.evaluate(
+        () =>
+          (Reflect.get(window, "residentAnswers") as unknown[]).length === 1,
+      ),
+    5000,
+    "positive control: explicit answer reaches the port",
+  );
+}
+
 export async function checkResidentAnswer(owner: Page, base: string) {
   const page = await owner.context().newPage();
   try {
-    await page.addInitScript(() => {
-      Reflect.set(window, "residentAnswers", []);
-      const send = MessagePort.prototype.postMessage;
-      MessagePort.prototype.postMessage = function (message, options) {
-        if (
-          message?.kind === "request" &&
-          message.request?.method === "launcher.resident.answer"
-        )
-          (Reflect.get(window, "residentAnswers") as unknown[]).push(
-            message.request,
-          );
-        send.call(
-          this,
-          message,
-          Array.isArray(options) ? { transfer: options } : options,
-        );
-      };
-    });
+    await page.addInitScript(recordAnswerRequests);
     await page.goto(`${base}?escena=visual-dark:launcher-answer-question`);
-    await page.getByRole("button", { name: "Launcher", exact: true }).click();
-    const drawer = page.locator(".v-launcher-resident-drawer");
-    await drawer.waitFor();
-    await page
-      .getByRole("button", { name: "Editar perfil", exact: true })
-      .first()
-      .click();
-    await until(
-      () => drawer.evaluate((node) => !!node.closest("[inert]")),
-      5000,
-      "profile editor makes resident notice inert",
-    );
-    await drawer
-      .getByRole("button", {
-        name: "Reutilizar",
-        exact: true,
-        includeHidden: true,
-      })
-      .evaluate((node) => (node as HTMLButtonElement).click());
-    await page.keyboard.press("Tab");
-    assert.equal(
-      await page.evaluate(
-        () => (Reflect.get(window, "residentAnswers") as unknown[]).length,
-      ),
-      0,
-      "inert notice cannot answer",
-    );
-    assert.equal(
-      await drawer.evaluate((node) => node.contains(document.activeElement)),
-      false,
-      "Tab cannot reach the inert notice",
-    );
-    await page.keyboard.press("Escape");
-    await until(
-      () => drawer.evaluate((node) => !node.closest("[inert]")),
-      5000,
-      "resident notice becomes usable after editor closes",
-    );
-    await drawer
-      .getByRole("button", { name: "Reutilizar", exact: true })
-      .click();
-    await until(
-      () =>
-        page.evaluate(
-          () =>
-            (Reflect.get(window, "residentAnswers") as unknown[]).length === 1,
-        ),
-      5000,
-      "positive control: explicit answer reaches the port",
-    );
+    await checkResidentAnswerInert(page);
     for (const state of [
       "accepted",
       "rejected",

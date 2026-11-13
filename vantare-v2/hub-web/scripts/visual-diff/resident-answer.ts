@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { residentOrderReceiptTimeoutMs } from "../../src/contract/generated/launcher_resident.ts";
 import { residentText as text } from "../../src/renderer/i18n/launcher-resident.ts";
+import {
+  checkResidentAnswerInert,
+  observeResidentAnswers,
+} from "../check-resident-answer.ts";
 import type { VisualScene } from "./scenes.ts";
 export const residentAnswerScenes: Record<string, VisualScene> = {};
 for (const state of [
@@ -65,3 +69,12 @@ for (const state of [
     },
   };
 }
+
+residentAnswerScenes["launcher-resident-inert"] = {
+  mock: "launcher-answer-question",
+  async prepare(page) {
+    await observeResidentAnswers(page);
+    await checkResidentAnswerInert(page);
+    await page.getByText(text.answerState.accepted, { exact: true }).waitFor();
+  },
+};

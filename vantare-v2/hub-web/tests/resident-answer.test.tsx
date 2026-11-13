@@ -8,6 +8,7 @@ import type {
   ResidentView,
 } from "../src/contract/generated/contract";
 import { coreKey } from "../src/renderer/app/Host";
+import { HostFailure } from "../src/renderer/bridge/client";
 import {
   type AnswerClock,
   useResidentAnswer,
@@ -286,4 +287,51 @@ it("does not resurrect a pending answer after disconnect and reconnect", async (
     await sent;
   });
   expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+});
+
+it("does not issue twice between Queued and the next React commit", async () => {
+  const hook = setup();
+  host.client.request.mockResolvedValue({
+    method: "launcher.resident.answer",
+    value: { kind: "queued", request: "d".repeat(32) },
+  });
+  await act(async () => {
+    await hook.result.current.answer("cancel");
+    await hook.result.current.answer("cancel");
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(1);
+});
+it("known rejection permits a new explicit answer; uncertain transport does not", async () => {
+  const hook = setup();
+  host.client.request.mockRejectedValueOnce(
+    new HostFailure({
+      kind: "residentAnswerRejected",
+      reason: "stale-question",
+    }),
+  );
+  await act(async () => {
+    await hook.result.current.answer("cancel");
+  });
+  expect(hook.result.current.attempt?.phase).toEqual({
+    kind: "rejected",
+    reason: "stale-question",
+  });
+  expect(hook.result.current.available("cancel")).toBe(true);
+  host.client.request.mockRejectedValueOnce(new Error("transport"));
+  await act(async () => {
+    await hook.result.current.answer("cancel");
+  });
+  expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+  expect(hook.result.current.available("cancel")).toBe(false);
+  expect(host.client.request).toHaveBeenCalledTimes(2);
+});
+it("a resident without checkedAnswer cannot be answered", async () => {
+  const hook = setup();
+  const legacy = structuredClone(hook.view);
+  if (legacy.execution) legacy.execution.checkedAnswer = false;
+  hook.rerender({ value: legacy });
+  await act(async () => {
+    await hook.result.current.answer("cancel");
+  });
+  expect(host.client.request).not.toHaveBeenCalled();
 });

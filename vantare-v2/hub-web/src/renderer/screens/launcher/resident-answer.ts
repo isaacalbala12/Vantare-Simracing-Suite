@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ResidentAction,
   ResidentView,
@@ -34,6 +34,11 @@ export function useResidentAnswer(
     enabled: false,
   });
   const [attempt, setAttempt] = useState<AnswerAttempt>();
+  const latest = useRef<AnswerAttempt | undefined>(undefined);
+  const publish = useCallback((next: AnswerAttempt | undefined) => {
+    latest.current = next;
+    setAttempt(next);
+  }, []);
   const current = useRef({ view, core, client, issue });
   current.current = { view, core, client, issue };
   const pending = useRef(false),
@@ -43,38 +48,35 @@ export function useResidentAnswer(
   useEffect(() => {
     epoch.current++;
     pending.current = false;
-    setAttempt((previous) =>
-      previous ? { ...previous, phase: { kind: "unknown" } } : undefined,
-    );
+    const previous = latest.current;
+    if (previous) publish({ ...previous, phase: { kind: "unknown" } });
     return () => {
       epoch.current++;
       pending.current = false;
     };
-  }, [client, core.accountGeneration, core.services, issue]);
+  }, [client, core.accountGeneration, core.services, issue, publish]);
   useEffect(() => {
-    setAttempt((previous) => {
-      if (!previous) return previous;
-      if (
-        issue ||
-        core.services !== "connected" ||
-        core.accountGeneration !== previous.target.accountGeneration
-      )
-        return { ...previous, phase: { kind: "unknown" } };
-      return observeAnswer(previous, view, time.now());
-    });
-  }, [view, issue, core.services, core.accountGeneration, time]);
+    const previous = latest.current;
+    if (!previous) return;
+    const next =
+      issue ||
+      core.services !== "connected" ||
+      core.accountGeneration !== previous.target.accountGeneration
+        ? { ...previous, phase: { kind: "unknown" as const } }
+        : observeAnswer(previous, view, time.now());
+    if (next !== previous) publish(next);
+  }, [view, issue, core.services, core.accountGeneration, time, publish]);
   useEffect(() => {
     if (attempt?.phase.kind !== "queued") return;
     return time.schedule(
-      () =>
-        setAttempt((previous) =>
-          previous
-            ? observeAnswer(previous, current.current.view, time.now())
-            : previous,
-        ),
+      () => {
+        const previous = latest.current;
+        if (previous)
+          publish(observeAnswer(previous, current.current.view, time.now()));
+      },
       Math.max(0, attempt.phase.until - time.now()),
     );
-  }, [attempt, time]);
+  }, [attempt, time, publish]);
   function available(action: ResidentAction) {
     const { view, core, client, issue } = current.current;
     const execution = view?.execution;
@@ -99,6 +101,7 @@ export function useResidentAnswer(
       (!core.access.verified || core.access.blocked)
     )
       return false;
+    const attempt = latest.current;
     return !(
       attempt &&
       attempt.phase.kind !== "rejected" &&
@@ -121,14 +124,14 @@ export function useResidentAnswer(
       cursor: answerCursor(view),
       phase: { kind: "sending" },
     };
-    setAttempt(next);
+    publish(next);
     try {
       const reply = await client.request({
         method: "launcher.resident.answer",
         target: next.target,
       });
       if (token !== epoch.current) return;
-      setAttempt(
+      publish(
         reply.method === "launcher.resident.answer"
           ? observeAnswer(
               queuedAnswer(next, reply.value.request, time.now()),
@@ -139,7 +142,7 @@ export function useResidentAnswer(
       );
     } catch (error) {
       if (token !== epoch.current) return;
-      setAttempt({
+      publish({
         ...next,
         phase:
           error instanceof HostFailure &&

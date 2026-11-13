@@ -22,6 +22,7 @@ class GroupsTest(unittest.TestCase):
         self.assertEqual(len(covered), len(set(covered)))
         self.assertIn("vantare-runtime", groups.group_names(members, "core"))
         self.assertIn("vantare-ui", groups.group_names(members, "surface"))
+        self.assertIn("vantare-storage", groups.group_names(members, "surface"))
 
     def test_group_filter_and_empty_group(self):
         members = [

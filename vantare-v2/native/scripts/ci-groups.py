@@ -20,10 +20,11 @@ GROUPS: dict[str, tuple[str, ...]] = {
         "services",
         "runtime",
         "engineer",
-        "storage",
         "strategy",
     ),
-    "surface": ("ui", "installer", "hub-host", "hub", "admin"),
+    # Hub y Admin prueban contra el binario de storage; storage viaja con ellos
+    # para que el job surface lo compile en el mismo target (#1993).
+    "surface": ("ui", "installer", "hub-host", "hub", "admin", "storage"),
 }
 
 

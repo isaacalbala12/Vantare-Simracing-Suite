@@ -9,7 +9,14 @@ app.on("browser-window-created", (_event, window) => {
   window.setFocusable = () => focusable(false);
   window.setFocusable(false);
   window.webContents.setBackgroundThrottling(false);
-  for (const method of ["show", "showInactive", "focus", "restore", "moveTop"]) {
+  for (const method of [
+    "show",
+    "showInactive",
+    "focus",
+    "restore",
+    "minimize",
+    "moveTop",
+  ]) {
     window[method] = () => {};
   }
   window.hide();
@@ -17,8 +24,13 @@ app.on("browser-window-created", (_event, window) => {
 // Startup errors must be logged, never become a native modal dialog on Isaac's desktop.
 dialog.showErrorBox = (title, message) => console.error(title, message);
 
-if (process.platform !== "darwin" || process.env.VANTARE_HUB_HOST !== "mock" ||
-    !process.argv.some((arg) => arg.endsWith("/out-qa/main/capture-index.js"))) {
-  console.error("Background reference capture requires macOS, scene host and the owned QA entry");
+if (
+  process.platform !== "darwin" ||
+  process.env.VANTARE_HUB_HOST !== "mock" ||
+  !process.argv.some((arg) => arg.endsWith("/out-qa/main/capture-index.js"))
+) {
+  console.error(
+    "Background reference capture requires macOS, scene host and the owned QA entry",
+  );
   app.exit(1);
 }

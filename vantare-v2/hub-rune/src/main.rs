@@ -175,6 +175,21 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
         "v-side",
         |s: &mut State| s.collapsed = !s.collapsed,
     ));
+    let core_warning = if state.core.services != vantare_hub_host::protocol::LinkState::Connected {
+        row()
+            .key("core-warning")
+            .role("status")
+            .padding(6.0)
+            .radius(4.0)
+            .gap(8.0)
+            .center_y()
+            .fill(theme.color("accent-tint"))
+            .border(1.0, theme.color("line-1"))
+            .child(design::symbol(theme, "warn", 16.0))
+            .child(label(theme, text("es.coreUnavailable")).font(design::body_style(12.0, 500.0)))
+    } else {
+        rune::el()
+    };
     let header = row()
         .key("header")
         .w_full()
@@ -185,6 +200,7 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
         .fill(theme.color("bg-sidebar"))
         .border(1.0, theme.color("line-1"))
         .child(caption(theme, title(state)).grow(1.0))
+        .child(core_warning)
         .child(
             row()
                 .padding(6.0)
@@ -211,24 +227,7 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
             "v-palette",
             toggle,
         ));
-    let mut body = col().grow(1.0).min_w(0.0).min_h(0.0).h_full().child(header);
-    if state.core.services != vantare_hub_host::protocol::LinkState::Connected {
-        body = body.child(
-            row()
-                .key("core-warning")
-                .role("status")
-                .w_full()
-                .padding(10.0)
-                .gap(8.0)
-                .center_y()
-                .fill(theme.color("accent-tint"))
-                .border(1.0, theme.color("line-1"))
-                .child(design::symbol(theme, "warn", 16.0))
-                .child(
-                    label(theme, text("es.coreUnavailable")).font(design::body_style(12.0, 500.0)),
-                ),
-        );
-    }
+    let body = col().grow(1.0).min_w(0.0).min_h(0.0).h_full().child(header);
     let content = if state.section == "roadmap" {
         roadmap_view::view(state)
     } else if state.section == "home" {
@@ -562,7 +561,8 @@ mod tests {
                 .iter()
                 .find(|e| e.key.as_deref() == Some("core-warning"))
                 .unwrap();
-            assert!(warning.rect[1] >= header.rect[1] + header.rect[3] - 0.1);
+            assert!(warning.rect[1] >= header.rect[1]);
+            assert!(warning.rect[1] + warning.rect[3] <= header.rect[1] + header.rect[3] + 0.1);
             assert!(warning.fill.a > 0.0);
         }
     }

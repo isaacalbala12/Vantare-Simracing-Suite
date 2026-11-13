@@ -140,6 +140,13 @@ fn badge(theme: &Theme, value: &str) -> El {
         .border(1.0, theme.color("line-1"))
         .child(label(theme, value).font(body_style(12.0, 500.0)))
 }
+fn metric(theme: &Theme, value: &str, name: &str) -> El {
+    col()
+        .grow(1.0)
+        .gap(2.0)
+        .child(label(theme, value).font(body_style(24.0, 600.0)).h(36.0))
+        .child(small(theme, name).font(body_style(11.0, 400.0)))
+}
 fn status_row(theme: &Theme, key: &str, name: &str, title: &str, subtitle: &str, tag: &str) -> El {
     row()
         .key(key)
@@ -368,7 +375,7 @@ fn launch_button(state: &State, favorite: bool) -> El {
 pub fn view(state: &State, cx: &Cx<State>) -> El {
     let theme = &state.theme;
     let data = state.home.value.as_ref();
-    let mut page = col().key("home").w_full().gap(12.0).padding(24.0);
+    let mut page = col().key("home").w_full().gap(12.0).px(24.0).py(16.0);
     if state.home.failed
         || state.home.launch_failed
         || state.core.access.blocked
@@ -410,7 +417,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
     let mut composer = row()
         .key("home-composer")
         .w_full()
-        .min_h(52.0)
+        .h(52.0)
         .padding(8.0)
         .gap(10.0)
         .center_y()
@@ -565,24 +572,13 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                 .child(
                     row()
                         .gap(16.0)
-                        .child(
-                            label(theme, format!("{}\n{}", text("home.dash"), text("home.hz")))
-                                .grow(1.0),
-                        )
-                        .child(
-                            label(
-                                theme,
-                                format!("{}\n{}", value.layout.widgets.len(), text("home.visible")),
-                            )
-                            .grow(1.0),
-                        )
-                        .child(
-                            label(
-                                theme,
-                                format!("{}\n{}", text("home.dash"), text("home.cpu")),
-                            )
-                            .grow(1.0),
-                        ),
+                        .child(metric(theme, text("home.dash"), text("home.hz")))
+                        .child(metric(
+                            theme,
+                            &value.layout.widgets.len().to_string(),
+                            text("home.visible"),
+                        ))
+                        .child(metric(theme, text("home.dash"), text("home.cpu"))),
                 )
                 .child(studio_button(state, "home-edit", text("home.edit")));
         }
@@ -710,6 +706,8 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
     } else {
         status = status.child(message(theme, text("home.loading")));
     }
+    let rail_width = (window_width * 0.22).clamp(320.0, 400.0);
+    let tile_width = (rail_width - 44.0) / 2.0;
     let mut rail = col()
         .key("home-rail")
         .w(320.0)
@@ -739,14 +737,26 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                 .as_str()
                 .unwrap();
             let content = col()
+                .w(tile_width)
+                .min_w(0.0)
                 .gap(8.0)
                 .child(
-                    picture(state, kind, 124.0, 92.0, false)
+                    picture(state, kind, tile_width, 92.0, false)
                         .role("img")
                         .label(title),
                 )
-                .child(label(theme, title).font(body_style(13.0, 650.0)))
-                .child(small(theme, text("home.localTemplate")).w_full().truncate());
+                .child(
+                    label(theme, title)
+                        .font(body_style(13.0, 650.0))
+                        .w(tile_width)
+                        .truncate(),
+                )
+                .child(
+                    small(theme, text("home.localTemplate"))
+                        .key(format!("home-template-caption-{kind}"))
+                        .w(tile_width)
+                        .truncate(),
+                );
             pair = pair.child(
                 button_content(
                     theme,
@@ -755,7 +765,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                     content,
                     studio,
                 )
-                .grow(1.0)
+                .w(tile_width)
                 .min_w(0.0)
                 .padding(0.0)
                 .fill(theme.color("bg-sidebar"))
@@ -764,7 +774,6 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         }
         rail = rail.child(pair);
     }
-    let rail_width = (window_width * 0.22).clamp(320.0, 400.0);
     rail = rail.w(rail_width);
     row()
         .key("home-screen")
@@ -787,6 +796,66 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn unavailable_core_keeps_home_in_place_and_template_captions_stay_in_their_tiles() {
+        for width in [1280.0, 1440.0, 1920.0] {
+            let mut hero_top = None;
+            for connected in [false, true] {
+                let mut state = crate::init();
+                state.collapsed = true;
+                state.core.access.verified = true;
+                state.core.access.tester = true;
+                if connected {
+                    state.core.services = vantare_hub_host::protocol::LinkState::Connected;
+                }
+                state.home.value = Some(
+                    serde_json::from_value(catalog()["home"]["scenes"]["inicio-base"].clone())
+                        .unwrap(),
+                );
+                let fonts =
+                    rune::text::TextSystem::new(crate::design::FONTS, ("Inter W400", "Space Mono"));
+                let mut rt = rune::Runtime::with_text(
+                    state,
+                    crate::view,
+                    (width, 900.0),
+                    rune::Env::new(true, 1.0),
+                    fonts,
+                );
+                for _ in 0..4 {
+                    rt.frame(0.0);
+                }
+                let elements = rt.elements();
+                let hero = elements
+                    .iter()
+                    .find(|e| e.key.as_deref() == Some("home-hero"))
+                    .unwrap();
+                if let Some(top) = hero_top {
+                    assert_eq!(
+                        hero.rect[1], top,
+                        "core state must not shift Home vertically"
+                    );
+                }
+                hero_top = Some(hero.rect[1]);
+                for kind in ["standings", "relative", "fuel-strategy", "delta"] {
+                    let tile = elements
+                        .iter()
+                        .find(|e| e.key.as_deref() == Some(&format!("home-template-{kind}")))
+                        .unwrap();
+                    let caption = elements
+                        .iter()
+                        .find(|e| {
+                            e.key.as_deref() == Some(&format!("home-template-caption-{kind}"))
+                        })
+                        .unwrap();
+                    assert!(caption.rect[0] >= tile.rect[0] - 0.1, "{width}: {kind}");
+                    assert!(
+                        caption.rect[0] + caption.rect[2] <= tile.rect[0] + tile.rect[2] + 0.1,
+                        "{width}: {kind} caption must not invade its neighbor"
+                    );
+                }
+            }
+        }
+    }
     #[test]
     fn activity_dates_convert_the_offset_and_reject_invalid_values() {
         let a = parsed_date("2026-10-05T18:02:00+02:00").unwrap();

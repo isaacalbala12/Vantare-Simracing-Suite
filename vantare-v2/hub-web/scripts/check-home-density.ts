@@ -78,6 +78,31 @@ export async function checkHomeDensity(original: Page, base: string) {
                 await description.isVisible(),
                 height >= 820 && scene !== "inicio-cargando",
               );
+              const templates = page.locator(".v-home-templates > button");
+              assert.equal(
+                await templates.count(),
+                4,
+                "Positive control: all template data remains present",
+              );
+              assert.equal(
+                await page
+                  .locator(".v-home-templates > button:visible")
+                  .count(),
+                height < 820 && scene !== "inicio-cargando" ? 2 : 4,
+                "Compact templates keep only the native first row; loading retains four placeholders",
+              );
+              if (height < 820) {
+                const errorRail =
+                  (await page.locator(".v-home-rail--error").count()) > 0;
+                const status = await page
+                  .locator(".v-home-rail-status")
+                  .boundingBox();
+                assert.ok(
+                  status &&
+                    Math.abs(status.height - (errorRail ? 344 : 274)) <= 1,
+                  "Template rail follows the compact hero, including the access-error banner",
+                );
+              }
               if (scene === "inicio-error") {
                 assert.equal(await page.locator(".v-home-error").count(), 1);
                 assert.ok(

@@ -200,6 +200,8 @@ pub struct ResidentExecution {
     pub revision_checked_launch: bool,
     pub checked_answer: bool,
     pub checked_control: bool,
+    pub step_results_retry: bool,
+    pub results: Option<Box<super::ResidentRunResults>>,
     pub active: Option<Box<super::ResidentActiveRun>>,
     pub question: Option<Box<ResidentScopedQuestion>>,
     pub first_retained_seq: String,
@@ -209,6 +211,13 @@ impl From<&native::ExecutionStatus> for ResidentExecution {
     fn from(value: &native::ExecutionStatus) -> Self {
         Self {
             instance: value.instance.clone().into(),
+            step_results_retry: value
+                .capabilities
+                .contains(&native::Capability::StepResultsRetry),
+            results: value
+                .results
+                .as_ref()
+                .map(|results| Box::new(results.into())),
             revision_checked_launch: value
                 .capabilities
                 .contains(&native::Capability::RevisionCheckedLaunch),

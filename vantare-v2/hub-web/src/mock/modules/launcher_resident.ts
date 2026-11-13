@@ -23,6 +23,8 @@ export function create(
       revisionCheckedLaunch: true,
       checkedAnswer: false,
       checkedControl: false,
+      stepResultsRetry: false,
+      results: null,
       active: null,
       question: null,
       firstRetainedSeq: "1",
@@ -59,6 +61,8 @@ export function create(
       revisionCheckedLaunch: true,
       checkedAnswer: true,
       checkedControl: false,
+      stepResultsRetry: false,
+      results: null,
       active: null,
       question: {
         decision: "2",

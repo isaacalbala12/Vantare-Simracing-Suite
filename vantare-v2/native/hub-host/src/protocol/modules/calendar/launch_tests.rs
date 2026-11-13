@@ -27,6 +27,8 @@ fn resident() -> ResidentView {
             revision_checked_launch: true,
             checked_answer: false,
             checked_control: false,
+            step_results_retry: false,
+            results: None,
             active: None,
             question: None,
             first_retained_seq: "1".into(),

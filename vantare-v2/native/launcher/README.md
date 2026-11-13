@@ -118,3 +118,24 @@ los índices cuyo app_id != "lmu", con comparación exacta que distingue
 mayúsculas y minúsculas, igual que GPUI. Conserva posiciones y pasos repetidos;
 un perfil vacío o solo LMU devuelve NoSteps. No detecta juegos personalizados.
 No incorpora aún resultados por paso ni reintentos (L55).
+
+### Resultados por paso y reintento L55
+El worker conserva una foto tipada y acotada de sus pasos, sin analizar mensajes.
+Chain::step_results devuelve una copia; un bloqueo dañado o un final incompleto
+no autoriza reintentos. Las transiciones no consumen eventos del anillo.
+Los reintentos automáticos conservan el último resultado terminal de cada índice,
+como retry_steps: iniciar otro pase no borra un fallo previo de un paso que no
+llegue a ejecutarse de nuevo. Una pregunta tras fallar conserva el estado Failed.
+
+El residente guarda solo la ejecución activa o la última terminada, con cuenta,
+perfil, revisión, modo de origen y los índices originales privados. Retry Failed
+selecciona solo Failed; Cancelled/NotRun no equivalen a fallo. Retry All significa
+«Repetir los mismos pasos»: restaura esa selección original incluso después de
+un Failed parcial. Un ensayo nunca recupera LMU por usar All; es una diferencia
+intencionada respecto a All del GPUI, que recorre el perfil entero.
+
+Se exige la última ejecución terminada, foto completa y terminal aún retenido;
+reinicio, hueco, ejecución desconocida o información incompleta = UnknownRun.
+Una nueva lectura debe conservar el SHA-256 de origen y la autoridad debe seguir
+observando la misma cuenta con permiso de lanzamiento. Accepted inicia un run
+nuevo; no reescribe el resultado anterior ni lo convierte en éxito.

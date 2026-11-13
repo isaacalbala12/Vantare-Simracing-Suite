@@ -51,6 +51,7 @@ pub enum Capability {
     RevisionCheckedLaunch,
     CheckedAnswer,
     CheckedControl,
+    StepResultsRetry,
     #[serde(other)]
     Unknown,
 }
@@ -113,6 +114,8 @@ pub struct ExecutionStatus {
     pub question: Option<super::answer::QuestionScope>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub active: Option<super::control::RunScope>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub results: Option<super::results::RunResults>,
 }
 impl ExecutionStatus {
     pub fn new(instance: ResidentInstance) -> Self {
@@ -123,6 +126,7 @@ impl ExecutionStatus {
             events: Vec::new(),
             question: None,
             active: None,
+            results: None,
         }
     }
     fn next(&self) -> Option<RunId> {
@@ -173,8 +177,31 @@ impl ExecutionStatus {
     pub fn can_start(&self) -> bool {
         self.next().and_then(|seq| seq.0.checked_add(1)).is_some()
     }
+    pub fn has_retained_terminal(&self, run: RunId, outcome: ChainOutcome) -> bool {
+        self.events.iter().any(|event| matches!(event.kind, EventKind::Finished {run: observed, outcome: observed_outcome} if observed == run && observed_outcome == outcome))
+            && !self.events.iter().any(|event| match &event.kind {
+                EventKind::Started { run: observed }
+                | EventKind::Received { receipt: super::checked::LaunchReceipt::Accepted { run: observed }, .. }
+                | EventKind::OrderReceived { receipt: super::answer::OrderReceipt::Accepted {run: observed}, .. } => *observed > run,
+                _ => false,
+            })
+    }
     fn valid(&self) -> bool {
-        self.active
+        self.results.as_ref().is_none_or(|results| {
+            self.capabilities.contains(&Capability::StepResultsRetry)
+                && results.valid()
+                && self
+                    .events
+                    .last()
+                    .is_some_and(|event| results.run <= event.seq)
+                && self.active.as_ref().is_none_or(|active| {
+                    results.outcome.is_none()
+                        && active.run == results.run
+                        && active.revision == results.revision
+                        && active.account == results.account
+                })
+        }) && self
+            .active
             .as_ref()
             .zip(self.question.as_ref())
             .is_none_or(|(active, question)| {

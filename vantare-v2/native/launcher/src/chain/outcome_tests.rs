@@ -35,6 +35,9 @@ fn fixture() -> Fixture {
         events,
         answers,
         context: RunContext {
+            results: Arc::new(Mutex::new(
+                StepSnapshot::new(2, &[0, 1]).expect("step snapshot"),
+            )),
             cancel: Arc::new(Cancellation::default()),
             sender,
             answers: replies,
@@ -98,7 +101,19 @@ fn completed_and_failed_continue_are_decided_by_the_actual_step_pipeline() {
                 }
             }
         );
-        let terminal: Vec<_> = f.events.try_iter().filter(|p| p.step.is_none()).collect();
+        let events: Vec<_> = f.events.try_iter().collect();
+        let snapshot = f.context.results.lock().unwrap().clone();
+        assert!(snapshot.complete);
+        assert_eq!(
+            snapshot
+                .steps
+                .iter()
+                .filter(|step| step.state == StepState::Failed)
+                .map(|step| usize::from(step.index))
+                .collect::<Vec<_>>(),
+            retry_steps(&f.profile, &events, RetryScope::Failed)
+        );
+        let terminal: Vec<_> = events.iter().filter(|p| p.step.is_none()).collect();
         assert_eq!(terminal.len(), 1);
         assert_eq!(terminal[0].success, succeed);
     }

@@ -98,6 +98,11 @@ impl Owner {
                     account: request.account,
                 });
                 self.chain = Some(chain);
+                self.begin_results(
+                    request.profile,
+                    vantare_ipc::launcher::results::RunMode::Profile,
+                    None,
+                );
             }
             Err(reason) => self.reject_checked(request.request, reason),
         }

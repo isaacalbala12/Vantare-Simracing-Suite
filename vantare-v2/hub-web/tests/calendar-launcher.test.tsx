@@ -64,6 +64,8 @@ function setup() {
               revisionCheckedLaunch: true,
               checkedAnswer: false,
               checkedControl: false,
+              stepResultsRetry: false,
+              results: null,
               active: null,
               question: null,
               firstRetainedSeq: "1",

@@ -109,6 +109,8 @@ describe("checked resident control", () => {
       revisionCheckedLaunch: true,
       checkedAnswer: true,
       checkedControl: true,
+      stepResultsRetry: false,
+      results: null,
       question: null,
       active,
       firstRetainedSeq: cancel.run,

@@ -39,6 +39,8 @@ describe("checked launch surface", () => {
       revisionCheckedLaunch: true,
       checkedAnswer: false,
       checkedControl: false,
+      stepResultsRetry: false,
+      results: null,
       active: null,
       question: null,
       firstRetainedSeq: "9007199254740993",

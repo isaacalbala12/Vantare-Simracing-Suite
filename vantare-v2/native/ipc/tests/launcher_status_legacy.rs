@@ -365,3 +365,45 @@ fn active_control_scope_and_new_order_reason_do_not_hide_legacy_status() {
             .is_some()
     );
 }
+
+#[test]
+fn a_results_summary_is_discarded_by_the_frozen_decoder_without_losing_legacy_status() {
+    use vantare_ipc::launcher::results::{RunMode, RunResults, StepResult, StepState};
+    let mut current = status();
+    let mut extension = extension();
+    extension.capabilities.push(Capability::StepResultsRetry);
+    let run = extension.begin().unwrap();
+    let outcome = ChainOutcome::Failed {
+        reason: ChainFailure::StepFailed,
+    };
+    extension
+        .record(EventKind::Finished { run, outcome })
+        .unwrap();
+    extension.results = Some(RunResults {
+        run,
+        profile: "qa".into(),
+        revision: "b".repeat(64),
+        account: "c".repeat(64).try_into().unwrap(),
+        mode: RunMode::Rehearsal,
+        outcome: Some(outcome),
+        steps: vec![StepResult {
+            index: 0,
+            state: StepState::Failed,
+        }],
+    });
+    current.extension = Some(extension);
+    let bytes = launcher::status_bytes(&current).unwrap();
+    let old: frozen::Extended = serde_json::from_slice(&bytes).unwrap();
+    assert!(old.extension.is_none());
+    assert_eq!(old.legacy.version, current.version);
+    assert_eq!(old.legacy.running, current.running);
+    assert_eq!(old.legacy.decision.unwrap().id, 42);
+    assert!(
+        serde_json::from_slice::<launcher::Status>(&bytes)
+            .unwrap()
+            .extension
+            .unwrap()
+            .results
+            .is_some()
+    );
+}

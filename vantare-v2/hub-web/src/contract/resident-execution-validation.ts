@@ -1,4 +1,10 @@
-import { residentOrderRejections } from "./generated/launcher_resident";
+import {
+  residentOrderRejections,
+  residentProfileIdLimit,
+  residentRunModes,
+  residentStepLimit,
+  residentStepStates,
+} from "./generated/launcher_resident";
 import { exact, oneOf, record } from "./validation-common";
 
 export function decimal(value: unknown): value is string {
@@ -22,6 +28,49 @@ export function isActiveRun(value: unknown): boolean {
     decimal(value.run) &&
     hex(value.revision, 64) &&
     hex(value.accountGeneration, 64)
+  );
+}
+export function isProfileId(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    new TextEncoder().encode(value).length <= residentProfileIdLimit &&
+    !value.includes("\0")
+  );
+}
+export function isRunResults(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, [
+      "run",
+      "profile",
+      "revision",
+      "accountGeneration",
+      "mode",
+      "outcome",
+      "steps",
+    ]) &&
+    decimal(value.run) &&
+    isProfileId(value.profile) &&
+    hex(value.revision, 64) &&
+    hex(value.accountGeneration, 64) &&
+    oneOf(value.mode, residentRunModes) &&
+    (value.outcome === null || isResidentOutcome(value.outcome)) &&
+    Array.isArray(value.steps) &&
+    value.steps.length > 0 &&
+    value.steps.length <= residentStepLimit &&
+    value.steps.every(
+      (step, index) =>
+        record(step) &&
+        exact(step, ["index", "state"]) &&
+        step.index === index &&
+        oneOf(step.state, residentStepStates) &&
+        (value.outcome === null ||
+          !oneOf(step.state, ["pending", "waiting", "launching"])) &&
+        (!record(value.outcome) ||
+          value.outcome.kind !== "completed" ||
+          oneOf(step.state, ["ready", "not-selected"])),
+    )
   );
 }
 export function isScopedQuestion(value: unknown): boolean {
@@ -109,6 +158,8 @@ export function isResidentExecution(value: unknown): boolean {
       "revisionCheckedLaunch",
       "checkedAnswer",
       "checkedControl",
+      "stepResultsRetry",
+      "results",
       "active",
       "question",
       "firstRetainedSeq",
@@ -118,6 +169,11 @@ export function isResidentExecution(value: unknown): boolean {
     typeof value.revisionCheckedLaunch !== "boolean" ||
     typeof value.checkedAnswer !== "boolean" ||
     typeof value.checkedControl !== "boolean" ||
+    typeof value.stepResultsRetry !== "boolean" ||
+    !(
+      value.results === null ||
+      (value.stepResultsRetry && isRunResults(value.results))
+    ) ||
     !(
       value.active === null ||
       (value.checkedControl && isActiveRun(value.active))
@@ -133,6 +189,15 @@ export function isResidentExecution(value: unknown): boolean {
   )
     return false;
   if (
+    record(value.results) &&
+    record(value.active) &&
+    (value.results.outcome !== null ||
+      value.results.run !== value.active.run ||
+      value.results.revision !== value.active.revision ||
+      value.results.accountGeneration !== value.active.accountGeneration)
+  )
+    return false;
+  if (
     record(value.active) &&
     record(value.question) &&
     (value.active.run !== value.question.run ||
@@ -144,6 +209,7 @@ export function isResidentExecution(value: unknown): boolean {
     return (
       value.firstRetainedSeq === "1" &&
       value.question === null &&
+      value.results === null &&
       value.active === null
     );
   let expected = BigInt(value.firstRetainedSeq);
@@ -153,6 +219,10 @@ export function isResidentExecution(value: unknown): boolean {
     expected++;
   }
   return (
+    (value.results === null ||
+      (record(value.results) &&
+        decimal(value.results.run) &&
+        BigInt(value.results.run) < expected)) &&
     (value.active === null ||
       (record(value.active) &&
         decimal(value.active.run) &&

@@ -19,9 +19,12 @@ use std::{
 };
 pub use vantare_ipc::launcher::Action;
 mod pending;
+mod results;
 pub use pending::AnswerError;
 use pending::{Pending, Poll};
+pub use results::StepSnapshot;
 pub use vantare_ipc::launcher::execution::{CancelReason, ChainFailure, ChainOutcome};
+use vantare_ipc::launcher::results::StepState;
 
 #[derive(Debug)]
 pub enum StartError {
@@ -78,6 +81,7 @@ pub struct Decision {
 }
 
 struct RunContext {
+    results: Arc<Mutex<StepSnapshot>>,
     cancel: Arc<Cancellation>,
     sender: Sender<Progress>,
     answers: Receiver<(u64, Action)>,
@@ -89,6 +93,16 @@ struct RunContext {
     trust_declined: AtomicBool,
 }
 impl RunContext {
+    fn mark_step(&self, index: usize, state: StepState) {
+        if let Ok(mut results) = self.results.lock() {
+            results.mark(index, state);
+        }
+    }
+    fn finish_steps(&self, cancelled: bool) {
+        if let Ok(mut results) = self.results.lock() {
+            results.finish(cancelled);
+        }
+    }
     fn ask(
         &self,
         step: Option<usize>,
@@ -96,6 +110,9 @@ impl RunContext {
         actions: &[Action],
         closing: bool,
     ) -> Result<Action, String> {
+        if let Some(index) = step {
+            self.mark_step(index, StepState::Waiting);
+        }
         let started = Instant::now();
         self.ask_with(
             step,
@@ -257,6 +274,7 @@ pub fn retry_steps(profile: &Profile, progress: &[Progress], scope: RetryScope) 
 }
 
 pub struct Chain {
+    results: Arc<Mutex<StepSnapshot>>,
     pub progress: Receiver<Progress>,
     cancel: Arc<Cancellation>,
     answers: Sender<(u64, Action)>,
@@ -332,7 +350,12 @@ impl Chain {
         let cancel = Arc::new(Cancellation::default());
         let (answers, replies) = mpsc::channel();
         let pending = Arc::new(Pending::default());
+        let results = Arc::new(Mutex::new(
+            StepSnapshot::new(profile.steps.len(), &selected)
+                .ok_or_else(|| StartError::Invalid("resultados de pasos fuera de limite".into()))?,
+        ));
         let context = RunContext {
+            results: Arc::clone(&results),
             cancel: cancel.clone(),
             sender,
             answers: replies,
@@ -354,6 +377,7 @@ impl Chain {
             })
             .map_err(|e| StartError::Io(format!("arrancar cadena: {e}")))?;
         Ok(Self {
+            results,
             progress,
             cancel,
             answers,
@@ -364,6 +388,9 @@ impl Chain {
     }
     pub fn cancel(&self) {
         self.cancel.cancel();
+    }
+    pub fn step_results(&self) -> Option<StepSnapshot> {
+        self.results.lock().ok().map(|r| r.clone())
     }
     /// Acceptance sets the cancellation flag; it does not promise a terminal outcome.
     pub fn cancel_checked(&self) -> Result<(), CancelError> {
@@ -700,8 +727,10 @@ fn run_with(
             message,
             false,
         );
-        return if context.cancel.commit_terminal() || context.trust_declined.load(Ordering::Acquire)
-        {
+        let cancelled =
+            context.cancel.commit_terminal() || context.trust_declined.load(Ordering::Acquire);
+        context.finish_steps(cancelled);
+        return if cancelled {
             ChainOutcome::Cancelled {
                 reason: cancellation_reason(context),
             }
@@ -846,6 +875,9 @@ fn run_pass_with(
     ) -> Result<u32, String>,
     mut wait: impl FnMut(Duration) -> bool,
 ) -> bool {
+    if let Ok(mut results) = context.results.lock() {
+        results.reset(&context.selected);
+    }
     let cancel = &context.cancel;
     let sender = &context.sender;
     let policy = profile.effective_policy();
@@ -861,6 +893,7 @@ fn run_pass_with(
         } else {
             step.delay_seconds
         };
+        context.mark_step(index, StepState::Waiting);
         if !emit(
             sender,
             Some(index),
@@ -892,6 +925,7 @@ fn run_pass_with(
             if cancel.cancelled() {
                 break;
             }
+            context.mark_step(index, StepState::Launching);
             result = execute(app, step, profile, discovery, context, index);
             if result.is_ok() || cancel.cancelled() {
                 break;
@@ -902,6 +936,7 @@ fn run_pass_with(
         }
         match result {
             Ok(pid) => {
+                context.mark_step(index, StepState::Ready);
                 if !emit(
                     sender,
                     Some(index),
@@ -917,6 +952,14 @@ fn run_pass_with(
                 }
             }
             Err(message) => {
+                context.mark_step(
+                    index,
+                    if cancel.cancelled() {
+                        StepState::Cancelled
+                    } else {
+                        StepState::Failed
+                    },
+                );
                 success = false;
                 if !emit(
                     sender,
@@ -960,6 +1003,7 @@ fn finish(profile: &Profile, context: &RunContext, success: bool) -> ChainOutcom
         cleanup_failed = true;
         emit(sender, None, Status::Failed, None, error, false);
     }
+    context.finish_steps(cancelled);
     emit(
         sender,
         None,

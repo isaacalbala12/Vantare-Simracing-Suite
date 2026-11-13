@@ -36,6 +36,8 @@ function view(events: ResidentExecutionEvent[]): ResidentView {
       revisionCheckedLaunch: true,
       checkedAnswer: true,
       checkedControl: false,
+      stepResultsRetry: false,
+      results: null,
       active: null,
       question: null,
       firstRetainedSeq: run,

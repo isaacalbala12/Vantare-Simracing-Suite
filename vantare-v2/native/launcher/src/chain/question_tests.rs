@@ -16,6 +16,7 @@ fn committed_answer_survives_cancellation_and_disconnection_after_the_initial_po
             answers,
             ..
         } = fixture();
+        let results = Arc::clone(&context.results);
         let pending = Arc::clone(&context.pending);
         let cancel = Arc::clone(&context.cancel);
         let barrier = Arc::new(Barrier::new(2));
@@ -38,6 +39,7 @@ fn committed_answer_survives_cancellation_and_disconnection_after_the_initial_po
             ChainOutcome::Completed
         });
         let mut chain = Chain {
+            results,
             progress: events,
             cancel,
             answers,

@@ -8,10 +8,12 @@ import {
   residentOrderRejections,
   residentProfileIdLimit,
   residentQuestionKinds,
+  residentRetryScopes,
 } from "../generated/launcher_resident";
 import {
   decimal,
   hex,
+  isProfileId,
   isResidentExecution,
 } from "../resident-execution-validation";
 import { exact, oneOf, record } from "../validation-common";
@@ -72,6 +74,27 @@ export function isResident(value: unknown): boolean {
 }
 export function isRequest(value: Record<string, unknown>): boolean {
   if (value.method === "launcher.resident.get") return exact(value, ["method"]);
+  if (value.method === "launcher.resident.retry") {
+    if (!exact(value, ["method", "target"]) || !record(value.target))
+      return false;
+    const target = value.target;
+    return (
+      exact(target, [
+        "instance",
+        "accountGeneration",
+        "run",
+        "profile",
+        "revision",
+        "scope",
+      ]) &&
+      hex(target.instance, 64) &&
+      hex(target.accountGeneration, 64) &&
+      decimal(target.run) &&
+      isProfileId(target.profile) &&
+      hex(target.revision, 64) &&
+      oneOf(target.scope, residentRetryScopes)
+    );
+  }
   if (
     value.method === "launcher.resident.cancel" ||
     value.method === "launcher.resident.rehearse"
@@ -129,6 +152,7 @@ export function isRequest(value: Record<string, unknown>): boolean {
 export function isReply(value: Record<string, unknown>): boolean {
   if (
     value.method === "launcher.resident.answer" ||
+    value.method === "launcher.resident.retry" ||
     value.method === "launcher.resident.cancel" ||
     value.method === "launcher.resident.rehearse"
   ) {

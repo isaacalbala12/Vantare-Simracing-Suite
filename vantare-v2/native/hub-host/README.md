@@ -341,3 +341,30 @@ En las órdenes L54 se comprueba primero el Status y su capability fresca. Un
 residente ausente, viejo o con Status vencido devuelve Unsupported antes de
 validar cuenta/permisos. Con soporte fresco, una cuenta no observable devuelve
 CoreUnavailable. Se evita que un Denied por TTL o Live oculte la falta de soporte.
+
+## L55 · resultados y reintento (v35)
+Capability StepResultsRetry; execution.stepResultsRetry y execution.results.
+El resumen contiene run, profile, revision, accountGeneration, mode
+(profile/rehearsal), outcome opcional y hasta 128 steps {index,state}. Los índices
+son posiciones originales, también cuando la misma app aparece varias veces.
+No incluye rutas, argumentos, documentos ni mensajes. Solo hay un resumen en
+memoria; al iniciar otra cadena se sustituye, y un reinicio lo pierde.
+
+launcher.resident.retry recibe target
+{instance,accountGeneration,run,profile,revision,scope:"failed"|"all"}.
+El renderer no manda índices. All se presenta «Repetir los mismos pasos» y el
+residente reconstruye la selección ORIGINAL, también si el último run era un
+reintento parcial de un ensayo. No reconstruir esa selección a partir de
+NotSelected del resumen actual: esos pasos pueden pertenecer al ensayo original.
+
+El host comprueba capability fresca primero, luego cuenta/permisos, run terminado
+con terminal retenido y una primera lectura del documento. El residente relee
+una sola instantánea, exige el hash original, consulta a la autoridad y arranca
+por valor. No se vuelve al documento cacheado ni a métodos legacy. UnknownRun,
+NoFailedSteps y los demás rechazos son cerrados. Estado incompleto o panic no
+produce una foto completa inventada. Cancelled no entra en Failed.
+
+Queued y OrderReceived Accepted siguen separados de Finished. Se usa el plazo
+exportado de 5 s; hueco, reinicio o falta de recibo = Unknown y no se reenvía.
+El resumen no sustituye la correlación de recibo/terminal con cuenta e instancia.
+No hay ACK, historial persistido, propiedad viva L56 ni cambios del supervisor.

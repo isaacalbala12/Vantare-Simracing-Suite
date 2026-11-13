@@ -9,6 +9,7 @@ use vantare_ipc::{
 };
 mod cancel;
 mod rehearse;
+mod retry;
 fn observe(link: Option<&AuthorityLink>) -> std::io::Result<Option<AccountObservation>> {
     let link = link.ok_or(std::io::ErrorKind::NotConnected)?;
     account_session::read_account_session(link, Duration::from_millis(750))

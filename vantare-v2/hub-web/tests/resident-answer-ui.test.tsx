@@ -13,6 +13,8 @@ const view: ResidentView = {
     instance: "b".repeat(64),
     checkedAnswer: true,
     checkedControl: false,
+    stepResultsRetry: false,
+    results: null,
     active: null,
     revisionCheckedLaunch: true,
     firstRetainedSeq: "1",

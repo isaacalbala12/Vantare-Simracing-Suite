@@ -27,8 +27,8 @@ comdlg32 combase crypt32 cryptbase cryptnet cryptui d3d11 d3d12 d3dcompiler_47
 dbghelp dcomp dhcpcsvc dnsapi dsound dwmapi dwrite dxcore dxgi evr gdi32 glu32 hid
 imagehlp imm32 iphlpapi kernel32 kernelbase mf mfplat mfreadwrite mfuuid mmdevapi
 mpr msacm32 msimg32 msvcrt ncrypt netapi32 normaliz ntdll ole32 oleacc oleaut32
-opengl32 powrprof propsys psapi rasapi32 rpcrt4 secur32 setupapi shcore shell32
-shlwapi tdh user32 userenv usp10 uiautomationcore uxtheme version win32u winhttp
+opengl32 pdh powrprof propsys psapi rasapi32 rpcrt4 secur32 setupapi shcore shell32
+shlwapi tbs tdh urlmon user32 userenv usp10 uiautomationcore uxtheme version wevtapi win32u winhttp
 wininet winmm winscard winspool wintrust winusb wlanapi ws2_32 wtsapi32""".split())
 
 

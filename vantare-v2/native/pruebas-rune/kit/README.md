@@ -1,7 +1,9 @@
 # VANTA-141: campaña, recogida y análisis
 
-Este directorio todavía no es el kit final: faltan INICIAR.ps1, integración
-del muestreador y AGUANTE.ps1. No presentar sus datos sintéticos como mediciones.
+Los controladores de campaña, Inicio, corrección visual, aguante y recogida
+están implementados e integrados con el muestreador. La entrega requiere además
+el inventario de binarios, cierre de DLL y ZIP verificado. Los tests sintéticos
+comprueban el análisis; no son mediciones del PC de juego.
 
 El plan RONDAS.ps1 genera ABBA/BAAB y controles A/A, con registro exclusivo
 de un máximo de tres intentos. Una ventana por monitor contiene 1, 4 o 10
@@ -27,7 +29,7 @@ y perfil. Cada variante relative exige Release opt-level=3, lto=false,
 codegen-units=16, debug=false. Exige grabación, PresentMon 2.6.0 oficial y los
 guiones raíz completos. Comprueba el SHA incrustado en cada binario, todas
 las dependencias de exe/DLL y el contenido/hash del zip sin ejecutar nada.
-INICIAR deberá incluir bin/ en PATH para los CRT comunes; Electron conserva
+INICIAR incluye bin/ en PATH para los CRT comunes; Electron conserva
 su árbol completo. Un staging fallido se conserva y no es una entrega válida.
 
 ANALIZAR.ps1 aplica INFORME-FABLE §8 a evidencia normalizada. Por decisión de

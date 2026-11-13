@@ -10,9 +10,12 @@ Analizador crudo cruza QPC/PresentMon y vuelve a evaluar térmica sin hardware.
 Constructor exige todas las variantes, guiones, hashes, procedencia y DLL.
 30 pruebas Python y controles PS en seco PASS; sintaxis/contratos de parámetros
 35 guiones PASS. Corregido Set-Content -NoClobber -> Out-File. Auxiliar C# de
-ventanas pendiente de compilar por cola; nunca invocar sus APIs en servidor.
-Bloqueo: Mac sin SSH; nueva marca CPU/DWM de Inicio Rune pendiente de compilar.
-Quedan empaquetado Electron, verificaciones finales y ZIP. Tiempos comparables
+ventanas compilado por cola: RECT 16 / MONITORINFOEXW 104, sin invocar APIs.
+Inicio Rune con marca CPU/DWM compilado en Mac, Runtime 3 y Clippy PASS;
+falta transferir el nuevo PE en una sesión caffeinate. Electron empaquetado,
+tipos y siete tests específicos PASS, sin ejecutar Electron. Replay Windows:
+1592 envíos reales / 1592 recibidos / 3840 publicaciones. Quedan el cierre
+GPUI, verificaciones finales y ZIP. Tiempos comparables
 pendientes autorizados para ventana nocturna. Sin medición PC, merge ni release.
 ## VANTA-141 · Paquete y análisis en preparación (13/11/2026)
 

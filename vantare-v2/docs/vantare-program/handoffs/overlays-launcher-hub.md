@@ -1,3 +1,20 @@
+## VANTA-141 · Segunda revisión #2286 (13/11/2026)
+
+Copia Mac verifica SHA de fuente explícito y hash del binario, sin exigir
+source_dirty=false. Empaquetado Electron usa preparar_fuentes --json y su
+source_sha; el sello de su copia aislada recibe ese SHA por entorno y declara
+dirty=not_applicable, sin consultar Git. Producto intacto.
+
+A/A fallido después de dos reparaciones iniciadas termina «inconcluso: A/A
+agotado», sin nueva solicitud. El presupuesto de la familia con carga se
+conserva separado, incluso tras interrupción. aa_loaded pasa los mismos
+controles de calidad, métricas, hash y variante GPUI, con IDs no reutilizados.
+68 pruebas Python PASS (8+46+11+3). CI anterior: producto y Hub Rune PASS;
+gate de medición falló solo por línea en blanco generada: corregida en el
+materializador. Nueva CI pendiente. No se compiló ni ejecutó gráfica aquí.
+El checker first_party opcional es reutilización compartida aceptada por Isaac.
+Kit sigue pendiente de reconstruir los tres Rune en el Mac despierto.
+
 ## VANTA-141 · Correcciones de revisión #2286 (13/11/2026)
 
 Rune: default-features=false y las cinco features de Hub Rune; lock regenerado

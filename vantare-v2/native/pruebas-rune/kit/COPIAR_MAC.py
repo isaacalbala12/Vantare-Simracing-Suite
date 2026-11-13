@@ -18,10 +18,12 @@ for stem in ['inicio-runtime-visible-01','inicio-clippy-visible-01','inicio-wind
  for suffix in ['.log','.log.json']:
   files[stem+suffix]=logs/(stem+suffix)
  data=json.loads((logs/(stem+'.log.json')).read_text())
- assert data['source_head']==sha and data['source_dirty'] is False and data['exit']==0
+ assert data['source_head']==sha and data['exit']==0
 blob=exe.read_bytes()
-assert ('sha='+sha+';dirty=false').encode() in blob and b'post_draw_dwm_flush' in blob
-metadata=json.dumps({'source_sha':sha,'sha256':hashlib.sha256(blob).hexdigest(),'bytes':len(blob),'mac_hash_verified':True,'executed':False,'runtime_tests':3,'cpu_visible_marker':True}).encode()
+assert ('sha='+sha+';').encode() in blob and b'post_draw_dwm_flush' in blob
+# El estado Git no describe una fuente materializada: el SHA es el contrato.
+assert any(('sha='+sha+';dirty='+state+';').encode() in blob for state in ['not_applicable','false'])
+metadata=json.dumps({'source_sha':sha,'provenance':'verified_snapshot_env_v1','sha256':hashlib.sha256(blob).hexdigest(),'bytes':len(blob),'mac_hash_verified':True,'executed':False,'runtime_tests':3,'cpu_visible_marker':True}).encode()
 with tarfile.open(fileobj=sys.stdout.buffer,mode='w|',dereference=True) as archive:
  for name,path in files.items():archive.add(path,arcname=name,recursive=False)
  entry=tarfile.TarInfo('artefacto.json');entry.size=len(metadata);archive.addfile(entry,io.BytesIO(metadata))

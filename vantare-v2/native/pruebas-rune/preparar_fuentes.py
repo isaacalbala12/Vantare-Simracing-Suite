@@ -27,20 +27,34 @@ def provenance_source(data):
     text = text.replace('("DIRTY", dirty.to_string())', '("DIRTY", "not_applicable".into())')
     text,count=re.subn(r'fn measurement_git\([\s\S]*?\n}\n','',text,count=1)
     if count!=1:raise ValueError('No se identificó la función histórica de Git')
+    return re.sub(r'\n{3,}', '\n\n', text).encode('utf-8')
+
+
+def electron_provenance_source(data):
+    text=data.decode('utf-8')
+    start=text.index('  const cwd =')
+    end=text.index('  return {',start)
+    text=text[:start]+('  const sha = process.env.VANTARE_MEASUREMENT_SOURCE_SHA;\n'
+                      '  if (!sha || !/^[a-f0-9]{40}$/u.test(sha))\n'
+                      '    throw new Error("Verified snapshot source SHA required");\n')+text[end:]
+    text=text.replace('dirty=false','dirty=not_applicable')
+    text=text.replace('import { execFileSync } from "node:child_process";\n','').replace('import { resolve } from "node:path";\n','')
     return text.encode('utf-8')
 
 
+STAMPERS = {'vantare-v2/native/build-support/src/lib.rs':provenance_source,
+            'vantare-v2/hub-web/scripts/measurement-build.ts':electron_provenance_source}
+
+
 def stamp_source(destination, recipe):
-    name = 'vantare-v2/native/build-support/src/lib.rs'
-    path = destination/name
-    if not path.exists():
-        return
-    original = git('show', recipe['source']+':'+name)
-    stamped = provenance_source(original)
-    if path.read_bytes() == original:
-        path.write_bytes(stamped)
-    elif path.read_bytes() != stamped:
-        raise ValueError('La fuente de procedencia fue modificada fuera del banco')
+    for name,transform in STAMPERS.items():
+        path=destination/name
+        if not path.exists():continue
+        original=git('show',recipe['source']+':'+name)
+        stamped=transform(original)
+        if path.read_bytes()==original:path.write_bytes(stamped)
+        elif re.sub(b'\n{3,}',b'\n\n',path.read_bytes())==stamped:path.write_bytes(stamped)
+        elif path.read_bytes()!=stamped:raise ValueError('La fuente de procedencia fue modificada fuera del banco')
 
 
 def check_destination(destination):
@@ -65,8 +79,8 @@ def verify(destination, recipe):
         if kind != b'blob' or mode not in (b'100644', b'100755'):
             raise ValueError('Las fuentes deben ser archivos normales')
         path = destination/name.decode('utf-8')
-        if name == b'vantare-v2/native/build-support/src/lib.rs':
-            data = provenance_source(git('show', recipe['source']+':'+name.decode()))
+        if name.decode() in STAMPERS:
+            data = STAMPERS[name.decode()](git('show', recipe['source']+':'+name.decode()))
             expected = hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest().encode()
         if path.is_symlink() or not path.resolve().is_relative_to(destination.resolve()) or not path.is_file():
             raise ValueError('Falta un archivo de la fuente fijada: '+str(path))

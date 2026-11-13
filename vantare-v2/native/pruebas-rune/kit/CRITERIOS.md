@@ -60,3 +60,7 @@ prueba de resolución. Una R prematura avisa y permite continuar el aguante.
 El ZIP no incluye COPIAR_MAC.py ni compilar_mac.py. Tampoco reutiliza los tres
 binarios Rune anteriores con audio/MPL: faltan hasta reconstruirlos en el Mac
 con las mismas features permisivas del Hub Rune. No ejecutar un ZIP pendiente.
+
+Tras el original y dos repeticiones iniciadas por bloque, un A/A que siga
+fallando termina como «inconcluso: A/A agotado». No se genera otra solicitud.
+El presupuesto se conserva aunque una repetición falle o se interrumpa.

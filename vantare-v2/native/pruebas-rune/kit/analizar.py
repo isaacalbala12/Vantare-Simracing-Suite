@@ -185,11 +185,21 @@ def evaluate(document):
             raise InvalidEvidence("Faltan rondas completas")
         aa, ab, observed = [], [], {"gpui": [], name: []}
         aa_metrics=[];repeat=[]
-        observation_ids = set()
+        observation_ids = set();loaded_ids=set()
         for round_index, round_ in enumerate(rounds, 1):
             if round_.get("id") != round_index:
                 raise InvalidEvidence("Rondas repetidas o desordenadas")
             controls, comparison = round_.get("aa", []), round_.get("ab", [])
+            loaded_rows=round_.get('aa_loaded', [])
+            for row in loaded_rows:
+                validate_observation(row, compilation_pending)
+                identity=row.get('id')
+                if not identity or identity in loaded_ids:
+                    raise InvalidEvidence('Observación con carga reutilizada')
+                loaded_ids.add(identity)
+                expected_hash=document.get('binaries',{}).get('gpui')
+                if row.get('variant')!='gpui' or not isinstance(expected_hash,str) or len(expected_hash)!=64 or any(c not in '0123456789abcdef' for c in expected_hash) or row.get('binary_sha256')!=expected_hash:
+                    raise InvalidEvidence('A/A con carga: hash o variante distintos')
             for row in controls + comparison:
                 validate_observation(row, compilation_pending)
                 identity = row.get("id")
@@ -218,7 +228,10 @@ def evaluate(document):
                 loaded_control={metric:aa_check(round_['aa_loaded'],metric) for metric in METRICS if metric in round_['aa_loaded'][0]['metrics']}
                 control['loaded']=loaded_control
                 failed_controls.extend('loaded.'+metric for metric,value in loaded_control.items() if not value['pass'])
-            if failed_controls:repeat.append({'comparison':name,'round':round_index,'metrics':failed_controls})
+            if failed_controls:
+                attempts=round_.get('repair_attempts',{})
+                exhausted=any(attempts.get('loaded' if metric.startswith('loaded.') else 'unloaded',0)>=2 for metric in failed_controls)
+                repeat.append({'comparison':name,'round':round_index,'metrics':failed_controls,'exhausted':exhausted})
             ab.append(block_ratio(comparison, "cpu_cycles_s"))
             first, second = (controls, comparison) if round_index % 2 else (comparison, controls)
             if max(row["midpoint_qpc"] for row in first) >= min(row["midpoint_qpc"] for row in second):
@@ -226,8 +239,9 @@ def evaluate(document):
         stats = interval(ab)
         if repeat:
             known_failure=any(number(data.get('endurance',{}).get(key,0),key)>0 for key in ('crashes','bugchecks')) or any(data.get('manual',{}).get(key) is False for key in CHECKLIST)
-            if not known_failure:output['retry_request']['blocks'].extend(repeat)
-            output["overlays"][name] = {"verdict": "no_adoptar" if known_failure else "repetir_bloques", "aa_ratios": aa, "aa_metrics":aa_metrics,"retry_blocks":repeat,"cpu":stats}
+            exhausted=any(row['exhausted'] for row in repeat)
+            if not known_failure and not exhausted:output['retry_request']['blocks'].extend(repeat)
+            output["overlays"][name] = {"verdict": "no_adoptar" if known_failure else "inconcluso: A/A agotado" if exhausted else "repetir_bloques", "aa_ratios": aa, "aa_metrics":aa_metrics,"retry_blocks":repeat,"cpu":stats}
             continue
         medians = {variant: {metric: statistics.median(row[metric] for row in rows) for metric in METRICS if not compilation_pending or metric not in BUILD_METRICS}
                    for variant, rows in observed.items()}

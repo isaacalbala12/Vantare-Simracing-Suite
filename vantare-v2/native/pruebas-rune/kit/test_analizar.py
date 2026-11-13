@@ -51,6 +51,38 @@ def candidate_metrics(document, field, value, candidate="rune"):
 
 
 class ThresholdTests(unittest.TestCase):
+    def test_aa_exhaustion_is_terminal_after_two_repairs(self):
+        for attempts,expected in [(0,'repetir_bloques'),(1,'repetir_bloques'),(2,'inconcluso: A/A agotado')]:
+            data=campaign()
+            first=data['comparisons']['rune']['rounds'][0]
+            first['repair_attempts']={'unloaded':attempts,'loaded':0}
+            for row in first['aa']:
+                if row['role']=='B':row['metrics']['cpu_cycles_s']*=1.2
+            result=evaluate(data)
+            self.assertEqual(result['overlays']['rune']['verdict'],expected)
+            self.assertEqual(bool(result['retry_request']['blocks']),attempts<2)
+
+    def test_loaded_control_validates_quality_hash_and_variant(self):
+        for field,value in [('noise_ok',False),('trace_complete',False),('variant','rune'),('binary_sha256','d'*64)]:
+            data=campaign();first=data['comparisons']['rune']['rounds'][0]
+            first['aa_loaded']=copy.deepcopy(first['aa'])
+            first['aa_loaded'][0][field]=value
+            with self.subTest(field=field),self.assertRaises(InvalidEvidence):evaluate(data)
+        data=campaign();first=data['comparisons']['rune']['rounds'][0]
+        first['aa_loaded']=copy.deepcopy(first['aa'])
+        del first['aa_loaded'][0]['metrics']['gpu_percent']
+        with self.assertRaises(InvalidEvidence):evaluate(data)
+
+    def test_loaded_aa_budget_is_independent(self):
+        data=campaign();first=data['comparisons']['rune']['rounds'][0]
+        first['aa_loaded']=copy.deepcopy(first['aa'])
+        for row in first['aa_loaded']:
+            if row['role']=='B':row['metrics']['gpu_percent']=4
+        first['repair_attempts']={'unloaded':0,'loaded':2}
+        result=evaluate(data)
+        self.assertEqual(result['overlays']['rune']['verdict'],'inconcluso: A/A agotado')
+        self.assertEqual(result['retry_request']['blocks'],[])
+
     def test_attribute_error_is_reported_as_invalid_evidence(self):
         with tempfile.TemporaryDirectory() as folder:
             source=Path(folder)/'input.json';output=Path(folder)/'output.json'

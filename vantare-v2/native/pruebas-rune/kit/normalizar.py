@@ -139,10 +139,14 @@ def normalize(root):
         if selected.get(meta["family"]) == meta["attempt"] and not meta.get('repair_attempt'):
             observations.append(normalize_observation(descriptor.parent))
     repair_ledger=root/'repeticiones.jsonl'
-    accepted=set()
+    accepted=set();repair_attempts={}
     if repair_ledger.exists():
         for record in (json.loads(line) for line in repair_ledger.read_text(encoding='utf-8-sig').splitlines() if line.strip()):
             key=(record['family'],record['round'])
+            if record.get('event')=='start':
+                attempt=record.get('repair_attempt')
+                require(type(attempt) is int and 1<=attempt<=2,'Presupuesto de repeticiones inválido')
+                repair_attempts.setdefault(key,set()).add(attempt)
             if record.get('event')!='end' or record.get('status')!='complete' or key in accepted:
                 continue
             folder=(root/record['folder']).resolve()
@@ -166,7 +170,9 @@ def normalize(root):
         require(len(primary) == len(loaded), "Falta la comparación emparejada con carga, no sustituirla por cero")
         rounds = []
         for index in sorted({row["round"] for row in primary}):
-            round_ = {"id": index}
+            round_ = {"id": index, "repair_attempts": {
+                label:len(repair_attempts.get((f'{comparison}-n10-hz60-carga{load}',index),set()))
+                for label,load in [('unloaded',0),('loaded',1)]}}
             for block in ("aa", "ab"):
                 base = sorted((row for row in primary if row["round"] == index and row["block"] == block), key=lambda row: row["midpoint_qpc"])
                 companion = sorted((row for row in loaded if row["round"] == index and row["block"] == block), key=lambda row: row["midpoint_qpc"])

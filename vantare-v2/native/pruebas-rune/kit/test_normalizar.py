@@ -29,6 +29,30 @@ class CampaignSelectionTests(unittest.TestCase):
             self.assertEqual([r["status"] for r in result["failed_attempts"]], ["invalid", "cancelled"])
             self.assertEqual(result["compilation"]["status"], "pending_authorized")
 
+    def test_started_failed_repairs_preserve_budget_in_normalized_round(self):
+        from test_analizar import campaign
+        import copy
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);sample=campaign()
+            (root/'campana.json').write_text(json.dumps({'schema':1,'binaries':sample['binaries'],'compilation_plan':'pending'}))
+            rows=[];records=[]
+            for load in [False,True]:
+                family=f'rune-n10-hz60-carga{int(load)}'
+                records.append(dict(event='end',status='complete',family=family,attempt=1))
+                for block in ['aa','ab']:
+                    for original in sample['comparisons']['rune']['rounds'][0][block]:
+                        row=copy.deepcopy(original)
+                        row.update(normalizar.PRIMARY);row.update(load=load,comparison='rune',round=1,block=block,family=family,source_folder='synthetic')
+                        rows.append(row)
+                        folder=root/str(len(rows));folder.mkdir()
+                        (folder/'observacion.json').write_text(json.dumps(dict(family=family,attempt=1)))
+            (root/'intentos.jsonl').write_text('\n'.join(map(json.dumps,records)))
+            ledger=[dict(event='start',family='rune-n10-hz60-carga1',round=1,repair_attempt=n) for n in [1,2]]
+            (root/'repeticiones.jsonl').write_text('\n'.join(map(json.dumps,ledger)))
+            with patch.object(normalizar,'normalize_observation',side_effect=lambda folder:rows[int(folder.name)-1]):
+                result=normalizar.normalize(root)
+            self.assertEqual(result['comparisons']['rune']['rounds'][0]['repair_attempts'],{'unloaded':0,'loaded':2})
+
     def test_primary_without_actual_loaded_companion_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

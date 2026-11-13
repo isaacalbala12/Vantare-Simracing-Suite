@@ -1,6 +1,12 @@
+mod bootstrap;
 mod catalog;
+#[cfg(any(windows, test))]
+mod client;
 mod design;
+mod host;
 mod icons;
+#[cfg(windows)]
+mod pipe;
 use catalog::{catalog, text};
 use design::{Theme, button, label, menu_item, surface};
 use rune::{AppSpec, Cx, El, col, icon, row};
@@ -9,6 +15,7 @@ struct State {
     dark: bool,
     collapsed: bool,
     section: String,
+    link: Option<host::Link>,
 }
 fn init() -> State {
     State {
@@ -16,6 +23,7 @@ fn init() -> State {
         dark: true,
         collapsed: false,
         section: "home".into(),
+        link: None,
     }
 }
 fn toggle(state: &mut State) {
@@ -109,8 +117,69 @@ fn view(state: &State, _: &mut Cx<State>) -> El {
             ),
         )
 }
-fn main() {
-    let mut spec = AppSpec::new("Vantare · Hub", (1440.0, 900.0), init, view);
+fn setup(state: &mut State, waker: rune::Waker) {
+    if let Some(link) = &mut state.link {
+        link.wake_with(waker);
+    }
+}
+fn poll(state: &mut State, _: f64, tx: &mut rune::Tx) -> bool {
+    if let Some(link) = &mut state.link {
+        for _ in 0..64 {
+            match link.receive() {
+                Some(Ok(vantare_hub_host::protocol::HostToUi::CloseRequested { .. }))
+                | Some(Err(_)) => {
+                    tx.quit();
+                    return true;
+                }
+                Some(Ok(_)) => {}
+                None => break,
+            }
+        }
+    }
+    false
+}
+fn start() -> std::io::Result<()> {
+    // Consume and erase ephemeral bootstrap before Rune or workers start threads.
+    let bootstrap = bootstrap::consume()?;
+    let arguments = bootstrap::arguments(std::env::args().skip(1))?;
+    let (link, hello) = host::Link::open(bootstrap)?;
+    let ready = link.sender();
+    let mut state = init();
+    let mut size = (1440.0, 900.0);
+    if let vantare_hub_host::protocol::HostToUi::Hello {
+        version,
+        theme,
+        window,
+        ..
+    } = hello
+    {
+        if version != vantare_hub_host::protocol::VERSION {
+            return Err(std::io::ErrorKind::InvalidData.into());
+        }
+        let palette = serde_json::to_value(theme.palette)?;
+        let scheme = serde_json::to_value(theme.scheme)?;
+        state.dark = scheme.as_str() != Some("light");
+        state.theme = Theme::load(
+            palette.as_str().ok_or(std::io::ErrorKind::InvalidData)?,
+            if state.dark { "dark" } else { "light" },
+        )
+        .map_err(|_| std::io::ErrorKind::InvalidData)?;
+        size = (
+            f32::from(window.width).clamp(1280.0, 3840.0),
+            f32::from(window.height).clamp(720.0, 2160.0),
+        );
+    }
+    let mut link = link;
+    link.send(vantare_hub_host::protocol::UiToHost::Request {
+        id: 1,
+        request: vantare_hub_host::protocol::Request::CoreGet {},
+    })?;
+    link.send(vantare_hub_host::protocol::UiToHost::Subscribe {
+        topic: vantare_hub_host::protocol::Topic::Core,
+    })?;
+    state.link = Some(link);
+
+    let mut spec = AppSpec::new("Vantare · Hub", size, init, view);
     spec.min_size = Some((1280.0, 720.0));
     spec.fonts = design::FONTS;
     spec.families = ("Inter", "Inter");
@@ -123,7 +192,29 @@ fn main() {
         ("dark", |_| {}),
         ("collapsed", |s| s.collapsed = true),
     ];
-    rune::run(spec);
+    spec.setup = Some(setup);
+    spec.poll = Some(poll);
+    let app = rune::App::new(spec).init(move || state).args(arguments);
+    let handle = app.handle();
+    app.on_ready(move |_| {
+        if let Some(sender) = &ready {
+            if sender
+                .try_send(vantare_hub_host::protocol::UiToHost::Ready {})
+                .is_err()
+            {
+                handle.quit();
+            }
+        }
+    })
+    .try_run()
+    .map_err(std::io::Error::other)
+}
+fn main() -> std::process::ExitCode {
+    if start().is_err() {
+        eprintln!("No se pudo preparar el Hub Rune con el anfitrión.");
+        return std::process::ExitCode::FAILURE;
+    }
+    std::process::ExitCode::SUCCESS
 }
 #[cfg(test)]
 mod tests {

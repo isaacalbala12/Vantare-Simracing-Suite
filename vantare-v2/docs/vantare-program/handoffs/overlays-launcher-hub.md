@@ -1775,3 +1775,23 @@ Node 22.18.0 mediante setup-node fijado por SHA. El test local comprueba Node
 Catálogo --check y formato comprobados; Clippy/tests se repiten por la cola
 antes de publicar. Capturas y ventana visible pendientes del Mac, autorizado
 por el orquestador. Sin cambios de versiones Rust/Rune ni dependencias nuevas.
+
+### VANTA-143 · PR 4 conexión (2026-11-13)
+
+Cliente tipado con frame/protocol de hub-host: autenticación efímera consumida
+y borrada antes de arrancar hilos, hello v31, ready tras on_ready de Rune,
+ACK de cierre y salida cuando se corta el canal. Named pipe Windows con E/S
+overcapped (200 ms por operación, cancelación completada antes de liberar buffers),
+worker propio cancelable y recogido al cerrar, colas acotadas y waker sin sondeo GUI.
+Solo se ignoran las tres opciones QA de Chromium; otras se rechazan. Las opciones
+de captura de desarrollo solo se admiten en Mac; no se ejecutan en Windows.
+Anfitrión de escena solo debug, leyendo hello y core-offline de Electron. Sin
+servidor productivo en Mac. Windows-sys ya resuelto: uso directo del mismo
+paquete y versión para el pipe, sin nuevos paquetes. No se cambia hub-host.
+Tests: handshake/ready/cierre en memoria, versión incompatible, bootstrap inválido,
+argumentos cerrados, roundtrip del corpus modular completo y escena compartida.
+Formato/catálogo/licencias comprobados; Clippy local solicitado en cola, un slot,
+dos jobs. Windows host real con VANTARE_HUB_UI/hub-ready/EOF y capturas Mac
+siguen pendientes: la prohibición gráfica del servidor se conserva y el Mac duerme.
+No se presentan como hechos. La CI verifica tipos y tests sin ventana; el PR
+recoge resultados definitivos. Sin merge, promoción ni release.

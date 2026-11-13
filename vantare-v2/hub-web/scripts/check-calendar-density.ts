@@ -45,6 +45,26 @@ export async function checkCalendarDensity(page: Page, base: string) {
               .getByRole("button", { name: "Avisos", exact: true })
               .count()) > 0,
           );
+          const rail = page.locator(".v-context:has(.v-calendar-rail)");
+          assert.ok(
+            await rail.isVisible(),
+            "Positive control: calendar context is present",
+          );
+          assert.ok(
+            await rail.evaluate((node) => {
+              const heading = node.querySelector(".v-calendar-rail h2");
+              if (!heading) return false;
+              const style = getComputedStyle(node);
+              const expected =
+                node.getBoundingClientRect().left +
+                parseFloat(style.paddingLeft) +
+                parseFloat(style.borderLeftWidth);
+              return (
+                Math.abs(heading.getBoundingClientRect().left - expected) <= 1
+              );
+            }),
+            "Calendar must not add a second gutter inside ContextRail",
+          );
           const rows = page.locator(".v-calendar-live-row");
           assert.ok(
             (await rows.count()) > 0,
@@ -83,6 +103,28 @@ export async function checkCalendarDensity(page: Page, base: string) {
               false,
             );
           }
+          await page.getByRole("tab", { name: /^Eventos/ }).click();
+          const facts = page.locator(".v-calendar-event-facts strong");
+          await facts.first().waitFor();
+          assert.ok(
+            (await facts.count()) > 0,
+            "Positive control: real event facts are rendered",
+          );
+          for (const fact of await facts.all()) {
+            assert.equal(
+              await fact.getAttribute("title"),
+              await fact.textContent(),
+              "Truncated values remain available in full",
+            );
+            assert.equal(
+              await fact.evaluate((node) => getComputedStyle(node).whiteSpace),
+              "nowrap",
+            );
+          }
+          await page
+            .getByRole("tab", { name: "Próximas", exact: true })
+            .click();
+          await page.locator(".v-calendar-hero").waitFor();
           assert.ok(await page.locator(".v-window-controls").isVisible());
         }
       }

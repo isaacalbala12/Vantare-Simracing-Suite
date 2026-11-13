@@ -1,0 +1,92 @@
+/* Frozen GPUI calendar/ui.rs and calendar/ui/proximas.rs compact at width <1400.
+   Availability reasons, launch guards and dialog content remain untouched. */
+.v-calendar .v-calendar-header-short {
+  display: none;
+}
+@media (max-width: 1399px) {
+  .v-calendar .v-calendar-header {
+    min-height: 34px;
+    gap: 8px;
+  }
+  .v-calendar .v-calendar-header > div:first-child {
+    display: flex;
+    flex: 1;
+    min-width: 160px;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .v-calendar .v-calendar-header h1 {
+    flex: none;
+    font-size: 24px;
+    line-height: 26px;
+  }
+  .v-calendar .v-calendar-header p {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .v-calendar .v-calendar-header-actions {
+    flex: none;
+  }
+  .v-calendar .v-calendar-header-actions .v-button-label {
+    white-space: nowrap;
+  }
+  .v-calendar .v-calendar-header-long {
+    display: none;
+  }
+  .v-calendar .v-calendar-header-short {
+    display: inline;
+  }
+  .v-calendar .v-calendar-live {
+    gap: 12px;
+  }
+  .v-calendar .v-calendar-hero {
+    min-height: 0;
+    padding: 12px 18px;
+    gap: 20px;
+  }
+  .v-calendar .v-calendar-hero h2 {
+    margin-top: 4px;
+    overflow: hidden;
+    font-size: 28px;
+    line-height: 30px;
+    text-overflow: ellipsis;
+  }
+  .v-calendar .v-calendar-hero-meta {
+    margin-top: 6px;
+  }
+  .v-calendar .v-calendar-hero .v-calendar-alert-chip,
+  .v-calendar .v-calendar-hero .v-calendar-after {
+    display: none;
+  }
+  .v-calendar .v-calendar-hero-time > strong {
+    font-size: 38px;
+    line-height: 40px;
+  }
+  .v-calendar .v-calendar-hero-time p {
+    line-height: 16px;
+  }
+  .v-calendar .v-calendar-hero-actions {
+    min-width: 190px;
+    width: auto;
+  }
+  .v-calendar .v-calendar-live-tools {
+    min-height: 58px;
+  }
+  .v-calendar .v-calendar-board-caption {
+    flex: none;
+    width: auto;
+  }
+  .v-calendar .v-calendar-board-caption > span {
+    display: none;
+  }
+  .v-calendar .v-calendar-live-head,
+  .v-calendar .v-calendar-live-row {
+    grid-template-columns: 30px minmax(170px, 1fr) 92px 84px minmax(0, 1fr);
+    gap: 10px;
+    padding-inline: 12px;
+  }
+}

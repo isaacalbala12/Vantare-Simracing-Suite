@@ -326,7 +326,7 @@ export function CalendarLiveView({
                 </span>
               )}
             </div>
-            <h2>{hero.series.name}</h2>
+            <h2 title={hero.series.name}>{hero.series.name}</h2>
             <p className="v-calendar-hero-meta">
               <strong>{hero.series.track.split(" (")[0]}</strong>
               <span className="v-calendar-license">

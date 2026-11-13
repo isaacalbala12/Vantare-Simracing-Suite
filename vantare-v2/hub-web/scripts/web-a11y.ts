@@ -7,6 +7,7 @@ import { checkAccessGate } from "./check-access-gate.ts";
 import { checkAccessStates } from "./check-access-states.ts";
 import { checkAccount } from "./check-account.ts";
 import { checkAccountDensity } from "./check-account-density.ts";
+import { checkCalendarDensity } from "./check-calendar-density";
 import { checkCalendarDialogSafety } from "./check-calendar-dialog-safety.ts";
 import { checkCommandPalette } from "./check-command-palette.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
@@ -168,6 +169,7 @@ try {
   await checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentResults(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
+  await checkCalendarDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   await checkPerformanceDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkCommandPalette(page, server.resolvedUrls?.local[0] ?? "");

@@ -18,6 +18,8 @@ const activeTarget = {
 };
 function controller(): ResidentControlController {
   return {
+    results: { kind: "unsupported" },
+    retry: vi.fn(),
     attempt: undefined,
     scope: { instance: "b".repeat(64), accountGeneration: "a".repeat(64) },
     capable: true,

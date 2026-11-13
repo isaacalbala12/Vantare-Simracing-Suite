@@ -126,6 +126,7 @@ export async function checkCalendarDialogSafety(owner: Page, base: string) {
             "launcher.resident.cancel",
             "launcher.resident.rehearse",
             "launcher.resident.retry",
+            "launcher.resident.retry",
             "calendar.launchArm",
             "calendar.launchCancel",
             "launcher.favorite",

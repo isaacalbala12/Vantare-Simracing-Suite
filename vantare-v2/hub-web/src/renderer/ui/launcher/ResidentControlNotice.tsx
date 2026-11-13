@@ -27,7 +27,7 @@ export function ResidentControlNotice({
               ? text.cleanupFailed
               : text.failed;
     else status = text[phase.kind];
-    status = `${attempt?.kind === "cancel" ? text.cancel : text.rehearse}: ${status}`;
+    status = `${attempt?.kind === "cancel" ? text.cancel : attempt?.kind === "retry" ? (attempt.target.scope === "failed" ? text.retryFailed : text.retryAll) : text.rehearse}: ${status}`;
   }
   const target = showCancel ? control.cancelTarget : undefined;
   const reason = target

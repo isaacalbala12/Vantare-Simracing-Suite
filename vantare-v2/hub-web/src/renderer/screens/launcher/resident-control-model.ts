@@ -3,6 +3,7 @@ import {
   type ResidentOrderRejection,
   type ResidentOutcome,
   type ResidentRehearseTarget,
+  type ResidentRetryTarget,
   type ResidentView,
   residentOrderReceiptTimeoutMs,
   residentOrderRejections,
@@ -26,12 +27,16 @@ export function isControlRejection(
 }
 export type ControlIntent =
   | { kind: "cancel"; target: ResidentCancelTarget }
-  | { kind: "rehearse"; target: ResidentRehearseTarget };
+  | { kind: "rehearse"; target: ResidentRehearseTarget }
+  | { kind: "retry"; target: ResidentRetryTarget };
 export type ControlPhase =
   | { kind: "sending" }
   | { kind: "queued"; request: string; until: number }
   | { kind: "accepted"; request: string; run: string }
-  | { kind: "rejected"; reason: ControlRejection }
+  | {
+      kind: "rejected";
+      reason: ControlRejection | "unknown-run" | "no-failed-steps";
+    }
   | { kind: "unknown" }
   | { kind: "finished"; outcome: ResidentOutcome };
 export type ControlAttempt = ControlIntent & {
@@ -39,6 +44,14 @@ export type ControlAttempt = ControlIntent & {
   phase: ControlPhase;
 };
 export function sameControlIntent(a: ControlIntent, b: ControlIntent) {
+  if (a.kind === "retry" && b.kind === "retry")
+    return (
+      a.target.instance === b.target.instance &&
+      a.target.accountGeneration === b.target.accountGeneration &&
+      a.target.run === b.target.run &&
+      a.target.profile === b.target.profile &&
+      a.target.revision === b.target.revision
+    );
   return (
     a.kind === b.kind &&
     a.target.instance === b.target.instance &&
@@ -68,7 +81,8 @@ export function observeControl(
   if (
     !view?.online ||
     view.protected ||
-    !execution?.checkedControl ||
+    !execution ||
+    (attempt.kind === "retry" ? execution.results.kind === "unsupported" : !execution.checkedControl) ||
     execution.instance !== attempt.target.instance
   )
     return unknown();
@@ -89,9 +103,15 @@ export function observeControl(
     ) {
       if (value.receipt.kind === "rejected") {
         const reason = value.receipt.reason;
-        if (!isControlRejection(reason)) return unknown();
+        if (
+          !(next.kind === "retry"
+            ? residentOrderRejections.some((value) => value === reason)
+            : isControlRejection(reason))
+        )
+          return unknown();
         return { ...next, phase: { kind: "rejected", reason } };
       }
+      if (next.kind === "retry" && value.receipt.run === next.target.run) return unknown();
       if (next.kind === "cancel" && value.receipt.run !== next.target.run)
         return unknown();
       next = {

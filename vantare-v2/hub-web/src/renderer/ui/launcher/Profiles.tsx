@@ -18,6 +18,7 @@ import { Callout } from "../Data";
 import { Tooltip } from "../Layers";
 import { circuit } from "./generated/circuit";
 import { type ProfileCardAction, ProfileCardActions } from "./ProfileActions";
+import { ResidentResults } from "./ResidentResults";
 import "./profiles.css";
 
 const glyphs: Record<string, IconName> = {
@@ -320,6 +321,7 @@ export function LauncherProfiles({
                 </li>
               ))}
             </ol>
+            {control && <ResidentResults control={control} view={view} />}
           </section>
           <section
             className="v-launcher-profiles"
@@ -392,7 +394,10 @@ export function LauncherProfiles({
           </section>
         </>
       ) : (
-        view.exists && !view.protected && <Callout title={text.empty} />
+        <>
+          {view.exists && !view.protected && <Callout title={text.empty} />}
+          {control && <ResidentResults control={control} view={view} />}
+        </>
       )}
     </div>
   );

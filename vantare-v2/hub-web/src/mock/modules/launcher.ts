@@ -23,7 +23,7 @@ export function create(context: MockContext): MockHandler {
     launcherFixture,
   ) as import("../../contract/generated/contract").LauncherView;
   context.launcherData = launcher;
-  if (sceneName.startsWith("launcher-control-")) {
+  if (sceneName.startsWith("launcher-control-") || sceneName.startsWith("launcher-results-")) {
     core.accountGeneration = "a".repeat(64);
     core.services = "connected";
     launcher.apps.forEach((app) => {

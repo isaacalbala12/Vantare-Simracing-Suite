@@ -415,3 +415,176 @@ it.each(["stopped", "replaced"] as const)(
     expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
   },
 );
+
+import type {
+  ResidentRetryTarget,
+  ResidentRunResults,
+} from "../src/contract/generated/contract";
+
+function retryFixture() {
+  const hook = setup();
+  const value: ResidentRunResults & { retryFailed: boolean } = {
+    run: "7",
+    profile: hook.target.profile,
+    revision: hook.target.revision,
+    accountGeneration: hook.target.accountGeneration,
+    mode: "rehearsal",
+    outcome: { kind: "failed", reason: "step-failed" },
+    retryFailed: true,
+    steps: [
+      { index: 0, state: "not-selected" },
+      { index: 1, state: "failed" },
+      { index: 2, state: "not-selected" },
+    ],
+  };
+  const resident = structuredClone(hook.resident);
+  if (!resident.execution) throw new Error("execution");
+  resident.execution.checkedControl = false;
+  resident.execution.results = { kind: "known", value };
+  resident.execution.events = [
+    {
+      seq: "1",
+      kind: {
+        kind: "finished",
+        run: "7",
+        outcome: { kind: "failed", reason: "step-failed" },
+      },
+    },
+  ];
+  hook.rerender({ value: resident });
+  const target: ResidentRetryTarget = {
+    ...hook.target,
+    run: "7",
+    scope: "all",
+  };
+  return { ...hook, source: resident, target };
+}
+it("sends All as the original-selection scope, with no indices and one synchronous order", async () => {
+  const hook = retryFixture();
+  let done!: (reply: unknown) => void;
+  host.client.request.mockReturnValue(
+    new Promise((resolve) => {
+      done = resolve;
+    }),
+  );
+  let pending!: Promise<void>;
+  act(() => {
+    pending = hook.result.current.retry(hook.target);
+    void hook.result.current.retry({ ...hook.target, scope: "failed" });
+  });
+  expect(host.client.request).toHaveBeenCalledExactlyOnceWith({
+    method: "launcher.resident.retry",
+    target: hook.target,
+  });
+  await act(async () => {
+    done({
+      method: "launcher.resident.retry",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await pending;
+  });
+  expect(hook.result.current.attempt?.phase.kind).toBe("queued");
+  act(() => hook.advance(5000));
+  expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+  await act(async () => {
+    await hook.result.current.retry({ ...hook.target, scope: "failed" });
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(1);
+});
+it("uses retryFailed independently of final step states", async () => {
+  const hook = retryFixture();
+  const source = structuredClone(hook.source);
+  if (source.execution?.results.kind !== "known") throw new Error("known");
+  source.execution.results.value.steps = [
+    { index: 0, state: "not-selected" },
+    { index: 1, state: "not-run" },
+    { index: 2, state: "ready" },
+  ];
+  hook.rerender({ value: source });
+  host.client.request.mockResolvedValue({
+    method: "launcher.resident.retry",
+    value: { kind: "queued", request: "d".repeat(32) },
+  });
+  await act(async () => {
+    await hook.result.current.retry({ ...hook.target, scope: "failed" });
+  });
+  expect(host.client.request).toHaveBeenCalledTimes(1);
+});
+it.each([
+  "unknown",
+  "unsupported",
+  "revision",
+  "run",
+  "account",
+  "active",
+  "protected",
+  "live",
+  "terminal",
+  "no-failed",
+] as const)(
+  "does not submit a retry for stale or unavailable scope: %s",
+  async (kind) => {
+    const hook = retryFixture();
+    const source = structuredClone(hook.source);
+    if (source.execution?.results.kind !== "known")
+      throw new Error("known");
+    if (kind === "unknown" || kind === "unsupported")
+      source.execution.results = { kind };
+    if (kind === "revision")
+      source.execution.results.value.revision = "e".repeat(64);
+    if (kind === "run") source.execution.results.value.run = "8";
+    if (kind === "account")
+      source.execution.results.value.accountGeneration = "e".repeat(64);
+    if (kind === "active") source.running = true;
+    if (kind === "terminal") source.execution.events = [];
+    if (kind === "no-failed")
+      Object.assign(source.execution.results.value, { retryFailed: false });
+    act(() => {
+      if (kind === "protected")
+        hook.cache.setQueryData(launcherKey, {
+          ...hook.document,
+          protected: true,
+        });
+      if (kind === "live")
+        hook.cache.setQueryData(coreKey, { ...hook.core, live: true });
+    });
+    hook.rerender({ value: source });
+    await act(async () => {
+      await hook.result.current.retry({ ...hook.target, scope: "failed" });
+    });
+    expect(host.client.request).not.toHaveBeenCalled();
+  },
+);
+it("keeps retry Accepted distinct from Finished, then releases a lost run as Unknown", async () => {
+  const hook = retryFixture();
+  host.client.request.mockResolvedValue({
+    method: "launcher.resident.retry",
+    value: { kind: "queued", request: "d".repeat(32) },
+  });
+  await act(async () => {
+    await hook.result.current.retry(hook.target);
+  });
+  const source = structuredClone(hook.source);
+  if (!source.execution) throw new Error("execution");
+  source.running = true;
+  source.execution.active = {
+    run: "8",
+    revision: hook.target.revision,
+    accountGeneration: hook.target.accountGeneration,
+  };
+  source.execution.events.push({
+    seq: "2",
+    kind: {
+      kind: "order-received",
+      request: "d".repeat(32),
+      receipt: { kind: "accepted", run: "8" },
+    },
+  });
+  hook.rerender({ value: structuredClone(source) });
+  expect(hook.result.current.attempt?.phase.kind).toBe("accepted");
+  source.running = false;
+  source.execution.active = null;
+  hook.rerender({ value: source });
+  expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
+  expect(hook.result.current.busy).toBe(false);
+});

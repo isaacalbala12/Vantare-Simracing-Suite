@@ -6,10 +6,12 @@ param(
     [string]$BuildConfig,
     [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
     [string[]]$Packages = @(),
+    [string[]]$ExcludePackages = @(),
     [switch]$PublicTargetsOnly
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$ExcludePackages = @($ExcludePackages | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 if ($PublicTargetsOnly -and $Gate -ne 'check') { throw 'PublicTargetsOnly solo se aplica a check.' }
 . (Join-Path $PSScriptRoot 'scripts/target-slot.ps1')
 if (-not (Test-VantareTargetPath $TargetDirectory)) { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en el volumen configurado).' }
@@ -67,6 +69,18 @@ try {
     if ($Gate -in @('test', 'telemetria', 'completa', 'archive') -and
         'vantare-runtime' -cin $Packages -and 'vantare-services' -cnotin $Packages) {
         $Packages += 'vantare-services'
+    }
+    $packagesSpecified = $Packages.Count -gt 0
+    if ($ExcludePackages.Count) {
+        $memberNames = @($members | ForEach-Object name)
+        $unknown = @($ExcludePackages | Where-Object { $_ -notin $memberNames })
+        if ($unknown.Count) { throw "Excluidos desconocidos: $($unknown -join ', ')" }
+        if ($packagesSpecified) {
+            $Packages = @($Packages | Where-Object { $_ -notin $ExcludePackages })
+            if (-not $Packages.Count) { throw 'La selección no deja paquetes para este gate.' }
+        } else {
+            $Packages = @($members | Where-Object { $_.name -notin $ExcludePackages } | ForEach-Object name)
+        }
     }
     # /default conserva también los defaults de crates futuros, aunque estén vacíos.
     $defaultMembers = if ($Packages.Count) { @($members | Where-Object { $_.name -cin $Packages }) } else { $members }

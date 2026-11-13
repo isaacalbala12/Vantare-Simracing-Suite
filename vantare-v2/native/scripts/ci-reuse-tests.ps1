@@ -25,6 +25,11 @@ if (($Suite -eq 'telemetria' -and -not $scope.telemetry) -or
     Write-Host "$Suite no corresponde al diff; integración conserva la cobertura completa."
     return
 }
+$archiveFile = Join-Path $download 'nextest-tests.tar.zst'
+if (-not (Test-Path -LiteralPath $archiveFile)) {
+    Write-Host "Sin archivo de tests para $Suite (grupo sin crates); nada que ejecutar."
+    return
+}
 # Keep the original absolute target: several existing process tests embed Cargo paths.
 $extract = (Join-Path $env:RUNNER_TEMP 'vantare-test-extract')
 [IO.Directory]::CreateDirectory($extract) | Out-Null

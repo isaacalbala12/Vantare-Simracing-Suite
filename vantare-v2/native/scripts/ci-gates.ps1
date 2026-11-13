@@ -1,10 +1,11 @@
 # One queue acquisition, one persistent target, no duplicate workspace check.
 # -LintOnly (fmt/clippy/legacy/captura) y -ArchiveOnly (compilar tests) permiten
 # repartir el trabajo en dos jobs de CI sin duplicar la selección por diff.
-param([string]$DiffBase, [switch]$Telemetry, [switch]$LintOnly, [switch]$ArchiveOnly)
+param([string]$DiffBase, [switch]$Telemetry, [switch]$LintOnly, [switch]$ArchiveOnly, [string[]]$ExcludePackages = @())
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($LintOnly -and $ArchiveOnly) { throw 'Elegir -LintOnly o -ArchiveOnly, nunca ambos.' }
+$ExcludePackages = @($ExcludePackages | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 if (-not $env:VANTARE_SLOT_TARGET) { throw 'Invocar por compilar.ps1.' }
 Push-Location (Split-Path $PSScriptRoot)
 try {
@@ -36,19 +37,32 @@ try {
         }
     }
     if (-not $LintOnly) {
-        & (Join-Path $PSScriptRoot '../gates.ps1') -Gate archive -Packages $packages
-        if ($LASTEXITCODE) { throw 'Archivo de tests nativo.' }
+        $archivePackages = $packages
+        $archiveEmpty = $false
+        if ($ExcludePackages.Count -and $archivePackages.Count) {
+            $archivePackages = @($archivePackages | Where-Object { $_ -notin $ExcludePackages })
+            if (-not $archivePackages.Count) { $archiveEmpty = $true }
+        }
+        if ($archiveEmpty) {
+            Write-Host 'Sin crates del grupo principal; no se compila archivo de tests.'
+        } else {
+            & (Join-Path $PSScriptRoot '../gates.ps1') -Gate archive -Packages $archivePackages -ExcludePackages $ExcludePackages
+            if ($LASTEXITCODE) { throw 'Archivo de tests nativo.' }
+        }
         $revision = & git rev-parse HEAD
         if ($LASTEXITCODE) { throw 'No se pudo identificar el build archivado.' }
-        $lifecycle = @(Get-Content (Join-Path $env:VANTARE_SLOT_TARGET 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)
+        $lifecycle = @()
+        if (-not $archiveEmpty) {
+            $lifecycle = @(Get-Content (Join-Path $env:VANTARE_SLOT_TARGET 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)
+        }
         [ordered]@{
             revision = $revision
             workspace = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
             target = $env:VANTARE_SLOT_TARGET
             telemetry = [bool]$Telemetry
-            overlays = (-not $packages.Count -or 'vantare-runtime' -cin $packages)
+            overlays = (-not $archivePackages.Count -or 'vantare-runtime' -cin $archivePackages)
             lifecycle = ($lifecycle.Count -gt 0)
-            packages = $packages
+            packages = $archivePackages
         } | ConvertTo-Json | Set-Content (Join-Path $env:VANTARE_SLOT_TARGET 'ci-scope.json') -Encoding utf8
     }
 } finally { Pop-Location }

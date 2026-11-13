@@ -152,6 +152,7 @@ jobs:
           python .github/scripts/test_native_gate_scope.py
           python .github/scripts/test_native_ci_results.py
           python -m unittest vantare-v2/native/scripts/test_affected_crates.py
+          python -m unittest vantare-v2/native/scripts/test_ci_groups.py
 
       - name: Test Testing Center trusted manifest collector
         run: python .github/scripts/test_testing_center_manifest_collector.py
@@ -413,7 +414,10 @@ jobs:
           }
           $telemetry = @()
           if ($env:TELEMETRIA_SCOPE -ne 'false') { $telemetry = @('-Telemetry') }
-          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry -ArchiveOnly
+          # El grupo surface se compila y ejecuta en `native_surface_tests`;
+          # aquí solo queda el núcleo para el archivo compartido.
+          $surface = 'vantare-ui,vantare-installer,vantare-hub-host,vantare-hub,vantare-admin'
+          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry -ArchiveOnly -ExcludePackages $surface
           if ($LASTEXITCODE) { throw 'Native test archive failed' }
 
       - name: Share one compiled test archive
@@ -427,6 +431,37 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
+
+  native_surface_tests:
+    name: Run native surface tests
+    timeout-minutes: 30
+    needs: policy
+    if: needs.policy.outputs.native != 'false'
+    runs-on: windows-latest
+    env:
+      VANTARE_CI_TARGET: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '4'
+      NEXTEST_TEST_THREADS: '4'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/native-build-setup
+      # Compila y ejecuta el grupo surface (ui, installer, hub-host, hub,
+      # admin). En una PR cuyo diff no toca ese grupo no hay nada que hacer.
+      - name: Run surface group tests
+        working-directory: ${{ env.VANTARE_DIR }}/native
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-group-tests.ps1 -Group surface
+          if ($LASTEXITCODE) { throw 'Native surface tests failed' }
 
   native_tests:
     name: Run native ${{ matrix.label }}
@@ -670,7 +705,7 @@ jobs:
   product:
     name: Validate Vantare blocking gates
     timeout-minutes: 5
-    needs: [policy, native_lint, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]
+    needs: [policy, native_lint, native_build, native_surface_tests, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]
     if: always()
     runs-on: ubuntu-latest
     steps:

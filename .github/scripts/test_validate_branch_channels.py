@@ -112,10 +112,10 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         self.assertIn('python -m unittest vantare-v2/native/scripts/test_affected_crates.py', workflow)
         for test in ('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests'):
             self.assertIn(test, workflow)
-        for job in ('policy', 'product', 'native_lint', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
+        for job in ('policy', 'product', 'native_lint', 'native_build', 'native_surface_tests', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
             block = re.split(r'\n  \S', workflow.split(f'\n  {job}:\n', 1)[1], maxsplit=1)[0]
             self.assertRegex(block, r'timeout-minutes: [1-9][0-9]*')
-        archive = workflow.split('name: Share one compiled test archive', 1)[1].split('\n  native_tests:', 1)[0]
+        archive = workflow.split('name: Share one compiled test archive', 1)[1].split('\n  native_surface_tests:', 1)[0]
         self.assertIn('overwrite: true', archive)
         for line in setup.splitlines():
             if 'uses:' in line:
@@ -129,7 +129,9 @@ class ValidateBranchChannelsTest(unittest.TestCase):
         reuse = (native / 'scripts/ci-reuse-tests.ps1').read_text(encoding='utf-8')
         self.assertIn('debug/ci-lifecycle/manifest.json', reuse)
         self.assertIn('foreach ($artifact in $lifecycle', reuse)
-        self.assertIn('needs: [policy, native_lint, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]', workflow)
+        self.assertIn('needs: [policy, native_lint, native_build, native_surface_tests, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]', workflow)
+        self.assertIn('-ExcludePackages $surface', workflow)
+        self.assertIn('ci-group-tests.ps1 -Group surface', workflow)
         distribution = re.split(r'\n  \S', workflow.split('\n  native_distribution:\n', 1)[1], maxsplit=1)[0]
         installation = re.split(r'\n  \S', workflow.split('\n  native_installation:\n', 1)[1], maxsplit=1)[0]
         self.assertIn('-Gate distribution', distribution)

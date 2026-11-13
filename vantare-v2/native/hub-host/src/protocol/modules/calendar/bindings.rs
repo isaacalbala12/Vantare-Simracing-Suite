@@ -279,47 +279,7 @@ fn samples() -> (Vec<HostToUi>, Vec<UiToHost>) {
 
 pub(crate) fn corpus() -> serde_json::Value {
     let (mut host, mut ui) = samples();
-    host.push(sample_response(Reply::CalendarLaunchArm {
-        value: Box::default(),
-        config: None,
-    }));
-    host.push(sample_response(Reply::CalendarLaunchCancel {
-        value: Box::default(),
-    }));
-    host.push(HostToUi::Event {
-        event: crate::protocol::Event::CalendarLaunch {
-            value: Box::default(),
-        },
-    });
-    for mode in [
-        crate::calendar::CalendarLaunchMode::Once {
-            series_id: "beginner-lmgt3-fixed".into(),
-            start_at: 1_800_000_180_000,
-        },
-        crate::calendar::CalendarLaunchMode::Alerts {
-            expected_revision: "c".repeat(64),
-        },
-    ] {
-        ui.push(UiToHost::Request {
-            id: 1,
-            request: Request::CalendarLaunchArm {
-                profile: "lmu".into(),
-                base_revision: "a".repeat(64),
-                armed_generation: "b".repeat(64),
-                mode,
-            },
-        });
-    }
-    ui.push(UiToHost::Request {
-        id: 1,
-        request: Request::CalendarLaunchCancel {
-            arm_id: "d".repeat(64),
-        },
-    });
-    ui.push(UiToHost::Subscribe {
-        topic: crate::protocol::Topic::CalendarLaunch,
-    });
-
+    launch_samples(&mut host, &mut ui);
     let mut config = sample_config();
     config.alerts = sample_alerts();
     host.push(sample_response(Reply::CalendarAlertsSave {
@@ -596,4 +556,47 @@ fn launch_types(text: &mut String) {
             "unconfirmedWrite"
         ]
     );
+}
+
+fn launch_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
+    host.push(sample_response(Reply::CalendarLaunchArm {
+        value: Box::default(),
+        config: None,
+    }));
+    host.push(sample_response(Reply::CalendarLaunchCancel {
+        value: Box::default(),
+    }));
+    host.push(HostToUi::Event {
+        event: crate::protocol::Event::CalendarLaunch {
+            value: Box::default(),
+        },
+    });
+    for mode in [
+        crate::calendar::CalendarLaunchMode::Once {
+            series_id: "beginner-lmgt3-fixed".into(),
+            start_at: 1_800_000_180_000,
+        },
+        crate::calendar::CalendarLaunchMode::Alerts {
+            expected_revision: "c".repeat(64),
+        },
+    ] {
+        ui.push(UiToHost::Request {
+            id: 1,
+            request: Request::CalendarLaunchArm {
+                profile: "lmu".into(),
+                base_revision: "a".repeat(64),
+                armed_generation: "b".repeat(64),
+                mode,
+            },
+        });
+    }
+    ui.push(UiToHost::Request {
+        id: 1,
+        request: Request::CalendarLaunchCancel {
+            arm_id: "d".repeat(64),
+        },
+    });
+    ui.push(UiToHost::Subscribe {
+        topic: crate::protocol::Topic::CalendarLaunch,
+    });
 }

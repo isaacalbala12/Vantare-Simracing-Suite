@@ -84,50 +84,7 @@ pub(super) fn dispatch(
         return launches::dispatch(session, pipe, id, request);
     }
     if matches!(request, Request::CalendarNoticeTest {}) {
-        if session.current.rights != crate::protocol::LinkState::Connected
-            || session.closing.is_some()
-        {
-            return frame::write(
-                pipe,
-                &HostToUi::Failure {
-                    id,
-                    error: HostError::Denied,
-                },
-            );
-        }
-        if !session.settings.windows_notifications_enabled() {
-            return frame::write(
-                pipe,
-                &HostToUi::Response {
-                    id,
-                    result: Reply::CalendarNoticeTest { accepted: false },
-                },
-            );
-        }
-        return match session.calendar_state.notice_test(
-            id,
-            chrono::Utc::now().timestamp_millis(),
-            std::time::Instant::now(),
-            session.current.live,
-        ) {
-            Ok(value) => {
-                // Main consumes the fixed sample before projecting the boolean ACK.
-                frame::write(
-                    pipe,
-                    &HostToUi::Event {
-                        event: crate::protocol::Event::CalendarNotice { value },
-                    },
-                )?;
-                frame::write(
-                    pipe,
-                    &HostToUi::Response {
-                        id,
-                        result: Reply::CalendarNoticeTest { accepted: true },
-                    },
-                )
-            }
-            Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
-        };
+        return notice_test(session, pipe, id);
     }
     let local = local(&mut session.calendar_state, request);
     if let Some(result) = local {
@@ -252,4 +209,50 @@ pub(super) fn launch_tick(
 pub(super) fn launch_closing(session: &mut Session, pipe: &mut Pipe) -> io::Result<()> {
     session.calendar_launch.close();
     launches::publish(session, pipe, false)
+}
+
+fn notice_test(session: &mut Session, pipe: &mut Pipe, id: u32) -> io::Result<()> {
+    if session.current.rights != crate::protocol::LinkState::Connected || session.closing.is_some()
+    {
+        return frame::write(
+            pipe,
+            &HostToUi::Failure {
+                id,
+                error: HostError::Denied,
+            },
+        );
+    }
+    if !session.settings.windows_notifications_enabled() {
+        return frame::write(
+            pipe,
+            &HostToUi::Response {
+                id,
+                result: Reply::CalendarNoticeTest { accepted: false },
+            },
+        );
+    }
+    return match session.calendar_state.notice_test(
+        id,
+        chrono::Utc::now().timestamp_millis(),
+        std::time::Instant::now(),
+        session.current.live,
+    ) {
+        Ok(value) => {
+            // Main consumes the fixed sample before projecting the boolean ACK.
+            frame::write(
+                pipe,
+                &HostToUi::Event {
+                    event: crate::protocol::Event::CalendarNotice { value },
+                },
+            )?;
+            frame::write(
+                pipe,
+                &HostToUi::Response {
+                    id,
+                    result: Reply::CalendarNoticeTest { accepted: true },
+                },
+            )
+        }
+        Err(error) => frame::write(pipe, &HostToUi::Failure { id, error }),
+    };
 }

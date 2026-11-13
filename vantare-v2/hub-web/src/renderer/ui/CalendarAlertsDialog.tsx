@@ -1,3 +1,4 @@
+import { calendarLaunchText } from "../i18n/calendarLaunch";
 import { Checkbox as BaseCheckbox } from "@base-ui/react/checkbox";
 import { type ReactNode, useId, useState } from "react";
 import { isCalendarAlerts } from "../../contract/calendar-config-validation";
@@ -34,6 +35,7 @@ import "./calendar-alerts.css";
 const hm = (n: number) =>
   `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
 type Props = {
+  launchControl?:{armed:boolean;busy:boolean;reason?:string;onChange:(enabled:boolean)=>void};
   schedule: CalendarSchedule | null;
   alertsState?: AlertsDocumentState;
   windowsDisabledReason?: string;
@@ -160,7 +162,7 @@ export function CalendarAlertsDialog(p: Props) {
                     />
                   ))}
                   <Caption>{text.when}</Caption>
-                  <Tooltip label={calendarText.launchPending}>
+                  <Tooltip label={p.launchControl?.reason ?? calendarLaunchText.onlyOpen}>
                     <div className="v-calendar-alerts-auto">
                       <Switch
                         hideLabel
@@ -169,7 +171,9 @@ export function CalendarAlertsDialog(p: Props) {
                         disabled={disabled || !p.alerts.autoLaunch || legacy}
                         pending={p.busy}
                         onCheckedChange={(value) => {
-                          if (!value) change({ kind: "autoLaunchOff" });
+                          if(p.busy || p.launchControl?.busy)return;
+                            if(p.launchControl)p.launchControl.onChange(value);
+                            else if (!value) change({ kind: "autoLaunchOff" });
                         }}
                       />
                       <div>

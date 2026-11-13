@@ -1,3 +1,6 @@
+import { useCalendarLaunch } from "./CalendarLaunch";
+import { CalendarLaunchStatus } from "../../ui/CalendarLaunchStatus";
+import { calendarLaunchText } from "../../i18n/calendarLaunch";
 import {
   useCallback,
   useEffect,
@@ -168,6 +171,7 @@ export default function CalendarEntry() {
   const state = useCalendar(),
     preferences = useCalendarPreferences(state.allowed),
     launcher = useCalendarLauncher(state.allowed);
+  const launchState=useCalendarLaunch(state.allowed,launcher.capture,()=>void preferences.reload());
   const ics = useCalendarIcs(icsOpen, state.allowed);
   useEffect(() => {
     if (!state.allowed) {
@@ -310,6 +314,8 @@ export default function CalendarEntry() {
         }
       />
       <SectionPanel activeTab={activeTab}>
+        {state.allowed && <CalendarLaunchStatus value={launchState.view} busy={launchState.busy} utc={view?.utc ?? false} onCancel={(id)=>void launchState.cancel(id)} />}
+        {launchState.failure && <p role="alert">{calendarLaunchText.rejected}</p>}
         {!state.allowed ? (
           <p role="status">{text.noAccess}</p>
         ) : selectedSerie && schedule && view ? (
@@ -525,6 +531,9 @@ export default function CalendarEntry() {
               />
             ) : schedule && view ? (
               <CalendarLiveView
+                onArm={(seriesId,startAt)=>void launchState.arm({kind:"once",seriesId,startAt})}
+                armBusy={launchState.busy}
+                armDisabledReason={launcher.disabledReason}
                 onDetail={openDetail}
                 initialFilters={liveFilters.current}
                 onFiltersChange={rememberLive}
@@ -631,6 +640,7 @@ export default function CalendarEntry() {
       )}
       {alertsOpen && state.allowed && (
         <CalendarAlertsDialog
+          launchControl={{armed:!!launchState.view?.automatic,busy:launchState.busy || preferences.busy,reason:launcher.disabledReason,onChange:(enabled)=>{if(enabled){const expectedRevision=preferences.config?.alertsRevision;if(expectedRevision)void launchState.arm({kind:"alerts",expectedRevision});}else{void (async()=>{const id=launchState.view?.automatic?.armId;if(id)await launchState.cancel(id);await preferences.alert({kind:"autoLaunchOff"});})();}}}}
           schedule={schedule}
           alerts={alerts}
           alertsState={alertsState}

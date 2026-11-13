@@ -1,3 +1,5 @@
+import { calendarLaunchLeadMs } from "../../contract/generated/calendar";
+import { calendarLaunchText } from "../i18n/calendarLaunch";
 import { useEffect, useId, useState } from "react";
 import type {
   CalendarAlerts,
@@ -67,6 +69,7 @@ export function CalendarLiveView({
   onSerie,
   onDetail,
   onLaunch,
+  onArm, armBusy = false, armDisabledReason,
 }: {
   schedule: CalendarSchedule;
   alerts: CalendarAlerts;
@@ -83,6 +86,9 @@ export function CalendarLiveView({
   onSerie?: (id: string) => void;
   onDetail?: (id: string, at?: number) => void;
   onLaunch: () => void;
+  onArm?: (seriesId:string,startAt:number)=>void;
+  armBusy?:boolean;
+  armDisabledReason?:string;
 }) {
   const launchPendingId = useId();
   const [searchOpen, setSearchOpen] = useState(
@@ -384,7 +390,7 @@ export function CalendarLiveView({
                 disabled
               >
                 <Icon name="clock" />
-                {text.launchAt(clock(hero.at - 3 * 60_000, utc))}
+                {text.launchAt(clock(hero.at - calendarLaunchLeadMs, utc))}
               </Button>
               <span className="v-sr-only" id={launchPendingId}>
                 {text.launchPending}

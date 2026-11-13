@@ -1,5 +1,9 @@
 //! Volatile intentions and receipt correlation. IO and clocks are supplied by the host.
-use super::launch_types::*;
+use super::launch_types::{
+    CLOCK_SKEW_MS, CalendarLaunchAttempt, CalendarLaunchChange, CalendarLaunchMode,
+    CalendarLaunchPlan, CalendarLaunchProgress, CalendarLaunchStop, CalendarLaunchUnknown,
+    CalendarLaunchView, LEAD_MS, MAX_FUTURE_MS, RECEIPT_MS,
+};
 use crate::{
     launcher::checked::LaunchQueued,
     launcher_resident::{ResidentEventKind, ResidentReceipt, ResidentView},

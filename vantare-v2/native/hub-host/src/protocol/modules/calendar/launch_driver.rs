@@ -1,5 +1,6 @@
 //! Only this host adapter performs IO; Calendar never sends a legacy launch.
 use super::{HostError, HostToUi, Pipe, Reply, Request, Session, frame, io};
+use crate::launcher::editor::{ProfileClose, ProfileFailure, ProfileRetry, ProfileRunning};
 use crate::{
     calendar::{
         CalendarLaunchMode, CalendarLaunchView,
@@ -81,7 +82,6 @@ fn arm(
     if editor.draft.steps.is_empty() {
         return Err(HostError::Denied);
     }
-    use crate::launcher::editor::{ProfileClose, ProfileFailure, ProfileRetry, ProfileRunning};
     let policy = &editor.draft.policy;
     let decision_required = policy.already_running == ProfileRunning::Ask
         || policy.failure == ProfileFailure::Ask

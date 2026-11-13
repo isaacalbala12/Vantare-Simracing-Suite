@@ -13,9 +13,11 @@ import "./results.css";
 export function ResidentResults({
   control,
   view,
+  profileId,
 }: {
   control: ResidentControlController;
   view: LauncherView;
+  profileId?: string;
 }) {
   const help = useId();
   const results = control.results;
@@ -45,7 +47,9 @@ export function ResidentResults({
       ? controlText[reason]
       : !target
         ? text.unavailable
-        : text.sameSteps;
+        : scope === "all"
+          ? text.sameSteps
+          : text.failedSteps;
     return (
       <div className="v-launcher-retry-action" key={scope}>
         <Button
@@ -61,15 +65,16 @@ export function ResidentResults({
       </div>
     );
   }
+  const Heading = view.profiles.length ? "h3" : "h2";
   return (
     <section
       className="v-launcher-run-results"
       aria-labelledby={`${help}-title`}
     >
-      <h3 id={`${help}-title`}>
+      <Heading id={`${help}-title`}>
         {text.title}
         {profile ? ` · ${profile.name}` : ""}
-      </h3>
+      </Heading>
       {value ? (
         <>
           <p>
@@ -77,22 +82,24 @@ export function ResidentResults({
             {value.outcome ? text[value.outcome.kind] : text.running}
           </p>
           {!profile && <p>{text.stale}</p>}
-          <ol className="v-launcher-result-steps">
-            {value.steps.map((step) => {
-              const app =
-                profile &&
-                view.apps.find((app) => app.id === profile.apps[step.index]);
-              return (
-                <li key={step.index} data-state={step.state}>
-                  <span>
-                    {text.step(step.index)}
-                    {app ? ` · ${app.name}` : ""}
-                  </span>
-                  <strong>{text.states[step.state]}</strong>
-                </li>
-              );
-            })}
-          </ol>
+          {(!profile || value.profile !== profileId) && (
+            <ol className="v-launcher-result-steps">
+              {value.steps.map((step) => {
+                const app =
+                  profile &&
+                  view.apps.find((app) => app.id === profile.apps[step.index]);
+                return (
+                  <li key={step.index} data-state={step.state}>
+                    <span>
+                      {text.step(step.index)}
+                      {app ? ` · ${app.name}` : ""}
+                    </span>
+                    <strong>{text.states[step.state]}</strong>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
         </>
       ) : (
         <p>

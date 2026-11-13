@@ -6,6 +6,7 @@
   gap: 10px;
 }
 .v-launcher-run-results h3,
+.v-launcher-run-results h2,
 .v-launcher-run-results p {
   margin: 0;
   font-size: 13px;
@@ -42,4 +43,13 @@
 .v-launcher-retry-action .v-button[aria-disabled="true"] {
   opacity: var(--disabled-opacity);
   cursor: not-allowed;
+}
+
+.v-launcher-result-steps [data-state="failed"] strong,
+.v-launcher-chain small[data-state="failed"] {
+  color: var(--err);
+}
+.v-launcher-result-steps [data-state="ready"] strong,
+.v-launcher-chain small[data-state="ready"] {
+  color: var(--ok);
 }

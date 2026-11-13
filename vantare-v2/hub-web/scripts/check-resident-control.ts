@@ -15,7 +15,7 @@ export async function observeResidentControls(page: Page) {
           "launcher.resident.answer",
           "launcher.resident.cancel",
           "launcher.resident.rehearse",
-            "launcher.resident.retry",
+          "launcher.resident.retry",
           "launcher.launch",
           "launcher.favorite",
         ].includes(message.request?.method)

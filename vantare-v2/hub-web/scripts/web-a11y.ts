@@ -18,8 +18,8 @@ import {
 } from "./check-onboarding.ts";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
 import { checkResidentAnswer } from "./check-resident-answer.ts";
-import { checkResidentResults } from "./check-resident-results.ts";
 import { checkResidentControls } from "./check-resident-control.ts";
+import { checkResidentResults } from "./check-resident-results.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
 import { until } from "./wait-for";

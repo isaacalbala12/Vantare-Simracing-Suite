@@ -12,6 +12,9 @@ export const resultsText = {
   completed: "La secuencia ha terminado.",
   failed: "La secuencia ha terminado con un fallo.",
   cancelled: "La secuencia ha terminado cancelada.",
+  failedSteps:
+    "Reintenta los fallos conservados de esta secuencia, también los de un intento anterior.",
+  unknownStep: "Desconocido",
   sameSteps:
     "Repite la selección original de esta secuencia. Si era una prueba sin el juego, conserva esa selección.",
   stale:

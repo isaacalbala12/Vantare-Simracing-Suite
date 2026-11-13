@@ -82,7 +82,9 @@ export function observeControl(
     !view?.online ||
     view.protected ||
     !execution ||
-    (attempt.kind === "retry" ? execution.results.kind === "unsupported" : !execution.checkedControl) ||
+    (attempt.kind === "retry"
+      ? execution.results.kind === "unsupported"
+      : !execution.checkedControl) ||
     execution.instance !== attempt.target.instance
   )
     return unknown();
@@ -111,7 +113,8 @@ export function observeControl(
           return unknown();
         return { ...next, phase: { kind: "rejected", reason } };
       }
-      if (next.kind === "retry" && value.receipt.run === next.target.run) return unknown();
+      if (next.kind === "retry" && value.receipt.run === next.target.run)
+        return unknown();
       if (next.kind === "cancel" && value.receipt.run !== next.target.run)
         return unknown();
       next = {

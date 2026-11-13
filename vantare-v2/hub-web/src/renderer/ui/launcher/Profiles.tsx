@@ -12,6 +12,7 @@ import {
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import { launcherText as text } from "../../i18n/launcher";
 import { controlText } from "../../i18n/launcher-control";
+import { resultsText } from "../../i18n/launcher-results";
 import type { ResidentControlController } from "../../screens/launcher/resident-control";
 import { Button } from "../Button";
 import { Callout } from "../Data";
@@ -124,6 +125,12 @@ export function LauncherProfiles({
       : control?.capable
         ? "unavailable"
         : "unsupported";
+  const knownResults =
+    control?.results.kind === "known" &&
+    control.results.value.profile === profile?.id &&
+    control.results.value.revision === view.revision
+      ? control.results.value
+      : undefined;
   const apps = (item: LauncherProfile) =>
     item.apps.flatMap((id) => {
       const app = view.apps.find((app) => app.id === id);
@@ -312,16 +319,33 @@ export function LauncherProfiles({
               </div>
             )}
             <ol className="v-launcher-chain">
-              {apps(profile).map((app, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: Read-only sequence slots; repeated apps are valid.
-                <li key={`${index}-${app.id}`}>
-                  <AppMark app={app} />
-                  <strong>{app.name}</strong>
-                  <small>{text.noPriorState}</small>
-                </li>
-              ))}
+              {apps(profile).map((app, index) => {
+                const state = knownResults?.steps.find(
+                  (step) => step.index === index,
+                )?.state;
+                return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Read-only indexed sequence; repeated apps are valid.
+                  <li key={`${index}-${app.id}`}>
+                    <AppMark app={app} />
+                    <strong>{app.name}</strong>
+                    <small data-state={state}>
+                      {state
+                        ? resultsText.states[state]
+                        : knownResults
+                          ? resultsText.unknownStep
+                          : text.noPriorState}
+                    </small>
+                  </li>
+                );
+              })}
             </ol>
-            {control && <ResidentResults control={control} view={view} />}
+            {control && (
+              <ResidentResults
+                control={control}
+                view={view}
+                profileId={profile.id}
+              />
+            )}
           </section>
           <section
             className="v-launcher-profiles"

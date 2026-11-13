@@ -526,8 +526,7 @@ it.each([
   async (kind) => {
     const hook = retryFixture();
     const source = structuredClone(hook.source);
-    if (source.execution?.results.kind !== "known")
-      throw new Error("known");
+    if (source.execution?.results.kind !== "known") throw new Error("known");
     if (kind === "unknown" || kind === "unsupported")
       source.execution.results = { kind };
     if (kind === "revision")

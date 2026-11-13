@@ -45,6 +45,9 @@ mod tests {
 
     #[test]
     fn local_preview_keeps_the_default_hub_context() {
-        assert!(arguments(&["--fuente".into(), "local".into()], None).is_empty());
+        assert_eq!(
+            arguments(&["--fuente".into(), "local".into()], None),
+            [] as [std::ffi::OsString; 0]
+        );
     }
 }

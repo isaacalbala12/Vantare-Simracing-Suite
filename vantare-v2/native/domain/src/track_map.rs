@@ -218,8 +218,8 @@ mod tests {
             snapshot.state.session.track_name = name;
             let vm =
                 project_with_geometry(&snapshot, Preferences::default(), Some(&geometry(POINTS)));
-            assert!(vm.outline.is_empty());
-            assert!(vm.markers.is_empty());
+            assert_eq!(vm.outline, [] as [crate::track_map::Point; 0]);
+            assert_eq!(vm.markers, [] as [crate::track_map::Marker; 0]);
             assert!(vm.track_label.is_none());
         }
         let vm = project_with_geometry(&snapshot(), Preferences::default(), None);
@@ -233,10 +233,10 @@ mod tests {
             &[(0.0, 0.0), (1.0, f64::INFINITY), (1.0, 1.0)],
             &[(-f64::MAX, 0.0), (f64::MAX, 0.0), (1.0, 1.0)],
         ] {
-            assert!(
+            assert_eq!(
                 project_with_geometry(&snapshot(), Preferences::default(), Some(&geometry(points)))
-                    .outline
-                    .is_empty()
+                    .outline,
+                [] as [crate::track_map::Point; 0]
             );
         }
     }

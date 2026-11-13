@@ -403,7 +403,10 @@ mod tests {
         let snapshot = &photos[0];
         let mut widget = Widget::new(&Settings::default(), Preferences::default());
         widget.ingest(snapshot, Preferences::default());
-        assert!(!widget.vm.outline.is_empty());
+        assert_ne!(
+            widget.vm.outline,
+            [] as [vantare_domain::track_map::Point; 0]
+        );
         assert_eq!(widget.vm.markers.len(), 14);
         assert!(widget.vm.markers.iter().any(|m| m.is_player));
         assert_eq!(widget.size(), SIZE);
@@ -422,7 +425,10 @@ mod tests {
         live.origin.source.kind = vantare_domain::SourceKind::Live;
         assert!(scene::geometry(&live).is_none());
         widget.ingest(&live, Preferences::default());
-        assert!(widget.vm.outline.is_empty());
+        assert_eq!(
+            widget.vm.outline,
+            [] as [vantare_domain::track_map::Point; 0]
+        );
         assert_eq!(widget.size(), SIZE);
         let transparent = Settings {
             transparent: true,
@@ -518,17 +524,21 @@ mod tests {
             "la fuente pasa de Waiting a Live sin inventar un trazado"
         );
         assert!(!widget.ingest(&snapshot, Preferences::default()));
-        assert!(widget.vm.outline.is_empty());
-        assert!(widget.vm.markers.is_empty());
+        assert_eq!(
+            widget.vm.outline,
+            [] as [vantare_domain::track_map::Point; 0]
+        );
+        assert_eq!(
+            widget.vm.markers,
+            [] as [vantare_domain::track_map::Marker; 0]
+        );
         assert_eq!(widget.vm.empty_text, "PISTA SIN MAPA");
         assert_eq!(widget.size(), (WIDTH, SIZE.1));
     }
 
     fn reference_snapshot() -> Snapshot {
-        vantare_ipc::snapshot_from_json(include_str!(
-            "../../fixtures/track-map.snapshot.json"
-        ))
-        .expect("fixture DTO v4 reconstruida del frame congelado")
+        vantare_ipc::snapshot_from_json(include_str!("../../fixtures/track-map.snapshot.json"))
+            .expect("fixture DTO v4 reconstruida del frame congelado")
     }
 
     #[cfg(feature = "parity-capture")]

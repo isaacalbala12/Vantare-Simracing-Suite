@@ -249,7 +249,7 @@ pub(crate) mod tests {
         }
         let old = crate::snapshot_from_json(&value.to_string()).expect("foto sin señales nuevas");
         let car = &old.state.cars[0];
-        assert!(car.vehicle.is_empty());
+        assert_eq!(car.vehicle, "");
         assert_eq!(car.grid_position, Quality::Unavailable);
         assert_eq!(car.pit_stops, Quality::Unavailable);
         assert_eq!(car.driver_rating, Quality::Unavailable);

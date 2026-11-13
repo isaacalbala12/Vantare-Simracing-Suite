@@ -63,12 +63,24 @@ mod tests {
             }],
         };
         assert_eq!(feed.current(10_000).len(), 1);
-        assert!(feed.current(20_001).is_empty());
-        assert!(feed.current(0).is_empty());
+        assert_eq!(
+            feed.current(20_001),
+            [] as [vantare_domain::session_alerts::CalendarInput; 0]
+        );
+        assert_eq!(
+            feed.current(0),
+            [] as [vantare_domain::session_alerts::CalendarInput; 0]
+        );
         feed.version = 2;
-        assert!(feed.current(10_000).is_empty());
+        assert_eq!(
+            feed.current(10_000),
+            [] as [vantare_domain::session_alerts::CalendarInput; 0]
+        );
         feed.version = 1;
         feed.events = vec![feed.events[0].clone(); 257];
-        assert!(feed.current(10_000).is_empty());
+        assert_eq!(
+            feed.current(10_000),
+            [] as [vantare_domain::session_alerts::CalendarInput; 0]
+        );
     }
 }

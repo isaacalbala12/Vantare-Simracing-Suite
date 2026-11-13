@@ -182,7 +182,7 @@ fn read_only_after_kill_with_pending_wal_preserves_the_original_files() {
     let wal = db.0.with_extension("duckdb.wal");
     let original = std::fs::read(&db.0).unwrap();
     let pending = std::fs::read(&wal).unwrap();
-    assert!(!pending.is_empty());
+    assert_ne!(pending, [] as [u8; 0]);
     {
         let mut reader =
             SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &db.0).unwrap();

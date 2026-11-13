@@ -212,7 +212,7 @@ impl Widget {
     }
     pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
         match &self.presentation {
-            Presentation::Eficiencia { visual: _, .. } => None,
+            Presentation::Eficiencia { .. } => None,
             Presentation::Vantare { visual: v, .. } => v.columns(),
         }
     }
@@ -334,7 +334,7 @@ impl std::ops::Deref for Widget {
     fn deref(&self) -> &Self::Target {
         match &self.presentation {
             Presentation::Eficiencia { visual: v, .. } => v,
-            Presentation::Vantare { visual: _, .. } => panic!("test Eficiencia sobre otro Look"),
+            Presentation::Vantare { .. } => panic!("test Eficiencia sobre otro Look"),
         }
     }
 }
@@ -451,7 +451,7 @@ mod tests {
         );
         motion.rows.update_content(&old, &next, Instant::now());
         let clocks = motion.clock_signature();
-        assert!(!clocks.1.is_empty());
+        assert_ne!(clocks.1.len(), 0);
         assert!(!clocks.2.is_empty(), "historial de la tira presente");
         widget.board = std::sync::Arc::new(next);
         for look in [

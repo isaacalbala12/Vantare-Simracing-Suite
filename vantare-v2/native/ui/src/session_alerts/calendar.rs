@@ -35,6 +35,9 @@ mod tests {
     use super::*;
     #[test]
     fn missing_or_invalid_feed_has_no_alerts() {
-        assert!(read(Path::new("/absent/calendar-alerts.json"), 0).is_empty());
+        assert_eq!(
+            read(Path::new("/absent/calendar-alerts.json"), 0),
+            [] as [vantare_domain::session_alerts::CalendarInput; 0]
+        );
     }
 }

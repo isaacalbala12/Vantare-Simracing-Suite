@@ -69,8 +69,8 @@ fn paint_number_text(
                 ink: kit.ink(Face::Display, 22.0, 0.0, tone(vm.integrity[i]).hsla()),
             });
         } else {
-            for j in 0..4 {
-                let value = percentage(vm.tyres[j].map(|v| 1.0 - v));
+            for (j, tyre) in vm.tyres.iter().enumerate() {
+                let value = percentage(tyre.map(|v| 1.0 - v));
                 draw(crate::vantare::paint::Label {
                     value: &value,
                     x: 16.0 + j as f32 * 43.0,
@@ -78,7 +78,7 @@ fn paint_number_text(
                     top: y + 18.0,
                     height: 16.0,
                     face: Face::Mono,
-                    ink: kit.ink(Face::Mono, 10.0, 0.0, tone(vm.tyres[j]).hsla()),
+                    ink: kit.ink(Face::Mono, 10.0, 0.0, tone(*tyre).hsla()),
                 });
             }
         }

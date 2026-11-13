@@ -644,7 +644,10 @@ mod tests {
             .collect();
         orders.dedup();
         assert!(orders.len() > 1, "los coches se reordenan");
-        assert!(!radar::project(&b).cars.is_empty());
+        assert_ne!(
+            radar::project(&b).cars,
+            [] as [vantare_domain::radar::Car; 0]
+        );
         assert_ne!(
             pedals::project(&a, Preferences::default()),
             pedals::project(&b, Preferences::default())

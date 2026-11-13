@@ -52,23 +52,22 @@ fn stopping_requests_consumers_in_policy_order_and_keeps_one_deadline() {
         ]
     );
     let phase = session.phase;
-    assert!(
-        session
-            .paso(Event::Stop(Reason::Failed), now + Duration::from_secs(1))
-            .is_empty()
+    assert_eq!(
+        session.paso(Event::Stop(Reason::Failed), now + Duration::from_secs(1)),
+        [] as [crate::session::Action; 0]
     );
     assert_eq!(
         session.phase, phase,
         "no renovar presupuesto ni ocultar motivo"
     );
-    assert!(
+    assert_eq!(
         pulse(
             &mut session,
             now + Duration::from_millis(1999),
             false,
             false
-        )
-        .is_empty()
+        ),
+        [] as [crate::session::Action; 0]
     );
     assert_eq!(
         pulse(&mut session, now + Duration::from_secs(2), false, false),
@@ -102,7 +101,10 @@ fn short_budget_reserves_half_for_the_producer() {
     let grace = Duration::from_millis(350);
     let (mut session, now) = running(grace);
     session.paso(Event::Stop(Reason::Stopped), now);
-    assert!(pulse(&mut session, now + Duration::from_millis(174), false, false).is_empty());
+    assert_eq!(
+        pulse(&mut session, now + Duration::from_millis(174), false, false),
+        [] as [crate::session::Action; 0]
+    );
     assert_eq!(
         pulse(&mut session, now + Duration::from_millis(175), false, false),
         vec![Action::Close(0)]
@@ -115,32 +117,30 @@ fn normal_cleanup_finishes_consumers_and_workers_before_the_core() {
     let (mut session, now) = running(Duration::from_secs(3));
     session.paso(Event::Stop(Reason::Stopped), now);
     for child in [1, 3, 2] {
-        assert!(
-            session
-                .paso(
-                    Event::Exited {
-                        child,
-                        success: true
-                    },
-                    now
-                )
-                .is_empty()
+        assert_eq!(
+            session.paso(
+                Event::Exited {
+                    child,
+                    success: true
+                },
+                now
+            ),
+            [] as [crate::session::Action; 0]
         );
     }
     assert_eq!(
         pulse(&mut session, now, false, true),
         vec![Action::Close(0)]
     );
-    assert!(
-        session
-            .paso(
-                Event::Exited {
-                    child: 0,
-                    success: true
-                },
-                now
-            )
-            .is_empty()
+    assert_eq!(
+        session.paso(
+            Event::Exited {
+                child: 0,
+                success: true
+            },
+            now
+        ),
+        [] as [crate::session::Action; 0]
     );
     assert_eq!(session.phase, Phase::Finished(Reason::Stopped));
 }
@@ -152,16 +152,15 @@ fn permission_is_a_policy_and_revocation_does_not_stop_the_session() {
         pulse(&mut session, now, false, false),
         vec![Action::Close(2)]
     );
-    assert!(
-        session
-            .paso(
-                Event::Exited {
-                    child: 2,
-                    success: false
-                },
-                now
-            )
-            .is_empty()
+    assert_eq!(
+        session.paso(
+            Event::Exited {
+                child: 2,
+                success: false
+            },
+            now
+        ),
+        [] as [crate::session::Action; 0]
     );
     assert_eq!(session.phase, Phase::Running);
     assert_eq!(
@@ -198,7 +197,10 @@ fn denied_children_never_start_and_observers_never_restart_or_stop_the_session()
     );
     session.paso(Event::SpawnFailed(1), now);
     assert_eq!(session.phase, Phase::Running);
-    assert!(pulse(&mut session, now + Duration::from_secs(30), false, false).is_empty());
+    assert_eq!(
+        pulse(&mut session, now + Duration::from_secs(30), false, false),
+        [] as [crate::session::Action; 0]
+    );
     assert_eq!(
         pulse(&mut session, now + Duration::from_secs(30), true, false),
         vec![Action::Spawn(0)]
@@ -240,7 +242,10 @@ fn crashes_preserve_backoff_budget_and_stability_with_an_injected_clock() {
             delay: super::super::BACKOFF
         }]
     );
-    assert!(pulse(&mut session, now + Duration::from_millis(249), true, false).is_empty());
+    assert_eq!(
+        pulse(&mut session, now + Duration::from_millis(249), true, false),
+        [] as [crate::session::Action; 0]
+    );
     let at = now + Duration::from_millis(250);
     assert_eq!(pulse(&mut session, at, true, false), vec![Action::Spawn(0)]);
     session.paso(Event::Started(0), at);
@@ -289,16 +294,15 @@ fn a_nonzero_exit_during_requested_closure_does_not_restart_or_replace_the_reaso
     let (mut session, now) = running(Duration::from_secs(3));
     session.paso(Event::Stop(Reason::Failed), now);
     for child in [1, 2, 3] {
-        assert!(
-            session
-                .paso(
-                    Event::Exited {
-                        child,
-                        success: false
-                    },
-                    now
-                )
-                .is_empty()
+        assert_eq!(
+            session.paso(
+                Event::Exited {
+                    child,
+                    success: false
+                },
+                now
+            ),
+            [] as [crate::session::Action; 0]
         );
     }
     assert_eq!(
@@ -324,7 +328,10 @@ fn kills_are_emitted_once_and_late_completion_cannot_reap_a_scheduled_child() {
         pulse(&mut session, deadline, false, false),
         vec![Action::Kill(2)]
     );
-    assert!(pulse(&mut session, deadline, false, false).is_empty());
+    assert_eq!(
+        pulse(&mut session, deadline, false, false),
+        [] as [crate::session::Action; 0]
+    );
     assert_eq!(
         session.paso(
             Event::Exited {
@@ -336,16 +343,15 @@ fn kills_are_emitted_once_and_late_completion_cannot_reap_a_scheduled_child() {
         vec![]
     );
     assert_eq!(session.children[2].state, ChildState::Waiting(deadline));
-    assert!(
-        session
-            .paso(
-                Event::Killed {
-                    child: 2,
-                    reaped: true
-                },
-                deadline
-            )
-            .is_empty()
+    assert_eq!(
+        session.paso(
+            Event::Killed {
+                child: 2,
+                reaped: true
+            },
+            deadline
+        ),
+        [] as [crate::session::Action; 0]
     );
     assert_eq!(
         pulse(&mut session, deadline, true, false),
@@ -361,7 +367,10 @@ fn kills_are_emitted_once_and_late_completion_cannot_reap_a_scheduled_child() {
             reaped: true,
         },
     ] {
-        assert!(session.paso(event, deadline).is_empty());
+        assert_eq!(
+            session.paso(event, deadline),
+            [] as [crate::session::Action; 0]
+        );
         assert!(session.can_spawn(2));
     }
     session.paso(Event::Started(2), deadline);
@@ -377,7 +386,10 @@ fn kills_are_emitted_once_and_late_completion_cannot_reap_a_scheduled_child() {
             Action::Kill(3)
         ]
     );
-    assert!(pulse(&mut session, at, false, true).is_empty());
+    assert_eq!(
+        pulse(&mut session, at, false, true),
+        [] as [crate::session::Action; 0]
+    );
     for child in 0..4 {
         session.paso(
             Event::Exited {
@@ -386,27 +398,25 @@ fn kills_are_emitted_once_and_late_completion_cannot_reap_a_scheduled_child() {
             },
             at,
         );
-        assert!(
-            session
-                .paso(
-                    Event::Killed {
-                        child,
-                        reaped: true
-                    },
-                    at
-                )
-                .is_empty()
+        assert_eq!(
+            session.paso(
+                Event::Killed {
+                    child,
+                    reaped: true
+                },
+                at
+            ),
+            [] as [crate::session::Action; 0]
         );
-        assert!(
-            session
-                .paso(
-                    Event::Exited {
-                        child,
-                        success: true
-                    },
-                    at
-                )
-                .is_empty()
+        assert_eq!(
+            session.paso(
+                Event::Exited {
+                    child,
+                    success: true
+                },
+                at
+            ),
+            [] as [crate::session::Action; 0]
         );
         assert_eq!(session.children[child].state, ChildState::Reaped);
     }
@@ -441,7 +451,7 @@ fn duplicate_exit_cannot_spend_restart_budget_or_stop_a_reprogrammed_child() {
             reaped: true,
         },
     ] {
-        assert!(session.paso(event, now).is_empty());
+        assert_eq!(session.paso(event, now), [] as [crate::session::Action; 0]);
         assert_eq!(session.children[0].state, waiting);
         assert_eq!(session.children[0].restarts.attempts, 1);
         assert!(!session.stopping());
@@ -467,14 +477,16 @@ fn exit_after_revocation_kill_during_stop_is_reaped_without_rescheduling() {
             ChildState::Killing { revoked: true }
         );
         session.paso(Event::Stop(Reason::Stopped), at);
-        assert!(
-            session
-                .paso(Event::Exited { child: 0, success }, at)
-                .is_empty()
+        assert_eq!(
+            session.paso(Event::Exited { child: 0, success }, at),
+            [] as [crate::session::Action; 0]
         );
         assert_eq!(session.children[0].state, ChildState::Reaped);
         assert_eq!(session.phase, Phase::Finished(Reason::Stopped));
-        assert!(pulse(&mut session, at + grace, true, true).is_empty());
+        assert_eq!(
+            pulse(&mut session, at + grace, true, true),
+            [] as [crate::session::Action; 0]
+        );
     }
 }
 
@@ -492,7 +504,10 @@ fn connected_hub_close_keeps_session_and_second_open_restarts_only_hub() {
     );
     session.paso(Event::Started(0), now);
     session.paso(Event::Started(1), now);
-    assert!(session.paso(Event::Detached(1), now).is_empty());
+    assert_eq!(
+        session.paso(Event::Detached(1), now),
+        [] as [crate::session::Action; 0]
+    );
     assert!(!session.stopping());
     assert_eq!(session.children[0].state, ChildState::Alive(now));
     assert_eq!(session.children[1].state, ChildState::Reaped);

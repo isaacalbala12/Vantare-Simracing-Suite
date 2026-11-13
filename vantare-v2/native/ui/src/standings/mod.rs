@@ -467,7 +467,7 @@ impl Widget {
     }
     pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
         match &self.presentation {
-            Presentation::Eficiencia { visual: _, .. } => None,
+            Presentation::Eficiencia { .. } => None,
             Presentation::Vantare { visual: v, .. } => v.columns(),
         }
     }
@@ -490,7 +490,7 @@ impl std::ops::Deref for Widget {
     fn deref(&self) -> &Self::Target {
         match &self.presentation {
             Presentation::Eficiencia { visual: v, .. } => v,
-            Presentation::Vantare { visual: _, .. } => panic!("test Eficiencia sobre otro Look"),
+            Presentation::Vantare { .. } => panic!("test Eficiencia sobre otro Look"),
         }
     }
 }
@@ -850,10 +850,7 @@ mod tests {
         .expect("foto real ACC");
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
-        assert!(matches!(
-            widget.presentation,
-            Presentation::Vantare { visual: _, .. }
-        ));
+        assert!(matches!(widget.presentation, Presentation::Vantare { .. }));
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs), "misma foto, mismo dibujo");
         assert!(widget.board.is_some(), "las filas sustituyen al esqueleto");
@@ -868,7 +865,7 @@ mod tests {
         );
         assert!(matches!(
             Widget::new(&Settings::eficiencia(), prefs).presentation,
-            Presentation::Eficiencia { visual: _, .. }
+            Presentation::Eficiencia { .. }
         ));
     }
 
@@ -1361,7 +1358,10 @@ mod tests {
             prefs,
         );
         widget.ingest(&snapshot, prefs);
-        assert!(!widget.plan.class_bands.is_empty());
+        assert_ne!(
+            widget.plan.class_bands,
+            [] as [(f32, std::string::String); 0]
+        );
         assert_eq!(widget.plan.row_tops[0], 28.0);
     }
 

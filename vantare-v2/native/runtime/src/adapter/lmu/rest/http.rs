@@ -332,10 +332,9 @@ mod tests {
     fn live_lmu_rest_endpoints_decode() {
         let client = Client::default();
         let standings = client.fetch(Endpoint::Standings).expect("standings");
-        assert!(
-            !super::super::decode_standings(&standings)
-                .unwrap()
-                .is_empty()
+        assert_ne!(
+            super::super::decode_standings(&standings).unwrap(),
+            [] as [crate::adapter::lmu::rest::CarNumber; 0]
         );
         let session = client.fetch(Endpoint::SessionInfo).expect("sessionInfo");
         assert!(super::super::decode_session_info(&session).is_ok());

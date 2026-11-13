@@ -227,6 +227,6 @@ mod tests {
     fn without_a_player_pose_there_are_no_cars() {
         let mut snapshot = snapshot(vec![car(1, 0.0, 0.0, 0.0), car(2, 5.0, 0.0, 0.0)]);
         snapshot.state.cars[0].pose = crate::Quality::Unavailable;
-        assert!(project(&snapshot).cars.is_empty());
+        assert_eq!(project(&snapshot).cars, [] as [crate::radar::Car; 0]);
     }
 }

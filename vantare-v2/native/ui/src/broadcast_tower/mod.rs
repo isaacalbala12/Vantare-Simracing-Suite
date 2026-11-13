@@ -588,10 +588,9 @@ mod tests {
     #[test]
     fn configured_cards_weather_and_carousel_follow_product_options() {
         let prefs = Preferences::default();
-        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
-            "../../fixtures/standings.snapshot.json"
-        ))
-        .expect("escena");
+        let snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+                .expect("escena");
         for count in [3, 5, 10] {
             let mut widget = Widget::new(
                 &Settings {
@@ -604,7 +603,7 @@ mod tests {
             );
             widget.ingest(&snapshot, prefs);
             assert_eq!(widget.vm.rows.len(), count);
-            assert!(widget.vm.weather.is_empty());
+            assert_eq!(widget.vm.weather, "");
             let cards = carousel_cards(&widget.vm, 15.0);
             assert_eq!(cards.len(), count * 2);
             assert_eq!(cards[0].slot, -(count as f32) / 2.0);

@@ -905,9 +905,9 @@ mod tests {
         assert_eq!(old.sequence, 2);
         assert_eq!(old.state.cars[0].position, Quality::Stale(1));
         assert_eq!(old.state.capabilities.gaps, Capability::WithData);
-        assert!(
-            standings::project(&old, Preferences::default()).rows()[1].classification_interval
-                == "—"
+        assert_eq!(
+            standings::project(&old, Preferences::default()).rows()[1].classification_interval,
+            "—"
         );
 
         // Muestra recibida pero con el reloj de la fuente parado: sigue obsoleta.

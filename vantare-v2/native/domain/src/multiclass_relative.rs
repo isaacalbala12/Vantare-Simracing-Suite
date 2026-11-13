@@ -381,10 +381,9 @@ mod tests {
 
     #[test]
     fn missing_player_is_empty_and_missing_rank_is_a_placeholder() {
-        assert!(
-            project(&scene(99), Preferences::default(), Content::default())
-                .rows
-                .is_empty()
+        assert_eq!(
+            project(&scene(99), Preferences::default(), Content::default()).rows,
+            [] as [crate::multiclass_relative::Row; 0]
         );
         let mut snapshot = scene(5);
         snapshot

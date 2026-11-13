@@ -422,8 +422,8 @@ jobs:
           name: native-tests-${{ github.sha }}
           overwrite: true
           path: |
-            ${{ runner.temp }}/v/ci/nextest-tests.tar.zst
-            ${{ runner.temp }}/v/ci/ci-scope.json
+            ${{ runner.temp }}/vantare-targets/ci/nextest-tests.tar.zst
+            ${{ runner.temp }}/vantare-targets/ci/ci-scope.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
@@ -466,8 +466,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: cargo-windows-1.100-${{ hashFiles('vantare-v2/native/Cargo.lock') }}
-          restore-keys: cargo-windows-1.100-
+          key: cargo-windows-1.99.1-${{ hashFiles('vantare-v2/native/Cargo.lock') }}
+          restore-keys: cargo-windows-1.99.1-
       - name: Install prebuilt Nextest
         uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39
         with:
@@ -509,7 +509,7 @@ jobs:
         with:
           name: native-overlays-${{ github.sha }}
           overwrite: true
-          path: ${{ runner.temp }}/v/ci/debug/lifecycle
+          path: ${{ runner.temp }}/vantare-targets/ci/debug/lifecycle
           if-no-files-found: error
           retention-days: 1
           compression-level: 1
@@ -590,7 +590,7 @@ jobs:
           if ($LASTEXITCODE -or $version -notmatch '^sccache 0\.19\.0$') { throw 'Release requires actual sccache 0.19.0' }
           $bin >> $env:GITHUB_PATH
           'SCCACHE_SERVER_PORT=4237' >> $env:GITHUB_ENV
-          'SCCACHE_GHA_VERSION=vanta142-rust1100-release019-v1' >> $env:GITHUB_ENV
+          'SCCACHE_GHA_VERSION=vanta142-rust1991-release019-v1' >> $env:GITHUB_ENV
       - name: Enable compiler cache for bundled Release C and C++
         run: . ./native/scripts/setup-msvc-cache.ps1
       - name: Verify local MSVC compiler cache support
@@ -607,7 +607,7 @@ jobs:
         if: needs.policy.outputs.native != 'false'
         working-directory: ${{ env.VANTARE_DIR }}
         run: |
-          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/v/qa-exclusion"
+          pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 -Gate distribution -TargetDirectory "${{ runner.temp }}/vantare-targets/qa-exclusion"
           if ($LASTEXITCODE) { throw 'QA distribution boundary failed' }
       - name: Preserve distribution timings and live compiler cache statistics
         if: always()
@@ -619,8 +619,8 @@ jobs:
           if-no-files-found: ignore
           path: |
             ${{ runner.temp }}/msvc-cache-probe/*.json
-            ${{ runner.temp }}/v/qa-exclusion/distribution-*.json
-            ${{ runner.temp }}/v/qa-exclusion/cargo-timings/*.html
+            ${{ runner.temp }}/vantare-targets/qa-exclusion/distribution-*.json
+            ${{ runner.temp }}/vantare-targets/qa-exclusion/cargo-timings/*.html
 
   native_installation:
     # Retain the existing check name; product also requires native_distribution.

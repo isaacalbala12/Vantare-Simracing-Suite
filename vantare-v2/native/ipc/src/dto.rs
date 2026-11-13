@@ -1494,7 +1494,7 @@ mod demand_tests {
             .expect("restauración");
         let restored = d::Snapshot::try_from(next).expect("foto parcial hidratada");
         assert_eq!(restored.state.session.weather, source.state.session.weather);
-        assert!(restored.state.cars.is_empty());
+        assert_eq!(restored.state.cars, [] as [vantare_domain::Car; 0]);
         assert_eq!(
             restored.state.player.expect("jugador").telemetry.throttle,
             source.state.player.expect("jugador").telemetry.throttle

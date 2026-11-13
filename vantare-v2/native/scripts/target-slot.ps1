@@ -12,8 +12,7 @@ function Test-VantareCargoCache([string]$Target) {
 
 function Get-VantareTargetRoot {
     if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') {
-        # Cargo 1.100 emits a search path per dependency; keep Windows commands below 32K.
-        return [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'v'))
+        return [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'vantare-targets'))
     }
     $configured = $env:VANTARE_TARGET_ROOT
     if (-not $configured -and $IsWindows) { $configured = [Environment]::GetEnvironmentVariable('VANTARE_TARGET_ROOT', 'Machine') }

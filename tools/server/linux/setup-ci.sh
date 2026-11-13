@@ -26,7 +26,7 @@ if ! su - vantare-ci -c 'test -x ~/.cargo/bin/rustup'; then
     -o "$rustup_stage/rustup-init"
   echo "20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c  $rustup_stage/rustup-init" | sha256sum --check --status
   chmod 755 "$rustup_stage" "$rustup_stage/rustup-init"
-  su - vantare-ci -c "'$rustup_stage/rustup-init' -y -q --profile minimal --default-toolchain 1.100.0 -c rustfmt -c clippy"
+  su - vantare-ci -c "'$rustup_stage/rustup-init' -y -q --profile minimal --default-toolchain 1.99.1 -c rustfmt -c clippy"
   rm -rf "$rustup_stage"
   trap - EXIT
 fi

@@ -228,10 +228,9 @@ mod tests {
                 rest(ms(20), body),
             ],
         );
-        assert!(
-            replay.poll(ms(0)).unwrap().unwrap().state.cars[0]
-                .number
-                .is_empty()
+        assert_eq!(
+            replay.poll(ms(0)).unwrap().unwrap().state.cars[0].number,
+            ""
         );
         let joined = replay.poll(ms(20)).unwrap().unwrap();
         assert_eq!(joined.state.cars[0].number, "7");

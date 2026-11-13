@@ -100,9 +100,9 @@ mod tests {
 
     #[test]
     fn empty_and_whitespace_only_become_empty() {
-        assert!(sanitize_display("").is_empty());
-        assert!(sanitize_display("   ").is_empty());
-        assert!(sanitize_display("\u{202e}").is_empty());
+        assert_eq!(sanitize_display(""), "");
+        assert_eq!(sanitize_display("   "), "");
+        assert_eq!(sanitize_display("\u{202e}"), "");
     }
 
     /// El saneado nunca alarga el texto mas alla de un caracter por entrada.

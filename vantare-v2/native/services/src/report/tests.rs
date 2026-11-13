@@ -266,7 +266,7 @@ fn local_context_limit_and_installation_never_enter_the_submission() {
     let mut environment = environment();
     environment.installation = Some(installation_context(&root, "beta").expect("installation"));
     let submission = Submission::new(draft, environment).expect("local notes are not payload");
-    assert!(submission.context_text.is_empty());
+    assert_eq!(submission.context_text, "");
     assert_eq!(
         load_draft(&store).expect("load").expect("draft").fields,
         fields

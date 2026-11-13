@@ -100,13 +100,13 @@ mod tests {
     fn accepts_empty_publications_and_rejects_unknown_and_oversize() {
         let mut value = sample();
         value.document.items.clear();
-        assert!(
+        assert_eq!(
             project(Some(value), false)
                 .expect("empty publication")
                 .publication
                 .expect("published")
-                .items
-                .is_empty()
+                .items,
+            [] as [crate::roadmap::RoadmapItem; 0]
         );
         let mut value = sample();
         value.document.items[0].section = "private".into();

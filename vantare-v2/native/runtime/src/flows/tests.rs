@@ -300,7 +300,7 @@ fn lost_unconfirmed_retention_cannot_be_reported_as_durable() {
     }
     assert!(core.events_mut().persist().is_err());
     assert_eq!(core.events().durable_cursor(), None);
-    assert!(fs::read(&file.0).unwrap().is_empty());
+    assert_eq!(fs::read(&file.0).unwrap(), [] as [u8; 0]);
 }
 
 #[test]

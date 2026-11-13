@@ -370,7 +370,7 @@ mod tests {
             serde_json::from_slice(&fs::read(root.join("crashes/00.json")).expect("file"))
                 .expect("json");
         assert_eq!(saved.message, "native_panic");
-        assert!(saved.backtrace.is_empty());
+        assert_eq!(saved.backtrace, "");
         let server = Server::start(vec![
             (503, "{}".into()),
             (200, "{\"status\":0}".into()),

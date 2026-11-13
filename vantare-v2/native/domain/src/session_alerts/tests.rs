@@ -256,7 +256,10 @@ fn mini_turns_red_at_last_minute_then_ya_for_one_and_half_seconds() {
     assert_eq!(m.tick(90_000, &o).minis[0].value(), "YA");
     assert_eq!(m.tick(90_000, &o).zero_revision, 1);
     assert_eq!(m.tick(91_000, &o).zero_revision, 1);
-    assert!(m.tick(91_500, &o).minis.is_empty());
+    assert_eq!(
+        m.tick(91_500, &o).minis,
+        [] as [crate::session_alerts::Mini; 0]
+    );
 }
 #[test]
 fn mini_limit_sorts_nearest_first_and_independent_toggles_apply() {
@@ -276,7 +279,10 @@ fn mini_limit_sorts_nearest_first_and_independent_toggles_apply() {
     assert_eq!(v.minis.len(), 3);
     assert!(v.minis.windows(2).all(|w| w[0].seconds <= w[1].seconds));
     o.mini_calendar = false;
-    assert!(m.tick(33_001, &o).minis.is_empty());
+    assert_eq!(
+        m.tick(33_001, &o).minis,
+        [] as [crate::session_alerts::Mini; 0]
+    );
 }
 #[test]
 fn verified_start_inputs_show_metres_and_racing_clears_without_green_notice() {
@@ -302,7 +308,10 @@ fn verified_start_inputs_show_metres_and_racing_clears_without_green_notice() {
     s.phase = Some(Phase::Racing);
     s.distance_m = Some(0.0);
     m.session(Some(s), 11_000, &o);
-    assert!(m.tick(11_000, &o).minis.is_empty());
+    assert_eq!(
+        m.tick(11_000, &o).minis,
+        [] as [crate::session_alerts::Mini; 0]
+    );
     assert!(m.tick(11_000, &o).active.is_none());
 }
 

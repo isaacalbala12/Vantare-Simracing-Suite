@@ -14,7 +14,7 @@ foreach ($branch in @('A', 'B')) {
     [IO.Directory]::CreateDirectory((Join-Path $directory '.cargo')) | Out-Null
     [IO.File]::WriteAllText((Join-Path $directory 'Cargo.toml'), "[package]`nname = 'vantare-slot-reuse-probe'`nversion = '0.0.0'`nedition = '2024'`n")
     # Exercise the product's exact pinned Cargo on every runner.
-    [IO.File]::WriteAllText((Join-Path $directory 'rust-toolchain.toml'), "[toolchain]`nchannel = '1.100.0'`n")
+    [IO.File]::WriteAllText((Join-Path $directory 'rust-toolchain.toml'), "[toolchain]`nchannel = '1.99.1'`n")
     [IO.File]::WriteAllText((Join-Path $directory 'src/main.rs'), "fn main() { println!(`"$branch`"); }`n")
     foreach ($file in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $directory "scripts/$file")

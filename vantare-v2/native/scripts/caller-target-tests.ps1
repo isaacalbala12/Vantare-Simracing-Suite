@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $root = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('caller-target-' + [guid]::NewGuid().ToString('N'))
 foreach ($directory in @('src', 'scripts', '.cargo')) { [IO.Directory]::CreateDirectory((Join-Path $root $directory)) | Out-Null }
 [IO.File]::WriteAllText((Join-Path $root 'Cargo.toml'), "[package]`nname='caller-target-probe'`nversion='0.0.0'`nedition='2024'`n")
-[IO.File]::WriteAllText((Join-Path $root 'rust-toolchain.toml'), "[toolchain]`nchannel='1.100.0'`n")
+[IO.File]::WriteAllText((Join-Path $root 'rust-toolchain.toml'), "[toolchain]`nchannel='1.99.1'`n")
 [IO.File]::WriteAllText((Join-Path $root 'src/main.rs'), 'fn main() { println!("caller target preserved"); }')
 foreach ($name in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $root "scripts/$name")

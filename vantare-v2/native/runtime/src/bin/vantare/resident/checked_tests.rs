@@ -270,7 +270,7 @@ fn mailbox_accepts_once_finishes_once_and_rejects_requests_from_a_previous_resid
             request.command,
             control::Command::ReadAccountSession {}
         ));
-        assert!(request.nonce.is_empty());
+        assert_eq!(request.nonce, "");
         control::write(
             &mut pipe,
             &account_session::ControlResponse {
@@ -409,7 +409,7 @@ fn silent_core_does_not_make_resident_status_stale() {
             request.command,
             control::Command::ReadAccountSession {}
         ));
-        assert!(request.nonce.is_empty());
+        assert_eq!(request.nonce, "");
         waiting.recv().unwrap();
     });
     listening.recv().unwrap();

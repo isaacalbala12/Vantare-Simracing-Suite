@@ -320,7 +320,10 @@ mod tests {
                         }
                     );
                     assert_eq!(project(&data, prefs).steering, None);
-                    assert!(crate::radar::project(&data).cars.is_empty());
+                    assert_eq!(
+                        crate::radar::project(&data).cars,
+                        [] as [crate::radar::Car; 0]
+                    );
                     assert_eq!(crate::pedals::project(&data, prefs).throttle, None);
                     assert_eq!(crate::delta::project(&data, prefs).progress, None);
                 }

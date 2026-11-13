@@ -150,7 +150,7 @@ mod read_tests {
         let root = Root::new();
         let path = root.path.join("launcher.json");
         let view = read(&path);
-        assert!(view.profiles.is_empty());
+        assert_eq!(view.profiles, [] as [crate::shortcuts::ProfileShortcut; 0]);
         assert!(!view.protected);
         assert!(!path.exists());
         let invalid = br#"{"version":999}"#;

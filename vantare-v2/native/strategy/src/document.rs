@@ -973,7 +973,7 @@ mod tests {
     fn go_document_acceptance_and_byte_preservation() {
         let cases: Value = serde_json::from_str(include_str!("../testdata/oracle/documents.json"))
             .expect("frozen Go documents");
-        assert!(!array(&cases).is_empty());
+        assert_ne!(array(&cases), [] as [Value; 0]);
         for case in array(&cases) {
             let bytes = serde_json::to_vec(&case["input"]).expect("fixture");
             let parsed = Document::parse(&bytes);

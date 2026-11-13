@@ -1338,7 +1338,7 @@ mod tests {
             "clock failure precedes HTTP"
         );
         drop(app);
-        assert!(server.finish_observed().is_empty());
+        assert_eq!(server.finish_observed(), [] as [std::string::String; 0]);
         crate::cleanup_store(&root, "account-renew-clock", &[]);
     }
 
@@ -1653,7 +1653,10 @@ mod tests {
         let mut app = App::new(config, root.clone());
         app.ensure_account().expect("redirect recovery");
         assert!(app.account.as_ref().expect("account").identity().is_some());
-        assert!(std::fs::read(&session_path).expect("preserved session") == session_bytes);
+        assert_eq!(
+            std::fs::read(&session_path).expect("preserved session"),
+            session_bytes
+        );
         assert!(
             std::fs::read_dir(&namespace)
                 .expect("namespace")

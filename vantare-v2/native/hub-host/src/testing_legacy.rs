@@ -180,7 +180,7 @@ impl Source {
         self.path.with_extension("json.imported")
     }
     fn unchanged(&self) -> bool {
-        fs::symlink_metadata(&self.path).ok().is_some_and(|info| {
+        fs::symlink_metadata(&self.path).is_ok_and(|info| {
             info.is_file()
                 && !info.file_type().is_symlink()
                 && info.modified().ok() == Some(self.modified)
@@ -191,8 +191,7 @@ impl Source {
     }
     fn archived(&self) -> bool {
         fs::symlink_metadata(self.archive())
-            .ok()
-            .is_some_and(|info| info.is_file() && !info.file_type().is_symlink())
+            .is_ok_and(|info| info.is_file() && !info.file_type().is_symlink())
             && files::read(&self.archive(), self.bytes.len() as u64)
                 .ok()
                 .as_deref()

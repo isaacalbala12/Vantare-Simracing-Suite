@@ -1304,7 +1304,7 @@ mod tests {
         let mut count = 0;
         for path in &catalog {
             let scene = Scene::new(path).expect("escena validada por IPC");
-            assert!(!scene.snapshots.is_empty());
+            assert_ne!(scene.snapshots, [] as [vantare_domain::Snapshot; 0]);
             for snapshot in &scene.snapshots {
                 let ids: std::collections::HashSet<_> =
                     snapshot.state.cars.iter().map(|car| car.id).collect();

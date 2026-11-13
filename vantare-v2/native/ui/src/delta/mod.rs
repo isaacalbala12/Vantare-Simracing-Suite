@@ -81,7 +81,7 @@ impl Widget {
     }
     pub(crate) fn size(&self) -> (f32, f32) {
         match &self.presentation {
-            Presentation::Eficiencia { visual: _, .. } => (280.0, 96.0),
+            Presentation::Eficiencia { .. } => (280.0, 96.0),
             Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }
@@ -358,7 +358,7 @@ mod tests {
             "Eficiencia histórico ignoraba referencia"
         );
         assert_eq!(settings.template_id, "capsule");
-        assert!(settings.design_system == crate::look::Look::Eficiencia);
+        assert_eq!(settings.design_system, crate::look::Look::Eficiencia);
         for &look in crate::look::Look::ALL {
             settings.design_system = look;
             assert_eq!(settings.normalized().reference, "best");

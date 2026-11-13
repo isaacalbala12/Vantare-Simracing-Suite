@@ -57,7 +57,7 @@ fn every_extracted_widget_data_type_supports_host_bindings() {
         columns, delta, fuel_strategy, look, pedals, relative, standings,
     };
     fn exported<T: ts_rs::TS>() -> String {
-        assert!(!T::decl(&ts_rs::Config::default()).is_empty());
+        assert_ne!(T::decl(&ts_rs::Config::default()), "");
         T::name(&ts_rs::Config::default())
     }
     let names = [

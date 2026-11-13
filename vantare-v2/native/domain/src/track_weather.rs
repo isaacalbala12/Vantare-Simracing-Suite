@@ -185,7 +185,7 @@ mod tests {
                 assert_eq!(vm.metrics[0].value, PLACEHOLDER);
                 assert_eq!(vm.metrics.len(), 6); // SECO no existe sin humedad.
             } else {
-                assert!(vm.metrics.is_empty());
+                assert_eq!(vm.metrics, [] as [crate::track_weather::Metric; 0]);
             }
         }
     }

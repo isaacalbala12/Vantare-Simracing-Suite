@@ -296,6 +296,6 @@ mod tests {
         assert!(recording.failed);
         assert_eq!(recording.durable_event(), None);
         assert!(recording.persist(&events).is_err());
-        assert!(std::fs::read(&file.0).unwrap().is_empty());
+        assert_eq!(std::fs::read(&file.0).unwrap(), [] as [u8; 0]);
     }
 }

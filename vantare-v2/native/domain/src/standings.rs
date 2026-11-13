@@ -1125,8 +1125,8 @@ mod look_data_tests {
         assert_eq!(row.gained, None);
         assert_eq!(row.compound, None);
         assert_eq!(row.pit, Pit::Unknown);
-        assert!(row.sectors.is_empty());
-        assert!(row.vehicle.is_empty());
+        assert_eq!(row.sectors, [] as [crate::standings::Mark; 0]);
+        assert_eq!(row.vehicle, "");
         assert_eq!((row.last_lap.as_str(), row.best_lap.as_str()), ("—", "—"));
         assert_eq!(row.best_mark, Mark::Pending);
         assert_eq!(board.fastest, None);

@@ -55,8 +55,8 @@ $temporaryBefore = $env:RUNNER_TEMP
 try {
     $env:RUNNER_ENVIRONMENT = 'github-hosted'
     $env:RUNNER_TEMP = Join-Path $root 'runner-temp'
-    $hosted = Initialize-VantareSlotTarget -Slot 1 -Root (Join-Path $env:RUNNER_TEMP 'v') -Ci
-    if ($hosted -ine (Join-Path $env:RUNNER_TEMP 'v/ci')) { throw 'CI no usa RUNNER_TEMP.' }
+    $hosted = Initialize-VantareSlotTarget -Slot 1 -Root (Join-Path $env:RUNNER_TEMP 'vantare-targets') -Ci
+    if ($hosted -ine (Join-Path $env:RUNNER_TEMP 'vantare-targets/ci')) { throw 'CI no usa RUNNER_TEMP.' }
     foreach ($invalid in @('C:/outside-runner', $root, (Join-Path $env:RUNNER_TEMP '../escape'))) {
         if (Test-VantareTargetPath $invalid) { throw 'Se aceptó una ruta fuera del temporal del runner.' }
     }

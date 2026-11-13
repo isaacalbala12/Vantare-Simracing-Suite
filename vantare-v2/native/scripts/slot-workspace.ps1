@@ -27,7 +27,7 @@ function Set-VantareSlotWorkspace {
     if (Get-ChildItem -LiteralPath $Target -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
         throw 'Hay enlaces dentro del target; no se invalidan paquetes.'
     }
-    # Cargo 1.100 refuses clean on legacy caches without its tag. Migrate only
+    # Newer Cargo refuses clean on legacy caches without its tag. Migrate only
     # the verified cache above, under the queue lease and with no links/active Cargo.
     $tag = Join-Path $Target 'CACHEDIR.TAG'
     if (-not (Test-Path -LiteralPath $tag)) {

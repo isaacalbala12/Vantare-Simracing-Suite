@@ -169,7 +169,7 @@ fn silent_authority_has_a_total_deadline_without_sleep_or_a_real_service() {
         ready.send(()).unwrap();
         pipe.accept().unwrap();
         let request = control::read_request(&mut pipe).unwrap();
-        assert!(request.nonce.is_empty());
+        assert_eq!(request.nonce, "");
         assert!(matches!(
             request.command,
             control::Command::ReadAccountSession {}

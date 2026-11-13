@@ -1,27 +1,31 @@
-## VANTA-142 / #2247 — actualización del toolchain (en curso, 2026-11-13)
+## VANTA-142 / #2247 — Rust 1.99.1 en preparación (2026-11-13)
 
 - Worker H; rama `vantareapp/isa-2247-rust-estable`, base nightly
-  `5d53a645798fb5c236ab3f4de2b87e9a9a1798d7`, worktree en D:.
-- Rust estable 1.100.0, publicado el 12-11-2026, confirmado con rustup y anuncio
-  oficial. Instalado con rustfmt/Clippy en Windows y Mac; 1.95.0 conservado.
-- Pines activos y claves de caché actualizados. Las referencias históricas y el
-  corpus congelado conservan su versión y sus huellas.
-- Cargo nuevo exige un marcador para limpiar targets antiguos: migración bajo
-  reserva de cola, con metadata/lock comprobados y sin enlaces.
-- PR draft #2248 abierto a nightly; primer SHA `d71e26213`. Primer Clippy CI
-  detecta `map_unwrap_or`: sustituciones equivalentes por `map_or_default`, sin
-  cambiar dependencias ni desactivar lints. Gates locales en curso, a dos jobs.
-- Caché C++: CI detectó que `SCCACHE_GHA_VERSION` activa GHA aunque ENABLED sea
-  false; la prueba aislada retira/restaura esa variable y exige backend local.
-  Fuente: sccache v0.19.0 `src/config.rs`, líneas 985–993.
-- Dos repeticiones limpias y dos sin cambios de domain con cada compilador,
-  misma máquina, `-j 2`, sin sccache; datos en evidencia local isa-2247.
-- Primer archivo de CI falla con sccache 0.18: Windows error 206, 359 rutas de
-  dependencias y comando expandido mayor de 32K. Se prueba 0.19 (última estable)
-  y se acorta solo el target de GitHub a RUNNER_TEMP/v/ci, conservando el backend.
-  La comparación local de ambas versiones/rutas espera el slot de hub-fast.
-- Pendientes: gates y CI verdes, revisión del diff y tiempos finales en el PR.
-  Sin merge ni release. Aviso de adopción tras el merge.
+  `5d53a645798fb5c236ab3f4de2b87e9a9a1798d7`, worktree en D:; PR draft #2248.
+- Objetivo ajustado por el orquestador a **1.99.1**, conservando caché Rust/C++.
+  Rust 1.100.0 es la última estable publicada, pero su nuevo layout de Cargo
+  no tiene una solución completa y limpia en estos gates. Seguimiento #2252.
+- Ensayo 1.100: run 43334835533 falla por error 206 en storage (359 rutas,
+  33.567 caracteres). Run 43337781090 con sccache 0.19 y rutas cortas construye
+  el archivo de tests (11m04s) y pasa lifecycle, pero QA vuelve a fallar por
+  error 206 en GPUI; los tests de Hub no encuentran sus auxiliares por el layout.
+  Se retiran los cambios experimentales de rutas y sccache general del PR.
+- 1.99.1 ya estaba instalado en servidor y Mac; la instalación adicional de
+  1.100.0 se conserva sin cambiar el default ni retirar 1.95.0. Rustfmt/Clippy
+  1.99.1 comprobados en Windows; Mac no responde en la última conexión SSH.
+- Pines activos y claves de caché para 1.99.1; MSRV exige también el parche
+  1.99.1. Referencias históricas y corpus congelado conservan sus huellas.
+- Adaptaciones equivalentes de lints, sin dependencias nuevas ni supresiones.
+  `assert_is_empty` existe desde 1.98: se ha avisado antes de aplicar sus
+  correcciones automáticas y revisar que las aserciones se conservan.
+- Se corrige el backend de la prueba C++: retira/restaura GHA_VERSION y exige
+  caché local; esa variable ignoraba ENABLED=false. Migración segura de tags
+  legacy bajo lock de la cola, sin enlaces ni cambios de contenido desconocido.
+- Pendientes: completar correcciones/gates/mediciones de 1.99.1 y CI verde,
+  revisar todo el diff y actualizar PR/issue. Las medidas de 1.100 quedan como
+  evidencia del ensayo, no como medidas de la entrega final.
+- Sin merge, release ni ejecución gráfica del producto. Aviso a todos los
+  workers tras el merge, a cargo del orquestador según el encargo.
 
 > **VANTA-132:** estado vigente y despliegue en [el cierre de la tanda](#vanta-132--cierre-de-la-tanda-adminowner-2026-11-05). Sus entradas anteriores son evidencia histórica.
 

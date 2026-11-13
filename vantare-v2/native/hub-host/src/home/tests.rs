@@ -73,12 +73,12 @@ fn watching_stops_when_hidden_and_uses_an_injected_clock() {
     let now = Instant::now();
     assert!(reader.changed(false, now, HomeSim::default()).is_none());
     assert!(reader.signature.is_none() && reader.last_check.is_none());
-    assert!(
+    assert_eq!(
         reader
             .changed(true, now, HomeSim::default())
             .unwrap()
-            .profiles
-            .is_empty()
+            .profiles,
+        [] as [crate::home::HomeProfile; 0]
     );
     root.document();
     assert!(
@@ -90,16 +90,16 @@ fn watching_stops_when_hidden_and_uses_an_injected_clock() {
             )
             .is_none()
     );
-    assert!(
-        !reader
+    assert_ne!(
+        reader
             .changed(
                 true,
                 now + Duration::from_millis(WATCH_MS),
                 HomeSim::default()
             )
             .unwrap()
-            .profiles
-            .is_empty()
+            .profiles,
+        [] as [crate::home::HomeProfile; 0]
     );
     assert!(
         reader

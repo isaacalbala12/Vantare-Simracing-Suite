@@ -404,7 +404,10 @@ fn successful_rotation_is_protected_before_restart() {
             .authorized(950, |bearer| Ok(bearer == access))
             .expect("rotated access")
     );
-    assert!(restored.session.as_ref().expect("session").refresh.expose() == refresh);
+    assert_eq!(
+        restored.session.as_ref().expect("session").refresh.expose(),
+        refresh
+    );
     assert_eq!(restored.expires_at(), Some(960));
     for _ in 0..2 {
         server

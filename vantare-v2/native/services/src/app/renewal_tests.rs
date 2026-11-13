@@ -146,7 +146,7 @@ fn logout_from_needs_sign_in_still_requires_ack_and_clears_account() {
             if rejected { "NeedsSignIn" } else { "SignedOut" }
         );
         fixture.finish();
-        assert!(server.finish_observed().is_empty());
+        assert_eq!(server.finish_observed(), [] as [std::string::String; 0]);
     }
 }
 
@@ -258,7 +258,7 @@ fn pending_login_from_needs_sign_in_shows_progress_instead_of_stale_authenticati
         matches!(fixture.app.handle(Command::AccountPoll), Reply::Account { pending: true, signed_in: false, error: None, message, .. } if message == "Complete el inicio de sesión en el navegador")
     );
     fixture.finish();
-    assert!(server.finish_observed().is_empty());
+    assert_eq!(server.finish_observed(), [] as [std::string::String; 0]);
 }
 
 #[test]
@@ -433,5 +433,5 @@ fn automatic_renewal_without_identity_stays_signed_out_and_never_starts_http() {
         crate::protocol::Session::SignedOut
     );
     fixture.finish();
-    assert!(server.finish_observed().is_empty());
+    assert_eq!(server.finish_observed(), [] as [std::string::String; 0]);
 }

@@ -283,7 +283,7 @@ mod tests {
     }
     #[test]
     fn public_notes_respect_the_installed_channel() {
-        assert!(!news("nightly").is_empty());
+        assert_ne!(news("nightly"), [] as [crate::updates::ReleaseNote; 0]);
         for channel in ["master", "development", "unknown"] {
             assert!(news(channel).iter().all(|note| note.channel == "master"));
         }

@@ -32,12 +32,14 @@ fn driving_content_writer_matches_native_normalization_and_undo_bytes() {
             }
             settings["future"] = json!({"z":1,"a":[2,3]});
             let before = serde_json::to_vec(&json!({"version":1,"futureRoot":42,
-                "instances":[{"id":"widget-1","x":12,"y":24,"settings":settings}]})).unwrap();
+                "instances":[{"id":"widget-1","x":12,"y":24,"settings":settings}]}))
+            .unwrap();
             std::fs::write(&path, &before).unwrap();
             // Independent GPUI operation: normalize, assign the chosen field,
             // normalize again and serialize through the native struct.
             let mut expected: Value = if kind == "delta" {
-                let mut data: native::delta::Settings = serde_json::from_value(settings.clone()).unwrap();
+                let mut data: native::delta::Settings =
+                    serde_json::from_value(settings.clone()).unwrap();
                 data = data.normalized();
                 if patch.get("reference").is_some() {
                     data.reference = "leader".into();
@@ -46,7 +48,8 @@ fn driving_content_writer_matches_native_normalization_and_undo_bytes() {
                 }
                 serde_json::from_str(&serde_json::to_string(&data.normalized()).unwrap()).unwrap()
             } else {
-                let mut data: native::pedals::Settings = serde_json::from_value(settings.clone()).unwrap();
+                let mut data: native::pedals::Settings =
+                    serde_json::from_value(settings.clone()).unwrap();
                 data = data.normalized();
                 if patch.get("gap").is_some() {
                     data.gap = 2.7;
@@ -60,13 +63,21 @@ fn driving_content_writer_matches_native_normalization_and_undo_bytes() {
             let access = Some(CatalogAccess::Pro);
             let mut state = State::new(path.clone());
             let current = state.view(access);
-            let edit = || Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(
-                serde_json::from_value(patch.clone()).unwrap(),
-            )));
+            let edit = || {
+                Edit::Instance(
+                    "widget-1".into(),
+                    InstancePatch::Settings(Box::new(
+                        serde_json::from_value(patch.clone()).unwrap(),
+                    )),
+                )
+            };
             let changed = state.edit(edit(), &current.revision, access).unwrap();
             let saved = std::fs::read(&path).unwrap();
             let actual: Value = serde_json::from_slice(&saved).unwrap();
-            assert_eq!(actual["instances"][0]["settings"], expected, "{patch}, legacy={legacy}");
+            assert_eq!(
+                actual["instances"][0]["settings"], expected,
+                "{patch}, legacy={legacy}"
+            );
             assert_eq!(actual["futureRoot"], 42);
             assert_eq!(actual["instances"][0]["x"], 12);
             if kind == "pedals" {
@@ -425,8 +436,11 @@ fn companions_are_hidden_and_follow_visibility_and_removal_without_being_fabrica
     let removed = state
         .edit(Edit::Remove("alerts".into()), &hidden.revision, access)
         .unwrap();
-    assert!(removed.instances.is_empty());
-    assert!(layout(&path)["instances"].as_array().unwrap().is_empty());
+    assert_eq!(removed.instances, [] as [crate::studio::OverlayInstance; 0]);
+    assert_eq!(
+        layout(&path)["instances"].as_array().unwrap().as_slice(),
+        []
+    );
     let (added, id) = state
         .add(WidgetKind::SessionAlerts, &removed.revision, access)
         .unwrap();
@@ -699,7 +713,7 @@ fn projected_settings_that_exceed_the_transport_become_protected() {
     std::fs::write(&path, &bytes).unwrap();
     let view = State::new(path.clone()).view(Some(CatalogAccess::Pro));
     assert_eq!(view.state, StudioState::Protected);
-    assert!(view.instances.is_empty());
+    assert_eq!(view.instances, [] as [crate::studio::OverlayInstance; 0]);
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
     assert!(crate::studio::widget_settings::fits_view(&view));
     let mut state = State::new(path.clone());
@@ -902,7 +916,7 @@ fn unreadable_supported_settings_protect_the_whole_document_without_creating_fil
         let access = Some(CatalogAccess::Pro);
         let view = state.view(access);
         assert_eq!(view.state, StudioState::Protected);
-        assert!(view.instances.is_empty());
+        assert_eq!(view.instances, [] as [crate::studio::OverlayInstance; 0]);
         let update = serde_json::from_value(serde_json::json!({"kind":"pedals","gap":2.7}))
             .unwrap();
         assert!(matches!(

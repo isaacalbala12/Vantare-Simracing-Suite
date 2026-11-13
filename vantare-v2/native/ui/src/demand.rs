@@ -123,7 +123,7 @@ mod tests {
             "el estado del renderer depende de clutch"
         );
         for &kind in Kind::ALL {
-            assert!(Settings::default_for(kind).demand() != Demand::default());
+            assert_ne!(Settings::default_for(kind).demand(), Demand::default());
         }
     }
 

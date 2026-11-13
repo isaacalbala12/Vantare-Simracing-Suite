@@ -206,7 +206,7 @@ mod tests {
             serde_json::to_value(&before.profiles[0].steps).expect("QA fixture")
         );
         assert!(!copy.favorite && !copy.launch_on_windows_startup);
-        assert!(copy.hotkey.is_empty());
+        assert_eq!(copy.hotkey, "");
     }
     #[test]
     fn conflict_and_invalid_option_have_no_effects() {

@@ -157,7 +157,7 @@ fn r10_damaged_retirement_never_calls_clerk_or_deletes_the_evidence() {
         Err(Error::Storage)
     ));
     assert_eq!(blobs(&root), before);
-    assert!(server.finish_observed().is_empty());
+    assert_eq!(server.finish_observed(), [] as [std::string::String; 0]);
     drop(store);
     crate::cleanup_store(&root, "r10-retire-damaged", &[]);
 }
@@ -272,7 +272,7 @@ fn r10_retirement_never_revokes_another_clients_grant() {
         Err(Error::Storage)
     ));
     assert_eq!(blobs(&root), before);
-    assert!(server.finish_observed().is_empty());
+    assert_eq!(server.finish_observed(), [] as [std::string::String; 0]);
     drop(store);
     crate::cleanup_store(&root, "r10-grant-isolation", &[]);
 }

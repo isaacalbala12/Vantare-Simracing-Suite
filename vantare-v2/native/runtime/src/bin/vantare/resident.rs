@@ -1092,7 +1092,7 @@ mod tests {
         store.replace(document.clone()).expect("persistir");
         let mut owner = Owner::new(path.clone(), false);
         owner.reload();
-        assert!(owner.hotkeys.is_empty());
+        assert_eq!(owner.hotkeys, [] as [(i32, std::string::String); 0]);
         assert!(owner.status.profiles[0].error.is_some());
         release.send(()).expect("liberar otro hilo");
         competitor.join().expect("cerrar competidor");
@@ -1116,7 +1116,7 @@ mod tests {
         document.profiles[0].hotkey.clear();
         fs::write(&path, serde_json::to_vec(&document).expect("JSON")).expect("desactivar");
         owner.reload();
-        assert!(owner.hotkeys.is_empty());
+        assert_eq!(owner.hotkeys, [] as [(i32, std::string::String); 0]);
         assert!(!owner.status.profiles[0].registered);
         assert!(vantare_ipc::launcher::read_status(&path).is_some());
         fs::remove_file(&path).expect("borrar ajustes propios");

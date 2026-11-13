@@ -92,7 +92,7 @@ impl Widget {
     }
     pub(crate) fn size(&self) -> (f32, f32) {
         match &self.presentation {
-            Presentation::Eficiencia { visual: _, .. } => eficiencia::SIZE,
+            Presentation::Eficiencia { .. } => eficiencia::SIZE,
             Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }

@@ -11,7 +11,7 @@ if ($Partition -and $Partition -notmatch '^(hash|count|slice):[0-9]+/[0-9]+$') {
     throw 'Partición de nextest inválida.'
 }
 if ($Suite -eq 'lifecycle' -and $Partition) { throw 'lifecycle no acepta particiones.' }
-$target = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'v/ci'))
+$target = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'vantare-targets/ci'))
 $download = (Join-Path $env:RUNNER_TEMP 'vantare-test-archive')
 $native = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
 $scope = Get-Content -LiteralPath (Join-Path $download 'ci-scope.json') -Raw | ConvertFrom-Json
@@ -76,16 +76,16 @@ try {
         if ($Suite -eq 'test') {
             # Architecture tests embed env!(CARGO): install the exact prebuilt
             # toolchain at that path before invoking it, without compiling.
-            & rustup toolchain install 1.100.0 --profile minimal --no-self-update
-            if ($LASTEXITCODE) { throw 'No se pudo instalar el toolchain precompilado 1.100.0.' }
-            & rustup run 1.100.0 cargo --version
-            if ($LASTEXITCODE) { throw 'No se pudo preparar Cargo 1.100 para los tests de arquitectura.' }
+            & rustup toolchain install 1.99.1 --profile minimal --no-self-update
+            if ($LASTEXITCODE) { throw 'No se pudo instalar el toolchain precompilado 1.99.1.' }
+            & rustup run 1.99.1 cargo --version
+            if ($LASTEXITCODE) { throw 'No se pudo preparar Cargo 1.99.1 para los tests de arquitectura.' }
             # A restored source cache can predate Cargo.lock. The archive contains
             # binaries, not registry metadata; offline architecture tests still
             # resolve every workspace member (including unbuilt crates).
-            & rustup run 1.100.0 cargo fetch --locked --target x86_64-pc-windows-msvc
+            & rustup run 1.99.1 cargo fetch --locked --target x86_64-pc-windows-msvc
             if ($LASTEXITCODE) { throw 'No se pudieron preparar las fuentes del workspace para los tests offline.' }
-            & rustup run 1.100.0 cargo tree --offline --locked --workspace --depth 0 --prefix none
+            & rustup run 1.99.1 cargo tree --offline --locked --workspace --depth 0 --prefix none
             if ($LASTEXITCODE) { throw 'El workspace no se puede resolver sin red tras preparar las fuentes.' }
         }
         $env:CARGO_TARGET_DIR = $target

@@ -705,5 +705,5 @@ fn replaying_the_same_events_twice_gives_identical_observations() {
     };
     let (first, second) = (run(), run());
     assert_eq!(first.len(), 600);
-    assert!(first == second);
+    assert_eq!(first, second);
 }

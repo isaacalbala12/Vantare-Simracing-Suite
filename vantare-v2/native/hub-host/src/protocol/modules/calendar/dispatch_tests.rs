@@ -120,7 +120,7 @@ fn duplicate_calendar_refresh_is_busy_in_the_shared_queue() {
     session
         .request(&mut first, 41, &Request::CalendarRefresh {})
         .unwrap();
-    assert!(first.get_ref().is_empty());
+    assert_eq!(first.get_ref().as_slice(), []);
     let mut duplicate = Pipe::new(Vec::new());
     session
         .request(&mut duplicate, 42, &Request::CalendarRefresh {})
@@ -543,7 +543,7 @@ fn calendar_notice_tick_emits_only_with_current_authority_and_readable_alerts() 
         let clock = Instant::now();
         let mut pipe = Pipe::new(Vec::new());
         super::calendar_tick::tick_with_clock(&mut session, &mut pipe, now - 1000, clock).unwrap();
-        assert!(pipe.get_ref().is_empty());
+        assert_eq!(pipe.get_ref().as_slice(), []);
         match blocked {
             "general" | "both" => set_calendar_windows(&mut session, false),
             "handshake" => session.handshaken = false,
@@ -650,7 +650,7 @@ fn calendar_host_poll_uses_the_shared_background_lane_without_a_mounted_screen()
     session
         .respond_service(&mut pipe, crate::account::BACKGROUND_ID, result)
         .unwrap();
-    assert!(pipe.get_ref().is_empty());
+    assert_eq!(pipe.get_ref().as_slice(), []);
     super::calendar_tick::tick_with_clock(
         &mut session,
         &mut pipe,
@@ -761,7 +761,7 @@ fn calendar_refresh_failures_are_closed_events_and_do_not_make_background_respon
     let mut pipe = Pipe::new(Vec::new());
     s.respond_service(&mut pipe, crate::account::BACKGROUND_ID, result)
         .unwrap();
-    assert!(pipe.get_ref().is_empty());
+    assert_eq!(pipe.get_ref().as_slice(), []);
     assert!(matches!(
         s.calendar_state.take_refresh(),
         Some((
@@ -810,11 +810,11 @@ fn calendar_offline_refresh_still_loads_local_departure_notices() {
         Err(HostError::CoreUnavailable)
     );
     let clock = Instant::now();
-    assert!(
+    assert_eq!(
         session
             .calendar_state
-            .notice_tick(now - 1000, clock, true, false)
-            .is_empty()
+            .notice_tick(now - 1000, clock, true, false),
+        [] as [crate::calendar::notice::CalendarNotice; 0]
     );
     assert!(matches!(
         session
@@ -998,7 +998,7 @@ fn calendar_general_off_then_on_never_catches_up_a_departure_from_the_disabled_i
         clock + Duration::from_secs(1),
     )
     .unwrap();
-    assert!(pipe.get_ref().is_empty());
+    assert_eq!(pipe.get_ref().as_slice(), []);
     set_calendar_windows(&mut session, true);
     super::calendar_tick::tick_with_clock(
         &mut session,
@@ -1018,7 +1018,7 @@ fn calendar_general_off_then_on_never_catches_up_a_departure_from_the_disabled_i
         clock + Duration::from_secs(3601),
     )
     .unwrap();
-    assert!(pipe.get_ref().is_empty());
+    assert_eq!(pipe.get_ref().as_slice(), []);
     super::calendar_tick::tick_with_clock(
         &mut session,
         &mut pipe,

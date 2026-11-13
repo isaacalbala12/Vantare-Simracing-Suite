@@ -44,6 +44,56 @@ pub static V_SLIDERS: rune::Icon = rune::Icon {
     view: 24.0,
     body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h8M18 7h2.5M3.5 17h2M10.5 17h10"/><circle cx="14.8" cy="7" r="2.7" fill="currentColor" fill-opacity=".3"/><circle cx="7.6" cy="17" r="2.7" fill="currentColor" fill-opacity=".3"/></g>"##,
 };
+pub static V_SIDE: rune::Icon = rune::Icon {
+    name: "v-side",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3.5"/><path fill="currentColor" fill-opacity=".3" stroke="none" d="M6.5 4H9.5v16H6.5A3.5 3.5 0 0 1 3 16.5v-9A3.5 3.5 0 0 1 6.5 4z"/><path d="M9.5 4v16"/><path d="m15.5 10-2 2 2 2"/></g>"##,
+};
+pub static V_PALETTE: rune::Icon = rune::Icon {
+    name: "v-palette",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.5 0 2.1-1 1.6-2.2-.5-1.3.4-2.3 1.8-2.3h2a3.1 3.1 0 0 0 3.1-3.1C20.5 7.2 16.7 3.5 12 3.5z"/><circle cx="8" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="11.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.8" cy="9" r="1.9" fill="currentColor" fill-opacity=".3"/></g>"##,
+};
+pub static MARK: rune::Icon = rune::Icon {
+    name: "mark",
+    view: 64.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="currentColor" d="M9 51 32 10L55 51H42L32 32 22 51Z"/></g>"##,
+};
+pub static CLOCK: rune::Icon = rune::Icon {
+    name: "clock",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g>"##,
+};
+pub static PULSE: rune::Icon = rune::Icon {
+    name: "pulse",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></g>"##,
+};
+pub static KEY: rune::Icon = rune::Icon {
+    name: "key",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M15 8l2 2"/></g>"##,
+};
+pub static V_HELMET: rune::Icon = rune::Icon {
+    name: "v-helmet",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path fill="currentColor" fill-opacity=".3" stroke="none" d="M11 11.2h9.6v3.9a2 2 0 0 1-2 2H11z"/><path d="M3.4 14.6A8.6 8.6 0 0 1 20.6 12v3.1a2 2 0 0 1-2 2H11L7.6 20v-2.9H5.4a2 2 0 0 1-2-2z"/><path d="M11 11.2h9.5"/></g>"##,
+};
+pub static PLAY: rune::Icon = rune::Icon {
+    name: "play",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z"/></g>"##,
+};
+pub static SEARCH: rune::Icon = rune::Icon {
+    name: "search",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></g>"##,
+};
+pub static WARN: rune::Icon = rune::Icon {
+    name: "warn",
+    view: 24.0,
+    body: r##"<g width="20" height="20" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 15.5H3z"/><path d="M12 10v4M12 17h.01"/></g>"##,
+};
 pub fn shared_icon(name: &str) -> &'static rune::Icon {
     match name {
         "v-home" => &V_HOME,
@@ -55,6 +105,16 @@ pub fn shared_icon(name: &str) -> &'static rune::Icon {
         "v-strategy" => &V_STRATEGY,
         "v-engineer" => &V_ENGINEER,
         "v-sliders" => &V_SLIDERS,
+        "v-side" => &V_SIDE,
+        "v-palette" => &V_PALETTE,
+        "mark" => &MARK,
+        "clock" => &CLOCK,
+        "pulse" => &PULSE,
+        "key" => &KEY,
+        "v-helmet" => &V_HELMET,
+        "play" => &PLAY,
+        "search" => &SEARCH,
+        "warn" => &WARN,
         _ => unreachable!("generated navigation icon"),
     }
 }

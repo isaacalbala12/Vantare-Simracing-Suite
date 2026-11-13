@@ -64,6 +64,24 @@ impl Theme {
         self.0[name]
     }
 }
+// The shared TTF's internal family is not the CSS alias used by Electron.
+pub const DISPLAY_FAMILY: rune::Family = rune::Family::Named("Rajdhani SemiBold");
+pub fn display(theme: &Theme, value: impl Into<String>, size: f32) -> El {
+    label(theme, value).font(TextStyle::new(size, 600.0).family(DISPLAY_FAMILY))
+}
+pub fn caption(theme: &Theme, value: &str) -> El {
+    // Match Electron's TrackedCaps: separately laid out glyphs with physical-pixel spacing.
+    let mut line = rune::row().gap(1.6).label(value).role("heading");
+    for letter in value.to_uppercase().chars() {
+        line = line.child(display(theme, letter.to_string(), 15.0).a11y_hidden());
+    }
+    line
+}
+pub fn symbol(theme: &Theme, name: &str, size: f32) -> El {
+    rune::icon(crate::icons::shared_icon(name), size)
+        .color(theme.color("text-2"))
+        .a11y_hidden()
+}
 pub fn label(theme: &Theme, value: impl Into<String>) -> El {
     text(value)
         .font(TextStyle::new(14.0, 400.0))
@@ -99,19 +117,48 @@ pub fn button<S: 'static>(
     value: &str,
     action: impl Fn(&mut S) + 'static,
 ) -> El {
+    button_content(
+        theme,
+        key,
+        value,
+        label(theme, value).font(TextStyle::new(14.0, 600.0)),
+        action,
+    )
+}
+pub fn button_content<S: 'static>(
+    theme: &Theme,
+    key: &str,
+    value: &str,
+    content: El,
+    action: impl Fn(&mut S) + 'static,
+) -> El {
     pressable(
-        col()
+        rune::row()
+            .center()
             .key(key)
             .padding(10.0)
-            .radius(8.0)
+            .min_h(36.0)
+            .radius(6.0)
             .fill(theme.color("active"))
             .label(value)
             .role("button")
             .focusable(true)
             .focus_ring(2.0, 2.0, theme.color("focus-ring"))
-            .child(label(theme, value)),
+            .child(content),
         action,
     )
+}
+pub fn icon_button<S: 'static>(
+    theme: &Theme,
+    key: &str,
+    value: &str,
+    name: &str,
+    action: impl Fn(&mut S) + 'static,
+) -> El {
+    button_content(theme, key, value, symbol(theme, name, 18.0), action)
+        .size(36.0, 36.0)
+        .padding(8.0)
+        .fill(theme.color("bg-sidebar"))
 }
 pub fn menu_item<S: 'static>(
     theme: &Theme,
@@ -125,7 +172,9 @@ pub fn menu_item<S: 'static>(
     let mut item = rune::row()
         .key(key)
         .w_full()
-        .padding(10.0)
+        .h(44.0)
+        .center_y()
+        .padding(12.0)
         .gap(12.0)
         .radius(8.0)
         .fill(theme.color(if selected { "active" } else { "bg-sidebar" }))
@@ -143,6 +192,49 @@ pub fn menu_item<S: 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn display_titles_use_the_shared_rajdhani_face_instead_of_falling_back() {
+        let mut fonts = rune::text::TextSystem::new(FONTS, ("Inter", "Inter"));
+        let layout = fonts.layout_rich(
+            "INICIO 0123",
+            &[],
+            TextStyle::new(15.0, 600.0).family(DISPLAY_FAMILY),
+            1.0,
+            None,
+        );
+        let runs: Vec<_> = layout.lines().flat_map(|l| l.runs()).collect();
+        assert!(!runs.is_empty());
+        for run in runs {
+            assert_eq!(run.font().data.as_ref(), FONTS[5]);
+        }
+    }
+    #[test]
+    fn navigation_and_shell_icons_rasterize_without_a_graphics_device() {
+        let mut fonts = rune::text::TextSystem::new(FONTS, ("Inter", "Inter"));
+        for name in crate::catalog::catalog()["navigation"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["icon"].as_str().unwrap())
+            .chain([
+                "mark",
+                "v-side",
+                "v-palette",
+                "clock",
+                "pulse",
+                "key",
+                "play",
+            ])
+        {
+            assert!(
+                fonts
+                    .icon_quad(crate::icons::shared_icon(name), 24, [0.0, 0.0])
+                    .is_some(),
+                "{name}"
+            );
+        }
+        assert!(fonts.atlas.data.iter().any(|&pixel| pixel > 0));
+    }
     #[test]
     fn all_eighteen_appearances_resolve_every_color_used_by_components() {
         let tokens: serde_json::Value = serde_json::from_str(TOKENS).unwrap();

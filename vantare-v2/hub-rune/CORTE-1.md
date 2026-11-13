@@ -1,15 +1,16 @@
 # Corte 1 · Hub Rune · VANTA-143 / #2256
 
 Estado: **pendiente de aceptación**, no equivale a entregar ni elegir Rune.
-El orquestador autorizó abrir los cinco PRs sin esperar al Mac, que duerme.
+Isaac ha probado la ventana visible en el Mac. Funcional: **PASS manual de Isaac**.
+Aspecto frente a Electron: **FALLO**, no aprobado; PR prioritario de fidelidad del marco e Inicio.
 No se ejecutó el binario, una ventana ni una opción gráfica en el servidor.
 
 | Requisito ADR 0108 §4 | Evidencia automática disponible | Pendiente para aceptar |
 | --- | --- | --- |
 | Windows 10 22H2 y 11, 100/125/150 % | Build del ejecutable y Clippy Windows PASS; test Runtime PASS a escalas 1/1,25/1,5, sin dispositivo | Ejecutar la ventana real en ambos Windows y las tres escalas; CI windows-latest no certifica esos sistemas |
 | Teclado español, acentos y AltGr en campos | Catálogo compartido y casos Unicode de texto dinámico | Entrada física/IME/AltGr en un campo real; el marco no incorpora formularios y no se da este punto por probado |
-| Todo por teclado y controles con nombre | Test Tab/Enter/Espacio PASS, controles enfocables con nombre y árbol AccessKit, sin gráfica | Recorrido completo real y lector de pantalla Windows/Mac; no basta el árbol simulado |
-| Aspecto fiel aprobado por Isaac | Nueve temas claro/oscuro, fuentes/textos/iconos compartidos; fixtures de Electron | Capturas headless del Mac para cada paso y comparación lado a lado; ventana visible y visto bueno de Isaac |
+| Todo por teclado y controles con nombre | Test Tab/Enter/Espacio PASS, controles enfocables con nombre y árbol AccessKit, sin gráfica | **PASS manual de Isaac (Mac)**: Tab, Enter, Espacio, tema, Inicio/Roadmap y cierre con X; funciona «súper bien». Lector de pantalla Windows/Mac pendiente |
+| Aspecto fiel aprobado por Isaac | Nueve temas claro/oscuro, fuentes/textos/iconos compartidos; fixtures de Electron | **FALLO visual de Isaac**: raíl cortado, cabecera incompleta, aviso suelto, estados planos, ISO crudo, tipografía/pesos e iconos. Corrección y nuevas comparativas pendientes de aprobar |
 | Media hora de uso normal sin bloqueos | Tests de protocolo, cierre, mensajes acotados, estados y Roadmap sin ventana | Sesión real continua de 30 minutos y registro de cierres/bloqueos; no se sustituye por tiempo virtual |
 
 Clippy local final usa un solo slot, dos jobs, target persistente en D: y
@@ -84,8 +85,9 @@ Tras autorización del orquestador, ejecutar en el Mac:
 `python3 hub-rune/scripts/corte1.py --execute --mac-cleared --checkout <raíz-git> --binary ~/target-isa-2256-hub-rune/debug/vantare-hub-ui-rune --sha <HEAD> --output <directorio-nuevo>`.
 No compila: necesita un debug de ese checkout. Falla con otro Cargo/rustc activo,
 menos de 12 GiB libres, SHA/checkout incorrectos, tamaño PNG o proceso fallido.
-Secuencial, 181 frames por celda; conserva último PNG, log, hashes y manifiesto.
-Solo retira los frames de su directorio temporal propio, nunca targets ajenos.
+Secuencial: --snap con --frames 181 avanza tres segundos virtuales y exporta
+solo el PNG final, sin --out ni cientos de imágenes intermedias. Conserva log,
+hashes y manifiesto. Nunca retira targets ajenos.
 
 Comparar con los PNG Electron originales del mismo tema/escena/escala/tamaño.
 No estirar referencias 100 % para simular 125/150 %. Una referencia ausente o
@@ -94,3 +96,17 @@ se juzga en sidebar/cabecera, no como aprobación del contenido central.
 PNG offscreen propio no requiere permiso de grabación. Ventana real y lector
 necesitan sesión gráfica iniciada/desbloqueada; solo una captura del escritorio
 con APIs del sistema puede pedir permiso adicional. No certifica Windows 10/11.
+
+
+## Prueba visible de Isaac · 2026-11-13
+
+Ventana «Vantare · Hub», anfitrión de escena, sin cuentas ni datos reales:
+Tab, Enter, Espacio, claro/oscuro, Inicio/Roadmap y X: **PASS manual** comunicado
+por Isaac («súper bien»). No se solicita Automatización ni control de System Events.
+X certifica el cierre observado de la ventana; no se atribuye una medición del
+proceso ni 30 minutos de uso. --snap no requiere Automatización.
+
+**FALLO visual** de Isaac: la aceptación del aspecto sigue abierta incluso tras
+los arreglos. Captura original conservada en el adjunto import-claudeagent-db7a1881...
+Las comparativas del PR distinguen antes/después, Electron y Rune, tema, escala,
+SHA y tamaño físico; no se estiran referencias para inventar escalas.

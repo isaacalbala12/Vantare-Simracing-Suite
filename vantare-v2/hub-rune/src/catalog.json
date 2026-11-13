@@ -566,6 +566,13 @@
         "barcelona"
       ]
     ],
+    "sources": {
+      "launcher": "Launcher",
+      "beta": "Beta",
+      "report": "Informes",
+      "system": "Sistema",
+      "updater": "Actualización"
+    },
     "widgets": {
       "standings": "Standings",
       "radar": "Radar",

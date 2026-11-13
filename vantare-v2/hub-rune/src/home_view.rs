@@ -2,10 +2,10 @@
 use crate::{
     State,
     catalog::{catalog, text},
-    design::{Theme, button, label, surface},
+    design::{Theme, button, button_content, caption, display, label, surface, symbol},
     home_assets,
 };
-use rune::{Cx, El, Family, Image, ImageCache, SurfaceFit, TextStyle, col, el, row};
+use rune::{Cx, El, Image, ImageCache, SurfaceFit, TextStyle, col, el, row};
 use std::collections::BTreeMap;
 use vantare_hub_host::home::{HomeLayoutView, HomeView, LaunchProgress};
 
@@ -34,6 +34,16 @@ impl Assets {
                 )
             })
             .collect();
+        self.images.insert(
+            "brand".into(),
+            self.cache.svg(
+                include_str!("../../hub-web/src/renderer/assets/brand/wordmark.svg")
+                    .replace("#FFFFFF", &resolve_svg("var(--text-1)", theme))
+                    .into_bytes(),
+                106.66,
+                2.0,
+            ),
+        );
         self.images.insert(
             "background".into(),
             self.cache.svg(
@@ -106,13 +116,64 @@ fn resolve_svg(svg: &str, theme: &Theme) -> String {
     output.push_str(rest);
     output
 }
+pub fn brand(state: &State) -> El {
+    picture(state, "brand", 106.66, 14.0, false)
+        .label(text("shell.brand"))
+        .role("img")
+}
 fn heading(theme: &Theme, value: &str) -> El {
+    caption(theme, value)
+}
+fn small(theme: &Theme, value: impl Into<String>) -> El {
     label(theme, value)
-        .font(TextStyle {
-            family: Family::Named("Rajdhani"),
-            ..TextStyle::new(15.0, 600.0)
-        })
-        .role("heading")
+        .font(TextStyle::new(12.0, 400.0))
+        .color(theme.color("text-3"))
+}
+fn badge(theme: &Theme, value: &str) -> El {
+    row()
+        .padding(6.0)
+        .radius(4.0)
+        .border(1.0, theme.color("line-1"))
+        .child(label(theme, value).font(TextStyle::new(12.0, 500.0)))
+}
+fn status_row(theme: &Theme, key: &str, name: &str, title: &str, subtitle: &str, tag: &str) -> El {
+    row()
+        .key(key)
+        .w_full()
+        .min_h(58.0)
+        .center_y()
+        .gap(10.0)
+        .border(1.0, theme.color("line-1"))
+        .child(
+            row()
+                .size(32.0, 32.0)
+                .center()
+                .radius(5.0)
+                .fill(theme.color("surface-2"))
+                .child(symbol(theme, name, 18.0)),
+        )
+        .child(
+            col()
+                .min_w(0.0)
+                .grow(1.0)
+                .gap(4.0)
+                .child(label(theme, title).font(TextStyle::new(14.0, 650.0)))
+                .child(small(theme, subtitle)),
+        )
+        .child(badge(theme, tag))
+}
+fn parsed_date(value: &str) -> Option<chrono::DateTime<chrono::FixedOffset>> {
+    chrono::DateTime::parse_from_rfc3339(value).ok()
+}
+fn activity_date(value: &str) -> String {
+    parsed_date(value).map_or_else(
+        || text("home.noDate").to_owned(),
+        |date| {
+            date.with_timezone(&chrono::Local)
+                .format("%d/%m · %H:%M")
+                .to_string()
+        },
+    )
 }
 fn message(theme: &Theme, value: &str) -> El {
     label(theme, value).role("status")
@@ -253,7 +314,19 @@ fn launch_button(state: &State, favorite: bool) -> El {
     } else {
         state.home.can_launch(&state.core, favorite)
     };
-    button(
+    let foreground = theme.color(if allowed { "text-on-accent" } else { "text-3" });
+    let mut content = row()
+        .gap(10.0)
+        .center_y()
+        .child(symbol(theme, "play", 12.0).color(foreground));
+    if favorite {
+        content = content.child(
+            label(theme, &title)
+                .font(TextStyle::new(14.0, 600.0))
+                .color(foreground),
+        );
+    }
+    button_content(
         theme,
         if favorite {
             "home-launch-favorite"
@@ -261,6 +334,7 @@ fn launch_button(state: &State, favorite: bool) -> El {
             "home-launch-selected"
         },
         &title,
+        content,
         move |s: &mut State| {
             if empty {
                 if s.core.access.verified && !s.core.access.blocked {
@@ -273,6 +347,7 @@ fn launch_button(state: &State, favorite: bool) -> El {
     )
     .disabled(!allowed)
     .fill(theme.color(if allowed { "accent-fill" } else { "surface-2" }))
+    .border(1.0, theme.color("accent-bright"))
 }
 pub fn view(state: &State, cx: &Cx<State>) -> El {
     let theme = &state.theme;
@@ -325,7 +400,14 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         .center_y()
         .radius(10.0)
         .fill(theme.color("surface-1"))
-        .child(label(theme, text("home.profile")).grow(1.0))
+        .child(
+            row()
+                .grow(1.0)
+                .gap(10.0)
+                .center_y()
+                .child(symbol(theme, "search", 16.0))
+                .child(label(theme, text("home.profile")).color(theme.color("text-3"))),
+        )
         .child(
             button(theme, "home-select", selected, |s: &mut State| {
                 s.home.choosing = !s.home.choosing
@@ -386,10 +468,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         .border(1.0, theme.color("hero-ring"))
         .child(circuit)
         .child(message(theme, sim))
-        .child(label(theme, text("home.welcome")).font(TextStyle {
-            family: Family::Named("Rajdhani"),
-            ..TextStyle::new(46.0, 600.0)
-        }))
+        .child(display(theme, text("home.welcome"), 46.0))
         .child(label(
             theme,
             text(if empty {
@@ -423,8 +502,16 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         } else {
             overlay = overlay
                 .child(preview(state, value, cx))
-                .child(heading(theme, text("home.layout")))
-                .child(label(theme, text("home.preview")))
+                .child(
+                    row()
+                        .center_y()
+                        .child(
+                            label(theme, text("home.layout"))
+                                .font(TextStyle::new(22.0, 650.0))
+                                .grow(1.0),
+                        )
+                        .child(badge(theme, text("home.preview"))),
+                )
                 .child(message(
                     theme,
                     text(if connected {
@@ -485,7 +572,14 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             .iter()
             .filter(|p| p.last_launched_at.is_some())
             .collect();
-        profiles.sort_by_cached_key(|p| std::cmp::Reverse(p.last_launched_at.clone()));
+        profiles.sort_by_cached_key(|p| {
+            std::cmp::Reverse(
+                p.last_launched_at
+                    .as_deref()
+                    .and_then(parsed_date)
+                    .map_or(0, |d| d.timestamp_millis()),
+            )
+        });
         if profiles.is_empty() {
             activity = activity
                 .child(message(theme, text("home.noActivity")))
@@ -493,22 +587,36 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         }
         for profile in profiles.into_iter().take(8) {
             activity = activity.child(
-                col()
+                row()
                     .key(format!("home-activity-{}", profile.id))
-                    .gap(4.0)
-                    .child(label(
+                    .w_full()
+                    .min_h(58.0)
+                    .gap(10.0)
+                    .center_y()
+                    .child(symbol(theme, "clock", 18.0))
+                    .child(
+                        col()
+                            .grow(1.0)
+                            .min_w(0.0)
+                            .gap(4.0)
+                            .child(
+                                label(
+                                    theme,
+                                    catalog()["home"]["lastLaunch"]
+                                        .as_str()
+                                        .unwrap()
+                                        .replace("__VANTARE_NAME__", &profile.name),
+                                )
+                                .font(TextStyle::new(14.0, 650.0)),
+                            )
+                            .child(small(
+                                theme,
+                                activity_date(profile.last_launched_at.as_deref().unwrap_or("")),
+                            )),
+                    )
+                    .child(badge(
                         theme,
-                        catalog()["home"]["lastLaunch"]
-                            .as_str()
-                            .unwrap()
-                            .replace("__VANTARE_NAME__", &profile.name),
-                    ))
-                    .child(label(
-                        theme,
-                        profile
-                            .last_launched_at
-                            .as_deref()
-                            .unwrap_or(text("home.noDate")),
+                        catalog()["home"]["sources"]["launcher"].as_str().unwrap(),
                     )),
             );
         }
@@ -517,46 +625,91 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         activity = activity.child(message(theme, text("home.loading")));
     }
     page = page.child(row().gap(12.0).child(overlay).child(activity));
-    let mut rail = col()
-        .key("home-rail")
-        .w(300.0)
-        .h_full()
-        .padding(16.0)
-        .gap(12.0)
-        .scroll(rune::ScrollSpec {
-            stick_bottom: false,
-        })
-        .fill(theme.color("bg-sidebar"))
-        .child(heading(theme, text("home.status")));
+    let mut status = col()
+        .key("home-status-section")
+        .w_full()
+        .min_h(298.0)
+        .gap(8.0)
+        .child(
+            row()
+                .gap(10.0)
+                .center_y()
+                .child(symbol(theme, "pulse", 16.0))
+                .child(heading(theme, text("home.status"))),
+        );
     if let Some(value) = data {
         let favorite = value
             .profiles
             .iter()
             .find(|p| Some(&p.id) == value.favorite.as_ref());
-        rail = rail
-            .child(label(theme, text("home.lmu")))
-            .child(message(theme, sim))
-            .child(label(theme, text("home.favorite")))
-            .child(label(
+        status = status
+            .child(status_row(
                 theme,
-                favorite.map_or(text("home.noFavorite"), |p| &p.name),
+                "home-status-sim",
+                "v-helmet",
+                text("home.lmu"),
+                sim,
+                text(if connected {
+                    "home.connectedBadge"
+                } else {
+                    "home.waitingBadge"
+                }),
             ))
-            .child(label(theme, text("home.betaTitle")))
-            .child(label(theme, &value.version));
-        if let LaunchProgress::Running { text: progress } = &value.launch {
-            rail = rail
-                .child(message(theme, text("home.launching")))
-                .child(message(theme, progress));
-        }
+            .child(status_row(
+                theme,
+                "home-status-profile",
+                "v-launch",
+                favorite.map_or(text("home.noProfile"), |p| &p.name),
+                text("home.favorite"),
+                text(if favorite.is_some() {
+                    "home.saved"
+                } else {
+                    "home.noProfile"
+                }),
+            ));
         if state.core.access.verified && !state.core.access.blocked && state.core.access.tester {
-            rail = rail
-                .child(label(theme, text("home.testing")))
-                .child(label(theme, text("home.testerAccess")));
+            status = status.child(status_row(
+                theme,
+                "home-status-testing",
+                "v-testing",
+                text("home.testing"),
+                text("home.testerAccess"),
+                text("home.tester"),
+            ));
+        }
+        status = status.child(status_row(
+            theme,
+            "home-status-version",
+            "key",
+            text("home.betaTitle"),
+            &value.version,
+            text("home.beta"),
+        ));
+        if let LaunchProgress::Running { text: progress } = &value.launch {
+            status = status.child(message(theme, progress));
         }
     } else {
-        rail = rail.child(message(theme, text("home.loading")));
+        status = status.child(message(theme, text("home.loading")));
     }
-    rail = rail.child(heading(theme, text("home.templates")));
+    let mut rail = col()
+        .key("home-rail")
+        .w(320.0)
+        .h_full()
+        .padding(16.0)
+        .gap(18.0)
+        .scroll(rune::ScrollSpec {
+            stick_bottom: false,
+        })
+        .fill(theme.color("bg-sidebar"))
+        .border(1.0, theme.color("line-1"))
+        .child(status)
+        .child(
+            row()
+                .gap(10.0)
+                .center_y()
+                .child(symbol(theme, "v-studio", 16.0))
+                .child(heading(theme, text("home.templates"))),
+        );
     for (line, kinds) in [["standings", "relative"], ["fuel-strategy", "delta"]]
         .into_iter()
         .enumerate()
@@ -585,7 +738,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         }
         rail = rail.child(pair);
     }
-    let rail_width = (window_width * 0.22).clamp(300.0, 400.0);
+    let rail_width = (window_width * 0.22).clamp(320.0, 400.0);
     rail = rail.w(rail_width);
     row()
         .key("home-screen")
@@ -608,6 +761,25 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn activity_dates_convert_the_offset_and_reject_invalid_values() {
+        let a = parsed_date("2026-10-05T18:02:00+02:00").unwrap();
+        let b = parsed_date("2026-10-05T16:02:00Z").unwrap();
+        assert_eq!(a.timestamp_millis(), b.timestamp_millis());
+        assert_eq!(
+            activity_date("2026-10-05T18:02:00+02:00"),
+            activity_date("2026-10-05T16:02:00Z")
+        );
+        assert_eq!(
+            a.with_timezone(&chrono::Utc)
+                .format("%d/%m · %H:%M")
+                .to_string(),
+            "05/10 · 16:02"
+        );
+        for invalid in ["", "not a date", "2026-02-30T10:00:00Z"] {
+            assert_eq!(activity_date(invalid), text("home.noDate"));
+        }
+    }
     #[test]
     fn shared_previews_decode_on_the_cpu_and_keep_authored_srgb_colors() {
         let theme = Theme::load("vantare", "dark").unwrap();
@@ -632,7 +804,7 @@ mod tests {
             home_assets::WIDGETS.len(),
             vantare_hub_host::home::HomeWidgetKind::ALL.len()
         );
-        assert_eq!(assets.images.len(), home_assets::WIDGETS.len() + 2);
+        assert_eq!(assets.images.len(), home_assets::WIDGETS.len() + 3);
         for (kind, image) in assets.images {
             image
                 .wait()

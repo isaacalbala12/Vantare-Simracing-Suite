@@ -41,12 +41,14 @@ Windows no es obligatorio y los cambios solo en hub-rune no lanzan gates nativos
 Solo en **debug + macOS** se aceptan `--snap`, `--frames`, `--scene`, `--size`,
 `--scale`, `--out` y `--theme` (con valor separado o `=`). En Windows y release
 se rechazan; `--video` y `--tree` se rechazan en todas las plataformas.
-Las capturas y la ventana visible siguen pendientes del Mac dormido.
+Las capturas --snap son offscreen: Rune no crea una ventana ni activa la aplicación.
+El guion siempre pasa --snap; --scene solo abre una ventana y no debe usarse para capturar.
+Isaac completó el recorrido visible: PASS manual. Aspecto: FALLO; véase CORTE-1.
 
 Al pulsar X se envía `WindowClose` (id 0, como Electron); el proceso espera
 `CloseRequested` y escribe `CloseAnswer` antes de salir. En este commit Rune
 oculta la ventana antes de llamar a `on_close`: `keep_running` mantiene el proceso
-para completar el protocolo. Queda pendiente comprobar ese cierre nativo en Mac.
+para completar el protocolo. Isaac comprobó el cierre visible con X: PASS manual; la medición del proceso sigue pendiente.
 El plazo de cierre es **10 s**, con el reloj y la planificación de Rune: supera
 los 5 s de report-close y los 2 s del cierre forzado Live/ControlEof. Si vence,
 falla el envío o el enlace falla, el cliente sale.
@@ -110,8 +112,8 @@ Tablero, Circuito y Temporada se calculan desde la misma publicación; `later`
 se agrupa en Planeado. El estado del simulador y el aviso de núcleo apagado se
 actualizan desde el protocolo del anfitrión.
 
-Las capturas, el smoke gráfico Windows y la ventana visible se han aplazado
-por orden del orquestador. [Corte 1](CORTE-1.md) separa cobertura automática y
+El smoke gráfico Windows sigue pendiente. El teclado, cambio de pantalla/tema
+y cierre visible en Mac tienen PASS manual de Isaac; el aspecto fue rechazado. [Corte 1](CORTE-1.md) separa cobertura automática y
 aceptación real pendiente. No se afirma fidelidad visual o soporte Windows 10
 probado a partir de mocks o de una compilación.
 
@@ -148,3 +150,23 @@ Escenas debug: inicio-base, inicio-vacio, inicio-cargando, inicio-error,
 inicio-sin-diseno e inicio-lanzando. Capturas headless y ventana visible del Mac,
 comparación con las referencias Electron y aceptación del corte 1 siguen pendientes.
 El servidor permanece sin ejecutar la aplicación.
+
+
+## Fidelidad del marco e Inicio
+
+El PR prioritario corrige el raíl de 76/272 px, cabecera de 52 px, iconos,
+aviso de núcleo integrado y estados con icono/título/subtítulo/etiqueta.
+El TTF compartido de Rajdhani tiene la familia interna `Rajdhani SemiBold`;
+Electron usa un alias CSS y Rune debe pedir el nombre interno para evitar Inter.
+Los títulos pequeños usan mayúsculas espaciadas como TrackedCaps de Electron.
+
+Las fechas de actividad se convierten desde RFC3339 a la zona local y se muestran
+DD/MM · HH:MM como Electron. Se reutiliza chrono 0.4.45 ya aprobado, presente en
+hub-host y en Cargo.lock, con las mismas funciones; no entra ningún paquete nuevo.
+Los valores inválidos conservan el texto compartido sin fecha.
+
+El orquestador detuvo las capturas de Electron porque abrían ventanas. No volver
+a ejecutar el guion antiguo: la referencia debe arrancar con activación prohibida,
+ventana oculta y foco deshabilitado antes de ready-to-show, o usar el banco existente.
+Las capturas Rune emplean --snap offscreen, sin Automatización ni System Events.
+El corte 1 mantiene FALLO visual hasta la aprobación de Isaac, aun con CI verde.

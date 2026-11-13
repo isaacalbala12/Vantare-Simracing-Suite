@@ -2243,3 +2243,25 @@ Windows. Adaptador de escena capture solo debug+macOS para pantalla/tema/barra;
 helper puro comprobable sin GPU. No se activó nada en el Mac durante la espera.
 Tras el aviso se permite compilar y capturar en el target propio. Capturas/tabla
 no equivalen a aceptar fidelidad ni requisitos exclusivos de Windows.
+
+
+### VANTA-143 · fidelidad visual del marco e Inicio · 2026-11-13
+
+#2287, head 5e1c70241ccf57378041dc2dcceabacff2bc9447: CI verde verificada
+(Rune, web, calidad y gates). Isaac probó la ventana en Mac: Tab/Enter/Espacio,
+claro/oscuro, Inicio/Roadmap y X, PASS manual («súper bien»). Aspecto FALLO:
+expansión cortada, cabecera incompleta, aviso suelto, estados planos, ISO crudo,
+tipografía/pesos e iconos. CORTE-1 registra ambos sin aceptar el corte completo.
+
+PR prioritario separado sobre Inicio: raíl y cabecera, estados y jerarquía,
+familia interna Rajdhani SemiBold, botones con peso y contraste homogéneos,
+fechas locales como Electron. Reutiliza chrono ya aprobado en el grafo, sin
+paquetes nuevos; ninguna modificación de hub-host/overlays/distribución.
+Gates propios en cola (-j2, un slot, targets D:); nuevos resultados pendientes.
+
+Capturas del Mac detenidas a petición del orquestador: Electron abría ventanas
+visibles. Se han terminado el guion y todos sus hijos; no se usará Automatización.
+Ruta Rune --snap verificada en fuente fijada: offscreen, sin window::run ni foco.
+Guion viejo de referencia Electron prohibido hasta arrancar oculto y sin activación.
+66 PNG Rune anteriores se conservan como antes, sin afirmar fidelidad aprobada.
+Comparativas después y revisión de Isaac pendientes; no se avanza a más pantallas.

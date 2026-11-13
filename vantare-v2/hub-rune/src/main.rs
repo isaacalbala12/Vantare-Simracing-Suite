@@ -13,7 +13,7 @@ mod pipe;
 mod roadmap;
 mod roadmap_view;
 use catalog::{catalog, text};
-use design::{Theme, button, label, menu_item, surface};
+use design::{Theme, caption, icon_button, label, menu_item, surface};
 use rune::{AppSpec, Cx, El, col, icon, row};
 struct State {
     theme: Theme,
@@ -117,36 +117,26 @@ fn set_core(state: &mut State, value: vantare_hub_host::protocol::CoreStatus) {
 }
 fn view(state: &State, cx: &mut Cx<State>) -> El {
     let theme = &state.theme;
+    let mut brand = row().h(40.0).center_y().gap(12.0);
+    if state.collapsed {
+        brand = brand.child(design::symbol(theme, "mark", 24.0).color(theme.color("accent")));
+    } else {
+        brand = brand.child(home_view::brand(state));
+    }
     let mut sidebar = col()
         .key("sidebar")
-        .w(if state.collapsed { 76.0 } else { 248.0 })
+        .w(if state.collapsed { 76.0 } else { 272.0 })
         .h_full()
         .scroll(rune::ScrollSpec {
             stick_bottom: false,
         })
-        .padding(12.0)
-        .gap(8.0)
+        .padding(14.0)
+        .gap(4.0)
         .fill(theme.color("bg-sidebar"))
+        .border(1.0, theme.color("line-1"))
         .role("navigation")
         .label(text("settings.shell.sidebar"))
-        .child(label(
-            theme,
-            if state.collapsed {
-                "V"
-            } else {
-                text("shell.brand")
-            },
-        ))
-        .child(button(
-            theme,
-            "sidebar-toggle",
-            if state.collapsed {
-                text("shell.sidebarExpand")
-            } else {
-                text("shell.sidebarCollapse")
-            },
-            |s: &mut State| s.collapsed = !s.collapsed,
-        ));
+        .child(brand);
     for entry in catalog()["navigation"].as_array().unwrap() {
         let id = entry["id"].as_str().unwrap();
         if !section_allowed(state, id) {
@@ -168,36 +158,70 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
         );
         sidebar = sidebar.child(item);
     }
+    sidebar = sidebar.child(rune::el().grow(1.0)).child(icon_button(
+        theme,
+        "sidebar-toggle",
+        text(if state.collapsed {
+            "shell.sidebarExpand"
+        } else {
+            "shell.sidebarCollapse"
+        }),
+        "v-side",
+        |s: &mut State| s.collapsed = !s.collapsed,
+    ));
     let header = row()
         .key("header")
         .w_full()
-        .padding(16.0)
-        .gap(24.0)
-        .child(label(theme, title(state)).grow(1.0))
+        .h(52.0)
+        .padding(12.0)
+        .gap(20.0)
+        .center_y()
+        .fill(theme.color("bg-sidebar"))
+        .border(1.0, theme.color("line-1"))
+        .child(caption(theme, title(state)).grow(1.0))
         .child(
-            label(
-                theme,
-                text(if state.core.live {
-                    "shell.simulatorConnected"
-                } else {
-                    "shell.waitingSimulator"
-                }),
-            )
-            .key("sim-status")
-            .role("status"),
+            row()
+                .padding(6.0)
+                .radius(4.0)
+                .border(1.0, theme.color("line-1"))
+                .child(
+                    label(
+                        theme,
+                        text(if state.core.live {
+                            "shell.simulatorConnected"
+                        } else {
+                            "shell.waitingSimulator"
+                        }),
+                    )
+                    .font(rune::TextStyle::new(12.0, 500.0)),
+                )
+                .key("sim-status")
+                .role("status"),
         )
-        .child(button(
+        .child(icon_button(
             theme,
             "theme-toggle",
             text("settings.shell.toggleTheme"),
+            "v-palette",
             toggle,
         ));
-    let mut body = col().grow(1.0).min_h(0.0).h_full().child(header);
+    let mut body = col().grow(1.0).min_w(0.0).min_h(0.0).h_full().child(header);
     if state.core.services != vantare_hub_host::protocol::LinkState::Connected {
         body = body.child(
-            label(theme, text("es.coreUnavailable"))
+            row()
                 .key("core-warning")
-                .role("status"),
+                .role("status")
+                .w_full()
+                .padding(10.0)
+                .gap(8.0)
+                .center_y()
+                .fill(theme.color("accent-tint"))
+                .border(1.0, theme.color("line-1"))
+                .child(design::symbol(theme, "warn", 16.0))
+                .child(
+                    label(theme, text("es.coreUnavailable"))
+                        .font(rune::TextStyle::new(12.0, 500.0)),
+                ),
         );
     }
     let content = if state.section == "roadmap" {
@@ -501,6 +525,42 @@ fn main() -> std::process::ExitCode {
 mod tests {
     use super::*;
     use rune::{Env, Runtime};
+    #[test]
+    fn collapsed_rail_has_no_clipped_text_toggle_and_header_stays_above_content() {
+        for scale in [1.0, 1.25, 1.5] {
+            let mut state = init();
+            state.collapsed = true;
+            let fonts = rune::text::TextSystem::new(design::FONTS, ("Inter", "Inter"));
+            let mut rt =
+                Runtime::with_text(state, view, (1440.0, 900.0), Env::new(true, scale), fonts);
+            for _ in 0..4 {
+                rt.frame(0.0);
+            }
+            let elements = rt.elements();
+            let toggle = elements
+                .iter()
+                .find(|e| e.key.as_deref() == Some("sidebar-toggle"))
+                .unwrap();
+            assert_eq!(toggle.label.as_deref(), Some(text("shell.sidebarExpand")));
+            assert!(toggle.rect[2] <= 48.0);
+            assert!(
+                !elements
+                    .iter()
+                    .any(|e| e.text.as_deref() == Some(text("shell.sidebarExpand")))
+            );
+            let header = elements
+                .iter()
+                .find(|e| e.key.as_deref() == Some("header"))
+                .unwrap();
+            assert!((header.rect[3] - 52.0).abs() < 0.1);
+            let warning = elements
+                .iter()
+                .find(|e| e.key.as_deref() == Some("core-warning"))
+                .unwrap();
+            assert!(warning.rect[1] >= header.rect[1] + header.rect[3] - 0.1);
+            assert!(warning.fill.a > 0.0);
+        }
+    }
     #[test]
     fn capture_presets_compose_screen_theme_sidebar_without_changing_host_data() {
         for screen in [

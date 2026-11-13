@@ -9,7 +9,6 @@ import platform
 import shutil
 import struct
 import subprocess
-import tempfile
 import time
 
 CASES = [
@@ -88,20 +87,16 @@ def run(args):
         record = dict(cell, source_sha=actual, binary_sha256=digest(binary), platform=platform.platform(), status="failed")
         start = time.monotonic()
         try:
-            # Only this temporary directory is removed, never targets or other workers' evidence.
-            with tempfile.TemporaryDirectory(prefix=".frames-", dir=directory) as temporary:
-                command = [str(binary), "--scene", "capture", "--theme", cell["theme"], "--size", "1440x900",
-                    "--scale", str(cell["scale"]), "--frames", "181", "--out", temporary]
-                record["command"] = command
-                with (directory / "rune.log").open("wb") as log:
-                    subprocess.run(command, env=env, cwd=checkout, stdout=log, stderr=subprocess.STDOUT, timeout=180, check=True)
-                frames = sorted(Path(temporary).glob("frame_*.png"))
-                if len(frames) != 181 or png_size(frames[-1]) != cell["physical"]:
-                    raise ValueError("Frame count or physical dimensions mismatch")
-                record["last_frames_equal"] = digest(frames[-1]) == digest(frames[-2])
-                destination = directory / "rune.png"
-                shutil.copyfile(frames[-1], destination)
-                record.update(status="captured", png_sha256=digest(destination), png=str(destination.relative_to(output)))
+            destination = directory / "rune.png"
+            # Advance virtual time for asynchronous assets; export only the final snap.
+            command = [str(binary), "--scene", "capture", "--theme", cell["theme"], "--size", "1440x900",
+                "--scale", str(cell["scale"]), "--frames", "181", "--snap", str(destination)]
+            record["command"] = command
+            with (directory / "rune.log").open("wb") as log:
+                subprocess.run(command, env=env, cwd=checkout, stdout=log, stderr=subprocess.STDOUT, timeout=180, check=True)
+            if png_size(destination) != cell["physical"]:
+                raise ValueError("Physical dimensions mismatch")
+            record.update(status="captured", png_sha256=digest(destination), png=str(destination.relative_to(output)))
         except (OSError, ValueError, subprocess.SubprocessError) as error:
             record["error"] = str(error)
         record["seconds"] = time.monotonic()-start

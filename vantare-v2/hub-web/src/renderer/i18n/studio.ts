@@ -1,4 +1,23 @@
 export const studioText = {
+  visibilityGroup: "Visibilidad",
+  whenGroup: "¿Cuándo se ve?",
+  placeGroup: "Posición y tamaño",
+  visibleOnTrack: "Visible en pista",
+  visibleOnTrackHelp: "Apagado, sigue en el layout",
+  offTrackHelp: "Garaje, pausa y repeticiones",
+  placeHelp: "Por ahora el overlay aparece donde lo dejaste la última vez.",
+  placeSummary: (width: number, height: number) =>
+    `${width} × ${height} px · se ajustan sobre el juego`,
+  trackVisibilitySummary: (visible: boolean, opacity: number) =>
+    `${visible ? "Visible" : "Oculto"} · ${opacity} %`,
+  sessionsAll: "Práctica, qualy y carrera",
+  trackSeveralSessions: (sessions: string[]) => {
+    const text = sessions.join(" y ");
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  },
+  practiceShort: "Práctica",
+  qualifyingShort: "Qualy",
+  raceShort: "Carrera",
   stepNumbers: ["1", "2", "3"],
   contentSoonBadge: "Próximamente",
   next: "Siguiente: En pista",

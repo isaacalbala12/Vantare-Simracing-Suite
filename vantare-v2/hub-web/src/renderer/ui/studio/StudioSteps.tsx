@@ -7,7 +7,7 @@ import { Button } from "../Button";
 import { Spinner } from "../Data";
 import { Tooltip } from "../Layers";
 import { AppearanceStep } from "./AppearanceStep";
-import { TrackInspector } from "./TrackInspector";
+import { TrackStep } from "./TrackStep";
 import "./studio-steps.css";
 export function StudioSteps({
   item,
@@ -117,7 +117,7 @@ function Steps({
             <AppearanceStep item={item} />
           </Tabs.Panel>
           <Tabs.Panel value="track">
-            <TrackInspector item={item} />
+            <TrackStep item={item} />
           </Tabs.Panel>
         </>
       )}

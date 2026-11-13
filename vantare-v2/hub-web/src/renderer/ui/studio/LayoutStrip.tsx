@@ -2,9 +2,9 @@ import { studioLimits } from "../../../contract/generated/studio";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button, IconButton } from "../Button";
-import { Skeleton } from "../Data";
 import { Tooltip } from "../Layers";
 import type { ReturnTypeOfStudioFocus } from "./StudioFocus";
+import { StudioSaveStatus } from "./StudioStates";
 import {
   VisibilityIcon,
   WidgetPreview,
@@ -18,6 +18,9 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
   return (
     <aside className="v-focus-strip" aria-label={t.layoutLabel}>
       <header className="v-focus-layout-name">
+        <span className="v-focus-layout-icon" aria-hidden="true">
+          <Icon name="v-studio" />
+        </span>
         <div>
           <small>{t.layoutLabel}</small>
           <strong>{t.local}</strong>
@@ -26,26 +29,19 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           <Icon name="info" />
         </IconButton>
       </header>
-      <div className="v-focus-save" role="status" data-failed={!!state.failure}>
-        {state.pending
-          ? t.saving
-          : state.failure
-            ? t.notSaved
-            : view?.state === "protected"
-              ? t.readOnly
-              : view?.state === "ready"
-                ? t.saved
-                : t.loading}
-      </div>
+      <StudioSaveStatus model={model} />
       <div className="v-focus-list-heading">
-        {view?.state === "ready" && (
+        {(view?.state === "ready" ||
+          (view?.state === "protected" && view.instances.length > 0)) && (
           <>
             <span>{t.overlaysCount(view.instances.length)}</span>
-            <span>
-              {t.visibleCount(
-                view.instances.filter((item) => item.visible).length,
-              )}
-            </span>
+            {view.instances.length > 0 && (
+              <span>
+                {t.visibleCount(
+                  view.instances.filter((item) => item.visible).length,
+                )}
+              </span>
+            )}
           </>
         )}
       </div>
@@ -67,9 +63,13 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           ))}
         </fieldset>
       )}
-      <section className="v-studio-list" aria-label={t.title}>
+      <section className="v-studio-list" aria-label={t.title} tabIndex={-1}>
         {!view
-          ? [0, 1, 2, 3].map((n) => <Skeleton key={n} label={t.loading} />)
+          ? state.failure
+            ? null
+            : [0, 1, 2, 3].map((n) => (
+                <span key={n} className="v-skeleton" aria-hidden="true" />
+              ))
           : items.map((item, index) => (
               <div
                 key={item.id}
@@ -141,17 +141,25 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                 </IconButton>
               </div>
             ))}
-        {view && !items.length && (
-          <p>
-            {view.instances.length
-              ? model.filter === "hidden"
-                ? t.noHidden
-                : t.noVisible
-              : view.state === "ready"
-                ? t.emptyList
-                : t.readOnly}
-          </p>
-        )}
+        {view &&
+          !items.length &&
+          (view.state === "ready" || view.instances.length > 0) && (
+            <p
+              className={
+                view.state === "ready" && !view.instances.length
+                  ? "v-focus-empty-list"
+                  : undefined
+              }
+            >
+              {view.instances.length
+                ? model.filter === "hidden"
+                  ? t.noHidden
+                  : t.noVisible
+                : view.state === "ready"
+                  ? t.emptyList
+                  : t.readOnly}
+            </p>
+          )}
       </section>
       <Tooltip
         label={
@@ -166,8 +174,9 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
       >
         <Button
           className="v-focus-add"
-          data-add-widget
+          data-empty={view?.state === "ready" && !view.instances.length}
           aria-label={t.add}
+          data-add-widget
           disabled={
             blocked || (view?.instances.length ?? 0) >= studioLimits.instances
           }

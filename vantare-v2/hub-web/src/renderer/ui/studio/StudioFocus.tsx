@@ -2,16 +2,19 @@ import { useUi } from "../../app/UiState";
 import { studioText as t } from "../../i18n/studio";
 import { useStudioFocus } from "../../screens/studio/focus";
 import { Button } from "../Button";
-import { Callout, Skeleton } from "../Data";
+import { Callout } from "../Data";
 import { ActionNotice } from "./ActionNotice";
 import { CatalogDialog } from "./CatalogDialog";
+import { EmptyStudio } from "./EmptyStudio";
 import { FocusHeader } from "./FocusHeader";
 import { LayoutStrip } from "./LayoutStrip";
 import { RemoveWidget } from "./RemoveWidget";
 import { Stage } from "./Stage";
+import { LoadingStudio, ReadonlyStudio, StudioFeedback } from "./StudioStates";
 import { StudioSteps as StudioInspector } from "./StudioSteps";
 import { widgetName } from "./Widgets";
 import "./focus.css";
+import "./studio-states.css";
 
 export type ReturnTypeOfStudioFocus = ReturnType<typeof useStudioFocus>;
 export function StudioFocus() {
@@ -24,6 +27,7 @@ export function StudioFocus() {
       <div
         className="v-studio-focus-layout"
         data-missing={view?.state === "missing"}
+        data-state={view?.state ?? (state.failure ? "error" : "loading")}
         ref={model.root}
       >
         <RemoveWidget />
@@ -49,54 +53,18 @@ export function StudioFocus() {
                 })
               }
             />
-          ) : (
-            <Skeleton label={t.loading} />
-          )}
-          {state.failure && (
-            <Callout
-              tone="err"
-              title={state.failure.message}
-              actions={
-                <>
-                  {state.canRetry ? (
-                    <Button
-                      aria-disabled={state.pending}
-                      onClick={() => {
-                        if (!state.pending) state.retry();
-                      }}
-                    >
-                      {t.retry}
-                    </Button>
-                  ) : (
-                    <span>{t.reconfirm}</span>
-                  )}
-                  <Button
-                    aria-disabled={state.pending}
-                    onClick={() => {
-                      if (!state.pending) state.discard();
-                    }}
-                  >
-                    {t.discard}
-                  </Button>
-                </>
-              }
-            />
-          )}
-          {view?.state === "protected" && (
-            <Callout
-              tone="warn"
-              title={t.protected}
-              actions={
-                <Button
-                  onClick={() => void state.execute({ method: "studio.get" })}
-                >
-                  {t.reload}
-                </Button>
-              }
-            />
-          )}
+          ) : !state.failure ? (
+            <span className="v-skeleton" aria-hidden="true" />
+          ) : null}
+          <StudioFeedback model={model} />
           {view?.state === "missing" ? (
-            <Callout title={t.missing}>{t.missingHelp}</Callout>
+            <section
+              className="v-studio-unavailable"
+              aria-label={t.missing}
+              tabIndex={-1}
+            >
+              <Callout title={t.missing}>{t.missingHelp}</Callout>
+            </section>
           ) : selected && view ? (
             <>
               {(selected.locked || view.plan === "unverified") && (
@@ -120,30 +88,20 @@ export function StudioFocus() {
               />
             </>
           ) : view?.state === "protected" ? (
-            <section className="v-focus-empty">
-              <p>{t.appearanceUnavailable}</p>
-            </section>
+            <ReadonlyStudio />
           ) : view ? (
-            <section className="v-focus-empty">
-              <strong>{t.empty}</strong>
-              <p>{t.emptyHelp}</p>
-              <Button
-                variant="primary"
-                disabled={model.blocked}
-                onClick={() => model.setCatalogOpen(true)}
-              >
-                {t.add}
-              </Button>
-            </section>
-          ) : (
-            <Skeleton label={t.loading} />
-          )}
-          <ActionNotice />
-          {view && view.state !== "missing" && (
-            <div className="v-studio-temporary">
+            <EmptyStudio model={model} />
+          ) : !state.failure ? (
+            <LoadingStudio />
+          ) : null}
+          {view?.state === "ready" && <ActionNotice />}
+          {view && view.state !== "missing" && selected && (
+            <div className="v-studio-temporary" aria-busy={state.pending}>
               {selected &&
                 (view.state === "protected" ? (
-                  <p>{t.appearanceUnavailable}</p>
+                  <ReadonlyStudio>
+                    <StudioInspector item={selected} readOnly />
+                  </ReadonlyStudio>
                 ) : (
                   <StudioInspector item={selected} />
                 ))}

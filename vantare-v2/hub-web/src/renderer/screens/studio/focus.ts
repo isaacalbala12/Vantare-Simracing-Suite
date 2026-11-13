@@ -13,6 +13,7 @@ export function useStudioFocus() {
   const remember = useUi((value) => value.rememberStudio);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
+  const [focusReload, setFocusReload] = useState(false);
   const activeFilter = (view?.instances.length ?? 0) >= 9 ? filter : "all";
   const items = (view?.instances ?? []).filter(
     (item) =>
@@ -37,6 +38,12 @@ export function useStudioFocus() {
       )
       ?.focus();
   const blocked = view?.state !== "ready" || view.plan === "unverified";
+  const reload = async () => {
+    if (state.pending) return;
+    const value = await state.execute({ method: "studio.get" });
+    if (value) setFilter("all");
+    if (root.current) setFocusReload(true);
+  };
   useEffect(() => {
     if ((view?.instances.length ?? 0) < 9) setFilter("all");
   }, [view?.instances.length]);
@@ -76,6 +83,20 @@ export function useStudioFocus() {
       select(added.id);
       row(added.id)?.focus();
       row(added.id)?.scrollIntoView?.({ block: "nearest" });
+    }
+    if (focusReload && !state.pending) {
+      // After React committed the new view: a protected empty list has no
+      // enabled Add button, so the list itself is the stable fallback.
+      const target = view
+        ? ((selected && row(selected.id)) ??
+          root.current?.querySelector<HTMLElement>(
+            ".v-studio-list [data-widget]",
+          ) ??
+          root.current?.querySelector<HTMLElement>(".v-studio-list") ??
+          root.current?.querySelector<HTMLElement>(".v-studio-unavailable"))
+        : root.current?.querySelector<HTMLElement>("[data-studio-reload]");
+      target?.focus();
+      setFocusReload(false);
     }
   });
   useEffect(() => {
@@ -151,5 +172,6 @@ export function useStudioFocus() {
     catalogOpen,
     setCatalogOpen,
     blocked,
+    reload,
   };
 }

@@ -15,6 +15,7 @@ import {
 } from "../../contract/generated/studio";
 import { isWidgetSettings } from "../../contract/studio-widget-settings";
 import type { MockContext, MockHandler } from "../context";
+import { studioStateScene } from "../studio-states";
 export function create(context: MockContext): MockHandler {
   const { sceneName } = context;
   if (sceneName.startsWith("studio-")) {
@@ -92,6 +93,7 @@ export function create(context: MockContext): MockHandler {
     view.instances = [];
     view.catalog = view.catalog.map((w) => ({ ...w, allowed: false }));
   }
+  const stateScene = studioStateScene(sceneName, view);
   const undo: OverlayInstance[][] = [],
     redo: OverlayInstance[][] = [];
   let conflict = sceneName === "studio-error";
@@ -103,6 +105,8 @@ export function create(context: MockContext): MockHandler {
     view.canRedo = redo.length > 0;
   };
   return (message) => {
+    const staged = stateScene(message);
+    if (staged !== undefined) return staged;
     if (message.kind === "subscribe" && message.topic === "studio")
       return {
         kind: "event",

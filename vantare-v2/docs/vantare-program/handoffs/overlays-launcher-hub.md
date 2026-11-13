@@ -1750,3 +1750,19 @@ sin paquete ni versión nuevos. Política de licencias PASS (463 paquetes).
 Tests sin ventana: cobertura de los 18 temas y montaje del muestrario en ambos
 esquemas. Formato PASS; Clippy local solicitado por cola, un slot, -j2, todavía
 sin turno. El PR registra CI vigente y la pila; sin merge/promoción/release.
+
+### VANTA-143 · PR 3 marco (2026-11-13)
+
+Barra lateral contraída/expandida, cabecera, navegación entre secciones vacías
+según el orden de Electron, mínimo 1280×720, cambio claro/oscuro. Los iconos
+se generan de los SVG JSX existentes de Electron, sin redibujarlos. El guion
+hub-web/scripts/rune-catalog.mjs genera catálogo desde i18n, secciones e iconos;
+--check rechaza resultados antiguos y CI lo ejecuta. Textos con lógica del
+marco: plantilla y casos de launchProfile reproducidos en test Rust.
+Tests Runtime sin dispositivo: árbol completo en ambas barras y pulsación
+para cambiar a Roadmap; test de los 18 temas conservado. Formato y generación
+comprobados; compilación/tests Windows pendientes de turno o CI. La cola local
+solo conserva una petición propia (-j2). Capturas y ventana visible pendientes
+del Mac dormido por orden del orquestador; no se afirma paridad visual probada.
+PR draft apilado tras el sistema de diseño; la issue/PR contienen SHA y checks
+vigentes. Sin merge, promoción, cambios de producto distribuido o release.

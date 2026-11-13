@@ -10,6 +10,10 @@ on:
       - 'vantare-v2/hub-web/fixtures/**'
       - 'vantare-v2/hub-web/src/contract/**'
       - 'vantare-v2/hub-web/src/renderer/i18n/**'
+      - 'vantare-v2/hub-web/src/renderer/app/navigation.ts'
+      - 'vantare-v2/hub-web/src/renderer/app/sections.ts'
+      - 'vantare-v2/hub-web/src/renderer/assets/icons/Icon.tsx'
+      - 'vantare-v2/hub-web/scripts/rune-catalog.mjs'
       - '.github/workflows/hub-rune.yml'
   pull_request:
     branches: [nightly]
@@ -21,6 +25,10 @@ on:
       - 'vantare-v2/hub-web/fixtures/**'
       - 'vantare-v2/hub-web/src/contract/**'
       - 'vantare-v2/hub-web/src/renderer/i18n/**'
+      - 'vantare-v2/hub-web/src/renderer/app/navigation.ts'
+      - 'vantare-v2/hub-web/src/renderer/app/sections.ts'
+      - 'vantare-v2/hub-web/src/renderer/assets/icons/Icon.tsx'
+      - 'vantare-v2/hub-web/scripts/rune-catalog.mjs'
       - '.github/workflows/hub-rune.yml'
 permissions:
   contents: read
@@ -54,6 +62,8 @@ jobs:
           key: hub-rune-windows-1.99.1-${{ hashFiles('vantare-v2/hub-rune/Cargo.lock') }}
           restore-keys: hub-rune-windows-1.99.1-
       - run: cargo fmt --all -- --check
+      - name: Check shared text and icon catalog freshness
+        run: node ../hub-web/scripts/rune-catalog.mjs --check
       - name: Verify dependency policy tests
         run: python scripts/test_dependencies.py
       - name: Reject non-permissive licenses and product runtime/UI dependencies

@@ -11,6 +11,7 @@ captura NVIDIA). Conecta el PC a corriente y elige Alto rendimiento en
 Windows. Conserva driver, resolución, escala y VRR/G-Sync durante la campaña.
 No cambies el antivirus ni instales controladores para esta prueba.
 Descomprime la carpeta completa en un disco con espacio para los CSV.
+Usa la sesión física del PC, sin Escritorio remoto.
 Abre PowerShell 7 como administrador (PresentMon necesita acceso a ETW).
 Sitúate en la carpeta que contiene INICIAR.ps1.
 
@@ -47,7 +48,9 @@ simple) y 10 s redimensionando. Coloca la consola al lado para leer los avisos.
 Si no se mueve el contenido al desplazar, anótalo; no inventar una prueba de
 scroll. Las pantallas simples del Hub congelado y del nuevo no son idénticas.
 El tiempo interactivo es una cota superior observada, esperando datos,
-fuentes, imágenes y un frame; el visible se obtiene de PresentMon.
+fuentes, imágenes y un frame. Visible usa PresentMon; Rune además marca su
+primer dibujo tras vaciar GDI y componer con DWM, porque puede aparecer por
+CPU antes de un Present. Se conserva cada método por separado.
 
 El primer arranque tras reiniciar va APARTE. Tras preparar la campaña,
 reinicia y, antes de abrir ese Hub, ejecuta (primeros 15 minutos):

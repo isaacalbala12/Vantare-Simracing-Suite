@@ -23,6 +23,11 @@ try {
     try { $inventory = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
     if ($inventory.files.Count -ne 3 -or -not $inventory.includes_failed_attempts) { throw 'Inventario incompleto.' }
 } finally { $archive.Dispose() }
+$nested = Join-Path $results 'aguante/rune'
+$null = New-Item -ItemType Directory -Path $nested
+'activo' | Set-Content (Join-Path $nested 'EN-CURSO.lock')
+MustThrow { & (Join-Path $PSScriptRoot 'RECOGER.ps1') -Resultados $results -Destino (Join-Path $root 'aguante-activo.zip') }
+Remove-Item -LiteralPath (Join-Path $nested 'EN-CURSO.lock')
 'activo' | Set-Content (Join-Path $results 'EN-CURSO.lock')
 MustThrow { & (Join-Path $PSScriptRoot 'RECOGER.ps1') -Resultados $results -Destino (Join-Path $root 'activo.zip') }
 MustThrow { & (Join-Path $PSScriptRoot 'RECOGER.ps1') -Resultados $root -Destino (Join-Path $root 'sin-marca.zip') }

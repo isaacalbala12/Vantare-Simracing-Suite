@@ -83,3 +83,10 @@ Set-Content -NoClobber: Out-File mantiene creación sin sobrescritura y UTF-8.
 Identidad JSON y rechazo de sobrescritura PASS con datos, sin proceso real.
 VALIDAR_VENTANAS pendiente por cola: solo Roslyn y Marshal.SizeOf, sin Win32.
 No se ejecutó ninguna interfaz ni PresentMon en servidor. El ZIP final aún no existe.
+
+13/11, verificación final de auxiliares: VENTANAS.cs compilado por cola con
+Roslyn /optimize+ /debug-; RECT=16 y MONITORINFOEXW=104 PASS, sin APIs nativas.
+Pruebas positivas de identidad JSON (proceso PowerShell actual, sin lanzar
+ninguno) y rechazo de recogida con aguante activo anidado PASS. No se confunde
+un ciclo de presentación con el coste CPU/GPU: el informe declara expresamente
+MsBetweenPresents como intervalo, incluida la cadencia de demanda del producto.

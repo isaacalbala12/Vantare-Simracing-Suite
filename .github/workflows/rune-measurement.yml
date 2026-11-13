@@ -26,7 +26,6 @@ jobs:
       CARGO_PROFILE_RELEASE_LTO: 'false'
       CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
       CARGO_INCREMENTAL: '0'
-      CARGO_TARGET_DIR: ${{ runner.temp }}/rune-measurement-target
     defaults:
       run:
         shell: pwsh
@@ -41,6 +40,7 @@ jobs:
           python-version: '3.13'
       - name: Install pinned Rust without building Rune
         run: |
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=$env:RUNNER_TEMP/rune-measurement-target"
           rustup toolchain install 1.99.1 --profile minimal --component clippy --component rustfmt
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           rustc +1.99.1 --version

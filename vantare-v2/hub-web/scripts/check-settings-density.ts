@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
+import { t } from "../src/renderer/i18n/es.ts";
 
 export async function checkSettingsDensity(page: Page, base: string) {
   const original = page.viewportSize();
@@ -74,6 +75,13 @@ export async function checkSettingsDensity(page: Page, base: string) {
           true,
           "Compact General rules must not hide shortcut statuses or empty-state explanations",
         );
+      for (const state of ["registered", "unconfirmed"] as const)
+        assert.ok(
+          await page
+            .getByText(t(`shortcuts.${state}`), { exact: true })
+            .isVisible(),
+          `Shortcut ${state} must remain readable`,
+        );
       for (const name of ["Privacidad", "Diagnóstico"]) {
         await page.getByRole("tab", { name, exact: true }).click();
         const help = page.locator(".v-setting-row .v-muted");
@@ -89,6 +97,12 @@ export async function checkSettingsDensity(page: Page, base: string) {
             `${name} help must remain visible`,
           );
       }
+      await page.goto(`${base}?escena=visual-dark:ajustes-con-diseno`);
+      await page.getByRole("tab", { name: "Atajos", exact: true }).click();
+      assert.ok(
+        await page.getByText(t("shortcuts.empty"), { exact: true }).isVisible(),
+        "Empty shortcut explanation must remain readable",
+      );
     }
   } finally {
     if (original) await page.setViewportSize(original);

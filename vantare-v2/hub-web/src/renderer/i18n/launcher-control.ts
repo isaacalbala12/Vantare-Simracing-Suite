@@ -37,8 +37,10 @@ export const controlText = {
   active: "No hay una ejecución comprobada que se pueda cancelar.",
   rejection: {
     ...residentText.rejection,
-    "document-unavailable":
-      "No se puede leer el perfil guardado. No se ha iniciado la prueba.",
+    unavailable: "El residente no está disponible para recibir esta orden.",
+    busy: "Hay otra orden pendiente. Espera antes de volver a enviar.",
+    rejected: "No se ha aceptado la orden. Revisa el estado actual.",
+    "document-unavailable": "No se puede leer el perfil guardado.",
     "no-steps": "Este perfil no tiene pasos que probar sin Le Mans Ultimate.",
     "start-failed": "No se pudo iniciar la secuencia.",
     "unknown-run":

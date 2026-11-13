@@ -231,11 +231,21 @@ export function useResidentControl(
           return "changed";
         if (!summary.value.outcome) return "busy";
         if (
-          !execution.events.some(
-            (event) =>
-              event.kind.kind === "finished" &&
-              event.kind.run === summary.value.run,
-          )
+          !execution.events.some((event) => {
+            const outcome = summary.value.outcome;
+            if (
+              !outcome ||
+              event.kind.kind !== "finished" ||
+              event.kind.run !== summary.value.run
+            )
+              return false;
+            return (
+              event.kind.outcome.kind === outcome.kind &&
+              (!("reason" in outcome) ||
+                ("reason" in event.kind.outcome &&
+                  event.kind.outcome.reason === outcome.reason))
+            );
+          })
         )
           return "resultUnknown";
         if (intent.target.scope === "failed" && !summary.value.retryFailed)

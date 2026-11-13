@@ -521,6 +521,11 @@ it.each([
   "live",
   "terminal",
   "no-failed",
+  "profile-missing",
+  "doc-revision",
+  "denied",
+  "offline",
+  "terminal-outcome",
 ] as const)(
   "does not submit a retry for stale or unavailable scope: %s",
   async (kind) => {
@@ -536,6 +541,11 @@ it.each([
       source.execution.results.value.accountGeneration = "e".repeat(64);
     if (kind === "active") source.running = true;
     if (kind === "terminal") source.execution.events = [];
+    if (
+      kind === "terminal-outcome" &&
+      source.execution.events[0]?.kind.kind === "finished"
+    )
+      source.execution.events[0].kind.outcome = { kind: "completed" };
     if (kind === "no-failed")
       Object.assign(source.execution.results.value, { retryFailed: false });
     act(() => {
@@ -546,6 +556,23 @@ it.each([
         });
       if (kind === "live")
         hook.cache.setQueryData(coreKey, { ...hook.core, live: true });
+      if (kind === "profile-missing")
+        hook.cache.setQueryData(launcherKey, {
+          ...hook.document,
+          profiles: [],
+        });
+      if (kind === "doc-revision")
+        hook.cache.setQueryData(launcherKey, {
+          ...hook.document,
+          revision: "e".repeat(64),
+        });
+      if (kind === "denied")
+        hook.cache.setQueryData(coreKey, {
+          ...hook.core,
+          access: { ...hook.core.access, blocked: true },
+        });
+      if (kind === "offline")
+        hook.cache.setQueryData(coreKey, { ...hook.core, services: "offline" });
     });
     hook.rerender({ value: source });
     await act(async () => {
@@ -587,3 +614,43 @@ it("keeps retry Accepted distinct from Finished, then releases a lost run as Unk
   expect(hook.result.current.attempt?.phase.kind).toBe("unknown");
   expect(hook.result.current.busy).toBe(false);
 });
+
+it.each(["account", "instance"] as const)(
+  "drops late retry Queued after a change of %s",
+  async (kind) => {
+    const hook = retryFixture();
+    let resolve!: (value: unknown) => void;
+    host.client.request.mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    let pending!: Promise<void>;
+    act(() => {
+      pending = hook.result.current.retry(hook.target);
+    });
+    const source = structuredClone(hook.source);
+    if (kind === "account")
+      act(() => {
+        hook.cache.setQueryData(coreKey, {
+          ...hook.core,
+          accountGeneration: "e".repeat(64),
+        });
+      });
+    else if (source.execution) source.execution.instance = "e".repeat(64);
+    hook.rerender({ value: source });
+    await act(async () => {
+      resolve({
+        method: "launcher.resident.retry",
+        value: { kind: "queued", request: "d".repeat(32) },
+      });
+      await pending;
+    });
+    expect(hook.result.current.attempt?.phase.kind).toBe(
+      kind === "account" ? undefined : "unknown",
+    );
+    if (kind === "account")
+      expect(hook.result.current.results.kind).toBe("unknown");
+    expect(host.client.request).toHaveBeenCalledTimes(1);
+  },
+);

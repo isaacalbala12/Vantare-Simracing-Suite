@@ -54,6 +54,7 @@ export function ResidentResults({
       return { scope, target, reason, description };
     },
   );
+  const sharedHelp = actions[0].description === actions[1].description;
   const Heading = view.profiles.length ? "h3" : "h2";
   return (
     <section
@@ -100,7 +101,7 @@ export function ResidentResults({
           <Button
             key={scope}
             aria-disabled={!target || !!reason}
-            aria-describedby={`${help}-${scope}`}
+            aria-describedby={`${help}-${sharedHelp ? "failed" : scope}`}
             onClick={() => {
               if (target && !reason) void control.retry(target);
             }}
@@ -111,15 +112,17 @@ export function ResidentResults({
           </Button>
         ))}
       </div>
-      {actions.map(({ scope, description }) => (
-        <p
-          key={scope}
-          className="v-launcher-retry-help"
-          id={`${help}-${scope}`}
-        >
-          {description}
-        </p>
-      ))}
+      {actions
+        .filter(({ scope }) => !sharedHelp || scope === "failed")
+        .map(({ scope, description }) => (
+          <p
+            key={scope}
+            className="v-launcher-retry-help"
+            id={`${help}-${scope}`}
+          >
+            {description}
+          </p>
+        ))}
     </section>
   );
 }

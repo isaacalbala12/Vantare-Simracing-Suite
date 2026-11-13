@@ -66,8 +66,24 @@ impl Theme {
 }
 // The shared TTF's internal family is not the CSS alias used by Electron.
 pub const DISPLAY_FAMILY: rune::Family = rune::Family::Named("Rajdhani SemiBold");
+// Electron aliases independently instanced Inter files into one CSS family.
+// Rune must name each file's internal family to select the requested weight.
+pub fn body_style(size: f32, weight: f32) -> TextStyle {
+    let family = if weight >= 700.0 {
+        "Inter W700"
+    } else if weight >= 650.0 {
+        "Inter W650"
+    } else if weight >= 600.0 {
+        "Inter W600"
+    } else if weight >= 500.0 {
+        "Inter W500"
+    } else {
+        "Inter W400"
+    };
+    TextStyle::new(size, weight).family(rune::Family::Named(family))
+}
 pub fn display(theme: &Theme, value: impl Into<String>, size: f32) -> El {
-    label(theme, value).font(TextStyle::new(size, 600.0).family(DISPLAY_FAMILY))
+    label(theme, value).font(body_style(size, 600.0).family(DISPLAY_FAMILY))
 }
 pub fn caption(theme: &Theme, value: &str) -> El {
     // Match Electron's TrackedCaps: separately laid out glyphs with physical-pixel spacing.
@@ -84,7 +100,7 @@ pub fn symbol(theme: &Theme, name: &str, size: f32) -> El {
 }
 pub fn label(theme: &Theme, value: impl Into<String>) -> El {
     text(value)
-        .font(TextStyle::new(14.0, 400.0))
+        .font(body_style(14.0, 400.0))
         .color(theme.color("text-1"))
 }
 pub fn surface(theme: &Theme) -> El {
@@ -121,7 +137,7 @@ pub fn button<S: 'static>(
         theme,
         key,
         value,
-        label(theme, value).font(TextStyle::new(14.0, 600.0)),
+        label(theme, value).font(body_style(14.0, 600.0)),
         action,
     )
 }
@@ -192,6 +208,18 @@ pub fn menu_item<S: 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn body_weights_use_the_authored_inter_instances_without_system_fallbacks() {
+        let mut fonts = rune::text::TextSystem::new(FONTS, ("Inter W400", "Space Mono"));
+        for (index, weight) in [400.0, 500.0, 600.0, 650.0, 700.0].into_iter().enumerate() {
+            let layout = fonts.layout_rich("Perfil 0123", &[], body_style(14.0, weight), 1.0, None);
+            let runs: Vec<_> = layout.lines().flat_map(|l| l.runs()).collect();
+            assert!(!runs.is_empty());
+            for run in runs {
+                assert_eq!(run.font().data.as_ref(), FONTS[index], "weight {weight}");
+            }
+        }
+    }
     #[test]
     fn display_titles_use_the_shared_rajdhani_face_instead_of_falling_back() {
         let mut fonts = rune::text::TextSystem::new(FONTS, ("Inter", "Inter"));

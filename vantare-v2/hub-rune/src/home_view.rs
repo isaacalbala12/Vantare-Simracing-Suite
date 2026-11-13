@@ -2,10 +2,10 @@
 use crate::{
     State,
     catalog::{catalog, text},
-    design::{Theme, button, button_content, caption, display, label, surface, symbol},
+    design::{Theme, body_style, button, button_content, caption, display, label, surface, symbol},
     home_assets,
 };
-use rune::{Cx, El, Image, ImageCache, SurfaceFit, TextStyle, col, el, row};
+use rune::{Cx, El, Image, ImageCache, SurfaceFit, col, el, row};
 use std::collections::BTreeMap;
 use vantare_hub_host::home::{HomeLayoutView, HomeView, LaunchProgress};
 
@@ -126,7 +126,7 @@ fn heading(theme: &Theme, value: &str) -> El {
 }
 fn small(theme: &Theme, value: impl Into<String>) -> El {
     label(theme, value)
-        .font(TextStyle::new(12.0, 400.0))
+        .font(body_style(12.0, 400.0))
         .color(theme.color("text-3"))
 }
 fn badge(theme: &Theme, value: &str) -> El {
@@ -134,7 +134,7 @@ fn badge(theme: &Theme, value: &str) -> El {
         .padding(6.0)
         .radius(4.0)
         .border(1.0, theme.color("line-1"))
-        .child(label(theme, value).font(TextStyle::new(12.0, 500.0)))
+        .child(label(theme, value).font(body_style(12.0, 500.0)))
 }
 fn status_row(theme: &Theme, key: &str, name: &str, title: &str, subtitle: &str, tag: &str) -> El {
     row()
@@ -143,7 +143,8 @@ fn status_row(theme: &Theme, key: &str, name: &str, title: &str, subtitle: &str,
         .min_h(58.0)
         .center_y()
         .gap(10.0)
-        .border(1.0, theme.color("line-1"))
+        .padding(6.0)
+        .border_sides([0.0, 0.0, 1.0, 0.0], theme.color("line-1"))
         .child(
             row()
                 .size(32.0, 32.0)
@@ -157,7 +158,7 @@ fn status_row(theme: &Theme, key: &str, name: &str, title: &str, subtitle: &str,
                 .min_w(0.0)
                 .grow(1.0)
                 .gap(4.0)
-                .child(label(theme, title).font(TextStyle::new(14.0, 650.0)))
+                .child(label(theme, title).font(body_style(14.0, 650.0)))
                 .child(small(theme, subtitle)),
         )
         .child(badge(theme, tag))
@@ -179,12 +180,22 @@ fn message(theme: &Theme, value: &str) -> El {
     label(theme, value).role("status")
 }
 fn card(theme: &Theme, key: &str, title: &str) -> El {
-    surface(theme)
-        .key(key)
-        .grow(1.0)
-        .min_w(0.0)
-        .gap(8.0)
-        .child(heading(theme, title))
+    surface(theme).key(key).grow(1.0).min_w(0.0).gap(8.0).child(
+        row()
+            .h(24.0)
+            .center_y()
+            .gap(10.0)
+            .child(symbol(
+                theme,
+                if key == "home-activity" {
+                    "clock"
+                } else {
+                    "v-studio"
+                },
+                16.0,
+            ))
+            .child(heading(theme, title)),
+    )
 }
 fn picture(state: &State, kind: &str, width: f32, height: f32, fill: bool) -> El {
     state.home_assets.as_ref().map_or_else(
@@ -322,7 +333,7 @@ fn launch_button(state: &State, favorite: bool) -> El {
     if favorite {
         content = content.child(
             label(theme, &title)
-                .font(TextStyle::new(14.0, 600.0))
+                .font(body_style(14.0, 600.0))
                 .color(foreground),
         );
     }
@@ -480,12 +491,9 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             }),
         ))
         .child(el().grow(1.0))
-        .child(
-            row()
-                .gap(8.0)
-                .child(launch_button(state, true))
-                .child(studio_button(state, "home-studio", text("home.studio"))),
-        );
+        .child(row().gap(8.0).child(launch_button(state, true)).child(
+            studio_button(state, "home-studio", text("home.studio")).fill(theme.color("bg-base")),
+        ));
     page = page.child(hero);
     let mut overlay = card(theme, "home-overlay", text("home.overlay"));
     let mut activity = card(theme, "home-activity", text("home.activity"));
@@ -507,7 +515,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                         .center_y()
                         .child(
                             label(theme, text("home.layout"))
-                                .font(TextStyle::new(22.0, 650.0))
+                                .font(body_style(22.0, 650.0))
                                 .grow(1.0),
                         )
                         .child(badge(theme, text("home.preview"))),
@@ -607,7 +615,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                                         .unwrap()
                                         .replace("__VANTARE_NAME__", &profile.name),
                                 )
-                                .font(TextStyle::new(14.0, 650.0)),
+                                .font(body_style(14.0, 650.0)),
                             )
                             .child(small(
                                 theme,
@@ -719,21 +727,28 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             let title = catalog()["home"]["templates"][line * 2 + column]
                 .as_str()
                 .unwrap();
+            let content = col()
+                .gap(8.0)
+                .child(
+                    picture(state, kind, 124.0, 92.0, false)
+                        .role("img")
+                        .label(title),
+                )
+                .child(label(theme, title).font(body_style(13.0, 650.0)))
+                .child(small(theme, text("home.localTemplate")));
             pair = pair.child(
-                col()
-                    .grow(1.0)
-                    .min_w(0.0)
-                    .gap(8.0)
-                    .child(
-                        picture(state, kind, 124.0, 92.0, false)
-                            .role("img")
-                            .label(title),
-                    )
-                    .child(studio_button(
-                        state,
-                        &format!("home-template-{kind}"),
-                        title,
-                    )),
+                button_content(
+                    theme,
+                    &format!("home-template-{kind}"),
+                    title,
+                    content,
+                    studio,
+                )
+                .grow(1.0)
+                .min_w(0.0)
+                .padding(0.0)
+                .fill(theme.color("bg-sidebar"))
+                .disabled(!state.core.access.verified || state.core.access.blocked),
             );
         }
         rail = rail.child(pair);

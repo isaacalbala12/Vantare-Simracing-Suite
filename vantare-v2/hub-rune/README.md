@@ -157,7 +157,10 @@ El servidor permanece sin ejecutar la aplicación.
 El PR prioritario corrige el raíl de 76/272 px, cabecera de 52 px, iconos,
 aviso de núcleo integrado y estados con icono/título/subtítulo/etiqueta.
 El TTF compartido de Rajdhani tiene la familia interna `Rajdhani SemiBold`;
-Electron usa un alias CSS y Rune debe pedir el nombre interno para evitar Inter.
+Electron usa un alias CSS y Rune debe pedir el nombre interno para evitar otra fuente.
+Inter también usa familias internas separadas por peso (Inter W400/500/600/650/700).
+Los tests comprueban los bytes del archivo utilizado para cada peso, sin depender de
+las fuentes instaladas en la máquina.
 Los títulos pequeños usan mayúsculas espaciadas como TrackedCaps de Electron.
 
 Las fechas de actividad se convierten desde RFC3339 a la zona local y se muestran

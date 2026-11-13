@@ -193,10 +193,10 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
                             "shell.waitingSimulator"
                         }),
                     )
-                    .font(rune::TextStyle::new(12.0, 500.0)),
-                )
-                .key("sim-status")
-                .role("status"),
+                    .font(design::body_style(12.0, 500.0))
+                    .key("sim-status")
+                    .role("status"),
+                ),
         )
         .child(icon_button(
             theme,
@@ -219,8 +219,7 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
                 .border(1.0, theme.color("line-1"))
                 .child(design::symbol(theme, "warn", 16.0))
                 .child(
-                    label(theme, text("es.coreUnavailable"))
-                        .font(rune::TextStyle::new(12.0, 500.0)),
+                    label(theme, text("es.coreUnavailable")).font(design::body_style(12.0, 500.0)),
                 ),
         );
     }
@@ -477,7 +476,7 @@ fn start() -> std::io::Result<()> {
     let mut spec = AppSpec::new("Vantare · Hub", size, init, view);
     spec.min_size = Some((1280.0, 720.0));
     spec.fonts = design::FONTS;
-    spec.families = ("Inter", "Inter");
+    spec.families = ("Inter W400", "Space Mono");
     spec.scenes = &[
         ("light", |s| {
             if s.dark {
@@ -530,7 +529,7 @@ mod tests {
         for scale in [1.0, 1.25, 1.5] {
             let mut state = init();
             state.collapsed = true;
-            let fonts = rune::text::TextSystem::new(design::FONTS, ("Inter", "Inter"));
+            let fonts = rune::text::TextSystem::new(design::FONTS, ("Inter W400", "Space Mono"));
             let mut rt =
                 Runtime::with_text(state, view, (1440.0, 900.0), Env::new(true, scale), fonts);
             for _ in 0..4 {
@@ -925,17 +924,25 @@ mod tests {
                 );
             }
             assert!(!runtime.accessibility_json().is_null());
-            runtime.key(rune::KeyEvent {
-                key: rune::Key::Tab,
-                mods: Default::default(),
-            });
-            runtime.frame(0.1);
-            assert!(
-                runtime
+            // The icon toggle sits in the footer, after navigation, as in Electron.
+            let controls = runtime.elements().iter().filter(|e| e.focusable).count();
+            let mut visited = false;
+            for index in 0..=controls {
+                runtime.key(rune::KeyEvent {
+                    key: rune::Key::Tab,
+                    mods: Default::default(),
+                });
+                runtime.frame(0.1 + index as f64 * 0.001);
+                if runtime
                     .elements()
                     .iter()
                     .any(|e| e.key.as_deref() == Some("sidebar-toggle") && e.focused)
-            );
+                {
+                    visited = true;
+                    break;
+                }
+            }
+            assert!(visited, "Tab must reach the named footer toggle");
             runtime.key(rune::KeyEvent {
                 key: rune::Key::Enter,
                 mods: Default::default(),

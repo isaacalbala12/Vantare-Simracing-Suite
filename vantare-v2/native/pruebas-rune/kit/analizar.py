@@ -120,6 +120,14 @@ def evaluate(document):
     if document.get("schema") != 1 or document.get("configuration") != PRIMARY:
         raise InvalidEvidence("Falta el escenario principal declarado: 1 ventana con 10 Relative, 60 Hz, sin carga")
     output = {"source": "INFORME-FABLE.md §8, corregido por Isaac: una capa por monitor", "scenario": "1 ventana con 10 Relative, 60 Hz, sin carga", "hub": "pendiente", "overlays": {}, "adopted": False}
+    output["measurement_contract"] = {"relative_demand_ms": 33,
+        "ipc_loss_comparison": "actual pipe sends versus subscriber receives; all origin publications retained",
+        "fonts": ["Inter", "Rajdhani", "Space Mono"],
+        "frame_time": "PresentMon MsBetweenPresents; presentation intervals, including on-demand cadence",
+        "synthetic_load_limit": "does not measure live-game FPS or physical G-Sync"}
+    output["thermal_control"] = {"cpu_temperature": None, "cpu_temperature_status": "no_disponible",
+        "signals": "GPU temperature and CPU active nominal performance, performance limit and limit flags",
+        "limitation": "CPU limit signals can also reflect power or policy; they do not identify heat exclusively"}
     compilation = document.get("compilation", {})
     compilation_pending = compilation.get("status") == "pending_authorized"
     output["compilation"] = {"status": "pendiente_autorizado" if compilation_pending else "sin_verificar",

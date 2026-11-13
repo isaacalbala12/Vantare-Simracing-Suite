@@ -30,7 +30,9 @@ function Start-VantareChild {
     $info.RedirectStandardInput=$true; $info.RedirectStandardOutput=$true; $info.RedirectStandardError=$true
     # No heredar canal, cuentas, raíces beta ni trazas de otra ronda. No registrar sus valores.
     foreach ($name in @($info.Environment.Keys)) {
-        if ($name.StartsWith('VANTARE_',[StringComparison]::OrdinalIgnoreCase)) { $null=$info.Environment.Remove($name) }
+        if ($name.StartsWith('VANTARE_',[StringComparison]::OrdinalIgnoreCase) -or
+            $name.StartsWith('RUNE_',[StringComparison]::OrdinalIgnoreCase) -or
+            $name.StartsWith('WGPU_',[StringComparison]::OrdinalIgnoreCase)) { $null=$info.Environment.Remove($name) }
     }
     foreach ($name in $Variables.Keys) { $info.Environment[$name]=[string]$Variables[$name] }
     foreach ($argument in $Arguments) { $info.ArgumentList.Add($argument) }
@@ -55,7 +57,7 @@ function Write-VantareRootIdentity {
     $temporary=$Path+'.'+[guid]::NewGuid().ToString('N')+'.tmp'
     [ordered]@{process_id=$Child.Process.Id;created_utc=$Child.CreatedUtc;start_qpc=$Child.StartQpc
         image_name=[IO.Path]::GetFileName($Child.Binary);image_sha256=$Sha256} |
-        ConvertTo-Json | Set-Content -LiteralPath $temporary -NoClobber -Encoding utf8
+        ConvertTo-Json | Out-File -Width 2147483647 -LiteralPath $temporary -NoClobber -Encoding utf8
     [IO.File]::Move($temporary,[IO.Path]::GetFullPath($Path))
 }
 
@@ -82,4 +84,21 @@ function Close-VantareChild {
         [pscustomobject]@{process_id=$process.Id;exit_code=$process.ExitCode;forced=$forced
             start_qpc=$Child.StartQpc;end_qpc=[Diagnostics.Stopwatch]::GetTimestamp();frequency=$Child.Frequency}
     } finally { $Child.Closed=$true; $process.Dispose() }
+}
+
+# Una campaña por sesión, incluso con carpetas de resultados diferentes.
+# Los hijos (núcleo/muestreador) no adquieren este mutex.
+function Enter-VantareCampaignLease {
+    $lease=[Threading.Mutex]::new($false,'Local\Vantare141Measurement')
+    $held=$false
+    try {
+        try { $held=$lease.WaitOne(0) }
+        catch [Threading.AbandonedMutexException] { $held=$true }
+        if (-not $held) { throw [InvalidOperationException]::new('Hay otra campaña, prueba de aguante o recogida en esta sesión.') }
+        $lease
+    } catch { $lease.Dispose(); throw }
+}
+function Exit-VantareCampaignLease {
+    param([Parameter(Mandatory)][Threading.Mutex]$Lease)
+    try { $Lease.ReleaseMutex() } finally { $Lease.Dispose() }
 }

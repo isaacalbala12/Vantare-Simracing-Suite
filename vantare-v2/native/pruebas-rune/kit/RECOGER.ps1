@@ -7,7 +7,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'PROCESOS.ps1')
+$campaignLease=Enter-VantareCampaignLease
+try {
 $root = [IO.Path]::GetFullPath($Resultados).TrimEnd([IO.Path]::DirectorySeparatorChar)
+if (@(Get-ChildItem -LiteralPath $root -Recurse -File -Filter 'EN-CURSO.lock' -ErrorAction Stop).Count) { throw 'Hay una ejecución activa o interrumpida sin revisar dentro de la campaña.' }
 if (-not (Test-Path -LiteralPath $root -PathType Container)) { throw 'No existe la carpeta de resultados.' }
 if ((Get-Item -LiteralPath $root -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Resultados no puede ser un enlace.' }
 if (-not (Test-Path -LiteralPath (Join-Path $root 'campana.json') -PathType Leaf)) { throw 'Falta campana.json; elige la carpeta concreta de esta campaña.' }
@@ -65,3 +69,5 @@ try {
 $hash = (Get-FileHash -LiteralPath $out -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Output "Recogida verificada: $out"
 Write-Output "SHA256 $hash"
+
+} finally { Exit-VantareCampaignLease $campaignLease }

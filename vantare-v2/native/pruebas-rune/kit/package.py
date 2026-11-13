@@ -11,7 +11,16 @@ from pathlib import Path, PurePosixPath
 PRESENTMON = "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af"
 ROLES = {"relative_gpui", "relative_gpui_fast", "relative_rune", "inicio_rune",
          "inicio_electron", "inicio_gpui_fast", "core", "counter", "load", "hello"}
-SCRIPTS = {"INICIAR.ps1", "RECOGER.ps1", "LEEME.txt", "RONDAS.ps1", "AGUANTE.ps1"}
+SCRIPTS = {"INICIAR.ps1", "INICIO.ps1", "CORRECCION.ps1", "RECOGER.ps1", "LEEME.txt",
+           "RONDAS.ps1", "AGUANTE.ps1", "RECUPERAR_AGUANTE.ps1", "CONTROL_AA.ps1",
+           "PROCESOS.ps1", "PREPARAR.ps1", "OBSERVAR.ps1",
+           "CALIBRAR.ps1", "RUIDO.ps1", "IPC.ps1", "REPETIR.ps1", "VENTANAS.cs",
+           "ANALIZAR.ps1", "VALIDAR_TERMICAS.ps1",
+           "muestreador/MUESTREAR.ps1", "muestreador/FAMILIA.ps1", "muestreador/TERMICA.ps1",
+           "muestreador/Contadores.cs", "muestreador/Temperatura.cs", "muestreador/Captura.cs",
+           "analisis/normalizar.py", "analisis/normalizar_inicio.py", "analisis/analizar.py",
+           "analisis/agregar.py", "analisis/latencia.py", "analisis/cruce_rune.py",
+           "analisis/resumir_aguante.py"}
 # DLL del sistema presentes en Windows 11. El CRT redistribuible NO está aquí.
 SYSTEM = set("""advapi32 avrt authz bcrypt bcryptprimitives cfgmgr32 clbcatq comctl32
 comdlg32 combase crypt32 cryptbase cryptnet cryptui d3d11 d3d12 d3dcompiler_47
@@ -19,7 +28,7 @@ dbghelp dcomp dhcpcsvc dnsapi dsound dwmapi dwrite dxcore dxgi evr gdi32 glu32 h
 imagehlp imm32 iphlpapi kernel32 kernelbase mf mfplat mfreadwrite mfuuid mmdevapi
 mpr msacm32 msimg32 msvcrt ncrypt netapi32 normaliz ntdll ole32 oleacc oleaut32
 opengl32 powrprof propsys psapi rasapi32 rpcrt4 secur32 setupapi shcore shell32
-shlwapi user32 userenv usp10 uiautomationcore uxtheme version win32u winhttp
+shlwapi tdh user32 userenv usp10 uiautomationcore uxtheme version win32u winhttp
 wininet winmm winscard winspool wintrust winusb wlanapi ws2_32 wtsapi32""".split())
 
 
@@ -32,7 +41,7 @@ def relative_name(value):
     if not isinstance(value, str) or not value or "\\" in value or ":" in value:
         raise ValueError("Ruta del kit no relativa o ambigua")
     path = PurePosixPath(value)
-    if path.is_absolute() or str(path) != value or any(
+    if value == "." or path.is_absolute() or str(path) != value or any(
         part in (".", "..") or part.endswith((" ", "."))
         or re.fullmatch(r"(?i)(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?", part)
         for part in path.parts
@@ -104,10 +113,15 @@ def build(manifest_path, staging, output, dumpbin):
             raise ValueError(f"Binario sin procedencia: {role}")
         if not contains_marker(Path(files[name.casefold()]["source"]), binary["source_sha"]):
             raise ValueError(f"SHA no incrustado en el binario: {role}")
+        if role == "inicio_rune" and not contains_marker(Path(files[name.casefold()]["source"]), "post_draw_dwm_flush"):
+            raise ValueError("Inicio Rune no distingue la primera imagen CPU del primer Present GPU")
         if role.startswith("relative_") and binary.get("profile") != {
             "name": "release", "opt_level": 3, "lto": False, "codegen_units": 16, "debug": False
         }:
             raise ValueError(f"Perfil común incorrecto: {role}")
+        if role.startswith("relative_") and not all(contains_marker(Path(files[name.casefold()]["source"]), token)
+                for token in (";profile=release;", ";opt-level=3;", ";lto=false;", ";codegen-units=16")):
+            raise ValueError(f"El PE no acredita el perfil común: {role}")
     staging.mkdir(parents=True)
     for row in rows:
         target = staging / row["path"]
@@ -118,7 +132,7 @@ def build(manifest_path, staging, output, dumpbin):
     logs = staging / "verificaciones/dumpbin"
     logs.mkdir(parents=True)
     resolution = []
-    for image in sorted(path for path in staging.rglob("*") if path.suffix.lower() in (".exe", ".dll")):
+    for image in sorted(path for path in staging.rglob("*") if path.suffix.lower() in (".exe", ".dll", ".node")):
         imports, raw = dependencies(image, dumpbin)
         (logs / (hashlib.sha256(str(image.relative_to(staging)).encode()).hexdigest()[:16] + ".txt")).write_text(raw, encoding="utf-8")
         for dependency in sorted(imports):

@@ -1,3 +1,19 @@
+## VANTA-141 / #2213 — controlador, análisis y paquete 9+11 (13/11/2026)
+
+Campaña B completa/principal, ABBA/BAAB y A/A, máximo tres intentos conservados,
+33 ms y pérdidas sobre envíos reales. Calibración sintética una vez; mismo
+trabajo en todas las variantes. Térmica GPU/contadores CPU, ruido por proceso,
+mutex de campaña y reanudación sin escoger resultados. Inicio A: perfiles QA,
+series 10+10, primer arranque aparte y guion de interacción. Corrección visual
+con PNG y S/N/P manual. Recogida conserva fallos y rechaza aguantes activos.
+Analizador crudo cruza QPC/PresentMon y vuelve a evaluar térmica sin hardware.
+Constructor exige todas las variantes, guiones, hashes, procedencia y DLL.
+30 pruebas Python y controles PS en seco PASS; sintaxis/contratos de parámetros
+35 guiones PASS. Corregido Set-Content -NoClobber -> Out-File. Auxiliar C# de
+ventanas pendiente de compilar por cola; nunca invocar sus APIs en servidor.
+Bloqueo: Mac sin SSH; nueva marca CPU/DWM de Inicio Rune pendiente de compilar.
+Quedan empaquetado Electron, verificaciones finales y ZIP. Tiempos comparables
+pendientes autorizados para ventana nocturna. Sin medición PC, merge ni release.
 ## VANTA-141 · Paquete y análisis en preparación (13/11/2026)
 
 Issue #2213, Plane En curso. Constructor de zip exige variantes, grabación,

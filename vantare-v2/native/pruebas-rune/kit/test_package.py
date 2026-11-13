@@ -7,7 +7,7 @@ from package import contains_marker, relative_name
 
 class PackageIntegrityTests(unittest.TestCase):
     def test_windows_aliases_and_zip_traversal_are_rejected(self):
-        for name in ("../afuera", "/raiz", "C:/target", "bin\\app.exe", "bin//app.exe",
+        for name in (".", "../afuera", "/raiz", "C:/target", "bin\\app.exe", "bin//app.exe",
                      "bin/./app.exe", "bin/NUL.exe", "bin/COM1", "bin/final.", "bin/final "):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 relative_name(name)

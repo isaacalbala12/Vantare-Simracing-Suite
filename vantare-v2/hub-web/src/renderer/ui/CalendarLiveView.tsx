@@ -395,9 +395,19 @@ export function CalendarLiveView({
                   !!armDisabledReason ||
                   hero.at - calendarLaunchLeadMs < now
                 }
-                aria-disabled={armBusy}
+                aria-disabled={
+                  armBusy ||
+                  !onArm ||
+                  !!armDisabledReason ||
+                  hero.at - calendarLaunchLeadMs < now
+                }
                 onClick={() => {
-                  if (!armBusy) onArm?.(hero.series.id, hero.at);
+                  if (
+                    !armBusy &&
+                    !armDisabledReason &&
+                    hero.at - calendarLaunchLeadMs >= now
+                  )
+                    onArm?.(hero.series.id, hero.at);
                 }}
               >
                 <Icon name="clock" />

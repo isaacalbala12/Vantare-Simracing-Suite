@@ -8,6 +8,7 @@ export type MonoFont = "cascadia" | "consolas" | "courier";
 export type AppearanceSettings = { palette: Palette, scheme: Scheme, contrast: number, glassOpacity: number, interfaceFont: InterfaceFont, monoFont: MonoFont, reducedMotion: boolean, };
 export type Density = "compact" | "balanced" | "comfortable";
 export type Preferences = { onboarding_completed: boolean, density: Density, minimized: boolean, updates: boolean, launcher: boolean, toasts: boolean, };
+export const defaultWindowsNotifications = true as const;
 export type StartupView = { supported: boolean, enabled: boolean, };
 export type SettingsView = { version: string, general: Preferences, appearance: AppearanceSettings, zoom: number, revision: string, protected: boolean, canRetry: boolean, warning: boolean, startup: StartupView, track: TrackView, };
 export type SettingsPatch = { "field": "density", "value": Density } | { "field": "minimized", "value": boolean } | { "field": "updates", "value": boolean } | { "field": "launcher", "value": boolean } | { "field": "toasts", "value": boolean } | { "field": "palette", "value": Palette } | { "field": "scheme", "value": Scheme } | { "field": "contrast", "value": number } | { "field": "glassOpacity", "value": number } | { "field": "interfaceFont", "value": InterfaceFont } | { "field": "monoFont", "value": MonoFont } | { "field": "reducedMotion", "value": boolean } | { "field": "zoom", "value": number } | { "field": "startup", "value": boolean } | { "field": "performance", "value": PerformanceLevel } | { "field": "hideOffTrack", "value": boolean };

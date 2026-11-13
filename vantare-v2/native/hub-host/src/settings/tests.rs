@@ -365,3 +365,47 @@ fn writer_bytes_hub_settings_and_appearance_are_typed_and_feature_independent() 
         include_bytes!("../../fixtures/writer-bytes/appearance.json")
     );
 }
+
+#[test]
+fn a_new_configuration_enables_windows_notifications_and_persists_the_choice() {
+    let root = Root::new();
+    let settings = root.settings();
+    assert!(settings.view().general.toasts);
+    assert!(settings.windows_notifications_enabled());
+    let saved: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.0.join(store::FILE)).unwrap()).unwrap();
+    assert_eq!(saved["general"]["toasts"], true);
+    assert!(root.settings().view().general.toasts);
+}
+#[test]
+fn saved_disabled_or_absent_toasts_are_not_changed_by_loading_or_an_unrelated_save() {
+    for absent in [false, true] {
+        let root = Root::new();
+        let mut doc = serde_json::to_value(store::Document::default()).unwrap();
+        if absent {
+            doc["general"].as_object_mut().unwrap().remove("toasts");
+        } else {
+            doc["general"]["toasts"] = false.into();
+        }
+        let bytes = serde_json::to_vec(&doc).unwrap();
+        let path = root.0.join(store::FILE);
+        fs::write(&path, &bytes).unwrap();
+        let mut settings = root.settings();
+        assert!(!settings.view().general.toasts);
+        assert!(!settings.windows_notifications_enabled());
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        let revision = settings.view().revision;
+        settings
+            .update(SettingsPatch::Minimized(true), &revision)
+            .unwrap();
+        assert!(!root.settings().view().general.toasts);
+    }
+}
+#[test]
+fn legacy_general_without_toasts_keeps_the_preexisting_disabled_default() {
+    let root = Root::new();
+    let bytes = br#"{"updates":true,"launcher":true}"#;
+    fs::write(root.0.join("general.json"), bytes).unwrap();
+    assert!(!root.settings().view().general.toasts);
+    assert_eq!(fs::read(root.0.join("general.json")).unwrap(), bytes);
+}

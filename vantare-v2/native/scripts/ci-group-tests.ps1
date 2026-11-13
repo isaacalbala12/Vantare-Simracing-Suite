@@ -20,8 +20,13 @@ try {
             Write-Host 'Sin crates nativos afectados; nada que hacer.'
             return
         }
+        # Un diff global devuelve todos los miembros: se trata como "grupo
+        # entero" para excluir el otro grupo y conservar el grafo de features.
+        $all = & python (Join-Path $PSScriptRoot 'ci-groups.py') --members
+        if ($LASTEXITCODE -or -not $all) { throw 'No se pudo leer el workspace.' }
+        if (($selection -join ',') -eq $all) { $selection = '' }
     }
-    $groupSelection = if ($isPullRequest) {
+    $groupSelection = if ($selection) {
         & python (Join-Path $PSScriptRoot 'ci-groups.py') --group $Group --packages $selection
     } else {
         & python (Join-Path $PSScriptRoot 'ci-groups.py') --group $Group --members
@@ -36,7 +41,7 @@ try {
         return
     }
     if (-not $env:VANTARE_SLOT_TARGET) { throw 'Invocar por compilar.ps1.' }
-    if ($isPullRequest) {
+    if ($selection) {
         $packages = $groupSelection.Split(',')
         Write-Host "Grupo ${Group}: $($packages -join ', ')"
         & (Join-Path $PSScriptRoot '../gates.ps1') -Gate test -Packages $packages

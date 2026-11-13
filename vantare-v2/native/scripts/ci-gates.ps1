@@ -17,6 +17,15 @@ try {
         if ($LASTEXITCODE) { throw 'No se pudo calcular el diff; no se omiten gates.' }
         if ($selection) { $packages = $selection.Split(',') }
         else { Write-Host 'Sin crates nativos afectados.'; return }
+        # Un diff global devuelve todos los miembros: equivale a --workspace y
+        # permite conservar el grafo de features (y los aciertos de sccache) al
+        # excluir el grupo surface, en vez de enumerar 10 paquetes con -p.
+        $all = & python (Join-Path $PSScriptRoot 'ci-groups.py') --members
+        if ($LASTEXITCODE -or -not $all) { throw 'No se pudo leer el workspace.' }
+        if (($packages -join ',') -eq $all) {
+            $packages = @()
+            Write-Host 'Diff global: el gate cubre el workspace completo.'
+        }
         $legacy = & python (Join-Path $PSScriptRoot 'affected-crates.py') --base $DiffBase --legacy-check
         if ($LASTEXITCODE) { throw 'No se pudieron seleccionar consumidores legacy.' }
         if ($legacy) { $legacyChecks = $legacy.Split(',') }

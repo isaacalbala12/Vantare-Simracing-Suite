@@ -520,13 +520,12 @@ describe("Studio Foco interactions", () => {
     await user.click(screen.getByRole("button", { name: t.undo }));
     expect(await screen.findByRole("button", { name: /^Delta,/ })).toBeTruthy();
   });
-  it.each(["card", "inspector"])(
+  it.each(["card", "menu"])(
     "returns focus to the %s when deletion is cancelled",
     async (origin) => {
       mount();
       const user = userEvent.setup();
       const card = await screen.findByRole("button", { name: /^Standings,/ });
-      if (origin === "inspector") await openTrack();
       const source =
         origin === "card"
           ? card

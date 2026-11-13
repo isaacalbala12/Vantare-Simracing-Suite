@@ -1,5 +1,16 @@
 # Corpus temporal LMU47 para el port Rust
 
+## Reproducción histórica
+
+Los comandos de este documento reproducen el port Go/Rust del checkout
+anterior a la retirada. Sus rutas `internal/` y `rust/telemetry/` ya no son
+gates del checkout actual; `cargo +1.95.0` conserva el compilador de aquella
+reproducción. No fija el toolchain nativo vigente.
+
+Para la validación actual con el toolchain de `native/rust-toolchain.toml`,
+consulta [los gates nativos](../../native/README.md). Los oráculos Go retirados
+se conservan en [tools/frozen-go](../../tools/frozen-go/README.md).
+
 `lmu47-high-rate-60s.tar.gz` contiene una captura real sanitizada de LMU
 1.4.2.0, tomada el 2026-09-29 en pista con 47 vehículos. Sus eventos conservan
 la hora UTC de disponibilidad de 3600 lecturas estables de SHM y de 239

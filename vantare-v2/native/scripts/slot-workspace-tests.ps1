@@ -27,17 +27,26 @@ if (-not $rejected -or -not (Test-Path -LiteralPath (Join-Path $target 'foreign.
 $legacy = Join-Path $target 'legacy'
 [IO.Directory]::CreateDirectory((Join-Path $legacy 'debug')) | Out-Null
 [IO.File]::WriteAllText((Join-Path $legacy '.rustc_info.json'), '{"rustc_fingerprint":123}')
-$legacyLock = Join-Path $legacy 'debug/.cargo-lock'
-[IO.File]::WriteAllText($legacyLock, '')
-$active = [IO.File]::Open($legacyLock, 'Open', 'ReadWrite', 'None')
-try {
-    $rejected = $false
-    try { Set-VantareSlotWorkspace -Target $legacy -NativeRoot $PSScriptRoot }
-    catch { $rejected = $true }
-    if (-not $rejected -or (Test-Path (Join-Path $legacy 'CACHEDIR.TAG'))) {
-        throw 'El target legacy ocupado no debe migrarse.'
+[IO.Directory]::CreateDirectory((Join-Path $legacy 'release')) | Out-Null
+foreach ($profile in @('debug', 'release')) {
+    [IO.File]::WriteAllText((Join-Path $legacy "$profile/.cargo-lock"), '')
+}
+foreach ($profile in @('debug', 'release')) {
+    $active = [IO.File]::Open((Join-Path $legacy "$profile/.cargo-lock"), 'Open', 'ReadWrite', 'None')
+    try {
+        $rejected = $false
+        try { Set-VantareSlotWorkspace -Target $legacy -NativeRoot $PSScriptRoot }
+        catch { $rejected = $_.Exception.InnerException -is [IO.IOException] }
+        if (-not $rejected -or (Test-Path (Join-Path $legacy 'CACHEDIR.TAG'))) {
+            throw "El target legacy con $profile ocupado no debe migrarse."
+        }
+    } finally { $active.Dispose() }
+    # A failed second lock must release the first one too.
+    foreach ($released in @('debug', 'release')) {
+        $probe = [IO.File]::Open((Join-Path $legacy "$released/.cargo-lock"), 'Open', 'ReadWrite', 'None')
+        $probe.Dispose()
     }
-} finally { $active.Dispose() }
+}
 function cargo {
     if ($args[0] -eq 'metadata') { '{"packages":[],"workspace_members":[]}' }
     elseif ($args[0] -eq 'clean') {
@@ -50,5 +59,17 @@ function cargo {
 }
 Set-VantareSlotWorkspace -Target $legacy -NativeRoot $PSScriptRoot
 if (-not (Test-Path (Join-Path $legacy '.vantare-workspace'))) { throw 'Falta el sello del checkout migrado.' }
+foreach ($profile in @('debug', 'release')) {
+    $probe = [IO.File]::Open((Join-Path $legacy "$profile/.cargo-lock"), 'Open', 'ReadWrite', 'None')
+    $probe.Dispose()
+}
+$legacy = Join-Path $target 'legacy-debug-only'
+[IO.Directory]::CreateDirectory((Join-Path $legacy 'debug')) | Out-Null
+[IO.File]::WriteAllText((Join-Path $legacy '.rustc_info.json'), '{"rustc_fingerprint":123}')
+[IO.File]::WriteAllText((Join-Path $legacy 'debug/.cargo-lock'), '')
+Set-VantareSlotWorkspace -Target $legacy -NativeRoot $PSScriptRoot
+if ((Test-Path (Join-Path $legacy 'release')) -or -not (Test-Path (Join-Path $legacy '.vantare-workspace'))) {
+    throw 'El target debug-only debe migrar sin inventar un perfil release.'
+}
 Remove-Item Function:cargo
-'PASS: migración legacy con lock exclusivo; marcador válido antes de clean.'
+'PASS: migración legacy con locks debug/release; marcador válido antes de clean.'

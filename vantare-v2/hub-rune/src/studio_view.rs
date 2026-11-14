@@ -306,8 +306,9 @@ pub fn view(state: &State) -> El {
                     .w_full()
                     .wrap(),
             );
-        } else if let Some(settings) = &item.settings {
-            let values = serde_json::to_value(settings).expect("typed widget settings");
+        } else if let Some(settings) = &item.settings
+            && let Ok(values) = serde_json::to_value(settings)
+        {
             focus = focus.child(
                 label(theme, text("studio.appearancePreviewNote"))
                     .w_full()
@@ -392,8 +393,9 @@ pub fn view(state: &State) -> El {
                 let mut choices = row().gap(6.0).child(label(theme, text(title)));
                 for (value, label_key) in options {
                     let patch = serde_json::json!({"kind":item.kind.id(),field:value});
-                    let patch =
-                        serde_json::from_value(patch).expect("closed shared appearance option");
+                    let Ok(patch) = serde_json::from_value(patch) else {
+                        continue;
+                    };
                     choices = choices.child(
                         action(
                             state,
@@ -427,10 +429,11 @@ pub fn view(state: &State) -> El {
                     continue;
                 }
                 if let Some(current) = values[field].as_bool() {
-                    let patch = serde_json::from_value(
+                    let Ok(patch) = serde_json::from_value(
                         serde_json::json!({"kind":item.kind.id(),field:!current}),
-                    )
-                    .expect("closed shared boolean option");
+                    ) else {
+                        continue;
+                    };
                     focus = focus.child(
                         action(
                             state,
@@ -573,6 +576,26 @@ pub fn view(state: &State) -> El {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn incompatible_widget_settings_omit_controls_instead_of_panicking() {
+        let mut state = crate::init();
+        state.section = "studio".into();
+        state.core.access.verified = true;
+        let mut value = crate::studio::scene("studio-base");
+        value.instances[0].kind = vantare_hub_host::studio::WidgetKind::Radar;
+        state.studio.selected = value.instances[0].id.clone();
+        state.studio.value = Some(value);
+        let mut rt = rune::Runtime::new(
+            state,
+            crate::view,
+            (1440.0, 900.0),
+            rune::Env::new(true, 1.0),
+        );
+        rt.frame(0.0);
+        assert!(rt.find("studio-reload").is_some());
+        assert!(rt.find("studio-designSystem-vantare").is_none());
+        assert!(rt.find("studio-designSystem-eficiencia").is_none());
+    }
     #[test]
     fn studio_states_and_appearance_controls_are_keyboard_named_without_a_window() {
         for scene in [

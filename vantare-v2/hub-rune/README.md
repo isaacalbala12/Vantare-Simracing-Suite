@@ -260,3 +260,10 @@ entrada de Rune avanzando el reloj inyectado antes de pulsar el campo y comprueb
 que ya es visible. Logs en D:/VantareServer/evidence/hub-rune/studio-*-validated.log.
 CI y revisión del head actual se consultan en #2306; estos tests no certifican
 apariencia, dispositivo gráfico ni anfitrión real.
+
+
+Revisión Studio: los controles de apariencia incompatibles se omiten sin panic;
+una revisión nueva invalida la confirmación de borrado. Un error ambiguo de
+escritura conserva el bloqueo y relee el documento, sin repetir cambios. Una
+lectura fallida o un evento no se consideran confirmación de esa escritura.
+Clippy y 76 tests Windows PASS; CI y head vigentes en #2306.

@@ -310,7 +310,9 @@ fn setup(state: &mut State, waker: rune::Waker) {
         });
     }
     #[cfg(not(any(test, all(debug_assertions, target_os = "macos"))))]
-    state.home_assets = Some(home_view::Assets::new(waker.clone(), &state.theme));
+    {
+        state.home_assets = Some(home_view::Assets::new(waker.clone(), &state.theme));
+    }
     if let Some(link) = &mut state.link {
         link.wake_with(waker);
     }

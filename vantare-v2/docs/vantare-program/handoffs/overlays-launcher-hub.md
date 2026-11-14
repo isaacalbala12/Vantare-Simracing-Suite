@@ -2354,3 +2354,27 @@ oscuro y tres escalas. Comparativas nuevas de inicio-base (seis celdas) prevista
 en D:/VantareServer/evidence/hub-rune/review-2297-r3; capturas solo offscreen en Mac.
 Resultados y SHA de captura se completan en el PR; no se atribuye la CI de e3749fa6
 al nuevo código. El corte 1 mantiene la aprobación visual pendiente de Isaac.
+
+
+Actualización 2026-11-14: las seis capturas preliminares de 043b24d20 confirman
+buscador/selector y botones, pero NO validan el hero: salió oscuro. Se conservan
+en review-2297-r3 como diagnóstico, no como entrega visual aceptada.
+Causa comprobada: el SVG contiene rojo y llega a la lista de dibujo cuando está
+preparado; los frames virtuales de --snap terminan antes de su decodificación.
+Las escenas de captura esperan ahora a que la caché publique los píxeles, con un
+test del primer frame; el arranque normal conserva la carga asíncrona.
+
+043b24d20: 61 tests Windows y 54 Mac PASS; Clippy Windows pasó sin sccache tras
+STATUS_ACCESS_VIOLATION del wrapper (ambos logs conservados). c89f6204 falló CI
+por un cfg aplicado a una asignación; se corrige usando un bloque de plataforma.
+Los gates del nuevo head no heredan esos resultados; se consultan en #2297.
+
+Bloqueo de evidencia: Mac 100.91.91.82 sin respuesta SSH al retomar el 14-nov.
+No se ha capturado el arreglo de preparación. Hace falta recuperar SSH, leer
+los logs de ready-build/ready-tests, compilar el head corregido y ejecutar
+las seis celdas con capture_inicio.py. Conservar el binario debug y retirar
+solo el target propio antes de capturar si quedan menos de 12 GiB.
+Última limpieza comprobada: target propio 1,75 GiB retirado, 11,77 → 13,38 GiB.
+Puede quedar un target nuevo del intento c89f6204; no se afirma limpio sin SSH.
+No se abren ventanas visibles ni se usa Automatización. No fusionar por fidelidad
+hasta tener nuevas comparativas y el visto bueno de Isaac.

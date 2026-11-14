@@ -80,3 +80,16 @@ propios de captura pendientes. Se conservó el binario debug y su hash en
 Hash SHA-256: `8ebe61421d39010d294b617cd3a9a9a9ce4c768e68b792c60109e20c47b78d14`.
 No se tocaron targets de Isaac ni de otros workers. Sin cuentas ni datos reales,
 cambios de hub-host/overlays/instalador/distribución, merges, promociones o releases.
+
+
+## Revisión del hero y buscador · 14-nov
+
+Código de lanzamiento e3749fa6 aceptado por Isaac; aspecto pendiente de igualar.
+Se corrigen el fondo degradado, Studio secundario con borde, retirada del botón
+inferior de Plantillas y búsqueda/selector de 168×38 con flecha. Las seis capturas
+preliminares 043b24d20 de `D:/VantareServer/evidence/hub-rune/review-2297-r3/`
+aún muestran el hero oscuro: son diagnóstico, no evidencia final del arreglo.
+La preparación determinista de imágenes de las escenas de captura se verifica
+en un test CPU del primer frame. Falta repetir los seis PNG tras ese cambio.
+El Mac no responde por SSH al retomar el 14-nov; no se afirma fidelidad aprobada
+ni se atribuyen los 61 tests Windows / 54 Mac de 043b24d20 al último head.

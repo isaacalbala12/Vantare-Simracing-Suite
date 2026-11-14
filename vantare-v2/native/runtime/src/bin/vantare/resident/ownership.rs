@@ -95,6 +95,20 @@ impl Owner {
         if self.chain.is_some() {
             return Err(Rejection::Busy);
         }
+        super::control::authorize(
+            &request.account,
+            observe,
+            vantare_ipc::control::Policy::permits_launch,
+        )
+        .map_err(|reason| match reason {
+            vantare_ipc::launcher::control::OrderRejection::AccountChanged => {
+                Rejection::AccountChanged
+            }
+            vantare_ipc::launcher::control::OrderRejection::AuthorityUnavailable => {
+                Rejection::AuthorityUnavailable
+            }
+            _ => Rejection::Denied,
+        })?;
         let observed = files::read(&self.path, files::MAX_DOCUMENT)
             .map_err(|_| Rejection::DocumentUnavailable)?;
         if vantare_services::content_hash(&observed) != request.revision {
@@ -111,20 +125,6 @@ impl Owner {
             .remove_profile(&request.profile)
             .map_err(|_| Rejection::DocumentUnavailable)?;
         let next = serde_json::to_vec_pretty(&document).map_err(|_| Rejection::Io)?;
-        super::control::authorize(
-            &request.account,
-            observe,
-            vantare_ipc::control::Policy::permits_launch,
-        )
-        .map_err(|reason| match reason {
-            vantare_ipc::launcher::control::OrderRejection::AccountChanged => {
-                Rejection::AccountChanged
-            }
-            vantare_ipc::launcher::control::OrderRejection::AuthorityUnavailable => {
-                Rejection::AuthorityUnavailable
-            }
-            _ => Rejection::Denied,
-        })?;
         let lease =
             vantare_launcher::chain::acquire_lease(&self.path).map_err(|error| match error {
                 vantare_launcher::chain::StartError::Busy(_) => Rejection::Busy,
@@ -191,6 +191,9 @@ impl Owner {
             request: request.request.clone(),
             receipt: RemovalReceipt::Accepted,
         }) {
+            drop(registry);
+            drop(lease);
+            self.publish();
             return;
         }
         let outcome = match persist(&self.path, &next, &observed) {

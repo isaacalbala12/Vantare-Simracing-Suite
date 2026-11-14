@@ -120,6 +120,35 @@ fn queue_does_not_delete_and_exact_values_reach_the_closed_mailbox() {
     assert!(f.root.path.exists());
 }
 #[test]
+fn unsupported_precedes_account_and_permission_and_document_errors() {
+    let mut f = Fixture::new();
+    std::fs::remove_file(&f.path).unwrap();
+    let supported = f.status.extension.take();
+    f.save();
+    let mut account = observed();
+    account.policy.state = AccessState::Revoked;
+    f.target.account_generation = "f".repeat(64);
+    assert_eq!(
+        remove_with_clock(&f.path, Some(&account), &f.target, || panic!("unsupported")),
+        Err(HostError::Unsupported)
+    );
+    f.status.extension = supported;
+    f.save();
+    assert_eq!(
+        remove_with_clock(&f.path, Some(&account), &f.target, || panic!(
+            "wrong account"
+        )),
+        Err(rejected(wire::RemovalRejection::AccountChanged))
+    );
+    f.target.account_generation = String::from(account.generation.clone());
+    assert_eq!(
+        remove_with_clock(&f.path, Some(&account), &f.target, || Ok(10_000)),
+        Err(rejected(wire::RemovalRejection::Denied))
+    );
+    assert!(!native::request_path(&f.path).exists());
+}
+
+#[test]
 fn old_missing_unknown_busy_owned_or_other_account_never_falls_back_to_delete() {
     for case in 0..6 {
         let mut f = Fixture::new();

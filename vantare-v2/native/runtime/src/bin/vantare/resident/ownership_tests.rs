@@ -407,6 +407,50 @@ fn a_concurrent_editor_conflicts_and_a_concurrent_start_cannot_pass_the_same_lea
 }
 
 #[test]
+fn account_and_permission_rejections_precede_document_errors() {
+    for document_case in 0..3 {
+        for account_case in 0..3 {
+            let mut f = fixture();
+            let mut command = request(&f.owner);
+            match document_case {
+                0 => fs::remove_file(&f.owner.path).unwrap(),
+                1 => command.revision = "0".repeat(64),
+                _ => {
+                    let bytes = b"{invalid";
+                    fs::write(&f.owner.path, bytes).unwrap();
+                    command.revision = vantare_services::content_hash(bytes);
+                }
+            }
+            f.owner.remove_profile_with(
+                command,
+                || {
+                    let mut account = observed();
+                    match account_case {
+                        0 => account.generation = "f".repeat(64).try_into().unwrap(),
+                        1 => account.policy.state = vantare_ipc::control::AccessState::Revoked,
+                        _ => {}
+                    }
+                    Ok(Some(account))
+                },
+                |_, _, _| panic!("must not write"),
+            );
+            let expected = match account_case {
+                0 => Rejection::AccountChanged,
+                1 => Rejection::Denied,
+                _ if document_case == 1 => Rejection::RevisionMismatch,
+                _ => Rejection::DocumentUnavailable,
+            };
+            assert!(
+                matches!(&f.owner.status.extension.as_ref().unwrap().events.last().unwrap().kind,
+                    EventKind::RemovalReceived { receipt: RemovalReceipt::Rejected { reason }, .. }
+                    if *reason == expected),
+                "document case {document_case}, account case {account_case}"
+            );
+        }
+    }
+}
+
+#[test]
 fn authority_policy_chain_lease_and_poisoned_registry_never_allow_writes() {
     for case in 0..5 {
         let mut f = fixture();

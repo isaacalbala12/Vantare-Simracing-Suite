@@ -157,7 +157,8 @@ revalida la cuenta y los permisos de edición, lee una única instantánea y exi
 su SHA-256. Mantiene el bloqueo del registro tras reap y rechaza hijos propios
 vivos, aunque la cadena haya terminado. Conserva ambos bloqueos hasta el CAS
 atómico y la actualización de la caché del Owner. La lectura/validación del
-documento y la consulta de cuenta ocurren antes de adquirirlos. Tras soltarlos
+documento y la consulta de cuenta ocurren antes de adquirirlos; la cuenta y los
+permisos se comprueban antes de leer el documento. Tras soltarlos
 se sincronizan atajos e inicio de Windows y se publica el estado una sola vez.
 No cierra procesos.
 

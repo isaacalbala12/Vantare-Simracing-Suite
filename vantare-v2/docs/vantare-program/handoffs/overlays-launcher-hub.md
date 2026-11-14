@@ -158,7 +158,8 @@ sin reenvío. Un rechazo también ocupa un hueco. Solo Removed confirma el CAS.
 
 El residente consulta otra vez a la autoridad (750 ms), comparte el lease de
 start_checked y conserva el bloqueo de handles hasta CAS y actualización de
-la caché. Lectura/validación y cuenta van antes de adquirirlos; atajos,
+la caché. Primero se comprueban cuenta/permisos, después el documento, ambos
+antes de adquirir los bloqueos; atajos,
 sync_startup y una única publicación van después de soltarlos. La foto no
 autoriza un borrado en el anfitrión.
 No añade hilos ni RPC al bucle de publicación ni cambia supervisor/rights.

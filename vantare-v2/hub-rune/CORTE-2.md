@@ -4,13 +4,15 @@ VANTA-143 / Refs #2256. Preparado sin ejecutar gráficos. Depende del código de
 Inicio #2297, Studio #2306 y Launcher #2307. El primer trabajo al recuperar el
 Mac sigue siendo la comparativa pendiente de #2297, offscreen y sin foco.
 
-| Requisito ADR 0108 §4 | Resultado verificado | Pendiente de verificar |
+| Requisito / criterio ADR 0108 §4 | Resultado verificado | Pendiente de verificar |
 | --- | --- | --- |
-| Funcionalidad, teclado y accesibilidad | PASS manual de Isaac para marco, Inicio/Roadmap, tema, Tab/Enter/Espacio y X en corte 1 | Studio/Launcher, lector, AltGr y Windows 10/11 |
-| Fidelidad con Electron | FALLO visual inicial registrado en corte 1; arreglos en #2297 | Comparativa definitiva y OK de Isaac |
-| RSS como máximo la mitad de Electron; arranque no más lento | PENDIENTE; no hay mediciones nuevas | Premedición Mac y prueba A en PC de juego |
-| Coste por pantalla <=1,5 veces Electron | PENDIENTE | Registrar horas y aceptar equivalencia de las tres pantallas |
-| Escalas 100/125/150 y 30 minutos sin bloqueos | PENDIENTE | Prueba física, sin deducirla de un proceso offscreen |
+| 1. Windows 10 22H2 y 11, escalas 100/125/150 | PENDIENTE | Prueba en PC de juego; el Mac no certifica Windows |
+| 2. Teclado español, acentos y AltGr | PENDIENTE; teclado básico PASS manual de Isaac en corte 1 | Campos, acentos y AltGr en las tres pantallas |
+| 3. Uso con teclado y nombres accesibles | PASS manual de Isaac para marco, Inicio/Roadmap, Tab/Enter/Espacio; nombres en tests CPU | Studio/Launcher y lector de pantalla físico |
+| 4. Fidelidad aceptada por Isaac, lado a lado | FALLO visual inicial registrado en corte 1; arreglos en #2297 | Comparativa definitiva y OK de Isaac |
+| 5. Media hora sin cierres ni bloqueos | PENDIENTE | Uso normal; no deducirlo de un proceso offscreen |
+| Medición: RSS <=0,5× Electron; arranque no más lento | PENDIENTE; no hay mediciones nuevas | Premedición Mac y prueba A en PC de juego |
+| Producción: coste por pantalla <=1,5× Electron | PENDIENTE | Registrar horas y aceptar equivalencia de las tres pantallas |
 
 ## Qué mide el guion
 

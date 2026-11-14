@@ -2724,3 +2724,16 @@ Se repite por cola, VANTARE_SCCACHE=0, dos jobs, logs corte2-clippy-retry.log y
 corte2-tests-retry.log. Turno adquirido tras 56 s; no se cambian slots ni límites.
 Ejecución real Mac y capturas siguen pendientes; sin afirmar una causa del corte
 de sesión ni resultados de un gate sin terminar. No se ha usado el Mac.
+
+
+Cierre de preparación #2313: Clippy local del probe PASS en 2m22s, por cola,
+dos jobs, sin caché sccache y sin ventana. El compilador avisó de un artefacto
+incremental corrupto tras el corte anterior, lo ignoró/eliminó automáticamente
+y terminó bien; log completo conservado, sin limpieza manual de targets.
+Tests locales vuelven a esperar RAM en la misma tanda, sin otro compilador
+propio ni cambio de límites. No se declaran PASS mientras no terminen.
+CI completa anterior 8e8b2b1e53 PASS incluye Windows/tests y compilación macOS;
+último head de scripts/documentación pendiente de su propia CI. La tabla de
+CORTE-2 enumera los cinco requisitos exactos del ADR por separado de rendimiento
+y coste. Seis tests Python, exportación CPU de las tres escenas, sintaxis,
+formato/diff PASS. Handoff/issue/PR conservan estados pendientes y SHA publicados.

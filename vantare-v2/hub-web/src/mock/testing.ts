@@ -46,6 +46,12 @@ export function createTestingMock(
       question: "¿Cómo funciona el Hub?",
       score: null,
     });
+  if (scene === "testing-tester-questionnaire-note")
+    participation.questionnaires = participation.questionnaires.map((item) => ({
+      ...item,
+      score: 4,
+      note: "Comentario guardado anteriormente.",
+    }));
   if (
     [
       "testing-tester-questionnaires-reference",

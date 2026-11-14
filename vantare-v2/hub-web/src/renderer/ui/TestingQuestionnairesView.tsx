@@ -1,4 +1,6 @@
+import { useId, useLayoutEffect, useState } from "react";
 import type { TestingView } from "../../contract/generated/contract";
+import { testingAnswerNoteMaxChars } from "../../contract/generated/contract";
 import { testingQuestionnairesText as text } from "../i18n/testing-questionnaires";
 import { Button } from "./Button";
 import { Textarea } from "./Forms";
@@ -32,6 +34,13 @@ export function TestingQuestionnairesView({
   onSave: () => void;
 }) {
   const item = data.find((item) => item.id === selected);
+  const noteId = useId();
+  const [invalidQuestion, setInvalidQuestion] = useState<string>();
+  const [validationAttempt, setValidationAttempt] = useState(0);
+  const tooLong = Array.from(note).length > testingAnswerNoteMaxChars;
+  useLayoutEffect(() => {
+    if (validationAttempt) document.getElementById(noteId)?.focus();
+  }, [validationAttempt, noteId]);
   return (
     <div className="v-testing-questionnaires">
       <TestingCard>
@@ -60,11 +69,29 @@ export function TestingQuestionnairesView({
             ))}
           </div>
           <Textarea
+            id={noteId}
             label={text.note}
             value={note}
+            description={text.noteLimit(testingAnswerNoteMaxChars)}
+            error={
+              invalidQuestion === selected && tooLong
+                ? text.noteTooLong(testingAnswerNoteMaxChars)
+                : undefined
+            }
             onChange={(event) => onNote(event.currentTarget.value)}
           />
-          <Button variant="primary" disabled={blocked} onClick={onSave}>
+          <Button
+            variant="primary"
+            disabled={blocked}
+            onClick={() => {
+              if (tooLong) {
+                setInvalidQuestion(selected);
+                setValidationAttempt((attempt) => attempt + 1);
+                return;
+              }
+              onSave();
+            }}
+          >
             {text.save}
           </Button>
           <TestingFinePrint>{text.help}</TestingFinePrint>

@@ -36,6 +36,9 @@ export function createMockHost(
 ) {
   const requestedScene = sceneName;
   const visual =
+    /^visual-(dark|light):(testing-tester-questionnaire-note)$/.exec(
+      sceneName,
+    ) ??
     studioStateVisual.exec(sceneName) ??
     /^visual-(dark|light):(onboarding-(?:[0-7]|cuenta-(?:sesion|cargando|error)|correo-(?:sin-permiso|con-permiso|error)))$/.exec(
       sceneName,

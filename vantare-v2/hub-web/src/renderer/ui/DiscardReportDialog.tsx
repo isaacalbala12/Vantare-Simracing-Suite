@@ -25,11 +25,18 @@ export function CloseReportSaveFailureDialog({
   onRetry,
   onDiscard,
   onDismiss,
+  text = closeReportSaveFailureText,
 }: {
   open: boolean;
   onRetry: () => void;
   onDiscard: () => void;
   onDismiss: () => void;
+  text?: {
+    title: string;
+    description: string;
+    cancel: string;
+    confirm: string;
+  };
 }) {
   return (
     <ReportConfirmation
@@ -38,7 +45,7 @@ export function CloseReportSaveFailureDialog({
       onCancel={onRetry}
       onConfirm={onDiscard}
       onDismiss={onDismiss}
-      text={closeReportSaveFailureText}
+      text={text}
     />
   );
 }

@@ -25,6 +25,7 @@ import {
   closeUnsavedReportText as closeDialog,
   closeReportSaveFailureText as failureDialog,
 } from "../src/renderer/i18n/testing-discard";
+import { testingQuestionnairesText as questionnaireText } from "../src/renderer/i18n/testing-questionnaires";
 import {
   ReportsProvider,
   useReports,
@@ -1356,4 +1357,124 @@ it("still explains an actual core Busy response to Testing", async () => {
   });
   expect(hook.result.current.failure).toBe("busy");
   expect(hook.result.current.error).toBe(true);
+});
+
+it("a preloaded score and comment are clean when X arrives through the real Client port", async () => {
+  const hook = await mount("testing-tester-questionnaire-note");
+  await act(async () => {
+    await hook.result.current.refresh();
+  });
+  act(() =>
+    hook.result.current.selectQuestionnaire(
+      "15350000-0000-0000-0000-000000000001",
+    ),
+  );
+  expect(hook.result.current.answerDraft).toEqual({
+    id: "15350000-0000-0000-0000-000000000001",
+    score: 4,
+    note: "Comentario guardado anteriormente.",
+  });
+  const requests = vi.spyOn(hook.connection, "request");
+  await act(async () => {
+    expect(await hook.close("window")).toBe(true);
+  });
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(
+    requests.mock.calls.some(
+      ([request]) =>
+        request.method === "draft.save" || request.method === "testing.answer",
+    ),
+  ).toBe(false);
+});
+it("vetoes X for an edited answer without sending it and is clean after the explicit save", async () => {
+  const hook = await mount("testing-tester-questionnaire-note");
+  await act(async () => {
+    await hook.result.current.refresh();
+  });
+  act(() =>
+    hook.result.current.selectQuestionnaire(
+      "15350000-0000-0000-0000-000000000001",
+    ),
+  );
+  act(() =>
+    hook.result.current.setAnswerDraft((current) => ({
+      ...current,
+      note: "Comentario editado antes de cerrar",
+    })),
+  );
+  const requests = vi.spyOn(hook.connection, "request");
+  await act(async () => {
+    expect(await hook.close("window")).toBe(false);
+  });
+  expect(
+    await screen.findByRole("alertdialog", {
+      name: questionnaireText.unsavedTitle,
+    }),
+  ).toBeTruthy();
+  expect(
+    requests.mock.calls.some(
+      ([request]) => request.method === "testing.answer",
+    ),
+  ).toBe(false);
+  fireEvent.click(
+    screen.getByRole("button", { name: questionnaireText.keepEditing }),
+  );
+  await act(async () => {
+    await hook.result.current.answer();
+  });
+  expect(
+    requests.mock.calls.filter(
+      ([request]) => request.method === "testing.answer",
+    ),
+  ).toHaveLength(1);
+  await act(async () => {
+    expect(await hook.close("window")).toBe(true);
+  });
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});
+
+it("does not publish an old account's late answer or retain its preloaded note", async () => {
+  const hook = await mount("testing-tester-questionnaire-note");
+  await act(async () => {
+    await hook.result.current.refresh();
+  });
+  act(() =>
+    hook.result.current.selectQuestionnaire(
+      "15350000-0000-0000-0000-000000000001",
+    ),
+  );
+  act(() =>
+    hook.result.current.setAnswerDraft((current) => ({
+      ...current,
+      note: "OLD_ACCOUNT_EDIT",
+    })),
+  );
+  const prior = structuredClone(hook.result.current.participation);
+  prior.questionnaires[0].note = "OLD_ACCOUNT_EDIT";
+  const request = Client.prototype.request;
+  let finish: ((reply: Reply) => void) | undefined;
+  vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    value,
+  ) {
+    if (value.method === "testing.answer")
+      return new Promise((resolve) => {
+        finish = resolve;
+      });
+    return request.call(this, value);
+  });
+  let answer: Promise<unknown> | undefined;
+  act(() => {
+    answer = hook.result.current.answer().catch(() => {});
+  });
+  await waitFor(() => expect(finish).toBeDefined());
+  await act(async () => {
+    await hook.account().act({ method: "account.begin" });
+  });
+  await act(async () => {
+    finish?.({ method: "testing.answer", value: prior });
+    await answer;
+  });
+  expect(hook.result.current.answerDraft).toEqual({ score: 3, note: "" });
+  expect(hook.result.current.participation.questionnaires).toEqual([]);
 });

@@ -10,7 +10,10 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { CoreStatus } from "../src/contract/generated/contract";
+import {
+  type CoreStatus,
+  testingAnswerNoteMaxChars,
+} from "../src/contract/generated/contract";
 import { AccountProvider } from "../src/renderer/app/AccountState";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { Client } from "../src/renderer/bridge/client";
@@ -64,12 +67,12 @@ async function select() {
     await screen.findByRole("button", { name: /Cuestionario local de QA/ }),
   );
 }
-it("sends only the selected score after an explicit save, keeps the note local and prevents double submission", async () => {
+it("sends the selected score and edited note only after explicit save and prevents double submission", async () => {
   await mount();
   const calls = vi.spyOn(Client.prototype, "request");
   await select();
   fireEvent.change(screen.getByRole("textbox", { name: text.note }), {
-    target: { value: "PRIVATE_NOTE_NEVER_SEND" },
+    target: { value: "Comentario editado" },
   });
   fireEvent.click(screen.getByRole("button", { name: /^5$/ }));
   expect(
@@ -93,10 +96,100 @@ it("sends only the selected score after an explicit save, keeps the note local a
     method: "testing.answer",
     id: "15350000-0000-0000-0000-000000000001",
     score: 5,
+    note: "Comentario editado",
   });
-  expect(JSON.stringify(calls.mock.calls)).not.toContain(
-    "PRIVATE_NOTE_NEVER_SEND",
+  fireEvent.click(
+    screen.getByRole("button", { name: /Cuestionario local de QA/ }),
   );
+  expect(
+    (screen.getByRole("textbox", { name: text.note }) as HTMLTextAreaElement)
+      .value,
+  ).toBe("Comentario editado");
+});
+it("preloads the prior score and note and sends an intentional empty note", async () => {
+  window.history.replaceState(
+    null,
+    "",
+    "/?escena=testing-tester-questionnaire-note",
+  );
+  await mount();
+  await select();
+  const field = screen.getByRole("textbox", { name: text.note });
+  expect((field as HTMLTextAreaElement).value).toBe(
+    "Comentario guardado anteriormente.",
+  );
+  expect(
+    screen.getByRole("button", { name: "4 ✓" }).getAttribute("aria-pressed"),
+  ).toBe("true");
+  const calls = vi.spyOn(Client.prototype, "request");
+  fireEvent.change(field, { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: text.save }));
+  await waitFor(() =>
+    expect(
+      calls.mock.calls.some(([value]) => value.method === "testing.answer"),
+    ).toBe(true),
+  );
+  expect(
+    calls.mock.calls.find(([value]) => value.method === "testing.answer")?.[0],
+  ).toEqual({
+    method: "testing.answer",
+    id: "15350000-0000-0000-0000-000000000001",
+    score: 4,
+    note: "",
+  });
+  const answerIndex = calls.mock.calls.findIndex(
+    ([value]) => value.method === "testing.answer",
+  );
+  await act(async () => {
+    await calls.mock.results[answerIndex].value;
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: /Cuestionario local de QA/ }),
+  );
+  expect(
+    (screen.getByRole("textbox", { name: text.note }) as HTMLTextAreaElement)
+      .value,
+  ).toBe("");
+});
+it("validates the scalar character limit after saving is attempted and keeps focus and text", async () => {
+  await mount();
+  await select();
+  const calls = vi.spyOn(Client.prototype, "request");
+  const field = screen.getByRole("textbox", { name: text.note });
+  const note = "😀".repeat(testingAnswerNoteMaxChars + 1);
+  fireEvent.change(field, { target: { value: note } });
+  expect(
+    screen.queryByText(text.noteTooLong(testingAnswerNoteMaxChars)),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: text.save }));
+  expect(
+    await screen.findByText(text.noteTooLong(testingAnswerNoteMaxChars)),
+  ).toBeTruthy();
+  expect(document.activeElement).toBe(field);
+  expect((field as HTMLTextAreaElement).value).toBe(note);
+  expect(
+    calls.mock.calls.some(([value]) => value.method === "testing.answer"),
+  ).toBe(false);
+  fireEvent.change(field, {
+    target: { value: "😀".repeat(testingAnswerNoteMaxChars) },
+  });
+  expect(
+    screen.queryByText(text.noteTooLong(testingAnswerNoteMaxChars)),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: text.save }));
+  await waitFor(() =>
+    expect(
+      calls.mock.calls.some(([value]) => value.method === "testing.answer"),
+    ).toBe(true),
+  );
+  const row = await screen.findByRole("button", {
+    name: /Cuestionario local de QA.*Respondido/,
+  });
+  fireEvent.click(row);
+  expect(
+    (screen.getByRole("textbox", { name: text.note }) as HTMLTextAreaElement)
+      .value,
+  ).toBe("😀".repeat(testingAnswerNoteMaxChars));
 });
 it("keeps a selected local note but disables saving and reload when the core disconnects", async () => {
   await mount();

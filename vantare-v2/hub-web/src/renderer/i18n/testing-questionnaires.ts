@@ -11,6 +11,9 @@ export const testingQuestionnairesText = {
   noteLimit: (limit: number) => `Máximo ${limit} caracteres.`,
   noteTooLong: (limit: number) =>
     `Acorta el comentario a ${limit} caracteres como máximo.`,
+  rejected: "El núcleo no ha aceptado la solicitud del cuestionario.",
+  rejectedHelp:
+    "Recarga los cuestionarios y revisa la respuesta antes de volver a guardar. El comentario que has escrito se conserva.",
   unsavedTitle: "Respuesta de cuestionario sin guardar",
   unsavedDescription:
     "Guarda la respuesta desde Cuestionarios antes de cerrar, o confirma «Cerrar sin guardar». No se ha enviado automáticamente.",

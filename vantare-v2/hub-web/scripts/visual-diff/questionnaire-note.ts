@@ -3,6 +3,28 @@ import { testingQuestionnairesText as text } from "../../src/renderer/i18n/testi
 import type { VisualScene } from "./scenes.ts";
 
 export const questionnaireNoteScenes: Record<string, VisualScene> = {
+  "testing-cuestionario-rechazado": {
+    mock: "testing-tester-questionnaire-note-rejected",
+    async prepare(page) {
+      await questionnaireNoteScenes["testing-cuestionario-nota"].prepare(page);
+      await page.getByRole("button", { name: text.save, exact: true }).click();
+      await page
+        .getByRole("alert")
+        .getByText(text.rejected, { exact: true })
+        .waitFor();
+      assert.equal(
+        await page
+          .getByRole("textbox", { name: text.note, exact: true })
+          .inputValue(),
+        "Comentario guardado anteriormente.",
+      );
+      assert.ok(
+        await page
+          .getByRole("button", { name: "Recargar", exact: true })
+          .isEnabled(),
+      );
+    },
+  },
   "testing-cuestionario-nota": {
     mock: "testing-tester-questionnaire-note",
     async prepare(page) {

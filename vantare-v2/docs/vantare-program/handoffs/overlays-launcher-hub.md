@@ -2764,3 +2764,31 @@ idéntico. Manifest separa source_sha de controller_source_sha y guarda hashes
 incluido el helper nuevo. Sin nuevas dependencias ni cambios Rust. Nueva carpeta
 para repetir N=10 completos, conservando el intento fallido. Estado y resultados
 solo en PR/issue/evidencia, sin declarar el corte 2 aceptado.
+
+
+### VANTA-143 · medición Mac corte 2 terminada (2026-11-15)
+
+R3 completa: 120/120 muestras PASS, doce celdas de diez, 480 intervalos y 360
+transiciones. Tabla llena en D:/VantareServer/evidence/hub-rune/corte2/CORTE-2.md;
+CSV/JSON, validation-r3.json, manifest y muestras en mac-r3-40086c6. Medianas
+recalculadas; hashes de datos/controladores/archivo comprobados. Hubs/QA 72d60d846,
+controlador 40086c6a9. 89,83 min, salida 0, mínimo libre 14,081 GiB. No outliers
+excluidos; fallido por selector y detenido por compacto conservados aparte.
+
+No confundir PASS de muestras con gates del ADR: CPU headless Rune a 60 fps,
+Electron oculto, frame no presentado, binarios QA/debug y cachés sin purgar.
+Prueba A en PC de juego, builds comparables, Windows, coste y OK de Isaac siguen
+pendientes; no ganador ni retiro de Electron. Tabla corresponde a 72d, no al
+posterior binario compacto 0a191f426; este reprodujo idénticos PNG de 1440.
+#2297 conserva ocho pares, cuatro compactos renovados, y Clippy/63 tests Windows
+más 56 Mac PASS. OK visual pendiente; no se fusiona nada.
+
+Archivo R3 íntegro recuperado antes de perder SSH al copiar el estado final;
+estado del supervisor tomado del stdout local y concordante con todas las filas.
+No repetir ni borrar evidencia; no se afirma disco/procesos actuales sin acceso.
+Targets propios ya retirados tras comprobar rutas y hashes de binarios archivados;
+nada ajeno eliminado. CI completa de 40086c6a9 verificada verde, Windows y Mac.
+Esta entrega posterior solo añade documentación/resultados; no repite compilación
+ni tests que ya pasan. CI del nuevo head documental se verá en PR. Sin nuevas
+dependencias, gráficos Windows, cuentas reales, merge/promoción/release ni cambios
+Plane del worker. Orquestador decide aceptación y siguientes cortes.

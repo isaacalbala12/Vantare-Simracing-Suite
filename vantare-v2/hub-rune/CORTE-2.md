@@ -130,3 +130,30 @@ El manifest distingue source_sha (aplicaciones/QA) de controller_source_sha
 cambiar las aplicaciones medidas; los hashes de todos sus guiones se conservan.
 El primer intento real detectó un selector fijo incorrecto al navegar desde
 Inicio: se conserva como tanda fallida y la regresión verifica las tres escenas.
+
+
+## Resultado de la premedición Mac · 2026-11-15
+
+**120/120 muestras válidas**, diez por cliente/pantalla/caché. Doce celdas
+completas, 480 intervalos de memoria/CPU y 360 transiciones; todas las medianas
+recalculadas y hashes del kit/datos/archivo comprobados. Tabla completa de seis
+métricas, frío/caliente y muestras en
+`D:/VantareServer/evidence/hub-rune/corte2/CORTE-2.md`,
+`summary.csv/json`, `validation-r3.json` y `mac-r3-40086c6/`.
+
+Aplicaciones/QA 72d60d846a0ab130b5a8725fa03e8f018e11b09a; controlador
+40086c6a9177df697645d97869484e00d30a59b4. No atribuir la medida a binarios del
+posterior arreglo compacto de #2297: a 1440 se verificó que no altera los PNG.
+Lote de 89,83 min, salida 0, mínimo libre 14,081 GiB. Ninguna ventana visible.
+Tandas fallida/interrumpida conservadas aparte, sin mezclar ni excluir outliers.
+
+Archivo de evidencia recibido íntegro. El SSH falló después al copiar el estado
+del supervisor; se recuperó del stdout local, concordante con las 120 filas.
+No se repitió la medición ni se afirma un estado actual del Mac sin acceso.
+Targets propios retirados tras archivar binarios y verificar rutas/hashes.
+
+Los PASS indican muestras completas, **no requisitos ADR superados**. CPU del
+headless continuo no equivale al reposo del event loop; cero de ps indica que
+no se detectó incremento con resolución 0,01 s. Perfil QA/debug, cachés del SO
+sin purgar, presentación real/Windows/PC de juego/coste/aceptación pendientes.
+No decisión de ganador, retirada de Electron, merge o release.

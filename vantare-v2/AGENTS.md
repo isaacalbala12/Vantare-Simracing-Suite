@@ -210,12 +210,11 @@ conservan sus instrucciones propias.
 ## Compilación Rust (`native/`)
 
 En Windows, desde `vantare-v2/`, el worker usa
-`pwsh -NoProfile -File native/scripts/comprobar.ps1 <crate>`: Clippy del crate
-tocado y sus dependientes directos (incluye los tipos de sus tests) y tests solo
-del crate tocado, excluyendo siempre Hub y Admin. `-Full` recupera los tests de
-todos los seleccionados. Los dependientes transitivos y sus tests los cubre CI;
-si tocas runtime, domain, ipc, ui o storage, usa `-Full` y la telemetría antes
-de publicar (#1498).
+`pwsh -NoProfile -File native/scripts/comprobar.ps1 <crate>`: Clippy (incluye
+los tipos de sus tests) y tests solo del crate tocado, excluyendo siempre Hub y
+Admin. Los dependientes directos y transitivos los cubre CI. `-Full` recupera
+Clippy y tests de todos los seleccionados. Si tocas runtime, domain, ipc, ui o
+storage, usa `-Full` y la telemetría antes de publicar (#1498).
 Para comandos específicos, usar `native/scripts/compilar.ps1 <comando> [args...]`.
 La cola permite como máximo dos compilaciones y asigna un target persistente
 por slot bajo `VANTARE_TARGET_ROOT`, reutilizado entre ramas. En este servidor

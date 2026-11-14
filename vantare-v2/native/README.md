@@ -498,21 +498,20 @@ pwsh -NoProfile -File native/scripts/comprobar.ps1 runtime
 pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare-core -j 4
 ```
 
-`comprobar` ejecuta Clippy (incluye tipos, también de los tests) del crate y sus
-dependientes directos, y Nextest solo del crate tocado. Los tests de los
-dependientes se reservan a CI, que los ejecuta completos en cada PR. Con `-Full`
-se ejecutan también en local los tests de todos los seleccionados, para antes de
-publicar. Se excluyen siempre `vantare-hub` y `vantare-admin`. Un cambio en el
-núcleo o en `ui` no ejecuta los tests de los dependientes en local, pero Clippy
-sí comprueba sus tipos. Cargo resuelve sus dependencias; no se activan defaults
-de paquetes ajenos a la selección. CI de PR a nightly añade los dependientes
+`comprobar` ejecuta Clippy (incluye tipos, también de los tests) y Nextest solo
+del crate tocado. Los dependientes directos y transitivos los cubre CI, que
+ejecuta su Clippy y sus tests en cada PR. Con `-Full` se ejecutan también en
+local Clippy y tests de todos los seleccionados, para antes de publicar. Se
+excluyen siempre `vantare-hub` y `vantare-admin`. Un cambio en el núcleo o en
+`ui` no compila ni prueba los dependientes en local; CI sí. Cargo resuelve sus
+dependencias; no se activan defaults de paquetes ajenos a la selección. CI de PR a nightly añade los dependientes
 transitivos y ejecuta sus tests, y excluye Hub/Admin, salvo cambios explícitos
 en esos productos. Push a nightly/testers, promociones y merge_group comprueban
 el workspace completo.
 
 Si tocas `runtime`, `domain`, `ipc`, `ui` o `storage`, el gate rápido imprime un
-aviso: faltan los tests de los dependientes y la telemetría (#1498). Antes de
-publicar, ejecuta `comprobar.ps1 <crate> -Full` y la telemetría.
+aviso: faltan Clippy y tests de los dependientes y la telemetría (#1498). Antes
+de publicar, ejecuta `comprobar.ps1 <crate> -Full` y la telemetría.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.

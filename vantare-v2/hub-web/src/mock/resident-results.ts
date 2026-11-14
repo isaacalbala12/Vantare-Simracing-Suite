@@ -120,13 +120,13 @@ export function createResidentResultsMock(
       if (target.scope === "failed" && !summary.retryFailed)
         return "no-failed-steps";
     };
-    if (queued || view.running) return failure("busy");
     if (execution.results.kind === "unsupported")
       return {
         kind: "failure",
         id: message.id,
         error: { kind: "unsupported" },
       };
+    if (queued || view.running) return failure("busy");
     const reason = invalid();
     if (reason) return failure(reason);
     queued = true;

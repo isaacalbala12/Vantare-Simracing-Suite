@@ -246,3 +246,20 @@ it("keeps a full-size repeated-app profile and all indexed results valid on the 
     residentStepLimit - 1,
   );
 });
+
+it("reports unsupported before busy or changed account in the mock", () => {
+  const f = setup();
+  const target = f.target("all");
+  if (!f.view.execution) throw new Error("execution");
+  f.view.execution.results = { kind: "unsupported" };
+  f.view.running = true;
+  f.core.accountGeneration = "e".repeat(64);
+  expect(
+    f.handle({
+      kind: "request",
+      id: 1,
+      request: { method: "launcher.resident.retry", target },
+    }),
+  ).toMatchObject({ kind: "failure", error: { kind: "unsupported" } });
+  expect(f.tasks).toHaveLength(0);
+});

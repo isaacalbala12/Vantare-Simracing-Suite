@@ -132,10 +132,14 @@ export function LauncherProfiles({
       ? control.results.value
       : undefined;
   const apps = (item: LauncherProfile) =>
-    item.apps.flatMap((id) => {
-      const app = view.apps.find((app) => app.id === id);
-      return app ? [app] : [];
-    });
+    item.apps.map(
+      (id) =>
+        view.apps.find((app) => app.id === id) ?? {
+          id,
+          name: resultsText.missingApp,
+          available: false,
+        },
+    );
   const missing = profile ? apps(profile).filter((app) => !app.available) : [];
   return (
     <div className="v-launcher-page">

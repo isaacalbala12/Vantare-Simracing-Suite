@@ -2707,3 +2707,20 @@ Un test detectó separadores Windows al comprobar rutas Mac; se normalizan con
 as_posix(), sin rebajar la exclusión de procesos de otro bundle. Primera subida
 remota falló; segundo push confirmó la rama. No publicación ni merge del worker.
 Clippy/tests del probe siguen en cola por RAM, sin reservar otro slot/compilador.
+
+
+Comprobación posterior: CI completa de #2313 8e8b2b1e53 verde, incluidos Rune
+Windows y mac-probe (Clippy sin ejecutar UI), web/calidad/gates. El último ajuste
+de scripts/CI tendrá su propio head y no hereda ese resultado. Bun 1.4.4 del repo
+usado como herramienta temporal, sin dependencia/lock nuevo: contract:index y
+exportación CPU de las tres escenas PASS, 12 mensajes y cuatro widgets en cada
+una; evidencia check-*.json bajo corte2. Seis tests Python y cinco de políticas,
+sintaxis y formato JS PASS. CI incorpora esa exportación sin arrancar Hubs.
+Se usa --no-env-file para que Bun no cargue archivos de entorno del checkout.
+
+La sesión anterior del gate local dejó de estar disponible sin resultado del
+compilador; corte2-clippy.log quedó incompleto. No cargo/rustc activos al verificar.
+Se repite por cola, VANTARE_SCCACHE=0, dos jobs, logs corte2-clippy-retry.log y
+corte2-tests-retry.log. Turno adquirido tras 56 s; no se cambian slots ni límites.
+Ejecución real Mac y capturas siguen pendientes; sin afirmar una causa del corte
+de sesión ni resultados de un gate sin terminar. No se ha usado el Mac.

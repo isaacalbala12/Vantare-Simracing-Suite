@@ -80,6 +80,18 @@ jobs:
       - run: cargo fmt --all -- --check
       - name: Check shared text and icon catalog freshness
         run: node ../hub-web/scripts/rune-catalog.mjs --check
+      - name: Install existing QA runtime
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.4
+      - name: Generate existing QA contract index without running a Hub
+        run: bun --no-env-file ../hub-web/scripts/contract-index.ts
+      - name: Export the three shared measurement scenes without graphics
+        run: |
+          foreach ($scene in @('inicio-base', 'studio-base', 'launcher-base')) {
+            bun --no-env-file scripts/corte2-scene.mjs ../hub-web $scene "$env:RUNNER_TEMP/corte2-$scene.json"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Verify cut-2 measurement logic without graphics
         run: python scripts/test_corte2.py
       - name: Verify dependency policy tests

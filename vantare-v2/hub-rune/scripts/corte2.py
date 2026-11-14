@@ -149,7 +149,7 @@ def session(args, cell, directory):
         script.write_text(json.dumps(events), encoding="utf-8")
         command = [str(args.rune), "--scene", "capture", "--frames", "2701", "--fps", "60", "--realtime", "--script", str(script), "--size", "1440x900", "--scale", "1", "--theme", "dark"]
     else:
-        command = ["bun", str(Path(__file__).with_name("electron-corte2.mjs")), str(args.checkout / "vantare-v2/hub-web"), str(directory / "qa-data"), screen]
+        command = ["bun", "--no-env-file", str(Path(__file__).with_name("electron-corte2.mjs")), str(args.checkout / "vantare-v2/hub-web"), str(directory / "qa-data"), screen]
     t0 = time.monotonic()
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env, text=True, start_new_session=True)
     messages = queue.Queue()
@@ -271,7 +271,7 @@ def run(args):
         directory = args.output / f"scene-{screen}"
         directory.mkdir()
         path = directory / "shared-scene.json"
-        subprocess.run(["bun", str(Path(__file__).with_name("corte2-scene.mjs")), str(args.checkout / "vantare-v2/hub-web"), scene, str(path)], check=True, timeout=60)
+        subprocess.run(["bun", "--no-env-file", str(Path(__file__).with_name("corte2-scene.mjs")), str(args.checkout / "vantare-v2/hub-web"), scene, str(path)], check=True, timeout=60)
         manifest["scenes_sha256"][screen] = hashlib.sha256(path.read_bytes()).hexdigest()
     (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     for i, cell in enumerate(plan):

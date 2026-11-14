@@ -35,6 +35,7 @@ export function createResidentRemovalMock(
     };
   }
   let queued = false,
+    removing = false,
     serial = 0;
   function ownership() {
     if (scene === "launcher-removal-unsupported")
@@ -134,6 +135,7 @@ export function createResidentRemovalMock(
     });
     const reason = invalid(target);
     if (reason) return reject(reason);
+    if (removing) return reject("busy");
     const execution = view.execution;
     if (!execution) return reject("ownership-unknown");
     queued = true;
@@ -190,12 +192,15 @@ export function createResidentRemovalMock(
         },
       });
       publish();
-      if (failure || scene === "launcher-removal-accepted") return;
+      if (failure) return;
+      removing = true;
+      if (scene === "launcher-removal-accepted") return;
       schedule(() => {
         const failure =
           invalid(target) ??
           (scene === "launcher-removal-failed" ? "io" : undefined);
         if (!failure) context.removeLauncherProfile?.(target.profile);
+        removing = false;
         execution.events.push({
           seq: seq(),
           kind: {

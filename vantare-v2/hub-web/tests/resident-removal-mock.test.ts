@@ -179,3 +179,14 @@ it.each(["accepted", "failed", "timeout", "restart", "gap"])(
     });
   },
 );
+
+it("keeps the accepted removal busy until its terminal rather than enqueueing a second write", () => {
+  const f = setup("launcher-removal-accepted");
+  f.send();
+  vi.advanceTimersByTime(0);
+  expect(f.send()).toMatchObject({
+    kind: "failure",
+    error: { kind: "residentRemovalRejected", reason: "busy" },
+  });
+  expect(f.events).toHaveLength(1);
+});

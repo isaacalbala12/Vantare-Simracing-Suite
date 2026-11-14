@@ -1,6 +1,7 @@
 import { Tabs } from "@base-ui/react/tabs";
 import { useRef, useState } from "react";
 import type { OverlayInstance } from "../../../contract/generated/studio";
+import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { useStudio } from "../../screens/studio/state";
 import { Button } from "../Button";
@@ -76,7 +77,11 @@ function Steps({
             </Tabs.Tab>
           </Tooltip>
         </Tabs.List>
-        <div role="status" className="v-step-save">
+        <div
+          role="status"
+          className="v-step-save"
+          data-failed={!readOnly && !!state.failure}
+        >
           {readOnly ? (
             t.readOnly
           ) : state.pending ? (
@@ -85,7 +90,10 @@ function Steps({
               {t.saving}
             </>
           ) : state.failure ? (
-            t.notSaved
+            <>
+              <Icon name="alert" />
+              {t.notSaved}
+            </>
           ) : disabled ? (
             state.view?.plan === "unverified" ? (
               t.verifyWidget

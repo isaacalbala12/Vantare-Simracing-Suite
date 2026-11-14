@@ -48,16 +48,20 @@ def cpu_seconds(value):
 def processes(output):
     result = {}
     for line in output.splitlines():
-        fields = line.split()
-        if len(fields) != 9:
+        fields = line.split(None, 9)
+        if len(fields) not in (9, 10):
             raise ValueError(f"Unexpected ps fields: {line!r}")
         pid, parent, rss = map(int, fields[:3])
-        result[pid] = dict(parent=parent, rss_mib=rss / 1024, cpu_s=cpu_seconds(fields[3]), birth=" ".join(fields[4:]))
+        result[pid] = dict(parent=parent, rss_mib=rss / 1024, cpu_s=cpu_seconds(fields[3]), birth=" ".join(fields[4:9]), executable=fields[9] if len(fields) == 10 else "")
     return result
 
 
-def family(table, pid):
+def family(table, pid, owned=None):
     selected = {pid}
+    if owned is not None:
+        # Crash reporters can reparent to launchd. Identify only this private QA bundle.
+        prefix = owned.as_posix() + "/"
+        selected |= {p for p, v in table.items() if v.get("executable", "").startswith(prefix)}
     while True:
         grown = selected | {p for p, v in table.items() if v["parent"] in selected}
         if selected == grown:
@@ -127,7 +131,7 @@ def report(output, rows, n):
 
 
 def ps():
-    return processes(subprocess.check_output(["ps", "-axo", "pid=,ppid=,rss=,time=,lstart="], text=True, env={**os.environ, "LC_ALL": "C"}))
+    return processes(subprocess.check_output(["ps", "-axo", "pid=,ppid=,rss=,time=,lstart=,comm="], text=True, env={**os.environ, "LC_ALL": "C"}))
 
 
 def session(args, cell, directory):
@@ -190,7 +194,7 @@ def session(args, cell, directory):
                     pass
                 now = time.monotonic()
                 if idle and now >= idle[0] + 2:
-                    table = family(ps(), pid)
+                    table = family(ps(), pid, args.checkout / "vantare-v2/hub-web/node_modules/electron/dist/Electron.app" if cell["client"] == "electron" else None)
                     snap = dict(at=time.monotonic(), screen=ready[-1]["screen"], family=table)
                     idle[1].append(snap); raw.append(snap)
                     if snap["at"] >= idle[0] + 7:
@@ -242,6 +246,8 @@ def run(args):
             raise ValueError("Supply clean checkout, exact SHA and debug Rune binary")
         if args.rune.name != "vantare-hub-ui-rune" or args.rune.parent.name != "debug":
             raise ValueError("Only the owned debug QA binary is accepted")
+        args.checkout = args.checkout.resolve()
+        args.rune = args.rune.resolve(strict=True)
         actual = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=args.checkout, text=True).strip()
         if actual != args.sha or subprocess.check_output(["git", "status", "--porcelain"], cwd=args.checkout, text=True).strip():
             raise ValueError("Source SHA mismatch or uncommitted edits")
@@ -251,7 +257,7 @@ def run(args):
             raise ValueError("Compiler active on Mac; stop before any Hub launch")
     args.output.mkdir(parents=True, exist_ok=False)
     (args.output / "plan.json").write_text(json.dumps(plan, indent=2), encoding="utf-8")
-    manifest = dict(schema=1, n=args.n, source_sha=args.sha, platform=platform.platform(), cores=os.cpu_count(), rows=[], mode="offscreen-debug-preflight", decision="PENDIENTE")
+    manifest = dict(schema=1, n=args.n, source_sha=args.sha, platform=platform.platform(), cores=os.cpu_count(), load_average=os.getloadavg() if hasattr(os, "getloadavg") else None, rows=[], mode="offscreen-debug-preflight", decision="PENDIENTE")
     report(args.output, [], args.n)
     if args.command != "execute":
         (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

@@ -2694,3 +2694,16 @@ en cola con dos jobs y un único compilador propio; CI añade comprobación Mac
 sin ejecutar la app, además de los tests del guion. Resultado del head nuevo
 pendiente; no se heredan checks de Launcher. Sin merge ni release. Plane lo
 actualiza el orquestador; resumen sencillo en el draft y estado/heads en #2256.
+
+
+Draft de medición #2313 abierto a nightly; padre #2307 50c023c862 conserva
+Clippy/97 tests locales PASS y CI completa verde verificada el 14-nov.
+Se incorporó nightly a129a89ca (L56/v36 y UI nativa ya fusionados) a la rama de
+medición, sin editar esos contratos. No cambia la rama del padre ni añade aún
+el borrado de perfiles a Rune. Exportación QA y probe consumen ahora ese mismo
+contrato. El arnés incluye helpers Electron huérfanos por ruta del bundle
+privado; seis tests Python de medición, cinco de dependencias y sintaxis PASS.
+Un test detectó separadores Windows al comprobar rutas Mac; se normalizan con
+as_posix(), sin rebajar la exclusión de procesos de otro bundle. Primera subida
+remota falló; segundo push confirmó la rama. No publicación ni merge del worker.
+Clippy/tests del probe siguen en cola por RAM, sin reservar otro slot/compilador.

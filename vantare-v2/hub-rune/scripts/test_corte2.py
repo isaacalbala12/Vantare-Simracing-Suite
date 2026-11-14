@@ -37,6 +37,10 @@ class MeasurementTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.cpu_percent(values, {1:last[1]}, 5)
 
+    def test_orphan_helper_is_included_only_from_private_qa_bundle(self):
+        table = m.processes("1 0 1024 00:01.00 Sat Nov 14 01:02:03 2026 /private/Electron.app/Contents/MacOS/Electron\n2 99 1024 00:01.00 Sat Nov 14 01:02:03 2026 /private/Electron.app/Contents/Helpers/crashpad handler\n3 99 1024 00:01.00 Sat Nov 14 01:02:03 2026 /other/Electron.app/Contents/MacOS/Electron")
+        self.assertEqual(set(m.family(table, 1, Path("/private/Electron.app"))), {1, 2})
+
     def test_no_median_from_incomplete_failed_or_duplicate_repetitions(self):
         cell = dict(client="rune", screen="home", cache="cold-process", status="pass")
         rows = [{**cell, "repetition":i, **dict.fromkeys(m.METRICS, value)} for i,value in [(1,1),(2,5000),(3,3)]]

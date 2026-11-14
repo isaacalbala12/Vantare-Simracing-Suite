@@ -41,7 +41,8 @@ Launcher; no se disfraza de comparación de rutas de producción idénticas.
   no tiempo de presentación en pantalla ni garantía de finalización de la GPU.
   La recepción de stdout añade latencia del controlador a ambos clientes.
 - Memoria: suma RSS de todo el árbol del Hub, incluidos renderer/GPU de Electron;
-  excluye Bun/controlador y el muestreador. Muestreo cada 250 ms aproximadamente.
+  incluye también helpers huérfanos identificados por la ruta del bundle QA
+  propio; excluye Bun/controlador y el muestreador. Muestreo cada 250 ms aproximadamente.
   Espera 2 s desde el frame útil y mide 5 s; mediana de RSS del intervalo. Informa
   antes y después de recorrer las otras pantallas y volver a la inicial.
 - CPU: diferencia de tiempo acumulado de todos los procesos durante ese intervalo

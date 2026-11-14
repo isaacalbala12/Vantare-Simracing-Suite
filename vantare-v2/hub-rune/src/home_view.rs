@@ -271,6 +271,11 @@ fn card(theme: &Theme, key: &str, title: &str) -> El {
             }),
     )
 }
+pub fn studio_picture(state: &State, kind: &str, width: f32, height: f32) -> El {
+    picture(state, kind, width, height, false)
+        .role("img")
+        .label(crate::catalog::text("studio.illustrationNote"))
+}
 fn picture(state: &State, kind: &str, width: f32, height: f32, fill: bool) -> El {
     state.home_assets.as_ref().map_or_else(
         || el().size(width, height),

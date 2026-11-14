@@ -44,6 +44,10 @@ pub fn consume() -> io::Result<Bootstrap> {
             "inicio-error",
             "inicio-sin-diseno",
             "inicio-lanzando",
+            "studio-base",
+            "studio-vacio",
+            "studio-protegido",
+            "studio-missing",
         ]
         .contains(&scene.as_str())
         {

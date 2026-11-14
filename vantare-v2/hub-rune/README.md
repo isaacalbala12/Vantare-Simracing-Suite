@@ -214,3 +214,40 @@ Excepción acotada de ADR 0108: se extrae la función pura del mock de Inicio de
 mock Electron y el generador del catálogo Rune. Conserva los datos y el contrato
 del anfitrión; evita dos fuentes de escenas. No cambia el producto Electron ni
 hub-host. La revisión del PR declara esta excepción expresamente.
+
+
+## Studio · corte 2 en curso
+
+La rama `vantareapp/isa-2256-hub-rune-studio` parte del head 7eff0c88 de
+#2297. Ese PR sigue draft, pendiente de la comparativa definitiva de Inicio
+y del OK visual de Isaac. La autorización posterior del orquestador permite
+avanzar Studio con código y tests sin ventana mientras vuelve el Mac.
+
+Studio consume directamente StudioView/Request/Reply de hub-host. Suscribe al
+entrar y retira al salir; no sondea. Ofrece selección, catálogo con búsqueda,
+añadir/eliminar con confirmación, deshacer/rehacer, mostrar en pista y ajustes
+de visibilidad, opacidad 20–100 %, sesiones y fuera de pista. Apariencia incluye
+Look, estilo, acento y los formatos admitidos de Standings/Relative/Delta/Fuel,
+así como fondo transparente y barra Delta donde los ofrece el contrato.
+La marca sigue siendo de solo lectura y Contenido sigue pendiente, como Electron.
+La imagen compartida es una ilustración: no simula una vista previa del overlay.
+
+El anfitrión conserva la autoridad. Solo hay una petición pendiente y cada edición
+se vuelve a comprobar antes del envío con acceso, revisión y bloqueo actuales.
+No se aplica nada de manera optimista. Un conflicto actualiza el documento y
+exige una acción nueva; un plazo vencido bloquea nuevas ediciones hasta releer,
+sin reenviar automáticamente una operación cuyo resultado no se conoce.
+Se puede dejar de mostrar overlays aunque se revoque el acceso.
+
+Escenas debug: studio-base, studio-vacio, studio-protegido y studio-missing,
+derivadas del corpus generado por el anfitrión, sin otra copia de sus tipos.
+El anfitrión de escena ofrece lectura y eventos; las escrituras requieren el
+anfitrión real y la escena devuelve Unsupported sin fingir un guardado.
+Los presets cerrados studio-light/studio-dark quedan preparados para el Mac.
+Los flags de captura solo se aceptan en debug+macOS; en Windows no se ejecuta
+el binario ni se crea un dispositivo gráfico.
+
+Pendiente: comparativas Studio con Electron en ambos temas y las tres escalas,
+ventana real/teclado físico y escrituras con el anfitrión real. No se declara
+Studio ni el corte 2 aceptados. Al volver el Mac se captura primero #2297,
+siempre offscreen y sin activar ventanas delante de Isaac.

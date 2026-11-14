@@ -2378,3 +2378,31 @@ solo el target propio antes de capturar si quedan menos de 12 GiB.
 Puede quedar un target nuevo del intento c89f6204; no se afirma limpio sin SSH.
 No se abren ventanas visibles ni se usa Automatización. No fusionar por fidelidad
 hasta tener nuevas comparativas y el visto bueno de Isaac.
+
+
+### VANTA-143 · Studio sobre #2297 (2026-11-14)
+
+El orquestador confirma el Mac offline y autoriza seguir Studio sin ventana.
+#2297 sigue draft en 7eff0c88, CI verde y 62 tests Windows PASS: falta capturar
+el arreglo de preparación de imágenes y el OK visual de Isaac. Esa captura de
+Inicio tiene prioridad cuando vuelva el Mac; no sustituirla con capturas Studio.
+
+Rama/worktree propios: vantareapp/isa-2256-hub-rune-studio,
+D:/VantareServer/worktrees/isa-2256-hub-rune-studio, base exacta 7eff0c88 de #2297.
+Sin subagentes, cambios de host/overlays/distribución ni dependencias nuevas.
+Studio conectado con los tipos nativos, suscripción al entrar/salir y peticiones
+seriales con revisión. Catálogo, selección, añadir/eliminar, undo/redo,
+visibilidad/opacidad/sesiones/fuera de pista y apariencia de los cinco widgets
+con settings nativos. Conflictos y plazos nunca reenvían cambios automáticamente;
+el estado se vuelve a leer antes de permitir otra edición. Contenido y marca
+conservan las limitaciones de Electron. La miniatura es ilustrativa.
+
+Escenas de lectura desde el corpus compartido; no simulan guardar. Tests nuevos
+de protocolo, controles accesibles, búsqueda Unicode y Escape sin ventana.
+Clippy local y tests del head Studio pendientes al redactar. El primer Clippy
+detectó dos imports de test omitidos, corregidos. Cola con dos jobs, target del
+slot en D:. Logs: D:/VantareServer/evidence/hub-rune/studio-*.
+Nada de ejecución gráfica en el servidor. Capturas/ventana/anfitrión real
+pendientes del Mac; el corte 2 sigue en curso. PR/HEAD/gates finales se reflejan
+en #2256 y el nuevo PR draft a nightly, apilado sobre #2297. Plane lo actualiza
+el orquestador. Sin merge, promoción ni release del worker.

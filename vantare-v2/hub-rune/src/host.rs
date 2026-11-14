@@ -106,7 +106,10 @@ impl Link {
                 let mut core: vantare_hub_host::protocol::CoreStatus =
                     serde_json::from_str(include_str!("../../hub-web/fixtures/core-offline.json"))
                         .expect("shared fixture");
-                if name.starts_with("roadmap-") || name.starts_with("inicio-") {
+                if name.starts_with("roadmap-")
+                    || name.starts_with("inicio-")
+                    || name.starts_with("studio-")
+                {
                     core.access.verified = true;
                 }
                 if name.starts_with("inicio-") {
@@ -421,6 +424,23 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
                 result: Reply::LauncherLaunch { accepted },
             });
         }
+        UiToHost::Request {
+            id,
+            request: Request::StudioGet {},
+        } => {
+            let value = crate::studio::scene(&state.name);
+            messages.push_back(HostToUi::Response {
+                id,
+                result: Reply::StudioGet { value },
+            });
+        }
+        UiToHost::Subscribe {
+            topic: Topic::Studio,
+        } => messages.push_back(HostToUi::Event {
+            event: Event::Studio {
+                value: crate::studio::scene(&state.name),
+            },
+        }),
         UiToHost::Request { id, .. } => messages.push_back(HostToUi::Failure {
             id,
             error: protocol::HostError::Unsupported,
@@ -438,7 +458,41 @@ fn home_scene(name: &str) -> io::Result<vantare_hub_host::home::HomeView> {
 #[cfg(all(test, debug_assertions))]
 mod tests {
     use super::*;
-    use vantare_hub_host::protocol::{Reply, Request};
+    use vantare_hub_host::protocol::{Event, Reply, Request, Topic};
+    #[test]
+    fn studio_scene_uses_native_contract_for_snapshot_and_subscription() {
+        for name in [
+            "studio-base",
+            "studio-vacio",
+            "studio-protegido",
+            "studio-missing",
+        ] {
+            let (mut link, _) = Link::open(Bootstrap::Scene(name.into())).unwrap();
+            link.send(UiToHost::Request {
+                id: 1,
+                request: Request::CoreGet {},
+            })
+            .unwrap();
+            assert!(
+                matches!(link.receive(), Some(Ok(HostToUi::Response { id: 1, result: Reply::Core { value } })) if value.access.verified)
+            );
+            link.send(UiToHost::Subscribe {
+                topic: Topic::Studio,
+            })
+            .unwrap();
+            assert!(
+                matches!(link.receive(), Some(Ok(HostToUi::Event { event: Event::Studio { value } })) if value == crate::studio::scene(name))
+            );
+            link.send(UiToHost::Request {
+                id: 42,
+                request: Request::StudioGet {},
+            })
+            .unwrap();
+            assert!(
+                matches!(link.receive(), Some(Ok(HostToUi::Response { id: 42, result: Reply::StudioGet { value } })) if value == crate::studio::scene(name))
+            );
+        }
+    }
     #[test]
     #[cfg(windows)]
     fn drop_cancels_the_pending_read_before_joining_the_worker() {

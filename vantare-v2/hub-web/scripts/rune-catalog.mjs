@@ -11,6 +11,7 @@ import { homeScene } from "../src/mock/home-scene.ts";
 import { sectionIds } from "../src/renderer/app/sections.ts";
 import { commandsText } from "../src/renderer/i18n/commands.es.ts";
 import { es, settingsText } from "../src/renderer/i18n/es.ts";
+import { studioText } from "../src/renderer/i18n/studio.ts";
 import { homeText } from "../src/renderer/i18n/home.ts";
 import { roadmap } from "../src/renderer/i18n/roadmap.ts";
 import { shellText } from "../src/renderer/i18n/shell.es.ts";
@@ -44,6 +45,7 @@ for (const [namespace, values] of Object.entries({
   settings: settingsText,
   roadmap,
   home: homeText,
+  studio: studioText,
   commands: commandsText,
 })) {
   for (const [key, value] of Object.entries(values))

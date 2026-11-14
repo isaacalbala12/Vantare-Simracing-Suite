@@ -13,6 +13,8 @@ mod icons;
 mod pipe;
 mod roadmap;
 mod roadmap_view;
+mod studio;
+mod studio_view;
 use catalog::{catalog, text};
 use design::{Theme, caption, icon_button, label, menu_item, surface};
 use rune::{AppSpec, Cx, El, col, icon, row};
@@ -28,6 +30,7 @@ struct State {
     core: vantare_hub_host::protocol::CoreStatus,
     roadmap: roadmap::Roadmap,
     home: home::Home,
+    studio: studio::Studio,
     home_assets: Option<home_view::Assets>,
     display_name: String,
     now_override: Option<chrono::NaiveDateTime>,
@@ -49,6 +52,7 @@ fn init() -> State {
         core: Default::default(),
         roadmap: Default::default(),
         home: Default::default(),
+        studio: Default::default(),
         home_assets: None,
         display_name: String::new(),
         now_override: None,
@@ -90,6 +94,7 @@ fn capture_preset(state: &mut State, preset: &str) -> Result<(), &'static str> {
         "roadmap" => ("roadmap", true, "circuit"),
         "roadmap-board" => ("roadmap", true, "board"),
         "roadmap-season" => ("roadmap", true, "season"),
+        "studio" => ("studio", true, "board"),
         _ => return Err("unknown capture screen"),
     };
     state.now_override = Some(
@@ -276,6 +281,8 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
     let body = col().grow(1.0).min_w(0.0).min_h(0.0).h_full().child(header);
     let content = if state.section == "roadmap" {
         roadmap_view::view(state)
+    } else if state.section == "studio" {
+        studio_view::view(state)
     } else if state.section == "home" {
         home_view::view(state, cx)
     } else {
@@ -419,10 +426,17 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
             })) => {
                 changed |= state.home.accept(id, reply);
             }
+            Some(Ok(HostToUi::Event {
+                event: Event::Studio { value },
+            })) => {
+                changed |= state.studio.event(value);
+            }
             Some(Ok(HostToUi::Response { id, result })) => {
+                changed |= state.studio.accept(id, result.clone());
                 changed |= state.roadmap.accept(id, result);
             }
-            Some(Ok(HostToUi::Failure { id, .. })) => {
+            Some(Ok(HostToUi::Failure { id, error })) => {
+                changed |= state.studio.fail(id, &error);
                 changed |= state.roadmap.fail(id);
                 changed |= state.home.fail(id);
                 changed |= state.home.finish_launch(id, false);
@@ -482,6 +496,33 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
     }
     changed |= previous_failure != state.home.failed;
     if let Some(due) = state.home.due() {
+        tx.wake_at(due);
+    }
+    let previous_studio = state.studio.problem;
+    for message in state
+        .studio
+        .next(now, state.section == "studio", &state.core)
+    {
+        let id = if let vantare_hub_host::protocol::UiToHost::Request { id, .. } = &message {
+            Some(*id)
+        } else {
+            None
+        };
+        if state
+            .link
+            .as_mut()
+            .is_none_or(|link| link.send(message).is_err())
+            && let Some(id) = id
+        {
+            state
+                .studio
+                .fail(id, &vantare_hub_host::protocol::HostError::CoreUnavailable);
+        }
+        changed = true;
+        tx.wake_at(now);
+    }
+    changed |= previous_studio != state.studio.problem;
+    if let Some(due) = state.studio.due() {
         tx.wake_at(due);
     }
     let previous_status = state.roadmap.status();
@@ -776,6 +817,7 @@ mod tests {
             "roadmap",
             "roadmap-board",
             "roadmap-season",
+            "studio",
         ] {
             for theme in ["light", "dark"] {
                 let mut state = init();
@@ -786,6 +828,8 @@ mod tests {
                     state.section,
                     if screen.starts_with("roadmap") {
                         "roadmap"
+                    } else if screen == "studio" {
+                        "studio"
                     } else {
                         "home"
                     }

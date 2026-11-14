@@ -1,3 +1,4 @@
+import { launcherText } from "../../src/renderer/i18n/launcher.ts";
 import type { VisualScene } from "./scenes.ts";
 
 export const launcherNoticeScenes: Record<string, VisualScene> = {
@@ -9,7 +10,7 @@ export const launcherNoticeScenes: Record<string, VisualScene> = {
         .getByRole("heading", { name: "Creador de Contenido", exact: true })
         .waitFor();
       await page
-        .getByRole("button", { name: /^Iniciar/ })
+        .getByRole("button", { name: new RegExp(`^${launcherText.launch}`) })
         .first()
         .click();
       await page

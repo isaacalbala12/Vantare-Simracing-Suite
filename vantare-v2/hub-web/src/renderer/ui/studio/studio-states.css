@@ -249,6 +249,22 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+.v-studio-state-actions .v-button {
+  min-height: 30px;
+  padding-inline: 11px;
+  border-radius: var(--radius-md);
+  border-color: transparent;
+  font-size: 12.5px;
+  line-height: 1.4;
+  gap: 6px;
+}
+.v-studio-state-actions .v-button--neutral {
+  background: var(--surface-2);
+  border-color: var(--edge);
+}
+.v-studio-state-actions .v-button--neutral:hover:not(:disabled) {
+  background: var(--surface-3);
+}
 .v-studio-unread {
   flex: 1;
   display: flex;

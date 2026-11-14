@@ -130,6 +130,7 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
             {(!readingFailure || (!!state.view && !protectedView)) && (
               <Button
                 size="sm"
+                variant="ghost"
                 aria-disabled={state.pending}
                 onClick={() => {
                   if (!state.pending) state.discard();

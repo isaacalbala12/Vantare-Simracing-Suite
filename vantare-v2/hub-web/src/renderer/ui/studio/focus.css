@@ -10,6 +10,7 @@
   height: calc(100dvh - var(--topbar-h));
   container: studio-main / inline-size;
   padding: 20px 24px 22px;
+  line-height: 1.4;
 }
 .v-studio-focus-layout {
   display: grid;

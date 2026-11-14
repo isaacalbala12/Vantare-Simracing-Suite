@@ -1,13 +1,28 @@
 # ADR 0109 — Studio visual en los Hubs nuevos: geometría en el anfitrión y preview del widget real
 
 Fecha: 2026-11-14. Issue: [#1995](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1995) (VANTA-138).
-Enmendaría el punto 4 de [ADR 0107](0107-hub-electron-nucleo-y-overlays-rust.md) si Isaac lo acepta. Se apoya en [ADR 0099](0099-arquitectura-rust-nativa.md) y [ADR 0108](0108-hub-rune-via-paralela.md).
+Corrige el punto 4 de [ADR 0107](0107-hub-electron-nucleo-y-overlays-rust.md) y la decisión D6 de `DISENO.md`. Se apoya en [ADR 0099](0099-arquitectura-rust-nativa.md) y [ADR 0108](0108-hub-rune-via-paralela.md).
 
 ## Estado
 
-**Propuesta (borrador).** No autoriza código, dependencias, releases ni cambios
-de canal. Solo documentación: no se ha compilado ni ejecutado nada. Queda
-aceptada cuando Isaac resuelva la decisión abierta del final y se fusione su PR.
+**Aceptado el 2026-11-14** por el orquestador, con la delegación de Isaac, que
+puede revocarlo. Autoriza a repartir los PR del plan, cada uno en su tarea. No
+autoriza dependencias nuevas, releases ni cambios de canal. Este documento es
+solo documentación: no se ha compilado ni ejecutado nada.
+
+**Corrige el punto 4 de ADR 0107 y la decisión D6 de `DISENO.md`.** Los dos
+decían que la posición y el tamaño solo se editan sobre los overlays, en un
+modo edición, y nunca en el Hub. Desde hoy se aceptan **las dos vías**: el
+lienzo en el Hub y el futuro modo edición sobre overlays. El motivo es la
+paridad con el Hub antiguo: el Hub GPUI ya permite colocar y redimensionar los
+widgets en su lienzo, el modo edición sobre overlays todavía no existe, y sin
+lienzo el Hub nuevo no puede sustituir al antiguo. Las dos vías escriben el
+mismo `layout.json` con la misma regla de revisión, así que no hay dos fuentes
+de verdad. El resto de ADR 0107 sigue igual.
+
+**Versiones del protocolo del anfitrión reservadas** para este plan: **37**
+(geometría), **38** (preview fija) y **39** (preview en vivo, solo si la
+medición la aprueba). Ningún otro trabajo debe usar esos números.
 
 ## Palabras que se usan aquí
 
@@ -59,7 +74,7 @@ Hechos comprobados en `origin/nightly` (`a129a89ca`):
    mensaje.
 9. **ADR 0107, punto 4, y la decisión D6 de `DISENO.md` dicen que posición y
    tamaño se editan sobre los overlays, no en el Hub.** El lienzo de D023 va en
-   sentido contrario. Ver «Decisión abierta».
+   sentido contrario. Resuelto: ver «Estado» y «Decisión tomada».
 
 Regla que manda (`AGENTS.md`): prohibido un segundo pintor o una segunda
 cadena que duplique la fuente de verdad.
@@ -191,12 +206,13 @@ tomando como oráculo los tests del Hub congelado (que no se toca).
 
 Versiones nuevas del protocolo, todas aditivas (no se quita ni se renombra
 nada): **37** geometría, **38** preview fija, **39** preview en vivo (solo si
-la medición la aprueba). Quien fusione antes toma el número; el resto se
-renumera.
+la medición la aprueba). **Los tres números quedan reservados para este
+plan.** Otro cambio del protocolo que llegue antes toma el siguiente libre a
+partir del 40.
 
 | PR | Dueño | Qué entra | Protocolo | Cómo se verifica |
 |---|---|---|---|---|
-| 0. Este ADR | Diseño | Documento y decisión de Isaac | — | Revisión del orquestador |
+| 0. Este ADR | Diseño | Documento y decisión (aceptado) | — | Revisión del orquestador |
 | 1. Geometría en el anfitrión | Rust (núcleo) | Vista con lienzo y posiciones; órdenes `studio.geometry`, `studio.canvas`, `at` en `studio.add`; módulo puro de gestos; lista de casos exportada; monitor por Win32 (función ya existente de `windows-sys`, sin paquete nuevo) | 37 | Tests sin ventana: revisión y conflicto, un paso de deshacer por orden, recortes, bytes desconocidos del diseño intactos, corpus y tipos generados al día. `comprobar.ps1 hub-host` |
 | 2. Lienzo en Electron | Web | Plano a escala con las ilustraciones actuales: arrastrar, tiradores, anclas, empujón, zoom, encajar, `Esc`; borrador local y avisos de conflicto | — | Vitest: casos de Rust, máquina de estados del gesto, teclado y nombres accesibles; Playwright con anfitrión simulado; capturas comparadas a ojo con la referencia antes de fusionar |
 | 3. Catálogo al lienzo | Web | Arrastrar tarjeta con silueta, imán, guías y colocación con `at` (D025) | — | Igual que PR 2; test de «soltar fuera no añade» |
@@ -233,17 +249,17 @@ widgets (D106) quedan fuera.
 | Fotos grandes en un canal de 1 MiB | Escalas y tamaño cerrados; error tipado y escala menor |
 | Cambia el pintor de overlays (VANTA-141) | El contrato pide «imagen de esta referencia»; no nombra GPUI |
 
-## Decisión abierta para Isaac
+## Decisión tomada: posición y tamaño también en el Hub
 
-**¿Se edita posición y tamaño también en el Hub?** ADR 0107 (punto 4) y D6
-dicen que no: se edita sobre los overlays, en modo edición. Este ADR propone
-que **sí, además**, por dos motivos: el modo edición sobre overlays aún no
-existe, y un plano en el Hub sirve sin tener el simulador abierto. No se
-estorban: los dos escriben el mismo `layout.json` con la misma regla de
-revisión.
+ADR 0107 (punto 4) y D6 decían que posición y tamaño se editan solo sobre los
+overlays, en modo edición. **Decidido el 2026-11-14 por el orquestador, con la
+delegación de Isaac (que puede revocarlo): se aceptan las dos vías.**
 
-- Si Isaac dice **sí**: se enmienda el punto 4 de ADR 0107 y se hacen los PR 1
-  a 3.
-- Si dice **no**: los PR 1 a 3 no se hacen, D023 y D025 se cierran como
-  «decisión de producto, no falta» y solo queda la línea de la preview
-  (PR 4 a 6), que no depende de esto.
+- El lienzo del Hub se hace (PR 1 a 3). Motivo: paridad con el Hub antiguo, que
+  ya lo tiene; además sirve sin tener el simulador abierto.
+- El modo edición sobre overlays sigue previsto y no cambia con este ADR.
+- No se estorban: los dos escriben el mismo `layout.json` con la misma regla
+  de revisión. Si uno escribe mientras el otro edita, se aplica lo descrito en
+  «Conflictos».
+- `DISENO.md` vive fuera del repositorio; su D6 y la fila 10 de su tabla de
+  pantallas se leen corregidas por este ADR.

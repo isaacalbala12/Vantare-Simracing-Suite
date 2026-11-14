@@ -1333,6 +1333,13 @@ textarea.v-input:read-only {
 }
 
 @media (max-height: 819px) {
+  .v-settings-general .v-setting-group .v-setting-row {
+    min-height: 38px;
+    padding-block: 5px;
+  }
+  .v-settings-general .v-setting-group .v-setting-row > div > .v-muted {
+    display: none;
+  }
   .v-setting-row--optional {
     display: none;
   }

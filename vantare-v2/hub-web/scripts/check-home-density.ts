@@ -99,8 +99,23 @@ export async function checkHomeDensity(original: Page, base: string) {
                   .boundingBox();
                 assert.ok(
                   status &&
-                    Math.abs(status.height - (errorRail ? 344 : 274)) <= 1,
+                    Math.abs(status.height - (errorRail ? 324 : 274)) <= 1,
                   "Template rail follows the compact hero, including the access-error banner",
+                );
+              }
+              if (height < 820 && scene === "inicio-error") {
+                const hero = await page.locator(".v-home-hero").boundingBox();
+                const templates = await page
+                  .locator(".v-home-template-section")
+                  .boundingBox();
+                assert.ok(
+                  hero && templates,
+                  "Positive control: hero and templates exist",
+                );
+                const gap = templates.y - (hero.y + hero.height);
+                assert.ok(
+                  gap >= 8 && gap <= 18,
+                  `Native compact access-error templates follow the hero without an extra row gap: ${gap}`,
                 );
               }
               if (scene === "inicio-error") {

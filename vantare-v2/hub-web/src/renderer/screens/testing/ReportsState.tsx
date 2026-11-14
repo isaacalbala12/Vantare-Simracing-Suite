@@ -28,6 +28,7 @@ import { useAccountSession } from "../../app/AccountSession";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure, ReportCloseDiscarded } from "../../bridge/client";
 import type { CloseDraftSave } from "../../bridge/report-close";
+import { testingQuestionnairesText as questionnaireText } from "../../i18n/testing-questionnaires";
 import {
   CloseReportSaveFailureDialog,
   CloseUnsavedReportDialog,
@@ -36,6 +37,16 @@ import { testingText as text } from "./es";
 import { reportSuggestion, withReportKind } from "./report-kind";
 import { testingRequest } from "./TestingRequests";
 import { useTriageState } from "./TriageState";
+
+function answerHasChanges(
+  draft: { id?: string; score: number; note: string },
+  questions: TestingView["questionnaires"],
+) {
+  const saved = questions.find((item) => item.id === draft.id);
+  return (
+    draft.note !== (saved?.note ?? "") || draft.score !== (saved?.score ?? 3)
+  );
+}
 
 const empty = (): ReportFields => ({
   module: reportModules[0][0],
@@ -116,8 +127,21 @@ function useReportsState() {
     available,
     localNotes,
     answerDraft,
+    participation,
   });
-  state.current = { fields, saved, loaded, available, localNotes, answerDraft };
+  state.current = {
+    fields,
+    saved,
+    loaded,
+    available,
+    localNotes,
+    answerDraft,
+    participation,
+  };
+  function updateParticipation(value: TestingView) {
+    state.current.participation = value;
+    setParticipation(value);
+  }
   const inflight = useRef<Promise<unknown> | undefined>(undefined);
   const attempt = useRef<string | undefined>(undefined);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -295,8 +319,10 @@ function useReportsState() {
           JSON.stringify(state.current.fields) === state.current.saved &&
           !state.current.localNotes.title &&
           !state.current.localNotes.body &&
-          !state.current.answerDraft.note &&
-          state.current.answerDraft.score === 3 &&
+          !answerHasChanges(
+            state.current.answerDraft,
+            state.current.participation.questionnaires,
+          ) &&
           !triageHasText.current?.();
         // No text to preserve: abandon only Testing's waits, not other screens.
         if (clean()) return "discard";
@@ -323,7 +349,11 @@ function useReportsState() {
         await saveCurrent.current(send, signal);
         return epoch === generation.current &&
           !signal.aborted &&
-          JSON.stringify(state.current.fields) === state.current.saved
+          JSON.stringify(state.current.fields) === state.current.saved &&
+          !answerHasChanges(
+            state.current.answerDraft,
+            state.current.participation.questionnaires,
+          )
           ? "saved"
           : false;
       },
@@ -380,7 +410,10 @@ function useReportsState() {
       JSON.stringify(previous.fields) !== previous.saved ||
       previous.localNotes.title ||
       previous.localNotes.body ||
-      previous.answerDraft.note ||
+      answerHasChanges(
+        previous.answerDraft,
+        previous.participation.questionnaires,
+      ) ||
       triageHasText.current?.()
     )
       setSessionDiscarded(true);
@@ -395,6 +428,7 @@ function useReportsState() {
       available: false,
       localNotes: { title: "", body: "" },
       answerDraft: { score: 3, note: "" },
+      participation: { reports: [], questionnaires: [] },
     };
     queue.current = Promise.resolve();
     inflight.current = undefined;
@@ -472,14 +506,14 @@ function useReportsState() {
   async function refresh() {
     const reply = await request({ method: "testing.refresh" });
     if (reply.method === "testing.refresh") {
-      setParticipation(reply.value);
+      updateParticipation(reply.value);
       setParticipationLoaded(true);
     }
   }
   function selectQuestionnaire(id: string) {
     const item = participation.questionnaires.find((item) => item.id === id);
     if (!item || !core.access.tester) return;
-    setAnswerDraft({ id, score: item.score ?? 3, note: "" });
+    setAnswerDraft({ id, score: item.score ?? 3, note: item.note ?? "" });
   }
   async function answer() {
     if (
@@ -496,8 +530,9 @@ function useReportsState() {
         method: "testing.answer",
         id: answerDraft.id,
         score: answerDraft.score,
+        note: answerDraft.note,
       });
-      if (reply.method === "testing.answer") setParticipation(reply.value);
+      if (reply.method === "testing.answer") updateParticipation(reply.value);
     } finally {
       if (epoch === generation.current) answering.current = false;
     }
@@ -513,13 +548,13 @@ function useReportsState() {
       consent: true,
     });
     if (reply.method === "testing.contribute") {
-      setParticipation(reply.value);
+      updateParticipation(reply.value);
       attempt.current = undefined;
     }
   }
   async function credit(id: string, consent: boolean) {
     const reply = await request({ method: "testing.credit", id, consent });
-    if (reply.method === "testing.credit") setParticipation(reply.value);
+    if (reply.method === "testing.credit") updateParticipation(reply.value);
   }
   async function notice(id: string, updatedAt: string) {
     const reply = await request({
@@ -527,7 +562,7 @@ function useReportsState() {
       id,
       updatedAt,
     });
-    if (reply.method === "testing.noticeRead") setParticipation(reply.value);
+    if (reply.method === "testing.noticeRead") updateParticipation(reply.value);
   }
   async function discard() {
     const reply = await request({ method: "draft.discard" });
@@ -700,7 +735,7 @@ function useReportsState() {
       });
       if (reply.method !== "triage.send")
         throw new Error("unexpected triage reply");
-      setParticipation(reply.value);
+      updateParticipation(reply.value);
       setParticipationLoaded(true);
     },
   });
@@ -716,9 +751,16 @@ function useReportsState() {
     closeBlocked,
     closeConfirmation,
     closeSaveFailed,
+    unsavedAnswer: answerHasChanges(answerDraft, participation.questionnaires),
     retryCloseSave: () => {
       setCloseSaveFailed(false);
-      client?.closeWindow();
+      if (
+        !answerHasChanges(
+          state.current.answerDraft,
+          state.current.participation.questionnaires,
+        )
+      )
+        client?.closeWindow();
     },
     dismissCloseSaveFailure: () => setCloseSaveFailed(false),
     askCloseWithoutSave,
@@ -772,6 +814,16 @@ export function ReportsProvider({ children }: { children: ReactNode }) {
       {children}
       <CloseReportSaveFailureDialog
         open={state.closeSaveFailed}
+        text={
+          state.unsavedAnswer
+            ? {
+                title: questionnaireText.unsavedTitle,
+                description: questionnaireText.unsavedDescription,
+                cancel: questionnaireText.keepEditing,
+                confirm: text.closeWithoutSave,
+              }
+            : undefined
+        }
         onRetry={state.retryCloseSave}
         onDiscard={state.confirmCloseWithoutSave}
         onDismiss={state.dismissCloseSaveFailure}

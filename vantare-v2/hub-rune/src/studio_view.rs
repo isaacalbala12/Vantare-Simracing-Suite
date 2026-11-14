@@ -17,162 +17,6 @@ fn action(state: &State, key: &str, name: &str, request: Request) -> El {
     .disabled(disabled)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn studio_states_and_appearance_controls_are_keyboard_named_without_a_window() {
-        for scene in [
-            "studio-base",
-            "studio-vacio",
-            "studio-protegido",
-            "studio-missing",
-        ] {
-            for scale in [1.0, 1.25, 1.5] {
-                let mut state = crate::init();
-                state.section = "studio".into();
-                state.core.access.verified = true;
-                state.studio.event(crate::studio::scene(scene));
-                state.studio.value = Some(crate::studio::scene(scene));
-                state.studio.selected = state
-                    .studio
-                    .value
-                    .as_ref()
-                    .unwrap()
-                    .instances
-                    .first()
-                    .map_or_else(String::new, |i| i.id.clone());
-                let mut rt = rune::Runtime::new(
-                    state,
-                    crate::view,
-                    (1440.0, 900.0),
-                    rune::Env::new(true, scale),
-                );
-                rt.frame(0.0);
-                for item in rt.elements().into_iter().filter(|e| e.focusable) {
-                    assert!(
-                        item.label.is_some_and(|s| !s.is_empty()),
-                        "{scene}: {}",
-                        item.path
-                    );
-                }
-                assert!(rt.find("studio-reload").is_some());
-                if scene == "studio-base" {
-                    let (x, y) = rt.find("studio-track-tab").unwrap();
-                    rt.pointer_down(x, y);
-                    rt.pointer_up(x, y);
-                    rt.frame(0.0);
-                    assert!(rt.state.studio.track_tab);
-                    assert!(rt.find("studio-opacity-0-20").is_some());
-                }
-            }
-        }
-    }
-    #[test]
-    fn appearance_controls_accept_all_five_shared_widget_settings() {
-        let corpus: serde_json::Value = serde_json::from_str(include_str!(
-            "../../hub-web/src/contract/generated/corpus/studio.json"
-        ))
-        .unwrap();
-        let mut count = 0;
-        for message in corpus["host"].as_array().unwrap() {
-            if message["result"]["method"] != "studio.get"
-                || message["result"]["value"]["instances"]
-                    .as_array()
-                    .is_none_or(|a| a.is_empty())
-            {
-                continue;
-            }
-            for look in ["eficiencia", "vantare"] {
-                let mut state = crate::init();
-                state.section = "studio".into();
-                state.core.access.verified = true;
-                let mut view = message["result"]["value"].clone();
-                view["instances"][0]["settings"]["designSystem"] = look.into();
-                state.studio.value = Some(serde_json::from_value(view).unwrap());
-                state.studio.selected =
-                    state.studio.value.as_ref().unwrap().instances[0].id.clone();
-                let mut rt = rune::Runtime::new(
-                    state,
-                    crate::view,
-                    (1440.0, 900.0),
-                    rune::Env::new(true, 1.0),
-                );
-                rt.frame(0.0);
-                assert!(rt.find("studio-designSystem-vantare").is_some());
-                let original = rt.state.studio.value.clone();
-                let (x, y) = rt.find("studio-designSystem-vantare").unwrap();
-                rt.pointer_down(x, y);
-                rt.pointer_up(x, y);
-                rt.frame(0.0);
-                assert_eq!(
-                    rt.state.studio.value, original,
-                    "wait for the host before changing the document"
-                );
-                let core = rt.state.core.clone();
-                let messages = rt.state.studio.next(1.0, true, &core);
-                let request = messages
-                    .iter()
-                    .find_map(|m| {
-                        if let vantare_hub_host::protocol::UiToHost::Request { request, .. } = m {
-                            Some(request)
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap();
-                assert!(matches!(
-                    request,
-                    Request::StudioInstance {
-                        patch: InstancePatch::Settings(_),
-                        ..
-                    }
-                ));
-                assert_eq!(
-                    serde_json::to_value(request).unwrap()["patch"]["value"]["designSystem"],
-                    "vantare"
-                );
-                count += 1;
-            }
-        }
-        assert_eq!(count, 10);
-    }
-    #[test]
-    fn catalog_search_is_unicode_and_modal_escape_preserves_document() {
-        let mut state = crate::init();
-        state.section = "studio".into();
-        state.core.access.verified = true;
-        let value = crate::studio::scene("studio-base");
-        state.studio.selected = value.instances[0].id.clone();
-        state.studio.value = Some(value.clone());
-        let mut rt = rune::Runtime::new(
-            state,
-            crate::view,
-            (1440.0, 900.0),
-            rune::Env::new(true, 1.0),
-        );
-        rt.frame(0.0);
-        let (x, y) = rt.find("studio-catalog-open").unwrap();
-        rt.pointer_down(x, y);
-        rt.pointer_up(x, y);
-        rt.frame(0.0);
-        assert!(rt.state.studio.catalog_open);
-        let (x, y) = rt.find("studio-search").unwrap();
-        rt.pointer_down(x, y);
-        rt.pointer_up(x, y);
-        rt.paste("clasificación");
-        rt.frame(0.0);
-        assert!(rt.find("studio-add-standings").is_some());
-        assert!(rt.find("studio-add-pedals").is_none());
-        rt.key(rune::KeyEvent {
-            key: rune::Key::Escape,
-            mods: Default::default(),
-        });
-        rt.frame(0.0);
-        assert!(!rt.state.studio.catalog_open);
-        assert_eq!(rt.state.studio.value, Some(value));
-    }
-}
 pub fn view(state: &State) -> El {
     let theme = &state.theme;
     let model = &state.studio;
@@ -540,7 +384,7 @@ pub fn view(state: &State) -> El {
                 }
             }
             for (field, title, options) in fields {
-                if matches!(field, "style" | "accent" | "tablePreset")
+                if matches!(field, "style" | "accent" | "tablePreset" | "size")
                     && values["designSystem"].as_str() != Some("vantare")
                 {
                     continue;
@@ -576,6 +420,12 @@ pub fn view(state: &State) -> El {
                 ("transparentBackground", "studio.transparentBackground"),
                 ("showBar", "studio.deltaDifferenceBar"),
             ] {
+                if item.kind.id() != "delta"
+                    || values["designSystem"].as_str() != Some("vantare")
+                    || (field == "showBar" && values["size"].as_str() == Some("pill"))
+                {
+                    continue;
+                }
                 if let Some(current) = values[field].as_bool() {
                     let patch = serde_json::from_value(
                         serde_json::json!({"kind":item.kind.id(),field:!current}),
@@ -712,4 +562,161 @@ pub fn view(state: &State) -> El {
         );
     }
     page
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn studio_states_and_appearance_controls_are_keyboard_named_without_a_window() {
+        for scene in [
+            "studio-base",
+            "studio-vacio",
+            "studio-protegido",
+            "studio-missing",
+        ] {
+            for scale in [1.0, 1.25, 1.5] {
+                let mut state = crate::init();
+                state.section = "studio".into();
+                state.core.access.verified = true;
+                state.studio.event(crate::studio::scene(scene));
+                state.studio.value = Some(crate::studio::scene(scene));
+                state.studio.selected = state
+                    .studio
+                    .value
+                    .as_ref()
+                    .unwrap()
+                    .instances
+                    .first()
+                    .map_or_else(String::new, |i| i.id.clone());
+                let mut rt = rune::Runtime::new(
+                    state,
+                    crate::view,
+                    (1440.0, 900.0),
+                    rune::Env::new(true, scale),
+                );
+                rt.frame(0.0);
+                for item in rt.elements().into_iter().filter(|e| e.focusable) {
+                    assert!(
+                        item.label.is_some_and(|s| !s.is_empty()),
+                        "{scene}: {}",
+                        item.path
+                    );
+                }
+                assert!(rt.find("studio-reload").is_some());
+                if scene == "studio-base" {
+                    let (x, y) = rt.find("studio-track-tab").unwrap();
+                    rt.pointer_down(x, y);
+                    rt.pointer_up(x, y);
+                    rt.frame(0.0);
+                    assert!(rt.state.studio.track_tab);
+                    assert!(rt.find("studio-opacity-0-20").is_some());
+                }
+            }
+        }
+    }
+    #[test]
+    fn appearance_controls_accept_all_five_shared_widget_settings() {
+        let corpus: serde_json::Value = serde_json::from_str(include_str!(
+            "../../hub-web/src/contract/generated/corpus/studio.json"
+        ))
+        .unwrap();
+        let mut count = 0;
+        for message in corpus["host"].as_array().unwrap() {
+            if message["result"]["method"] != "studio.get"
+                || message["result"]["value"]["instances"]
+                    .as_array()
+                    .is_none_or(|a| a.is_empty())
+            {
+                continue;
+            }
+            for look in ["eficiencia", "vantare"] {
+                let mut state = crate::init();
+                state.section = "studio".into();
+                state.core.access.verified = true;
+                let mut view = message["result"]["value"].clone();
+                view["instances"][0]["settings"]["designSystem"] = look.into();
+                state.studio.value = Some(serde_json::from_value(view).unwrap());
+                state.studio.selected =
+                    state.studio.value.as_ref().unwrap().instances[0].id.clone();
+                let mut rt = rune::Runtime::new(
+                    state,
+                    crate::view,
+                    (1440.0, 900.0),
+                    rune::Env::new(true, 1.0),
+                );
+                rt.frame(0.0);
+                assert!(rt.find("studio-designSystem-vantare").is_some());
+                let original = rt.state.studio.value.clone();
+                let (x, y) = rt.find("studio-designSystem-vantare").unwrap();
+                rt.pointer_down(x, y);
+                rt.pointer_up(x, y);
+                rt.frame(0.0);
+                assert_eq!(
+                    rt.state.studio.value, original,
+                    "wait for the host before changing the document"
+                );
+                let core = rt.state.core.clone();
+                let messages = rt.state.studio.next(1.0, true, &core);
+                let request = messages
+                    .iter()
+                    .find_map(|m| {
+                        if let vantare_hub_host::protocol::UiToHost::Request { request, .. } = m {
+                            Some(request)
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap();
+                assert!(matches!(
+                    request,
+                    Request::StudioInstance {
+                        patch: InstancePatch::Settings(_),
+                        ..
+                    }
+                ));
+                assert_eq!(
+                    serde_json::to_value(request).unwrap()["patch"]["value"]["designSystem"],
+                    "vantare"
+                );
+                count += 1;
+            }
+        }
+        assert_eq!(count, 10);
+    }
+    #[test]
+    fn catalog_search_is_unicode_and_modal_escape_preserves_document() {
+        let mut state = crate::init();
+        state.section = "studio".into();
+        state.core.access.verified = true;
+        let value = crate::studio::scene("studio-base");
+        state.studio.selected = value.instances[0].id.clone();
+        state.studio.value = Some(value.clone());
+        let mut rt = rune::Runtime::new(
+            state,
+            crate::view,
+            (1440.0, 900.0),
+            rune::Env::new(true, 1.0),
+        );
+        rt.frame(0.0);
+        let (x, y) = rt.find("studio-catalog-open").unwrap();
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.frame(0.0);
+        assert!(rt.state.studio.catalog_open);
+        let (x, y) = rt.find("studio-search").unwrap();
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.paste("clasificación");
+        rt.frame(0.0);
+        assert!(rt.find("studio-add-standings").is_some());
+        assert!(rt.find("studio-add-pedals").is_none());
+        rt.key(rune::KeyEvent {
+            key: rune::Key::Escape,
+            mods: Default::default(),
+        });
+        rt.frame(0.0);
+        assert!(!rt.state.studio.catalog_open);
+        assert_eq!(rt.state.studio.value, Some(value));
+    }
 }

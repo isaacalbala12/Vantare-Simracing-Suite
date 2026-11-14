@@ -54,228 +54,6 @@ pub fn scene(name: &str) -> StudioView {
     view
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    fn ready() -> (Studio, CoreStatus) {
-        let mut s = Studio::default();
-        let core = CoreStatus {
-            access: vantare_hub_host::protocol::AccessView {
-                verified: true,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let id = request(&s.next(0.0, true, &core));
-        assert!(s.accept(
-            id,
-            Reply::StudioGet {
-                value: scene("studio-base")
-            }
-        ));
-        (s, core)
-    }
-    fn request(messages: &[UiToHost]) -> u32 {
-        messages
-            .iter()
-            .find_map(|m| {
-                if let UiToHost::Request { id, .. } = m {
-                    Some(*id)
-                } else {
-                    None
-                }
-            })
-            .unwrap()
-    }
-    #[test]
-    fn studio_is_subscribed_only_while_visible_and_reentry_refreshes() {
-        let (mut s, core) = ready();
-        let id = s.selected.clone();
-        assert!(s.next(1.0, true, &core).is_empty());
-        assert!(matches!(
-            s.next(2.0, false, &core).as_slice(),
-            [UiToHost::Unsubscribe {
-                topic: Topic::Studio
-            }]
-        ));
-        assert!(!s.event(scene("studio-vacio")));
-        assert!(!s.next(3.0, true, &core).is_empty());
-        assert_eq!(s.selected, id);
-    }
-    #[test]
-    fn writes_are_serial_rechecked_and_never_replayed_on_timeout() {
-        let (mut s, mut core) = ready();
-        let edit = Request::StudioVisibility {
-            id: s.selected.clone(),
-            visible: false,
-            base_revision: s.revision(),
-        };
-        s.queue(edit.clone(), &core);
-        s.queue(edit.clone(), &core);
-        core.access.verified = false;
-        assert!(s.next(1.0, true, &core).is_empty());
-        assert_eq!(s.problem, Some("studio.reconfirm"));
-        core.access.verified = true;
-        s.queue(edit.clone(), &core);
-        let id = request(&s.next(2.0, true, &core));
-        assert!(s.next(3.0, true, &core).is_empty());
-        let refresh = s.next(48.0, true, &core);
-        let fresh = request(&refresh);
-        assert!(matches!(
-            refresh.last(),
-            Some(UiToHost::Request {
-                request: Request::StudioGet {},
-                ..
-            })
-        ));
-        s.queue(edit, &core);
-        assert!(s.next(49.0, true, &core).is_empty());
-        assert!(!s.accept(
-            id,
-            Reply::StudioVisibility {
-                value: scene("studio-base")
-            }
-        ));
-        assert!(s.accept(
-            fresh,
-            Reply::StudioGet {
-                value: scene("studio-base")
-            }
-        ));
-        assert!(!s.busy());
-    }
-    #[test]
-    fn stale_revision_and_conflict_require_a_new_user_action() {
-        let (mut s, core) = ready();
-        let edit = Request::StudioRemove {
-            id: s.selected.clone(),
-            base_revision: s.revision(),
-        };
-        s.queue(edit, &core);
-        let id = request(&s.next(1.0, true, &core));
-        let mut changed = scene("studio-vacio");
-        changed.revision = "a".repeat(64);
-        assert!(s.fail(id, &HostError::StudioConflict { current: changed }));
-        assert!(s.selected.is_empty());
-        assert_eq!(s.problem, Some("studio.conflict"));
-        assert!(s.next(2.0, true, &core).is_empty());
-        assert!(!s.allowed(
-            &Request::StudioUndo {
-                base_revision: "b".repeat(64)
-            },
-            &core
-        ));
-    }
-    #[test]
-    fn locked_and_protected_edits_are_denied_but_stop_stays_available() {
-        let (mut s, mut core) = ready();
-        let edit = Request::StudioVisibility {
-            id: s.selected.clone(),
-            visible: false,
-            base_revision: s.revision(),
-        };
-        s.value.as_mut().unwrap().instances[0].locked = true;
-        assert!(!s.allowed(&edit, &core));
-        s.value.as_mut().unwrap().state = StudioState::Protected;
-        s.value.as_mut().unwrap().showing = true;
-        core.access.blocked = true;
-        assert!(!s.allowed(&edit, &core));
-        assert!(s.allowed(&Request::StudioTrack { show: false }, &core));
-    }
-    #[test]
-    fn unrelated_reply_cannot_finish_a_pending_write() {
-        let (mut s, core) = ready();
-        s.queue(
-            Request::StudioVisibility {
-                id: s.selected.clone(),
-                visible: false,
-                base_revision: s.revision(),
-            },
-            &core,
-        );
-        let id = request(&s.next(1.0, true, &core));
-        assert!(!s.accept(
-            id,
-            Reply::StudioGet {
-                value: scene("studio-base")
-            }
-        ));
-        assert!(s.busy());
-        assert!(s.accept(
-            id,
-            Reply::StudioVisibility {
-                value: scene("studio-base")
-            }
-        ));
-    }
-    #[test]
-    fn opacity_bounds_and_catalog_permissions_are_rechecked_before_dispatch() {
-        let (mut s, core) = ready();
-        for opacity in [0, 19, 101, 255] {
-            assert!(!s.allowed(
-                &Request::StudioInstance {
-                    id: s.selected.clone(),
-                    base_revision: s.revision(),
-                    patch: vantare_hub_host::studio::InstancePatch::Opacity(opacity),
-                },
-                &core
-            ));
-        }
-        let info = s
-            .value
-            .as_ref()
-            .unwrap()
-            .catalog
-            .iter()
-            .find(|c| c.allowed)
-            .unwrap();
-        let kind = info.kind;
-        s.queue(
-            Request::StudioAdd {
-                kind,
-                base_revision: s.revision(),
-            },
-            &core,
-        );
-        s.value
-            .as_mut()
-            .unwrap()
-            .catalog
-            .iter_mut()
-            .find(|c| c.kind == kind)
-            .unwrap()
-            .allowed = false;
-        assert!(s.next(1.0, true, &core).is_empty());
-        assert_eq!(s.problem, Some("studio.reconfirm"));
-    }
-    #[test]
-    fn read_failure_is_recoverable_and_leave_drops_unsent_edits_and_dialogs() {
-        let (mut s, core) = ready();
-        s.reload();
-        let id = request(&s.next(1.0, true, &core));
-        assert!(s.fail(id, &HostError::Unsupported));
-        assert_eq!(s.problem, Some("studio.readFailed"));
-        s.queue(
-            Request::StudioRemove {
-                id: s.selected.clone(),
-                base_revision: s.revision(),
-            },
-            &core,
-        );
-        s.catalog_open = true;
-        s.removing = Some(s.selected.clone());
-        let messages = s.next(2.0, false, &core);
-        assert!(matches!(
-            messages.as_slice(),
-            [UiToHost::Unsubscribe {
-                topic: Topic::Studio
-            }]
-        ));
-        assert!(!s.busy());
-        assert!(!s.catalog_open);
-        assert!(s.removing.is_none());
-    }
-}
 impl Default for Studio {
     fn default() -> Self {
         Self {
@@ -533,5 +311,228 @@ impl Studio {
     }
     pub fn due(&self) -> Option<f64> {
         self.pending.as_ref().map(|p| p.deadline)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn ready() -> (Studio, CoreStatus) {
+        let mut s = Studio::default();
+        let core = CoreStatus {
+            access: vantare_hub_host::protocol::AccessView {
+                verified: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let id = request(&s.next(0.0, true, &core));
+        assert!(s.accept(
+            id,
+            Reply::StudioGet {
+                value: scene("studio-base")
+            }
+        ));
+        (s, core)
+    }
+    fn request(messages: &[UiToHost]) -> u32 {
+        messages
+            .iter()
+            .find_map(|m| {
+                if let UiToHost::Request { id, .. } = m {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .unwrap()
+    }
+    #[test]
+    fn studio_is_subscribed_only_while_visible_and_reentry_refreshes() {
+        let (mut s, core) = ready();
+        let id = s.selected.clone();
+        assert!(s.next(1.0, true, &core).is_empty());
+        assert!(matches!(
+            s.next(2.0, false, &core).as_slice(),
+            [UiToHost::Unsubscribe {
+                topic: Topic::Studio
+            }]
+        ));
+        assert!(!s.event(scene("studio-vacio")));
+        assert!(!s.next(3.0, true, &core).is_empty());
+        assert_eq!(s.selected, id);
+    }
+    #[test]
+    fn writes_are_serial_rechecked_and_never_replayed_on_timeout() {
+        let (mut s, mut core) = ready();
+        let edit = Request::StudioVisibility {
+            id: s.selected.clone(),
+            visible: false,
+            base_revision: s.revision(),
+        };
+        s.queue(edit.clone(), &core);
+        s.queue(edit.clone(), &core);
+        core.access.verified = false;
+        assert!(s.next(1.0, true, &core).is_empty());
+        assert_eq!(s.problem, Some("studio.reconfirm"));
+        core.access.verified = true;
+        s.queue(edit.clone(), &core);
+        let id = request(&s.next(2.0, true, &core));
+        assert!(s.next(3.0, true, &core).is_empty());
+        let refresh = s.next(48.0, true, &core);
+        let fresh = request(&refresh);
+        assert!(matches!(
+            refresh.last(),
+            Some(UiToHost::Request {
+                request: Request::StudioGet {},
+                ..
+            })
+        ));
+        s.queue(edit, &core);
+        assert!(s.next(49.0, true, &core).is_empty());
+        assert!(!s.accept(
+            id,
+            Reply::StudioVisibility {
+                value: scene("studio-base")
+            }
+        ));
+        assert!(s.accept(
+            fresh,
+            Reply::StudioGet {
+                value: scene("studio-base")
+            }
+        ));
+        assert!(!s.busy());
+    }
+    #[test]
+    fn stale_revision_and_conflict_require_a_new_user_action() {
+        let (mut s, core) = ready();
+        let edit = Request::StudioRemove {
+            id: s.selected.clone(),
+            base_revision: s.revision(),
+        };
+        s.queue(edit, &core);
+        let id = request(&s.next(1.0, true, &core));
+        let mut changed = scene("studio-vacio");
+        changed.revision = "a".repeat(64);
+        assert!(s.fail(id, &HostError::StudioConflict { current: changed }));
+        assert!(s.selected.is_empty());
+        assert_eq!(s.problem, Some("studio.conflict"));
+        assert!(s.next(2.0, true, &core).is_empty());
+        assert!(!s.allowed(
+            &Request::StudioUndo {
+                base_revision: "b".repeat(64)
+            },
+            &core
+        ));
+    }
+    #[test]
+    fn locked_and_protected_edits_are_denied_but_stop_stays_available() {
+        let (mut s, mut core) = ready();
+        let edit = Request::StudioVisibility {
+            id: s.selected.clone(),
+            visible: false,
+            base_revision: s.revision(),
+        };
+        s.value.as_mut().unwrap().instances[0].locked = true;
+        assert!(!s.allowed(&edit, &core));
+        s.value.as_mut().unwrap().state = StudioState::Protected;
+        s.value.as_mut().unwrap().showing = true;
+        core.access.blocked = true;
+        assert!(!s.allowed(&edit, &core));
+        assert!(s.allowed(&Request::StudioTrack { show: false }, &core));
+    }
+    #[test]
+    fn unrelated_reply_cannot_finish_a_pending_write() {
+        let (mut s, core) = ready();
+        s.queue(
+            Request::StudioVisibility {
+                id: s.selected.clone(),
+                visible: false,
+                base_revision: s.revision(),
+            },
+            &core,
+        );
+        let id = request(&s.next(1.0, true, &core));
+        assert!(!s.accept(
+            id,
+            Reply::StudioGet {
+                value: scene("studio-base")
+            }
+        ));
+        assert!(s.busy());
+        assert!(s.accept(
+            id,
+            Reply::StudioVisibility {
+                value: scene("studio-base")
+            }
+        ));
+    }
+    #[test]
+    fn opacity_bounds_and_catalog_permissions_are_rechecked_before_dispatch() {
+        let (mut s, core) = ready();
+        for opacity in [0, 19, 101, 255] {
+            assert!(!s.allowed(
+                &Request::StudioInstance {
+                    id: s.selected.clone(),
+                    base_revision: s.revision(),
+                    patch: vantare_hub_host::studio::InstancePatch::Opacity(opacity),
+                },
+                &core
+            ));
+        }
+        let info = s
+            .value
+            .as_ref()
+            .unwrap()
+            .catalog
+            .iter()
+            .find(|c| c.allowed)
+            .unwrap();
+        let kind = info.kind;
+        s.queue(
+            Request::StudioAdd {
+                kind,
+                base_revision: s.revision(),
+            },
+            &core,
+        );
+        s.value
+            .as_mut()
+            .unwrap()
+            .catalog
+            .iter_mut()
+            .find(|c| c.kind == kind)
+            .unwrap()
+            .allowed = false;
+        assert!(s.next(1.0, true, &core).is_empty());
+        assert_eq!(s.problem, Some("studio.reconfirm"));
+    }
+    #[test]
+    fn read_failure_is_recoverable_and_leave_drops_unsent_edits_and_dialogs() {
+        let (mut s, core) = ready();
+        s.reload();
+        let id = request(&s.next(1.0, true, &core));
+        assert!(s.fail(id, &HostError::Unsupported));
+        assert_eq!(s.problem, Some("studio.readFailed"));
+        s.queue(
+            Request::StudioRemove {
+                id: s.selected.clone(),
+                base_revision: s.revision(),
+            },
+            &core,
+        );
+        s.catalog_open = true;
+        s.removing = Some(s.selected.clone());
+        let messages = s.next(2.0, false, &core);
+        assert!(matches!(
+            messages.as_slice(),
+            [UiToHost::Unsubscribe {
+                topic: Topic::Studio
+            }]
+        ));
+        assert!(!s.busy());
+        assert!(!s.catalog_open);
+        assert!(s.removing.is_none());
     }
 }

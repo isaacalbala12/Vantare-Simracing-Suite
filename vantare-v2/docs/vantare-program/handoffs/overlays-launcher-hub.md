@@ -2378,3 +2378,23 @@ solo el target propio antes de capturar si quedan menos de 12 GiB.
 Puede quedar un target nuevo del intento c89f6204; no se afirma limpio sin SSH.
 No se abren ventanas visibles ni se usa Automatización. No fusionar por fidelidad
 hasta tener nuevas comparativas y el visto bueno de Isaac.
+
+
+### VANTA-143 · Inicio compacto #2297 (revisión del orquestador)
+
+Prioridad anterior a continuar la medición: corregir 1280x800 sin cambiar
+1440x900. Se consulta orbit/adapt.rs y shell/foundations.rs del Hub congelado,
+sin editarlos ni depender de GPUI. Alto lógico <820 activa B/Xs: gap 10,
+rellenos 12/20/14, hero de 200 y saludo de 38, sin subtítulo ni fila Hz/Widgets
+visibles/CPU. Los chips y Editar overlay/Detener se conservan, como pide el
+orquestador. Densidad M (incluido 1440x900) mantiene estructura y valores previos.
+Regresión CPU en ambos temas, tres escalas y alturas 800/819/820/900: ocultación,
+chips, límite 820 y rectángulos completos de ambos botones dentro del viewport.
+Clippy/tests Windows por cola; capturas nuevas y hash 1440 pendientes al publicar.
+
+La medición Mac se detiene explícitamente para no competir por CPU, conservando
+la tanda parcial y sus logs; no se descartan muestras ni se afirma completada.
+Primero cuatro pares 1280 regenerados y verificación PNG idéntica de los cuatro
+pares 1440. Exclusivamente Rune offscreen y Electron oculto/accessory. Sin
+cuentas, overlays, cambios de host, nuevas dependencias ni merge/release.
+Plane lo mantiene el orquestador; evidencia externa inicio-2297/.

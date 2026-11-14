@@ -519,7 +519,14 @@ pub fn activity_rows(state: &State, limit: usize) -> El {
 pub fn view(state: &State, cx: &Cx<State>) -> El {
     let theme = &state.theme;
     let data = state.home.value.as_ref();
-    let mut page = col().key("home").w_full().gap(12.0).px(24.0).py(16.0);
+    let [window_width, window_height] = cx.layout_size("hub").unwrap_or([1440.0, 900.0]);
+    // Frozen Hub orbit::Adapt: B/Xs below 820 logical px; M and A stay unchanged.
+    let compact = window_height < 820.0;
+    let gap = if compact { 10.0 } else { 12.0 };
+    let mut page = col().key("home").w_full().gap(gap).px(24.0).py(16.0);
+    if compact {
+        page = page.px(20.0).pt(12.0).pb(14.0);
+    }
     if state.home.failed
         || state.home.launch_problem.is_some()
         || state.core.access.blocked
@@ -684,7 +691,6 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
         composer = composer.child(options);
     }
     page = page.child(composer);
-    let [window_width, window_height] = cx.layout_size("hub").unwrap_or([1440.0, 900.0]);
     let hero_height = if window_height >= 1000.0 {
         300.0
     } else if window_height < 820.0 {
@@ -722,7 +728,7 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
     {
         hero = hero.pixels_fit(image.pixels(), SurfaceFit::Fill);
     }
-    let hero = hero
+    let mut hero = hero
         .child(circuit)
         .child(
             small(
@@ -747,11 +753,12 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                     if empty { "" } else { &state.display_name },
                     crate::home_chrome::now(state),
                 ),
-                46.0,
+                if compact { 38.0 } else { 46.0 },
             )
             .key("home-greeting"),
-        )
-        .child(label(
+        );
+    if !compact {
+        hero = hero.child(label(
             theme,
             text(if empty {
                 "home.emptySubtitle"
@@ -760,15 +767,15 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
             } else {
                 "home.subtitle"
             }),
-        ))
-        .child(el().grow(1.0))
-        .child(
-            row().gap(8.0).child(launch_button(state, true)).child(
-                studio_button(state, "home-studio", text("home.studio"))
-                    .fill(theme.color("bg-base").alpha(0.0))
-                    .border(1.0, theme.color("line-3")),
-            ),
-        );
+        ));
+    }
+    let hero = hero.child(el().grow(1.0)).child(
+        row().gap(8.0).child(launch_button(state, true)).child(
+            studio_button(state, "home-studio", text("home.studio"))
+                .fill(theme.color("bg-base").alpha(0.0))
+                .border(1.0, theme.color("line-3")),
+        ),
+    );
     page = page.child(hero);
     let mut overlay = card(theme, "home-overlay", text("home.overlay"));
     let mut activity = card(theme, "home-activity", text("home.activity"));
@@ -824,9 +831,9 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                     ),
                 ));
             }
-            overlay = overlay
-                .child(chips)
-                .child(
+            overlay = overlay.child(chips);
+            if !compact {
+                overlay = overlay.child(
                     row()
                         .gap(16.0)
                         .child(metric(theme, text("home.dash"), text("home.hz")))
@@ -836,36 +843,37 @@ pub fn view(state: &State, cx: &Cx<State>) -> El {
                             text("home.visible"),
                         ))
                         .child(metric(theme, text("home.dash"), text("home.cpu"))),
-                )
-                .child(
-                    row()
-                        .gap(8.0)
-                        .child(
-                            button_content(
-                                theme,
-                                "home-edit",
-                                text("home.edit"),
-                                label(theme, text("home.edit"))
-                                    .font(body_style(14.0, 600.0))
-                                    .color(theme.color("bg-base")),
-                                studio,
-                            )
-                            .fill(theme.color("text-1"))
-                            .disabled(!state.core.access.verified || state.core.access.blocked),
-                        )
-                        .child(
-                            button(theme, "home-stop", text("home.stop"), |_: &mut State| {})
-                                .disabled(true)
-                                .help(text("home.stopReason")),
-                        ),
                 );
+            }
+            overlay = overlay.child(
+                row()
+                    .gap(8.0)
+                    .child(
+                        button_content(
+                            theme,
+                            "home-edit",
+                            text("home.edit"),
+                            label(theme, text("home.edit"))
+                                .font(body_style(14.0, 600.0))
+                                .color(theme.color("bg-base")),
+                            studio,
+                        )
+                        .fill(theme.color("text-1"))
+                        .disabled(!state.core.access.verified || state.core.access.blocked),
+                    )
+                    .child(
+                        button(theme, "home-stop", text("home.stop"), |_: &mut State| {})
+                            .disabled(true)
+                            .help(text("home.stopReason")),
+                    ),
+            );
         }
         activity = activity.child(activity_rows(state, 8));
     } else {
         overlay = overlay.child(message(theme, text("home.loading")));
         activity = activity.child(message(theme, text("home.loading")));
     }
-    page = page.child(row().gap(12.0).child(overlay).child(activity));
+    page = page.child(row().gap(gap).child(overlay).child(activity));
     let mut status = col()
         .key("home-status-section")
         .w_full()
@@ -1208,6 +1216,76 @@ mod tests {
                         caption.rect[0] + caption.rect[2] <= tile.rect[0] + tile.rect[2] + 0.1,
                         "{width}: {kind} caption must not invade its neighbor"
                     );
+                }
+            }
+        }
+    }
+    #[test]
+    fn compact_density_keeps_overlay_actions_unclipped_below_820_logical_pixels() {
+        for scheme in ["light", "dark"] {
+            for scale in [1.0, 1.25, 1.5] {
+                for height in [800.0, 819.0, 820.0, 900.0] {
+                    let mut state = crate::init();
+                    crate::capture_preset(&mut state, &format!("home-{scheme}")).unwrap();
+                    state.core.access.verified = true;
+                    state.home.value = Some(
+                        serde_json::from_value(catalog()["home"]["scenes"]["inicio-base"].clone())
+                            .unwrap(),
+                    );
+                    let fonts = rune::text::TextSystem::new(
+                        crate::design::FONTS,
+                        ("Inter W400", "Space Mono"),
+                    );
+                    let mut rt = rune::Runtime::with_text(
+                        state,
+                        crate::view,
+                        (1280.0, height),
+                        rune::Env::new(scheme == "dark", scale),
+                        fonts,
+                    );
+                    for _ in 0..6 {
+                        rt.frame(0.1);
+                    }
+                    let elements = rt.elements();
+                    let element = |key: &str| {
+                        elements
+                            .iter()
+                            .find(|e| e.key.as_deref() == Some(key))
+                            .unwrap()
+                    };
+                    let compact = height < 820.0;
+                    for name in ["home.subtitle", "home.hz", "home.visible", "home.cpu"] {
+                        assert_eq!(
+                            elements
+                                .iter()
+                                .any(|e| e.text.as_deref() == Some(text(name))),
+                            !compact,
+                            "{scheme}/{scale}/{height}: {name}"
+                        );
+                    }
+                    assert!(rt.find("home-chip-0").is_some());
+                    let hero = element("home-hero").rect;
+                    assert!((hero[3] - if compact { 200.0 } else { 236.0 }).abs() < 0.1);
+                    let composer = element("home-composer").rect;
+                    let gap = hero[1] - composer[1] - composer[3];
+                    assert!((gap - if compact { 10.0 } else { 12.0 }).abs() < 0.1);
+                    if compact {
+                        for key in ["home-edit", "home-stop"] {
+                            let action = element(key);
+                            assert!(action.rect[3] > 30.0);
+                            assert!(
+                                action.visible[2] >= action.rect[2] - 0.1
+                                    && action.visible[3] >= action.rect[3] - 0.1,
+                                "{scheme}/{scale}/{height}: {key} clipped: {:?} vs {:?}",
+                                action.visible,
+                                action.rect
+                            );
+                            assert!(
+                                action.rect[1] + action.rect[3] <= height,
+                                "{scheme}/{scale}/{height}: {key} below viewport"
+                            );
+                        }
+                    }
                 }
             }
         }

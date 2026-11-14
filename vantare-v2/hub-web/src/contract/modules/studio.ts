@@ -117,14 +117,14 @@ function instance(v: unknown) {
       "y",
       "sizeMode",
       "aspectLocked",
-      "outsideCanvas",
+      "canvasPlacement",
     ]) &&
     isWidgetSettings(v.settings, v.kind) &&
     coordinate(v.x) &&
     coordinate(v.y) &&
     (v.sizeMode === "auto" || v.sizeMode === "explicit") &&
     typeof v.aspectLocked === "boolean" &&
-    typeof v.outsideCanvas === "boolean" &&
+    (v.canvasPlacement === "inside" || v.canvasPlacement === "outside") &&
     id(v.id) &&
     oneOf(v.kind, studioKinds) &&
     typeof v.visible === "boolean" &&

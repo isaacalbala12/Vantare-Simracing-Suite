@@ -43,7 +43,7 @@ export function create(context: MockContext): MockHandler {
     y: 62,
     sizeMode: "auto",
     aspectLocked: true,
-    outsideCanvas: false,
+    canvasPlacement: "inside",
   })) as OverlayInstance[];
   if (sceneName === "studio-muchos" || sceneName === "studio-nueve") {
     const originals = structuredClone(instances);
@@ -201,7 +201,7 @@ export function create(context: MockContext): MockHandler {
           y: 38.4,
           sizeMode: "auto",
           aspectLocked: true,
-          outsideCanvas: false,
+          canvasPlacement: "inside",
           size: {
             width: Math.round(studioSizes[request.kind].width),
             height: Math.round(studioSizes[request.kind].height),

@@ -193,7 +193,7 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
             crate::studio::SizeMode::Auto
         },
         aspect_locked: optional(&geometry, "aspectLocked", true)?,
-        outside_canvas: false,
+        canvas_placement: crate::studio::CanvasPlacement::Inside,
     })
 }
 fn coordinate(value: f64) -> Result<crate::studio::Coordinate, HostError> {
@@ -206,10 +206,15 @@ fn relative(
 ) -> Result<(), HostError> {
     item.x = coordinate(f64::from(item.x) - monitor.origin.0)?;
     item.y = coordinate(f64::from(item.y) - monitor.origin.1)?;
-    item.outside_canvas = f64::from(item.x) < 0.0
+    let outside = f64::from(item.x) < 0.0
         || f64::from(item.y) < 0.0
         || f64::from(item.x) + f64::from(item.size.width) > f64::from(canvas.width)
         || f64::from(item.y) + f64::from(item.size.height) > f64::from(canvas.height);
+    item.canvas_placement = if outside {
+        crate::studio::CanvasPlacement::Outside
+    } else {
+        crate::studio::CanvasPlacement::Inside
+    };
     Ok(())
 }
 fn merged_settings(kind: WidgetKind, stored: &Fields) -> Result<Fields, HostError> {

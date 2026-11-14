@@ -12,7 +12,9 @@ pub(crate) mod monitor;
 #[path = "studio/widget_settings.rs"]
 pub mod widget_settings;
 pub use catalog::{WidgetInfo, WidgetKind};
-pub use geometry::{CanvasChoice, CanvasView, Coordinate, GeometryChange, Point, SizeMode};
+pub use geometry::{
+    CanvasChoice, CanvasPlacement, CanvasView, Coordinate, GeometryChange, Point, SizeMode,
+};
 pub use widget_settings::{WidgetSettings, WidgetSettingsPatch};
 pub const INSTANCE_LIMIT: usize = 256;
 pub const HISTORY_LIMIT: usize = 50;
@@ -83,7 +85,7 @@ pub struct OverlayInstance {
     pub y: Coordinate,
     pub size_mode: SizeMode,
     pub aspect_locked: bool,
-    pub outside_canvas: bool,
+    pub canvas_placement: CanvasPlacement,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

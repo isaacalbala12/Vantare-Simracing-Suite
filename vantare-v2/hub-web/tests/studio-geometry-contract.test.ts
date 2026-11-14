@@ -62,9 +62,11 @@ it("projects fractional geometry while mock-only unsupported orders never preten
     throw new Error("studio view");
   expect(isHostMessage(snapshot)).toBe(true);
   const changed = structuredClone(snapshot);
+  if (changed.result.method !== "studio.get")
+    throw new Error("cloned studio view");
   changed.result.value.instances[0].x = -12.5;
   changed.result.value.instances[0].size.width = 338.5;
-  changed.result.value.instances[0].outsideCanvas = true;
+  changed.result.value.instances[0].canvasPlacement = "outside";
   expect(isHostMessage(changed)).toBe(true);
   expect(host(geometry({ kind: "move", x: 1, y: 2 }))).toMatchObject({
     kind: "failure",

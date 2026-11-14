@@ -55,7 +55,7 @@ function item(kind: (typeof kinds)[number]): OverlayInstance {
     y: 62,
     sizeMode: "auto",
     aspectLocked: true,
-    outsideCanvas: false,
+    canvasPlacement: "inside",
   };
 }
 function mount(value = item("standings")) {

@@ -31,7 +31,10 @@ fn one_geometry_order_is_one_cas_and_one_undo_preserving_unknown_bytes() {
     )
     .expect("move");
     assert_eq!(f64::from(moved.instances[0].x), 120.25);
-    assert!(moved.instances[0].outside_canvas);
+    assert_eq!(
+        moved.instances[0].canvas_placement,
+        crate::studio::CanvasPlacement::Outside
+    );
     assert_eq!(state.undo.len(), 1);
     let saved = std::fs::read(&path).expect("saved");
     let text = std::str::from_utf8(&saved).expect("UTF8");
@@ -83,7 +86,7 @@ fn stale_revision_conflicts_without_replay_or_mutation() {
         matches!(edit(&mut a,GeometryChange::Move{x:n(10.0),y:n(10.0)},&old.revision),Err(HostError::StudioConflict{current:conflict}) if conflict.revision==current.revision)
     );
     assert_eq!(std::fs::read(&path).expect("bytes"), bytes);
-    assert!(a.undo.is_empty());
+    assert_eq!(a.undo.len(), 0);
 }
 #[test]
 fn resize_enforces_aspect_and_limits_and_auto_preserves_extensions() {

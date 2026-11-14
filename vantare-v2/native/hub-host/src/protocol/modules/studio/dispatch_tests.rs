@@ -130,7 +130,7 @@ fn geometry_canvas_and_drop_require_current_rights_and_not_live() {
     session.current.access.verified = true;
     session.current.live = false;
     assert!(
-        matches!(response(&mut session,&requests[0]),HostToUi::Response{result:Reply::StudioGeometry{value},..} if f64::from(value.instances[0].x)==100.0)
+        matches!(response(&mut session,&requests[0]),HostToUi::Response{result:Reply::StudioGeometry{value},..} if value.instances[0].x==100_u32.into())
     );
     assert_ne!(std::fs::read(&path).expect("changed"), bytes);
 }

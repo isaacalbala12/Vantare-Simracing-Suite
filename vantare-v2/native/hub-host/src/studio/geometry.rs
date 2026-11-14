@@ -102,6 +102,13 @@ pub enum CanvasSource {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase")]
+pub enum CanvasPlacement {
+    Inside,
+    Outside,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CanvasView {
     pub width: Coordinate,

@@ -18,22 +18,12 @@ pub(crate) fn typescript() -> String {
     declare::<SizeMode>(&mut text);
     declare::<geometry::CanvasSource>(&mut text);
     declare::<CanvasView>(&mut text);
+    declare::<CanvasPlacement>(&mut text);
     declare::<OverlaySize>(&mut text);
     declare::<OverlayInstance>(&mut text);
     declare::<StudioView>(&mut text);
     declare::<InstancePatch>(&mut text);
-    crate::protocol::bindings::constants!(
-        &mut text,
-        "studioGeometryCases",
-        geometry::cases::vectors()
-    );
-    crate::protocol::bindings::constants!(
-        &mut text,
-        "studioGeometryLimits",
-        serde_json::json!({
-        "minSize":geometry::MIN_SIZE,"maxSize":geometry::MAX_SIZE,"coordinateMax":f64::from(f32::MAX),
-        "canvasMin":64,"canvasMax":SIZE_LIMIT,"snapScreenPx":7.0,"nudgeLimit":geometry::NUDGE_LIMIT})
-    );
+    geometry_constants(&mut text);
     writeln!(text,"export const studioLimits = {{instances:{INSTANCE_LIMIT},history:{HISTORY_LIMIT},opacityMin:{OPACITY_MIN},opacityMax:{OPACITY_MAX},id:{ID_LIMIT},size:{SIZE_LIMIT},label:{LABEL_LIMIT},about:{ABOUT_LIMIT}}} as const;").expect("limits");
     text.push_str("export const studioAddAvailable = true as const;\nexport const studioEditOnScreen = false as const;\n");
     writeln!(
@@ -106,6 +96,16 @@ pub(crate) fn typescript() -> String {
         .collect::<Vec<_>>()
         .join("\n")
         + "\n"
+}
+fn geometry_constants(text: &mut String) {
+    crate::protocol::bindings::constants!(text, "studioGeometryCases", geometry::cases::vectors());
+    crate::protocol::bindings::constants!(
+        text,
+        "studioGeometryLimits",
+        serde_json::json!({
+        "minSize":geometry::MIN_SIZE,"maxSize":geometry::MAX_SIZE,"coordinateMax":f64::from(f32::MAX),
+        "canvasMin":64,"canvasMax":SIZE_LIMIT,"snapScreenPx":7.0,"nudgeLimit":geometry::NUDGE_LIMIT})
+    );
 }
 fn metadata(text: &mut String) {
     for (name, value) in [
@@ -181,46 +181,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         },
         Request::StudioTrack { show: false },
     ];
-    requests.push(Request::StudioCanvas {
-        resolution: CanvasChoice::Monitor,
-        base_revision: "0".repeat(64),
-    });
-    requests.push(Request::StudioCanvas {
-        resolution: CanvasChoice::Custom {
-            width: 2560_u32.into(),
-            height: 1440_u32.into(),
-        },
-        base_revision: "0".repeat(64),
-    });
-    requests.push(Request::StudioAdd {
-        kind: WidgetKind::Delta,
-        at: Some(Point {
-            x: 48_u32.into(),
-            y: 62_u32.into(),
-        }),
-        base_revision: "0".repeat(64),
-    });
-    for change in [
-        GeometryChange::Move {
-            x: 48_u32.into(),
-            y: 62_u32.into(),
-        },
-        GeometryChange::Resize {
-            x: 48_u32.into(),
-            y: 62_u32.into(),
-            width: 338_u32.into(),
-            height: 364_u32.into(),
-        },
-        GeometryChange::Anchor { column: 2, row: 2 },
-        GeometryChange::AutoSize,
-        GeometryChange::AspectLocked { value: false },
-    ] {
-        requests.push(Request::StudioGeometry {
-            id: "widget-1".into(),
-            change,
-            base_revision: "0".repeat(64),
-        });
-    }
+    geometry_requests(&mut requests);
     let replies = [
         Reply::StudioGeometry {
             value: value.clone(),
@@ -281,6 +242,48 @@ pub(crate) fn corpus() -> serde_json::Value {
     serde_json::json!({"host":host,"ui":ui,"invalidSettings":invalid_settings()})
 }
 
+fn geometry_requests(requests: &mut Vec<Request>) {
+    requests.push(Request::StudioCanvas {
+        resolution: CanvasChoice::Monitor,
+        base_revision: "0".repeat(64),
+    });
+    requests.push(Request::StudioCanvas {
+        resolution: CanvasChoice::Custom {
+            width: 2560_u32.into(),
+            height: 1440_u32.into(),
+        },
+        base_revision: "0".repeat(64),
+    });
+    requests.push(Request::StudioAdd {
+        kind: WidgetKind::Delta,
+        at: Some(Point {
+            x: 48_u32.into(),
+            y: 62_u32.into(),
+        }),
+        base_revision: "0".repeat(64),
+    });
+    for change in [
+        GeometryChange::Move {
+            x: 48_u32.into(),
+            y: 62_u32.into(),
+        },
+        GeometryChange::Resize {
+            x: 48_u32.into(),
+            y: 62_u32.into(),
+            width: 338_u32.into(),
+            height: 364_u32.into(),
+        },
+        GeometryChange::Anchor { column: 2, row: 2 },
+        GeometryChange::AutoSize,
+        GeometryChange::AspectLocked { value: false },
+    ] {
+        requests.push(Request::StudioGeometry {
+            id: "widget-1".into(),
+            change,
+            base_revision: "0".repeat(64),
+        });
+    }
+}
 fn widget_settings_types(text: &mut String) {
     use crate::studio::widget_settings::*;
     use vantare_domain::widget_settings as native;
@@ -404,7 +407,7 @@ fn value_for_settings(kind: WidgetKind, source: &str) -> StudioView {
         y: 62_u32.into(),
         size_mode: SizeMode::Auto,
         aspect_locked: true,
-        outside_canvas: false,
+        canvas_placement: CanvasPlacement::Inside,
         settings: WidgetSettings::from_json(kind, source).expect("settings sample"),
     });
     value

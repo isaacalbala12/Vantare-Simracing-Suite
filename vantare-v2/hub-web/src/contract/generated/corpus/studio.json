@@ -4,10 +4,337 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "method": "studio.geometry",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.canvas",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "studio.get",
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -170,6 +497,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -333,6 +661,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -495,6 +824,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -657,6 +987,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -819,6 +1150,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -981,6 +1313,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -1143,6 +1476,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -1302,6 +1636,7 @@
         "current": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -1465,6 +1800,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -1628,6 +1964,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -1776,6 +2113,8 @@
           ],
           "instances": [
             {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
               "id": "widget-1",
               "kind": "standings",
               "locked": false,
@@ -2353,10 +2692,13 @@
                 "race": true
               },
               "size": {
-                "height": 200,
-                "width": 300
+                "height": 200.0,
+                "width": 300.0
               },
-              "visible": true
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
             }
           ],
           "plan": "pro",
@@ -2374,6 +2716,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -2522,6 +2865,8 @@
           ],
           "instances": [
             {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
               "id": "widget-1",
               "kind": "relative",
               "locked": false,
@@ -2547,10 +2892,13 @@
                 "race": true
               },
               "size": {
-                "height": 200,
-                "width": 300
+                "height": 200.0,
+                "width": 300.0
               },
-              "visible": true
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
             }
           ],
           "plan": "pro",
@@ -2568,6 +2916,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -2716,6 +3065,8 @@
           ],
           "instances": [
             {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
               "id": "widget-1",
               "kind": "delta",
               "locked": false,
@@ -2739,10 +3090,13 @@
                 "race": true
               },
               "size": {
-                "height": 200,
-                "width": 300
+                "height": 200.0,
+                "width": 300.0
               },
-              "visible": true
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
             }
           ],
           "plan": "pro",
@@ -2760,6 +3114,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -2908,6 +3263,8 @@
           ],
           "instances": [
             {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
               "id": "widget-1",
               "kind": "pedals",
               "locked": false,
@@ -2928,10 +3285,13 @@
                 "race": true
               },
               "size": {
-                "height": 200,
-                "width": 300
+                "height": 200.0,
+                "width": 300.0
               },
-              "visible": true
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
             }
           ],
           "plan": "pro",
@@ -2949,6 +3309,7 @@
         "value": {
           "canRedo": false,
           "canUndo": false,
+          "canvas": null,
           "catalog": [
             {
               "about": "Clasificación completa con huecos por clase",
@@ -3097,6 +3458,8 @@
           ],
           "instances": [
             {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
               "id": "widget-1",
               "kind": "fuel-strategy",
               "locked": false,
@@ -3120,10 +3483,13 @@
                 "race": true
               },
               "size": {
-                "height": 200,
-                "width": 300
+                "height": 200.0,
+                "width": 300.0
               },
-              "visible": true
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
             }
           ],
           "plan": "pro",
@@ -3301,6 +3667,112 @@
       "request": {
         "method": "studio.track",
         "show": false
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "studio.canvas",
+        "resolution": {
+          "kind": "monitor"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "studio.canvas",
+        "resolution": {
+          "height": 1440.0,
+          "kind": "custom",
+          "width": 2560.0
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "at": {
+          "x": 48.0,
+          "y": 62.0
+        },
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "kind": "delta",
+        "method": "studio.add"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "change": {
+          "kind": "move",
+          "x": 48.0,
+          "y": 62.0
+        },
+        "id": "widget-1",
+        "method": "studio.geometry"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "change": {
+          "height": 364.0,
+          "kind": "resize",
+          "width": 338.0,
+          "x": 48.0,
+          "y": 62.0
+        },
+        "id": "widget-1",
+        "method": "studio.geometry"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "change": {
+          "column": 2,
+          "kind": "anchor",
+          "row": 2
+        },
+        "id": "widget-1",
+        "method": "studio.geometry"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "change": {
+          "kind": "autoSize"
+        },
+        "id": "widget-1",
+        "method": "studio.geometry"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "change": {
+          "kind": "aspectLocked",
+          "value": false
+        },
+        "id": "widget-1",
+        "method": "studio.geometry"
       }
     },
     {

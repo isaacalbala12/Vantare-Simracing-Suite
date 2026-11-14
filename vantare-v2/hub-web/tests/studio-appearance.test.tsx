@@ -43,7 +43,7 @@ const instance = (
   y: 62,
   sizeMode: "auto",
   aspectLocked: true,
-  outsideCanvas: false,
+  canvasPlacement: "inside",
 });
 function mount(item = instance("standings")) {
   return render(

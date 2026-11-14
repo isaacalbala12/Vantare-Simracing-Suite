@@ -265,6 +265,7 @@ fn session_score_only_answers_preserve_refreshed_and_answered_notes_but_not_anot
     let local = session.core.isolate_services(true);
     session.current.access.verified = true;
     session.current.account_generation = Some("a".repeat(32));
+    session.current.access.tester = true;
     let (mut pipe, mut peer) = pipes();
     let questionnaire = "15350000-0000-0000-0000-000000000001";
     let participation = |note: &str| services::Reply::Testing {

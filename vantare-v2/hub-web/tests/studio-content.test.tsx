@@ -37,7 +37,7 @@ function instance(kind: "delta" | "pedals" = "delta"): OverlayInstance {
     y: 62,
     sizeMode: "auto",
     aspectLocked: true,
-    outsideCanvas: false,
+    canvasPlacement: "inside",
   };
 }
 function expectPatch(value: object) {

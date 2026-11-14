@@ -138,7 +138,9 @@ pub(super) fn apply(
 fn position(fields: &mut Fields, at: (f64, f64)) -> Result<bool, HostError> {
     coordinate(at.0)?;
     coordinate(at.1)?;
-    if read::<f64>(fields, "x")? == at.0 && read::<f64>(fields, "y")? == at.1 {
+    if coordinate(read::<f64>(fields, "x")?)? == coordinate(at.0)?
+        && coordinate(read::<f64>(fields, "y")?)? == coordinate(at.1)?
+    {
         return Ok(false);
     }
     put(fields, "x", &at.0)?;

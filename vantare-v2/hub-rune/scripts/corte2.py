@@ -211,8 +211,8 @@ def session(args, cell, directory):
                     raise ValueError(f"Adapter exited early: {process.returncode}")
             else:
                 raise TimeoutError("No complete batch within 120 s")
-    except Exception as error:
-        row["error"] = str(error)
+    except (Exception, KeyboardInterrupt) as error:
+        row["error"] = str(error) or type(error).__name__
     finally:
         if process.poll() is None:
             os.killpg(process.pid, signal.SIGTERM)
@@ -267,6 +267,7 @@ def run(args):
         path = directory / "shared-scene.json"
         subprocess.run(["bun", str(Path(__file__).with_name("corte2-scene.mjs")), str(args.checkout / "vantare-v2/hub-web"), scene, str(path)], check=True, timeout=60)
         manifest["scenes_sha256"][screen] = hashlib.sha256(path.read_bytes()).hexdigest()
+    (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     for i, cell in enumerate(plan):
         if shutil.disk_usage(args.output).free < 12 * 1024**3:
             raise ValueError("Free disk below 12 GiB; batch stopped")
@@ -288,4 +289,7 @@ if __name__ == "__main__":
     parser.add_argument("--rune", type=Path)
     parser.add_argument("--sha")
     parser.add_argument("--mac-cleared", action="store_true")
+    def terminated(_signum, _frame):
+        raise KeyboardInterrupt("Controller terminated; no next sample")
+    signal.signal(signal.SIGTERM, terminated)
     run(parser.parse_args())

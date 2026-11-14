@@ -2601,3 +2601,39 @@ No compilador propio en curso; ningún gráfico ejecutado. CI del nuevo head
 pendiente al publicar, sin heredar checks de otro SHA. Corte 2 en preparación;
 Mac pendiente y #2297 conserva la primera captura offscreen al recuperarlo.
 Plane lo actualiza el orquestador; sin merge, promoción ni release del worker.
+
+
+### VANTA-143 · medición corte 2 preparada (2026-11-14)
+
+Encargo del orquestador mientras el Mac sigue pendiente: guion offscreen para
+Inicio, Studio y Launcher, sin competir con Isaac ni abrir ventanas delante.
+Rama/worktree propios isa-2256-hub-rune-corte2 sobre #2307 50c023c862. Un cambio
+propio de scripts/documentación/probe QA, sin paquetes, backend o host nativo.
+Exporta las lecturas del mock Electron existente para ambos Hubs: evita medir
+Studio con un widget frente a cuatro y Launcher con perfiles distintos.
+Hashes de datos/binario/entry/controladores, procesos completos, N=10 fríos
+por proceso y diez calientes por pantalla/cliente, orden alternado, medianas,
+sin descartar outliers ni repetir fallos. Memoria/CPU se suman por árbol con
+identidad PID y contadores acumulados; todas las fases y muestras se conservan.
+
+Tabla pendiente preparada en D:/VantareServer/evidence/hub-rune/corte2/:
+CORTE-2.md, index.html, summary.csv/json, manifest.json y plan.json. No números
+inventados. La ejecución exige macOS, autorización vigente, 12 GiB libres,
+checkout limpio/SHA exacto y ningún compilador. Rune solo debug headless con
+script/realtime; Electron reutiliza guardia oculta/accessory de corte 1. Cortar
+el lote termina los procesos propios; sin fallback visible ni Automatización.
+No se ha ejecutado en el Mac ni gráficos en Windows. Primero #2297 al volver.
+
+Los límites quedan en hub-rune/CORTE-2.md: CPU del headless continuo, primer
+frame enviado sin presentación, arranque sin purga del SO, ruta inicial de
+Electron y tamaños/perfiles QA. Es premedición; no certifica reposo nativo ni
+la decisión del ADR. Falta prueba A en PC de juego, equivalencia aceptada,
+coste de producción y requisitos físicos. Corte 1 conserva PASS manual de
+Isaac y FALLO visual inicial, con comparación/aceptación definitiva pendiente.
+
+Cinco tests Python nuevos y cinco de dependencias, sintaxis JS, formato Rust y
+diff PASS. Dos regresiones Rust sin ventana preparadas. Clippy/tests Windows
+en cola con dos jobs y un único compilador propio; CI añade comprobación Mac
+sin ejecutar la app, además de los tests del guion. Resultado del head nuevo
+pendiente; no se heredan checks de Launcher. Sin merge ni release. Plane lo
+actualiza el orquestador; resumen sencillo en el draft y estado/heads en #2256.

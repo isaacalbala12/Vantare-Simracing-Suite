@@ -22,6 +22,9 @@ export const settingsSearchScenes: Record<string, VisualScene> = {
         await search.evaluate((node) => node === document.activeElement),
         true,
       );
+      // La comprobación de foco ya pasó; Ctrl+B de la matriz no actúa dentro
+      // del buscador. Sacarlo del campo permite capturar también la barra abierta.
+      await search.blur();
     },
   },
 };

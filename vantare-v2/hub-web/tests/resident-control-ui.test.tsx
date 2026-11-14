@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/launcher-base.json";
 import type { LauncherView } from "../src/contract/generated/contract";
@@ -18,6 +24,8 @@ const activeTarget = {
 };
 function controller(): ResidentControlController {
   return {
+    results: { kind: "unsupported" },
+    retry: vi.fn(),
     attempt: undefined,
     scope: { instance: "b".repeat(64), accountGeneration: "a".repeat(64) },
     capable: true,
@@ -131,3 +139,37 @@ it.each(["accepted", "rejected", "unknown", "finished"] as const)(
       );
   },
 );
+
+it("keeps original result indices when a middle application is absent from the catalog", () => {
+  const control = controller(),
+    view = structuredClone(fixture) as LauncherView;
+  const profile = view.profiles[0];
+  profile.apps = ["lmu", "ghost", "obs"];
+  control.results = {
+    kind: "known",
+    value: {
+      run: "1",
+      profile: profile.id,
+      revision: view.revision,
+      accountGeneration: "a".repeat(64),
+      mode: "profile",
+      retryFailed: true,
+      outcome: { kind: "failed", reason: "step-failed" },
+      steps: [
+        { index: 0, state: "ready" },
+        { index: 1, state: "failed" },
+        { index: 2, state: "not-run" },
+      ],
+    },
+  };
+  mount(control, view);
+  const rows = within(
+    screen.getByRole("list", { name: "Pasos de la secuencia" }),
+  ).getAllByRole("listitem");
+  expect(rows).toHaveLength(3);
+  expect(rows[1].textContent).toContain("Aplicación fuera del catálogo");
+  expect(rows[1].textContent).toContain("Falló");
+  expect(rows[2].textContent).toContain("OBS Studio");
+  expect(rows[2].textContent).toContain("No ejecutado");
+  expect(rows[2].textContent).not.toContain("Falló");
+});

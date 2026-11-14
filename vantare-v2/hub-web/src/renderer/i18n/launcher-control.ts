@@ -4,6 +4,11 @@ export const controlText = {
   title: "Estado de la orden del Launcher",
   rehearse: "Prueba sin el juego",
   cancel: "Cancelación",
+  retryFailed: "Reintentar fallidos",
+  retryAll: "Repetir los mismos pasos",
+  resultUnknown:
+    "No se conserva una terminación comprobada de esta secuencia. No se puede repetir.",
+  noFailed: "No hay pasos fallidos que se puedan reintentar.",
   cancelAction: "Cancelar secuencia actual",
   rehearseHelp:
     "Prueba los pasos del perfil salvo Le Mans Ultimate. No cambia el perfil ni sus disparadores. Puede pedirte una decisión.",
@@ -32,9 +37,17 @@ export const controlText = {
   active: "No hay una ejecución comprobada que se pueda cancelar.",
   rejection: {
     ...residentText.rejection,
-    "document-unavailable":
-      "No se puede leer el perfil guardado. No se ha iniciado la prueba.",
+    unavailable: "El residente no está disponible para recibir esta orden.",
+    busy: "Hay otra orden pendiente. Espera antes de volver a enviar.",
+    rejected: "No se ha aceptado la orden. Revisa el estado actual.",
+    "document-unavailable": "No se puede leer el perfil guardado.",
     "no-steps": "Este perfil no tiene pasos que probar sin Le Mans Ultimate.",
     "start-failed": "No se pudo iniciar la secuencia.",
-  } satisfies Record<ControlRejection, string>,
+    "unknown-run":
+      "No se puede comprobar la secuencia anterior. No se ha repetido.",
+    "no-failed-steps": "No hay pasos fallidos que se puedan reintentar.",
+  } satisfies Record<
+    ControlRejection | "unknown-run" | "no-failed-steps",
+    string
+  >,
 };

@@ -9,6 +9,7 @@ import type {
 import {
   launcherLimits,
   profileLimits,
+  residentStepLimit,
 } from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
 import { createLauncherAppsMock } from "../launcher-apps";
@@ -23,7 +24,10 @@ export function create(context: MockContext): MockHandler {
     launcherFixture,
   ) as import("../../contract/generated/contract").LauncherView;
   context.launcherData = launcher;
-  if (sceneName.startsWith("launcher-control-")) {
+  if (
+    sceneName.startsWith("launcher-control-") ||
+    sceneName.startsWith("launcher-results-")
+  ) {
     core.accountGeneration = "a".repeat(64);
     core.services = "connected";
     launcher.apps.forEach((app) => {
@@ -31,6 +35,14 @@ export function create(context: MockContext): MockHandler {
     });
     if (sceneName === "launcher-control-no-steps")
       launcher.profiles[0].apps = ["lmu"];
+  }
+  if (sceneName === "launcher-results-many") {
+    launcher.profiles[0].description =
+      "Varias aplicaciones repetidas en la misma secuencia.";
+    launcher.profiles[0].apps = Array.from(
+      { length: residentStepLimit },
+      (_, index) => (index ? "obs" : "lmu"),
+    );
   }
   if (
     sceneName === "launcher-ready" ||

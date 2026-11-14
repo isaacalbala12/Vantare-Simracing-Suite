@@ -2,6 +2,7 @@ import type { HostToUi, ResidentView } from "../../contract/generated/contract";
 import { residentActionLabels } from "../../contract/generated/launcher_resident";
 import type { MockContext, MockHandler } from "../context";
 import { createResidentControlMock } from "../resident-control";
+import { createResidentResultsMock } from "../resident-results";
 export const residentMockFinishDelayMs = 1000;
 export function create(
   context: MockContext,
@@ -91,11 +92,14 @@ export function create(
       };
   }
   const control = createResidentControlMock(context, view, schedule);
+  const results = createResidentResultsMock(context, view, schedule);
   const event = (): HostToUi => ({
     kind: "event",
     event: { topic: "launcherResident", value: structuredClone(view) },
   });
   return (message) => {
+    const retry = results(message);
+    if (retry) return retry;
     const controlled = control(message);
     if (controlled) return controlled;
     if (message.kind === "subscribe" && message.topic === "launcherResident")

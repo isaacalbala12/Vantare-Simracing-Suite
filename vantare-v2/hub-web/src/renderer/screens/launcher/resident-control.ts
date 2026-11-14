@@ -6,7 +6,10 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ResidentView } from "../../../contract/generated/contract";
+import type {
+  ResidentResults,
+  ResidentView,
+} from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { useLauncherRequest } from "../../app/LauncherRequest";
 import { HostFailure } from "../../bridge/client";
@@ -150,6 +153,8 @@ export function useResidentControl(
     | "changed"
     | "active"
     | "scanning"
+    | "noFailed"
+    | "resultUnknown"
     | undefined {
     const execution = live.resident?.execution;
     if (
@@ -161,7 +166,12 @@ export function useResidentControl(
       !execution
     )
       return "unavailable";
-    if (!execution.checkedControl) return "unsupported";
+    if (
+      intent.kind === "retry"
+        ? execution.results.kind === "unsupported"
+        : !execution.checkedControl
+    )
+      return "unsupported";
     if (intent.target.accountGeneration !== live.core.accountGeneration)
       return "account";
     if (intent.target.instance !== execution.instance) return "changed";
@@ -209,6 +219,38 @@ export function useResidentControl(
         )
       )
         return "changed";
+      if (intent.kind === "retry") {
+        const summary = execution.results;
+        if (
+          summary.kind !== "known" ||
+          summary.value.run !== intent.target.run ||
+          summary.value.profile !== intent.target.profile ||
+          summary.value.revision !== intent.target.revision ||
+          summary.value.accountGeneration !== intent.target.accountGeneration
+        )
+          return "changed";
+        if (!summary.value.outcome) return "busy";
+        if (
+          !execution.events.some((event) => {
+            const outcome = summary.value.outcome;
+            if (
+              !outcome ||
+              event.kind.kind !== "finished" ||
+              event.kind.run !== summary.value.run
+            )
+              return false;
+            return (
+              event.kind.outcome.kind === outcome.kind &&
+              (!("reason" in outcome) ||
+                ("reason" in event.kind.outcome &&
+                  event.kind.outcome.reason === outcome.reason))
+            );
+          })
+        )
+          return "resultUnknown";
+        if (intent.target.scope === "failed" && !summary.value.retryFailed)
+          return "noFailed";
+      }
     }
   }
   async function send(intent: ControlIntent) {
@@ -233,10 +275,15 @@ export function useResidentControl(
               method: "launcher.resident.cancel",
               target: intent.target,
             })
-          : await client.request({
-              method: "launcher.resident.rehearse",
-              target: intent.target,
-            });
+          : intent.kind === "rehearse"
+            ? await client.request({
+                method: "launcher.resident.rehearse",
+                target: intent.target,
+              })
+            : await client.request({
+                method: "launcher.resident.retry",
+                target: intent.target,
+              });
       if (token !== epoch.current) return;
       const queued =
         intent.kind === "cancel" && reply.method === "launcher.resident.cancel"
@@ -244,7 +291,10 @@ export function useResidentControl(
           : intent.kind === "rehearse" &&
               reply.method === "launcher.resident.rehearse"
             ? reply.value
-            : undefined;
+            : intent.kind === "retry" &&
+                reply.method === "launcher.resident.retry"
+              ? reply.value
+              : undefined;
       publish(
         queued
           ? observeControl(
@@ -261,7 +311,7 @@ export function useResidentControl(
         phase:
           error instanceof HostFailure &&
           error.detail.kind === "residentControlRejected" &&
-          isControlRejection(error.detail.reason)
+          (intent.kind === "retry" || isControlRejection(error.detail.reason))
             ? { kind: "rejected", reason: error.detail.reason }
             : error instanceof HostFailure &&
                 (error.detail.kind === "busy" ||
@@ -279,7 +329,19 @@ export function useResidentControl(
     !!resident?.running ||
     (!!attempt &&
       ["sending", "queued", "accepted"].includes(attempt.phase.kind));
+  const rawResults = execution?.results;
+  const results: ResidentResults =
+    !issue &&
+    resident?.online &&
+    !resident.protected &&
+    core.services === "connected" &&
+    rawResults &&
+    (rawResults.kind !== "known" ||
+      rawResults.value.accountGeneration === core.accountGeneration)
+      ? rawResults
+      : { kind: "unknown" };
   return {
+    results,
     attempt,
     scope,
     capable: execution?.checkedControl === true,
@@ -298,6 +360,8 @@ export function useResidentControl(
     rehearse: (
       target: Extract<ControlIntent, { kind: "rehearse" }>["target"],
     ) => send({ kind: "rehearse", target }),
+    retry: (target: Extract<ControlIntent, { kind: "retry" }>["target"]) =>
+      send({ kind: "retry", target }),
   };
 }
 export type ResidentControlController = ReturnType<typeof useResidentControl>;

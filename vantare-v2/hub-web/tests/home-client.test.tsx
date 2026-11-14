@@ -64,7 +64,10 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   ];
   value.favorite = "profile-a";
   const listeners = new Set<(message: HostToUi) => void>();
-  const unsub = vi.fn();
+  const subscriptions: Array<{
+    topic: string;
+    stop: ReturnType<typeof vi.fn>;
+  }> = [];
   let accepted = true;
   const request = vi.fn(async (r: Request) =>
     r.method === "home.get"
@@ -76,7 +79,11 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   const client = {
     request,
     observeRequests: () => () => {},
-    subscribe: vi.fn(() => unsub),
+    subscribe: vi.fn((topic: string) => {
+      const stop = vi.fn();
+      subscriptions.push({ topic, stop });
+      return stop;
+    }),
     listen: (listener: (m: HostToUi) => void) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -150,7 +157,10 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   await userEvent.click(screen.getByRole("button", { name: "Abrir Studio" }));
   expect(screen.getByLabelText("Sección actual").textContent).toBe("home");
   ui.unmount();
-  expect(unsub).toHaveBeenCalledTimes(3);
+  expect(subscriptions.map(({ topic }) => topic).sort()).toEqual(
+    ["home", "launcher", "core", "launcherResident", "updates"].sort(),
+  );
+  for (const { stop } of subscriptions) expect(stop).toHaveBeenCalledTimes(1);
   expect(listeners.size).toBe(0);
 });
 

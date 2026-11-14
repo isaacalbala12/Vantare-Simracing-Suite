@@ -1432,6 +1432,42 @@ describe("pilot editor over the simulated host", () => {
       ).value,
     ).toBe("Cambio concurrente QA");
   });
+  it.each([
+    ["coche", "account"],
+    ["garaje", "general"],
+    ["HARNESS", "appearance"],
+    [" ca\u0301lida ", "appearance"],
+    ["cadencia", "performance"],
+    [" rollback ", "updates"],
+    ["rehacer", "shortcuts"],
+    ["posthog", "privacy"],
+    ["telemetry", "diagnostics"],
+  ] as const)("finds the GPUI synonym %s in %s", async (query, tab) => {
+    mount(
+      "cuenta-base",
+      <ShellLayout header={<SectionTabsSlot />} sidebar={null} rail={null}>
+        <Settings />
+      </ShellLayout>,
+    );
+    const search = await screen.findByRole("searchbox", {
+      name: t("settings.search"),
+    });
+    search.focus();
+    fireEvent.change(search, { target: { value: query } });
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole("tab", { name: t(`settings.${tab}`) })
+          .getAttribute("aria-selected"),
+      ).toBe("true");
+    });
+    expect(document.activeElement).toBe(search);
+    expect((search as HTMLInputElement).value).toBe(query);
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: t("settings.clearSearch") }));
+    expect(screen.getAllByRole("tab")).toHaveLength(8);
+  });
   it("retains draft when changing tabs and searches without accents", async () => {
     mount(
       "cuenta-base",

@@ -126,21 +126,23 @@ Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
 Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
 ## VANTA-138 · núcleo L56: propiedad y borrado coordinado (2026-11-13)
 
-#1995. v36 asignada por Isaac. Rama local
-vantareapp/isa-1995-resident-ownership, sobre nightly b2489dedd tras integrar #2298.
-Código y tests escritos antes de solicitar la cola. Draft [#2304](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2304) contra nightly; HEAD final en #1995.
+#1995. v36 asignada por Isaac. **Fusionado en nightly el 14/11/2026**:
+núcleo [#2304](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2304)
+en 1ae98de36a71401a3537bbf1ba12ca043437b283 y, a continuación, UI de D
+[#2305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2305)
+en dffd1019dfb107664c520636711e51ddd8b1e691. L56 cerrado.
 
-**No fusionar aisladamente.** Por decisión del orquestador, con la delegación
-de Isaac, se fusionará primero #2304 y a continuación la UI L56 de D.
-D debe migrar Launcher.tsx desde launcher.profile.delete a
-removeChecked y retirar el éxito falso del mock profile-actions.ts.
+La fusión coordinada se completó por decisión del orquestador, con la delegación
+de Isaac: primero el núcleo y después la UI. D migró Launcher.tsx desde
+launcher.profile.delete a removeChecked y retiró el éxito falso del mock
+profile-actions.ts.
 
 El contrato nuevo impide borrar un perfil si este residente conserva una
 aplicación propia viva, aunque la secuencia haya terminado. No descubre ni
 mata procesos externos. Un handle que ya no corresponde a ningún perfil del
 documento deja la propiedad en Unknown: no se disfraza de registro vacío.
-El borrado legacy del anfitrión queda Unsupported; D cambiará la interfaz y sus
-escenas de prueba al contrato nuevo. La garantía no cubre GPUI ni otros escritores
+El borrado legacy del anfitrión queda Unsupported; la interfaz y sus escenas de
+prueba usan el contrato nuevo. La garantía no cubre GPUI ni otros escritores
 antiguos que no participen en el lease.
 
 Handoff a D: ResidentView.ownership = unsupported | unknown |
@@ -170,7 +172,13 @@ regresiones web PASS, más 392 comprobaciones de contrato/corpus. La primera sui
 se adaptaron para exigir Unsupported y se conserva la prueba de CAS/conflicto.
 Gates finales por cola: fmt/Clippy all-targets -D warnings, 1.738 tests nativos y
 34 de telemetría PASS, respetando captura.lock. Slot liberado y G avisado.
-CI completa y review de L56 pendientes al publicar.
+Revisión final: fmt/Clippy, 1.493 tests runtime/hub-host/Services y 34 de
+telemetría PASS. Tras completar dos fixtures L55, typecheck/Biome y 19 tests
+afectados PASS. La suite web completa local no se declaró verde: se detuvo
+tras dos fallos de Ajustes, cuyos tres casos relacionados pasaron aislados.
+Las correcciones de CI y ambas fusiones están verificadas en GitHub.
+Siguiente: D audita diferencias con el Hub antiguo; E espera el siguiente
+encargo de núcleo, sin compilar.
 Sin gráficos, cuentas reales, dependencias nuevas, promoción ni release.
 
 ## VANTA-138 · núcleo L55: resultados y repetir los mismos pasos (2026-11-13)

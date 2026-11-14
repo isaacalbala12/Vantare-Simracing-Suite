@@ -4,6 +4,10 @@ import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { useSettings } from "../../app/SettingsState";
 import { settingsText, t } from "../../i18n/es";
 import { settingsDescriptions } from "../../i18n/settings-frame.es";
+import {
+  settingsSearchSubtitles,
+  settingsSearchTerms,
+} from "../../i18n/settings-search.es";
 import { AppearanceGroups } from "../../ui/AppearanceGroups";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
@@ -156,6 +160,9 @@ export function Settings() {
     normalize(
       [
         item.label,
+        settingsDescriptions[item.value],
+        settingsSearchSubtitles[item.value] ?? "",
+        settingsSearchTerms[item.value] ?? "",
         ...Object.entries(settingsText)
           .filter(([key]) =>
             prefixes[item.value]?.some((prefix) => key.startsWith(prefix)),

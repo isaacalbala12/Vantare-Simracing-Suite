@@ -52,6 +52,9 @@ export function connectEmitters(
       generation = session.getSnapshot().generation;
       sink.resetReports();
       completions.reset();
+      core = undefined;
+      resident = undefined;
+      launcher = undefined;
     }
   });
   function launcherFailed(residentError = false) {

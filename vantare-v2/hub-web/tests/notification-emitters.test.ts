@@ -194,6 +194,19 @@ it("publishes Applications ready only after a scoped Finished and keeps it in th
   expect(h.records()).toHaveLength(1);
   h.connection.dispose();
 });
+it("does not reuse the previous core generation after a local account boundary", () => {
+  const h = harness();
+  h.login();
+  h.preferences(true);
+  h.response({ method: "core.get", value: notificationCore });
+  h.resident(residentCompletionView());
+  h.session.invalidate();
+  h.login();
+  for (const events of [[], [received], [received, finished]])
+    h.resident(residentCompletionView(events));
+  expect(h.records()).toEqual([]);
+  h.connection.dispose();
+});
 it("uses typed update readiness, not a release note or restart availability alone", () => {
   const h = harness();
   const value = fixture("updates.get") as UpdatesView;

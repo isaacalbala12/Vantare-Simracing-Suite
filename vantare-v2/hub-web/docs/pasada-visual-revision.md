@@ -40,3 +40,11 @@ Al reanudar, cada dos escenas se ceden tres minutos completos sin candado. El pr
 Calendario #2296 está listo: 40 pares, media de 1280×800 13,55 → 10,32 %, sin condiciones que empeoren. El cierre forzado intermedio se conserva con su repetición normal. Inicio #2299 ya tiene validación real de 32 combinaciones; solo 12/32 capturas finales estaban hechas al aplicar la pausa. Apariencia #2301 y el resumen compacto de Rendimiento #2303 tienen su código separado y esperan validación gráfica.
 
 La matriz versionada de 352 métricas es una instantánea de la línea base y de los candidatos registrados al calcularla; no se atribuyen a ella las capturas posteriores aún incompletas. La generación final se hará cuando estén completas. H-V01 (PNG nativos) y REF-ST01 (maqueta de Studio contradictoria) permanecen documentados.
+
+## Reanudación tras interrupción · 14/11
+
+La reserva de L56 se respetó: la primera captura posterior empezó a las 14:24:34 CET del 13/11, más de 33 minutos después del último cierre propio. El primer hueco adicional quedó registrado entre 14:25:00 y 14:28:00, sin candado. La tanda posterior sufrió una interrupción externa y dejó el recibo de su escena y un candado con PID 1520.
+
+A las 01:37 del 14/11 se comprobó que ese PID ya no existía y no quedaban Electron ni Hub; se retiró el candado huérfano y quedó anotado en progreso.log. Los resultados interrumpidos se conservan en revisiones/home-v11-interrupcion-20261113. Se repite una vez la captura de los casos con limpieza forzada; no se altera su recibo ni se declara un cierre normal sin comprobarlo.
+
+Los PR #2299 (Inicio), #2301 (Apariencia) y #2303 (Rendimiento) tienen CI verde, pero aún no se presentan como visualmente terminados. Falta completar y revisar sus pares finales. La tabla global sigue siendo una instantánea, no una afirmación de que se haya reconstruido y capturado todo el nightly actual.

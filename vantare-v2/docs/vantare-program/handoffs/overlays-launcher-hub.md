@@ -2412,3 +2412,25 @@ pendientes del Mac; el corte 2 sigue en curso. PR/HEAD/gates finales se reflejan
 en #2256 y #2306, draft a nightly apilado sobre #2297. CI del nuevo head
 pendiente; no se hereda el resultado de otro SHA. Plane lo actualiza
 el orquestador. Sin merge, promoción ni release del worker.
+
+
+### VANTA-143 · revisión Studio #2306 antes de merge (2026-11-14)
+
+Revisión del orquestador aprobada; tres ajustes añadidos en la misma rama.
+Apariencia omite controles si falla serializar ajustes o interpretar una pareja
+widget/campo: sin expect ni panic en ese camino. Una revisión nueva del diseño
+cierra el diálogo de eliminación, para exigir una confirmación nueva.
+Los errores definidos de rechazo se mantienen definitivos; Io, CoreUnavailable
+tras escritura y cualquier variante no reconocida dejan el resultado incierto,
+bloquean nuevas ediciones y piden StudioGet. Ni un evento ni un error de lectura
+posterior levantan ese bloqueo: hace falta una lectura confirmada. El contrato
+HostError no tiene variantes Timeout/Internal; el plazo del cliente conserva
+el mismo tratamiento y el host expresa fallos internos con Io.
+Clippy y 76 tests Windows PASS por la cola, dos jobs y sin ventana. Tres nuevas
+regresiones: pareja incompatible, confirmación invalidada e incertidumbre tras
+escritura/fallo de relectura, con cero reenvíos automáticos. Logs externos
+studio-review-clippy.log y studio-review-tests.log. CI del head publicado se
+consulta en #2306; sin merge, release ni actualización de Plane del worker.
+Launcher arranca en rama propia sobre #2306 y heredará este ajuste; consume los
+contratos L53–L55 de nightly. L56/v36 se lee de #2304 hasta que se fusione.
+#2297 sigue draft; primera captura al volver el Mac, offscreen y sin foco.

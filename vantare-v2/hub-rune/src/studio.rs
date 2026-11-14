@@ -121,7 +121,6 @@ impl Studio {
             {
                 false
             }
-            Request::StudioGet {} => true,
             Request::StudioTrack { show: true } => !v.instances.is_empty(),
             Request::StudioAdd {
                 kind,
@@ -226,6 +225,13 @@ impl Studio {
         output
     }
     fn update(&mut self, value: StudioView) {
+        if self
+            .value
+            .as_ref()
+            .is_some_and(|old| old.revision != value.revision)
+        {
+            self.removing = None;
+        }
         if !value.instances.iter().any(|i| i.id == self.selected) {
             self.selected = value
                 .instances
@@ -303,9 +309,19 @@ impl Studio {
             }
             HostError::Protected => "studio.protected",
             HostError::Busy => "studio.busy",
-            HostError::CoreUnavailable => "studio.offline",
+            HostError::CoreUnavailable if reading => "studio.offline",
             _ if reading => "studio.readFailed",
-            _ => "studio.failed",
+            HostError::Denied
+            | HostError::Rejected
+            | HostError::Unsupported
+            | HostError::Incompatible { .. } => "studio.failed",
+            // Io can follow persistence; CoreUnavailable can hide a completed operation.
+            // Unknown errors are not proof that a write had no effect.
+            _ => {
+                self.uncertain = true;
+                self.refresh = true;
+                "studio.reconfirm"
+            }
         });
         true
     }
@@ -346,6 +362,69 @@ mod tests {
                 }
             })
             .unwrap()
+    }
+    #[test]
+    fn changing_revision_closes_remove_confirmation() {
+        let (mut s, _) = ready();
+        s.removing = Some(s.selected.clone());
+        assert!(s.event(scene("studio-base")));
+        assert!(s.removing.is_some());
+        let mut changed = scene("studio-base");
+        changed.revision = "b".repeat(64);
+        assert!(s.event(changed));
+        assert!(
+            s.removing.is_none(),
+            "a new document requires a fresh confirmation"
+        );
+    }
+    #[test]
+    fn ambiguous_write_errors_block_edits_until_a_successful_read() {
+        for error in [HostError::Io, HostError::CoreUnavailable] {
+            let (mut s, core) = ready();
+            s.queue(
+                Request::StudioRemove {
+                    id: s.selected.clone(),
+                    base_revision: s.revision(),
+                },
+                &core,
+            );
+            let id = request(&s.next(1.0, true, &core));
+            assert!(s.fail(id, &error));
+            assert!(s.busy());
+            s.queue(
+                Request::StudioRemove {
+                    id: s.selected.clone(),
+                    base_revision: s.revision(),
+                },
+                &core,
+            );
+            let messages = s.next(2.0, true, &core);
+            assert!(matches!(
+                messages.as_slice(),
+                [UiToHost::Request {
+                    request: Request::StudioGet {},
+                    ..
+                }]
+            ));
+            let refresh_id = request(&messages);
+            assert!(s.event(scene("studio-base")));
+            assert!(s.busy(), "an event cannot settle an uncertain write");
+            assert!(s.fail(refresh_id, &HostError::Io));
+            assert!(s.busy());
+            assert!(
+                s.next(3.0, true, &core).is_empty(),
+                "no automatic write retry or read loop"
+            );
+            s.reload();
+            let refresh_id = request(&s.next(4.0, true, &core));
+            assert!(s.accept(
+                refresh_id,
+                Reply::StudioGet {
+                    value: scene("studio-base")
+                }
+            ));
+            assert!(!s.busy());
+        }
     }
     #[test]
     fn studio_is_subscribed_only_while_visible_and_reentry_refreshes() {

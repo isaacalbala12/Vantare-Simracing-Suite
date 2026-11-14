@@ -810,8 +810,9 @@
   .v-home-rail-status {
     height: 274px; /* 12 top + 52 composer + 10 gap + 200 hero. */
   }
+  /* The native compact error reference keeps Plantillas just below the hero. */
   .v-home-rail--error .v-home-rail-status {
-    height: 344px;
+    height: 324px;
   }
   .v-home-rail:not(:has(.v-home-loading-status)) .v-home-templates {
     gap: 10px;

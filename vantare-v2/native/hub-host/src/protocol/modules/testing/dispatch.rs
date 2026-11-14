@@ -24,8 +24,14 @@ impl Session {
         id: u32,
         request: &Request,
     ) -> io::Result<()> {
-        let result = crate::testing::intent(request, &self.current.access).and_then(
-            |(operation, command)| {
+        let previous_note = match request {
+            Request::TestingAnswer { id, .. } => self
+                .testing_notes
+                .previous(self.current.account_generation.as_deref(), id),
+            _ => None,
+        };
+        let result = crate::testing::intent_with_note(request, &self.current.access, previous_note)
+            .and_then(|(operation, command)| {
                 // This reducer owns one draft import at a time. A queued request
                 // from another screen must not reset its in-progress transaction.
                 if self
@@ -36,10 +42,11 @@ impl Session {
                     return Err(HostError::Busy);
                 }
                 self.request_remote(id, RemoteKind::Testing(operation), command)?;
+                self.testing_notes
+                    .begin(self.current.account_generation.as_deref());
                 self.testing_state.begin(operation);
                 Ok(())
-            },
-        );
+            });
         match result {
             Ok(()) => Ok(()),
             Err(error) => self.respond(
@@ -83,6 +90,16 @@ impl Session {
         match self.testing_state.complete(operation, reply)? {
             crate::testing::legacy::Next::Complete(reply) => {
                 let mut result = crate::testing::complete(operation, reply)?;
+                match &result {
+                    Reply::TestingRefresh { value }
+                    | Reply::TestingAnswer { value }
+                    | Reply::TestingCredit { value }
+                    | Reply::TestingNoticeRead { value }
+                    | Reply::TestingContribute { value } => self
+                        .testing_notes
+                        .observe(self.current.account_generation.as_deref(), value),
+                    _ => {}
+                }
                 match &mut result {
                     Reply::DraftLoad { value }
                     | Reply::DraftSave { value }

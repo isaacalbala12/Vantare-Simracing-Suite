@@ -156,7 +156,16 @@
       "result": {
         "method": "testing.refresh",
         "value": {
-          "questionnaires": [],
+          "questionnaires": [
+            {
+              "id": "15350000-0000-0000-0000-000000000001",
+              "note": "Comentario anterior",
+              "question": "¿Cómo fue?",
+              "score": 4,
+              "title": "Cuestionario",
+              "version": "QA"
+            }
+          ],
           "reports": []
         }
       }

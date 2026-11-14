@@ -91,7 +91,7 @@ pub(crate) fn execute(
             request
                 .post(
                     "rest/v1/rpc/testing_answer_save",
-                    &serde_json::json!({"p_id":id,"p_score":score,"p_note":""}),
+                    &serde_json::json!({"p_id":id,"p_score":score,"p_note":note}),
                 )?
                 .success()?;
         }
@@ -350,11 +350,11 @@ mod tests {
                 .contains("authorization: bearer data-fixture")
         );
         assert!(!captured[1].contains("account_id"));
-        assert!(!captured[1].contains("Mi experiencia"));
+        assert!(captured[1].contains("Mi experiencia"));
         let payload: serde_json::Value =
             serde_json::from_str(captured[1].split("\r\n\r\n").nth(1).expect("body"))
                 .expect("JSON");
-        assert_eq!(payload["p_note"], "");
+        assert_eq!(payload["p_note"], "Mi experiencia");
         assert_eq!(payload["p_score"], 5);
         assert_eq!(
             captured[1].split("\r\n\r\n").nth(1),

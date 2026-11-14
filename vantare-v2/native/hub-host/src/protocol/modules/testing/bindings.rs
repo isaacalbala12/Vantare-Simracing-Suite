@@ -77,6 +77,17 @@ pub(crate) fn testing_request_samples() -> Vec<Request> {
         Request::TestingAnswer {
             id: "15350000-0000-0000-0000-000000000001".into(),
             score: 3,
+            note: Some(String::new()),
+        },
+        Request::TestingAnswer {
+            id: "15350000-0000-0000-0000-000000000001".into(),
+            score: 4,
+            note: Some("Comentario nuevo".into()),
+        },
+        Request::TestingAnswer {
+            id: "15350000-0000-0000-0000-000000000001".into(),
+            score: 4,
+            note: None,
         },
         Request::TestingRefresh {},
         Request::DraftLoad {},
@@ -148,7 +159,17 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
             value: crate::testing::TestingView::default(),
         },
         Reply::TestingRefresh {
-            value: crate::testing::TestingView::default(),
+            value: crate::testing::TestingView {
+                questionnaires: vec![crate::testing::TestingQuestionnaire {
+                    id: "15350000-0000-0000-0000-000000000001".into(),
+                    version: "QA".into(),
+                    title: "Cuestionario".into(),
+                    question: "¿Cómo fue?".into(),
+                    score: Some(4),
+                    note: Some("Comentario anterior".into()),
+                }],
+                ..Default::default()
+            },
         },
         Reply::DraftLoad {
             value: crate::testing::draft(None),

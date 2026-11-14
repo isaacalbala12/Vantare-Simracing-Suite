@@ -8,7 +8,17 @@ use ts_rs::TS;
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
     #[serde(rename = "testing.answer")]
-    TestingAnswer { id: String, score: u8 },
+    TestingAnswer {
+        id: String,
+        score: u8,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "optional_note"
+        )]
+        #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
+        note: Option<String>,
+    },
     #[serde(rename = "testing.contribute")]
     TestingContribute { id: String, consent: bool },
     #[serde(rename = "testing.credit")]
@@ -49,6 +59,11 @@ pub enum Request {
     },
     #[serde(rename = "draft.discard")]
     DraftDiscard {},
+}
+fn optional_note<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    String::deserialize(deserializer).map(Some)
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

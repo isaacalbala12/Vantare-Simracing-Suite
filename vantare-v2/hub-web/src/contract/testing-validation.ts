@@ -103,7 +103,15 @@ export function isTesting(value: unknown): boolean {
     value.questionnaires.every(
       (q) =>
         record(q) &&
-        exact(q, ["id", "version", "title", "question", "score"]) &&
+        exact(q, [
+          "id",
+          "version",
+          "title",
+          "question",
+          "score",
+          ...(Object.hasOwn(q, "note") ? ["note"] : []),
+        ]) &&
+        (!Object.hasOwn(q, "note") || typeof q.note === "string") &&
         [q.id, q.version, q.title, q.question].every(
           (text) => typeof text === "string",
         ) &&

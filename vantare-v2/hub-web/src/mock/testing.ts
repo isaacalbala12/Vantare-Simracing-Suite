@@ -152,6 +152,7 @@ export function createTestingMock(
         if (!questionnaire)
           return { kind: "failure", id, error: { kind: "rejected" } };
         questionnaire.score = request.score;
+        if (request.note !== undefined) questionnaire.note = request.note;
         return {
           kind: "response",
           id,

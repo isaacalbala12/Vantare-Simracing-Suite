@@ -15,7 +15,16 @@ export function isRequest(value: Record<string, unknown>): boolean {
   switch (value.method) {
     case "testing.answer":
       return (
-        exact(value, ["method", "id", "score"]) &&
+        exact(value, [
+          "method",
+          "id",
+          "score",
+          ...(Object.hasOwn(value, "note") ? ["note"] : []),
+        ]) &&
+        (!Object.hasOwn(value, "note") ||
+          (typeof value.note === "string" &&
+            [...value.note].length <= 1000 &&
+            !value.note.includes("\0"))) &&
         isTestingId(value.id) &&
         integer(value.score) &&
         value.score >= 1 &&

@@ -56,3 +56,11 @@ Los PR #2299 (Inicio), #2301 (Apariencia) y #2303 (Rendimiento) tienen CI verde,
 Apariencia #2301 (`3fee14dd9`) pasó además la comprobación local de Chromium en ocho combinaciones, incluida la conservación de ayudas de Atajos. Rendimiento #2303 (`371baa413`) tiene CI verde, con pruebas del resumen generado, ausencia/protección del documento y tabla/resumen en Chromium.
 
 El candidato V12 usa el origen limpio `6e455658ab0d21a446ac5dce7045dad8407fc5c1`, ASAR SHA-256 `166ecf12a48f1951fa996797462ae6fe46a71ec841aa24c9bc5b2e725c9a0fd8`. Añade únicamente los parches visuales aislados de esas dos pestañas a V11. No se presenta como un paquete íntegro del nightly actual. Tras el empaquetado se cedieron tres minutos sin cerrojo; entró el turno de D para Rust y las capturas propias esperan su liberación.
+
+## Validación final de los tres parches · 14/11
+
+Inicio #2299 termina en `f2b4acd1e095baa72f953487d022e3168b2cef8c`, CI verde. La revisión del par de Error detectó un desplazamiento adicional de Plantillas, corregido y protegido por geometría real respecto al hero. Sus cuatro condiciones afectadas se repitieron con V13 y cierre normal. Error 1280 queda en 11,64 → 6,49 %. Las otras 28 condiciones conservan V11, cuyo estilo aplicable no cambia. Solo Cargando mantiene ocho filas con advertencia de cierre QA histórico; se conservan los recibos.
+
+Apariencia #2301 (`3fee14dd99f3a441c8d9c732640b207c72d66899`) tiene ocho pares y CI verde: media 1280 10,18 → 4,47 %. Rendimiento #2303 (`371baa413db93452b44d514764e8f87ee5a866cd`) tiene ocho pares y CI verde: 2,79 → 2,15 %. Ninguna condición empeora; todos sus recibos finales son cierres normales. El primer cierre forzado de Rendimiento 1280 claro se archiva con su repetición satisfactoria.
+
+Antes de regenerar la tabla global se conserva la matriz anterior como metricas-previas-parches.json para que los informes antes/después no dependan de un fichero mutable. H-V01 y REF-ST01 permanecen como límites explícitos. La reserva para L56 y los huecos posteriores ya están acreditados; no hay cambios de contrato ni de comportamiento en estos PR.

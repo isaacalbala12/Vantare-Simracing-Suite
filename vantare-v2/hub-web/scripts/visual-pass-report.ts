@@ -47,7 +47,7 @@ const records = [];
 const lines = [
   "# Pasada visual · VANTA-138",
   "",
-  "Línea base: nightly e689cba4f. Se muestran las capturas posteriores cuando existen (D), y la base (A) en el resto. Cada candidato es exclusivamente QA, con procedencia por ASAR y blobs en CANDIDATO-DESPUES.json. 100 %, paleta Vantare, fuentes locales; sin cuentas ni servicios reales. Capturas en serie con captura.lock, sin compilaciones simultáneas y con huecos entre bloques.",
+  "Línea base: nightly e689cba4f. Se muestran las capturas posteriores cuando existen (D), y la base (A) en el resto. Cada candidato es exclusivamente QA, con procedencia por ASAR y blobs en CANDIDATO-DESPUES.json. 100 %, paleta Vantare, fuentes locales; sin cuentas ni servicios reales. Capturas en serie con captura.lock, sin compilaciones Rust propias simultáneas y con huecos entre bloques.",
   "",
   "Porcentaje perceptual: pixelmatch 8.0.0, umbral 0,1 y antialias incluido, ventana completa sin máscaras, escalado ni alineación. Se valida el recibo de cada referencia GPUI. Studio usa la maqueta A vigente con las mismas fuentes y Chromium. Una referencia ausente no recibe un porcentaje inventado. P1: roto/ilegible; P2: claramente distinto; P3: detalle. Las cifras no sustituyen la inspección visual.",
   "",

@@ -14,6 +14,7 @@ pub const AUTOSAVE_MS: u32 = 2_000;
 pub const BUSY_RETRY_MS: u32 = 100;
 pub const BUSY_RETRY_ATTEMPTS: u8 = 2;
 pub const UUID_LENGTH: usize = 36;
+pub const ANSWER_NOTE_MAX_CHARS: usize = 1_000;
 pub const UUID_GROUPS: [usize; 5] = [8, 4, 4, 4, 12];
 pub const PREVIEW_ID_LENGTH: usize = 64;
 pub const UPDATED_AT_MAX_BYTES: usize = 128;
@@ -363,10 +364,15 @@ pub fn intent(
 }
 fn answer_note(note: Option<&str>, previous: Option<&str>) -> Result<String, HostError> {
     let note = note.or(previous).ok_or(HostError::Rejected)?;
-    if note.chars().count() > 1_000 || note.contains('\0') {
+    if note.chars().count() > ANSWER_NOTE_MAX_CHARS || note.contains('\0') {
         return Err(HostError::Rejected);
     }
     Ok(note.into())
+}
+pub(crate) fn optional_note<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    String::deserialize(deserializer).map(Some)
 }
 pub(crate) fn intent_with_note(
     request: &crate::protocol::Request,

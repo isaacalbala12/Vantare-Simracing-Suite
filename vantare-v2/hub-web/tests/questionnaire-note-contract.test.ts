@@ -38,7 +38,12 @@ it("keeps legacy answers compatible and validates optional explicit notes", () =
   const request = (extra: Record<string, unknown>) => ({
     kind: "request",
     id: 1,
-    request: { method: "testing.answer", id: questionnaire.id, score: 4, ...extra },
+    request: {
+      method: "testing.answer",
+      id: questionnaire.id,
+      score: 4,
+      ...extra,
+    },
   });
   for (const extra of [{}, { note: "" }, { note: "Nueva\nñ" }]) {
     expect(isUiMessage(request(extra))).toBe(true);

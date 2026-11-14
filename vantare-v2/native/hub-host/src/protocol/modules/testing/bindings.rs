@@ -185,6 +185,10 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
 fn append_testing_id_constants(text: &mut String) {
     for (name, value) in [
         (
+            "testingAnswerNoteMaxChars",
+            serde_json::json!(crate::testing::ANSWER_NOTE_MAX_CHARS),
+        ),
+        (
             "reportReceiptStates",
             serde_json::json!(crate::testing::RECEIPT_STATES),
         ),

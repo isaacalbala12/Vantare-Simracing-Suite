@@ -1,3 +1,4 @@
+import { testingAnswerNoteMaxChars } from "../generated/testing";
 import {
   isReportDraft,
   isReportFields,
@@ -23,7 +24,7 @@ export function isRequest(value: Record<string, unknown>): boolean {
         ]) &&
         (!Object.hasOwn(value, "note") ||
           (typeof value.note === "string" &&
-            [...value.note].length <= 1000 &&
+            [...value.note].length <= testingAnswerNoteMaxChars &&
             !value.note.includes("\0"))) &&
         isTestingId(value.id) &&
         integer(value.score) &&

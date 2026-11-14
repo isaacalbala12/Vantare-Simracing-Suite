@@ -14,7 +14,7 @@ pub enum Request {
         #[serde(
             default,
             skip_serializing_if = "Option::is_none",
-            deserialize_with = "optional_note"
+            deserialize_with = "crate::testing::optional_note"
         )]
         #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
         note: Option<String>,
@@ -59,11 +59,6 @@ pub enum Request {
     },
     #[serde(rename = "draft.discard")]
     DraftDiscard {},
-}
-fn optional_note<'de, D: serde::Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<String>, D::Error> {
-    String::deserialize(deserializer).map(Some)
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

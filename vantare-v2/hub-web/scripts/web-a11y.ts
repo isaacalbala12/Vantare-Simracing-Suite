@@ -19,6 +19,7 @@ import {
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
 import { checkResidentAnswer } from "./check-resident-answer.ts";
 import { checkResidentControls } from "./check-resident-control.ts";
+import { checkResidentRemoval } from "./check-resident-removal.ts";
 import { checkResidentResults } from "./check-resident-results.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
@@ -163,6 +164,7 @@ try {
   await checkAccountDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
+  await checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentResults(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");

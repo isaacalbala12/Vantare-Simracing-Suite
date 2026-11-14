@@ -7,6 +7,7 @@ import type {
   UiToHost,
 } from "../contract/generated/contract";
 export interface MockContext {
+  removeLauncherProfile?: (profile: string) => void;
   launcherPolicy?: (
     profile: string,
   ) => import("../contract/generated/contract").ProfilePolicy | undefined;

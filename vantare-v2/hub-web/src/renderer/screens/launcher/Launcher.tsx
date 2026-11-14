@@ -1,12 +1,19 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { LauncherProfile } from "../../../contract/generated/contract";
+import type {
+  LauncherProfile,
+  ResidentRemoveTarget,
+} from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { useLauncherRequest } from "../../app/LauncherRequest";
 import { HostFailure } from "../../bridge/client";
 import { launcherText as text } from "../../i18n/launcher";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
+import {
+  CheckedRemovalDialog,
+  RemovalFeedback,
+} from "../../ui/launcher/CheckedRemovalDialog";
 import {
   ProfileActionFeedback,
   type ProfileCardAction,
@@ -18,6 +25,7 @@ import { ProfileEditor } from "./ProfileEditor";
 import { useProfileAction } from "./profile-actions";
 import { profileFailure } from "./profile-errors";
 import type { ResidentControlController } from "./resident-control";
+import type { ResidentRemovalController } from "./resident-removal";
 import {
   launcherKey,
   launcherSelectionKey,
@@ -37,11 +45,23 @@ function failureText(failure: unknown): string {
   }
   return text.failed;
 }
-export function Launcher({ control }: { control?: ResidentControlController }) {
+export function Launcher({
+  control,
+  removal,
+}: {
+  control?: ResidentControlController;
+  removal: ResidentRemovalController;
+}) {
   const { client } = useHost();
   const action = useProfileAction();
   const launchRequest = useLauncherRequest();
-  const [removing, setRemoving] = useState<LauncherProfile>();
+  const heading = useRef<HTMLHeadingElement>(null);
+  const reconciledUnknown = useRef<typeof removal.attempt>(undefined);
+  const [removedProfile, setRemovedProfile] = useState<string>();
+  const [removing, setRemoving] = useState<{
+    profile: LauncherProfile;
+    target?: ResidentRemoveTarget;
+  }>();
   const [duplicating, setDuplicating] = useState<LauncherProfile>();
   const editor = useProfileEditorState();
   const query = useQueryClient();
@@ -167,7 +187,8 @@ export function Launcher({ control }: { control?: ResidentControlController }) {
   function profileAction(profile: LauncherProfile, kind: ProfileCardAction) {
     if (!view || pending || action.pending) return;
     if (kind === "remove") {
-      setRemoving(profile);
+      removal.dismiss();
+      setRemoving({ profile, target: removal.target(profile.id) });
       return;
     }
     const baseRevision = view.revision;
@@ -192,6 +213,33 @@ export function Launcher({ control }: { control?: ResidentControlController }) {
         break;
     }
   }
+  useEffect(() => {
+    const attempt = removal.attempt;
+    if (
+      attempt?.phase.kind === "unknown" &&
+      reconciledUnknown.current !== attempt
+    ) {
+      reconciledUnknown.current = attempt;
+      void reload();
+    }
+  }, [removal.attempt, reload]);
+  useEffect(() => {
+    if (removing && removal.attempt?.phase.kind === "removed") {
+      setRemovedProfile(removing.profile.id);
+      setRemoving(undefined);
+      void reload();
+    }
+  }, [removing, removal.attempt, reload]);
+  useEffect(() => {
+    if (
+      removedProfile &&
+      view &&
+      !view.profiles.some((profile) => profile.id === removedProfile)
+    ) {
+      heading.current?.focus();
+      setRemovedProfile(undefined);
+    }
+  }, [removedProfile, view]);
   if (editor.value) return <ProfileEditor />;
   if (!view)
     return error ? (
@@ -218,7 +266,9 @@ export function Launcher({ control }: { control?: ResidentControlController }) {
           onDiscard={action.discard}
         />
       )}
+      <RemovalFeedback control={removal} />
       <LauncherProfiles
+        headingRef={heading}
         view={view}
         selected={selected}
         pending={pending || action.pending || launchRequest.pending}
@@ -233,24 +283,28 @@ export function Launcher({ control }: { control?: ResidentControlController }) {
         onLaunch={(profile) => void launch(profile)}
         onReload={() => void reload()}
       />
+      <CheckedRemovalDialog
+        name={removing?.profile.name}
+        target={removing?.target}
+        control={removal}
+        onClose={() => {
+          setRemoving(undefined);
+          removal.dismiss();
+        }}
+      />
       <RemoveProfileDialog
-        name={(removing ?? duplicating)?.name}
+        name={duplicating?.name}
         duplicate={duplicating !== undefined}
         pending={action.pending}
         onCancel={() => {
-          setRemoving(undefined);
           setDuplicating(undefined);
         }}
         onConfirm={() => {
-          const profile = removing ?? duplicating;
-          if (!profile) return;
-          const method = removing
-            ? "launcher.profile.delete"
-            : "launcher.profile.duplicate";
-          setRemoving(undefined);
+          if (!duplicating) return;
+          const profile = duplicating;
           setDuplicating(undefined);
           void action.execute({
-            method,
+            method: "launcher.profile.duplicate",
             id: profile.id,
             baseRevision: view.revision,
           });

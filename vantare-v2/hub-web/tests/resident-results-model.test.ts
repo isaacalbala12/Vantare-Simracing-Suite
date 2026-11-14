@@ -25,6 +25,7 @@ const attempt: ControlAttempt = {
 };
 function view(events: ResidentExecutionEvent[]): ResidentView {
   return {
+    ownership: { kind: "unsupported" },
     online: true,
     protected: false,
     running: true,

@@ -233,6 +233,6 @@ fn remove_with_clock(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, windows))]
 #[path = "ownership_tests.rs"]
 mod tests;

@@ -166,6 +166,12 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
               exact: true,
             });
             await slider.focus();
+            await page.keyboard.press("Tab");
+            await page.keyboard.press("Shift+Tab");
+            assert.ok(
+              await slider.evaluate((node) => document.activeElement === node),
+              "Tab returns to the opacity input",
+            );
             const thumb = page.locator(
               ".v-studio-track-groups .v-slider-thumb",
             );

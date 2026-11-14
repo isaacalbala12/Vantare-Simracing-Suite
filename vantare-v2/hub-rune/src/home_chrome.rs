@@ -64,7 +64,7 @@ pub fn shortcuts(state: &mut State, event: &KeyEvent, tx: &mut Tx) -> bool {
             }
         } else {
             state.commands_open = false;
-            state.home.queue_launch(&state.core, true);
+            crate::queue_home_launch(state, true);
         }
     }
     true
@@ -116,7 +116,7 @@ fn activate(state: &mut State, action: Action) {
         }
         Action::Profile(id) => {
             state.home.selected = id;
-            state.home.queue_launch(&state.core, false);
+            crate::queue_home_launch(state, false);
         }
         Action::Theme => crate::toggle(state),
     }
@@ -157,8 +157,8 @@ pub fn commands(state: &State) -> El {
         })
         .child(input);
     for (index, (name, action)) in choices(state).into_iter().enumerate() {
-        let disabled =
-            matches!(action, Action::Profile(_)) && !state.home.can_launch(&state.core, false);
+        let disabled = matches!(action, Action::Profile(_))
+            && (!state.home.can_launch(&state.core, false) || state.launcher.execution_busy());
         panel = panel.child(
             button(
                 theme,

@@ -109,6 +109,7 @@ impl Link {
                 if name.starts_with("roadmap-")
                     || name.starts_with("inicio-")
                     || name.starts_with("studio-")
+                    || name.starts_with("launcher-")
                 {
                     core.access.verified = true;
                 }
@@ -434,6 +435,38 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
                 result: Reply::StudioGet { value },
             });
         }
+        UiToHost::Request {
+            id,
+            request: Request::LauncherGet {},
+        } => messages.push_back(HostToUi::Response {
+            id,
+            result: Reply::LauncherGet {
+                value: crate::launcher::scene(&state.name),
+            },
+        }),
+        UiToHost::Subscribe {
+            topic: Topic::Launcher,
+        } => messages.push_back(HostToUi::Event {
+            event: Event::Launcher {
+                value: crate::launcher::scene(&state.name),
+            },
+        }),
+        UiToHost::Request {
+            id,
+            request: Request::LauncherResidentGet {},
+        } => messages.push_back(HostToUi::Response {
+            id,
+            result: Reply::LauncherResidentGet {
+                value: crate::launcher_orders::scene(),
+            },
+        }),
+        UiToHost::Subscribe {
+            topic: Topic::LauncherResident,
+        } => messages.push_back(HostToUi::Event {
+            event: Event::LauncherResident {
+                value: crate::launcher_orders::scene(),
+            },
+        }),
         UiToHost::Subscribe {
             topic: Topic::Studio,
         } => messages.push_back(HostToUi::Event {

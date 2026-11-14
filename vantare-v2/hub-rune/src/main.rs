@@ -9,6 +9,11 @@ mod home_chrome;
 mod home_view;
 mod host;
 mod icons;
+mod launcher;
+mod launcher_orders;
+#[cfg(test)]
+mod launcher_tests;
+mod launcher_view;
 #[cfg(windows)]
 mod pipe;
 mod roadmap;
@@ -31,6 +36,7 @@ struct State {
     roadmap: roadmap::Roadmap,
     home: home::Home,
     studio: studio::Studio,
+    launcher: launcher::Launcher,
     home_assets: Option<home_view::Assets>,
     display_name: String,
     now_override: Option<chrono::NaiveDateTime>,
@@ -53,6 +59,7 @@ fn init() -> State {
         roadmap: Default::default(),
         home: Default::default(),
         studio: Default::default(),
+        launcher: Default::default(),
         home_assets: None,
         display_name: String::new(),
         now_override: None,
@@ -78,6 +85,29 @@ fn toggle(state: &mut State) {
         );
     }
 }
+fn queue_home_launch(state: &mut State, favorite: bool) {
+    if state.launcher.execution_busy() {
+        state.home.launch_problem = Some(home::LaunchProblem::ConditionsChanged);
+        return;
+    }
+    if favorite && state.section == "launcher" {
+        let request = state.launcher.value.as_ref().and_then(|v| {
+            v.profiles
+                .iter()
+                .find(|p| p.favorite)
+                .and_then(|p| state.launcher.orders.launch(&p.id, v, &state.core))
+        });
+        if let Some(request) = request {
+            state
+                .launcher
+                .queue(request, &state.core, state.home.launching());
+        } else {
+            state.launcher.problem = Some("launcher.denied");
+        }
+    } else {
+        state.home.queue_launch(&state.core, favorite);
+    }
+}
 // Closed capture presets; no product startup or release environment override.
 #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
 fn capture_preset(state: &mut State, preset: &str) -> Result<(), &'static str> {
@@ -95,6 +125,7 @@ fn capture_preset(state: &mut State, preset: &str) -> Result<(), &'static str> {
         "roadmap-board" => ("roadmap", true, "board"),
         "roadmap-season" => ("roadmap", true, "season"),
         "studio" => ("studio", true, "board"),
+        "launcher" => ("launcher", true, "board"),
         _ => return Err("unknown capture screen"),
     };
     state.now_override = Some(
@@ -283,6 +314,8 @@ fn view(state: &State, cx: &mut Cx<State>) -> El {
         roadmap_view::view(state)
     } else if state.section == "studio" {
         studio_view::view(state)
+    } else if state.section == "launcher" {
+        launcher_view::view(state)
     } else if state.section == "home" {
         home_view::view(state, cx)
     } else {
@@ -325,6 +358,19 @@ fn setup(state: &mut State, waker: rune::Waker) {
     }
 }
 fn request_close(state: &mut State, tx: &mut rune::Tx) {
+    if state.launcher.profile.is_some() || state.launcher.app.is_some() {
+        state.section = "launcher".into();
+        if let Some(e) = &mut state.launcher.profile {
+            e.discard = true;
+        }
+        if let Some(e) = &mut state.launcher.app {
+            e.discard = true;
+        }
+        if let Some(window) = &state.window {
+            window.open();
+        }
+        return;
+    }
     if state.closing {
         return;
     }
@@ -431,11 +477,24 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
             })) => {
                 changed |= state.studio.event(value);
             }
+            Some(Ok(HostToUi::Event {
+                event: Event::Launcher { value },
+            })) => {
+                changed |= state.launcher.event(value);
+            }
+            Some(Ok(HostToUi::Event {
+                event: Event::LauncherResident { value },
+            })) => {
+                state.launcher.orders.view = Some(value);
+                changed = true;
+            }
             Some(Ok(HostToUi::Response { id, result })) => {
+                changed |= state.launcher.accept(id, result.clone(), now);
                 changed |= state.studio.accept(id, result.clone());
                 changed |= state.roadmap.accept(id, result);
             }
             Some(Ok(HostToUi::Failure { id, error })) => {
+                changed |= state.launcher.fail(id, &error);
                 changed |= state.studio.fail(id, &error);
                 changed |= state.roadmap.fail(id);
                 changed |= state.home.fail(id);
@@ -497,6 +556,61 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
     changed |= previous_failure != state.home.failed;
     if let Some(due) = state.home.due() {
         tx.wake_at(due);
+    }
+    changed |= state
+        .launcher
+        .orders
+        .observe(now, &state.core, state.launcher.value.as_ref());
+    let previous_launcher = state.launcher.problem;
+    for message in state.launcher.next(
+        now,
+        state.section == "launcher",
+        &state.core,
+        state.home.launching(),
+    ) {
+        let id = if let vantare_hub_host::protocol::UiToHost::Request { id, .. } = &message {
+            Some(*id)
+        } else {
+            None
+        };
+        if state
+            .link
+            .as_mut()
+            .is_none_or(|link| link.send(message).is_err())
+            && let Some(id) = id
+        {
+            state
+                .launcher
+                .fail(id, &vantare_hub_host::protocol::HostError::CoreUnavailable);
+        }
+        changed = true;
+        tx.wake_at(now);
+    }
+    changed |= previous_launcher != state.launcher.problem;
+    if let Some(due) = state.launcher.due() {
+        tx.wake_at(due);
+    }
+    if let Some(id) = state.launcher.open_picker() {
+        let options = rune::FileDialogOptions {
+            title: text("app.dialogTitle").into(),
+            ..Default::default()
+        }
+        .filter(text("app.dialogFilter"), &["exe"]);
+        tx.open_file(options, move |s: &mut State, result, _| {
+            let path = result
+                .ok()
+                .flatten()
+                .and_then(|p| p.into_os_string().into_string().ok());
+            if let Some(message) = s.launcher.picked(id, path, &s.core)
+                && s.link
+                    .as_mut()
+                    .is_none_or(|link| link.send(message).is_err())
+            {
+                s.launcher
+                    .fail(id, &vantare_hub_host::protocol::HostError::CoreUnavailable);
+            }
+        });
+        changed = true;
     }
     let previous_studio = state.studio.problem;
     for message in state
@@ -818,6 +932,7 @@ mod tests {
             "roadmap-board",
             "roadmap-season",
             "studio",
+            "launcher",
         ] {
             for theme in ["light", "dark"] {
                 let mut state = init();
@@ -830,6 +945,8 @@ mod tests {
                         "roadmap"
                     } else if screen == "studio" {
                         "studio"
+                    } else if screen == "launcher" {
+                        "launcher"
                     } else {
                         "home"
                     }
@@ -838,7 +955,7 @@ mod tests {
                 assert!(state.link.is_none());
             }
         }
-        for invalid in ["roadmap", "home-blue", "launcher-dark"] {
+        for invalid in ["roadmap", "home-blue", "unlisted-dark"] {
             assert!(capture_preset(&mut init(), invalid).is_err());
         }
     }

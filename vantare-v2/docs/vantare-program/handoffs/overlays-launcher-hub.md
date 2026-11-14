@@ -2519,3 +2519,31 @@ consulta en #2306; sin merge, release ni actualización de Plane del worker.
 Launcher arranca en rama propia sobre #2306 y heredará este ajuste; consume los
 contratos L53–L55 de nightly. L56/v36 se lee de #2304 hasta que se fusione.
 #2297 sigue draft; primera captura al volver el Mac, offscreen y sin foco.
+
+
+### VANTA-143 · Launcher sobre Studio, L53–L55 (2026-11-14)
+
+Encargo posterior del orquestador: tercera pantalla del corte 2, rama/worktree
+propios isa-2256-hub-rune-launcher sobre #2306. Padre actualizado d500cb012;
+nightly f482bebec incorporado en la hija para consumir contratos nativos v35,
+sin reeditar el host. L56/v36 leído de #2304, aún no integrado: borrado de perfil
+no ofrecido y sin llamada legacy. No se afirma Launcher/corte 2 aceptados.
+
+Perfiles, editor de pasos con identidad nativa y confirmación de pérdida de
+argumentos, aplicaciones y selector asíncrono de Rune. Native-file-dialog añade
+rfd 0.17.2 MIT; aprobación Rune/dependencias permisivas vigente y auditoría de
+464 paquetes PASS. Un import de i18n/profile-editor apunta directamente al
+módulo generado launcher.ts para poder leer textos/límites sin build Electron;
+no se modifica ningún texto o límite. Catálogo ampliado con objetos anidados.
+
+Órdenes L53–L55 comprobadas con cuenta/instancia/revisión y exclusión compartida
+con Inicio. Queued/recibo/terminal se distinguen; Unknown en plazo, reinicio o
+hueco y sin reenvío automático. Trust bloqueado, reintento requiere el terminal
+conservado, cancelación/decisión preservan su ámbito actual. Tests sin ventana
+preparados; Clippy local en cola por RAM, dos jobs, sin segundo compilador.
+Logs externos launcher-*. Formato/catálogo, 27 tests Python y licencias PASS;
+compilación/tests/CI del nuevo código pendientes. Sin gráficos en el servidor.
+
+Capturas y prueba real pendientes. La comparativa definitiva de #2297 conserva
+prioridad al recuperar el Mac y se hace offscreen/sin foco. Plane lo lleva el
+orquestador. Sin merge de PR a canales, promoción, instalación ni release.

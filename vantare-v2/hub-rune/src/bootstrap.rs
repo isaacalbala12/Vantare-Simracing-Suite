@@ -48,6 +48,9 @@ pub fn consume() -> io::Result<Bootstrap> {
             "studio-vacio",
             "studio-protegido",
             "studio-missing",
+            "launcher-base",
+            "launcher-vacio",
+            "launcher-protegido",
         ]
         .contains(&scene.as_str())
         {

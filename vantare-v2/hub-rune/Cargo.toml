@@ -14,7 +14,7 @@ name = "vantare-hub-ui-rune"
 path = "src/main.rs"
 
 [dependencies]
-rune = { default-features = false, features = ["accessibility", "dbus", "embedded-fonts", "metal-backend", "svg"], git = "https://github.com/anomalyco/rune", rev = "d5338988a7c1b3377adb60853815b6d0843dae7c" }
+rune = { default-features = false, features = ["accessibility", "dbus", "embedded-fonts", "metal-backend", "native-file-dialog", "svg"], git = "https://github.com/anomalyco/rune", rev = "d5338988a7c1b3377adb60853815b6d0843dae7c" }
 vantare-hub-host = { path = "../native/hub-host" }
 serde_json = "1"
 # Already approved and locked by hub-host; reuse its parser and local timezone, no new package.

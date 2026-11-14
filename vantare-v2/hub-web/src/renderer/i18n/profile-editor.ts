@@ -1,4 +1,4 @@
-import { profileLimits } from "../../contract/generated/contract";
+import { profileLimits } from "../../contract/generated/launcher.ts";
 export const profileText = {
   title: "Editar perfil",
   help: "Los cambios se aplican al guardar.",

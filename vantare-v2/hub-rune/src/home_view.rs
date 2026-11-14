@@ -404,11 +404,12 @@ fn launch_button(state: &State, favorite: bool) -> El {
             .value
             .as_ref()
             .is_some_and(|v| v.profiles.is_empty() && !v.protected);
-    let allowed = if empty {
-        state.core.access.verified && !state.core.access.blocked && !state.home.launching()
-    } else {
-        state.home.can_launch(&state.core, favorite)
-    };
+    let allowed = !state.launcher.execution_busy()
+        && if empty {
+            state.core.access.verified && !state.core.access.blocked && !state.home.launching()
+        } else {
+            state.home.can_launch(&state.core, favorite)
+        };
     let foreground = theme.color(if allowed { "text-on-accent" } else { "text-3" });
     let mut content = row()
         .gap(10.0)
@@ -439,7 +440,7 @@ fn launch_button(state: &State, favorite: bool) -> El {
                     s.section = "launcher".into();
                 }
             } else {
-                s.home.queue_launch(&s.core, favorite);
+                crate::queue_home_launch(s, favorite);
             }
         },
     )

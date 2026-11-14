@@ -12,6 +12,13 @@ import { sectionIds } from "../src/renderer/app/sections.ts";
 import { commandsText } from "../src/renderer/i18n/commands.es.ts";
 import { es, settingsText } from "../src/renderer/i18n/es.ts";
 import { homeText } from "../src/renderer/i18n/home.ts";
+import { actionText } from "../src/renderer/i18n/launcher-actions.ts";
+import { appText } from "../src/renderer/i18n/launcher-apps.ts";
+import { controlText } from "../src/renderer/i18n/launcher-control.ts";
+import { residentText } from "../src/renderer/i18n/launcher-resident.ts";
+import { resultsText } from "../src/renderer/i18n/launcher-results.ts";
+import { launcherText } from "../src/renderer/i18n/launcher.ts";
+import { profileText } from "../src/renderer/i18n/profile-editor.ts";
 import { roadmap } from "../src/renderer/i18n/roadmap.ts";
 import { shellText } from "../src/renderer/i18n/shell.es.ts";
 import { studioText } from "../src/renderer/i18n/studio.ts";
@@ -39,6 +46,13 @@ const navigation = [
 if (navigation.length !== 9 || navigation.some((entry) => !entry.label))
   throw new Error("Navigation source changed: update generator");
 const strings = {};
+function addStrings(namespace, values) {
+  for (const [key, value] of Object.entries(values)) {
+    if (typeof value === "string") strings[`${namespace}.${key}`] = value;
+    else if (value && typeof value === "object" && !Array.isArray(value))
+      addStrings(`${namespace}.${key}`, value);
+  }
+}
 for (const [namespace, values] of Object.entries({
   es,
   shell: shellText,
@@ -47,9 +61,15 @@ for (const [namespace, values] of Object.entries({
   home: homeText,
   studio: studioText,
   commands: commandsText,
+  launcher: launcherText,
+  action: actionText,
+  app: appText,
+  profile: profileText,
+  resident: residentText,
+  control: controlText,
+  results: resultsText,
 })) {
-  for (const [key, value] of Object.entries(values))
-    if (typeof value === "string") strings[`${namespace}.${key}`] = value;
+  addStrings(namespace, values);
 }
 const sentinel = "__VANTARE_NAME__";
 const countMarker = "__VANTARE_COUNT__";

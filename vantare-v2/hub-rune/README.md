@@ -267,3 +267,50 @@ una revisión nueva invalida la confirmación de borrado. Un error ambiguo de
 escritura conserva el bloqueo y relee el documento, sin repetir cambios. Una
 lectura fallida o un evento no se consideran confirmación de esa escritura.
 Clippy y 76 tests Windows PASS; CI y head vigentes en #2306.
+
+
+## Launcher · corte 2 en curso
+
+Rama propia `vantareapp/isa-2256-hub-rune-launcher`, creada sobre #2306
+(ed619170) y actualizada con su revisión d500cb012 y nightly f482bebec.
+Las fusiones locales de dependencias conservan los tipos nativos L53–L55/v35;
+no se cambia la implementación del anfitrión. L56/v36 se consulta en #2304 y
+se consumirá cuando se integre. Hasta entonces no se ofrece borrado de perfiles:
+no se llama a launcher.profile.delete ni se simula un resultado de eliminación.
+
+La pantalla ofrece perfiles, favorito, duplicación, disparador LMU y editor
+con campos Unicode, pasos/reordenación, políticas y confirmación de pérdida de
+argumentos personalizados. El borrador se conserva ante conflictos/fallos;
+una revisión distinta impide guardar sin revisar. La X pide descartar el
+borrador antes del cierre guiado, en lugar de perderlo. Aplicaciones usa el
+catálogo y el editor nativos, descubrimiento y selección de ejecutable sin
+un campo de ruta/argumentos libres en la interfaz.
+
+Las órdenes comprobadas capturan instancia, cuenta, revisión y ejecución.
+Queued solo confirma el buzón: hacen falta recibo y terminación correlacionados.
+No se deduce éxito de running=false. Un reinicio, hueco de historial o plazo
+sin recibo deja Unknown y no repite la orden. El plazo nativo de recibo (5 s)
+no limita la duración de la secuencia. Trust no se ofrece en la pregunta;
+requiere revisar el perfil en el editor. Reintento fallidos/todos usa los tipos
+L55 y exige resultados más una terminación conservada del mismo ámbito.
+Inicio/paleta y Launcher comparten la exclusión de nuevas ejecuciones.
+
+Se habilita native-file-dialog del mismo Rune fijado para reutilizar su selector
+asíncrono, con la misma secuencia ACK nulo → diálogo → PickedExecutable → resultado
+que Electron. Solo se añade rfd 0.17.2 (MIT) al lock de Rune: dependencia de Rune
+cubierta por la aprobación de dependencias permisivas del encargo. Auditoría de
+464 paquetes PASS, sin MPL ni ogg-audio. No se añade al producto nativo ni a sus
+parches/dependencias. El catálogo lee el mismo profileLimits del módulo generado
+launcher.ts: el import de i18n usa ese módulo directamente para funcionar sin
+el agregador temporal del build web. No cambian textos ni límites de Electron.
+
+Escenas debug Launcher de lectura: launcher-base, launcher-vacio y
+launcher-protegido, desde el corpus nativo. Las escrituras de escena devuelven
+Unsupported. Presets launcher-light/launcher-dark preparados para capturas del
+Mac; flags de captura solo debug+macOS. Ninguna ejecución gráfica en Windows.
+
+Tests de recibos, ámbitos, historial/plazos, borrador, selector y controles
+preparados; Clippy local esperando RAM por la cola a -j2 y un compilador propio.
+Formato/catálogo, 27 tests Python y licencias PASS. CI del nuevo head pendiente.
+Quedan por verificar host real, aspecto, teclado físico y corte 2. El Mac sigue
+offline: al volver se captura primero #2297, offscreen y sin activar ventanas.

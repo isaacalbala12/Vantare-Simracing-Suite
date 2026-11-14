@@ -72,3 +72,7 @@ La tabla contiene otra vez 352 comparaciones, 44 escenas y cero errores; los 104
 El muestreo de las diferencias mayores sin una limitación de referencia detectó ST-V02 en Studio: el escenario exige un mínimo de 230 px y la columna separa 16 px; ESPEC-A exige 170 y 14. La tipografía heredada y los botones también difieren de la maqueta. Se conserva el resultado antes y se prepara un PR propio, solo de presentación. La tabla no declara terminada la inspección humana de todos los estados.
 
 Se recomprobó H-V01 en origin/nightly f482bebec2dbe6648a6ab597e5f6c1f4c6c9814e: las cuatro entradas de corpus siguen ready:false y falta el recibo de Workshop. No se atribuye ese bloqueo a la pausa de capturas ya levantada. REF-ST01 sigue ligado al hash original de la maqueta; en Error oscuro se observa además una variable err-tint usada pero no definida en el HTML, que no se imita eliminando el aviso del producto.
+
+### Corrección del diagnóstico de cascada de Studio
+
+La lectura inicial de focus.css fue incompleta: studio-states.css se carga después y ya aplica el mínimo de 170 px y la separación de 14 px. El CSS empaquetado confirma ese orden. Se retira de la tabla el diagnóstico basado solo en las reglas base de 230/16; no se han cambiado esos valores ni se ha creado una corrección ficticia. La inspección de tipografía y forma de botones continúa midiendo estilos efectivos antes de editar producto. La nueva rama de Studio sigue limpia.

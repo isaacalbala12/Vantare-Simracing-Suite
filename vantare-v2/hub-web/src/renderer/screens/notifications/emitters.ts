@@ -254,7 +254,8 @@ export function connectEmitters(
     .request({ method: "settings.get" })
     .then(async () => {
       if (!active) return;
-      await client.request({ method: "core.get" });
+      // Update readiness remains useful while the core is unavailable.
+      await client.request({ method: "core.get" }).catch(() => {});
       if (active) await client.request({ method: "updates.get" });
     })
     .catch(() => {});

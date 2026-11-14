@@ -207,6 +207,15 @@ it("does not reuse the previous core generation after a local account boundary",
   expect(h.records()).toEqual([]);
   h.connection.dispose();
 });
+it("still reads update readiness when the startup core request fails", async () => {
+  const h = harness();
+  h.client.request.mockRejectedValueOnce(new Error("core unavailable"));
+  await vi.waitFor(() => {
+    expect(h.client.request).toHaveBeenCalledWith({ method: "core.get" });
+    expect(h.client.request).toHaveBeenCalledWith({ method: "updates.get" });
+  });
+  h.connection.dispose();
+});
 it("uses typed update readiness, not a release note or restart availability alone", () => {
   const h = harness();
   const value = fixture("updates.get") as UpdatesView;

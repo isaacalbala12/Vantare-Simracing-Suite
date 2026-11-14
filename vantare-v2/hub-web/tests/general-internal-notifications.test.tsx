@@ -19,7 +19,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
-it("enables the two emitted internal preferences and explains the limited Launcher outcome", () => {
+it("enables emitted preferences and explains completion and Windows delivery", () => {
   const cache = new QueryClient();
   render(
     <QueryClientProvider client={cache}>
@@ -42,7 +42,9 @@ it("enables the two emitted internal preferences and explains the limited Launch
     });
   }
   expect(
-    screen.getByText(/El aviso de aplicaciones listas aún no está disponible/),
+    screen.getByText(
+      /Al terminar correctamente la cadena, avisa de aplicaciones listas/,
+    ),
   ).toBeTruthy();
   expect(
     screen.getByText(

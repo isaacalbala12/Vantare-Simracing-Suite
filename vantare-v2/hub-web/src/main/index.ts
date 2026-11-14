@@ -175,6 +175,7 @@ async function start() {
   });
   const calendarNotices = notices.calendar;
   const removeHostFailure = host.listen((message) => {
+    if (!currentWindow.isDestroyed()) notices.operations.observe(message);
     if (
       message.kind === "event" &&
       message.event.topic === "calendarNotice" &&
@@ -209,6 +210,7 @@ async function start() {
     ipcMain.removeListener("vantare:connect", connectRenderer);
     removeHostFailure();
     calendarNotices.close();
+    notices.operations.close();
     host.close();
   });
   window.on("close", (event) => {

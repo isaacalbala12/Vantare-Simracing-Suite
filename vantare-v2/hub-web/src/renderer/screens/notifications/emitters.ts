@@ -1,11 +1,18 @@
 import type {
+  CoreStatus,
   HostToUi,
+  LauncherView,
   Preferences,
   Reply,
   ResidentView,
   TestingView,
   UpdatesView,
 } from "../../../contract/generated/contract";
+import {
+  completionProfileName,
+  launcherCompletionFeed,
+  notificationGeneration,
+} from "../../../shared/launcher-completion";
 import type { AccountSession } from "../../app/AccountSession";
 import type { Client, RequestObservation } from "../../bridge/client";
 import { notices as text } from "../../i18n/notifications";
@@ -30,6 +37,11 @@ export function connectEmitters(
   let failureSequence = 0;
   let launcherFailure = false;
   let pendingResidentError = false;
+  let core: CoreStatus | undefined;
+  let launcher: LauncherView | undefined;
+  const completions = launcherCompletionFeed(() =>
+    notificationGeneration(core),
+  );
   const requests = new Map<
     number,
     { generation: number; confirmed: boolean }
@@ -39,6 +51,7 @@ export function connectEmitters(
     if (generation !== session.getSnapshot().generation) {
       generation = session.getSnapshot().generation;
       sink.resetReports();
+      completions.reset();
     }
   });
   function launcherFailed(residentError = false) {
@@ -59,7 +72,22 @@ export function connectEmitters(
     pendingResidentError = false;
     launcherFailed(true);
   }
+  function observeCore(value: CoreStatus) {
+    core = value;
+    if (resident) completions.observe(resident);
+  }
   function execution(value: ResidentView) {
+    const finished = completions.observe(value);
+    if (preferences?.launcher && session.getSnapshot().confirmed)
+      for (const item of finished)
+        sink.add({
+          source: "launcher",
+          severity: "info",
+          dedupeKey: `launcher.completed:${item.instance}:${item.accountGeneration}:${item.run}`,
+          title: text.launchReady,
+          text: text.launchReadyBody(completionProfileName(item, launcher)),
+          action: "launcher",
+        });
     if (value.online && !value.protected) {
       if (value.error && !resident?.error) pendingResidentError = true;
       if (!value.error) {
@@ -120,6 +148,12 @@ export function connectEmitters(
   }
   function reply(value: Reply) {
     switch (value.method) {
+      case "launcher.get":
+        launcher = value.value;
+        break;
+      case "core.get":
+        observeCore(value.value);
+        break;
       case "settings.get":
       case "settings.update":
       case "settings.retry":
@@ -189,6 +223,12 @@ export function connectEmitters(
     if (!active) return;
     if (message.kind === "event") {
       switch (message.event.topic) {
+        case "launcher":
+          launcher = message.event.value;
+          break;
+        case "core":
+          observeCore(message.event.value);
+          break;
         case "launcherResident":
           execution(message.event.value);
           break;
@@ -201,6 +241,8 @@ export function connectEmitters(
     }
   });
   const disposers = [
+    client.subscribe("launcher"),
+    client.subscribe("core"),
     client.subscribe("launcherResident"),
     client.subscribe("updates"),
   ];
@@ -209,7 +251,8 @@ export function connectEmitters(
     .request({ method: "settings.get" })
     .then(async () => {
       if (!active) return;
-      await client.request({ method: "updates.get" });
+      await client.request({ method: "core.get" });
+      if (active) await client.request({ method: "updates.get" });
     })
     .catch(() => {});
   return {

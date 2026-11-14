@@ -14,6 +14,12 @@ import { createAccountSession } from "../src/renderer/app/AccountSession";
 import type { Client, RequestObservation } from "../src/renderer/bridge/client";
 import { connectEmitters } from "../src/renderer/screens/notifications/emitters";
 import { createNotifications } from "../src/renderer/screens/notifications/NotificationsState";
+import {
+  finished,
+  notificationCore,
+  received,
+  residentCompletionView,
+} from "./helpers/launcher-completion";
 
 function fixture(method: string) {
   const message = (corpus.host as HostToUi[]).find(
@@ -164,6 +170,28 @@ it("does not call an offline/protected or questioned execution ready", () => {
   h.resident({ running: true });
   h.resident({ decision: { id: "1", kind: "failure", actions: [] } });
   expect(h.records()).toEqual([]);
+  h.connection.dispose();
+});
+it("publishes Applications ready only after a scoped Finished and keeps it in the center", () => {
+  const h = harness();
+  h.login();
+  h.preferences(true);
+  h.response({ method: "core.get", value: notificationCore });
+  h.resident(residentCompletionView());
+  h.resident(residentCompletionView([received]));
+  expect(h.records()).toEqual([]);
+  h.resident(residentCompletionView([received, finished]));
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0]).toEqual(
+    expect.objectContaining({
+      title: "Aplicaciones listas",
+      source: "launcher",
+      action: "launcher",
+      unread: true,
+    }),
+  );
+  h.resident(residentCompletionView([received, finished]));
+  expect(h.records()).toHaveLength(1);
   h.connection.dispose();
 });
 it("uses typed update readiness, not a release note or restart availability alone", () => {

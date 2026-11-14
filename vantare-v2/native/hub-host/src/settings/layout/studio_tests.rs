@@ -93,7 +93,7 @@ fn driving_content_writer_matches_native_normalization_and_undo_bytes() {
     }
 }
 
-fn fixture() -> (crate::test_support::Root, std::path::PathBuf, Vec<u8>) {
+pub(super) fn fixture() -> (crate::test_support::Root, std::path::PathBuf, Vec<u8>) {
     let root = crate::test_support::Root::new();
     let path = root.path.join("layout.json");
     let bytes=br#"{"version":1,"instances":[{"id":"widget-1","x":48.5,"y":62.0,"settings":{"kind":"standings","private":{"a":  1.00}},"geometry":{"size":{"width":338.0,"height":304.0},"aspectLocked":true},"future":{"path":"C:/Users/private"}}],"futureRoot":{"x":  2.50}}"#.to_vec();
@@ -101,15 +101,18 @@ fn fixture() -> (crate::test_support::Root, std::path::PathBuf, Vec<u8>) {
     (root, path, bytes)
 }
 #[test]
-fn visibility_undo_redo_preserves_opaque_fields_and_never_projects_position() {
+fn visibility_undo_redo_preserves_opaque_fields_and_projects_only_closed_geometry() {
     let (_root, path, before) = fixture();
     let mut state = State::new(path.clone());
     let access = Some(CatalogAccess::Pro);
     let view = state.view(access);
     assert_eq!(view.state, StudioState::Ready);
-    assert_eq!(view.instances[0].size.width, 338);
+    assert_eq!(f64::from(view.instances[0].size.width), 338.0);
+    assert_eq!(f64::from(view.instances[0].x), 48.5);
+    assert_eq!(f64::from(view.instances[0].y), 62.0);
+    assert!(view.instances[0].aspect_locked);
     let projected = serde_json::to_string(&view).unwrap();
-    for private in ["Users", "futureRoot", "aspectLocked", "\"x\":", "\"y\":"] {
+    for private in ["Users", "futureRoot", "private"] {
         assert!(!projected.contains(private));
     }
     let changed = state
@@ -215,7 +218,7 @@ fn adding_uses_versioned_native_settings_and_a_free_identity() {
         .unwrap();
     assert_eq!(added.instances.len(), 2);
     assert_eq!(added.instances[1].id, "widget-2");
-    let opened = Open::read(&path).unwrap();
+    let opened = Open::read(&path, crate::studio::monitor::snapshot).unwrap();
     let x: f64 = read(&opened.instances[1], "x").unwrap();
     let y: f64 = read(&opened.instances[1], "y").unwrap();
     // GPUI free_spot: 2% margin, 1% steps and 12 px between occupied rectangles.
@@ -360,10 +363,10 @@ fn showing_and_hiding_share_the_native_presentation_lock() {
     assert!(state.track(true, Some(CatalogAccess::Pro)).unwrap().showing);
 }
 
-fn layout(path: &Path) -> serde_json::Value {
+pub(super) fn layout(path: &Path) -> serde_json::Value {
     serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
 }
-fn replace_layout(path: &Path, value: &serde_json::Value) {
+pub(super) fn replace_layout(path: &Path, value: &serde_json::Value) {
     std::fs::write(path, serde_json::to_vec(value).unwrap()).unwrap();
 }
 #[test]
@@ -644,8 +647,8 @@ fn off_track_is_saved_in_native_spelling_and_projection_clamps_without_rewriting
     assert_eq!(
         view.instances[0].size,
         OverlaySize {
-            width: 3840,
-            height: 2160
+            width: 3840_u32.into(),
+            height: 2160_u32.into()
         }
     );
     assert_eq!(std::fs::read(&path).unwrap(), before);

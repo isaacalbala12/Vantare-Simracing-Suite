@@ -52,6 +52,30 @@ la intención pendiente y permite cerrar. En EOF el
 anfitrión aplica un límite de dos segundos para un renderer bloqueado. Una
 entrada en Live cierra el Hub. `hub-ready` solo se publica tras mostrar la ventana.
 
+## Geometría de Studio (ADR 0109, v37)
+
+`studio.geometry` acepta mover, redimensionar, anclar, volver al tamaño automático
+y bloquear la proporción. `studio.canvas` elige monitor o resolución propia;
+`studio.add.at` es una posición opcional de la esquina superior izquierda. Todas
+las posiciones del contrato son locales al lienzo; el anfitrión las convierte a
+las coordenadas globales del documento. La vista publica el lienzo, posición,
+tamaño automático o explícito, proporción y si el rectángulo sale del lienzo.
+
+Cada gesto terminado envía una sola orden con `baseRevision`: reutiliza el CAS,
+el conflicto tipado y deshacer existentes. Una orden sin cambios no crea historia.
+Live y los derechos se comprueban antes de editar. Las partes desconocidas del
+documento se conservan; restablecer un componente con datos desconocidos devuelve
+`Protected` antes de borrarlos. Las medidas conservan fracciones de píxel lógico.
+
+El monitor sigue la selección del Hub congelado (primer widget visible, después
+monitor principal), con su escala DPI; no se crea una ventana. Los tests inyectan
+monitores y no consultan dispositivos gráficos. Falta comprobar la disposición
+real de varios monitores y escalas en el PC de juego. Las funciones Rust del imán,
+ocho tiradores, anclas y teclado exportan `studioGeometryCases` y límites para los
+tests de Electron. Hasta que su UI incorpore esas funciones contrastadas, el mock
+rechaza las nuevas órdenes con `Unsupported`, sin simular un guardado correcto.
+Esta entrega no inicia ningún pintor ni implementa preview.
+
 ## Cola de servicios
 
 D060 conserva el comentario de los cuestionarios: la vista publica `note` y
@@ -61,6 +85,7 @@ se reutiliza el comentario observado del mismo cuestionario y generación de
 cuenta; sin esa observación se rechaza, sin enviar un vacío supuesto. Requiere
 el Services de esta entrega: las versiones anteriores forzaban una nota vacía
 en el RPC. No se modifica el protocolo IPC ni el Hub GPUI congelado.
+La nota observada puede quedar vieja si otro dispositivo la edita entre refrescar y responder; refrescar antes de responder reduce ese riesgo.
 
 Un efecto activo, sin preempción ni reenvío automático. Logout y Cancel esperan
 al activo; el transporte limita cada operación de E/S a 30 s. No se promete

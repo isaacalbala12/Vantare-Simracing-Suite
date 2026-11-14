@@ -19,6 +19,7 @@ fn mutations_are_denied_in_live_or_without_verified_rights_without_touching_file
         for request in [
             Request::StudioAdd {
                 kind: crate::studio::WidgetKind::Delta,
+                at: None,
                 base_revision: "0".repeat(64),
             },
             Request::StudioTrack { show: true },
@@ -73,4 +74,63 @@ fn subscribe_has_one_initial_event_and_immediate_tick_does_not_duplicate_it() {
     assert!(initial > 0);
     studio_tick::tick(&mut session, &mut pipe).unwrap();
     assert_eq!(pipe.get_ref().len(), initial);
+}
+#[cfg(windows)]
+#[test]
+fn geometry_canvas_and_drop_require_current_rights_and_not_live() {
+    use crate::studio::{CanvasChoice, GeometryChange, Point};
+    let fixture = Fixture::new();
+    let path = fixture.0.join("layout.json");
+    let bytes=br#"{"version":1,"instances":[{"id":"widget-1","x":48.5,"y":62,"settings":{"kind":"delta"}}]}"#;
+    std::fs::write(&path, bytes).expect("fixture");
+    let revision = vantare_services::content_hash(bytes);
+    let mut session = fixture.session();
+    session.core.available = true;
+    session.current.access.verified = true;
+    session.current.live = true;
+    let requests = [
+        Request::StudioGeometry {
+            id: "widget-1".into(),
+            change: GeometryChange::Move {
+                x: 100_u32.into(),
+                y: 200_u32.into(),
+            },
+            base_revision: revision.clone(),
+        },
+        Request::StudioCanvas {
+            resolution: CanvasChoice::Custom {
+                width: 2560_u32.into(),
+                height: 1440_u32.into(),
+            },
+            base_revision: revision.clone(),
+        },
+        Request::StudioAdd {
+            kind: crate::studio::WidgetKind::Delta,
+            at: Some(Point {
+                x: 400_u32.into(),
+                y: 300_u32.into(),
+            }),
+            base_revision: revision,
+        },
+    ];
+    for current_rights in [true, false] {
+        session.current.access.verified = current_rights;
+        session.current.live = current_rights;
+        for request in &requests {
+            assert!(matches!(
+                response(&mut session, request),
+                HostToUi::Failure {
+                    error: HostError::Denied,
+                    ..
+                }
+            ));
+            assert_eq!(std::fs::read(&path).expect("bytes"), bytes);
+        }
+    }
+    session.current.access.verified = true;
+    session.current.live = false;
+    assert!(
+        matches!(response(&mut session,&requests[0]),HostToUi::Response{result:Reply::StudioGeometry{value},..} if f64::from(value.instances[0].x)==100.0)
+    );
+    assert_ne!(std::fs::read(&path).expect("changed"), bytes);
 }

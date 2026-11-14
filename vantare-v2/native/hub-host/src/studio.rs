@@ -1,13 +1,18 @@
-//! Studio gallery contract. Geometry is intentionally absent from every edit.
+//! Studio gallery and closed geometry contract (ADR 0109).
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Instant};
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 #[path = "studio/catalog.rs"]
 pub mod catalog;
+#[path = "studio/geometry.rs"]
+pub mod geometry;
+#[path = "studio/monitor.rs"]
+pub(crate) mod monitor;
 #[path = "studio/widget_settings.rs"]
 pub mod widget_settings;
 pub use catalog::{WidgetInfo, WidgetKind};
+pub use geometry::{CanvasChoice, CanvasView, Coordinate, GeometryChange, Point, SizeMode};
 pub use widget_settings::{WidgetSettings, WidgetSettingsPatch};
 pub const INSTANCE_LIMIT: usize = 256;
 pub const HISTORY_LIMIT: usize = 50;
@@ -58,8 +63,8 @@ pub struct ShowIn {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OverlaySize {
-    pub width: u32,
-    pub height: u32,
+    pub width: Coordinate,
+    pub height: Coordinate,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -74,6 +79,11 @@ pub struct OverlayInstance {
     pub show_in: ShowIn,
     pub off_track: OffTrack,
     pub size: OverlaySize,
+    pub x: Coordinate,
+    pub y: Coordinate,
+    pub size_mode: SizeMode,
+    pub aspect_locked: bool,
+    pub outside_canvas: bool,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -87,6 +97,7 @@ pub struct StudioView {
     pub plan: StudioPlan,
     pub can_undo: bool,
     pub can_redo: bool,
+    pub canvas: Option<CanvasView>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -105,6 +116,9 @@ pub enum InstancePatch {
 pub enum Edit {
     Visibility(String, bool),
     Add(WidgetKind),
+    AddAt(WidgetKind, Point),
+    Geometry(String, GeometryChange),
+    Canvas(CanvasChoice),
     Remove(String),
     Instance(String, InstancePatch),
     Undo,
@@ -116,6 +130,7 @@ pub struct State {
     pub(crate) redo: Vec<Vec<u8>>,
     pub(crate) revision: Option<String>,
     last: Option<(Instant, StudioView)>,
+    pub(crate) monitor_source: fn() -> Vec<monitor::Monitor>,
 }
 impl State {
     pub fn new(path: PathBuf) -> Self {
@@ -125,6 +140,7 @@ impl State {
             redo: vec![],
             revision: None,
             last: None,
+            monitor_source: monitor::snapshot,
         }
     }
     pub fn unavailable(
@@ -140,6 +156,7 @@ impl State {
             plan: plan(access),
             can_undo: false,
             can_redo: false,
+            canvas: None,
         }
     }
     pub fn view(&mut self, access: Option<vantare_ipc::control::CatalogAccess>) -> StudioView {
@@ -174,15 +191,28 @@ impl State {
         revision: &str,
         access: Option<vantare_ipc::control::CatalogAccess>,
     ) -> Result<(StudioView, String), crate::protocol::HostError> {
+        self.add_at(kind, None, revision, access)
+    }
+    pub fn add_at(
+        &mut self,
+        kind: WidgetKind,
+        at: Option<Point>,
+        revision: &str,
+        access: Option<vantare_ipc::control::CatalogAccess>,
+    ) -> Result<(StudioView, String), crate::protocol::HostError> {
         #[cfg(windows)]
         {
-            let (value, added) =
-                crate::settings::studio::edit_result(self, Edit::Add(kind), revision, access)?;
+            let (value, added) = crate::settings::studio::edit_result(
+                self,
+                at.map_or(Edit::Add(kind), |at| Edit::AddAt(kind, at)),
+                revision,
+                access,
+            )?;
             Ok((value, added.ok_or(crate::protocol::HostError::Io)?))
         }
         #[cfg(not(windows))]
         {
-            let _ = (kind, revision, access);
+            let _ = (kind, at, revision, access);
             Err(crate::protocol::HostError::Protected)
         }
     }

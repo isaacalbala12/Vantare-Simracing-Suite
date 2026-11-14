@@ -2568,3 +2568,10 @@ aceptados. #2306 incluye ya los tres ajustes solicitados (d500cb012). El código
 final y CI de #2307 se consultan en PR/issue, que conservan el head publicado.
 Primero #2297 offscreen al recuperar el Mac; pendientes host real, visual,
 teclado físico y medición. Orquestador actualiza Plane y decide integraciones.
+
+
+CI web de 27e526f6: ambos typechecks PASS; lint falló únicamente por el orden de
+imports de rune-catalog.mjs. Corregido según Biome; Biome 2.6.6 local en los dos
+archivos web tocados PASS y catálogo sin cambios PASS. Sin cambios Rust tras
+Clippy/92 tests, por lo que no se repite compilación local. CI del siguiente
+head pendiente; no era el fallo histórico de Eliminar perfil ni requería rebase.

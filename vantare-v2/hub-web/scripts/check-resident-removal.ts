@@ -87,6 +87,8 @@ export async function prepareResidentRemoval(page: Page, state: string) {
   }
   if (state !== "finished") {
     const audit = await new AxeBuilder({ page })
+      // Electron denies auxiliary pages; audit this same-origin dialog as the existing smoke does.
+      .setLegacyMode()
       .include('[data-window-dialog="screen"]')
       .analyze();
     assert.deepEqual(

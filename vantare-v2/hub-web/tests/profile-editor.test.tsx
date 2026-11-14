@@ -31,6 +31,7 @@ import {
 import { Client } from "../src/renderer/bridge/client";
 import { launcherText } from "../src/renderer/i18n/launcher";
 import { actionText } from "../src/renderer/i18n/launcher-actions";
+import { removalText } from "../src/renderer/i18n/launcher-removal";
 import { residentText } from "../src/renderer/i18n/launcher-resident";
 import { profileText as text } from "../src/renderer/i18n/profile-editor";
 import LauncherEntry from "../src/renderer/screens/launcher/entry";
@@ -435,7 +436,7 @@ describe("profile editor", () => {
     expect(within(creator).getByText(launcherText.favorite)).toBeTruthy();
   });
   it("confirms profile deletion and cancellation has no effect", async () => {
-    mount();
+    mount("launcher-removal-finished");
     const creator = await screen.findByRole("button", {
       name: "Creador de Contenido",
     });
@@ -447,9 +448,7 @@ describe("profile editor", () => {
       name: actionText.removeTitle,
     });
     expect(
-      within(dialog).getByText(
-        actionText.removeMessage("Creador de Contenido"),
-      ),
+      within(dialog).getByText(removalText.message("Creador de Contenido")),
     ).toBeTruthy();
     fireEvent.click(
       within(dialog).getByRole("button", { name: actionText.cancel }),
@@ -466,12 +465,14 @@ describe("profile editor", () => {
     fireEvent.click(
       within(dialog).getByRole("button", { name: actionText.remove }),
     );
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("button", {
-          name: "Creador de Contenido",
-        }),
-      ).toBeNull(),
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByRole("button", {
+            name: "Creador de Contenido",
+          }),
+        ).toBeNull(),
+      { timeout: 3000 },
     );
   });
   it("keeps an action after conflict and only saves on explicit retry", async () => {
@@ -544,7 +545,7 @@ describe("profile editor", () => {
     await user.click(screen.getByRole("option", { name: "20 s" }));
     await waitFor(() => expect(delay.textContent).toContain("20 s"));
   });
-  it.each(["remove", "duplicate"] as const)(
+  it.each(["duplicate"] as const)(
     "requires a new confirmation after a %s conflict",
     async (kind) => {
       const requests = vi.spyOn(Client.prototype, "request");
@@ -554,15 +555,14 @@ describe("profile editor", () => {
       fireEvent.contextMenu(creator);
       fireEvent.click(
         await screen.findByRole("menuitem", {
-          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+          name: actionText.duplicate,
         }),
       );
-      const title =
-        kind === "remove" ? actionText.removeTitle : actionText.duplicateTitle;
+      const title = actionText.duplicateTitle;
       let dialog = await screen.findByRole("dialog", { name: title });
       fireEvent.click(
         within(dialog).getByRole("button", {
-          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+          name: actionText.duplicate,
         }),
       );
       await screen.findByText(actionText.conflict);
@@ -571,10 +571,7 @@ describe("profile editor", () => {
         screen.queryByRole("button", { name: actionText.retry }),
       ).toBeNull();
       expect(screen.getByText(actionText.reconfirm)).toBeTruthy();
-      const method =
-        kind === "remove"
-          ? "launcher.profile.delete"
-          : "launcher.profile.duplicate";
+      const method = "launcher.profile.duplicate";
       expect(
         requests.mock.calls.filter(([r]) => r.method === method),
       ).toHaveLength(1);
@@ -584,7 +581,7 @@ describe("profile editor", () => {
       fireEvent.contextMenu(screen.getByRole("button", { name }));
       fireEvent.click(
         await screen.findByRole("menuitem", {
-          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+          name: actionText.duplicate,
         }),
       );
       dialog = await screen.findByRole("dialog", { name: title });
@@ -593,7 +590,7 @@ describe("profile editor", () => {
       ).toHaveLength(1);
       fireEvent.click(
         within(dialog).getByRole("button", {
-          name: kind === "remove" ? actionText.remove : actionText.duplicate,
+          name: actionText.duplicate,
         }),
       );
       await waitFor(() =>

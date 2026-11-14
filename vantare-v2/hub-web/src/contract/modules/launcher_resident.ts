@@ -8,6 +8,7 @@ import {
   residentOrderRejections,
   residentProfileIdLimit,
   residentQuestionKinds,
+  residentRemovalRejections,
   residentRetryScopes,
 } from "../generated/launcher_resident";
 import {
@@ -16,6 +17,7 @@ import {
   isProfileId,
   isResidentExecution,
 } from "../resident-execution-validation";
+import { isResidentOwnership } from "../resident-ownership-validation";
 import { exact, oneOf, record } from "../validation-common";
 import { isReply as isShortcutsReply } from "./shortcuts";
 
@@ -56,9 +58,18 @@ export function isResident(value: unknown): boolean {
       "error",
       "decision",
       "registrations",
+      "ownership",
     ]) &&
     (value.execution === null ||
       (value.online === true && isResidentExecution(value.execution))) &&
+    isResidentOwnership(value.ownership) &&
+    (!record(value.ownership) ||
+      value.ownership.kind !== "known" ||
+      (value.online === true &&
+        value.protected === false &&
+        value.error === false &&
+        record(value.execution) &&
+        value.ownership.instance === value.execution.instance)) &&
     typeof value.protected === "boolean" &&
     typeof value.online === "boolean" &&
     typeof value.running === "boolean" &&
@@ -74,6 +85,18 @@ export function isResident(value: unknown): boolean {
 }
 export function isRequest(value: Record<string, unknown>): boolean {
   if (value.method === "launcher.resident.get") return exact(value, ["method"]);
+  if (value.method === "launcher.profile.removeChecked") {
+    if (!exact(value, ["method", "target"]) || !record(value.target))
+      return false;
+    const t = value.target;
+    return (
+      exact(t, ["instance", "accountGeneration", "profile", "revision"]) &&
+      hex(t.instance, 64) &&
+      hex(t.accountGeneration, 64) &&
+      isProfileId(t.profile) &&
+      hex(t.revision, 64)
+    );
+  }
   if (value.method === "launcher.resident.retry") {
     if (!exact(value, ["method", "target"]) || !record(value.target))
       return false;
@@ -151,6 +174,7 @@ export function isRequest(value: Record<string, unknown>): boolean {
 }
 export function isReply(value: Record<string, unknown>): boolean {
   if (
+    value.method === "launcher.profile.removeChecked" ||
     value.method === "launcher.resident.answer" ||
     value.method === "launcher.resident.retry" ||
     value.method === "launcher.resident.cancel" ||
@@ -178,6 +202,11 @@ export function isEvent(value: Record<string, unknown>): boolean {
   );
 }
 export function isError(value: Record<string, unknown>): boolean {
+  if (value.kind === "residentRemovalRejected")
+    return (
+      exact(value, ["kind", "reason"]) &&
+      oneOf(value.reason, residentRemovalRejections)
+    );
   if (value.kind === "residentControlRejected")
     return (
       exact(value, ["kind", "reason"]) &&

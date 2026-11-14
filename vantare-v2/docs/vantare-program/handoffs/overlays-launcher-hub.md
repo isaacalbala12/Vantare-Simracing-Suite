@@ -124,6 +124,63 @@ Binario final fuente 53050828b, SHA256
 ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
 Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
 Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
+## VANTA-138 · núcleo L56: propiedad y borrado coordinado (2026-11-13)
+
+#1995. v36 asignada por Isaac. **Fusionado en nightly el 14/11/2026**:
+núcleo [#2304](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2304)
+en 1ae98de36a71401a3537bbf1ba12ca043437b283 y, a continuación, UI de D
+[#2305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2305)
+en dffd1019dfb107664c520636711e51ddd8b1e691. L56 cerrado.
+
+La fusión coordinada se completó por decisión del orquestador, con la delegación
+de Isaac: primero el núcleo y después la UI. D migró Launcher.tsx desde
+launcher.profile.delete a removeChecked y retiró el éxito falso del mock
+profile-actions.ts.
+
+El contrato nuevo impide borrar un perfil si este residente conserva una
+aplicación propia viva, aunque la secuencia haya terminado. No descubre ni
+mata procesos externos. Un handle que ya no corresponde a ningún perfil del
+documento deja la propiedad en Unknown: no se disfraza de registro vacío.
+El borrado legacy del anfitrión queda Unsupported; la interfaz y sus escenas de
+prueba usan el contrato nuevo. La garantía no cubre GPUI ni otros escritores
+antiguos que no participen en el lease.
+
+Handoff a D: ResidentView.ownership = unsupported | unknown |
+known{instance,accountGeneration,revision,profiles[{profile,ownedLive}]}.
+Known se vincula al Feed autenticado actual y su TTL estricto, después de la E/S.
+Documento protegido, revisión no reconciliada, cuenta vencida o registro no
+observable => Unknown. No se deduce propiedad de running=false.
+
+launcher.profile.removeChecked recibe target
+{instance,accountGeneration,profile,revision}. Queued{request} no confirma borrado.
+RemovalReceived{request,receipt:accepted|rejected} y
+RemovalFinished{request,outcome:removed{revision}|failed} comparten el anillo de 32;
+no crean RunId. D correlaciona request y el contexto capturado; usa el plazo
+exportado residentOrderReceiptTimeoutMs. Hueco/reinicio/sin recibo => Unknown,
+sin reenvío. Un rechazo también ocupa un hueco. Solo Removed confirma el CAS.
+
+El residente consulta otra vez a la autoridad (750 ms), comparte el lease de
+start_checked y conserva el bloqueo de handles hasta CAS y actualización de
+la caché. Primero se comprueban cuenta/permisos, después el documento, ambos
+antes de adquirir los bloqueos; atajos,
+sync_startup y una única publicación van después de soltarlos. La foto no
+autoriza un borrado en el anfitrión.
+No añade hilos ni RPC al bucle de publicación ni cambia supervisor/rights.
+
+Validación local: contrato v36 exportado desde Rust, ambos typechecks y 91
+regresiones web PASS, más 392 comprobaciones de contrato/corpus. La primera suite detectó expectativas del borrado legacy;
+se adaptaron para exigir Unsupported y se conserva la prueba de CAS/conflicto.
+Gates finales por cola: fmt/Clippy all-targets -D warnings, 1.738 tests nativos y
+34 de telemetría PASS, respetando captura.lock. Slot liberado y G avisado.
+Revisión final: fmt/Clippy, 1.493 tests runtime/hub-host/Services y 34 de
+telemetría PASS. Tras completar dos fixtures L55, typecheck/Biome y 19 tests
+afectados PASS. La suite web completa local no se declaró verde: se detuvo
+tras dos fallos de Ajustes, cuyos tres casos relacionados pasaron aislados.
+Las correcciones de CI y ambas fusiones están verificadas en GitHub.
+Siguiente: D audita diferencias con el Hub antiguo; E espera el siguiente
+encargo de núcleo, sin compilar.
+Sin gráficos, cuentas reales, dependencias nuevas, promoción ni release.
+
 ## VANTA-138 · núcleo L55: resultados y repetir los mismos pasos (2026-11-13)
 
 #1995 / VANTA-138. L55 v35 autorizado; preparación local en

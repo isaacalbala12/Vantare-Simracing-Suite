@@ -52,6 +52,7 @@ pub enum Capability {
     CheckedAnswer,
     CheckedControl,
     StepResultsRetry,
+    LiveProfileOwnership,
     #[serde(other)]
     Unknown,
 }
@@ -81,6 +82,14 @@ pub enum ChainOutcome {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum EventKind {
+    RemovalReceived {
+        request: super::RequestId,
+        receipt: super::ownership::RemovalReceipt,
+    },
+    RemovalFinished {
+        request: super::RequestId,
+        outcome: super::ownership::RemovalOutcome,
+    },
     Started {
         run: RunId,
     },
@@ -116,6 +125,8 @@ pub struct ExecutionStatus {
     pub active: Option<super::control::RunScope>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub results: Option<super::results::RunResults>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ownership: Option<super::ownership::Ownership>,
 }
 impl ExecutionStatus {
     pub fn new(instance: ResidentInstance) -> Self {
@@ -127,6 +138,7 @@ impl ExecutionStatus {
             question: None,
             active: None,
             results: None,
+            ownership: None,
         }
     }
     fn next(&self) -> Option<RunId> {
@@ -153,7 +165,9 @@ impl ExecutionStatus {
         self.events.iter().any(|event| {
             matches!(&event.kind,
             EventKind::Received { request: observed, .. }
-            | EventKind::OrderReceived { request: observed, .. } if observed == request)
+            | EventKind::OrderReceived { request: observed, .. }
+            | EventKind::RemovalReceived { request: observed, .. }
+            | EventKind::RemovalFinished { request: observed, .. } if observed == request)
         })
     }
     pub fn accept(&mut self, request: super::RequestId) -> Option<RunId> {
@@ -187,6 +201,14 @@ impl ExecutionStatus {
             })
     }
     fn valid(&self) -> bool {
+        if !self.ownership.as_ref().is_none_or(|value| {
+            value.valid()
+                && self
+                    .capabilities
+                    .contains(&Capability::LiveProfileOwnership)
+        }) {
+            return false;
+        }
         self.results.as_ref().is_none_or(|results| {
             self.capabilities.contains(&Capability::StepResultsRetry)
                 && results.valid()
@@ -228,6 +250,9 @@ impl ExecutionStatus {
                 .windows(2)
                 .all(|w| w[0].seq.0.checked_add(1) == Some(w[1].seq.0))
             && self.events.iter().all(|e| match e.kind {
+                EventKind::RemovalReceived { .. } | EventKind::RemovalFinished { .. } => self
+                    .capabilities
+                    .contains(&Capability::LiveProfileOwnership),
                 EventKind::Started { run } | EventKind::Finished { run, .. } => run <= e.seq,
                 EventKind::OrderReceived { ref receipt, .. } => match receipt {
                     super::answer::OrderReceipt::Accepted { run } => *run <= e.seq,

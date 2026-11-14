@@ -21,6 +21,7 @@ function setup(sceneName = "launcher-results-finished") {
     running: false,
     error: false,
     decision: null,
+    ownership: { kind: "unsupported" },
     execution: null,
     registrations: [],
   };

@@ -16,6 +16,7 @@ pub(super) struct Cache {
     stamp: Option<Stamp>,
     protected: bool,
     profiles: Vec<ProfileShortcut>,
+    pub(super) revision: Option<String>,
     #[cfg(test)]
     pub(super) reads: usize,
 }
@@ -31,6 +32,7 @@ impl Cache {
         };
         if self.stamp != Some(stamp) {
             self.profiles.clear();
+            self.revision = None;
             self.protected = false;
             self.stamp = Some(stamp);
             #[cfg(test)]
@@ -41,6 +43,7 @@ impl Cache {
                 Ok(None) => {}
                 Ok(Some(bytes)) => match Document::from_bytes(&bytes) {
                     Ok(document) => {
+                        self.revision = Some(vantare_services::content_hash(&bytes));
                         self.profiles = crate::shortcuts::project(&document, None).profiles;
                     }
                     Err(_) => self.protected = true,

@@ -30,6 +30,7 @@ function view(events: ResidentExecutionEvent[]): ResidentView {
     running: true,
     error: false,
     decision: null,
+    ownership: { kind: "unsupported" },
     registrations: [],
     execution: {
       instance: attempt.target.instance,

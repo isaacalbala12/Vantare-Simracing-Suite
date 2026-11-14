@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { type Ref, useEffect, useId, useRef } from "react";
 import type {
   LauncherApp,
   LauncherProfile,
@@ -78,7 +78,9 @@ export function LauncherProfiles({
   onApplications,
   onAction,
   control,
+  headingRef,
 }: {
+  headingRef?: Ref<HTMLHeadingElement>;
   view: LauncherView;
   selected?: string;
   pending: boolean;
@@ -145,7 +147,9 @@ export function LauncherProfiles({
     <div className="v-launcher-page">
       <header className="v-launcher-heading">
         <div>
-          <h1>{text.title}</h1>
+          <h1 ref={headingRef} tabIndex={-1}>
+            {text.title}
+          </h1>
           <p>{text.description}</p>
         </div>
         <Button disabled={!onNew || pending || view.protected} onClick={onNew}>

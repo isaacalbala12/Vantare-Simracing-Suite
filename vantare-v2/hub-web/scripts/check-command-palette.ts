@@ -25,6 +25,7 @@ export async function checkCommandPalette(
             "launcher.resident.cancel",
             "launcher.resident.rehearse",
             "launcher.resident.retry",
+            "launcher.profile.removeChecked",
           ].includes(message.request?.method)
         )
           (Reflect.get(window, "paletteLaunchRequests") as unknown[]).push(

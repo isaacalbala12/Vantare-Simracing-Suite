@@ -169,6 +169,14 @@ pub enum ResidentReceipt {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(tag = "kind", rename_all = "kebab-case", deny_unknown_fields)]
 pub enum ResidentEventKind {
+    RemovalReceived {
+        request: String,
+        receipt: super::ResidentRemovalReceipt,
+    },
+    RemovalFinished {
+        request: String,
+        outcome: super::ResidentRemovalOutcome,
+    },
     OrderReceived {
         request: String,
         receipt: ResidentOrderReceipt,
@@ -205,6 +213,52 @@ pub struct ResidentExecution {
     pub question: Option<Box<ResidentScopedQuestion>>,
     pub first_retained_seq: String,
     pub events: Vec<ResidentExecutionEvent>,
+}
+fn event_kind(value: &native::EventKind) -> ResidentEventKind {
+    match value {
+        native::EventKind::OrderReceived { request, receipt } => ResidentEventKind::OrderReceived {
+            request: request.clone().into(),
+            receipt: match receipt {
+                vantare_ipc::launcher::answer::OrderReceipt::Accepted { run } => {
+                    ResidentOrderReceipt::Accepted { run: (*run).into() }
+                }
+                vantare_ipc::launcher::answer::OrderReceipt::Rejected { reason } => {
+                    ResidentOrderReceipt::Rejected {
+                        reason: (*reason).into(),
+                    }
+                }
+            },
+        },
+
+        native::EventKind::RemovalReceived { request, receipt } => {
+            ResidentEventKind::RemovalReceived {
+                request: request.clone().into(),
+                receipt: receipt.into(),
+            }
+        }
+        native::EventKind::RemovalFinished { request, outcome } => {
+            ResidentEventKind::RemovalFinished {
+                request: request.clone().into(),
+                outcome: outcome.into(),
+            }
+        }
+        native::EventKind::Started { run } => ResidentEventKind::Started { run: (*run).into() },
+        native::EventKind::Received { request, receipt } => ResidentEventKind::Received {
+            request: request.clone().into(),
+            receipt: match receipt {
+                checked_native::LaunchReceipt::Accepted { run } => {
+                    ResidentReceipt::Accepted { run: (*run).into() }
+                }
+                checked_native::LaunchReceipt::Rejected { reason } => ResidentReceipt::Rejected {
+                    reason: (*reason).into(),
+                },
+            },
+        },
+        native::EventKind::Finished { run, outcome } => ResidentEventKind::Finished {
+            run: (*run).into(),
+            outcome: (*outcome).into(),
+        },
+    }
 }
 impl From<&native::ExecutionStatus> for ResidentExecution {
     fn from(value: &native::ExecutionStatus) -> Self {
@@ -253,48 +307,7 @@ impl From<&native::ExecutionStatus> for ResidentExecution {
                 .iter()
                 .map(|event| ResidentExecutionEvent {
                     seq: event.seq.into(),
-                    kind: match &event.kind {
-                        native::EventKind::OrderReceived { request, receipt } => {
-                            ResidentEventKind::OrderReceived {
-                                request: request.clone().into(),
-                                receipt: match receipt {
-                                    vantare_ipc::launcher::answer::OrderReceipt::Accepted {
-                                        run,
-                                    } => ResidentOrderReceipt::Accepted { run: (*run).into() },
-                                    vantare_ipc::launcher::answer::OrderReceipt::Rejected {
-                                        reason,
-                                    } => ResidentOrderReceipt::Rejected {
-                                        reason: (*reason).into(),
-                                    },
-                                },
-                            }
-                        }
-
-                        native::EventKind::Started { run } => {
-                            ResidentEventKind::Started { run: (*run).into() }
-                        }
-                        native::EventKind::Received { request, receipt } => {
-                            ResidentEventKind::Received {
-                                request: request.clone().into(),
-                                receipt: match receipt {
-                                    checked_native::LaunchReceipt::Accepted { run } => {
-                                        ResidentReceipt::Accepted { run: (*run).into() }
-                                    }
-                                    checked_native::LaunchReceipt::Rejected { reason } => {
-                                        ResidentReceipt::Rejected {
-                                            reason: (*reason).into(),
-                                        }
-                                    }
-                                },
-                            }
-                        }
-                        native::EventKind::Finished { run, outcome } => {
-                            ResidentEventKind::Finished {
-                                run: (*run).into(),
-                                outcome: (*outcome).into(),
-                            }
-                        }
-                    },
+                    kind: event_kind(&event.kind),
                 })
                 .collect(),
         }

@@ -188,3 +188,16 @@
 .v-performance .v-frequency-table [data-current] {
   background: color-mix(in srgb, var(--accent-bright) 7.843137%, transparent);
 }
+
+/* GPUI settings/view.rs:1174 keeps current cadences when the table is omitted. */
+.v-performance-compact-summary {
+  display: none;
+  margin: 0;
+  color: var(--text-2);
+  font: 400 12px / 18px var(--font-sans);
+}
+@media (max-height: 819px) {
+  .v-performance-compact-summary {
+    display: block;
+  }
+}

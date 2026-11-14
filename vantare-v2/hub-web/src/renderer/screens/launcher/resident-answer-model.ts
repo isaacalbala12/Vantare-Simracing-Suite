@@ -5,7 +5,7 @@ import {
   type ResidentView,
   residentAnswerRejections,
   residentOrderReceiptTimeoutMs,
-} from "../../../contract/generated/launcher_resident";
+} from "../../../contract/generated/launcher_resident.ts";
 
 export type AnswerScope = Omit<ResidentAnswerTarget, "action">;
 export function answerScope(view?: ResidentView): AnswerScope | undefined {

@@ -15,6 +15,12 @@ pub struct Assets {
 }
 impl Assets {
     #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+    pub fn capture_ready(&self) -> bool {
+        self.images.values().all(|image| {
+            image.is_ready() && image.error().is_none() && image.pixels().size() != (0, 0)
+        })
+    }
+    #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
     pub fn ready_for_capture(waker: rune::Waker, theme: &Theme) -> Self {
         let (ready, decoded) = std::sync::mpsc::channel();
         let assets = Self::new(

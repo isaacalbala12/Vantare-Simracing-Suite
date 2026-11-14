@@ -89,6 +89,20 @@ pub fn arguments(args: impl IntoIterator<Item = String>) -> io::Result<Vec<Strin
                 return Err(io::ErrorKind::InvalidInput.into());
             }
         } else if cfg!(all(debug_assertions, target_os = "macos"))
+            && std::env::var("VANTARE_HUB_CUT2").as_deref() == Ok("1")
+            && flag == "--realtime"
+            && inline.is_none()
+        {
+            result.push(arg);
+        } else if cfg!(all(debug_assertions, target_os = "macos"))
+            && std::env::var("VANTARE_HUB_CUT2").as_deref() == Ok("1")
+            && ["--script", "--fps"].contains(&flag)
+        {
+            result.push(arg.clone());
+            if inline.is_none() {
+                result.push(args.next().ok_or(io::ErrorKind::InvalidInput)?);
+            }
+        } else if cfg!(all(debug_assertions, target_os = "macos"))
             && [
                 "--snap", "--frames", "--scene", "--size", "--scale", "--out", "--theme",
             ]

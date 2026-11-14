@@ -73,6 +73,8 @@ impl Drop for Host {
 }
 #[cfg(debug_assertions)]
 pub struct Scene {
+    #[cfg(all(debug_assertions, target_os = "macos"))]
+    measurement: Option<crate::measurement::Scene>,
     messages: VecDeque<HostToUi>,
     closing: bool,
     close_answered: bool,
@@ -127,6 +129,8 @@ impl Link {
                 }
                 Ok((
                     Self::Scene(Scene {
+                        #[cfg(all(debug_assertions, target_os = "macos"))]
+                        measurement: crate::measurement::Scene::load()?,
                         messages: VecDeque::new(),
                         closing: false,
                         close_answered: false,
@@ -287,6 +291,13 @@ impl Link {
 }
 #[cfg(debug_assertions)]
 fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
+    #[cfg(all(debug_assertions, target_os = "macos"))]
+    if let Some(snapshot) = &state.measurement {
+        if let Some(reply) = snapshot.reply(&message) {
+            state.messages.push_back(reply);
+        }
+        return Ok(());
+    }
     use vantare_hub_host::protocol::{self, Event, Reply, Request, Topic};
     let core = || state.core.clone();
     let messages = &mut state.messages;

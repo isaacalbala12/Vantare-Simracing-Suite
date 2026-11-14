@@ -14,6 +14,8 @@ mod launcher_orders;
 #[cfg(test)]
 mod launcher_tests;
 mod launcher_view;
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+mod measurement;
 #[cfg(windows)]
 mod pipe;
 mod roadmap;
@@ -44,6 +46,8 @@ struct State {
     commands_open: bool,
     command_query: rune::TextEdit,
     activity_open: bool,
+    #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+    measurement: Option<measurement::Probe>,
 }
 fn init() -> State {
     State {
@@ -67,6 +71,8 @@ fn init() -> State {
         commands_open: false,
         command_query: Default::default(),
         activity_open: false,
+        #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+        measurement: None,
     }
 }
 fn toggle(state: &mut State) {
@@ -178,6 +184,8 @@ fn set_core(state: &mut State, value: vantare_hub_host::protocol::CoreStatus) {
     }
 }
 fn view(state: &State, cx: &mut Cx<State>) -> El {
+    #[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+    measurement::observe(state);
     let theme = &state.theme;
     let mut brand = row().w_full().h(40.0).center_y().gap(12.0);
     if state.collapsed {
@@ -733,6 +741,8 @@ fn start() -> std::io::Result<()> {
         .keep_running()
         .on_close(request_close)
         .tab_visits_controls(true);
+    #[cfg(all(debug_assertions, target_os = "macos"))]
+    let app = measurement::attach(app, &mut state);
     let handle = app.handle();
     state.window = Some(handle.clone());
     app.init(move || state)

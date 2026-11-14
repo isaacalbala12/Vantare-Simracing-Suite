@@ -320,3 +320,10 @@ de otros SHA. Las lecturas de catálogo y editores de escena usan también el
 corpus nativo; no producen avisos de error falsos al entrar.
 Quedan por verificar host real, aspecto, teclado físico y corte 2. El Mac sigue
 offline: al volver se captura primero #2297, offscreen y sin activar ventanas.
+
+
+Medición preparada del corte 2: [CORTE-2.md](CORTE-2.md). Solo en debug macOS,
+VANTARE_HUB_CUT2=1 habilita --script/--fps/--realtime además de los flags de
+captura existentes; exige modo offscreen antes de iniciar Rune. El servidor
+solo prepara el plan y comprueba lógica sin ventana. No hay mediciones nuevas
+ni decisión del ADR. La comparativa pendiente de #2297 conserva prioridad.

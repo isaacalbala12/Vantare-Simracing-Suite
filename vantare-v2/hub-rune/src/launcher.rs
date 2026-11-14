@@ -121,9 +121,22 @@ fn reading(request: &Request) -> bool {
             | Request::LauncherAppPick { .. }
     )
 }
+pub fn resident_control(request: &Request) -> bool {
+    matches!(
+        request,
+        Request::LauncherResidentCancel { .. } | Request::LauncherResidentAnswer { .. }
+    )
+}
 impl Launcher {
     pub fn busy(&self) -> bool {
         self.pending.is_some() || self.queued.is_some() || self.uncertain
+    }
+    pub fn action_busy(&self, request: &Request) -> bool {
+        if resident_control(request) {
+            self.queued.is_some() || self.pending.as_ref().is_some_and(|p| !reading(&p.request))
+        } else {
+            self.busy()
+        }
     }
     pub fn execution_busy(&self) -> bool {
         self.orders.busy()
@@ -266,7 +279,7 @@ impl Launcher {
         *revision == v.revision
     }
     pub fn queue(&mut self, request: Request, core: &CoreStatus, home_busy: bool) {
-        if self.busy() {
+        if self.action_busy(&request) {
             return;
         }
         if self.allowed(&request, core, home_busy) {
@@ -429,7 +442,10 @@ impl Launcher {
         if matches!(result, Reply::LauncherAppPick { .. }) && self.picker_phase != 3 {
             return false;
         }
-        let request = self.pending.take().unwrap().request;
+        let Some(pending) = self.pending.take() else {
+            return false;
+        };
+        let request = pending.request;
         match result {
             Reply::LauncherGet { value }
             | Reply::LauncherScan { value }
@@ -531,7 +547,9 @@ impl Launcher {
         if self.pending.as_ref().is_none_or(|p| p.id != id) {
             return false;
         }
-        let p = self.pending.take().unwrap();
+        let Some(p) = self.pending.take() else {
+            return false;
+        };
         self.picker_phase = 0;
         if execution_request(&p.request) {
             self.orders.failed(error);

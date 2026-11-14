@@ -11,12 +11,12 @@ use vantare_hub_host::{
 };
 
 pub fn action(state: &State, key: &str, name: &str, request: Option<Request>) -> El {
-    let disabled = state.launcher.busy()
-        || request.as_ref().is_none_or(|r| {
-            !state
+    let disabled = request.as_ref().is_none_or(|r| {
+        state.launcher.action_busy(r)
+            || !state
                 .launcher
                 .allowed(r, &state.core, state.home.launching())
-        });
+    });
     button(&state.theme, key, name, move |s: &mut State| {
         if let Some(request) = &request {
             s.launcher
@@ -488,49 +488,128 @@ fn resident(state: &State) -> El {
             panel = panel.child(label(t, text("resident.trustUnavailable")).w_full().wrap());
         }
     }
-    if let Some(e) = &v.execution
-        && let ResidentResults::Known { value } = &e.results
-    {
-        let mut results = row().gap(8.0);
-        for step in &value.steps {
-            let key = match step.state {
-                ResidentStepState::NotSelected => "not-selected",
-                ResidentStepState::Pending => "pending",
-                ResidentStepState::Waiting => "waiting",
-                ResidentStepState::Launching => "launching",
-                ResidentStepState::Ready => "ready",
-                ResidentStepState::Failed => "failed",
-                ResidentStepState::Cancelled => "cancelled",
-                ResidentStepState::NotRun => "not-run",
+    let mut results = surface(t)
+        .key("launcher-results")
+        .role("region")
+        .label(text("results.title"))
+        .child(label(t, text("results.title")));
+    match v.execution.as_ref().map(|e| &e.results) {
+        Some(ResidentResults::Known { value }) => {
+            let profile = m
+                .value
+                .as_ref()
+                .filter(|d| d.revision == value.revision && !d.protected)
+                .and_then(|d| d.profiles.iter().find(|p| p.id == value.profile));
+            let mode = match value.mode {
+                vantare_hub_host::launcher_resident::ResidentRunMode::Profile => "results.profile",
+                vantare_hub_host::launcher_resident::ResidentRunMode::Rehearsal => {
+                    "results.rehearsal"
+                }
             };
-            let name = crate::catalog::catalog()["strings"][format!("results.states.{key}")]
-                .as_str()
-                .unwrap_or(text("launcher.noPriorState"));
-            results = results.child(caption(
-                t,
-                &format!("{} · {name}", u32::from(step.index) + 1),
-            ));
+            let outcome = match &value.outcome {
+                None => "results.running",
+                Some(vantare_hub_host::launcher_resident::ResidentOutcome::Completed) => {
+                    "results.completed"
+                }
+                Some(vantare_hub_host::launcher_resident::ResidentOutcome::Cancelled {
+                    ..
+                }) => "results.cancelled",
+                Some(vantare_hub_host::launcher_resident::ResidentOutcome::Failed { .. }) => {
+                    "results.failed"
+                }
+            };
+            results = results
+                .child(
+                    label(
+                        t,
+                        format!(
+                            "{} · {} · {}",
+                            value.run,
+                            profile.map_or(value.profile.as_str(), |p| p.name.as_str()),
+                            text(mode)
+                        ),
+                    )
+                    .w_full()
+                    .wrap(),
+                )
+                .child(label(t, text(outcome)).w_full().wrap());
+            if profile.is_none() {
+                results = results.child(
+                    label(t, text("results.stale"))
+                        .key("launcher-results-stale")
+                        .w_full()
+                        .wrap(),
+                );
+            }
+            for step in &value.steps {
+                let key = match step.state {
+                    ResidentStepState::NotSelected => "not-selected",
+                    ResidentStepState::Pending => "pending",
+                    ResidentStepState::Waiting => "waiting",
+                    ResidentStepState::Launching => "launching",
+                    ResidentStepState::Ready => "ready",
+                    ResidentStepState::Failed => "failed",
+                    ResidentStepState::Cancelled => "cancelled",
+                    ResidentStepState::NotRun => "not-run",
+                };
+                let name = text(&format!("results.states.{key}"));
+                results = results.child(caption(
+                    t,
+                    &format!("{} · {name}", u32::from(step.index) + 1),
+                ));
+            }
         }
-        panel = panel.child(results);
+        Some(ResidentResults::Unsupported) => {
+            results = results.child(
+                label(t, text("results.unsupported"))
+                    .key("launcher-results-unsupported")
+                    .w_full()
+                    .wrap(),
+            )
+        }
+        _ => {
+            results = results.child(
+                label(t, text("results.unknown"))
+                    .key("launcher-results-unknown")
+                    .w_full()
+                    .wrap(),
+            )
+        }
     }
-    if let Some(doc) = &m.value {
-        panel = panel.child(
-            row()
-                .gap(8.0)
-                .child(action(
-                    state,
-                    "launcher-retry-failed",
-                    text("control.retryFailed"),
-                    m.orders.retry(ResidentRetryScope::Failed, doc, &state.core),
-                ))
-                .child(action(
-                    state,
-                    "launcher-retry-all",
-                    text("control.retryAll"),
-                    m.orders.retry(ResidentRetryScope::All, doc, &state.core),
-                )),
-        );
+    for (scope, key, name, help) in [
+        (
+            ResidentRetryScope::Failed,
+            "launcher-retry-failed",
+            "control.retryFailed",
+            "results.failedSteps",
+        ),
+        (
+            ResidentRetryScope::All,
+            "launcher-retry-all",
+            "control.retryAll",
+            "results.sameSteps",
+        ),
+    ] {
+        let reason = m.value.as_ref().map_or(Some("control.unavailable"), |doc| {
+            m.orders.retry_reason(scope, doc, &state.core)
+        });
+        let request = m
+            .value
+            .as_ref()
+            .and_then(|doc| m.orders.retry(scope, doc, &state.core));
+        let explanation = reason
+            .or_else(|| (m.busy() || state.home.launching()).then_some("control.busy"))
+            .unwrap_or(help);
+        results = results
+            .child(action(state, key, text(name), request))
+            .child(
+                label(t, text(explanation))
+                    .key(format!("{key}-help"))
+                    .w_full()
+                    .wrap(),
+            );
     }
+    panel = panel.child(results);
     panel
 }
 fn profile_editor(state: &State) -> El {

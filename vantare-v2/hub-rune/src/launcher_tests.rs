@@ -589,3 +589,235 @@ fn launcher_scene_loads_document_resident_and_catalog_without_graphics_or_fake_w
     assert!(rt.state.launcher.orders.view.is_some());
     assert!(rt.state.launcher.problem.is_none());
 }
+
+#[test]
+fn checked_rejections_are_terminal_and_do_not_wait_for_another_receipt() {
+    for launch in [false, true] {
+        let (mut m, c) = fixture();
+        let intent = if launch {
+            m.orders
+                .launch("creator", m.value.as_ref().unwrap(), &c)
+                .unwrap()
+        } else {
+            rehearse(&m, &c)
+        };
+        m.orders.begin(intent, &c);
+        m.orders.queued("a".repeat(32), 0.0);
+        execution(&mut m).events = vec![event(
+            1,
+            if launch {
+                ResidentEventKind::Received {
+                    request: "a".repeat(32),
+                    receipt: ResidentReceipt::Rejected {
+                        reason: ResidentRejection::Busy,
+                    },
+                }
+            } else {
+                ResidentEventKind::OrderReceived {
+                    request: "a".repeat(32),
+                    receipt: ResidentOrderReceipt::Rejected {
+                        reason: ResidentOrderRejection::Denied,
+                    },
+                }
+            },
+        )];
+        m.orders.observe(1.0, &c, m.value.as_ref());
+        assert_eq!(m.orders.attempt.as_ref().unwrap().phase, Phase::Rejected);
+        assert!(!m.orders.busy());
+        assert_eq!(m.orders.due(), None);
+        m.orders.observe(10.0, &c, m.value.as_ref());
+        assert_eq!(m.orders.notice(), Some("control.rejected"));
+    }
+}
+fn known_results(m: &mut Launcher) {
+    let revision = m.value.as_ref().unwrap().revision.clone();
+    let outcome = ResidentOutcome::Completed;
+    execution(m).results = ResidentResults::Known {
+        value: Box::new(ResidentRunResults {
+            run: "9".into(),
+            profile: "creator".into(),
+            revision,
+            account_generation: "c".repeat(64),
+            mode: ResidentRunMode::Rehearsal,
+            outcome: Some(outcome.clone()),
+            retry_failed: false,
+            steps: vec![],
+        }),
+    };
+    execution(m).events = vec![event(
+        1,
+        ResidentEventKind::Finished {
+            run: "9".into(),
+            outcome,
+        },
+    )];
+}
+#[test]
+fn retry_explains_no_failed_unknown_unsupported_stale_and_missing_terminal() {
+    let (mut m, c) = fixture();
+    known_results(&mut m);
+    assert_eq!(
+        m.orders
+            .retry_reason(ResidentRetryScope::Failed, m.value.as_ref().unwrap(), &c),
+        Some("control.noFailed")
+    );
+    assert!(
+        m.orders
+            .retry(ResidentRetryScope::Failed, m.value.as_ref().unwrap(), &c)
+            .is_none()
+    );
+    assert!(
+        m.orders
+            .retry(ResidentRetryScope::All, m.value.as_ref().unwrap(), &c)
+            .is_some()
+    );
+    execution(&mut m).events.clear();
+    assert_eq!(
+        m.orders
+            .retry_reason(ResidentRetryScope::All, m.value.as_ref().unwrap(), &c),
+        Some("control.resultUnknown")
+    );
+    assert!(
+        m.orders
+            .retry(ResidentRetryScope::All, m.value.as_ref().unwrap(), &c)
+            .is_none()
+    );
+    m.value.as_mut().unwrap().revision = "d".repeat(64);
+    assert_eq!(
+        m.orders
+            .retry_reason(ResidentRetryScope::All, m.value.as_ref().unwrap(), &c),
+        Some("control.changed")
+    );
+    for (value, reason) in [
+        (ResidentResults::Unsupported, "control.unsupported"),
+        (ResidentResults::Unknown, "results.unavailable"),
+    ] {
+        execution(&mut m).results = value;
+        for scope in [ResidentRetryScope::Failed, ResidentRetryScope::All] {
+            assert_eq!(
+                m.orders.retry_reason(scope, m.value.as_ref().unwrap(), &c),
+                Some(reason)
+            );
+            assert!(
+                m.orders
+                    .retry(scope, m.value.as_ref().unwrap(), &c)
+                    .is_none()
+            );
+        }
+    }
+}
+#[test]
+fn execution_fail_maps_host_rejections_and_ambiguous_transport_without_replay() {
+    for (error, phase, problem) in [
+        (HostError::Busy, Phase::Rejected, "launcher.busy"),
+        (HostError::Denied, Phase::Rejected, "launcher.denied"),
+        (
+            HostError::Incompatible {
+                expected: 35,
+                found: 34,
+            },
+            Phase::Unknown,
+            "launcher.denied",
+        ),
+        (HostError::Io, Phase::Unknown, "control.unknown"),
+    ] {
+        let (mut m, c) = fixture();
+        let r = rehearse(&m, &c);
+        let id = post(&mut m, &c, r);
+        assert!(!m.fail(id + 1, &error));
+        assert!(m.fail(id, &error));
+        assert_eq!(m.orders.attempt.as_ref().unwrap().phase, phase);
+        assert_eq!(m.problem, Some(problem));
+        assert!(!m.fail(id, &error));
+        assert!(m.next(1.0, true, &c, false).iter().all(|m| !matches!(m, UiToHost::Request { request: r, .. } if crate::launcher::execution_request(r))));
+    }
+}
+#[test]
+fn answer_and_cancel_remain_available_during_read_and_uncertain_document_write() {
+    for uncertain in [false, true] {
+        for answer in [false, true] {
+            let (mut m, c) = fixture();
+            let id = if uncertain {
+                let r = Request::LauncherProfileFavorite {
+                    id: "creator".into(),
+                    favorite: false,
+                    base_revision: m.value.as_ref().unwrap().revision.clone(),
+                };
+                let id = post(&mut m, &c, r);
+                assert!(m.fail(id, &HostError::Io));
+                None
+            } else {
+                Some(post(&mut m, &c, Request::LauncherResidentGet {}))
+            };
+            let revision = m.value.as_ref().unwrap().revision.clone();
+            let e = execution(&mut m);
+            e.active = Some(Box::new(ResidentActiveRun {
+                run: "1".into(),
+                revision: revision.clone(),
+                account_generation: "c".repeat(64),
+            }));
+            e.question = Some(Box::new(ResidentScopedQuestion {
+                run: "1".into(),
+                revision,
+                account_generation: "c".repeat(64),
+                decision: "3".into(),
+            }));
+            let v = m.orders.view.as_mut().unwrap();
+            v.running = true;
+            v.decision = Some(ResidentQuestion {
+                id: "3".into(),
+                kind: ResidentQuestionKind::Closing,
+                actions: vec![ResidentChoice {
+                    id: ResidentAction::Cancel,
+                    label: "Cancelar".into(),
+                }],
+            });
+            let r = if answer {
+                m.orders.answer(ResidentAction::Cancel, &c)
+            } else {
+                m.orders.cancel(&c)
+            }
+            .unwrap();
+            assert!(m.busy());
+            assert!(!m.action_busy(&r));
+            assert!(m.allowed(&r, &c, true));
+            m.queue(r.clone(), &c, true);
+            // Reads stay serialized; controls follow their reply and are revalidated at dispatch.
+            if let Some(id) = id {
+                m.accept(
+                    id,
+                    Reply::LauncherResidentGet {
+                        value: m.orders.view.clone().unwrap(),
+                    },
+                    0.0,
+                );
+            }
+            assert_eq!(request(&m.next(1.0, true, &c, true)).1, r);
+        }
+    }
+}
+#[test]
+fn results_tree_keeps_unknown_unsupported_and_stale_explanations() {
+    for case in ["unknown", "unsupported", "stale"] {
+        let (mut m, c) = fixture();
+        match case {
+            "unsupported" => execution(&mut m).results = ResidentResults::Unsupported,
+            "stale" => {
+                known_results(&mut m);
+                m.value.as_mut().unwrap().revision = "d".repeat(64);
+            }
+            _ => {}
+        }
+        let mut s = crate::init();
+        s.section = "launcher".into();
+        s.launcher = m;
+        s.core = c;
+        let mut rt = rune::Runtime::new(s, crate::view, (1440.0, 900.0), rune::Env::new(true, 1.0));
+        rt.frame(0.0);
+        assert!(rt.find("launcher-results").is_some());
+        assert!(rt.find(&format!("launcher-results-{case}")).is_some());
+        for key in ["launcher-retry-failed-help", "launcher-retry-all-help"] {
+            assert!(rt.find(key).is_some());
+        }
+    }
+}

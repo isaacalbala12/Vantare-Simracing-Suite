@@ -162,6 +162,9 @@ impl Orders {
         doc: &LauncherView,
         core: &CoreStatus,
     ) -> Option<Request> {
+        if self.retry_reason(scope, doc, core).is_some() {
+            return None;
+        }
         let e = self.idle(doc, core)?;
         let ResidentResults::Known { value } = &e.results else {
             return None;
@@ -178,6 +181,52 @@ impl Orders {
                 scope,
             },
         })
+    }
+    pub fn retry_reason(
+        &self,
+        scope: ResidentRetryScope,
+        doc: &LauncherView,
+        core: &CoreStatus,
+    ) -> Option<&'static str> {
+        let Some(e) = self.execution(core) else {
+            return Some("control.unavailable");
+        };
+        let value = match &e.results {
+            ResidentResults::Unsupported => return Some("control.unsupported"),
+            ResidentResults::Unknown => return Some("results.unavailable"),
+            ResidentResults::Known { value } => value,
+        };
+        if self.busy()
+            || self.view.as_ref().is_some_and(|v| v.running)
+            || e.active.is_some()
+            || doc.running
+        {
+            return Some("control.busy");
+        }
+        if !core.access.verified || core.access.blocked || core.live {
+            return Some("control.denied");
+        }
+        if doc.scanning {
+            return Some("control.scanning");
+        }
+        if Some(&value.account_generation) != core.account_generation.as_ref() {
+            return Some("control.account");
+        }
+        if !doc.exists
+            || doc.protected
+            || doc.revision != value.revision
+            || !doc.profiles.iter().any(|p| p.id == value.profile)
+        {
+            return Some("control.changed");
+        }
+        let Some(outcome) = &value.outcome else {
+            return Some("control.busy");
+        };
+        if !e.events.iter().any(|event| matches!(&event.kind, ResidentEventKind::Finished { run, outcome: terminal } if *run == value.run && terminal == outcome)) { return Some("control.resultUnknown"); }
+        if scope == ResidentRetryScope::Failed && !value.retry_failed {
+            return Some("control.noFailed");
+        }
+        None
     }
     pub fn allowed(&self, request: &Request, doc: &LauncherView, core: &CoreStatus) -> bool {
         let expected = match request {
@@ -223,6 +272,8 @@ impl Orders {
             && a.phase == Phase::Sending
         {
             a.phase = match error {
+                // Busy/Denied are explicit host rejections before dispatch; ambiguous
+                // transport/version failures cannot prove that an order was not applied.
                 HostError::ResidentAnswerRejected { .. }
                 | HostError::ResidentControlRejected { .. }
                 | HostError::Denied

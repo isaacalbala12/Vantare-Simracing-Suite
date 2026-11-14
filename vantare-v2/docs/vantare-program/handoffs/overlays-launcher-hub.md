@@ -2575,3 +2575,29 @@ imports de rune-catalog.mjs. Corregido según Biome; Biome 2.6.6 local en los do
 archivos web tocados PASS y catálogo sin cambios PASS. Sin cambios Rust tras
 Clippy/92 tests, por lo que no se repite compilación local. CI del siguiente
 head pendiente; no era el fallo histórico de Eliminar perfil ni requería rebase.
+
+
+### VANTA-143 · revisión Launcher #2307 (2026-11-14)
+
+Revisión del orquestador aprobada; retoques pedidos en el mismo PR. Resultados
+muestran título, run/perfil, modo y final, avisos Unsupported/Unknown y perfil
+antiguo sin atribuirle nombres actuales. Cada reintento explica por qué no está
+disponible: capacidad ausente, falta de terminal conservado o de pasos fallidos,
+revisión/cuenta, permisos, detección o ejecución en curso. Mismos textos Electron.
+Cancelar y Responder se eximen de busy por lectura o guardado incierto, también
+en queue(); las lecturas siguen serializadas y el control se comprueba de nuevo
+al enviarlo. No se saltan cuenta, ejecución, decisión ni protección del residente.
+Se sustituyen los dos pending.take().unwrap() por let-else. Busy/Denied son
+rechazos explícitos anteriores al despacho; versión/E/S dudosas quedan Unknown,
+sin repetir órdenes, igual que el controlador Electron.
+
+Clippy y 97 tests Windows PASS (cinco regresiones nuevas sobre los 92), por la
+cola, dos jobs y sin ventana. Incluyen ambos recibos Rejected, retry_failed=false,
+Unsupported/Unknown/stale/terminal ausente, fail Busy/Denied/Incompatible/Io y
+Cancelar/Responder durante lectura o escritura incierta. Log inicial Clippy
+con préstamo innecesario conservado; corregido, gate final PASS. Logs externos:
+launcher-review-clippy-validated.log y launcher-review-tests-validated.log.
+No compilador propio en curso; ningún gráfico ejecutado. CI del nuevo head
+pendiente al publicar, sin heredar checks de otro SHA. Corte 2 en preparación;
+Mac pendiente y #2297 conserva la primera captura offscreen al recuperarlo.
+Plane lo actualiza el orquestador; sin merge, promoción ni release del worker.

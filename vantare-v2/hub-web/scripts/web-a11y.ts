@@ -1,4 +1,3 @@
-import {checkResidentRemoval} from "./check-resident-removal.ts";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -20,6 +19,7 @@ import {
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
 import { checkResidentAnswer } from "./check-resident-answer.ts";
 import { checkResidentControls } from "./check-resident-control.ts";
+import { checkResidentRemoval } from "./check-resident-removal.ts";
 import { checkResidentResults } from "./check-resident-results.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";

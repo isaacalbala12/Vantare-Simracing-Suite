@@ -5,6 +5,7 @@ import {
   observeRemoval,
   queueRemoval,
   type RemovalAttempt,
+  removalFinishedWaitMs,
 } from "../src/renderer/screens/launcher/resident-removal-model";
 
 function setup() {
@@ -184,4 +185,33 @@ it("never turns terminal success or rejection into Unknown on disconnect", () =>
     expect(
       observeRemoval({ ...f.attempt, phase }, undefined, 10000).phase,
     ).toEqual(phase);
+});
+
+it("Accepted expires to Unknown even while the same resident stays online, and ignores a late Finished", () => {
+  const f = setup();
+  f.events.push({
+    seq: "1",
+    kind: {
+      kind: "removal-received",
+      request: f.request,
+      receipt: { kind: "accepted" },
+    },
+  });
+  const accepted = observeRemoval(f.attempt, f.view, 10);
+  expect(
+    observeRemoval(accepted, f.view, 10 + removalFinishedWaitMs - 1).phase.kind,
+  ).toBe("accepted");
+  const expired = observeRemoval(accepted, f.view, 10 + removalFinishedWaitMs);
+  expect(expired.phase.kind).toBe("unknown");
+  f.events.push({
+    seq: "2",
+    kind: {
+      kind: "removal-finished",
+      request: f.request,
+      outcome: { kind: "removed", revision: "e".repeat(64) },
+    },
+  });
+  expect(
+    observeRemoval(expired, f.view, 11 + removalFinishedWaitMs).phase.kind,
+  ).toBe("unknown");
 });

@@ -25,7 +25,7 @@ export const removalText = {
     "revision-mismatch":
       "El perfil ha cambiado. Cierra este diálogo y revisa la versión actual.",
     "document-unavailable":
-      "El documento de perfiles está protegido o no se ha podido leer.",
+      "El perfil o su documento no están disponibles para comprobar el borrado.",
     "ownership-unknown":
       "Propiedad desconocida. No se puede comprobar si quedan aplicaciones propias abiertas.",
     "owned-live":

@@ -19,3 +19,8 @@ for (const state of [
     prepare: (page) => prepareResidentRemoval(page, state),
   };
 }
+
+residentRemovalScenes["launcher-removal-accepted-expired"] = {
+  mock: "launcher-removal-accepted",
+  prepare: (page) => prepareResidentRemoval(page, "accepted-expired"),
+};

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useCallback,
   useEffect,
@@ -22,7 +22,7 @@ import {
   type RemovalReason,
   sameRemoval,
 } from "./resident-removal-model";
-import { useLauncherSnapshot } from "./state";
+import { launcherKey, useLauncherSnapshot } from "./state";
 
 const clock: AnswerClock = {
   now: () => performance.now(),
@@ -36,6 +36,7 @@ export function useResidentRemoval(
   time: AnswerClock = clock,
 ) {
   const { client, issue } = useHost();
+  const query = useQueryClient();
   const launch = useLauncherRequest();
   const { view: document } = useLauncherSnapshot();
   const { data: core = offline } = useQuery({
@@ -90,7 +91,8 @@ export function useResidentRemoval(
     );
   }, [resident, issue, core.services, core.accountGeneration, time, publish]);
   useEffect(() => {
-    if (attempt?.phase.kind !== "queued") return;
+    if (attempt?.phase.kind !== "queued" && attempt?.phase.kind !== "accepted")
+      return;
     return time.schedule(
       () => {
         const previous = latest.current;
@@ -120,15 +122,15 @@ export function useResidentRemoval(
     if (own?.kind !== "known") return "ownership-unknown";
     if (!target) return "ownership-unknown";
     if (
-      target.accountGeneration !== live.core.accountGeneration ||
-      own.accountGeneration !== target.accountGeneration
-    )
-      return "account-changed";
-    if (
       target.instance !== live.resident.execution.instance ||
       own.instance !== target.instance
     )
       return "wrong-instance";
+    if (
+      target.accountGeneration !== live.core.accountGeneration ||
+      own.accountGeneration !== target.accountGeneration
+    )
+      return "account-changed";
     if (
       !live.core.access.verified ||
       live.core.access.blocked ||
@@ -149,7 +151,7 @@ export function useResidentRemoval(
       !profile ||
       !live.document.profiles.some((item) => item.id === target.profile)
     )
-      return "ownership-unknown";
+      return "document-unavailable";
     if (profile.ownedLive) return "owned-live";
     if (
       posting.current ||
@@ -210,24 +212,28 @@ export function useResidentRemoval(
     } catch (error) {
       if (token !== epoch.current) return;
       const detail = error instanceof HostFailure ? error.detail : undefined;
+      if (detail?.kind === "launcherConflict")
+        query.setQueryData(launcherKey, detail.current);
       publish({
         ...next,
         phase:
-          detail?.kind === "residentRemovalRejected"
-            ? { kind: "rejected", reason: detail.reason }
-            : detail &&
-                ["busy", "denied", "unsupported", "rejected"].includes(
-                  detail.kind,
-                )
-              ? {
-                  kind: "rejected",
-                  reason: detail.kind as
-                    | "busy"
-                    | "denied"
-                    | "unsupported"
-                    | "rejected",
-                }
-              : { kind: "unknown" },
+          detail?.kind === "launcherConflict"
+            ? { kind: "rejected", reason: "write-conflict" }
+            : detail?.kind === "residentRemovalRejected"
+              ? { kind: "rejected", reason: detail.reason }
+              : detail &&
+                  ["busy", "denied", "unsupported", "rejected"].includes(
+                    detail.kind,
+                  )
+                ? {
+                    kind: "rejected",
+                    reason: detail.kind as
+                      | "busy"
+                      | "denied"
+                      | "unsupported"
+                      | "rejected",
+                  }
+                : { kind: "unknown" },
       });
     } finally {
       if (token === epoch.current) posting.current = false;

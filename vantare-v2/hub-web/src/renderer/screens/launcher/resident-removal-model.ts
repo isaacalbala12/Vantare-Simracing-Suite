@@ -5,6 +5,8 @@ import type {
 } from "../../../contract/generated/contract";
 import { residentOrderReceiptTimeoutMs } from "../../../contract/generated/launcher_resident";
 import { answerCursor } from "./resident-answer-model";
+// UI watchdog after acceptance: expiration is uncertainty, never cancellation or failure.
+export const removalFinishedWaitMs = 30_000;
 export type RemovalReason =
   | ResidentRemovalRejection
   | "unsupported"
@@ -16,7 +18,7 @@ export type RemovalAttempt = {
   phase:
     | { kind: "sending" }
     | { kind: "queued"; request: string; until: number }
-    | { kind: "accepted"; request: string }
+    | { kind: "accepted"; request: string; until: number }
     | { kind: "rejected"; reason: RemovalReason }
     | { kind: "unknown" }
     | { kind: "removed"; revision: string };
@@ -50,7 +52,7 @@ export function observeRemoval(
 ): RemovalAttempt {
   if (attempt.phase.kind !== "queued" && attempt.phase.kind !== "accepted")
     return attempt;
-  if (attempt.phase.kind === "queued" && now >= attempt.phase.until)
+  if (now >= attempt.phase.until)
     return { ...attempt, phase: { kind: "unknown" } };
   const unknown = (): RemovalAttempt => ({
     ...attempt,
@@ -86,7 +88,11 @@ export function observeRemoval(
         };
       next = {
         ...next,
-        phase: { kind: "accepted", request: next.phase.request },
+        phase: {
+          kind: "accepted",
+          request: next.phase.request,
+          until: now + removalFinishedWaitMs,
+        },
       };
     } else if (
       next.phase.kind === "accepted" &&
@@ -102,7 +108,5 @@ export function observeRemoval(
       };
     }
   }
-  if (next.phase.kind === "queued" && now >= next.phase.until)
-    return { ...next, phase: { kind: "unknown" } };
   return next;
 }

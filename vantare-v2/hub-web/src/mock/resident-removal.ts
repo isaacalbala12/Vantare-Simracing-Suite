@@ -72,10 +72,11 @@ export function createResidentRemovalMock(
   };
   function invalid(
     target: ResidentRemoveTarget,
-  ): ResidentRemovalRejection | undefined {
-    if (!view.online || context.core.services !== "connected")
-      return "authority-unavailable";
+  ): ResidentRemovalRejection | "protected" | undefined {
+    // Same observable priority as ownership.rs::remove_with_clock.
+    if (!view.online) return "authority-unavailable";
     if (target.instance !== view.execution?.instance) return "wrong-instance";
+    if (context.core.services !== "connected") return "authority-unavailable";
     if (target.accountGeneration !== context.core.accountGeneration)
       return "account-changed";
     if (
@@ -84,27 +85,24 @@ export function createResidentRemovalMock(
       context.core.live
     )
       return "denied";
+    if (queued || view.running || doc?.running) return "busy";
+    if (view.ownership.kind !== "known") return "ownership-unknown";
+    if (target.revision !== view.ownership.revision) return "revision-mismatch";
+    const profile = view.ownership.profiles.find(
+      (item) => item.profile === target.profile,
+    );
+    if (!profile) return "document-unavailable";
+    if (profile.ownedLive) return "owned-live";
     if (
-      !doc ||
+      !doc?.exists ||
       doc.protected ||
       view.protected ||
-      !context.removeLauncherProfile ||
-      !doc.profiles.some((profile) => profile.id === target.profile)
+      !context.removeLauncherProfile
     )
+      return "protected";
+    if (target.revision !== doc.revision) return "write-conflict";
+    if (!doc.profiles.some((profile) => profile.id === target.profile))
       return "document-unavailable";
-    if (target.revision !== doc.revision) return "revision-mismatch";
-    if (queued || view.running || doc.running) return "busy";
-    if (
-      view.ownership.kind !== "known" ||
-      !view.ownership.profiles.some((p) => p.profile === target.profile)
-    )
-      return "ownership-unknown";
-    if (
-      view.ownership.profiles.some(
-        (p) => p.profile === target.profile && p.ownedLive,
-      )
-    )
-      return "owned-live";
   }
   return (message) => {
     if (
@@ -120,7 +118,6 @@ export function createResidentRemovalMock(
       message.request.method !== "launcher.profile.removeChecked"
     )
       return undefined;
-    ownership();
     if (view.ownership.kind === "unsupported")
       return {
         kind: "failure",
@@ -134,6 +131,14 @@ export function createResidentRemovalMock(
       error: { kind: "residentRemovalRejected", reason },
     });
     const reason = invalid(target);
+    if (reason === "protected")
+      return { kind: "failure", id: message.id, error: { kind: "protected" } };
+    if (reason === "write-conflict")
+      return {
+        kind: "failure",
+        id: message.id,
+        error: { kind: "launcherConflict", current: structuredClone(doc) },
+      };
     if (reason) return reject(reason);
     if (removing) return reject("busy");
     const execution = view.execution;
@@ -177,10 +182,11 @@ export function createResidentRemovalMock(
           event: { topic: "launcher", value: structuredClone(doc) },
         });
       }
-      const failure = conflict
+      const error = conflict
         ? "write-conflict"
         : (invalid(target) ??
           (scene === "launcher-removal-rejected" ? "owned-live" : undefined));
+      const failure = error === "protected" ? "document-unavailable" : error;
       execution.events.push({
         seq: seq(),
         kind: {
@@ -196,9 +202,10 @@ export function createResidentRemovalMock(
       removing = true;
       if (scene === "launcher-removal-accepted") return;
       schedule(() => {
-        const failure =
+        const error =
           invalid(target) ??
           (scene === "launcher-removal-failed" ? "io" : undefined);
+        const failure = error === "protected" ? "document-unavailable" : error;
         if (!failure) context.removeLauncherProfile?.(target.profile);
         removing = false;
         execution.events.push({

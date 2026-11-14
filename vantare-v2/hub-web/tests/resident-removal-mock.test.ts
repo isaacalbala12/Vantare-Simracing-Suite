@@ -1,10 +1,16 @@
 import { afterEach, expect, it, vi } from "vitest";
+import coreFixture from "../fixtures/core-offline.json";
+import launcherFixture from "../fixtures/launcher-base.json";
 import type {
+  CoreStatus,
   HostToUi,
+  LauncherView,
   ResidentRemoveTarget,
+  ResidentView,
 } from "../src/contract/generated/contract";
 import { isHostMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
+import { createResidentRemovalMock } from "../src/mock/resident-removal";
 
 function setup(scene = "launcher-removal-finished") {
   vi.useFakeTimers();
@@ -189,4 +195,107 @@ it("keeps the accepted removal busy until its terminal rather than enqueueing a 
     error: { kind: "residentRemovalRejected", reason: "busy" },
   });
   expect(f.events).toHaveLength(1);
+});
+
+it.each([
+  "instance",
+  "account",
+  "denied",
+  "running",
+  "unknown",
+  "revision",
+  "missing",
+  "owned",
+  "protected",
+  "file-conflict",
+] as const)("matches host rejection precedence for %s", (kind) => {
+  const core = structuredClone(coreFixture) as CoreStatus;
+  const doc = structuredClone(launcherFixture) as LauncherView;
+  const view: ResidentView = {
+    online: true,
+    protected: false,
+    running: false,
+    error: false,
+    execution: null,
+    decision: null,
+    registrations: [],
+    ownership: { kind: "unknown" },
+  };
+  const handle = createResidentRemovalMock(
+    {
+      sceneName: "launcher-removal-finished",
+      core,
+      launcherData: doc,
+      removeLauncherProfile: vi.fn(),
+      visual: null,
+      notes: [],
+      note: vi.fn(),
+    },
+    view,
+    vi.fn(),
+  );
+  if (view.ownership.kind !== "known") throw new Error("known");
+  const ownership = view.ownership;
+  const target: ResidentRemoveTarget = {
+    instance: view.ownership.instance,
+    accountGeneration: view.ownership.accountGeneration,
+    profile: doc.profiles[0].id,
+    revision: view.ownership.revision,
+  };
+  let reason: string = kind;
+  if (kind === "instance") {
+    target.instance = "e".repeat(64);
+    target.accountGeneration = "e".repeat(64);
+    reason = "wrong-instance";
+  }
+  if (kind === "account") {
+    target.accountGeneration = "e".repeat(64);
+    core.access.blocked = true;
+    reason = "account-changed";
+  }
+  if (kind === "denied") {
+    core.access.blocked = true;
+    view.running = true;
+  }
+  if (kind === "running") {
+    view.running = true;
+    target.revision = "e".repeat(64);
+    reason = "busy";
+  }
+  if (kind === "unknown") {
+    view.ownership = { kind: "unknown" };
+    target.revision = "e".repeat(64);
+    reason = "ownership-unknown";
+  }
+  if (kind === "revision") {
+    target.revision = "e".repeat(64);
+    ownership.profiles = [];
+    reason = "revision-mismatch";
+  }
+  if (kind === "missing") {
+    ownership.profiles = [];
+    doc.protected = true;
+    reason = "document-unavailable";
+  }
+  if (kind === "owned") {
+    ownership.profiles[0].ownedLive = true;
+    doc.protected = true;
+    reason = "owned-live";
+  }
+  if (kind === "protected") doc.protected = true;
+  if (kind === "file-conflict") doc.revision = "e".repeat(64);
+  const result = handle({
+    kind: "request",
+    id: 1,
+    request: { method: "launcher.profile.removeChecked", target },
+  });
+  expect(result).toMatchObject({
+    kind: "failure",
+    error:
+      kind === "protected"
+        ? { kind: "protected" }
+        : kind === "file-conflict"
+          ? { kind: "launcherConflict", current: doc }
+          : { kind: "residentRemovalRejected", reason },
+  });
 });

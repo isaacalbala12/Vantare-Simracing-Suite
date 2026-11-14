@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -13,6 +14,7 @@ import { coreKey } from "../src/renderer/app/Host";
 import { HostFailure } from "../src/renderer/bridge/client";
 import type { AnswerClock } from "../src/renderer/screens/launcher/resident-answer";
 import { useResidentRemoval } from "../src/renderer/screens/launcher/resident-removal";
+import { removalFinishedWaitMs } from "../src/renderer/screens/launcher/resident-removal-model";
 import { launcherKey } from "../src/renderer/screens/launcher/state";
 
 const host = vi.hoisted(() => ({
@@ -314,4 +316,56 @@ it("correlates receipts arriving before the Queued reply without optimistic dele
     await sent;
   });
   expect(h.result.current.attempt?.phase.kind).toBe("removed");
+});
+
+it("schedules a bounded wait after Accepted and releases the dialog to Unknown without reissuing", async () => {
+  const h = setup();
+  host.client.request.mockResolvedValue({
+    method: "launcher.profile.removeChecked",
+    value: { kind: "queued", request: "d".repeat(32) },
+  });
+  await act(async () => {
+    await h.result.current.remove(h.target);
+  });
+  const resident = structuredClone(h.resident);
+  if (!resident.execution) throw new Error("execution");
+  resident.execution.events.push({
+    seq: "1",
+    kind: {
+      kind: "removal-received",
+      request: "d".repeat(32),
+      receipt: { kind: "accepted" },
+    },
+  });
+  h.rerender({ value: resident });
+  act(() => h.advance(removalFinishedWaitMs - 1));
+  expect(h.result.current.attempt?.phase.kind).toBe("accepted");
+  act(() => h.advance(1));
+  expect(h.result.current.attempt?.phase.kind).toBe("unknown");
+  expect(host.client.request).toHaveBeenCalledTimes(1);
+});
+it("maps LauncherConflict to a rejected write-conflict and refreshes the cached document", async () => {
+  const h = setup();
+  const current = { ...h.document, revision: "e".repeat(64) };
+  host.client.request.mockRejectedValue(
+    new HostFailure({ kind: "launcherConflict", current }),
+  );
+  await act(async () => {
+    await h.result.current.remove(h.target);
+  });
+  expect(h.result.current.attempt?.phase).toEqual({
+    kind: "rejected",
+    reason: "write-conflict",
+  });
+  expect(h.cache.getQueryData(launcherKey)).toEqual(current);
+});
+it("checks instance before account in the UI guard", () => {
+  const h = setup();
+  expect(
+    h.result.current.reason({
+      ...h.target,
+      instance: "e".repeat(64),
+      accountGeneration: "e".repeat(64),
+    }),
+  ).toBe("wrong-instance");
 });

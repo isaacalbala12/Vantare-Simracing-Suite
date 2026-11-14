@@ -56,6 +56,7 @@ export function Launcher({
   const action = useProfileAction();
   const launchRequest = useLauncherRequest();
   const heading = useRef<HTMLHeadingElement>(null);
+  const reconciledUnknown = useRef<typeof removal.attempt>(undefined);
   const [removedProfile, setRemovedProfile] = useState<string>();
   const [removing, setRemoving] = useState<{
     profile: LauncherProfile;
@@ -212,6 +213,16 @@ export function Launcher({
         break;
     }
   }
+  useEffect(() => {
+    const attempt = removal.attempt;
+    if (
+      attempt?.phase.kind === "unknown" &&
+      reconciledUnknown.current !== attempt
+    ) {
+      reconciledUnknown.current = attempt;
+      void reload();
+    }
+  }, [removal.attempt, reload]);
   useEffect(() => {
     if (removing && removal.attempt?.phase.kind === "removed") {
       setRemovedProfile(removing.profile.id);

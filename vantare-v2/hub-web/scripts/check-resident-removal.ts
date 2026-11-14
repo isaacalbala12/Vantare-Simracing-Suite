@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "playwright-core";
 import { residentOrderReceiptTimeoutMs } from "../src/contract/generated/launcher_resident.ts";
 import { removalText as text } from "../src/renderer/i18n/launcher-removal.ts";
+import { removalFinishedWaitMs } from "../src/renderer/screens/launcher/resident-removal-model.ts";
 import { openProfileRemovalWithKeyboard } from "./check-dialog-safety.ts";
 import {
   assertControlCaption,
@@ -11,7 +12,8 @@ import {
 import { until } from "./wait-for.ts";
 export async function prepareResidentRemoval(page: Page, state: string) {
   await observeResidentControls(page);
-  if (state === "timeout") await page.clock.install();
+  if (state === "timeout" || state === "accepted-expired")
+    await page.clock.install();
   await page.getByRole("button", { name: "Launcher", exact: true }).click();
   await page
     .getByRole("heading", { name: "Creador de Contenido", exact: true })
@@ -70,11 +72,30 @@ export async function prepareResidentRemoval(page: Page, state: string) {
               : state === "failed"
                 ? text.reasons.io
                 : text.unknown;
+        if (state === "accepted-expired") {
+          await dialog.getByText(text.accepted, { exact: true }).waitFor();
+          await page.clock.runFor(removalFinishedWaitMs);
+        }
         if (state === "timeout") {
           await dialog.getByText(text.queued, { exact: true }).waitFor();
           await page.clock.runFor(residentOrderReceiptTimeoutMs);
         }
         await dialog.getByText(message, { exact: true }).waitFor();
+        if (state === "accepted-expired") {
+          await page.keyboard.press("Escape");
+          await dialog.waitFor({ state: "hidden" });
+          await until(
+            () =>
+              page
+                .locator(".v-launcher-profile")
+                .first()
+                .evaluate((node) => node === document.activeElement),
+            5000,
+            "expired removal releases the dialog and returns focus",
+          );
+          await openProfileRemovalWithKeyboard(page);
+          await dialog.getByText(text.unknown, { exact: true }).waitFor();
+        }
         assert.equal(
           await page
             .locator('.v-launcher-profile[aria-label="Creador de Contenido"]')
@@ -136,9 +157,12 @@ export async function checkResidentRemoval(page: Page, base: string) {
     "finished",
     "gap",
     "restart",
+    "accepted-expired",
     "timeout",
   ]) {
-    await page.goto(`${base}?escena=launcher-removal-${state}`);
+    await page.goto(
+      `${base}?escena=launcher-removal-${state === "accepted-expired" ? "accepted" : state}`,
+    );
     await prepareResidentRemoval(page, state);
   }
 }

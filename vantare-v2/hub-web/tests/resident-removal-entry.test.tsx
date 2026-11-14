@@ -227,3 +227,24 @@ it("requires reconfirmation with a fresh revision after a conflict, never blind 
     target: { revision: `${"0".repeat(63)}1` },
   });
 });
+
+it("reconciles profiles after an Unknown without hiding it or retrying deletion", async () => {
+  const requests = vi.spyOn(Client.prototype, "request");
+  const { dialog, confirm } = await confirmRemoval("launcher-removal-gap");
+  const before = requests.mock.calls.filter(
+    ([r]) => r.method === "launcher.get",
+  ).length;
+  fireEvent.click(confirm);
+  await within(dialog).findByText(removalText.unknown);
+  await waitFor(() =>
+    expect(
+      requests.mock.calls.filter(([r]) => r.method === "launcher.get").length,
+    ).toBeGreaterThan(before),
+  );
+  expect(screen.getByRole("dialog", { name: "Eliminar perfil" })).toBeTruthy();
+  expect(
+    requests.mock.calls.filter(
+      ([r]) => r.method === "launcher.profile.removeChecked",
+    ),
+  ).toHaveLength(1);
+});

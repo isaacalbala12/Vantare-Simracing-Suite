@@ -7,6 +7,7 @@ import { checkAccessGate } from "./check-access-gate.ts";
 import { checkAccessStates } from "./check-access-states.ts";
 import { checkAccount } from "./check-account.ts";
 import { checkAccountDensity } from "./check-account-density.ts";
+import { checkAppearanceDensity } from "./check-appearance-density";
 import { checkCalendarDensity } from "./check-calendar-density";
 import { checkCalendarDialogSafety } from "./check-calendar-dialog-safety.ts";
 import { checkCommandPalette } from "./check-command-palette.ts";
@@ -174,6 +175,7 @@ try {
     server.resolvedUrls?.local[0] ?? "",
     evidence,
   );
+  await checkAppearanceDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? "");

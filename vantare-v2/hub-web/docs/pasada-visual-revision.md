@@ -64,3 +64,11 @@ Inicio #2299 termina en `f2b4acd1e095baa72f953487d022e3168b2cef8c`, CI verde. La
 Apariencia #2301 (`3fee14dd99f3a441c8d9c732640b207c72d66899`) tiene ocho pares y CI verde: media 1280 10,18 → 4,47 %. Rendimiento #2303 (`371baa413db93452b44d514764e8f87ee5a866cd`) tiene ocho pares y CI verde: 2,79 → 2,15 %. Ninguna condición empeora; todos sus recibos finales son cierres normales. El primer cierre forzado de Rendimiento 1280 claro se archiva con su repetición satisfactoria.
 
 Antes de regenerar la tabla global se conserva la matriz anterior como metricas-previas-parches.json para que los informes antes/después no dependan de un fichero mutable. H-V01 y REF-ST01 permanecen como límites explícitos. La reserva para L56 y los huecos posteriores ya están acreditados; no hay cambios de contrato ni de comportamiento en estos PR.
+
+## Matriz regenerada y siguiente defecto · 14/11
+
+La tabla contiene otra vez 352 comparaciones, 44 escenas y cero errores; los 104 recibos de Studio están verificados. Se cruzaron 88 condiciones de los PR de Calendario, Inicio, Apariencia y Rendimiento con sus informes individuales: coinciden porcentaje y SHA-256 de la captura. Las cifras mantienen todas las advertencias de cierre QA.
+
+El muestreo de las diferencias mayores sin una limitación de referencia detectó ST-V02 en Studio: el escenario exige un mínimo de 230 px y la columna separa 16 px; ESPEC-A exige 170 y 14. La tipografía heredada y los botones también difieren de la maqueta. Se conserva el resultado antes y se prepara un PR propio, solo de presentación. La tabla no declara terminada la inspección humana de todos los estados.
+
+Se recomprobó H-V01 en origin/nightly f482bebec2dbe6648a6ab597e5f6c1f4c6c9814e: las cuatro entradas de corpus siguen ready:false y falta el recibo de Workshop. No se atribuye ese bloqueo a la pausa de capturas ya levantada. REF-ST01 sigue ligado al hash original de la maqueta; en Error oscuro se observa además una variable err-tint usada pero no definida en el HTML, que no se imita eliminando el aviso del producto.

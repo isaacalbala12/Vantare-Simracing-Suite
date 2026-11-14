@@ -78,3 +78,16 @@ export function CheckedRemovalDialog({
     </Dialog.Root>
   );
 }
+
+export function RemovalFeedback({
+  control,
+}: {
+  control: ResidentRemovalController;
+}) {
+  const removed = control.attempt?.phase.kind === "removed";
+  return (
+    <p role="status" className={removed ? undefined : "v-sr-only"}>
+      {removed ? text.removed : ""}
+    </p>
+  );
+}

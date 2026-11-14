@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "playwright-core";
 import { residentOrderReceiptTimeoutMs } from "../src/contract/generated/launcher_resident.ts";
 import { removalText as text } from "../src/renderer/i18n/launcher-removal.ts";
@@ -83,6 +84,16 @@ export async function prepareResidentRemoval(page: Page, state: string) {
         await confirm.click(); // aria-disabled + handler block a second request, without losing focus.
       }
     }
+  }
+  if (state !== "finished") {
+    const audit = await new AxeBuilder({ page })
+      .include('[data-window-dialog="screen"]')
+      .analyze();
+    assert.deepEqual(
+      audit.violations,
+      [],
+      "checked-removal dialog accessibility",
+    );
   }
   const requests = await page.evaluate(
     () =>

@@ -271,3 +271,47 @@ it("keeps a terminal rejection after a transport issue", async () => {
     reason: "owned-live",
   });
 });
+
+it("correlates receipts arriving before the Queued reply without optimistic deletion", async () => {
+  const h = setup();
+  let resolve!: (value: unknown) => void;
+  host.client.request.mockReturnValue(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  let sent!: Promise<void>;
+  act(() => {
+    sent = h.result.current.remove(h.target);
+  });
+  const resident = structuredClone(h.resident);
+  if (!resident.execution) throw new Error("execution");
+  resident.execution.events.push(
+    {
+      seq: "1",
+      kind: {
+        kind: "removal-received",
+        request: "d".repeat(32),
+        receipt: { kind: "accepted" },
+      },
+    },
+    {
+      seq: "2",
+      kind: {
+        kind: "removal-finished",
+        request: "d".repeat(32),
+        outcome: { kind: "removed", revision: "e".repeat(64) },
+      },
+    },
+  );
+  h.rerender({ value: resident });
+  expect(h.result.current.attempt?.phase.kind).toBe("sending");
+  await act(async () => {
+    resolve({
+      method: "launcher.profile.removeChecked",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await sent;
+  });
+  expect(h.result.current.attempt?.phase.kind).toBe("removed");
+});

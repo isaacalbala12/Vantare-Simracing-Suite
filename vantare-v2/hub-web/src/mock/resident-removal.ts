@@ -83,7 +83,14 @@ export function createResidentRemovalMock(
       context.core.live
     )
       return "denied";
-    if (!doc || doc.protected || view.protected) return "document-unavailable";
+    if (
+      !doc ||
+      doc.protected ||
+      view.protected ||
+      !context.removeLauncherProfile ||
+      !doc.profiles.some((profile) => profile.id === target.profile)
+    )
+      return "document-unavailable";
     if (target.revision !== doc.revision) return "revision-mismatch";
     if (queued || view.running || doc.running) return "busy";
     if (
@@ -157,9 +164,21 @@ export function createResidentRemovalMock(
         publish();
         return;
       }
-      const failure =
-        invalid(target) ??
-        (scene === "launcher-removal-rejected" ? "owned-live" : undefined);
+      const conflict = scene === "launcher-removal-conflict" && serial === 1;
+      if (conflict) {
+        doc.revision = (BigInt(`0x${doc.revision}`) + 1n)
+          .toString(16)
+          .padStart(64, "0");
+        ownership();
+        context.emit?.({
+          kind: "event",
+          event: { topic: "launcher", value: structuredClone(doc) },
+        });
+      }
+      const failure = conflict
+        ? "write-conflict"
+        : (invalid(target) ??
+          (scene === "launcher-removal-rejected" ? "owned-live" : undefined));
       execution.events.push({
         seq: seq(),
         kind: {

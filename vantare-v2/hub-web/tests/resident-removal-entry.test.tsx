@@ -199,3 +199,31 @@ it.each(["gap", "restart"])(
     ).toBeTruthy();
   },
 );
+
+it("requires reconfirmation with a fresh revision after a conflict, never blind retry", async () => {
+  const requests = vi.spyOn(Client.prototype, "request");
+  const { dialog, confirm } = await confirmRemoval("launcher-removal-conflict");
+  fireEvent.click(confirm);
+  await within(dialog).findByText(removalText.reasons["write-conflict"]);
+  expect(
+    within(dialog).queryByRole("button", { name: "Reintentar" }),
+  ).toBeNull();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Cerrar" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  fireEvent.contextMenu(
+    screen.getByRole("button", { name: "Creador de Contenido" }),
+  );
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Eliminar" }));
+  const fresh = await screen.findByRole("dialog", { name: "Eliminar perfil" });
+  fireEvent.click(within(fresh).getByRole("button", { name: "Eliminar" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull(), {
+    timeout: 3000,
+  });
+  const sent = requests.mock.calls.filter(
+    ([r]) => r.method === "launcher.profile.removeChecked",
+  );
+  expect(sent).toHaveLength(2);
+  expect(sent[1][0]).toMatchObject({
+    target: { revision: `${"0".repeat(63)}1` },
+  });
+});

@@ -31,6 +31,7 @@ import {
 import { Client } from "../src/renderer/bridge/client";
 import { launcherText } from "../src/renderer/i18n/launcher";
 import { actionText } from "../src/renderer/i18n/launcher-actions";
+import { removalText } from "../src/renderer/i18n/launcher-removal";
 import { residentText } from "../src/renderer/i18n/launcher-resident";
 import { profileText as text } from "../src/renderer/i18n/profile-editor";
 import LauncherEntry from "../src/renderer/screens/launcher/entry";
@@ -435,7 +436,7 @@ describe("profile editor", () => {
     expect(within(creator).getByText(launcherText.favorite)).toBeTruthy();
   });
   it("confirms profile deletion and cancellation has no effect", async () => {
-    mount();
+    mount("launcher-removal-finished");
     const creator = await screen.findByRole("button", {
       name: "Creador de Contenido",
     });
@@ -447,9 +448,7 @@ describe("profile editor", () => {
       name: actionText.removeTitle,
     });
     expect(
-      within(dialog).getByText(
-        actionText.removeMessage("Creador de Contenido"),
-      ),
+      within(dialog).getByText(removalText.message("Creador de Contenido")),
     ).toBeTruthy();
     fireEvent.click(
       within(dialog).getByRole("button", { name: actionText.cancel }),
@@ -466,12 +465,14 @@ describe("profile editor", () => {
     fireEvent.click(
       within(dialog).getByRole("button", { name: actionText.remove }),
     );
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("button", {
-          name: "Creador de Contenido",
-        }),
-      ).toBeNull(),
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByRole("button", {
+            name: "Creador de Contenido",
+          }),
+        ).toBeNull(),
+      { timeout: 3000 },
     );
   });
   it("keeps an action after conflict and only saves on explicit retry", async () => {

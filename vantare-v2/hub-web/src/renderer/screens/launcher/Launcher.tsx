@@ -8,10 +8,12 @@ import { useHost } from "../../app/Host";
 import { useLauncherRequest } from "../../app/LauncherRequest";
 import { HostFailure } from "../../bridge/client";
 import { launcherText as text } from "../../i18n/launcher";
-import { removalText } from "../../i18n/launcher-removal";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
-import { CheckedRemovalDialog } from "../../ui/launcher/CheckedRemovalDialog";
+import {
+  CheckedRemovalDialog,
+  RemovalFeedback,
+} from "../../ui/launcher/CheckedRemovalDialog";
 import {
   ProfileActionFeedback,
   type ProfileCardAction,
@@ -253,14 +255,7 @@ export function Launcher({
           onDiscard={action.discard}
         />
       )}
-      <p
-        role="status"
-        className={
-          removal.attempt?.phase.kind === "removed" ? undefined : "v-sr-only"
-        }
-      >
-        {removal.attempt?.phase.kind === "removed" ? removalText.removed : ""}
-      </p>
+      <RemovalFeedback control={removal} />
       <LauncherProfiles
         headingRef={heading}
         view={view}

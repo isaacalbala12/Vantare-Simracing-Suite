@@ -90,6 +90,14 @@
   align-items: center;
   gap: 6px;
 }
+.v-step-save[data-failed="true"] {
+  color: var(--err);
+}
+.v-step-save > svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
 .v-studio-steps-header > .v-button {
   flex: none;
 }

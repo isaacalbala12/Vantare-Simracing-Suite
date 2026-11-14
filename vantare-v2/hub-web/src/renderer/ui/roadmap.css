@@ -217,3 +217,20 @@
 .v-roadmap-hero > p {
   line-height: 1.618;
 }
+
+/* GPUI roadmap.rs uses Adapt::gap and neo_page_header (density B). */
+@media (max-height: 819px) {
+  .v-roadmap,
+  .v-roadmap-board,
+  .v-roadmap-lanes {
+    gap: 10px;
+  }
+  .v-roadmap-header h1 {
+    font-size: 24px;
+    line-height: 28px;
+    margin-bottom: 0;
+  }
+  .v-roadmap-header p {
+    display: none;
+  }
+}

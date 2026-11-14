@@ -156,7 +156,16 @@
       "result": {
         "method": "testing.refresh",
         "value": {
-          "questionnaires": [],
+          "questionnaires": [
+            {
+              "id": "15350000-0000-0000-0000-000000000001",
+              "note": "Comentario anterior",
+              "question": "¿Cómo fue?",
+              "score": 4,
+              "title": "Cuestionario",
+              "version": "QA"
+            }
+          ],
           "reports": []
         }
       }
@@ -308,7 +317,27 @@
       "request": {
         "id": "15350000-0000-0000-0000-000000000001",
         "method": "testing.answer",
+        "note": "",
         "score": 3
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "15350000-0000-0000-0000-000000000001",
+        "method": "testing.answer",
+        "note": "Comentario nuevo",
+        "score": 4
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "15350000-0000-0000-0000-000000000001",
+        "method": "testing.answer",
+        "score": 4
       }
     },
     {

@@ -1,6 +1,8 @@
 //! Closed presentation contract for Testing Center. Services owns persistence.
 #[path = "testing_legacy.rs"]
 pub(crate) mod legacy;
+#[path = "testing_notes.rs"]
+pub(crate) mod notes;
 use crate::protocol::{AccessView, HostError};
 use serde::{Deserialize, Serialize};
 #[cfg(any(test, feature = "bindings"))]
@@ -12,6 +14,7 @@ pub const AUTOSAVE_MS: u32 = 2_000;
 pub const BUSY_RETRY_MS: u32 = 100;
 pub const BUSY_RETRY_ATTEMPTS: u8 = 2;
 pub const UUID_LENGTH: usize = 36;
+pub const ANSWER_NOTE_MAX_CHARS: usize = 1_000;
 pub const UUID_GROUPS: [usize; 5] = [8, 4, 4, 4, 12];
 pub const PREVIEW_ID_LENGTH: usize = 64;
 pub const UPDATED_AT_MAX_BYTES: usize = 128;
@@ -125,6 +128,9 @@ pub struct TestingQuestionnaire {
     pub title: String,
     pub question: String,
     pub score: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
+    pub note: Option<String>,
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -157,6 +163,7 @@ pub fn participation(data: &testing_document::Participation) -> TestingView {
                 title: q.title.clone(),
                 question: q.question.clone(),
                 score: q.score,
+                note: Some(q.note.clone()),
             })
             .collect(),
     }
@@ -353,6 +360,25 @@ pub fn intent(
     request: &crate::protocol::Request,
     access: &AccessView,
 ) -> Result<(Operation, core::Command), HostError> {
+    intent_with_note(request, access, None)
+}
+fn answer_note(note: Option<&str>, previous: Option<&str>) -> Result<String, HostError> {
+    let note = note.or(previous).ok_or(HostError::Rejected)?;
+    if note.chars().count() > ANSWER_NOTE_MAX_CHARS || note.contains('\0') {
+        return Err(HostError::Rejected);
+    }
+    Ok(note.into())
+}
+pub(crate) fn optional_note<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    String::deserialize(deserializer).map(Some)
+}
+pub(crate) fn intent_with_note(
+    request: &crate::protocol::Request,
+    access: &AccessView,
+    previous_note: Option<&str>,
+) -> Result<(Operation, core::Command), HostError> {
     use crate::protocol::Request;
     use core::Command;
     if !allowed(access) {
@@ -375,14 +401,16 @@ pub fn intent(
     }
     let intent = match request {
         Request::TestingRefresh {} => (Operation::Refresh, Command::TestingRefresh),
-        Request::TestingAnswer { id, score } if testing_id(id) && (1..=5).contains(score) => (
-            Operation::Answer,
-            Command::TestingAnswer {
-                id: id.clone(),
-                score: *score,
-                note: String::new(),
-            },
-        ),
+        Request::TestingAnswer { id, score, note } if testing_id(id) && (1..=5).contains(score) => {
+            (
+                Operation::Answer,
+                Command::TestingAnswer {
+                    id: id.clone(),
+                    score: *score,
+                    note: answer_note(note.as_deref(), previous_note)?,
+                },
+            )
+        }
         Request::TestingContribute { id, consent: true } if testing_id(id) => (
             Operation::Contribute,
             Command::TestingContribute {
@@ -526,6 +554,7 @@ mod tests {
                 Request::TestingAnswer {
                     id: id.clone(),
                     score: 3,
+                    note: Some(String::new()),
                 },
                 Request::TestingCredit {
                     id: id.clone(),
@@ -588,6 +617,7 @@ mod tests {
             Request::TestingAnswer {
                 id: ID.into(),
                 score: 3,
+                note: Some(String::new()),
             },
             Request::TestingCredit {
                 id: ID.into(),
@@ -708,6 +738,72 @@ mod tests {
         assert!(draft_save(&access, &fields).is_err());
     }
     #[test]
+    fn answer_note_distinguishes_edit_delete_and_legacy_preservation() {
+        for (note, expected) in [(Some("Nueva"), "Nueva"), (Some(""), ""), (None, "Anterior")] {
+            let request = crate::protocol::Request::TestingAnswer {
+                id: ID.into(),
+                score: 4,
+                note: note.map(str::to_owned),
+            };
+            let (_, command) = intent_with_note(&request, &access(true), Some("Anterior"))
+                .expect("authorized answer");
+            assert!(
+                matches!(command, core::Command::TestingAnswer { note, .. } if note == expected)
+            );
+            if note.is_none() {
+                assert!(matches!(
+                    intent(&request, &access(true)),
+                    Err(HostError::Rejected)
+                ));
+            }
+        }
+        for note in ["a".repeat(1_001), "invalid\0note".into()] {
+            let request = crate::protocol::Request::TestingAnswer {
+                id: ID.into(),
+                score: 4,
+                note: Some(note),
+            };
+            assert!(matches!(
+                intent(&request, &access(true)),
+                Err(HostError::Rejected)
+            ));
+        }
+        let legacy = serde_json::json!({"method":"testing.answer","id":ID,"score":4});
+        let decoded: crate::protocol::Request =
+            serde_json::from_value(legacy.clone()).expect("legacy");
+        assert!(matches!(
+            decoded,
+            crate::protocol::Request::TestingAnswer { note: None, .. }
+        ));
+        let mut invalid = legacy;
+        invalid["note"] = serde_json::Value::Null;
+        assert!(serde_json::from_value::<crate::protocol::Request>(invalid).is_err());
+    }
+    #[test]
+    fn questionnaire_projection_preserves_previous_note_and_accepts_legacy_absence() {
+        for note in ["", "Comentario anterior\ncon acentos: ñ"] {
+            let data = testing_document::Participation {
+                questionnaires: vec![testing_document::Questionnaire {
+                    id: ID.into(),
+                    version: "QA".into(),
+                    title: "Cuestionario".into(),
+                    question: "¿Cómo fue?".into(),
+                    score: Some(4),
+                    note: note.into(),
+                }],
+                ..Default::default()
+            };
+            let projected = participation(&data);
+            assert_eq!(projected.questionnaires[0].score, Some(4));
+            assert_eq!(projected.questionnaires[0].note.as_deref(), Some(note));
+            let mut bytes = serde_json::to_value(&projected.questionnaires[0]).expect("serialize");
+            assert_eq!(bytes["note"], note);
+            bytes.as_object_mut().expect("object").remove("note");
+            let legacy: TestingQuestionnaire = serde_json::from_value(bytes).expect("legacy");
+            assert_eq!(legacy.note, None);
+        }
+    }
+    #[test]
     fn projections_do_not_expose_private_body_or_idempotency_key() {
         let data: testing_document::Participation = serde_json::from_value(serde_json::json!({"questionnaires":[],"contributions":[{"id":"qa","title":"Title","body":"private body","state":"received"}]})).unwrap();
         let view = serde_json::to_string(&participation(&data)).unwrap();
@@ -747,6 +843,7 @@ mod tests {
             Request::TestingAnswer {
                 id: "qa".into(),
                 score: 6,
+                note: Some(String::new()),
             },
         ] {
             assert!(intent(&request, &access).is_err());

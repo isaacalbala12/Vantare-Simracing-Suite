@@ -8,7 +8,17 @@ use ts_rs::TS;
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
     #[serde(rename = "testing.answer")]
-    TestingAnswer { id: String, score: u8 },
+    TestingAnswer {
+        id: String,
+        score: u8,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "crate::testing::optional_note"
+        )]
+        #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
+        note: Option<String>,
+    },
     #[serde(rename = "testing.contribute")]
     TestingContribute { id: String, consent: bool },
     #[serde(rename = "testing.credit")]

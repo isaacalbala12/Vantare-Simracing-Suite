@@ -48,3 +48,11 @@ La reserva de L56 se respetó: la primera captura posterior empezó a las 14:24:
 A las 01:37 del 14/11 se comprobó que ese PID ya no existía y no quedaban Electron ni Hub; se retiró el candado huérfano y quedó anotado en progreso.log. Los resultados interrumpidos se conservan en revisiones/home-v11-interrupcion-20261113. Se repite una vez la captura de los casos con limpieza forzada; no se altera su recibo ni se declara un cierre normal sin comprobarlo.
 
 Los PR #2299 (Inicio), #2301 (Apariencia) y #2303 (Rendimiento) tienen CI verde, pero aún no se presentan como visualmente terminados. Falta completar y revisar sus pares finales. La tabla global sigue siendo una instantánea, no una afirmación de que se haya reconstruido y capturado todo el nightly actual.
+
+## Inicio completado y candidato V12 · 14/11
+
+#2299 (`801cd9d8e`) tiene sus 32 pares completos y CI verde. A 1280×800, las medias son: normal 9,84 → 5,74 %, vacío 8,66 → 5,08 %, carga 4,40 → 2,61 % y error 11,64 → 7,13 %; ninguna condición empeora. RESULTADOS.md conserva diez filas con advertencia de cierre, correspondientes a cinco procesos del banco QA histórico; no son cierres normales del producto. Los recibos originales y la repetición se conservan. H-V01 y el desplazamiento menor de Plantillas en Error siguen señalados.
+
+Apariencia #2301 (`3fee14dd9`) pasó además la comprobación local de Chromium en ocho combinaciones, incluida la conservación de ayudas de Atajos. Rendimiento #2303 (`371baa413`) tiene CI verde, con pruebas del resumen generado, ausencia/protección del documento y tabla/resumen en Chromium.
+
+El candidato V12 usa el origen limpio `6e455658ab0d21a446ac5dce7045dad8407fc5c1`, ASAR SHA-256 `166ecf12a48f1951fa996797462ae6fe46a71ec841aa24c9bc5b2e725c9a0fd8`. Añade únicamente los parches visuales aislados de esas dos pestañas a V11. No se presenta como un paquete íntegro del nightly actual. Tras el empaquetado se cedieron tres minutos sin cerrojo; entró el turno de D para Rust y las capturas propias esperan su liberación.

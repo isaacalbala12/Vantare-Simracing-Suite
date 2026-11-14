@@ -16,3 +16,15 @@ export const settingsSearchTerms: Readonly<Record<string, string>> = {
   diagnostics:
     "telemetry core overlay datos registros fuentes eventos errores informe",
 };
+
+// Page::subtitle también forma parte del índice aunque la ayuda visible evolucione.
+export const settingsSearchSubtitles: Readonly<Record<string, string>> = {
+  account: "Tu perfil de piloto",
+  general: "Interfaz y sistema",
+  appearance: "Colores, contraste y fuentes",
+  performance: "Nivel y frecuencia de tus widgets",
+  shortcuts: "Combinaciones globales",
+  updates: "Versión, canal y novedades",
+  privacy: "Fallos y uso opcional",
+  diagnostics: "Fuentes, datos y registros",
+};

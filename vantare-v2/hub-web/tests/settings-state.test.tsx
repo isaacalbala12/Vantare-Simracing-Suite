@@ -1442,6 +1442,14 @@ describe("pilot editor over the simulated host", () => {
     ["rehacer", "shortcuts"],
     ["posthog", "privacy"],
     ["telemetry", "diagnostics"],
+    ["Tu perfil de piloto", "account"],
+    ["Interfaz y sistema", "general"],
+    ["Colores, contraste y fuentes", "appearance"],
+    ["Nivel y frecuencia de tus widgets", "performance"],
+    ["Combinaciones globales", "shortcuts"],
+    ["Versión, canal y novedades", "updates"],
+    ["Fallos y uso opcional", "privacy"],
+    ["Fuentes, datos y registros", "diagnostics"],
   ] as const)("finds the GPUI synonym %s in %s", async (query, tab) => {
     mount(
       "cuenta-base",

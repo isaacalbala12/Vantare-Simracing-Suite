@@ -209,6 +209,8 @@ struct ActiveScope {
     account: vantare_ipc::account_session::AccountGeneration,
 }
 struct Owner {
+    #[cfg(test)]
+    status_writes: std::cell::Cell<usize>,
     run_record: Option<results::RunRecord>,
     path: PathBuf,
     startup: bool,
@@ -229,6 +231,8 @@ struct Owner {
 impl Owner {
     fn new(path: PathBuf, startup: bool) -> Self {
         Self {
+            #[cfg(test)]
+            status_writes: std::cell::Cell::new(0),
             run_record: None,
             path,
             startup,
@@ -309,10 +313,21 @@ impl Owner {
     }
 
     fn install_document(&mut self, bytes: Vec<u8>, document: Document) {
+        self.cache_document(bytes, document);
+        self.reconcile_document();
+        self.publish();
+    }
+    // No I/O: checked removal must update the owner before releasing its lease.
+    fn cache_document(&mut self, bytes: Vec<u8>, document: Document) {
+        self.bytes = Some(bytes);
+        self.document = document;
+        self.status.error = None;
+    }
+    fn reconcile_document(&mut self) {
         self.clear_hotkeys();
         self.status.error = None;
         self.status.profiles.clear();
-        for (index, profile) in document.profiles.iter().enumerate() {
+        for (index, profile) in self.document.profiles.iter().enumerate() {
             let mut registration = Registration {
                 profile: profile.id.clone(),
                 hotkey: profile.hotkey.clone(),
@@ -348,11 +363,8 @@ impl Owner {
             }
             self.status.profiles.push(registration);
         }
-        self.sync_startup(&document);
-        self.bytes = Some(bytes);
-        self.document = document;
+        self.sync_startup();
         self.remember_close_policy();
-        self.publish();
     }
 
     fn remember_close_policy(&self) {
@@ -369,8 +381,9 @@ impl Owner {
         }
     }
 
-    fn sync_startup(&mut self, document: &Document) {
-        let startup_profile = document
+    fn sync_startup(&mut self) {
+        let startup_profile = self
+            .document
             .profiles
             .iter()
             .find(|p| p.launch_on_windows_startup);
@@ -617,6 +630,8 @@ impl Owner {
     }
 
     fn write_status(&self) {
+        #[cfg(test)]
+        self.status_writes.set(self.status_writes.get() + 1);
         let path = status_path(&self.path);
         let result = vantare_ipc::launcher::status_bytes(&self.status)
             .map_err(|error| error.to_string())

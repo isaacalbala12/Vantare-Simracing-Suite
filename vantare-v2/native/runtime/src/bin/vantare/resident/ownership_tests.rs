@@ -29,7 +29,6 @@ fn enable(owner: &mut Owner) {
 #[test]
 fn durable_removal_reconciles_cache_before_releasing_chain_lease_and_is_consumed_once() {
     let mut f = fixture();
-    enable(&mut f.owner);
     f.owner.document.lmu_trigger_profile = Some("qa".into());
     f.owner.document.profiles[0].launch_on_windows_startup = true;
     let document = f.owner.document.clone();
@@ -40,6 +39,7 @@ fn durable_removal_reconciles_cache_before_releasing_chain_lease_and_is_consumed
     let command = request(&f.owner);
     let path = f.owner.path.clone();
     let registry = Arc::clone(&f.owner.processes);
+    let before_writes = f.owner.status_writes.get();
     f.owner.remove_profile_with(
         command.clone(),
         || Ok(Some(observed())),
@@ -52,6 +52,15 @@ fn durable_removal_reconciles_cache_before_releasing_chain_lease_and_is_consumed
             files::save_with_limit(path, next, Some(observed), files::MAX_DOCUMENT)
         },
     );
+    assert_eq!(
+        f.owner.status_writes.get(),
+        before_writes + 1,
+        "one publication after releasing both locks"
+    );
+    assert!(
+        matches!(&f.owner.status.extension.as_ref().unwrap().ownership, Some(Ownership::Known { profiles, .. }) if profiles.is_empty())
+    );
+
     assert!(f.owner.document.profiles.is_empty());
     assert!(f.owner.document.lmu_trigger_profile.is_none());
     assert_eq!(f.owner.document.apps, apps);
@@ -130,7 +139,6 @@ fn failed_cas_never_commits_cache_and_finishes_with_a_typed_failure() {
 fn instance_account_revision_and_registry_contention_are_fail_closed() {
     for case in 0..5 {
         let mut f = fixture();
-        enable(&mut f.owner);
         let mut command = request(&f.owner);
         let registry = Arc::clone(&f.owner.processes);
         let held = (case == 4).then(|| registry.lock().unwrap());
@@ -283,7 +291,6 @@ fn unreconciled_handles_never_look_empty_or_allow_another_profile_to_be_deleted(
 #[test]
 fn finished_chains_can_own_live_handles_but_external_processes_are_never_claimed() {
     let mut f = fixture();
-    enable(&mut f.owner);
     let mut external = child();
     f.owner.publish();
     assert!(
@@ -297,6 +304,14 @@ fn finished_chains_can_own_live_handles_but_external_processes_are_never_claimed
         "fixture",
         &std::env::current_exe().unwrap(),
         owned.0.take().unwrap(),
+    );
+    assert!(
+        f.owner.processes.lock().unwrap().has_profile("qa").unwrap(),
+        "the registered child is alive"
+    );
+    assert!(
+        external.0.as_mut().unwrap().try_wait().unwrap().is_none(),
+        "the unregistered child is alive too"
     );
     assert!(f.owner.chain.is_none());
     let command = request(&f.owner);
@@ -395,7 +410,6 @@ fn a_concurrent_editor_conflicts_and_a_concurrent_start_cannot_pass_the_same_lea
 fn authority_policy_chain_lease_and_poisoned_registry_never_allow_writes() {
     for case in 0..5 {
         let mut f = fixture();
-        enable(&mut f.owner);
         let command = request(&f.owner);
         let lease =
             (case == 2).then(|| vantare_launcher::chain::acquire_lease(&f.owner.path).unwrap());

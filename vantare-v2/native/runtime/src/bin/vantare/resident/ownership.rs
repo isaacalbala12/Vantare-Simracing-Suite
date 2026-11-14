@@ -1,5 +1,6 @@
 //! Checked removal owns the chain lease and process registry until durable CAS
-//! and cache/trigger reconciliation. Observation alone never grants deletion.
+//! and cache update. Side effects run after releasing both locks.
+//! Observation alone never grants deletion.
 use super::{Document, EventKind, Owner, files};
 use std::{path::Path, sync::Arc};
 use vantare_ipc::{
@@ -94,6 +95,22 @@ impl Owner {
         if self.chain.is_some() {
             return Err(Rejection::Busy);
         }
+        let observed = files::read(&self.path, files::MAX_DOCUMENT)
+            .map_err(|_| Rejection::DocumentUnavailable)?;
+        if vantare_services::content_hash(&observed) != request.revision {
+            return Err(Rejection::RevisionMismatch);
+        }
+        let mut document =
+            Document::from_bytes(&observed).map_err(|_| Rejection::DocumentUnavailable)?;
+        let profiles: Vec<_> = document
+            .profiles
+            .iter()
+            .map(|profile| profile.id.clone())
+            .collect();
+        document
+            .remove_profile(&request.profile)
+            .map_err(|_| Rejection::DocumentUnavailable)?;
+        let next = serde_json::to_vec_pretty(&document).map_err(|_| Rejection::Io)?;
         super::control::authorize(
             &request.account,
             observe,
@@ -116,18 +133,6 @@ impl Owner {
         let mut registry = processes
             .try_lock()
             .map_err(|_| Rejection::OwnershipUnknown)?;
-        let observed = files::read(&self.path, files::MAX_DOCUMENT)
-            .map_err(|_| Rejection::DocumentUnavailable)?;
-        if vantare_services::content_hash(&observed) != request.revision {
-            return Err(Rejection::RevisionMismatch);
-        }
-        let mut document =
-            Document::from_bytes(&observed).map_err(|_| Rejection::DocumentUnavailable)?;
-        let profiles: Vec<_> = document
-            .profiles
-            .iter()
-            .map(|profile| profile.id.clone())
-            .collect();
         let live = registry
             .live_profiles(&profiles)
             .map_err(|_| Rejection::OwnershipUnknown)?;
@@ -138,10 +143,6 @@ impl Owner {
         if live[index] {
             return Err(Rejection::OwnedLive);
         }
-        document
-            .remove_profile(&request.profile)
-            .map_err(|_| Rejection::DocumentUnavailable)?;
-        let next = serde_json::to_vec_pretty(&document).map_err(|_| Rejection::Io)?;
         Ok(Prepared {
             lease,
             registry,
@@ -195,7 +196,7 @@ impl Owner {
         let outcome = match persist(&self.path, &next, &observed) {
             Ok(()) => {
                 let revision = vantare_services::content_hash(&next);
-                self.install_document(next, document);
+                self.cache_document(next, document);
                 RemovalOutcome::Removed { revision }
             }
             Err(error) => RemovalOutcome::Failed {
@@ -206,12 +207,16 @@ impl Owner {
                 },
             },
         };
+        let removed = matches!(&outcome, RemovalOutcome::Removed { .. });
         self.record_removal(EventKind::RemovalFinished {
             request: request.request,
             outcome,
         });
         drop(registry);
         drop(lease);
+        if removed {
+            self.reconcile_document();
+        }
         self.publish();
     }
 }

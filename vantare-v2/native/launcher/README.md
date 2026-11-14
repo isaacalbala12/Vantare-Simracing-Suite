@@ -156,12 +156,16 @@ RemoveProfileChecked usa el mismo lease de cadena que start_checked. Sin cadena,
 revalida la cuenta y los permisos de edición, lee una única instantánea y exige
 su SHA-256. Mantiene el bloqueo del registro tras reap y rechaza hijos propios
 vivos, aunque la cadena haya terminado. Conserva ambos bloqueos hasta el CAS
-atómico y la actualización de caché, registros y disparadores. No cierra procesos.
+atómico y la actualización de la caché del Owner. La lectura/validación del
+documento y la consulta de cuenta ocurren antes de adquirirlos. Tras soltarlos
+se sincronizan atajos e inicio de Windows y se publica el estado una sola vez.
+No cierra procesos.
 
 RemovalReceived Accepted confirma la aceptación, no el borrado. El terminal
 RemovalFinished Removed contiene la nueva revisión solo después del CAS;
-Failed y los rechazos tienen motivos tipados. No hay RunId artificial, ACK ni
-persistencia de recibos: hueco, reinicio o ausencia de recibo = Unknown.
+Failed y los rechazos tienen motivos tipados. No hay RunId artificial ni ACK;
+el archivo de estado se sobrescribe, sin recuperar recibos después de reiniciar.
+Hueco, reinicio o ausencia de recibo = Unknown.
 La garantía cubre este residente y el contrato nuevo, sin coordinación cruzada
 con GPUI ni escritores antiguos que no usen este lease.
 

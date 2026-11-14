@@ -385,7 +385,9 @@ launcher.profile.removeChecked recibe target
 {instance,accountGeneration,profile,revision}; responde Queued{request}. No recibe
 PID, ruta, comandos, argumentos, decisiones ni documentos. El residente vuelve
 a consultar la autoridad al consumir, comparte el lease de arranque y mantiene
-el bloqueo de handles hasta CAS y reconciliación. El anfitrión hace una primera
+el bloqueo de handles hasta CAS y actualización de caché. Atajos, inicio de
+Windows y la publicación única del estado se ejecutan después de liberar ambos
+bloqueos. El anfitrión hace una primera
 lectura para rechazo temprano; no borra tras recibir una foto ni relee por segunda
 vez para fingir la garantía final. launcher.profile.delete legacy queda Unsupported.
 
@@ -400,3 +402,8 @@ la extensión nueva conservando Status legacy; no reciben la garantía de borrad
 comprobado. No se modifica GPUI ni se promete coordinación con escritores antiguos.
 
 Known también exige que la revisión del documento observado coincida con la del residente. Un documento protegido o un registro de handles no reconciliado produce Unknown.
+
+La entrega del núcleo no se fusiona de forma aislada: debe acompañarla la UI L56
+de D, que cambia Launcher.tsx a removeChecked y retira el éxito ficticio de
+profile-actions.ts. El orden autorizado es núcleo primero y UI inmediatamente
+después; hasta entonces el PR del núcleo permanece en revisión.

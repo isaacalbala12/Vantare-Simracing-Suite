@@ -130,6 +130,10 @@ Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
 vantareapp/isa-1995-resident-ownership, sobre nightly b2489dedd tras integrar #2298.
 Código y tests escritos antes de solicitar la cola. Draft [#2304](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2304) contra nightly; HEAD final en #1995.
 
+**No fusionar aisladamente.** Isaac fusionará primero #2304 y a continuación
+la UI L56 de D. D debe migrar Launcher.tsx desde launcher.profile.delete a
+removeChecked y retirar el éxito falso del mock profile-actions.ts.
+
 El contrato nuevo impide borrar un perfil si este residente conserva una
 aplicación propia viva, aunque la secuencia haya terminado. No descubre ni
 mata procesos externos. Un handle que ya no corresponde a ningún perfil del
@@ -154,7 +158,9 @@ sin reenvío. Un rechazo también ocupa un hueco. Solo Removed confirma el CAS.
 
 El residente consulta otra vez a la autoridad (750 ms), comparte el lease de
 start_checked y conserva el bloqueo de handles hasta CAS y actualización de
-caché, registros y disparadores. La foto no autoriza un borrado en el anfitrión.
+la caché. Lectura/validación y cuenta van antes de adquirirlos; atajos,
+sync_startup y una única publicación van después de soltarlos. La foto no
+autoriza un borrado en el anfitrión.
 No añade hilos ni RPC al bucle de publicación ni cambia supervisor/rights.
 
 Validación local: contrato v36 exportado desde Rust, ambos typechecks y 91

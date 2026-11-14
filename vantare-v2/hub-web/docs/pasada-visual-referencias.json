@@ -1,0 +1,13 @@
+[
+  {
+    "id": "REF-ST01",
+    "sourceSha256": "fa9acc97776ef3e65662a0bea8c0eaae51891bb263dfc8376f408682694571c4",
+    "screen": "Studio",
+    "sidebar": "expanded",
+    "sizes": ["1440x900", "1280x800"],
+    "severity": "P2 de referencia",
+    "reason": "La maqueta consulta main y aplica grid-template-columns a ese mismo contenedor; la tira permanece en 248 px aunque ESPEC-A §11 exige 72 px. Las reglas de los descendientes sí se activan. El producto usa un hijo de su contenedor y cumple la especificación.",
+    "evidence": "D:/VantareServer/evidence/hub-web/pasada-visual/comparaciones/1280x800/light/studio-estado-delta/expanded/comparison-reference-left.png",
+    "source": "D:/VantareServer/evidence/hub-web/studio-rediseno/variante-a.html:183,230-232"
+  }
+]

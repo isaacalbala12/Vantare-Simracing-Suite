@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { PNG } from "pngjs";
 import { compareImages } from "./visual-diff/image.ts";
 import { referenceReceiptHash } from "./visual-diff/reference-hash.ts";
 import { validateReferenceState } from "./visual-diff/reference-state.ts";
+import { verifyPrototypeReceipt } from "./visual-pass-prototype.ts";
 
 const root = process.argv[2];
 if (!root)
@@ -20,15 +22,36 @@ const defects: Record<string, string[]> = JSON.parse(
 );
 const link = (label: string, path: string) =>
   `[${label}](${path.replaceAll("\\", "/")})`;
+const prototypeBytes = await readFile(
+  join(root, "../studio-rediseno/variante-a.html"),
+).catch(() => undefined);
+const prototypeHash = prototypeBytes
+  ? createHash("sha256").update(prototypeBytes).digest("hex")
+  : undefined;
+const referenceLimitations: {
+  id: string;
+  sourceSha256: string;
+  screen: string;
+  sidebar: string;
+  sizes: string[];
+  reason: string;
+}[] = JSON.parse(
+  await readFile(join(root, "referencias-defectuosas.json"), "utf8").catch(() =>
+    readFile(
+      new URL("../docs/pasada-visual-referencias.json", import.meta.url),
+      "utf8",
+    ),
+  ),
+);
 const records = [];
 const lines = [
-  "# Pasada visual completa · VANTA-138",
+  "# Pasada visual · VANTA-138",
   "",
-  "Producto: nightly e689cba4f, candidato QA aislado. 100 %, paleta Vantare, fuentes locales. Sin cuentas ni servicios reales. Capturas seriadas con captura.lock y sin compilaciones simultáneas.",
+  "Línea base: nightly e689cba4f. Se muestran las capturas posteriores cuando existen (D), y la base (A) en el resto. Cada candidato es exclusivamente QA, con procedencia por ASAR y blobs en CANDIDATO-DESPUES.json. 100 %, paleta Vantare, fuentes locales; sin cuentas ni servicios reales. Capturas en serie con captura.lock, sin compilaciones Rust propias simultáneas y con huecos entre bloques.",
   "",
   "Porcentaje perceptual: pixelmatch 8.0.0, umbral 0,1 y antialias incluido, ventana completa sin máscaras, escalado ni alineación. Se valida el recibo de cada referencia GPUI. Studio usa la maqueta A vigente con las mismas fuentes y Chromium. Una referencia ausente no recibe un porcentaje inventado. P1: roto/ilegible; P2: claramente distinto; P3: detalle. Las cifras no sustituyen la inspección visual.",
   "",
-  "Cada celda enlaza referencia, producto y diferencia. D/C = oscuro/claro; P/A = barra plegada/abierta. Pendiente de inspección no significa ausencia de defectos.",
+  "Cada celda enlaza referencia, producto y diferencia RGBA exacta; la cifra es perceptual. Los cierres QA forzados o sin recibo se señalan y se conservan en metricas.json. D/C = oscuro/claro; P/A = barra plegada/abierta. Pendiente de inspección no significa ausencia de defectos.",
   "",
   "| Pantalla / escena | 1440 D/P | 1440 D/A | 1440 C/P | 1440 C/A | 1280 D/P | 1280 D/A | 1280 C/P | 1280 C/A | Defectos concretos |",
   "|---|---|---|---|---|---|---|---|---|---|",
@@ -47,7 +70,18 @@ for (const [index, { screen, scene }] of scenes.entries()) {
       const directory = join(root, "antes", size, scene, theme, scene);
       for (const expanded of [false, true]) {
         const side = expanded ? "expanded" : "collapsed";
-        const current = join(directory, `sidebar-${side}.png`);
+        const before = join(directory, `sidebar-${side}.png`);
+        const after = join(
+          root,
+          "despues",
+          size,
+          scene,
+          theme,
+          scene,
+          `sidebar-${side}.png`,
+        );
+        const current = existsSync(after) ? after : before;
+        const phase = current === after ? "D" : "A";
         const reference = scene.startsWith("studio-")
           ? join(
               root,
@@ -91,6 +125,66 @@ for (const [index, { screen, scene }] of scenes.entries()) {
               bank ?? undefined,
             );
           }
+          if (scene.startsWith("studio-")) {
+            if (!prototypeHash) throw new Error("Missing prototype source");
+            const receipt = JSON.parse(
+              await readFile(
+                join(dirname(reference), "reference.json"),
+                "utf8",
+              ),
+            );
+            const browser = JSON.parse(
+              await readFile(join(dirname(current), "browser.json"), "utf8"),
+            );
+            const fonts = JSON.parse(
+              await readFile(
+                join(dirname(current), "../..", "font-sources.json"),
+                "utf8",
+              ),
+            );
+            verifyPrototypeReceipt(receipt, {
+              sourceSha256: prototypeHash,
+              state: scene.replace("studio-estado-", ""),
+              theme,
+              sidebar: expanded ? "open" : "closed",
+              dimensions: [width, width === 1440 ? 900 : 800],
+              browser,
+              fontHashes: fonts.native.map(
+                (font: { sha256: string }) => font.sha256,
+              ),
+            });
+          }
+          const limitation = referenceLimitations.find(
+            (item) =>
+              item.screen === screen &&
+              item.sidebar === side &&
+              item.sizes.includes(size) &&
+              item.sourceSha256 === prototypeHash,
+          );
+          const instance = JSON.parse(
+            await readFile(
+              join(dirname(current), "instance.json"),
+              "utf8",
+            ).catch(() => "null"),
+          );
+          const combinedTeardown = JSON.parse(
+            await readFile(
+              join(dirname(current), "teardown.json"),
+              "utf8",
+            ).catch(() => "null"),
+          );
+          const teardown = Array.isArray(combinedTeardown?.sessions)
+            ? (combinedTeardown.sessions.find((entry: { session: string }) =>
+                entry.session
+                  .replaceAll("\\", "/")
+                  .includes(`/sesion-${side}/`),
+              ) ?? combinedTeardown)
+            : combinedTeardown;
+          const terminationWarning =
+            !teardown ||
+            teardown.forcedKill ||
+            teardown.cleanupFailed ||
+            teardown.exitCode !== 0;
           const result = compareImages(original, candidate);
           await mkdir(destination, { recursive: true });
           await writeFile(join(destination, "diff.png"), result.diff);
@@ -110,6 +204,13 @@ for (const [index, { screen, scene }] of scenes.entries()) {
             theme,
             side,
             percent: result.perceptualPercent,
+            exactPercent: result.exactPercent,
+            captureExit: teardown,
+            terminationWarning,
+            phase,
+            productAsar: instance?.asarSha256,
+            productSource: instance?.qaSource,
+            referenceLimitation: limitation,
             reference,
             current,
             referenceSha256: createHash("sha256")
@@ -118,7 +219,7 @@ for (const [index, { screen, scene }] of scenes.entries()) {
             currentSha256: createHash("sha256").update(candidate).digest("hex"),
           });
           cells.push(
-            `${result.perceptualPercent.toFixed(2)} % · ${link("R", reference)} ${link("P", current)} ${link("par", join(destination, "par.png"))} ${link("Δ", join(destination, "diff.png"))}`,
+            `${phase} ${result.perceptualPercent.toFixed(2)} %${limitation ? ` · ${limitation.id} (referencia contradictoria; cifra bruta)` : ""} · ${link("R", reference)} ${link("P", current)} ${link("par", join(destination, "par.png"))} ${link("Δ", join(destination, "diff.png"))}${existsSync(join(dirname(current), `focus-${side}.png`)) ? ` ${link("foco", join(dirname(current), `focus-${side}.png`))}` : ""}${terminationWarning ? " · ⚠ cierre QA no normal/sin recibo" : ""}`,
           );
         } catch (error) {
           const message =

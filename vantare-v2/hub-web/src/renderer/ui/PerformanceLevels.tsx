@@ -165,6 +165,16 @@ export function PerformancePanel({
 }: Omit<Parameters<typeof PerformanceLevels>[0], "value"> & {
   track: TrackView;
 }) {
+  const index = performanceLevels.indexOf(track.level);
+  const widgets = widgetHz[index];
+  const tables = tableHz[index];
+  const summary =
+    track.exists &&
+    !track.protected &&
+    widgets !== undefined &&
+    tables !== undefined
+      ? text.compactSummary(t(`track.${track.level}`), widgets, tables)
+      : undefined;
   return (
     <div className="v-performance">
       <section className="v-performance-card" aria-label={t("track.level")}>
@@ -191,6 +201,7 @@ export function PerformancePanel({
         </header>
         <FrequencyTable value={track.level} />
       </section>
+      {summary && <p className="v-performance-compact-summary">{summary}</p>}
       <p className="v-performance-note">{text.note}</p>
     </div>
   );

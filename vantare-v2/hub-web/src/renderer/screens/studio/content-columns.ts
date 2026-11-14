@@ -147,6 +147,13 @@ export function canResetColumns(
     )
   );
 }
+export function canEditColumns(
+  settings: TableSettings,
+  session: ColumnSession,
+) {
+  const columns = contentColumns(settings, session);
+  return columns !== null && identities(columns, false) !== null;
+}
 export function resetColumns(
   settings: Extract<WidgetSettings, { kind: "standings" }>,
   session: ColumnSession,

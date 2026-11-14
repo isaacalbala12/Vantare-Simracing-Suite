@@ -57,9 +57,10 @@ it("opens Content by keyboard without writing, and renders the native Race colum
     screen.getByRole("switch", { name: "Piloto" }).getAttribute("aria-checked"),
   ).toBe("true");
   expect(
-    (screen.getByRole("switch", { name: "Piloto" }) as HTMLButtonElement)
-      .disabled,
-  ).toBe(true);
+    screen
+      .getByRole("switch", { name: "Piloto" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
   expect(screen.queryByLabelText("Clases")).toBeNull();
   expect(state.execute).not.toHaveBeenCalled();
 });
@@ -102,7 +103,7 @@ it("keeps focus and blocks a second write while the host save is pending", async
   ui.rerender(tree(item));
   expect(document.activeElement).toBe(gap);
   expect(gap.getAttribute("aria-disabled")).toBe("true");
-  expect((gap as HTMLButtonElement).disabled).toBe(false);
+  expect(gap.hasAttribute("disabled")).toBe(false);
   await user.click(gap);
   expect(state.execute).toHaveBeenCalledTimes(1);
   await act(async () => finish());
@@ -119,6 +120,18 @@ it("does not show editable defaults for a protected document", () => {
   state.view.state = "protected";
   render(tree(contentInstance()));
   expect(screen.queryByRole("switch")).toBeNull();
+  expect(state.execute).not.toHaveBeenCalled();
+});
+it("keeps unknown column sets read-only rather than pretending a toggle saved", async () => {
+  const item = contentInstance();
+  if (item.settings?.kind !== "standings" || !item.settings.columns?.[0])
+    throw Error("Standings fixture");
+  item.settings.columns[0].metricId = "futureMetric";
+  const { user } = await mount(item);
+  expect(screen.getByText(text.unreadable)).toBeTruthy();
+  const gap = screen.getByRole("switch", { name: "Diferencia" });
+  expect(gap.getAttribute("aria-disabled")).toBe("true");
+  await user.click(gap);
   expect(state.execute).not.toHaveBeenCalled();
 });
 it("preserves unsupported time formatting and explains the disabled reset", async () => {

@@ -11,6 +11,7 @@ import { studioContentText as text } from "../../i18n/studio-content.es";
 import { useAppearance } from "../../screens/studio/appearance";
 import {
   type ColumnSession,
+  canEditColumns,
   canResetColumns,
   contentColumns,
   editColumn,
@@ -157,6 +158,7 @@ function ColumnSettings({
   model: Model;
 }) {
   const columns = contentColumns(settings, session);
+  const editable = canEditColumns(settings, session);
   const [selection, setSelection] = useState("driverName");
   const column =
     columns?.find((item) => item.metricId === selection) ?? columns?.[0];
@@ -200,6 +202,7 @@ function ColumnSettings({
         {!columns?.length && (
           <p>{columns ? text.noColumns : text.unreadable}</p>
         )}
+        {!!columns?.length && !editable && <p>{text.unreadable}</p>}
         <div className="v-studio-content-columns">
           {columns?.map((entry) => (
             <div key={entry.id} className="v-studio-content-column">
@@ -209,7 +212,9 @@ function ColumnSettings({
                   entry.enabled || requiredColumn(settings, entry.metricId)
                 }
                 disabled={
-                  model.disabled || requiredColumn(settings, entry.metricId)
+                  model.disabled ||
+                  !editable ||
+                  requiredColumn(settings, entry.metricId)
                 }
                 pending={model.pending}
                 onCheckedChange={(enabled) =>
@@ -242,7 +247,7 @@ function ColumnSettings({
               <Select
                 label={text.name}
                 value={column.format.mode || "full"}
-                disabled={model.disabled}
+                disabled={model.disabled || !editable}
                 pending={model.pending}
                 options={studioWidgetOptions.columns.names.map((value) => ({
                   value,
@@ -262,14 +267,14 @@ function ColumnSettings({
                   value={column.format.maxChars ?? 16}
                   min={1}
                   max={studioWidgetOptions.columns.maxChars}
-                  model={model}
+                  model={{ ...model, disabled: model.disabled || !editable }}
                   onCommit={(maxChars) => edit({ format: { maxChars } })}
                 />
               )}
               <Select
                 label={text.width}
                 value={column.widthPreset}
-                disabled={model.disabled}
+                disabled={model.disabled || !editable}
                 pending={model.pending}
                 options={studioWidgetOptions.columns.widths.map((value) => ({
                   value,

@@ -351,7 +351,1272 @@
     "roadmap.noDelivered": "Sin entregas publicadas",
     "roadmap.tasks": "tareas",
     "roadmap.completed": "tareas completadas",
-    "roadmap.dash": "—"
+    "roadmap.dash": "—",
+    "home.decorative": "",
+    "home.errorTag": "Error",
+    "home.warningTag": "Aviso",
+    "home.title": "Inicio",
+    "home.search": "Busca, abre o lanza algo en Vantare…",
+    "home.hints": "«Studio» · «Launcher»",
+    "home.profile": "Perfil de lanzamiento",
+    "home.noProfile": "Sin perfil",
+    "home.selectProfile": "Seleccionar…",
+    "home.noFavorite": "Sin perfil favorito",
+    "home.favoriteApps": "Aplicaciones del perfil favorito",
+    "home.appsFailed": "No se pudieron leer las aplicaciones.",
+    "home.appLabels.lmu": "LMU",
+    "home.appLabels.crewchief": "CC",
+    "home.appLabels.simhub": "SH",
+    "home.appLabels.obs": "OBS",
+    "home.appLabels.spotify": "SP",
+    "home.appLabels.discord": "DC",
+    "home.appLabels.custom:vantare": "V",
+    "home.selectedLaunch": "Lanzar perfil seleccionado",
+    "home.selectAvailable": "Selecciona un perfil disponible",
+    "home.unavailable": "Perfil no disponible o lanzamiento en curso",
+    "home.ctrlK": "Ctrl K",
+    "home.ctrlL": "Ctrl L",
+    "home.waiting": "Esperando simulador",
+    "home.connected": "LMU conectado",
+    "home.welcome": "Bienvenido a Vantare",
+    "home.morning": "Buenos días",
+    "home.afternoon": "Buenas tardes",
+    "home.night": "Buenas noches",
+    "home.emptySubtitle": "Crea un perfil para abrir tus aplicaciones en orden.",
+    "home.connectedSubtitle": "Telemetría conectada. Prepara tu próxima sesión.",
+    "home.subtitle": "Tu cabina está lista. Esperando simulador.",
+    "home.launching": "Lanzando…",
+    "home.noLaunches": "Sin lanzamientos",
+    "home.createProfileHint": "Crea un perfil en Launcher",
+    "home.how": "Así funciona",
+    "home.create": "Crear mi primer perfil",
+    "home.studio": "Abrir Studio",
+    "home.overlay": "Overlay en pista",
+    "home.layout": "Layout local",
+    "home.preview": "Vista previa",
+    "home.noWidgets": "Ningún widget visible en tu layout",
+    "home.telemetry": "Telemetría conectada",
+    "home.hz": "Hz",
+    "home.cpu": "CPU",
+    "home.dash": "—",
+    "home.visible": "Widgets visibles",
+    "home.edit": "Editar overlay",
+    "home.stop": "Detener",
+    "home.stopReason": "Control de overlays desde Inicio: próximamente",
+    "home.prepare": "Prepara tu overlay",
+    "home.prepareDescription": "Elige una plantilla y ajusta tu layout en Studio.",
+    "home.templatesAction": "Ver plantillas",
+    "home.activity": "Actividad",
+    "home.all": "Ver todo",
+    "home.noActivity": "Todavía no hay actividad",
+    "home.activityDescription": "Tus avisos y lanzamientos aparecerán aquí.",
+    "home.noDate": "Sin fecha",
+    "home.status": "Estado",
+    "home.lmu": "Le Mans Ultimate",
+    "home.favorite": "Perfil favorito",
+    "home.saved": "Guardado",
+    "home.waitingBadge": "Esperando",
+    "home.connectedBadge": "Conectado",
+    "home.testing": "Testing Center",
+    "home.testerAccess": "Acceso de tester",
+    "home.tester": "Tester",
+    "home.betaTitle": "Beta para testers",
+    "home.beta": "Beta",
+    "home.templates": "Plantillas",
+    "home.localTemplate": "Plantilla local · Abrir Studio",
+    "home.waitingLmu": "Esperando a Le Mans Ultimate",
+    "home.waitingDescription": "Abre LMU y entra en pista para recibir telemetría.",
+    "home.accessError": "No se pudo verificar el acceso. Tus perfiles locales siguen disponibles.",
+    "home.retry": "Reintentar",
+    "home.failed": "No se pudo lanzar el perfil. Revisa el acceso y el estado de Launcher.",
+    "home.checkLaunch": "Actualizar estado",
+    "home.launchUncertainLabel": "Estado del lanzamiento incierto",
+    "home.launchUncertain": "No se ha confirmado el lanzamiento. Puede haberse iniciado; esperamos el estado de Inicio antes de permitir otro intento.",
+    "home.launchChanged": "El lanzamiento se ha cancelado porque han cambiado el acceso, el perfil o el estado del simulador. Revisa el estado antes de intentarlo de nuevo.",
+    "home.loading": "Cargando Inicio",
+    "home.protected": "El archivo de perfiles está protegido. Revísalo en Launcher.",
+    "home.sources.launcher": "Launcher",
+    "home.sources.beta": "Beta",
+    "home.sources.report": "Informes",
+    "home.sources.system": "Sistema",
+    "home.sources.updater": "Actualización",
+    "home.widgets.standings": "Standings",
+    "home.widgets.radar": "Radar",
+    "home.widgets.pedals": "Pedales",
+    "home.widgets.delta": "Delta",
+    "home.widgets.car-damage-visual": "Daños del coche",
+    "home.widgets.input-telemetry": "Telemetría de entrada",
+    "home.widgets.multiclass-relative": "Relative multiclase",
+    "home.widgets.broadcast-tower": "Torre de posiciones",
+    "home.widgets.delta-trace": "Historial de delta",
+    "home.widgets.track-map": "Mapa del circuito",
+    "home.widgets.track-weather": "Tiempo en pista",
+    "home.widgets.car-damage-numbers": "Daños detallados",
+    "home.widgets.head-to-head": "Cara a cara",
+    "home.widgets.fuel-strategy": "Fuel y stint",
+    "home.widgets.pedals-telemetry": "Telemetría de pedales",
+    "home.widgets.relative": "Relative",
+    "home.widgets.racing-flags": "Banderas",
+    "home.widgets.fastest-lap": "Vuelta rápida",
+    "home.widgets.session-alerts": "Avisos de sesión",
+    "studio.firstWidget": "Añade tu primer widget",
+    "studio.quickStart": "O empieza por uno de estos",
+    "studio.retryHelp": "El cambio no se ha guardado. Puedes reintentarlo o descartarlo.",
+    "studio.protectedHelp": "Puedes verlo, pero no cambiarlo. No se guardará nada hasta que se pueda leer bien.",
+    "studio.protectedSettings": "Mientras el diseño esté protegido no se muestran ni se cambian. Nada de lo que ves aquí se ha inventado.",
+    "studio.readFailedHelp": "Vuelve a cargar el diseño para intentarlo de nuevo. No se ha creado ni cambiado nada.",
+    "studio.readFailed": "No se pudo leer el diseño.",
+    "studio.visibilityGroup": "Visibilidad",
+    "studio.whenGroup": "¿Cuándo se ve?",
+    "studio.placeGroup": "Posición y tamaño",
+    "studio.visibleOnTrack": "Visible en pista",
+    "studio.visibleOnTrackHelp": "Apagado, sigue en el layout",
+    "studio.offTrackHelp": "Garaje, pausa y repeticiones",
+    "studio.placeHelp": "Por ahora el overlay aparece donde lo dejaste la última vez.",
+    "studio.sessionsAll": "Práctica, qualy y carrera",
+    "studio.practiceShort": "Práctica",
+    "studio.qualifyingShort": "Qualy",
+    "studio.raceShort": "Carrera",
+    "studio.contentSoonBadge": "Próximamente",
+    "studio.next": "Siguiente: En pista",
+    "studio.autoSaved": "Se guarda solo · el dibujo aún no refleja los cambios",
+    "studio.contentSoonHelp": "Elegir qué datos y columnas muestra. Disponible próximamente.",
+    "studio.lookHelp": "Cómo se dibuja",
+    "studio.lookToEficiencia": "Con Eficiencia eliges uno de sus diseños clásicos en lugar de estilo y acento.",
+    "studio.lookToVantare": "Con Vantare podrás elegir estilo, acento y formato de tabla.",
+    "studio.formatGroup": "Formato",
+    "studio.formatHelp": "Cuánto ocupa",
+    "studio.designHelp": "Estilo clásico",
+    "studio.colorGroup": "Color",
+    "studio.styleLabel": "Estilo",
+    "studio.accentLabel": "Acento",
+    "studio.backgroundGroup": "Fondo",
+    "studio.tablePreset": "Formato de tabla",
+    "studio.tablePresetHint": "Aplicar de una vez",
+    "studio.tablePresetHelp": "Cambia las columnas de Carrera de una vez. Deshacer lo recupera.",
+    "studio.tablePresetVantareOnly": "Disponible con el Look Vantare.",
+    "studio.apply": "Aplicar",
+    "studio.fuelExpandedHelp": "Ampliado añade la proyección de consumo a la derecha.",
+    "studio.layoutLabel": "Layout",
+    "studio.illustrationNote": "Dibujo orientativo · la vista previa real aparecerá aquí",
+    "studio.dataLabel": "Datos",
+    "studio.sceneLabel": "Escena",
+    "studio.scenesSoon": "Escenas de prueba: disponible cuando las vistas sean en vivo",
+    "studio.hiddenStage": "Oculto: no se dibuja en pista",
+    "studio.showNow": "Mostrar",
+    "studio.notSaved": "No se ha guardado",
+    "studio.readOnly": "Solo lectura",
+    "studio.emptyList": "Aún no hay overlays en este layout.",
+    "studio.emptyTitle": "Tu layout está vacío",
+    "studio.showNeedsWidget": "Añade un widget para mostrarlo en pista.",
+    "studio.protectedAction": "No disponible mientras el diseño esté protegido.",
+    "studio.close": "Cerrar",
+    "studio.appearanceUnavailable": "No se pueden leer los ajustes de apariencia de este widget.",
+    "studio.appearancePreviewNote": "Los cambios se guardan para el overlay en pista. Esta miniatura es ilustrativa y no previsualiza su apariencia.",
+    "studio.lookEficiencia": "Eficiencia",
+    "studio.lookVantare": "Vantare",
+    "studio.styleNeo": "Neo",
+    "studio.styleNeutral": "Neutro",
+    "studio.transparentHelp": "Solo el número, sin panel detrás",
+    "studio.transparentBackground": "Fondo transparente",
+    "studio.deltaFormat": "Formato Delta",
+    "studio.deltaPill": "Cápsula",
+    "studio.deltaBarFormat": "Barra",
+    "studio.deltaExpanded": "Ampliado",
+    "studio.deltaDifferenceBar": "Barra de diferencia",
+    "studio.fuelFormat": "Formato Fuel y stint",
+    "studio.formatCompact": "Compacto",
+    "studio.formatStandard": "Estándar",
+    "studio.formatExpanded": "Ampliado",
+    "studio.widgetDesign": "Diseño",
+    "studio.designSignature": "Signature",
+    "studio.designBroadcast": "Broadcast",
+    "studio.designInstrument": "Instrumento",
+    "studio.designCapsule": "Cápsula",
+    "studio.widgetLook": "Look",
+    "studio.widgetStyle": "Estilo del widget",
+    "studio.widgetAccent": "Acento del widget",
+    "studio.widgetBrand": "Marca",
+    "studio.accentRed": "Rojo",
+    "studio.accentAmber": "Ámbar",
+    "studio.accentGreen": "Verde",
+    "studio.accentWhite": "Blanco",
+    "studio.brandAuto": "Automática",
+    "studio.brandShown": "Visible",
+    "studio.brandHidden": "Oculta",
+    "studio.brandReadOnly": "Solo lectura. Cambiar la marca está pendiente de la decisión sobre licencias.",
+    "studio.title": "OVERLAYS STUDIO",
+    "studio.layout": "Layout activo",
+    "studio.local": "Layout local",
+    "studio.localHelp": "Solo está disponible el diseño guardado en este equipo.",
+    "studio.example": "Ejemplo",
+    "studio.live": "En vivo",
+    "studio.saved": "Guardado",
+    "studio.saving": "Guardando…",
+    "studio.obs": "Publicar en OBS",
+    "studio.obsHelp": "Próximamente. Usa captura de ventana en OBS",
+    "studio.edit": "Colocar en pantalla",
+    "studio.editHelp": "Pronto podrás mover y cambiar el tamaño de los overlays sobre el juego.",
+    "studio.show": "Mostrar en pista",
+    "studio.hide": "Dejar de mostrar",
+    "studio.add": "Añadir widget",
+    "studio.addShort": "Añadir",
+    "studio.addHelp": "Elige uno en el catálogo",
+    "studio.placementHint": "La posición y el tamaño se ajustan sobre el juego.",
+    "studio.showHelp": "Muestra los overlays visibles sobre el juego.",
+    "studio.emptyHelp": "Elige overlays del catálogo. Después los colocarás sobre el juego.",
+    "studio.sessionNames.practice": "práctica",
+    "studio.sessionNames.qualifying": "qualy",
+    "studio.sessionNames.race": "carrera",
+    "studio.noSessions": "Ninguna sesión",
+    "studio.lockedWidget": "Este widget está incluido en Pro.",
+    "studio.verifyWidget": "Verifica tu acceso para editar este widget.",
+    "studio.inspectorTabs": "Ajustes del widget",
+    "studio.soonTooltip": "Disponible próximamente",
+    "studio.empty": "Añade tu primer widget",
+    "studio.visible": "Visible",
+    "studio.hidden": "Oculto",
+    "studio.showWidget": "Mostrar widget",
+    "studio.hideWidget": "Ocultar widget",
+    "studio.liveHelp": "Disponible cuando las vistas sean en vivo",
+    "studio.loading": "Cargando Studio…",
+    "studio.missing": "Studio no disponible",
+    "studio.missingHelp": "El diseño se crea al arrancar los overlays.",
+    "studio.protected": "El diseño está protegido. Revisa su versión o su contenido antes de editar.",
+    "studio.failed": "No se pudo guardar el diseño.",
+    "studio.busy": "El diseño está ocupado. Puedes volver a intentarlo.",
+    "studio.offline": "No se puede comunicar con el núcleo.",
+    "studio.conflict": "El diseño ha cambiado en otro proceso. Revisa el estado antes de reintentar.",
+    "studio.reconfirm": "Revisa el diseño y vuelve a solicitar esta acción para repetirla.",
+    "studio.retry": "Reintentar guardado",
+    "studio.discard": "Descartar",
+    "studio.reload": "Volver a cargar",
+    "studio.content": "Contenido",
+    "studio.appearance": "Apariencia",
+    "studio.track": "En pista",
+    "studio.soon": "Disponible próximamente en el Hub nuevo",
+    "studio.opacity": "Opacidad",
+    "studio.showIn": "Mostrar en",
+    "studio.practice": "Mostrar en práctica",
+    "studio.qualifying": "Mostrar en qualy",
+    "studio.race": "Mostrar en carrera",
+    "studio.offTrack": "Fuera de pista",
+    "studio.inherit": "Heredar global",
+    "studio.always": "Siempre visible",
+    "studio.offHide": "Ocultar",
+    "studio.search": "Buscar widget",
+    "studio.noResults": "No hay widgets que coincidan.",
+    "studio.pro": "Incluida en Pro",
+    "studio.unverified": "Sin verificar",
+    "studio.proTitle": "Con Vantare Pro",
+    "studio.unverifiedTitle": "Pendiente de verificar acceso",
+    "studio.verify": "Verifica tu acceso para añadir widgets.",
+    "studio.plans": "Ver planes",
+    "studio.planNames.free": "Tu plan Gratis",
+    "studio.planNames.launch": "Tu acceso de lanzamiento",
+    "studio.planNames.pro": "Tu plan Pro",
+    "studio.planNames.founders": "Tu plan Founders",
+    "studio.added": "Widget añadido",
+    "studio.allCategories": "Todos",
+    "studio.filterLabel": "Filtrar overlays",
+    "studio.filters.all": "Todos",
+    "studio.filters.visible": "Visibles",
+    "studio.filters.hidden": "Ocultos",
+    "studio.noVisible": "No hay overlays visibles.",
+    "studio.noHidden": "No hay overlays ocultos.",
+    "studio.undo": "Deshacer",
+    "studio.redo": "Rehacer",
+    "studio.remove": "Eliminar widget",
+    "studio.removeTitle": "Eliminar widget",
+    "studio.removeHelp": "Se eliminará del diseño. Puedes recuperarlo con Deshacer.",
+    "studio.cancel": "Cancelar",
+    "studio.catalog": "Añadir widget",
+    "studio.kit": "Sugeridos",
+    "studio.planWidgets": "De tu plan",
+    "studio.proWidgets": "Con Vantare Pro",
+    "commands.placeholder": "Busca una sección o una acción…",
+    "commands.destinations": "IR A",
+    "commands.actions": "ACCIONES",
+    "commands.navigate": "↑↓ navegar",
+    "commands.execute": "↵ ejecutar",
+    "commands.lockedHelp": "Los destinos bloqueados muestran el motivo",
+    "commands.profile": "Perfil de Launcher",
+    "commands.running": "Ya hay una cadena de lanzamiento activa",
+    "commands.loading": "Leyendo los perfiles del Launcher…",
+    "commands.scanning": "Buscando aplicaciones del perfil…",
+    "commands.noResident": "El Launcher no está disponible",
+    "commands.noSteps": "Este perfil no tiene pasos de lanzamiento",
+    "commands.accessUnavailable": "No se pudo verificar el acceso",
+    "commands.readFailed": "No se pudieron leer los perfiles. Cierra y vuelve a abrir la paleta para reintentar.",
+    "commands.pending": "Ya hay una petición de lanzamiento en curso",
+    "commands.included": "Incluida en Pro",
+    "commands.soon": "Próximamente",
+    "commands.context": "Mostrar / ocultar contexto",
+    "commands.contextMeta": "Columna de contexto",
+    "commands.settingsSaving": "Guardando ajustes…",
+    "commands.settingsError": "Resuelve el error de guardado en Ajustes",
+    "commands.settingsProtected": "Ajustes de solo lectura",
+    "commands.settingsLoading": "Leyendo ajustes…",
+    "commands.live": "No se puede lanzar un perfil mientras estás en pista",
+    "commands.unavailable": "Este perfil tiene aplicaciones pendientes de configurar",
+    "commands.changed": "Los perfiles han cambiado. Abre de nuevo la paleta y vuelve a intentarlo.",
+    "commands.sent": "Lanzamiento solicitado",
+    "commands.failed": "No se pudo lanzar el perfil",
+    "commands.strategy": "Estrategia",
+    "commands.engineer": "Ingeniero",
+    "commands.account": "Cuenta",
+    "commands.notifications": "Notificaciones",
+    "commands.accountMeta": "Sesión, plan y dispositivos",
+    "commands.notificationsMeta": "Avisos del Hub",
+    "commands.meta.home": "Tu resumen",
+    "commands.meta.studio": "Editor",
+    "commands.meta.launcher": "Abre tus apps",
+    "commands.meta.calendar": "Carreras de LMU",
+    "commands.meta.strategy": "Planificador",
+    "commands.meta.engineer": "Radio",
+    "commands.meta.roadmap": "Producto",
+    "commands.meta.testing": "Envía informes",
+    "commands.meta.settings": "Preferencias locales",
+    "commands.shortcut.sidebar": "Ctrl B",
+    "commands.shortcut.context": "Ctrl Alt B",
+    "commands.shortcut.notices": "Ctrl Mayús N",
+    "commands.shortcut.zoomOut": "Ctrl −",
+    "commands.shortcut.zoomIn": "Ctrl +",
+    "commands.shortcut.zoomReset": "Ctrl 0",
+    "commands.shortcut.launch": "Ctrl L",
+    "launcher.runningOptionsReadOnly": "Solo lectura durante el lanzamiento. Podrás cambiar estos ajustes cuando termine.",
+    "launcher.title": "Launcher",
+    "launcher.profilesTab": "Perfiles",
+    "launcher.profileTab": "Perfil",
+    "launcher.runningHeading": "● Lanzando…",
+    "launcher.scanning": "Espera a que termine la detección de aplicaciones.",
+    "launcher.cancel": "Cancelar",
+    "launcher.cancelUnavailable": "El residente todavía no admite cancelar un lanzamiento desde el Hub.",
+    "launcher.rehearseUnavailable": "El residente todavía no admite probar un perfil sin el juego.",
+    "launcher.yourApps": "Tus aplicaciones",
+    "launcher.allApps": "Ver todas",
+    "launcher.addApp": "+ Añadir app",
+    "launcher.available": "Lista",
+    "launcher.unavailable": "No disponible",
+    "launcher.nextOptions": "Opciones · próxima vez",
+    "launcher.advancedOptions": "Opciones avanzadas",
+    "launcher.alreadyRunning": "Si una app ya está abierta",
+    "launcher.firstDelay": "Esperar antes del primer paso",
+    "launcher.retries": "Reintentos si no abre",
+    "launcher.failure": "Si falla",
+    "launcher.startup": "Al iniciar Windows",
+    "launcher.reuse": "Usarlo",
+    "launcher.restart": "Reiniciar",
+    "launcher.ask": "Preguntar",
+    "launcher.keepGoing": "Seguir sin ella",
+    "launcher.stop": "Parar",
+    "launcher.enabled": "Activado",
+    "launcher.disabled": "Desactivado",
+    "launcher.description": "Elige un perfil y pulsa Lanzar: Vantare abre todo en orden por ti.",
+    "launcher.newProfile": "+ Nuevo perfil",
+    "launcher.applications": "Aplicaciones",
+    "launcher.favoriteHeading": "★ Tu perfil favorito · Ctrl L",
+    "launcher.selectedHeading": "Tu perfil seleccionado",
+    "launcher.defaultDescription": "Tus aplicaciones se abren en este orden.",
+    "launcher.launch": "Lanzar",
+    "launcher.launchUnavailable": "Revisa las aplicaciones del perfil y espera a que esté disponible el residente.",
+    "launcher.favoriteKey": "Ctrl L",
+    "launcher.edit": "Editar perfil",
+    "launcher.rehearse": "Probar sin el juego",
+    "launcher.noPriorState": "Sin estado previo",
+    "launcher.yourProfiles": "Tus perfiles",
+    "launcher.favorite": "★ Favorito",
+    "launcher.reload": "Volver a cargar",
+    "launcher.empty": "Todavía no hay perfiles. Crea tu primer perfil para empezar.",
+    "launcher.protected": "El documento del Launcher está protegido. No se ha modificado.",
+    "launcher.residentMissing": "Registro no confirmado · abre Vantare desde el instalador",
+    "launcher.running": "Lanzamiento en curso",
+    "launcher.queued": "Solicitud enviada al residente. El lanzamiento todavía no ha terminado.",
+    "launcher.busy": "El residente está ocupado. Vuelve a intentarlo en unos segundos.",
+    "launcher.coreUnavailable": "El residente no está disponible. Abre Vantare y vuelve a intentarlo.",
+    "launcher.denied": "No se puede lanzar este perfil con el estado actual. Vuelve a cargar y revísalo.",
+    "launcher.failed": "No se pudo enviar la solicitud. Revisa el Launcher y vuelve a intentarlo.",
+    "launcher.changed": "El perfil ha cambiado. Revísalo antes de volver a lanzarlo.",
+    "launcher.loading": "Cargando perfiles…",
+    "action.duplicate": "Duplicar",
+    "action.duplicateTitle": "Duplicar perfil",
+    "action.reconfirm": "Para repetir esta acción, vuelve a abrirla y confírmala de nuevo.",
+    "action.remove": "Eliminar",
+    "action.favorite": "Marcar como favorito",
+    "action.unfavorite": "Quitar de favoritos",
+    "action.trigger": "Al abrir LMU",
+    "action.triggered": "LMU · activado",
+    "action.cancel": "Cancelar",
+    "action.retry": "Reintentar guardado",
+    "action.discard": "Descartar",
+    "action.removeTitle": "Eliminar perfil",
+    "action.conflict": "El Launcher ha cambiado en otro proceso. Revisa el estado antes de reintentar.",
+    "action.failed": "No se pudo guardar el cambio. Vuelve a intentarlo.",
+    "action.retryFailed": "Reintentar si no abre",
+    "action.closeOnExit": "Cerrar mis apps al salir de Vantare",
+    "action.startup": "Iniciar con Windows",
+    "app.argumentResetTitle": "Descartar argumentos de la aplicación",
+    "app.confirmArgumentReset": "Guardar y descartar argumentos",
+    "app.plus": "+",
+    "app.unsaved": "Guarda o descarta el borrador antes de cerrar la ventana.",
+    "app.title": "Aplicaciones",
+    "app.help": "Gestiona las rutas y aplicaciones de tus perfiles.",
+    "app.detect": "Detectar aplicaciones",
+    "app.detecting": "Detectando…",
+    "app.detectionBusy": "Detección en curso",
+    "app.reload": "Recargar",
+    "app.search": "Buscar aplicaciones",
+    "app.empty": "Sin aplicaciones",
+    "app.add": "Añadir aplicación",
+    "app.addHelp": "Elige un ejecutable que la detección no encontró.",
+    "app.editor": "Aplicación · borrador sin guardar",
+    "app.name": "Nombre",
+    "app.nameHelp": "Nombre visible en el catálogo",
+    "app.customArguments": "Argumentos personalizados · edición no disponible",
+    "app.defaultArguments": "Argumentos de la aplicación",
+    "app.executable": "Ejecutable",
+    "app.executableHelp": "Ruta local; vacía usa descubrimiento para apps oficiales",
+    "app.pick": "Elegir ejecutable",
+    "app.dialogTitle": "Selecciona el ejecutable de la aplicación",
+    "app.dialogFilter": "Aplicaciones",
+    "app.discovery": "Usar descubrimiento",
+    "app.selected": "Ejecutable seleccionado",
+    "app.configured": "Ejecutable configurado",
+    "app.automatic": "Descubrimiento automático",
+    "app.save": "Guardar",
+    "app.cancel": "Cancelar",
+    "app.remove": "Eliminar",
+    "app.retry": "Reintentar guardado",
+    "app.discard": "Descartar",
+    "app.confirmHelp": "No se borra nada de tu disco. Si algún perfil la usa como paso, quítala del perfil primero.",
+    "app.scanning": "ESCANEANDO",
+    "app.installed": "INSTALADA",
+    "app.detected": "DETECTADA",
+    "app.catalog": "CATÁLOGO",
+    "app.steam": "Steam",
+    "app.binary": "Ejecutable",
+    "app.manual": "Manual",
+    "app.failed": "No se han podido guardar los cambios. Revisa las aplicaciones y vuelve a intentarlo.",
+    "app.conflict": "Los datos han cambiado en otro proceso. Tu borrador se conserva.",
+    "app.invalidArgs": "Argumentos: indica un array JSON de strings.",
+    "app.missing": "Elige un ejecutable.",
+    "profile.title": "Editar perfil",
+    "profile.help": "Los cambios se aplican al guardar.",
+    "profile.cancel": "Cancelar",
+    "profile.save": "Guardar",
+    "profile.saved": "Perfil guardado",
+    "profile.name": "Nombre",
+    "profile.favorite": "Perfil favorito",
+    "profile.color": "Color",
+    "profile.circuit": "Circuito",
+    "profile.soon": "Próximamente",
+    "profile.colorSoon": "El perfil aún no guarda un color",
+    "profile.circuitSoon": "El perfil aún no guarda un circuito",
+    "profile.description": "Descripción",
+    "profile.notes": "Notas",
+    "profile.steps": "Pasos",
+    "profile.basic": "Básico",
+    "profile.advanced": "Avanzado",
+    "profile.mode": "Modo del editor",
+    "profile.addStep": "+ Añadir paso",
+    "profile.stepApp": "Aplicación del paso",
+    "profile.stepDelay": "Espera del paso (s)",
+    "profile.customArguments": "Argumentos personalizados · edición no disponible",
+    "profile.defaultArguments": "Argumentos de la aplicación",
+    "profile.argumentLossTitle": "Descartar argumentos personalizados",
+    "profile.discardTitle": "Descartar cambios del perfil",
+    "profile.discardMessage": "Tienes cambios sin guardar. ¿Quieres descartarlos?",
+    "profile.keepEditing": "Seguir editando",
+    "profile.confirmDiscard": "Descartar cambios",
+    "profile.refreshed": "Perfil actualizado sin sobrescribir cambios ajenos",
+    "profile.confirmArgumentLoss": "Guardar y descartar argumentos",
+    "profile.up": "↑ Subir",
+    "profile.down": "↓ Bajar",
+    "profile.remove": "Quitar",
+    "profile.preview": "Vista previa",
+    "profile.behavior": "Comportamiento",
+    "profile.launchOptions": "Opciones de lanzamiento",
+    "profile.hotkey": "Atajo global",
+    "profile.hotkeyPlaceholder": "Atajo: ctrl+shift+1",
+    "profile.startup": "Iniciar con Windows",
+    "profile.failure": "Ante un fallo",
+    "profile.running": "Aplicación ya abierta",
+    "profile.cancelPolicy": "Al cancelar",
+    "profile.exitPolicy": "Al salir",
+    "profile.retryPolicy": "Reintentar",
+    "profile.retries": "Reintentos por paso",
+    "profile.retriesHelp": "De 0 a 3",
+    "profile.firstDelay": "Esperar antes del primer paso (s)",
+    "profile.ask": "Preguntar",
+    "profile.stop": "Parar",
+    "profile.keepGoing": "Continuar",
+    "profile.reuse": "Reutilizar",
+    "profile.restart": "Reiniciar solo si Vantare la inició",
+    "profile.leave": "Dejar abiertas",
+    "profile.closeStarted": "Cerrar solo las iniciadas",
+    "profile.failedSteps": "Pasos fallidos",
+    "profile.wholeChain": "Cadena entera",
+    "profile.resident": "El supervisor aplica estos ajustes al guardar. Los conflictos de atajo se muestran en Launcher.",
+    "profile.noResident": "Supervisor no disponible: los ajustes quedan guardados. Inicia la aplicación con vantare para activar los atajos y el inicio Windows.",
+    "profile.conflict": "El perfil ha cambiado en otro proceso. Tu borrador se conserva.",
+    "profile.retry": "Reintentar guardado",
+    "profile.discard": "Descartar",
+    "profile.protected": "El documento está protegido. Vuelve a cargarlo antes de editar.",
+    "profile.busy": "Launcher está ocupado. Tu borrador se conserva; vuelve a intentarlo.",
+    "profile.coreUnavailable": "El núcleo no está disponible. Tu borrador se conserva.",
+    "profile.openFailed": "No se pudo abrir el perfil. Vuelve a cargarlo e inténtalo de nuevo.",
+    "profile.failed": "No se pudo guardar el perfil. Revisa sus datos y vuelve a intentarlo.",
+    "profile.emptySteps": "Pasos: añade al menos una aplicación",
+    "profile.missing": "Pasos: selecciona una aplicación disponible",
+    "profile.invalidName": "Nombre: indica entre 1 y 256 bytes sin NUL",
+    "profile.limit": "Pasos: el perfil admite como máximo 128 pasos",
+    "profile.unsaved": "Guarda o cancela el perfil antes de cerrar o reiniciar la ventana.",
+    "resident.title": "Decisión de lanzamiento",
+    "resident.close": "Cerrar",
+    "resident.closeSymbol": "×",
+    "resident.pending": "Hay una decisión de lanzamiento pendiente.",
+    "resident.open": "Ver decisión",
+    "resident.readOnly": "El residente actual no permite responder desde este Hub.",
+    "resident.answerStatusLabel": "Estado de la respuesta al residente",
+    "resident.answerHelp": "Elige una respuesta para la pregunta actual. Cerrar este panel no responde ni cancela la secuencia.",
+    "resident.trustUnavailable": "La autorización de aplicaciones requiere revisar el perfil en el editor. No se puede conceder desde esta pregunta.",
+    "resident.answerUnavailable": "Esta pregunta no está disponible para responder con la cuenta y el residente actuales.",
+    "resident.rejection.wrong-instance": "El residente ha cambiado. Revisa la pregunta actual.",
+    "resident.rejection.account-changed": "La cuenta ha cambiado. Revisa la pregunta actual.",
+    "resident.rejection.authority-unavailable": "No se pueden comprobar los permisos actuales.",
+    "resident.rejection.denied": "Los permisos actuales no permiten esta respuesta.",
+    "resident.rejection.revision-mismatch": "El perfil ha cambiado. Revisa la pregunta actual.",
+    "resident.rejection.unscoped-run": "Esta ejecución no admite respuestas comprobadas.",
+    "resident.rejection.wrong-run": "La pregunta pertenece a otra ejecución.",
+    "resident.rejection.stale-question": "La pregunta ha cambiado o ha caducado. Revisa la pregunta actual.",
+    "resident.rejection.invalid-action": "Esta acción no está ofrecida en la pregunta actual.",
+    "resident.rejection.trust-requires-editor": "La autorización requiere revisar el perfil en el editor.",
+    "resident.rejection.unavailable": "El residente no está disponible para recibir esta respuesta.",
+    "resident.rejection.busy": "Hay otra orden pendiente. Espera antes de volver a responder.",
+    "resident.rejection.unsupported": "El residente actual no admite esta operación.",
+    "resident.rejection.rejected": "No se ha aceptado la respuesta. Revisa la pregunta actual.",
+    "resident.answerState.sending": "Enviando la respuesta al residente…",
+    "resident.answerState.queued": "Respuesta enviada. Esperando el recibo del residente…",
+    "resident.answerState.accepted": "Respuesta aceptada. La secuencia sigue en curso.",
+    "resident.answerState.rejected": "Respuesta rechazada. No se ha aplicado.",
+    "resident.answerState.unknown": "Resultado desconocido: no se ha podido confirmar la respuesta. No se repetirá automáticamente.",
+    "resident.answerState.finished": "La secuencia ha terminado.",
+    "resident.answerState.failed": "La secuencia ha terminado con un fallo.",
+    "resident.answerState.cancelled": "La secuencia se ha cancelado.",
+    "resident.failed": "El residente ha informado de un error.",
+    "resident.question.authorization": "El residente solicita tu autorización antes de lanzar una aplicación.",
+    "resident.question.alreadyRunning": "Una aplicación de este perfil ya está abierta.",
+    "resident.question.failure": "Un paso del lanzamiento necesita una decisión.",
+    "resident.question.closing": "El residente necesita saber qué hacer con las aplicaciones iniciadas.",
+    "resident.question.generic": "El residente está esperando una decisión.",
+    "resident.registration.registered": "Registrado en Windows",
+    "resident.registration.inactive": "Sin registro activo",
+    "resident.registration.error": "No se pudo registrar el atajo en Windows.",
+    "resident.registration.unconfirmed": "Registro no confirmado · abre Vantare desde el instalador",
+    "control.title": "Estado de la orden del Launcher",
+    "control.rehearse": "Prueba sin el juego",
+    "control.cancel": "Cancelación",
+    "control.retryFailed": "Reintentar fallidos",
+    "control.retryAll": "Repetir los mismos pasos",
+    "control.resultUnknown": "No se conserva una terminación comprobada de esta secuencia. No se puede repetir.",
+    "control.noFailed": "No hay pasos fallidos que se puedan reintentar.",
+    "control.cancelAction": "Cancelar secuencia actual",
+    "control.rehearseHelp": "Prueba los pasos del perfil salvo Le Mans Ultimate. No cambia el perfil ni sus disparadores. Puede pedirte una decisión.",
+    "control.cancelHelp": "Solicita cancelar la secuencia actual. Puede pedirte qué aplicaciones dejar abiertas o cerrar.",
+    "control.sending": "Enviando la orden al residente…",
+    "control.queued": "Orden enviada. Esperando el recibo del residente…",
+    "control.accepted": "Orden aceptada. La secuencia sigue en curso.",
+    "control.rejected": "Orden rechazada. No se ha aplicado.",
+    "control.unknown": "Resultado desconocido: no se ha podido confirmar la orden. No se repetirá automáticamente.",
+    "control.completed": "La secuencia ha terminado.",
+    "control.cancelled": "La secuencia ha terminado cancelada.",
+    "control.failed": "La secuencia ha terminado con un fallo.",
+    "control.cleanupFailed": "La secuencia ha terminado con un fallo al cerrar aplicaciones.",
+    "control.unavailable": "No se puede comprobar el residente o la conexión actual.",
+    "control.unsupported": "El residente actual no admite cancelar ni probar perfiles de forma comprobada.",
+    "control.account": "La ejecución pertenece a otra sesión de cuenta.",
+    "control.denied": "Necesitas permisos vigentes y estar fuera de pista para probar el perfil.",
+    "control.busy": "Hay una orden pendiente o una secuencia en curso. Espera antes de volver a probar.",
+    "control.changed": "El perfil o la ejecución han cambiado. Revisa el estado actual.",
+    "control.scanning": "Espera a que termine la detección de aplicaciones.",
+    "control.active": "No hay una ejecución comprobada que se pueda cancelar.",
+    "control.rejection.wrong-instance": "El residente ha cambiado. Revisa la pregunta actual.",
+    "control.rejection.account-changed": "La cuenta ha cambiado. Revisa la pregunta actual.",
+    "control.rejection.authority-unavailable": "No se pueden comprobar los permisos actuales.",
+    "control.rejection.denied": "Los permisos actuales no permiten esta respuesta.",
+    "control.rejection.revision-mismatch": "El perfil ha cambiado. Revisa la pregunta actual.",
+    "control.rejection.unscoped-run": "Esta ejecución no admite respuestas comprobadas.",
+    "control.rejection.wrong-run": "La pregunta pertenece a otra ejecución.",
+    "control.rejection.stale-question": "La pregunta ha cambiado o ha caducado. Revisa la pregunta actual.",
+    "control.rejection.invalid-action": "Esta acción no está ofrecida en la pregunta actual.",
+    "control.rejection.trust-requires-editor": "La autorización requiere revisar el perfil en el editor.",
+    "control.rejection.unavailable": "El residente no está disponible para recibir esta orden.",
+    "control.rejection.busy": "Hay otra orden pendiente. Espera antes de volver a enviar.",
+    "control.rejection.unsupported": "El residente actual no admite esta operación.",
+    "control.rejection.rejected": "No se ha aceptado la orden. Revisa el estado actual.",
+    "control.rejection.document-unavailable": "No se puede leer el perfil guardado.",
+    "control.rejection.no-steps": "Este perfil no tiene pasos que probar sin Le Mans Ultimate.",
+    "control.rejection.start-failed": "No se pudo iniciar la secuencia.",
+    "control.rejection.unknown-run": "No se puede comprobar la secuencia anterior. No se ha repetido.",
+    "control.rejection.no-failed-steps": "No hay pasos fallidos que se puedan reintentar.",
+    "results.missingApp": "Aplicación fuera del catálogo",
+    "results.steps": "Pasos de la secuencia",
+    "results.title": "Última secuencia",
+    "results.unknown": "Resultado de la secuencia desconocido. No permite saber qué pasos fallaron.",
+    "results.unsupported": "El residente actual no ofrece resultados por paso ni reintentos comprobados.",
+    "results.unavailable": "No hay un resultado confirmado que se pueda repetir.",
+    "results.profile": "Lanzamiento del perfil",
+    "results.rehearsal": "Prueba sin el juego",
+    "results.running": "La secuencia sigue en curso.",
+    "results.completed": "La secuencia ha terminado.",
+    "results.failed": "La secuencia ha terminado con un fallo.",
+    "results.cancelled": "La secuencia ha terminado cancelada.",
+    "results.failedSteps": "Reintenta los fallos conservados de esta secuencia, también los de un intento anterior.",
+    "results.unknownStep": "Desconocido",
+    "results.sameSteps": "Repite la selección original de esta secuencia. Si era una prueba sin el juego, conserva esa selección.",
+    "results.stale": "El perfil ha cambiado. Los nombres actuales no se atribuyen a esta secuencia.",
+    "results.states.not-selected": "Sin seleccionar",
+    "results.states.pending": "En espera",
+    "results.states.waiting": "Esperando…",
+    "results.states.launching": "Abriendo…",
+    "results.states.ready": "Listo",
+    "results.states.failed": "Falló",
+    "results.states.cancelled": "Cancelado",
+    "results.states.not-run": "No ejecutado"
+  },
+  "home": {
+    "demoIdentity": {
+      "name": "Isaac Albalá"
+    },
+    "captureTime": "2026-09-30T16:30:00+02:00",
+    "greetings": [
+      "Buenos días, __VANTARE_NAME__",
+      "Buenas tardes, __VANTARE_NAME__",
+      "Buenas noches, __VANTARE_NAME__"
+    ],
+    "greetingCases": [
+      {
+        "name": "",
+        "hour": 0,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 11,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 12,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 19,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 20,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "",
+        "hour": 23,
+        "output": "Bienvenido a Vantare"
+      },
+      {
+        "name": "Isaac",
+        "hour": 0,
+        "output": "Buenos días, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 11,
+        "output": "Buenos días, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 12,
+        "output": "Buenas tardes, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 19,
+        "output": "Buenas tardes, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 20,
+        "output": "Buenas noches, Isaac"
+      },
+      {
+        "name": "Isaac",
+        "hour": 23,
+        "output": "Buenas noches, Isaac"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 0,
+        "output": "Buenos días, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 11,
+        "output": "Buenos días, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 12,
+        "output": "Buenas tardes, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 19,
+        "output": "Buenas tardes, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 20,
+        "output": "Buenas noches, María"
+      },
+      {
+        "name": "María Ñúñez",
+        "hour": 23,
+        "output": "Buenas noches, María"
+      }
+    ],
+    "initialsCases": [
+      {
+        "name": "",
+        "output": "·"
+      },
+      {
+        "name": "Isaac Albalá",
+        "output": "IA"
+      },
+      {
+        "name": "María Ñúñez",
+        "output": "MÑ"
+      }
+    ],
+    "tracks": {
+      "lemans": [
+        "0 0 504 1000",
+        "M21 319 18 308 10 302 6 285 0 280 4 184 8 159 16 136 24 127 49 111 49 97 77 79 93 60 107 54 133 51 139 45 142 30 146 23 166 10 194 0 218 14 233 28 264 75 276 97 356 346 356 351 352 360 353 366 365 377 369 384 467 689 478 696 481 701 478 722 490 760 492 775 504 968 497 997 493 1000 362 964 273 919 209 872 185 853 180 846 172 820 168 816 161 816 115 834 112 833 85 727 49 653 28 622 21 607 21 598 24 591 44 567 48 555 44 526 27 508 21 495 21 486 24 479 39 462 43 451 38 413 40 389 21 319Z"
+      ],
+      "spa": [
+        "0 0 617 1000",
+        "M186 106 131 10 131 6 133 2 138 0 206 32 227 45 269 78 368 195 374 200 402 218 410 226 421 247 431 291 503 409 515 436 616 788 616 803 612 809 594 823 588 835 599 888 597 903 592 911 469 997 462 1000 455 1000 447 998 440 993 436 987 434 973 440 959 497 923 502 918 506 905 506 897 485 836 478 811 455 681 451 673 439 659 422 650 382 647 370 648 349 655 330 671 316 694 262 829 257 839 250 846 241 851 224 854 216 852 189 838 180 836 162 840 154 845 144 859 97 933 87 940 80 942 72 941 65 938 15 901 5 888 2 881 0 863 1 853 15 815 38 779 87 728 105 714 199 665 210 658 231 640 247 619 258 599 289 528 292 505 290 493 250 390 243 356 239 325 235 255 238 252 242 251 261 251 265 244 186 106Z"
+      ],
+      "monza": [
+        "0 0 579 1000",
+        "M19 635 43 355 47 349 60 349 64 343 50 283 50 272 55 201 59 182 71 152 86 131 107 111 119 102 146 88 177 78 195 75 287 67 381 61 386 57 389 47 393 42 421 36 524 2 538 0 549 3 557 9 566 19 568 25 579 138 578 148 574 154 442 227 414 245 345 303 194 437 186 447 188 479 185 489 178 502 158 521 154 534 107 970 103 982 94 992 88 996 72 1000 59 998 44 992 31 983 19 968 11 951 4 930 2 908 0 810 19 635Z"
+      ],
+      "bahrain": [
+        "0 0 675 1000",
+        "M22 474 30 193 37 10 40 1 48 0 56 2 100 45 110 49 121 48 187 27 203 25 217 26 650 110 665 114 673 122 675 133 673 143 668 154 659 165 648 175 581 225 529 278 521 293 502 335 495 344 476 356 460 358 413 350 387 353 376 359 363 371 266 493 257 501 244 503 235 497 232 484 233 464 271 222 266 195 259 183 219 149 214 146 208 148 204 154 190 261 179 460 169 715 171 735 179 747 192 753 209 757 227 756 249 751 271 740 291 727 309 708 321 689 342 634 354 611 365 597 380 585 397 574 422 568 449 567 468 572 561 618 575 628 587 639 600 663 600 673 594 685 566 708 55 995 46 1000 31 1000 25 994 2 946 0 927 7 692 22 474Z"
+      ],
+      "imola": [
+        "0 0 1000 517",
+        "M634 60 617 60 506 36 467 32 444 32 328 42 271 56 261 65 256 86 253 92 194 124 186 132 102 341 101 353 110 386 110 391 107 397 4 487 0 497 5 511 10 515 15 517 23 517 202 495 249 499 317 512 326 510 333 507 342 498 351 482 364 448 367 433 368 417 366 400 346 307 346 301 375 253 386 250 412 261 418 262 650 260 653 262 658 275 666 276 758 238 770 232 808 205 904 112 926 99 994 69 999 64 999 50 978 6 973 2 961 0 813 55 797 59 787 61 634 60Z"
+      ],
+      "portimao": [
+        "0 0 587 1000",
+        "M95 420 18 156 1 93 0 85 4 78 12 70 105 3 116 0 125 1 235 27 241 33 243 39 244 44 242 51 236 58 173 95 164 103 156 114 150 133 152 151 277 588 285 595 294 595 302 590 307 582 323 419 320 391 314 371 245 238 242 225 244 211 248 199 305 129 320 125 332 127 341 134 346 142 385 406 396 431 409 446 428 458 552 522 562 532 574 549 585 578 587 590 585 600 573 613 441 654 420 668 407 683 397 701 393 721 377 827 378 837 392 853 405 854 415 852 420 849 502 749 514 743 527 740 543 744 556 756 565 769 569 778 573 798 573 809 570 822 564 834 548 857 465 957 447 973 418 989 398 996 379 1000 355 1000 318 992 281 973 254 944 240 924 95 420Z"
+      ],
+      "interlagos": [
+        "0 0 632 1000",
+        "M61 718 123 957 129 970 143 990 149 996 159 1000 180 998 186 995 203 979 220 960 227 955 235 952 244 951 257 955 284 972 306 981 337 987 350 988 385 982 403 975 421 965 438 952 452 937 471 907 478 891 504 803 632 305 628 286 622 278 611 270 599 265 527 251 506 248 477 251 462 256 436 271 424 282 395 316 223 552 215 561 205 567 192 572 177 574 155 573 128 567 100 552 91 544 79 525 65 466 59 428 58 396 62 384 72 376 85 373 101 378 131 400 145 404 159 404 169 400 181 390 188 380 192 369 192 360 191 349 177 327 139 289 124 272 113 256 105 235 100 209 95 179 96 167 105 154 116 151 130 155 198 232 215 244 235 252 256 255 286 252 300 248 315 239 330 227 348 203 372 165 429 71 431 65 431 59 426 45 419 39 404 30 325 2 313 0 289 3 224 16 164 40 129 59 116 68 92 90 73 115 59 151 38 236 30 280 3 389 0 431 1 460 5 482 61 718Z"
+      ],
+      "cota": [
+        "0 0 1000 573",
+        "M201 468 291 540 335 569 345 573 348 573 353 568 353 562 324 472 324 457 328 440 343 417 434 360 447 345 457 318 466 307 504 286 511 276 515 250 519 235 527 224 538 213 562 199 581 198 645 226 651 226 665 218 677 208 701 180 707 175 718 171 726 171 740 177 748 185 753 194 761 200 865 177 871 173 974 48 992 25 999 11 999 5 994 1 988 0 883 33 814 53 737 71 646 90 535 107 362 127 360 129 359 134 407 197 423 223 423 232 420 235 413 239 377 238 370 231 359 205 355 199 333 177 308 174 302 175 299 181 300 185 351 275 352 290 345 313 335 330 329 335 292 352 281 354 259 351 239 344 222 333 184 278 158 245 154 241 145 239 119 246 10 294 4 298 0 306 7 315 201 468Z"
+      ],
+      "losail": [
+        "0 0 847 1000",
+        "M149 605 3 339 0 325 2 311 7 299 15 291 28 284 42 281 56 284 161 347 171 350 184 351 199 346 211 335 218 322 220 310 218 218 219 206 228 185 384 11 392 5 405 1 417 0 430 3 439 9 484 51 489 60 491 73 491 83 488 94 481 103 384 210 380 217 380 226 382 233 387 239 394 243 403 244 410 242 588 171 599 170 613 171 624 177 633 186 639 197 641 218 638 228 631 239 625 244 612 255 597 272 575 307 562 343 557 368 552 379 545 388 527 398 431 422 416 433 411 451 412 465 423 479 441 497 468 518 497 534 527 545 556 551 585 554 760 535 773 537 788 545 800 554 811 569 844 631 847 641 847 651 846 661 839 674 787 758 780 764 761 771 747 771 582 737 570 737 558 741 548 748 541 756 426 980 417 991 407 998 391 1000 380 999 369 994 357 984 149 605Z"
+      ],
+      "paulricard": [
+        "0 0 1000 624",
+        "M524 356 700 491 704 492 707 492 712 488 713 454 715 444 728 430 741 425 756 425 764 427 803 462 825 473 848 478 875 480 885 478 917 468 942 455 952 456 957 459 964 466 967 474 968 489 966 494 961 506 922 561 911 582 909 591 912 600 918 609 937 622 957 624 976 617 985 611 992 603 998 592 1000 576 999 457 993 438 981 421 969 410 953 401 701 305 653 273 645 267 629 245 621 239 613 238 610 240 587 260 579 260 112 85 104 80 100 75 82 36 74 25 63 15 50 5 36 0 28 1 19 5 12 14 0 50 1 55 6 58 34 54 47 55 52 57 59 64 63 71 64 78 61 97 63 104 70 110 116 136 168 160 220 199 240 219 277 240 284 243 296 243 307 238 321 222 330 220 348 222 524 356Z"
+      ],
+      "barcelona": [
+        "0 0 817 1000",
+        "M643 447 333 942 320 955 314 957 305 959 289 956 254 936 242 933 232 933 217 936 209 941 148 987 119 998 99 1000 76 998 51 987 32 971 16 951 8 935 3 917 0 890 3 858 16 811 24 794 138 612 154 601 170 597 189 601 199 606 217 623 226 640 229 653 229 673 226 699 209 732 133 852 130 867 132 876 140 887 146 891 159 895 169 893 289 839 305 829 337 802 348 788 394 716 401 697 399 686 393 675 384 667 363 654 352 645 339 629 274 476 272 463 272 449 275 428 282 417 297 397 308 389 675 200 688 193 695 186 698 179 699 171 696 161 692 154 677 141 653 132 630 130 607 134 591 142 579 148 548 173 537 178 521 179 511 177 499 171 489 163 479 143 477 127 480 112 486 101 591 12 612 3 640 0 662 7 782 84 799 98 810 116 817 140 817 157 814 172 802 196 643 447Z"
+      ],
+      "lemans_h": [
+        "0 0 1000 397",
+        "M768 95 779 95 788 90 804 92 810 88 896 123 917 135 935 150 941 160 947 188 959 192 966 223 979 245 979 259 973 283 977 291 990 298 994 304 1000 326 999 355 979 372 962 381 909 393 885 397 634 388 630 386 623 379 618 378 604 385 596 386 289 375 279 383 274 384 256 374 218 372 204 370 26 316 2 301 0 297 76 190 146 125 234 68 242 65 267 66 272 64 275 58 274 10 276 7 380 19 458 10 493 2 509 0 517 3 523 8 538 34 548 41 574 47 596 38 610 37 624 45 634 64 642 71 678 79 699 89 768 95Z"
+      ],
+      "lemans_h2": [
+        "0 0 1000 397",
+        "M232 302 221 302 212 307 196 305 190 308 104 274 83 262 65 247 59 237 53 209 41 204 34 174 21 152 21 138 27 114 23 106 10 99 6 93 0 71 1 42 21 25 38 16 91 4 115 0 366 9 370 11 377 18 382 19 396 11 404 10 711 22 721 14 726 13 744 23 782 25 796 27 974 80 998 96 1000 100 924 206 854 272 766 329 758 332 733 331 728 333 725 339 726 387 724 389 620 378 542 387 507 395 491 396 483 393 477 389 462 363 452 356 426 349 404 359 390 360 376 352 366 333 358 326 322 318 301 308 232 302Z"
+      ],
+      "spa_h": [
+        "0 0 1000 588",
+        "M891 360 993 333 997 334 1000 337 1000 342 954 396 937 413 896 443 764 506 734 531 725 537 703 542 660 539 534 577 506 581 156 588 143 584 139 578 131 559 120 550 69 547 55 542 49 535 1 401 0 393 2 387 6 380 11 375 19 373 32 374 43 383 62 444 66 451 76 458 83 459 145 455 170 455 295 465 304 464 319 456 332 443 345 407 346 396 345 374 335 353 318 335 206 252 198 244 194 236 191 227 193 210 197 203 216 182 220 174 221 157 218 149 208 136 152 74 148 63 148 56 150 49 155 44 201 6 223 0 239 2 249 6 280 28 308 58 342 115 351 135 373 234 377 246 388 270 404 290 419 304 477 351 498 359 509 360 614 349 646 350 676 355 741 369 743 376 738 393 744 399 891 360Z"
+      ],
+      "monza_h": [
+        "0 0 1000 399",
+        "M267 177 498 70 503 70 509 80 516 80 557 43 623 9 639 4 668 0 691 2 716 9 752 30 774 49 832 130 879 201 884 203 899 202 917 221 990 286 997 296 1000 306 1000 315 992 331 908 391 900 394 893 393 777 324 750 310 674 282 502 225 490 223 466 238 457 241 444 242 419 234 408 237 45 397 34 399 23 397 17 393 6 383 2 372 0 357 2 344 8 327 17 313 30 299 47 286 123 241 267 177Z"
+      ],
+      "silverstone": [
+        "0 0 599 1000",
+        "M356 9 465 0 484 1 499 6 509 13 520 26 528 41 534 60 542 93 550 125 555 161 557 183 560 237 561 283 563 301 570 318 583 342 589 355 588 365 586 377 568 426 566 445 569 459 576 471 594 497 598 508 599 522 596 535 585 548 570 558 551 570 536 579 525 589 513 609 489 655 357 898 313 966 301 982 291 991 280 997 268 1000 256 999 244 996 234 992 225 984 217 973 214 968 203 943 189 920 175 901 166 889 155 877 136 858 93 807 89 804 83 803 77 806 59 822 53 824 47 824 42 822 34 814 26 807 17 794 10 780 5 766 0 750 0 744 1 737 5 731 13 718 143 548 173 510 179 503 189 496 202 493 213 493 227 494 267 500 280 502 294 502 310 500 324 496 336 489 419 423 425 420 431 416 438 416 443 417 448 422 451 427 465 476 469 483 475 487 482 488 490 484 494 478 498 472 503 456 508 442 512 428 514 415 515 402 514 387 511 381 504 373 234 127 227 122 217 117 205 115 192 117 178 123 174 129 170 138 165 182 162 191 155 199 145 204 134 205 122 202 114 196 109 189 105 182 104 173 106 164 112 149 147 80 158 67 169 56 184 42 197 34 213 27 227 22 257 19Z"
+      ]
+    },
+    "trackAliases": [
+      [
+        "le mans",
+        "lemans_h"
+      ],
+      [
+        "sarthe",
+        "lemans_h"
+      ],
+      [
+        "lemans",
+        "lemans_h"
+      ],
+      [
+        "spa",
+        "spa_h"
+      ],
+      [
+        "monza",
+        "monza_h"
+      ],
+      [
+        "bahr",
+        "bahrain"
+      ],
+      [
+        "imola",
+        "imola"
+      ],
+      [
+        "portim",
+        "portimao"
+      ],
+      [
+        "interlagos",
+        "interlagos"
+      ],
+      [
+        "cota",
+        "cota"
+      ],
+      [
+        "americas",
+        "cota"
+      ],
+      [
+        "losail",
+        "losail"
+      ],
+      [
+        "lusail",
+        "losail"
+      ],
+      [
+        "qatar",
+        "losail"
+      ],
+      [
+        "silverstone",
+        "silverstone"
+      ],
+      [
+        "paul ricard",
+        "paulricard"
+      ],
+      [
+        "barcelona",
+        "barcelona"
+      ],
+      [
+        "catalunya",
+        "barcelona"
+      ]
+    ],
+    "sources": {
+      "launcher": "Launcher",
+      "beta": "Beta",
+      "report": "Informes",
+      "system": "Sistema",
+      "updater": "Actualización"
+    },
+    "widgets": {
+      "standings": "Standings",
+      "radar": "Radar",
+      "pedals": "Pedales",
+      "delta": "Delta",
+      "car-damage-visual": "Daños del coche",
+      "input-telemetry": "Telemetría de entrada",
+      "multiclass-relative": "Relative multiclase",
+      "broadcast-tower": "Torre de posiciones",
+      "delta-trace": "Historial de delta",
+      "track-map": "Mapa del circuito",
+      "track-weather": "Tiempo en pista",
+      "car-damage-numbers": "Daños detallados",
+      "head-to-head": "Cara a cara",
+      "fuel-strategy": "Fuel y stint",
+      "pedals-telemetry": "Telemetría de pedales",
+      "relative": "Relative",
+      "racing-flags": "Banderas",
+      "fastest-lap": "Vuelta rápida",
+      "session-alerts": "Avisos de sesión"
+    },
+    "templates": [
+      "Standings multiclase",
+      "Relative compacto",
+      "Fuel y stint",
+      "Delta y sectores"
+    ],
+    "howSteps": [
+      {
+        "title": "1 · Elige tus apps",
+        "description": "Crea tu perfil en Launcher",
+        "icon": "v-launch"
+      },
+      {
+        "title": "2 · Ajusta tu overlay",
+        "description": "Elige una plantilla en Studio",
+        "icon": "v-studio"
+      },
+      {
+        "title": "3 · Lanza con Ctrl L",
+        "description": "Abre las apps de tu perfil en orden",
+        "icon": "v-keys"
+      }
+    ],
+    "launch": "Lanzar __VANTARE_NAME__",
+    "steps": "__VANTARE_COUNT__ pasos de lanzamiento",
+    "lastLaunch": "__VANTARE_NAME__ · último lanzamiento",
+    "last": "Último · __VANTARE_NAME__",
+    "plus": "+__VANTARE_COUNT__",
+    "scenes": {
+      "inicio-base": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "carrera-lmu",
+            "name": "Carrera LMU",
+            "steps": 4,
+            "favorite": true,
+            "lastLaunchedAt": "2026-10-05T18:02:00+02:00"
+          },
+          {
+            "id": "streaming-le-mans",
+            "name": "Streaming Le Mans",
+            "steps": 3,
+            "favorite": false,
+            "lastLaunchedAt": "2026-10-04T20:41:00+02:00"
+          },
+          {
+            "id": "entreno-rapido",
+            "name": "Entreno rápido",
+            "steps": 2,
+            "favorite": false,
+            "lastLaunchedAt": "2026-10-04T20:41:00+02:00"
+          }
+        ],
+        "favorite": "carrera-lmu",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "ready",
+          "width": 1920,
+          "height": 1080,
+          "widgets": [
+            {
+              "kind": "standings",
+              "x": 20,
+              "y": 20,
+              "w": 654,
+              "h": 595,
+              "opacity": 100
+            },
+            {
+              "kind": "delta",
+              "x": 840,
+              "y": 900,
+              "w": 150,
+              "h": 36,
+              "opacity": 100
+            },
+            {
+              "kind": "relative",
+              "x": 1420,
+              "y": 20,
+              "w": 420,
+              "h": 265,
+              "opacity": 100
+            },
+            {
+              "kind": "pedals",
+              "x": 1020,
+              "y": 790,
+              "w": 96,
+              "h": 160,
+              "opacity": 100
+            }
+          ]
+        },
+        "version": "0.0.0"
+      },
+      "inicio-vacio": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [],
+        "favorite": null,
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "missing",
+          "width": 1920,
+          "height": 1080,
+          "widgets": []
+        },
+        "version": "0.0.0"
+      },
+      "inicio-cargando": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "creator",
+            "name": "Creador de Contenido",
+            "steps": 3,
+            "favorite": true,
+            "lastLaunchedAt": null
+          },
+          {
+            "id": "pro",
+            "name": "Pro",
+            "steps": 4,
+            "favorite": false,
+            "lastLaunchedAt": null
+          }
+        ],
+        "favorite": "creator",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "ready",
+          "width": 1920,
+          "height": 1080,
+          "widgets": [
+            {
+              "kind": "standings",
+              "x": 20,
+              "y": 20,
+              "w": 654,
+              "h": 595,
+              "opacity": 100
+            },
+            {
+              "kind": "relative",
+              "x": 1420,
+              "y": 20,
+              "w": 420,
+              "h": 265,
+              "opacity": 100
+            },
+            {
+              "kind": "delta",
+              "x": 840,
+              "y": 900,
+              "w": 150,
+              "h": 36,
+              "opacity": 100
+            },
+            {
+              "kind": "pedals",
+              "x": 1020,
+              "y": 790,
+              "w": 96,
+              "h": 160,
+              "opacity": 100
+            }
+          ]
+        },
+        "version": "0.0.0"
+      },
+      "inicio-error": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "creator",
+            "name": "Creador de Contenido",
+            "steps": 3,
+            "favorite": true,
+            "lastLaunchedAt": null
+          },
+          {
+            "id": "pro",
+            "name": "Pro",
+            "steps": 4,
+            "favorite": false,
+            "lastLaunchedAt": null
+          }
+        ],
+        "favorite": "creator",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "ready",
+          "width": 1920,
+          "height": 1080,
+          "widgets": [
+            {
+              "kind": "standings",
+              "x": 20,
+              "y": 20,
+              "w": 654,
+              "h": 595,
+              "opacity": 100
+            },
+            {
+              "kind": "pedals",
+              "x": 850,
+              "y": 20,
+              "w": 96,
+              "h": 160,
+              "opacity": 100
+            }
+          ]
+        },
+        "version": "0.0.0"
+      },
+      "inicio-sin-diseno": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "creator",
+            "name": "Creador de Contenido",
+            "steps": 3,
+            "favorite": true,
+            "lastLaunchedAt": null
+          },
+          {
+            "id": "pro",
+            "name": "Pro",
+            "steps": 4,
+            "favorite": false,
+            "lastLaunchedAt": null
+          }
+        ],
+        "favorite": "creator",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "idle"
+        },
+        "layout": {
+          "state": "missing",
+          "width": 1920,
+          "height": 1080,
+          "widgets": []
+        },
+        "version": "0.0.0"
+      },
+      "inicio-lanzando": {
+        "sim": {
+          "connected": false,
+          "track": null
+        },
+        "profiles": [
+          {
+            "id": "creator",
+            "name": "Creador de Contenido",
+            "steps": 3,
+            "favorite": true,
+            "lastLaunchedAt": null
+          },
+          {
+            "id": "pro",
+            "name": "Pro",
+            "steps": 4,
+            "favorite": false,
+            "lastLaunchedAt": null
+          }
+        ],
+        "favorite": "creator",
+        "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "protected": false,
+        "launch": {
+          "kind": "running",
+          "text": ""
+        },
+        "layout": {
+          "state": "ready",
+          "width": 1920,
+          "height": 1080,
+          "widgets": [
+            {
+              "kind": "standings",
+              "x": 20,
+              "y": 20,
+              "w": 654,
+              "h": 595,
+              "opacity": 100
+            },
+            {
+              "kind": "relative",
+              "x": 1420,
+              "y": 20,
+              "w": 420,
+              "h": 265,
+              "opacity": 100
+            },
+            {
+              "kind": "delta",
+              "x": 840,
+              "y": 900,
+              "w": 150,
+              "h": 36,
+              "opacity": 100
+            },
+            {
+              "kind": "pedals",
+              "x": 1020,
+              "y": 790,
+              "w": 96,
+              "h": 160,
+              "opacity": 100
+            }
+          ]
+        },
+        "version": "0.0.0"
+      }
+    }
   },
   "sections": [
     "home",

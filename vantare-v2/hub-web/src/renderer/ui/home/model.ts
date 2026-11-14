@@ -1,5 +1,5 @@
 import type { HomeProfile } from "../../../contract/generated/contract";
-import { homeText as t } from "../../i18n/home";
+import { homeText as t } from "../../i18n/home.ts";
 export function greeting(name: string, now: Date): string {
   return name
     ? `${now.getHours() < 12 ? t.morning : now.getHours() < 20 ? t.afternoon : t.night}, ${name}`

@@ -2399,10 +2399,16 @@ conservan las limitaciones de Electron. La miniatura es ilustrativa.
 
 Escenas de lectura desde el corpus compartido; no simulan guardar. Tests nuevos
 de protocolo, controles accesibles, búsqueda Unicode y Escape sin ventana.
-Clippy local y tests del head Studio pendientes al redactar. El primer Clippy
-detectó dos imports de test omitidos, corregidos. Cola con dos jobs, target del
-slot en D:. Logs: D:/VantareServer/evidence/hub-rune/studio-*.
+Clippy local y 73 tests Windows PASS, por la cola con dos jobs y target del
+slot en D:. Catálogo/formato/diff, 27 tests Python y 463 licencias PASS.
+Los fallos iniciales se conservan: imports omitidos y orden de módulos de test;
+la prueba del catálogo pulsaba antes de terminar la entrada de Rune. Se avanza
+el reloj inyectado y se exige opacidad visible antes de pulsar; búsqueda con
+acentos y Escape PASS, sin esperas de pared ni rebajar las aserciones.
+Logs: D:/VantareServer/evidence/hub-rune/studio-clippy-validated.log y
+studio-tests-validated.log. Ningún compilador propio queda en curso.
 Nada de ejecución gráfica en el servidor. Capturas/ventana/anfitrión real
 pendientes del Mac; el corte 2 sigue en curso. PR/HEAD/gates finales se reflejan
-en #2256 y el nuevo PR draft a nightly, apilado sobre #2297. Plane lo actualiza
+en #2256 y #2306, draft a nightly apilado sobre #2297. CI del nuevo head
+pendiente; no se hereda el resultado de otro SHA. Plane lo actualiza
 el orquestador. Sin merge, promoción ni release del worker.

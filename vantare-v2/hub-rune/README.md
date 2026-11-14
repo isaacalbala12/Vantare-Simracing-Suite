@@ -251,3 +251,12 @@ Pendiente: comparativas Studio con Electron en ambos temas y las tres escalas,
 ventana real/teclado físico y escrituras con el anfitrión real. No se declara
 Studio ni el corte 2 aceptados. Al volver el Mac se captura primero #2297,
 siempre offscreen y sin activar ventanas delante de Isaac.
+
+
+Validación local Studio: Clippy y 73 tests Windows PASS sin ventana, por la cola
+con dos jobs. Incluye conflictos/revocación/plazos, peticiones de apariencia de
+los cinco widgets en ambos Looks y catálogo Unicode/Escape. El test espera la
+entrada de Rune avanzando el reloj inyectado antes de pulsar el campo y comprueba
+que ya es visible. Logs en D:/VantareServer/evidence/hub-rune/studio-*-validated.log.
+CI y revisión del head actual se consultan en #2306; estos tests no certifican
+apariencia, dispositivo gráfico ni anfitrión real.

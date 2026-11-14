@@ -499,6 +499,8 @@ pub fn view(state: &State) -> El {
             .child(
                 rune::text_input(&model.query, crate::design::body_style(14.0, 400.0))
                     .key("studio-search")
+                    .w_full()
+                    .min_h(36.0)
                     .single_line()
                     .label(text("studio.search"))
                     .on_edit(|s: &mut State| &mut s.studio.query),
@@ -525,6 +527,8 @@ pub fn view(state: &State) -> El {
             row()
                 .pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0))
                 .center()
+                .raise()
+                .fill(theme.color("bg-base").alpha(0.65))
                 .child(dialog),
         );
     }
@@ -558,6 +562,8 @@ pub fn view(state: &State) -> El {
             row()
                 .pin(Some(0.0), Some(0.0), Some(0.0), Some(0.0))
                 .center()
+                .raise()
+                .fill(theme.color("bg-base").alpha(0.65))
                 .child(dialog),
         );
     }
@@ -704,11 +710,24 @@ mod tests {
         rt.pointer_up(x, y);
         rt.frame(0.0);
         assert!(rt.state.studio.catalog_open);
+        // Newly mounted Rune elements enter with a spring. Advance only injected time,
+        // as in the existing Home retry test, before simulating a physical click.
+        for _ in 0..120 {
+            rt.frame(1.0 / 60.0);
+        }
         let (x, y) = rt.find("studio-search").unwrap();
+        assert!(
+            rt.elements()
+                .iter()
+                .any(|e| e.key.as_deref() == Some("studio-search") && e.opacity > 0.99)
+        );
         rt.pointer_down(x, y);
         rt.pointer_up(x, y);
+        rt.frame(0.0);
+        assert!(rt.state.studio.catalog_open);
         rt.paste("clasificación");
         rt.frame(0.0);
+        assert_eq!(rt.state.studio.query.text, "clasificación");
         assert!(rt.find("studio-add-standings").is_some());
         assert!(rt.find("studio-add-pedals").is_none());
         rt.key(rune::KeyEvent {

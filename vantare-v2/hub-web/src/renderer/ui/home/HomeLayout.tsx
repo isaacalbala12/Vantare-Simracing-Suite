@@ -148,7 +148,7 @@ export function HomeLayout(p: HomeProps) {
           >
             {greeting(empty ? "" : (p.name.split(/\s+/)[0] ?? ""), now)}
           </h1>
-          <p>
+          <p className="v-home-hero-description">
             {empty
               ? t.emptySubtitle
               : connected

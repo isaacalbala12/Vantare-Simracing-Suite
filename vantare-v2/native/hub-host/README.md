@@ -54,6 +54,14 @@ entrada en Live cierra el Hub. `hub-ready` solo se publica tras mostrar la venta
 
 ## Cola de servicios
 
+D060 conserva el comentario de los cuestionarios: la vista publica `note` y
+`testing.answer` acepta `note?: string` (máximo `testingAnswerNoteMaxChars`).
+Una nota vacía borra el comentario por decisión del usuario. Si falta el campo,
+se reutiliza el comentario observado del mismo cuestionario y generación de
+cuenta; sin esa observación se rechaza, sin enviar un vacío supuesto. Requiere
+el Services de esta entrega: las versiones anteriores forzaban una nota vacía
+en el RPC. No se modifica el protocolo IPC ni el Hub GPUI congelado.
+
 Un efecto activo, sin preempción ni reenvío automático. Logout y Cancel esperan
 al activo; el transporte limita cada operación de E/S a 30 s. No se promete
 cancelación instantánea ni un límite global de 30 s para Probe + reconexión +

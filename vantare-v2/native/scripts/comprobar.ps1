@@ -1,5 +1,5 @@
-# Worker gate: Clippy for the changed crate and its direct reverse dependencies;
-# tests only for the changed crate unless -Full is passed.
+# Worker gate: Clippy and tests for the changed crate; direct reverse
+# dependencies with -Full. CI covers the transitive dependents.
 [CmdletBinding()]
 param(
     [Parameter(Mandatory, Position=0)][string]$Crate,
@@ -14,17 +14,18 @@ try {
     if ($Crate -notlike 'vantare-*') { $Crate = "vantare-$Crate" }
     $sensitive = @('vantare-runtime', 'vantare-domain', 'vantare-ipc', 'vantare-ui', 'vantare-storage')
     if (-not $Full -and $Crate -in $sensitive) {
-        Write-Warning 'gate rápido: faltan tests de dependientes y telemetría (#1498); usa -Full y la telemetría antes de publicar'
+        Write-Warning 'gate rápido: faltan Clippy y tests de dependientes y telemetría (#1498); usa -Full y la telemetría antes de publicar'
     }
     $selection = & python (Join-Path $PSScriptRoot 'affected-crates.py') --crate $Crate
     if ($LASTEXITCODE -or -not $selection) { throw 'No se pudo seleccionar el camino rápido.' }
     $packages = $selection.Split(',')
+    $lintSelection = if ($Full) { $packages -join ',' } else { $Crate }
     $testSelection = if ($Full) { $packages -join ',' } else { $Crate }
-    $line = "Comprobar: $($packages -join ', ') (tests: $testSelection)"
+    $line = "Comprobar: $lintSelection (tests: $testSelection)"
     if ($ListOnly) { Write-Output $line; return }
     Write-Host $line
     # One queue acquisition for all commands; all use exactly the same slot target.
     & (Join-Path $PSScriptRoot 'compilar.ps1') pwsh -NoProfile -File (
-        Join-Path $PSScriptRoot 'comprobar-seleccion.ps1') -Selection ($packages -join ',') -TestSelection $testSelection
+        Join-Path $PSScriptRoot 'comprobar-seleccion.ps1') -Selection $lintSelection -TestSelection $testSelection
     if ($LASTEXITCODE) { throw 'Falló la comprobación del worker.' }
 } finally { Pop-Location }

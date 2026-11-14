@@ -55,9 +55,9 @@ históricos no se recalibran; los gates de producto son los de `native/`.
 
 ## Compilación incremental (#1993)
 
-Workers: `vantare-v2/native/scripts/comprobar.ps1 <crate>`; Clippy del crate
-tocado y sus dependientes directos, tests solo del crate tocado (`-Full` para el
-gate completo), excluyendo Hub y Admin. CI cubre los dependientes transitivos y
-la telemetría. La cola reutiliza dos targets por slot en D: entre
+Workers: `vantare-v2/native/scripts/comprobar.ps1 <crate>`; Clippy y tests solo
+del crate tocado (`-Full` para Clippy y tests de los dependientes directos),
+excluyendo Hub y Admin. CI cubre los dependientes directos y transitivos y la
+telemetría. La cola reutiliza dos targets por slot en D: entre
 ramas. En este servidor, no crear targets por rama ni compilar en C:. GitHub usa
 `windows-latest`, `RUNNER_TEMP` y caché GHA; conserva el workspace completo en nightly. Detalles en `vantare-v2/native/README.md`.

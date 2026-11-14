@@ -2398,3 +2398,14 @@ Primero cuatro pares 1280 regenerados y verificación PNG idéntica de los cuatr
 pares 1440. Exclusivamente Rune offscreen y Electron oculto/accessory. Sin
 cuentas, overlays, cambios de host, nuevas dependencias ni merge/release.
 Plane lo mantiene el orquestador; evidencia externa inicio-2297/.
+
+
+Verificación del compacto: build Mac PASS (60,29 s, mínimo 13,73 GiB), 56 tests
+CPU Mac PASS, incluido el límite 820 y botones sin recorte en los tres factores.
+Nuevos PNG 1440x900 claro/oscuro idénticos por SHA-256 al head anterior 7eff0c88;
+se conservan sus cuatro pares sin modificarlos. Cuatro pares 1280x800 regenerados
+contra las mismas referencias GPUI/Electron, sin reescalar ni abrir ventanas.
+Prueba de píxeles/dimensiones/hashes y log en inicio-2297/. Clippy/tests Windows
+siguen por cola, sin segundo compilador propio; CI nueva pendiente. La aceptación
+visual sigue en Isaac. Medición interrumpida por orden explícita, datos guardados;
+sin merge ni release y sin convertir una tanda parcial en resultado definitivo.

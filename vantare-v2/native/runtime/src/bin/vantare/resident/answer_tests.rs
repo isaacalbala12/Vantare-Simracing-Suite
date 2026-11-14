@@ -144,7 +144,12 @@ fn invalid_targets_and_trust_never_reach_the_worker_or_authority() {
         f.owner.answer_checked_with(f.request.clone(), || {
             panic!("invalid target must not observe authority")
         });
-        assert_eq!(receipt(&f.owner), OrderReceipt::Rejected { reason });
+        assert_eq!(
+            receipt(&f.owner),
+            OrderReceipt::Rejected {
+                reason: reason.into()
+            }
+        );
         assert!(f.owner.status.decision.is_some());
     }
 }
@@ -171,7 +176,12 @@ fn consumption_revalidates_authority_account_and_permission() {
                 }
                 _ => Ok(Some(observed())),
             });
-        assert_eq!(receipt(&f.owner), OrderReceipt::Rejected { reason });
+        assert_eq!(
+            receipt(&f.owner),
+            OrderReceipt::Rejected {
+                reason: reason.into()
+            }
+        );
         assert!(f.owner.status.decision.is_some());
     }
 }
@@ -194,7 +204,7 @@ fn mailbox_consumes_checked_answer_once_and_never_dispatches_a_stale_instance() 
     assert_eq!(
         receipt(&f.owner),
         OrderReceipt::Rejected {
-            reason: AnswerRejection::WrongInstance
+            reason: AnswerRejection::WrongInstance.into()
         }
     );
     let count = f.owner.status.extension.as_ref().unwrap().events.len();

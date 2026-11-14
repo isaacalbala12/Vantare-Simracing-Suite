@@ -85,7 +85,7 @@ impl Default for LauncherView {
         }
     }
 }
-fn open(path: &Path) -> Result<Option<(Vec<u8>, Document)>, HostError> {
+pub(crate) fn open(path: &Path) -> Result<Option<(Vec<u8>, Document)>, HostError> {
     if path.is_absolute() && !vantare_launcher::is_local_path(path) {
         return Err(HostError::Denied);
     }

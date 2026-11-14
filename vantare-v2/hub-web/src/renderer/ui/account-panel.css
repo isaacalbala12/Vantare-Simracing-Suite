@@ -332,7 +332,14 @@
   line-height: round(nearest, calc(1em * 1.618034), 1px);
   color: var(--text-3);
 }
-@media (max-height: 780px) {
+/* GPUI account_plan / Adapt::show_optional: density B begins below 820 px. */
+@media (max-height: 819px) {
+  .v-account-page {
+    gap: 10px;
+  }
+  .v-account-contribution {
+    display: none;
+  }
   .v-account-modules {
     padding: 16px;
     gap: 8px;
@@ -343,11 +350,22 @@
   .v-account-module {
     min-height: 32px;
   }
-  .v-account-module p,
-  .v-account-module-icon {
-    align-self: flex-start;
-    margin-top: 11px;
+  .v-account-module p {
     display: none;
+  }
+  .v-account-module-icon {
+    align-self: center;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    background: transparent;
+  }
+  .v-account-module > div {
+    padding-block: 0;
+  }
+  .v-account-module strong {
+    font-size: 13px;
+    font-weight: 500;
   }
   .v-account-identity h1 {
     font-size: 26px;

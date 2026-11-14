@@ -1,0 +1,50 @@
+.v-launcher-run-results {
+  border-top: 1px solid var(--line-2);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-launcher-run-results h3,
+.v-launcher-run-results h2,
+.v-launcher-run-results p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+.v-launcher-run-results p {
+  color: var(--text-2);
+}
+.v-launcher-result-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.v-launcher-result-steps li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 4px;
+  font-size: 13px;
+}
+.v-launcher-retry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.v-launcher-run-results .v-launcher-retry-help {
+  font-size: 12px;
+}
+.v-launcher-retry-actions .v-button[aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+
+.v-launcher-result-steps [data-state="failed"] strong,
+.v-launcher-chain small[data-state="failed"] {
+  color: var(--err);
+}
+.v-launcher-result-steps [data-state="ready"] strong,
+.v-launcher-chain small[data-state="ready"] {
+  color: var(--ok);
+}

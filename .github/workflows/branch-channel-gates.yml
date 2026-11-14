@@ -310,7 +310,7 @@ jobs:
         run: |
           $evidence = Join-Path $env:RUNNER_TEMP 'native-tooling'
           New-Item -ItemType Directory -Path $evidence -Force | Out-Null
-          foreach ($test in @('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests')) {
+          foreach ($test in @('slot-target-tests', 'slot-workspace-tests', 'slot-reuse-tests', 'caller-target-tests', 'config-queue-tests', 'comprobar-tests')) {
             pwsh -NoProfile -File "native/scripts/$test.ps1" -EvidenceDirectory $evidence
             if ($LASTEXITCODE) { throw "Worker tooling: $test failed" }
           }

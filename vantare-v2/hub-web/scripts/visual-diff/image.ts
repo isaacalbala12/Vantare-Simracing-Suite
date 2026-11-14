@@ -12,9 +12,11 @@ export function compareImages(reference: Buffer, current: Buffer) {
   const perceptual = new PNG({ width: a.width, height: a.height });
   let exactPixels = 0;
   for (let i = 0; i < a.data.length; i += 4) {
-    const changed = !a.data
-      .subarray(i, i + 4)
-      .equals(b.data.subarray(i, i + 4));
+    const changed =
+      a.data[i] !== b.data[i] ||
+      a.data[i + 1] !== b.data[i + 1] ||
+      a.data[i + 2] !== b.data[i + 2] ||
+      a.data[i + 3] !== b.data[i + 3];
     if (changed) exactPixels++;
     const grey = Math.round(
       230 + (((a.data[i] + a.data[i + 1] + a.data[i + 2]) / 3) * 25) / 255,

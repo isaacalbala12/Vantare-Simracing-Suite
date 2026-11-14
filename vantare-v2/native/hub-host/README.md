@@ -313,3 +313,62 @@ L53 no modifica supervisor, rights, Services, Hub GPUI ni dependencias.
 El consumidor de L53 usa residentOrderReceiptTimeoutMs, exportada desde la misma
 política Rust de 5 s que Calendario: sin recibo al vencer = Unknown, nunca
 Finished ni un reenvío automático. El plazo solo espera OrderReceived.
+
+## L54 · cancelar y ensayar sin LMU (v34)
+`launcher.resident.cancel` recibe target {instance,accountGeneration,run,revision};
+`launcher.resident.rehearse` recibe {instance,accountGeneration,profile,revision}.
+Requieren checkedControl y una instancia fresca. Cancel toma el alcance de
+execution.active, incluso sin pregunta: run, revisión de arranque y cuenta.
+No relee el documento al cancelar. Ensayar conserva la primera lectura del host
+para rechazar temprano revisión obsoleta, perfil ausente y Protected, sin una
+segunda relectura preventiva antes de enviar. El residente valida al consumir.
+
+Ambas devuelven Queued{request}. Solo OrderReceived con ese request confirma
+Accepted{run} o Rejected; Accepted no es Finished. Misma cuenta e instancia son
+obligatorias al correlacionar. Se comparte residentOrderReceiptTimeoutMs (5 s):
+sin recibo, hueco o reinicio = Unknown, sin reenvío ni fallback legacy. Los
+rechazos también ocupan el anillo de 32. ResidentOrderRejection amplía los
+motivos comunes; el error RPC de L53 conserva ResidentAnswerRejection.
+El consumidor L53 debe tratar motivos de otras órdenes como Unknown.
+
+La cancelación exige la misma cuenta observable; puede reducir actividad tras
+revocación sin autorizar nuevos lanzamientos. Ensayar exige permits_launch y
+selecciona en el residente los pasos distintos de LMU. No se envían índices,
+rutas, comandos, argumentos ni PID desde el renderer. La UI corresponde a D;
+L55/L56, supervisor, derechos, GPUI y distribución quedan fuera.
+
+En las órdenes L54 se comprueba primero el Status y su capability fresca. Un
+residente ausente, viejo o con Status vencido devuelve Unsupported antes de
+validar cuenta/permisos. Con soporte fresco, una cuenta no observable devuelve
+CoreUnavailable. Se evita que un Denied por TTL o Live oculte la falta de soporte.
+
+## L55 · resultados y reintento (v35)
+Capability nativa StepResultsRetry. execution.results es una unión cerrada:
+Unsupported (sin soporte), Unknown (sin foto fiable) o Known{value:resumen}.
+Unknown nunca significa cero fallos ni historial vacío.
+El resumen contiene run, profile, revision, accountGeneration, mode
+(profile/rehearsal), outcome opcional, retryFailed y hasta 128 steps {index,state}. Los índices
+son posiciones originales, también cuando la misma app aparece varias veces.
+No incluye rutas, argumentos, documentos ni mensajes. Solo hay un resumen en
+memoria; al iniciar otra cadena se sustituye, y un reinicio lo pierde.
+
+launcher.resident.retry recibe target
+{instance,accountGeneration,run,profile,revision,scope:"failed"|"all"}.
+El renderer no manda índices. All se presenta «Repetir los mismos pasos» y el
+residente reconstruye la selección ORIGINAL, también si el último run era un
+reintento parcial de un ensayo. No reconstruir esa selección a partir de
+NotSelected del resumen actual: esos pasos pueden pertenecer al ensayo original.
+
+El host comprueba capability fresca primero, luego cuenta/permisos, run terminado
+con terminal retenido y una primera lectura del documento. El residente relee
+una sola instantánea, exige el hash original, consulta a la autoridad y arranca
+por valor. No se vuelve al documento cacheado ni a métodos legacy. UnknownRun,
+NoFailedSteps y los demás rechazos son cerrados. Estado incompleto o panic no
+produce una foto completa inventada. El resumen describe la pasada final;
+retryFailed refleja por separado el criterio legacy de reintento. No deducirlo
+de los estados visibles ni convertir Cancelled/NotRun en fallos.
+
+Queued y OrderReceived Accepted siguen separados de Finished. Se usa el plazo
+exportado de 5 s; hueco, reinicio o falta de recibo = Unknown y no se reenvía.
+El resumen no sustituye la correlación de recibo/terminal con cuenta e instancia.
+No hay ACK, historial persistido, propiedad viva L56 ni cambios del supervisor.

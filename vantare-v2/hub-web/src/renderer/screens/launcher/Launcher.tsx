@@ -17,6 +17,7 @@ import { snapshot, useProfileEditorState } from "./editor-state";
 import { ProfileEditor } from "./ProfileEditor";
 import { useProfileAction } from "./profile-actions";
 import { profileFailure } from "./profile-errors";
+import type { ResidentControlController } from "./resident-control";
 import {
   launcherKey,
   launcherSelectionKey,
@@ -36,7 +37,7 @@ function failureText(failure: unknown): string {
   }
   return text.failed;
 }
-export function Launcher() {
+export function Launcher({ control }: { control?: ResidentControlController }) {
   const { client } = useHost();
   const action = useProfileAction();
   const launchRequest = useLauncherRequest();
@@ -223,6 +224,7 @@ export function Launcher() {
         pending={pending || action.pending || launchRequest.pending}
         error={error}
         accepted={accepted}
+        control={control}
         onAction={profileAction}
         onSelect={setSelected}
         onEdit={(id) => void openEditor(id)}

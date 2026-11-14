@@ -39,7 +39,7 @@ pub struct LaunchChecked {
     pub revision: String,
     pub account: AccountGeneration,
 }
-fn profile<'de, D: serde::Deserializer<'de>>(decoder: D) -> Result<String, D::Error> {
+pub(super) fn profile<'de, D: serde::Deserializer<'de>>(decoder: D) -> Result<String, D::Error> {
     let value = String::deserialize(decoder)?;
     if value.is_empty() || value.len() > ID_LIMIT || value.contains('\0') {
         Err(D::Error::custom("invalid launch profile"))

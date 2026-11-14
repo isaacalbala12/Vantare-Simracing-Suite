@@ -10,10 +10,12 @@ export const launcherScenes: Record<string, VisualScene> = {
       await page
         .getByRole("heading", { name: "Creador de Contenido", exact: true })
         .waitFor();
-      const toggle = page.getByRole("button", {
-        name: "Contraer o ampliar navegación",
-        exact: true,
-      });
+      const toggle = page
+        .getByRole("button", {
+          name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+          exact: true,
+        })
+        .first();
       if ((await toggle.getAttribute("aria-expanded")) === "true")
         await toggle.click();
     },
@@ -121,11 +123,14 @@ launcherScenes["launcher-aplicaciones"] = {
       .getByRole("button", { name: "Editar Vantare Overlay", exact: true })
       .waitFor();
     const catalog = await page.locator(".v-launcher-catalog").boundingBox();
-    const height = await page.evaluate(() => window.innerHeight);
+    const footer = await page.locator(".v-shell-main").evaluate((node) => {
+      const rect = node.getBoundingClientRect();
+      return (
+        rect.bottom - Number.parseFloat(getComputedStyle(node).paddingBottom)
+      );
+    });
     assert.ok(
-      catalog &&
-        catalog.y + catalog.height >= height - 20 &&
-        catalog.y + catalog.height <= height - 17,
+      catalog && Math.abs(catalog.y + catalog.height - footer) <= 2,
       "Native catalogue must fill the content down to the page footer",
     );
     assert.ok(
@@ -142,10 +147,12 @@ launcherScenes["launcher-aplicaciones"] = {
 launcherScenes["launcher-decision"] = {
   mock: "launcher-decision",
   async prepare(page) {
-    const toggle = page.getByRole("button", {
-      name: "Contraer o ampliar navegación",
-      exact: true,
-    });
+    const toggle = page
+      .getByRole("button", {
+        name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+        exact: true,
+      })
+      .first();
     if ((await toggle.getAttribute("aria-expanded")) === "true")
       await toggle.click();
     await page.getByRole("button", { name: "Launcher", exact: true }).click();

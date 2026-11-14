@@ -5,10 +5,12 @@ import { notificationHonestyScenes } from "./notification-honesty.ts";
 import type { VisualScene } from "./scenes.ts";
 
 async function sidebar(page: Page, expanded: boolean) {
-  const control = page.getByRole("button", {
-    name: "Contraer o ampliar navegación",
-    exact: true,
-  });
+  const control = page
+    .getByRole("button", {
+      name: /^(Contraer o ampliar navegación|Contraer barra)$/,
+      exact: true,
+    })
+    .first();
   if (((await control.getAttribute("aria-expanded")) === "true") !== expanded)
     await control.click();
 }

@@ -35,6 +35,9 @@ fn fixture() -> Fixture {
         events,
         answers,
         context: RunContext {
+            results: Arc::new(Mutex::new(
+                StepSnapshot::new(2, &[0, 1]).expect("step snapshot"),
+            )),
             cancel: Arc::new(Cancellation::default()),
             sender,
             answers: replies,
@@ -98,7 +101,19 @@ fn completed_and_failed_continue_are_decided_by_the_actual_step_pipeline() {
                 }
             }
         );
-        let terminal: Vec<_> = f.events.try_iter().filter(|p| p.step.is_none()).collect();
+        let events: Vec<_> = f.events.try_iter().collect();
+        let snapshot = f.context.results.lock().unwrap().clone();
+        assert!(snapshot.complete);
+        assert_eq!(
+            snapshot
+                .steps
+                .iter()
+                .filter(|step| step.state == StepState::Failed)
+                .map(|step| usize::from(step.index))
+                .collect::<Vec<_>>(),
+            retry_steps(&f.profile, &events, RetryScope::Failed)
+        );
+        let terminal: Vec<_> = events.iter().filter(|p| p.step.is_none()).collect();
         assert_eq!(terminal.len(), 1);
         assert_eq!(terminal[0].success, succeed);
     }
@@ -199,6 +214,67 @@ fn cancellation_before_or_between_steps_never_completes() {
             }
         );
     }
+}
+
+#[test]
+fn cancelled_final_pass_does_not_display_previous_ready_but_retains_legacy_retry_criterion() {
+    let mut f = fixture();
+    let mut policy = f.profile.effective_policy();
+    policy.retry = super::super::policy::Retry::All;
+    policy.max_retries = 1;
+    f.profile.set_policy(policy);
+    let pass = Cell::new(0);
+    let discovery = Discovery::default();
+    let outcome = run_with(
+        &f.profile,
+        &f.context,
+        || panic!("not imported"),
+        || {
+            pass.set(pass.get() + 1);
+            run_pass_with(
+                &f.document,
+                &f.profile,
+                &discovery,
+                &f.context,
+                |_, _, _, _, _, index| {
+                    if index == 0 {
+                        Err("synthetic failure".into())
+                    } else {
+                        Ok(1)
+                    }
+                },
+                |_| {
+                    if pass.get() == 2 {
+                        f.context.cancel.cancel();
+                        true
+                    } else {
+                        false
+                    }
+                },
+            )
+        },
+        |_| false,
+    );
+    assert_eq!(pass.get(), 2);
+    assert_eq!(
+        outcome,
+        ChainOutcome::Cancelled {
+            reason: CancelReason::User
+        }
+    );
+    let snapshot = f.context.results.lock().unwrap().clone();
+    assert!(snapshot.complete);
+    assert_eq!(
+        snapshot.steps[1].state,
+        StepState::NotRun,
+        "Ready in pass one cannot describe a step never reached in pass two"
+    );
+    let events: Vec<_> = f.events.try_iter().collect();
+    assert_eq!(snapshot.failed_indices(), vec![0]);
+    assert_eq!(
+        snapshot.failed_indices(),
+        retry_steps(&f.profile, &events, RetryScope::Failed)
+    );
 }
 #[test]
 fn decision_expiry_is_typed_with_an_injected_clock_and_receiver() {
@@ -435,3 +511,6 @@ fn exhausted_question_ids_emit_no_reused_question() {
 
 #[path = "question_tests.rs"]
 mod question_tests;
+
+#[path = "control_tests.rs"]
+mod control_tests;

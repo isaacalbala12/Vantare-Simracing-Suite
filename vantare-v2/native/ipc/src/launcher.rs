@@ -8,7 +8,10 @@ pub mod checked;
 pub mod execution;
 pub use checked::{LaunchChecked, RequestId};
 pub mod answer;
+pub mod control;
+pub mod results;
 pub use answer::AnswerChecked;
+pub use control::{CancelChecked, RehearseChecked};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
@@ -79,6 +82,12 @@ pub enum Request {
     Launch { profile: String },
     #[serde(rename = "launch-v2")]
     LaunchChecked(LaunchChecked),
+    #[serde(rename = "cancel-v1")]
+    CancelChecked(CancelChecked),
+    #[serde(rename = "rehearse-v1")]
+    RehearseChecked(RehearseChecked),
+    #[serde(rename = "retry-v1")]
+    RetryChecked(results::RetryChecked),
     #[serde(rename = "answer-v3")]
     AnswerChecked(AnswerChecked),
     #[serde(rename = "answer-v2")]

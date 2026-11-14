@@ -6,6 +6,7 @@ import { chromium, type Locator } from "playwright-core";
 import { checkAccessGate } from "./check-access-gate.ts";
 import { checkAccessStates } from "./check-access-states.ts";
 import { checkAccount } from "./check-account.ts";
+import { checkAccountDensity } from "./check-account-density.ts";
 import { checkCalendarDialogSafety } from "./check-calendar-dialog-safety.ts";
 import { checkCommandPalette } from "./check-command-palette.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
@@ -17,7 +18,10 @@ import {
 } from "./check-onboarding.ts";
 import { checkPrivacyGate } from "./check-privacy-gate.ts";
 import { checkResidentAnswer } from "./check-resident-answer.ts";
+import { checkResidentControls } from "./check-resident-control.ts";
+import { checkResidentResults } from "./check-resident-results.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
+import { checkTestingDensity } from "./check-testing-density.ts";
 import { until } from "./wait-for";
 
 async function focused(locator: Locator) {
@@ -155,7 +159,11 @@ try {
   await page.keyboard.press("F6");
   await toast.getByRole("button", { name: "Cerrar" }).click();
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
+  await checkTestingDensity(page, server.resolvedUrls?.local[0] ?? "");
+  await checkAccountDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
+  await checkResidentResults(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   await checkCommandPalette(page, server.resolvedUrls?.local[0] ?? "");

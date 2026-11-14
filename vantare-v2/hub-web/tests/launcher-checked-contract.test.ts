@@ -38,6 +38,9 @@ describe("checked launch surface", () => {
       instance: "b".repeat(64),
       revisionCheckedLaunch: true,
       checkedAnswer: false,
+      checkedControl: false,
+      results: { kind: "unsupported" },
+      active: null,
       question: null,
       firstRetainedSeq: "9007199254740993",
       events: [

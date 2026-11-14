@@ -6,6 +6,18 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "launcher.resident.retry")]
+    LauncherResidentRetry {
+        target: crate::launcher_resident::ResidentRetryTarget,
+    },
+    #[serde(rename = "launcher.resident.cancel")]
+    LauncherResidentCancel {
+        target: crate::launcher_resident::ResidentCancelTarget,
+    },
+    #[serde(rename = "launcher.resident.rehearse")]
+    LauncherResidentRehearse {
+        target: crate::launcher_resident::ResidentRehearseTarget,
+    },
     #[serde(rename = "launcher.resident.get")]
     LauncherResidentGet {},
     #[serde(rename = "launcher.resident.answer")]
@@ -17,6 +29,18 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "launcher.resident.retry")]
+    LauncherResidentRetry {
+        value: crate::launcher_resident::ResidentQueued,
+    },
+    #[serde(rename = "launcher.resident.cancel")]
+    LauncherResidentCancel {
+        value: crate::launcher_resident::ResidentQueued,
+    },
+    #[serde(rename = "launcher.resident.rehearse")]
+    LauncherResidentRehearse {
+        value: crate::launcher_resident::ResidentQueued,
+    },
     #[serde(rename = "launcher.resident.answer")]
     LauncherResidentAnswer {
         value: crate::launcher_resident::ResidentQueued,
@@ -46,6 +70,9 @@ pub enum Event {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
+    ResidentControlRejected {
+        reason: crate::launcher_resident::ResidentOrderRejection,
+    },
     ResidentAnswerRejected {
         reason: crate::launcher_resident::ResidentAnswerRejection,
     },

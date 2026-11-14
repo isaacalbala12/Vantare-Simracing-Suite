@@ -23,29 +23,34 @@ export function ResidentInbox({
   const reopen = useRef<HTMLButtonElement>(null);
   const [dismissed, setDismissed] = useState<string>();
   const rendered = answerScope(view);
-  const retained = useRef<
+  const [retained, setRetained] = useState<
     | {
         scope: NonNullable<ReturnType<typeof answerScope>>;
         decision: NonNullable<ResidentView["decision"]>;
       }
     | undefined
   >(undefined);
-  if (view?.decision)
-    retained.current = rendered
-      ? { scope: rendered, decision: view.decision }
-      : undefined;
   const attempt = answer?.attempt;
-  if (!attempt && !view?.decision) retained.current = undefined;
+  useEffect(() => {
+    setRetained((previous) => {
+      if (!view?.decision) return attempt ? previous : undefined;
+      const scope = answerScope(view);
+      if (!scope) return undefined;
+      return previous?.decision === view.decision &&
+        sameAnswerScope(previous.scope, scope)
+        ? previous
+        : { scope, decision: view.decision };
+    });
+  }, [view, attempt]);
   const matches =
     !!attempt &&
     (view?.decision
       ? !!rendered && sameAnswerScope(rendered, attempt.target)
-      : !!retained.current &&
-        sameAnswerScope(retained.current.scope, attempt.target) &&
+      : !!retained &&
+        sameAnswerScope(retained.scope, attempt.target) &&
         (!view?.execution ||
           view.execution.instance === attempt.target.instance));
-  const decision =
-    view?.decision ?? (matches ? retained.current?.decision : null);
+  const decision = view?.decision ?? (matches ? retained?.decision : null);
   const phase = matches ? attempt?.phase : undefined;
   const status = phase
     ? phase.kind === "finished"
@@ -60,8 +65,7 @@ export function ResidentInbox({
         ? `${t.answerState.rejected} ${t.rejection[phase.reason]}`
         : t.answerState[phase.kind]
     : undefined;
-  const panelScope =
-    rendered ?? (matches ? retained.current?.scope : undefined);
+  const panelScope = rendered ?? (matches ? retained?.scope : undefined);
   const identity = panelScope
     ? `${panelScope.instance}:${panelScope.accountGeneration}:${panelScope.run}:${panelScope.decision}:${panelScope.revision}`
     : `${view?.execution?.instance ?? "legacy"}:${decision?.id ?? ""}`;

@@ -1,5 +1,6 @@
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { launcherText as text } from "../../i18n/launcher";
+import { ResidentControlNotice } from "../../ui/launcher/ResidentControlNotice";
 import { ResidentInbox } from "../../ui/launcher/ResidentInbox";
 import { Applications } from "./Applications";
 import { ProfileEditorProvider, useProfileEditorState } from "./editor-state";
@@ -7,6 +8,7 @@ import { Launcher } from "./Launcher";
 import { LauncherRail } from "./LauncherRail";
 import { useResident } from "./resident";
 import { useResidentAnswer } from "./resident-answer";
+import { useResidentControl } from "./resident-control";
 export default function LauncherEntry() {
   return (
     <ProfileEditorProvider>
@@ -18,6 +20,7 @@ function LauncherContent() {
   const editor = useProfileEditorState();
   const resident = useResident();
   const answer = useResidentAnswer(resident);
+  const control = useResidentControl(resident);
   const activeTab = editor.value ? "profile" : editor.tab;
   return (
     <>
@@ -39,10 +42,18 @@ function LauncherContent() {
         rail={<LauncherRail residentStatus={resident} />}
       />
       <SectionPanel activeTab={activeTab}>
+        <ResidentControlNotice
+          control={control}
+          showCancel={
+            !!editor.value ||
+            editor.tab === "applications" ||
+            !control.hasProfiles
+          }
+        />
         {editor.tab === "applications" && !editor.value ? (
           <Applications />
         ) : (
-          <Launcher />
+          <Launcher control={control} />
         )}
       </SectionPanel>
       <ResidentInbox view={resident} answer={answer} />

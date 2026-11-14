@@ -22,6 +22,9 @@ export async function checkCommandPalette(
             "launcher.launch",
             "launcher.launchChecked",
             "launcher.resident.answer",
+            "launcher.resident.cancel",
+            "launcher.resident.rehearse",
+            "launcher.resident.retry",
           ].includes(message.request?.method)
         )
           (Reflect.get(window, "paletteLaunchRequests") as unknown[]).push(

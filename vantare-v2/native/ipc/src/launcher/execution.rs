@@ -50,6 +50,8 @@ pub enum Capability {
     TypedTerminal,
     RevisionCheckedLaunch,
     CheckedAnswer,
+    CheckedControl,
+    StepResultsRetry,
     #[serde(other)]
     Unknown,
 }
@@ -110,6 +112,10 @@ pub struct ExecutionStatus {
     pub events: Vec<ExecutionEvent>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub question: Option<super::answer::QuestionScope>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active: Option<super::control::RunScope>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub results: Option<super::results::RunResults>,
 }
 impl ExecutionStatus {
     pub fn new(instance: ResidentInstance) -> Self {
@@ -119,6 +125,8 @@ impl ExecutionStatus {
             first_retained_seq: RunId(1),
             events: Vec::new(),
             question: None,
+            active: None,
+            results: None,
         }
     }
     fn next(&self) -> Option<RunId> {
@@ -157,14 +165,62 @@ impl ExecutionStatus {
         })?;
         Some(run)
     }
+    pub fn accept_order(&mut self, request: super::RequestId) -> Option<RunId> {
+        let run = self.next()?;
+        run.0.checked_add(1)?;
+        self.record(EventKind::OrderReceived {
+            request,
+            receipt: super::answer::OrderReceipt::Accepted { run },
+        })?;
+        Some(run)
+    }
     pub fn can_start(&self) -> bool {
         self.next().and_then(|seq| seq.0.checked_add(1)).is_some()
     }
+    pub fn has_retained_terminal(&self, run: RunId, outcome: ChainOutcome) -> bool {
+        self.events.iter().any(|event| matches!(event.kind, EventKind::Finished {run: observed, outcome: observed_outcome} if observed == run && observed_outcome == outcome))
+            && !self.events.iter().any(|event| match &event.kind {
+                EventKind::Started { run: observed }
+                | EventKind::Received { receipt: super::checked::LaunchReceipt::Accepted { run: observed }, .. }
+                | EventKind::OrderReceived { receipt: super::answer::OrderReceipt::Accepted {run: observed}, .. } => *observed > run,
+                _ => false,
+            })
+    }
     fn valid(&self) -> bool {
-        self.question.as_ref().is_none_or(|q| {
-            self.capabilities.contains(&Capability::CheckedAnswer)
-                && self.events.last().is_some_and(|e| q.run <= e.seq)
-        }) && self.events.len() <= EVENT_LIMIT
+        self.results.as_ref().is_none_or(|results| {
+            self.capabilities.contains(&Capability::StepResultsRetry)
+                && results.valid()
+                && self
+                    .events
+                    .last()
+                    .is_some_and(|event| results.run <= event.seq)
+                && self.active.as_ref().is_none_or(|active| {
+                    results.outcome.is_none()
+                        && active.run == results.run
+                        && active.revision == results.revision
+                        && active.account == results.account
+                })
+        }) && self
+            .active
+            .as_ref()
+            .zip(self.question.as_ref())
+            .is_none_or(|(active, question)| {
+                active.run == question.run
+                    && active.revision == question.revision
+                    && active.account == question.account
+            })
+            && self.active.as_ref().is_none_or(|active| {
+                self.capabilities.contains(&Capability::CheckedControl)
+                    && self
+                        .events
+                        .last()
+                        .is_some_and(|event| active.run <= event.seq)
+            })
+            && self.question.as_ref().is_none_or(|q| {
+                self.capabilities.contains(&Capability::CheckedAnswer)
+                    && self.events.last().is_some_and(|e| q.run <= e.seq)
+            })
+            && self.events.len() <= EVENT_LIMIT
             && self.capabilities.len() <= EVENT_LIMIT
             && self.first_retained_seq == self.events.first().map_or(RunId(1), |e| e.seq)
             && self

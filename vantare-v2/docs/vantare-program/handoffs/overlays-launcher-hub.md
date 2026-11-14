@@ -124,6 +124,91 @@ Binario final fuente 53050828b, SHA256
 ee7b05850c92646da27b774ccba64ce9967b136d0672d3a45cbfd6d5a8e312fb.
 Kit incompleto; sin PR, CI, merge, promocion o release verificados todavia.
 Siguiente: abrir PR draft pieza 1 y validar contador/sellos con replay real.
+## VANTA-138 · núcleo L55: resultados y repetir los mismos pasos (2026-11-13)
+
+#1995 / VANTA-138. L55 v35 autorizado; preparación local en
+vantareapp/isa-1995-resident-results, rebasada sobre nightly 1ec31b109 tras
+#2291/f7f30d3d7 y la UI L54 #2293. Microplan aprobado.
+
+El residente conserva solo el resumen de la ejecución activa o la última
+terminada: cuenta, run, perfil, revisión, modo de origen y resultado por índice.
+Un estado incompleto no permite reintentar. «Reintentar fallidos» excluye pasos
+cancelados; «Repetir los mismos pasos» conserva la selección original del ensayo,
+incluso después de reintentar solo algunos fallos. No incorpora LMU por usar All.
+No manda índices desde la interfaz y no mata procesos desde el renderer.
+
+Handoff D: launcher.resident.retry, target con instance/accountGeneration/run/
+profile/revision/scope (failed|all), Queued{request}. execution.results es
+Unsupported | Unknown | Known{value:{run,profile,revision,accountGeneration,
+mode,outcome,retryFailed,steps[{index,state}]}}. Unknown no es un resultado vacío.
+mode describe el origen profile/rehearsal, también después de un reintento.
+No deducir la selección original de NotSelected del resumen actual. Hace falta
+el terminal retenido y la misma cuenta; sin recibo/hueco/reinicio = Unknown, sin
+reenvío. El resumen no sustituye la correlación de recibos y terminales.
+Los nuevos rechazos comunes son unknown-run y no-failed-steps; los consumidores
+de órdenes anteriores deben tratar motivos ajenos como Unknown.
+
+Ajuste de revisión #2298: steps describe solo la pasada final, sin recuperar
+Ready de una pasada anterior si el paso ya no se alcanza. El criterio de
+retry_steps se conserva aparte en memoria; retryFailed indica la elegibilidad
+real para reintentar fallidos. D no debe deducirla de los estados visibles.
+El archivo de estado se sobrescribe; no genera un historial de ejecuciones.
+
+Validación local por la cola: fmt y Clippy all-targets -D warnings PASS;
+1.722 tests nativos y 34 de telemetría PASS tras el ajuste de revisión. Ambos
+typechecks, Biome y 52 regresiones web PASS. Tipos/corpus v35 exportados desde
+Rust. Comprobación final tras reforzar dos tests: Clippy y 95 tests del binario
+residente PASS. Slot liberado y G avisado para reanudar. Draft contra nightly;
+enlace, HEAD final y CI completa se registran en #1995. CI pendiente al publicar.
+L56 no se ha empezado. Sin merge, promoción, release, dependencias ni gráficos.
+
+## VANTA-138 · núcleo L54: cancelar y ensayar sin LMU (2026-11-13)
+
+#1995. L53 nativo #2281 está en nightly (22448e540). L54 se prepara en
+`vantareapp/isa-1995-resident-control`, protocolo v34 autorizado y capability
+CheckedControl. Draft #2291 abierto; tipos v34 generados y entregados a D; CI pendiente.
+El microplan aprobado vive en evidence/hub-web/nucleo-launcher-ordenes/MICROPLAN.md.
+
+Revisión de #2291: el terminal se compromete bajo el lock de cancelación dentro
+del pipeline, antes de salir el hilo; cancelar después se rechaza. El test usa
+run_with real con barreras, también para fallo de revisión de un importado.
+El ensayo filtra app_id != "lmu" exacto, sensible a mayúsculas, como GPUI.
+Leave/Started/Ask y CleanupFailed se apoyan en los tests heredados de tests.rs
+y chain/outcome_tests.rs. El segundo gate llegó a Clippy y señaló String::new
+en un test nuevo: corregido. Nueva validación nativa aún pendiente de cola/CI.
+Corrección posterior: cancelar y ensayar comprueban primero el soporte fresco del
+residente y después cuenta/permisos. Ausente, viejo o Status vencido = Unsupported;
+con soporte pero sin cuenta = CoreUnavailable. La regresión cruza ambos métodos
+con cuenta ausente, denegada y cambiada, sin depender de caducidades temporales.
+Los lints redundant_closure se corrigen con ExecutionStatus::can_start, sin allows.
+Las observaciones de prueba declaran ahora la versión real de Policy: antes
+quedaban en versión 0 por Default y eran denegadas correctamente. Validación
+local por cola: fmt y Clippy -D warnings de ipc/launcher/runtime/hub-host PASS;
+Nextest 1705 PASS (15 excluidos por el perfil); telemetría 34 PASS (1 excluido).
+Sin gráficos ni cambios de contrato v34. Nuevo head pendiente de CI completa.
+El Hub puede pedir cancelar la ejecución observada o probar un perfil sin sus
+pasos LMU. El residente comprueba instancia, cuenta y revisión, y aplica la orden.
+Cancelar respeta las políticas de cierre y puede plantear una pregunta L53;
+aceptar la petición no significa haber terminado. Un ensayo conserva los pasos
+repetidos y sus posiciones; vacío o solo LMU se rechaza. Nada mata procesos desde
+la interfaz, y no se cambian supervisor, derechos, GPUI ni dependencias.
+
+Handoff D: métodos launcher.resident.cancel/rehearse, targets cerrados en los
+tipos generados. execution.active da run/revision/accountGeneration, incluso sin
+pregunta. Queued se correlaciona con OrderReceived por request + cuenta/instancia;
+Finished se correlaciona con run. Sin recibo tras los 5 s exportados, hueco o
+reinicio significa Unknown, nunca éxito ni reenvío. ResidentOrderRejection es
+común a las órdenes; el error RPC L53 sigue limitado a sus 11 motivos. La UI L53
+debe estrechar esos motivos y tratar los ajenos como Unknown. El anfitrión hace
+una primera lectura al ensayar, sin segunda relectura antes del envío; la garantía
+final de la instantánea procede del residente al consumir.
+
+Exportador Rust 1.99.1, typechecks de producto/scripts, Biome y 41 tests web PASS.
+El primer Clippy local detectó doc_markdown en NoSteps, corregido. El reintento,
+Nextest nativo y telemetría locales se omiten por memoria, por orden expresa del
+orquestador: la cola no admite el segundo slot con unos 5,6 GB libres. La CI hace
+el gate completo antes de revisión. Sin ejecuciones gráficas ni apps reales
+nuevas en tests. L55 y L56 no se han empezado. Sin merge, promoción ni release.
 
 ## VANTA-138 · Hub Electron: Ajustes completa para revisar (2026-11-10)
 

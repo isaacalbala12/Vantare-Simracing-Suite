@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
 import { residentOrderReceiptTimeoutMs } from "../src/contract/generated/launcher_resident.ts";
-import { actionText } from "../src/renderer/i18n/launcher-actions.ts";
 import { residentText as text } from "../src/renderer/i18n/launcher-resident.ts";
+import { openProfileRemovalWithKeyboard } from "./check-dialog-safety.ts";
 import { until } from "./wait-for.ts";
 
 function recordAnswerRequests() {
@@ -33,15 +33,7 @@ export async function checkResidentAnswerInert(page: Page) {
   const drawer = page.locator(".v-launcher-resident-drawer");
   await drawer.waitFor();
   // Use the real confirmation layer. The profile editor itself is an inline tab.
-  await page.locator(".v-launcher-profile").first().focus();
-  await page.keyboard.press("Shift+F10");
-  await page.getByRole("menuitem", { name: "Eliminar", exact: true }).focus();
-  await page.keyboard.press("Enter");
-  const confirmation = page.getByRole("dialog", {
-    name: actionText.removeTitle,
-    exact: true,
-  });
-  await confirmation.waitFor();
+  const confirmation = await openProfileRemovalWithKeyboard(page);
   await until(
     () =>
       confirmation

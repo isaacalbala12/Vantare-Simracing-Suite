@@ -57,6 +57,8 @@ function setup() {
     execution: {
       instance: "b".repeat(64),
       checkedAnswer: true,
+      checkedControl: false,
+      active: null,
       revisionCheckedLaunch: true,
       question: {
         decision: "2",
@@ -74,15 +76,25 @@ function setup() {
   caches.push(cache);
   cache.setQueryData(coreKey, core);
   let now = 0;
-  let timeout: (() => void) | undefined;
+  let serial = 0;
+  const timers = new Map<number, { at: number; callback: () => void }>();
   const time: AnswerClock = {
     now: () => now,
-    schedule: (callback) => {
-      timeout = callback;
+    schedule: (callback, delay) => {
+      const id = ++serial;
+      timers.set(id, { at: now + delay, callback });
       return () => {
-        timeout = undefined;
+        timers.delete(id);
       };
     },
+  };
+  const advance = (ms: number) => {
+    now += ms;
+    for (const [id, timer] of [...timers])
+      if (timer.at <= now) {
+        timers.delete(id);
+        timer.callback();
+      }
   };
   const hook = renderHook(({ value }) => useResidentAnswer(value, time), {
     initialProps: { value: view },
@@ -95,10 +107,8 @@ function setup() {
     view,
     core,
     cache,
-    expire: () => {
-      now = 5000;
-      timeout?.();
-    },
+    advance,
+    expire: () => advance(5000),
   };
 }
 it("captures the exact question scope and blocks a second click before Queued", async () => {
@@ -394,5 +404,45 @@ it.each(["busy", "unsupported", "rejected"] as const)(
       kind: "rejected",
       reason: kind,
     });
+  },
+);
+
+it.each(["finished", "rejected"] as const)(
+  "expires %s feedback without another question",
+  async (kind) => {
+    const hook = setup();
+    host.client.request.mockResolvedValue({
+      method: "launcher.resident.answer",
+      value: { kind: "queued", request: "d".repeat(32) },
+    });
+    await act(async () => {
+      await hook.result.current.answer("cancel", renderedScope(hook.view));
+    });
+    const ended = structuredClone(hook.view);
+    ended.decision = null;
+    if (!ended.execution) throw new Error("fixture");
+    ended.execution.question = null;
+    ended.execution.events.push({
+      seq: "2",
+      kind: {
+        kind: "order-received",
+        request: "d".repeat(32),
+        receipt:
+          kind === "rejected"
+            ? { kind: "rejected", reason: "stale-question" }
+            : { kind: "accepted", run: "1" },
+      },
+    });
+    if (kind === "finished")
+      ended.execution.events.push({
+        seq: "3",
+        kind: { kind: "finished", run: "1", outcome: { kind: "completed" } },
+      });
+    hook.rerender({ value: ended });
+    expect(hook.result.current.attempt?.phase.kind).toBe(kind);
+    act(() => hook.advance(9999));
+    expect(hook.result.current.attempt?.phase.kind).toBe(kind);
+    act(() => hook.advance(1));
+    expect(hook.result.current.attempt).toBeUndefined();
   },
 );

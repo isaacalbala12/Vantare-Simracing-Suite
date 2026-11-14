@@ -11,6 +11,7 @@ export interface MockContext {
     profile: string,
   ) => import("../contract/generated/contract").ProfilePolicy | undefined;
   testingData?: TestingView;
+  launcherData?: import("../contract/generated/contract").LauncherView;
   windowsNotificationsEnabled?: boolean;
   onboarding?: {
     completed: boolean;

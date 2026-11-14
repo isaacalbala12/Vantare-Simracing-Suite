@@ -7,7 +7,7 @@ no cambia los overlays, Electron ni la distribución. Ejecutable:
 Rune y sus cuatro parches están fijados a
 `d5338988a7c1b3377adb60853815b6d0843dae7c`, Rust 1.99.1.
 `default-features = false`; se habilitan explícitamente `accessibility`, `dbus`,
-`embedded-fonts`, `metal-backend` y `svg`, como fija Cargo.toml.
+`embedded-fonts`, `metal-backend`, `native-file-dialog` y `svg`, como fija Cargo.toml.
 `ogg-audio` queda desactivado: el Hub no reproduce OGG y sus codecs MPL-2.0
 están prohibidos por decisión del orquestador. No activar defaults.
 
@@ -19,8 +19,9 @@ Windows servidor: **nunca ejecutar el binario**, ni `--snap`, `--frames`,
 persistentes del slot en D:, según la instrucción actual del orquestador.
 
 ```powershell
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo clippy --locked --all-targets --manifest-path hub-rune/Cargo.toml -- -D warnings
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo test --locked --all-targets --manifest-path hub-rune/Cargo.toml
+$env:RUSTUP_TOOLCHAIN = '1.99.1'
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo clippy --locked -j2 --all-targets --manifest-path hub-rune/Cargo.toml -- -D warnings
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo test --locked -j2 --all-targets --manifest-path hub-rune/Cargo.toml
 ```
 
 Desde esta carpeta, `cargo fmt --all -- --check`,
@@ -41,12 +42,14 @@ Windows no es obligatorio y los cambios solo en hub-rune no lanzan gates nativos
 Solo en **debug + macOS** se aceptan `--snap`, `--frames`, `--scene`, `--size`,
 `--scale`, `--out` y `--theme` (con valor separado o `=`). En Windows y release
 se rechazan; `--video` y `--tree` se rechazan en todas las plataformas.
-Las capturas y la ventana visible siguen pendientes del Mac dormido.
+Las capturas --snap son offscreen: Rune no crea una ventana ni activa la aplicación.
+El guion siempre pasa --snap; --scene solo abre una ventana y no debe usarse para capturar.
+Isaac completó el recorrido visible: PASS manual. Aspecto: FALLO; véase CORTE-1.
 
 Al pulsar X se envía `WindowClose` (id 0, como Electron); el proceso espera
 `CloseRequested` y escribe `CloseAnswer` antes de salir. En este commit Rune
 oculta la ventana antes de llamar a `on_close`: `keep_running` mantiene el proceso
-para completar el protocolo. Queda pendiente comprobar ese cierre nativo en Mac.
+para completar el protocolo. Isaac comprobó el cierre visible con X: PASS manual; la medición del proceso sigue pendiente.
 El plazo de cierre es **10 s**, con el reloj y la planificación de Rune: supera
 los 5 s de report-close y los 2 s del cierre forzado Live/ControlEof. Si vence,
 falla el envío o el enlace falla, el cliente sale.
@@ -110,7 +113,217 @@ Tablero, Circuito y Temporada se calculan desde la misma publicación; `later`
 se agrupa en Planeado. El estado del simulador y el aviso de núcleo apagado se
 actualizan desde el protocolo del anfitrión.
 
-Las capturas, el smoke gráfico Windows y la ventana visible se han aplazado
-por orden del orquestador. [Corte 1](CORTE-1.md) separa cobertura automática y
+El smoke gráfico Windows sigue pendiente. El teclado, cambio de pantalla/tema
+y cierre visible en Mac tienen PASS manual de Isaac; el aspecto fue rechazado. [Corte 1](CORTE-1.md) separa cobertura automática y
 aceptación real pendiente. No se afirma fidelidad visual o soporte Windows 10
 probado a partir de mocks o de una compilación.
+
+
+## Inicio · primer corte de pantalla
+
+Rama propia de VANTA-143/#2256, dependiente de #2268. El material de #2241
+sirve como referencia de estructura; no se fusiona su workspace de medición.
+Este primer PR conecta HomeGet/Event::Home y la suscripción Home solo mientras
+Inicio está visible. Un fallo o plazo de 45 s conserva el último estado y
+permite reintentar; no hay sondeo periódico y se ignoran respuestas antiguas.
+
+Contiene la bienvenida, vista previa del layout, métricas disponibles,
+actividad de los perfiles y panel lateral con favorito, estado y plantillas.
+Los enlaces Studio respetan el acceso actual. Solo muestra los datos disponibles;
+no inventa Hz ni CPU. Los textos y las 19 ilustraciones proceden de Electron,
+y las escenas se generan desde la misma función pura que usa su anfitrión simulado.
+Las ilustraciones se decodifican por CPU; ninguna prueba crea una ventana o GPU.
+
+El selector y el favorito lanzan con launcher.launch { profile, baseRevision },
+igual que Electron. Un doble clic no duplica peticiones. Se comprueban acceso,
+protegido, live y progreso al pulsar y al enviar. Un rechazo o Failure muestra el error. Sin respuesta tras 45 s, el lanzamiento
+queda incierto: botones y Ctrl L permanecen bloqueados hasta que una publicación
+Home o una lectura nueva informe Running o Idle. Actualizar estado solo consulta;
+no reintenta el lanzamiento. Una lectura pendiente anterior no certifica Idle. Se conserva
+el perfil/revisión pulsados y se rechaza enviar si cambian antes del despacho.
+El anfitrión conserva la ejecución y las comprobaciones definitivas.
+
+Circuito/alias compartidos, solo un circuito decodificado, plantillas en parejas,
+panel adaptable y hero de 200/236/300 px según altura. El saludo y la fecha usan
+los casos compartidos de Electron. Ctrl K abre una búsqueda con foco modal y
+Ctrl L lanza el favorito con las mismas restricciones. VER TODO abre la actividad
+disponible en Inicio. Detener sigue deshabilitado con el mismo motivo que Electron.
+Los avisos del siguiente corte siguen pendientes. La fidelidad visual requiere capturas del Mac y
+aprobación; no se da por verificada con los tests de Runtime.
+
+
+Escenas debug: inicio-base, inicio-vacio, inicio-cargando, inicio-error,
+inicio-sin-diseno e inicio-lanzando. 66 capturas offscreen por cliente y comparativas completadas. Isaac probó la
+ventana visible y aprobó el funcionamiento; la aprobación visual sigue pendiente
+en [Corte 1](CORTE-1.md).
+El servidor permanece sin ejecutar la aplicación.
+
+
+## Fidelidad del marco e Inicio
+
+El PR prioritario corrige el raíl de 76/272 px, cabecera de 52 px, iconos,
+aviso de núcleo integrado y estados con icono/título/subtítulo/etiqueta.
+El TTF compartido de Rajdhani tiene la familia interna `Rajdhani SemiBold`;
+Electron usa un alias CSS y Rune debe pedir el nombre interno para evitar otra fuente.
+Inter también usa familias internas separadas por peso (Inter W400/500/600/650/700).
+Los tests comprueban los bytes del archivo utilizado para cada peso, sin depender de
+las fuentes instaladas en la máquina.
+Los títulos pequeños usan mayúsculas espaciadas como TrackedCaps de Electron.
+
+Las fechas de actividad se convierten desde RFC3339 a la zona local y se muestran
+DD/MM · HH:MM como Electron. Se reutiliza chrono 0.4.45 ya aprobado, presente en
+hub-host y en Cargo.lock, con las mismas funciones; no entra ningún paquete nuevo.
+Los valores inválidos conservan el texto compartido sin fecha.
+
+El orquestador detuvo las capturas de Electron porque abrían ventanas. No volver
+a ejecutar el guion antiguo: la referencia debe arrancar con política accessory,
+ventana oculta y foco deshabilitado antes de ready-to-show, o usar el banco existente.
+Las capturas Rune emplean --snap offscreen, sin Automatización ni System Events.
+El corte 1 mantiene FALLO visual hasta la aprobación de Isaac, aun con CI verde.
+
+
+### Referencia Electron sin ventanas visibles
+
+`scripts/electron-corte1.mjs <hub-web> <salida-nueva> <plan.json> <SHA-build-QA>`
+se ejecuta con Bun solo en macOS y con el QA build ya preparado. Exige
+LSUIElement=true en el bundle Electron de ese checkout propio. Nunca modificar
+un Electron instalado de otra tarea ni usar un perfil real.
+Copia un entry QA junto al original e importa primero electron-capture-guard.mjs:
+accessory, sin foco, sin show/showInactive/focus/restore/moveTop y sin diálogos
+nativos de error. Ningún archivo de Electron de producto se modifica.
+
+El guion falla si una ventana es visible, tiene foco, puede recibirlo o Electron
+es la aplicación en primer plano. Registra esos valores y el PID anterior/posterior;
+si Isaac cambia de aplicación por su cuenta, no se interpreta como activación de QA.
+CDP usa viewport lógico 1440×900 y DPR 1/1.25/1.5; no redimensiona PNG posteriores.
+Es referencia del renderer Electron real del Mac, complementaria al banco HWND
+Windows; no certifica una ventana Windows ni el teclado físico.
+Prueba de arranque oculto PASS: visible=false, focused=false, focusable=false,
+aplicación en primer plano sin cambio. SIGTERM del controlador no continúa la matriz.
+
+
+Evidencia de #2297: 66 comparativas por fase, claro/oscuro y 100/125/150 %,
+con originales y hashes en evidence/hub-rune/corte1 del servidor. Se publican
+las rutas del informe y del registro en [CORTE-1](CORTE-1.md), sin PNG en Git. El target propio del Mac
+se retiró al terminar; el binario debug quedó conservado en ~/orq para una
+revisión coordinada. Nuevas compilaciones necesitan volver a crear el target.
+
+
+Excepción acotada de ADR 0108: se extrae la función pura del mock de Inicio de
+`hub-web/src/mock/modules/home.ts` a `src/mock/home-scene.ts`, compartida por el
+mock Electron y el generador del catálogo Rune. Conserva los datos y el contrato
+del anfitrión; evita dos fuentes de escenas. No cambia el producto Electron ni
+hub-host. La revisión del PR declara esta excepción expresamente.
+
+
+## Studio · corte 2 en curso
+
+La rama `vantareapp/isa-2256-hub-rune-studio` parte del head 7eff0c88 de
+#2297. Ese PR sigue draft, pendiente de la comparativa definitiva de Inicio
+y del OK visual de Isaac. La autorización posterior del orquestador permite
+avanzar Studio con código y tests sin ventana mientras vuelve el Mac.
+
+Studio consume directamente StudioView/Request/Reply de hub-host. Suscribe al
+entrar y retira al salir; no sondea. Ofrece selección, catálogo con búsqueda,
+añadir/eliminar con confirmación, deshacer/rehacer, mostrar en pista y ajustes
+de visibilidad, opacidad 20–100 %, sesiones y fuera de pista. Apariencia incluye
+Look, estilo, acento y los formatos admitidos de Standings/Relative/Delta/Fuel,
+así como fondo transparente y barra Delta donde los ofrece el contrato.
+La marca sigue siendo de solo lectura y Contenido sigue pendiente, como Electron.
+La imagen compartida es una ilustración: no simula una vista previa del overlay.
+
+El anfitrión conserva la autoridad. Solo hay una petición pendiente y cada edición
+se vuelve a comprobar antes del envío con acceso, revisión y bloqueo actuales.
+No se aplica nada de manera optimista. Un conflicto actualiza el documento y
+exige una acción nueva; un plazo vencido bloquea nuevas ediciones hasta releer,
+sin reenviar automáticamente una operación cuyo resultado no se conoce.
+Se puede dejar de mostrar overlays aunque se revoque el acceso.
+
+Escenas debug: studio-base, studio-vacio, studio-protegido y studio-missing,
+derivadas del corpus generado por el anfitrión, sin otra copia de sus tipos.
+El anfitrión de escena ofrece lectura y eventos; las escrituras requieren el
+anfitrión real y la escena devuelve Unsupported sin fingir un guardado.
+Los presets cerrados studio-light/studio-dark quedan preparados para el Mac.
+Los flags de captura solo se aceptan en debug+macOS; en Windows no se ejecuta
+el binario ni se crea un dispositivo gráfico.
+
+Pendiente: comparativas Studio con Electron en ambos temas y las tres escalas,
+ventana real/teclado físico y escrituras con el anfitrión real. No se declara
+Studio ni el corte 2 aceptados. Al volver el Mac se captura primero #2297,
+siempre offscreen y sin activar ventanas delante de Isaac.
+
+
+Validación local Studio: Clippy y 73 tests Windows PASS sin ventana, por la cola
+con dos jobs. Incluye conflictos/revocación/plazos, peticiones de apariencia de
+los cinco widgets en ambos Looks y catálogo Unicode/Escape. El test espera la
+entrada de Rune avanzando el reloj inyectado antes de pulsar el campo y comprueba
+que ya es visible. Logs en D:/VantareServer/evidence/hub-rune/studio-*-validated.log.
+CI y revisión del head actual se consultan en #2306; estos tests no certifican
+apariencia, dispositivo gráfico ni anfitrión real.
+
+
+Revisión Studio: los controles de apariencia incompatibles se omiten sin panic;
+una revisión nueva invalida la confirmación de borrado. Un error ambiguo de
+escritura conserva el bloqueo y relee el documento, sin repetir cambios. Una
+lectura fallida o un evento no se consideran confirmación de esa escritura.
+Clippy y 76 tests Windows PASS; CI y head vigentes en #2306.
+
+
+## Launcher · corte 2 en curso
+
+Rama propia `vantareapp/isa-2256-hub-rune-launcher`, creada sobre #2306
+(ed619170) y actualizada con su revisión d500cb012 y nightly f482bebec.
+Las fusiones locales de dependencias conservan los tipos nativos L53–L55/v35;
+no se cambia la implementación del anfitrión. L56/v36 se consulta en #2304 y
+se consumirá cuando se integre. Hasta entonces no se ofrece borrado de perfiles:
+no se llama a launcher.profile.delete ni se simula un resultado de eliminación.
+
+La pantalla ofrece perfiles, favorito, duplicación, disparador LMU y editor
+con campos Unicode, pasos/reordenación, políticas y confirmación de pérdida de
+argumentos personalizados. El borrador se conserva ante conflictos/fallos;
+una revisión distinta impide guardar sin revisar. La X pide descartar el
+borrador antes del cierre guiado, en lugar de perderlo. Aplicaciones usa el
+catálogo y el editor nativos, descubrimiento y selección de ejecutable sin
+un campo de ruta/argumentos libres en la interfaz.
+
+Las órdenes comprobadas capturan instancia, cuenta, revisión y ejecución.
+Queued solo confirma el buzón: hacen falta recibo y terminación correlacionados.
+No se deduce éxito de running=false. Un reinicio, hueco de historial o plazo
+sin recibo deja Unknown y no repite la orden. El plazo nativo de recibo (5 s)
+no limita la duración de la secuencia. Trust no se ofrece en la pregunta;
+requiere revisar el perfil en el editor. Reintento fallidos/todos usa los tipos
+L55 y exige resultados más una terminación conservada del mismo ámbito.
+Inicio/paleta y Launcher comparten la exclusión de nuevas ejecuciones.
+
+Se habilita native-file-dialog del mismo Rune fijado para reutilizar su selector
+asíncrono, con la misma secuencia ACK nulo → diálogo → PickedExecutable → resultado
+que Electron. Solo se añade rfd 0.17.2 (MIT) al lock de Rune: dependencia de Rune
+cubierta por la aprobación de dependencias permisivas del encargo. Auditoría de
+464 paquetes PASS, sin MPL ni ogg-audio. No se añade al producto nativo ni a sus
+parches/dependencias. El catálogo lee el mismo profileLimits del módulo generado
+launcher.ts: el import de i18n usa ese módulo directamente para funcionar sin
+el agregador temporal del build web. No cambian textos ni límites de Electron.
+
+Escenas debug Launcher de lectura: launcher-base, launcher-vacio y
+launcher-protegido, desde el corpus nativo. Las escrituras de escena devuelven
+Unsupported. Presets launcher-light/launcher-dark preparados para capturas del
+Mac; flags de captura solo debug+macOS. Ninguna ejecución gráfica en Windows.
+
+Clippy y 92 tests Windows PASS, sin ventana y por la cola a -j2, un compilador
+propio. Primera espera: 790 s; ningún turno esperó más de 30 min. La primera
+compilación falló por un import comodín que ocultaba draft, la conversión de
+u64 a segundos y un caption prestado; corregidos, con logs fallidos conservados.
+Formato/catálogo, 27 tests Python y licencias PASS. Logs finales:
+D:/VantareServer/evidence/hub-rune/launcher-clippy-validated.log y
+launcher-tests-validated.log. Head/CI actuales en #2307, sin heredar resultados
+de otros SHA. Las lecturas de catálogo y editores de escena usan también el
+corpus nativo; no producen avisos de error falsos al entrar.
+Quedan por verificar host real, aspecto, teclado físico y corte 2. El Mac sigue
+offline: al volver se captura primero #2297, offscreen y sin activar ventanas.
+
+
+Medición preparada del corte 2: [CORTE-2.md](CORTE-2.md). Solo en debug macOS,
+VANTARE_HUB_CUT2=1 habilita --script/--fps/--realtime además de los flags de
+captura existentes; exige modo offscreen antes de iniciar Rune. El servidor
+solo prepara el plan y comprueba lógica sin ventana. No hay mediciones nuevas
+ni decisión del ADR. La comparativa pendiente de #2297 conserva prioridad.

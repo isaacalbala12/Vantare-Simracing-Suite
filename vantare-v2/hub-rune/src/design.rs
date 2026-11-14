@@ -3,6 +3,28 @@ use rune::{Color, El, TextStyle, col, text};
 use std::collections::BTreeMap;
 const TOKENS: &str = include_str!("../../hub-web/design/tokens.json");
 pub const COLORS: &[&str] = &[
+    "bg-base",
+    "surface-2",
+    "text-3",
+    "accent-bright",
+    "accent-fill",
+    "hero-ring",
+    "wine",
+    "ok",
+    "ok-tint",
+    "text-on-accent",
+    "accent-tint",
+    "ill-bad",
+    "ill-best",
+    "ill-edge",
+    "ill-good",
+    "ill-hi",
+    "ill-info",
+    "ill-ink",
+    "ill-ink-2",
+    "ill-panel",
+    "ill-row",
+    "ill-warn",
     "bg-window",
     "bg-sidebar",
     "surface-1",
@@ -11,6 +33,7 @@ pub const COLORS: &[&str] = &[
     "accent",
     "focus-ring",
     "line-1",
+    "line-3",
     "hover",
     "active",
 ];
@@ -18,10 +41,13 @@ pub const FONTS: &[&[u8]] = &[
     include_bytes!("../../native/ui/assets/fonts/Inter-400.ttf"),
     include_bytes!("../../native/ui/assets/fonts/Inter-500.ttf"),
     include_bytes!("../../native/ui/assets/fonts/Inter-600.ttf"),
+    include_bytes!("../../native/ui/assets/fonts/Inter-650.ttf"),
     include_bytes!("../../native/ui/assets/fonts/Inter-700.ttf"),
+    include_bytes!("../../native/ui/assets/fonts/Rajdhani.ttf"),
+    include_bytes!("../../native/ui/assets/fonts/SpaceMono.ttf"),
 ];
 #[derive(Clone)]
-pub struct Theme(BTreeMap<&'static str, Color>);
+pub struct Theme(BTreeMap<&'static str, Color>, [String; 3]);
 impl Theme {
     pub fn load(palette: &str, scheme: &str) -> Result<Self, String> {
         let tokens: serde_json::Value = serde_json::from_str(TOKENS).map_err(|e| e.to_string())?;
@@ -35,15 +61,118 @@ impl Theme {
                 Ok((name, value))
             })
             .collect::<Result<BTreeMap<_, _>, String>>()
-            .map(Self)
+            .map(|colors| {
+                Self(
+                    colors,
+                    [
+                        tokens["themes"][palette][scheme]["grad-hero"]
+                            .as_str()
+                            .expect("shared hero gradient")
+                            .to_owned(),
+                        tokens["themes"][palette][scheme]["grad-hero-wash"]
+                            .as_str()
+                            .expect("shared hero wash")
+                            .to_owned(),
+                        tokens["primitives"]["css"]["hero-stripe"]
+                            .as_str()
+                            .expect("shared hero stripe")
+                            .to_owned(),
+                    ],
+                )
+            })
     }
-    pub fn color(&self, name: &'static str) -> Color {
+    pub fn hero_svg(&self) -> String {
+        // Translate the two authored CSS gradients, including their angle and stops.
+        // CSS angles are clockwise from up; SVG uses coordinates in the hero's box.
+        let gradient = |id: &str, css: &str| {
+            let mut parts = css
+                .strip_prefix("linear-gradient(")
+                .unwrap()
+                .strip_suffix(')')
+                .unwrap()
+                .split(',');
+            let angle: f32 = parts
+                .next()
+                .unwrap()
+                .trim()
+                .strip_suffix("deg")
+                .unwrap()
+                .parse()
+                .unwrap();
+            let (dx, dy) = (angle.to_radians().sin(), -angle.to_radians().cos());
+            let length = 1000.0 * dx.abs() + 236.0 * dy.abs();
+            let (x1, y1) = (500.0 - dx * length / 2.0, 118.0 - dy * length / 2.0);
+            let (x2, y2) = (500.0 + dx * length / 2.0, 118.0 + dy * length / 2.0);
+            let mut svg = format!(
+                r#"<linearGradient id="{id}" gradientUnits="userSpaceOnUse" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">"#
+            );
+            for stop in parts {
+                let mut values = stop.split_whitespace();
+                let color = values.next().unwrap();
+                let percent = values.next().unwrap().strip_suffix('%').unwrap();
+                // Explicit alpha also works with SVG consumers that only accept RGB hex.
+                let opacity = if color.len() == 9 {
+                    u8::from_str_radix(&color[7..], 16).unwrap() as f32 / 255.0
+                } else {
+                    1.0
+                };
+                svg.push_str(&format!(
+                    r#"<stop offset="{percent}%" stop-color="{}" stop-opacity="{opacity}"/>"#,
+                    &color[..7]
+                ));
+            }
+            svg + "</linearGradient>"
+        };
+        let stripe = &self.1[2];
+        let alpha = u8::from_str_radix(&stripe[7..], 16).unwrap() as f32 / 255.0;
+        format!(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 236" preserveAspectRatio="none"><defs>{}{}<pattern id="stripe" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M-3 12L9 0M9 12L21 0" fill="none" stroke="{}" stroke-opacity="{alpha}" stroke-width="1"/></pattern></defs><rect width="1000" height="236" fill="url(#base)"/><rect width="1000" height="236" fill="url(#wash)"/><rect width="1000" height="236" fill="url(#stripe)"/></svg>"##,
+            gradient("base", &self.1[0]),
+            gradient("wash", &self.1[1]),
+            &stripe[..7]
+        )
+    }
+    pub fn color(&self, name: &str) -> Color {
         self.0[name]
     }
 }
+// The shared TTF's internal family is not the CSS alias used by Electron.
+pub const DISPLAY_FAMILY: rune::Family = rune::Family::Named("Rajdhani SemiBold");
+// Electron aliases independently instanced Inter files into one CSS family.
+// Rune must name each file's internal family to select the requested weight.
+pub fn body_style(size: f32, weight: f32) -> TextStyle {
+    let family = if weight >= 700.0 {
+        "Inter W700"
+    } else if weight >= 650.0 {
+        "Inter W650"
+    } else if weight >= 600.0 {
+        "Inter W600"
+    } else if weight >= 500.0 {
+        "Inter W500"
+    } else {
+        "Inter W400"
+    };
+    TextStyle::new(size, weight).family(rune::Family::Named(family))
+}
+pub fn display(theme: &Theme, value: impl Into<String>, size: f32) -> El {
+    label(theme, value).font(body_style(size, 600.0).family(DISPLAY_FAMILY))
+}
+pub fn caption(theme: &Theme, value: &str) -> El {
+    // Match Electron's TrackedCaps: separately laid out glyphs with physical-pixel spacing.
+    let mut line = rune::row().gap(1.6).label(value).role("heading");
+    for letter in value.to_uppercase().chars() {
+        line = line.child(display(theme, letter.to_string(), 15.0).a11y_hidden());
+    }
+    line
+}
+pub fn symbol(theme: &Theme, name: &str, size: f32) -> El {
+    rune::icon(crate::icons::shared_icon(name), size)
+        .color(theme.color("text-2"))
+        .a11y_hidden()
+}
 pub fn label(theme: &Theme, value: impl Into<String>) -> El {
     text(value)
-        .font(TextStyle::new(14.0, 400.0))
+        .font(body_style(14.0, 400.0))
         .color(theme.color("text-1"))
 }
 pub fn surface(theme: &Theme) -> El {
@@ -76,19 +205,48 @@ pub fn button<S: 'static>(
     value: &str,
     action: impl Fn(&mut S) + 'static,
 ) -> El {
+    button_content(
+        theme,
+        key,
+        value,
+        label(theme, value).font(body_style(14.0, 600.0)),
+        action,
+    )
+}
+pub fn button_content<S: 'static>(
+    theme: &Theme,
+    key: &str,
+    value: &str,
+    content: El,
+    action: impl Fn(&mut S) + 'static,
+) -> El {
     pressable(
-        col()
+        rune::row()
+            .center()
             .key(key)
             .padding(10.0)
-            .radius(8.0)
+            .min_h(36.0)
+            .radius(6.0)
             .fill(theme.color("active"))
             .label(value)
             .role("button")
             .focusable(true)
             .focus_ring(2.0, 2.0, theme.color("focus-ring"))
-            .child(label(theme, value)),
+            .child(content),
         action,
     )
+}
+pub fn icon_button<S: 'static>(
+    theme: &Theme,
+    key: &str,
+    value: &str,
+    name: &str,
+    action: impl Fn(&mut S) + 'static,
+) -> El {
+    button_content(theme, key, value, symbol(theme, name, 18.0), action)
+        .size(36.0, 36.0)
+        .padding(8.0)
+        .fill(theme.color("bg-sidebar"))
 }
 pub fn menu_item<S: 'static>(
     theme: &Theme,
@@ -102,7 +260,9 @@ pub fn menu_item<S: 'static>(
     let mut item = rune::row()
         .key(key)
         .w_full()
-        .padding(10.0)
+        .h(44.0)
+        .center_y()
+        .padding(12.0)
         .gap(12.0)
         .radius(8.0)
         .fill(theme.color(if selected { "active" } else { "bg-sidebar" }))
@@ -120,6 +280,61 @@ pub fn menu_item<S: 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn body_weights_use_the_authored_inter_instances_without_system_fallbacks() {
+        let mut fonts = rune::text::TextSystem::new(FONTS, ("Inter W400", "Space Mono"));
+        for (index, weight) in [400.0, 500.0, 600.0, 650.0, 700.0].into_iter().enumerate() {
+            let layout = fonts.layout_rich("Perfil 0123", &[], body_style(14.0, weight), 1.0, None);
+            let runs: Vec<_> = layout.lines().flat_map(|l| l.runs()).collect();
+            assert!(!runs.is_empty());
+            for run in runs {
+                assert_eq!(run.font().data.as_ref(), FONTS[index], "weight {weight}");
+            }
+        }
+    }
+    #[test]
+    fn display_titles_use_the_shared_rajdhani_face_instead_of_falling_back() {
+        let mut fonts = rune::text::TextSystem::new(FONTS, ("Inter", "Inter"));
+        let layout = fonts.layout_rich(
+            "INICIO 0123",
+            &[],
+            TextStyle::new(15.0, 600.0).family(DISPLAY_FAMILY),
+            1.0,
+            None,
+        );
+        let runs: Vec<_> = layout.lines().flat_map(|l| l.runs()).collect();
+        assert!(!runs.is_empty());
+        for run in runs {
+            assert_eq!(run.font().data.as_ref(), FONTS[5]);
+        }
+    }
+    #[test]
+    fn navigation_and_shell_icons_rasterize_without_a_graphics_device() {
+        let mut fonts = rune::text::TextSystem::new(FONTS, ("Inter", "Inter"));
+        for name in crate::catalog::catalog()["navigation"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["icon"].as_str().unwrap())
+            .chain([
+                "mark",
+                "v-side",
+                "v-palette",
+                "clock",
+                "pulse",
+                "key",
+                "play",
+            ])
+        {
+            assert!(
+                fonts
+                    .icon_quad(crate::icons::shared_icon(name), 24, [0.0, 0.0])
+                    .is_some(),
+                "{name}"
+            );
+        }
+        assert!(fonts.atlas.data.iter().any(|&pixel| pixel > 0));
+    }
     #[test]
     fn all_eighteen_appearances_resolve_every_color_used_by_components() {
         let tokens: serde_json::Value = serde_json::from_str(TOKENS).unwrap();

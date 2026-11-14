@@ -38,6 +38,19 @@ pub fn consume() -> io::Result<Bootstrap> {
             "roadmap-base",
             "roadmap-published",
             "roadmap-error",
+            "inicio-base",
+            "inicio-vacio",
+            "inicio-cargando",
+            "inicio-error",
+            "inicio-sin-diseno",
+            "inicio-lanzando",
+            "studio-base",
+            "studio-vacio",
+            "studio-protegido",
+            "studio-missing",
+            "launcher-base",
+            "launcher-vacio",
+            "launcher-protegido",
         ]
         .contains(&scene.as_str())
         {
@@ -74,6 +87,20 @@ pub fn arguments(args: impl IntoIterator<Item = String>) -> io::Result<Vec<Strin
             };
             if !valid {
                 return Err(io::ErrorKind::InvalidInput.into());
+            }
+        } else if cfg!(all(debug_assertions, target_os = "macos"))
+            && std::env::var("VANTARE_HUB_CUT2").as_deref() == Ok("1")
+            && flag == "--realtime"
+            && inline.is_none()
+        {
+            result.push(arg);
+        } else if cfg!(all(debug_assertions, target_os = "macos"))
+            && std::env::var("VANTARE_HUB_CUT2").as_deref() == Ok("1")
+            && ["--script", "--fps"].contains(&flag)
+        {
+            result.push(arg.clone());
+            if inline.is_none() {
+                result.push(args.next().ok_or(io::ErrorKind::InvalidInput)?);
             }
         } else if cfg!(all(debug_assertions, target_os = "macos"))
             && [

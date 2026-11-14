@@ -102,6 +102,12 @@ export const homeText = {
   retry: "Reintentar",
   failed:
     "No se pudo lanzar el perfil. Revisa el acceso y el estado de Launcher.",
+  checkLaunch: "Actualizar estado",
+  launchUncertainLabel: "Estado del lanzamiento incierto",
+  launchUncertain:
+    "No se ha confirmado el lanzamiento. Puede haberse iniciado; esperamos el estado de Inicio antes de permitir otro intento.",
+  launchChanged:
+    "El lanzamiento se ha cancelado porque han cambiado el acceso, el perfil o el estado del simulador. Revisa el estado antes de intentarlo de nuevo.",
   loading: "Cargando Inicio",
   protected: "El archivo de perfiles está protegido. Revísalo en Launcher.",
   sources: {

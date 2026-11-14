@@ -62,6 +62,12 @@ pub struct AppEdit {
     pub discard: bool,
     pub confirm_arguments: bool,
 }
+impl AppEdit {
+    pub fn loses_arguments(&self) -> bool {
+        (self.picked.is_some() || (self.source.draft.use_discovery && self.source.has_executable))
+            && (self.source.has_custom_arguments || self.source.custom_profiles > 0)
+    }
+}
 struct Pending {
     id: u32,
     deadline: f64,
@@ -190,7 +196,9 @@ impl Launcher {
                 draft,
                 base_revision,
             } => {
-                use vantare_hub_host::launcher::editor::*;
+                use vantare_hub_host::launcher::editor::{
+                    DESCRIPTION_MAX, HOTKEY_MAX, NAME_MAX, NOTES_MAX, STEPS_MAX,
+                };
                 if draft.name.trim().is_empty()
                     || draft.name.len() > NAME_MAX
                     || draft.name.contains('\0')
@@ -223,11 +231,12 @@ impl Launcher {
                     || e.source.revision != *base_revision
                     || draft.name.trim().is_empty()
                     || draft.name.len() > vantare_hub_host::launcher::editor::NAME_MAX
+                    || draft.name.contains('\0')
+                    || (draft.id.is_none() && pick_token.is_none())
                     || (pick_token.is_some()
                         && e.picked.as_ref().map(|p| &p.token) != pick_token.as_ref())
-                    || (e.picked.is_some()
-                        && (e.source.has_custom_arguments || e.source.custom_profiles > 0)
-                        && !e.confirm_arguments)
+                    || (e.loses_arguments() && !e.confirm_arguments)
+                    || (draft.use_discovery && pick_token.is_some())
                 {
                     return false;
                 }
@@ -264,6 +273,13 @@ impl Launcher {
         }
     }
     fn document(&mut self, value: LauncherView) {
+        if self
+            .value
+            .as_ref()
+            .is_some_and(|old| old.scanning != value.scanning || old.apps != value.apps)
+        {
+            self.refresh_catalog = true;
+        }
         if self
             .value
             .as_ref()
@@ -399,7 +415,11 @@ impl Launcher {
         }
         if matches!(result, Reply::LauncherAppPick { value: None }) && self.picker_phase == 0 {
             self.picker_phase = 1;
-            p.deadline = now + f64::from(vantare_hub_host::launcher::apps::PICK_LIFETIME_SECONDS);
+            p.deadline = now
+                + std::time::Duration::from_secs(
+                    vantare_hub_host::launcher::apps::PICK_LIFETIME_SECONDS,
+                )
+                .as_secs_f64();
             return true;
         }
         if matches!(result, Reply::LauncherAppPick { .. }) && self.picker_phase != 3 {
@@ -448,6 +468,13 @@ impl Launcher {
             }
             Reply::LauncherAppPick { value } => {
                 if let Some(app) = &mut self.app {
+                    if let Some(picked) = &value {
+                        app.source.draft.use_discovery = false;
+                        if self.app_name.text.trim().is_empty() {
+                            self.app_name = rune::TextEdit::new(&picked.name);
+                        }
+                    }
+                    app.confirm_arguments = false;
                     app.picked = value;
                 }
                 self.picker_phase = 0;

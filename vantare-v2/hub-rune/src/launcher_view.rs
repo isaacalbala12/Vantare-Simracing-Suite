@@ -284,6 +284,10 @@ pub fn view(state: &State) -> El {
     }
     let rail = surface(t)
         .w(280.0)
+        .min_h(0.0)
+        .scroll(rune::ScrollSpec {
+            stick_bottom: false,
+        })
         .gap(10.0)
         .child(caption(t, text("launcher.yourApps")))
         .children(v.apps.iter().map(|a| {
@@ -305,8 +309,124 @@ pub fn view(state: &State) -> El {
             .min_h(0.0)
             .gap(16.0)
             .child(profiles)
-            .child(rail),
+            .child(rail.child(quick_options(state))),
     )
+}
+fn quick_options(state: &State) -> El {
+    use vantare_hub_host::launcher::actions::{FIRST_STEP_DELAYS, ProfileOption};
+    let t = &state.theme;
+    let m = &state.launcher;
+    let Some(v) = &m.value else {
+        return col();
+    };
+    let Some(p) = m.selected() else {
+        return col();
+    };
+    let mut out = col()
+        .gap(8.0)
+        .child(caption(t, text("launcher.nextOptions")));
+    if v.running {
+        out = out.child(
+            label(t, text("launcher.runningOptionsReadOnly"))
+                .w_full()
+                .wrap(),
+        );
+    }
+    let groups = [
+        (
+            "running",
+            "launcher.alreadyRunning",
+            vec![
+                (
+                    ProfileOption::AlreadyRunning(ProfileRunning::Ask),
+                    text("launcher.ask").to_string(),
+                ),
+                (
+                    ProfileOption::AlreadyRunning(ProfileRunning::Reuse),
+                    text("launcher.reuse").to_string(),
+                ),
+                (
+                    ProfileOption::AlreadyRunning(ProfileRunning::Restart),
+                    text("launcher.restart").to_string(),
+                ),
+            ],
+        ),
+        (
+            "failure",
+            "launcher.failure",
+            vec![
+                (
+                    ProfileOption::Failure(ProfileFailure::Ask),
+                    text("launcher.ask").to_string(),
+                ),
+                (
+                    ProfileOption::Failure(ProfileFailure::Stop),
+                    text("launcher.stop").to_string(),
+                ),
+                (
+                    ProfileOption::Failure(ProfileFailure::Continue),
+                    text("launcher.keepGoing").to_string(),
+                ),
+            ],
+        ),
+        (
+            "delay",
+            "launcher.firstDelay",
+            FIRST_STEP_DELAYS
+                .into_iter()
+                .map(|value| (ProfileOption::FirstStepDelay(value), value.to_string()))
+                .collect(),
+        ),
+        (
+            "retries",
+            "launcher.retries",
+            (0..=RETRIES_MAX)
+                .map(|value| (ProfileOption::Retries(value), value.to_string()))
+                .collect(),
+        ),
+        (
+            "startup",
+            "launcher.startup",
+            vec![(
+                ProfileOption::Startup(!p.options.startup),
+                text(if p.options.startup {
+                    "launcher.enabled"
+                } else {
+                    "launcher.disabled"
+                })
+                .to_string(),
+            )],
+        ),
+        (
+            "exit",
+            "action.closeOnExit",
+            vec![(
+                ProfileOption::CloseOnExit(!p.options.close_on_exit),
+                text(if p.options.close_on_exit {
+                    "launcher.enabled"
+                } else {
+                    "launcher.disabled"
+                })
+                .to_string(),
+            )],
+        ),
+    ];
+    for (key, title, choices) in groups {
+        out = out.child(caption(t, text(title)));
+        for (index, (patch, name)) in choices.into_iter().enumerate() {
+            out = out.child(action(
+                state,
+                &format!("launcher-option-{key}-{index}"),
+                &name,
+                Some(Request::LauncherProfileOption {
+                    id: p.id.clone(),
+                    patch,
+                    base_revision: v.revision.clone(),
+                }),
+            ));
+        }
+    }
+    out
 }
 fn resident(state: &State) -> El {
     let m = &state.launcher;
@@ -388,7 +508,7 @@ fn resident(state: &State) -> El {
                 .unwrap_or(text("launcher.noPriorState"));
             results = results.child(caption(
                 t,
-                format!("{} · {name}", u32::from(step.index) + 1),
+                &format!("{} · {name}", u32::from(step.index) + 1),
             ));
         }
         panel = panel.child(results);
@@ -1000,10 +1120,21 @@ fn app_editor(state: &State) -> El {
                 |s: &mut State| {
                     if let Some(e) = &mut s.launcher.app {
                         e.source.draft.use_discovery = !e.source.draft.use_discovery;
+                        if e.source.draft.use_discovery {
+                            e.picked = None;
+                        }
+                        e.confirm_arguments = false;
                     }
                 },
             )
-            .disabled(disabled),
+            .disabled(
+                disabled
+                    || e.source.draft.id.as_ref().is_none_or(|id| {
+                        !m.catalog
+                            .as_ref()
+                            .is_some_and(|c| c.apps.iter().any(|a| &a.id == id && !a.removable))
+                    }),
+            ),
         );
     page = page.child(label(
         t,
@@ -1016,7 +1147,7 @@ fn app_editor(state: &State) -> El {
             |p| &p.file_name,
         ),
     ));
-    if e.picked.is_some() && (e.source.has_custom_arguments || e.source.custom_profiles > 0) {
+    if e.loses_arguments() {
         page = page.child(
             button(
                 t,

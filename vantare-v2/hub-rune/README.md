@@ -7,7 +7,7 @@ no cambia los overlays, Electron ni la distribución. Ejecutable:
 Rune y sus cuatro parches están fijados a
 `d5338988a7c1b3377adb60853815b6d0843dae7c`, Rust 1.99.1.
 `default-features = false`; se habilitan explícitamente `accessibility`, `dbus`,
-`embedded-fonts`, `metal-backend` y `svg`, como fija Cargo.toml.
+`embedded-fonts`, `metal-backend`, `native-file-dialog` y `svg`, como fija Cargo.toml.
 `ogg-audio` queda desactivado: el Hub no reproduce OGG y sus codecs MPL-2.0
 están prohibidos por decisión del orquestador. No activar defaults.
 

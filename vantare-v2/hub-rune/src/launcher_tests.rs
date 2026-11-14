@@ -440,3 +440,111 @@ fn shared_launch_guard_blocks_home_while_launcher_is_queued() {
         Some(crate::home::LaunchProblem::ConditionsChanged)
     );
 }
+#[test]
+fn checked_launch_needs_its_native_received_and_finished_not_an_order_receipt() {
+    let (mut m, c) = fixture();
+    let intent = m
+        .orders
+        .launch("creator", m.value.as_ref().unwrap(), &c)
+        .unwrap();
+    let id = post(&mut m, &c, intent);
+    m.accept(
+        id,
+        Reply::LauncherLaunchChecked {
+            value: vantare_hub_host::launcher::checked::LaunchQueued::Queued {
+                request: "a".repeat(32),
+            },
+        },
+        0.0,
+    );
+    execution(&mut m).events = vec![event(
+        1,
+        ResidentEventKind::OrderReceived {
+            request: "a".repeat(32),
+            receipt: ResidentOrderReceipt::Accepted { run: "3".into() },
+        },
+    )];
+    m.orders.observe(1.0, &c, m.value.as_ref());
+    assert!(matches!(
+        m.orders.attempt.as_ref().unwrap().phase,
+        Phase::Queued { .. }
+    ));
+    execution(&mut m).events.extend([
+        event(
+            2,
+            ResidentEventKind::Received {
+                request: "a".repeat(32),
+                receipt: ResidentReceipt::Accepted { run: "3".into() },
+            },
+        ),
+        event(
+            3,
+            ResidentEventKind::Finished {
+                run: "3".into(),
+                outcome: ResidentOutcome::Completed,
+            },
+        ),
+    ]);
+    m.orders.observe(2.0, &c, m.value.as_ref());
+    assert_eq!(
+        m.orders.attempt.as_ref().unwrap().phase,
+        Phase::Finished(ResidentOutcome::Completed)
+    );
+}
+#[test]
+fn discovery_resets_arguments_only_after_explicit_confirmation() {
+    use vantare_hub_host::launcher::apps::{AppDraft, AppEditor};
+    let (mut m, c) = fixture();
+    let id = post(
+        &mut m,
+        &c,
+        Request::LauncherAppGet {
+            id: Some("lmu".into()),
+        },
+    );
+    let value = AppEditor {
+        revision: m.value.as_ref().unwrap().revision.clone(),
+        draft: AppDraft {
+            id: Some("lmu".into()),
+            name: "LMU".into(),
+            use_discovery: false,
+            favorite: false,
+        },
+        has_executable: true,
+        has_custom_arguments: true,
+        custom_profiles: 1,
+    };
+    m.accept(id, Reply::LauncherAppGet { value }, 0.0);
+    m.app.as_mut().unwrap().source.draft.use_discovery = true;
+    let r = Request::LauncherAppSave {
+        draft: m.app.as_ref().unwrap().source.draft.clone(),
+        base_revision: m.value.as_ref().unwrap().revision.clone(),
+        pick_token: None,
+    };
+    assert!(!m.allowed(&r, &c, false));
+    m.app.as_mut().unwrap().confirm_arguments = true;
+    assert!(m.allowed(&r, &c, false));
+}
+#[test]
+fn native_close_preserves_an_open_profile_draft_and_requests_discard_confirmation() {
+    let (mut m, c) = fixture();
+    let id = post(
+        &mut m,
+        &c,
+        Request::LauncherProfileGet {
+            id: Some("creator".into()),
+        },
+    );
+    m.accept(id, Reply::LauncherProfileGet { value: profile() }, 0.0);
+    let mut s = crate::init();
+    s.launcher = m;
+    s.core = c;
+    s.section = "launcher".into();
+    let mut rt = rune::Runtime::new(s, crate::view, (1440.0, 900.0), rune::Env::new(true, 1.0));
+    rt.update(crate::request_close);
+    rt.frame(0.0);
+    assert!(!rt.state.closing);
+    assert!(rt.shell_request.is_none());
+    assert!(rt.state.launcher.profile.as_ref().unwrap().discard);
+    assert!(rt.find("launcher-profile-discard").is_some());
+}

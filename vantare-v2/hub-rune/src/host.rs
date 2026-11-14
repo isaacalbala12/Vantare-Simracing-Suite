@@ -467,6 +467,24 @@ fn scene(state: &mut Scene, message: UiToHost) -> io::Result<()> {
                 value: crate::launcher_orders::scene(),
             },
         }),
+        UiToHost::Request {
+            id,
+            request:
+                request @ (Request::LauncherCatalog {}
+                | Request::LauncherProfileGet { .. }
+                | Request::LauncherAppGet { .. }),
+        } => {
+            messages.push_back(
+                if let Some(result) = crate::launcher::scene_read(&request) {
+                    HostToUi::Response { id, result }
+                } else {
+                    HostToUi::Failure {
+                        id,
+                        error: protocol::HostError::Unsupported,
+                    }
+                },
+            );
+        }
         UiToHost::Subscribe {
             topic: Topic::Studio,
         } => messages.push_back(HostToUi::Event {

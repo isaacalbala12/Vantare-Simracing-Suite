@@ -548,3 +548,44 @@ fn native_close_preserves_an_open_profile_draft_and_requests_discard_confirmatio
     assert!(rt.state.launcher.profile.as_ref().unwrap().discard);
     assert!(rt.find("launcher-profile-discard").is_some());
 }
+#[test]
+fn a_pending_document_write_also_excludes_home_launches() {
+    let (m, c) = fixture();
+    let mut s = crate::init();
+    s.launcher = m;
+    s.core = c;
+    let r = Request::LauncherProfileFavorite {
+        id: "creator".into(),
+        favorite: false,
+        base_revision: s.launcher.value.as_ref().unwrap().revision.clone(),
+    };
+    assert!(!s.launcher.allowed(&r, &s.core, true));
+    s.launcher.queue(r, &s.core, false);
+    crate::queue_home_launch(&mut s, true);
+    assert!(!s.home.launching());
+    assert!(s.launcher.execution_busy());
+}
+#[test]
+#[cfg(debug_assertions)]
+fn launcher_scene_loads_document_resident_and_catalog_without_graphics_or_fake_writes() {
+    let (mut link, _) =
+        crate::host::Link::open(crate::bootstrap::Bootstrap::Scene("launcher-base".into()))
+            .unwrap();
+    link.send(UiToHost::Request {
+        id: 1,
+        request: Request::CoreGet {},
+    })
+    .unwrap();
+    let mut s = crate::init();
+    s.section = "launcher".into();
+    s.link = Some(link);
+    let mut rt = rune::Runtime::new(s, crate::view, (1440.0, 900.0), rune::Env::new(true, 1.0));
+    rt.poll = Some(crate::poll);
+    for _ in 0..8 {
+        rt.frame(0.0);
+    }
+    assert!(rt.state.launcher.value.is_some());
+    assert!(rt.state.launcher.catalog.is_some());
+    assert!(rt.state.launcher.orders.view.is_some());
+    assert!(rt.state.launcher.problem.is_none());
+}

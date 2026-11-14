@@ -309,8 +309,14 @@ launcher-protegido, desde el corpus nativo. Las escrituras de escena devuelven
 Unsupported. Presets launcher-light/launcher-dark preparados para capturas del
 Mac; flags de captura solo debug+macOS. Ninguna ejecución gráfica en Windows.
 
-Tests de recibos, ámbitos, historial/plazos, borrador, selector y controles
-preparados; Clippy local esperando RAM por la cola a -j2 y un compilador propio.
-Formato/catálogo, 27 tests Python y licencias PASS. CI del nuevo head pendiente.
+Clippy y 92 tests Windows PASS, sin ventana y por la cola a -j2, un compilador
+propio. Primera espera: 790 s; ningún turno esperó más de 30 min. La primera
+compilación falló por un import comodín que ocultaba draft, la conversión de
+u64 a segundos y un caption prestado; corregidos, con logs fallidos conservados.
+Formato/catálogo, 27 tests Python y licencias PASS. Logs finales:
+D:/VantareServer/evidence/hub-rune/launcher-clippy-validated.log y
+launcher-tests-validated.log. Head/CI actuales en #2307, sin heredar resultados
+de otros SHA. Las lecturas de catálogo y editores de escena usan también el
+corpus nativo; no producen avisos de error falsos al entrar.
 Quedan por verificar host real, aspecto, teclado físico y corte 2. El Mac sigue
 offline: al volver se captura primero #2297, offscreen y sin activar ventanas.

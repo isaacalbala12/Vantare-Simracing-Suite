@@ -126,7 +126,10 @@ impl Launcher {
         self.pending.is_some() || self.queued.is_some() || self.uncertain
     }
     pub fn execution_busy(&self) -> bool {
-        self.orders.busy() || self.queued.as_ref().is_some_and(execution_request)
+        self.orders.busy()
+            || self.uncertain
+            || self.queued.as_ref().is_some_and(|r| !reading(r))
+            || self.pending.as_ref().is_some_and(|p| !reading(&p.request))
     }
     pub fn reload(&mut self) {
         self.refresh = true;
@@ -167,6 +170,7 @@ impl Launcher {
             || v.running
             || v.scanning
             || self.orders.in_flight()
+            || (home_busy && !reading(request))
         {
             return false;
         }
@@ -565,6 +569,24 @@ impl Launcher {
     }
 }
 
+#[cfg(any(test, debug_assertions))]
+pub fn scene_read(request: &Request) -> Option<Reply> {
+    let (method, id) = match request {
+        Request::LauncherCatalog {} => ("launcher.catalog", None),
+        Request::LauncherProfileGet { id } => ("launcher.profile.get", Some(id)),
+        Request::LauncherAppGet { id } => ("launcher.app.get", Some(id)),
+        _ => return None,
+    };
+    let corpus: serde_json::Value = serde_json::from_str(include_str!(
+        "../../hub-web/src/contract/generated/corpus/launcher.json"
+    ))
+    .ok()?;
+    let response = corpus["host"].as_array()?.iter().find(|m| {
+        m["result"]["method"] == method
+            && id.is_none_or(|id| m["result"]["value"]["draft"]["id"].as_str() == id.as_deref())
+    })?;
+    serde_json::from_value(response["result"].clone()).ok()
+}
 #[cfg(any(test, debug_assertions))]
 pub fn scene(name: &str) -> LauncherView {
     let corpus: serde_json::Value = serde_json::from_str(include_str!(

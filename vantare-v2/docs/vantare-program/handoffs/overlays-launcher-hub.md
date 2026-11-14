@@ -2547,3 +2547,24 @@ compilación/tests/CI del nuevo código pendientes. Sin gráficos en el servidor
 Capturas y prueba real pendientes. La comparativa definitiva de #2297 conserva
 prioridad al recuperar el Mac y se hace offscreen/sin foco. Plane lo lleva el
 orquestador. Sin merge de PR a canales, promoción, instalación ni release.
+
+
+Cierre local de Launcher #2307: Clippy y 92 tests Windows PASS (16 nuevos sobre
+los 76 de Studio), sin ventana, por cola y dos jobs. Licencias 464 permisivas,
+catálogo/formato/diff y 27 tests Python PASS. Primera espera 790 s; ningún
+turno superó 30 min. Logs finales launcher-clippy-validated.log /
+launcher-tests-validated.log, bajo D:/VantareServer/evidence/hub-rune/.
+Primer fallo de compilación por import comodín/draft, conversión u64 y caption,
+conservado y corregido; primera tanda 90 PASS y cierre 92 PASS. No compilador
+propio en curso. Sin capturas ni ejecución gráfica en el servidor o el Mac.
+
+Se completó el refresco de catálogo tras detección, las opciones inmediatas
+nativas y la exclusión de Inicio mientras un guardado está pendiente/incierto.
+Volver al descubrimiento exige confirmar la pérdida de argumentos igual que
+cambiar el ejecutable. El anfitrión de escena responde las lecturas desde el
+corpus, nunca simula escrituras. L56 sigue bloqueado por integración de #2304,
+abierto al verificar; no se usa el borrado legacy ni se declara Launcher/corte 2
+aceptados. #2306 incluye ya los tres ajustes solicitados (d500cb012). El código
+final y CI de #2307 se consultan en PR/issue, que conservan el head publicado.
+Primero #2297 offscreen al recuperar el Mac; pendientes host real, visual,
+teclado físico y medición. Orquestador actualiza Plane y decide integraciones.

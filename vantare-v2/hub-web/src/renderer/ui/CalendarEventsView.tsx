@@ -220,7 +220,7 @@ export function CalendarEventsView({
                 {facts.map((fact) => (
                   <div key={fact.label}>
                     <span>{fact.label}</span>
-                    <strong>{fact.value}</strong>
+                    <strong title={fact.value}>{fact.value}</strong>
                   </div>
                 ))}
               </div>

@@ -16,6 +16,8 @@ export function profileActionReply(
   view: LauncherView,
   drafts: Map<string, ProfileDraft>,
 ): HostToUi | undefined {
+  if (request.method === "launcher.profile.delete")
+    return { kind: "failure", id, error: { kind: "unsupported" } };
   if (!isProfileActionMethod(request.method)) return;
   if (view.running) return { kind: "failure", id, error: { kind: "busy" } };
   if (!("baseRevision" in request) || request.baseRevision !== view.revision)
@@ -29,7 +31,6 @@ export function profileActionReply(
       return { kind: "failure", id, error: { kind: "denied" } };
     view.lmuTrigger = request.id;
   } else if (
-    request.method === "launcher.profile.delete" ||
     request.method === "launcher.profile.duplicate" ||
     request.method === "launcher.profile.favorite" ||
     request.method === "launcher.profile.option"
@@ -38,13 +39,7 @@ export function profileActionReply(
     const summary = view.profiles.find((profile) => profile.id === request.id);
     if (!draft || !summary)
       return { kind: "failure", id, error: { kind: "denied" } };
-    if (request.method === "launcher.profile.delete") {
-      drafts.delete(request.id);
-      view.profiles = view.profiles.filter(
-        (profile) => profile.id !== request.id,
-      );
-      if (view.lmuTrigger === request.id) view.lmuTrigger = null;
-    } else if (request.method === "launcher.profile.duplicate") {
+    if (request.method === "launcher.profile.duplicate") {
       if (
         view.profiles.length >= launcherLimits.profiles ||
         new TextEncoder().encode(draft.name + profileCopySuffix).length >

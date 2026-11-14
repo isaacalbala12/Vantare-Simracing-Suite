@@ -141,6 +141,16 @@ export function create(context: MockContext): MockHandler {
       } as ProfileDraft,
     ]),
   );
+  context.removeLauncherProfile = (id) => {
+    drafts.delete(id);
+    launcher.profiles = launcher.profiles.filter(
+      (profile) => profile.id !== id,
+    );
+    if (launcher.lmuTrigger === id) launcher.lmuTrigger = null;
+    launcher.revision = (BigInt(`0x${launcher.revision}`) + 1n)
+      .toString(16)
+      .padStart(64, "0");
+  };
   context.launcherPolicy = (id) => drafts.get(id)?.policy;
   if (sceneName === "launcher-shortcuts") {
     for (const [id, hotkey] of [

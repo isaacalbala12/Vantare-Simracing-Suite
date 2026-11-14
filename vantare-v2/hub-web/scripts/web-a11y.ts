@@ -1,3 +1,4 @@
+import {checkResidentRemoval} from "./check-resident-removal.ts";
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -163,6 +164,7 @@ try {
   await checkAccountDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
+  await checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentResults(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");

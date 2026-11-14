@@ -68,6 +68,9 @@
             "revisionCheckedLaunch": true
           },
           "online": true,
+          "ownership": {
+            "kind": "unknown"
+          },
           "protected": false,
           "registrations": [],
           "running": true
@@ -129,6 +132,9 @@
             "revisionCheckedLaunch": true
           },
           "online": true,
+          "ownership": {
+            "kind": "unknown"
+          },
           "protected": false,
           "registrations": [],
           "running": true
@@ -425,6 +431,9 @@
             "revisionCheckedLaunch": false
           },
           "online": true,
+          "ownership": {
+            "kind": "unknown"
+          },
           "protected": false,
           "registrations": [],
           "running": true
@@ -504,12 +513,170 @@
             "revisionCheckedLaunch": false
           },
           "online": true,
+          "ownership": {
+            "kind": "unknown"
+          },
           "protected": false,
           "registrations": [],
           "running": false
         }
       },
       "kind": "event"
+    },
+    {
+      "id": 9,
+      "kind": "response",
+      "result": {
+        "method": "launcher.profile.removeChecked",
+        "value": {
+          "kind": "queued",
+          "request": "ffffffffffffffffffffffffffffffff"
+        }
+      }
+    },
+    {
+      "event": {
+        "topic": "launcherResident",
+        "value": {
+          "decision": null,
+          "error": false,
+          "execution": {
+            "active": null,
+            "checkedAnswer": false,
+            "checkedControl": false,
+            "events": [
+              {
+                "kind": {
+                  "kind": "removal-received",
+                  "receipt": {
+                    "kind": "accepted"
+                  },
+                  "request": "ffffffffffffffffffffffffffffffff"
+                },
+                "seq": "1"
+              },
+              {
+                "kind": {
+                  "kind": "removal-finished",
+                  "outcome": {
+                    "kind": "removed",
+                    "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                  },
+                  "request": "ffffffffffffffffffffffffffffffff"
+                },
+                "seq": "2"
+              }
+            ],
+            "firstRetainedSeq": "1",
+            "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "question": null,
+            "results": {
+              "kind": "unsupported"
+            },
+            "revisionCheckedLaunch": false
+          },
+          "online": true,
+          "ownership": {
+            "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "kind": "known",
+            "profiles": [],
+            "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "protected": false,
+          "registrations": [],
+          "running": false
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "wrong-instance"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "account-changed"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "authority-unavailable"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "denied"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "busy"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "revision-mismatch"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "document-unavailable"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "ownership-unknown"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "owned-live"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "write-conflict"
+      },
+      "id": 9,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "residentRemovalRejected",
+        "reason": "io"
+      },
+      "id": 9,
+      "kind": "failure"
     }
   ],
   "ui": [
@@ -596,6 +763,19 @@
           "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
           "run": "1",
           "scope": "all"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "kind": "request",
+      "request": {
+        "method": "launcher.profile.removeChecked",
+        "target": {
+          "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "profile": "qa",
+          "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         }
       }
     }

@@ -10,11 +10,11 @@ use vantare_ipc::{
 mod cancel;
 mod rehearse;
 mod retry;
-fn observe(link: Option<&AuthorityLink>) -> std::io::Result<Option<AccountObservation>> {
+pub(super) fn observe(link: Option<&AuthorityLink>) -> std::io::Result<Option<AccountObservation>> {
     let link = link.ok_or(std::io::ErrorKind::NotConnected)?;
     account_session::read_account_session(link, Duration::from_millis(750))
 }
-fn authorize(
+pub(super) fn authorize(
     account: &AccountGeneration,
     read: impl FnOnce() -> std::io::Result<Option<AccountObservation>>,
     permit: impl FnOnce(&Policy, u64) -> bool,
@@ -62,4 +62,4 @@ impl Owner {
 }
 
 #[cfg(test)]
-mod support;
+pub(super) mod support;

@@ -16,6 +16,7 @@ export function create(
     error: false,
     decision: null,
     execution: null,
+    ownership: { kind: "unsupported" },
     registrations: [],
   };
   if (context.sceneName === "calendar-launch-reference")

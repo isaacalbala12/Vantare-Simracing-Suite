@@ -9,6 +9,7 @@ pub mod execution;
 pub use checked::{LaunchChecked, RequestId};
 pub mod answer;
 pub mod control;
+pub mod ownership;
 pub mod results;
 pub use answer::AnswerChecked;
 pub use control::{CancelChecked, RehearseChecked};
@@ -86,6 +87,8 @@ pub enum Request {
     CancelChecked(CancelChecked),
     #[serde(rename = "rehearse-v1")]
     RehearseChecked(RehearseChecked),
+    #[serde(rename = "remove-profile-v1")]
+    RemoveProfileChecked(ownership::RemoveProfileChecked),
     #[serde(rename = "retry-v1")]
     RetryChecked(results::RetryChecked),
     #[serde(rename = "answer-v3")]

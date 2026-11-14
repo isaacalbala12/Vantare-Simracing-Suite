@@ -145,3 +145,29 @@ reinicio, hueco, ejecución desconocida o información incompleta = UnknownRun.
 Una nueva lectura debe conservar el SHA-256 de origen y la autoridad debe seguir
 observando la misma cuenta con permiso de lanzamiento. Accepted inicia un run
 nuevo; no reescribe el resultado anterior ni lo convierte en éxito.
+
+### Propiedad viva y borrado comprobado L56
+La observación procede exclusivamente del registro Processes y de sus handles;
+no descubre ni se apropia de procesos externos. La foto acotada del estado se
+sobrescribe y no deja historial. Error de reap, contención o documento sin
+reconciliar dan Unknown, nunca una lista vacía supuesta.
+
+RemoveProfileChecked usa el mismo lease de cadena que start_checked. Sin cadena,
+revalida la cuenta y los permisos de edición, lee una única instantánea y exige
+su SHA-256. Mantiene el bloqueo del registro tras reap y rechaza hijos propios
+vivos, aunque la cadena haya terminado. Conserva ambos bloqueos hasta el CAS
+atómico y la actualización de la caché del Owner. La lectura/validación del
+documento y la consulta de cuenta ocurren antes de adquirirlos; la cuenta y los
+permisos se comprueban antes de leer el documento. Tras soltarlos
+se sincronizan atajos e inicio de Windows y se publica el estado una sola vez.
+No cierra procesos.
+
+RemovalReceived Accepted confirma la aceptación, no el borrado. El terminal
+RemovalFinished Removed contiene la nueva revisión solo después del CAS;
+Failed y los rechazos tienen motivos tipados. No hay RunId artificial ni ACK;
+el archivo de estado se sobrescribe, sin recuperar recibos después de reiniciar.
+Hueco, reinicio o ausencia de recibo = Unknown.
+La garantía cubre este residente y el contrato nuevo, sin coordinación cruzada
+con GPUI ni escritores antiguos que no usen este lease.
+
+Si existe un handle vivo cuyo perfil ya no está en el documento observado, el registro no está reconciliado: la foto y los nuevos borrados quedan cerrados con Unknown/OwnershipUnknown.

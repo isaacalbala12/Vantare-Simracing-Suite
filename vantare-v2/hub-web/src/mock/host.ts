@@ -40,6 +40,9 @@ export function createMockHost(
       sceneName,
     ) ??
     studioStateVisual.exec(sceneName) ??
+    /^visual-(dark|light):(launcher-notice-(?:completed|accepted|rejected|gap))$/.exec(
+      sceneName,
+    ) ??
     /^visual-(dark|light):(onboarding-(?:[0-7]|cuenta-(?:sesion|cargando|error)|correo-(?:sin-permiso|con-permiso|error)))$/.exec(
       sceneName,
     ) ??

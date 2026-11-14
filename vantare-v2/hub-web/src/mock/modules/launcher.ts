@@ -46,6 +46,7 @@ export function create(context: MockContext): MockHandler {
   }
   if (
     sceneName === "launcher-ready" ||
+    sceneName.startsWith("launcher-notice-") ||
     sceneName === "launcher-editor-ready" ||
     sceneName.startsWith("launcher-editor-custom") ||
     sceneName === "launcher-conflicto"
@@ -361,6 +362,7 @@ export function create(context: MockContext): MockHandler {
         launcher.profiles.forEach((profile) => {
           profile.launchable = false;
         });
+        context.launchForNotice?.(request.profile);
         return {
           kind: "response",
           id,

@@ -1,6 +1,7 @@
 import type { HostToUi, ResidentView } from "../../contract/generated/contract";
 import { residentActionLabels } from "../../contract/generated/launcher_resident";
 import type { MockContext, MockHandler } from "../context";
+import { createLauncherNoticeMock } from "../launcher-notice";
 import { createResidentControlMock } from "../resident-control";
 import { createResidentRemovalMock } from "../resident-removal";
 import { createResidentResultsMock } from "../resident-results";
@@ -94,6 +95,7 @@ export function create(
       };
   }
   const control = createResidentControlMock(context, view, schedule);
+  createLauncherNoticeMock(context, view, schedule);
   const results = createResidentResultsMock(context, view, schedule);
   const removal = createResidentRemovalMock(context, view, schedule);
   const event = (): HostToUi => ({

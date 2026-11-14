@@ -81,7 +81,8 @@ export async function prepareResidentRemoval(page: Page, state: string) {
             .count(),
           1,
         );
-        await confirm.click(); // aria-disabled + handler block a second request, without losing focus.
+        await confirm.focus();
+        await page.keyboard.press("Enter"); // aria-disabled stays focusable, but cannot issue twice.
       }
     }
   }

@@ -3595,6 +3595,7 @@ dependencies = [
 name = "vantare-hub-rune"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "rune",
  "serde_json",
  "vantare-hub-host",

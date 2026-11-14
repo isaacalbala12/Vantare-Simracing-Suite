@@ -3,7 +3,7 @@ use crate::{
     catalog::text,
     design::{button, label, surface},
 };
-use rune::{El, TextStyle, col, row};
+use rune::{El, col, row};
 use vantare_hub_host::roadmap::RoadmapItem;
 fn card(state: &State, item: &RoadmapItem, lane: &str) -> El {
     let theme = &state.theme;
@@ -11,7 +11,7 @@ fn card(state: &State, item: &RoadmapItem, lane: &str) -> El {
         .key(format!("roadmap-item-{lane}-{}", item.id))
         .role("article")
         .label(&item.title)
-        .child(label(theme, &item.title).font(TextStyle::new(15.0, 600.0)))
+        .child(label(theme, &item.title).font(crate::design::body_style(15.0, 600.0)))
         .child(label(theme, &item.body).w_full())
         .child(label(
             theme,
@@ -60,7 +60,7 @@ pub fn view(state: &State) -> El {
         .scroll(rune::ScrollSpec {
             stick_bottom: false,
         })
-        .child(label(theme, text("roadmap.title")).font(TextStyle::new(28.0, 700.0)))
+        .child(label(theme, text("roadmap.title")).font(crate::design::body_style(28.0, 700.0)))
         .child(label(theme, text("roadmap.subtitle")))
         .child(tabs)
         .child(
@@ -77,7 +77,7 @@ pub fn view(state: &State) -> El {
                     theme,
                     current.map_or(text("roadmap.noCurrent"), |i| i.title.as_str()),
                 )
-                .font(TextStyle::new(24.0, 600.0)),
+                .font(crate::design::body_style(24.0, 600.0)),
             );
         if let Some(item) = current {
             hero = hero.child(label(theme, &item.body));
@@ -143,7 +143,7 @@ pub fn view(state: &State) -> El {
                 .role("region")
                 .child(
                     label(theme, text(&format!("roadmap.{name}")))
-                        .font(TextStyle::new(16.0, 600.0)),
+                        .font(crate::design::body_style(16.0, 600.0)),
                 );
             let items = lane(name);
             if items.is_empty() {

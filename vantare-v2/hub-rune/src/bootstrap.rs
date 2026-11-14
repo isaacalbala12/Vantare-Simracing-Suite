@@ -38,6 +38,16 @@ pub fn consume() -> io::Result<Bootstrap> {
             "roadmap-base",
             "roadmap-published",
             "roadmap-error",
+            "inicio-base",
+            "inicio-vacio",
+            "inicio-cargando",
+            "inicio-error",
+            "inicio-sin-diseno",
+            "inicio-lanzando",
+            "studio-base",
+            "studio-vacio",
+            "studio-protegido",
+            "studio-missing",
         ]
         .contains(&scene.as_str())
         {

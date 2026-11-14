@@ -2256,3 +2256,266 @@ Emisor y worker comparten el mismo reloj de la pregunta. Regresiones con barrera
 plazo cumplido antes/después del compromiso y publicación fallida de la pregunta;
 la limpieza de directorios en Drop no provoca otro panic. Sin cambios de contrato
 v33 ni del plazo exportado para D. Gates del ajuste y head vigentes en #2281.
+
+
+### VANTA-143 · Inicio Rune, primer corte (2026-11-13)
+
+#2267 fusionado por el orquestador: nightly 393b8b443. #2268 rebasado con
+--onto origin/nightly cc64d915, sin cambios de contenido: a52bc257e71ab00d40a4f5f54067c447b9ca60b3.
+Se verificaron los árboles hub-rune/workflow idénticos antes/después y se
+publicó con lease; CI nueva y revisión pendientes en su PR.
+
+Inicio empieza por orden del orquestador mientras el Mac duerme, con un solo
+worker y sin delegación. Rama vantareapp/isa-2256-hub-rune-inicio, worktree
+D:/VantareServer/worktrees/isa-2256-hub-rune-inicio; creada desde nightly y
+avanzada al padre #2268 porque utiliza su estado del núcleo y conserva Roadmap.
+#2241 (54ef276c de medición) se leyó como referencia, sin integrar sus activos
+copiados ni sus dependencias. El primer corte usa HomeGet/Event::Home del host,
+suscribe al entrar, retira al salir, correlaciona peticiones y eventos y deja
+reintentar con el último estado conservado tras fallo/plazo de 45 s. Sin sondeo.
+
+Bienvenida, layout/miniaturas, métricas conocidas, actividad de perfiles y panel
+de favorito/estado/plantillas. Textos y SVG por las rutas de Electron, fuentes
+compartidas. La función de escenas de Electron se extrae sin cambiar su
+comportamiento y el generador la usa para las seis escenas de Inicio en Rune.
+La CI reacciona también a cambios de la proyección y los SVG compartidos.
+
+Verificación inicial: 30 tests de Inicio Electron en cuatro archivos PASS;
+typecheck Electron PASS; Biome de los tres archivos JS/TS tocados PASS;
+catálogo, formato Rust y 27 tests Python PASS. Rust Clippy/tests/build del nuevo
+código pendientes de CI: se conserva la cesión de cola a E para L53/exportador
+v33 hasta que avise. No se ejecuta ninguna opción gráfica en Windows.
+
+Pendiente del siguiente corte de Inicio: selección/lanzamiento, paleta/atajos,
+nombre/fecha y avisos; acabado/adaptación contra Electron y capturas Mac.
+Este PR no declara Inicio completo ni levanta el corte 1. Sin cambios del host,
+overlays, instalador o distribución; sin nuevas dependencias o cuentas reales.
+PR/head/checks actuales se registran en #2256 y en el PR draft de Inicio.
+
+
+### VANTA-143 · #2287: lanzamiento y composición (2026-11-13)
+
+Rebase sobre nightly 5a6b75691; Inicio usa launcher.launch con profile/baseRevision,
+como Electron. Selector y favorito, guarda contra doble clic, comprobación actual
+de acceso/protegido/live/progreso al enviar y rechazo/plazo 45 s sin relanzamiento
+automático. Refresco al terminar. La escena solo acusa recibo; no abre programas.
+Circuito y alias compartidos, solo un circuito decodificado; plantillas en parejas,
+panel adaptable y hero de 200/236/300 px. Capturas pendientes del Mac apagado.
+CI anterior: 39 PASS/1 FAIL en Reintentar, que esperaba un estado intermedio de
+frame. Ahora se comprueba una petición nueva y el error final, conservando la
+regresión. Clippy encolado tras E/exportador v34: turno obtenido tras 82 s. Un
+solo compilador propio; gates y heads exactos en #2287 y #2256. Sin dependencias
+nuevas ni cambios de host/distribución. Paleta/atajos, nombre/fecha y avisos aún
+pendientes; no se declara paridad visual ni corte 1 aceptado.
+
+
+Correcciones verificadas durante gates de #2287: el prefijo de imágenes de
+circuito era igual al de widgets track-map/track-weather y retiraba ambas
+miniaturas. Ahora usa circuit-; se conserva la aserción de inventario y la
+decodificación CPU de todos los recursos. El fallo de Reintentar se diagnosticó
+con hit-test: botón a opacidad 0 por entrada animada con reloj virtual parado.
+La prueba avanza dos segundos de frames virtuales, exige visibilidad y mantiene
+la comprobación de petición nueva/error final. Prueba dirigida PASS; Clippy de
+las fuentes corregidas PASS (2 min 11 s). Suite completa repitiéndose por cola.
+CI web bloqueada en check-resident-answer.ts:44, diálogo Eliminar perfil, fuera
+de los cambios Rune. No se declara CI verde. Resultados definitivos y SHA en
+#2287/#2256; logs locales en evidence/hub-rune/inicio-lanzamiento.
+
+
+VANTA-143 · Mac liberado por el orquestador: se prepara matriz de 66 capturas,
+con guion macOS serial, espacio/SHA/otros compiladores comprobados y rechazo en
+Windows. Adaptador de escena capture solo debug+macOS para pantalla/tema/barra;
+helper puro comprobable sin GPU. No se activó nada en el Mac durante la espera.
+Tras el aviso se permite compilar y capturar en el target propio. Capturas/tabla
+no equivalen a aceptar fidelidad ni requisitos exclusivos de Windows.
+
+
+### VANTA-143 · fidelidad visual del marco e Inicio · 2026-11-13
+
+#2287, head 5e1c70241ccf57378041dc2dcceabacff2bc9447: CI verde verificada
+(Rune, web, calidad y gates). Isaac probó la ventana en Mac: Tab/Enter/Espacio,
+claro/oscuro, Inicio/Roadmap y X, PASS manual («súper bien»). Aspecto FALLO:
+expansión cortada, cabecera incompleta, aviso suelto, estados planos, ISO crudo,
+tipografía/pesos e iconos. CORTE-1 registra ambos sin aceptar el corte completo.
+
+PR prioritario separado sobre Inicio: raíl y cabecera, estados y jerarquía,
+familia interna Rajdhani SemiBold, botones con peso y contraste homogéneos,
+fechas locales como Electron. Reutiliza chrono ya aprobado en el grafo, sin
+paquetes nuevos; ninguna modificación de hub-host/overlays/distribución.
+Gates propios en cola (-j2, un slot, targets D:); nuevos resultados pendientes.
+
+Capturas del Mac detenidas a petición del orquestador: Electron abría ventanas
+visibles. Se han terminado el guion y todos sus hijos; no se usará Automatización.
+Ruta Rune --snap verificada en fuente fijada: offscreen, sin window::run ni foco.
+Guion viejo de referencia Electron prohibido hasta arrancar oculto y sin activación.
+66 PNG Rune anteriores se conservan como antes, sin afirmar fidelidad aprobada.
+Comparativas después y revisión de Isaac pendientes; no se avanza a más pantallas.
+
+
+Captura sin molestar a Isaac: Rune --snap confirmado offscreen en d533898 y
+captura de prueba completada sin ventana. Referencia Electron con entry QA
+accessory y LSUIElement, show/foco bloqueados antes de ready-to-show: prueba
+PASS con visible/focused/focusable=false y mismo PID en primer plano antes/después.
+El controlador comprueba estos estados por celda; no usa System Events ni permiso
+de Automatización. No se reanuda el antiguo guion con ventanas visibles.
+Inter requiere además familias internas W400/W500/W600/W650/W700; los tests
+comparan los archivos efectivamente seleccionados. Clippy Windows PASS en 454a8c7f0,
+Mac 45/45 tests PASS en ese SHA. Retoques de presentación posteriores y guiones
+nuevos se vuelven a verificar; no se atribuyen resultados de padres al nuevo head.
+
+
+### VANTA-143 · #2297: evidencia final de fidelidad (2026-11-13)
+
+Código de presentación f980b5355ed82ec17a620cf7b13eeeda30cb0e5b, sobre #2287
+5e1c70241ccf57378041dc2dcceabacff2bc9447. Ambos PRs draft a nightly, limpios.
+CI de ese código verde: Rune (Clippy, 53 tests y enlace del ejecutable sin correrlo),
+web, calidad y gates. Clippy local final PASS; Mac build y 46 tests PASS.
+Capturas completas: 66 Rune antes, 66 después y 66 referencias Electron QA;
+132 comparativas en claro/oscuro, 100/125/150 %, sin reescalar originales.
+
+Todas las referencias Electron se capturaron ocultas, sin foco ni capacidad de
+recibirlo. Ningún proceso QA fue primer plano. Rune --snap es offscreen;
+no se usó Automatización/System Events ni se ejecutó gráfica en Windows.
+El aviso de núcleo queda en cabecera sin desplazar Inicio; leyendas de plantillas
+acotadas y métricas con etiqueta/valor. Regresión geométrica y fuentes reales
+cubiertas por tests. Registro y seis PNG de revisión extraídos a D:/VantareServer/evidence/hub-rune/
+review-2297-r2/previous-repo-evidence; no quedan PNG de fidelidad en Git;
+informe completo D:/VantareServer/evidence/hub-rune/corte1/index.html.
+
+Isaac: PASS manual de Tab/Enter/Espacio, tema, Inicio/Roadmap y X en 5e1c7024;
+FALLO visual inicial. Nueva aprobación visual pendiente. Corte 1 sin aceptar:
+Windows 10/11 reales, español/AltGr en campos, lector y 30 minutos siguen pendientes.
+No se avanza a más pantallas. Saludo/nombre, paleta/atajos y avisos del siguiente
+corte no se declaran terminados. Plane lo actualiza el orquestador; resumen en PR.
+
+Limpieza: retirado target Mac propio de 3,16 GiB y 93 perfiles QA; 16,48 → 19,84 GiB
+libres. Binario y hash conservados en ~/orq/isa2256-fidelidad-f980b5355, sin ejecutarlo.
+Cero procesos propios de captura pendientes. Sin targets ajenos, cuentas reales,
+cambios de host/overlays/distribución, merge/promoción/release del worker.
+HEAD y checks del último commit documental se verifican en #2297/#2256.
+
+
+### VANTA-143 · #2297: segunda revisión (2026-11-13)
+
+Sin ack tras 45 s, lanzamiento incierto y bloqueado hasta Home Running/Idle
+fresco; Actualizar estado no repite el lanzamiento. La revocación al despachar
+explica por qué no se envió. Tests cubren respuesta tardía, lectura antigua,
+Running/Idle, revocación, Ctrl L repetido y búsqueda Unicode con foco modal.
+El catálogo usa marcador de contador explícito, sin el centinela numérico 917.
+
+Inicio incorpora saludo/fecha compartidos, Ctrl K / Ctrl L, píldoras, VER TODO,
+badges Launcher/Tester rojos y conectado verde, Editar overlay blanco y Detener
+deshabilitado como Electron, avatar demo IA y Studio al final del raíl derecho.
+Fecha congelada de referencia Electron: 30/09. Revisión e6fcb3271: 52 tests Mac
+PASS y 66 capturas/66 parejas completas; originales, hashes y tamaños comprobados
+en D:/VantareServer/evidence/hub-rune/review-2297-r2/index.html.
+Clippy local en cola PASS en 4186911d. CI e553d9fb verde: Rune (Clippy, 59 tests Windows y enlace sin ejecución),
+web, calidad y gates. El cierre documental no modifica el código verificado;
+HEAD/checks finales y tests locales de Windows se consultan en #2297.
+TypeScript/Biome/catálogo/licencias PASS; CI web e553d9fb PASS. Tests web locales:
+3 PASS y tres workers agotaron su arranque; se conserva el fallo de entorno,
+no se declara PASS local. La CI web sí completó toda su batería.
+Mac: target propio retirado (1,93 GiB), 15,53 → 17,27 GiB libres; binario/hash
+conservados en ~/orq/isa2256-review-r2-binary-e6fcb3271, cero capturas activas.
+El PASS manual de Isaac y el FALLO visual inicial conservan sus SHAs originales.
+
+Excepción ADR declarada: función pura del mock Electron extraída a home-scene.ts
+para compartir escenas con el generador Rune, sin cambio de contrato ni host.
+El orquestador fusionará #2297 con squash y cerrará #2287 como incluido.
+Sin merge, release ni actualización de Plane por el worker.
+
+### VANTA-143 · #2297: ajuste de hero y buscador (2026-11-13)
+
+Isaac acepta el código de e3749fa6, incluido el estado incierto, y pide igualar
+el aspecto antes de integrar. Sin cambios de lanzamiento ni anfitrión.
+Hero con la imagen de degradado compartida en el fondo del propio contenedor,
+debajo del circuito; la traducción SVG conserva ángulos, paradas y alfa de CSS.
+Studio del hero con borde y fondo transparente. Retirado el botón ancho inferior
+de Plantillas, ausente en Electron. Búsqueda alineada a la izquierda y selector
+de 168×38 con flecha del catálogo de iconos compartido.
+
+Tests CPU del color del degradado y de geometría del buscador/selector en claro,
+oscuro y tres escalas. Comparativas nuevas de inicio-base (seis celdas) previstas
+en D:/VantareServer/evidence/hub-rune/review-2297-r3; capturas solo offscreen en Mac.
+Resultados y SHA de captura se completan en el PR; no se atribuye la CI de e3749fa6
+al nuevo código. El corte 1 mantiene la aprobación visual pendiente de Isaac.
+
+
+Actualización 2026-11-14: las seis capturas preliminares de 043b24d20 confirman
+buscador/selector y botones, pero NO validan el hero: salió oscuro. Se conservan
+en review-2297-r3 como diagnóstico, no como entrega visual aceptada.
+Causa comprobada: el SVG contiene rojo y llega a la lista de dibujo cuando está
+preparado; los frames virtuales de --snap terminan antes de su decodificación.
+Las escenas de captura esperan ahora a que la caché publique los píxeles, con un
+test del primer frame; el arranque normal conserva la carga asíncrona.
+
+043b24d20: 61 tests Windows y 54 Mac PASS; Clippy Windows pasó sin sccache tras
+STATUS_ACCESS_VIOLATION del wrapper (ambos logs conservados). c89f6204 falló CI
+por un cfg aplicado a una asignación; se corrige usando un bloque de plataforma.
+Los gates del nuevo head no heredan esos resultados; se consultan en #2297.
+
+Bloqueo de evidencia: Mac 100.91.91.82 sin respuesta SSH al retomar el 14-nov.
+No se ha capturado el arreglo de preparación. Hace falta recuperar SSH, leer
+los logs de ready-build/ready-tests, compilar el head corregido y ejecutar
+las seis celdas con capture_inicio.py. Conservar el binario debug y retirar
+solo el target propio antes de capturar si quedan menos de 12 GiB.
+Última limpieza comprobada: target propio 1,75 GiB retirado, 11,77 → 13,38 GiB.
+Puede quedar un target nuevo del intento c89f6204; no se afirma limpio sin SSH.
+No se abren ventanas visibles ni se usa Automatización. No fusionar por fidelidad
+hasta tener nuevas comparativas y el visto bueno de Isaac.
+
+
+### VANTA-143 · Studio sobre #2297 (2026-11-14)
+
+El orquestador confirma el Mac offline y autoriza seguir Studio sin ventana.
+#2297 sigue draft en 7eff0c88, CI verde y 62 tests Windows PASS: falta capturar
+el arreglo de preparación de imágenes y el OK visual de Isaac. Esa captura de
+Inicio tiene prioridad cuando vuelva el Mac; no sustituirla con capturas Studio.
+
+Rama/worktree propios: vantareapp/isa-2256-hub-rune-studio,
+D:/VantareServer/worktrees/isa-2256-hub-rune-studio, base exacta 7eff0c88 de #2297.
+Sin subagentes, cambios de host/overlays/distribución ni dependencias nuevas.
+Studio conectado con los tipos nativos, suscripción al entrar/salir y peticiones
+seriales con revisión. Catálogo, selección, añadir/eliminar, undo/redo,
+visibilidad/opacidad/sesiones/fuera de pista y apariencia de los cinco widgets
+con settings nativos. Conflictos y plazos nunca reenvían cambios automáticamente;
+el estado se vuelve a leer antes de permitir otra edición. Contenido y marca
+conservan las limitaciones de Electron. La miniatura es ilustrativa.
+
+Escenas de lectura desde el corpus compartido; no simulan guardar. Tests nuevos
+de protocolo, controles accesibles, búsqueda Unicode y Escape sin ventana.
+Clippy local y 73 tests Windows PASS, por la cola con dos jobs y target del
+slot en D:. Catálogo/formato/diff, 27 tests Python y 463 licencias PASS.
+Los fallos iniciales se conservan: imports omitidos y orden de módulos de test;
+la prueba del catálogo pulsaba antes de terminar la entrada de Rune. Se avanza
+el reloj inyectado y se exige opacidad visible antes de pulsar; búsqueda con
+acentos y Escape PASS, sin esperas de pared ni rebajar las aserciones.
+Logs: D:/VantareServer/evidence/hub-rune/studio-clippy-validated.log y
+studio-tests-validated.log. Ningún compilador propio queda en curso.
+Nada de ejecución gráfica en el servidor. Capturas/ventana/anfitrión real
+pendientes del Mac; el corte 2 sigue en curso. PR/HEAD/gates finales se reflejan
+en #2256 y #2306, draft a nightly apilado sobre #2297. CI del nuevo head
+pendiente; no se hereda el resultado de otro SHA. Plane lo actualiza
+el orquestador. Sin merge, promoción ni release del worker.
+
+
+### VANTA-143 · revisión Studio #2306 antes de merge (2026-11-14)
+
+Revisión del orquestador aprobada; tres ajustes añadidos en la misma rama.
+Apariencia omite controles si falla serializar ajustes o interpretar una pareja
+widget/campo: sin expect ni panic en ese camino. Una revisión nueva del diseño
+cierra el diálogo de eliminación, para exigir una confirmación nueva.
+Los errores definidos de rechazo se mantienen definitivos; Io, CoreUnavailable
+tras escritura y cualquier variante no reconocida dejan el resultado incierto,
+bloquean nuevas ediciones y piden StudioGet. Ni un evento ni un error de lectura
+posterior levantan ese bloqueo: hace falta una lectura confirmada. El contrato
+HostError no tiene variantes Timeout/Internal; el plazo del cliente conserva
+el mismo tratamiento y el host expresa fallos internos con Io.
+Clippy y 76 tests Windows PASS por la cola, dos jobs y sin ventana. Tres nuevas
+regresiones: pareja incompatible, confirmación invalidada e incertidumbre tras
+escritura/fallo de relectura, con cero reenvíos automáticos. Logs externos
+studio-review-clippy.log y studio-review-tests.log. CI del head publicado se
+consulta en #2306; sin merge, release ni actualización de Plane del worker.
+Launcher arranca en rama propia sobre #2306 y heredará este ajuste; consume los
+contratos L53–L55 de nightly. L56/v36 se lee de #2304 hasta que se fusione.
+#2297 sigue draft; primera captura al volver el Mac, offscreen y sin foco.

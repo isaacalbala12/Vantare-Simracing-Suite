@@ -40,9 +40,13 @@ export function TestingQuestionnaires({
                     ? text.offline
                     : state.failure === "denied"
                       ? text.denied
-                      : text.failed
+                      : state.failure === "rejected"
+                        ? questionnaireText.rejected
+                        : text.failed
                 }
-              />
+              >
+                {state.failure === "rejected" && questionnaireText.rejectedHelp}
+              </Callout>
             )}
             <Button
               disabled={blocked}

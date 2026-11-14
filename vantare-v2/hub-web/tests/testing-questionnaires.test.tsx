@@ -106,6 +106,77 @@ it("sends the selected score and edited note only after explicit save and preven
       .value,
   ).toBe("Comentario editado");
 });
+it("explains a rejected answer, preserves its explicit note and refreshes without resending", async () => {
+  window.history.replaceState(
+    null,
+    "",
+    "/?escena=testing-tester-questionnaire-note-rejected",
+  );
+  await mount();
+  const calls = vi.spyOn(Client.prototype, "request");
+  await select();
+  const note = screen.getByRole("textbox", { name: text.note });
+  fireEvent.change(note, { target: { value: "Comentario que conservo" } });
+  fireEvent.click(screen.getByRole("button", { name: text.save }));
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain(
+    "El núcleo no ha aceptado la solicitud del cuestionario.",
+  );
+  expect(alert.textContent).toContain(
+    "Recarga los cuestionarios y revisa la respuesta antes de volver a guardar.",
+  );
+  expect((note as HTMLTextAreaElement).value).toBe("Comentario que conservo");
+  fireEvent.click(screen.getByRole("button", { name: "Recargar" }));
+  await waitFor(() =>
+    expect(
+      calls.mock.calls.filter(
+        ([request]) => request.method === "testing.refresh",
+      ),
+    ).toHaveLength(2),
+  );
+  const refresh = calls.mock.calls.findLastIndex(
+    ([request]) => request.method === "testing.refresh",
+  );
+  await act(async () => {
+    await calls.mock.results[refresh].value;
+  });
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect((note as HTMLTextAreaElement).value).toBe("Comentario que conservo");
+  const answers = calls.mock.calls.filter(
+    ([request]) => request.method === "testing.answer",
+  );
+  expect(answers).toHaveLength(1);
+  expect(answers[0][0]).toMatchObject({ note: "Comentario que conservo" });
+});
+it("sends an explicit empty note when a legacy projection has no note", async () => {
+  await mount();
+  const calls = vi.spyOn(Client.prototype, "request");
+  await select();
+  expect(
+    (screen.getByRole("textbox", { name: text.note }) as HTMLTextAreaElement)
+      .value,
+  ).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: text.save }));
+  await waitFor(() =>
+    expect(
+      calls.mock.calls.filter(
+        ([request]) => request.method === "testing.answer",
+      ),
+    ).toHaveLength(1),
+  );
+  const index = calls.mock.calls.findIndex(
+    ([request]) => request.method === "testing.answer",
+  );
+  expect(calls.mock.calls[index][0]).toEqual({
+    method: "testing.answer",
+    id: "15350000-0000-0000-0000-000000000001",
+    score: 3,
+    note: "",
+  });
+  await act(async () => {
+    await calls.mock.results[index].value;
+  });
+});
 it("preloads the prior score and note and sends an intentional empty note", async () => {
   window.history.replaceState(
     null,

@@ -46,7 +46,10 @@ export function createTestingMock(
       question: "¿Cómo funciona el Hub?",
       score: null,
     });
-  if (scene === "testing-tester-questionnaire-note")
+  if (
+    scene === "testing-tester-questionnaire-note" ||
+    scene === "testing-tester-questionnaire-note-rejected"
+  )
     participation.questionnaires = participation.questionnaires.map((item) => ({
       ...item,
       score: 4,
@@ -152,6 +155,8 @@ export function createTestingMock(
           result: { method: request.method, value: structuredClone(draft) },
         };
       case "testing.answer": {
+        if (scene === "testing-tester-questionnaire-note-rejected")
+          return { kind: "failure", id, error: { kind: "rejected" } };
         const questionnaire = participation.questionnaires.find(
           (item) => item.id === request.id,
         );

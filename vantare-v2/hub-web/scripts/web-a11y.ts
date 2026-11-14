@@ -10,6 +10,7 @@ import { checkAccountDensity } from "./check-account-density.ts";
 import { checkCalendarDialogSafety } from "./check-calendar-dialog-safety.ts";
 import { checkCommandPalette } from "./check-command-palette.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
+import { checkLauncherDensity } from "./check-launcher-density.ts";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
 import { checkNotificationFocus } from "./check-notification-focus.ts";
 import {
@@ -163,6 +164,11 @@ try {
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
   await checkTestingDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkAccountDensity(page, server.resolvedUrls?.local[0] ?? "");
+  await checkLauncherDensity(
+    page,
+    server.resolvedUrls?.local[0] ?? "",
+    evidence,
+  );
   await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? "");

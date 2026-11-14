@@ -547,6 +547,73 @@ div.v-launcher-app-tile {
 .v-launcher-app-tile small {
   line-height: 21px;
 }
+
+/* GPUI orbit::Adapt B (<820 px): omit optional copy and use its 10 px gap.
+   Keep warnings readable and every existing profile action reachable. */
+@media (max-height: 819px) {
+  .v-shell-main > .v-content-stack:has(.v-launcher-profiles),
+  .v-launcher-page:has(.v-launcher-profiles) {
+    height: 100%;
+    min-height: 0;
+  }
+  .v-shell-main [role="tabpanel"]:has(.v-launcher-profiles) {
+    flex: 1;
+    min-height: 0;
+  }
+  .v-launcher-page:has(.v-launcher-profiles) {
+    gap: 10px;
+  }
+  .v-launcher-page:has(.v-launcher-profiles) > :not(.v-launcher-profiles) {
+    flex-shrink: 0;
+  }
+  .v-launcher-profiles {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  .v-launcher-heading {
+    min-height: 38px;
+  }
+  .v-launcher-heading p {
+    display: none;
+  }
+  .v-launcher-heading h1 {
+    font-size: 24px;
+    line-height: 28px;
+  }
+  .v-launcher-warning p {
+    min-width: 0;
+    flex: 1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .v-launcher-warning > button {
+    flex-shrink: 0;
+  }
+  .v-launcher-profile-grid {
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-3) transparent;
+    align-items: stretch;
+    flex: 1;
+    min-height: 163px;
+  }
+  .v-launcher-profile-grid > .v-launcher-profile {
+    width: 200px;
+    flex: 0 0 200px;
+    min-height: 163px;
+  }
+  .v-launcher-profile-grid > .v-launcher-profile--new {
+    width: 150px;
+    flex-basis: 150px;
+  }
+  .v-launcher-profile-grid .v-launcher-cover {
+    flex: 1;
+    min-height: 76px;
+  }
+}
 button.v-launcher-app-tile {
   font-size: 14px;
 }

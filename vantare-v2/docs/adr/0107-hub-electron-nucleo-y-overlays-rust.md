@@ -13,6 +13,12 @@ decisión de Isaac, el Hub se construye también en Rune como vía paralela a
 Electron, con el mismo anfitrión y protocolo. Este ADR sigue vigente; el
 criterio para elegir entre los dos Hubs está en ADR 0108.
 
+**Punto 4 corregido por [ADR 0109](0109-studio-visual-geometria-y-preview-real.md)
+(2026-11-14):** la posición y el tamaño se editan también en el lienzo del
+Hub, además del modo edición sobre los overlays, por paridad con el Hub
+antiguo. Las dos vías escriben el mismo `layout.json` con la misma regla de
+revisión.
+
 ## Contexto
 
 - Las compilaciones de Rust + GPUI frenan todo el desarrollo. El workspace tiene

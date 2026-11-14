@@ -30,5 +30,6 @@ Leer el estado, las enmiendas y el ámbito de cada decisión. Un ADR propuesto n
 - [ADR 0104: Identidad de Gestión y sesión en memoria](0104-identidad-admin-y-sesion-en-memoria.md) — aceptado en #1910; activación del cliente reservada a Isaac.
 - [ADR 0105: informe v2 del Testing Center](0105-testing-center-report-v2.md) — aceptado para 7a de #1896; retirada de tablas y RPC antiguos pendiente de 7b.
 - [ADR 0106: una cadena de migraciones Supabase y un esquema derivado](0106-migraciones-supabase-historia-unica.md) — Fase A de #1896, compartida con R3; sin compactación ni despliegue.
-- [ADR 0107: Hub en Electron; núcleo y overlays en Rust](0107-hub-electron-nucleo-y-overlays-rust.md) — aceptada por Isaac el 2026-11-10; Hub GPUI congelado; enmendada por ADR 0108.
+- [ADR 0107: Hub en Electron; núcleo y overlays en Rust](0107-hub-electron-nucleo-y-overlays-rust.md) — aceptada por Isaac el 2026-11-10; Hub GPUI congelado; enmendada por ADR 0108; punto 4 corregido por ADR 0109.
 - [ADR 0108: Hub en Rune como vía paralela a Electron](0108-hub-rune-via-paralela.md) — vía decidida por Isaac el 2026-11-13; no sustituye a ADR 0107 ni autoriza distribución.
+- [ADR 0109: Studio visual en los Hubs nuevos](0109-studio-visual-geometria-y-preview-real.md) — aceptado el 2026-11-14 por el orquestador con delegación de Isaac; geometría en el anfitrión y preview del widget real sin segundo pintor; corrige el punto 4 de ADR 0107 y D6 (lienzo en el Hub además del modo edición); reserva las versiones 37, 38 y 39 del protocolo del anfitrión. No demuestra implementación.

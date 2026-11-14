@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { launcherHeading } from "./corte2-readiness.mjs";
 
 const [rootArg, output, initial] = process.argv.slice(2);
 const screens = ["home", "studio", "launcher"];
@@ -17,6 +18,9 @@ if (
     "macOS only; owned hub-web root, disposable data directory and screen required",
   );
 const root = resolve(rootArg);
+const profileHeading = launcherHeading(
+  JSON.parse(await readFile(process.env.VANTARE_HUB_CUT2_SCENE, "utf8")),
+);
 const electron = join(root, "node_modules/electron/dist/Electron.app");
 if (
   !["1", "true"].includes(
@@ -135,7 +139,7 @@ try {
       await page
         .getByRole("heading", {
           name:
-            screen === "studio" ? /^Standings(?: 1)?$/ : "Creador de Contenido",
+            screen === "studio" ? /^Standings(?: 1)?$/ : profileHeading,
           exact: true,
         })
         .waitFor();

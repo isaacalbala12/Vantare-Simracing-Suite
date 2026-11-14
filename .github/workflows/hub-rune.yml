@@ -92,6 +92,8 @@ jobs:
             bun --no-env-file scripts/corte2-scene.mjs ../hub-web $scene "$env:RUNNER_TEMP/corte2-$scene.json"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+      - name: Check scene-dependent Launcher readiness without graphics
+        run: node scripts/test_corte2_readiness.mjs "$env:RUNNER_TEMP/corte2-inicio-base.json" "$env:RUNNER_TEMP/corte2-studio-base.json" "$env:RUNNER_TEMP/corte2-launcher-base.json"
       - name: Verify cut-2 measurement logic without graphics
         run: python scripts/test_corte2.py
       - name: Verify dependency policy tests

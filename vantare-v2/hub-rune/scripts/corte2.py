@@ -257,12 +257,12 @@ def run(args):
             raise ValueError("Compiler active on Mac; stop before any Hub launch")
     args.output.mkdir(parents=True, exist_ok=False)
     (args.output / "plan.json").write_text(json.dumps(plan, indent=2), encoding="utf-8")
-    manifest = dict(schema=1, n=args.n, source_sha=args.sha, platform=platform.platform(), cores=os.cpu_count(), load_average=os.getloadavg() if hasattr(os, "getloadavg") else None, rows=[], mode="offscreen-debug-preflight", decision="PENDIENTE")
+    manifest = dict(schema=1, n=args.n, source_sha=args.sha, controller_source_sha=args.controller_sha or args.sha, platform=platform.platform(), cores=os.cpu_count(), load_average=os.getloadavg() if hasattr(os, "getloadavg") else None, rows=[], mode="offscreen-debug-preflight", decision="PENDIENTE")
     report(args.output, [], args.n)
     if args.command != "execute":
         (args.output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         return
-    manifest["controllers_sha256"] = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in [Path(__file__), Path(__file__).with_name("electron-corte2.mjs"), Path(__file__).with_name("corte2-scene.mjs"), Path(__file__).with_name("electron-capture-guard.mjs")]}
+    manifest["controllers_sha256"] = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in [Path(__file__), Path(__file__).with_name("electron-corte2.mjs"), Path(__file__).with_name("corte2-readiness.mjs"), Path(__file__).with_name("corte2-scene.mjs"), Path(__file__).with_name("electron-capture-guard.mjs")]}
     manifest["electron_entry_sha256"] = hashlib.sha256((args.checkout / "vantare-v2/hub-web/out-qa/main/index.js").read_bytes()).hexdigest()
     manifest["rune_sha256"] = hashlib.sha256(args.rune.read_bytes()).hexdigest()
     sizes = {"rune":footprint(args.rune), "electron":footprint(args.checkout / "vantare-v2/hub-web/node_modules/electron/dist/Electron.app") + footprint(args.checkout / "vantare-v2/hub-web/out-qa")}
@@ -294,6 +294,7 @@ if __name__ == "__main__":
     parser.add_argument("--checkout", type=Path)
     parser.add_argument("--rune", type=Path)
     parser.add_argument("--sha")
+    parser.add_argument("--controller-sha")
     parser.add_argument("--mac-cleared", action="store_true")
     def terminated(_signum, _frame):
         raise KeyboardInterrupt("Controller terminated; no next sample")

@@ -2737,3 +2737,30 @@ CI completa anterior 8e8b2b1e53 PASS incluye Windows/tests y compilación macOS;
 CORTE-2 enumera los cinco requisitos exactos del ADR por separado de rendimiento
 y coste. Seis tests Python, exportación CPU de las tres escenas, sintaxis,
 formato/diff PASS. Handoff/issue/PR conservan estados pendientes y SHA publicados.
+
+
+### VANTA-143 · Mac #2297 entregado; medición corte 2 corregida (2026-11-15)
+
+Ocho pares reales de Inicio en D:/VantareServer/evidence/hub-rune/inicio-2297/INDEX.md:
+Electron/Rune y GPUI/Rune, claro/oscuro, 1440x900 y 1280x800, sin reescalar. GPUI
+1280 procede de pasada-visual/referencias/1280x800 indicado por el orquestador.
+Rune 7eff0c88 y Electron oculto/accessory; manifests verifican ausencia de foco y
+ventanas visibles. Build PASS 5,85 s, mínimo 14,23 GiB. Falta OK visual de Isaac;
+sin merge. Binario 7eff archivado; target propio retirado después de compilar
+72d60d846 para medición, verificando ruta y hash del binario archivado. Nada
+borrado fuera del target propio; 2,27 GiB recuperados y 15,44 libres al arrancar.
+
+Primera tanda de medición preservada en corte2/mac-72d: dos Rune PASS, primer
+Electron falla al navegar de Inicio a Launcher. El arnés esperaba Creador de
+Contenido, pero el mock de Inicio conserva Carrera LMU como perfil favorito.
+No fallo del producto, de permisos ni de disco (mínimo 15,35 GiB); no se mezclan
+esas muestras ni se descartan silenciosamente. Selector del arnés usa ahora el
+snapshot compartido real; regresión con las tres escenas exportadas PASS, seis
+tests Python PASS, sin gráficos en el servidor. CI incorpora esa regresión.
+
+La nueva tanda mantiene ambos binarios/QA en 72d60d846 y usa el controlador
+corregido desde un kit externo, sin ensuciar el checkout ni recompilar producto
+idéntico. Manifest separa source_sha de controller_source_sha y guarda hashes
+incluido el helper nuevo. Sin nuevas dependencias ni cambios Rust. Nueva carpeta
+para repetir N=10 completos, conservando el intento fallido. Estado y resultados
+solo en PR/issue/evidencia, sin declarar el corte 2 aceptado.

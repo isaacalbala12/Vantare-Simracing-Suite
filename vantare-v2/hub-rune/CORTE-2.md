@@ -124,3 +124,9 @@ sumando todos los procesos de cada Hub, mismo trabajo y builds comparables.
 Rune requiere los cinco gates, RSS <=0,5× Electron, arranque no más lento y
 coste <=1,5×. Empate o evidencia inconclusa: Electron. Este preflight Mac no
 cierra por sí solo el corte 2 ni autoriza retirar Electron o publicar nada.
+
+El manifest distingue source_sha (aplicaciones/QA) de controller_source_sha
+(arnés). --controller-sha identifica un kit de control externo corregido sin
+cambiar las aplicaciones medidas; los hashes de todos sus guiones se conservan.
+El primer intento real detectó un selector fijo incorrecto al navegar desde
+Inicio: se conserva como tanda fallida y la regresión verifica las tres escenas.

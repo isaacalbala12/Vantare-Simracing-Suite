@@ -3,8 +3,8 @@ import type {
   ResidentRemoveTarget,
   ResidentView,
 } from "../../../contract/generated/contract";
-import { residentOrderReceiptTimeoutMs } from "../../../contract/generated/launcher_resident";
-import { answerCursor } from "./resident-answer-model";
+import { residentOrderReceiptTimeoutMs } from "../../../contract/generated/launcher_resident.ts";
+import { answerCursor } from "./resident-answer-model.ts";
 // UI watchdog after acceptance: expiration is uncertainty, never cancellation or failure.
 export const removalFinishedWaitMs = 30_000;
 export type RemovalReason =

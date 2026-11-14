@@ -235,4 +235,5 @@ fn remove_with_clock(
 
 #[cfg(all(test, windows))]
 #[path = "ownership_tests.rs"]
+#[allow(clippy::unwrap_used)]
 mod tests;

@@ -16,7 +16,6 @@ function setup(sceneName = "launcher-results-finished") {
   const core = structuredClone(coreFixture) as CoreStatus;
   const launcherData = structuredClone(launcherFixture) as LauncherView;
   const view: ResidentView = {
-    ownership: { kind: "unsupported" },
     online: true,
     protected: false,
     running: false,

@@ -3,6 +3,9 @@ mod catalog;
 #[cfg(any(windows, test))]
 mod client;
 mod design;
+mod home;
+mod home_assets;
+mod home_view;
 mod host;
 mod icons;
 #[cfg(windows)]
@@ -23,6 +26,8 @@ struct State {
     window: Option<rune::AppHandle<State>>,
     core: vantare_hub_host::protocol::CoreStatus,
     roadmap: roadmap::Roadmap,
+    home: home::Home,
+    home_assets: Option<home_view::Assets>,
 }
 fn init() -> State {
     State {
@@ -36,12 +41,55 @@ fn init() -> State {
         window: None,
         core: Default::default(),
         roadmap: Default::default(),
+        home: Default::default(),
+        home_assets: None,
     }
 }
 fn toggle(state: &mut State) {
     state.dark = !state.dark;
     state.theme =
         Theme::load("vantare", if state.dark { "dark" } else { "light" }).expect("shared tokens");
+    if let Some(assets) = &mut state.home_assets {
+        assets.update(&state.theme);
+        assets.track(
+            &state.theme,
+            state
+                .home
+                .value
+                .as_ref()
+                .and_then(|v| v.sim.track.as_deref()),
+        );
+    }
+}
+// Closed capture presets; no product startup or release environment override.
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+fn capture_preset(state: &mut State, preset: &str) -> Result<(), &'static str> {
+    let (screen, scheme) = preset
+        .rsplit_once('-')
+        .ok_or("capture preset needs a theme")?;
+    if !["light", "dark"].contains(&scheme) {
+        return Err("unknown capture theme");
+    }
+    let (section, collapsed, tab) = match screen {
+        "frame-expanded" => ("home", false, "board"),
+        "frame-collapsed" => ("home", true, "board"),
+        "home" => ("home", true, "board"),
+        "roadmap" => ("roadmap", true, "circuit"),
+        "roadmap-board" => ("roadmap", true, "board"),
+        "roadmap-season" => ("roadmap", true, "season"),
+        _ => return Err("unknown capture screen"),
+    };
+    state.section = section.into();
+    state.collapsed = collapsed;
+    state.roadmap.tab = tab;
+    state.dark = scheme == "dark";
+    state.theme = Theme::load("vantare", scheme).expect("shared capture tokens");
+    Ok(())
+}
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn capture_scene(state: &mut State) {
+    let preset = std::env::var("VANTARE_HUB_CAPTURE").expect("capture preset is required");
+    capture_preset(state, &preset).expect("closed capture preset");
 }
 fn title(state: &State) -> &str {
     catalog()["navigation"]
@@ -67,7 +115,7 @@ fn set_core(state: &mut State, value: vantare_hub_host::protocol::CoreStatus) {
         state.section = "home".into();
     }
 }
-fn view(state: &State, _: &mut Cx<State>) -> El {
+fn view(state: &State, cx: &mut Cx<State>) -> El {
     let theme = &state.theme;
     let mut sidebar = col()
         .key("sidebar")
@@ -154,6 +202,8 @@ fn view(state: &State, _: &mut Cx<State>) -> El {
     }
     let content = if state.section == "roadmap" {
         roadmap_view::view(state)
+    } else if state.section == "home" {
+        home_view::view(state, cx)
     } else {
         surface(theme)
             .key("section")
@@ -170,6 +220,7 @@ fn view(state: &State, _: &mut Cx<State>) -> El {
 }
 
 fn setup(state: &mut State, waker: rune::Waker) {
+    state.home_assets = Some(home_view::Assets::new(waker.clone(), &state.theme));
     if let Some(link) = &mut state.link {
         link.wake_with(waker);
     }
@@ -259,15 +310,81 @@ fn poll(state: &mut State, now: f64, tx: &mut rune::Tx) -> bool {
                 state.core.live = live;
                 changed = true;
             }
+            Some(Ok(HostToUi::Event {
+                event: Event::Home { value },
+            })) => {
+                changed |= state.home.event(value);
+            }
+            Some(Ok(HostToUi::Response {
+                id,
+                result: Reply::LauncherLaunch { accepted },
+            })) => {
+                changed |= state.home.finish_launch(id, accepted);
+            }
+            Some(Ok(HostToUi::Response {
+                id,
+                result: reply @ Reply::HomeGet { .. },
+            })) => {
+                changed |= state.home.accept(id, reply);
+            }
             Some(Ok(HostToUi::Response { id, result })) => {
                 changed |= state.roadmap.accept(id, result);
             }
             Some(Ok(HostToUi::Failure { id, .. })) => {
                 changed |= state.roadmap.fail(id);
+                changed |= state.home.fail(id);
+                changed |= state.home.finish_launch(id, false);
             }
             Some(Ok(_)) => {}
             None => break,
         }
+    }
+    if changed && let Some(assets) = &mut state.home_assets {
+        assets.track(
+            &state.theme,
+            state
+                .home
+                .value
+                .as_ref()
+                .and_then(|v| v.sim.track.as_deref()),
+        );
+    }
+    let previous_launch_failure = state.home.launch_failed;
+    if let Some(message) = state.home.next_launch(now, &state.core) {
+        if let vantare_hub_host::protocol::UiToHost::Request { id, .. } = &message {
+            let id = *id;
+            if state
+                .link
+                .as_mut()
+                .is_none_or(|link| link.send(message).is_err())
+            {
+                state.home.finish_launch(id, false);
+            }
+        }
+        changed = true;
+        tx.wake_at(now);
+    }
+    changed |= previous_launch_failure != state.home.launch_failed;
+    let previous_failure = state.home.failed;
+    for message in state.home.next(now, state.section == "home") {
+        let id = match &message {
+            vantare_hub_host::protocol::UiToHost::Request { id, .. } => Some(*id),
+            _ => None,
+        };
+        if state
+            .link
+            .as_mut()
+            .is_none_or(|link| link.send(message).is_err())
+            && let Some(id) = id
+        {
+            state.home.fail(id);
+        }
+        changed = true;
+        tx.wake_at(now);
+    }
+    changed |= previous_failure != state.home.failed;
+    if let Some(due) = state.home.due() {
+        tx.wake_at(due);
     }
     let previous_status = state.roadmap.status();
     if let Some(message) = state.roadmap.next(now, state.section == "roadmap") {
@@ -346,6 +463,9 @@ fn start() -> std::io::Result<()> {
         ("dark", |_| {}),
         ("collapsed", |s| s.collapsed = true),
         ("roadmap", |s| s.section = "roadmap".into()),
+        ("home", |s| s.section = "home".into()),
+        #[cfg(all(debug_assertions, target_os = "macos"))]
+        ("capture", capture_scene),
     ];
     spec.setup = Some(setup);
     spec.poll = Some(poll);
@@ -381,6 +501,222 @@ fn main() -> std::process::ExitCode {
 mod tests {
     use super::*;
     use rune::{Env, Runtime};
+    #[test]
+    fn capture_presets_compose_screen_theme_sidebar_without_changing_host_data() {
+        for screen in [
+            "frame-expanded",
+            "frame-collapsed",
+            "home",
+            "roadmap",
+            "roadmap-board",
+            "roadmap-season",
+        ] {
+            for theme in ["light", "dark"] {
+                let mut state = init();
+                capture_preset(&mut state, &format!("{screen}-{theme}")).unwrap();
+                assert_eq!(state.dark, theme == "dark");
+                assert_eq!(state.collapsed, screen != "frame-expanded");
+                assert_eq!(
+                    state.section,
+                    if screen.starts_with("roadmap") {
+                        "roadmap"
+                    } else {
+                        "home"
+                    }
+                );
+                assert!(state.home.value.is_none());
+                assert!(state.link.is_none());
+            }
+        }
+        for invalid in ["roadmap", "home-blue", "launcher-dark"] {
+            assert!(capture_preset(&mut init(), invalid).is_err());
+        }
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn home_favorite_button_sends_one_scene_launch_and_selected_profile_is_respected() {
+        use vantare_hub_host::protocol::{Request, UiToHost};
+        let (mut link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("inicio-base".into())).unwrap();
+        link.send(UiToHost::Request {
+            id: 1,
+            request: Request::CoreGet {},
+        })
+        .unwrap();
+        let mut state = init();
+        state.link = Some(link);
+        let mut rt = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        rt.poll = Some(poll);
+        for _ in 0..4 {
+            rt.frame(0.0);
+        }
+        let (x, y) = rt.find("home-launch-favorite").unwrap();
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        rt.pointer_down(x, y);
+        rt.pointer_up(x, y);
+        for _ in 0..4 {
+            rt.frame(0.0);
+        }
+        let Some(host::Link::Scene(scene)) = rt.state.link.as_ref() else {
+            unreachable!()
+        };
+        assert!(
+            matches!(scene.launches.as_slice(), [Request::LauncherLaunch { profile, .. }] if profile == "carrera-lmu")
+        );
+        assert!(!rt.state.home.launch_failed);
+        rt.update(|s, _| {
+            s.home.selected = "entreno-rapido".into();
+            s.home.queue_launch(&s.core, false);
+        });
+        for _ in 0..4 {
+            rt.frame(0.0);
+        }
+        let Some(host::Link::Scene(scene)) = rt.state.link.as_ref() else {
+            unreachable!()
+        };
+        assert!(
+            matches!(&scene.launches[1], Request::LauncherLaunch { profile, .. } if profile == "entreno-rapido")
+        );
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn home_scenes_load_empty_fail_and_reenter_without_losing_core_or_roadmap() {
+        use vantare_hub_host::protocol::{Request, UiToHost};
+        for scene in [
+            "inicio-base",
+            "inicio-vacio",
+            "inicio-cargando",
+            "inicio-error",
+            "inicio-sin-diseno",
+            "inicio-lanzando",
+        ] {
+            let (mut link, _) =
+                host::Link::open(bootstrap::Bootstrap::Scene(scene.into())).unwrap();
+            link.send(UiToHost::Request {
+                id: 1,
+                request: Request::CoreGet {},
+            })
+            .unwrap();
+            let mut state = init();
+            state.link = Some(link);
+            let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+            runtime.poll = Some(poll);
+            for _ in 0..4 {
+                runtime.frame(0.0);
+            }
+            assert!(runtime.state.core.access.verified);
+            assert_eq!(
+                runtime.state.home.value.is_none(),
+                scene == "inicio-cargando",
+                "{scene}"
+            );
+            assert_eq!(
+                runtime.state.home.failed,
+                scene == "inicio-error",
+                "{scene}"
+            );
+            for key in ["home-hero", "home-overlay", "home-activity", "home-rail"] {
+                assert!(runtime.find(key).is_some(), "{scene}: {key}");
+            }
+            if scene == "inicio-base" {
+                assert_eq!(runtime.state.home.value.as_ref().unwrap().profiles.len(), 3);
+                assert_eq!(
+                    runtime
+                        .state
+                        .home
+                        .value
+                        .as_ref()
+                        .unwrap()
+                        .favorite
+                        .as_deref(),
+                    Some("carrera-lmu")
+                );
+                assert!(
+                    runtime
+                        .elements()
+                        .iter()
+                        .any(|e| e.text.as_deref().is_some_and(|t| t.contains("Carrera LMU")))
+                );
+            }
+            if scene == "inicio-vacio" {
+                assert!(
+                    runtime
+                        .state
+                        .home
+                        .value
+                        .as_ref()
+                        .unwrap()
+                        .profiles
+                        .is_empty()
+                );
+                assert!(runtime.find("home-templates").is_some());
+            }
+            runtime.update(|state, _| state.section = "roadmap".into());
+            for _ in 0..4 {
+                runtime.frame(0.0);
+            }
+            assert!(runtime.state.roadmap.value.publication.is_some());
+            runtime.update(|state, _| state.section = "home".into());
+            for _ in 0..4 {
+                runtime.frame(0.0);
+            }
+            assert!(runtime.find("home-hero").is_some());
+        }
+    }
+    #[test]
+    #[cfg(debug_assertions)]
+    fn home_retry_and_studio_navigation_use_real_controls_and_respect_access() {
+        let (link, _) =
+            host::Link::open(bootstrap::Bootstrap::Scene("inicio-error".into())).unwrap();
+        let mut state = init();
+        state.link = Some(link);
+        let mut runtime = Runtime::new(state, view, (1440.0, 900.0), Env::new(true, 1.0));
+        runtime.poll = Some(poll);
+        // Two seconds of injected frame time let Rune's entering opacity spring settle.
+        for _ in 0..120 {
+            runtime.frame(1.0 / 60.0);
+        }
+        assert!(runtime.state.home.failed);
+        let before = runtime.state.home.last_request_id();
+        let (x, y) = runtime.find("home-retry").unwrap();
+        assert!(
+            runtime
+                .elements()
+                .iter()
+                .any(|e| e.key.as_deref() == Some("home-retry") && e.opacity > 0.99),
+            "advance the injected clock until the entering error panel is visible"
+        );
+        runtime.pointer_down(x, y);
+        runtime.pointer_up(x, y);
+        runtime.frame(0.1);
+        for _ in 0..120 {
+            runtime.frame(1.0 / 60.0);
+        }
+        assert!(
+            runtime.state.home.last_request_id() > before,
+            "retry must send a fresh request"
+        );
+        assert!(
+            runtime.state.home.failed,
+            "the error scene still rejects the retry"
+        );
+        let (x, y) = runtime.find("home-studio").unwrap();
+        runtime.pointer_down(x, y);
+        runtime.pointer_up(x, y);
+        runtime.frame(0.1);
+        assert_eq!(
+            runtime.state.section, "home",
+            "revoked access blocks Studio"
+        );
+        runtime.update(|state, _| state.core.access.verified = true);
+        runtime.frame(0.1);
+        let (x, y) = runtime.find("home-studio").unwrap();
+        runtime.pointer_down(x, y);
+        runtime.pointer_up(x, y);
+        runtime.frame(0.1);
+        assert_eq!(runtime.state.section, "studio");
+    }
     #[test]
     #[cfg(debug_assertions)]
     fn native_close_waits_for_scene_host_and_acknowledgement() {

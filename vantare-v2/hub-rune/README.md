@@ -114,3 +114,37 @@ Las capturas, el smoke gráfico Windows y la ventana visible se han aplazado
 por orden del orquestador. [Corte 1](CORTE-1.md) separa cobertura automática y
 aceptación real pendiente. No se afirma fidelidad visual o soporte Windows 10
 probado a partir de mocks o de una compilación.
+
+
+## Inicio · primer corte de pantalla
+
+Rama propia de VANTA-143/#2256, dependiente de #2268. El material de #2241
+sirve como referencia de estructura; no se fusiona su workspace de medición.
+Este primer PR conecta HomeGet/Event::Home y la suscripción Home solo mientras
+Inicio está visible. Un fallo o plazo de 45 s conserva el último estado y
+permite reintentar; no hay sondeo periódico y se ignoran respuestas antiguas.
+
+Contiene la bienvenida, vista previa del layout, métricas disponibles,
+actividad de los perfiles y panel lateral con favorito, estado y plantillas.
+Los enlaces Studio respetan el acceso actual. Solo muestra los datos disponibles;
+no inventa Hz ni CPU. Los textos y las 19 ilustraciones proceden de Electron,
+y las escenas se generan desde la misma función pura que usa su anfitrión simulado.
+Las ilustraciones se decodifican por CPU; ninguna prueba crea una ventana o GPU.
+
+El selector y el favorito lanzan con launcher.launch { profile, baseRevision },
+igual que Electron. Un doble clic no duplica peticiones. Se comprueban acceso,
+protegido, live y progreso al pulsar y al enviar. Un rechazo, Failure o plazo de
+45 s muestra el error y refresca Inicio, sin repetir el lanzamiento. Se conserva
+el perfil/revisión pulsados y se rechaza enviar si cambian antes del despacho.
+El anfitrión conserva la ejecución y las comprobaciones definitivas.
+
+Circuito/alias compartidos, solo un circuito decodificado, plantillas en parejas,
+panel adaptable y hero de 200/236/300 px según altura. Paleta/atajos, nombre/fecha
+y avisos siguen pendientes. La fidelidad visual requiere capturas del Mac y
+aprobación; no se da por verificada con los tests de Runtime.
+
+
+Escenas debug: inicio-base, inicio-vacio, inicio-cargando, inicio-error,
+inicio-sin-diseno e inicio-lanzando. Capturas headless y ventana visible del Mac,
+comparación con las referencias Electron y aceptación del corte 1 siguen pendientes.
+El servidor permanece sin ejecutar la aplicación.

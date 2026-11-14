@@ -68,3 +68,29 @@ Se prepararon 32 tests sin ventana (tres nuevos y el plazo actualizado). No se
 han ejecutado localmente estos retoques: cola cedida a E para L53/contratos v33
 hasta su aviso. Formato y comprobaciones ligeras locales; Clippy/tests de los
 nuevos heads se delegan a la CI. Los 29 PASS anteriores conservan su SHA/evidencia.
+
+
+## Capturas preparadas · Mac
+
+`python3 hub-rune/scripts/corte1.py --output <plan>` solo prepara 66 celdas:
+marco expandido/contraído, Roadmap publicado/vacío/error e Inicio en sus seis
+escenas; cada una en claro/oscuro a 1/1.25/1.5, viewport lógico 1440×900.
+Los píxeles físicos deben ser 1440×900, 1800×1125 y 2160×1350.
+La escena `capture` solo se registra en debug+macOS. VANTARE_HUB_CAPTURE elige
+un preset cerrado de pantalla/tema/barra; --theme no basta para cambiar el
+estado del Hub. No añade un arranque alternativo de producto/release.
+
+Tras autorización del orquestador, ejecutar en el Mac:
+`python3 hub-rune/scripts/corte1.py --execute --mac-cleared --checkout <raíz-git> --binary ~/target-isa-2256-hub-rune/debug/vantare-hub-ui-rune --sha <HEAD> --output <directorio-nuevo>`.
+No compila: necesita un debug de ese checkout. Falla con otro Cargo/rustc activo,
+menos de 12 GiB libres, SHA/checkout incorrectos, tamaño PNG o proceso fallido.
+Secuencial, 181 frames por celda; conserva último PNG, log, hashes y manifiesto.
+Solo retira los frames de su directorio temporal propio, nunca targets ajenos.
+
+Comparar con los PNG Electron originales del mismo tema/escena/escala/tamaño.
+No estirar referencias 100 % para simular 125/150 %. Una referencia ausente o
+una escena sin equivalencia (roadmap-error) queda pendiente explícita. El marco
+se juzga en sidebar/cabecera, no como aprobación del contenido central.
+PNG offscreen propio no requiere permiso de grabación. Ventana real y lector
+necesitan sesión gráfica iniciada/desbloqueada; solo una captura del escritorio
+con APIs del sistema puede pedir permiso adicional. No certifica Windows 10/11.

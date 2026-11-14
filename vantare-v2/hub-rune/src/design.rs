@@ -3,6 +3,26 @@ use rune::{Color, El, TextStyle, col, text};
 use std::collections::BTreeMap;
 const TOKENS: &str = include_str!("../../hub-web/design/tokens.json");
 pub const COLORS: &[&str] = &[
+    "bg-base",
+    "surface-2",
+    "text-3",
+    "accent-bright",
+    "accent-fill",
+    "hero-ring",
+    "wine",
+    "text-on-accent",
+    "accent-tint",
+    "ill-bad",
+    "ill-best",
+    "ill-edge",
+    "ill-good",
+    "ill-hi",
+    "ill-info",
+    "ill-ink",
+    "ill-ink-2",
+    "ill-panel",
+    "ill-row",
+    "ill-warn",
     "bg-window",
     "bg-sidebar",
     "surface-1",
@@ -18,7 +38,10 @@ pub const FONTS: &[&[u8]] = &[
     include_bytes!("../../native/ui/assets/fonts/Inter-400.ttf"),
     include_bytes!("../../native/ui/assets/fonts/Inter-500.ttf"),
     include_bytes!("../../native/ui/assets/fonts/Inter-600.ttf"),
+    include_bytes!("../../native/ui/assets/fonts/Inter-650.ttf"),
     include_bytes!("../../native/ui/assets/fonts/Inter-700.ttf"),
+    include_bytes!("../../native/ui/assets/fonts/Rajdhani.ttf"),
+    include_bytes!("../../native/ui/assets/fonts/SpaceMono.ttf"),
 ];
 #[derive(Clone)]
 pub struct Theme(BTreeMap<&'static str, Color>);
@@ -37,7 +60,7 @@ impl Theme {
             .collect::<Result<BTreeMap<_, _>, String>>()
             .map(Self)
     }
-    pub fn color(&self, name: &'static str) -> Color {
+    pub fn color(&self, name: &str) -> Color {
         self.0[name]
     }
 }

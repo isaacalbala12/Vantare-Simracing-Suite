@@ -372,3 +372,21 @@
 ) {
   --accent: var(--accent-fill);
 }
+/* Frozen GPUI settings/view.rs:82-116,825-832: density B omits only
+   Appearance's optional row descriptions, with 38 px rows and 10 px gaps. */
+@media (max-height: 819px) {
+  .v-appearance-groups {
+    gap: 10px;
+  }
+  .v-appearance-groups .v-setting-group .v-setting-row {
+    min-height: 38px;
+    padding-block: 5px;
+  }
+  .v-appearance-groups
+    .v-setting-row
+    > div:first-child
+    > .v-setting-label
+    + p.v-muted {
+    display: none;
+  }
+}

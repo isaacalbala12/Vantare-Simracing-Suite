@@ -168,3 +168,38 @@ it("is silent without preferences, with a protected document and after close", (
   });
   expect(present).not.toHaveBeenCalled();
 });
+
+it.each([true, false])(
+  "keeps Launcher and updater preferences independent (%s)",
+  (launcher) => {
+    const present = vi.fn((_: SystemNotice) => true);
+    const observer = operationNotices(present);
+    const value = settings(launcher, true);
+    value.general.updates = !launcher;
+    observer.observe({
+      kind: "response",
+      id: 1,
+      result: { method: "settings.get", value },
+    });
+    observer.observe({
+      kind: "event",
+      event: { topic: "core", value: notificationCore },
+    });
+    for (const events of [[], [received], [received, finished]])
+      observer.observe({
+        kind: "event",
+        event: {
+          topic: "launcherResident",
+          value: residentCompletionView(events),
+        },
+      });
+    observer.observe({
+      kind: "event",
+      event: { topic: "updates", value: update },
+    });
+    expect(present).toHaveBeenCalledTimes(1);
+    expect(present.mock.calls[0][0].title).toBe(
+      launcher ? "Aplicaciones listas" : "Actualización lista",
+    );
+  },
+);

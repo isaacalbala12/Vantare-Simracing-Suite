@@ -38,11 +38,11 @@ reutilizados), rol main/renderer/GPU/utility/other, memoria privada comprometida
 working set y CPU. CPU se deriva del tiempo de procesador y tiempo real medido;
 el informe distingue porcentaje de un núcleo de porcentaje de toda la máquina.
 La primera muestra no tiene delta: es `null`, no un cero ficticio. No se guardan
-líneas de comandos. Working set incluye páginas compartidas: **su suma no es
+líneas de comandos ni se fuerza GC o vaciado de cachés para bajar las cifras. Working set incluye páginas compartidas: **su suma no es
 RAM física exclusiva**. `privateBytes` tampoco equivale a RAM residente.
 
 `report.json` contiene medias y máximos por proceso, recorrido, SHA del candidato
-y hash ASAR. Los JSON de cada fase conservan muestras crudas. El proceso de
+y hash ASAR, viewport, versión de Chromium y contexto de RAM/CPU de Windows. Los JSON de cada fase conservan muestras crudas. El proceso de
 medición/Playwright queda fuera del árbol medido; CDP y el mock sí añaden coste
 al Hub. Comparar antes/después con igual candidato QA, perfil, recorrido,
 instrumentación y estado de ventana. No extrapolar a una sesión real con Rust.

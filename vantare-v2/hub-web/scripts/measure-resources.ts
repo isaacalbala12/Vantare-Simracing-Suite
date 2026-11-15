@@ -118,6 +118,14 @@ try {
       .locator('[aria-busy="true"]')
       .first()
       .waitFor({ state: "hidden" });
+    await until(
+      async () =>
+        (await page
+          .locator('.v-shell-main .v-skeleton[role="status"]')
+          .count()) === 0,
+      15000,
+      "loaded section, not Suspense fallback",
+    );
   };
   await settle();
   const phases: {
@@ -167,7 +175,9 @@ try {
     const button =
       section === "account"
         ? page.locator(".v-sidebar-account")
-        : page.locator(`[data-nav="${section}"]`);
+        : section === "settings"
+          ? page.getByRole("button", { name: "Ajustes", exact: true })
+          : page.locator(`[data-nav="${section}"]`);
     assert.equal(await button.count(), 1, `Missing ${section}`);
     assert.notEqual(
       await button.getAttribute("aria-disabled"),
@@ -175,6 +185,11 @@ try {
       `Locked ${section}`,
     );
     await button.click();
+    await until(
+      async () => (await button.getAttribute("aria-current")) === "page",
+      5000,
+      `active section ${section}`,
+    );
     await settle();
     const tabs = await page.getByRole("tab").allTextContents();
     const done: string[] = [];

@@ -6,6 +6,8 @@ param(
 $ErrorActionPreference = 'Stop'
 # Windows private committed bytes and resident working set are different metrics.
 # Do not persist command lines: use them only to classify this process tree.
+$machine = Get-CimInstance Win32_ComputerSystem
+$os = Get-CimInstance Win32_OperatingSystem
 $root = Get-Process -Id $RootProcessId
 $rootStart = $root.StartTime.ToUniversalTime().Ticks
 $timer = [Diagnostics.Stopwatch]::StartNew()
@@ -51,6 +53,7 @@ do {
  Start-Sleep -Milliseconds 1000
 } while ($timer.Elapsed.TotalSeconds -lt $Seconds)
 [pscustomobject]@{
- schema=1; rootPid=$RootProcessId; logicalProcessors=[Environment]::ProcessorCount
+ schema=1; rootPid=$RootProcessId; logicalProcessors=[int]$machine.NumberOfLogicalProcessors
+ physicalMemoryBytes=[long]$machine.TotalPhysicalMemory; availableMemoryKiB=[long]$os.FreePhysicalMemory
  elapsedSeconds=$timer.Elapsed.TotalSeconds; samples=$samples.ToArray()
 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $Output -Encoding utf8

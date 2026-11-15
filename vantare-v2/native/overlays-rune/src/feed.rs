@@ -277,7 +277,8 @@ mod tests {
             )
             .expect("invalid appearance must not abort startup");
             let state = crate::host::State::new(bus.clone());
-            assert!(!state.frames.as_ref().expect("initial frames").reduced_motion);
+            let frames = state.frames.as_ref().expect("initial frames");
+            assert!(!frames.reduced_motion);
             assert_eq!(bus.close_reason(), None);
             drop(feed);
             fs::remove_dir_all(dir).expect("cleanup own fixture");

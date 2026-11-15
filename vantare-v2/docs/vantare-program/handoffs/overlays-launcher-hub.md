@@ -1,3 +1,16 @@
+## VANTA-144 · revisión de #2357 tras integrar #2349 (15/11/2026)
+
+#2349 fusionado por el orquestador en nightly como 529f1374ba9bff6d6d228c915fa8971626222cba;
+#2344 queda incluido. #2357 rebasado con --onto desde 8a313ac0f: range-diff
+confirma idénticos los ocho commits revisados. Solo se añaden los dos arreglos
+pedidos: apariencia inválida al arrancar registra el error y usa MotionPolicy(false),
+con regresión para JSON corrupto, parcial y mayor de 16 KiB; el handshake del test
+de pipe espera 5 ms entre consultas en vez de hacer yield continuo. Sin nuevas capas,
+dependencias ni cambios de producto adicionales. Por cola Windows/1.99.1/dos jobs:
+formato, Clippy, 52 tests CPU, 5 tests de política de distribución, enlace sin ejecutar
+y auditoría de 428 paquetes PASS. Tokens y 12 tests Python PASS. Sin gráficos ni
+cambios de Plane; el PR recoge el head final y la CI pendiente.
+
 ## VANTA-144 · validación final de conexión y Relative con monitores (15/11/2026)
 
 Conexión #2349, head 8a313ac0f97ff526bd42f280990ceb20323fd39d: todos los checks

@@ -85,7 +85,7 @@ try {
       "--remote-debugging-address=127.0.0.1",
       "--force-device-scale-factor=1",
     ],
-    { env, windowsHide: true, stdio: ["ignore", "ignore", "pipe"] },
+    { env, windowsHide: false, stdio: ["ignore", "ignore", "pipe"] },
   );
   exit = observeProcessExit(child);
   child.stderr?.on("data", (v) => {
@@ -108,6 +108,25 @@ try {
   await page
     .getByRole("button", { name: windowText.close, exact: true })
     .waitFor();
+  const windowState = async (action: "minimize" | "restore") => {
+    await run("pwsh", [
+      "-NoProfile",
+      "-File",
+      resolve("scripts/resources/window.ps1"),
+      "-ProcessId",
+      String(child?.pid),
+      "-Executable",
+      binary,
+      "-Action",
+      action,
+    ]);
+  };
+  await windowState("restore");
+  await until(
+    () => page.evaluate(() => !document.hidden),
+    5000,
+    "initial Hub is actually visible",
+  );
   await page.locator('[data-nav="home"]').click();
   const settle = async () => {
     await page.evaluate(async () => {
@@ -134,10 +153,22 @@ try {
     name: string;
     processes: ReturnType<typeof summarize>;
     domNodes: number;
+    hidden: boolean;
+    machine: {
+      logicalProcessors: number;
+      physicalMemoryBytes: number;
+      availableMemoryKiB: number;
+    };
     resources: string[];
   }[] = [];
   const sample = async (name: string) => {
     if (checkOnly) return;
+    const expectedHidden = name.endsWith("-minimized");
+    assert.equal(
+      await page.evaluate(() => document.hidden),
+      expectedHidden,
+      `Visibility before ${name}`,
+    );
     console.log(`Sampling ${name}`);
     const path = join(destination, `${name}.json`);
     await run("pwsh", [
@@ -152,8 +183,11 @@ try {
       path,
     ]);
     const raw = JSON.parse(await readFile(path, "utf8"));
+    const hidden = await page.evaluate(() => document.hidden);
+    assert.equal(hidden, expectedHidden, `Visibility after ${name}`);
     phases.push({
       name,
+      hidden,
       domNodes: await page.locator("*").count(),
       resources: await page.evaluate(() =>
         performance
@@ -162,6 +196,11 @@ try {
           .filter((p) => p.endsWith(".js")),
       ),
       processes: summarize(raw.samples, raw.logicalProcessors),
+      machine: {
+        logicalProcessors: raw.logicalProcessors,
+        physicalMemoryBytes: raw.physicalMemoryBytes,
+        availableMemoryKiB: raw.availableMemoryKiB,
+      },
     });
   };
   for (const name of ["Cuenta", "Ajustes", "Notificaciones"]) {
@@ -235,19 +274,6 @@ try {
   await page.locator('[data-nav="home"]').click();
   await settle();
   await sample("home-after-tour");
-  const windowState = async (action: "minimize" | "restore") => {
-    await run("pwsh", [
-      "-NoProfile",
-      "-File",
-      resolve("scripts/resources/window.ps1"),
-      "-ProcessId",
-      String(child?.pid),
-      "-Executable",
-      binary,
-      "-Action",
-      action,
-    ]);
-  };
   await windowState("minimize");
   await until(
     () => page.evaluate(() => document.hidden),

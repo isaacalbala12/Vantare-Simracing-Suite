@@ -1,10 +1,9 @@
 param([Parameter(Mandatory)][int]$ProcessId,[Parameter(Mandatory)][string]$Executable,[Parameter(Mandatory)][ValidateSet('minimize','restore')][string]$Action)
 $ErrorActionPreference='Stop'
-$target=Get-Process -Id $ProcessId
-if($target.Path -ne [IO.Path]::GetFullPath($Executable)){throw 'Unexpected QA process image'}
-$target.Refresh()
-$window=$target.MainWindowHandle
-if($window -eq [IntPtr]::Zero -or $target.MainWindowTitle -ne 'Vantare · Hub'){throw 'QA Hub window unavailable'}
+# Reuse the capture bank's HWND lookup; MainWindowHandle is not reliable here.
+$observed = & (Join-Path $PSScriptRoot '../window-state.ps1') -ProcessId $ProcessId -Executable $Executable -Action state
+$state = $observed | ConvertFrom-Json
+$window = [IntPtr]::new([long]$state.hwnd)
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;

@@ -30,7 +30,15 @@ do {
   if (!$ids.Contains([int]$item.ProcessId)) { continue }
   $p = Get-Process -Id $item.ProcessId -ErrorAction SilentlyContinue
   if (!$p) { continue }
-  $key = "$($p.Id):$($p.StartTime.ToUniversalTime().Ticks)"
+  try {
+   $key = "$($p.Id):$($p.StartTime.ToUniversalTime().Ticks)"
+   $cpu = $p.TotalProcessorTime.TotalSeconds
+   $private = $p.PrivateMemorySize64
+   $working = $p.WorkingSet64
+  } catch {
+   if($p.HasExited){continue}
+   throw
+  }
   if (!$roles.ContainsKey($key)) {
    $command = if($p.Id -eq $RootProcessId){''} else {
     (Get-CimInstance Win32_Process -Filter "ProcessId=$($p.Id)" -Property CommandLine).CommandLine
@@ -43,7 +51,6 @@ do {
   }
   $kind = $roles[$key]
   $at = $timer.Elapsed.TotalSeconds
-  $cpu = $p.TotalProcessorTime.TotalSeconds
   $percent = $null
   if ($previous.ContainsKey($key)) {
    $old = $previous[$key]
@@ -52,7 +59,7 @@ do {
   $previous[$key] = @{cpu=$cpu;at=$at}
   $samples.Add([pscustomobject]@{
    pid=$p.Id; identity=$key; role=$kind; elapsedSeconds=$at
-   privateBytes=$p.PrivateMemorySize64; workingSetBytes=$p.WorkingSet64
+   privateBytes=$private; workingSetBytes=$working
    cpuOneCorePercent=$percent
   })
  }

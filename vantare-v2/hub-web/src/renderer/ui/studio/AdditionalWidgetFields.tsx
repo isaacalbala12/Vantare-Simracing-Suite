@@ -327,7 +327,7 @@ export function AdditionalWidgetFields({
     </section>
   );
 }
-function Choice<T extends string | number>({
+export function Choice<T extends string | number>({
   label,
   value,
   choices,
@@ -393,6 +393,10 @@ function Color({ value, model }: { value: string; model: Model }) {
     if (draft !== value) {
       submitted.current = draft;
       void model.patch({ kind: "racing-flags", textColor: draft }, text.color);
+    } else {
+      edited.current = false;
+      submitted.current = undefined;
+      setDraft(value);
     }
   };
   return (
@@ -402,6 +406,7 @@ function Color({ value, model }: { value: string; model: Model }) {
       maxLength={options.racingFlags.colorLength}
       disabled={model.disabled}
       readOnly={model.pending}
+      aria-busy={model.pending || undefined}
       error={error ? text.invalidColor : undefined}
       onChange={(event) => {
         edited.current = true;

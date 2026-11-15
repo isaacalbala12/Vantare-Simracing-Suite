@@ -336,3 +336,42 @@ it("does not treat a stored fractional window as a new invalid edit on focus and
   expect(input.getAttribute("aria-invalid")).not.toBe("true");
   expect(transport.request).toHaveBeenCalledTimes(1);
 });
+
+it("accepts an external color after editing back to the unchanged stored value", async () => {
+  const { AdditionalWidgetFields } = await import(
+    "../src/renderer/ui/studio/AdditionalWidgetFields"
+  );
+  const vector = cases.find((value) => value.before.kind === "racing-flags");
+  if (!vector || vector.before.kind !== "racing-flags")
+    throw Error("Flags fixture");
+  const model = {
+    disabled: false,
+    pending: false,
+    patch: vi.fn(),
+  } as unknown as Parameters<typeof AdditionalWidgetFields>[0]["model"];
+  const settings = structuredClone(vector.before);
+  const view = render(
+    <CSPProvider disableStyleElements>
+      <AdditionalWidgetFields settings={settings} model={model} />
+    </CSPProvider>,
+  );
+  const user = userEvent.setup();
+  const input = screen.getByRole("textbox", {
+    name: text.color,
+  }) as HTMLInputElement;
+  await user.clear(input);
+  await user.type(input, "#123456");
+  await user.clear(input);
+  await user.type(input, settings.textColor);
+  await user.tab();
+  expect(model.patch).not.toHaveBeenCalled();
+  view.rerender(
+    <CSPProvider disableStyleElements>
+      <AdditionalWidgetFields
+        settings={{ ...settings, textColor: "#654321" }}
+        model={model}
+      />
+    </CSPProvider>,
+  );
+  expect(input.value).toBe("#654321");
+});

@@ -66,6 +66,7 @@ export function ContentNumber({
       inputMode={integer ? "numeric" : "decimal"}
       disabled={model.disabled}
       readOnly={model.pending}
+      aria-busy={model.pending || undefined}
       error={
         error
           ? integer

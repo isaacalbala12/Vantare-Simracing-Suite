@@ -579,3 +579,17 @@ aunque no haya horario vigente. Cambiar franja, días o modo conserva su identid
 Crear o renombrar una serie sigue exigiendo horario activo; las tandas puntuales
 no cambian. Se mantienen validación, revisión/CAS y rechazo sin escritura ni
 reenvío automático. `calendarBandScheduleCases` comparte esta regla con el mock.
+
+## Duplicar widget seleccionado (D111)
+
+`studio.duplicate {id, baseRevision}` devuelve `{value, added}` tras una única
+escritura CAS. El host copia los miembros internos y el override de Hz, genera
+el id y ajusta +20/+20 al borde con la misma regla de geometría. El renderer no
+manda ajustes, documentos ni posiciones. Conflicto o resultado incierto requieren
+consultar `studio.get`, sin repetir la orden automáticamente. Un deshacer revierte
+la copia completa. `studioDuplicateCases` comparte los cálculos con el mock.
+
+SessionAlerts copia solo la instancia seleccionable: el normalizador canónico
+crea su mini al leer, igual que GPUI. Se reserva también `<id>-mini`; no se
+normaliza ni reescribe el resto del documento. Los Hz heredados 0/40 se conservan
+al copiar; `FrequencyChange` sigue rechazándolos como nuevas selecciones de UI.

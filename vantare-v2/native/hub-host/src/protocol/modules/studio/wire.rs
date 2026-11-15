@@ -27,6 +27,12 @@ pub enum Request {
         #[serde(rename = "baseRevision")]
         base_revision: String,
     },
+    #[serde(rename = "studio.duplicate")]
+    StudioDuplicate {
+        id: String,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
     #[serde(rename = "studio.remove")]
     StudioRemove {
         id: String,
@@ -80,6 +86,11 @@ pub enum Reply {
     StudioVisibility { value: crate::studio::StudioView },
     #[serde(rename = "studio.add")]
     StudioAdd {
+        value: crate::studio::StudioView,
+        added: String,
+    },
+    #[serde(rename = "studio.duplicate")]
+    StudioDuplicate {
         value: crate::studio::StudioView,
         added: String,
     },

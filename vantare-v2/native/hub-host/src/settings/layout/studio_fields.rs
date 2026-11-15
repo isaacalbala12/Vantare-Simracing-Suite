@@ -63,12 +63,13 @@ pub(super) fn remove_rates(root: &mut Fields, ids: &[String]) -> Result<(), Host
     Ok(())
 }
 
+// Retain native legacy rates when copying; FrequencyChange restricts UI edits.
 pub(super) fn set_rate(root: &mut Fields, id: &str, hz: Option<u16>) -> Result<bool, HostError> {
     use crate::settings::track::{MAX_WIDGET_ID_BYTES, MAX_WIDGET_OVERRIDES};
     if id.is_empty()
         || id.len() > MAX_WIDGET_ID_BYTES
         || id.contains('\0')
-        || hz.is_some_and(|hz| !crate::studio::frequency::FREQUENCY_CHOICES.contains(&hz))
+        || hz.is_some_and(|hz| !crate::settings::track::OVERRIDE_HZ.contains(&hz))
     {
         return Err(HostError::Denied);
     }

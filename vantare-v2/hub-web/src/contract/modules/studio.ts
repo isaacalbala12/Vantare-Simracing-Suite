@@ -244,6 +244,7 @@ export function isRequest(v: Record<string, unknown>): boolean {
         exact(v, ["method", "resolution", "baseRevision"]) &&
         canvasChoice(v.resolution)
       );
+    case "studio.duplicate":
     case "studio.remove":
       return exact(v, ["method", "id", "baseRevision"]) && id(v.id);
     case "studio.visibility":
@@ -279,7 +280,7 @@ export function isRequest(v: Record<string, unknown>): boolean {
   }
 }
 export function isReply(v: Record<string, unknown>) {
-  if (v.method === "studio.add")
+  if (v.method === "studio.add" || v.method === "studio.duplicate")
     return (
       exact(v, ["method", "value", "added"]) && id(v.added) && isStudio(v.value)
     );

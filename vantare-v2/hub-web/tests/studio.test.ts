@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { studioDuplicateCases } from "../src/contract/generated/studio";
 import { isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
 import { applyWidgetSettings } from "../src/mock/modules/studio";
@@ -386,3 +387,87 @@ it.each(["standings", "relative"] as const)(
     expect(view(host).instances).toEqual(applied.instances);
   },
 );
+
+describe("duplicate widget contract", () => {
+  it.each(studioDuplicateCases)(
+    "copies through one request with native bounds: $name",
+    (sample) => {
+      const host = createMockHost(`studio-duplicate-${sample.name}`);
+      const before = view(host);
+      const source = before.instances[0];
+      const reply = send(host, "studio.duplicate", {
+        id: source.id,
+        baseRevision: before.revision,
+      });
+      if (
+        reply?.kind !== "response" ||
+        reply.result.method !== "studio.duplicate"
+      )
+        throw new Error("duplicate reply");
+      const after = reply.result.value;
+      const added = reply.result.added;
+      const copy = after.instances.find((item) => item.id === added);
+      expect(copy).toEqual({
+        ...source,
+        id: reply.result.added,
+        x: sample.expected[0],
+        y: sample.expected[1],
+        canvasPlacement: "inside",
+      });
+      expect(after.instances[0]).toEqual(source);
+      expect(
+        send(host, "studio.duplicate", {
+          id: source.id,
+          baseRevision: before.revision,
+        }),
+      ).toMatchObject({ kind: "failure", error: { kind: "studioConflict" } });
+      expect(view(host)).toEqual(after);
+      send(host, "studio.undo", { baseRevision: after.revision });
+      const undone = view(host);
+      expect(undone.instances).toEqual(before.instances);
+      send(host, "studio.redo", { baseRevision: undone.revision });
+      expect(view(host).instances).toEqual(after.instances);
+    },
+  );
+  it("rejects arbitrary documents, unknown sources and protected state", () => {
+    const host = createMockHost("studio-base"),
+      before = view(host);
+    const request = {
+      method: "studio.duplicate",
+      id: before.instances[0].id,
+      baseRevision: before.revision,
+    };
+    expect(isUiMessage({ kind: "request", id: 1, request })).toBe(true);
+    for (const change of [
+      { id: "" },
+      { id: "bad\0id" },
+      { baseRevision: "old" },
+      { settings: {} },
+      { x: 100 },
+      { document: {} },
+    ])
+      expect(
+        isUiMessage({
+          kind: "request",
+          id: 1,
+          request: { ...request, ...change },
+        }),
+      ).toBe(false);
+    expect(
+      send(host, "studio.duplicate", {
+        id: "absent",
+        baseRevision: before.revision,
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "denied" } });
+    expect(view(host)).toEqual(before);
+    const protectedHost = createMockHost("studio-protegido"),
+      unavailable = view(protectedHost);
+    expect(
+      send(protectedHost, "studio.duplicate", {
+        id: "widget-1",
+        baseRevision: unavailable.revision,
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "protected" } });
+    expect(view(protectedHost)).toEqual(unavailable);
+  });
+});

@@ -1,11 +1,7 @@
-import { studioAdditionalCases } from "../contract/generated/studio";
+import { studioKinds } from "../contract/generated/studio";
 
 export const studioFieldVisual =
   /^visual-(dark|light):(studio-fields-(?:broadcast-tower|car-damage-numbers|car-damage-visual|delta-trace|fastest-lap|head-to-head|input-telemetry|track-map|multiclass-relative|pedals-telemetry|radar|racing-flags|track-weather))$/;
 export function studioFieldKind(scene: string) {
-  return studioAdditionalCases.find(
-    (value) =>
-      value.before.kind !== "session-alerts" &&
-      scene === `studio-fields-${value.before.kind}`,
-  )?.before.kind;
+  return studioKinds.find((kind) => scene === `studio-fields-${kind}`);
 }

@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { studioLimits } from "../../../contract/generated/studio";
+import { useUi } from "../../app/UiState";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button, IconButton } from "../Button";
@@ -27,9 +28,22 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           ? t.verifyWidget
           : t.protectedAction
         : t.addHelp;
+  const collapsed = useUi((value) => value.studioListCollapsed);
+  const toggleList = useUi((value) => value.toggleStudioList);
   return (
     <aside className="v-focus-strip" aria-label={t.layoutLabel}>
       <header className="v-focus-layout-name">
+        {state.canvasMode && (
+          <IconButton
+            label={collapsed ? canvasText.expandList : canvasText.collapseList}
+            aria-expanded={!collapsed}
+            onClick={toggleList}
+            size="sm"
+            variant="ghost"
+          >
+            <Icon name="v-side" />
+          </IconButton>
+        )}
         <span className="v-focus-layout-icon" aria-hidden="true">
           <Icon name="v-studio" />
         </span>

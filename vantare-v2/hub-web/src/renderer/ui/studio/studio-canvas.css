@@ -113,15 +113,9 @@
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
-  border: 1px solid var(--edge);
-  border-radius: var(--radius-xl);
-  background:
-    repeating-linear-gradient(
-      135deg,
-      transparent 0 9px,
-      var(--ill-grid) 9px 10px
-    ),
-    var(--bg-window);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-window);
 }
 .v-studio-canvas-space {
   position: relative;
@@ -133,7 +127,7 @@
   position: absolute;
   outline: 1px solid var(--line-3);
   background: var(--ill-ground);
-  box-shadow: 0 20px 50px var(--ill-shadow);
+  box-shadow: none;
   pointer-events: none;
 }
 .v-studio-canvas-plane::before {
@@ -145,7 +139,7 @@
     linear-gradient(90deg, var(--ill-grid) 1px, transparent 1px);
   background-size: 5% 8.3333%;
 }
-.v-studio-canvas-plane > span {
+.v-studio-canvas-plane > span:not(.v-canvas-illustration-note) {
   position: absolute;
   inset-inline-end: 8px;
   inset-block-end: 6px;
@@ -462,9 +456,8 @@
   clip-path: inset(50%);
 }
 .v-canvas-resolution-slot {
-  position: absolute;
+  position: relative;
   z-index: 5;
-  inset: auto 12px 66px auto;
   border: 1px solid var(--edge);
   background: var(--surface-panel);
   border-radius: var(--radius-md);
@@ -677,4 +670,78 @@
 .v-canvas-resolution-slot [aria-disabled="true"] {
   opacity: var(--disabled-opacity);
   cursor: not-allowed;
+}
+/* Isaac: the canvas is a work surface, not a card nested inside another card. */
+.v-studio-focus:has([data-view="canvas"]) {
+  padding: 8px;
+}
+.v-studio-focus-layout[data-view="canvas"] {
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 12px;
+}
+.v-studio-focus-layout[data-view="canvas"] .v-focus-column {
+  gap: 8px;
+}
+.v-studio-focus-layout[data-view="canvas"] .v-focus-strip {
+  inline-size: auto;
+}
+.v-studio-focus-layout[data-view="canvas"] .v-focus-row .v-widget-preview {
+  inline-size: 40px;
+  block-size: 34px;
+}
+.v-studio-focus-layout[data-view="canvas"] .v-focus-row > button {
+  padding: 5px;
+  gap: 6px;
+  justify-content: start;
+}
+.v-studio-focus-layout[data-view="canvas"][data-list-collapsed="false"]
+  .v-focus-row-name {
+  display: flex;
+}
+.v-studio-focus-layout[data-view="canvas"][data-list-collapsed="false"]
+  .v-focus-layout-name
+  > div {
+  display: block;
+}
+.v-studio-focus-layout[data-view="canvas"] .v-focus-layout-icon {
+  display: none;
+}
+.v-studio-focus-layout[data-view="canvas"][data-list-collapsed="true"] {
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+.v-studio-focus-layout[data-view="canvas"][data-list-collapsed="true"]
+  :is(
+    .v-focus-row-name,
+    .v-focus-layout-name > div,
+    .v-focus-list-heading,
+    .v-focus-save,
+    .v-focus-strip > footer,
+    .v-focus-filters,
+    .v-focus-layout-name > button:last-child,
+    .v-focus-add .v-button-label > span
+  ) {
+  display: none;
+}
+.v-studio-focus-layout[data-view="canvas"][data-list-collapsed="true"]
+  .v-focus-row
+  > button {
+  justify-content: center;
+}
+.v-focus-stage.v-studio-canvas-stage {
+  gap: 0;
+}
+.v-focus-stage.v-studio-canvas-stage > footer {
+  flex-wrap: wrap;
+  min-block-size: 44px;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 0;
+}
+.v-canvas-resolution-slot .v-button {
+  font-size: 11px;
+  padding-inline: 6px;
+}
+.v-canvas-empty-plane {
+  inline-size: min(100cqw, calc(100cqh * 16 / 9));
+  box-shadow: none;
 }

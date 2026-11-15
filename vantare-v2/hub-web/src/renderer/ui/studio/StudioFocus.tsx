@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useUi } from "../../app/UiState";
 import { studioText as t } from "../../i18n/studio";
 import { canvasText } from "../../i18n/studio-canvas";
@@ -24,6 +25,13 @@ export function StudioFocus() {
   const { state, selected, catalogOpen } = model;
   const view = state.view;
   const navigate = useUi((value) => value.navigate);
+  const canvasSidebar = useUi((value) => value.canvasSidebar);
+  const listCollapsed = useUi((value) => value.studioListCollapsed);
+  useEffect(() => {
+    if (!state.canvasMode) return;
+    canvasSidebar(true);
+    return () => canvasSidebar(false);
+  }, [state.canvasMode, canvasSidebar]);
   return (
     <div className="v-studio-focus">
       <div
@@ -31,6 +39,7 @@ export function StudioFocus() {
         data-missing={view?.state === "missing"}
         data-state={view?.state ?? (state.failure ? "error" : "loading")}
         data-view={state.canvasMode ? "canvas" : "widget"}
+        data-list-collapsed={state.canvasMode && listCollapsed}
         ref={model.root}
       >
         <RemoveWidget />

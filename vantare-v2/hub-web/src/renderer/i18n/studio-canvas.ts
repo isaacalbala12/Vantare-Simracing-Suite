@@ -1,4 +1,6 @@
 export const canvasText = {
+  expandList: "Ampliar lista de widgets",
+  collapseList: "Contraer lista de widgets",
   view: "Vista",
   openMini: "Abrir el lienzo desde la miniatura",
   detectedOnReturn: "Resolución detectada al volver al monitor",

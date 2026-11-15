@@ -184,8 +184,22 @@ export async function checkStudioCanvas(
               "canvas uses column height",
             );
             assert.ok(
-              plane.width / 1920 >= (width === 1440 ? 0.4 : 0.35),
+              plane.width / 1920 >=
+                (sidebar === "closed" ? (width === 1440 ? 0.6 : 0.52) : 0.4),
               "fit stays legible",
+            );
+            assert.ok(
+              Math.abs(
+                plane.width / 1920 -
+                  Math.min(viewport.width / 1920, viewport.height / 1080),
+              ) < 0.001,
+              "fit uses the real viewport without lost margins",
+            );
+            assert.equal(
+              await stage
+                .locator(".v-studio-canvas-viewport")
+                .evaluate((node) => getComputedStyle(node).backgroundImage),
+              "none",
             );
             assert.equal(
               await page.locator(".v-studio-temporary[hidden][inert]").count(),

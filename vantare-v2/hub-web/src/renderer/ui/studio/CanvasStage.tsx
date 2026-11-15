@@ -22,7 +22,8 @@ import {
 import { boxOf } from "../../screens/studio/gesture-state";
 import { useStudio } from "../../screens/studio/state";
 import { Button, IconButton } from "../Button";
-import { Callout, Keycap } from "../Data";
+import { Callout } from "../Data";
+import { Tooltip } from "../Layers";
 import { WidgetThumb } from "../widgets/WidgetThumb";
 import { CanvasResolution } from "./CanvasResolution";
 import { CanvasTools } from "./CanvasTools";
@@ -66,12 +67,7 @@ export function CanvasStage({
     : [1, 1];
   const percent = canvasZoomSteps[zoom];
   const scale =
-    percent === null
-      ? (fitCanvas(
-          [Math.max(1, area[0] - 72), Math.max(1, area[1] - 88)],
-          canvas,
-        ) ?? 1)
-      : percent / 100;
+    percent === null ? (fitCanvas(area, canvas) ?? 1) : percent / 100;
   const input = useCanvasInputs(model, viewport, scale, onSelect, setGuides);
   const cancel = input.cancel;
   const help = useId();
@@ -235,10 +231,6 @@ export function CanvasStage({
             </div>
           )}
           <div ref={viewport} className="v-studio-canvas-viewport">
-            <span className="v-canvas-illustration-note">
-              <Icon name="info" />
-              {t.note}
-            </span>
             <div
               className="v-studio-canvas-space"
               style={{
@@ -255,6 +247,10 @@ export function CanvasStage({
                   height: canvas[1] * scale,
                 }}
               >
+                <span className="v-canvas-illustration-note">
+                  <Icon name="info" />
+                  {t.note}
+                </span>
                 <span>{`${canvas[0]} × ${canvas[1]} · ${view.canvas.source === "monitor" ? t.monitorSource : t.customSource}`}</span>
               </div>
               {rendered.map(({ item, box }) => {
@@ -423,21 +419,9 @@ export function CanvasStage({
               )}
             </div>
             {model.enabled && (
-              <>
-                <span id={help} className="v-canvas-accessible-help">
-                  {t.help}
-                </span>
-                <p className="v-studio-canvas-help" aria-hidden="true">
-                  <Keycap>{t.keyArrows}</Keycap>
-                  {t.keyMove}
-                  <Keycap>{t.keyAlt}</Keycap>
-                  {t.keySize}
-                  <Keycap>{t.keyShift}</Keycap>
-                  {t.keyStep}
-                  <Keycap>{t.keyEscape}</Keycap>
-                  {t.keyCancel}
-                </p>
-              </>
+              <span id={help} className="v-canvas-accessible-help">
+                {t.help}
+              </span>
             )}
           </div>
           <footer role="toolbar" aria-label={t.tools}>
@@ -468,6 +452,25 @@ export function CanvasStage({
                 });
               }}
             />
+            <div className="v-canvas-resolution-slot">
+              <CanvasResolution
+                canvas={view.canvas}
+                enabled={model.enabled && !studio.pending && !model.pending}
+                onChange={(resolution) => {
+                  input.cancel();
+                  void studio.execute({
+                    method: "studio.canvas",
+                    resolution,
+                    baseRevision: view.revision,
+                  });
+                }}
+              />
+            </div>
+            <Tooltip label={t.help}>
+              <IconButton label={t.help} variant="ghost" size="sm">
+                <Icon name="info" />
+              </IconButton>
+            </Tooltip>
             <span className="v-canvas-grow" />
             <span
               className="v-canvas-save-state"
@@ -513,20 +516,6 @@ export function CanvasStage({
             </div>
             {actions}
           </footer>
-          <div className="v-canvas-resolution-slot">
-            <CanvasResolution
-              canvas={view.canvas}
-              enabled={model.enabled && !studio.pending && !model.pending}
-              onChange={(resolution) => {
-                input.cancel();
-                void studio.execute({
-                  method: "studio.canvas",
-                  resolution,
-                  baseRevision: view.revision,
-                });
-              }}
-            />
-          </div>
         </>
       )}
     </section>

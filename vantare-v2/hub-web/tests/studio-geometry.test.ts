@@ -107,3 +107,11 @@ it("does not round coordinates or accept errors beyond Rust epsilon", () => {
   expect(() => expectVector(null, 84)).toThrow();
   expect(() => expectVector([84, 0], [84])).toThrow();
 });
+
+it("fits edge-to-edge using all of the measured work area without padding deductions", () => {
+  expect(fitCanvas([1160, 700], [1920, 1080])).toBeCloseTo(1160 / 1920, 10);
+  expect(fitCanvas([1000, 600], [1920, 1080])).toBeGreaterThanOrEqual(0.52);
+  expect(fitCanvas([1264, 700], [1920, 1080])).toBeGreaterThan(
+    fitCanvas([1160, 700], [1920, 1080]) ?? Infinity,
+  );
+});

@@ -69,12 +69,12 @@ Una pasada, QA simulado en el servidor compartido: Chromium 156.0.8078.80, 1440 
 
 Medias en MiB: **privada / working set**, sin sumar working sets compartidos.
 
-| Proceso (PID) | Inicio | Tras recorrido | Inicio minimizado | Calendario visible | Calendario minimizado |
-|---|---:|---:|---:|---:|---:|
-| Main (6096) | 47.7 / 102.2 | 45.2 / 104.6 | 43.5 / 103.1 | 42.9 / 102.6 | 42.8 / 102.6 |
-| Renderer (4196) | 58.8 / 109.1 | 108.8 / 168.8 | 89.5 / 150.4 | 86.4 / 148.0 | 89.5 / 151.4 |
-| GPU (8544) | 153.1 / 127.9 | 189.5 / 133.0 | 135.6 / 131.3 | 174.7 / 140.6 | 142.3 / 138.5 |
-| Utilidad (10668) | 11.5 / 43.3 | 11.5 / 43.4 | 11.4 / 43.3 | 11.3 / 43.2 | 11.3 / 43.2 |
+| Proceso (PID)    |        Inicio | Tras recorrido | Inicio minimizado | Calendario visible | Calendario minimizado |
+| ---------------- | ------------: | -------------: | ----------------: | -----------------: | --------------------: |
+| Main (6096)      |  47.7 / 102.2 |   45.2 / 104.6 |      43.5 / 103.1 |       42.9 / 102.6 |          42.8 / 102.6 |
+| Renderer (4196)  |  58.8 / 109.1 |  108.8 / 168.8 |      89.5 / 150.4 |       86.4 / 148.0 |          89.5 / 151.4 |
+| GPU (8544)       | 153.1 / 127.9 |  189.5 / 133.0 |     135.6 / 131.3 |      174.7 / 140.6 |         142.3 / 138.5 |
+| Utilidad (10668) |   11.5 / 43.3 |    11.5 / 43.4 |       11.4 / 43.3 |        11.3 / 43.2 |           11.3 / 43.2 |
 
 CPU media de los intervalos, normalizada a toda la máquina: renderer tras el recorrido **0,007 %**; las demás ventanas/procesos registraron 0 al nivel de resolución de estas muestras. No significa coste nulo permanente.
 

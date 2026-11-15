@@ -1,3 +1,17 @@
+## VANTA-138 · D029, revisión de #2327 (15/11/2026)
+
+Preparar una copia no escribe y ahora exige que el descubrimiento de aplicaciones
+corresponda a la misma revisión: si va por detrás, devuelve Busy antes de preparar.
+La sesión del host permanece abierta al cambiar de cuenta; sus claves de pasos y
+el perfil reservado se invalidan al observar otra generación o perderla. Un
+borrador anterior no se puede guardar en la cuenta siguiente. Tests con archivos
+locales y descubrimiento falso; sin servicios, aplicaciones ni ventanas.
+
+v38 sigue siendo prepareDuplicate. Las versiones siguientes del ADR 0109 se
+asignan por el orquestador en el orden de fusión, sin reservar números de preview.
+PR en revisión; Clippy all-targets -D warnings y 619 tests de hub-host pasan
+(1 omitido), junto con formato y revisión del diff. Head en #1995/#2327.
+
 ## VANTA-141 · Segunda revisión #2286 (13/11/2026)
 
 Copia Mac verifica SHA de fuente explícito y hash del binario, sin exigir

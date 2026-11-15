@@ -90,7 +90,36 @@ export function isProfileEditor(value: unknown): boolean {
     isProfileDraft(value.draft)
   );
 }
+export function isPreparedDuplicate(value: unknown): boolean {
+  if (
+    !record(value) ||
+    !exact(value, ["baseRevision", "draft"]) ||
+    typeof value.baseRevision !== "string" ||
+    !/^[0-9a-f]{64}$/.test(value.baseRevision) ||
+    !isProfileDraft(value.draft) ||
+    !record(value.draft) ||
+    typeof value.draft.id !== "string" ||
+    !value.draft.id ||
+    !Array.isArray(value.draft.steps)
+  )
+    return false;
+  const keys = new Set<string>();
+  return value.draft.steps.every((step) => {
+    if (!record(step) || typeof step.key !== "string" || keys.has(step.key))
+      return false;
+    keys.add(step.key);
+    return true;
+  });
+}
 export function isProfileRequest(value: Record<string, unknown>): boolean {
+  if (value.method === "launcher.profile.prepareDuplicate")
+    return (
+      exact(value, ["method", "id", "baseRevision"]) &&
+      text(value.id, launcherLimits.id) &&
+      value.id.length > 0 &&
+      typeof value.baseRevision === "string" &&
+      /^[0-9a-f]{64}$/.test(value.baseRevision)
+    );
   if (value.method === "launcher.profile.get")
     return (
       exact(value, ["method", "id"]) &&

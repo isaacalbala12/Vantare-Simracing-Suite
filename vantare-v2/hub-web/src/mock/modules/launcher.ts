@@ -8,6 +8,7 @@ import type {
 } from "../../contract/generated/contract";
 import {
   launcherLimits,
+  profileCopySuffix,
   profileLimits,
   residentStepLimit,
 } from "../../contract/generated/contract";
@@ -164,7 +165,9 @@ export function create(context: MockContext): MockHandler {
   }
   let profileSerial = 0;
   let keySerial = 0;
-  let profileRead: { profile: string | null; revision: string } | undefined;
+  let profileRead:
+    | { profile: string | null; revision: string; prepared: boolean }
+    | undefined;
   const stepKeys = new Map<
     string,
     { profile: string; revision: string; appId: string; customized: boolean }
@@ -204,6 +207,52 @@ export function create(context: MockContext): MockHandler {
       return profileAction;
     }
     switch (request.method) {
+      case "launcher.profile.prepareDuplicate": {
+        profileRead = undefined;
+        stepKeys.clear();
+        reservedProfile = undefined;
+        if (request.baseRevision !== launcher.revision)
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        if (!launcher.exists || launcher.protected)
+          return { kind: "failure", id, error: { kind: "protected" } };
+        const source = drafts.get(request.id);
+        if (
+          !source ||
+          launcher.profiles.length >= launcherLimits.profiles ||
+          new TextEncoder().encode(source.name + profileCopySuffix).length >
+            profileLimits.name
+        )
+          return { kind: "failure", id, error: { kind: "denied" } };
+        const draft = structuredClone(source);
+        draft.id = `profile-qa-${++profileSerial}`;
+        draft.name += profileCopySuffix;
+        draft.favorite = false;
+        draft.hotkey = "";
+        draft.startup = false;
+        reservedProfile = draft.id;
+        profileRead = {
+          profile: draft.id,
+          revision: launcher.revision,
+          prepared: true,
+        };
+        for (const step of draft.steps) {
+          step.key = (++keySerial).toString(16).padStart(64, "0");
+          stepKeys.set(step.key, {
+            profile: draft.id,
+            revision: launcher.revision,
+            appId: step.appId,
+            customized: step.hasCustomArguments,
+          });
+        }
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            value: { baseRevision: launcher.revision, draft },
+          },
+        };
+      }
       case "launcher.profile.get": {
         profileRead = undefined;
         stepKeys.clear();
@@ -216,7 +265,11 @@ export function create(context: MockContext): MockHandler {
           draft.id = `profile-qa-${++profileSerial}`;
           reservedProfile = draft.id;
         }
-        profileRead = { profile: draft.id, revision: launcher.revision };
+        profileRead = {
+          profile: draft.id,
+          revision: launcher.revision,
+          prepared: false,
+        };
         for (const step of draft.steps) {
           step.key = (++keySerial).toString(16).padStart(64, "0");
           stepKeys.set(step.key, {
@@ -249,6 +302,8 @@ export function create(context: MockContext): MockHandler {
           launcher.revision === "0".repeat(64)
         )
           launcher.revision = "1".repeat(64);
+        if (request.baseRevision !== launcher.revision && consumed?.prepared)
+          return { kind: "failure", id, error: { kind: "rejected" } };
         if (request.baseRevision !== launcher.revision)
           return {
             kind: "failure",

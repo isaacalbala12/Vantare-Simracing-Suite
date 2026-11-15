@@ -450,3 +450,34 @@ La entrega del núcleo no se fusiona de forma aislada: debe acompañarla la UI L
 de D, que cambia Launcher.tsx a removeChecked y retira el éxito ficticio de
 profile-actions.ts. El orden autorizado es núcleo primero y UI inmediatamente
 después; hasta entonces el PR del núcleo permanece en revisión.
+
+## D029 · preparar una copia antes de guardarla (v38)
+
+`launcher.profile.prepareDuplicate { id, baseRevision }` devuelve
+`{ baseRevision, draft }`, con identidad nueva y las reglas de copia del modelo
+nativo (nombre de copia; sin favorito, atajo, inicio de Windows ni estadísticas).
+Solo reserva en la sesión las capacidades opacas de los pasos y su instantánea
+privada: preparar o cancelar no modifica `launcher.json` ni crea otro archivo.
+Los argumentos nunca viajan a la interfaz. La marca de importado se conserva;
+preparar una copia no concede confianza para lanzarla.
+
+D abre su editor con el borrador recibido y guarda mediante
+`launcher.profile.save { draft, baseRevision }`. La revisión es la huella de TODOS
+los bytes del documento; si cambia, incluso por otro perfil, se responde Rejected
+sin escribir la instantánea anterior. La escritura conserva el CAS del editor.
+La preparación exige discovery de esa misma revisión; si el lector va por detrás,
+responde Busy antes de reservar nada. Un cambio de generación de cuenta, cierre de
+sesión o pérdida de observación invalida las claves y el perfil reservado.
+Una nueva lectura/preparación sustituye las capacidades previas. Cada intento de
+guardado las consume, incluido Busy: hay que volver a abrir/preparar explícitamente,
+y nunca reenviar un guardado incierto. El método duplicate anterior se conserva
+para sus consumidores; prepareDuplicate no hace fallback a esa escritura inmediata.
+`profileDuplicateCases` exporta ejemplos nativos de reinicio de opciones y pasos
+repetidos con capacidades; la interfaz debe usar la respuesta del host, sin copiar
+los pasos por su cuenta. No se toca el supervisor, rights ni el residente.
+La preparación se pide una sola vez al pulsar Duplicar; no debe convertirse en una
+consulta que se repite al refrescar o recuperar el foco. D inicia el formulario
+con `value.draft` y usa `value.baseRevision` como revisión del editor. No debe pedir
+`profile.get` para el ID nuevo: aún no existe y esa lectura revocaría las capacidades
+recién preparadas. Las claves se conservan al reordenar pasos; los pasos nuevos
+usan key=null. La vista solo indica si hay argumentos propios, nunca su contenido.

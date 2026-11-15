@@ -30,6 +30,7 @@ pub(crate) fn typescript() -> String {
     declare::<ProfilePolicy>(&mut text);
     declare::<ProfileDraft>(&mut text);
     declare::<ProfileEditorView>(&mut text);
+    declare::<crate::launcher::editor::PreparedDuplicate>(&mut text);
 
     declare::<crate::launcher::LauncherApp>(&mut text);
     declare::<crate::launcher::LauncherOptions>(&mut text);
@@ -37,11 +38,33 @@ pub(crate) fn typescript() -> String {
     declare::<crate::launcher::LauncherView>(&mut text);
     append_launcher_constants(&mut text);
     append_profile_constants(&mut text);
+    crate::protocol::bindings::constants!(&mut text, "profileDuplicateCases", duplicate_cases());
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
     let mut host = launcher_host_samples();
     let mut ui = launcher_ui_samples();
+    let sample = prepared_duplicate_sample();
+    host.push(HostToUi::Response {
+        id: 1,
+        result: Reply::LauncherProfilePrepareDuplicate {
+            value: sample.clone(),
+        },
+    });
+    ui.push(UiToHost::Request {
+        id: 1,
+        request: Request::LauncherProfilePrepareDuplicate {
+            id: "creator".into(),
+            base_revision: sample.base_revision.clone(),
+        },
+    });
+    ui.push(UiToHost::Request {
+        id: 1,
+        request: Request::LauncherProfileSave {
+            draft: sample.draft,
+            base_revision: sample.base_revision,
+        },
+    });
 
     host.extend(
         application_reply_samples()
@@ -145,6 +168,35 @@ fn profile_keys_sample() -> Reply {
     }
 }
 
+fn prepared_from(
+    profile: &vantare_launcher::Profile,
+) -> crate::launcher::editor::PreparedDuplicate {
+    let copy = profile.duplicate("profile-copy-qa".into());
+    let mut draft = crate::launcher::editor::draft(&copy);
+    for (index, step) in draft.steps.iter_mut().enumerate() {
+        step.key = Some(format!("{:064x}", index + 1));
+    }
+    crate::launcher::editor::PreparedDuplicate {
+        base_revision: "0".repeat(64),
+        draft,
+    }
+}
+fn prepared_duplicate_sample() -> crate::launcher::editor::PreparedDuplicate {
+    prepared_from(&vantare_launcher::Document::fresh_install().profiles[0])
+}
+fn duplicate_cases() -> serde_json::Value {
+    let mut basic = vantare_launcher::Document::fresh_install().profiles[0].clone();
+    basic.favorite = true;
+    basic.hotkey = "ctrl+shift+1".into();
+    basic.launch_on_windows_startup = true;
+    let mut advanced = basic.clone();
+    advanced.advanced = true;
+    advanced.imported = true;
+    advanced.steps[0].args_override = Some(vec!["--qa-private-argument".into()]);
+    advanced.steps.push(advanced.steps[0].clone());
+    serde_json::json!([{"name":"basic-reset","source":crate::launcher::editor::draft(&basic),"prepared":prepared_from(&basic)},
+        {"name":"repeated-private-steps","source":crate::launcher::editor::draft(&advanced),"prepared":prepared_from(&advanced)}])
+}
 fn append_apps_constants(text: &mut String) {
     writeln!(
         text,

@@ -67,6 +67,12 @@ pub enum Request {
         #[serde(rename = "baseRevision")]
         base_revision: String,
     },
+    #[serde(rename = "launcher.profile.prepareDuplicate")]
+    LauncherProfilePrepareDuplicate {
+        id: String,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
     #[serde(rename = "launcher.profile.get")]
     LauncherProfileGet { id: Option<String> },
     #[serde(rename = "launcher.profile.save")]
@@ -145,6 +151,10 @@ pub enum Reply {
     #[serde(rename = "launcher.trigger")]
     LauncherTrigger {
         value: crate::launcher::LauncherView,
+    },
+    #[serde(rename = "launcher.profile.prepareDuplicate")]
+    LauncherProfilePrepareDuplicate {
+        value: crate::launcher::editor::PreparedDuplicate,
     },
     #[serde(rename = "launcher.profile.get")]
     LauncherProfileGet {

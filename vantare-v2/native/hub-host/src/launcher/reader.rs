@@ -76,6 +76,13 @@ impl Reader {
             last_view: None,
         }
     }
+    #[cfg(test)]
+    pub(crate) fn with_discovery(path: PathBuf, revision: String, found: Discovery) -> Self {
+        let mut reader = Self::new(path);
+        reader.scanned_revision = Some(revision);
+        reader.found = found;
+        reader
+    }
     fn open_document(&mut self) -> Result<Option<(Vec<u8>, Document)>, HostError> {
         let first = !std::mem::replace(&mut self.opened, true);
         let opened = open(&self.path)?;

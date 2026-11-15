@@ -93,6 +93,53 @@ pub struct ProfileEditorView {
     pub revision: String,
     pub draft: ProfileDraft,
 }
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PreparedDuplicate {
+    pub base_revision: String,
+    pub draft: ProfileDraft,
+}
+/// The prepared copy is bound to the complete observed launcher document.
+pub(crate) fn duplicate_bytes(path: &Path, revision: &str) -> Result<Vec<u8>, HostError> {
+    if path.is_absolute() && !vantare_launcher::is_local_path(path) {
+        return Err(HostError::Denied);
+    }
+    let bytes = files::read_optional(path, files::MAX_DOCUMENT).map_err(|_| HostError::Io)?;
+    if bytes.as_deref().map_or_else(
+        || vantare_services::content_hash(&[]),
+        vantare_services::content_hash,
+    ) != revision
+    {
+        return Err(HostError::Rejected);
+    }
+    bytes.ok_or(HostError::Protected)
+}
+pub(super) fn checked_duplicate(value: PreparedDuplicate) -> Result<PreparedDuplicate, HostError> {
+    let mut seen = std::collections::HashSet::new();
+    if value.draft.id.as_deref().is_none_or(str::is_empty)
+        || value.draft.description.len() > DESCRIPTION_MAX
+        || value.draft.notes.len() > NOTES_MAX
+        || value.draft.description.contains('\0')
+        || value.draft.notes.contains('\0')
+        || value.draft.steps.iter().any(|step| {
+            step.key
+                .as_deref()
+                .is_none_or(|key| !seen.insert(key.to_owned()))
+        })
+    {
+        return Err(HostError::Protected);
+    }
+    let response = crate::protocol::HostToUi::Response {
+        id: u32::MAX,
+        result: crate::protocol::Reply::LauncherProfilePrepareDuplicate {
+            value: value.clone(),
+        },
+    };
+    // Validate the exact wire frame limit without retaining or sending a second copy.
+    crate::frame::write(&mut std::io::sink(), &response).map_err(|_| HostError::Protected)?;
+    Ok(value)
+}
 fn close(value: policy::Close) -> ProfileClose {
     match value {
         policy::Close::Ask => ProfileClose::Ask,
@@ -212,7 +259,10 @@ fn apply(
     let id = value.id.as_deref().ok_or(HostError::Denied)?;
     let mut profile = match document.profiles.iter().find(|profile| profile.id == id) {
         Some(profile) => profile.clone(),
-        None if reserved_new == Some(id) => Profile::new(id.into(), value.name.clone()),
+        None if reserved_new == Some(id) => keys
+            .and_then(|keys| keys.prepared_profile(id))
+            .cloned()
+            .unwrap_or_else(|| Profile::new(id.into(), value.name.clone())),
         None => return Err(HostError::Denied),
     };
     profile.name.clone_from(&value.name);
@@ -259,7 +309,11 @@ pub fn save(
     reserved_new: Option<&str>,
     keys: Option<&StepKeys>,
 ) -> Result<(), HostError> {
-    let (bytes, _) = open(path)?.ok_or(HostError::Protected)?;
+    let bytes = if keys.is_some_and(StepKeys::is_prepared_duplicate) {
+        duplicate_bytes(path, revision)?
+    } else {
+        open(path)?.ok_or(HostError::Protected)?.0
+    };
     if vantare_services::content_hash(&bytes) != revision {
         return Err(HostError::LauncherConflict {
             current: read(path),
@@ -276,6 +330,9 @@ pub fn save(
     super::sort_imported_settings(&mut document);
     store.replace(document).map_err(|error| {
         if error.kind().is_conflict() {
+            if keys.is_some_and(StepKeys::is_prepared_duplicate) {
+                return HostError::Rejected;
+            }
             HostError::LauncherConflict {
                 current: read(path),
             }
@@ -835,3 +892,71 @@ mod tests {
 #[path = "editor/steps.rs"]
 mod steps;
 pub use steps::StepKeys;
+
+#[cfg(all(test, windows))]
+#[path = "editor/duplicate_tests.rs"]
+mod duplicate_tests;
+
+#[cfg(test)]
+mod duplicate_wire_tests {
+    use super::*;
+    #[test]
+    fn prepared_copy_and_request_are_closed_and_old_get_bytes_stay_legacy() {
+        #[derive(serde::Deserialize)]
+        #[serde(tag = "method", deny_unknown_fields)]
+        enum Frozen {
+            #[serde(rename = "launcher.profile.get")]
+            Get { id: Option<String> },
+        }
+        let old = crate::protocol::Request::LauncherProfileGet {
+            id: Some("creator".into()),
+        };
+        let Frozen::Get { id } = serde_json::from_slice(&serde_json::to_vec(&old).expect("bytes"))
+            .expect("legacy decoder");
+        assert_eq!(id.as_deref(), Some("creator"));
+        let request = crate::protocol::Request::LauncherProfilePrepareDuplicate {
+            id: "creator".into(),
+            base_revision: "a".repeat(64),
+        };
+        let bytes = serde_json::to_vec(&request).expect("bytes");
+        assert!(serde_json::from_slice::<Frozen>(&bytes).is_err());
+        let mut invalid = serde_json::to_value(&request).expect("request");
+        invalid["arguments"] = serde_json::json!(["--never"]);
+        assert!(serde_json::from_value::<crate::protocol::Request>(invalid).is_err());
+        let mut value = serde_json::to_value(PreparedDuplicate {
+            base_revision: "a".repeat(64),
+            draft: new_draft(),
+        })
+        .expect("prepared");
+        value["path"] = serde_json::json!("D:/QA/never.exe");
+        assert!(serde_json::from_value::<PreparedDuplicate>(value).is_err());
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn prepared_sender_refuses_missing_or_reused_capabilities() {
+    let mut value = PreparedDuplicate {
+        base_revision: "a".repeat(64),
+        draft: new_draft(),
+    };
+    assert_eq!(checked_duplicate(value.clone()), Err(HostError::Protected));
+    value.draft.id = Some("copy-qa".into());
+    value.draft.steps = vec![ProfileStep {
+        key: None,
+        app_id: "lmu".into(),
+        delay_seconds: 0,
+        has_custom_arguments: true,
+    }];
+    assert_eq!(checked_duplicate(value.clone()), Err(HostError::Protected));
+    value.draft.steps[0].key = Some("b".repeat(64));
+    value.draft.steps.push(value.draft.steps[0].clone());
+    assert_eq!(checked_duplicate(value.clone()), Err(HostError::Protected));
+    value.draft.steps.truncate(1);
+    assert_eq!(checked_duplicate(value.clone()), Ok(value.clone()));
+    value.draft.notes = "x".repeat(NOTES_MAX + 1);
+    assert_eq!(checked_duplicate(value.clone()), Err(HostError::Protected));
+    value.draft.notes.clear();
+    value.draft.description = "invalid\0note".into();
+    assert_eq!(checked_duplicate(value), Err(HostError::Protected));
+}

@@ -35,6 +35,7 @@ impl Session {
             self.request_close_at(pipe, CloseReason::ControlEof, now)?;
         }
         self.current = self.core.status();
+        self.observe_profile_account();
         if let Some((id, result)) = self.core.reply() {
             let result = self.service_reply(id, result);
             self.respond_service(pipe, id, result)?;

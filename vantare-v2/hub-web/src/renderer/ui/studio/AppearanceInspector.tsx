@@ -35,7 +35,11 @@ export function AppearanceInspector({ item }: { item: OverlayInstance }) {
   const state = useStudio();
   const view = state.view;
   // A protected document is not a source of editable user settings.
-  if (view?.state !== "ready" || !item.settings)
+  if (
+    view?.state !== "ready" ||
+    !item.settings ||
+    !("designSystem" in item.settings)
+  )
     return <p className="v-muted">{t.appearanceUnavailable}</p>;
   const settings = item.settings;
   const disabled = item.locked || view.plan === "unverified";

@@ -795,49 +795,64 @@ fn absence_preserves_session_inheritance_and_the_native_legacy_pedals_look() {
     );
 }
 
+fn complete_writer_fixture(document: &mut serde_json::Value, fixture: &str) -> String {
+    // The families fixture contains Settings only, without required layout
+    // coordinates. Keep that original protected; mount its exact settings
+    // in a complete layout for the writer oracle, without changing fixtures.
+    let missing_coordinates = document["instances"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item.get("x").is_none() || item.get("y").is_none());
+    if missing_coordinates {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("layout.json");
+        std::fs::write(&path, fixture).unwrap();
+        assert_eq!(
+            State::new(path.clone())
+                .view(Some(CatalogAccess::Pro))
+                .state,
+            StudioState::Protected
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), fixture.as_bytes());
+        for item in document["instances"].as_array_mut().unwrap() {
+            item["x"] = serde_json::json!(0.0);
+            item["y"] = serde_json::json!(0.0);
+        }
+        serde_json::to_string(document).unwrap()
+    } else {
+        fixture.to_owned()
+    }
+}
+
 #[test]
 fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
     use vantare_domain::widget_settings as native;
+    let mut look_families = std::collections::BTreeSet::new();
     for fixture in [
         include_str!("../../../../ui/fixtures/layouts/native-beta-v0.0.975.json"),
         include_str!("../../../../packaging/fixtures/layout.golden.json"),
         include_str!("../../../../ui/fixtures/layouts/widget-settings-families.json"),
     ] {
         let mut document: serde_json::Value = serde_json::from_str(fixture).unwrap();
-        // The families fixture contains Settings only, without required layout
-        // coordinates. Keep that original protected; mount its exact settings
-        // in a complete layout for the writer oracle, without changing fixtures.
-        let missing_coordinates = document["instances"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|item| item.get("x").is_none() || item.get("y").is_none());
-        let input = if missing_coordinates {
-            let root = crate::test_support::Root::new();
-            let path = root.path.join("layout.json");
-            std::fs::write(&path, fixture).unwrap();
-            assert_eq!(
-                State::new(path.clone())
-                    .view(Some(CatalogAccess::Pro))
-                    .state,
-                StudioState::Protected
-            );
-            assert_eq!(std::fs::read(&path).unwrap(), fixture.as_bytes());
-            for item in document["instances"].as_array_mut().unwrap() {
-                item["x"] = serde_json::json!(0.0);
-                item["y"] = serde_json::json!(0.0);
-            }
-            serde_json::to_string(&document).unwrap()
-        } else {
-            fixture.to_owned()
-        };
+        let input = complete_writer_fixture(&mut document, fixture);
         let mut processed = 0;
         for index in 0..document["instances"].as_array().unwrap().len() {
             let settings = &document["instances"][index]["settings"];
             let kind: WidgetKind = serde_json::from_value(settings["kind"].clone()).unwrap();
-            if !crate::studio::WidgetSettings::supports(kind) {
+            // This oracle changes Look/accent, supported by the original five
+            // families. D106's other controls have separate native writer vectors.
+            if !matches!(
+                kind,
+                WidgetKind::Standings
+                    | WidgetKind::Relative
+                    | WidgetKind::Delta
+                    | WidgetKind::Pedals
+                    | WidgetKind::FuelStrategy
+            ) {
                 continue;
             }
+            look_families.insert(kind.id());
             processed += 1;
             let root = crate::test_support::Root::new();
             let path = root.path.join("layout.json");
@@ -900,6 +915,11 @@ fn writer_matches_native_for_real_fixtures_and_noops_preserve_every_byte() {
         }
         assert!(processed > 0, "fixture must exercise the writer");
     }
+    assert_eq!(
+        look_families.len(),
+        5,
+        "every original Look family remains covered"
+    );
 }
 #[test]
 fn unreadable_supported_settings_protect_the_whole_document_without_creating_files() {

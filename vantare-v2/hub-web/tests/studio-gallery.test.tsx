@@ -812,7 +812,11 @@ describe("Studio Foco interactions", () => {
         request.patch.field === "settings"
       ) {
         const fresh = await original.call(this, { method: "studio.get" });
-        if (fresh.method !== "studio.get" || !fresh.value.instances[0].settings)
+        if (
+          fresh.method !== "studio.get" ||
+          !fresh.value.instances[0].settings ||
+          !("accent" in fresh.value.instances[0].settings)
+        )
           throw new Error("Missing view");
         fresh.value.revision = "f".repeat(64);
         fresh.value.instances[0].settings.accent = "white";

@@ -22,7 +22,8 @@ export function AppearanceStep({ item }: { item: OverlayInstance }) {
   const model = useAppearance(item);
   const transparentHelp = useId();
   const s = item.settings;
-  if (!s || !model.readable) return <p>{t.appearanceUnavailable}</p>;
+  if (!s || !model.readable || !("designSystem" in s))
+    return <p>{t.appearanceUnavailable}</p>;
   const { disabled, pending, saving, patch } = model;
   const brand =
     s.kind === "standings" ? (

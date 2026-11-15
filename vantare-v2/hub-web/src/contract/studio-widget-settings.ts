@@ -1,5 +1,9 @@
 import type { WidgetSettings } from "./generated/studio";
-import { studioWidgetOptions as o, studioWidgetKeys } from "./generated/studio";
+import {
+  studioAdditionalOptions as a,
+  studioWidgetOptions as o,
+  studioWidgetKeys,
+} from "./generated/studio";
 import { integer, oneOf, record } from "./validation-common";
 
 type Check = (value: unknown) => boolean;
@@ -178,6 +182,117 @@ export function isWidgetSettings(
         },
         brand,
       );
+    case "broadcast-tower":
+      return settingObject(value, kind, {
+        kind: text,
+        driverCarousel: bool,
+        rowCount: integer,
+        showWeather: bool,
+        showSof: bool,
+      });
+    case "car-damage-numbers":
+      return settingObject(value, kind, {
+        kind: text,
+        showTyres: bool,
+        format: text,
+      });
+    case "car-damage-visual":
+      return settingObject(value, kind, {
+        kind: text,
+        showAero: bool,
+        view: text,
+        toggleKey: text,
+        showPercent: bool,
+      });
+    case "delta-trace":
+      return settingObject(value, kind, {
+        kind: text,
+        reference: text,
+        windowSeconds: number,
+        showSectors: bool,
+        showTrackMap: bool,
+      });
+    case "fastest-lap":
+      return settingObject(value, kind, {
+        kind: text,
+        showPersonal: bool,
+        showClass: bool,
+        durationSeconds: integer,
+        showDriver: bool,
+      });
+    case "head-to-head":
+      return settingObject(value, kind, {
+        kind: text,
+        target: text,
+        showSectors: bool,
+      });
+    case "input-telemetry":
+      return settingObject(value, kind, {
+        kind: text,
+        historySeconds: integer,
+        showClutch: bool,
+      });
+    case "track-map":
+      return settingObject(value, kind, {
+        kind: text,
+        showTrackLabel: bool,
+        transparent: bool,
+      });
+    case "multiclass-relative":
+      return settingObject(value, kind, {
+        kind: text,
+        rowCount: integer,
+        classMode: text,
+        showClassDivider: bool,
+      });
+    case "pedals-telemetry":
+      return settingObject(value, kind, {
+        kind: text,
+        steeringWheel: text,
+        showClutch: bool,
+        showPosition: bool,
+      });
+    case "radar":
+      return settingObject(value, kind, { kind: text, showPhrases: bool });
+    case "racing-flags":
+      return settingObject(value, kind, {
+        kind: text,
+        contentVersion: integer,
+        textColor: text,
+        showSectorFlags: bool,
+        hideWhenGreen: bool,
+      });
+    case "track-weather":
+      return settingObject(value, kind, {
+        kind: text,
+        vertical: bool,
+        showAmbient: bool,
+        showTrack: bool,
+        showRain: bool,
+        showWind: bool,
+      });
+    case "session-alerts":
+      return settingObject(value, kind, {
+        kind: text,
+        session: bool,
+        calendar: bool,
+        finished: bool,
+        starts: bool,
+        sound: bool,
+        soundZero: bool,
+        mini: bool,
+        miniSession: bool,
+        miniFinal: bool,
+        miniCalendar: bool,
+        miniStart: bool,
+        durationSeconds: integer,
+        volume: integer,
+        miniLimit: integer,
+        thresholds: list(integer),
+        miniSize: text,
+        companionFor: nullable(text),
+        style: text,
+      });
     default:
       return false;
   }
@@ -309,6 +424,177 @@ export function isWidgetSettingsPatch(value: unknown): boolean {
           size: choices(o.tableSizes),
           historyRows: range(o.fuel.historyMin, o.fuel.historyMax),
           showProjection: bool,
+        },
+      );
+    case "broadcast-tower":
+      return object(
+        value,
+        { kind: choices(["broadcast-tower"]) },
+        {
+          rowCount: range(a.broadcastTower.rowsMin, a.broadcastTower.rowsMax),
+          driverCarousel: bool,
+          showWeather: bool,
+        },
+      );
+    case "car-damage-numbers":
+      return object(
+        value,
+        { kind: choices(["car-damage-numbers"]) },
+        {
+          showTyres: bool,
+        },
+      );
+    case "car-damage-visual":
+      return object(
+        value,
+        { kind: choices(["car-damage-visual"]) },
+        {
+          view: choices(a.damage.views),
+          toggleKey: choices(a.damage.toggleKeys),
+          showAero: bool,
+        },
+      );
+    case "delta-trace":
+      return object(
+        value,
+        { kind: choices(["delta-trace"]) },
+        {
+          reference: choices(a.deltaTrace.references),
+          windowSeconds: range(
+            a.deltaTrace.secondsMin,
+            a.deltaTrace.secondsMax,
+          ),
+        },
+      );
+    case "fastest-lap":
+      return object(
+        value,
+        { kind: choices(["fastest-lap"]) },
+        {
+          showPersonal: bool,
+          showClass: bool,
+          showDriver: bool,
+          durationSeconds: range(
+            a.fastestLap.secondsMin,
+            a.fastestLap.secondsMax,
+          ),
+        },
+      );
+    case "head-to-head":
+      return object(
+        value,
+        { kind: choices(["head-to-head"]) },
+        {
+          target: choices(a.headToHead.targets),
+        },
+      );
+    case "input-telemetry":
+      return object(
+        value,
+        { kind: choices(["input-telemetry"]) },
+        {
+          historySeconds: range(
+            a.inputTelemetry.secondsMin,
+            a.inputTelemetry.secondsMax,
+          ),
+          showClutch: bool,
+        },
+      );
+    case "track-map":
+      return object(
+        value,
+        { kind: choices(["track-map"]) },
+        {
+          transparent: bool,
+        },
+      );
+    case "multiclass-relative":
+      return object(
+        value,
+        { kind: choices(["multiclass-relative"]) },
+        {
+          rowCount: (v) =>
+            integer(v) &&
+            (a.multiclassRelative.rows as readonly number[]).includes(v),
+          classMode: choices(a.multiclassRelative.classModes),
+          showClassDivider: bool,
+        },
+      );
+    case "pedals-telemetry":
+      return object(
+        value,
+        { kind: choices(["pedals-telemetry"]) },
+        {
+          showClutch: bool,
+          steeringWheel: choices(a.pedalsTelemetry.wheels),
+        },
+      );
+    case "radar":
+      return object(
+        value,
+        { kind: choices(["radar"]) },
+        {
+          showPhrases: bool,
+        },
+      );
+    case "racing-flags":
+      return object(
+        value,
+        { kind: choices(["racing-flags"]) },
+        {
+          showSectorFlags: bool,
+          hideWhenGreen: bool,
+          textColor: (v) =>
+            typeof v === "string" &&
+            v.length === a.racingFlags.colorLength &&
+            new RegExp(a.racingFlags.colorPattern).test(v),
+        },
+      );
+    case "track-weather":
+      return object(
+        value,
+        { kind: choices(["track-weather"]) },
+        {
+          vertical: bool,
+        },
+      );
+    case "session-alerts":
+      return object(
+        value,
+        { kind: choices(["session-alerts"]) },
+        {
+          soundZero: bool,
+          miniFinal: bool,
+          session: bool,
+          calendar: bool,
+          finished: bool,
+          starts: bool,
+          sound: bool,
+          mini: bool,
+          miniSession: bool,
+          miniCalendar: bool,
+          miniStart: bool,
+          durationSeconds: range(
+            a.sessionAlerts.secondsMin,
+            a.sessionAlerts.secondsMax,
+          ),
+          volume: (v) =>
+            range(a.sessionAlerts.volumeMin, a.sessionAlerts.volumeMax)(v) &&
+            Number(v) % a.sessionAlerts.volumeStep === 0,
+          miniLimit: range(
+            a.sessionAlerts.miniLimitMin,
+            a.sessionAlerts.miniLimitMax,
+          ),
+          miniSize: choices(a.sessionAlerts.miniSizes),
+          style: choices(a.sessionAlerts.styles),
+          threshold: (v) =>
+            object(v, {
+              index: range(0, a.sessionAlerts.thresholdSlots - 1),
+              minutes: range(
+                a.sessionAlerts.thresholdMin,
+                a.sessionAlerts.thresholdMax,
+              ),
+            }),
         },
       );
     default:

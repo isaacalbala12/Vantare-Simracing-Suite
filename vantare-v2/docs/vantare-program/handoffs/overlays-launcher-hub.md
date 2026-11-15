@@ -76,6 +76,24 @@ Originales congelados comprueban bytes y normalización; defaults contra el
 corpus nativo existente. Sin protocolo, host, web, pintores ni scheduler.
 Gate Full no gráfico y telemetría en curso; PR/head se registran en #1995.
 
+## VANTA-138 · D106 en curso, protocolo v39 (15/11/2026)
+
+Los datos puros de los 14 widgets se extraen de UI a domain con autorización del
+orquestador, sin cambiar pintores ni comportamiento. UI reexporta los tipos;
+solo conserva los métodos de demanda/presentación y la comprobación de tecla.
+Dos imports del Hub GPUI conservan esa comprobación tras la extracción; no recibe
+funciones nuevas. Los tests comparan bytes y normalización con definiciones
+anteriores congeladas y con el export nativo existente.
+
+Host proyecta los 14 tipos y sus 48 controles cerrados mediante studio.instance,
+con id/revisión, derechos, conflicto sin reintento y preservación de campos
+internos/desconocidos/no soportados. Los umbrales usan una orden de índice/minutos
+con el helper nativo; nunca un array ni reenvío automático. Listas y casos salen
+de Rust hacia D. D108 (Hz por instancia) y preview siguen después, separados.
+Rama y evidencia en #1995. Clippy all-targets de ocho crates y 1983 tests
+no gráficos PASS (16 omitidos); 34 tests de telemetría PASS (1 omitido). CI y review pendientes. Typechecks, Biome,
+505 tests puros y 120 DOM PASS. Ventana sin Rust hasta16:15UTC respetada.
+
 ## VANTA-138 · Seguimiento pequeño de geometría #2320 (15/11/2026)
 
 El monitor fijado se contrasta con la lista viva sin volver a elegirlo por la
@@ -86,7 +104,7 @@ reescribir ni añadir deshacer. Los cambios mayores siguen escribiendo.
 Tests con monitores falsos, bytes e historial; no se ejecutan ventanas ni GPU.
 Sin cambio de protocolo. Clippy all-targets -D warnings y 610 tests de hub-host
 pasan (1 omitido), junto con formato y revisión del diff. PR/head en #1995;
-CI y review pendientes. Sin merge ni release propios.
+Fusionado en nightly en #2331 (006cc4194); sin release ni promoción propias.
 
 ## VANTA-138 · D029, revisión de #2327 (15/11/2026)
 
@@ -99,7 +117,7 @@ locales y descubrimiento falso; sin servicios, aplicaciones ni ventanas.
 
 v38 sigue siendo prepareDuplicate. Las versiones siguientes del ADR 0109 se
 asignan por el orquestador en el orden de fusión, sin reservar números de preview.
-PR en revisión; Clippy all-targets -D warnings y 619 tests de hub-host pasan
+Fusionado en nightly en #2327 (852c5035d); Clippy all-targets -D warnings y 619 tests de hub-host pasan
 (1 omitido), junto con formato y revisión del diff. Head en #1995/#2327.
 
 ## VANTA-141 · Segunda revisión #2286 (13/11/2026)

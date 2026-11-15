@@ -279,7 +279,8 @@ it.each(["pedals", "fuel-strategy"] as const)(
 );
 it("edits the legacy footer without adding a Vantare footer or class-scope control", async () => {
   const item = contentInstance();
-  if (!item.settings) throw Error("settings");
+  if (!item.settings || !("designSystem" in item.settings))
+    throw Error("settings");
   item.settings.designSystem = "eficiencia";
   const { user } = await mount(item);
   await user.click(screen.getByRole("switch", { name: text.footer }));

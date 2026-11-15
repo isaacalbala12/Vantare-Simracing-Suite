@@ -133,6 +133,18 @@ pub(super) fn apply(
     patch.validate()?;
     let old = serde_json::to_value(typed_settings(kind, &stored)?.ok_or(HostError::Denied)?)
         .map_err(|_| HostError::Io)?;
+    let threshold = match patch {
+        WidgetSettingsPatch::SessionAlerts(patch) => patch.threshold.as_ref(),
+        _ => None,
+    };
+    let additional = !matches!(
+        kind,
+        WidgetKind::Standings
+            | WidgetKind::Relative
+            | WidgetKind::Delta
+            | WidgetKind::Pedals
+            | WidgetKind::FuelStrategy
+    );
     let preset = patch.table_preset();
     let patch = serde_json::to_value(patch).map_err(|_| HostError::Io)?;
     let requested = patch.as_object().ok_or(HostError::Denied)?;
@@ -141,7 +153,7 @@ pub(super) fn apply(
         table_presets::apply(kind, &old, &mut candidate, size)?;
     }
     for (key, value) in requested {
-        if key == "kind" || key == "tablePreset" {
+        if key == "kind" || key == "tablePreset" || key == "threshold" {
             continue;
         }
         candidate[key] =
@@ -150,6 +162,13 @@ pub(super) fn apply(
             } else {
                 value.clone()
             };
+    }
+    if let Some(threshold) = threshold {
+        let mut settings: vantare_domain::widget_settings::session_alerts::Settings =
+            serde_json::from_value(candidate.clone()).map_err(|_| HostError::Protected)?;
+        settings.set_threshold(usize::from(threshold.index), threshold.minutes);
+        candidate["thresholds"] =
+            serde_json::to_value(settings.thresholds).map_err(|_| HostError::Io)?;
     }
     let projected = WidgetSettings::from_json(
         kind,
@@ -166,6 +185,15 @@ pub(super) fn apply(
         serde_json::from_str(projected.raw()?.get()).map_err(|_| HostError::Io)?;
     let original = Fields(stored.0.clone());
     for key in WidgetSettings::keys(kind) {
+        // The new controls edit only their selected fields. Internal/unsupported
+        // settings retain their exact stored bytes, even if native projection
+        // normalizes them for display. Color migration accompanies a color edit.
+        let selected = requested.contains_key(&key)
+            || (key == "thresholds" && threshold.is_some())
+            || (key == "contentVersion" && requested.contains_key("textColor"));
+        if additional && !selected {
+            continue;
+        }
         let Some(raw) = normalized.0.get(&key) else {
             stored.0.remove(&key);
             continue;

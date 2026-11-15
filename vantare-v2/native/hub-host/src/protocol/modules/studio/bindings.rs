@@ -298,6 +298,7 @@ fn widget_settings_types(text: &mut String) {
     declare::<native::delta::Settings>(text);
     declare::<native::pedals::Settings>(text);
     declare::<native::fuel_strategy::Settings>(text);
+    additional_widget_types(text);
     crate::protocol::bindings::constants!(text, "studioWidgetKeys", WidgetSettings::schema_keys());
     declare::<WidgetSettings>(text);
     declare::<WidgetGap>(text);
@@ -382,6 +383,58 @@ fn widget_settings_types(text: &mut String) {
     .expect("defaults");
 }
 
+fn additional_widget_types(text: &mut String) {
+    use crate::studio::widget_settings::*;
+    use vantare_domain::widget_settings as native;
+    declare::<native::broadcast_tower::Settings>(text);
+    declare::<native::car_damage_numbers::Settings>(text);
+    declare::<native::car_damage_visual::Settings>(text);
+    declare::<native::delta_trace::Settings>(text);
+    declare::<native::fastest_lap::Settings>(text);
+    declare::<native::head_to_head::Settings>(text);
+    declare::<native::input_telemetry::Settings>(text);
+    declare::<native::track_map::Settings>(text);
+    declare::<native::multiclass_relative::Settings>(text);
+    declare::<native::pedals_telemetry::Settings>(text);
+    declare::<native::radar::Settings>(text);
+    declare::<native::racing_flags::Settings>(text);
+    declare::<native::track_weather::Settings>(text);
+    declare::<native::session_alerts::Settings>(text);
+    declare::<BroadcastTowerWidgetPatch>(text);
+    declare::<CarDamageNumbersWidgetPatch>(text);
+    declare::<CarDamageVisualWidgetPatch>(text);
+    declare::<DeltaTraceWidgetPatch>(text);
+    declare::<FastestLapWidgetPatch>(text);
+    declare::<HeadToHeadWidgetPatch>(text);
+    declare::<InputTelemetryWidgetPatch>(text);
+    declare::<TrackMapWidgetPatch>(text);
+    declare::<MulticlassRelativeWidgetPatch>(text);
+    declare::<PedalsTelemetryWidgetPatch>(text);
+    declare::<RadarWidgetPatch>(text);
+    declare::<RacingFlagsWidgetPatch>(text);
+    declare::<TrackWeatherWidgetPatch>(text);
+    declare::<SessionAlertsWidgetPatch>(text);
+    declare::<DamageView>(text);
+    declare::<ToggleKey>(text);
+    declare::<HeadTarget>(text);
+    declare::<MulticlassMode>(text);
+    declare::<SteeringWheel>(text);
+    declare::<MiniSize>(text);
+    declare::<AlertStyle>(text);
+    declare::<FlagColor>(text);
+    declare::<ThresholdPatch>(text);
+    crate::protocol::bindings::constants!(
+        text,
+        "studioAdditionalOptions",
+        crate::studio::widget_settings::additional::options()
+    );
+    crate::protocol::bindings::constants!(
+        text,
+        "studioAdditionalCases",
+        crate::studio::widget_settings::additional::cases::vectors()
+    );
+}
+
 fn value_for_settings(kind: WidgetKind, source: &str) -> StudioView {
     let mut value = State::unavailable(
         StudioState::Ready,
@@ -420,6 +473,20 @@ fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
         WidgetKind::Delta,
         WidgetKind::Pedals,
         WidgetKind::FuelStrategy,
+        WidgetKind::BroadcastTower,
+        WidgetKind::CarDamageNumbers,
+        WidgetKind::CarDamageVisual,
+        WidgetKind::DeltaTrace,
+        WidgetKind::FastestLap,
+        WidgetKind::HeadToHead,
+        WidgetKind::InputTelemetry,
+        WidgetKind::TrackMap,
+        WidgetKind::MulticlassRelative,
+        WidgetKind::PedalsTelemetry,
+        WidgetKind::Radar,
+        WidgetKind::RacingFlags,
+        WidgetKind::TrackWeather,
+        WidgetKind::SessionAlerts,
     ] {
         let source = crate::widget_defaults::get(kind.id()).expect("defaults");
         let mut sample = value_for_settings(kind, source.settings.get());
@@ -429,7 +496,7 @@ fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
             result: Reply::StudioGet { value: sample },
         });
     }
-    for value in [
+    for value in crate::studio::widget_settings::additional::cases::patches().into_iter().chain([
         serde_json::json!({"kind":"standings","tablePreset":"compact"}),
         serde_json::json!({"kind":"relative","tablePreset":"expanded"}),
         serde_json::json!({"kind":"standings","rowCount":30}),
@@ -437,7 +504,7 @@ fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
         serde_json::json!({"kind":"delta","showBar":false}),
         serde_json::json!({"kind":"pedals","gap":12}),
         serde_json::json!({"kind":"fuel-strategy","historyRows":8}),
-    ] {
+    ]) {
         ui.push(UiToHost::Request {
             id: 1,
             request: Request::StudioInstance {
@@ -453,7 +520,7 @@ fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
 
 fn invalid_settings() -> Vec<serde_json::Value> {
     use serde_json::json;
-    vec![
+    let mut values = vec![
         json!({"kind":"standings","tablePreset":"unknown"}),
         json!({"kind":"relative","tablePreset":null}),
         json!({"kind":"relative","tablePreset":1}),
@@ -473,7 +540,9 @@ fn invalid_settings() -> Vec<serde_json::Value> {
         json!({"kind":"relative","columns":[{"metric":"driverName"},{"metric":"driverName"}]}),
         json!({"kind":"relative","columns":[{"metric":"driverName","format":{"maxChars":65}}]}),
         json!({"kind":"delta","executable":"x"}),
-    ]
+    ];
+    values.extend(crate::studio::widget_settings::additional::cases::invalid());
+    values
 }
 #[cfg(test)]
 mod invalid_tests {

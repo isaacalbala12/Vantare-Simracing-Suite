@@ -62,7 +62,8 @@ que tenga comprobación. El redondeo de la barra de coordenadas solo es visual.
   procedimientos de `studio-focus-captures.md`, cerrojo global y sin Rust.
 
 No se cambia el protocolo, el anfitrión, el instalador ni el núcleo. La
-resolución manual y arrastrar desde el catálogo pertenecen a entregas posteriores.
+entrada libre de resolución no se ofrece; arrastrar desde el catálogo pertenece
+a la entrega posterior.
 
 ### Origen del plano y pérdida de foco
 

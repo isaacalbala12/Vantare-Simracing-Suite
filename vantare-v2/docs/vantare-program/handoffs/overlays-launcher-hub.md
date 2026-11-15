@@ -107,13 +107,18 @@ GPUI. Se prepara solo Relative y no se adquieren widgets sin migrar.
 El contenedor sigue visualmente vacío hasta PR 6; campañas numéricas rechazadas.
 Un documento ausente/vacío no se inicializa ni reescribe automáticamente.
 
-Primera pasada por cola Windows/Rust 1.99.1/dos jobs: Clippy estricto, 21 tests
-CPU y auditoría de 428 paquetes PASS. Añadido caso real de pipe solicitado que
-entrega fotos a Runtime sin ventana; segunda pasada en curso. Pruebas de relojes
+PR #2349, código 47e6bdf9b. Dos pasadas por cola Windows/Rust 1.99.1/dos jobs:
+formato, Clippy estricto, 22 tests CPU y auditoría de 428 paquetes PASS.
+Incluye el caso real de pipe solicitado que entrega fotos a Runtime sin ventana. Pruebas de relojes
 inyectados, cadencias por instancia, cambio de época, visibilidad, permisos,
 bytes intactos, edición parcial y cierre con fuente viva. Ningún binario Rune,
-ventana, dispositivo, captura ni opción gráfica ejecutado. PR/head final por
-registrar. Sin merge/promoción/release propios; Plane no se modifica.
+ventana, dispositivo, captura ni opción gráfica ejecutado. CI/revisión y head
+final en el PR y #2333. Sin merge/promoción/release propios; Plane no se modifica.
+
+PR 6 iniciado en `vantareapp/isa-2333-relative-vantare` desde 47e6bdf9b, con
+worktree propio D:. Generador estándar Python de tokens del JSON canónico de UI,
+con tipos/colores de Rune y ninguna biblioteca nueva. Relative reutiliza la
+proyección domain; se añaden presentación Vantare y contadores por causa.
 
 ## VANTA-144 · PR 5: proceso y ventanas, parte independiente (15/11/2026)
 

@@ -10,7 +10,15 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { HostProvider } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { appText as text } from "../src/renderer/i18n/launcher-apps";
@@ -47,6 +55,10 @@ vi.mock("../src/mock/host", async (original) => {
       };
     },
   };
+});
+// Load the asynchronous local fixture before timing component interactions.
+beforeAll(async () => {
+  await import("../src/mock/host");
 });
 beforeEach(() =>
   vi.stubGlobal("matchMedia", () => ({
@@ -372,6 +384,10 @@ it.each([false, true])(
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     await screen.findByRole("button", { name: text.edit("OBS Studio") });
+    // Finish bootstrap RPCs before injecting a later event through the listener.
+    await act(async () => {
+      await Promise.all(requests.mock.results.map((result) => result.value));
+    });
     const current =
       caches[0].getQueryData<
         import("../src/contract/generated/contract").LauncherView

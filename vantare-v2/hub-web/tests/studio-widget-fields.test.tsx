@@ -170,7 +170,7 @@ async function edit(vector: (typeof cases)[number]) {
   return { ...actions, initial, control, key, value };
 }
 it.each(cases)("writes and confirms the native case $patch", async (vector) => {
-  const { initial, accept, control } = await edit(vector);
+  const { initial, accept, control, key, value } = await edit(vector);
   expect(transport.request).toHaveBeenLastCalledWith({
     method: "studio.instance",
     id: initial.instances[0].id,
@@ -180,11 +180,28 @@ it.each(cases)("writes and confirms the native case $patch", async (vector) => {
   expect(screen.getByText(studio.saving)).toBeTruthy();
   expect(screen.queryByText(studio.autoSaved)).toBeNull();
   expect(control.hasAttribute("disabled")).toBe(false);
+  if (typeof value === "boolean") {
+    const before = Object.entries(vector.before).find(
+      ([field]) => field === key,
+    )?.[1];
+    expect(control.getAttribute("aria-checked")).toBe(String(before));
+  }
   const next = structuredClone(initial);
   next.revision = "b".repeat(64);
   next.instances[0].settings = structuredClone(vector.after) as WidgetSettings;
   await act(async () => accept({ method: "studio.instance", value: next }));
   expect(screen.getByText(studio.autoSaved)).toBeTruthy();
+  const confirmed = Object.entries(vector.after).find(
+    ([field]) => field === key,
+  )?.[1];
+  if (typeof confirmed === "boolean")
+    expect(control.getAttribute("aria-checked")).toBe(String(confirmed));
+  else if (control instanceof HTMLInputElement)
+    expect(control.value).toBe(String(confirmed));
+  else
+    expect(control.textContent).toContain(
+      optionLabels[String(confirmed)] ?? String(confirmed),
+    );
   expect(document.activeElement).toBe(control);
   expect(
     transport.request.mock.calls.filter(

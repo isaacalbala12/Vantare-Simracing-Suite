@@ -371,7 +371,10 @@ function Color({ value, model }: { value: string; model: Model }) {
   const edited = useRef(false);
   const submitted = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!edited.current || submitted.current === value) {
+    if (
+      !edited.current ||
+      submitted.current?.toLowerCase() === value.toLowerCase()
+    ) {
       edited.current = false;
       submitted.current = undefined;
       setDraft(value);

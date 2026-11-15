@@ -26,9 +26,10 @@ for (const kind of kinds) {
       await group.waitFor();
       await group.scrollIntoViewIfNeeded();
       assert.ok(
-        await group
-          .locator('input,button[role="switch"],button[role="combobox"]')
-          .count(),
+        (await group.getByRole("textbox").count()) +
+          (await group.getByRole("switch").count()) +
+          (await group.getByRole("combobox").count()) >
+          0,
       );
     },
   };

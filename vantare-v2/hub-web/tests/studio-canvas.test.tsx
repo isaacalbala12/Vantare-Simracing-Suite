@@ -24,6 +24,7 @@ import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { studioText } from "../src/renderer/i18n/studio";
 import { canvasText as t } from "../src/renderer/i18n/studio-canvas";
+import { studioDropText as dropText } from "../src/renderer/i18n/studio-drop";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
@@ -65,9 +66,20 @@ beforeEach(() => {
     function (this: HTMLElement) {
       return this.classList.contains("v-studio-canvas-viewport")
         ? new DOMRect(0, 0, 640, 360)
-        : rect.call(this);
+        : this.classList.contains("v-studio-canvas-plane")
+          ? new DOMRect(
+              Number.parseFloat(this.style.left),
+              Number.parseFloat(this.style.top),
+              Number.parseFloat(this.style.width),
+              Number.parseFloat(this.style.height),
+            )
+          : rect.call(this);
     },
   );
+  Object.defineProperty(document, "elementFromPoint", {
+    configurable: true,
+    value: vi.fn(() => document.querySelector(".v-studio-canvas-plane")),
+  });
   for (const name of [
     "setPointerCapture",
     "hasPointerCapture",
@@ -103,7 +115,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
-async function mount(scene = "studio-canvas") {
+async function renderStudio(scene = "studio-canvas") {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   cache = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -123,6 +135,10 @@ async function mount(scene = "studio-canvas") {
       </HostProvider>
     </QueryClientProvider>,
   );
+  return ui;
+}
+async function mount(scene = "studio-canvas") {
+  const ui = await renderStudio(scene);
   await screen.findByRole("button", { name: "Standings Visible" });
   await userEvent.setup().click(screen.getByRole("button", { name: t.open }));
   const move = await screen.findByRole("button", { name: t.move("Standings") });
@@ -700,4 +716,153 @@ it("hides row coordinates only in Canvas and keeps Widget status lines", async (
   expect(
     container.querySelectorAll(".v-focus-row-name small").length,
   ).toBeGreaterThan(0);
+});
+
+const additions = (spy: MockInstance<Client["request"]>) =>
+  spy.mock.calls
+    .map(([request]) => request)
+    .filter((request) => request.method === "studio.add");
+async function openDrop() {
+  await userEvent
+    .setup()
+    .click(
+      screen.getAllByRole("button", { name: studioText.add, exact: true })[0],
+    );
+  return screen.findByRole("button", {
+    name: dropText.drag("Delta"),
+    exact: true,
+  });
+}
+function dropPoint() {
+  const rect = document
+    .querySelector(".v-studio-canvas-plane")
+    ?.getBoundingClientRect();
+  if (!rect) throw Error("Visible canvas required");
+  return {
+    clientX: rect.left + rect.width / 2,
+    clientY: rect.top + rect.height / 2,
+    pointerId: 7,
+  };
+}
+function beginDrop(handle: HTMLElement) {
+  fireEvent.pointerDown(handle, {
+    button: 0,
+    pointerId: 7,
+    clientX: 620,
+    clientY: 50,
+  });
+  fireEvent.pointerMove(handle, dropPoint());
+}
+it("previews the catalogue silhouette and magnets without writing, then adds once at the snapped point", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const handle = await openDrop();
+  beginDrop(handle);
+  expect(document.querySelector(".v-canvas-drop-ghost")).not.toBeNull();
+  expect(document.querySelectorAll(".v-studio-canvas-guide")).toHaveLength(2);
+  expect(additions(spy)).toHaveLength(0);
+  fireEvent.pointerUp(handle, dropPoint());
+  fireEvent.pointerUp(handle, dropPoint());
+  fireEvent.click(handle, { detail: 1 });
+  await waitFor(() => expect(additions(spy)).toHaveLength(1));
+  expect(additions(spy)[0]).toEqual({
+    method: "studio.add",
+    kind: "delta",
+    baseRevision: "0".repeat(64),
+    at: { x: 885, y: 522 },
+  });
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("complementary", { name: studioText.catalog }),
+    ).toBeNull(),
+  );
+  expect(
+    await screen.findByRole("button", { name: /^Delta 2, / }),
+  ).toBeTruthy();
+});
+it.each(["outside", "covered"])(
+  "does not add when releasing on an %s point",
+  async (mode) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    await mount();
+    const handle = await openDrop();
+    beginDrop(handle);
+    if (mode === "covered")
+      Object.defineProperty(document, "elementFromPoint", {
+        configurable: true,
+        value: () => document.querySelector(".v-canvas-catalog"),
+      });
+    const point =
+      mode === "outside"
+        ? { pointerId: 7, clientX: -20, clientY: 20 }
+        : dropPoint();
+    fireEvent.pointerMove(handle, point);
+    fireEvent.pointerUp(handle, point);
+    fireEvent.click(handle, { detail: 1 });
+    await act(async () => {});
+    expect(additions(spy)).toHaveLength(0);
+    expect(document.querySelector(".v-canvas-drop-ghost")).toBeNull();
+  },
+);
+it.each([
+  "Escape",
+  "blur",
+  "handleBlur",
+  "resize",
+  "pointerCancel",
+  "lostPointerCapture",
+])(
+  "cancels a catalogue drag on %s without falling through to click",
+  async (cause) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    await mount();
+    const handle = await openDrop();
+    beginDrop(handle);
+    if (cause === "Escape") fireEvent.keyDown(handle, { key: "Escape" });
+    else if (cause === "blur") fireEvent.blur(window);
+    else if (cause === "handleBlur") fireEvent.blur(handle);
+    else if (cause === "resize") fireEvent.resize(window);
+    else if (cause === "pointerCancel")
+      fireEvent.pointerCancel(handle, { pointerId: 7 });
+    else fireEvent.lostPointerCapture(handle, { pointerId: 7 });
+    fireEvent.pointerUp(handle, dropPoint());
+    fireEvent.click(handle, { detail: 1 });
+    await act(async () => {});
+    expect(additions(spy)).toHaveLength(0);
+    expect(document.querySelector(".v-canvas-drop-ghost")).toBeNull();
+    expect(screen.getByRole("button", { name: t.close })).toBeTruthy();
+  },
+);
+it("cancels a failed catalogue pointer capture but keeps keyboard addition available", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const handle = await openDrop();
+  vi.spyOn(handle, "setPointerCapture").mockImplementationOnce(() => {
+    throw Error("Detached capture");
+  });
+  fireEvent.pointerDown(handle, {
+    button: 0,
+    pointerId: 7,
+    clientX: 620,
+    clientY: 50,
+  });
+  fireEvent.pointerUp(handle, dropPoint());
+  fireEvent.click(handle, { detail: 1 });
+  expect(additions(spy)).toHaveLength(0);
+  await userEvent.setup().keyboard("{Enter}");
+  await waitFor(() => expect(additions(spy)).toHaveLength(1));
+  expect(additions(spy)[0]).not.toHaveProperty("at");
+});
+it("can drop the first widget onto an empty canvas", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await renderStudio("studio-vacio");
+  await userEvent
+    .setup()
+    .click(await screen.findByRole("button", { name: t.open }));
+  const handle = await openDrop();
+  beginDrop(handle);
+  fireEvent.pointerUp(handle, dropPoint());
+  await waitFor(() => expect(additions(spy)).toHaveLength(1));
+  expect(additions(spy)[0]).toHaveProperty("at");
+  expect(await screen.findByRole("button", { name: /^Delta, / })).toBeTruthy();
 });

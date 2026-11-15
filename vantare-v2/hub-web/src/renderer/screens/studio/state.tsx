@@ -57,8 +57,13 @@ function useStateValue() {
     if (selected) remember(selected);
   }, [selected, remember]);
   const execute = useCallback(
-    async (request: StudioRequest) => {
-      if (!client || busy.current) return;
+    async (request: StudioRequest, onFailure?: (error: unknown) => void) => {
+      if (!client || busy.current) {
+        onFailure?.(
+          new HostFailure({ kind: client ? "busy" : "coreUnavailable" }),
+        );
+        return;
+      }
       if (
         request.method === "studio.instance" ||
         request.method === "studio.visibility"
@@ -165,7 +170,8 @@ function useStateValue() {
             // Keep the original failure; reading did not confirm duplication.
           }
         }
-        if (alive.current) setFailure({ message, request });
+        if (onFailure) onFailure(error);
+        else if (alive.current) setFailure({ message, request });
       } finally {
         busy.current = false;
         if (alive.current) setPending(false);

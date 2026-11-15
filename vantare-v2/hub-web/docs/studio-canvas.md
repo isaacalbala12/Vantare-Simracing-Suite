@@ -95,3 +95,13 @@ en esta sesión se conserva para la etiqueta al elegir luego un preset.
 La miniatura y el enlace de la tira abren la misma vista. La lista y el plano
 comparten selección; ocultos permanecen visibles en gris al 35 %, y fuera de
 lienzo se mantiene la posición real. No se añade otro pintor ni preview real.
+
+Corrección visual de Isaac: el monitor encaja contra toda la superficie medida,
+sin descuentos de padding ni marco rayado o sombra exterior. El espacio que
+sobra por la proporción es neutro. La nota flota sobre el tablero; ayuda y
+resolución están en la barra inferior. Al entrar en Lienzo se contrae la
+navegación principal y al salir se restaura su estado anterior; abrirla a mano
+durante la edición se respeta. La lista de widgets se puede contraer a miniaturas
+y recuerda esa elección durante la sesión. Ninguno de estos cambios escribe al
+anfitrión. Chromium comprueba el encaje mínimo del 60 % y 52 % con la navegación
+contraída, respectivamente a 1440×900 y 1280×800, con la lista abierta.

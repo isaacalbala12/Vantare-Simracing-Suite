@@ -8,10 +8,12 @@ export const studioCanvasScenes: Record<string, VisualScene> =
       "studio-canvas-outside",
       "studio-canvas-conflict",
       "studio-canvas-readonly",
+      "studio-canvas-list-collapsed",
     ].map((scene) => [
       scene,
       {
-        mock: scene,
+        mock:
+          scene === "studio-canvas-list-collapsed" ? "studio-canvas" : scene,
         async prepare(page) {
           const expanded = await page
             .locator(".v-sidebar")
@@ -30,6 +32,10 @@ export const studioCanvasScenes: Record<string, VisualScene> =
           // Canvas entry collapses automatically. An expanded capture is an
           // explicit manual reopening, exactly as the user may do in this view.
           if (expanded) await page.keyboard.press("Control+b");
+          if (scene === "studio-canvas-list-collapsed")
+            await page
+              .getByRole("button", { name: t.collapseList, exact: true })
+              .click();
           if (scene === "studio-canvas-conflict") {
             await move.focus();
             await page.keyboard.press("ArrowRight");

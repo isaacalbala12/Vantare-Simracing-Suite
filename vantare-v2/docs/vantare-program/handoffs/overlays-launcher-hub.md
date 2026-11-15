@@ -92,10 +92,10 @@ ejecución del producto en el servidor; F0 solo en el horario del orquestador.
 Encargo ampliado de A tras #2345: conectar diseño, fuente y cadencias; después
 PR 6 Relative Vantare y contadores. B conserva PR 7 (Eficiencia/captura) y
 monitores en caliente. Rama `vantareapp/isa-2333-rune-datos-cadencias`, worktree
-propio D:. Base local combinada `68cb7e319`:
-nightly 80f105ba9 (incluye #2345 df9c911b5, #2340, #2347 y #2342) más #2344 5e11dd339.
+propio D:. Base local combinada `0a3af2785`:
+nightly 8ea2e9741 (incluye también el cierre F0 #2348 y Studio #2353) más #2344 5e11dd339.
 Solo hubo conflicto documental; bloques A/B conservados. Tras el squash de
-#2344, retirar esta base con `git rebase --onto origin/nightly 68cb7e319`.
+#2344, retirar esta base con `git rebase --onto origin/nightly 0a3af2785`.
 
 `feed::DataFeed` lee/vigila Document y Presentation de IPC sin escribir bytes,
 conserva el último documento válido y une su lector al cerrar. Fuente existente
@@ -107,7 +107,9 @@ GPUI. Se prepara solo Relative y no se adquieren widgets sin migrar.
 El contenedor sigue visualmente vacío hasta PR 6; campañas numéricas rechazadas.
 Un documento ausente/vacío no se inicializa ni reescribe automáticamente.
 
-PR #2349, código c51203a4d, idéntico a 47e6bdf9b tras actualizar la pila. Dos pasadas por cola Windows/Rust 1.99.1/dos jobs:
+PR #2349, código 64cd51ddf: conexión reapilada sobre nightly 8ea2e9741,
+conservando sin cambios los guardas de distribución de #2348. #2344 mantiene
+su head revisado 5e11dd339. Dos pasadas por cola Windows/Rust 1.99.1/dos jobs:
 formato, Clippy estricto, 22 tests CPU y auditoría de 428 paquetes PASS.
 Incluye el caso real de pipe solicitado que entrega fotos a Runtime sin ventana. Pruebas de relojes
 inyectados, cadencias por instancia, cambio de época, visibilidad, permisos,

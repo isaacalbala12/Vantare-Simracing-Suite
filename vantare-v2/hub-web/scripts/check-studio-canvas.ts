@@ -147,11 +147,21 @@ export async function checkStudioCanvas(
               .locator(".v-studio-canvas-help")
               .boundingBox();
             const stageBox = await stage.boundingBox();
+            const actions = await stage
+              .locator(".v-studio-stage-actions")
+              .boundingBox();
             const feedback = await stage
               .locator(".v-studio-canvas-feedback")
               .boundingBox();
             assert.ok(header && viewport && footer && help);
             assert.ok(stageBox && feedback);
+            assert.ok(actions);
+            assert.ok(
+              Math.abs(
+                actions.x + actions.width - viewport.x - viewport.width,
+              ) <= 1,
+              "view switch stays aligned to the right",
+            );
             assert.ok(
               stageBox.y + stageBox.height >= feedback.y + feedback.height,
               "feedback stays inside the stage",

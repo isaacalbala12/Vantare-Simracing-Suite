@@ -166,7 +166,7 @@ export function CanvasStage({
           <Icon name="info" />
           {studioText.illustrationNote}
         </span>
-        {actions}
+        <div className="v-studio-stage-actions">{actions}</div>
       </header>
       {!view.canvas ? (
         <Callout

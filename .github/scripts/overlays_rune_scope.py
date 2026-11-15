@@ -7,6 +7,8 @@ from native_gate_scope import _validated
 
 INPUTS = (
     "vantare-v2/native/overlays-rune/",
+    "vantare-v2/native/ui/styles/",
+    "vantare-v2/native/ui/assets/fonts/",
     "vantare-v2/native/domain/",
     "vantare-v2/native/ipc/",
     "vantare-v2/native/profiling/",

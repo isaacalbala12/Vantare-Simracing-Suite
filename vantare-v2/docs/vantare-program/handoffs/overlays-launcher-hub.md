@@ -144,6 +144,42 @@ Siguiente: conectar los módulos de #2344 cuando se fusione y preparar Relative
 Eficiencia/captura (PR 7). No se modifica el worktree ajeno preparado para
 datos/cadencias; PR 3 sigue siendo autoridad de esos tipos. Ningún gráfico ni
 ejecución del producto en el servidor; F0 solo en el horario del orquestador.
+## VANTA-144 · PR 6 Relative Vantare Rune en validación (15/11/2026)
+
+Worker A continúa el encargo aceptado tras #2345. Rama propia
+`vantareapp/isa-2333-relative-vantare`, worktree D:, apilada sobre #2349
+`39d4ad6f57e72ba07af0f0edc60618dca6bd7f41`. El anterior head afdd0834a
+tenía todos los checks verdes; la pila incorpora ahora el cierre F0 #2348.
+#2344 sigue en revisión y conserva el head revisado.
+Tras su squash, rebasear #2349 retirando `0a3af2785`; después trasladar
+los commits propios de PR 6 sobre el nuevo head de #2349.
+
+Relative Vantare consume la proyección existente de domain y el FrameSet de
+la conexión. Plan de columnas y etiquetas portados del pintor GPUI; tokens
+Rust generados del JSON canónico y fuentes del producto, sin dependencias.
+Neo/Neutro, acentos, tres plantillas, columnas personalizadas, idiomas, boxes,
+tráfico y tira; la pausa conserva la última proyección y añade su franja.
+Valores Rune Live para texto, color, posición y opacidad. Los textos de ancho fijo no reconstruyen la vista; un cambio de nombre/detalle
+o dorsal reajusta su caja con el medidor de Rune. Solo las transiciones
+finitas solicitan cada refresco; el pulso se limita a la cadencia del widget y
+reducir movimiento lo detiene. Los widgets fuera del monitor no mantienen pintor.
+
+Contadores por ventana y proceso desde on_frame_drawn (presentación), con
+causas data/animation/design y diagnóstico unattributed; una imagen puede tener
+varias causas. Consultables en Shared::paint_counts y State::meter, además de
+la salida al cerrar. Sin hilo periódico de estadísticas. Clasificador/CI vigilan
+estilos y fuentes canónicos y comprueban los tokens generados.
+
+Validación en curso por cola Windows/Rust 1.99.1/dos jobs. Pasan tokens,
+8 tests Python de generador/licencias, 4 tests del clasificador y auditoría de
+428 paquetes. Los tests Rust nuevos usan Runtime/árbol CPU: reposo virtual 30 s,
+coalescencia de diez widgets, cadencias 5/15/20, texto retenido, permisos,
+monitores/DPI lógicos, fin de movimiento, pausa y plantillas. No afirmar resultados
+Rust hasta terminar la cola. No se ejecuta ningún binario Rune, ventana,
+dispositivo ni opción gráfica. La paridad visual/consumo quedan para PC de juego.
+B conserva Eficiencia, captura y monitores en caliente. Sin merge/release ni
+cambio de Plane propios.
+
 ## VANTA-144 · conexión de diseño/fotos/cadencias Rune (15/11/2026)
 
 Encargo ampliado de A tras #2345: conectar diseño, fuente y cadencias; después

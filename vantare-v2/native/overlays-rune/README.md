@@ -99,10 +99,31 @@ otra vez al enumerar instancias para no dibujar tras una revocación.
 La precedencia es diseño v2, después apariencia legada. La geometría del monitor
 convierte origen/tamaño físicos a lógicos igual que el backend Windows GPUI.
 
-La ruta de datos prepara Relative, primera familia de la migración. No adquiere
-datos de los widgets sin migrar. Los pintores Vantare/Eficiencia llegan en PR 6/7;
-este cambio conserva el contenedor visual vacío. Las campañas numéricas siguen
-rechazadas explícitamente hasta disponer de esos pintores. No se anuncia paridad.
+Relative Vantare es el primer pintor conectado. Conserva proyección de domain,
+plantillas y orden de columnas personalizado, tonos Neo/Neutro, acentos, idiomas,
+banners, tráfico, boxes y tira de pista. Solo adquiere datos de Looks migrados;
+Relative Eficiencia corresponde al PR 7. Las campañas numéricas siguen rechazadas
+hasta el modo captura del Worker B; un diseño normal puede tener diez Relative.
+La paridad visual y el consumo real esperan a la comparación en el PC de juego.
+
+`src/vantare` usa las fuentes del producto y los tokens del JSON canónico de UI.
+`python scripts/generar_vantare.py --check` verifica los tokens Rust generados;
+regenerar sin `--check` al cambiar el JSON. No hay segundo parser ni librería nueva.
+La CI se activa también al cambiar esas fuentes o estilos.
+
+Textos, tintas, posición y opacidad se conservan en valores Rune `Live`. Solo los cambios de estructura o de texto que alteran el ancho intrínseco
+(nombre/detalle/dorsal/cabecera) recomponen la vista; las celdas de ancho fijo
+se actualizan sin reconstruirla. Los movimientos de filas, aparición y
+flash tienen fin; una actualización de texto no reinicia su duración. El pulso de
+tráfico se despierta a la cadencia del widget. Reducir movimiento lo apaga y lleva
+las transiciones a su destino. En reposo no se programa ningún reloj.
+
+Al cerrar se imprimen contadores por ventana y del proceso: `frames`, `data`,
+`animation`, `design` y `unattributed`. Se incrementan exclusivamente en
+`on_frame_drawn`, después de presentar. Una imagen puede tener varias causas:
+no se suman para calcular `frames`. Las solicitudes y vistas descartadas no
+cuentan como imágenes. Los tests CPU simulan el aviso; no miden presentaciones
+GPU ni sustituyen la campaña del PC de juego.
 
 ## Servidor y CI sin gráficos
 
@@ -168,6 +189,8 @@ datos reales. La prueba comprueba:
    sigue vivo con el controlador sin ventanas y las superficies vuelven.
 10. Cambiar resolución o DPI justo después de conectar un monitor: comprobar
     que no se pierde la petición `place` anterior a la creación de la ventana.
+
+6. Registrar fallos nativos y consumo; con Relative Vantare quieto, cero frames nuevos en 30 segundos tras asentarse. Con diez Relative, comprobar cadencia y contadores por causa; sin transiciones, no superar el widget visible más rápido.
 
 Los tests CPU prueban la descripción de las ventanas, el EOF/cancelación con
 pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del

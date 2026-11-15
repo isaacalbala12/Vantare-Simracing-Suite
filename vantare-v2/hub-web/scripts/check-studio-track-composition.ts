@@ -59,6 +59,28 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
               3,
               "Positive control: all three groups are mounted",
             );
+            for (const group of await groups.all()) {
+              const summary = await group.evaluate((node) => {
+                const heading = node.querySelector("h3");
+                const summary = node.querySelector(
+                  ".v-studio-track-group-summary",
+                );
+                if (!heading || !summary)
+                  throw new Error("Group summary missing");
+                return {
+                  padding: getComputedStyle(summary).paddingTop,
+                  gap:
+                    summary.getBoundingClientRect().top -
+                    heading.getBoundingClientRect().bottom,
+                };
+              });
+              assert.equal(
+                summary.padding,
+                "0px",
+                "No legacy Track panel padding",
+              );
+              assert.ok(Math.abs(summary.gap / pixelScale - 4) < 1);
+            }
             const layout = await page
               .locator(".v-studio-track-groups")
               .evaluate((node) => {

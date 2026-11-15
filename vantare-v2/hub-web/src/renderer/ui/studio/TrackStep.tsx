@@ -155,7 +155,7 @@ function Group({
       data-active={active}
     >
       <h3>{title}</h3>
-      <div className="v-studio-track-summary" data-visible={visible}>
+      <div className="v-studio-track-group-summary" data-visible={visible}>
         {summary}
       </div>
       {children}

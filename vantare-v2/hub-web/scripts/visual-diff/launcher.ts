@@ -242,3 +242,17 @@ launcherScenes["launcher-decision-sidebar"] = {
       .waitFor();
   },
 };
+launcherScenes["launcher-perfil-duplicado"] = {
+  mock: "launcher-editor-ready",
+  async prepare(page) {
+    await launcherScenes["launcher-base"].prepare(page);
+    await page
+      .getByRole("button", { name: "Creador de Contenido", exact: true })
+      .click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Duplicar", exact: true }).click();
+    const name = page.getByRole("textbox", { name: "Nombre", exact: true });
+    await name.waitFor();
+    assert.equal(await name.inputValue(), "Creador de Contenido (copia)");
+    await name.focus();
+  },
+};

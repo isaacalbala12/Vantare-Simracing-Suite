@@ -33,6 +33,8 @@ export function ProfileEditorFields({
   onSave,
   onCancel,
   onRetry,
+  canRetry = true,
+  focusName = false,
   onDiscard,
 }: {
   draft: ProfileDraft;
@@ -47,6 +49,8 @@ export function ProfileEditorFields({
   onSave: () => void;
   onCancel: () => void;
   onRetry: () => void;
+  canRetry?: boolean;
+  focusName?: boolean;
   onDiscard: () => void;
 }) {
   function delay(index: number, value: number) {
@@ -81,9 +85,11 @@ export function ProfileEditorFields({
           title={error}
           actions={
             <div className="v-launcher-actions">
-              <Button disabled={pending} onClick={onRetry}>
-                {text.retry}
-              </Button>
+              {canRetry && (
+                <Button disabled={pending} onClick={onRetry}>
+                  {text.retry}
+                </Button>
+              )}
               <Button variant="ghost" disabled={pending} onClick={onDiscard}>
                 {text.discard}
               </Button>
@@ -98,6 +104,7 @@ export function ProfileEditorFields({
       >
         <Input
           label={text.name}
+          autoFocus={focusName}
           value={draft.name}
           maxLength={profileLimits.name}
           disabled={pending}

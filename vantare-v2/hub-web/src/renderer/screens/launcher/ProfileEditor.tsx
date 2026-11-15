@@ -118,6 +118,10 @@ export function ProfileEditor() {
   ) {
     if (!client || busy.current || !view) return;
     if (readInvalid.current) {
+      if (current.preparedDuplicate) {
+        setError(text.duplicateUnconfirmed);
+        return;
+      }
       await retry();
       return;
     }
@@ -178,7 +182,12 @@ export function ProfileEditor() {
       ) {
         query.setQueryData(launcherKey, failure.detail.current);
         setError(text.conflict);
-      } else setError(profileFailure(failure));
+      } else
+        setError(
+          source.preparedDuplicate
+            ? text.duplicateUnconfirmed
+            : profileFailure(failure),
+        );
     } finally {
       busy.current = false;
     }
@@ -211,6 +220,10 @@ export function ProfileEditor() {
     }
   }
   async function retry() {
+    if (current.preparedDuplicate) {
+      setError(text.duplicateUnconfirmed);
+      return;
+    }
     if (!client || busy.current) return;
     busy.current = true;
     set({ ...current, pending: true });
@@ -265,6 +278,8 @@ export function ProfileEditor() {
         rowKeys={current.stepKeys}
         pending={current.pending}
         error={error}
+        canRetry={!current.preparedDuplicate}
+        focusName={current.preparedDuplicate}
         onChange={update}
         onMove={move}
         onRemove={(index) =>

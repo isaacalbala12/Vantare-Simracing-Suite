@@ -26,6 +26,7 @@ export interface EditorSnapshot extends ProfileEditorView {
   isNew: boolean;
   stepKeys: string[];
   restored?: boolean;
+  preparedDuplicate?: boolean;
   argumentLossFromRevision?: boolean;
 }
 export function snapshot(

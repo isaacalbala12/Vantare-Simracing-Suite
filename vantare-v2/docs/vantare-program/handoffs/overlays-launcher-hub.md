@@ -1,7 +1,8 @@
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 
 #2345 fusionado por el orquestador como df9c911b5. Worker B atiende sus nits
-en `vantareapp/isa-2333-rune-ajustes`, base nightly 639bb40aa.
+en `vantareapp/isa-2333-rune-ajustes`, base nightly 639bb40aa, PR
+[#2348](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2348).
 Topología dinámica registrada en
 [#2346](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2346),
 area:overlays-runtime y Project Vantare, enlazada a #2333. Se resolverá antes

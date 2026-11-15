@@ -52,7 +52,10 @@ impl State {
                     .is_some_and(|(from, until)| from <= now && now < until)
             })
             .collect();
-        let new_bands = next.bands.iter().filter(|band| !old.bands.contains(band));
+        let new_bands = next
+            .bands
+            .iter()
+            .filter(|band| old.band_requires_schedule(band));
         let new_slots = next.slots.iter().filter(|slot| !old.slots.contains(slot));
         for band in new_bands {
             if active.is_empty() {
@@ -121,4 +124,10 @@ fn occurrence(
     recurrence.kind == "weekly-slots"
         && recurrence.days.iter().any(|day| day == weekday)
         && recurrence.times_utc.contains(&time)
+}
+
+impl CalendarAlerts {
+    pub(crate) fn band_requires_schedule(&self, band: &super::CalendarBand) -> bool {
+        !self.bands.iter().any(|old| old.series_id == band.series_id)
+    }
 }

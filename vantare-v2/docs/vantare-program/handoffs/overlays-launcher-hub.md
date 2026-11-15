@@ -1,3 +1,14 @@
+## VANTA-138 · D048, bandas existentes sin horario (16/11/2026)
+
+E permite editar una banda guardada por su seriesId sin exigir horario vigente;
+nueva identidad o renombrado siguen requiriéndolo. Mismo calendar.alertsSave,
+revisión/CAS y errores tipados. Sin nuevos métodos ni servicios. Vectores Rust y
+mock contrastados; tests con reloj inyectado y bytes sin cambios tras rechazo.
+Formato/exportador/Clippy y648 tests host PASS (1omitido); ambos typechecks,
+lint y508 tests web PASS tras rebase sobre #2363 fusionado. Sin mensajes nuevos: versión asignada al fusionar,
+sin reservar. D hace la UI; CI/revisión pendientes en el PR draft.
+Después D111; preview espera Rune F1. Sin merge, promoción ni release propios.
+
 ## VANTA-138 · D031, fecha y avisos de exploración (15/11/2026)
 
 Contrato aprobado por el orquestador: `CatalogView.lastScan` es null o contiene fecha real

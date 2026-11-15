@@ -20,8 +20,25 @@ it.each([true, false])(
       loaded.result.method !== "calendar.configLoad"
     )
       throw new Error("config missing");
-    const config = loaded.result.value;
-    const alerts = structuredClone(config.alerts);
+    let config = loaded.result.value;
+    // Remove first: adding it back is a new band and still needs a live schedule.
+    const removed = host({
+      kind: "request",
+      id: 10,
+      request: {
+        method: "calendar.alertsSave",
+        alerts: { ...config.alerts, bands: [] },
+        expectedRevision: config.alertsRevision,
+      },
+    });
+    if (
+      removed?.kind !== "response" ||
+      removed.result.method !== "calendar.alertsSave"
+    )
+      throw new Error("removal unavailable");
+    const original = config.alerts;
+    config = removed.result.value;
+    const alerts = structuredClone(original);
     if (!alerts.bands[0] || !config.alertsRevision)
       throw new Error("band missing");
     alerts.bands[0].from += 30;

@@ -63,6 +63,7 @@ export const calendarListLimit = 64 as const;
 export const calendarMinuteLimit = 10080 as const;
 export const calendarTimestampLimit = 253402300799 as const;
 export const calendarWeekdays = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] as const;
+export const calendarBandScheduleCases = [{"name":"new","nextBand":{"days":"all","from":600,"mode":"each","seriesId":"daily","to":720},"previousBands":[],"requiresSchedule":true},{"name":"unchanged","nextBand":{"days":"all","from":600,"mode":"each","seriesId":"daily","to":720},"previousBands":[{"days":"all","from":600,"mode":"each","seriesId":"daily","to":720}],"requiresSchedule":false},{"name":"edited-existing","nextBand":{"days":"weekend","from":660,"mode":"first","seriesId":"daily","to":720},"previousBands":[{"days":"all","from":600,"mode":"each","seriesId":"daily","to":720}],"requiresSchedule":false},{"name":"renamed-is-new","nextBand":{"days":"weekend","from":660,"mode":"first","seriesId":"different","to":720},"previousBands":[{"days":"all","from":600,"mode":"each","seriesId":"daily","to":720}],"requiresSchedule":true}] as const;
 export const calendarRevisionLength = 64 as const;
 export const calendarConfigLimit = 262144 as const;
 export const calendarAlertLeads = [5,10,15,30] as const;

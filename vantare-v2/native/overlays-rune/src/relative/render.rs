@@ -105,10 +105,8 @@ pub(super) fn view(state: &Relative) -> El {
                     v.shadow_blur,
                     alpha(
                         Color {
-                            r: 0.0,
-                            g: 0.0,
-                            b: 0.0,
                             a: 1.0,
+                            ..s.colors.shadow
                         },
                         v.shadow_alpha,
                     ),

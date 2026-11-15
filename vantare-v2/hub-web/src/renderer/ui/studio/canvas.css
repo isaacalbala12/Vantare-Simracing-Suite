@@ -90,7 +90,7 @@
   top: -22px;
   left: 0;
   white-space: nowrap;
-  color: var(--on-accent);
+  color: var(--text-on-accent);
   background: var(--focus-ring);
   font-size: 10px;
   padding: 1px 4px;

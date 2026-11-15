@@ -1,3 +1,4 @@
+import { studioText } from "../../i18n/studio";
 import { canvasText as t } from "../../i18n/studio-canvas.es";
 import { useCanvas } from "../../screens/studio/use-canvas";
 import { Button } from "../Button";
@@ -44,6 +45,19 @@ export function StudioCanvas({
         <header className="v-canvas-heading">
           <Button onClick={onBack}>{t.back}</Button>
           <span>{t.illustration}</span>
+          <Button
+            disabled={!view.showing && (!allowed || !view.instances.length)}
+            aria-disabled={state.pending}
+            onClick={() => {
+              if (!state.pending)
+                void state.execute({
+                  method: "studio.track",
+                  show: !view.showing,
+                });
+            }}
+          >
+            {view.showing ? studioText.hide : studioText.show}
+          </Button>
           <span className="v-canvas-status" role="status">
             {writer.inflight ? t.saving : writer.notice ? t[writer.notice] : ""}
           </span>
@@ -131,7 +145,7 @@ export function StudioCanvas({
             +
           </Button>
         </div>
-        <div className="v-canvas-list" role="toolbar" aria-label={t.title}>
+        <section className="v-canvas-list" aria-label={t.title}>
           {view.instances.map((item) => (
             <Button
               key={item.id}
@@ -155,7 +169,7 @@ export function StudioCanvas({
           >
             {t.add}
           </Button>
-        </div>
+        </section>
         <p id={help} className="v-canvas-help">
           {t.help}
         </p>
@@ -171,7 +185,11 @@ export function StudioCanvas({
               disabled={!editable || selected.locked}
               widthRef={widthField}
             />
-            <StudioSteps item={selected} readOnly={!allowed} />
+            <StudioSteps
+              item={selected}
+              readOnly={!allowed}
+              onCanvas={() => viewport.current?.focus()}
+            />
           </>
         ) : (
           <p>{t.empty}</p>

@@ -76,28 +76,11 @@ studioScenes["studio-ayuda-teclado"] = {
   mock: "studio-base",
   async prepare(page) {
     await studioScenes["studio-base"].prepare(page);
-    const hint = page.getByRole("group", {
-      name: "Pronto podrás mover y cambiar el tamaño de los overlays sobre el juego.",
-      exact: true,
-    });
-    for (let index = 0; index < 80; index++) {
-      if (await hint.evaluate((node) => document.activeElement === node)) break;
-      await page.keyboard.press("Tab");
-    }
-    assert.equal(
-      await hint.evaluate((node) => document.activeElement === node),
-      true,
-    );
+    await page.getByRole("button", { name: "Lienzo", exact: true }).click();
     await page
-      .getByRole("tooltip")
-      .filter({ hasText: "Pronto podrás mover" })
+      .getByRole("application", { name: "Lienzo de overlays", exact: true })
       .waitFor();
-    assert.equal(
-      await page
-        .getByRole("button", { name: "Colocar en pantalla", exact: true })
-        .isDisabled(),
-      true,
-    );
+    await page.getByText("Arrastra para mover.", { exact: false }).waitFor();
   },
 };
 

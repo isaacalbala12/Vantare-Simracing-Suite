@@ -185,7 +185,8 @@ it("preserves the pointer offset and sends once only after a drag", async () => 
   pointer(move, "pointerup", 120, 210);
   await waitFor(() => expect(geometryCalls(spy)).toHaveLength(1));
   expect(geometryCalls(spy)[0][0]).toMatchObject({
-    change: { kind: "move", x: 88, y: 82 },
+    // The upper widget ends at y=84: native snap wins over raw y=82.
+    change: { kind: "move", x: 88, y: 84 },
   });
 });
 it("does not write for a click or pointer jitter below three screen pixels", async () => {
@@ -250,6 +251,7 @@ it.each(["account", "rights", "offline", "live"])(
       if (kind === "live") core.live = true;
       cache.setQueryData(coreKey, core);
     });
+    await waitFor(() => expect(screen.getByText(t.changed)).toBeTruthy());
     fireEvent.keyUp(viewport, { key: "ArrowRight" });
     expect(geometryCalls(spy)).toHaveLength(0);
   },

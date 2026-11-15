@@ -59,3 +59,41 @@ studioContentScenes["studio-contenido-filas"] = {
     );
   },
 };
+studioContentScenes["studio-contenido-pedales"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    await page
+      .getByRole("button", { name: "Añadir widget", exact: true })
+      .click();
+    const catalog = page.getByRole("dialog", {
+      name: "Añadir widget",
+      exact: true,
+    });
+    await catalog.locator('[data-kind="pedals"]').click();
+    await catalog.waitFor({ state: "hidden" });
+    const content = page.getByRole("tab", { name: "Contenido", exact: true });
+    await content.click();
+    const gap = page.getByRole("textbox", {
+      name: "Separación entre barras",
+      exact: true,
+    });
+    await gap.fill("4");
+    await gap.press("Enter");
+    await until(
+      async () =>
+        (await gap.inputValue()) === "4" &&
+        (await page.locator(".v-step-save").textContent()) ===
+          studioText.autoSaved &&
+        (await page.locator(".v-step-save").getAttribute("data-failed")) ===
+          "false",
+      10000,
+      "confirmed pedal gap",
+    );
+    await content.click();
+    assert.equal(
+      await gap.evaluate((node) => node === document.activeElement),
+      false,
+    );
+  },
+};

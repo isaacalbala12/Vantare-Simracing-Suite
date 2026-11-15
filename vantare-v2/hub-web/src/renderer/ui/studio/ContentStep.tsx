@@ -79,12 +79,25 @@ export function ContentStep({ item }: { item: OverlayInstance }) {
             />
           )}
         </Group>
-      ) : settings.kind === "pedals" && settings.designSystem === "vantare" ? (
+      ) : settings.kind === "pedals" ? (
         <Group title={studio.content}>
-          {toggle(text.brakePeak, settings.showBrakePeak, (showBrakePeak) => ({
-            kind: "pedals",
-            showBrakePeak,
-          }))}
+          <ContentNumber
+            label={text.pedalGap}
+            value={settings.gap}
+            min={studioWidgetOptions.pedals.gapMin}
+            max={studioWidgetOptions.pedals.gapMax}
+            integer={false}
+            normalize={Math.fround}
+            model={model}
+            onCommit={(value) =>
+              void model.patch({ kind: "pedals", gap: value }, text.pedalGap)
+            }
+          />
+          {settings.designSystem === "vantare" &&
+            toggle(text.brakePeak, settings.showBrakePeak, (showBrakePeak) => ({
+              kind: "pedals",
+              showBrakePeak,
+            }))}
         </Group>
       ) : settings.kind === "fuel-strategy" &&
         settings.designSystem === "eficiencia" ? (
@@ -506,6 +519,8 @@ function ContentNumber({
   min,
   max,
   model,
+  integer = true,
+  normalize = Number,
   onCommit,
 }: {
   label: string;
@@ -513,6 +528,8 @@ function ContentNumber({
   min: number;
   max: number;
   model: Model;
+  integer?: boolean;
+  normalize?: (value: number) => number;
   onCommit: (value: number) => void;
 }) {
   const [draft, setDraft] = useState(String(value));
@@ -521,28 +538,30 @@ function ContentNumber({
   const submitted = useRef<number | undefined>(undefined);
   useEffect(() => {
     // A conflict can publish another Hub's value. It does not confirm this edit.
-    if (!edited.current || submitted.current === value) {
+    if (!edited.current || submitted.current === normalize(value)) {
       edited.current = false;
       submitted.current = undefined;
       setDraft(String(value));
       setError(false);
     }
-  }, [value]);
+  }, [value, normalize]);
   function commit() {
     if (model.disabled || model.pending) return;
     const number = Number(draft);
     if (
       !draft.trim() ||
-      !Number.isInteger(number) ||
+      !Number.isFinite(number) ||
+      (integer && !Number.isInteger(number)) ||
       number < min ||
       number > max
     ) {
       setError(true);
       return;
     }
-    if (number !== value) {
-      submitted.current = number;
-      onCommit(number);
+    const normalized = normalize(number);
+    if (normalized !== normalize(value)) {
+      submitted.current = normalized;
+      onCommit(normalized);
     } else {
       edited.current = false;
       submitted.current = undefined;
@@ -553,10 +572,16 @@ function ContentNumber({
     <Input
       label={label}
       value={draft}
-      inputMode="numeric"
+      inputMode={integer ? "numeric" : "decimal"}
       disabled={model.disabled}
       readOnly={model.pending}
-      error={error ? text.invalidNumber(min, max) : undefined}
+      error={
+        error
+          ? integer
+            ? text.invalidNumber(min, max)
+            : text.invalidDecimal(min, max)
+          : undefined
+      }
       onChange={(event) => {
         edited.current = true;
         submitted.current = undefined;

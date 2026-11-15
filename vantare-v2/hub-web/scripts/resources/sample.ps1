@@ -13,10 +13,11 @@ $rootStart = $root.StartTime.ToUniversalTime().Ticks
 $timer = [Diagnostics.Stopwatch]::StartNew()
 $samples = [Collections.Generic.List[object]]::new()
 $previous = @{}
+$roles = @{}
 do {
  $root = Get-Process -Id $RootProcessId -ErrorAction Stop
  if ($root.StartTime.ToUniversalTime().Ticks -ne $rootStart) { throw 'Root PID reused' }
- $tree = @(Get-CimInstance Win32_Process)
+ $tree = @(Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId)
  $ids = [Collections.Generic.HashSet[int]]::new()
  [void]$ids.Add($RootProcessId)
  do {
@@ -29,13 +30,19 @@ do {
   if (!$ids.Contains([int]$item.ProcessId)) { continue }
   $p = Get-Process -Id $item.ProcessId -ErrorAction SilentlyContinue
   if (!$p) { continue }
-  $kind = if ($p.Id -eq $RootProcessId) { 'main' }
-   elseif ($item.CommandLine -match '--type=gpu-process') { 'gpu' }
-   elseif ($item.CommandLine -match '--type=renderer') { 'renderer' }
-   elseif ($item.CommandLine -match '--type=utility') { 'utility' }
-   else { 'other' }
-  $at = $timer.Elapsed.TotalSeconds
   $key = "$($p.Id):$($p.StartTime.ToUniversalTime().Ticks)"
+  if (!$roles.ContainsKey($key)) {
+   $command = if($p.Id -eq $RootProcessId){''} else {
+    (Get-CimInstance Win32_Process -Filter "ProcessId=$($p.Id)" -Property CommandLine).CommandLine
+   }
+   $roles[$key] = if ($p.Id -eq $RootProcessId) { 'main' }
+    elseif ($command -match '--type=gpu-process') { 'gpu' }
+    elseif ($command -match '--type=renderer') { 'renderer' }
+    elseif ($command -match '--type=utility') { 'utility' }
+    else { 'other' }
+  }
+  $kind = $roles[$key]
+  $at = $timer.Elapsed.TotalSeconds
   $cpu = $p.TotalProcessorTime.TotalSeconds
   $percent = $null
   if ($previous.ContainsKey($key)) {

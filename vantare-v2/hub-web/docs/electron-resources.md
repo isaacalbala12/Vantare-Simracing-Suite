@@ -29,6 +29,13 @@ compilación y los libera al terminar. El script Node exige la reserva del padre
 Se abre un único candidato QA con el núcleo simulado, perfil nuevo y sin red.
 Se miden cinco ventanas de 20 s: Inicio recién abierto, Inicio tras recorrer
 las secciones implementadas y sus pestañas disponibles, e Inicio minimizado; después Calendario visible y minimizado.
+Cada medición comprueba primero el recorrido y minimizar/restaurar en un
+perfil aparte, dentro de la misma reserva; también puede ejecutarse solo con `-CheckOnly`; ese
+informe lleva `checkOnly: true` y no contiene cifras de consumo. Electron no implementa el dominio Browser de
+CDP: minimizar/restaurar usa únicamente el HWND del candidato, tras verificar
+ejecutable, título y propietario. El script espera `document.hidden` real. Cada invocación
+crea su propio perfil QA, incluso si se repite dentro de una reserva.
+
 El recorrido queda enumerado: no se afirma haber visitado diálogos, widgets
 nativos o futuros módulos bloqueados. Se usan condiciones de carga y foco,
 no una espera fija para simular que la interfaz está lista.
@@ -38,7 +45,8 @@ reutilizados), rol main/renderer/GPU/utility/other, memoria privada comprometida
 working set y CPU. CPU se deriva del tiempo de procesador y tiempo real medido;
 el informe distingue porcentaje de un núcleo de porcentaje de toda la máquina.
 La primera muestra no tiene delta: es `null`, no un cero ficticio. No se guardan
-líneas de comandos ni se fuerza GC o vaciado de cachés para bajar las cifras. Working set incluye páginas compartidas: **su suma no es
+líneas de comandos; solo se consultan para clasificar procesos de este árbol.
+No se fuerza GC o vaciado de cachés para bajar las cifras. Working set incluye páginas compartidas: **su suma no es
 RAM física exclusiva**. `privateBytes` tampoco equivale a RAM residente.
 
 `report.json` contiene medias y máximos por proceso, recorrido, SHA del candidato
@@ -64,8 +72,16 @@ la misma medición antes/después y pruebas de reanudación sin duplicación.
 
 ## Propuesta de producto: renderer durante la carrera (sin implementar)
 
-**Opción recomendada para evaluar:** destruir solamente `BrowserWindow` al
-entrar en pista, dejando main + anfitrión y residente vivos. Destruir el
+Hoy `ui_tick.rs` fuerza el cierre por `Live`, el cliente responde sin vetos y
+`main/index.ts` termina al cerrar todas las ventanas; destruir el contenido
+también desconecta el host. **Ya se cierra el Hub completo al entrar en pista**.
+La propuesta siguiente cambiaría ese ciclo de vida, no una opción de Chromium.
+
+**Recomendación provisional:** conservar el cierre completo actual (menor coste
+en carrera) y medir la reapertura. Si Isaac quiere conservar servicios propios
+del Hub en segundo plano, la alternativa es destruir solamente `BrowserWindow`,
+dejando main + anfitrión y residente vivos; consume más que el cierre completo.
+Destruir el
 `webContents` libera el renderer; minimizarlo no garantiza esa liberación.
 GPU/utility pueden seguir vivos: medirlo, no prometer que desaparecen.
 

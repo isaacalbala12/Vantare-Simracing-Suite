@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
+import { commandsText } from "../src/renderer/i18n/commands.es.ts";
 import { windowText } from "../src/renderer/i18n/window.es.ts";
 import { summarize } from "./resources/summary.ts";
 import { observeProcessExit } from "./visual-diff/process-exit.ts";
@@ -12,6 +13,7 @@ import { until } from "./wait-for.ts";
 // QA candidate only. Never attach to an existing user's Hub or change its data.
 assert.equal(process.platform, "win32");
 const output = process.argv[2];
+const checkOnly = process.argv.includes("--check-only");
 assert.ok(
   output,
   "Usage: node --experimental-strip-types scripts/measure-resources.ts <evidence-directory>",
@@ -67,7 +69,7 @@ try {
     "release/package-qa/vantare-hub-ui-win32-x64/vantare-hub-ui.exe",
   );
   const asar = join(resolve(binary, ".."), "resources/app.asar");
-  const data = join(resolve(qaRoot), `resources-${nonce}`);
+  const data = join(resolve(qaRoot), `resources-${randomUUID()}`);
   await mkdir(data, { recursive: true });
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -135,6 +137,7 @@ try {
     resources: string[];
   }[] = [];
   const sample = async (name: string) => {
+    if (checkOnly) return;
     console.log(`Sampling ${name}`);
     const path = join(destination, `${name}.json`);
     await run("pwsh", [
@@ -161,6 +164,13 @@ try {
       processes: summarize(raw.samples, raw.logicalProcessors),
     });
   };
+  for (const name of ["Cuenta", "Ajustes", "Notificaciones"]) {
+    assert.equal(
+      await page.getByRole("button", { name, exact: true }).count(),
+      1,
+      `Navigation preflight: ${name}`,
+    );
+  }
   await sample("home-cold");
   const visited: { section: string; tabs: string[] }[] = [];
   for (const section of [
@@ -174,7 +184,7 @@ try {
   ]) {
     const button =
       section === "account"
-        ? page.locator(".v-sidebar-account")
+        ? page.getByRole("button", { name: "Cuenta", exact: true })
         : section === "settings"
           ? page.getByRole("button", { name: "Ajustes", exact: true })
           : page.locator(`[data-nav="${section}"]`);
@@ -208,33 +218,44 @@ try {
     visited.push({ section, tabs: done });
     console.log(`Visited ${section}: ${done.join(", ")}`);
   }
+  await page.keyboard.press("Control+k");
+  const commands = page.locator("[data-command-palette]");
+  await commands.waitFor();
+  await commands.fill("Notificaciones");
   await page
-    .getByRole("button", { name: "Notificaciones", exact: true })
+    .getByRole("option", {
+      name: `${commandsText.notifications} · ${commandsText.notificationsMeta}`,
+      exact: true,
+    })
     .click();
-  await page
-    .getByRole("button", { name: "Ver todas las notificaciones", exact: true })
-    .click();
+  await page.locator(".v-command-palette").waitFor({ state: "hidden" });
+  await page.locator(".v-notifications--full").waitFor();
   await settle();
   visited.push({ section: "notifications", tabs: [] });
   await page.locator('[data-nav="home"]').click();
   await settle();
   await sample("home-after-tour");
-  const cdp = await context.newCDPSession(page);
-  const { windowId } = await cdp.send("Browser.getWindowForTarget");
-  await cdp.send("Browser.setWindowBounds", {
-    windowId,
-    bounds: { windowState: "minimized" },
-  });
+  const windowState = async (action: "minimize" | "restore") => {
+    await run("pwsh", [
+      "-NoProfile",
+      "-File",
+      resolve("scripts/resources/window.ps1"),
+      "-ProcessId",
+      String(child?.pid),
+      "-Executable",
+      binary,
+      "-Action",
+      action,
+    ]);
+  };
+  await windowState("minimize");
   await until(
     () => page.evaluate(() => document.hidden),
     5000,
     "minimized document visibility",
   );
   await sample("home-minimized");
-  await cdp.send("Browser.setWindowBounds", {
-    windowId,
-    bounds: { windowState: "normal" },
-  });
+  await windowState("restore");
   await until(
     () => page.evaluate(() => !document.hidden),
     5000,
@@ -243,31 +264,25 @@ try {
   await page.locator('[data-nav="calendar"]').click();
   await settle();
   await sample("calendar-visible");
-  await cdp.send("Browser.setWindowBounds", {
-    windowId,
-    bounds: { windowState: "minimized" },
-  });
+  await windowState("minimize");
   await until(
     () => page.evaluate(() => document.hidden),
     5000,
     "calendar minimized visibility",
   );
   await sample("calendar-minimized");
-  await cdp.send("Browser.setWindowBounds", {
-    windowId,
-    bounds: { windowState: "normal" },
-  });
+  await windowState("restore");
   await until(
     () => page.evaluate(() => !document.hidden),
     5000,
     "calendar restored visibility",
   );
-  await cdp.detach();
   await writeFile(
     join(destination, "report.json"),
     JSON.stringify(
       {
         schema: 1,
+        checkOnly,
         at: new Date().toISOString(),
         source: process.env.VANTARE_HUB_QA_SOURCE ?? "not supplied",
         viewport: await page.evaluate(() => ({

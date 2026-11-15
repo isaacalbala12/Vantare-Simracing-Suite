@@ -20,7 +20,7 @@
     clippy::unreadable_literal // colores hex de CSS
 )]
 
-use crate::widget_settings::SettingsDemand as _;
+pub use vantare_domain::widget_settings::{Kind, Settings};
 mod motion_policy;
 #[cfg(test)]
 mod paint_tests;
@@ -40,6 +40,7 @@ mod capture_output;
 #[cfg(feature = "parity-capture")]
 pub mod capture_window;
 mod connection;
+#[cfg(test)]
 mod demand;
 pub mod efficiency;
 pub mod geometry;

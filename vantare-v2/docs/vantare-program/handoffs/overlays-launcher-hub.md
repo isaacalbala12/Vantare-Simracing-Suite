@@ -1,3 +1,15 @@
+## VANTA-144 · conexión reapilada con monitores en caliente (15/11/2026)
+
+#2349 conserva el controlador de B (#2356): ventanas creadas por host::window,
+retirada interna y limpieza de wakers. set_monitor actualiza el viewport lógico,
+conserva fotos y fuerza su nueva colocación; cambiar solo primary no repinta.
+La presentación usa solo registros de ventanas vivas por clave/generación:
+State::drop los retira, junto con su waker. Se evita conservar handles de
+monitores retirados. Nueva prueba CPU de geometría/fotos conservadas.
+#2344 mantiene su head revisado; base combinada ahora 063b1b213. Tras su squash,
+retirarla con --onto origin/nightly y reapilar #2357. Revalidación conjunta de
+conexión y Relative por la cola; resultados anteriores conservados abajo.
+
 ## VANTA-144 · Revisión de #2356: política de fallos y nits
 
 Worker B atiende MERGE WITH NITS del orquestador, mismo PR #2356 / #2346.
@@ -101,6 +113,40 @@ Siguiente: conectar los módulos de #2344 cuando se fusione y preparar Relative
 Eficiencia/captura (PR 7). No se modifica el worktree ajeno preparado para
 datos/cadencias; PR 3 sigue siendo autoridad de esos tipos. Ningún gráfico ni
 ejecución del producto en el servidor; F0 solo en el horario del orquestador.
+## VANTA-144 · conexión de diseño/fotos/cadencias Rune (15/11/2026)
+
+Encargo ampliado de A tras #2345: conectar diseño, fuente y cadencias; después
+PR 6 Relative Vantare y contadores. B conserva PR 7 (Eficiencia/captura) y
+monitores en caliente. Rama `vantareapp/isa-2333-rune-datos-cadencias`, worktree
+propio D:. Base local combinada `063b1b213`:
+nightly dfa431062 (incluye monitores en caliente #2356 y reintento sccache #2355) más #2344 5e11dd339.
+Solo hubo conflicto documental; bloques A/B conservados. Tras el squash de
+#2344, retirar esta base con `git rebase --onto origin/nightly 063b1b213`.
+
+`feed::DataFeed` lee/vigila Document y Presentation de IPC sin escribir bytes,
+conserva el último documento válido y une su lector al cerrar. Fuente existente
+IPC local/pipe y DemandHandle, sin nuevas dependencias. `scene::FrameSet` entrega
+layout/fotos por ID, visibilidad y movimiento; Cadence de domain se aplica antes
+de publicar, sin cambiar niveles. Los filtros de sesión/fuera de pista conservan
+sus señales; el pintor contrasta derechos actuales. Coordenadas/DPI lógicos como
+GPUI. Se prepara solo Relative y no se adquieren widgets sin migrar.
+El contenedor sigue visualmente vacío hasta PR 6; campañas numéricas rechazadas.
+Un documento ausente/vacío no se inicializa ni reescribe automáticamente.
+
+PR #2349, código 64cd51ddf: conexión reapilada sobre nightly 8ea2e9741,
+conservando sin cambios los guardas de distribución de #2348. #2344 mantiene
+su head revisado 5e11dd339. Dos pasadas por cola Windows/Rust 1.99.1/dos jobs:
+formato, Clippy estricto, 22 tests CPU y auditoría de 428 paquetes PASS.
+Incluye el caso real de pipe solicitado que entrega fotos a Runtime sin ventana. Pruebas de relojes
+inyectados, cadencias por instancia, cambio de época, visibilidad, permisos,
+bytes intactos, edición parcial y cierre con fuente viva. Ningún binario Rune,
+ventana, dispositivo, captura ni opción gráfica ejecutado. CI/revisión y head
+final en el PR y #2333. Sin merge/promoción/release propios; Plane no se modifica.
+
+PR 6 iniciado en `vantareapp/isa-2333-relative-vantare` apilado sobre esta conexión, con
+worktree propio D:. Generador estándar Python de tokens del JSON canónico de UI,
+con tipos/colores de Rune y ninguna biblioteca nueva. Relative reutiliza la
+proyección domain; se añaden presentación Vantare y contadores por causa.
 
 ## VANTA-144 · PR 5: proceso y ventanas, parte independiente (15/11/2026)
 
@@ -170,6 +216,64 @@ con bytes exactos. Clippy y 642 tests del host PASS, 1 omitido, por la cola y si
 ventanas. No se toca runtime/domain/ipc, por lo que no hace falta telemetría nueva.
 D no necesita adaptar el contrato. CI y revisión pendientes; PR/head en #1995.
 Siguiente cola de E: D031, D048 y D111; preview espera Rune F1.
+## VANTA-144 · PR 3: código común de overlays (15/11/2026)
+
+Worker A, #2333, ADR 0110 decisión 1. Rama
+`vantareapp/isa-2333-codigo-comun`, PR #2344. Se inició apilada sobre E
+#2341 ca31f3b9e74e45a0f92e75ee65a20cb450d06a23 por encargo. Tras el squash
+se aplicó `git rebase --onto origin/nightly ca31f3b9e`; base real ahora
+`e56c79b26245c8efdfe00ae5d5bebf470c4344fb`. Único conflicto en el handoff,
+conservados completos los bloques de A y B. El diff ya no incluye la extracción E.
+
+`domain::widget_settings::{Kind, Settings}` posee la lista única y el agregado;
+UI consume esa lista para su despacho. Las familias de ajustes siguen siendo
+las de E. Cadencias, geometría, filtros de sesión y precedencia de movimiento
+reducido son puras. No se cambia el scheduler ni el dibujo/animación GPUI.
+`ipc::{layout, widget_demand, source, motion_policy}` posee documento/CAS,
+demanda, transporte/fotos y lectura de apariencia. UI reexporta o hace de
+fachada para conservar su API; solo la inicialización mantiene el cálculo de
+tamaños GPUI y entrega ese diseño a IPC. Sin versiones de protocolo nuevas.
+
+La demanda Standings ya incluía en su unión base todas las señales de sus
+columnas; conserva la misma unión, plazos y pies, sin resolver un estilo GPUI.
+Un oráculo con el camino anterior compara variantes de tablas y sesiones.
+El escritor y enum anteriores están congelados para comparar bytes de fixtures,
+todas las familias y Looks, con y sin preserve_order. Geometría idéntica a la
+base, incluidas reglas de resize y tests, salvo el permiso numérico ya heredado
+por esos tests de UI. Flume 0.12 acompaña a la fuente: ya estaba en UI/lock;
+el lock nativo solo añade esa arista. El lock aislado Rune incorpora flume,
+futures-sink y spin en las mismas versiones ya presentes en producto; ningún
+paquete ni versión nuevo para el repositorio.
+
+Validación por cola, Rust 1.99.1, target compartido en D: y cuatro jobs:
+Clippy all-targets de los nueve crates afectados, Hub congelado y bench PASS.
+2.095 tests nativos PASS (16 omisiones del perfil/opt-in); UI 354 PASS,
+con el único test de aplicación gráfica excluido y seis opt-in ya ignorados.
+Telemetría 34 PASS (1 omisión del perfil). Escritor: 79 casos, incluidos tres
+fixtures y las 19 familias en ambas versiones/Looks, PASS con preserve_order
+y en IPC aislado sin ese feature: 158 comparaciones de bytes en total.
+Las 18 demandas
+restantes son idénticas salvo rutas; Standings conserva su oráculo anterior
+y compara 144 variantes. Catálogo y plantillas conservan orden y etiquetas.
+Seis tests Python del catálogo, formato, 472 huellas y 428 licencias Rune PASS.
+
+CI completa PASS en 6810594c900f75dea357f6b2fde0cd6264688480: lint/build,
+Rune, contrato Hub en ambos órdenes, dos suites nativas, telemetría,
+lifecycle, distribución e instalación. El test original de inicialización
+fija ahora explícitamente la mtime de la escritura: antes asumía una marca
+distinta para dos reemplazos rápidos. No cambia lector/escritor ni se añaden
+esperas; el test IPC de sustitución con igual mtime permanece intacto.
+La revisión del orquestador está pendiente. Los tests Hub y la aplicación
+UI gráfica se validan en CI; ninguno se ejecuta en servidor. Plane comprobado
+En curso, sin modificarlo. Sin merge, release ni promoción propios.
+PR/head final y resultado de sus checks en #2333.
+
+Siguiente: revisión de PR 3. B ha publicado la base independiente del proceso,
+PR #2345, head 9847099e81045d74290970d9d2d437d5b72f5165; aún rechaza --layout
+porque faltan diseño/Presentation, fuente/DemandHandle, cadencias y geometría.
+PR 6 necesita que B conecte esa parte con estas APIs compartidas. Preparadas
+las referencias del Relative Rune de medición y sus tests CPU; no se duplica
+el host de B ni se ejecutan gráficos. F0/F1 quedan para el PC de juego.
 
 ## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
 

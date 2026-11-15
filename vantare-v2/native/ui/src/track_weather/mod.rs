@@ -19,13 +19,7 @@ const WIDE: (f32, f32) = (280.0, 210.0);
 
 pub use vantare_domain::widget_settings::track_weather::Settings;
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{SessionClock, SessionInfo, Weather};
-        crate::demand::signals(500, &[Weather, SessionInfo, SessionClock])
-    }
-}
+
 
 
 

@@ -134,3 +134,68 @@ impl Settings {
         value
     }
 }
+
+use super::columns as column_keys;
+#[must_use]
+pub fn vantare_template(name: &str) -> Vec<super::columns::ColumnSetting> {
+    let (driver, on): (&str, &[&str]) = match name {
+        "compact" => (
+            column_keys::COLUMN_WIDTH_SM,
+            &[
+                column_keys::COLUMN_METRIC_CAR_NUMBER,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_GAP,
+            ],
+        ),
+        "expanded" => (
+            column_keys::COLUMN_WIDTH_MD,
+            &[
+                column_keys::COLUMN_METRIC_POSITION,
+                column_keys::COLUMN_METRIC_CAR_NUMBER,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_VEHICLE,
+                column_keys::COLUMN_METRIC_LAP_DELTA,
+                column_keys::COLUMN_METRIC_DRIVER_RATING,
+                column_keys::COLUMN_METRIC_SAFETY_RATING,
+                column_keys::COLUMN_METRIC_TREND,
+                column_keys::COLUMN_METRIC_GAP,
+                column_keys::COLUMN_METRIC_TRACK_STRIP,
+            ],
+        ),
+        _ => (
+            column_keys::COLUMN_WIDTH_LG,
+            &[
+                column_keys::COLUMN_METRIC_POSITION,
+                column_keys::COLUMN_METRIC_DRIVER_NAME,
+                column_keys::COLUMN_METRIC_VEHICLE,
+                column_keys::COLUMN_METRIC_LAP_DELTA,
+                column_keys::COLUMN_METRIC_GAP,
+            ],
+        ),
+    };
+    [
+        column_keys::COLUMN_METRIC_POSITION,
+        column_keys::COLUMN_METRIC_CAR_NUMBER,
+        column_keys::COLUMN_METRIC_DRIVER_NAME,
+        column_keys::COLUMN_METRIC_VEHICLE,
+        column_keys::COLUMN_METRIC_LAP_DELTA,
+        column_keys::COLUMN_METRIC_DRIVER_RATING,
+        column_keys::COLUMN_METRIC_SAFETY_RATING,
+        column_keys::COLUMN_METRIC_TREND,
+        column_keys::COLUMN_METRIC_GAP,
+        column_keys::COLUMN_METRIC_TRACK_STRIP,
+    ]
+    .iter()
+    .map(|metric| super::columns::ColumnSetting {
+        id: (*metric).into(),
+        metric_id: (*metric).into(),
+        enabled: on.contains(metric),
+        width_preset: if *metric == column_keys::COLUMN_METRIC_DRIVER_NAME {
+            driver.into()
+        } else {
+            column_keys::COLUMN_WIDTH_AUTO.into()
+        },
+        ..super::columns::ColumnSetting::default()
+    })
+    .collect()
+}

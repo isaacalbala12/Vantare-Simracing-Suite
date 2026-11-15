@@ -6,6 +6,7 @@ use std::{
     fs::File,
     io::{self, BufRead, Write},
 };
+use vantare_ipc::widget_demand::SettingsDemand as _;
 
 #[path = "offline_motion.rs"]
 mod motion;

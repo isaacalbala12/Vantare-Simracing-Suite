@@ -26,39 +26,20 @@ impl MotionPolicy {
 }
 impl MotionPolicy {
     fn select(layout: Option<bool>, legacy: Self) -> Self {
-        layout.map_or(legacy, Self)
+        Self(
+            vantare_domain::motion_policy::MotionPolicy::select(
+                layout,
+                vantare_domain::motion_policy::MotionPolicy(legacy.0),
+            )
+            .0,
+        )
     }
     /// Lee la parte de apariencia que consume el host de overlays.
     pub fn load(path: &Path) -> Result<Self, String> {
-        load(path)
+        vantare_ipc::motion_policy::load(path).map(|policy| Self(policy.0))
     }
 }
 
-#[derive(Default, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-struct Stored {
-    reduced_motion: bool,
-}
-fn load(path: &Path) -> Result<MotionPolicy, String> {
-    if path
-        .components()
-        .any(|part| part.as_os_str().to_string_lossy().starts_with(".env"))
-    {
-        return Err("archivo de entorno no permitido".into());
-    }
-    match std::fs::metadata(path) {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(MotionPolicy(false));
-        }
-        Err(error) => return Err(format!("inspeccionar movimiento: {error}")),
-        Ok(metadata) if metadata.len() > 16 * 1024 => return Err("apariencia supera 16 KiB".into()),
-        Ok(_) => {}
-    }
-    let bytes = std::fs::read(path).map_err(|error| format!("leer movimiento: {error}"))?;
-    let stored: Stored =
-        serde_json::from_slice(&bytes).map_err(|error| format!("leer movimiento: {error}"))?;
-    Ok(MotionPolicy(stored.reduced_motion))
-}
 pub(crate) fn install(cx: &mut gpui::App) {
     let Some(path) = std::env::var_os("VANTARE_APPEARANCE_FILE").map(std::path::PathBuf::from)
     else {
@@ -96,20 +77,6 @@ pub(crate) fn install(cx: &mut gpui::App) {
         }
     })
     .detach();
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn old_settings_default_to_motion_and_the_switch_roundtrips() {
-        let old: Stored = serde_json::from_str("{}").expect("old settings");
-        assert!(!old.reduced_motion);
-        for enabled in [false, true] {
-            let settings = serde_json::json!({"reducedMotion": enabled, "contrast": 120});
-            let stored: Stored = serde_json::from_value(settings).expect("settings");
-            assert_eq!(stored.reduced_motion, enabled);
-        }
-    }
 }
 
 #[cfg(test)]

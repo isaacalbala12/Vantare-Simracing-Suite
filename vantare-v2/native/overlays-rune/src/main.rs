@@ -1,6 +1,7 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 use std::{ffi::OsStr, process::ExitCode};
 use vantare_overlays_rune::{
+    feed::DataFeed,
     host::{self, Rights, Shared},
     options::{self, Source},
     supervisor::Supervisor,
@@ -26,12 +27,11 @@ fn main() -> ExitCode {
 
 fn start() -> Result<(), Box<dyn std::error::Error>> {
     let options = options::parse(std::env::args_os().skip(1))?;
-    // PR 5, parte independiente. No aceptar un diseño o campaña ignorándolos:
-    // se conectan contra los módulos compartidos de PR 3, sin arrastrar UI/GPUI.
-    if options.layout.is_some() || options.benchmark_count.is_some() {
+    // La campaña numérica llega con los pintores; nunca ignorar esa opción.
+    if options.benchmark_count.is_some() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Unsupported,
-            "diseño y campañas pendientes del traslado compartido de PR 3",
+            "campañas pendientes de los pintores Relative",
         )
         .into());
     }
@@ -40,10 +40,12 @@ fn start() -> Result<(), Box<dyn std::error::Error>> {
         .controlled
         .then(|| Supervisor::stdin(shared.clone()))
         .transpose()?;
-    let _rights = match options.source {
+    let _rights = match &options.source {
         Source::Local => None,
         Source::Pipe(name) => {
-            let name = name.map_or_else(vantare_ipc::default_pipe_name, Ok)?;
+            let name = name
+                .clone()
+                .map_or_else(vantare_ipc::default_pipe_name, Ok)?;
             let core = std::env::current_exe()?.with_file_name("vantare-core.exe");
             Some(Rights::start(
                 vantare_ipc::control::Feed::connect(&name, core)?,
@@ -51,6 +53,20 @@ fn start() -> Result<(), Box<dyn std::error::Error>> {
             )?)
         }
     };
+    if shared.close_reason().is_some() {
+        return Ok(());
+    }
+    let path = options
+        .layout
+        .map_or_else(vantare_ipc::layout::default_path, Ok)?;
+    let appearance = std::env::var_os("VANTARE_APPEARANCE_FILE").map(std::path::PathBuf::from);
+    let _data = DataFeed::start(
+        options.source,
+        path,
+        appearance,
+        options.start_hidden,
+        shared.clone(),
+    )?;
     host::run(shared, options.start_hidden).map_err(Into::into)
 }
 

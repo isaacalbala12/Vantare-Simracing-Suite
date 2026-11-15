@@ -4,7 +4,6 @@
 use crate::standings::options::ColumnFormat as _;
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;
-use vantare_domain::widget_settings::columns as column_keys;
 #[cfg(test)]
 mod contract_tests;
 mod eficiencia;
@@ -52,69 +51,7 @@ const MOVABLE: &[&str] = &[
 
 /// Plantillas Relative Vantare del catálogo r10b: `compact` (±2, 280 px),
 /// `standard` (±3, 420 px, el del Studio) y `expanded` (±4, 600 px, con tira).
-#[must_use]
-pub fn vantare_template(name: &str) -> Vec<crate::standings::options::ColumnSetting> {
-    let (driver, on): (&str, &[&str]) = match name {
-        "compact" => (
-            column_keys::COLUMN_WIDTH_SM,
-            &[
-                column_keys::COLUMN_METRIC_CAR_NUMBER,
-                column_keys::COLUMN_METRIC_DRIVER_NAME,
-                column_keys::COLUMN_METRIC_GAP,
-            ],
-        ),
-        "expanded" => (
-            column_keys::COLUMN_WIDTH_MD,
-            &[
-                column_keys::COLUMN_METRIC_POSITION,
-                column_keys::COLUMN_METRIC_CAR_NUMBER,
-                column_keys::COLUMN_METRIC_DRIVER_NAME,
-                column_keys::COLUMN_METRIC_VEHICLE,
-                column_keys::COLUMN_METRIC_LAP_DELTA,
-                column_keys::COLUMN_METRIC_DRIVER_RATING,
-                column_keys::COLUMN_METRIC_SAFETY_RATING,
-                column_keys::COLUMN_METRIC_TREND,
-                column_keys::COLUMN_METRIC_GAP,
-                column_keys::COLUMN_METRIC_TRACK_STRIP,
-            ],
-        ),
-        _ => (
-            column_keys::COLUMN_WIDTH_LG,
-            &[
-                column_keys::COLUMN_METRIC_POSITION,
-                column_keys::COLUMN_METRIC_DRIVER_NAME,
-                column_keys::COLUMN_METRIC_VEHICLE,
-                column_keys::COLUMN_METRIC_LAP_DELTA,
-                column_keys::COLUMN_METRIC_GAP,
-            ],
-        ),
-    };
-    [
-        column_keys::COLUMN_METRIC_POSITION,
-        column_keys::COLUMN_METRIC_CAR_NUMBER,
-        column_keys::COLUMN_METRIC_DRIVER_NAME,
-        column_keys::COLUMN_METRIC_VEHICLE,
-        column_keys::COLUMN_METRIC_LAP_DELTA,
-        column_keys::COLUMN_METRIC_DRIVER_RATING,
-        column_keys::COLUMN_METRIC_SAFETY_RATING,
-        column_keys::COLUMN_METRIC_TREND,
-        column_keys::COLUMN_METRIC_GAP,
-        column_keys::COLUMN_METRIC_TRACK_STRIP,
-    ]
-    .iter()
-    .map(|metric| crate::standings::options::ColumnSetting {
-        id: (*metric).into(),
-        metric_id: (*metric).into(),
-        enabled: on.contains(metric),
-        width_preset: if *metric == column_keys::COLUMN_METRIC_DRIVER_NAME {
-            driver.into()
-        } else {
-            column_keys::COLUMN_WIDTH_AUTO.into()
-        },
-        ..crate::standings::options::ColumnSetting::default()
-    })
-    .collect()
-}
+pub use vantare_domain::widget_settings::relative::vantare_template;
 
 /// Mueve `metric` delante de `before` (o al final); ver `vantare::columns`.
 pub fn move_column(
@@ -376,40 +313,7 @@ impl crate::widget_settings::WorkshopSettings for Settings {
         s
     }
 }
-impl crate::widget_settings::SettingsDemand for Settings {
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{
-            LapTimes, PitStatus, Positions, Relative, SessionClock, SessionInfo, TrackName, Weather,
-        };
-        let settings = self.normalized();
-        let mut demand = crate::demand::signals(
-            33,
-            &[
-                vantare_ipc::Signal::Cars,
-                Relative,
-                Positions,
-                PitStatus,
-                SessionInfo,
-                TrackName,
-                vantare_ipc::Signal::Flags,
-                LapTimes,
-            ],
-        );
-        if settings.columns.as_ref().is_none_or(|cols| {
-            cols.iter()
-                .any(|c| c.enabled && matches!(c.metric_id.as_str(), "bestLap" | "lastLap"))
-        }) {
-            demand.request(LapTimes, 250);
-        }
-        // Con estado stale, paint usa el pie común incluso con slots configurados.
-        demand.request(SessionClock, 250);
-        demand.request(Weather, 500);
-        for id in &settings.footer_slots {
-            crate::demand::information(&mut demand, id, true);
-        }
-        demand
-    }
-}
+
 #[cfg(test)]
 mod tests {
     #[test]

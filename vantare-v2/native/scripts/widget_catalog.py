@@ -7,8 +7,8 @@ NATIVE = Path(__file__).resolve().parents[1]
 
 
 def source_catalog(registry=None):
-    text = (registry or NATIVE / "ui/src/registry.rs").read_text(encoding="utf-8")
-    blocks = re.findall(r"\bwidgets!\s*\{([^{}]*)\}", text)
+    text = (registry or NATIVE / "domain/src/widget_settings/catalog.rs").read_text(encoding="utf-8")
+    blocks = re.findall(r"(?:\bwidgets|\$callback)!\s*\{([^{}]*)\}", text)
     if len(blocks) != 1:
         raise RuntimeError("no se reconoce el registro widgets! del fuente")
     names = []

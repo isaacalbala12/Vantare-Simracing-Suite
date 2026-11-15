@@ -9,8 +9,11 @@ publish.workspace = true
 # Fixtures y defensa de raíz QA para pruebas de consumidores; inactivas en producto.
 test-support = []
 qa-e2e = []
+paint-stats = []
 
 [dependencies]
+# Moved with the existing photo feed; same flume version already used by UI.
+flume = "0.12"
 vantare-profiling.workspace = true
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.151", features = ["float_roundtrip"] }

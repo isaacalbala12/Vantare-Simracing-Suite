@@ -210,32 +210,7 @@ fn paint(
 
 pub use vantare_domain::widget_settings::delta_trace::Settings;
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{
-            Cars, Delta, Flags, LapCount, LapProgress, LapTimes, PitStatus, Positions, Sectors,
-            SessionInfo, TrackLength,
-        };
-        // La historia distingue pérdida real de fotos; no introducir huecos por cadencia.
-        crate::demand::signals(
-            0,
-            &[
-                Cars,
-                Positions,
-                PitStatus,
-                Flags,
-                Delta,
-                LapTimes,
-                LapCount,
-                LapProgress,
-                TrackLength,
-                Sectors,
-                SessionInfo,
-            ],
-        )
-    }
-}
+
 
 
 

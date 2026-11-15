@@ -91,7 +91,9 @@ it("sends a revision-bound Practice edit without mutating Race or painting succe
 it("retains the selected metric when switching sessions, as the GPUI inspector does", async () => {
   const { user } = await mount();
   await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
-  await user.click(screen.getByRole("option", { name: "Última vuelta" }));
+  await user.click(
+    await screen.findByRole("option", { name: "Última vuelta" }),
+  );
   await user.click(screen.getByRole("tab", { name: "Práctica" }));
   expect(
     screen.getByRole("combobox", { name: text.columnFormat }).textContent,
@@ -154,7 +156,9 @@ it("preserves unsupported time formatting and explains the disabled reset", asyn
   time.format.decimals = 1;
   const { user } = await mount(item);
   await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
-  await user.click(screen.getByRole("option", { name: "Última vuelta" }));
+  await user.click(
+    await screen.findByRole("option", { name: "Última vuelta" }),
+  );
   expect(
     (
       screen.getByRole("combobox", {

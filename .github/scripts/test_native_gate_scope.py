@@ -17,8 +17,8 @@ from native_gate_scope import classify_paths  # noqa: E402
 
 
 class ClassifyPathsTest(unittest.TestCase):
-    def test_rune_is_independent_but_host_and_shared_contract_still_run_native(self):
-        paths = ['vantare-v2/hub-rune/src/main.rs', '.github/workflows/hub-rune.yml']
+    def test_shared_contract_still_runs_native(self):
+        paths = ['vantare-v2/hub-web/src/app.tsx']
         self.assertFalse(classify_paths(paths).native)
         for shared in ('vantare-v2/native/hub-host/src/protocol.rs',
                        'vantare-v2/hub-web/design/tokens.json',

@@ -19,12 +19,10 @@ def sha(path):
 def main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pending-inicio-rune', action='store_true')
     parser.add_argument('--pending-rune',action='store_true')
     parser.add_argument('--rune-artifact-root',type=Path)
     parser.add_argument('--rune-source-sha')
     parser.add_argument('--output',type=Path)
-    parser.add_argument('--inicio-artifact', default='pieza8-54ef276c3-transfer03/vantare-inicio-rune.exe')
     options = parser.parse_args()
     if options.pending_rune and not options.rune_source_sha:
         options.rune_source_sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=BENCH,text=True).strip()
@@ -63,31 +61,22 @@ def main():
         ('relative_gpui','pieza5-2752dff7c/vantare-overlays.exe','vantare-overlays.exe','2752dff7cb8f78af4949c81c010690284d123665'),
         ('relative_gpui_fast','pieza5-fast-a4271dd6f/vantare-overlays.exe','vantare-overlays-fast.exe','a4271dd6f4701089f4bb3f74a7f5e690bd8b8341'),
         ('load','pieza6-265407914/vantare-carga-gpu.exe','vantare-carga-gpu.exe','2654079143211ab09e2bd0ddff64c514e97b92db'),
-        ('inicio_rune',options.inicio_artifact,'vantare-inicio-rune.exe','54ef276c38ed4e7f70ed220db57257898f56ec2c'),
-        ('inicio_gpui_fast','pieza8b-hub-fast-eb8c0aa00-verificada/vantare-hub.exe','vantare-hub.exe','eb8c0aa00b54a9b9f0d1dec36869abeaf7dc38b9'),
     ]
     binaries = {}
     for role, artifact, name, source_sha in specs:
-        is_rune=role in ('hello','relative_rune','inicio_rune')
-        if not ((is_rune and options.pending_rune) or (role == 'inicio_rune' and options.pending_inicio_rune)):
+        is_rune=role in ('hello','relative_rune')
+        if not (is_rune and options.pending_rune):
             source=options.rune_artifact_root/name if is_rune else ROOT/'artefactos'/artifact
             add(source, 'bin/'+name)
         if is_rune and options.rune_source_sha:source_sha=options.rune_source_sha
         binaries[role] = dict(path='bin/'+name, source_sha=source_sha, profile=PROFILE)
-    electron = ROOT/'artefactos/pieza8b-electron-e1ba4aa57/hub-electron'
-    for file in sorted(electron.rglob('*')):
-        if file.is_file():
-            add(file, 'bin/hub-electron/'+file.relative_to(electron).as_posix())
-    binaries['inicio_electron'] = dict(path='bin/hub-electron/vantare-hub-ui.exe', source_sha='e1ba4aa57a9279c0532ca3d68217df2ddbe470c3', profile='release')
-    if options.pending_inicio_rune:
-        add(KIT/'INICIO-RUNE-PENDIENTE.txt', 'INICIO-RUNE-PENDIENTE.txt')
     if options.pending_rune:add(KIT/'RUNE-PENDIENTE.txt','RUNE-PENDIENTE.txt')
     manifest = dict(schema=1, task='VANTA-141', issue=2213, binaries=binaries, files=rows,
-                    ready=not (options.pending_inicio_rune or options.pending_rune),
-                    pending_binaries=['hello','relative_rune','inicio_rune'] if options.pending_rune else ['inicio_rune'] if options.pending_inicio_rune else [],
+                    ready=not options.pending_rune,
+                    pending_binaries=['hello','relative_rune'] if options.pending_rune else [],
                     measurement='PC de juego, telemetría grabada exclusivamente',
                     compilation=dict(status='pending_authorized', plan='Servidor sin otros workers en madrugada; Rune Release -j1 y GPUI mismo perfil; limpia e incremental en la misma máquina.'))
-    output = options.output or ROOT/('manifiesto-kit-20261113-REVISION-PENDIENTE-RUNE.json' if options.pending_rune else 'manifiesto-kit-20261113-PENDIENTE-INICIO.json' if options.pending_inicio_rune else 'manifiesto-kit-20261113.json')
+    output = options.output or ROOT/('manifiesto-kit-20261113-REVISION-PENDIENTE-RUNE.json' if options.pending_rune else 'manifiesto-kit-20261113.json')
     with output.open('x', encoding='utf-8') as stream:
         json.dump(manifest, stream, ensure_ascii=False, indent=2)
     print(json.dumps(dict(manifest=str(output), files=len(rows))))

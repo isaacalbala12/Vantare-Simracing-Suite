@@ -2,25 +2,32 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from package import contains_marker, relative_name, pending_roles
+from package import contains_marker, relative_name, pending_roles, build, ROLES
 
 
 class PackageIntegrityTests(unittest.TestCase):
     def test_final_package_refuses_pending_binary(self):
         with self.assertRaises(ValueError):
-            pending_roles({"pending_binaries": ["inicio_rune"]}, False)
+            pending_roles({"pending_binaries": ["relative_rune"]}, False)
         self.assertEqual(pending_roles({}, False), set())
 
     def test_unrebuilt_rune_binaries_are_all_omitted(self):
-        roles=['hello','relative_rune','inicio_rune']
-        self.assertEqual(pending_roles({'pending_binaries':roles},False,True),set(roles))
-        with self.assertRaises(ValueError):pending_roles({'pending_binaries':roles+['core']},False,True)
+        roles=['hello','relative_rune']
+        self.assertEqual(pending_roles({'pending_binaries':roles},True),set(roles))
+        for invalid in ([], ['relative_rune'], roles + ['core'], roles + ['inicio_rune'], roles + ['hello']):
+            with self.subTest(pending=invalid), self.assertRaises(ValueError):
+                pending_roles({'pending_binaries': invalid}, True)
 
-    def test_provisional_package_allows_only_the_authorized_missing_role(self):
-        self.assertEqual(pending_roles({"pending_binaries": ["inicio_rune"]}, True), {"inicio_rune"})
-        for roles in ([], ["relative_rune"], ["inicio_rune", "core"]):
-            with self.subTest(roles=roles), self.assertRaises(ValueError):
-                pending_roles({"pending_binaries": roles}, True)
+    def test_old_hub_manifest_cannot_be_packaged(self):
+        import json
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            manifest = root / 'manifest.json'
+            manifest.write_text(json.dumps({'schema': 1, 'binaries': {
+                role: {} for role in ROLES | {'inicio_rune', 'inicio_electron', 'inicio_gpui_fast'}}}))
+            with self.assertRaises(ValueError):
+                build(manifest, root / 'stage', root / 'kit.zip', root / 'dumpbin.exe')
+            self.assertFalse((root / 'stage').exists())
 
     def test_windows_aliases_and_zip_traversal_are_rejected(self):
         for name in (".", "../afuera", "/raiz", "C:/target", "bin\\app.exe", "bin//app.exe",

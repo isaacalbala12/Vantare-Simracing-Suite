@@ -5,6 +5,7 @@ on:
     branches: [nightly]
     paths:
       - 'vantare-v2/native/pruebas-rune/**'
+      - 'vantare-v2/native/overlays-rune/scripts/**'
       - '.github/workflows/rune-measurement.yml'
 
 permissions:
@@ -54,7 +55,7 @@ jobs:
         run: |
           python native/pruebas-rune/verificar_aislamiento.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          foreach ($variant in @('gpui','gpui-fast','hub-fast','electron')) {
+          foreach ($variant in @('gpui','gpui-fast')) {
             python native/pruebas-rune/preparar_fuentes.py $variant
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
@@ -71,7 +72,9 @@ jobs:
           & "$bench/muestreador/test_termica_sostenida.ps1"
           & "$bench/kit/test_resolucion.ps1"
           & "$bench/kit/test_ruido.ps1" "$bench/muestreador/TERMICA.ps1"
-      - name: Enforce shared Hub Rune license policy
+      - name: Test shared Overlays Rune license policy
+        run: python -m unittest discover -s native/overlays-rune/scripts -p 'test_*.py'
+      - name: Enforce shared Overlays Rune license policy
         run: python native/pruebas-rune/check_dependencies.py
       - name: Validate isolated IPC instrumentation with Rust 1.99.1
         run: |

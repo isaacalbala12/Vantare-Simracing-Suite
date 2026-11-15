@@ -4,7 +4,7 @@ Este kit mide pantallas con datos grabados. NO abrir LMU ni conectar una
 cuenta. No publica nada ni cambia el motor de Vantare. Nunca usarlo en el
 servidor. Necesita Windows 11, escritorio abierto y PowerShell 7 de 64 bits.
 PresentMon incluido: versión oficial 2.6.0, con hash comprobado.
-Si el ZIP dice PENDIENTE-RUNE, faltan los tres Rune reconstruidos sin audio/MPL:
+Si el ZIP dice PENDIENTE-RUNE, faltan los dos Rune reconstruidos sin audio/MPL:
 no ejecutar la campaña. Los binarios antiguos se han retirado del paquete.
 
 ANTES DE EMPEZAR
@@ -20,8 +20,7 @@ Sitúate en la carpeta que contiene INICIAR.ps1.
 CUÁNTO TARDA
 B principal: aproximadamente 9–12 horas (10 Relative, 60 Hz, con/sin carga,
 Rune y GPUI fast frente a GPUI actual). B completa: varios días, al añadir
-1/4/10 widgets y 60/144 Hz. Inicio A: unos 90 minutos y necesita que sigas
-las instrucciones de interacción. Aguante: 4 horas POR motor, 12 en total.
+1/4/10 widgets y 60/144 Hz. Aguante: 4 horas POR motor, 12 en total.
 No es una prueba de unos minutos. Deja el PC disponible y evita usar otras
 aplicaciones. Las familias fallidas se repiten completas hasta tres intentos.
 
@@ -39,29 +38,7 @@ crece con los procesos y contadores del PC).
 No retires EN-CURSO.lock sin comprobar antes que la campaña terminó y que
 no quedan sus procesos. Ese archivo impide recoger una ejecución activa.
 
-2. INICIO DEL HUB
-  .\INICIO.ps1 -Campana 'D:\PruebaRune\campana'
-DPI de Windows al 100%, contenido de ventana 1440x900, tema oscuro. Se usan
-mock/demo locales. Diez procesos con perfil nuevo y diez con perfil QA
-reutilizado por motor; NO se limpian cachés globales del sistema.
-Cinco rondas de interacción por motor, intercaladas: 20 s sin tocar, 10 s
-desplazando, 30 cambios de sección (15 idas y vueltas Inicio/otra pestaña
-simple) y 10 s redimensionando. Coloca la consola al lado para leer los avisos.
-Si no se mueve el contenido al desplazar, anótalo; no inventar una prueba de
-scroll. Las pantallas simples del Hub congelado y del nuevo no son idénticas.
-El tiempo interactivo es una cota superior observada, esperando datos,
-fuentes, imágenes y un frame. Visible usa PresentMon; Rune además marca su
-primer dibujo tras vaciar GDI y componer con DWM, porque puede aparecer por
-CPU antes de un Present. Se conserva cada método por separado.
-
-El primer arranque tras reiniciar va APARTE. Tras preparar la campaña,
-reinicia y, antes de abrir ese Hub, ejecuta (primeros 15 minutos):
-  .\INICIO.ps1 -Campana 'D:\PruebaRune\campana' -PrimerArranque rune
-Repite con electron y gpui_fast, reiniciando antes de cada uno. PRIMERO es
-una confirmación manual: el kit registra la hora de arranque de Windows.
-No mezcla estos tres registros con las series de diez.
-
-3. CORRECCIÓN VISUAL
+2. CORRECCIÓN VISUAL
   .\CORRECCION.ps1 -Campana 'D:\PruebaRune\campana'
 Conserva las capturas y completa las comprobaciones de clic a través de la
 capa, ausencia de foco robado, encima/sin bordes, DPI 100/150%, segundo
@@ -69,7 +46,7 @@ monitor, transparencia OBS y exclusión de captura. No dar por correcto lo
 que no se haya observado. OBS se usa en esta comprobación aparte, nunca en
 las rondas de consumo. Una comprobación pendiente impide aprobar el motor.
 
-4. AGUANTE (una orden cada vez)
+3. AGUANTE (una orden cada vez)
 Activa previamente Volcado de memoria pequeño en Inicio y recuperación de
 Windows y deja archivo de paginación. El kit solo lo comprueba.
   .\AGUANTE.ps1 -Variant gpui -OutputDirectory 'D:\PruebaRune\campana\aguante\gpui'
@@ -87,7 +64,7 @@ reiniciando cada 65 s. Se registran esos cortes; no es una carrera en vivo.
 CÓMO SABER QUE TERMINÓ Y RECOGER
 Cada guion muestra TERMINÓ y vuelve al indicador de PowerShell. Si aparece
 un error, conserva toda la carpeta; no borres intentos ni escojas resultados.
-El mensaje de fin de campaña B no significa que A, corrección y aguante estén
+El mensaje de fin de campaña B no significa que corrección y aguante estén
 hechos. Cuando todas las ejecuciones hayan cerrado:
   .\RECOGER.ps1 -Resultados 'D:\PruebaRune\campana' -Destino 'D:\PruebaRune\recogida.zip'
 La recogida verifica cada archivo y no sobrescribe otro zip. Copia el zip al

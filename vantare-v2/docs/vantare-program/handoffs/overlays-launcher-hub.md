@@ -1,3 +1,31 @@
+## VANTA-144 · PR 1: retirada del Hub Rune (15/11/2026)
+
+Worker A, #2333, ADR 0110 §8–9. Base origin/nightly
+36cac3203f13450e0598f0850967b0256791ad8a; rama
+`vantareapp/isa-2333-retirar-hub-rune`. Etiqueta anotada `archivo/hub-rune`
+publicada sobre esa base antes del borrado; conserva todo el Hub abandonado.
+CORTE-1 queda cerrado como no realizado: nunca se abrió su ventana.
+
+Se retiran hub-rune, su CI, su catálogo generado y las mediciones de Inicio
+(Rune, GPUI fast y Electron) del kit. Las mediciones de overlays se conservan.
+El comprobador de licencias y sus tests viven ahora en
+`native/overlays-rune/scripts`: admite solo domain/ipc/profiling locales,
+rechaza MPL, licencias externas no permisivas, audio Ogg y UI/Runtime GPUI.
+El futuro workspace y su CI son del Worker B; aquí no se crean.
+
+Checks locales: 22 tests del clasificador, 6 del comprobador, 62 del kit,
+auditoría de 427 paquetes, copias GPUI/fast verificadas por blobs,
+sintaxis/contratos de 41 guiones y 472 huellas retiradas PASS.
+Lock del kit: solo desaparece vantare-inicio-rune, sin subir dependencias.
+Suite ampliada de .github/scripts: 173 tests, 9 errores en marketing Postgres
+por ausencia de /bin/bash en Windows; fuera del cambio, sin modificar tests.
+Validación Rust del contador/IPC/profiling solicitada por cola; CI pendiente.
+No se ejecutó gráfica. Sin merge, release ni promoción; Plane sigue En curso.
+
+Siguiente: revisión del PR 1 por el orquestador. PR 3 espera el merge de la
+extracción VANTA-138 a domain::widget_settings; PR 6 espera PR 4/5 del Worker B.
+No se empieza ninguno de esos traslados en este PR.
+
 ## VANTA-138 · Seguimiento pequeño de geometría #2320 (15/11/2026)
 
 El monitor fijado se contrasta con la lista viva sin volver a elegirlo por la

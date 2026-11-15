@@ -3,9 +3,9 @@
 ## Revisión de #2286
 
 Rune desactiva default-features y usa exactamente accessibility, dbus,
-embedded-fonts, metal-backend y svg como hub-rune. check_dependencies.py
-reutiliza su política de licencias; no copia el analizador SPDX. El lock no
-incluye Symphonia/MPL. Los tres Rune anteriores requieren reconstrucción en
+embedded-fonts, metal-backend y svg. check_dependencies.py
+reutiliza la política de native/overlays-rune/scripts; no copia el analizador SPDX. El lock no
+incluye Symphonia/MPL. Los dos Rune anteriores requieren reconstrucción en
 Mac y no se incluyen en el ZIP provisional PENDIENTE-RUNE. No ejecutar ese ZIP.
 
 kit/CRITERIOS.md fija proporción sostenida CPU, calibración previa de sensores,
@@ -17,7 +17,7 @@ La procedencia de CONSTRUIR_VARIANTE sale del snapshot verificado por
 preparar_fuentes.py. La única adaptación adicional de build-support es un
 sello determinista desde VANTARE_MEASUREMENT_SOURCE_SHA; no consulta .git ni
 inventa un estado dirty del snapshot. El código de dibujo sigue fijado.
-Los dos parches antiguos se conservan solo como .patch.historico.txt; no se
+Los parches GPUI antiguos se conservan solo como .patch.historico.txt; no se
 aplican ni empaquetan. La receta activa está en parches/ y protege destinos.
 
 ## Integración aislada de los nueve PR
@@ -25,11 +25,11 @@ aplican ni empaquetan. La receta activa está en parches/ y protege destinos.
 Este banco reúne #2222, #2224, #2238, #2242, #2241, #2249, #2251, #2261 y
 #2273. No modifica archivos del producto: overlays distribuidos, hub-host,
 instalador, Hub Electron y workspace nativo quedan idénticos a la base nightly.
-Los cuatro parches de instrumentación en `parches/` se aplican exclusivamente
+Los dos parches de instrumentación en `parches/` se aplican exclusivamente
 a `fuentes-generadas/`, un directorio ignorado dentro de este banco. El parche
 fast NO se aplica a native/ui, a su vendor ni al empaquetado distribuido.
 
-`preparar_fuentes.py gpui|gpui-fast|hub-fast|electron` extrae el SHA base fijado
+`preparar_fuentes.py gpui|gpui-fast` extrae el SHA base fijado
 en fuentes-medicion.json, aplica el parche allí y comprueba los blobs Git de
 la fuente resultante. Rechaza fuentes alteradas y no sobrescribe intentos.
 Relative Rune y el contador enlazan IPC/domain/profiling de esa misma copia
@@ -43,9 +43,9 @@ pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/p
 ```
 
 Los wrappers solo aceptan sus copias aisladas y fijan Rust 1.99.1. El de GPUI
-admite también gpui_fast y hub_fast. EMPAQUETAR_HUB.ps1 usa la copia Electron.
+admite también gpui_fast.
 Nunca construir Rune en servidor. `verificar_aislamiento.py` y su CI comprueban
-el diff de producto vacío, los cuatro miembros propios y sus dependencias.
+el diff de producto vacío, los tres miembros propios y sus dependencias.
 La CI solo compila IPC/profiling/contador y comprueba el workspace Rune sin
 compilar su renderer; la validación gráfica y Runtime Rune siguen en Mac/PC.
 

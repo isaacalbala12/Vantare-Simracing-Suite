@@ -236,14 +236,6 @@ class ThresholdTests(unittest.TestCase):
         self.assertAlmostEqual(block_ratio(rows, "cpu_cycles_s"), 1.2)
         self.assertEqual(interval([1] * 8)["ci95"], [1, 1])
 
-    def test_electron_only_reopens_discussion_for_its_own_limits(self):
-        data = campaign()
-        data["hub"] = {"electron": {"interactive_median_s": 3, "private_family_median_mib": 600,
-                                     "cold_starts": 10, "warm_starts": 10, "interaction_rounds": 5}}
-        self.assertEqual(evaluate(data)["hub"], "mantener_Electron")
-        data["hub"]["electron"]["private_family_median_mib"] = 601
-        self.assertEqual(evaluate(data)["hub"], "revisar_ADR_0107_con_Isaac")
-
 
 if __name__ == "__main__":
     unittest.main()

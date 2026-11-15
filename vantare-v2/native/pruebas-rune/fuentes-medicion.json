@@ -20,25 +20,6 @@
         "vantare-v2/native",
         "vantare-v2/testdata"
       ]
-    },
-    "hub-fast": {
-      "base": "56cb2c701a356eafa324e4237626952d259a77f0",
-      "source": "eb8c0aa00b54a9b9f0d1dec36869abeaf7dc38b9",
-      "patch": "parches/hub-fast-medicion.patch",
-      "patch_sha256": "5894690a79c0feba8daef9da3ed1eae51cfbb2f9ab56217c193db46ec9ba75a0",
-      "archive_paths": [
-        "vantare-v2/native",
-        "vantare-v2/testdata"
-      ]
-    },
-    "electron": {
-      "base": "cb8585d2bbc1c7c004a1ca6575015227bbd81f0c",
-      "source": "e1ba4aa57a9279c0532ca3d68217df2ddbe470c3",
-      "patch": "parches/electron-medicion.patch",
-      "patch_sha256": "09c385126570f4aa071eace5fb07593b08570e9ceb9b4194ab99041e7d1250f9",
-      "archive_paths": [
-        "vantare-v2/hub-web"
-      ]
     }
   },
   "pull_requests": [

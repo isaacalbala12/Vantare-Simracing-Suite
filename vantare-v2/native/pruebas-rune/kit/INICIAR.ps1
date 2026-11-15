@@ -15,7 +15,7 @@ $campaignLease=Enter-VantareCampaignLease
 try {
 . (Join-Path $PSScriptRoot 'muestreador/TERMICA.ps1')
 $kit=Read-VantareKit $PSScriptRoot
-# CRT común incluido; Electron conserva su carpeta y recursos originales.
+# CRT común incluido.
 $env:PATH=(Join-Path $kit.Root 'bin')+[IO.Path]::PathSeparator+$env:PATH
 if (-not $Resultados) { $Resultados=Join-Path $kit.Root ('resultados/'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff')) }
 $out=[IO.Path]::GetFullPath($Resultados)

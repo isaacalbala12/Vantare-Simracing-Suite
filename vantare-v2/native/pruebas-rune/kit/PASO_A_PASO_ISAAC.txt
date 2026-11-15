@@ -5,8 +5,7 @@ PRUEBA RUNE / GPUI — PASOS PARA ISAAC
    Usa el PC de juego, su escritorio físico y Windows 11. Nada de servidor
    ni Escritorio remoto. No abras el simulador: solo usaremos la grabación.
 
-2. Reserva el PC: Relative principal dura unas 9–12 horas; Inicio unos
-   90 minutos con intervención; aguante otras 12 horas (4 por motor).
+2. Reserva el PC: Relative principal dura unas 9–12 horas; aguante otras 12 horas (4 por motor).
    Cierra Vantare, juego, navegador, Discord, OBS y captura NVIDIA. Conecta
    corriente, selecciona Alto rendimiento y deja 20 GB para los resultados
    (60 GB si se pide matriz completa). No cambies driver ni VRR durante ella.
@@ -30,33 +29,14 @@ PRUEBA RUNE / GPUI — PASOS PARA ISAAC
    Espera TERMINÓ y la vuelta al indicador de PowerShell. Conserva todos
    los intentos, incluso fallidos; el guion elige el primero válido.
 
-5. Primer Inicio tras reiniciar: guarda todo, reinicia Windows, vuelve a
-   PowerShell y a la carpeta del kit. Sin abrir antes ese Hub, dentro de
-   los primeros 15 minutos ejecuta UNO:
-
-   .\INICIO.ps1 -Campana 'D:\PruebaRune\campana' -PrimerArranque rune
-
-   Confirma PRIMERO solo si es cierto. Repite tras otros dos reinicios,
-   cambiando rune por electron y después gpui_fast. Estos datos van aparte.
-
-6. Pon escala de Windows al 100%, tema oscuro y ejecuta Inicio completo:
-
-   .\INICIO.ps1 -Campana 'D:\PruebaRune\campana'
-
-   Sigue los avisos: reposo, desplazar, 30 cambios de sección (15 idas y
-   vueltas) y redimensionar. Confirma 30 solo después de observarlos.
-   Si la pantalla cabe y no se desplaza, anótalo; no inventes movimiento.
-   El guion hace diez arranques nuevos y diez reutilizados por motor,
-   además de cinco rondas de interacción. Espera TERMINÓ.
-
-7. Comprueba el dibujo y la capa:
+5. Comprueba el dibujo y la capa:
 
    .\CORRECCION.ps1 -Campana 'D:\PruebaRune\campana'
 
    Sigue S/N/P, DPI 100/150%, segundo monitor, clic a través, foco y capturas.
    OBS solo en esta fase; ciérralo después. Una respuesta pendiente no es sí.
 
-8. Para aguante deja antes activado Volcado de memoria pequeño en Inicio
+6. Para aguante deja antes activado Volcado de memoria pequeño en Inicio
    y recuperación de Windows, y un archivo de paginación. Ejecuta una orden
    cada vez, esperando cuatro horas y TERMINÓ antes de la siguiente:
 
@@ -70,7 +50,7 @@ PRUEBA RUNE / GPUI — PASOS PARA ISAAC
    -Directory con la carpeta concreta. No repitas por tu cuenta para ocultar
    el fallo. LEEME.txt explica la recuperación.
 
-9. Cuando TODO haya terminado y no quede ninguna ejecución activa:
+7. Cuando TODO haya terminado y no quede ninguna ejecución activa:
 
    .\RECOGER.ps1 -Resultados 'D:\PruebaRune\campana' -Destino 'D:\PruebaRune\recogida.zip'
 

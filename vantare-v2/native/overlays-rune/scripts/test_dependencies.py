@@ -28,8 +28,8 @@ class LicensesTest(unittest.TestCase):
         self.assertTrue(audit(metadata))
 
     def test_first_party_exemption_is_limited_to_exact_paths(self):
-        package = {"name": "vantare-hub-host", "version": "1", "license": None,
-                   "source": None, "manifest_path": str(ROOT.parent / 'native/hub-host/Cargo.toml')}
+        package = {"name": "vantare-domain", "version": "1", "license": None,
+                   "source": None, "manifest_path": str(ROOT.parent / 'domain/Cargo.toml')}
         metadata = {"packages": [package], "resolve": {"nodes": []}}
         self.assertFalse(audit(metadata))
         external = copy.deepcopy(metadata)
@@ -37,6 +37,12 @@ class LicensesTest(unittest.TestCase):
         self.assertTrue(audit(external))
         package["manifest_path"] = str(ROOT / 'unknown/Cargo.toml')
         self.assertTrue(audit(metadata))
+
+    def test_hub_paths_are_not_first_party_overlay_dependencies(self):
+        for crate in ('hub-host', 'services', 'launcher'):
+            package = {"name": "vantare-" + crate, "version": "1", "license": None,
+                       "source": None, "manifest_path": str(ROOT.parent / crate / 'Cargo.toml')}
+            self.assertTrue(audit({"packages": [package], "resolve": {"nodes": []}}))
 
     def test_audio_reactivation_is_rejected(self):
         metadata = {"packages": [], "resolve": {"nodes": [

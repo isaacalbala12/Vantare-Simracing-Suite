@@ -1,3 +1,6 @@
+> Histórico de la integración VANTA-141. ADR 0110 retira Inicio y Hub fast;
+> el kit activo conserva solo las mediciones de overlays.
+
 # VANTA-141: orden propuesto de revisión y fusión
 
 **Sustituido por un único PR de integración desde nightly**, rama

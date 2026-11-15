@@ -10,16 +10,15 @@ import tomllib
 from pathlib import Path, PurePosixPath
 
 PRESENTMON = "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af"
-ROLES = {"relative_gpui", "relative_gpui_fast", "relative_rune", "inicio_rune",
-         "inicio_electron", "inicio_gpui_fast", "core", "counter", "load", "hello"}
-SCRIPTS = {"INICIAR.ps1", "INICIO.ps1", "CORRECCION.ps1", "RECOGER.ps1", "LEEME.txt", "PASO_A_PASO_ISAAC.txt", "RESOLUCION.ps1", "CRITERIOS.md",
+ROLES = {"relative_gpui", "relative_gpui_fast", "relative_rune", "core", "counter", "load", "hello"}
+SCRIPTS = {"INICIAR.ps1", "CORRECCION.ps1", "RECOGER.ps1", "LEEME.txt", "PASO_A_PASO_ISAAC.txt", "RESOLUCION.ps1", "CRITERIOS.md",
            "RONDAS.ps1", "AGUANTE.ps1", "RECUPERAR_AGUANTE.ps1", "CONTROL_AA.ps1",
            "PROCESOS.ps1", "PREPARAR.ps1", "OBSERVAR.ps1",
            "CALIBRAR.ps1", "RUIDO.ps1", "IPC.ps1", "REPETIR.ps1", "REPETIR_BLOQUES.ps1", "VENTANAS.cs",
            "ANALIZAR.ps1", "VALIDAR_TERMICAS.ps1",
            "muestreador/MUESTREAR.ps1", "muestreador/FAMILIA.ps1", "muestreador/TERMICA.ps1",
            "muestreador/Contadores.cs", "muestreador/Temperatura.cs", "muestreador/Captura.cs",
-           "analisis/normalizar.py", "analisis/normalizar_inicio.py", "analisis/analizar.py",
+           "analisis/normalizar.py", "analisis/analizar.py",
            "analisis/agregar.py", "analisis/latencia.py", "analisis/cruce_rune.py",
            "analisis/resumir_aguante.py"}
 # DLL del sistema presentes en Windows 11. El CRT redistribuible NO está aquí.
@@ -76,28 +75,26 @@ def dependencies(binary, dumpbin):
     return names, output
 
 
-RUNE_ROLES = {'hello','relative_rune','inicio_rune'}
+RUNE_ROLES = {'hello','relative_rune'}
 
 
-def pending_roles(manifest, allow_pending_inicio, allow_pending_rune=False):
+def pending_roles(manifest, allow_pending_rune=False):
     pending = manifest.get("pending_binaries", [])
     if allow_pending_rune:
-        if set(pending)!=RUNE_ROLES or len(pending)!=3 or allow_pending_inicio:
-            raise ValueError('El paquete pendiente Rune debe omitir exactamente sus tres binarios')
+        if set(pending)!=RUNE_ROLES or len(pending)!=2:
+            raise ValueError('El paquete pendiente Rune debe omitir exactamente sus dos binarios')
         return set(pending)
-    if pending and (not allow_pending_inicio or pending != ["inicio_rune"]):
+    if pending:
         raise ValueError("El kit final no admite binarios pendientes")
-    if allow_pending_inicio and pending != ["inicio_rune"]:
-        raise ValueError("El paquete provisional exige únicamente Inicio Rune pendiente")
     return set(pending)
 
 
-def build(manifest_path, staging, output, dumpbin, allow_pending_inicio=False, allow_pending_rune=False):
+def build(manifest_path, staging, output, dumpbin, allow_pending_rune=False):
     manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
     if manifest.get("schema") != 1 or set(manifest.get("binaries", {})) != ROLES:
         raise ValueError("Manifiesto incompleto: faltan variantes del kit")
-    pending = pending_roles(manifest, allow_pending_inicio, allow_pending_rune)
-    pending_label='PENDIENTE-RUNE' if allow_pending_rune else 'PENDIENTE-INICIO'
+    pending = pending_roles(manifest, allow_pending_rune)
+    pending_label='PENDIENTE-RUNE'
     if pending and (pending_label not in output.stem or manifest.get("ready") is not False):
         raise ValueError("Identificar el ZIP provisional y ready=false")
     if staging.exists() or output.exists() or output.with_suffix(".zip.sha256").exists():
@@ -135,7 +132,7 @@ def build(manifest_path, staging, output, dumpbin, allow_pending_inicio=False, a
     for role, binary in manifest["binaries"].items():
         name = relative_name(binary["path"])
         if role in pending:
-            note='rune-pendiente.txt' if allow_pending_rune else 'inicio-rune-pendiente.txt'
+            note='rune-pendiente.txt'
             if name.casefold() in files or note not in files:
                 raise ValueError("El hueco Rune debe estar vacío y explicado")
             if not re.fullmatch(r"[a-f0-9]{40}", binary["source_sha"]):
@@ -150,8 +147,6 @@ def build(manifest_path, staging, output, dumpbin, allow_pending_inicio=False, a
             raise ValueError(f"Binario sin procedencia: {role}")
         if not contains_marker(Path(files[name.casefold()]["source"]), binary["source_sha"]):
             raise ValueError(f"SHA no incrustado en el binario: {role}")
-        if role == "inicio_rune" and not contains_marker(Path(files[name.casefold()]["source"]), "post_draw_dwm_flush"):
-            raise ValueError("Inicio Rune no distingue la primera imagen CPU del primer Present GPU")
         if role.startswith("relative_") and binary.get("profile") != {
             "name": "release", "opt_level": 3, "lto": False, "codegen_units": 16, "debug": False
         }:
@@ -209,9 +204,7 @@ if __name__ == "__main__":
     parser.add_argument("--staging", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--dumpbin", type=Path, required=True)
-    parser.add_argument("--pending-inicio-rune", action="store_true",
-                        help="Paquete provisional autorizado; no apto para medir")
-    parser.add_argument('--pending-rune',action='store_true',help='Omitir los tres Rune hasta reconstrucción sin audio/MPL')
+    parser.add_argument('--pending-rune',action='store_true',help='Omitir los dos Rune hasta reconstrucción sin audio/MPL')
     args = parser.parse_args()
     print(json.dumps(build(args.manifest, args.staging, args.output, args.dumpbin,
-                           args.pending_inicio_rune,args.pending_rune), indent=2))
+                           args.pending_rune), indent=2))

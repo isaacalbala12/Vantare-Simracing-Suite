@@ -1,7 +1,7 @@
 # Construye GPUI y guarda el PE antes de liberar el slot. Nunca ejecuta el PE.
 [CmdletBinding()]
 param(
- [Parameter(Mandatory)][ValidateSet('gpui','gpui_fast','hub_fast')][string]$Variant,
+ [Parameter(Mandatory)][ValidateSet('gpui','gpui_fast')][string]$Variant,
  [string]$SourceRoot,
  [Parameter(Mandatory)][string]$ArtifactDirectory,
  [switch]$Clippy
@@ -23,9 +23,9 @@ $root=$expected
 $sha=$source.source_sha
 $env:VANTARE_MEASUREMENT_SOURCE_SHA=$sha
 $targetRoot=$env:CARGO_TARGET_DIR
-$package=if($Variant -eq 'hub_fast'){'vantare-hub'}else{'vantare-ui'}
-$binary=if($Variant -eq 'hub_fast'){'vantare-hub'}else{'vantare-overlays'}
-$features=switch($Variant){gpui{'medir-latencia'} gpui_fast{'medir-latencia,gpui-fast'} hub_fast{'medir-inicio'}}
+$package='vantare-ui'
+$binary='vantare-overlays'
+$features=switch($Variant){gpui{'medir-latencia'} gpui_fast{'medir-latencia,gpui-fast'}}
 $command=if($Clippy){'clippy'}else{'build'}
 $cargoArgs=@($command,'--manifest-path',(Join-Path $root 'native/Cargo.toml'),'--release','--locked','-p',$package,'--features',$features,'-j','2')
 if($Clippy){$cargoArgs+=@('--all-targets','--','-D','warnings')}else{$cargoArgs+=@('--bin',$binary)}

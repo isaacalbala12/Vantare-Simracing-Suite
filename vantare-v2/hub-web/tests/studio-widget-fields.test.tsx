@@ -24,6 +24,7 @@ import {
 } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioSteps } from "../src/renderer/ui/studio/StudioSteps";
+import { widgetName } from "../src/renderer/ui/studio/Widgets";
 import { contentInstance } from "./helpers/studio-content";
 
 const transport = vi.hoisted(() => ({
@@ -76,6 +77,12 @@ const optionLabels: Record<string, string> = {
   f12: "F12",
 };
 const behavior = new Set(["driverCarousel", "toggleKey", "hideWhenGreen"]);
+it("names a legacy damage widget that is not offered in the add catalog", () => {
+  const item = contentInstance("car-damage-numbers");
+  const current = fixture(item.settings as WidgetSettings);
+  expect(current.catalog.some((value) => value.kind === item.kind)).toBe(false);
+  expect(widgetName(item, current)).toBe("Daños detallados");
+});
 function fixture(settings: WidgetSettings): StudioView {
   for (const message of corpus.host) {
     if (
@@ -277,5 +284,55 @@ it("rejects fractional DeltaTrace writes before sending the u8 field", async () 
   await user.clear(input);
   await user.type(input, "2.5{Enter}");
   expect(input.getAttribute("aria-invalid")).toBe("true");
+  expect(transport.request).toHaveBeenCalledTimes(1);
+});
+it("clears the view hotkey with an explicit empty closed choice", async () => {
+  const vector = cases.find((value) => "toggleKey" in value.patch);
+  if (!vector) throw Error("Hotkey case");
+  const initial = fixture(structuredClone(vector.after) as WidgetSettings);
+  const { user } = await mount(initial);
+  await user.click(screen.getByRole("tab", { name: studio.track }));
+  await user.click(screen.getByRole("combobox", { name: text.toggleKey }));
+  await user.click(await screen.findByRole("option", { name: text.noKey }));
+  expect(transport.request).toHaveBeenLastCalledWith({
+    method: "studio.instance",
+    id: initial.instances[0].id,
+    baseRevision: initial.revision,
+    patch: {
+      field: "settings",
+      value: { kind: "car-damage-visual", toggleKey: "" },
+    },
+  });
+});
+it("shows an unrecognized stored choice without writing a replacement", async () => {
+  const vector = cases.find(
+    (value) => value.before.kind === "car-damage-visual",
+  );
+  if (!vector) throw Error("Damage case");
+  const initial = fixture(structuredClone(vector.before) as WidgetSettings);
+  const settings = initial.instances[0].settings;
+  if (settings?.kind !== "car-damage-visual") throw Error("Damage settings");
+  settings.view = "legacy-view";
+  const { user } = await mount(initial);
+  await user.click(screen.getByRole("tab", { name: studio.content }));
+  expect(
+    screen.getByRole("combobox", { name: text.view }).textContent,
+  ).toContain(text.preserved("legacy-view"));
+  expect(transport.request).toHaveBeenCalledTimes(1);
+});
+it("does not treat a stored fractional window as a new invalid edit on focus and blur", async () => {
+  const vector = cases.find((value) => value.before.kind === "delta-trace");
+  if (!vector) throw Error("DeltaTrace case");
+  const initial = fixture(structuredClone(vector.before) as WidgetSettings);
+  const settings = initial.instances[0].settings;
+  if (settings?.kind !== "delta-trace") throw Error("DeltaTrace settings");
+  settings.windowSeconds = 2.5;
+  const { user } = await mount(initial);
+  await user.click(screen.getByRole("tab", { name: studio.content }));
+  const input = screen.getByRole("textbox", { name: text.window });
+  await user.click(input);
+  await user.tab();
+  expect((input as HTMLInputElement).value).toBe("2.5");
+  expect(input.getAttribute("aria-invalid")).not.toBe("true");
   expect(transport.request).toHaveBeenCalledTimes(1);
 });

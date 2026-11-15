@@ -37,7 +37,7 @@ export function ContentNumber({
     }
   }, [value, normalize]);
   function commit() {
-    if (model.disabled || model.pending) return;
+    if (model.disabled || model.pending || !edited.current) return;
     const number = Number(draft);
     if (
       !draft.trim() ||

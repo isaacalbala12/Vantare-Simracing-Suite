@@ -7,7 +7,8 @@ import { studioText as t } from "../../i18n/studio";
 export { WidgetPreview, WidgetThumb } from "../widgets/WidgetThumb";
 export function widgetName(item: OverlayInstance, view: StudioView) {
   const name =
-    view.catalog.find((widget) => widget.kind === item.kind)?.name ?? item.kind;
+    view.catalog.find((widget) => widget.kind === item.kind)?.name ??
+    (item.kind === "car-damage-numbers" ? t.damageNumbersName : item.kind);
   const same = view.instances.filter((widget) => widget.kind === item.kind);
   return same.length > 1
     ? `${name} ${same.findIndex((widget) => widget.id === item.id) + 1}`

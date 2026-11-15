@@ -382,7 +382,7 @@ function Color({ value, model }: { value: string; model: Model }) {
     }
   }, [value]);
   const commit = () => {
-    if (model.disabled || model.pending) return;
+    if (model.disabled || model.pending || !edited.current) return;
     if (
       draft.length !== options.racingFlags.colorLength ||
       !new RegExp(options.racingFlags.colorPattern).test(draft)

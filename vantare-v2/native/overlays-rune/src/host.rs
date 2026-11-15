@@ -100,7 +100,9 @@ impl Shared {
             wake();
         }
     }
-    pub fn paint_counts(&self) -> crate::stats::Snapshot {self.counts.snapshot()}
+    pub fn paint_counts(&self) -> crate::stats::Snapshot {
+        self.counts.snapshot()
+    }
     pub fn close_reason(&self) -> Option<CloseReason> {
         self.pending
             .lock()
@@ -309,7 +311,7 @@ impl Drop for State {
             self.shared.remove_waker(&wake);
         }
         if let Some(key) = self.window_key.take() {
-            eprintln!("overlays-rune: ventana {key} {:?}",self.meter.snapshot());
+            eprintln!("overlays-rune: ventana {key} {:?}", self.meter.snapshot());
             self.shared
                 .pending
                 .lock()
@@ -377,7 +379,9 @@ fn close(state: &mut State, tx: &mut Tx) {
     state.shared.close(CloseReason::Window);
     tx.quit();
 }
-pub fn view(state: &State, _: &mut Cx<State>) -> El {state.painters.view()}
+pub fn view(state: &State, _: &mut Cx<State>) -> El {
+    state.painters.view()
+}
 
 /// Solo describe ventanas. No crea dispositivos: también se usa desde tests CPU.
 pub fn windows(displays: &[Display], shared: Arc<Shared>, hidden: bool) -> Vec<WindowSpec<State>> {
@@ -415,7 +419,7 @@ pub(crate) fn window(
     options.resizable = false;
     let spec = AppSpec {
         fonts: crate::vantare::FONTS,
-        families: ("Inter","Inter"),
+        families: ("Inter", "Inter"),
         setup: Some(setup),
         poll: Some(poll),
         ..AppSpec::new(
@@ -429,8 +433,8 @@ pub(crate) fn window(
         )
     };
     let bus = shared.clone();
-    let meter=crate::stats::Meter::new(shared.counts.clone());
-    let initial_meter=meter.clone();
+    let meter = crate::stats::Meter::new(shared.counts.clone());
+    let initial_meter = meter.clone();
     let monitor = display.clone();
     let state_key = key.clone();
     WindowSpec::from_app(
@@ -440,24 +444,24 @@ pub(crate) fn window(
                 let shared = shared.clone();
                 move || {
                     let mut state = State::on_display(shared, &monitor);
-                    state.meter=initial_meter;
+                    state.meter = initial_meter;
                     state.window_key = Some(state_key);
                     state.retiring = retiring;
                     state
                 }
             })
             .args(Vec::<String>::new())
-                    .on_visibility(visibility)
-                    .on_frame_drawn(|runtime| runtime.state.meter.presented())
-                    .on_frame_encoded({
-                        // The callback has no state argument: share the same per-window meter.
-                        let meter = meter.clone();
-                        move |frame| {
-                            if frame.outcome() == rune::FrameOutcome::Unchanged {
-                                meter.unchanged();
-                            }
-                        }
-                    })
+            .on_visibility(visibility)
+            .on_frame_drawn(|runtime| runtime.state.meter.presented())
+            .on_frame_encoded({
+                // The callback has no state argument: share the same per-window meter.
+                let meter = meter.clone();
+                move |frame| {
+                    if frame.outcome() == rune::FrameOutcome::Unchanged {
+                        meter.unchanged();
+                    }
+                }
+            })
             .on_close(close)
             .on_quit(close),
     )
@@ -493,7 +497,7 @@ pub fn run(shared: Arc<Shared>, hidden: bool) -> Result<(), String> {
         },
     );
     shared.close(CloseReason::Window);
-    eprintln!("overlays-rune: proceso {:?}",shared.counts.snapshot());
+    eprintln!("overlays-rune: proceso {:?}", shared.counts.snapshot());
     result?;
     match shared.close_reason() {
         Some(
@@ -1083,5 +1087,62 @@ mod tests {
                 "no timer after motion settles"
             );
         }
+    }
+    #[cfg(windows)]
+    #[test]
+    fn monitor_changes_reposition_retained_widgets_and_primary_only_is_quiet() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let bus = Shared::new(true);
+        let mut layout = design();
+        layout.instances[0].x = -200.0;
+        let mut scene = crate::scene::Scene::new(
+            layout,
+            Access::LocalPreview,
+            true,
+            vantare_domain::motion_policy::MotionPolicy(false),
+        );
+        scene.ingest(
+            vantare_ipc::Photo::full(Arc::new(crate::testdata::snapshot())),
+            std::time::Instant::now(),
+        );
+        let frames = Arc::new(scene.frames.clone());
+        bus.publish_frames(frames.clone());
+        let mut display = Display {
+            id: None,
+            name: None,
+            position: (-2560, 0),
+            size: (2560, 1440),
+            scale: 1.25,
+            primary: false,
+        };
+        let state = State::on_display(bus, &display);
+        let mut runtime = Runtime::with_text(
+            state,
+            view,
+            (2048.0, 1152.0),
+            Env::new(true, 1.25),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        runtime.poll = Some(poll);
+        rendered_frame(&mut runtime, 0.0);
+        let before = runtime.state.meter.snapshot();
+        display.position = (0, 0);
+        display.scale = 1.5;
+        assert!(runtime.state.set_monitor(display.clone()));
+        assert!(rendered_frame(&mut runtime, 0.1));
+        let placed = runtime
+            .elements()
+            .into_iter()
+            .find(|e| e.key.as_deref() == Some("widget-r"))
+            .expect("retained widget");
+        assert_eq!(placed.target[0], -200.0);
+        assert!(Arc::ptr_eq(
+            runtime.state.frames.as_ref().expect("retained photos"),
+            &frames
+        ));
+        assert_eq!(runtime.state.meter.snapshot().design, before.design + 1);
+        display.primary = true;
+        assert!(!runtime.state.set_monitor(display));
+        assert!(!rendered_frame(&mut runtime, 0.1));
     }
 }

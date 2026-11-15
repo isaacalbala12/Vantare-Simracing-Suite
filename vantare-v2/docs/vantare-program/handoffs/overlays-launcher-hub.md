@@ -9,6 +9,19 @@ lint y508 tests web PASS tras rebase sobre #2363 fusionado. Sin mensajes nuevos:
 sin reservar. D hace la UI; CI/revisión pendientes en el PR draft.
 Después D111; preview espera Rune F1. Sin merge, promoción ni release propios.
 
+## VANTA-144 · Relative y monitores de B conectados (15/11/2026)
+
+#2357 se reapila sobre #2349 8a313ac0f y nightly dfa431062. Conserva intactos
+monitores.rs/topologia_windows.rs de B (#2356). La factoría común host::window
+inyecta fuentes y contadores en cada ventana dinámica. Un cambio geométrico
+invalida la colocación usando la foto retenida y se cuenta como diseño; primary
+solo actualiza metadatos. Los contadores se registran al destruir cada superficie,
+incluidas las retiradas internamente. El observador de B mantiene su política.
+Prueba CPU añadida: cambiar origen/DPI recoloca el widget sin perder FrameSet;
+cambiar solo primary no cambia el dibujo. Revalidación de ambos workspaces en
+una reserva de cola, dos jobs, sin gráficos. Los resultados de 36 CPU anteriores
+siguen documentados abajo; se registra la nueva cifra al terminar esta pasada.
+
 ## VANTA-138 · D031, fecha y avisos de exploración (15/11/2026)
 
 Contrato aprobado por el orquestador: `CatalogView.lastScan` es null o contiene fecha real
@@ -148,10 +161,10 @@ ejecución del producto en el servidor; F0 solo en el horario del orquestador.
 
 Worker A, PR #2357, código validado ce94f45025263606d38fadc9cd52e87c0275d33e.
 Rama `vantareapp/isa-2333-relative-vantare`, worktree propio D:, apilada sobre
-#2349, head 39d4ad6f57e72ba07af0f0edc60618dca6bd7f41. Base nightly 8ea2e9741,
+#2349, head 8a313ac0f97ff526bd42f280990ceb20323fd39d. Base nightly dfa431062,
 incluido el cierre F0 #2348: preview local sigue bloqueado en distribución.
 #2344 conserva su head revisado 5e11dd339; sigue abierto a la última lectura.
-Tras su squash, retirar la base combinada 0a3af2785 de #2349 con --onto y después
+Tras su squash, retirar la base combinada 063b1b213 de #2349 con --onto y después
 reapilar los commits propios de #2357 sobre el nuevo head de la conexión.
 
 Relative Vantare consume la proyección existente de domain y el FrameSet de

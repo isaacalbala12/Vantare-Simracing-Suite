@@ -20,7 +20,7 @@ negativo), tamaño y DPI de cada monitor;
 las claves no dependen del nombre del monitor. Usa click-through, siempre encima,
 sin foco/activación, ni entrada en Alt-Tab/barra de tareas en Windows. Los ajustes
 nativos se aplican sobre el handle prestado de Rune; un error cierra el proceso.
-`--start-hidden` crea las ventanas ocultas. No hay widgets ni capturas todavía.
+`--start-hidden` crea las ventanas ocultas. Relative Vantare está conectado; el modo captura corresponde al PR 7.
 El arreglo de conectar/desconectar monitores está en
 [#2346](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2346)
 (padre #2333); su comprobación física sigue siendo obligatoria antes de F2.
@@ -179,7 +179,7 @@ datos reales. La prueba comprueba:
 3. Siempre encima, sin entrada en Alt-Tab o barra de tareas; OBS y VRR pendientes de prueba real.
 4. Inicio oculto sin flash. Las nuevas solicitudes de presentación del Hub muestran/ocultan sin activar.
 5. Cerrar el supervisor termina todas las ventanas y el proceso; repetir con el padre vivo y cierre local.
-6. Registrar fallos nativos y consumo/frames de reposo. Los contadores de presentación y los widgets llegan en PR 6/7.
+6. Registrar fallos nativos y consumo; con Relative Vantare quieto, cero frames nuevos en 30 segundos tras asentarse. Con diez Relative, comprobar cadencia y contadores por causa; sin transiciones, no superar el widget visible más rápido.
 7. Conectar/desconectar monitores, reordenarlos y cambiar resolución/DPI en marcha:
    queda una ventana por monitor, sin activar el Hub ni robar el foco. Comprobar
    que una retirada interna no termina el proceso y que reconectar vuelve a crear
@@ -191,7 +191,6 @@ datos reales. La prueba comprueba:
 10. Cambiar resolución o DPI justo después de conectar un monitor: comprobar
     que no se pierde la petición `place` anterior a la creación de la ventana.
 
-6. Registrar fallos nativos y consumo; con Relative Vantare quieto, cero frames nuevos en 30 segundos tras asentarse. Con diez Relative, comprobar cadencia y contadores por causa; sin transiciones, no superar el widget visible más rápido.
 
 Los tests CPU prueban la descripción de las ventanas, el EOF/cancelación con
 pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del

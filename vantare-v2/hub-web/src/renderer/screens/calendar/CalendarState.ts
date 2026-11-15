@@ -4,6 +4,7 @@ import type { CalendarView } from "../../../contract/generated/calendar";
 import type { HostError } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
+import { useVisibleNow } from "../../ui/useVisibleNow";
 export function useCalendar() {
   const { client } = useHost();
   const { data: core = offline } = useQuery({
@@ -18,7 +19,7 @@ export function useCalendar() {
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [failure, setFailure] = useState<HostError["kind"]>();
-  const [now, setNow] = useState(Date.now);
+  const now = useVisibleNow(1000, allowed);
   const generation = useRef(0),
     pending = useRef(false),
     access = useRef(allowed),
@@ -81,11 +82,6 @@ export function useCalendar() {
       generation.current++;
     };
   }, [allowed, read]);
-  useEffect(() => {
-    if (!allowed) return;
-    const clock = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(clock);
-  }, [allowed]);
   useEffect(() => {
     if (!client || !allowed) return;
     const unlisten = client.listen((message) => {

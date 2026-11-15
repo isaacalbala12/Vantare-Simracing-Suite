@@ -1,5 +1,5 @@
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CoreStatus,
   HomeView,
@@ -12,6 +12,7 @@ import { useUi } from "../../app/UiState";
 import { homeText as t } from "../../i18n/home";
 import { HomeLayout, HomeRail } from "../../ui/home/HomeLayout";
 import { profileChoice } from "../../ui/home/model";
+import { useVisibleNow } from "../../ui/useVisibleNow";
 import { snapshot } from "../launcher/editor-state";
 import { useNotifications } from "../notifications/NotificationsState";
 import { favoriteApps } from "./favorite-apps";
@@ -49,7 +50,8 @@ export default function Home() {
   const launching = useRef(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
-  const [now, setNow] = useState(() => new Date());
+  const stamp = useVisibleNow(60_000);
+  const now = useMemo(() => new Date(stamp), [stamp]);
   const go = useUi((s) => s.navigate);
   async function navigate(section: import("../../app/sections").Section) {
     if (section === "launcher" || section === "studio") {
@@ -128,10 +130,6 @@ export default function Home() {
       off();
     };
   }, [client, reload, hello?.demoName]);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
   const choice = profileChoice(
     view?.profiles ?? [],
     view?.favorite ?? null,

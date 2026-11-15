@@ -6,6 +6,7 @@ import {
 } from "../src/contract/calendar-config-validation";
 import {
   type CalendarAlerts,
+  calendarBandScheduleCases,
   calendarBandsLimit,
   calendarDefaultAlerts,
   calendarSlotsLimit,
@@ -13,7 +14,7 @@ import {
 import type { CoreStatus } from "../src/contract/generated/contract";
 import { isReply, isRequest } from "../src/contract/modules/calendar";
 import { calendarReference } from "../src/mock/calendar-reference";
-import { create } from "../src/mock/modules/calendar";
+import { bandRequiresSchedule, create } from "../src/mock/modules/calendar";
 import { starts } from "../src/renderer/screens/calendar/schedule";
 
 beforeEach(() => {
@@ -304,3 +305,50 @@ it("mock refuses a new explicit slot on a daily series", () => {
     }),
   ).toMatchObject({ kind: "failure", error: { kind: "rejected" } });
 });
+
+it("mock edits an existing band after expiry without weakening revision checks", () => {
+  vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
+  const { host, config } = mock("calendar-live-reference");
+  const alerts = structuredClone(config.alerts);
+  if (!alerts.bands[0] || !config.alertsRevision)
+    throw new Error("missing band");
+  alerts.bands[0] = {
+    ...alerts.bands[0],
+    from: alerts.bands[0].from + 30,
+    days: "weekend",
+    mode: "first",
+  };
+  const save = {
+    method: "calendar.alertsSave" as const,
+    alerts,
+    expectedRevision: config.alertsRevision,
+  };
+  const saved = host({ kind: "request", id: 2, request: save });
+  expect(saved).toMatchObject({
+    kind: "response",
+    result: { value: { alerts } },
+  });
+  expect(
+    host({
+      kind: "request",
+      id: 3,
+      request: { ...save, alerts: config.alerts },
+    }),
+  ).toMatchObject({ kind: "failure", error: { kind: "calendarConflict" } });
+  expect(
+    host({
+      kind: "request",
+      id: 4,
+      request: { method: "calendar.configLoad" },
+    }),
+  ).toMatchObject({ kind: "response", result: { value: { alerts } } });
+});
+
+it.each(calendarBandScheduleCases)(
+  "matches the native band identity rule: $name",
+  (sample) => {
+    expect(
+      bandRequiresSchedule([...sample.previousBands], sample.nextBand),
+    ).toBe(sample.requiresSchedule);
+  },
+);

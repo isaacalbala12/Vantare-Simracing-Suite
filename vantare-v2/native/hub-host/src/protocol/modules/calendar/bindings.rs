@@ -84,6 +84,11 @@ pub(crate) fn typescript() -> String {
 fn config_constants(text: &mut String) {
     constants!(
         text,
+        "calendarBandScheduleCases",
+        crate::calendar::config::band_schedule_cases()
+    );
+    constants!(
+        text,
         "calendarRevisionLength",
         crate::calendar::config::REVISION_LENGTH
     );

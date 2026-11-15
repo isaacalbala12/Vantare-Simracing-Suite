@@ -488,3 +488,44 @@ impl State {
         self.write_config_document("calendar-alerts.json", &document)
     }
 }
+
+#[cfg(any(test, feature = "bindings"))]
+pub(crate) fn band_schedule_cases() -> Value {
+    let band = CalendarBand {
+        series_id: "daily".into(),
+        from: 600,
+        to: 720,
+        days: CalendarDays::All,
+        mode: CalendarBandMode::Each,
+    };
+    let mut edited = band.clone();
+    edited.from = 660;
+    edited.days = CalendarDays::Weekend;
+    edited.mode = CalendarBandMode::First;
+    let mut renamed = edited.clone();
+    renamed.series_id = "different".into();
+    let cases = [
+        ("new", vec![], band.clone()),
+        ("unchanged", vec![band.clone()], band.clone()),
+        ("edited-existing", vec![band.clone()], edited),
+        ("renamed-is-new", vec![band], renamed),
+    ];
+    Value::Array(
+        cases
+            .into_iter()
+            .map(|(name, bands, next)| {
+                let old = CalendarAlerts {
+                    bands,
+                    ..Default::default()
+                };
+                let requires_schedule = old.band_requires_schedule(&next);
+                json!({
+                    "name": name,
+                    "previousBands": old.bands,
+                    "nextBand": next,
+                    "requiresSchedule": requires_schedule
+                })
+            })
+            .collect(),
+    )
+}

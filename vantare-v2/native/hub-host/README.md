@@ -571,3 +571,11 @@ quedan dentro del lector. La UI muestra un aviso genérico y no reconstruye deta
 ni categorías. Una finalización publica un evento aunque no cambie la lista de
 aplicaciones, para que la UI pueda consultar el catálogo actualizado. Un reloj
 fuera del rango de fechas representable devuelve una observación desconocida.
+
+## Edición de bandas existentes (D048)
+
+`calendar.alertsSave` permite modificar una banda ya guardada por `seriesId`,
+aunque no haya horario vigente. Cambiar franja, días o modo conserva su identidad.
+Crear o renombrar una serie sigue exigiendo horario activo; las tandas puntuales
+no cambian. Se mantienen validación, revisión/CAS y rechazo sin escritura ni
+reenvío automático. `calendarBandScheduleCases` comparte esta regla con el mock.

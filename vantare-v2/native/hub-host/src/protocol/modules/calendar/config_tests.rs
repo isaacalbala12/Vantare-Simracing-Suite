@@ -827,3 +827,103 @@ fn a_punctual_arm_must_identify_an_actual_future_departure_in_the_current_public
     ));
     assert!(!root.0.join("calendar-alerts.json").exists());
 }
+
+#[test]
+fn existing_band_edits_need_no_live_schedule_but_new_ids_still_do() {
+    let root = Root::new();
+    let original = CalendarAlerts {
+        bands: vec![CalendarBand {
+            series_id: "old-series".into(),
+            from: 600,
+            to: 720,
+            days: CalendarDays::All,
+            mode: CalendarBandMode::Each,
+        }],
+        ..Default::default()
+    };
+    root.seed(
+        "calendar-alerts.json",
+        &serde_json::to_vec(&original).expect("existing band"),
+    );
+    let mut state = root.state();
+    assert!(state.view.official.is_none() && state.view.fallback.is_none());
+    let revision = state.config().alerts_revision.expect("observed revision");
+    let mut edited = original.clone();
+    edited.bands[0].from = 900;
+    edited.bands[0].to = 1080;
+    edited.bands[0].days = CalendarDays::Weekend;
+    edited.bands[0].mode = CalendarBandMode::First;
+    let saved = state
+        .alerts_save_at(&edited, &revision, 0)
+        .expect("edit existing without schedule");
+    assert_eq!(saved.alerts, edited);
+    let bytes = root.bytes("calendar-alerts.json");
+    assert!(matches!(
+        state.alerts_save_at(&original, &revision, 0),
+        Err(HostError::CalendarConflict { .. })
+    ));
+    assert_eq!(root.bytes("calendar-alerts.json"), bytes);
+    let current = saved.alerts_revision.expect("new revision");
+    let mut mixed = original.clone();
+    let mut new = original.bands[0].clone();
+    new.series_id = "new-series".into();
+    mixed.bands.push(new);
+    assert_eq!(
+        state.alerts_save_at(&mixed, &current, 0),
+        Err(HostError::CalendarScheduleUnavailable)
+    );
+    assert_eq!(root.bytes("calendar-alerts.json"), bytes);
+    let mut invalid = edited.clone();
+    invalid.bands[0].from = invalid.bands[0].to;
+    assert_eq!(
+        state.alerts_save_at(&invalid, &current, 0),
+        Err(HostError::Rejected)
+    );
+    let mut launch = edited.clone();
+    launch.auto_launch = true;
+    assert_eq!(
+        state.alerts_save_at(&launch, &current, 0),
+        Err(HostError::Rejected)
+    );
+    assert_eq!(root.bytes("calendar-alerts.json"), bytes);
+    let removed = state
+        .alerts_save_at(&CalendarAlerts::default(), &current, 0)
+        .expect("remove existing");
+    assert_eq!(removed.alerts.bands, Vec::<CalendarBand>::new());
+}
+
+#[test]
+fn existing_band_can_change_after_its_publication_expires() {
+    let root = Root::new();
+    let mut state = root.state();
+    let (id, now) = publication(&mut state);
+    let expired = date_millis(
+        &state
+            .view
+            .official
+            .as_ref()
+            .expect("publication")
+            .valid_until,
+    )
+    .expect("end time");
+    let mut alerts = CalendarAlerts {
+        bands: vec![CalendarBand {
+            series_id: id,
+            from: 600,
+            to: 720,
+            days: CalendarDays::All,
+            mode: CalendarBandMode::Each,
+        }],
+        ..Default::default()
+    };
+    let revision = state.config().alerts_revision.expect("initial revision");
+    let saved = state
+        .alerts_save_at(&alerts, &revision, now)
+        .expect("initial active band");
+    alerts.bands[0].from = 660;
+    let revision = saved.alerts_revision.expect("stored revision");
+    let saved = state
+        .alerts_save_at(&alerts, &revision, expired)
+        .expect("edit after expiry");
+    assert_eq!(saved.alerts, alerts);
+}

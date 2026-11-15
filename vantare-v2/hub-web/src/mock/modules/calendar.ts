@@ -3,6 +3,7 @@ import fixture from "../../../fixtures/calendar-demo.json";
 import { isCalendarAlerts } from "../../contract/calendar-config-validation";
 import {
   type CalendarAlerts,
+  type CalendarBand,
   type CalendarConfigView,
   type CalendarHistoryView,
   type CalendarSchedule,
@@ -27,6 +28,14 @@ import {
   calendarReferenceNow,
 } from "../calendar-reference";
 import type { MockContext, MockHandler } from "../context";
+
+// Band identity survives edits to its range, days and mode, matching the host.
+export function bandRequiresSchedule(
+  previous: CalendarBand[],
+  next: CalendarBand,
+): boolean {
+  return !previous.some((band) => band.seriesId === next.seriesId);
+}
 
 function alertValue(alerts: CalendarAlerts) {
   return JSON.stringify([
@@ -311,16 +320,8 @@ export function create(context: MockContext): MockHandler {
             Date.parse(schedule.validFrom) <= now &&
             now < Date.parse(schedule.validUntil),
         );
-        const bands = proposed.bands.filter(
-          (band) =>
-            !old.bands.some(
-              (previous) =>
-                previous.seriesId === band.seriesId &&
-                previous.from === band.from &&
-                previous.to === band.to &&
-                previous.days === band.days &&
-                previous.mode === band.mode,
-            ),
+        const bands = proposed.bands.filter((band) =>
+          bandRequiresSchedule(old.bands, band),
         );
         const slots = proposed.slots.filter(
           (slot) =>

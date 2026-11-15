@@ -1,5 +1,6 @@
 //! Common Vantare look data and primitives. Canonical inputs remain in native/ui.
 pub mod generated;
+pub mod paint;
 pub use generated::{Style, StylesNeo as Variant};
 use std::sync::{Arc, OnceLock};
 

@@ -3,89 +3,10 @@ use super::{
     Relative, RowLive,
     layout::{Footer, Item, Kind},
 };
-use crate::vantare::{Style, alpha};
-use rune::{Align, Color, El, Family, LiveText, Shape, TextStyle, canvas, el, row, text};
+use crate::vantare::alpha;
+use crate::vantare::paint::{Face, WHITE, fixed, font, label, pill};
+use rune::{Align, Color, El, LiveText, Shape, canvas, el, row, text};
 use vantare_domain::{DriverRating, format::Language, relative::Banner};
-const WHITE: Color = Color {
-    r: 1.0,
-    g: 1.0,
-    b: 1.0,
-    a: 1.0,
-};
-#[derive(Clone, Copy)]
-enum Face {
-    Body,
-    Display,
-    Mono,
-}
-fn font(s: &Style, face: Face, size: f32, height: f32, tracking: f32, weight: f32) -> TextStyle {
-    let family = match face {
-        Face::Body => "Inter",
-        Face::Display => s.fonts.display_family,
-        Face::Mono => s.fonts.mono_family,
-    };
-    TextStyle {
-        family: Family::Named(family),
-        features: "'tnum' 1",
-        line_height: height,
-        tracking,
-        ..TextStyle::new(size, weight)
-    }
-}
-#[allow(clippy::too_many_arguments)] // A single text primitive mirrors the canonical painter.
-fn label(
-    s: &Style,
-    value: &LiveText,
-    key: impl Into<String>,
-    width: f32,
-    height: f32,
-    face: Face,
-    size: f32,
-    weight: f32,
-    ink: Color,
-    align: Align,
-) -> El {
-    text(value.get().to_string())
-        .key(key)
-        .live_text(value)
-        .font(font(s, face, size, height, 0.0, weight))
-        .color(ink)
-        .size(width, height)
-        .align(align)
-        .truncate_fade_width(0.0)
-}
-fn fixed(s: &Style, value: &str, height: f32, size: f32, ink: Color) -> El {
-    text(value)
-        .font(font(
-            s,
-            Face::Body,
-            size,
-            height,
-            0.0,
-            s.fonts.regular_weight,
-        ))
-        .color(ink)
-        .h(height)
-}
-fn pill(s: &Style, value: &LiveText, key: impl Into<String>, fill: Color, ink: Color) -> El {
-    text(value.get().to_string())
-        .key(key)
-        .live_text(value)
-        .font(font(
-            s,
-            Face::Body,
-            s.fonts.pill,
-            s.geometry.pill_height,
-            s.fonts.pill_tracking,
-            s.fonts.pill_weight,
-        ))
-        .color(ink)
-        .h(s.geometry.pill_height)
-        .pl(s.geometry.pill_padding)
-        .pr(s.geometry.pill_padding)
-        .fill(fill)
-        .radius(s.geometry.chip_radius)
-}
 pub(super) fn header_values(state: &Relative) -> [String; 6] {
     let es = state.prefs.language == Language::Es;
     let banner = state

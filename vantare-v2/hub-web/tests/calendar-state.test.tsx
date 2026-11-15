@@ -51,6 +51,41 @@ function mount(allowed = true, connected = false) {
   });
   return { ...hook, cache, core };
 }
+it("pauses the hidden visual clock but still receives authoritative calendar updates", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1000);
+  const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  try {
+    const value = calendarReference();
+    host.client.request.mockResolvedValue({ method: "calendar.load", value });
+    let receive!: (message: HostToUi) => void;
+    host.client.listen.mockImplementation((listener) => {
+      receive = listener;
+      return () => {};
+    });
+    const hook = mount();
+    await act(async () => {});
+    const before = hook.result.current.now;
+    hidden.mockReturnValue(true);
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    act(() => vi.advanceTimersByTime(20_000));
+    expect(hook.result.current.now).toBe(before);
+    const updated = { ...value, checked: 1234 };
+    act(() =>
+      receive({
+        kind: "event",
+        event: { topic: "calendarRefreshed", value: updated, error: null },
+      }),
+    );
+    expect(hook.result.current.view).toEqual(updated);
+    hidden.mockReturnValue(false);
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(hook.result.current.now).toBe(Date.now());
+    expect(host.client.request).toHaveBeenCalledTimes(1);
+  } finally {
+    hidden.mockRestore();
+  }
+});
 it("does not request local or remote data without calendar access", async () => {
   const hook = mount(false);
   await act(async () => {

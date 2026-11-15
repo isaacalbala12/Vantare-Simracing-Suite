@@ -1,5 +1,5 @@
 import { skipToken, useQuery } from "@tanstack/react-query";
-import { type ReactNode, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import type { CoreStatus } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { lock } from "../../app/navigation";
@@ -10,7 +10,12 @@ import { onboardingText as text } from "../../i18n/onboarding";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import { GateFrame } from "../../ui/GateFrame";
-import { OnboardingAccountIntro } from "./AccountIntro";
+
+const OnboardingAccountIntro = lazy(() =>
+  import("./AccountIntro").then((module) => ({
+    default: module.OnboardingAccountIntro,
+  })),
+);
 export function OnboardingGate({
   children,
 }: {
@@ -63,16 +68,24 @@ export function OnboardingGate({
       </GateFrame>
     );
   return (
-    <OnboardingAccountIntro
-      full
-      extended
-      studioReason={lock("studio", core.access)}
-      onLeave={() => {}}
-      onComplete={(privateSession, show) => {
-        // The same rights guard used by Inicio also applies after a successful save.
-        navigate(show || lock("studio", core.access) ? "home" : "studio");
-        setPassed({ privateSession });
-      }}
-    />
+    <Suspense
+      fallback={
+        <GateFrame controls={<WindowControls />}>
+          <Skeleton label={text.loading} />
+        </GateFrame>
+      }
+    >
+      <OnboardingAccountIntro
+        full
+        extended
+        studioReason={lock("studio", core.access)}
+        onLeave={() => {}}
+        onComplete={(privateSession, show) => {
+          // The same rights guard used by Inicio also applies after a successful save.
+          navigate(show || lock("studio", core.access) ? "home" : "studio");
+          setPassed({ privateSession });
+        }}
+      />
+    </Suspense>
   );
 }

@@ -98,7 +98,9 @@ sirve para compilación e iteración. No se abren ventanas delante de Isaac.
 ## F0 manual pendiente: PC de juego, únicamente en el horario de Isaac
 
 No se ha ejecutado esta prueba. El orquestador dará la hora antes de iniciar
-cualquier ventana. Preparar una carpeta QA con núcleo y ejecutable Rune hermanos;
+cualquier ventana. Fijar VANTARE_NATIVE_DATA_ROOT absoluto, LOCALAPPDATA y APPDATA
+a carpetas QA vacías y separadas de los datos del usuario. Preparar una carpeta
+QA con núcleo y ejecutable Rune hermanos;
 usar `--overlays-bin` del supervisor existente y fuente `local`, sin cuentas ni
 datos reales. La prueba comprueba:
 

@@ -1,3 +1,41 @@
+## VANTA-144 · PR 5: proceso y ventanas, parte independiente (15/11/2026)
+
+Worker B, #2333, ADR 0110 §9; continuación autorizada por el orquestador.
+Rama `vantareapp/isa-2333-overlays-rune-proceso`, base nightly e56c79b26,
+incluido el squash 13981d4b9 de #2343. Retirado su antiguo head 23f629586
+mediante --onto. Código d13cdcef3; PR draft en preparación.
+
+Arranque con cinturón antes de leer argumentos; CLI aislada de los modos
+gráficos de Rune. Una superficie transparente por monitor válido inicial,
+sin foco ni activación, con DPI/orígenes físicos y claves únicas. Windows
+aplica NOACTIVATE/TOOLWINDOW, conserva click-through y siempre encima; un fallo
+nativo cierra. EOF/error del supervisor cierra todas las ventanas. La espera
+del lector es cancelable y el cierre une los hilos aunque el padre siga vivo.
+Feed de derechos existente, autorización equivalente a ui::rights::allowed_at,
+sin refrescar por renovar solo TTL. Core admite el ejecutable Rune hermano
+como lector; únicamente Services puede mutar. Tests con identidades QA,
+sin ejecutar marcadores ni usar cuentas reales.
+
+Entrega completa de la parte independiente solicitada: no enlaza UI/GPUI ni
+duplica tipos. Diseño/Presentation, fuente/DemandHandle, cadencias y geometría
+esperan los módulos de PR 3; el README fija las APIs actuales de UI de referencia.
+El marco no dibuja widgets; --layout/campañas fallan explícitamente antes de
+crear ventanas. Nada de instalador, distribución, selector de motor o releases.
+
+Checks: Rune Clippy y 13 tests CPU PASS Windows; Clippy y 12 CPU PASS Mac
+(el caso adicional de Windows valida stdin no-pipe). Runtime -Full: Clippy y
+978 tests PASS, 14 omitidos por perfiles; Engineer/Storage y Services incluidos.
+Telemetría: 34 PASS, 1 omitido por perfil. Licencias: 6 tests, 425 paquetes PASS;
+sin dependencias nuevas ni cambios de lock. Formato/diff-check PASS. Último
+build normal de Rune sobre la base actual en cola; estado final en el PR.
+
+Mac: la segunda pasada se detuvo antes de compilar al ver 11,58 GiB libres.
+Se borró solo nuestro target isa-2333-rune-b ya probado: volvió a 13,05 GiB.
+No se tocaron otros targets ni archivos de Isaac. No se abrió ninguna ventana
+ni se ejecutó el producto. F0/lifecycle gráfico, foco, OBS y VRR pendientes:
+solo PC de juego y únicamente cuando el orquestador dé el horario de Isaac.
+Plane sigue a cargo del orquestador; CI/revisión y SHA final se enlazan en el PR.
+
 ## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
 
 Worker B, #2333, ADR 0110 §9. PR

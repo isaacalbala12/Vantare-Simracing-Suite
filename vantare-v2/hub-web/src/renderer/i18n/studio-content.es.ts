@@ -1,4 +1,5 @@
 export const studioContentText = {
+  pedalGap: "Separaci\u00f3n entre barras",
   columns: "Columnas",
   sessions: "Columnas por sesión",
   reset: "Restablecer preset",
@@ -50,6 +51,8 @@ export const studioContentText = {
   },
   widths: { auto: "Automático", xs: "XS", sm: "S", md: "M", lg: "L" },
   timeNames: { normal: "Completo", compact: "Compacto" },
+  invalidDecimal: (min: number, max: number) =>
+    `Introduce un valor entre ${min} y ${max}.`,
   invalidNumber: (min: number, max: number) =>
     `Introduce un número entero entre ${min} y ${max}.`,
   labels: {

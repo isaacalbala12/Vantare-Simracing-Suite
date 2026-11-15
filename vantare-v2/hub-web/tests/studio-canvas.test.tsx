@@ -191,7 +191,11 @@ it("captures pointer movement and writes only after pointerup", async () => {
 });
 it("keeps the plane and scroll fixed while a captured draft crosses zero", async () => {
   const spy = vi.spyOn(Client.prototype, "request");
-  const { move, container } = await mount();
+  const { container } = await mount();
+  const move = container.querySelector<HTMLButtonElement>(
+    'button[data-canvas-handle="0"]',
+  );
+  if (!move) throw Error("resize handle missing");
   const plane = container.querySelector<HTMLElement>(".v-studio-canvas-plane");
   const viewport = container.querySelector<HTMLElement>(
     ".v-studio-canvas-viewport",

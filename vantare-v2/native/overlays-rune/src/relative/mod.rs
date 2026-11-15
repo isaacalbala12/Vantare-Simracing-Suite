@@ -402,7 +402,7 @@ impl Relative {
         for (index, (live, text)) in self.header.iter().zip(values).enumerate() {
             let changed = live.set(text);
             out.pixels |= changed;
-            out.build |= index == 1 && changed;
+            out.build |= index <= 1 && changed;
         }
         let animated = self.animate(clock);
         out.build |= animated.build;
@@ -581,14 +581,14 @@ mod tests {
         let before = painter.rows[&3].position.get();
         snapshot.state.cars[2].relative_s = Reliable(-0.5);
         painter.update(&snapshot, 1.0);
-        for n in 1..=100 {
+        for n in 1..=160 {
             snapshot.sequence += 1;
             snapshot.state.cars[2].number = n.to_string();
             painter.update(&snapshot, 1.0 + f64::from(n) / 100.0);
         }
         let row = &painter.rows[&3];
         assert_ne!(row.position.get(), before);
-        assert!(!row.y.active(2.0));
+        assert!(!row.y.active(2.6));
         assert!(row.flashing.is_none());
         snapshot.state.cars.retain(|c| c.id.0 != 3);
         painter.update(&snapshot, 3.0);

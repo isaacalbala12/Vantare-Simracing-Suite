@@ -52,7 +52,7 @@ fn label(
         .color(ink)
         .size(width, height)
         .align(align)
-        .truncate()
+        .truncate_fade_width(0.0)
 }
 fn fixed(s: &Style, value: &str, height: f32, size: f32, ink: Color) -> El {
     text(value)
@@ -387,37 +387,25 @@ fn car_row(state: &Relative, live: &RowLive) -> El {
                 let used = rune::text::measure(&value.get(), &[], body, None)
                     .0
                     .min(available);
-                let name = label(
-                    s,
-                    value,
-                    key,
-                    used,
-                    h,
-                    Face::Body,
-                    f.body,
-                    400.0,
-                    c.text,
-                    Align::Start,
-                );
+                let name = text(value.get().to_string())
+                    .key(key)
+                    .font(body)
+                    .color(c.text)
+                    .size(used, h)
+                    .truncate();
                 let mut names =
                     el().size(available, h)
                         .child(name.pin(Some(0.0), Some(0.0), None, None));
                 let rest = available - used;
                 if state.options.cols.vehicle && rest > 12.0 {
                     names = names.child(
-                        label(
-                            s,
-                            &live.detail,
-                            format!("detail-{}", live.data.id.0),
-                            rest,
-                            h,
-                            Face::Body,
-                            f.small,
-                            400.0,
-                            c.muted,
-                            Align::Start,
-                        )
-                        .pin(Some(used), Some(0.0), None, None),
+                        text(live.detail.get().to_string())
+                            .key(format!("detail-{}", live.data.id.0))
+                            .font(font(s, Face::Body, f.small, h, 0.0, 400.0))
+                            .color(c.muted)
+                            .size(rest, h)
+                            .truncate()
+                            .pin(Some(used), Some(0.0), None, None),
                     );
                 }
                 let mut cell = row()
@@ -534,7 +522,6 @@ fn header(state: &Relative, y: f32) -> El {
     };
     let title = text(state.header[0].get().to_string())
         .key("header-title")
-        .live_text(&state.header[0])
         .font(font(
             s,
             face,
@@ -550,7 +537,6 @@ fn header(state: &Relative, y: f32) -> El {
         .truncate();
     let range = text(state.header[1].get().to_string())
         .key("header-range")
-        .live_text(&state.header[1])
         .font(font(
             s,
             face,

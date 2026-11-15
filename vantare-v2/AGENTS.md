@@ -145,6 +145,11 @@ Los roles, criterios de elección y encargos viven en
 [la skill de orquestación](.claude/skills/orquestacion/SKILL.md).
 Leerla antes de planificar o delegar; respetar el modelo autorizado en el encargo.
 
+Cómo trabajar rápido sin perder calidad (paralelismo, compilación, capturas,
+revisiones, diseño previo, medición y estimaciones) está en
+[la skill de desarrollo rápido](.claude/skills/desarrollo-rapido/SKILL.md).
+Todo agente la lee al empezar un encargo.
+
 ## Preautorización inerte de la rama automática (ISA-318)
 
 - La corrección automática del Testing Center usa exclusivamente

@@ -19,14 +19,14 @@ import {
 import { type Box, sameBox } from "./gesture-state";
 
 type Model = ReturnType<typeof useCanvas>;
-type Held = {
+type Held = Readonly<{
   key: string;
   shift: boolean;
   started: number;
   base: Box;
   direction: Pair;
   handle?: Pair;
-};
+}>;
 type Pointer = {
   id: number;
   target: HTMLElement;

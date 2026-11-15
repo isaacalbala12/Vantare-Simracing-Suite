@@ -21,6 +21,25 @@ la geometría de partida, el lienzo, los derechos o el estado en pista, se
 descarta el gesto. Un conflicto adopta `current`, muestra el aviso y solicita
 una lectura; nunca reenvía la escritura automáticamente.
 
+Un error de resultado incierto (incluido timeout) también solicita `studio.get`.
+El proveedor mantiene un bloqueo de escrituras hasta una lectura correcta,
+incluso al alternar Lienzo/Widget. Si falla la lectura, «Volver a cargar» solo
+repite esa lectura; no se puede descartar el bloqueo ni repetir una mutación
+pendiente. El borrador y la intención en cola se descartan. «Actualizado» solo
+se anuncia si la vista recibida coincide con el objetivo mediante `sameBox`;
+un conflicto explícito nunca se convierte en confirmación de guardado.
+
+Mayús se toma al empezar el gesto y no cambia por las repeticiones del sistema.
+Un fallo de `setPointerCapture` cancela sin escribir; una flecha que no puede
+iniciar el gesto se propaga sin consumir. El teclado y los botones comparten
+`geometry.nudge`; la repetición agrupa sus pasos manteniendo el mismo clamp.
+
+**Redondeo:** se conservan las coordenadas fraccionarias del contrato v37.
+El GPUI congelado redondea al terminar el empujón, pero el módulo canónico de
+Rust `studio::geometry::nudge` conserva fracciones. No se introduce una regla
+distinta solo en Electron: redondear también el dato requeriría acordarlo en
+el módulo canónico y sus vectores. Solo se redondea la etiqueta visual.
+
 ## Igualdad con Rust
 
 `tests/studio-geometry.test.ts` recorre **todos** los elementos de las ocho

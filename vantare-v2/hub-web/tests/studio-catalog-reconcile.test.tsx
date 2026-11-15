@@ -17,6 +17,7 @@ import {
 
 const fake = vi.hoisted(() => ({
   request: vi.fn(),
+  remember: vi.fn(),
   listen: vi.fn(() => () => {}),
   subscribe: vi.fn(() => () => {}),
 }));
@@ -25,7 +26,7 @@ vi.mock("../src/renderer/app/Host", () => ({
 }));
 vi.mock("../src/renderer/app/UiState", () => ({
   useUi: (selector: (state: unknown) => unknown) =>
-    selector({ studioLastSelected: null, rememberStudio: () => {} }),
+    selector({ studioLastSelected: null, rememberStudio: fake.remember }),
 }));
 afterEach(() => {
   cleanup();

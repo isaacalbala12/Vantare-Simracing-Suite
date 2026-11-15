@@ -19,7 +19,13 @@ sintaxis/contratos de 41 guiones y 472 huellas retiradas PASS.
 Lock del kit: solo desaparece vantare-inicio-rune, sin subir dependencias.
 Suite ampliada de .github/scripts: 173 tests, 9 errores en marketing Postgres
 por ausencia de /bin/bash en Windows; fuera del cambio, sin modificar tests.
-Validación Rust del contador/IPC/profiling solicitada por cola; CI pendiente.
+Formato Rust y siete comprobaciones PowerShell sintéticas PASS.
+Validación Rust del contador/IPC/profiling solicitada por cola.
+PR [#2337](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2337),
+código 601ddb4cb: primer intento CI falla porque el runner no tiene el commit
+histórico GPUI fast tras squash. Corregido con fetch por SHA exacto de las
+recetas fijadas; no cambian fuentes ni hashes. Resultado final de checks y
+head verificable en el PR y en #2333. Revisión del orquestador pendiente.
 No se ejecutó gráfica. Sin merge, release ni promoción; Plane sigue En curso.
 
 Siguiente: revisión del PR 1 por el orquestador. PR 3 espera el merge de la

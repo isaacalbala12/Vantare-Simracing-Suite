@@ -11,7 +11,7 @@ mod topologia_windows;
 pub mod feed;
 pub mod scene;
 
-mod relative;
+pub mod relative;
 mod renderer;
 pub mod stats;
 pub mod vantare;

@@ -376,6 +376,7 @@ pub(super) struct Labels {
     pub loss: String,
     pub rows: Vec<Option<RowLabels>>,
 }
+#[derive(Clone)]
 pub(super) struct RowLabels {
     pub number: String,
     pub driver: String,
@@ -436,35 +437,47 @@ impl Labels {
                 .into_iter()
                 .flat_map(|b| &b.slots)
                 .map(|row| {
-                    row.as_ref().map(|row| RowLabels {
-                        number: if row.number.is_empty() {
-                            PLACEHOLDER.to_owned()
-                        } else {
-                            format!("#{}", row.number)
-                        },
-                        driver: if row.side == Side::Player {
-                            if es { "Tú" } else { "You" }.into()
-                        } else {
-                            driver_text(&row.driver, options)
-                        },
-                        detail: vehicle_detail(&row.vehicle, &row.number, &options.cols),
-                        laps: row
-                            .lap_delta
-                            .filter(|n| *n != 0)
-                            .map_or_else(String::new, |n| {
-                                format!(
-                                    "{}{} {}",
-                                    if n < 0 { "−" } else { "+" },
-                                    n.unsigned_abs(),
-                                    if es { "V" } else { "L" }
-                                )
-                            }),
-                        trend: row.trend.as_ref().map_or_else(String::new, |t| {
-                            format!("{} {}", if t.closing { "▲" } else { "▼" }, t.value)
-                        }),
-                    })
+                    row.as_ref()
+                        .map(|row| RowLabels::new(row, options, language))
                 })
                 .collect(),
+        }
+    }
+}
+
+impl RowLabels {
+    pub(super) fn new(
+        row: &vantare_domain::relative::Row,
+        options: &Options,
+        language: Language,
+    ) -> Self {
+        let es = language == Language::Es;
+        Self {
+            number: if row.number.is_empty() {
+                PLACEHOLDER.to_owned()
+            } else {
+                format!("#{}", row.number)
+            },
+            driver: if row.side == Side::Player {
+                if es { "Tú" } else { "You" }.into()
+            } else {
+                driver_text(&row.driver, options)
+            },
+            detail: vehicle_detail(&row.vehicle, &row.number, &options.cols),
+            laps: row
+                .lap_delta
+                .filter(|n| *n != 0)
+                .map_or_else(String::new, |n| {
+                    format!(
+                        "{}{} {}",
+                        if n < 0 { "−" } else { "+" },
+                        n.unsigned_abs(),
+                        if es { "V" } else { "L" }
+                    )
+                }),
+            trend: row.trend.as_ref().map_or_else(String::new, |t| {
+                format!("{} {}", if t.closing { "▲" } else { "▼" }, t.value)
+            }),
         }
     }
 }

@@ -1,3 +1,23 @@
+## VANTA-144 · escena y coordenadas aprobadas de #2357 (16/11/2026)
+
+El nuevo suborquestador recibe a A; la horda la dirige él. #2357 completa la revisión
+de 3ce28f10e, con CI verde. Raíz aprueba a través del suborquestador: mod conserva
+proyección/pausa; scene contiene movimiento y muestreo puro; render pinta y deriva
+build en una sola comparación. VisualRow añade traffic_opacity, independiente del
+destello alert. Motion::update recibe las posiciones del layout canónico y slot
+documenta que es una coordenada interpolada, no un índice. Estos dos ajustes
+conservan las capas superpuestas y el desplazamiento al aparecer/desaparecer
+la banda de GPUI. Por cola Windows/Rust 1.99.1/dos jobs: formato, Clippy,
+56 tests CPU (54 lib + 2 main), 5 de política de distribución, enlace sin ejecutar
+y auditoría de 428 paquetes PASS; tokens y ocho tests Python PASS.
+Rebase sobre nightly fbc516c1e; único conflicto en este handoff, conservados
+ambos bloques completos. El código Rune y sus dependencias conservan exactamente
+el contenido validado en f0c0700ca. Head final y CI se recogen en el PR.
+Comparación visual pendiente en la tanda del PC; servidor sin gráficos.
+La plantilla recoge piezas reutilizables, sin lanzar workers. El test/nits de
+Standings están preparados en la rama de #2344 sobre nightly 6dce4ea10,
+sin validar ni empujar; #2357 tiene prioridad. Plane sin cambios.
+
 ## VANTA-144 · revisión de #2357 tras integrar #2349 (15/11/2026)
 
 #2349 fusionado por el orquestador en nightly como 529f1374ba9bff6d6d228c915fa8971626222cba;

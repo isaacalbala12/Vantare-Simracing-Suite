@@ -1,13 +1,391 @@
-//! Vantare presentation; data projection and finite motion live in the parent.
+//! Vantare paints the shared Relative scene; retained Rune values stay in this Look.
 use super::{
-    Relative, RowLive,
+    Update,
     layout::{Footer, Item, Kind},
 };
 use crate::vantare::alpha;
 use crate::vantare::paint::{Face, WHITE, fixed, font, label, pill};
 use rune::{Align, Color, El, LiveText, Shape, canvas, el, row, text};
-use vantare_domain::{DriverRating, format::Language, relative::Banner};
-pub(super) fn header_values(state: &Relative) -> [String; 6] {
+use vantare_domain::{DriverRating, relative::Banner};
+
+use super::{
+    layout::{self, Labels, Options, Plan},
+    scene::{AlertKind, Scene},
+};
+use crate::vantare::Style;
+use rune::Live;
+use std::{collections::BTreeMap, sync::Arc};
+use vantare_domain::{
+    CarId,
+    format::{Language, Preferences},
+    geometry::Size,
+    relative::{Board, Row},
+};
+
+const CLEAR: Color = Color {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 0.0,
+};
+struct RowLive {
+    data: Arc<Row>,
+    texts: [LiveText; 8],
+    detail: LiveText,
+    inks: [Live<Color>; 8],
+    position: Live<[f32; 2]>,
+    opacity: Live<f32>,
+    pulse: Live<Color>,
+    pulse_end: Live<Color>,
+    flash: Live<Color>,
+    flash_end: Live<Color>,
+    own: Live<f32>,
+    active: bool,
+}
+struct DotLive {
+    id: CarId,
+    class: String,
+    player: bool,
+    position: Live<[f32; 2]>,
+}
+
+#[derive(PartialEq)]
+struct RowStructure {
+    id: CarId,
+    class: String,
+    player: bool,
+    pits: bool,
+    active: bool,
+    laps: Option<i32>,
+    rating: Option<DriverRating>,
+    intrinsic: [String; 3],
+}
+#[derive(PartialEq)]
+struct Structure {
+    plan: Plan,
+    banner: Option<Banner>,
+    paused: bool,
+    header: [String; 2],
+    rows: Vec<RowStructure>,
+    dots: Vec<(CarId, String, bool)>,
+}
+
+pub(super) struct Painter {
+    prefs: Preferences,
+    options: Options,
+    style: Arc<Style>,
+    board: Arc<Board>,
+    pub(super) plan: Plan,
+    pub(super) labels: Labels,
+    rows: BTreeMap<u32, RowLive>,
+    order: Vec<u32>,
+    dots: BTreeMap<u32, DotLive>,
+    dot_order: Vec<u32>,
+    pub(super) header: [LiveText; 6],
+    paused: bool,
+}
+impl Painter {
+    pub fn new(
+        settings: &vantare_domain::widget_settings::relative::Settings,
+        prefs: Preferences,
+        scene: &Scene,
+    ) -> Self {
+        let style = Style::compiled();
+        let options = Options::from_settings(settings);
+        let mut painter = Self {
+            prefs,
+            plan: layout::plan(Some(&scene.board), &options, &style),
+            labels: Labels::new(Some(&scene.board), &options, prefs.language),
+            options,
+            style,
+            board: scene.board.clone(),
+            rows: BTreeMap::new(),
+            order: Vec::new(),
+            dots: BTreeMap::new(),
+            dot_order: Vec::new(),
+            header: std::array::from_fn(|_| LiveText::new("")),
+            paused: scene.paused,
+        };
+        painter.sync(scene);
+        painter
+    }
+    pub fn size(&self) -> Size {
+        Size {
+            width: self.plan.width,
+            height: self.plan.height + if self.paused { 22.0 } else { 0.0 },
+        }
+    }
+    pub fn plan_height(&self) -> f32 {
+        self.plan.height
+    }
+    pub fn has_strip(&self) -> bool {
+        self.options.cols.strip
+    }
+    pub fn targets(&self, board: &Board) -> Vec<f32> {
+        layout::plan(Some(board), &self.options, &self.style)
+            .items
+            .into_iter()
+            .filter_map(|(y, item)| {
+                matches!(item, Item::Slot(_) | Item::Skeleton(_, _)).then_some(y)
+            })
+            .collect()
+    }
+    pub fn view(&self) -> El {
+        view(self)
+    }
+    fn structure(&self) -> Structure {
+        Structure {
+            plan: self.plan.clone(),
+            banner: self.board.banner.clone(),
+            paused: self.paused,
+            header: [
+                self.header[0].get().to_string(),
+                self.header[1].get().to_string(),
+            ],
+            rows: self
+                .order
+                .iter()
+                .map(|id| {
+                    let live = &self.rows[id];
+                    RowStructure {
+                        id: live.data.id,
+                        class: live.data.class.clone(),
+                        player: live.data.is_player,
+                        pits: live.data.in_pits,
+                        active: live.active,
+                        laps: self
+                            .options
+                            .cols
+                            .has(Kind::Laps)
+                            .then_some(live.data.lap_delta)
+                            .flatten()
+                            .filter(|n| *n != 0)
+                            .map(i32::signum),
+                        rating: self
+                            .options
+                            .cols
+                            .has(Kind::Rating)
+                            .then_some(live.data.rating)
+                            .flatten(),
+                        intrinsic: [
+                            live.texts[Kind::Driver as usize].get().to_string(),
+                            if self.options.cols.has(Kind::Number) {
+                                live.texts[Kind::Number as usize].get().to_string()
+                            } else {
+                                String::new()
+                            },
+                            if self.options.cols.vehicle {
+                                live.detail.get().to_string()
+                            } else {
+                                String::new()
+                            },
+                        ],
+                    }
+                })
+                .collect(),
+            dots: self
+                .dot_order
+                .iter()
+                .map(|id| {
+                    let d = &self.dots[id];
+                    (d.id, d.class.clone(), d.player)
+                })
+                .collect(),
+        }
+    }
+    /// The only build decision: compare structure, while fixed-size values stay Live.
+    pub fn sync(&mut self, scene: &Scene) -> Update {
+        let before = self.structure();
+        let mut pixels = false;
+        self.board = scene.board.clone();
+        self.paused = scene.paused;
+        self.plan = layout::plan(Some(&scene.board), &self.options, &self.style);
+        self.labels = Labels::new(Some(&scene.board), &self.options, self.prefs.language);
+        self.order.clear();
+        for visual in &scene.rows {
+            let row = &visual.row;
+            let label = scene
+                .board
+                .slots
+                .iter()
+                .position(|slot| slot.as_ref().is_some_and(|r| r.id == row.id))
+                .and_then(|index| self.labels.rows[index].clone())
+                .unwrap_or_else(|| layout::RowLabels::new(row, &self.options, self.prefs.language));
+            let mut values = Self::values(row, &label, self.prefs.language);
+            if scene.board.banner == Some(Banner::FullCourseYellow) {
+                values[Kind::Trend as usize].clear();
+            }
+            let colors = Self::inks(row, &scene.board, &self.style);
+            let live = self.rows.entry(row.id.0).or_insert_with(|| RowLive {
+                data: row.clone(),
+                texts: values.clone().map(LiveText::new),
+                detail: LiveText::new(label.detail.clone()),
+                inks: colors.map(Live::new),
+                position: Live::new([0.0, 0.0]),
+                opacity: Live::new(1.0),
+                pulse: Live::new(CLEAR),
+                pulse_end: Live::new(CLEAR),
+                flash: Live::new(CLEAR),
+                flash_end: Live::new(CLEAR),
+                own: Live::new(1.0),
+                active: true,
+            });
+            for (index, kind) in [
+                Kind::Position,
+                Kind::Number,
+                Kind::Driver,
+                Kind::Laps,
+                Kind::Rating,
+                Kind::Safety,
+                Kind::Trend,
+                Kind::Gap,
+            ]
+            .iter()
+            .enumerate()
+            {
+                let text = live.texts[index].set(values[index].clone());
+                let ink = live.inks[index].set(colors[index]);
+                if self.options.cols.has(*kind) {
+                    pixels |= text || ink;
+                }
+            }
+            let detail = live.detail.set(label.detail);
+            pixels |= detail && self.options.cols.vehicle;
+            pixels |= live.position.set([0.0, visual.slot]);
+            pixels |= live.opacity.set(visual.opacity);
+            let variant = self.options.variant(&self.style);
+            let (from, to) = if variant.player_white > 0.0 {
+                (0.3, 0.3)
+            } else {
+                (variant.player_from, variant.player_to)
+            };
+            let pulse = visual.traffic_opacity * self.style.relative.pulse_alpha;
+            let (flash, strength) = visual.alert.map_or((CLEAR, 0.0), |alert| {
+                (
+                    match alert.kind {
+                        AlertKind::Pits => self.style.colors.box_fill,
+                        AlertKind::Gain => self.style.colors.flash_gain,
+                        AlertKind::Loss => self.style.colors.flash_loss,
+                    },
+                    alert.opacity,
+                )
+            });
+            pixels |= live
+                .pulse
+                .set(alpha(self.style.colors.flash_loss, from * pulse));
+            pixels |= live
+                .pulse_end
+                .set(alpha(self.style.colors.flash_loss, to * pulse));
+            pixels |= live.flash.set(alpha(
+                flash,
+                from * strength * self.style.motion.flash_boost,
+            ));
+            pixels |= live
+                .flash_end
+                .set(alpha(flash, to * strength * self.style.motion.flash_boost));
+            pixels |= live
+                .own
+                .set(if row.is_player { 1.0 - strength } else { 1.0 });
+            live.data = row.clone();
+            live.active = scene.board.slots.iter().flatten().any(|r| r.id == row.id);
+            self.order.push(row.id.0);
+        }
+        self.rows.retain(|id, _| self.order.contains(id));
+        self.dot_order.clear();
+        if self.options.cols.strip {
+            for visual in &scene.strip {
+                let dot = &visual.dot;
+                let x = strip_x(
+                    &self.plan,
+                    &self.options,
+                    &self.style,
+                    f64::from(visual.offset_s),
+                );
+                let live = self.dots.entry(dot.id.0).or_insert_with(|| DotLive {
+                    id: dot.id,
+                    class: dot.class.clone(),
+                    player: dot.is_player,
+                    position: Live::new([x, 0.0]),
+                });
+                live.class = dot.class.clone();
+                live.player = dot.is_player;
+                pixels |= live.position.set([x, 0.0]);
+                self.dot_order.push(dot.id.0);
+            }
+        }
+        self.dots.retain(|id, _| self.dot_order.contains(id));
+        for (live, text) in self.header.iter().zip(header_values(self)) {
+            pixels |= live.set(text);
+        }
+        Update {
+            build: before != self.structure(),
+            pixels,
+        }
+    }
+    fn values(row: &Row, label: &layout::RowLabels, language: Language) -> [String; 8] {
+        let es = language == Language::Es;
+        let rating = match (row.rating, es) {
+            (None, _) => "—",
+            (Some(vantare_domain::DriverRating::Platinum), true) => "PLATINO",
+            (Some(vantare_domain::DriverRating::Platinum), false) => "PLATINUM",
+            (Some(vantare_domain::DriverRating::Gold), true) => "ORO",
+            (Some(vantare_domain::DriverRating::Gold), false) => "GOLD",
+            (Some(vantare_domain::DriverRating::Silver), true) => "PLATA",
+            (Some(vantare_domain::DriverRating::Silver), false) => "SILVER",
+            (Some(vantare_domain::DriverRating::Bronze), true) => "BRONCE",
+            (Some(vantare_domain::DriverRating::Bronze), false) => "BRONZE",
+        };
+        [
+            row.class_position.to_string(),
+            label.number.clone(),
+            label.driver.clone(),
+            label.laps.clone(),
+            rating.into(),
+            row.safety.to_string(),
+            label.trend.clone(),
+            row.rich_gap.to_string(),
+        ]
+    }
+    fn inks(row: &Row, board: &Board, style: &Style) -> [Color; 8] {
+        let c = &style.colors;
+        let gap = if board.banner == Some(Banner::FullCourseYellow) {
+            c.frozen
+        } else if row.is_player {
+            c.text
+        } else {
+            c.value
+        };
+        let trend = row
+            .trend
+            .as_ref()
+            .map_or(c.muted, |t| if t.good { c.gain } else { c.loss });
+        let laps = if row.lap_delta.unwrap_or(0) < 0 {
+            style.relative.laps_down_text
+        } else {
+            style.relative.laps_up_text
+        };
+        [
+            c.muted,
+            style.class(&row.class).ink,
+            c.text,
+            laps,
+            c.muted,
+            c.muted,
+            trend,
+            gap,
+        ]
+    }
+}
+fn strip_x(plan: &Plan, options: &Options, style: &Style, offset_s: f64) -> f32 {
+    let pad = options.variant(style).padding_x;
+    let span = plan.width - 2.0 * pad;
+    let t = ((offset_s + vantare_domain::relative::STRIP_S)
+        / (2.0 * vantare_domain::relative::STRIP_S))
+        .clamp(0.0, 1.0) as f32;
+    pad + t * span
+}
+
+pub(super) fn header_values(state: &Painter) -> [String; 6] {
     let es = state.prefs.language == Language::Es;
     let banner = state
         .board
@@ -82,7 +460,7 @@ pub(super) fn header_values(state: &Relative) -> [String; 6] {
         end,
     ]
 }
-pub(super) fn view(state: &Relative) -> El {
+pub(super) fn view(state: &Painter) -> El {
     let s = &state.style;
     let v = state.options.variant(s);
     let width = state.plan.width;
@@ -163,7 +541,7 @@ pub(super) fn view(state: &Relative) -> El {
     }
     root
 }
-fn highlight(state: &Relative, color: Color) -> El {
+fn highlight(state: &Painter, color: Color) -> El {
     let s = &state.style;
     let v = state.options.variant(s);
     let x = v.padding_x - s.geometry.player_bleed;
@@ -190,7 +568,7 @@ fn highlight(state: &Relative, color: Color) -> El {
         )
     }
 }
-fn car_row(state: &Relative, live: &RowLive) -> El {
+fn car_row(state: &Painter, live: &RowLive) -> El {
     let s = &state.style;
     let g = &s.geometry;
     let f = &s.fonts;
@@ -229,7 +607,7 @@ fn car_row(state: &Relative, live: &RowLive) -> El {
                 } else {
                     std::f32::consts::FRAC_PI_2
                 },
-                [(0.0, super::CLEAR), (1.0, super::CLEAR)],
+                [(0.0, CLEAR), (1.0, CLEAR)],
             )
     };
     root = root
@@ -371,7 +749,7 @@ fn car_row(state: &Relative, live: &RowLive) -> El {
                     Some(DriverRating::Gold) => (r.gold_fill, r.gold_text),
                     Some(DriverRating::Silver) => (r.silver_fill, r.silver_text),
                     Some(DriverRating::Bronze) => (r.bronze_fill, r.bronze_text),
-                    None => (super::CLEAR, c.even),
+                    None => (CLEAR, c.even),
                 };
                 if live.data.rating.is_some() {
                     pill(s, value, key, fill, ink)
@@ -428,7 +806,7 @@ fn car_row(state: &Relative, live: &RowLive) -> El {
     }
     root
 }
-fn header(state: &Relative, y: f32) -> El {
+fn header(state: &Painter, y: f32) -> El {
     let s = &state.style;
     let v = state.options.variant(s);
     let h = v.header_height - if v.header_rule > 0.0 { 6.0 } else { 0.0 };
@@ -521,7 +899,7 @@ fn header(state: &Relative, y: f32) -> El {
     }
     root
 }
-fn banner(state: &Relative) -> El {
+fn banner(state: &Painter) -> El {
     let s = &state.style;
     let g = &s.geometry;
     let c = &s.colors;
@@ -582,7 +960,7 @@ fn banner(state: &Relative) -> El {
     }
     node
 }
-fn strip(state: &Relative, y: f32) -> El {
+fn strip(state: &Painter, y: f32) -> El {
     let s = &state.style;
     let r = &s.relative;
     let pad = state.options.variant(s).padding_x;
@@ -649,7 +1027,7 @@ fn strip(state: &Relative, y: f32) -> El {
     }
     root
 }
-fn skeleton(state: &Relative, y: f32, index: usize, me: bool) -> El {
+fn skeleton(state: &Painter, y: f32, index: usize, me: bool) -> El {
     let s = &state.style;
     let g = &s.geometry;
     let v = state.options.variant(s);
@@ -707,7 +1085,7 @@ fn skeleton(state: &Relative, y: f32, index: usize, me: bool) -> El {
         None,
     ))
 }
-fn footer(state: &Relative, y: f32, kind: Footer) -> El {
+fn footer(state: &Painter, y: f32, kind: Footer) -> El {
     let s = &state.style;
     let g = &s.geometry;
     let c = &s.colors;

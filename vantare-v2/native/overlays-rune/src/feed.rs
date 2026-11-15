@@ -301,7 +301,7 @@ mod tests {
         let deadline = Instant::now() + Duration::from_secs(3);
         while publisher.demand_source().mask() == 0 {
             assert!(Instant::now() < deadline, "requested handshake");
-            // El handshake IPC no emite el waker de datos; evitar espera activa.
+            // DemandSource no ofrece evento de cambio; sondeo del handshake a 5 ms en este test.
             std::thread::sleep(Duration::from_millis(5));
         }
         publisher

@@ -1,21 +1,16 @@
-//! Relative family: canonical domain projection, retained Rune values and finite motion.
+//! Relative projection/controller. Both Looks consume the same sampled scene.
 mod layout;
 mod motion;
 mod render;
-use crate::vantare::{Style, alpha, waiting};
-use layout::{Kind, Labels, Options, Plan};
-use motion::Tween;
-use rune::{Color, El, Live, LiveText};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    time::Duration,
-};
+pub mod scene;
+use rune::El;
+use scene::{Motion, Timing};
+use std::sync::Arc;
 use vantare_domain::{
-    CarId, Snapshot,
-    format::{Language, Preferences},
+    Snapshot,
+    format::Preferences,
     geometry::Size,
-    relative::{self, Banner, Board, Row, Side},
+    relative::{self, Board},
     widget_settings::relative::Settings,
 };
 
@@ -24,64 +19,17 @@ pub(crate) struct Update {
     pub build: bool,
     pub pixels: bool,
 }
-struct RowLive {
-    data: Arc<Row>,
-    texts: [LiveText; 8],
-    detail: LiveText,
-    inks: [Live<Color>; 8],
-    position: Live<[f32; 2]>,
-    opacity: Live<f32>,
-    pulse: Live<Color>,
-    pulse_end: Live<Color>,
-    flash: Live<Color>,
-    flash_end: Live<Color>,
-    own: Live<f32>,
-    y: Tween,
-    fade: Tween,
-    flashing: Option<(Color, f64)>,
-    active: bool,
-}
-struct DotLive {
-    id: CarId,
-    class: String,
-    player: bool,
-    position: Live<[f32; 2]>,
-    x: Tween,
-}
-const CLEAR: Color = Color {
-    r: 0.0,
-    g: 0.0,
-    b: 0.0,
-    a: 0.0,
-};
-fn rank(side: Side) -> u8 {
-    match side {
-        Side::Ahead => 2,
-        Side::Player => 1,
-        Side::Behind => 0,
-    }
-}
 
 pub(crate) struct Relative {
     settings: Settings,
     prefs: Preferences,
-    options: Options,
-    style: Arc<Style>,
     board: Arc<Board>,
-    plan: Plan,
-    labels: Labels,
-    rows: BTreeMap<u32, RowLive>,
-    order: Vec<u32>,
-    dots: BTreeMap<u32, DotLive>,
-    dot_order: Vec<u32>,
-    header: [LiveText; 6],
+    motion: Motion,
+    painter: render::Painter,
+    visual: scene::Scene,
     boundary: Option<(u64, u64, Preferences)>,
     paused: bool,
     live_projection: bool,
-    reduced: bool,
-    hz: u16,
-    started: f64,
-    next_pulse: Option<f64>,
 }
 impl Relative {
     pub fn new(
@@ -92,10 +40,18 @@ impl Relative {
         clock: f64,
     ) -> Self {
         let settings = settings.normalized();
-        let options = Options::from_settings(&settings);
-        let style = Style::compiled();
-        let plan = layout::plan(None, &options, &style);
-        let labels = Labels::new(None, &options, prefs.language);
+        let style = crate::vantare::Style::compiled();
+        let motion = Motion::new(
+            Timing {
+                reorder: f64::from(style.motion.reorder_ms) / 1000.0,
+                fade: f64::from(style.motion.fade_ms) / 1000.0,
+                flash: f64::from(style.motion.flash_ms) / 1000.0,
+                pulse: f64::from(style.relative.pulse_ms) / 1000.0,
+            },
+            reduced,
+            hz,
+            clock,
+        );
         let board = relative::project_cached(
             &Snapshot::default(),
             prefs,
@@ -103,40 +59,19 @@ impl Relative {
             &settings.footer_slots,
             None,
         );
-        let header = [
-            labels.title.clone(),
-            labels.header.clone(),
-            String::new(),
-            String::new(),
-            String::new(),
-            String::new(),
-        ]
-        .map(LiveText::new);
-        let state = Self {
+        let initial = scene::sample(board.clone(), &motion, false, clock);
+        let painter = render::Painter::new(&settings, prefs, &initial);
+        Self {
             settings,
             prefs,
-            options,
-            style,
             board,
-            plan,
-            labels,
-            rows: BTreeMap::new(),
-            order: Vec::new(),
-            dots: BTreeMap::new(),
-            dot_order: Vec::new(),
-            header,
+            motion,
+            painter,
+            visual: initial,
             boundary: None,
             paused: false,
             live_projection: false,
-            reduced,
-            hz,
-            started: clock,
-            next_pulse: None,
-        };
-        for (live, text) in state.header.iter().zip(render::header_values(&state)) {
-            live.set(text);
         }
-        state
     }
     fn content(settings: &Settings) -> relative::Content {
         relative::Content {
@@ -150,416 +85,86 @@ impl Relative {
         self.settings == settings.normalized() && self.prefs == prefs
     }
     pub fn size(&self) -> Size {
-        self.size_for(None)
+        self.painter.size()
     }
     pub fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
         let paused = snapshot.map_or(self.paused, |s| {
             s.state.source_state == vantare_domain::SourceState::Paused
         });
         Size {
-            width: self.plan.width,
-            height: self.plan.height + if paused { 22.0 } else { 0.0 },
+            width: self.size().width,
+            height: self.painter.plan_height() + if paused { 22.0 } else { 0.0 },
         }
     }
     pub fn view(&self) -> El {
-        render::view(self)
+        self.painter.view()
     }
     pub fn policy(&mut self, reduced: bool, hz: u16, clock: f64) -> Update {
-        let changed = self.reduced != reduced;
-        if self.hz != hz {
-            self.next_pulse = None;
+        if self.motion.policy(reduced, hz) {
+            self.animate(clock)
+        } else {
+            Update::default()
         }
-        self.reduced = reduced;
-        self.hz = hz;
-        let mut update = Update::default();
-        if changed && reduced {
-            self.next_pulse = None;
-            let before = self.rows.len();
-            self.rows.retain(|_, r| r.active);
-            update.build = before != self.rows.len();
-            self.order.retain(|id| self.rows.contains_key(id));
-            for row in self.rows.values_mut() {
-                row.y.settle();
-                row.fade = Tween::linear(1.0);
-                row.flashing = None;
-            }
-            for dot in self.dots.values_mut() {
-                dot.x.settle();
-            }
-        }
-        if changed && reduced {
-            let animated = self.animate(clock);
-            update.build |= animated.build;
-            update.pixels |= animated.pixels;
-        }
-        update
     }
-    /// Same host pause contract as GPUI: retain the last live projection and append a band.
     pub fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
         let paused = snapshot.state.source_state == vantare_domain::SourceState::Paused;
         if paused && self.paused {
             return Update::default();
         }
-        let changed = self.paused != paused;
         self.paused = paused;
-        if paused && self.live_projection {
-            return Update {
-                build: changed,
-                pixels: false,
-            };
-        }
-        let mut update = if paused {
-            let mut retained = snapshot.clone();
-            retained.state.source_state = vantare_domain::SourceState::Live;
-            self.project(&retained, clock)
-        } else {
-            self.project(snapshot, clock)
-        };
-        self.live_projection = vantare_domain::freshness::shows_last_live(snapshot);
-        update.build |= changed;
-        update
-    }
-    fn project(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
-        let board = relative::project_cached(
-            snapshot,
-            self.prefs,
-            Self::content(&self.settings),
-            &self.settings.footer_slots,
-            Some(&self.board),
-        );
-        let boundary = Some((snapshot.epoch, snapshot.state.session.id.0, self.prefs));
-        if Arc::ptr_eq(&board, &self.board) && self.boundary == boundary {
-            return Update::default();
-        }
-        let snap = self.reduced
-            || self.boundary != boundary
-            || waiting(Some((self.board.source_state, self.board.player_present)))
-            || waiting(Some((board.source_state, board.player_present)));
-        self.boundary = boundary;
-        let plan = layout::plan(Some(&board), &self.options, &self.style);
-        let labels = Labels::new(Some(&board), &self.options, self.prefs.language);
-        let mut out = Update {
-            build: self.plan != plan || self.board.banner != board.banner,
-            pixels: false,
-        };
-        let old_order = self.order.clone();
-        let active: BTreeSet<u32> = if waiting(Some((board.source_state, board.player_present))) {
-            BTreeSet::new()
-        } else {
-            board.slots.iter().flatten().map(|r| r.id.0).collect()
-        };
-        let fade = f64::from(self.style.motion.fade_ms) / 1000.0;
-        for (&id, row) in &mut self.rows {
-            if !active.contains(&id) && row.active {
-                row.active = false;
-                row.fade.retarget(0.0, clock, fade);
-            }
-        }
-        self.order.clear();
-        for &(y, item) in &plan.items {
-            let layout::Item::Slot(index) = item else {
-                continue;
-            };
-            let Some(row) = board.slots.get(index).and_then(Option::as_ref) else {
-                continue;
-            };
-            let Some(label) = labels.rows.get(index).and_then(Option::as_ref) else {
-                continue;
-            };
-            let mut values = Self::values(row, label, self.prefs.language);
-            if board.banner == Some(Banner::FullCourseYellow) {
-                values[Kind::Trend as usize].clear();
-            }
-            let colors = Self::inks(row, &board, &self.style);
-            if let Some(live) = self.rows.get_mut(&row.id.0) {
-                if live.data.class != row.class
-                    || live.data.in_pits != row.in_pits
-                    || live.data.is_player != row.is_player
-                    || (self.options.cols.has(Kind::Laps)
-                        && live.data.lap_delta.filter(|n| *n != 0).map(i32::signum)
-                            != row.lap_delta.filter(|n| *n != 0).map(i32::signum))
-                    || (self.options.cols.has(Kind::Rating) && live.data.rating != row.rating)
-                {
-                    out.build = true;
-                }
-                if !snap {
-                    if row.in_pits && !live.data.in_pits {
-                        live.flashing = Some((self.style.colors.box_fill, clock));
-                    } else if rank(row.side) < rank(live.data.side) {
-                        live.flashing = Some((self.style.colors.flash_gain, clock));
-                    } else if rank(row.side) > rank(live.data.side) {
-                        live.flashing = Some((self.style.colors.flash_loss, clock));
-                    }
-                    live.y
-                        .retarget(y, clock, f64::from(self.style.motion.reorder_ms) / 1000.0);
-                    live.fade.retarget(1.0, clock, fade);
-                } else {
-                    live.y = Tween::fixed(y);
-                    live.fade = Tween::linear(1.0);
-                    live.flashing = None;
-                }
-                for (index, kind) in [
-                    Kind::Position,
-                    Kind::Number,
-                    Kind::Driver,
-                    Kind::Laps,
-                    Kind::Rating,
-                    Kind::Safety,
-                    Kind::Trend,
-                    Kind::Gap,
-                ]
-                .iter()
-                .enumerate()
-                {
-                    let text = live.texts[index].set(values[index].clone());
-                    let ink = live.inks[index].set(colors[index]);
-                    if self.options.cols.has(*kind) {
-                        out.pixels |= text || ink;
-                        // These text changes alter intrinsic chip/name layout; numeric cells stay Live-only.
-                        out.build |= text && matches!(kind, Kind::Driver | Kind::Number);
-                    }
-                }
-                let detail = live.detail.set(label.detail.clone());
-                out.pixels |= detail && self.options.cols.vehicle;
-                out.build |= detail && self.options.cols.vehicle;
-                live.data = row.clone();
-                live.active = true;
+        if !paused || !self.live_projection {
+            let mut retained;
+            let snapshot = if paused {
+                retained = snapshot.clone();
+                retained.state.source_state = vantare_domain::SourceState::Live;
+                &retained
             } else {
-                let mut opacity = Tween::linear(if snap { 1.0 } else { 0.0 });
-                if !snap {
-                    opacity.retarget(1.0, clock, fade);
-                }
-                self.rows.insert(
-                    row.id.0,
-                    RowLive {
-                        data: row.clone(),
-                        texts: values.map(LiveText::new),
-                        detail: LiveText::new(label.detail.clone()),
-                        inks: colors.map(Live::new),
-                        position: Live::new([0.0, y]),
-                        opacity: Live::new(if snap { 1.0 } else { 0.0 }),
-                        pulse: Live::new(CLEAR),
-                        pulse_end: Live::new(CLEAR),
-                        flash: Live::new(CLEAR),
-                        flash_end: Live::new(CLEAR),
-                        own: Live::new(1.0),
-                        y: Tween::fixed(y),
-                        fade: opacity,
-                        flashing: None,
-                        active: true,
-                    },
-                );
-                out.build = true;
+                snapshot
+            };
+            let board = relative::project_cached(
+                snapshot,
+                self.prefs,
+                Self::content(&self.settings),
+                &self.settings.footer_slots,
+                Some(&self.board),
+            );
+            let boundary = Some((snapshot.epoch, snapshot.state.session.id.0, self.prefs));
+            if !Arc::ptr_eq(&board, &self.board) || self.boundary != boundary {
+                let snap = self.motion.reduced
+                    || self.boundary != boundary
+                    || scene::waiting(&self.board)
+                    || scene::waiting(&board);
+                self.motion
+                    .update(&board, &self.painter.targets(&board), snap, clock);
+                self.board = board;
+                self.boundary = boundary;
             }
-            self.order.push(row.id.0);
+            self.live_projection = vantare_domain::freshness::shows_last_live(snapshot);
         }
-        if snap {
-            self.rows.retain(|_, r| r.active);
-        }
-        for (&id, row) in &self.rows {
-            if !row.active {
-                self.order.push(id);
-            }
-        }
-        out.build |= old_order != self.order;
-        let before_dots = self.dot_order.clone();
-        self.dot_order.clear();
-        if self.options.cols.strip && !waiting(Some((board.source_state, board.player_present))) {
-            for dot in &board.strip {
-                let x = strip_x(&plan, &self.options, &self.style, dot.offset_s);
-                if let Some(live) = self.dots.get_mut(&dot.id.0) {
-                    out.build |= live.class != dot.class || live.player != dot.is_player;
-                    live.class = dot.class.clone();
-                    live.player = dot.is_player;
-                    if snap {
-                        live.x = Tween::fixed(x);
-                    } else {
-                        live.x
-                            .retarget(x, clock, f64::from(self.style.motion.reorder_ms) / 1000.0);
-                    }
-                } else {
-                    self.dots.insert(
-                        dot.id.0,
-                        DotLive {
-                            id: dot.id,
-                            class: dot.class.clone(),
-                            player: dot.is_player,
-                            position: Live::new([x, 0.0]),
-                            x: Tween::fixed(x),
-                        },
-                    );
-                    out.build = true;
-                }
-                self.dot_order.push(dot.id.0);
-            }
-        }
-        self.dots.retain(|id, _| self.dot_order.contains(id));
-        out.build |= before_dots != self.dot_order;
-        self.board = board;
-        self.plan = plan;
-        self.labels = labels;
-        let values = render::header_values(self);
-        for (index, (live, text)) in self.header.iter().zip(values).enumerate() {
-            let changed = live.set(text);
-            out.pixels |= changed;
-            out.build |= index <= 1 && changed;
-        }
-        let animated = self.animate(clock);
-        out.build |= animated.build;
-        out.pixels |= animated.pixels;
-        out
-    }
-    fn values(row: &Row, label: &layout::RowLabels, language: Language) -> [String; 8] {
-        let es = language == Language::Es;
-        let rating = match (row.rating, es) {
-            (None, _) => "—",
-            (Some(vantare_domain::DriverRating::Platinum), true) => "PLATINO",
-            (Some(vantare_domain::DriverRating::Platinum), false) => "PLATINUM",
-            (Some(vantare_domain::DriverRating::Gold), true) => "ORO",
-            (Some(vantare_domain::DriverRating::Gold), false) => "GOLD",
-            (Some(vantare_domain::DriverRating::Silver), true) => "PLATA",
-            (Some(vantare_domain::DriverRating::Silver), false) => "SILVER",
-            (Some(vantare_domain::DriverRating::Bronze), true) => "BRONCE",
-            (Some(vantare_domain::DriverRating::Bronze), false) => "BRONZE",
-        };
-        [
-            row.class_position.to_string(),
-            label.number.clone(),
-            label.driver.clone(),
-            label.laps.clone(),
-            rating.into(),
-            row.safety.to_string(),
-            label.trend.clone(),
-            row.rich_gap.to_string(),
-        ]
-    }
-    fn inks(row: &Row, board: &Board, style: &Style) -> [Color; 8] {
-        let c = &style.colors;
-        let gap = if board.banner == Some(Banner::FullCourseYellow) {
-            c.frozen
-        } else if row.is_player {
-            c.text
-        } else {
-            c.value
-        };
-        let trend = row
-            .trend
-            .as_ref()
-            .map_or(c.muted, |t| if t.good { c.gain } else { c.loss });
-        let laps = if row.lap_delta.unwrap_or(0) < 0 {
-            style.relative.laps_down_text
-        } else {
-            style.relative.laps_up_text
-        };
-        [
-            c.muted,
-            style.class(&row.class).ink,
-            c.text,
-            laps,
-            c.muted,
-            c.muted,
-            trend,
-            gap,
-        ]
+        self.animate(clock)
     }
     pub fn animate(&mut self, clock: f64) -> Update {
-        let mut out = Update::default();
-        let pulsing = !self.reduced
-            && self.board.banner != Some(Banner::FullCourseYellow)
-            && self.rows.values().any(|r| r.active && r.data.fast_traffic);
-        let pulse_due = pulsing && self.next_pulse.is_none_or(|due| clock >= due);
-        if pulse_due {
-            self.next_pulse =
-                Some(clock + 1.0 / f64::from(if self.hz == 0 { 30 } else { self.hz }));
+        self.motion.advance(&self.board, clock);
+        let visual = scene::sample(self.board.clone(), &self.motion, self.paused, clock);
+        if self.visual == visual {
+            return Update::default();
         }
-        if !pulsing {
-            self.next_pulse = None;
-        }
-        let period = f64::from(self.style.relative.pulse_ms.max(1.0)) / 1000.0;
-        let pulse =
-            (0.5 - 0.5 * ((clock - self.started) / period * std::f64::consts::TAU).cos()) as f32;
-        for row in self.rows.values_mut() {
-            out.pixels |= row.position.set([0.0, row.y.value(clock)]);
-            out.pixels |= row.opacity.set(row.fade.value(clock));
-            let variant = self.options.variant(&self.style);
-            let (from, to) = if variant.player_white > 0.0 {
-                (0.3, 0.3)
-            } else {
-                (variant.player_from, variant.player_to)
-            };
-            let flash = row.flashing.and_then(|(color, at)| {
-                let t = (clock - at) / (f64::from(self.style.motion.flash_ms) / 1000.0).max(0.001);
-                (t < 1.0 && !self.reduced).then_some((color, 1.0 - t as f32))
-            });
-            let (first, last, own) = flash.map_or((CLEAR, CLEAR, 1.0), |(color, strength)| {
-                (
-                    alpha(color, from * strength * self.style.motion.flash_boost),
-                    alpha(color, to * strength * self.style.motion.flash_boost),
-                    1.0 - strength,
-                )
-            });
-            out.pixels |= row.flash.set(first);
-            out.pixels |= row.flash_end.set(last);
-            if row.data.is_player {
-                out.pixels |= row.own.set(own);
-            }
-            if flash.is_none() {
-                row.flashing = None;
-            }
-            if pulse_due || !pulsing || !row.active || !row.data.fast_traffic {
-                let strength = if pulsing && row.active && row.data.fast_traffic {
-                    self.style.relative.pulse_alpha * pulse
-                } else {
-                    0.0
-                };
-                out.pixels |= row
-                    .pulse
-                    .set(alpha(self.style.colors.flash_loss, from * strength));
-                out.pixels |= row
-                    .pulse_end
-                    .set(alpha(self.style.colors.flash_loss, to * strength));
-            }
-        }
-        let before = self.rows.len();
-        self.rows.retain(|_, r| r.active || r.fade.active(clock));
-        if before != self.rows.len() {
-            self.order.retain(|id| self.rows.contains_key(id));
-            out.build = true;
-        }
-        for dot in self.dots.values_mut() {
-            out.pixels |= dot.position.set([dot.x.value(clock), 0.0]);
-        }
-        out
+        let update = self.painter.sync(&visual);
+        self.visual = visual;
+        update
     }
     pub fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
-        if self.reduced {
-            return;
-        }
-        if self
-            .rows
-            .values()
-            .any(|r| r.y.active(clock) || r.fade.active(clock) || r.flashing.is_some())
-            || self.dots.values().any(|d| d.x.active(clock))
-        {
-            tx.wake_after(Duration::ZERO);
-        }
-        if let Some(due) = self.next_pulse {
+        if let Some(due) = self.motion.next_wake(clock, self.painter.has_strip()) {
             tx.wake_at(due);
         }
     }
 }
-fn strip_x(plan: &Plan, options: &Options, style: &Style, offset_s: f64) -> f32 {
-    let pad = options.variant(style).padding_x;
-    let span = plan.width - 2.0 * pad;
-    let t = ((offset_s + vantare_domain::relative::STRIP_S)
-        / (2.0 * vantare_domain::relative::STRIP_S))
-        .clamp(0.0, 1.0) as f32;
-    pad + t * span
-}
 
 #[cfg(test)]
 mod tests {
+    use super::layout::Options;
     use super::*;
+    use vantare_domain::format::Language;
     use vantare_domain::{
         Quality::Reliable,
         widget_settings::{look::Tone, relative::vantare_template},
@@ -578,7 +183,7 @@ mod tests {
         let mut painter = painter(false);
         let mut snapshot = crate::testdata::snapshot();
         painter.update(&snapshot, 0.0);
-        let before = painter.rows[&3].position.get();
+        let before = painter.motion.rows[&3].slot.value(0.0);
         snapshot.state.cars[2].relative_s = Reliable(-0.5);
         painter.update(&snapshot, 1.0);
         for n in 1..=160 {
@@ -586,15 +191,15 @@ mod tests {
             snapshot.state.cars[2].number = n.to_string();
             painter.update(&snapshot, 1.0 + f64::from(n) / 100.0);
         }
-        let row = &painter.rows[&3];
-        assert_ne!(row.position.get(), before);
-        assert!(!row.y.active(2.6));
-        assert!(row.flashing.is_none());
+        let row = &painter.motion.rows[&3];
+        assert_ne!(row.slot.value(2.6), before);
+        assert!(!row.slot.active(2.6));
+        assert!(row.flash.is_none());
         snapshot.state.cars.retain(|c| c.id.0 != 3);
         painter.update(&snapshot, 3.0);
-        assert!(painter.rows.contains_key(&3), "finite fading ghost");
+        assert!(painter.motion.rows.contains_key(&3), "finite fading ghost");
         assert!(painter.animate(4.0).build);
-        assert!(!painter.rows.contains_key(&3));
+        assert!(!painter.motion.rows.contains_key(&3));
         let idle = painter.animate(30.0);
         assert!(!idle.build && !idle.pixels);
     }
@@ -607,11 +212,12 @@ mod tests {
         painter.update(&snapshot, 1.0);
         assert!(
             painter
+                .motion
                 .rows
                 .values()
-                .all(|r| !r.y.active(1.0) && !r.fade.active(1.0) && r.flashing.is_none())
+                .all(|r| !r.slot.active(1.0) && !r.fade.active(1.0) && r.flash.is_none())
         );
-        assert!(painter.next_pulse.is_none());
+        assert!(painter.motion.next_pulse.is_none());
         let idle = painter.animate(30.0);
         assert!(!idle.build && !idle.pixels);
         assert!(!painter.policy(true, 5, 31.0).pixels);
@@ -632,13 +238,39 @@ mod tests {
         faster.best_lap_s = Reliable(90.0);
         painter.update(&snapshot, 0.0);
         assert!(painter.board.traffic.is_some());
-        assert!(painter.next_pulse.is_some());
+        assert!(painter.motion.next_pulse.is_some());
         assert!(!painter.animate(0.1).pixels);
         assert!(painter.animate(0.2).pixels);
         assert!(!painter.animate(0.25).pixels);
         assert!(painter.policy(true, 5, 0.3).pixels);
-        assert!(painter.next_pulse.is_none());
+        assert!(painter.motion.next_pulse.is_none());
         assert!(!painter.animate(1.0).pixels);
+
+        // Exercise Rune's actual timer queue, with an empty CPU view and no window.
+        painter.policy(false, 5, 1.0);
+        let mut runtime = rune::Runtime::new(
+            painter,
+            |_, _| rune::el(),
+            (1.0, 1.0),
+            rune::Env::new(true, 1.0),
+        );
+        runtime.poll = Some(|relative, clock, tx| {
+            relative.animate(clock);
+            relative.schedule(clock, tx);
+            false
+        });
+        runtime.frame(1.0);
+        assert!(runtime.wake_deadline().is_some(), "traffic timer");
+        runtime.state.update(&crate::testdata::snapshot(), 2.0);
+        runtime.frame(1.0);
+        assert!(runtime.state.board.traffic.is_none());
+        assert_eq!(runtime.wake_deadline(), None, "no traffic, no timer");
+        runtime.state.update(&snapshot, 3.0);
+        runtime.frame(1.0);
+        assert!(runtime.wake_deadline().is_some());
+        runtime.state.policy(true, 5, 3.0);
+        runtime.frame(1.0);
+        assert_eq!(runtime.wake_deadline(), None, "reduced motion stops timers");
     }
     #[test]
     fn templates_tones_languages_and_reversed_custom_columns_keep_canonical_order() {
@@ -665,6 +297,7 @@ mod tests {
                 painter.update(&crate::testdata::snapshot(), 0.0);
                 assert_eq!(
                     painter
+                        .painter
                         .plan
                         .columns
                         .iter()
@@ -674,13 +307,17 @@ mod tests {
                 );
                 assert!(
                     painter
+                        .painter
                         .labels
                         .rows
                         .iter()
                         .flatten()
                         .any(|r| r.driver == "You")
                 );
-                assert!(painter.plan.width > 0.0 && painter.plan.height >= painter.plan.content);
+                assert!(
+                    painter.painter.plan.width > 0.0
+                        && painter.painter.plan.height >= painter.painter.plan.content
+                );
                 let _view = painter.view();
             }
         }
@@ -694,7 +331,75 @@ mod tests {
             };
             let painter = Relative::new(&settings, Preferences::default(), true, 15, 0.0);
             assert_eq!(painter.size().width, width, "{template}");
-            assert_eq!(painter.header[4].get().as_ref(), "Esperando al simulador");
+            assert_eq!(
+                painter.painter.header[4].get().as_ref(),
+                "Esperando al simulador"
+            );
+        }
+    }
+    #[test]
+    fn appearing_and_disappearing_banner_interpolates_canonical_layout_coordinates() {
+        let mut relative = painter(false);
+        let mut snapshot = crate::testdata::snapshot();
+        let player = snapshot.state.player.as_ref().expect("player").car;
+        relative.update(&snapshot, 0.0);
+        let duration = f64::from(crate::vantare::Style::compiled().motion.reorder_ms) / 1000.0;
+        for (clock, in_pits) in [(1.0, true), (3.0, false)] {
+            let from = relative
+                .visual
+                .rows
+                .iter()
+                .find(|r| r.row.id == player)
+                .expect("row")
+                .slot;
+            snapshot
+                .state
+                .cars
+                .iter_mut()
+                .find(|c| c.id == player)
+                .expect("player car")
+                .in_pits = Reliable(in_pits);
+            snapshot.sequence += 1;
+            relative.update(&snapshot, clock);
+            assert_eq!(relative.board.banner.is_some(), in_pits);
+            let index = relative
+                .board
+                .slots
+                .iter()
+                .position(|r| r.as_ref().is_some_and(|r| r.id == player))
+                .expect("player slot");
+            let target = relative.painter.targets(&relative.board)[index];
+            assert_ne!(from, target);
+            assert_eq!(
+                relative
+                    .visual
+                    .rows
+                    .iter()
+                    .find(|r| r.row.id == player)
+                    .expect("row")
+                    .slot,
+                from
+            );
+            relative.animate(clock + duration / 2.0);
+            let halfway = relative
+                .visual
+                .rows
+                .iter()
+                .find(|r| r.row.id == player)
+                .expect("row")
+                .slot;
+            assert!(halfway > from.min(target) && halfway < from.max(target));
+            relative.animate(clock + duration);
+            assert_eq!(
+                relative
+                    .visual
+                    .rows
+                    .iter()
+                    .find(|r| r.row.id == player)
+                    .expect("row")
+                    .slot,
+                target
+            );
         }
     }
     #[test]
@@ -713,7 +418,7 @@ mod tests {
         assert!(!painter.update(&paused, 2.0).build);
         let mut opened = Relative::new(&Settings::default(), Preferences::default(), true, 5, 0.0);
         opened.update(&paused, 0.0);
-        assert!(!opened.rows.is_empty());
+        assert!(!opened.motion.rows.is_empty());
         assert!(painter.update(&live, 3.0).build);
         assert_eq!(painter.size().height, height);
     }

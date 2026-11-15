@@ -115,8 +115,21 @@ Textos, tintas, posición y opacidad se conservan en valores Rune `Live`. Solo l
 (nombre/detalle/dorsal/cabecera) recomponen la vista; las celdas de ancho fijo
 se actualizan sin reconstruirla. Los movimientos de filas, aparición y
 flash tienen fin; una actualización de texto no reinicia su duración. El pulso de
-tráfico se despierta a la cadencia del widget. Reducir movimiento lo apaga y lleva
-las transiciones a su destino. En reposo no se programa ningún reloj.
+tráfico es la excepción al reposo: mientras haya tráfico rápido mantiene un reloj
+a la cadencia del widget (0 Hz usa 30 Hz). Reducir movimiento apaga ese pulso y
+lleva las transiciones a su destino. Sin tráfico ni transiciones no hay reloj.
+
+`relative::scene` es el contrato común de Vantare y Eficiencia: filas de domain,
+posición interpolada, opacidad y aviso semántico con intensidad independiente.
+`slot` es una coordenada del layout canónico, no un índice. Ese layout entrega
+las posiciones objetivo a `Motion::update`, incluida la banda superior. El
+muestreo es puro; no contiene colores ni valores Rune Live. El Look
+traduce esa escena a sus medidas/colores y conserva sus valores Live. El pulso
+(`traffic_opacity`) y el destello (`alert`) tienen intensidades independientes
+y se superponen como en GPUI.
+La reconstrucción se decide en un solo punto al comparar la estructura anterior
+y la nueva; las actualizaciones de valores de ancho fijo no reconstruyen.
+La [plantilla de encargo](PLANTILLA.md) fija qué reutilizar para los otros widgets.
 
 Al cerrar se imprimen contadores por ventana y del proceso: `frames`, `data`,
 `animation`, `design` y `unattributed`. Se incrementan exclusivamente en

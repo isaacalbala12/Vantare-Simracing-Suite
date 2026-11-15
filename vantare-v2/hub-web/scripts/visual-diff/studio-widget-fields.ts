@@ -17,6 +17,13 @@ for (const kind of kinds) {
           exact: true,
         })
         .click();
+      const sidebar = page.locator(".v-sidebar");
+      if (
+        !(await sidebar.evaluate((node) =>
+          node.classList.contains("v-sidebar--collapsed"),
+        ))
+      )
+        await page.keyboard.press("Control+b");
       const content = page.getByRole("tab", { name: "Contenido", exact: true });
       await content.click();
       const group = page.getByRole("region", {

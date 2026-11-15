@@ -1,5 +1,5 @@
 import { Tabs } from "@base-ui/react/tabs";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import type {
   OverlayInstance,
   WidgetSettings,
@@ -21,6 +21,11 @@ import {
 } from "../../screens/studio/content-columns";
 import { Button } from "../Button";
 import { Input, Select, Switch } from "../Forms";
+import {
+  AdditionalWidgetFields,
+  hasAdditionalFields,
+} from "./AdditionalWidgetFields";
+import { ContentNumber, Group } from "./ContentControls";
 import "./studio-content.css";
 
 type Model = ReturnType<typeof useAppearance>;
@@ -32,6 +37,12 @@ export function ContentStep({ item }: { item: OverlayInstance }) {
     return <p>{studio.appearanceUnavailable}</p>;
   if (settings.kind === "standings" || settings.kind === "relative")
     return <TableContent key={item.id} settings={settings} model={model} />;
+  if (hasAdditionalFields(settings.kind))
+    return (
+      <div className="v-studio-content">
+        <AdditionalWidgetFields settings={settings} model={model} />
+      </div>
+    );
   const toggle = (
     label: string,
     checked: boolean,
@@ -511,98 +522,5 @@ function StandingsContent({
         </>
       )}
     </Group>
-  );
-}
-function ContentNumber({
-  label,
-  value,
-  min,
-  max,
-  model,
-  integer = true,
-  normalize = Number,
-  onCommit,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  model: Model;
-  integer?: boolean;
-  normalize?: (value: number) => number;
-  onCommit: (value: number) => void;
-}) {
-  const [draft, setDraft] = useState(String(value));
-  const [error, setError] = useState(false);
-  const edited = useRef(false);
-  const submitted = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    // A conflict can publish another Hub's value. It does not confirm this edit.
-    if (!edited.current || submitted.current === normalize(value)) {
-      edited.current = false;
-      submitted.current = undefined;
-      setDraft(String(value));
-      setError(false);
-    }
-  }, [value, normalize]);
-  function commit() {
-    if (model.disabled || model.pending) return;
-    const number = Number(draft);
-    if (
-      !draft.trim() ||
-      !Number.isFinite(number) ||
-      (integer && !Number.isInteger(number)) ||
-      number < min ||
-      number > max
-    ) {
-      setError(true);
-      return;
-    }
-    const normalized = normalize(number);
-    if (normalized !== normalize(value)) {
-      submitted.current = normalized;
-      onCommit(normalized);
-    } else {
-      edited.current = false;
-      submitted.current = undefined;
-      setDraft(String(value));
-    }
-  }
-  return (
-    <Input
-      label={label}
-      value={draft}
-      inputMode={integer ? "numeric" : "decimal"}
-      disabled={model.disabled}
-      readOnly={model.pending}
-      error={
-        error
-          ? integer
-            ? text.invalidNumber(min, max)
-            : text.invalidDecimal(min, max)
-          : undefined
-      }
-      onChange={(event) => {
-        edited.current = true;
-        submitted.current = undefined;
-        setDraft(event.target.value);
-        setError(false);
-      }}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          commit();
-        }
-      }}
-    />
-  );
-}
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="v-studio-appearance-group" aria-label={title}>
-      <h3>{title}</h3>
-      {children}
-    </section>
   );
 }

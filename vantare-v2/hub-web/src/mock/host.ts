@@ -10,6 +10,7 @@ import { mockModules } from "../contract/generated/mocks";
 import { isUiMessage } from "../contract/validation";
 import type { MockContext } from "./context";
 import { studioStateVisual } from "./studio-states";
+import { studioFieldVisual } from "./studio-widget-scenes";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
 export function helloForScene(name?: string): typeof hello {
   if (
@@ -40,6 +41,7 @@ export function createMockHost(
       sceneName,
     ) ??
     studioStateVisual.exec(sceneName) ??
+    studioFieldVisual.exec(sceneName) ??
     /^visual-(dark|light):(launcher-notice-(?:completed|accepted|rejected|gap))$/.exec(
       sceneName,
     ) ??

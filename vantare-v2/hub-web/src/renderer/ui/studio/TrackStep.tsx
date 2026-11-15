@@ -13,6 +13,7 @@ import {
 } from "../../screens/studio/track";
 import { Button } from "../Button";
 import { Select, Slider, Switch } from "../Forms";
+import { AdditionalBehavior } from "./AdditionalWidgetFields";
 import { DisabledHint } from "./DisabledHint";
 import { FrequencyControls } from "./FrequencyControls";
 import "./studio-track-step.css";
@@ -135,6 +136,7 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
         </DisabledHint>
       </Group>
       <FrequencyControls item={item} model={model} />
+      <AdditionalBehavior item={item} />
     </div>
   );
 }

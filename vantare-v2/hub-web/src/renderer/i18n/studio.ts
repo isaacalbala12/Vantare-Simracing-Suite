@@ -1,4 +1,5 @@
 export const studioText = {
+  damageNumbersName: "Daños detallados",
   firstWidget: "Añade tu primer widget",
   quickStart: "O empieza por uno de estos",
   retryHelp: "El cambio no se ha guardado. Puedes reintentarlo o descartarlo.",

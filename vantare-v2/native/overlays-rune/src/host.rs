@@ -30,7 +30,7 @@ impl Access {
     }
     pub fn allows_widget(&self, name: &str) -> bool {
         match self {
-            Self::LocalPreview => true,
+            Self::LocalPreview => crate::options::LOCAL_PREVIEW_ENABLED,
             Self::Core {
                 current,
                 state,
@@ -399,7 +399,10 @@ mod tests {
             .allows_widget("relative")
         );
         assert!(!Access::at(&Policy::default(), 0).allows_widget("relative"));
+        #[cfg(debug_assertions)]
         assert!(Access::LocalPreview.allows_widget("relative"));
+        #[cfg(not(debug_assertions))]
+        assert!(!Access::LocalPreview.allows_widget("relative"));
     }
 
     #[test]

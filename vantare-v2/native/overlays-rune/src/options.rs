@@ -1,6 +1,9 @@
 //! Argumentos compatibles con el supervisor actual, sin inicializar Rune.
 use std::{ffi::OsString, path::PathBuf};
 
+/// Modo sintético de desarrollo: nunca concede acceso en una distribución release.
+pub const LOCAL_PREVIEW_ENABLED: bool = cfg!(debug_assertions);
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Source {
     Local,
@@ -23,6 +26,7 @@ pub enum ArgumentError {
     Unknown,
     InvalidSource,
     ConflictingLayout,
+    DevelopmentOnly,
 }
 
 impl std::fmt::Display for ArgumentError {
@@ -33,6 +37,9 @@ impl std::fmt::Display for ArgumentError {
             Self::Unknown => "argumento desconocido",
             Self::InvalidSource => "fuente inválida; usa local, pipe o pipe:<nombre>",
             Self::ConflictingLayout => "no combines un número de medición con --layout",
+            Self::DevelopmentOnly => {
+                "--fuente local solo está disponible en compilaciones de desarrollo (debug)"
+            }
         })
     }
 }
@@ -40,6 +47,13 @@ impl std::fmt::Display for ArgumentError {
 impl std::error::Error for ArgumentError {}
 
 pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Options, ArgumentError> {
+    parse_for_build(args, LOCAL_PREVIEW_ENABLED)
+}
+
+fn parse_for_build(
+    args: impl IntoIterator<Item = OsString>,
+    local_preview: bool,
+) -> Result<Options, ArgumentError> {
     let mut result = Options {
         layout: None,
         benchmark_count: None,
@@ -62,7 +76,8 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Options, Argume
                 source_seen = true;
                 let value = args.next().ok_or(ArgumentError::MissingValue)?;
                 result.source = match value.to_str() {
-                    Some("local") => Source::Local,
+                    Some("local") if local_preview => Source::Local,
+                    Some("local") => return Err(ArgumentError::DevelopmentOnly),
                     Some("pipe") => Source::Pipe(None),
                     Some(value) => match value.strip_prefix("pipe:") {
                         Some(name) if !name.is_empty() => Source::Pipe(Some(name.into())),
@@ -97,7 +112,27 @@ mod tests {
     use super::*;
 
     fn read(args: &[&str]) -> Result<Options, ArgumentError> {
-        parse(args.iter().map(OsString::from))
+        parse_for_build(args.iter().map(OsString::from), true)
+    }
+
+    #[test]
+    fn distribution_policy_rejects_local_but_preserves_real_feed() {
+        assert_eq!(
+            parse_for_build(["--fuente", "local"].map(OsString::from), false),
+            Err(ArgumentError::DevelopmentOnly)
+        );
+        assert_eq!(
+            parse_for_build(Vec::new(), false)
+                .expect("pipe de distribución")
+                .source,
+            Source::Pipe(None)
+        );
+        let actual = parse(["--fuente", "local"].map(OsString::from));
+        if cfg!(debug_assertions) {
+            assert_eq!(actual.expect("desarrollo explícito").source, Source::Local);
+        } else {
+            assert_eq!(actual, Err(ArgumentError::DevelopmentOnly));
+        }
     }
 
     #[test]

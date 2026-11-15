@@ -1,7 +1,9 @@
-//! Marco de proceso. Sin tipos de UI duplicados: diseño/fotos/cadencias esperan PR 3.
-use rune::{App, AppSpec, Cx, Display, El, Tx, Waker, WindowOptions, WindowSpec, el};
+//! Proceso Rune y ventanas; los contratos de datos se comparten mediante domain/ipc.
+use crate::scene::{FrameSet, Viewport};
+use rune::{App, AppSpec, Cx, Display, El, Tx, Waker, WindowHandle, WindowOptions, WindowSpec, el};
 use std::{
     io,
+    collections::BTreeMap,
     sync::{
         Arc, Condvar, Mutex, PoisonError,
         atomic::{AtomicBool, Ordering},
@@ -49,6 +51,7 @@ pub enum CloseReason {
     SupervisorEof,
     SupervisorError,
     NativeError,
+    SourceError,
 }
 
 struct Pending {
@@ -56,6 +59,8 @@ struct Pending {
     revision: u64,
     close: Option<CloseReason>,
     wakers: Vec<Waker>,
+    frames: Option<Arc<FrameSet>>,
+    windows: BTreeMap<String, WindowHandle>,
 }
 pub struct Shared {
     pending: Mutex<Pending>,
@@ -73,6 +78,8 @@ impl Shared {
                 revision: 1,
                 close: None,
                 wakers: Vec::new(),
+                frames: None,
+                windows: BTreeMap::new(),
             }),
             stop: Condvar::new(),
         })
@@ -104,6 +111,59 @@ impl Shared {
             .wait_timeout_while(state, timeout, |s| s.close.is_none())
             .unwrap_or_else(PoisonError::into_inner);
         state.close.is_some()
+    }
+    pub(crate) fn access(&self) -> Access {
+        self.pending
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .access
+            .clone()
+    }
+    pub(crate) fn publish_frames(&self, frames: Arc<FrameSet>) {
+        let (wakes, windows, shown) = {
+            let mut state = self.pending.lock().unwrap_or_else(PoisonError::into_inner);
+            if state.close.is_some()
+                || state
+                    .frames
+                    .as_ref()
+                    .is_some_and(|old| Arc::ptr_eq(old, &frames))
+            {
+                return;
+            }
+            let changed_visibility = state
+                .frames
+                .as_ref()
+                .is_none_or(|old| old.shown != frames.shown);
+            let shown = frames.shown;
+            state.frames = Some(frames);
+            state.revision = state.revision.wrapping_add(1);
+            (
+                state.wakers.clone(),
+                if changed_visibility {
+                    state.windows.values().cloned().collect::<Vec<_>>()
+                } else {
+                    Vec::new()
+                },
+                shown,
+            )
+        };
+        // Las solicitudes nativas y los wakes nunca ocurren bajo el mutex.
+        for window in windows {
+            window.set_visible(shown);
+        }
+        for wake in wakes {
+            wake();
+        }
+    }
+    fn install_window(&self, key: String, window: WindowHandle, fallback: bool) {
+        let shown = {
+            let mut state = self.pending.lock().unwrap_or_else(PoisonError::into_inner);
+            let shown =
+                state.close.is_none() && state.frames.as_ref().map_or(fallback, |f| f.shown);
+            state.windows.insert(key,window.clone());
+            shown
+        };
+        window.set_visible(shown);
     }
     pub fn publish_access(&self, access: Access) {
         let wakes = {
@@ -180,42 +240,35 @@ pub struct State {
     shared: Arc<Shared>,
     seen: u64,
     pub access: Access,
-    /// Geometría actual del monitor, para colocar contenido sin recrear el estado.
     pub monitor: Option<Display>,
     retiring: Arc<AtomicBool>,
     wake: Option<Waker>,
+    window_key: Option<String>,
+    pub frames: Option<Arc<FrameSet>>,
+    pub viewport: Viewport,
 }
 impl State {
     pub fn new(shared: Arc<Shared>) -> Self {
-        let access = shared
-            .pending
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .access
-            .clone();
-        Self {
-            shared,
-            seen: 0,
-            access,
-            monitor: None,
-            retiring: Arc::new(AtomicBool::new(false)),
-            wake: None,
-        }
+        let (access,frames)={let pending=shared.pending.lock().unwrap_or_else(PoisonError::into_inner);(pending.access.clone(),pending.frames.clone())};
+        Self {shared,seen:0,access,monitor:None,retiring:Arc::new(AtomicBool::new(false)),wake:None,window_key:None,frames,
+            viewport:Viewport{origin:(0.0,0.0),size:vantare_domain::geometry::Size{width:1280.0,height:720.0}}}
     }
     #[cfg(windows)]
     pub(crate) fn set_monitor(&mut self, display: Display) -> bool {
-        if self.monitor.as_ref() == Some(&display) {
-            return false;
-        }
-        self.monitor = Some(display);
-        true
+        if self.monitor.as_ref()==Some(&display) {return false;}
+        let viewport=Viewport::of(&display);let changed=self.viewport!=viewport;
+        self.monitor=Some(display);
+        if changed {self.viewport=viewport;self.seen=0;}
+        changed
+    }
+    pub fn on_display(shared: Arc<Shared>, display: &Display) -> Self {
+        let mut state=Self::new(shared);state.viewport=Viewport::of(display);state.monitor=Some(display.clone());state
     }
 }
 impl Drop for State {
     fn drop(&mut self) {
-        if let Some(wake) = self.wake.take() {
-            self.shared.remove_waker(&wake);
-        }
+        if let Some(wake)=self.wake.take() {self.shared.remove_waker(&wake);}
+        if let Some(key)=self.window_key.take() {self.shared.pending.lock().unwrap_or_else(PoisonError::into_inner).windows.remove(&key);}
     }
 }
 fn init() -> State {
@@ -242,6 +295,7 @@ pub fn poll(state: &mut State, _: f64, tx: &mut Tx) -> bool {
     }
     state.seen = pending.revision;
     state.access = pending.access.clone();
+    state.frames = pending.frames.clone();
     true
 }
 fn close(state: &mut State, tx: &mut Tx) {
@@ -254,7 +308,7 @@ fn close(state: &mut State, tx: &mut Tx) {
     tx.quit();
 }
 pub fn view(_: &State, _: &mut Cx<State>) -> El {
-    // Contenedor transparente; los widgets de PR 6/7 usarán los tipos de PR 3.
+    // Los pintores de PR 6/7 consumen FrameSet y no abren canales ni documentos.
     el().key("overlay-root").w_full().h_full()
 }
 
@@ -284,7 +338,7 @@ pub(crate) fn window(
     retiring: Arc<AtomicBool>,
 ) -> WindowSpec<State> {
     let mut options = WindowOptions::overlay(display);
-    options.visible = !hidden;
+    options.visible=shared.pending.lock().unwrap_or_else(PoisonError::into_inner).frames.as_ref().map_or(!hidden,|f|f.shown);
     options.resizable = false;
     let spec = AppSpec {
         setup: Some(setup),
@@ -301,15 +355,16 @@ pub(crate) fn window(
     };
     let bus = shared.clone();
     let monitor = display.clone();
+    let state_key=key.clone();
     WindowSpec::from_app(
-        key,
+        key.clone(),
         App::new(spec)
             .init({
                 let shared = shared.clone();
                 move || {
-                    let mut state = State::new(shared);
+                    let mut state = State::on_display(shared,&monitor);
+                    state.window_key=Some(state_key);
                     state.retiring = retiring;
-                    state.monitor = Some(monitor);
                     state
                 }
             })
@@ -323,7 +378,7 @@ pub(crate) fn window(
         if let Err(error) = crate::native_window::configure(&window) {
             eprintln!("overlays-rune: ventana no segura: {error}");
             bus.close(CloseReason::NativeError);
-        }
+        } else {bus.install_window(key,window,!hidden);}
     })
 }
 
@@ -349,9 +404,9 @@ pub fn run(shared: Arc<Shared>, hidden: bool) -> Result<(), String> {
     shared.close(CloseReason::Window);
     result?;
     match shared.close_reason() {
-        Some(CloseReason::SupervisorError | CloseReason::NativeError) => {
-            Err("falló el canal del supervisor o la ventana nativa".into())
-        }
+        Some(
+            CloseReason::SupervisorError | CloseReason::NativeError | CloseReason::SourceError,
+        ) => Err("falló el canal del supervisor, la fuente o la ventana nativa".into()),
         _ => Ok(()),
     }
 }

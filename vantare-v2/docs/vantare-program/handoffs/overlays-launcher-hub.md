@@ -87,6 +87,33 @@ Siguiente: conectar los módulos de #2344 cuando se fusione y preparar Relative
 Eficiencia/captura (PR 7). No se modifica el worktree ajeno preparado para
 datos/cadencias; PR 3 sigue siendo autoridad de esos tipos. Ningún gráfico ni
 ejecución del producto en el servidor; F0 solo en el horario del orquestador.
+## VANTA-144 · conexión de diseño/fotos/cadencias Rune (15/11/2026)
+
+Encargo ampliado de A tras #2345: conectar diseño, fuente y cadencias; después
+PR 6 Relative Vantare y contadores. B conserva PR 7 (Eficiencia/captura) y
+monitores en caliente. Rama `vantareapp/isa-2333-rune-datos-cadencias`, worktree
+propio D:. Base local combinada `93c0c35924407a269577735d4511a8a4acba017e`:
+nightly 639bb40aa (incluye #2345 df9c911b5 y #2340) más #2344 5e11dd339.
+Solo hubo conflicto documental; bloques A/B conservados. Tras el squash de
+#2344, retirar esta base con `git rebase --onto origin/nightly 93c0c3592`.
+
+`feed::DataFeed` lee/vigila Document y Presentation de IPC sin escribir bytes,
+conserva el último documento válido y une su lector al cerrar. Fuente existente
+IPC local/pipe y DemandHandle, sin nuevas dependencias. `scene::FrameSet` entrega
+layout/fotos por ID, visibilidad y movimiento; Cadence de domain se aplica antes
+de publicar, sin cambiar niveles. Los filtros de sesión/fuera de pista conservan
+sus señales; el pintor contrasta derechos actuales. Coordenadas/DPI lógicos como
+GPUI. Se prepara solo Relative y no se adquieren widgets sin migrar.
+El contenedor sigue visualmente vacío hasta PR 6; campañas numéricas rechazadas.
+Un documento ausente/vacío no se inicializa ni reescribe automáticamente.
+
+Primera pasada por cola Windows/Rust 1.99.1/dos jobs: Clippy estricto, 21 tests
+CPU y auditoría de 428 paquetes PASS. Añadido caso real de pipe solicitado que
+entrega fotos a Runtime sin ventana; segunda pasada en curso. Pruebas de relojes
+inyectados, cadencias por instancia, cambio de época, visibilidad, permisos,
+bytes intactos, edición parcial y cierre con fuente viva. Ningún binario Rune,
+ventana, dispositivo, captura ni opción gráfica ejecutado. PR/head final por
+registrar. Sin merge/promoción/release propios; Plane no se modifica.
 
 ## VANTA-144 · PR 5: proceso y ventanas, parte independiente (15/11/2026)
 

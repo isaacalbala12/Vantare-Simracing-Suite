@@ -71,25 +71,38 @@ El núcleo admite ahora ambos ejecutables
 hermanos (`vantare-overlays.exe` y `vantare-overlays-rune.exe`) como lectores;
 Services sigue siendo el único mutador. Una copia en otra carpeta no es admitida.
 
-### Integración pendiente de PR 3
+### Diseño, fotos y cadencias compartidos
 
-Esta entrega implementa la parte independiente del PR 5 autorizada por el
-orquestador. Usa el contrato actual de UI como referencia, sin enlazar GPUI ni
-copiar los tipos que está trasladando Worker A:
+La CLI acepta `--layout RUTA`; sin ese argumento lee `ipc::layout::default_path`.
+El documento se abre y vigila con `ipc::layout::Document`, sin inicializarlo ni
+reescribirlo: un archivo ausente o vacío deja el host vacío hasta que el Hub lo
+edite. Los errores posteriores conservan el último diseño válido y se reintentan.
+`Presentation` sigue las nuevas solicitudes de mostrar/ocultar; una solicitud
+vieja no se repite al reabrir. Las ventanas respetan inicio oculto y no solicitan
+foco al mostrarse. La topología en caliente es la implementación de B (#2356); sus cambios
+actualizan el viewport lógico y conservan la foto y la visibilidad vigentes.
 
-| Código actual que se conectará | Uso en el host Rune |
-| --- | --- |
-| `ui::layout::{Document, Presentation}` | Leer/vigilar diseño y presentación, sin reescribir sus bytes. |
-| `ui::source::{DemandHandle, layout_feed}` | Demanda y fotos del mismo transporte existente. |
-| `ui::performance::{Preferences, Cadence}` | Filtrar fotos antes de actualizar cada widget. |
-| `ui::session` y `ui::geometry` | Visibilidad por sesión y coordenadas del diseño. |
+`feed::DataFeed` posee un lector con cierre y join. Consume `source::layout_feed`
+y `DemandHandle` en el pipe; `local` usa la misma fuente sintética de IPC.
+El sondeo de documentos/apariencia ocurre cada 500 ms fuera del render; no pide
+un frame si nada cambia. Las esperas del receptor se acotan a 50 ms para cerrar
+sin esperar una nueva foto. Al salir se suelta el receptor y el transporte IPC
+cancela su lectura. No se añade ninguna dependencia externa directa.
 
-Tras el PR 3 se importarán desde domain/ipc. Hasta entonces el marco está vacío
-y `--layout` o los números de campaña devuelven Unsupported antes de crear
-ventanas: no se ignoran diseños ni se simulan fotos de producto. Worker A conecta
-diseño, presentación, fotos y cadencias contra esos módulos; este arreglo solo
-gestiona topología y vida de ventanas. Worker B continúa Eficiencia y captura.
-No se anuncia aún el PR 5 completo, preview ni paridad visual.
+`scene::FrameSet` es el contrato de los pintores: diseño, fotos aceptadas por ID,
+visibilidad y movimiento reducido. `domain::performance::Cadence` filtra cada
+instancia antes de publicar su foto; se usa la misma identidad época/fuente.
+Las fotos que no cubren la demanda vigente se descartan. Derechos, «Mostrar en»
+y fuera de pista conservan sus reglas de domain/ipc; los filtros de sesión siguen
+pidiendo la señal que permite volver a mostrarse. El permiso actual se contrasta
+otra vez al enumerar instancias para no dibujar tras una revocación.
+La precedencia es diseño v2, después apariencia legada. La geometría del monitor
+convierte origen/tamaño físicos a lógicos igual que el backend Windows GPUI.
+
+La ruta de datos prepara Relative, primera familia de la migración. No adquiere
+datos de los widgets sin migrar. Los pintores Vantare/Eficiencia llegan en PR 6/7;
+este cambio conserva el contenedor visual vacío. Las campañas numéricas siguen
+rechazadas explícitamente hasta disponer de esos pintores. No se anuncia paridad.
 
 ## Servidor y CI sin gráficos
 
@@ -142,7 +155,7 @@ datos reales. La prueba comprueba:
    d5338988; verificarlo en ese PC de juego, incluidos monitores con escalas distintas.
 2. Clics y teclado llegan al juego; foco y ventana activa no cambian al iniciar.
 3. Siempre encima, sin entrada en Alt-Tab o barra de tareas; OBS y VRR pendientes de prueba real.
-4. Inicio oculto sin flash. La presentación desde el Hub espera el lector compartido.
+4. Inicio oculto sin flash. Las nuevas solicitudes de presentación del Hub muestran/ocultan sin activar.
 5. Cerrar el supervisor termina todas las ventanas y el proceso; repetir con el padre vivo y cierre local.
 6. Registrar fallos nativos y consumo/frames de reposo. Los contadores de presentación y los widgets llegan en PR 6/7.
 7. Conectar/desconectar monitores, reordenarlos y cambiar resolución/DPI en marcha:

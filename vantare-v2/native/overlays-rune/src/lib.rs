@@ -7,3 +7,6 @@ pub mod options;
 pub mod supervisor;
 #[cfg(windows)]
 mod topologia_windows;
+
+pub mod feed;
+pub mod scene;

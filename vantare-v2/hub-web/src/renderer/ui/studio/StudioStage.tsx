@@ -9,6 +9,12 @@ import { widgetName } from "./Widgets";
 
 export function StudioStage({ model }: { model: ReturnTypeOfStudioFocus }) {
   const state = useStudio();
+  const switchButton = useRef<HTMLButtonElement>(null);
+  const wasCanvas = useRef(state.canvasMode);
+  useLayoutEffect(() => {
+    if (wasCanvas.current && !state.canvasMode) switchButton.current?.focus();
+    wasCanvas.current = state.canvasMode;
+  }, [state.canvasMode]);
   const selected = model.selected;
   const view = state.view;
   if (!selected || !view) return null;
@@ -17,6 +23,7 @@ export function StudioStage({ model }: { model: ReturnTypeOfStudioFocus }) {
       label={state.canvasMode ? c.close : view.canvas ? c.open : c.unavailable}
     >
       <Button
+        ref={switchButton}
         size="sm"
         variant="ghost"
         aria-pressed={state.canvasMode}
@@ -46,3 +53,5 @@ export function StudioStage({ model }: { model: ReturnTypeOfStudioFocus }) {
     />
   );
 }
+
+import { useLayoutEffect, useRef } from "react";

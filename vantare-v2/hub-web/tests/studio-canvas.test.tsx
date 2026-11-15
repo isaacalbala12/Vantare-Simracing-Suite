@@ -304,3 +304,11 @@ it("discards an unfinished gesture on unmount without leaving a key listener", a
   await act(async () => {});
   expect(requests(spy)).toHaveLength(0);
 });
+
+it("returns focus to the mode button when leaving the canvas", async () => {
+  await mount();
+  await userEvent.setup().click(screen.getByRole("button", { name: t.close }));
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: t.open }),
+  );
+});

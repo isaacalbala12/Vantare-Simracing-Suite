@@ -77,6 +77,20 @@ no se usa su revisión agregada. Mock y contrato distinguen null de0 y no invent
 Fusionado en nightly mediante #2347 (0825363f0); head revisado 5ee9a5193.
 El selector de D sigue separado; preview depende de Rune F1 según ADR 0110.
 
+## VANTA-138 · seguimiento D108 (15/11/2026)
+
+Tres nits de #2347, sin protocolo nuevo: el lector ordenado de frecuencias usa
+un conjunto para detectar duplicados y rechaza la clave 257 antes de leer su valor.
+Cambiar Hz no depende de que la proyección de ajustes quepa en el mensaje; el
+archivo, la revisión, los permisos y el CAS se siguen comprobando. Una proyección
+que no cabe continúa siendo Protected. Un override huérfano no bloquea deshacer;
+los widgets reales y las restauraciones conservan sus comprobaciones de acceso.
+Tests de rechazo temprano, archivo válido/proyección excesiva y deshacer/rehacer
+con bytes exactos. Clippy y 642 tests del host PASS, 1 omitido, por la cola y sin
+ventanas. No se toca runtime/domain/ipc, por lo que no hace falta telemetría nueva.
+D no necesita adaptar el contrato. CI y revisión pendientes; PR/head en #1995.
+Siguiente cola de E: D031, D048 y D111; preview espera Rune F1.
+
 ## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
 
 Worker B, #2333, ADR 0110 §9. PR

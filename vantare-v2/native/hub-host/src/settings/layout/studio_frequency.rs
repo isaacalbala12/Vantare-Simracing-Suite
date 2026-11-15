@@ -50,7 +50,6 @@ pub(super) fn authorize_history(
         if old.widgets.get(id) == new.widgets.get(id) {
             continue;
         }
-        let mut found = false;
         for (candidate, kind) in &kinds {
             if candidate != id {
                 continue;
@@ -58,11 +57,9 @@ pub(super) fn authorize_history(
             if !kind.info(access).allowed {
                 return Err(HostError::Denied);
             }
-            found = true;
         }
-        if !found {
-            return Err(HostError::Denied);
-        }
+        // An orphan override has no live widget to authorize. Restored instances
+        // are checked separately by the writer, including additions after plan loss.
     }
     Ok(())
 }

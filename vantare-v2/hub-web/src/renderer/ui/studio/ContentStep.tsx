@@ -1,5 +1,5 @@
 import { Tabs } from "@base-ui/react/tabs";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type {
   OverlayInstance,
   WidgetSettings,
@@ -24,6 +24,7 @@ import { Input, Select, Switch } from "../Forms";
 import "./studio-content.css";
 
 type Model = ReturnType<typeof useAppearance>;
+const defaultNameMaxChars = 16; // GPUI sessions.rs uses this fallback for a missing limit.
 export function ContentStep({ item }: { item: OverlayInstance }) {
   const model = useAppearance(item);
   const settings = item.settings;
@@ -289,14 +290,23 @@ function ColumnSettings({
                   const mode = studioWidgetOptions.columns.names.find(
                     (id) => id === value,
                   );
-                  if (mode) edit({ format: { mode } });
+                  if (mode)
+                    edit({
+                      format: {
+                        mode,
+                        ...(mode === "truncate" &&
+                        column.format.maxChars === null
+                          ? { maxChars: defaultNameMaxChars }
+                          : {}),
+                      },
+                    });
                 }}
               />
               {column.format.mode === "truncate" && (
                 <ContentNumber
                   key={column.id}
                   label={text.maxChars}
-                  value={column.format.maxChars ?? 16}
+                  value={column.format.maxChars ?? defaultNameMaxChars}
                   min={1}
                   max={studioWidgetOptions.columns.maxChars}
                   model={{ ...model, disabled: model.disabled || !editable }}
@@ -454,9 +464,16 @@ function ContentNumber({
 }) {
   const [draft, setDraft] = useState(String(value));
   const [error, setError] = useState(false);
+  const edited = useRef(false);
+  const submitted = useRef<number | undefined>(undefined);
   useEffect(() => {
-    setDraft(String(value));
-    setError(false);
+    // A conflict can publish another Hub's value. It does not confirm this edit.
+    if (!edited.current || submitted.current === value) {
+      edited.current = false;
+      submitted.current = undefined;
+      setDraft(String(value));
+      setError(false);
+    }
   }, [value]);
   function commit() {
     if (model.disabled || model.pending) return;
@@ -470,8 +487,14 @@ function ContentNumber({
       setError(true);
       return;
     }
-    if (number !== value) onCommit(number);
-    setDraft(String(value));
+    if (number !== value) {
+      submitted.current = number;
+      onCommit(number);
+    } else {
+      edited.current = false;
+      submitted.current = undefined;
+      setDraft(String(value));
+    }
   }
   return (
     <Input
@@ -482,6 +505,8 @@ function ContentNumber({
       readOnly={model.pending}
       error={error ? text.invalidNumber(min, max) : undefined}
       onChange={(event) => {
+        edited.current = true;
+        submitted.current = undefined;
         setDraft(event.target.value);
         setError(false);
       }}

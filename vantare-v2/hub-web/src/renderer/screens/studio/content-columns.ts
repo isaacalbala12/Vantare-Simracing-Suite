@@ -58,11 +58,12 @@ function fullColumn(column: WidgetColumnSetting): WidgetColumnPatch | null {
   const mode = studioWidgetOptions.columns.names.find(
     (value) => value === column.format.mode,
   );
+  if (column.format.mode !== "" && !mode) return null;
   return {
     metric: id,
     enabled: column.enabled,
     widthPreset: width,
-    format: { mode: mode ?? "full", maxChars: column.format.maxChars },
+    format: { ...(mode ? { mode } : {}), maxChars: column.format.maxChars },
     style: {
       align:
         studioWidgetOptions.columns.aligns.find(
@@ -143,7 +144,9 @@ export function canResetColumns(
     identities(columns, false) !== null &&
     !columns.some(
       (column) =>
-        column.format.display !== null || column.format.decimals !== null,
+        column.format.display !== null ||
+        column.format.decimals !== null ||
+        (column.format.mode !== "" && column.format.mode !== "full"),
     )
   );
 }

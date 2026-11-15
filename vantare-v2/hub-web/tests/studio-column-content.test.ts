@@ -104,6 +104,41 @@ it("resets just the selected session using the native generated preset", () => {
       }),
     ),
   });
+  if (!patch) throw Error("patch");
+  const result = applyWidgetSettings(s, patch);
+  if (result?.kind !== "standings") throw Error("standings");
+  expect(result.practiceColumns?.map((column) => column.format.mode)).toEqual(
+    s.practiceColumns?.map(() => ""),
+  );
+});
+it("keeps the native empty name mode when materializing fallback columns", () => {
+  const s = settings();
+  s.columns = null;
+  delete s.practiceColumns;
+  delete s.qualifyingColumns;
+  const patch = editColumn(s, "race", "gap", { enabled: false });
+  if (patch?.kind !== "standings") throw Error("patch");
+  expect(
+    patch.columns?.find((column) => column.metric === "driverName")?.format,
+  ).not.toHaveProperty("mode");
+  const result = applyWidgetSettings(s, patch);
+  if (result?.kind !== "standings") throw Error("standings");
+  expect(
+    result.columns?.find((column) => column.metricId === "driverName")?.format
+      .mode,
+  ).toBe("");
+  expect(
+    result.practiceColumns?.find((column) => column.metricId === "driverName")
+      ?.format.mode,
+  ).toBe("");
+});
+it("does not pretend to reset a custom name mode that the patch cannot clear", () => {
+  const s = settings();
+  const column = s.columns?.find((column) => column.metricId === "driverName");
+  if (!column) throw Error("column");
+  column.format.mode = "truncate";
+  expect(canResetColumns(s, "race")).toBe(false);
+  expect(resetColumns(s, "race")).toBeNull();
 });
 it("does not pretend to reset a time format the current request cannot change", () => {
   const s: import("../src/contract/generated/studio").StandingsWidgetSettings & {

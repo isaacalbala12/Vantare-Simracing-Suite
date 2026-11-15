@@ -11,7 +11,7 @@ el área desplazable lo incluye y lo identifica con un borde discontinuo.
 
 Arrastrar mueve; los ocho tiradores redimensionan. Flechas mueven la selección;
 Alt + flechas cambia su tamaño; en un tirador las flechas actúan sobre ese
-borde. Mayús acelera y Escape cancela. Hay botones de desplazamiento y nueve
+borde. Mayús acelera y Escape cancela. Hay nueve
 anclas como alternativa al arrastre. El zoom y Encajar son locales y no escriben.
 
 Durante un gesto solo cambia un borrador. Soltar el puntero o la tecla envía
@@ -31,7 +31,7 @@ un conflicto explícito nunca se convierte en confirmación de guardado.
 
 Mayús se toma al empezar el gesto y no cambia por las repeticiones del sistema.
 Un fallo de `setPointerCapture` cancela sin escribir; una flecha que no puede
-iniciar el gesto se propaga sin consumir. El teclado y los botones comparten
+iniciar el gesto se propaga sin consumir. El teclado usa
 `geometry.nudge`; la repetición agrupa sus pasos manteniendo el mismo clamp.
 
 **Redondeo:** se conservan las coordenadas fraccionarias del contrato v37.
@@ -71,3 +71,26 @@ reposo y se suspende el auto-scroll de selección. El borrador puede cruzar cero
 sin mover su marco bajo el puntero. Al acabar/cancelar vuelve a calcularse el
 origen y se recupera el desplazamiento de selección. La pérdida de foco de la
 ventana cancela tanto puntero como teclado sin guardar el borrador.
+
+## Diseño aprobado: Vista Lienzo A (15-11-2026)
+
+El selector Widget | Lienzo vive en FocusHeader. En Lienzo se sustituye el
+escenario y se ocultan los pasos, conservando su montaje/estado. La cabecera
+se compacta y el plano recibe todo el alto restante. La única barra inferior
+contiene posición, Anclar, proporción, tamaño automático, estado, zoom,
+Encajar y Listo. Esc cancela el gesto y nunca cambia la vista. Al salir con
+Listo se devuelve el foco a Widget; al entrar, al widget seleccionado.
+Los tiradores siguen siendo operables programáticamente y con Alt + flechas,
+pero no añaden ocho paradas al recorrido secuencial.
+
+La resolución se elige en presets fijos con tarjetas como Rendimiento; no hay
+entrada libre. `studio.canvas` usa CAS. Tu monitor envía `{kind:monitor}`;
+solo un preset envía `{kind:custom,width,height}`. Con source=monitor se muestra
+su resolución detectada. Si el documento ya arrancó personalizado, el contrato
+no publica por separado el monitor: la opción sigue permitiendo volver a él,
+pero no se inventa su tamaño antes de la respuesta. Una resolución detectada
+en esta sesión se conserva para la etiqueta al elegir luego un preset.
+
+La miniatura y el enlace de la tira abren la misma vista. La lista y el plano
+comparten selección; ocultos permanecen visibles en gris al 35 %, y fuera de
+lienzo se mantiene la posición real. No se añade otro pintor ni preview real.

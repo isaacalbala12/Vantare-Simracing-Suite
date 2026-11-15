@@ -13,6 +13,7 @@ export async function checkStudioCanvas(
   evidence: string,
 ) {
   const page = await parent.context().newPage();
+  const measuredLayout: unknown[] = [];
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
     for (const scene of [
@@ -164,15 +165,11 @@ export async function checkStudioCanvas(
               "fit stays legible",
             );
             assert.equal(
-              await page
-                .getByRole("tab", { name: "En pista", exact: true })
-                .count(),
+              await page.locator(".v-studio-temporary[hidden][inert]").count(),
               1,
             );
             assert.equal(
-              await page
-                .getByRole("tab", { name: "En pista", exact: true })
-                .isVisible(),
+              await page.locator(".v-studio-temporary").isVisible(),
               false,
             );
             assert.equal(
@@ -181,7 +178,16 @@ export async function checkStudioCanvas(
                 .count(),
               1,
             );
-            layout.push({ width, sidebar, scheme });
+            const measurement = {
+              width,
+              sidebar,
+              scheme,
+              viewport,
+              plane,
+              fitPercent: (plane.width / 1920) * 100,
+            };
+            layout.push(measurement);
+            measuredLayout.push(measurement);
           }
         }
       }
@@ -200,6 +206,7 @@ export async function checkStudioCanvas(
           readonly: true,
           conflictNotRetried: true,
           responsiveLayout: true,
+          layout: measuredLayout,
         },
         null,
         2,

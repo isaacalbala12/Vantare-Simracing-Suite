@@ -89,14 +89,19 @@ export function create(context: MockContext): MockHandler {
   if (sceneName.startsWith("studio-canvas")) {
     const positions = [
       [48, 62],
-      [900, 80],
-      [580, 620],
-      [1380, 720],
+      [770, 40],
+      [1560, 300],
+      [1540, 800],
     ];
     instances.forEach((item, i) => {
       item.x = positions[i][0];
       item.y = positions[i][1];
     });
+    // The approved Vista Lienzo A prototype uses this QA distribution.
+    instances[1].size = { width: 380, height: 72 };
+    instances[2].size = { width: 320, height: 208 };
+    instances[2].visible = false;
+    instances[3].size = { width: 300, height: 204 };
     if (sceneName === "studio-canvas-outside") {
       instances[0].x = -80;
       instances[0].canvasPlacement = "outside";
@@ -118,7 +123,9 @@ export function create(context: MockContext): MockHandler {
     revision: "0".repeat(64),
     instances: sceneName === "studio-vacio" ? [] : instances,
     catalog: studioCatalog.map((item) => ({ ...item, allowed: true })),
-    showing: sceneName === "studio-mostrando",
+    showing:
+      sceneName === "studio-mostrando" ||
+      sceneName === "studio-canvas-readonly",
     plan: "pro",
     canUndo: false,
     canRedo: false,

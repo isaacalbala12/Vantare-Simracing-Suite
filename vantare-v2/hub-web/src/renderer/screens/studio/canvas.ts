@@ -106,6 +106,7 @@ export function useCanvas(view: StudioView) {
     dispatch,
     begin,
     enabled,
+    live: core.live,
     pending: !!pending,
     box: (id: string) => projectedBox(snapshot, id),
   };

@@ -185,8 +185,8 @@ it("captures pointer movement and writes only after pointerup", async () => {
   await waitFor(() => expect(requests(spy)).toHaveLength(1));
   expect(requests(spy)[0].change).toMatchObject({
     kind: "move",
-    x: 446,
-    y: 80,
+    x: 432,
+    y: 76,
   });
 });
 it("keeps the plane and scroll fixed while a captured draft crosses zero", async () => {
@@ -274,7 +274,9 @@ it("lost pointer capture discards movement", async () => {
 it("does not send geometry with a live simulator", async () => {
   const spy = vi.spyOn(Client.prototype, "request");
   const { move } = await mount("studio-canvas-readonly");
-  expect(await screen.findByText(t.readOnly)).toBeTruthy();
+  expect(
+    await screen.findByText(`${t.liveReadOnly} ${t.liveReadOnlyHelp}`),
+  ).toBeTruthy();
   expect(move.getAttribute("aria-disabled")).toBe("true");
   arrow(move);
   await act(async () => {});
@@ -625,4 +627,23 @@ it("shows no resize handles or keyboard help in readonly mode", async () => {
   const { container } = await mount("studio-canvas-readonly");
   expect(container.querySelectorAll("[data-canvas-handle]")).toHaveLength(0);
   expect(screen.queryByText(t.help)).toBeNull();
+});
+
+it("navigates the nine anchors with the keyboard and restores trigger focus", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const user = userEvent.setup();
+  const trigger = screen.getByRole("button", { name: t.anchors });
+  await user.click(trigger);
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: t.anchor(t.rows[1], t.columns[1]) }),
+    ),
+  );
+  await user.keyboard("{Home}{Enter}");
+  await waitFor(() => expect(requests(spy)).toHaveLength(1));
+  expect(requests(spy)[0]).toMatchObject({
+    change: { kind: "anchor", column: 0, row: 0 },
+  });
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
 });

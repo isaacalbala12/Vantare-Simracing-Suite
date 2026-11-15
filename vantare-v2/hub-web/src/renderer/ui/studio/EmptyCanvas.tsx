@@ -13,6 +13,16 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
     >
       <div className="v-studio-canvas-viewport v-canvas-empty">
         <span className="v-canvas-illustration-note">{t.note}</span>
+        {view?.canvas && (
+          <div
+            className="v-canvas-empty-plane"
+            style={{
+              aspectRatio: `${view.canvas.width} / ${view.canvas.height}`,
+            }}
+          >
+            <span>{`${view.canvas.width} × ${view.canvas.height} · ${view.canvas.source === "monitor" ? t.monitorSource : t.customSource}`}</span>
+          </div>
+        )}
         <div className="v-canvas-empty-message">
           <h2>
             {unavailable

@@ -80,7 +80,9 @@ export function FocusHeader({
           }
         >
           <Button
-            variant={view.instances.length ? "primary" : "neutral"}
+            variant={
+              !view.showing && view.instances.length ? "primary" : "neutral"
+            }
             disabled={unavailable}
             aria-disabled={pending}
             onClick={() => {

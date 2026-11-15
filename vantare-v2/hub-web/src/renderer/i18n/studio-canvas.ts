@@ -29,12 +29,12 @@ export const canvasText = {
   liveReadOnlyHelp: "Deja de mostrar en pista para editar.",
   proportions: "Proporción",
   center: "Centro",
+  dismiss: "Entendido",
   open: "Editar distribución en el lienzo",
   close: "Volver a la vista de widget",
   layout: "Lienzo",
   widget: "Widget",
   placementHint: "Arrastra en el lienzo o elige un widget en la lista.",
-  moveGroup: "Mover widget",
   title: "Lienzo del diseño",
   unavailable:
     "El anfitrión no ha podido determinar el lienzo. Vuelve a cargar el diseño.",
@@ -71,12 +71,6 @@ export const canvasText = {
   anchor: (row: string, column: string) => `Anclar ${row} ${column}`,
   rows: ["arriba", "al centro", "abajo"],
   columns: ["a la izquierda", "al centro", "a la derecha"],
-  nudge: [
-    "Mover a la izquierda",
-    "Mover arriba",
-    "Mover a la derecha",
-    "Mover abajo",
-  ],
   natural: "Tamaño automático",
   lockAspect: "Bloquear proporción",
 };

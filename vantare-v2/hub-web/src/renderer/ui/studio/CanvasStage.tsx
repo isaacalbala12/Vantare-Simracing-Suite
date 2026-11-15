@@ -177,22 +177,56 @@ export function CanvasStage({
       aria-label={t.title}
       aria-busy={model.pending}
     >
-      {!view.canvas ? (
-        <Callout
-          title={t.unavailable}
-          actions={
+      <div className="v-studio-canvas-feedback">
+        <p
+          role="alert"
+          className="v-studio-canvas-status"
+          data-tone={notice === "failed" ? "err" : "warn"}
+        >
+          {notice
+            ? notice === "uncertain"
+              ? t.uncertain
+              : notice === "failed"
+                ? t.failed
+                : t.changed
+            : ""}
+          {notice && (
             <Button
-              onClick={() => void studio.execute({ method: "studio.get" })}
+              size="sm"
+              variant="ghost"
+              onClick={() => model.dispatch({ type: "dismiss" })}
             >
-              {studioText.reload}
+              {t.dismiss}
             </Button>
-          }
-        />
+          )}
+        </p>
+        <p role="status" className="v-studio-canvas-status">
+          {!notice && model.snapshot.saved ? t.saved : ""}
+        </p>
+      </div>
+      {!view.canvas ? (
+        <>
+          <Callout
+            title={t.unavailable}
+            actions={
+              <Button
+                onClick={() => void studio.execute({ method: "studio.get" })}
+              >
+                {studioText.reload}
+              </Button>
+            }
+          />
+          <footer>{actions}</footer>
+        </>
       ) : (
         <>
           {!model.enabled && notice !== "uncertain" && (
             <p className="v-studio-canvas-readonly">
-              {studio.needsRead ? t.uncertain : t.readOnly}
+              {studio.needsRead
+                ? t.uncertain
+                : model.live
+                  ? `${t.liveReadOnly} ${t.liveReadOnlyHelp}`
+                  : t.readOnly}
             </p>
           )}
           <div ref={viewport} className="v-studio-canvas-viewport">
@@ -268,7 +302,7 @@ export function CanvasStage({
                       onKeyDown={(event) => input.keyDown(event, item.id)}
                       onBlur={input.blur}
                     />
-                    {(active || !item.visible || outside) && (
+                    {
                       <>
                         <span
                           className="v-studio-canvas-caption"
@@ -283,6 +317,12 @@ export function CanvasStage({
                               ? ` · ${t.hidden}`
                               : ""}
                         </span>
+                        {active && (
+                          <span
+                            className="v-canvas-widget-dim"
+                            aria-hidden="true"
+                          >{`${Math.round(box.size.width)} × ${Math.round(box.size.height)}`}</span>
+                        )}
                         {active &&
                           model.enabled &&
                           !item.locked &&
@@ -315,7 +355,7 @@ export function CanvasStage({
                             />
                           ))}
                       </>
-                    )}
+                    }
                   </div>
                 );
               })}
@@ -384,7 +424,11 @@ export function CanvasStage({
             )}
           </div>
           <footer role="toolbar" aria-label={t.tools}>
-            <output className="v-studio-canvas-position" aria-live="off">
+            <output
+              className="v-studio-canvas-position"
+              aria-live="off"
+              data-outside={selected.canvasPlacement === "outside"}
+            >
               {t.position(box.x, box.y, box.size.width, box.size.height)}
               {selected.canvasPlacement === "outside" ? ` · ${t.outside}` : ""}
             </output>
@@ -468,20 +512,6 @@ export function CanvasStage({
           </div>
         </>
       )}
-      <div className="v-studio-canvas-feedback">
-        <p role="alert" className="v-studio-canvas-status">
-          {notice
-            ? notice === "uncertain"
-              ? t.uncertain
-              : notice === "failed"
-                ? t.failed
-                : t.changed
-            : ""}
-        </p>
-        <p role="status" className="v-studio-canvas-status">
-          {!notice && model.snapshot.saved ? t.saved : ""}
-        </p>
-      </div>
     </section>
   );
 }

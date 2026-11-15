@@ -1,3 +1,69 @@
+## VANTA-144 · Revisión de #2356: política de fallos y nits
+
+Worker B atiende MERGE WITH NITS del orquestador, mismo PR #2356 / #2346.
+Monitor ilegible se trata como ausente; no aborta leer el resto. Fallo de la
+enumeración global conserva las ventanas y registra un aviso una vez tras
+5 s consecutivos; al recuperarse se rearma. Reloj inyectado en los tests, sin
+esperas reales. Un cambio solo de primary actualiza metadatos sin place;
+únicamente límites/escala requieren recolocar. Setup del controlador reemplaza
+y retira el waker anterior en ambos registros.
+
+El test antes llamado eof_wins_over_a_concurrent_topology se simplifica y
+renombra closed_controller_ignores_topology_queued_before_poll: prueba esa
+precedencia, no una carrera real. La carrera física sigue en F0, sin presentarla
+como comprobada en CPU. Se añaden pruebas de las dos ramas de lectura, el aviso
+de 5 s y recuperación, primary sin place y setup repetido/baja del waker.
+Clippy/tests por cola en curso; sin gráficos, dependencias nuevas ni cambios de
+conexión de A. El sondeo de 1 Hz es PROVISIONAL; alternativa por eventos:
+WM_DISPLAYCHANGE / WM_DPICHANGED.
+
+Checklist F0 ampliada: apagar/desactivar todas las pantallas y reactivarlas
+(proceso vivo, controlador sin ventanas, superficies que vuelven); resolución/DPI
+justo después de conectar (no perder place antes de crear la ventana). Pendiente
+en PC de juego, exclusivamente con horario del orquestador; nada ejecutado allí.
+
+## VANTA-144 · Monitores en caliente, Worker B (#2346)
+
+Rama `vantareapp/isa-2346-monitores-rune`, base nightly 8ea2e9741 tras rebasar
+con --onto desde 64a445de3 de #2348 (squash 99bbee4b4).
+PR draft [#2356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2356),
+código fdc28111c; repetición de Clippy y 22 tests CPU sobre esta base PASS.
+CI/revisión del PR pendientes. Reparto
+confirmado por el orquestador: B solo vida/topología de ventanas; A conecta
+diseño, fuente y cadencias, y hace Relative Vantare. No se toca esa conexión.
+
+`monitores.rs`: reconciliación por identidad nativa, controlador windowless
+que permanece sin monitores y observador Windows cancelable de 1 Hz. Sin cambios
+no despierta la GUI. Altas crean ventanas inactivas con el marco seguro existente;
+bajas marcan retirada interna y no cierran el proceso; cambios de límites/DPI
+recolocan conservando el estado. `topologia_windows.rs` aísla la FFI de consulta,
+sin crear HWND/DC/dispositivo. Solo se publica una enumeración completada; un
+monitor ilegible se omite y se considera ausente, según la revisión superior.
+Se comprueban errores de creación una sola vez tras abrir. State elimina su waker
+al destruirse; EOF/cierre mantiene prioridad. Mac/Linux conservan topología inicial.
+
+Hooks a conservar por A en host.rs: `window(display, key, shared, hidden, retiring)`,
+marca `retiring` por estado, alta/baja del waker y factory `App::windowless`.
+`State.monitor` expone los límites/DPI actuales: se actualiza en el mismo estado
+al recolocar, para que la conexión de A no conserve un origen inicial obsoleto.
+Ninguna foto, diseño, cadencia, derecho o proyección duplicados.
+Tests CPU: altas/bajas/reordenación, límites/DPI, rechazo de snapshots parciales,
+cierre interno frente a usuario, baja de wakers, EOF antes de poll y join cancelable;
+no se enumera el escritorio real ni se ejecuta el producto. Windows: Clippy y
+22 tests CPU PASS (20 lib + 2 main), más 5 de política sin debug_assertions;
+todo por cola con dos jobs y target compartido D:. Licencias: 425 paquetes PASS.
+Primera pasada detectó tres llamadas a una API de test inexistente; corregidas
+usando el shell público de Runtime, sin excepciones ni tests desactivados.
+No hay dependencias/locks
+nuevos. F0 físico, DPI mixto, foco y click-through siguen pendientes en PC de juego
+con hora del orquestador; #2346 debe cerrarse antes de F2 tras esa verificación.
+
+Contrato Relative acordado para PR 7: A produce filas visuales comunes con
+Row de domain, slot interpolado, opacity y Alert { kind semántico, opacity }.
+La intensidad del aviso es independiente de la fila. Cada Look elige solo el
+color y pinta; ni Vantare ni Eficiencia recalculan movimiento. B adapta su pintor
+y captura en #2351 a ese módulo cuando A lo exponga, coordinado por el orquestador.
+
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 
 #2345 fusionado por el orquestador como df9c911b5. Worker B atiende sus nits

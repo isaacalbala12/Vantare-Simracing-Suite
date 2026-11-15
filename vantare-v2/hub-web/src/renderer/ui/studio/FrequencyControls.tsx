@@ -30,12 +30,12 @@ export function FrequencyControls({
         <p>{text.flags}</p>
       ) : (
         <>
-          <p role="status">
+          <div role="status" className="v-studio-track-group-summary">
             {text.applied(
               appliedHz === 0 ? text.snapshot : text.hz(appliedHz),
               t(`track.${level}`),
             )}
-          </p>
+          </div>
           <fieldset
             aria-describedby={help}
             className="v-studio-frequency-choices"

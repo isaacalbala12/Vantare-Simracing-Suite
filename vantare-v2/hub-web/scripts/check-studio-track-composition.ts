@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
+import { studioFrequencyOptions } from "../src/contract/generated/studio";
 import { studioText as t } from "../src/renderer/i18n/studio";
+import { studioFrequencyText as frequency } from "../src/renderer/i18n/studio-frequency.es";
 import { studioStateScenes } from "./visual-diff/studio-states";
 import { until } from "./wait-for";
 
@@ -54,10 +56,70 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
                 Number.parseFloat(getComputedStyle(node).width),
             );
             const groups = page.locator(".v-studio-track-group");
+            await until(
+              async () => (await groups.count()) === 4,
+              5000,
+              "All four Track groups mounted",
+            );
             assert.equal(
               await groups.count(),
-              3,
-              "Positive control: all three groups are mounted",
+              4,
+              "Positive control: all four groups are mounted",
+            );
+            for (const name of [
+              t.visibilityGroup,
+              t.whenGroup,
+              t.placeGroup,
+              frequency.title,
+            ]) {
+              assert.equal(
+                await page.getByRole("region", { name, exact: true }).count(),
+                1,
+                `Accessible Track group: ${name}`,
+              );
+            }
+            const cadence = page.getByRole("group", {
+              name: frequency.choices,
+              exact: true,
+            });
+            const buttons = cadence.getByRole("button");
+            assert.equal(
+              await buttons.count(),
+              studioFrequencyOptions.choices.length + 1,
+            );
+            for (const [index, name] of [
+              frequency.inherit,
+              ...studioFrequencyOptions.choices.map(frequency.hz),
+            ].entries()) {
+              const button = cadence.getByRole("button", { name, exact: true });
+              assert.equal(await button.count(), 1);
+              assert.equal(
+                await button.getAttribute("aria-pressed"),
+                String(index === 0),
+              );
+            }
+            const inherit = cadence.getByRole("button", {
+              name: frequency.inherit,
+              exact: true,
+            });
+            await inherit.focus();
+            await page.keyboard.press("Tab");
+            await until(
+              () =>
+                buttons
+                  .nth(1)
+                  .evaluate((node) => document.activeElement === node),
+              5000,
+              "Tab reaches the first Hz choice",
+            );
+            await page.keyboard.press("Shift+Tab");
+            assert.ok(
+              await inherit.evaluate(
+                (node) =>
+                  document.activeElement === node &&
+                  node.matches(":focus-visible"),
+              ),
+              "Frequency inheritance keeps keyboard focus",
             );
             for (const group of await groups.all()) {
               const summary = await group.evaluate((node) => {
@@ -96,6 +158,7 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
                       .length,
                   lastSpans: getComputedStyle(node.lastElementChild as Element)
                     .gridColumn,
+                  placementSpans: getComputedStyle(node.children[2]).gridColumn,
                   tops: children.map((r) => r.top),
                 };
                 function assertElement(
@@ -107,6 +170,7 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
             assert.equal(layout.columns, layout.column <= 820 ? 2 : 3);
             if (layout.column <= 820) {
               assert.equal(layout.lastSpans, "1 / -1");
+              assert.equal(layout.placementSpans, "1 / -1");
               assert.ok(layout.tops[2] > layout.tops[0]);
             }
             const geometry = await groups
@@ -236,6 +300,32 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
           );
           assert.ok(
             await slider.evaluate((node) => document.activeElement === node),
+          );
+          const cadence = page.getByRole("group", {
+            name: frequency.choices,
+            exact: true,
+          });
+          const selected = cadence.getByRole("button", {
+            name: frequency.hz(10),
+            exact: true,
+          });
+          await selected.focus();
+          await page.keyboard.press("Enter");
+          await until(
+            async () =>
+              (await selected.getAttribute("aria-pressed")) === "true",
+            5000,
+            "Keyboard frequency selection is confirmed",
+          );
+          assert.equal(
+            await cadence
+              .getByRole("button", { name: frequency.inherit, exact: true })
+              .getAttribute("aria-pressed"),
+            "false",
+          );
+          assert.ok(
+            await selected.evaluate((node) => document.activeElement === node),
+            "Saved frequency retains focus",
           );
         } finally {
           await page.close();

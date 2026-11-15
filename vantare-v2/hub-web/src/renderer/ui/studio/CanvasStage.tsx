@@ -181,8 +181,10 @@ export function CanvasStage({
         />
       ) : (
         <>
-          {!model.enabled && (
-            <p className="v-studio-canvas-readonly">{t.readOnly}</p>
+          {!model.enabled && notice !== "uncertain" && (
+            <p className="v-studio-canvas-readonly">
+              {studio.needsRead ? t.uncertain : t.readOnly}
+            </p>
           )}
           <div ref={viewport} className="v-studio-canvas-viewport">
             <div
@@ -384,7 +386,13 @@ export function CanvasStage({
       </p>
       <div className="v-studio-canvas-feedback">
         <p role="alert" className="v-studio-canvas-status">
-          {notice ? (notice === "failed" ? t.failed : t.changed) : ""}
+          {notice
+            ? notice === "uncertain"
+              ? t.uncertain
+              : notice === "failed"
+                ? t.failed
+                : t.changed
+            : ""}
         </p>
         <p role="status" className="v-studio-canvas-status">
           {!notice && model.snapshot.saved ? t.saved : ""}

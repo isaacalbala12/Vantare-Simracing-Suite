@@ -203,3 +203,84 @@ function gesture(s: CanvasState) {
   if (!s.gesture) throw Error("Expected active gesture");
   return s.gesture;
 }
+
+it("does not announce Saved or drain the queue when an acknowledgement differs", () => {
+  let s = reduce(move(initial(), 80), { type: "finish" });
+  const token = pending(s).token;
+  s = reduce(move(s, 120), { type: "finish" });
+  s = reduce(s, { type: "reply", token, view: view("a".repeat(64)) });
+  expect(s.saved).toBeUndefined();
+  expect(s.pending).toBeUndefined();
+  expect(s.queued).toBeUndefined();
+  expect(s.notice).toBe("changed");
+});
+
+it("clears Saved for a new gesture or an external geometry change", () => {
+  let s = reduce(move(initial(), 80), { type: "finish" });
+  s = reduce(s, { type: "reply", token: pending(s).token, view: saved(s) });
+  expect(s.saved).toBeTruthy();
+  expect(
+    reduce(s, { type: "begin", id: "one", mode: "move" }).saved,
+  ).toBeUndefined();
+  const changed = structuredClone(s.view);
+  changed.instances[0].x = 99;
+  expect(reduce(s, { type: "view", view: changed }).saved).toBeUndefined();
+});
+
+it("fences uncertain gestures until a read confirms the exact target", () => {
+  let s = reduce(move(initial(), 80), { type: "finish" });
+  const token = pending(s).token;
+  const committed = saved(s);
+  s = reduce(move(s, 120), { type: "finish" });
+  s = reduce(s, {
+    type: "error",
+    token,
+    readRequired: true,
+    confirmFromRead: true,
+  });
+  expect(s.pending).toBeUndefined();
+  expect(s.queued).toBeUndefined();
+  expect(s.saved).toBeUndefined();
+  expect(
+    reduce(s, { type: "begin", id: "one", mode: "move" }).gesture,
+  ).toBeUndefined();
+  s = reduce(s, { type: "view", view: committed });
+  expect(s.awaitingRead).toBeTruthy(); // A subscription alone is not the requested read.
+  s = reduce(s, { type: "reconciled", view: committed });
+  expect(s.awaitingRead).toBeUndefined();
+  expect(s.saved?.target.x).toBe(80);
+  expect(s.pending).toBeUndefined(); // No mutation replay.
+});
+
+it("adopts an unapplied outcome without Saved and permits a new explicit gesture", () => {
+  let s = reduce(move(initial(), 80), { type: "finish" });
+  s = reduce(s, {
+    type: "error",
+    token: pending(s).token,
+    readRequired: true,
+    confirmFromRead: true,
+  });
+  s = reduce(s, { type: "reconciled", view: view("b".repeat(64)) });
+  expect(s.saved).toBeUndefined();
+  expect(s.notice).toBe("failed");
+  expect(s.pending).toBeUndefined();
+  expect(
+    reduce(s, { type: "begin", id: "one", mode: "move" }).gesture,
+  ).toBeTruthy();
+});
+
+it("a rejected conflict never becomes Saved just because its read matches", () => {
+  let s = reduce(move(initial(), 80), { type: "finish" });
+  const current = saved(s);
+  s = reduce(s, {
+    type: "error",
+    token: pending(s).token,
+    conflict: current,
+    readRequired: true,
+    confirmFromRead: false,
+  });
+  s = reduce(s, { type: "reconciled", view: current });
+  expect(s.saved).toBeUndefined();
+  expect(s.notice).toBe("conflict");
+  expect(s.pending).toBeUndefined();
+});

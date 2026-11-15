@@ -102,6 +102,11 @@ export function create(context: MockContext): MockHandler {
       instances[0].canvasPlacement = "outside";
     }
     if (sceneName === "studio-canvas-readonly") context.core.live = true;
+    if (sceneName === "studio-canvas-fractional") {
+      instances[0].x = 0.25;
+      instances[0].y = -0.5;
+      instances[0].canvasPlacement = "outside";
+    }
   }
   const view: StudioView = {
     state:

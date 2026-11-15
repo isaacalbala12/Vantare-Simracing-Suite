@@ -137,13 +137,18 @@ export function nudge(
   position: Pair,
   direction: Pair,
   shift: boolean,
+  steps = 1,
 ): Pair | null {
   if (
     !finite(position) ||
-    !direction.every((v) => Number.isInteger(v) && Math.abs(v) <= 1)
+    !direction.every((v) => Number.isInteger(v) && Math.abs(v) <= 1) ||
+    !Number.isSafeInteger(steps) ||
+    steps < 0
   )
     return null;
-  const step = shift ? 8 : 1;
+  // Batched repetition of the same direction, with the canonical final clamp.
+  // No rounding: v37 deliberately preserves fractional positions.
+  const step = (shift ? 8 : 1) * steps;
   return [
     clamp(
       position[0] + direction[0] * step,

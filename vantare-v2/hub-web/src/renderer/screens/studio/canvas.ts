@@ -29,6 +29,7 @@ export function useCanvas(view: StudioView) {
     !core.live &&
     core.rights === "connected" &&
     core.access.verified &&
+    !studio.needsRead &&
     view.state === "ready" &&
     view.plan !== "unverified" &&
     view.canvas !== null;
@@ -39,6 +40,7 @@ export function useCanvas(view: StudioView) {
   });
   const current = useRef(snapshot),
     alive = useRef(true),
+    lastRead = useRef(studio.readVersion),
     sent = useRef(0);
   const dispatch = useCallback((action: CanvasAction) => {
     const next = canvasReducer(current.current, action);
@@ -49,6 +51,11 @@ export function useCanvas(view: StudioView) {
   useLayoutEffect(() => {
     dispatch({ type: "view", view });
   }, [dispatch, view]);
+  useLayoutEffect(() => {
+    if (lastRead.current === studio.readVersion) return;
+    lastRead.current = studio.readVersion;
+    dispatch({ type: "reconciled", view });
+  }, [dispatch, studio.readVersion, view]);
   useLayoutEffect(() => {
     dispatch({ type: enabled ? "enable" : "disable" });
   }, [dispatch, enabled]);
@@ -63,22 +70,25 @@ export function useCanvas(view: StudioView) {
     if (!pending || sent.current === pending.token) return;
     sent.current = pending.token;
     void (async () => {
-      let failure: unknown;
-      const value = await execute(pending.request, (error) => {
-        failure = error;
+      let failed = false;
+      const value = await execute(pending.request, (error, context) => {
+        failed = true;
+        if (!alive.current) return;
+        dispatch({
+          type: "error",
+          token: pending.token,
+          conflict:
+            error instanceof HostFailure &&
+            error.detail.kind === "studioConflict"
+              ? error.detail.current
+              : undefined,
+          readRequired: context?.readRequired,
+          confirmFromRead: context?.confirmFromRead,
+        });
       });
       if (!alive.current) return;
       if (value) dispatch({ type: "reply", token: pending.token, view: value });
-      else {
-        const conflict =
-          failure instanceof HostFailure &&
-          failure.detail.kind === "studioConflict"
-            ? failure.detail.current
-            : undefined;
-        dispatch({ type: "error", token: pending.token, conflict });
-        // Read the host after a conflict; never resend the discarded gesture.
-        if (conflict) void execute({ method: "studio.get" });
-      }
+      else if (!failed) dispatch({ type: "error", token: pending.token });
     })();
   }, [pending, execute, dispatch]);
   const begin = (id: string, mode: "move" | "resize") => {

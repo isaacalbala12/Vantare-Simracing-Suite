@@ -21,7 +21,8 @@ import {
 } from "vitest";
 import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider } from "../src/renderer/app/UiState";
-import { Client } from "../src/renderer/bridge/client";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
+import { studioText } from "../src/renderer/i18n/studio";
 import { canvasText as t } from "../src/renderer/i18n/studio-canvas";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
@@ -312,4 +313,172 @@ it("returns focus to the mode button when leaving the canvas", async () => {
   expect(document.activeElement).toBe(
     screen.getByRole("button", { name: t.open }),
   );
+});
+
+it.each([false, true])(
+  "freezes Shift at the start of a held gesture (%s)",
+  async (shift) => {
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const spy = vi.spyOn(Client.prototype, "request");
+    const { move } = await mount();
+    fireEvent.keyDown(move, { key: "ArrowRight", shiftKey: shift });
+    fireEvent.keyDown(move, {
+      key: "ArrowRight",
+      repeat: true,
+      shiftKey: !shift,
+    });
+    fireEvent.keyUp(move, { key: "ArrowRight", shiftKey: !shift });
+    await waitFor(() => expect(requests(spy)).toHaveLength(1));
+    expect(requests(spy)[0]).toMatchObject({
+      change: { kind: "move", x: shift ? 56 : 49, y: 62 },
+    });
+  },
+);
+
+it("does not swallow an arrow when no gesture can start", async () => {
+  const { move } = await mount("studio-canvas-readonly");
+  const received = vi.fn();
+  window.addEventListener("keydown", received);
+  try {
+    const event = new KeyboardEvent("keydown", {
+      key: "ArrowRight",
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(move, event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(received).toHaveBeenCalledOnce();
+  } finally {
+    window.removeEventListener("keydown", received);
+  }
+});
+
+it("cancels a failed pointer capture and permits a later explicit gesture", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  const { move } = await mount();
+  vi.spyOn(HTMLElement.prototype, "setPointerCapture").mockImplementationOnce(
+    () => {
+      throw new DOMException("inactive pointer", "NotFoundError");
+    },
+  );
+  fireEvent.pointerDown(move, {
+    pointerId: 3,
+    button: 0,
+    clientX: 20,
+    clientY: 20,
+  });
+  fireEvent.pointerMove(move, { pointerId: 3, clientX: 120, clientY: 20 });
+  fireEvent.pointerUp(move, { pointerId: 3, clientX: 120, clientY: 20 });
+  expect(requests(spy)).toHaveLength(0);
+  arrow(move);
+  await waitFor(() => expect(requests(spy)).toHaveLength(1));
+});
+
+it("preserves the fractional coordinates used by v37 nudge", async () => {
+  vi.spyOn(performance, "now").mockReturnValue(0);
+  const spy = vi.spyOn(Client.prototype, "request");
+  const { move } = await mount("studio-canvas-fractional");
+  arrow(move);
+  await waitFor(() => expect(requests(spy)).toHaveLength(1));
+  expect(requests(spy)[0]).toMatchObject({
+    change: { kind: "move", x: 1.25, y: -0.5 },
+  });
+});
+
+it.each(["timeout", "io", "Unknown"])(
+  "reconciles an applied %s outcome without mutation replay",
+  async (outcome) => {
+    const original = Client.prototype.request;
+    let reads = 0;
+    let release: () => void = () => {};
+    let started: () => void = () => {};
+    const hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const reading = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const spy = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request, ...rest) {
+        if (request.method === "studio.geometry") {
+          await original.call(this, request, ...rest);
+          if (outcome === "Unknown")
+            throw new Error("Unknown mutation outcome");
+          throw new HostFailure({
+            kind: outcome === "timeout" ? "coreUnavailable" : "io",
+          });
+        }
+        if (request.method === "studio.get" && ++reads > 1) {
+          started();
+          await hold;
+        }
+        return original.call(this, request, ...rest);
+      });
+    try {
+      const { move } = await mount();
+      arrow(move);
+      await reading;
+      expect(await screen.findByText(t.uncertain)).toBeTruthy();
+      expect(screen.queryByText(t.saved)).toBeNull();
+      arrow(move);
+      expect(requests(spy)).toHaveLength(1);
+      await act(async () => {
+        release();
+      });
+      expect(await screen.findByText(t.saved)).toBeTruthy();
+      expect(reads).toBe(2);
+      expect(requests(spy)).toHaveLength(1);
+    } finally {
+      release();
+    }
+  },
+);
+
+it("keeps the read fence across modes after a failed reconciliation", async () => {
+  const original = Client.prototype.request;
+  let reads = 0;
+  let failRead = true;
+  let failWrite = true;
+  const spy = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(async function (this: Client, request, ...rest) {
+      if (request.method === "studio.geometry" && failWrite) {
+        await original.call(this, request, ...rest);
+        throw new HostFailure({ kind: "coreUnavailable" });
+      }
+      if (request.method === "studio.get" && ++reads > 1 && failRead)
+        throw new HostFailure({ kind: "coreUnavailable" });
+      return original.call(this, request, ...rest);
+    });
+  const { move } = await mount();
+  arrow(move);
+  await screen.findByRole("button", { name: studioText.reload });
+  expect(screen.queryByText(t.saved)).toBeNull();
+  arrow(move);
+  expect(requests(spy)).toHaveLength(1);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: t.close }));
+  await user.click(screen.getByRole("button", { name: "Mostrar en pista" }));
+  expect(
+    spy.mock.calls.filter(([request]) => request.method === "studio.track"),
+  ).toHaveLength(0);
+  failRead = false;
+  failWrite = false;
+  await user.click(screen.getByRole("button", { name: studioText.reload }));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("button", { name: studioText.reload }),
+    ).toBeNull(),
+  );
+  await user.click(screen.getByRole("button", { name: t.open }));
+  const next = screen.getByRole("button", { name: t.move("Standings") });
+  await waitFor(() => expect(next.getAttribute("aria-disabled")).toBe("false"));
+  expect(requests(spy)).toHaveLength(1);
+  arrow(next);
+  await waitFor(() => expect(requests(spy)).toHaveLength(2));
+  expect(requests(spy)[1]).toMatchObject({
+    baseRevision: "1".padStart(64, "0"),
+    change: { kind: "move", x: 50 },
+  });
 });

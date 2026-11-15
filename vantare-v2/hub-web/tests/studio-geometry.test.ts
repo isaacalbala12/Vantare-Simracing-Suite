@@ -32,6 +32,17 @@ it("covers every family exported by Rust", () => {
     ].sort(),
   );
 });
+
+it("batches canonical nudge steps without rounding fractional coordinates", () => {
+  expect(nudge([0.25, -0.5], [1, 0], false)).toEqual([1.25, -0.5]);
+  expect(nudge([0.25, -0.5], [0, -1], true, 3)).toEqual([0.25, -24.5]);
+  expect(nudge([limits.nudgeLimit - 0.25, 0], [1, 0], true, 100000)).toEqual([
+    limits.nudgeLimit,
+    0,
+  ]);
+  for (const count of [NaN, Infinity, -1, 1.5])
+    expect(nudge([0, 0], [1, 0], false, count)).toBeNull();
+});
 it.each(cases.snap)("matches Rust snap vector %#", (c) =>
   expectVector(
     snap(c.center, c.size, c.canvas, c.others, c.threshold),

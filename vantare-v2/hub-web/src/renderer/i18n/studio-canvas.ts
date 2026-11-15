@@ -31,6 +31,8 @@ export const canvasText = {
     "El diseño ha cambiado; revisa la posición. Se ha descartado el gesto sin reenviarlo.",
   failed:
     "No se pudo guardar el movimiento. Se conserva la posición del anfitrión; puedes iniciar otro gesto.",
+  uncertain:
+    "No se pudo confirmar el resultado. Es necesario volver a cargar el diseño antes de editar otra vez.",
   saved: "Posición y tamaño actualizados",
   zoomLess: "Reducir zoom del lienzo",
   zoomMore: "Ampliar zoom del lienzo",

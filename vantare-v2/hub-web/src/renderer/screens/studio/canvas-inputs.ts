@@ -8,7 +8,14 @@ import {
 } from "react";
 import { studioGeometryLimits as limits } from "../../../contract/generated/studio";
 import type { useCanvas } from "./canvas";
-import { heldNudgeDistance, near, type Pair, resize, snap } from "./geometry";
+import {
+  heldNudgeDistance,
+  near,
+  nudge,
+  type Pair,
+  resize,
+  snap,
+} from "./geometry";
 import { type Box, sameBox } from "./gesture-state";
 
 type Model = ReturnType<typeof useCanvas>;
@@ -36,8 +43,6 @@ const directions: Record<string, Pair> = {
   ArrowUp: [0, -1],
   ArrowDown: [0, 1],
 };
-const bounded = (v: number) =>
-  Math.max(-limits.nudgeLimit, Math.min(limits.nudgeLimit, v));
 export function useCanvasInputs(
   model: Model,
   viewport: RefObject<HTMLDivElement | null>,
@@ -58,8 +63,13 @@ export function useCanvasInputs(
     held.current = undefined;
     const p = pointer.current;
     pointer.current = undefined;
-    if (p?.target.hasPointerCapture?.(p.id))
-      p.target.releasePointerCapture(p.id);
+    try {
+      if (p?.target.hasPointerCapture?.(p.id))
+        p.target.releasePointerCapture(p.id);
+    } catch {
+      // The platform may already have revoked this pointer. Local cancellation
+      // must still complete without committing or leaving a gesture behind.
+    }
   }, []);
   const cancel = useCallback(() => {
     stopLocal();
@@ -105,7 +115,11 @@ export function useCanvasInputs(
       area: [root.clientWidth, root.clientHeight],
       handle,
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      cancel();
+    }
   }
   function pointerMove(event: PointerEvent<HTMLElement>) {
     const p = pointer.current,
@@ -193,10 +207,9 @@ export function useCanvasInputs(
     const h = held.current,
       g = state().gesture;
     if (!h || !g) return;
-    const d = heldNudgeDistance(
-      Math.max(0, Math.floor(performance.now() - h.started)),
-      h.shift,
-    );
+    const elapsed = Math.max(0, Math.floor(performance.now() - h.started));
+    const steps = heldNudgeDistance(elapsed, false);
+    const d = heldNudgeDistance(elapsed, h.shift);
     if (h.handle) {
       const result = resize(
         [h.base.x, h.base.y],
@@ -217,12 +230,15 @@ export function useCanvasInputs(
               ? h.base.sizeMode
               : "explicit",
         });
-    } else
-      preview({
-        ...h.base,
-        x: bounded(h.base.x + h.direction[0] * d),
-        y: bounded(h.base.y + h.direction[1] * d),
-      });
+    } else {
+      const position = nudge([h.base.x, h.base.y], h.direction, h.shift, steps);
+      if (position)
+        preview({
+          ...h.base,
+          x: position[0],
+          y: position[1],
+        });
+    }
   }, [state, preview]);
   function repeat() {
     tickHeld();
@@ -248,20 +264,14 @@ export function useCanvasInputs(
     }
     const direction = directions[event.key];
     if (!direction) return;
-    event.preventDefault();
-    event.stopPropagation();
     // Escape/blur must cancel until the held key is released, not just until
     // the operating system delivers its next repeat.
     if (event.repeat && !held.current) return;
     const active = held.current;
     if (active) {
       if (active.key === event.key) {
-        const gesture = state().gesture;
-        if (active.shift !== event.shiftKey && gesture) {
-          active.base = gesture.draft;
-          active.started = performance.now();
-          active.shift = event.shiftKey;
-        }
+        event.preventDefault();
+        event.stopPropagation();
         return;
       }
       tickHeld();
@@ -275,6 +285,8 @@ export function useCanvasInputs(
       return;
     const g = state().gesture;
     if (!g) return;
+    event.preventDefault();
+    event.stopPropagation();
     held.current = {
       key: event.key,
       shift: event.shiftKey,

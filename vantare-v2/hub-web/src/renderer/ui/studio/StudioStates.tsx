@@ -129,18 +129,19 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
                 {t.retry}
               </Button>
             )}
-            {(!readingFailure || (!!state.view && !protectedView)) && (
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-disabled={state.pending}
-                onClick={() => {
-                  if (!state.pending) state.discard();
-                }}
-              >
-                {t.discard}
-              </Button>
-            )}
+            {!state.needsRead &&
+              (!readingFailure || (!!state.view && !protectedView)) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-disabled={state.pending}
+                  onClick={() => {
+                    if (!state.pending) state.discard();
+                  }}
+                >
+                  {t.discard}
+                </Button>
+              )}
           </div>
         </section>
       )}

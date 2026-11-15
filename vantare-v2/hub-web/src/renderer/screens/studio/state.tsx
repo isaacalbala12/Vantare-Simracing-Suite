@@ -16,6 +16,7 @@ import { canRetryStudio } from "./retry";
 import { initialStudioSelection } from "./selection";
 
 type StudioRequest = Extract<Request, { method: `studio.${string}` }>;
+type StudioFailureContext = { readRequired: true; confirmFromRead: boolean };
 function useStateValue() {
   const { client } = useHost();
   const remembered = useUi((state) => state.studioLastSelected);
@@ -37,6 +38,8 @@ function useStateValue() {
     }>(),
     [removing, setRemoving] = useState<string | null>(null),
     [pending, setPending] = useState(false),
+    [needsRead, setNeedsRead] = useState(false),
+    [readVersion, setReadVersion] = useState(0),
     [failure, setFailure] = useState<{
       message: string;
       request: StudioRequest;
@@ -45,6 +48,7 @@ function useStateValue() {
     undefined,
   );
   const busy = useRef(false),
+    mustRead = useRef(false),
     alive = useRef(true),
     opened = useRef(false);
   const update = useCallback((value: StudioView) => {
@@ -58,8 +62,15 @@ function useStateValue() {
     if (selected) remember(selected);
   }, [selected, remember]);
   const execute = useCallback(
-    async (request: StudioRequest, onFailure?: (error: unknown) => void) => {
-      if (!client || busy.current) {
+    async (
+      request: StudioRequest,
+      onFailure?: (error: unknown, context?: StudioFailureContext) => void,
+    ) => {
+      if (
+        !client ||
+        busy.current ||
+        (mustRead.current && request.method !== "studio.get")
+      ) {
         onFailure?.(
           new HostFailure({ kind: client ? "busy" : "coreUnavailable" }),
         );
@@ -78,9 +89,14 @@ function useStateValue() {
         if (
           alive.current &&
           "value" in response &&
-          response.method.startsWith("studio.")
+          response.method === request.method
         ) {
           update(response.value as StudioView);
+          if (response.method === "studio.get") {
+            mustRead.current = false;
+            setNeedsRead(false);
+            setReadVersion((value) => value + 1);
+          }
           if (
             request.method === "studio.instance" &&
             request.patch.field === "settings" &&
@@ -130,6 +146,7 @@ function useStateValue() {
           }
           return response.value as StudioView;
         }
+        if (alive.current) throw new HostFailure({ kind: "coreUnavailable" });
       } catch (error) {
         if (!alive.current) return;
         let message = t.failed;
@@ -171,7 +188,37 @@ function useStateValue() {
             // Keep the original failure; reading did not confirm duplication.
           }
         }
-        if (onFailure) onFailure(error);
+        if (request.method === "studio.geometry") {
+          // An uncertain result may already be on disk. Fence all Studio writes
+          // until a fresh read, including if Canvas is closed in the meantime.
+          mustRead.current = true;
+          setNeedsRead(true);
+          onFailure?.(error, {
+            readRequired: true,
+            confirmFromRead:
+              !(error instanceof HostFailure) ||
+              error.detail.kind === "coreUnavailable" ||
+              error.detail.kind === "io",
+          });
+          if (!onFailure) setFailure({ message, request });
+          try {
+            const fresh = await client.request({ method: "studio.get" });
+            if (fresh.method !== "studio.get")
+              throw new HostFailure({ kind: "coreUnavailable" });
+            if (alive.current) {
+              update(fresh.value);
+              mustRead.current = false;
+              setNeedsRead(false);
+              setReadVersion((value) => value + 1);
+            }
+          } catch {
+            if (alive.current)
+              setFailure({
+                message: t.offline,
+                request: { method: "studio.get" },
+              });
+          }
+        } else if (onFailure) onFailure(error);
         else if (alive.current) setFailure({ message, request });
       } finally {
         busy.current = false;
@@ -206,6 +253,8 @@ function useStateValue() {
   return {
     canvasMode,
     setCanvasMode,
+    needsRead,
+    readVersion,
     view,
     selected,
     setSelected,
@@ -220,7 +269,9 @@ function useStateValue() {
     execute,
     retry,
     canRetry: failure !== undefined && canRetryStudio(failure.request),
-    discard: () => setFailure(undefined),
+    discard: () => {
+      if (!mustRead.current) setFailure(undefined);
+    },
   };
 }
 const Context = createContext<ReturnType<typeof useStateValue> | undefined>(

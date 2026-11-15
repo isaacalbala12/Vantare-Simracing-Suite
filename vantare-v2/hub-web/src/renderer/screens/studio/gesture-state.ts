@@ -35,8 +35,9 @@ export type CanvasState = {
   pending?: Pending;
   queued?: Intent;
   serial: number;
-  saved?: number;
-  notice?: "changed" | "conflict" | "failed";
+  saved?: { token: number; id: string; target: Box };
+  awaitingRead?: { token: number; id: string; target: Box; confirm: boolean };
+  notice?: "changed" | "conflict" | "failed" | "uncertain";
 };
 export type CanvasAction =
   | { type: "begin"; id: string; mode: Gesture["mode"] }
@@ -48,7 +49,14 @@ export type CanvasAction =
   | { type: "enable" }
   | { type: "view"; view: StudioView }
   | { type: "reply"; token: number; view: StudioView }
-  | { type: "error"; token: number; conflict?: StudioView }
+  | {
+      type: "error";
+      token: number;
+      conflict?: StudioView;
+      readRequired?: boolean;
+      confirmFromRead?: boolean;
+    }
+  | { type: "reconciled"; view: StudioView }
   | { type: "dismiss" };
 export const boxOf = (item: OverlayInstance): Box => ({
   x: item.x,
@@ -89,6 +97,7 @@ function startWrite(state: CanvasState, intent: Intent): CanvasState {
   const current = itemBox(state.view, intent.id);
   if (
     state.disabled ||
+    state.awaitingRead ||
     !editable(state.view, intent.id) ||
     !current ||
     !sameBox(current, intent.expected)
@@ -141,9 +150,14 @@ function observe(state: CanvasState, view: StudioView): CanvasState {
     (!canvasUnchanged || !matches(state.queued.id, state.queued.expected));
   const pending = state.pending;
   const current = pending ? itemBox(view, pending.id) : undefined;
+  const savedBox = state.saved ? itemBox(view, state.saved.id) : undefined;
   return {
     ...state,
     view,
+    saved:
+      state.saved && savedBox && sameBox(savedBox, state.saved.target)
+        ? state.saved
+        : undefined,
     gesture: cancelGesture ? undefined : state.gesture,
     queued: cancelQueued ? undefined : state.queued,
     pending: pending
@@ -165,7 +179,12 @@ export function canvasReducer(
 ): CanvasState {
   switch (action.type) {
     case "begin": {
-      if (state.disabled || state.gesture || !editable(state.view, action.id))
+      if (
+        state.disabled ||
+        state.awaitingRead ||
+        state.gesture ||
+        !editable(state.view, action.id)
+      )
         return state;
       const origin = projectedBox(state, action.id),
         expected = expectedBox(state, action.id);
@@ -173,6 +192,7 @@ export function canvasReducer(
         ? {
             ...state,
             notice: undefined,
+            saved: undefined,
             gesture: {
               id: action.id,
               mode: action.mode,
@@ -216,11 +236,19 @@ export function canvasReducer(
       });
     }
     case "write": {
-      if (state.disabled || state.gesture || !editable(state.view, action.id))
+      if (
+        state.disabled ||
+        state.awaitingRead ||
+        state.gesture ||
+        !editable(state.view, action.id)
+      )
         return state;
       const expected = expectedBox(state, action.id);
       return expected
-        ? enqueue({ ...state, notice: undefined }, { ...action, expected })
+        ? enqueue(
+            { ...state, notice: undefined, saved: undefined },
+            { ...action, expected },
+          )
         : state;
     }
     case "cancel":
@@ -238,10 +266,20 @@ export function canvasReducer(
       return observe(state, action.view);
     case "reply": {
       if (state.pending?.token !== action.token) return state;
+      const actual = itemBox(action.view, state.pending.id);
+      if (!actual || !sameBox(actual, state.pending.target))
+        return {
+          ...observe(state, action.view),
+          pending: undefined,
+          queued: undefined,
+          gesture: undefined,
+          saved: undefined,
+          notice: "changed",
+        };
       const next = {
         ...observe(state, action.view),
         pending: undefined,
-        saved: action.token,
+        saved: { token: action.token, id: state.pending.id, target: actual },
       };
       return next.queued ? startWrite(next, next.queued) : next;
     }
@@ -253,7 +291,38 @@ export function canvasReducer(
         pending: undefined,
         queued: undefined,
         gesture: undefined,
-        notice: action.conflict ? "conflict" : "failed",
+        saved: undefined,
+        awaitingRead: action.readRequired
+          ? {
+              token: action.token,
+              id: state.pending.id,
+              target: state.pending.target,
+              confirm: action.confirmFromRead === true && !action.conflict,
+            }
+          : undefined,
+        notice: action.conflict
+          ? "conflict"
+          : action.readRequired
+            ? "uncertain"
+            : "failed",
+      };
+    }
+    case "reconciled": {
+      const read = state.awaitingRead;
+      if (!read) return state;
+      const actual = itemBox(action.view, read.id);
+      const confirmed = read.confirm && actual && sameBox(actual, read.target);
+      return {
+        ...observe(state, action.view),
+        awaitingRead: undefined,
+        saved: confirmed
+          ? { token: read.token, id: read.id, target: actual }
+          : undefined,
+        notice: confirmed
+          ? undefined
+          : state.notice === "conflict"
+            ? "conflict"
+            : "failed",
       };
     }
     case "dismiss":

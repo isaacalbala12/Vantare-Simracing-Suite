@@ -82,14 +82,23 @@ Hechos comprobados hoy leyendo `origin/nightly` (`69379ffd3`):
     solo su lista, no la del producto entero.
   - El choque de parches no existe hoy pero puede aparecer en una subida.
   - No alarga las comprobaciones del resto del producto.
-- **El código común se saca a un crate sin GPUI dentro de `native/`:**
-  `native/overlay-model` (`vantare-overlay-model`). Lleva los tipos de widget
-  y sus ajustes, el documento de diseño, cadencias, sesión, geometría, demanda,
-  fuente de fotos y las reglas puras de movimiento. `native/ui` lo reexporta
-  para que GPUI, el Hub congelado y Gestión sigan compilando igual. Rune lo
-  usa por ruta. Así hay **una sola fuente** y no se copia nada. Es un crate
-  nuevo por aislamiento demostrado (regla de ADR 0099): Rune no puede depender
-  de `ui` sin arrastrar GPUI.
+- **El código común sale de `native/ui` a crates que ya existen; no se crea
+  ninguno.** Rune no puede depender de `ui` sin arrastrar GPUI, así que:
+  - **Tipos y ajustes de widget, con sus Looks: fuente única en
+    `domain::widget_settings`.** Cinco ya viven allí y los otros catorce los
+    está trasladando VANTA-138 (D106), que los necesita para el contrato del
+    Hub. Este plan no los duplica: solo añade lo que ese traslado deje fuera
+    (la lista de widgets y el tipo que agrupa todos los ajustes).
+  - **A `domain`** va también lo que es cálculo puro: cadencias, sesión,
+    geometría y las reglas de movimiento.
+  - **A `ipc`** va lo que toca el disco o el canal: la demanda de datos, el
+    documento de diseño y la fuente de fotos.
+  - Por qué cabe sin crate nuevo: `domain` solo depende de `serde` y no toca
+    disco ni canal; `ipc` ya depende de `domain` y ya guarda `Demand`, las
+    rutas y otros documentos.
+  - `native/ui` reexporta todo para que GPUI, el Hub congelado y Gestión
+    sigan compilando igual. Rune usa `domain` e `ipc` por ruta, como ya hace
+    el Relative de medición. Así hay **una sola fuente** y no se copia nada.
 - **Convivencia, con un interruptor para todo el proceso** (no por widget):
   - Durante la migración hay dos ejecutables en `bin/`: `vantare-overlays.exe`
     (GPUI, el que se usa) y `vantare-overlays-rune.exe`. Rune solo se arranca
@@ -150,7 +159,7 @@ cambio de diseño o de visibilidad. Sin relojes ni bucles continuos.
    imágenes presentan y por qué causa (GPUI ya lo tiene con `paint-stats`;
    Rune recibe lo mismo). Sin ese dato no se interpreta ninguna medición.
 2. **Cadencia por widget antes de tocar nada:** se usa el mismo código que
-   GPUI (`Preferences::hz` y `Cadence::due`, desde `overlay-model`). Una foto
+   GPUI (`Preferences::hz` y `Cadence::due`, que pasan a `domain`). Una foto
    que no le toca a un widget no se procesa ni se publica.
 3. **Solo cambios reales:** la proyección ya devuelve el mismo objeto si nada
    cambió, y un valor `Live` igual al anterior no despierta nada.
@@ -217,11 +226,11 @@ cuatro widgets). Hoy, con diez, Rune está en 0,044 y GPUI en 0,015 (de los
 «Daños detallados» está en el código pero no en el catálogo: se migra en la
 última tanda solo si el orquestador confirma que sigue en producto.
 
-**Qué no cambia:** `domain` (las proyecciones), `ipc`, el anfitrión y el Hub.
-`runtime` solo cambia en dos puntos pequeños: el núcleo admite el segundo
-ejecutable y, al final, el supervisor elige el motor según la opción.
-**Qué se mueve sin reescribir** (a
-`overlay-model`): ajustes, diseño, cadencias, demanda y reglas de movimiento.
+**Qué no cambia:** las proyecciones de `domain`, el transporte de `ipc`, el
+anfitrión y el Hub. `runtime` solo cambia en dos puntos pequeños: el núcleo
+admite el segundo ejecutable y, al final, el supervisor elige el motor según
+la opción. **Qué se mueve sin reescribir** (a `domain` y a `ipc`, como fija la
+decisión 1): ajustes, diseño, cadencias, demanda y reglas de movimiento.
 `source.rs` conserva su transporte; cambia quién consume las fotos.
 **Qué se reescribe en Rune:** el dibujo de cada widget y Look, y el proceso
 que abre las ventanas. **Qué desaparece al final:** las llamadas a Windows a
@@ -280,14 +289,14 @@ esta referencia» y no nombra el motor).
   funciones puras. La preview se prueba con un pintor falso.
 - **CI de Windows:** un trabajo nuevo, con formato, Clippy `-D warnings`,
   tests sin ventana y licencias. Se dispara con cambios en `overlays-rune`,
-  `overlay-model`, `domain`, `ipc` y `profiling`. Informa siempre y se salta
+  `domain`, `ipc` y `profiling`. Informa siempre y se salta
   los pasos pesados si no toca, como los demás. **Obligatorio** desde que
   exista el primer widget. Un cambio solo en `overlays-rune` no lanza las
   comprobaciones nativas completas.
 - **Capturas y mediciones:** PC de juego. El Mac, si está, para iterar.
-- `overlay-model` se compila con dos listas de versiones. Sus tests de
-  escritura del diseño se pasan con los dos órdenes de claves de
-  `serde_json`, como ya hace el anfitrión.
+- `domain` e `ipc` se compilan con dos listas de versiones (la del producto
+  y la de Rune). Los tests de escritura del diseño se pasan con los dos
+  órdenes de claves de `serde_json`, como ya hace el anfitrión.
 
 ### 8. `hub-rune/` y CORTE-1
 
@@ -315,8 +324,8 @@ Días de trabajo de un worker; son estimaciones por volumen, no medidas.
 | 0 | Arquitectura | Este ADR | Revisión del orquestador | hecho |
 | 1 | Trabajo mecánico | Retirar `hub-rune` y lo del Hub en el kit; mudar licencias | CI verde; tests de clasificadores | 0,5 |
 | 2 | Orquestador | Crear `isaacalbala12/rune` (ramas, etiqueta, `PARCHES.md`); apuntar el kit a la copia, mismo commit | `Cargo.lock` solo cambia de origen | 0,5 |
-| 3 | Ejecutor principal | `overlay-model` (a): tipos de widget, ajustes y Looks | `comprobar.ps1 ui -Full`, Hub y telemetría; diseños guardados idénticos byte a byte | 2 |
-| 4 | Ejecutor principal | `overlay-model` (b): diseño, cadencias, sesión, geometría, demanda, fuente, movimiento | Igual que el 3 | 1,5 |
+| 3 | Ejecutor principal | Lo que falte tras el traslado de ajustes de VANTA-138 (D106) a `domain::widget_settings`: lista de widgets y tipo que agrupa los ajustes. Si ese traslado ya lo trae, este PR no existe | `comprobar.ps1 ui -Full`, Hub y telemetría; diseños guardados idénticos byte a byte | 0 a 1 |
+| 4 | Ejecutor principal | Sin crate nuevo: a `domain`, cadencias, sesión, geometría y movimiento; a `ipc`, demanda, diseño y fuente | Igual que el 3 | 2 |
 | 5 | Ejecutor principal | Workspace `overlays-rune`: Rune fijado, trabajo de CI, clasificadores, cinturón del servidor, `AGENTS.md` y `native/README.md` | Compila para Windows; un test sin ventana; un PR solo de overlays no lanza lo nativo | 1 |
 | 6 | Ejecutor principal | Proceso: ventana por monitor, diseño, fuente, cadencias, derechos, cierre por el supervisor; el núcleo admite el segundo ejecutable | Tests sin ventana; F0 en el PC de juego | 3 |
 | 7 | Ejecutor principal | Relative Vantare con repintado a demanda y contadores | Tests de la decisión 3; paridad en Windows | 2 |
@@ -329,7 +338,8 @@ Días de trabajo de un worker; son estimaciones por volumen, no medidas.
 | 18 | Ejecutor principal | Empaquetado, avisos de terceros y opción «Motor de overlays» | Tests de empaquetado; campaña B con los 18 | 2 |
 | 19 | Ejecutor principal | Tras el ciclo de testers: retirar el overlay GPUI y renombrar | Solo con orden de Isaac | 2 |
 
-Orden: 1 y 2 en paralelo; 3 → 4 → 5 → 6 → 7 → 8 → 9. El 10 puede empezar
+Orden: 1 y 2 en paralelo; el 3 espera a que se fusione el traslado de
+VANTA-138; 3 → 4 → 5 → 6 → 7 → 8 → 9. El 10 puede empezar
 tras el 8. Del 11 en adelante, dos workers en paralelo sobre widgets
 distintos. Total aproximado: unos 40 días de worker, cuatro o cinco semanas
 de calendario.
@@ -341,7 +351,8 @@ de calendario.
 | El original cambia muy deprisa y no acepta aportaciones | Copia propia, commit fijado, subidas cada dos semanas con pruebas |
 | Rune no llega al objetivo de CPU | Repintado a demanda, cinco días por fase y líneas rojas (decisión 4) |
 | El texto se ve distinto al de GPUI | Capturas en Windows y revisión a ojo por widget |
-| Mover código a `overlay-model` rompe el overlay GPUI | Es un traslado sin cambios; tests de `ui`, Hub y telemetría; diseños idénticos byte a byte |
+| Mover código a `domain` y a `ipc` rompe el overlay GPUI | Es un traslado sin cambios; tests de `ui`, Hub y telemetría; diseños idénticos byte a byte |
+| Dos traslados a la vez sobre los mismos archivos (este plan y VANTA-138) | Los ajustes los mueve solo VANTA-138; el PR 3 empieza cuando eso esté fusionado |
 | DirectX 12 en gráficas antiguas | Aguante de 4 horas en F1 y al final; GPUI elegible un ciclo |
 | Alguien ejecuta algo gráfico en el servidor | Variable de máquina que lo impide |
 | La preview de Studio se retrasa | Depende solo de F1; mientras, la ilustración rotulada |

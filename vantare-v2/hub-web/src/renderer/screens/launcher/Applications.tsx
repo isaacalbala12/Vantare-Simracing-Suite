@@ -22,7 +22,7 @@ import {
   ApplicationRemoval,
 } from "../../ui/launcher/Applications";
 import { useProfileEditorState } from "./editor-state";
-import { launcherKey, useLauncherSnapshot } from "./state";
+import { launcherKey } from "./state";
 
 type Mutation = Extract<
   Request,
@@ -39,7 +39,6 @@ export function Applications() {
   const cache = useQueryClient();
   const toast = useToastManager();
   const original = useRef<string | undefined>(undefined);
-  const { view } = useLauncherSnapshot();
   const [catalog, setCatalog] = useState<CatalogView>();
   const [query, setQuery] = useState("");
   const [editor, setEditor] = useState<AppEditor>();
@@ -72,22 +71,24 @@ export function Applications() {
   useEffect(() => {
     if (!client) return;
     const off = client.listen((message) => {
-      if (message.kind === "event" && message.event.topic === "launcher")
+      if (message.kind === "event" && message.event.topic === "launcher") {
         cache.setQueryData(launcherKey, message.event.value);
+        void load().catch(() => {
+          if (alive.current) setError(text.failed);
+        });
+      }
     });
     const unsubscribe = client.subscribe("launcher");
     return () => {
       unsubscribe();
       off();
     };
-  }, [client, cache]);
-  const observed = view ? `${view.revision}:${view.scanning}` : "initial";
+  }, [client, cache, load]);
   useEffect(() => {
-    if (!observed) return;
     void load().catch(() => {
       if (alive.current) setError(text.failed);
     });
-  }, [load, observed]);
+  }, [load]);
   useEffect(() => {
     if (!client || !editor) return;
     return client.addCloseGuard((reason) => {

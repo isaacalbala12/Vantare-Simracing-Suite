@@ -360,3 +360,61 @@ describe("application catalog", () => {
     );
   });
 });
+
+it.each([false, true])(
+  "reloads metadata on an unchanged Launcher event, failure=%s",
+  async (failure) => {
+    const { launcherKey } = await import(
+      "../src/renderer/screens/launcher/state"
+    );
+    const fixture = (await import("../fixtures/launcher-apps.json")).default;
+    const listeners = vi.spyOn(Client.prototype, "listen");
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: text.edit("OBS Studio") });
+    const current =
+      caches[0].getQueryData<
+        import("../src/contract/generated/contract").LauncherView
+      >(launcherKey);
+    if (!current) throw Error("Launcher initial snapshot");
+    const readsBefore = requests.mock.calls.filter(
+      ([request]) => request.method === "launcher.catalog",
+    ).length;
+    if (failure)
+      requests.mockRejectedValueOnce(new HostFailure({ kind: "io" }));
+    else
+      requests.mockResolvedValueOnce({
+        method: "launcher.catalog",
+        value: {
+          ...fixture,
+          apps: fixture.apps.map((app) =>
+            app.id === "obs" ? { ...app, name: "OBS actualizado" } : app,
+          ),
+          lastScan: { completedAtMs: 1700000000222, warningCount: 2 },
+        },
+      });
+    await act(async () => {
+      for (const [receive] of listeners.mock.calls)
+        receive({
+          kind: "event",
+          event: { topic: "launcher", value: current },
+        });
+    });
+    if (failure) {
+      expect(await screen.findByText(text.failed)).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: text.edit("OBS Studio") }),
+      ).toBeTruthy();
+    } else
+      expect(
+        await screen.findByRole("button", {
+          name: text.edit("OBS actualizado"),
+        }),
+      ).toBeTruthy();
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.catalog",
+      ),
+    ).toHaveLength(readsBefore + 1);
+  },
+);

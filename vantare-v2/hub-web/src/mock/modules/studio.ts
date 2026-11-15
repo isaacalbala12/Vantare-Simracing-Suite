@@ -6,6 +6,7 @@ import type {
   WidgetKind,
 } from "../../contract/generated/contract";
 import {
+  studioAdditionalOptions as a,
   studioAddAvailable,
   studioCatalog,
   studioFreeKinds,
@@ -13,7 +14,10 @@ import {
   studioSizes,
   studioWidgetDefaults,
 } from "../../contract/generated/studio";
-import { isWidgetSettings } from "../../contract/studio-widget-settings";
+import {
+  isWidgetSettings,
+  isWidgetSettingsPatch,
+} from "../../contract/studio-widget-settings";
 import type { MockContext, MockHandler } from "../context";
 import { studioStateScene } from "../studio-states";
 export function create(context: MockContext): MockHandler {
@@ -288,6 +292,7 @@ export function applyWidgetSettings(
   current: NonNullable<OverlayInstance["settings"]>,
   patch: import("../../contract/generated/studio").WidgetSettingsPatch,
 ): NonNullable<OverlayInstance["settings"]> | null {
+  if (current.kind !== patch.kind || !isWidgetSettingsPatch(patch)) return null;
   if ("tablePreset" in patch) {
     if (
       Object.keys(patch).length !== 2 ||
@@ -328,6 +333,7 @@ export function applyWidgetSettings(
   const original = current as unknown as Record<string, unknown>;
   const result = structuredClone(current) as unknown as Record<string, unknown>;
   for (const [key, value] of Object.entries(patch)) {
+    if (key === "threshold") continue;
     if (
       ["columns", "practiceColumns", "qualifyingColumns"].includes(key) &&
       Array.isArray(value)
@@ -375,6 +381,27 @@ export function applyWidgetSettings(
     ) {
       delete result[key];
     } else result[key] = value;
+  }
+  if (patch.kind === "session-alerts" && patch.threshold) {
+    const thresholds = Array.isArray(result.thresholds)
+      ? [...result.thresholds]
+      : [];
+    while (thresholds.length <= patch.threshold.index) thresholds.push(0);
+    thresholds[patch.threshold.index] = patch.threshold.minutes;
+    result.thresholds = [
+      ...new Set(
+        thresholds.filter(
+          (n) =>
+            Number.isInteger(n) && n >= 1 && n <= a.sessionAlerts.thresholdMax,
+        ),
+      ),
+    ]
+      .sort((x, y) => y - x)
+      .slice(0, a.sessionAlerts.thresholdSlots);
+  }
+  if (patch.kind === "racing-flags" && patch.textColor) {
+    result.textColor = patch.textColor.toLowerCase();
+    result.contentVersion = Math.max(1, Number(result.contentVersion));
   }
   if (result.kind === "delta" && result.transparentBackground === false)
     delete result.transparentBackground;

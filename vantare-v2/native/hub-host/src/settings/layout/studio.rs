@@ -624,6 +624,10 @@ pub(crate) fn track(
 }
 
 #[cfg(test)]
+#[path = "studio_additional_tests.rs"]
+mod additional_tests;
+
+#[cfg(test)]
 #[path = "studio_geometry_tests.rs"]
 mod geometry_tests;
 #[cfg(test)]

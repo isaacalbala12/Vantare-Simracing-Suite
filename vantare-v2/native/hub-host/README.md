@@ -486,3 +486,32 @@ con `value.draft` y usa `value.baseRevision` como revisión del editor. No debe 
 `profile.get` para el ID nuevo: aún no existe y esa lectura revocaría las capacidades
 recién preparadas. Las claves se conservan al reordenar pasos; los pasos nuevos
 usan key=null. La vista solo indica si hay argumentos propios, nunca su contenido.
+
+## D106 · ajustes del inspector nativo (v39)
+
+Los 14 widgets restantes ya tienen `WidgetSettings` tipado; `settings: null` no se
+usa para simular valores por defecto. Se reutiliza `studio.instance` con `id`,
+`baseRevision` y `patch: { field: "settings", value: { kind, ...campos } }`.
+El catálogo completo comparte los datos y normalizadores puros de domain; UI
+reexporta esos tipos y conserva sus métodos de pintado, teclas y demanda.
+La extracción no cambia la serialización ni el comportamiento de los overlays.
+
+Los patches nuevos solo ofrecen los 48 controles del inspector GPUI documentados
+por D106. Se rechazan campos desconocidos, nulls, límites o elecciones inválidos,
+campos de otro tipo de widget y falta de derechos. Una revisión vieja devuelve
+StudioConflict sin reenvío; un documento protegido permanece sin editar. Un
+cambio crea un único CAS y paso de deshacer; un no-op no escribe. Solo se guardan
+los campos seleccionados, conservando los internos, los no soportados y los
+miembros desconocidos con sus bytes originales. Las opciones de apariencia
+«próximamente» no se activan; los campos nativos extra son solo lectura.
+
+`session-alerts` recibe `threshold: { index, minutes }` (índice 0–4, minutos
+0–60; 0 desactiva), nunca un array arbitrario. Ejecuta el `set_threshold` nativo,
+que ordena y deduplica: una segunda orden al mismo índice podría cambiar otro
+umbral. No reintentar ni reenviar una orden incierta. `companionFor` no es editable.
+`starts` y `miniStart` conservan su limitación de señal pendiente.
+
+D recibe `studioAdditionalOptions` (rangos/listas; WHEELS sale del dominio,
+color ASCII #RRGGBB) y `studioAdditionalCases` con los 48 controles y su resultado
+nativo para contrastar UI/mock. Hz por instancia (D108) va en el siguiente PR;
+este contrato no cambia el nivel global ni el scheduler. Preview queda después.

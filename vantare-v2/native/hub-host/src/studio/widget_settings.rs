@@ -18,13 +18,27 @@ enum Data {
     Delta(native::delta::Settings),
     Pedals(native::pedals::Settings),
     FuelStrategy(native::fuel_strategy::Settings),
+    BroadcastTower(native::broadcast_tower::Settings),
+    CarDamageNumbers(native::car_damage_numbers::Settings),
+    CarDamageVisual(native::car_damage_visual::Settings),
+    DeltaTrace(native::delta_trace::Settings),
+    FastestLap(native::fastest_lap::Settings),
+    HeadToHead(native::head_to_head::Settings),
+    InputTelemetry(native::input_telemetry::Settings),
+    TrackMap(native::track_map::Settings),
+    MulticlassRelative(native::multiclass_relative::Settings),
+    PedalsTelemetry(native::pedals_telemetry::Settings),
+    Radar(native::radar::Settings),
+    RacingFlags(native::racing_flags::Settings),
+    TrackWeather(native::track_weather::Settings),
+    SessionAlerts(native::session_alerts::Settings),
 }
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(transparent)]
 pub struct WidgetSettings(#[cfg_attr(any(test, feature = "bindings"), ts(inline))] Data);
-// Data is private and immutable. Construction always normalizes the only float,
-// Pedals.gap, into its finite range; every other field has reflexive equality.
+// Data is private and immutable. Construction normalizes both floating point
+// controls (Pedals.gap and DeltaTrace.window_seconds) into finite ranges.
 impl Eq for WidgetSettings {}
 impl<'de> Deserialize<'de> for WidgetSettings {
     fn deserialize<D: Deserializer<'de>>(input: D) -> Result<Self, D::Error> {
@@ -34,6 +48,20 @@ impl<'de> Deserialize<'de> for WidgetSettings {
             Data::Delta(s) => Data::Delta(s.normalized()),
             Data::Pedals(s) => Data::Pedals(s.normalized()),
             Data::FuelStrategy(s) => Data::FuelStrategy(s.normalized()),
+            Data::BroadcastTower(s) => Data::BroadcastTower(s.normalized()),
+            Data::CarDamageNumbers(s) => Data::CarDamageNumbers(s.normalized()),
+            Data::CarDamageVisual(s) => Data::CarDamageVisual(s.normalized()),
+            Data::DeltaTrace(s) => Data::DeltaTrace(s.normalized()),
+            Data::FastestLap(s) => Data::FastestLap(s.normalized()),
+            Data::HeadToHead(s) => Data::HeadToHead(s.normalized()),
+            Data::InputTelemetry(s) => Data::InputTelemetry(s.normalized()),
+            Data::TrackMap(s) => Data::TrackMap(s.normalized()),
+            Data::MulticlassRelative(s) => Data::MulticlassRelative(s.normalized()),
+            Data::PedalsTelemetry(s) => Data::PedalsTelemetry(s.normalized()),
+            Data::Radar(s) => Data::Radar(s.normalized()),
+            Data::RacingFlags(s) => Data::RacingFlags(s.normalized()),
+            Data::TrackWeather(s) => Data::TrackWeather(s.normalized()),
+            Data::SessionAlerts(s) => Data::SessionAlerts(s.normalized()),
         };
         Ok(Self(value))
     }
@@ -82,6 +110,20 @@ impl WidgetSettings {
                     ..Default::default()
                 }),
             ),
+            (WidgetKind::BroadcastTower, Data::BroadcastTower(native::broadcast_tower::Settings::default())),
+            (WidgetKind::CarDamageNumbers, Data::CarDamageNumbers(native::car_damage_numbers::Settings::default())),
+            (WidgetKind::CarDamageVisual, Data::CarDamageVisual(native::car_damage_visual::Settings::default())),
+            (WidgetKind::DeltaTrace, Data::DeltaTrace(native::delta_trace::Settings::default())),
+            (WidgetKind::FastestLap, Data::FastestLap(native::fastest_lap::Settings::default())),
+            (WidgetKind::HeadToHead, Data::HeadToHead(native::head_to_head::Settings::default())),
+            (WidgetKind::InputTelemetry, Data::InputTelemetry(native::input_telemetry::Settings::default())),
+            (WidgetKind::TrackMap, Data::TrackMap(native::track_map::Settings::default())),
+            (WidgetKind::MulticlassRelative, Data::MulticlassRelative(native::multiclass_relative::Settings::default())),
+            (WidgetKind::PedalsTelemetry, Data::PedalsTelemetry(native::pedals_telemetry::Settings::default())),
+            (WidgetKind::Radar, Data::Radar(native::radar::Settings::default())),
+            (WidgetKind::RacingFlags, Data::RacingFlags(native::racing_flags::Settings::default())),
+            (WidgetKind::TrackWeather, Data::TrackWeather(native::track_weather::Settings::default())),
+            (WidgetKind::SessionAlerts, Data::SessionAlerts(native::session_alerts::Settings::default())),
         ];
         values
             .into_iter()
@@ -96,6 +138,20 @@ impl WidgetSettings {
             Data::Delta(native::delta::Settings::default()),
             Data::Pedals(native::pedals::Settings::default()),
             Data::FuelStrategy(native::fuel_strategy::Settings::default()),
+            Data::BroadcastTower(native::broadcast_tower::Settings::default()),
+            Data::CarDamageNumbers(native::car_damage_numbers::Settings::default()),
+            Data::CarDamageVisual(native::car_damage_visual::Settings::default()),
+            Data::DeltaTrace(native::delta_trace::Settings::default()),
+            Data::FastestLap(native::fastest_lap::Settings::default()),
+            Data::HeadToHead(native::head_to_head::Settings::default()),
+            Data::InputTelemetry(native::input_telemetry::Settings::default()),
+            Data::TrackMap(native::track_map::Settings::default()),
+            Data::MulticlassRelative(native::multiclass_relative::Settings::default()),
+            Data::PedalsTelemetry(native::pedals_telemetry::Settings::default()),
+            Data::Radar(native::radar::Settings::default()),
+            Data::RacingFlags(native::racing_flags::Settings::default()),
+            Data::TrackWeather(native::track_weather::Settings::default()),
+            Data::SessionAlerts(native::session_alerts::Settings::default()),
         ];
         let mut keys: std::collections::BTreeMap<String, serde_json::Value> =
             Self::schema_samples()
@@ -161,17 +217,25 @@ impl WidgetSettings {
             Data::Delta(_) => WidgetKind::Delta,
             Data::Pedals(_) => WidgetKind::Pedals,
             Data::FuelStrategy(_) => WidgetKind::FuelStrategy,
+            Data::BroadcastTower(_) => WidgetKind::BroadcastTower,
+            Data::CarDamageNumbers(_) => WidgetKind::CarDamageNumbers,
+            Data::CarDamageVisual(_) => WidgetKind::CarDamageVisual,
+            Data::DeltaTrace(_) => WidgetKind::DeltaTrace,
+            Data::FastestLap(_) => WidgetKind::FastestLap,
+            Data::HeadToHead(_) => WidgetKind::HeadToHead,
+            Data::InputTelemetry(_) => WidgetKind::InputTelemetry,
+            Data::TrackMap(_) => WidgetKind::TrackMap,
+            Data::MulticlassRelative(_) => WidgetKind::MulticlassRelative,
+            Data::PedalsTelemetry(_) => WidgetKind::PedalsTelemetry,
+            Data::Radar(_) => WidgetKind::Radar,
+            Data::RacingFlags(_) => WidgetKind::RacingFlags,
+            Data::TrackWeather(_) => WidgetKind::TrackWeather,
+            Data::SessionAlerts(_) => WidgetKind::SessionAlerts,
         }
     }
-    pub fn supports(kind: WidgetKind) -> bool {
-        matches!(
-            kind,
-            WidgetKind::Standings
-                | WidgetKind::Relative
-                | WidgetKind::Delta
-                | WidgetKind::Pedals
-                | WidgetKind::FuelStrategy
-        )
+    pub fn supports(_kind: WidgetKind) -> bool {
+        // Every kind in the closed catalog now has a typed native projection.
+        true
     }
     pub(crate) fn unnormalized_json(json: &str) -> Result<serde_json::Value, HostError> {
         serde_json::from_str::<Data>(json)
@@ -340,6 +404,10 @@ macro_rules! patch {
         }
     };
 }
+#[path = "widget_settings/additional.rs"]
+pub(crate) mod additional;
+pub use additional::*;
+
 patch!(WidgetColumnFormatPatch {
     mode: ColumnNameMode => "some",
     max_chars: Option<usize> => "some",
@@ -447,6 +515,20 @@ pub enum WidgetSettingsPatch {
     Delta(DeltaWidgetPatch),
     Pedals(PedalsWidgetPatch),
     FuelStrategy(FuelStrategyWidgetPatch),
+    BroadcastTower(BroadcastTowerWidgetPatch),
+    CarDamageNumbers(CarDamageNumbersWidgetPatch),
+    CarDamageVisual(CarDamageVisualWidgetPatch),
+    DeltaTrace(DeltaTraceWidgetPatch),
+    FastestLap(FastestLapWidgetPatch),
+    HeadToHead(HeadToHeadWidgetPatch),
+    InputTelemetry(InputTelemetryWidgetPatch),
+    TrackMap(TrackMapWidgetPatch),
+    MulticlassRelative(MulticlassRelativeWidgetPatch),
+    PedalsTelemetry(PedalsTelemetryWidgetPatch),
+    Radar(RadarWidgetPatch),
+    RacingFlags(RacingFlagsWidgetPatch),
+    TrackWeather(TrackWeatherWidgetPatch),
+    SessionAlerts(SessionAlertsWidgetPatch),
 }
 impl WidgetSettingsPatch {
     pub(crate) fn table_preset(&self) -> Option<&str> {
@@ -463,6 +545,20 @@ impl WidgetSettingsPatch {
             Self::Delta(_) => WidgetKind::Delta,
             Self::Pedals(_) => WidgetKind::Pedals,
             Self::FuelStrategy(_) => WidgetKind::FuelStrategy,
+            Self::BroadcastTower(_) => WidgetKind::BroadcastTower,
+            Self::CarDamageNumbers(_) => WidgetKind::CarDamageNumbers,
+            Self::CarDamageVisual(_) => WidgetKind::CarDamageVisual,
+            Self::DeltaTrace(_) => WidgetKind::DeltaTrace,
+            Self::FastestLap(_) => WidgetKind::FastestLap,
+            Self::HeadToHead(_) => WidgetKind::HeadToHead,
+            Self::InputTelemetry(_) => WidgetKind::InputTelemetry,
+            Self::TrackMap(_) => WidgetKind::TrackMap,
+            Self::MulticlassRelative(_) => WidgetKind::MulticlassRelative,
+            Self::PedalsTelemetry(_) => WidgetKind::PedalsTelemetry,
+            Self::Radar(_) => WidgetKind::Radar,
+            Self::RacingFlags(_) => WidgetKind::RacingFlags,
+            Self::TrackWeather(_) => WidgetKind::TrackWeather,
+            Self::SessionAlerts(_) => WidgetKind::SessionAlerts,
         }
     }
 }
@@ -633,7 +729,7 @@ impl WidgetSettingsPatch {
                 usize::from(native::fuel_strategy::FUEL_HISTORY_MIN),
                 usize::from(native::fuel_strategy::FUEL_HISTORY_MAX),
             )?,
-            Self::Delta(_) | Self::Pedals(_) => {}
+            _ => additional::validate(self)?,
         }
         Ok(())
     }

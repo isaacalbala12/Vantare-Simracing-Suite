@@ -180,7 +180,8 @@ it.each(["standings", "relative", "delta", "pedals", "fuel-strategy"] as const)(
 );
 it("hides style and accent for Eficiencia", () => {
   const item = instance("standings");
-  if (!item.settings) throw new Error("Missing settings");
+  if (!item.settings || !("designSystem" in item.settings))
+    throw new Error("Missing settings");
   item.settings.designSystem = "eficiencia";
   mount(item);
   expect(screen.getByRole("combobox", { name: t.widgetLook })).toBeTruthy();
@@ -195,7 +196,8 @@ it.each([
   "shows brand %s as a definition before Look",
   (brandVisible, label) => {
     const item = instance("standings");
-    if (!item.settings) throw new Error("Missing settings");
+    if (!item.settings || !("designSystem" in item.settings))
+      throw new Error("Missing settings");
     item.settings.brandVisible = brandVisible;
     mount(item);
     const brand = screen.getAllByRole("definition")[0];
@@ -219,7 +221,8 @@ it.each([
   "writes only transparentBackground for %s / %s",
   async (kind, look) => {
     const item = instance(kind);
-    if (!item.settings) throw new Error("Missing settings");
+    if (!item.settings || !("designSystem" in item.settings))
+      throw new Error("Missing settings");
     item.settings.designSystem = look;
     mount(item);
     const user = userEvent.setup();
@@ -248,7 +251,8 @@ it.each([
 );
 it("does not offer Delta transparency in Eficiencia", () => {
   const item = instance("delta");
-  if (!item.settings) throw new Error("Missing settings");
+  if (!item.settings || !("designSystem" in item.settings))
+    throw new Error("Missing settings");
   item.settings.designSystem = "eficiencia";
   mount(item);
   expect(
@@ -406,7 +410,8 @@ it.each(["bar", "expanded"] as const)(
 );
 it("hides Delta format and bar in Eficiencia", () => {
   const item = deltaItem("bar");
-  if (!item.settings) throw new Error("Missing Delta");
+  if (!item.settings || !("designSystem" in item.settings))
+    throw new Error("Missing Delta");
   item.settings.designSystem = "eficiencia";
   mount(item);
   expect(screen.queryByRole("combobox", { name: t.deltaFormat })).toBeNull();
@@ -541,7 +546,8 @@ it("selects a Fuel format using the keyboard", async () => {
 });
 it("hides Fuel format in Eficiencia", () => {
   const item = fuelItem();
-  if (!item.settings) throw new Error("Missing Fuel");
+  if (!item.settings || !("designSystem" in item.settings))
+    throw new Error("Missing Fuel");
   item.settings.designSystem = "eficiencia";
   mount(item);
   expect(screen.queryByRole("combobox", { name: t.fuelFormat })).toBeNull();
@@ -687,7 +693,8 @@ it.each(["relative", "pedals", "fuel-strategy"] as const)(
   "does not invent a legacy design for %s",
   (kind) => {
     const item = instance(kind);
-    if (!item.settings) throw new Error("Missing widget");
+    if (!item.settings || !("designSystem" in item.settings))
+      throw new Error("Missing widget");
     item.settings.designSystem = "eficiencia";
     mount(item);
     expect(screen.queryByRole("combobox", { name: t.widgetDesign })).toBeNull();

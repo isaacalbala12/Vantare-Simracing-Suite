@@ -28,7 +28,8 @@ function Steps({
   readOnly: boolean;
 }) {
   const state = useStudio();
-  const [step, setStep] = useState(item.settings ? "appearance" : "track");
+  const hasAppearance = !!item.settings && "designSystem" in item.settings;
+  const [step, setStep] = useState(hasAppearance ? "appearance" : "track");
   const track = useRef<HTMLButtonElement>(null);
   if (state.view?.state !== "ready" && !readOnly)
     return <p>{t.appearanceUnavailable}</p>;
@@ -41,17 +42,18 @@ function Steps({
         if (
           !readOnly &&
           (value === "track" ||
-            ((value === "appearance" || value === "content") && item.settings))
+            (value === "appearance" && hasAppearance) ||
+            (value === "content" && item.settings))
         )
           setStep(String(value));
       }}
     >
       <div className="v-studio-steps-header">
         <Tabs.List aria-label={t.inspectorTabs} activateOnFocus>
-          <Tooltip label={item.settings ? t.appearance : t.soonTooltip}>
+          <Tooltip label={hasAppearance ? t.appearance : t.soonTooltip}>
             <Tabs.Tab
               value="appearance"
-              aria-disabled={readOnly || !item.settings || undefined}
+              aria-disabled={readOnly || !hasAppearance || undefined}
             >
               <span className="v-step-number" aria-hidden="true">
                 {t.stepNumbers[0]}

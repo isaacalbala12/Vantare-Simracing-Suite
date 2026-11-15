@@ -74,7 +74,8 @@ it.each(["eficiencia", "vantare"] as const)(
   "allows brake peak only with Vantare (%s)",
   (look) => {
     const item = instance("pedals");
-    if (!item.settings) throw Error("Fixture");
+    if (!item.settings || !("designSystem" in item.settings))
+      throw Error("Fixture");
     item.settings.designSystem = look;
     const { result } = renderHook(() => useDrivingContent(item));
     expect(result.current.brake).toBe(look === "vantare");
@@ -86,7 +87,8 @@ it.each(["eficiencia", "vantare"] as const)(
 );
 it("does not offer Delta Content with Eficiencia", () => {
   const item = instance();
-  if (!item.settings) throw Error("Fixture");
+  if (!item.settings || !("designSystem" in item.settings))
+    throw Error("Fixture");
   item.settings.designSystem = "eficiencia";
   const { result } = renderHook(() => useDrivingContent(item));
   expect(result.current.delta).toBe(false);

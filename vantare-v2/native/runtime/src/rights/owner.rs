@@ -40,6 +40,33 @@ fn local_devices() -> Devices {
     }
 }
 
+/// Identidades de proceso admitidas; solo Services puede mutar los derechos.
+struct Consumers {
+    helper: std::path::PathBuf,
+    readers: [std::path::PathBuf; 5],
+}
+impl Consumers {
+    fn new(image: &Path, engineer: std::path::PathBuf) -> Self {
+        Self {
+            helper: image.with_file_name("vantare-services.exe"),
+            readers: [
+                image.with_file_name("vantare-overlays.exe"),
+                image.with_file_name("vantare-overlays-rune.exe"),
+                image.with_file_name("vantare-hub.exe"),
+                image.with_file_name("vantare.exe"),
+                engineer,
+            ],
+        }
+    }
+    fn allows(&self, peer: &vantare_ipc::Peer, mutate: bool) -> bool {
+        if mutate {
+            peer.is_image(&self.helper)
+        } else {
+            self.readers.iter().any(|image| peer.is_image(image)) || peer.is_image(&self.helper)
+        }
+    }
+}
+
 pub fn production(
     photo: &str,
     epoch: u64,
@@ -58,13 +85,7 @@ pub fn production(
         devices = local_devices();
     }
     let image = std::env::current_exe()?;
-    let helper = image.with_file_name("vantare-services.exe");
-    let consumers = [
-        image.with_file_name("vantare-overlays.exe"),
-        image.with_file_name("vantare-hub.exe"),
-        image.with_file_name("vantare.exe"),
-        engineer,
-    ];
+    let consumers = Consumers::new(&image, engineer);
     host::Host::start(
         photo,
         host::Options {
@@ -74,13 +95,7 @@ pub fn production(
             epoch,
             nonce,
         },
-        move |peer, mutate| {
-            if mutate {
-                peer.is_image(&helper)
-            } else {
-                consumers.iter().any(|image| peer.is_image(image)) || peer.is_image(&helper)
-            }
-        },
+        move |peer, mutate| consumers.allows(peer, mutate),
     )
 }
 

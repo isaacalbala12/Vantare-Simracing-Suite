@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Page } from "playwright-core";
+import { studioText } from "../src/renderer/i18n/studio.ts";
 import { canvasText as t } from "../src/renderer/i18n/studio-canvas.ts";
 import { studioCanvasScenes } from "./visual-diff/studio-canvas.ts";
 import { until } from "./wait-for";
@@ -29,7 +30,8 @@ export async function checkStudioCanvas(
         MessagePort.prototype.postMessage = function (message, options) {
           if (
             message?.kind === "request" &&
-            message.request?.method === "studio.geometry"
+            message.request?.method?.startsWith("studio.") &&
+            message.request.method !== "studio.get"
           )
             (Reflect.get(window, "canvasRequests") as unknown[]).push(
               message.request,
@@ -52,6 +54,25 @@ export async function checkStudioCanvas(
       });
       await move.focus();
       if (scene.endsWith("readonly")) {
+        assert.equal(
+          await page
+            .getByRole("button", { name: studioText.add, exact: true })
+            .isDisabled(),
+          true,
+        );
+        const anchors = page.getByRole("button", {
+          name: t.anchors,
+          exact: true,
+        });
+        assert.equal(await anchors.getAttribute("aria-disabled"), "true");
+        await anchors.click();
+        assert.equal(
+          await page
+            .getByRole("toolbar", { name: t.anchors, exact: true })
+            .count(),
+          0,
+        );
+        await move.focus();
         await page.keyboard.press("ArrowRight");
         assert.equal(await count(), 0);
         assert.equal(await move.getAttribute("aria-disabled"), "true");

@@ -650,9 +650,9 @@ it("blocks sidebar, anchors and removal in the readonly canvas without writes", 
   await user.keyboard(" {Delete}");
   await user.click(screen.getByRole("button", { name: /Más/ }));
   expect(
-    screen
-      .getByRole("menuitem", { name: /Standings/ })
-      .getAttribute("aria-disabled"),
+    (await screen.findByRole("menuitem", { name: /Standings/ })).getAttribute(
+      "aria-disabled",
+    ),
   ).toBe("true");
   await user.keyboard("{Escape}");
   await user.click(row);

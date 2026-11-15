@@ -46,6 +46,7 @@ export function useStudioFocus() {
       queryKey: coreKey,
       queryFn: async () => offline,
       enabled: false,
+      subscribed: state.canvasMode,
     }).data ?? offline;
   const canvasReadOnly =
     state.canvasMode &&

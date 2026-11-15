@@ -1,9 +1,11 @@
 ## VANTA-144 · PR 3: código común de overlays (15/11/2026)
 
 Worker A, #2333, ADR 0110 decisión 1. Rama
-`vantareapp/isa-2333-codigo-comun`, apilada sobre la extracción E #2341,
-head ca31f3b9e74e45a0f92e75ee65a20cb450d06a23 por encargo del orquestador.
-Tras su squash se rebasea con `git rebase --onto origin/nightly ca31f3b9e`.
+`vantareapp/isa-2333-codigo-comun`, PR #2344. Se inició apilada sobre E
+#2341 ca31f3b9e74e45a0f92e75ee65a20cb450d06a23 por encargo. Tras el squash
+se aplicó `git rebase --onto origin/nightly ca31f3b9e`; base real ahora
+`e56c79b26245c8efdfe00ae5d5bebf470c4344fb`. Único conflicto en el handoff,
+conservados completos los bloques de A y B. El diff ya no incluye la extracción E.
 
 `domain::widget_settings::{Kind, Settings}` posee la lista única y el agregado;
 UI consume esa lista para su despacho. Las familias de ajustes siguen siendo
@@ -21,7 +23,9 @@ El escritor y enum anteriores están congelados para comparar bytes de fixtures,
 todas las familias y Looks, con y sin preserve_order. Geometría idéntica a la
 base, incluidas reglas de resize y tests, salvo el permiso numérico ya heredado
 por esos tests de UI. Flume 0.12 acompaña a la fuente: ya estaba en UI/lock;
-no se añade ni actualiza ningún paquete externo.
+el lock nativo solo añade esa arista. El lock aislado Rune incorpora flume,
+futures-sink y spin en las mismas versiones ya presentes en producto; ningún
+paquete ni versión nuevo para el repositorio.
 
 Estado: compilación inicial domain/ipc PASS con Rust 1.99.1; seis tests del
 lector Python del catálogo e integridad de 472 huellas PASS. Clippy Full y Hub,

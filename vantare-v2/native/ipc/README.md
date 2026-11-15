@@ -254,5 +254,6 @@ se conserva esa unión y los mismos pies sin depender de la configuración GPUI.
 Un oráculo del camino anterior compara la demanda; el esquema del escritor anterior
 compara bytes en fixtures y todas las familias, también con preserve_order.
 `source` conserva transporte, plazos, cola latest-wins y escenas sintéticas;
-flume 0.12 se mueve con ese código (ya estaba en UI y Cargo.lock; cero paquetes
-nuevos). `motion_policy` lee la apariencia legada. Nada crea ventanas ni GPU.
+flume 0.12 se mueve con ese código (ya estaba en UI y Cargo.lock).
+El lock aislado Rune añade flume/futures-sink/spin en las versiones existentes
+del producto; no se añade ni actualiza ninguna biblioteca del repositorio. `motion_policy` lee la apariencia legada. Nada crea ventanas ni GPU.

@@ -55,7 +55,8 @@ export function create(context: MockContext): MockHandler {
   if (sceneName === "ajustes-layout-protegido") settings.track.protected = true;
   context.windowsNotificationsEnabled =
     settings.general.toasts && !settings.protected;
-  let revision = 0;
+  context.settingsData = settings;
+  let revision = 0n;
   let pending: SettingsPatch | undefined;
   let conflicted = false;
   function commit(patch: SettingsPatch) {
@@ -66,6 +67,7 @@ export function create(context: MockContext): MockHandler {
     };
     context.windowsNotificationsEnabled =
       settings.general.toasts && !settings.protected;
+    context.settingsData = settings;
     pending = undefined;
     if (context.onboarding)
       context.onboarding.settingsRevision = settings.revision;
@@ -83,6 +85,8 @@ export function create(context: MockContext): MockHandler {
           onboarding_completed: context.onboarding.completed,
         },
       };
+    context.settingsData = settings;
+    revision = BigInt(`0x${settings.revision}`);
     switch (request.method) {
       case "settings.get":
         return {

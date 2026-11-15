@@ -515,3 +515,32 @@ D recibe `studioAdditionalOptions` (rangos/listas; WHEELS sale del dominio,
 color ASCII #RRGGBB) y `studioAdditionalCases` con los 48 controles y su resultado
 nativo para contrastar UI/mock. Hz por instancia (D108) va en el siguiente PR;
 este contrato no cambia el nivel global ni el scheduler. Preview queda después.
+
+
+### D108 · frecuencia por instancia (protocolo v40)
+
+`OverlayInstance.frequency` devuelve `level`, `overrideHz` (nullable), `appliedHz`
+y `source` (`level`, `override` o `snapshot`). Se calcula en Rust con la política
+nativa: las cuatro tablas son Standings, Relative, MulticlassRelative y
+BroadcastTower. Banderas usa cada foto, incluso si conserva un override antiguo.
+`0` significa cada foto, nunca desactivado; ausencia significa usar el nivel.
+Los valores antiguos 0 y40 se leen y conservan, aunque no sean botones del editor.
+
+`studio.instance {id, baseRevision, patch:{field:"frequency", value}}` admite
+1/4/5/10/15/20/30/60 o un `null` explícito para retirar solo ese override. Omitir
+`value`, mandar un float/string, elegir otra frecuencia o editar Banderas falla
+cerrado. Conserva el nivel global y los overrides de las otras instancias, con
+sus límites existentes (256 entradas y128 bytes UTF-8 por id). No cambia el
+scheduler ni el formato que leen GPUI y Rune.
+
+Studio y Ajustes reciben el mismo `args.layout`: la revisión de Studio es la
+huella de todos esos bytes observados, incluidos `performance`. No se reutiliza
+la revisión agregada de Ajustes. Cada orden usa el CAS existente; un conflicto
+requiere refrescar y una nueva decisión, **sin reenvío automático**. Un no-op no
+escribe ni añade deshacer. Undo/redo comprueba los derechos actuales antes de
+restaurar un override de un widget que se ha quedado bloqueado.
+
+D recibe `studioFrequencyOptions` y380 vectores `studioFrequencyCases` de Rust,
+incluidos los cinco niveles,19 familias, herencia y overrides0/40/60. El mock
+consume esos vectores y enlaza sus fotos con el nivel de Ajustes, con conflictos
+por revisión en ambos sentidos. La interfaz del selector sigue en el PR de D.

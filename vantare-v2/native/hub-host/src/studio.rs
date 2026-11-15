@@ -5,6 +5,9 @@ use std::{path::PathBuf, time::Instant};
 use ts_rs::TS;
 #[path = "studio/catalog.rs"]
 pub mod catalog;
+#[path = "studio/frequency.rs"]
+pub mod frequency;
+pub use frequency::{FrequencyChange, FrequencyView};
 #[path = "studio/geometry.rs"]
 pub mod geometry;
 #[path = "studio/monitor.rs"]
@@ -75,6 +78,7 @@ pub struct OverlayInstance {
     pub id: String,
     pub kind: WidgetKind,
     pub settings: Option<WidgetSettings>,
+    pub frequency: FrequencyView,
     pub visible: bool,
     pub locked: bool,
     pub opacity: u8,
@@ -114,6 +118,7 @@ pub enum InstancePatch {
     ShowIn(ShowIn),
     OffTrack(OffTrack),
     Settings(Box<WidgetSettingsPatch>),
+    Frequency(FrequencyChange),
 }
 pub enum Edit {
     Visibility(String, bool),

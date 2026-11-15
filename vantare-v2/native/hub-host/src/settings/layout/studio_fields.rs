@@ -58,3 +58,80 @@ pub(super) fn remove_rates(root: &mut Fields, ids: &[String]) -> Result<(), Host
     );
     Ok(())
 }
+
+pub(super) fn set_rate(root: &mut Fields, id: &str, hz: Option<u16>) -> Result<bool, HostError> {
+    use crate::settings::track::{MAX_WIDGET_ID_BYTES, MAX_WIDGET_OVERRIDES};
+    if id.is_empty()
+        || id.len() > MAX_WIDGET_ID_BYTES
+        || id.contains('\0')
+        || hz.is_some_and(|hz| !crate::studio::frequency::FREQUENCY_CHOICES.contains(&hz))
+    {
+        return Err(HostError::Denied);
+    }
+    let mut performance: Ordered = root.0.get("performance").map_or_else(
+        || Ok(Ordered(vec![])),
+        |raw| serde_json::from_str(raw.get()).map_err(|_| HostError::Protected),
+    )?;
+    let widget_index = performance.0.iter().position(|(key, _)| key == "widgets");
+    let mut widgets: Ordered = widget_index.map_or_else(
+        || Ok(Ordered(vec![])),
+        |index| {
+            serde_json::from_str(performance.0[index].1.get()).map_err(|_| HostError::Protected)
+        },
+    )?;
+    let index = widgets.0.iter().position(|(key, _)| key == id);
+    match (hz, index) {
+        (None, None) => return Ok(false),
+        (None, Some(index)) => {
+            widgets.0.remove(index);
+        }
+        (Some(hz), Some(index)) => {
+            let old: u16 =
+                serde_json::from_str(widgets.0[index].1.get()).map_err(|_| HostError::Protected)?;
+            if old == hz {
+                return Ok(false);
+            }
+            widgets.0[index].1 = serde_json::value::to_raw_value(&hz).map_err(|_| HostError::Io)?;
+        }
+        (Some(hz), None) => {
+            if widgets.0.len() >= MAX_WIDGET_OVERRIDES {
+                return Err(HostError::Denied);
+            }
+            widgets.0.push((
+                id.into(),
+                serde_json::value::to_raw_value(&hz).map_err(|_| HostError::Io)?,
+            ));
+        }
+    }
+    let raw = serde_json::value::to_raw_value(&widgets).map_err(|_| HostError::Io)?;
+    if let Some(index) = widget_index {
+        performance.0[index].1 = raw;
+    } else {
+        performance.0.push(("widgets".into(), raw));
+    }
+    root.0.insert(
+        "performance".into(),
+        serde_json::value::to_raw_value(&performance).map_err(|_| HostError::Io)?,
+    );
+    Ok(true)
+}
+
+// Performance permits 256 ids; the generic small-object Fields reader permits
+// only 64 members. Keep duplicate rejection while using the native map limit.
+pub(super) fn rates(
+    performance: &Fields,
+) -> Result<std::collections::BTreeMap<String, u16>, HostError> {
+    let Some(raw) = performance.0.get("widgets") else {
+        return Ok(std::collections::BTreeMap::new());
+    };
+    let ordered: Ordered = serde_json::from_str(raw.get()).map_err(|_| HostError::Protected)?;
+    ordered
+        .0
+        .into_iter()
+        .map(|(id, raw)| {
+            serde_json::from_str(raw.get())
+                .map(|hz| (id, hz))
+                .map_err(|_| HostError::Protected)
+        })
+        .collect()
+}

@@ -10,10 +10,15 @@ import {
   studioAddAvailable,
   studioCatalog,
   studioFreeKinds,
+  studioFrequencyOptions,
   studioLimits,
   studioSizes,
   studioWidgetDefaults,
 } from "../../contract/generated/studio";
+import {
+  frequencyFor,
+  isFrequencyChange,
+} from "../../contract/studio-frequency";
 import {
   isWidgetSettings,
   isWidgetSettingsPatch,
@@ -26,6 +31,8 @@ export function create(context: MockContext): MockHandler {
     context.core.rights = "connected";
     context.core.access.verified = true;
   }
+  let performanceLevel = context.settingsData?.track.level ?? "balanced";
+  const otherOverrides = context.settingsData?.track.customWidgets ?? 0;
   const instances: OverlayInstance[] = [
     { id: "widget-1", kind: "standings", size: { width: 338, height: 304 } },
     { id: "widget-2", kind: "delta", size: { width: 356, height: 88 } },
@@ -38,6 +45,7 @@ export function create(context: MockContext): MockHandler {
   ].map((item) => ({
     ...item,
     settings: widgetDefault(item.kind as WidgetKind),
+    frequency: frequencyFor(item.kind as WidgetKind, performanceLevel, null),
     visible: true,
     locked: false,
     opacity: 100,
@@ -80,6 +88,10 @@ export function create(context: MockContext): MockHandler {
     canRedo: false,
     canvas: { width: 1920, height: 1080, source: "monitor" },
   };
+  if (context.settingsData && sceneName.startsWith("studio-")) {
+    context.settingsData.track.exists = view.state !== "missing";
+    context.settingsData.track.protected = view.state === "protected";
+  }
   if (sceneName === "studio-oculto") view.instances[0].visible = false;
   if (view.state !== "ready") view.instances = [];
   if (
@@ -115,6 +127,19 @@ export function create(context: MockContext): MockHandler {
     view.canRedo = redo.length > 0;
   };
   return (message) => {
+    const level = context.settingsData?.track.level ?? performanceLevel;
+    if (level !== performanceLevel) {
+      performanceLevel = level;
+      view.instances.forEach((item) => {
+        item.frequency = frequencyFor(
+          item.kind,
+          level,
+          item.frequency.overrideHz,
+        );
+      });
+      undo.length = redo.length = 0;
+      bump();
+    }
     const staged = stateScene(message);
     if (staged !== undefined) return staged;
     if (message.kind === "subscribe" && message.topic === "studio")
@@ -196,6 +221,7 @@ export function create(context: MockContext): MockHandler {
           id: added,
           kind: request.kind,
           settings: widgetDefault(request.kind),
+          frequency: frequencyFor(request.kind, performanceLevel, null),
           visible: true,
           locked: false,
           opacity: 100,
@@ -226,6 +252,38 @@ export function create(context: MockContext): MockHandler {
         const item = view.instances.find((w) => w.id === request.id);
         if (!item || item.locked) return fail("denied");
         switch (request.patch.field) {
+          case "frequency": {
+            const hz = request.patch.value;
+            if (
+              item.kind === "racing-flags" ||
+              !isFrequencyChange(hz) ||
+              new TextEncoder().encode(item.id).length >
+                studioFrequencyOptions.maxIdBytes
+            )
+              return fail("denied");
+            if (item.frequency.overrideHz === hz)
+              return {
+                kind: "response",
+                id,
+                result: {
+                  method: "studio.instance",
+                  value: structuredClone(view),
+                },
+              };
+            const count =
+              otherOverrides +
+              view.instances.filter(
+                (entry) => entry.frequency.overrideHz !== null,
+              ).length;
+            if (
+              hz !== null &&
+              item.frequency.overrideHz === null &&
+              count >= studioFrequencyOptions.maxOverrides
+            )
+              return fail("denied");
+            item.frequency = frequencyFor(item.kind, performanceLevel, hz);
+            break;
+          }
           case "settings": {
             if (!item.settings || item.kind !== request.patch.value.kind)
               return fail("denied");
@@ -271,6 +329,26 @@ export function create(context: MockContext): MockHandler {
       if (undo.length > studioLimits.history) undo.shift();
       redo.length = 0;
       bump();
+    }
+    if (context.settingsData) {
+      const count =
+        otherOverrides +
+        view.instances.filter((item) => item.frequency.overrideHz !== null)
+          .length;
+      context.settingsData.track.customWidgets = count;
+      context.settingsData.track.customized = count > 0;
+      if (
+        request.method !== "studio.get" &&
+        request.method !== "studio.track"
+      ) {
+        context.settingsData.revision = (
+          BigInt(`0x${context.settingsData.revision}`) + 1n
+        )
+          .toString(16)
+          .padStart(64, "0");
+        if (context.onboarding)
+          context.onboarding.settingsRevision = context.settingsData.revision;
+      }
     }
     if (request.method === "studio.add") {
       if (!added) return fail("denied");

@@ -8,6 +8,7 @@ import {
   studioWidgetDefaults,
   type WidgetSettings,
 } from "../src/contract/generated/studio";
+import { frequencyFor } from "../src/contract/studio-frequency";
 import { studioText as t } from "../src/renderer/i18n/studio";
 import { AppearanceInspector } from "../src/renderer/ui/studio/AppearanceInspector";
 
@@ -30,6 +31,7 @@ const instance = (
 ): OverlayInstance => ({
   id: "widget-1",
   kind,
+  frequency: frequencyFor(kind, "balanced", null),
   settings: JSON.parse(
     JSON.stringify(studioWidgetDefaults[kind]),
   ) as WidgetSettings,

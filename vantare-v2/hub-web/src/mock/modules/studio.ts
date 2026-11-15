@@ -396,6 +396,15 @@ export function create(context: MockContext): MockHandler {
             height: Math.round(studioSizes[request.kind].height),
           },
         });
+        if (request.at && view.canvas) {
+          const created = view.instances.at(-1);
+          if (created)
+            created.canvasPlacement =
+              created.x + created.size.width > view.canvas.width ||
+              created.y + created.size.height > view.canvas.height
+                ? "outside"
+                : "inside";
+        }
         break;
       }
       case "studio.duplicate": {

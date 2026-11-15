@@ -29,9 +29,9 @@ pérdida de acceso y desmontaje. Un fallo de captura también cancela. El marco
 del plano queda fijo durante el gesto. Silueta, imán y guías son locales.
 
 El punto debe caer en el plano visible, no en el catálogo, los controles o una
-zona recortada. Soltar fuera no añade ni deriva en un clic. `release` se envía
-El origen de la silueta también debe quedar dentro, como exige `studio.add`;
-no se anuncia como válida una posición negativa que el anfitrión rechazaría.
+zona recortada. El origen de la silueta también debe quedar dentro, como exige
+`studio.add`: no se anuncia como válida una posición negativa que el anfitrión
+rechazaría. Soltar fuera no añade ni deriva en un clic. `release` se envía
 una sola vez con `StudioProvider.execute`. Añadir y el Intro del agarre siguen
 añadiendo en un hueco libre sin arrastrar. El panel no atrapa el foco; Escape
 cancela primero el gesto y luego puede cerrar el catálogo, sin salir de Lienzo.

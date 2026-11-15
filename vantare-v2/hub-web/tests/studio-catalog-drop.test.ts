@@ -89,6 +89,24 @@ it("does not send an origin the host rejects even when the pointer is inside", (
     ),
   ).toBeNull();
 });
+it("projects an accepted origin whose widget extends outside the canvas", () => {
+  const { host, view } = setup();
+  const reply = host({
+    kind: "request",
+    id: 2,
+    request: {
+      method: "studio.add",
+      kind: "delta",
+      at: { x: 1919, y: 1079 },
+      baseRevision: view.revision,
+    },
+  });
+  if (reply?.kind !== "response" || reply.result.method !== "studio.add")
+    throw Error("Positioned add missing");
+  expect(
+    reply.result.value.instances.find((item) => item.id === reply.result.added),
+  ).toMatchObject({ x: 1919, y: 1079, canvasPlacement: "outside" });
+});
 
 it("does not start without capacity, a canvas or authority", () => {
   const { view, controller } = setup();

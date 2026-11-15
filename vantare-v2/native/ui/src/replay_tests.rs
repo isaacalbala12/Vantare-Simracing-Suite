@@ -11,6 +11,7 @@
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use vantare_ipc::widget_demand::SettingsDemand as _;
 
 use vantare_domain::format::{PLACEHOLDER, Preferences};
 use vantare_domain::{Class, ClassId, Quality, Snapshot, SourceState};

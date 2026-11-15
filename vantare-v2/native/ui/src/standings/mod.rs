@@ -22,7 +22,6 @@
 use self::options::ColumnPresentation as _;
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;
-use vantare_domain::widget_settings::columns as column_keys;
 #[cfg(test)]
 mod contract_tests;
 mod eficiencia;
@@ -78,73 +77,7 @@ pub fn shift_column(columns: &mut Vec<options::ColumnSetting>, metric: &str, ste
 /// Plantillas Vantare del catálogo r10b: todas las columnas elegibles en su
 /// orden, activas según el tamaño. `compact` (340 px), `standard` (520, el del
 /// Studio) y `expanded` (900). Eficiencia ignora las métricas que no conoce.
-#[must_use]
-pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
-    let (driver, on): (&str, &[&str]) = match name {
-        "compact" => (
-            column_keys::COLUMN_WIDTH_SM,
-            &[
-                column_keys::COLUMN_METRIC_POSITION,
-                column_keys::COLUMN_METRIC_DRIVER_NUMBER,
-                column_keys::COLUMN_METRIC_DRIVER_NAME,
-                column_keys::COLUMN_METRIC_GAP,
-            ],
-        ),
-        "expanded" => (
-            column_keys::COLUMN_WIDTH_LG,
-            &[
-                column_keys::COLUMN_METRIC_POSITION,
-                column_keys::COLUMN_METRIC_POSITIONS_GAINED,
-                column_keys::COLUMN_METRIC_DRIVER_NUMBER,
-                column_keys::COLUMN_METRIC_DRIVER_NAME,
-                column_keys::COLUMN_METRIC_VEHICLE,
-                column_keys::COLUMN_METRIC_TIRE_COMPOUND,
-                column_keys::COLUMN_METRIC_PIT,
-                column_keys::COLUMN_METRIC_SECTORS,
-                column_keys::COLUMN_METRIC_LAST_LAP,
-                column_keys::COLUMN_METRIC_BEST_LAP,
-                column_keys::COLUMN_METRIC_GAP,
-            ],
-        ),
-        _ => (
-            column_keys::COLUMN_WIDTH_MD,
-            &[
-                column_keys::COLUMN_METRIC_POSITION,
-                column_keys::COLUMN_METRIC_POSITIONS_GAINED,
-                column_keys::COLUMN_METRIC_DRIVER_NAME,
-                column_keys::COLUMN_METRIC_VEHICLE,
-                column_keys::COLUMN_METRIC_GAP,
-            ],
-        ),
-    };
-    [
-        column_keys::COLUMN_METRIC_POSITION,
-        column_keys::COLUMN_METRIC_POSITIONS_GAINED,
-        column_keys::COLUMN_METRIC_DRIVER_NUMBER,
-        column_keys::COLUMN_METRIC_DRIVER_NAME,
-        column_keys::COLUMN_METRIC_VEHICLE,
-        column_keys::COLUMN_METRIC_TIRE_COMPOUND,
-        column_keys::COLUMN_METRIC_PIT,
-        column_keys::COLUMN_METRIC_SECTORS,
-        column_keys::COLUMN_METRIC_LAST_LAP,
-        column_keys::COLUMN_METRIC_BEST_LAP,
-        column_keys::COLUMN_METRIC_INTERVAL,
-        column_keys::COLUMN_METRIC_GAP,
-    ]
-    .iter()
-    .map(|metric| options::ColumnSetting {
-        id: (*metric).into(),
-        metric_id: (*metric).into(),
-        enabled: on.contains(metric),
-        width_preset: if *metric == column_keys::COLUMN_METRIC_DRIVER_NAME {
-            driver.into()
-        } else {
-            column_keys::COLUMN_WIDTH_AUTO.into()
-        },
-        ..options::ColumnSetting::default()
-    })
-    .collect()
-}
+pub use vantare_domain::widget_settings::standings::vantare_template;
 
 /// Columnas del tamaño estándar (520 px) del catálogo fuera de carrera.
 #[must_use]
@@ -703,87 +636,7 @@ impl crate::widget_settings::WorkshopSettings for Settings {
         s
     }
 }
-impl crate::widget_settings::SettingsDemand for Settings {
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{
-            ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,
-            SessionInfo,
-        };
-        let settings = self.normalized();
-        let config = settings.config();
-        let mut demand = crate::demand::signals(
-            250,
-            &[
-                vantare_ipc::Signal::Cars,
-                Positions,
-                PitStatus,
-                SessionInfo,
-                SessionClock,
-                Flags,
-                Gaps,
-                ClassGaps,
-                LapCount,
-                LapTimes,
-                vantare_ipc::Signal::Sectors,
-                vantare_ipc::Signal::Weather,
-            ],
-        );
-        if settings.classification_mode == "multiclass" {
-            demand.request(ClassGaps, 250);
-        }
-        // Señales de las tres pestañas: el cambio de sesión no espera a la demanda.
-        let tabs: Vec<Config> = Session::ALL
-            .iter()
-            .map(|session| settings.for_session(*session).config())
-            .collect();
-        for column in tabs.iter().flat_map(|tab| &tab.columns) {
-            match column.metric {
-                Metric::Gap | Metric::Interval => {
-                    demand.request(
-                        if settings.class_scope != "all-classes" || config.multiclass {
-                            ClassGaps
-                        } else {
-                            Gaps
-                        },
-                        250,
-                    );
-                    // En práctica y clasificación el gap compara mejores vueltas.
-                    demand.request(LapTimes, 250);
-                }
-                Metric::LastLap | Metric::BestLap => demand.request(LapTimes, 250),
-                Metric::CurrentLap => demand.request(LapCount, 250),
-                _ => {}
-            }
-        }
-        if settings.show_session_header {
-            demand.request(SessionClock, 250);
-            demand.request(Flags, 250);
-        }
-        if settings.show_session_footer {
-            let slots = !config.footer_slots.is_empty();
-            let ids = if slots {
-                &config.footer_slots
-            } else {
-                &config.footer_ids
-            };
-            for id in ids {
-                crate::demand::information(&mut demand, id, slots);
-                if id == "gap" {
-                    demand.request(
-                        if settings.class_scope != "all-classes" || config.multiclass {
-                            ClassGaps
-                        } else {
-                            Gaps
-                        },
-                        250,
-                    );
-                    demand.request(LapTimes, 250);
-                }
-            }
-        }
-        demand
-    }
-}
+
 #[cfg(test)]
 mod tests {
 
@@ -1473,3 +1326,116 @@ mod tests {
 
 #[cfg(test)]
 mod session_tests;
+
+#[cfg(test)]
+trait LegacyDemand { fn legacy_demand(&self) -> vantare_ipc::Demand; }
+#[cfg(test)]
+impl LegacyDemand for Settings {
+    fn legacy_demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{
+            ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,
+            SessionInfo,
+        };
+        let settings = self.normalized();
+        let config = settings.config();
+        let mut demand = crate::demand::signals(
+            250,
+            &[
+                vantare_ipc::Signal::Cars,
+                Positions,
+                PitStatus,
+                SessionInfo,
+                SessionClock,
+                Flags,
+                Gaps,
+                ClassGaps,
+                LapCount,
+                LapTimes,
+                vantare_ipc::Signal::Sectors,
+                vantare_ipc::Signal::Weather,
+            ],
+        );
+        if settings.classification_mode == "multiclass" {
+            demand.request(ClassGaps, 250);
+        }
+        // Señales de las tres pestañas: el cambio de sesión no espera a la demanda.
+        let tabs: Vec<Config> = Session::ALL
+            .iter()
+            .map(|session| settings.for_session(*session).config())
+            .collect();
+        for column in tabs.iter().flat_map(|tab| &tab.columns) {
+            match column.metric {
+                Metric::Gap | Metric::Interval => {
+                    demand.request(
+                        if settings.class_scope != "all-classes" || config.multiclass {
+                            ClassGaps
+                        } else {
+                            Gaps
+                        },
+                        250,
+                    );
+                    // En práctica y clasificación el gap compara mejores vueltas.
+                    demand.request(LapTimes, 250);
+                }
+                Metric::LastLap | Metric::BestLap => demand.request(LapTimes, 250),
+                Metric::CurrentLap => demand.request(LapCount, 250),
+                _ => {}
+            }
+        }
+        if settings.show_session_header {
+            demand.request(SessionClock, 250);
+            demand.request(Flags, 250);
+        }
+        if settings.show_session_footer {
+            let slots = !config.footer_slots.is_empty();
+            let ids = if slots {
+                &config.footer_slots
+            } else {
+                &config.footer_ids
+            };
+            for id in ids {
+                crate::demand::information(&mut demand, id, slots);
+                if id == "gap" {
+                    demand.request(
+                        if settings.class_scope != "all-classes" || config.multiclass {
+                            ClassGaps
+                        } else {
+                            Gaps
+                        },
+                        250,
+                    );
+                    demand.request(LapTimes, 250);
+                }
+            }
+        }
+        demand
+    }
+}
+
+#[cfg(test)]
+mod demand_extraction_tests {
+    use super::*;
+    use crate::widget_settings::SettingsDemand as _;
+    #[test]
+    fn shared_demand_matches_the_previous_renderer_dependent_union() {
+        for look in crate::look::Look::ALL {
+            for header in [false,true] {
+                for footer in [false,true] {
+                    for slots in [None, Some(vec![]), Some(vec!["gap".into(),"totalLaps".into(),"estimatedLaps".into(),"track".into(),"remaining".into()])] {
+                        let mut settings = Settings::for_look(*look);
+                        settings.show_session_header = header;
+                        settings.show_session_footer = footer;
+                        settings.footer_slots = slots;
+                        settings.practice_columns = Some(vantare_standard_session_template(Session::Practice));
+                        settings.qualifying_columns = Some(session_preset(Session::Qualifying));
+                        settings.columns = Some(vantare_template("expanded"));
+                        for class in ["all-classes","player-class","unknown"] {
+                            settings.class_scope = class.into();
+                            assert_eq!(settings.demand(), settings.legacy_demand(), "{settings:?}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

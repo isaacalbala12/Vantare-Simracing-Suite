@@ -241,3 +241,18 @@ un hilo nuevo. El Feed opt-in conserva su caché por época contra autoridades
 antiguas; consumir una petición no inicia un sondeo ni un bucle de diagnóstico.
 
 Los rechazos launch-v2 también consumen huecos del único anillo de 32 eventos. La lectura no consume; una ráfaga de rechazos puede desalojar recibos o terminales. Sin recibo retenido (también tras reinicio o descarte sin extensión) significa **Unknown**, nunca éxito. El anfitrión debe conservar esta semántica.
+
+## Documento y fotos de overlays — ADR 0110, PR 3 (#2333)
+
+`layout` posee Layout/Instance, demanda del documento, normalización, Document y
+Presentation. Los campos, versiones, serialización y escritura CAS se conservan;
+`Document::initialize_with` recibe el diseño inicial calculado por cada renderer.
+La fachada UI conserva `Document::initialize(monitor)` y los tamaños GPUI actuales.
+`widget_demand::SettingsDemand` posee las señales de cada familia, reexportadas
+desde UI. Standings ya pedía en la unión base todas las señales de sus columnas;
+se conserva esa unión y los mismos pies sin depender de la configuración GPUI.
+Un oráculo del camino anterior compara la demanda; el esquema del escritor anterior
+compara bytes en fixtures y todas las familias, también con preserve_order.
+`source` conserva transporte, plazos, cola latest-wins y escenas sintéticas;
+flume 0.12 se mueve con ese código (ya estaba en UI y Cargo.lock; cero paquetes
+nuevos). `motion_policy` lee la apariencia legada. Nada crea ventanas ni GPU.

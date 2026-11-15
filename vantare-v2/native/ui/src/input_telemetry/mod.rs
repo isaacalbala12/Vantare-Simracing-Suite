@@ -34,14 +34,7 @@ impl SettingsPresentation for Settings {
     }
 }
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    #[allow(clippy::unused_self)] // El estado de ausencia también depende de clutch, aunque su barra esté oculta.
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain};
-        // La traza necesita observar cada revisión para detectar pérdidas reales.
-        crate::demand::signals(0, &[Pedals, Clutch, Powertrain])
-    }
-}
+
 
 
 

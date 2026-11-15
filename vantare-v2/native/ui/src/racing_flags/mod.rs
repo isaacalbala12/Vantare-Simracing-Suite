@@ -518,15 +518,7 @@ impl SettingsPresentation for Settings {
     }
 }
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    fn demand(&self) -> vantare_ipc::Demand {
-        // Identidad personal, posición de llegada y contexto de sesión.
-        // Cars conserva jugador/IDs sin pedir sanciones numéricas ni inputs.
-        use vantare_ipc::Signal::{Cars, Flags, Positions, SessionInfo};
-        crate::demand::signals(33, &[Cars, Flags, Positions, SessionInfo])
-    }
-}
+
 
 
 

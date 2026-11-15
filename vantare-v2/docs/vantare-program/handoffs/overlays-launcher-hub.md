@@ -1,3 +1,38 @@
+## VANTA-144 · PR 3: código común de overlays (15/11/2026)
+
+Worker A, #2333, ADR 0110 decisión 1. Rama
+`vantareapp/isa-2333-codigo-comun`, apilada sobre la extracción E #2341,
+head ca31f3b9e74e45a0f92e75ee65a20cb450d06a23 por encargo del orquestador.
+Tras su squash se rebasea con `git rebase --onto origin/nightly ca31f3b9e`.
+
+`domain::widget_settings::{Kind, Settings}` posee la lista única y el agregado;
+UI consume esa lista para su despacho. Las familias de ajustes siguen siendo
+las de E. Cadencias, geometría, filtros de sesión y precedencia de movimiento
+reducido son puras. No se cambia el scheduler ni el dibujo/animación GPUI.
+`ipc::{layout, widget_demand, source, motion_policy}` posee documento/CAS,
+demanda, transporte/fotos y lectura de apariencia. UI reexporta o hace de
+fachada para conservar su API; solo la inicialización mantiene el cálculo de
+tamaños GPUI y entrega ese diseño a IPC. Sin versiones de protocolo nuevas.
+
+La demanda Standings ya incluía en su unión base todas las señales de sus
+columnas; conserva la misma unión, plazos y pies, sin resolver un estilo GPUI.
+Un oráculo con el camino anterior compara variantes de tablas y sesiones.
+El escritor y enum anteriores están congelados para comparar bytes de fixtures,
+todas las familias y Looks, con y sin preserve_order. Geometría idéntica a la
+base, incluidas reglas de resize y tests, salvo el permiso numérico ya heredado
+por esos tests de UI. Flume 0.12 acompaña a la fuente: ya estaba en UI/lock;
+no se añade ni actualiza ningún paquete externo.
+
+Estado: compilación inicial domain/ipc PASS con Rust 1.99.1; seis tests del
+lector Python del catálogo e integridad de 472 huellas PASS. Clippy Full y Hub,
+tests sin gráfica y telemetría pendientes de completar por cola. Los tests
+UI/Hub que crean aplicación/ventanas se reservan a CI; ningún binario ni
+herramienta gráfica se ejecuta en servidor. PR/head/checks finales en #2333.
+Sin merge, release, promoción ni movimiento de Plane propios.
+
+Siguiente: cerrar PR 3 y empezar Relative Vantare (PR 6) sobre el workspace
+PR 4 y proceso PR 5 del Worker B, cuando estén disponibles.
+
 ## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
 
 Worker B, #2333, ADR 0110 §9. PR

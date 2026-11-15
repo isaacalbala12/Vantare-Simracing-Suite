@@ -353,13 +353,7 @@ impl crate::widget_settings::WorkshopSettings for Settings {
         }
     }
 }
-impl crate::widget_settings::SettingsDemand for Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Clutch, Pedals, PitStatus, Powertrain};
-        crate::demand::signals(16, &[Pedals, Clutch, Powertrain, PitStatus])
-    }
-}
+
 #[cfg(test)]
 mod tests {
     #[test]

@@ -9,6 +9,7 @@
 
 use std::io::Write;
 use vantare_ipc::product;
+use vantare_ipc::widget_demand::SettingsDemand as _;
 
 use std::path::PathBuf;
 use std::process::ExitCode;

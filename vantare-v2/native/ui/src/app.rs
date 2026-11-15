@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use vantare_ipc::widget_demand::SettingsDemand as _;
 mod usage;
 
 use gpui::{
@@ -61,11 +62,9 @@ impl WakeDeadline {
     }
 }
 
-impl Kind {
-    /// Tamaño del widget (px) con su contenido inicial.
-    fn size(self) -> (f32, f32) {
-        Overlay::new(self, Preferences::default()).wanted_size()
-    }
+/// Tamaño GPUI inicial; el catálogo de dominio no depende del renderer.
+fn kind_size(kind: Kind) -> (f32, f32) {
+    Overlay::new(kind, Preferences::default()).wanted_size()
 }
 
 /// Coloca los widgets en una fila que empieza en `origin`, separados 20 px.
@@ -75,7 +74,7 @@ pub fn layout_row(kinds: &[Kind], origin: (f32, f32)) -> Vec<(Kind, (f32, f32))>
         .iter()
         .map(|&kind| {
             let at = (x, origin.1);
-            x += kind.size().0 + 20.0;
+            x += kind_size(kind).0 + 20.0;
             (kind, at)
         })
         .collect()
@@ -87,15 +86,15 @@ pub fn layout_row(kinds: &[Kind], origin: (f32, f32)) -> Vec<(Kind, (f32, f32))>
 pub(crate) fn starter_layout(monitor: (f32, f32, f32, f32)) -> crate::layout::Layout {
     let (x, y, width, height) = monitor;
     let (top, side, bottom) = (y + height * 0.08, width * 0.02, y + height * 0.94);
-    let delta = Kind::Delta.size();
-    let pedals = Kind::Pedals.size();
+    let delta = kind_size(Kind::Delta);
+    let pedals = kind_size(Kind::Pedals);
     let delta_x = x + (width - delta.0) / 2.0;
     let placed = [
         ("standings", Kind::Standings, (x + side, top)),
         (
             "relative",
             Kind::Relative,
-            (x + width - side - Kind::Relative.size().0, top),
+            (x + width - side - kind_size(Kind::Relative).0, top),
         ),
         ("delta", Kind::Delta, (delta_x, bottom - delta.1)),
         (

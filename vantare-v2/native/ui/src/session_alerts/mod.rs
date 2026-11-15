@@ -35,12 +35,7 @@ impl SettingsPresentation for Settings {
     }
 }
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{SessionClock, SessionInfo};
-        crate::demand::signals(250, &[SessionInfo, SessionClock])
-    }
-}
+
 
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;

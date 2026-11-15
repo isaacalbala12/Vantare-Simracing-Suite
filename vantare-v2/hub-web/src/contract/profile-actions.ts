@@ -15,12 +15,15 @@ export const profileActionMethods = launcherMethods.filter(
       (typeof launcherMethods)[number],
       `launcher.profile.${string}` | "launcher.trigger"
     >,
-    "launcher.profile.get" | "launcher.profile.save"
+    | "launcher.profile.get"
+    | "launcher.profile.save"
+    | "launcher.profile.prepareDuplicate"
   > =>
     method === "launcher.trigger" ||
     (method.startsWith("launcher.profile.") &&
       method !== "launcher.profile.get" &&
-      method !== "launcher.profile.save"),
+      method !== "launcher.profile.save" &&
+      method !== "launcher.profile.prepareDuplicate"),
 );
 const id = (value: unknown): value is string =>
   typeof value === "string" &&

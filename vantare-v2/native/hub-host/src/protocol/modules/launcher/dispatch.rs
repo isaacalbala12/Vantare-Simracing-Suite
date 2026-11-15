@@ -14,7 +14,9 @@ impl Session {
             | Request::LauncherProfileFavorite { .. }
             | Request::LauncherProfileOption { .. }
             | Request::LauncherTrigger { .. } => self.profile_action_request(pipe, id, request),
-            Request::LauncherProfileGet { .. } | Request::LauncherProfileSave { .. } => {
+            Request::LauncherProfileGet { .. }
+            | Request::LauncherProfileSave { .. }
+            | Request::LauncherProfilePrepareDuplicate { .. } => {
                 self.profile_request(pipe, id, request)
             }
             Request::LauncherGet {} => self.launcher_snapshot(pipe, id),
@@ -135,14 +137,18 @@ impl Session {
         draft: &crate::launcher::editor::ProfileDraft,
         base_revision: &str,
     ) -> Result<(), HostError> {
-        let current = crate::launcher::read(&self.launcher);
-        if !current.exists || current.protected {
-            return Err(HostError::Protected);
-        }
-        if current.revision != base_revision {
-            return Err(HostError::LauncherConflict {
-                current: self.launcher_reader.view(),
-            });
+        if self.profile_step_keys.is_prepared_duplicate() {
+            let _ = crate::launcher::editor::duplicate_bytes(&self.launcher, base_revision)?;
+        } else {
+            let current = crate::launcher::read(&self.launcher);
+            if !current.exists || current.protected {
+                return Err(HostError::Protected);
+            }
+            if current.revision != base_revision {
+                return Err(HostError::LauncherConflict {
+                    current: self.launcher_reader.view(),
+                });
+            }
         }
         let found = self
             .launcher_reader
@@ -159,6 +165,26 @@ impl Session {
     }
     fn profile_request(&mut self, pipe: &mut Pipe, id: u32, request: &Request) -> io::Result<()> {
         match request {
+            Request::LauncherProfilePrepareDuplicate {
+                id: source,
+                base_revision,
+            } => {
+                self.reserved_profile = None;
+                let result =
+                    self.profile_step_keys
+                        .prepare_duplicate(&self.launcher, source, base_revision);
+                let message = match result {
+                    Ok(value) => {
+                        self.reserved_profile.clone_from(&value.draft.id);
+                        HostToUi::Response {
+                            id,
+                            result: Reply::LauncherProfilePrepareDuplicate { value },
+                        }
+                    }
+                    Err(error) => HostToUi::Failure { id, error },
+                };
+                frame::write(pipe, &message)
+            }
             Request::LauncherProfileGet { id: profile_id } => {
                 let message = match self
                     .profile_step_keys

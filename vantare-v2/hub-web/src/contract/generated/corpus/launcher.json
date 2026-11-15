@@ -259,6 +259,55 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "method": "launcher.profile.prepareDuplicate",
+        "value": {
+          "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "draft": {
+            "advanced": false,
+            "description": "",
+            "favorite": false,
+            "hotkey": "",
+            "id": "profile-copy-qa",
+            "name": "Creator (copia)",
+            "notes": "",
+            "policy": {
+              "alreadyRunning": "ask",
+              "cancel": "ask",
+              "exit": "ask",
+              "failure": "ask",
+              "firstStepDelay": 0,
+              "retries": 0,
+              "retry": "ask"
+            },
+            "startup": false,
+            "steps": [
+              {
+                "appId": "lmu",
+                "delaySeconds": 0,
+                "hasCustomArguments": false,
+                "key": "0000000000000000000000000000000000000000000000000000000000000001"
+              },
+              {
+                "appId": "obs",
+                "delaySeconds": 2,
+                "hasCustomArguments": false,
+                "key": "0000000000000000000000000000000000000000000000000000000000000002"
+              },
+              {
+                "appId": "spotify",
+                "delaySeconds": 2,
+                "hasCustomArguments": false,
+                "key": "0000000000000000000000000000000000000000000000000000000000000003"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "launcher.catalog",
         "value": {
           "apps": [],
@@ -564,6 +613,62 @@
       "kind": "request",
       "request": {
         "method": "launcher.favorite"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "creator",
+        "method": "launcher.profile.prepareDuplicate"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "draft": {
+          "advanced": false,
+          "description": "",
+          "favorite": false,
+          "hotkey": "",
+          "id": "profile-copy-qa",
+          "name": "Creator (copia)",
+          "notes": "",
+          "policy": {
+            "alreadyRunning": "ask",
+            "cancel": "ask",
+            "exit": "ask",
+            "failure": "ask",
+            "firstStepDelay": 0,
+            "retries": 0,
+            "retry": "ask"
+          },
+          "startup": false,
+          "steps": [
+            {
+              "appId": "lmu",
+              "delaySeconds": 0,
+              "hasCustomArguments": false,
+              "key": "0000000000000000000000000000000000000000000000000000000000000001"
+            },
+            {
+              "appId": "obs",
+              "delaySeconds": 2,
+              "hasCustomArguments": false,
+              "key": "0000000000000000000000000000000000000000000000000000000000000002"
+            },
+            {
+              "appId": "spotify",
+              "delaySeconds": 2,
+              "hasCustomArguments": false,
+              "key": "0000000000000000000000000000000000000000000000000000000000000003"
+            }
+          ]
+        },
+        "method": "launcher.profile.save"
       }
     },
     {

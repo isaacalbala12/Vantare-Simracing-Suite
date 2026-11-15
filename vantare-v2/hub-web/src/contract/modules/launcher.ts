@@ -6,7 +6,11 @@ import {
 } from "../apps-validation";
 import { isLauncher, isLauncherLaunch } from "../launcher-validation";
 import { isProfileAction, isProfileActionMethod } from "../profile-actions";
-import { isProfileEditor, isProfileRequest } from "../profile-validation";
+import {
+  isPreparedDuplicate,
+  isProfileEditor,
+  isProfileRequest,
+} from "../profile-validation";
 import { exact, record } from "../validation-common";
 
 export { launcherMethods as methods } from "../generated/launcher";
@@ -32,6 +36,7 @@ export function isRequest(value: Record<string, unknown>): boolean {
     return isAppRequest(value);
   if (
     value.method === "launcher.profile.get" ||
+    value.method === "launcher.profile.prepareDuplicate" ||
     value.method === "launcher.profile.save"
   )
     return isProfileRequest(value);
@@ -42,6 +47,10 @@ export function isRequest(value: Record<string, unknown>): boolean {
         exact(value, ["method"]);
 }
 export function isReply(value: Record<string, unknown>): boolean {
+  if (value.method === "launcher.profile.prepareDuplicate")
+    return (
+      exact(value, ["method", "value"]) && isPreparedDuplicate(value.value)
+    );
   if (value.method === "launcher.launchChecked")
     return (
       exact(value, ["method", "value"]) &&

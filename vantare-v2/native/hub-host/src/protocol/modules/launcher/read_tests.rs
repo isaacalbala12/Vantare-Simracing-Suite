@@ -98,3 +98,66 @@ fn save_busy_consumes_the_issued_read_without_writing() {
 fn save_conflict_consumes_the_issued_read_without_writing() {
     save_consumes_read(true);
 }
+
+#[test]
+fn preparing_copy_is_read_only_and_stale_save_is_rejected_before_discovery() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let document = vantare_launcher::Document::fresh_install();
+    let before = serde_json::to_vec(&document).expect("fixture");
+    std::fs::write(&session.launcher, &before).expect("fixture");
+    let revision = vantare_services::content_hash(&before);
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            1,
+            &Request::LauncherProfilePrepareDuplicate {
+                id: document.profiles[0].id.clone(),
+                base_revision: revision.clone(),
+            },
+        )
+        .expect("prepare dispatch");
+    pipe.set_position(0);
+    let HostToUi::Response {
+        result: crate::protocol::Reply::LauncherProfilePrepareDuplicate { value },
+        ..
+    } = frame::Reader::default()
+        .next(&mut pipe)
+        .expect("frame")
+        .expect("response")
+    else {
+        panic!("prepared editor")
+    };
+    assert_eq!(std::fs::read(&session.launcher).expect("no write"), before);
+    assert_eq!(session.core.requests, 0);
+    let mut changed = document.clone();
+    changed.profiles[0].name = "Changed".into();
+    let bytes = serde_json::to_vec(&changed).expect("changed");
+    std::fs::write(&session.launcher, &bytes).expect("changed");
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            2,
+            &Request::LauncherProfileSave {
+                draft: value.draft,
+                base_revision: value.base_revision,
+            },
+        )
+        .expect("save dispatch");
+    pipe.set_position(0);
+    assert!(matches!(
+        frame::Reader::default().next(&mut pipe).expect("frame"),
+        Some(HostToUi::Failure {
+            error: HostError::Rejected,
+            ..
+        })
+    ));
+    assert!(!session.profile_step_keys.is_prepared_duplicate());
+    assert_eq!(
+        std::fs::read(&session.launcher).expect("not replayed"),
+        bytes
+    );
+    assert_eq!(session.core.requests, 0);
+}

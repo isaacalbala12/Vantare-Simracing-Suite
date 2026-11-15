@@ -208,51 +208,38 @@ fn paint(
     }
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub reference: String,
-    pub window_seconds: f64,
-    pub show_sectors: bool,
-    pub show_track_map: bool,
-}
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            reference: "best".into(),
-            window_seconds: 4.0,
-            show_sectors: true,
-            show_track_map: true,
-        }
+pub use vantare_domain::widget_settings::delta_trace::Settings;
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{
+            Cars, Delta, Flags, LapCount, LapProgress, LapTimes, PitStatus, Positions, Sectors,
+            SessionInfo, TrackLength,
+        };
+        // La historia distingue pérdida real de fotos; no introducir huecos por cadencia.
+        crate::demand::signals(
+            0,
+            &[
+                Cars,
+                Positions,
+                PitStatus,
+                Flags,
+                Delta,
+                LapTimes,
+                LapCount,
+                LapProgress,
+                TrackLength,
+                Sectors,
+                SessionInfo,
+            ],
+        )
     }
 }
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
-        (
-            "showSectors",
-            "El diseño mantiene los indicadores de sector en el pie",
-        ),
-        (
-            "showTrackMap",
-            "Snapshot no publica trackPath ni turnInsight",
-        ),
-    ];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        Self {
-            reference: match self.reference.as_str() {
-                "optimal" | "leader" => self.reference.clone(),
-                _ => "best".into(),
-            },
-            window_seconds: if self.window_seconds.is_finite() {
-                self.window_seconds.clamp(1.0, 8.0)
-            } else {
-                4.0
-            },
-            ..self.clone()
-        }
-    }
-}
+
+
+
+
 
 fn paint_trace(samples: &[Sample], invalid: bool, window: &mut Window) {
     let (ox, oy) = text::origin();
@@ -543,32 +530,7 @@ mod performance_tests;
 #[cfg(test)]
 mod render_tests;
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{
-            Cars, Delta, Flags, LapCount, LapProgress, LapTimes, PitStatus, Positions, Sectors,
-            SessionInfo, TrackLength,
-        };
-        // La historia distingue pérdida real de fotos; no introducir huecos por cadencia.
-        crate::demand::signals(
-            0,
-            &[
-                Cars,
-                Positions,
-                PitStatus,
-                Flags,
-                Delta,
-                LapTimes,
-                LapCount,
-                LapProgress,
-                TrackLength,
-                Sectors,
-                SessionInfo,
-            ],
-        )
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

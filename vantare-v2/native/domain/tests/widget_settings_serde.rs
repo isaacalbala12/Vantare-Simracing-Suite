@@ -2,6 +2,7 @@
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::collections::BTreeMap;
+use vantare_domain::widget_settings as native;
 use vantare_domain::widget_settings::{delta, fuel_strategy, pedals, relative, standings};
 
 fn rewrite<T: Serialize + DeserializeOwned>(value: &mut Value) {
@@ -39,6 +40,20 @@ fn gpui_widget_defaults_round_trip_without_changing_a_byte() {
             "delta" => rewrite::<delta::Settings>(settings),
             "pedals" => rewrite::<pedals::Settings>(settings),
             "fuel-strategy" => rewrite::<fuel_strategy::Settings>(settings),
+            "broadcast-tower" => rewrite::<native::broadcast_tower::Settings>(settings),
+            "car-damage-numbers" => rewrite::<native::car_damage_numbers::Settings>(settings),
+            "car-damage-visual" => rewrite::<native::car_damage_visual::Settings>(settings),
+            "delta-trace" => rewrite::<native::delta_trace::Settings>(settings),
+            "fastest-lap" => rewrite::<native::fastest_lap::Settings>(settings),
+            "head-to-head" => rewrite::<native::head_to_head::Settings>(settings),
+            "input-telemetry" => rewrite::<native::input_telemetry::Settings>(settings),
+            "track-map" => rewrite::<native::track_map::Settings>(settings),
+            "multiclass-relative" => rewrite::<native::multiclass_relative::Settings>(settings),
+            "pedals-telemetry" => rewrite::<native::pedals_telemetry::Settings>(settings),
+            "radar" => rewrite::<native::radar::Settings>(settings),
+            "racing-flags" => rewrite::<native::racing_flags::Settings>(settings),
+            "track-weather" => rewrite::<native::track_weather::Settings>(settings),
+            "session-alerts" => rewrite::<native::session_alerts::Settings>(settings),
             _ => {}
         }
     }

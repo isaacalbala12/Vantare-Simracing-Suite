@@ -2,6 +2,7 @@
 #[cfg(feature = "parity-capture")]
 use super::catalog::demo_content_scale;
 use super::*;
+use vantare_ui::car_damage_visual::SettingsKeyboard as _;
 
 /// Un paso inmediato, pausa inicial y repetición a 1/4/8 px cada 30 ms.
 pub(super) fn held_nudge_distance(elapsed: Duration, shift: bool) -> f32 {

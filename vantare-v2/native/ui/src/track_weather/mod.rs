@@ -17,47 +17,19 @@ use crate::vantare::{
 const SIZE: (f32, f32) = (132.0, 440.0);
 const WIDE: (f32, f32) = (280.0, 210.0);
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-// Claves independientes del contrato productivo, aunque su renderer aún las ignora.
-#[allow(clippy::struct_excessive_bools)]
-pub struct Settings {
-    /// Columna de 132 × 440 en vez de la tarjeta horizontal de 280 × 210.
-    pub vertical: bool,
-    pub show_ambient: bool,
-    pub show_track: bool,
-    pub show_rain: bool,
-    pub show_wind: bool,
-}
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            vertical: false,
-            show_ambient: true,
-            show_track: true,
-            show_rain: true,
-            show_wind: true,
-        }
+pub use vantare_domain::widget_settings::track_weather::Settings;
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{SessionClock, SessionInfo, Weather};
+        crate::demand::signals(500, &[Weather, SessionInfo, SessionClock])
     }
 }
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
-        (
-            "showAmbient",
-            "TrackWeatherFunctional no consulta este filtro",
-        ),
-        (
-            "showTrack",
-            "TrackWeatherFunctional no consulta este filtro",
-        ),
-        ("showRain", "TrackWeatherFunctional no consulta este filtro"),
-        ("showWind", "TrackWeatherFunctional no consulta este filtro"),
-    ];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        self.clone()
-    }
-}
+
+
+
+
 
 pub(crate) struct Widget {
     vertical: bool,
@@ -717,13 +689,7 @@ fn paint(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut App) 
     }
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{SessionClock, SessionInfo, Weather};
-        crate::demand::signals(500, &[Weather, SessionInfo, SessionClock])
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

@@ -34,29 +34,17 @@ mod projection_tests {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub show_track_label: bool,
-    pub transparent: bool,
+pub use vantare_domain::widget_settings::track_map::Settings;
+
+trait SettingsPresentation {
+    fn project(
+        &self,
+        snapshot: &Snapshot,
+        prefs: Preferences,
+        geometry: Option<&track_map::Geometry<'_>>,
+    ) -> track_map::ViewModel;
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            show_track_label: true,
-            transparent: false,
-        }
-    }
-}
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
-        "showTrackLabel",
-        "TrackMapFunctional dibuja el pie sin consultar showTrackLabel",
-    )];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        self.clone()
-    }
+impl SettingsPresentation for Settings {
     #[allow(clippy::unused_self)] // El productivo conserva showTrackLabel, pero no lo aplica.
     fn project(
         &self,
@@ -67,6 +55,31 @@ impl Settings {
         track_map::project_with_geometry(snapshot, prefs, geometry)
     }
 }
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{
+            LapCount, Positions, SessionClock, SessionInfo, Spatial, TrackLength, TrackName,
+        };
+        crate::demand::signals(
+            33,
+            &[
+                Spatial,
+                TrackName,
+                TrackLength,
+                LapCount,
+                SessionInfo,
+                SessionClock,
+                Positions,
+            ],
+        )
+    }
+}
+
+
+
+
 
 pub(crate) struct Widget {
     settings: Settings,
@@ -371,26 +384,7 @@ fn paint(
     );
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{
-            LapCount, Positions, SessionClock, SessionInfo, Spatial, TrackLength, TrackName,
-        };
-        crate::demand::signals(
-            33,
-            &[
-                Spatial,
-                TrackName,
-                TrackLength,
-                LapCount,
-                SessionInfo,
-                SessionClock,
-                Positions,
-            ],
-        )
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

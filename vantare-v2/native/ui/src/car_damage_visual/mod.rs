@@ -334,27 +334,24 @@ fn paint(
     );
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub show_aero: bool,
-    pub view: String,
-    pub toggle_key: String,
-    pub show_percent: bool,
+pub use vantare_domain::widget_settings::car_damage_visual::Settings;
+
+trait SettingsPresentation {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            show_aero: true,
-            view: "car".into(),
-            toggle_key: String::new(),
-            show_percent: true,
-        }
+impl SettingsPresentation for Settings {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = car_damage_visual::project(snapshot, prefs);
+        vm.show_aero = self.show_aero;
+        vm
     }
 }
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
-    pub fn key_matches(&self, key: &gpui::Keystroke) -> bool {
+
+pub trait SettingsKeyboard {
+    fn key_matches(&self, key: &gpui::Keystroke) -> bool;
+}
+impl SettingsKeyboard for Settings {
+    fn key_matches(&self, key: &gpui::Keystroke) -> bool {
         !self.toggle_key.is_empty()
             && key.key.eq_ignore_ascii_case(&self.toggle_key)
             && !key.modifiers.control
@@ -362,37 +359,19 @@ impl Settings {
             && !key.modifiers.shift
             && !key.modifiers.platform
     }
-    pub fn toggle_view(&mut self) {
-        self.view = if self.view == "numbers" {
-            "car"
-        } else {
-            "numbers"
-        }
-        .into();
-    }
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        let mut s = self.clone();
-        if s.view != "numbers" {
-            s.view = "car".into();
-        }
-        s.toggle_key = s.toggle_key.to_ascii_lowercase();
-        if !s
-            .toggle_key
-            .strip_prefix('f')
-            .and_then(|n| n.parse::<u8>().ok())
-            .is_some_and(|n| (1..=12).contains(&n))
-        {
-            s.toggle_key.clear();
-        }
-        s
-    }
-    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-        let mut vm = car_damage_visual::project(snapshot, prefs);
-        vm.show_aero = self.show_aero;
-        vm
+}
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::Damage;
+        crate::demand::signals(500, &[Damage])
     }
 }
+
+
+
+
 
 pub(crate) struct Widget {
     settings: Settings,
@@ -454,13 +433,7 @@ impl Widget {
     }
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::Damage;
-        crate::demand::signals(500, &[Damage])
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

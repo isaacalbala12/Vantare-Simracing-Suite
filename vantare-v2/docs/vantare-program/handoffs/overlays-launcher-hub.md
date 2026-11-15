@@ -67,6 +67,15 @@ Siguiente: revisión del PR 1 por el orquestador. PR 3 espera el merge de la
 extracción VANTA-138 a domain::widget_settings; PR 6 espera PR 4/5 del Worker B.
 No se empieza ninguno de esos traslados en este PR.
 
+## VANTA-138 · extracción pura de ajustes para D106 y Rune (15/11/2026)
+
+PR previo separado de #2340 por petición del orquestador. Settings, Default,
+normalized y set_threshold de catorce familias pasan de ui a domain. UI
+reexporta los mismos tipos; presentación/demanda/teclas permanecen en UI.
+Originales congelados comprueban bytes y normalización; defaults contra el
+corpus nativo existente. Sin protocolo, host, web, pintores ni scheduler.
+Gate Full no gráfico y telemetría en curso; PR/head se registran en #1995.
+
 ## VANTA-138 · Seguimiento pequeño de geometría #2320 (15/11/2026)
 
 El monitor fijado se contrasta con la lista viva sin volver a elegirlo por la

@@ -497,28 +497,12 @@ fn demo_penalty(snapshot: &Snapshot) -> Option<vantare_domain::PenaltyKind> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    /// 0 identifica el color negro heredado, antes ignorado por este pintor.
-    #[serde(default)]
-    pub content_version: u8,
-    pub text_color: String,
-    pub show_sector_flags: bool,
-    pub hide_when_green: bool,
+pub use vantare_domain::widget_settings::racing_flags::Settings;
+
+trait SettingsPresentation {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            content_version: 1,
-            text_color: format!("#{:06x}", Style::compiled().colors.text.0),
-            show_sector_flags: true,
-            hide_when_green: false,
-        }
-    }
-}
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+impl SettingsPresentation for Settings {
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         racing_flags::project_with_penalty(
             snapshot,
@@ -532,30 +516,21 @@ impl Settings {
             demo_penalty(snapshot),
         )
     }
+}
 
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        let value = self.text_color.as_bytes();
-        let legacy_black = self.content_version == 0 && self.text_color == "#000000";
-        if !legacy_black
-            && value.len() == 7
-            && value[0] == b'#'
-            && value[1..].iter().all(u8::is_ascii_hexdigit)
-        {
-            Self {
-                content_version: self.content_version.max(1),
-                text_color: self.text_color.to_ascii_lowercase(),
-                ..self.clone()
-            }
-        } else {
-            Self {
-                content_version: self.content_version.max(1),
-                text_color: Self::default().text_color,
-                ..self.clone()
-            }
-        }
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        // Identidad personal, posición de llegada y contexto de sesión.
+        // Cars conserva jugador/IDs sin pedir sanciones numéricas ni inputs.
+        use vantare_ipc::Signal::{Cars, Flags, Positions, SessionInfo};
+        crate::demand::signals(33, &[Cars, Flags, Positions, SessionInfo])
     }
 }
+
+
+
+
 
 pub(crate) struct Widget {
     settings: Settings,
@@ -664,15 +639,7 @@ fn pulse(elapsed: Option<Duration>) -> (f32, Wake) {
     }
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        // Identidad personal, posición de llegada y contexto de sesión.
-        // Cars conserva jugador/IDs sin pedir sanciones numéricas ni inputs.
-        use vantare_ipc::Signal::{Cars, Flags, Positions, SessionInfo};
-        crate::demand::signals(33, &[Cars, Flags, Positions, SessionInfo])
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

@@ -89,33 +89,28 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub show_tyres: bool,
-    pub format: String,
+pub use vantare_domain::widget_settings::car_damage_numbers::Settings;
+
+trait SettingsPresentation {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            show_tyres: true,
-            format: "percent".into(),
-        }
-    }
-}
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        Self {
-            format: "percent".into(),
-            ..self.clone()
-        }
-    }
+impl SettingsPresentation for Settings {
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         car_damage_numbers::project(snapshot, prefs, self.show_tyres)
     }
 }
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::Damage;
+        crate::demand::signals(500, &[Damage])
+    }
+}
+
+
+
+
 
 pub(crate) struct Widget {
     settings: Settings,
@@ -149,13 +144,7 @@ impl Widget {
     }
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::Damage;
-        crate::demand::signals(500, &[Damage])
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

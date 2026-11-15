@@ -5,7 +5,7 @@ use std::{
     io,
     sync::{Arc, Condvar, Mutex, PoisonError},
     thread::JoinHandle,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -17,6 +17,9 @@ pub(crate) struct Monitor {
     pub primary: bool,
 }
 impl Monitor {
+    fn same_geometry(&self, other: &Self) -> bool {
+        self.position == other.position && self.size == other.size && self.scale == other.scale
+    }
     fn valid(&self) -> bool {
         self.id != 0
             && self.size.0 > 0
@@ -45,7 +48,9 @@ struct Topology {
 #[derive(Default, Debug)]
 struct Changes {
     added: Vec<Monitor>,
+    // Solo estos cambios requieren place; primary es metadato.
     changed: Vec<Monitor>,
+    metadata: Vec<Monitor>,
     removed: Vec<isize>,
 }
 impl Topology {
@@ -68,7 +73,12 @@ impl Topology {
         for (&id, monitor) in &next {
             match self.monitors.get(&id) {
                 None => changes.added.push(monitor.clone()),
-                Some(previous) if previous != monitor => changes.changed.push(monitor.clone()),
+                Some(previous) if previous != monitor => {
+                    changes.metadata.push(monitor.clone());
+                    if !previous.same_geometry(monitor) {
+                        changes.changed.push(monitor.clone());
+                    }
+                }
                 _ => {}
             }
         }
@@ -152,6 +162,40 @@ struct Observer {
     updates: Arc<Updates>,
     worker: Option<JoinHandle<()>>,
 }
+
+/// Solo los fallos de la enumeración global llegan aquí como Err. Un monitor
+/// ilegible se omite en la consulta y se publica como ausente, no como Err global.
+#[derive(Default)]
+struct ReadHealth {
+    failed_since: Option<Instant>,
+    warned: bool,
+}
+impl ReadHealth {
+    fn accept(
+        &mut self,
+        updates: &Updates,
+        result: io::Result<Vec<Monitor>>,
+        now: Instant,
+    ) -> Option<io::Error> {
+        match result {
+            Ok(monitors) => {
+                updates.publish(monitors);
+                self.failed_since = None;
+                self.warned = false;
+                None
+            }
+            Err(error) => {
+                let since = *self.failed_since.get_or_insert(now);
+                if !self.warned && now.saturating_duration_since(since) >= Duration::from_secs(5) {
+                    self.warned = true;
+                    Some(error)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
 impl Observer {
     fn start(
         initial: Vec<Monitor>,
@@ -163,20 +207,10 @@ impl Observer {
         let worker = std::thread::Builder::new()
             .name("rune-monitors".into())
             .spawn(move || {
-                let mut failed = false;
+                let mut health = ReadHealth::default();
                 loop {
-                    match read() {
-                        Ok(monitors) => {
-                            bus.publish(monitors);
-                            failed = false;
-                        }
-                        Err(error) => {
-                            // Una enumeración incompleta no equivale a desconectar todo.
-                            if !failed {
-                                eprintln!("overlays-rune: consultar monitores: {error}");
-                            }
-                            failed = true;
-                        }
+                    if let Some(error) = health.accept(&bus, read(), Instant::now()) {
+                        eprintln!("overlays-rune: la enumeración de monitores falla desde hace al menos 5 s; se conservan las ventanas actuales: {error}");
                     }
                     if bus.wait_stop(interval) {
                         break;
@@ -251,7 +285,9 @@ mod controller {
         el()
     }
     fn setup(state: &mut Controller, wake: Waker) {
-        state.wake = Some(wake.clone());
+        if let Some(previous) = state.wake.replace(wake.clone()) {
+            state.shared.remove_waker(&previous);
+        }
         state.shared.install_waker(wake.clone());
         if let Some(observer) = &state.observer {
             observer.updates.install(wake);
@@ -302,12 +338,16 @@ mod controller {
                 surface.window.close();
             }
         }
-        for monitor in changes.changed {
+        for monitor in changes.metadata {
             if let Some(surface) = state.surfaces.get(&monitor.id) {
                 let display = monitor.display();
                 surface
                     .app
                     .update_if(move |state, _| state.set_monitor(display));
+            }
+        }
+        for monitor in changes.changed {
+            if let Some(surface) = state.surfaces.get(&monitor.id) {
                 surface.window.place(
                     rune::DisplayTarget::Native(rune::NativeDisplayId::Windows(monitor.id)),
                     rune::OverlayPlacement::FullScreen,
@@ -392,27 +432,17 @@ mod controller {
     mod tests {
         use super::*;
         #[test]
-        fn eof_wins_over_a_concurrent_topology_without_opening_any_window() {
+        fn closed_controller_ignores_topology_queued_before_poll() {
             let shared = Shared::new(false);
             let updates = Updates::new(Vec::new());
-            let barrier = Arc::new(std::sync::Barrier::new(2));
-            let publisher = {
-                let barrier = barrier.clone();
-                let updates = updates.clone();
-                std::thread::spawn(move || {
-                    barrier.wait();
-                    updates.publish(vec![Monitor {
-                        id: 3,
-                        position: (0, 0),
-                        size: (1920, 1080),
-                        scale: 1.0,
-                        primary: true,
-                    }]);
-                })
-            };
-            barrier.wait();
+            updates.publish(vec![Monitor {
+                id: 3,
+                position: (0, 0),
+                size: (1920, 1080),
+                scale: 1.0,
+                primary: true,
+            }]);
             shared.close(CloseReason::SupervisorEof);
-            publisher.join().unwrap();
             let observer = Observer {
                 updates,
                 worker: None,
@@ -440,6 +470,53 @@ mod controller {
                     .stopped
             );
             assert_eq!(shared.close_reason(), Some(CloseReason::SupervisorEof));
+        }
+
+        #[test]
+        fn repeated_setup_replaces_both_registrations_and_drop_removes_the_last_waker() {
+            use std::sync::atomic::AtomicUsize;
+            let shared = Shared::new(false);
+            let updates = Updates::new(Vec::new());
+            let mut state = create(
+                shared.clone(),
+                Some(Observer {
+                    updates: updates.clone(),
+                    worker: None,
+                }),
+                false,
+            );
+            let old = Arc::new(AtomicUsize::new(0));
+            let new = Arc::new(AtomicUsize::new(0));
+            let count = old.clone();
+            setup(
+                &mut state,
+                Arc::new(move || {
+                    count.fetch_add(1, Ordering::SeqCst);
+                }),
+            );
+            let count = new.clone();
+            setup(
+                &mut state,
+                Arc::new(move || {
+                    count.fetch_add(1, Ordering::SeqCst);
+                }),
+            );
+            assert_eq!(old.load(Ordering::SeqCst), 2);
+            assert_eq!(new.load(Ordering::SeqCst), 2);
+            shared.publish_access(host::Access::LocalPreview);
+            updates.publish(vec![Monitor {
+                id: 1,
+                position: (0, 0),
+                size: (1920, 1080),
+                scale: 1.0,
+                primary: true,
+            }]);
+            assert_eq!(old.load(Ordering::SeqCst), 2);
+            assert_eq!(new.load(Ordering::SeqCst), 4);
+            drop(state);
+            shared.close(CloseReason::SupervisorEof);
+            updates.publish(Vec::new());
+            assert_eq!(new.load(Ordering::SeqCst), 4);
         }
     }
 }
@@ -504,6 +581,81 @@ mod tests {
             topology.reconcile(vec![monitor(2)], false).unwrap().added,
             [monitor(2)]
         );
+    }
+    #[test]
+    fn primary_only_updates_metadata_while_bounds_and_dpi_require_place() {
+        let mut topology = Topology::default();
+        topology
+            .reconcile(vec![monitor(1), monitor(2)], false)
+            .unwrap();
+        let mut first = monitor(1);
+        first.primary = false;
+        let mut second = monitor(2);
+        second.primary = true;
+        let changed = topology
+            .reconcile(vec![first.clone(), second.clone()], false)
+            .unwrap();
+        assert!(
+            changed.changed.is_empty() && changed.added.is_empty() && changed.removed.is_empty()
+        );
+        assert_eq!(changed.metadata, [first.clone(), second.clone()]);
+        first.scale = 1.25;
+        first.position = (-1920, 0);
+        let changed = topology
+            .reconcile(vec![first.clone(), second], false)
+            .unwrap();
+        assert_eq!(changed.changed, [first]);
+    }
+
+    #[test]
+    fn global_failures_preserve_topology_and_warn_once_after_five_seconds_until_recovery() {
+        let updates = Updates::new(vec![monitor(1), monitor(2)]);
+        let initial = updates.snapshot();
+        let mut health = ReadHealth::default();
+        let now = Instant::now();
+        let failure = || Err(io::Error::from(io::ErrorKind::PermissionDenied));
+        for second in 0..5 {
+            assert!(
+                health
+                    .accept(&updates, failure(), now + Duration::from_secs(second))
+                    .is_none()
+            );
+            assert_eq!(updates.snapshot(), initial);
+        }
+        assert_eq!(
+            health
+                .accept(&updates, failure(), now + Duration::from_secs(5))
+                .unwrap()
+                .kind(),
+            io::ErrorKind::PermissionDenied
+        );
+        assert!(
+            health
+                .accept(&updates, failure(), now + Duration::from_secs(500))
+                .is_none()
+        );
+        assert_eq!(updates.snapshot(), initial);
+        assert!(
+            health
+                .accept(
+                    &updates,
+                    Ok(vec![monitor(2)]),
+                    now + Duration::from_secs(501)
+                )
+                .is_none()
+        );
+        assert_eq!(updates.snapshot().1, vec![monitor(2)]);
+        assert!(
+            health
+                .accept(&updates, failure(), now + Duration::from_secs(502))
+                .is_none()
+        );
+        assert!(
+            health
+                .accept(&updates, failure(), now + Duration::from_secs(507))
+                .is_some()
+        );
+        assert_eq!(updates.snapshot().1, vec![monitor(2)]);
     }
     #[test]
     fn invalid_snapshot_preserves_previous_topology_and_eof_permanently_stops_creation() {

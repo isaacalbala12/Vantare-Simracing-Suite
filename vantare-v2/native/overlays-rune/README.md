@@ -30,15 +30,22 @@ oculta ni una superficie gráfica. Conserva el proceso cuando se retira el últi
 monitor. Un observador Windows consulta la topología una vez por segundo mediante
 `EnumDisplayMonitors`/`GetMonitorInfoW` y el mismo DPI efectivo que winit de la
 copia fijada. Solo publica cambios; una consulta idéntica o reordenada no despierta
-la GUI. Los errores transitorios conservan la última topología completa.
+la GUI. Si un monitor no se puede leer (límites o DPI), se considera ausente y
+se siguen leyendo los demás. Si falla la enumeración global, conserva la última
+topología; tras cinco segundos de fallos consecutivos registra un aviso claro,
+sin cerrar los overlays en carrera. El aviso sale una vez por racha y se rearma
+al recuperarse. Una enumeración completada sin monitores publica la lista vacía.
 Las ventanas se identifican por HMONITOR, con generación al abrirlas; los nombres
 duplicados no son claves. Cambiar límites/DPI recoloca la ventana existente;
+un cambio solo de `primary` actualiza metadatos y no solicita `place`.
 retirarla marca su cierre como interno y elimina su waker al destruir el estado.
 El cierre del usuario o supervisor sigue cerrando todo. El observador cancela su
 espera antes del join; no tiene un sueño de un segundo que bloquee la salida.
 Una comprobación única tras abrir detecta errores de creación, sin reloj de GUI
 en reposo. Diseño, fotos y cadencias no se modifican en este arreglo (Worker A).
 En Mac/Linux se conserva por ahora la topología inicial; la aceptación es Windows.
+El sondeo a 1 Hz es provisional. La alternativa por eventos es observar
+`WM_DISPLAYCHANGE` / `WM_DPICHANGED`; no se cambia a ella dentro de estos nits.
 
 La CLI del supervisor acepta `--fuente local|pipe[:nombre]`, `--control-stdin`
 y `--start-hidden`. El valor por defecto es el pipe del núcleo del usuario.
@@ -144,6 +151,10 @@ datos reales. La prueba comprueba:
    la superficie. Repetir con nombres duplicados, 100/125/150 y orígenes negativos.
 8. Cerrar el supervisor mientras cambia la topología: no quedan procesos, lectores
    ni ventanas huérfanos. La prueba física de #2346 es requisito antes de F2.
+9. Apagar o desactivar TODAS las pantallas y volver a activarlas: el proceso
+   sigue vivo con el controlador sin ventanas y las superficies vuelven.
+10. Cambiar resolución o DPI justo después de conectar un monitor: comprobar
+    que no se pierde la petición `place` anterior a la creación de la ventana.
 
 Los tests CPU prueban la descripción de las ventanas, el EOF/cancelación con
 pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del

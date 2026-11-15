@@ -6,6 +6,7 @@ const finite = (p: Pair) => p.every(Number.isFinite);
 const positive = (p: Pair) => finite(p) && p.every((v) => v > 0);
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
+export const near = (a: number, b: number) => Math.abs(a - b) <= limits.epsilon;
 const validRects = (items: readonly Rect[]) =>
   items.every((r) => finite([r[0], r[1]]) && positive([r[2], r[3]]));
 
@@ -54,7 +55,12 @@ export function snap(
   }
   const [x, gx] = axis(center[0], size[0], canvas[0], xs),
     [y, gy] = axis(center[1], size[1], canvas[1], ys);
-  return { position: [x, y] as Pair, guides: [gx, gy] as const };
+  const finalX = clamp(x, 0, Math.max(0, canvas[0] - size[0]));
+  const finalY = clamp(y, 0, Math.max(0, canvas[1] - size[1]));
+  return {
+    position: [finalX, finalY] as Pair,
+    guides: [near(x, finalX) ? gx : null, near(y, finalY) ? gy : null] as const,
+  };
 }
 export function boundedSize(
   previous: Pair,
@@ -67,7 +73,7 @@ export function boundedSize(
     [maxW, maxH] = limits.maxSize;
   if (!locked)
     return [clamp(requested[0], minW, maxW), clamp(requested[1], minH, maxH)];
-  const aspect = previous[0] / previous[1];
+  const aspect = clamp(previous[0] / previous[1], minW / maxH, maxW / minH);
   const byWidth =
     horizontal ||
     Math.abs((requested[0] - previous[0]) / previous[0]) >=

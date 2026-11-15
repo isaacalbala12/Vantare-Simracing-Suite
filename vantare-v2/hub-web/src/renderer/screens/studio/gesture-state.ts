@@ -4,6 +4,7 @@ import type {
   OverlayInstance,
   StudioView,
 } from "../../../contract/generated/studio";
+import { near } from "./geometry";
 
 export type Box = Pick<
   OverlayInstance,
@@ -56,10 +57,10 @@ export const boxOf = (item: OverlayInstance): Box => ({
   aspectLocked: item.aspectLocked,
 });
 export const sameBox = (a: Box, b: Box) =>
-  a.x === b.x &&
-  a.y === b.y &&
-  a.size.width === b.size.width &&
-  a.size.height === b.size.height &&
+  near(a.x, b.x) &&
+  near(a.y, b.y) &&
+  near(a.size.width, b.size.width) &&
+  near(a.size.height, b.size.height) &&
   a.sizeMode === b.sizeMode &&
   a.aspectLocked === b.aspectLocked;
 const itemBox = (view: StudioView, id: string) => {

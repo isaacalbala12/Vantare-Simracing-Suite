@@ -51,7 +51,11 @@ function Invoke-VantareQueuedCommand {
         while ($true) {
             $attempt++
             $global:LASTEXITCODE = 0
-            $script:commandOutput = @(& $CommandName @CommandArguments 2>&1 | Tee-Object -Variable commandLines)
+            $script:commandOutput = @()
+            & $CommandName @CommandArguments 2>&1 | ForEach-Object {
+                $script:commandOutput += $_
+                $_
+            }
             $script:commandExitCode = [int]$global:LASTEXITCODE
             if (-not $? -and $script:commandExitCode -eq 0) { $script:commandExitCode = 1 }
             $text = ($script:commandOutput | Out-String)

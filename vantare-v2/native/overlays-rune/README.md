@@ -122,7 +122,8 @@ Al cerrar se imprimen contadores por ventana y del proceso: `frames`, `data`,
 `animation`, `design` y `unattributed`. Se incrementan exclusivamente en
 `on_frame_drawn`, después de presentar. Una imagen puede tener varias causas:
 no se suman para calcular `frames`. Las solicitudes y vistas descartadas no
-cuentan como imágenes. Los tests CPU simulan el aviso; no miden presentaciones
+cuentan como imágenes. Los tests CPU comparan todos los campos del flujo de dibujo antes de simular
+el aviso; el booleano de Runtime::frame solo indica animación en curso. No miden presentaciones
 GPU ni sustituyen la campaña del PC de juego.
 
 ## Servidor y CI sin gráficos

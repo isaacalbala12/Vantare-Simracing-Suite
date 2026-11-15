@@ -2,8 +2,8 @@
 use crate::scene::{FrameSet, Viewport};
 use rune::{App, AppSpec, Cx, Display, El, Tx, Waker, WindowHandle, WindowOptions, WindowSpec, el};
 use std::{
-    io,
     collections::BTreeMap,
+    io,
     sync::{
         Arc, Condvar, Mutex, PoisonError,
         atomic::{AtomicBool, Ordering},
@@ -160,7 +160,7 @@ impl Shared {
             let mut state = self.pending.lock().unwrap_or_else(PoisonError::into_inner);
             let shown =
                 state.close.is_none() && state.frames.as_ref().map_or(fallback, |f| f.shown);
-            state.windows.insert(key,window.clone());
+            state.windows.insert(key, window.clone());
             shown
         };
         window.set_visible(shown);
@@ -249,26 +249,65 @@ pub struct State {
 }
 impl State {
     pub fn new(shared: Arc<Shared>) -> Self {
-        let (access,frames)={let pending=shared.pending.lock().unwrap_or_else(PoisonError::into_inner);(pending.access.clone(),pending.frames.clone())};
-        Self {shared,seen:0,access,monitor:None,retiring:Arc::new(AtomicBool::new(false)),wake:None,window_key:None,frames,
-            viewport:Viewport{origin:(0.0,0.0),size:vantare_domain::geometry::Size{width:1280.0,height:720.0}}}
+        let (access, frames) = {
+            let pending = shared
+                .pending
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            (pending.access.clone(), pending.frames.clone())
+        };
+        Self {
+            shared,
+            seen: 0,
+            access,
+            monitor: None,
+            retiring: Arc::new(AtomicBool::new(false)),
+            wake: None,
+            window_key: None,
+            frames,
+            viewport: Viewport {
+                origin: (0.0, 0.0),
+                size: vantare_domain::geometry::Size {
+                    width: 1280.0,
+                    height: 720.0,
+                },
+            },
+        }
     }
     #[cfg(windows)]
     pub(crate) fn set_monitor(&mut self, display: Display) -> bool {
-        if self.monitor.as_ref()==Some(&display) {return false;}
-        let viewport=Viewport::of(&display);let changed=self.viewport!=viewport;
-        self.monitor=Some(display);
-        if changed {self.viewport=viewport;self.seen=0;}
+        if self.monitor.as_ref() == Some(&display) {
+            return false;
+        }
+        let viewport = Viewport::of(&display);
+        let changed = self.viewport != viewport;
+        self.monitor = Some(display);
+        if changed {
+            self.viewport = viewport;
+            self.seen = 0;
+        }
         changed
     }
     pub fn on_display(shared: Arc<Shared>, display: &Display) -> Self {
-        let mut state=Self::new(shared);state.viewport=Viewport::of(display);state.monitor=Some(display.clone());state
+        let mut state = Self::new(shared);
+        state.viewport = Viewport::of(display);
+        state.monitor = Some(display.clone());
+        state
     }
 }
 impl Drop for State {
     fn drop(&mut self) {
-        if let Some(wake)=self.wake.take() {self.shared.remove_waker(&wake);}
-        if let Some(key)=self.window_key.take() {self.shared.pending.lock().unwrap_or_else(PoisonError::into_inner).windows.remove(&key);}
+        if let Some(wake) = self.wake.take() {
+            self.shared.remove_waker(&wake);
+        }
+        if let Some(key) = self.window_key.take() {
+            self.shared
+                .pending
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .windows
+                .remove(&key);
+        }
     }
 }
 fn init() -> State {
@@ -338,7 +377,13 @@ pub(crate) fn window(
     retiring: Arc<AtomicBool>,
 ) -> WindowSpec<State> {
     let mut options = WindowOptions::overlay(display);
-    options.visible=shared.pending.lock().unwrap_or_else(PoisonError::into_inner).frames.as_ref().map_or(!hidden,|f|f.shown);
+    options.visible = shared
+        .pending
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .frames
+        .as_ref()
+        .map_or(!hidden, |f| f.shown);
     options.resizable = false;
     let spec = AppSpec {
         setup: Some(setup),
@@ -355,15 +400,15 @@ pub(crate) fn window(
     };
     let bus = shared.clone();
     let monitor = display.clone();
-    let state_key=key.clone();
+    let state_key = key.clone();
     WindowSpec::from_app(
         key.clone(),
         App::new(spec)
             .init({
                 let shared = shared.clone();
                 move || {
-                    let mut state = State::on_display(shared,&monitor);
-                    state.window_key=Some(state_key);
+                    let mut state = State::on_display(shared, &monitor);
+                    state.window_key = Some(state_key);
                     state.retiring = retiring;
                     state
                 }
@@ -378,7 +423,9 @@ pub(crate) fn window(
         if let Err(error) = crate::native_window::configure(&window) {
             eprintln!("overlays-rune: ventana no segura: {error}");
             bus.close(CloseReason::NativeError);
-        } else {bus.install_window(key,window,!hidden);}
+        } else {
+            bus.install_window(key, window, !hidden);
+        }
     })
 }
 
@@ -647,5 +694,42 @@ mod tests {
         assert_eq!(wakes.load(Ordering::SeqCst), 2);
         runtime.frame(0.1);
         assert!(!runtime.state.access.allows_widget("relative"));
+    }
+    #[cfg(windows)]
+    #[test]
+    fn monitor_geometry_refreshes_logical_viewport_without_losing_the_current_photo() {
+        let mut display = Display {
+            id: None,
+            name: None,
+            position: (-2560, 0),
+            size: (2560, 1440),
+            scale: 1.25,
+            primary: false,
+        };
+        let bus = Shared::new(true);
+        let mut state = State::on_display(bus, &display);
+        let frames = Arc::new(FrameSet {
+            layout: Arc::default(),
+            photos: Default::default(),
+            visible: Default::default(),
+            shown: true,
+            reduced_motion: false,
+        });
+        state.frames = Some(frames.clone());
+        state.seen = 10;
+        assert_eq!(state.viewport.origin, (-2048.0, 0.0));
+        display.position = (0, 0);
+        display.scale = 1.5;
+        assert!(state.set_monitor(display.clone()));
+        assert_eq!(state.viewport.origin, (0.0, 0.0));
+        assert_eq!(state.seen, 0);
+        assert!(Arc::ptr_eq(
+            state.frames.as_ref().expect("photo state"),
+            &frames
+        ));
+        state.seen = 10;
+        display.primary = true;
+        assert!(!state.set_monitor(display));
+        assert_eq!(state.seen, 10);
     }
 }

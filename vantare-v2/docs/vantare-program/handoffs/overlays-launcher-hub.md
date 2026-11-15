@@ -1,3 +1,15 @@
+## VANTA-144 · conexión reapilada con monitores en caliente (15/11/2026)
+
+#2349 conserva el controlador de B (#2356): ventanas creadas por host::window,
+retirada interna y limpieza de wakers. set_monitor actualiza el viewport lógico,
+conserva fotos y fuerza su nueva colocación; cambiar solo primary no repinta.
+La presentación usa solo registros de ventanas vivas por clave/generación:
+State::drop los retira, junto con su waker. Se evita conservar handles de
+monitores retirados. Nueva prueba CPU de geometría/fotos conservadas.
+#2344 mantiene su head revisado; base combinada ahora 063b1b213. Tras su squash,
+retirarla con --onto origin/nightly y reapilar #2357. Revalidación conjunta de
+conexión y Relative por la cola; resultados anteriores conservados abajo.
+
 ## VANTA-144 · Revisión de #2356: política de fallos y nits
 
 Worker B atiende MERGE WITH NITS del orquestador, mismo PR #2356 / #2346.
@@ -92,10 +104,10 @@ ejecución del producto en el servidor; F0 solo en el horario del orquestador.
 Encargo ampliado de A tras #2345: conectar diseño, fuente y cadencias; después
 PR 6 Relative Vantare y contadores. B conserva PR 7 (Eficiencia/captura) y
 monitores en caliente. Rama `vantareapp/isa-2333-rune-datos-cadencias`, worktree
-propio D:. Base local combinada `0a3af2785`:
-nightly 8ea2e9741 (incluye también el cierre F0 #2348 y Studio #2353) más #2344 5e11dd339.
+propio D:. Base local combinada `063b1b213`:
+nightly dfa431062 (incluye monitores en caliente #2356 y reintento sccache #2355) más #2344 5e11dd339.
 Solo hubo conflicto documental; bloques A/B conservados. Tras el squash de
-#2344, retirar esta base con `git rebase --onto origin/nightly 0a3af2785`.
+#2344, retirar esta base con `git rebase --onto origin/nightly 063b1b213`.
 
 `feed::DataFeed` lee/vigila Document y Presentation de IPC sin escribir bytes,
 conserva el último documento válido y une su lector al cerrar. Fuente existente

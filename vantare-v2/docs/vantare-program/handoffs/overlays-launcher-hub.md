@@ -94,6 +94,12 @@ Rama y evidencia en #1995. Clippy all-targets de ocho crates y 1983 tests
 no gráficos PASS (16 omitidos); 34 tests de telemetría PASS (1 omitido). CI y review pendientes. Typechecks, Biome,
 505 tests puros y 120 DOM PASS. Ventana sin Rust hasta16:15UTC respetada.
 
+Seguimiento del fallo web de #2340: Apariencia requiere designSystem, no solo
+ajustes tipados. Radar conserva sus datos y En pista, pero no puede activar Look
+ni enviar una orden de Apariencia. El test usa el dato nativo real y mantiene los
+casos positivos. Ambos typechecks, Biome y57 tests galería/AppearanceStep PASS.
+
+
 ## VANTA-138 · Seguimiento pequeño de geometría #2320 (15/11/2026)
 
 El monitor fijado se contrasta con la lista viva sin volver a elegirlo por la

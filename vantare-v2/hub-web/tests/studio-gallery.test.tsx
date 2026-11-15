@@ -21,6 +21,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { studioWidgetDefaults } from "../src/contract/generated/studio";
 import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
@@ -776,7 +777,24 @@ describe("Studio Foco interactions", () => {
     ).toBe("true");
     expect(screen.getByRole("radio", { name: t.lookVantare })).toBeTruthy();
   });
-  it("keeps Appearance unavailable for untyped widgets", async () => {
+  it("keeps Appearance unavailable for typed widgets without designSystem", async () => {
+    let radarSettings: unknown;
+    const original = Client.prototype.request;
+    const requests = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request, onSent) {
+        const reply = await original.call(this, request, onSent);
+        if (
+          reply.method === "studio.add" &&
+          request.method === "studio.add" &&
+          request.kind === "radar"
+        ) {
+          radarSettings = reply.value.instances.find(
+            (item) => item.kind === "radar",
+          )?.settings;
+        }
+        return reply;
+      });
     mount();
     const user = userEvent.setup();
     await openTrack();
@@ -793,6 +811,20 @@ describe("Studio Foco interactions", () => {
           .getAttribute("aria-disabled"),
       ).toBe("true"),
     );
+    expect(radarSettings).toEqual(studioWidgetDefaults.radar);
+    expect(radarSettings).not.toHaveProperty("designSystem");
+    const appearance = screen.getByRole("tab", { name: t.appearance });
+    await user.click(appearance);
+    expect(appearance.getAttribute("aria-selected")).not.toBe("true");
+    expect(
+      screen.getByRole("tab", { name: t.track }).getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(screen.queryByRole("radio", { name: t.lookVantare })).toBeNull();
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "studio.instance",
+      ),
+    ).toHaveLength(0);
     expect(screen.queryByText(t.appearanceUnavailable)).toBeNull();
   });
   it("shows the fresh appearance after a revision conflict and can discard the failed patch", async () => {

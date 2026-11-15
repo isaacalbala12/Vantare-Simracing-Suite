@@ -67,7 +67,35 @@ pub struct CatalogApp {
 pub struct CatalogView {
     pub revision: String,
     pub scanning: bool,
+    pub last_scan: Option<ScanSummary>,
     pub apps: Vec<CatalogApp>,
+}
+const MAX_SCAN_TIMESTAMP_MS: u64 = 8_640_000_000_000_000;
+/// Completion metadata only; raw discovery diagnostics may contain private paths.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ScanSummary {
+    #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
+    pub completed_at_ms: u64,
+    pub warning_count: usize,
+}
+impl ScanSummary {
+    pub(super) fn at(found: &Discovery, now: std::time::SystemTime) -> Option<Self> {
+        Self::at_millis(
+            found,
+            u64::try_from(now.duration_since(std::time::UNIX_EPOCH).ok()?.as_millis()).ok()?,
+        )
+    }
+    fn at_millis(found: &Discovery, millis: u64) -> Option<Self> {
+        if millis > MAX_SCAN_TIMESTAMP_MS {
+            return None;
+        }
+        Some(Self {
+            completed_at_ms: millis,
+            warning_count: found.warnings.len(),
+        })
+    }
 }
 struct Pick {
     token: String,
@@ -604,6 +632,7 @@ pub fn catalog(path: &Path, discovery: Option<&Discovery>) -> Result<CatalogView
     Ok(CatalogView {
         revision: vantare_services::content_hash(&bytes),
         scanning: discovery.is_none(),
+        last_scan: None,
         apps: document
             .apps
             .iter()
@@ -740,3 +769,56 @@ mod dialog_wire_tests {
 #[cfg(all(test, windows))]
 #[path = "apps/picker_tests.rs"]
 mod picker_tests;
+
+#[cfg(test)]
+mod scan_metadata_tests {
+    use super::*;
+    use std::time::{Duration, UNIX_EPOCH};
+    #[test]
+    fn completion_projects_the_real_time_and_exact_count_without_diagnostic_text() {
+        for warnings in [
+            vec![],
+            vec![
+                "private D:/Users/example/app.exe --secret-argument".into(),
+                "private second diagnostic".into(),
+            ],
+        ] {
+            let found = Discovery {
+                warnings,
+                ..Default::default()
+            };
+            let time = UNIX_EPOCH + Duration::from_millis(1_700_000_000_123);
+            let summary = ScanSummary::at(&found, time).expect("real timestamp");
+            assert_eq!(summary.completed_at_ms, 1_700_000_000_123);
+            assert_eq!(summary.warning_count, found.warnings.len());
+            let json = serde_json::to_value(&summary).expect("closed projection");
+            assert_eq!(
+                json,
+                serde_json::json!({"completedAtMs":1_700_000_000_123_u64,"warningCount":found.warnings.len()})
+            );
+            assert!(
+                !serde_json::to_string(&summary)
+                    .expect("wire")
+                    .contains("private")
+            );
+        }
+    }
+    #[test]
+    fn unrepresentable_clock_does_not_fabricate_a_scan_date() {
+        let found = Discovery::default();
+        assert_eq!(
+            ScanSummary::at(&found, UNIX_EPOCH - Duration::from_millis(1)),
+            None
+        );
+        assert_eq!(
+            ScanSummary::at_millis(&found, MAX_SCAN_TIMESTAMP_MS)
+                .expect("last valid date")
+                .completed_at_ms,
+            MAX_SCAN_TIMESTAMP_MS
+        );
+        assert_eq!(
+            ScanSummary::at_millis(&found, MAX_SCAN_TIMESTAMP_MS + 1),
+            None
+        );
+    }
+}

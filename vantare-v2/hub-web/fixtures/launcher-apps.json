@@ -1,6 +1,7 @@
 {
   "revision": "0000000000000000000000000000000000000000000000000000000000000000",
   "scanning": false,
+  "lastScan": { "completedAtMs": 1700000000123, "warningCount": 0 },
   "apps": [
     {
       "id": "lmu",

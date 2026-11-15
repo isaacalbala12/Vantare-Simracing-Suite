@@ -34,14 +34,14 @@ export function ContentStep({ item }: { item: OverlayInstance }) {
   const toggle = (
     label: string,
     checked: boolean,
-    value: WidgetSettingsPatch,
+    value: (checked: boolean) => WidgetSettingsPatch,
   ) => (
     <Switch
       label={label}
       checked={checked}
       disabled={model.disabled}
       pending={model.pending}
-      onCheckedChange={() => void model.patch(value, label)}
+      onCheckedChange={(checked) => void model.patch(value(checked), label)}
     />
   );
   return (
@@ -80,18 +80,22 @@ export function ContentStep({ item }: { item: OverlayInstance }) {
         </Group>
       ) : settings.kind === "pedals" && settings.designSystem === "vantare" ? (
         <Group title={studio.content}>
-          {toggle(text.brakePeak, settings.showBrakePeak, {
+          {toggle(text.brakePeak, settings.showBrakePeak, (showBrakePeak) => ({
             kind: "pedals",
-            showBrakePeak: !settings.showBrakePeak,
-          })}
+            showBrakePeak,
+          }))}
         </Group>
       ) : settings.kind === "fuel-strategy" &&
         settings.designSystem === "eficiencia" ? (
         <Group title={studio.content}>
-          {toggle(text.projection, settings.showProjection, {
-            kind: "fuel-strategy",
-            showProjection: !settings.showProjection,
-          })}
+          {toggle(
+            text.projection,
+            settings.showProjection,
+            (showProjection) => ({
+              kind: "fuel-strategy",
+              showProjection,
+            }),
+          )}
         </Group>
       ) : (
         <Group title={text.empty}>
@@ -113,10 +117,27 @@ function TableContent({
   settings: TableSettings;
   model: Model;
 }) {
+  const [session, setSession] = useState<ColumnSession>("race");
+  const [selection, setSelection] = useState("driverName");
   return (
     <div className="v-studio-content">
       {settings.kind === "standings" ? (
-        <Tabs.Root className="v-studio-content-table" defaultValue="race">
+        <Tabs.Root
+          className="v-studio-content-table"
+          value={session}
+          onValueChange={(value) => {
+            if (
+              value !== "race" &&
+              value !== "practice" &&
+              value !== "qualifying"
+            )
+              return;
+            const columns = contentColumns(settings, value);
+            if (!columns?.some((column) => column.metricId === selection))
+              setSelection(columns?.[0]?.metricId ?? "driverName");
+            setSession(value);
+          }}
+        >
           <h3>{text.sessions}</h3>
           <Tabs.List
             className="v-studio-content-sessions"
@@ -135,12 +156,20 @@ function TableContent({
                 settings={settings}
                 model={model}
                 session={session}
+                selection={selection}
+                setSelection={setSelection}
               />
             </Tabs.Panel>
           ))}
         </Tabs.Root>
       ) : (
-        <ColumnSettings settings={settings} model={model} session="race" />
+        <ColumnSettings
+          settings={settings}
+          model={model}
+          session="race"
+          selection={selection}
+          setSelection={setSelection}
+        />
       )}
       {settings.kind === "standings" && (
         <StandingsContent settings={settings} model={model} />
@@ -152,14 +181,17 @@ function ColumnSettings({
   settings,
   session,
   model,
+  selection,
+  setSelection,
 }: {
   settings: TableSettings;
   session: ColumnSession;
   model: Model;
+  selection: string;
+  setSelection: (value: string) => void;
 }) {
   const columns = contentColumns(settings, session);
   const editable = canEditColumns(settings, session);
-  const [selection, setSelection] = useState("driverName");
   const column =
     columns?.find((item) => item.metricId === selection) ?? columns?.[0];
   const resetHelp = useId();

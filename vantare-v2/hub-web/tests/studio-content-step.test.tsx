@@ -88,6 +88,17 @@ it("sends a revision-bound Practice edit without mutating Race or painting succe
   ).toEqual({ metric: "gap", enabled: false });
   expect(gap.getAttribute("aria-checked")).toBe("true");
 });
+it("retains the selected metric when switching sessions, as the GPUI inspector does", async () => {
+  const { user } = await mount();
+  await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+  await user.click(screen.getByRole("option", { name: "Última vuelta" }));
+  await user.click(screen.getByRole("tab", { name: "Práctica" }));
+  expect(
+    screen.getByRole("combobox", { name: text.columnFormat }).textContent,
+  ).toContain("Última vuelta");
+  expect(screen.getByRole("combobox", { name: text.timeFormat })).toBeTruthy();
+  expect(state.execute).not.toHaveBeenCalled();
+});
 it("keeps focus and blocks a second write while the host save is pending", async () => {
   let finish: () => void = () => {};
   state.execute.mockImplementation(
@@ -206,6 +217,34 @@ it("uses the same closed patch path for Delta content", async () => {
     }),
   );
 });
+it.each(["pedals", "fuel-strategy"] as const)(
+  "saves the supported %s content switch with its actual next value",
+  async (kind) => {
+    const item = contentInstance(kind);
+    if (item.settings?.kind === "fuel-strategy") {
+      item.settings.designSystem = "eficiencia";
+      item.settings.showProjection = true;
+    } else if (item.settings?.kind === "pedals")
+      item.settings.showBrakePeak = true;
+    const { user } = await mount(item);
+    await user.click(
+      screen.getByRole("switch", {
+        name: kind === "pedals" ? text.brakePeak : text.projection,
+      }),
+    );
+    expect(state.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patch: {
+          field: "settings",
+          value:
+            kind === "pedals"
+              ? { kind, showBrakePeak: false }
+              : { kind, showProjection: false },
+        },
+      }),
+    );
+  },
+);
 it("edits the legacy footer without adding a Vantare footer or class-scope control", async () => {
   const item = contentInstance();
   if (!item.settings) throw Error("settings");

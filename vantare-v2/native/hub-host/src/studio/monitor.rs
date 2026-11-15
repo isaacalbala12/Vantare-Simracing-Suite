@@ -6,6 +6,15 @@ pub(crate) struct Monitor {
     pub primary: bool,
 }
 impl Monitor {
+    pub(crate) fn size_view(self) -> Option<super::OverlaySize> {
+        if self.size.0 <= 0.0 || self.size.1 <= 0.0 {
+            return None;
+        }
+        Some(super::OverlaySize {
+            width: self.size.0.try_into().ok()?,
+            height: self.size.1.try_into().ok()?,
+        })
+    }
     pub fn from_physical(rect: (i32, i32, i32, i32), dpi: u32, primary: bool) -> Option<Self> {
         if dpi == 0 || rect.2 <= rect.0 || rect.3 <= rect.1 {
             return None;

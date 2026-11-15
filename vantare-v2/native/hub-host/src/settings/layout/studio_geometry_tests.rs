@@ -282,7 +282,9 @@ fn bad_geometry_no_rights_and_missing_monitor_never_write() {
     );
     let mut state = State::new(path.clone());
     state.monitor_source = Vec::new;
-    assert_eq!(state.view(access).state, StudioState::Protected);
+    let disconnected = state.view(access);
+    assert_eq!(disconnected.state, StudioState::Protected);
+    assert_eq!(disconnected.monitor, None);
     assert_eq!(
         edit(
             &mut state,
@@ -558,4 +560,100 @@ fn native_rounding_does_not_change_locked_aspect_or_relax_size_limits() {
         assert_eq!(std::fs::read(&path).expect("unchanged bytes"), bytes);
         assert_eq!(state.undo.len(), 0);
     }
+}
+
+#[test]
+fn a_custom_canvas_never_replaces_the_pinned_monitor_size() {
+    let (_root, path, _) = fixture();
+    let mut state = State::new(path.clone());
+    state.monitor_source = two_monitors;
+    let access = Some(CatalogAccess::Pro);
+    let before = state.view(access);
+    let detected = before.monitor.clone().expect("pinned monitor");
+    assert_eq!(
+        (f64::from(detected.width), f64::from(detected.height)),
+        two_monitors()[0].size
+    );
+    let custom = state
+        .edit(
+            Edit::Canvas(CanvasChoice::Custom {
+                width: n(1280.0),
+                height: n(720.0),
+            }),
+            &before.revision,
+            access,
+        )
+        .expect("preset");
+    assert_eq!(custom.monitor.as_ref(), Some(&detected));
+    assert_eq!(
+        custom.canvas.expect("custom canvas").size(),
+        (1280.0, 720.0)
+    );
+    assert_eq!(state.view(access).monitor.as_ref(), Some(&detected));
+    let native = state
+        .edit(
+            Edit::Canvas(CanvasChoice::Monitor),
+            &custom.revision,
+            access,
+        )
+        .expect("use monitor");
+    assert_eq!(native.monitor.as_ref(), Some(&detected));
+    assert_eq!(
+        native.canvas.expect("native canvas").size(),
+        two_monitors()[0].size
+    );
+    state
+        .edit(Edit::Undo, &native.revision, access)
+        .expect("undo monitor choice");
+    assert_eq!(state.view(access).monitor.as_ref(), Some(&detected));
+    state.monitor_source = || two_monitors().into_iter().skip(1).collect();
+    let missing = state.view(access);
+    assert_eq!(missing.state, StudioState::Protected);
+    assert_eq!(missing.monitor, None);
+}
+
+#[test]
+fn settings_frame_guard_counts_the_detected_monitor_at_the_wire_boundary() {
+    let (_root, path, _) = fixture();
+    let mut state = State::new(path);
+    let access = Some(CatalogAccess::Pro);
+    let mut opened = open(&mut state).expect("valid document");
+    let original = opened.projected[0].clone();
+    let base = serde_json::to_value(original.settings.as_ref().expect("table settings"))
+        .expect("settings");
+    let probe = |length| {
+        let mut settings = base.clone();
+        settings["columns"] =
+            serde_json::json!([{"id":"x".repeat(length),"metricId":"driverName"}]);
+        let mut item = original.clone();
+        item.locked = !item.kind.info(access).allowed;
+        item.settings = Some(serde_json::from_value(settings).expect("normalized settings"));
+        let without_monitor = StudioView {
+            instances: vec![item.clone()],
+            canvas: Some(opened.canvas),
+            ..State::unavailable(StudioState::Ready, access)
+        };
+        (
+            crate::studio::widget_settings::fits_view(&without_monitor),
+            item,
+        )
+    };
+    let (mut low, mut high) = (0, crate::frame::LIMIT);
+    assert!(probe(low).0);
+    assert!(!probe(high).0);
+    while low < high {
+        let middle = low + (high - low).div_ceil(2);
+        if probe(middle).0 {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    assert!(probe(low).0);
+    assert!(!probe(low + 1).0);
+    opened.projected[0] = probe(low).1;
+    assert!(
+        !opened.fits_frame(access),
+        "monitor metadata is part of the real frame"
+    );
 }

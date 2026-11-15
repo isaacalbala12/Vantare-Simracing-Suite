@@ -412,12 +412,7 @@ export function CanvasStage({
                     <WidgetThumb kind={drop.visual.kind} fit="fill" />
                   </span>
                   <strong>
-                    {
-                      view.catalog.find(
-                        (widget) => widget.kind === drop.visual?.kind,
-                      )?.name
-                    }{" "}
-                    · {studioDropText.release}
+                    {`${view.catalog.find((widget) => widget.kind === drop.visual?.kind)?.name ?? ""} · ${studioDropText.release}`}
                   </strong>
                 </div>
               )}

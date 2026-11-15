@@ -66,7 +66,8 @@ try {
     "Rust active despite the slot reservation; not opening Electron",
   );
   const binary = resolve(
-    "release/package-qa/vantare-hub-ui-win32-x64/vantare-hub-ui.exe",
+    process.env.VANTARE_HUB_UI_BINARY ??
+      "release/package-qa/vantare-hub-ui-win32-x64/vantare-hub-ui.exe",
   );
   const asar = join(resolve(binary, ".."), "resources/app.asar");
   const data = join(resolve(qaRoot), `resources-${randomUUID()}`);

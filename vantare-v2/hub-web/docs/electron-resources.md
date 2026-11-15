@@ -19,6 +19,10 @@ $env:VANTARE_HUB_QA_SOURCE=(git rev-parse HEAD)
 pwsh -NoProfile -File scripts/measure-resources.ps1 -Output D:/VantareServer/evidence/hub-web/isa-1995-d-electron-resources/baseline
 ```
 
+Para comparar candidatos ya empaquetados, `VANTARE_HUB_UI_BINARY` selecciona
+la ruta privada del ejecutable QA; el informe guarda el hash del ASAR elegido.
+Usar una carpeta de salida distinta para cada ejecución.
+
 El script toma `captura.lock` de forma exclusiva y lo libera en `finally`.
 Si está ocupado, esperar fuera del script y repetir cada 60 s; no borrar un
 cerrojo ajeno. El cerrojo reserva los futuros huecos nativos (#2332). Si ya hay Rust activo,

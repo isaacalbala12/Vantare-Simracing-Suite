@@ -91,6 +91,18 @@ sus límites y escala con la lista viva; si ya no está, Studio queda Protected 
 vez de cambiar de monitor o conservar un origen desconectado. Un resize que solo
 redondea el tamaño al pasar por f32 conserva los bytes y no añade deshacer.
 
+## Monitor detectado en Studio (v41)
+
+`StudioView.monitor` publica solo `{width, height}` del monitor fijado en la
+sesión, separado de `canvas`. Elegir un lienzo personalizado no cambia esos
+datos. Son las mismas unidades lógicas que el lienzo y los overlays, con el DPI
+resuelto por Rust; el renderer no calcula la resolución desde el preset.
+Si el monitor fijado desaparece o no hay observación válida, vale `null`; Studio
+permanece Protected y no cambia a otro monitor ni conserva un tamaño viejo.
+No se publican identificadores, nombres, rutas ni coordenadas globales.
+`studioMonitorCases` contiene casos de monitor, preset, DPI y desconexión para
+los tests de Electron. La lectura no escribe el diseño ni añade deshacer.
+
 ## Cola de servicios
 
 D060 conserva el comentario de los cuestionarios: la vista publica `note` y

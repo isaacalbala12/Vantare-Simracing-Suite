@@ -42,6 +42,7 @@ struct Open {
     projected: Vec<OverlayInstance>,
     monitor: crate::studio::monitor::Monitor,
     canvas: crate::studio::CanvasView,
+    monitor_size: OverlaySize,
 }
 impl Open {
     fn read(
@@ -91,6 +92,7 @@ impl Open {
                 crate::studio::monitor::choose(&monitors, &positions).ok_or(HostError::Protected)?
             }
         };
+        let monitor_size = monitor.size_view().ok_or(HostError::Protected)?;
         let canvas = canvas(&document.fields, monitor)?;
         for item in &mut projected {
             relative(item, monitor, canvas)?;
@@ -101,10 +103,11 @@ impl Open {
             projected,
             monitor,
             canvas,
+            monitor_size,
         })
     }
     fn fits_frame(&self, access: Option<CatalogAccess>) -> bool {
-        fits_instances(
+        self.fits_instances(
             self.projected
                 .iter()
                 .zip(&self.instances)
@@ -116,7 +119,7 @@ impl Open {
                 })
                 .collect(),
             access,
-            Some(self.canvas),
+            self.canvas,
         )
     }
     fn bytes(&self) -> Result<Vec<u8>, HostError> {
@@ -338,6 +341,7 @@ pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioVi
         can_undo: !state.undo.is_empty(),
         can_redo: !state.redo.is_empty(),
         canvas: Some(opened.canvas),
+        monitor: Some(Box::new(opened.monitor_size)),
         ..State::unavailable(StudioState::Ready, access)
     };
     if crate::studio::widget_settings::fits_view(&value) {
@@ -345,6 +349,7 @@ pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioVi
     } else {
         let mut protected = State::unavailable(StudioState::Protected, access);
         protected.revision = value.revision;
+        protected.monitor = value.monitor;
         protected.showing = value.showing;
         protected
     }
@@ -439,7 +444,7 @@ pub(crate) fn edit_result(
             projected.push(item);
         }
     }
-    if (settings_edit || geometry_edit) && !fits_instances(projected, access, Some(after_canvas)) {
+    if (settings_edit || geometry_edit) && !opened.fits_instances(projected, access, after_canvas) {
         return Err(HostError::Protected);
     }
     if let Err(error) = files::save(
@@ -748,16 +753,20 @@ fn canvas(
     })
 }
 
-fn fits_instances(
-    instances: Vec<OverlayInstance>,
-    access: Option<CatalogAccess>,
-    canvas: Option<crate::studio::CanvasView>,
-) -> bool {
-    crate::studio::widget_settings::fits_view(&StudioView {
-        instances,
-        canvas,
-        ..State::unavailable(StudioState::Ready, access)
-    })
+impl Open {
+    fn fits_instances(
+        &self,
+        instances: Vec<OverlayInstance>,
+        access: Option<CatalogAccess>,
+        canvas: crate::studio::CanvasView,
+    ) -> bool {
+        crate::studio::widget_settings::fits_view(&StudioView {
+            instances,
+            canvas: Some(canvas),
+            monitor: Some(Box::new(self.monitor_size.clone())),
+            ..State::unavailable(StudioState::Ready, access)
+        })
+    }
 }
 
 fn instance_kinds(instances: &[Fields]) -> Result<Vec<(String, WidgetKind)>, HostError> {

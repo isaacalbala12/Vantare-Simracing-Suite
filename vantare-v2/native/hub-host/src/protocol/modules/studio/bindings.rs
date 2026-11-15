@@ -27,6 +27,7 @@ pub(crate) fn typescript() -> String {
     declare::<StudioView>(&mut text);
     declare::<InstancePatch>(&mut text);
     geometry_constants(&mut text);
+    crate::protocol::bindings::constants!(&mut text, "studioMonitorCases", monitor_vectors());
     frequency_constants(&mut text);
     writeln!(text,"export const studioLimits = {{instances:{INSTANCE_LIMIT},history:{HISTORY_LIMIT},opacityMin:{OPACITY_MIN},opacityMax:{OPACITY_MAX},id:{ID_LIMIT},size:{SIZE_LIMIT},label:{LABEL_LIMIT},about:{ABOUT_LIMIT}}} as const;").expect("limits");
     text.push_str("export const studioAddAvailable = true as const;\nexport const studioEditOnScreen = false as const;\n");
@@ -654,4 +655,40 @@ mod frequency_corpus_tests {
             );
         }
     }
+}
+
+fn monitor_vectors() -> serde_json::Value {
+    let mut cases = Vec::new();
+    for (name, physical, dpi, custom) in [
+        ("native", (0, 0, 2560, 1440), 96, None),
+        ("preset", (0, 0, 2560, 1440), 96, Some((1920_u32, 1080_u32))),
+        (
+            "scaled-preset",
+            (-3840, 0, 0, 2160),
+            144,
+            Some((1280_u32, 720_u32)),
+        ),
+    ] {
+        let monitor =
+            monitor::Monitor::from_physical(physical, dpi, true).expect("closed synthetic monitor");
+        let size = monitor.size_view().expect("finite logical dimensions");
+        let mut value = State::unavailable(StudioState::Ready, None);
+        value.canvas = Some(if let Some((width, height)) = custom {
+            CanvasView {
+                width: width.into(),
+                height: height.into(),
+                source: geometry::CanvasSource::Custom,
+            }
+        } else {
+            CanvasView {
+                width: size.width,
+                height: size.height,
+                source: geometry::CanvasSource::Monitor,
+            }
+        });
+        value.monitor = Some(Box::new(size));
+        cases.push(serde_json::json!({"name":name,"value":value}));
+    }
+    cases.push(serde_json::json!({"name":"disconnected","value":State::unavailable(StudioState::Protected,None)}));
+    serde_json::Value::Array(cases)
 }

@@ -104,6 +104,7 @@ pub struct StudioView {
     pub can_undo: bool,
     pub can_redo: bool,
     pub canvas: Option<CanvasView>,
+    pub monitor: Option<Box<OverlaySize>>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -166,6 +167,7 @@ impl State {
             can_undo: false,
             can_redo: false,
             canvas: None,
+            monitor: None,
         }
     }
     pub fn view(&mut self, access: Option<vantare_ipc::control::CatalogAccess>) -> StudioView {

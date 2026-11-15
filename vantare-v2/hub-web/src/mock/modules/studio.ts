@@ -87,6 +87,7 @@ export function create(context: MockContext): MockHandler {
     canUndo: false,
     canRedo: false,
     canvas: { width: 1920, height: 1080, source: "monitor" },
+    monitor: { width: 1920, height: 1080 },
   };
   if (context.settingsData && sceneName.startsWith("studio-")) {
     context.settingsData.track.exists = view.state !== "missing";
@@ -115,6 +116,7 @@ export function create(context: MockContext): MockHandler {
     view.instances = [];
     view.catalog = view.catalog.map((w) => ({ ...w, allowed: false }));
   }
+  if (view.state !== "ready") view.monitor = null;
   const stateScene = studioStateScene(sceneName, view);
   const undo: OverlayInstance[][] = [],
     redo: OverlayInstance[][] = [];

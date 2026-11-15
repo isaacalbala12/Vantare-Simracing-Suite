@@ -64,6 +64,20 @@ La intensidad del aviso es independiente de la fila. Cada Look elige solo el
 color y pinta; ni Vantare ni Eficiencia recalculan movimiento. B adapta su pintor
 y captura en #2351 a ese módulo cuando A lo exponga, coordinado por el orquestador.
 
+## VANTA-138 · monitor detectado separado del lienzo (15/11/2026)
+
+Prioridad del orquestador antes de D031: `StudioView.monitor` publica el tamaño
+lógico del monitor fijado, aunque `canvas` use un preset personalizado. Solo dos
+números; null cuando no hay observación válida, incluido el monitor desconectado.
+Se conserva Protected y canvas:null al desaparecer el fijado, sin elegir otro.
+Contrato v41 y vectores `studioMonitorCases` desde Rust para Electron.
+Tests de preset/volver al monitor/deshacer/desconectar, sin ventana ni GPU.
+Formato y Clippy PASS; 643 tests del host PASS (1 omitido), por la cola.
+Las guardas de tamaño incluyen el monitor, probado en la frontera exacta del cable.
+Tipos producto/scripts, lint web, 428 tests Studio, 491 corpus/índice y 32 galería DOM
+PASS. CI/revisión pendientes; PR/head y detalles finales en #1995.
+D031 y D048 preservados en sus ramas, pendientes de este bloque; D111 después.
+
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 
 #2345 fusionado por el orquestador como df9c911b5. Worker B atiende sus nits

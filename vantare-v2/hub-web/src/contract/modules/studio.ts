@@ -56,6 +56,17 @@ function canvas(v: unknown) {
       (v.source === "monitor" || v.source === "custom"))
   );
 }
+function monitor(v: unknown) {
+  return (
+    v === null ||
+    (record(v) &&
+      exact(v, ["width", "height"]) &&
+      coordinate(v.width) &&
+      coordinate(v.height) &&
+      v.width > 0 &&
+      v.height > 0)
+  );
+}
 function geometry(v: unknown) {
   if (!record(v)) return false;
   switch (v.kind) {
@@ -163,8 +174,10 @@ export function isStudio(v: unknown) {
       "canUndo",
       "canRedo",
       "canvas",
+      "monitor",
     ]) &&
     canvas(v.canvas) &&
+    monitor(v.monitor) &&
     oneOf(v.state, studioStates) &&
     revision(v.revision) &&
     Array.isArray(v.instances) &&

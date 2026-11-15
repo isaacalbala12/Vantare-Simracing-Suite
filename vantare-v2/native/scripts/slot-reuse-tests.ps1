@@ -33,7 +33,7 @@ try {
         $worktree = Join-Path $root $branch
         Push-Location (Join-Path $worktree 'vantare-v2')
         try {
-            $output = & pwsh -NoProfile -File scripts/compilar.ps1 cargo run --offline -j 4 --manifest-path native/Cargo.toml
+            $output = & pwsh -NoProfile -File native/scripts/compilar.ps1 cargo run --offline -j 4 --manifest-path native/Cargo.toml
             $output | Write-Host
             if ($LASTEXITCODE -or $output[-1] -cne $branch) { throw "Artefacto de otra rama; esperado $branch." }
         } finally { Pop-Location }

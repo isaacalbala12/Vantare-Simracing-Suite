@@ -8,6 +8,7 @@ import { useHost } from "../../app/Host";
 import { useLauncherRequest } from "../../app/LauncherRequest";
 import { HostFailure } from "../../bridge/client";
 import { launcherText as text } from "../../i18n/launcher";
+import { profileText } from "../../i18n/profile-editor";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import {
@@ -166,7 +167,12 @@ export function Launcher({
           preparedDuplicate: true,
         });
     } catch (failure) {
-      if (alive.current) setError(profileFailure(failure, true));
+      if (alive.current)
+        setError(
+          failure instanceof HostFailure && failure.detail.kind === "busy"
+            ? profileText.duplicatePrepareBusy
+            : profileFailure(failure, true),
+        );
     } finally {
       busy.current = false;
       if (alive.current) setPending(false);

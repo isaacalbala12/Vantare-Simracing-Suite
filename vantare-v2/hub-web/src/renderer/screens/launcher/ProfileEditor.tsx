@@ -119,7 +119,7 @@ export function ProfileEditor() {
     if (!client || busy.current || !view) return;
     if (readInvalid.current) {
       if (current.preparedDuplicate) {
-        setError(text.duplicateUnconfirmed);
+        setError((message) => message ?? text.duplicateUnconfirmed);
         return;
       }
       await retry();
@@ -185,7 +185,9 @@ export function ProfileEditor() {
       } else
         setError(
           source.preparedDuplicate
-            ? text.duplicateUnconfirmed
+            ? failure instanceof HostFailure && failure.detail.kind === "denied"
+              ? text.duplicateDenied
+              : text.duplicateUnconfirmed
             : profileFailure(failure),
         );
     } finally {
@@ -221,7 +223,7 @@ export function ProfileEditor() {
   }
   async function retry() {
     if (current.preparedDuplicate) {
-      setError(text.duplicateUnconfirmed);
+      setError((message) => message ?? text.duplicateUnconfirmed);
       return;
     }
     if (!client || busy.current) return;

@@ -564,7 +564,7 @@ describe("profile editor", () => {
       );
       await screen.findByText(
         kind === "busy"
-          ? text.busy
+          ? text.duplicatePrepareBusy
           : kind === "coreUnavailable"
             ? text.coreUnavailable
             : text.openFailed,
@@ -630,7 +630,7 @@ describe("profile editor", () => {
     await user.click(screen.getByRole("option", { name: "20 s" }));
     await waitFor(() => expect(delay.textContent).toContain("20 s"));
   });
-  it.each(["unknown", "busy", "rejected"] as const)(
+  it.each(["unknown", "busy", "rejected", "denied"] as const)(
     "retains a %s duplicate draft and never rereads or replays the consumed save",
     async (kind) => {
       const native = Client.prototype.request;
@@ -655,8 +655,11 @@ describe("profile editor", () => {
       const name = await screen.findByRole("textbox", { name: text.name });
       fireEvent.change(name, { target: { value: "Conservar mi texto" } });
       fireEvent.click(screen.getByRole("button", { name: text.save }));
-      await screen.findByText(text.duplicateUnconfirmed);
+      await screen.findByText(
+        kind === "denied" ? text.duplicateDenied : text.duplicateUnconfirmed,
+      );
       expect(name).toHaveProperty("value", "Conservar mi texto");
+      expect(screen.queryByText(text.saved)).toBeNull();
       expect(screen.queryByRole("button", { name: text.retry })).toBeNull();
       fireEvent.click(screen.getByRole("button", { name: text.save }));
       expect(

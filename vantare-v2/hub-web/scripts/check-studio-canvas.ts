@@ -182,6 +182,30 @@ export async function checkStudioCanvas(
               document.documentElement.dataset.scheme = value;
             }, scheme);
             const stage = page.locator(".v-studio-canvas-stage");
+            await page.waitForFunction(
+              () => {
+                const plane = document.querySelector<HTMLElement>(
+                  ".v-studio-canvas-plane",
+                );
+                const viewport = document.querySelector<HTMLElement>(
+                  ".v-studio-canvas-viewport",
+                );
+                if (!plane || !viewport) return false;
+                const width = Number(plane.dataset.canvasWidth),
+                  height = Number(plane.dataset.canvasHeight);
+                return (
+                  Math.abs(
+                    plane.getBoundingClientRect().width / width -
+                      Math.min(
+                        viewport.clientWidth / width,
+                        viewport.clientHeight / height,
+                      ),
+                  ) < 0.001
+                );
+              },
+              null,
+              { timeout: 5000 },
+            );
             const viewport = await stage
               .locator(".v-studio-canvas-viewport")
               .boundingBox();

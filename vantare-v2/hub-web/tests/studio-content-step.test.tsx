@@ -205,7 +205,9 @@ it("validates the name limit after commit and retains focus after a confirmed va
 it("writes the displayed 16 character default together with truncate, not as an unsaved fallback", async () => {
   const { user } = await mount();
   await user.click(screen.getByRole("combobox", { name: text.name }));
-  await user.click(screen.getByRole("option", { name: text.names.truncate }));
+  await user.click(
+    await screen.findByRole("option", { name: text.names.truncate }),
+  );
   expect(state.execute).toHaveBeenCalledTimes(1);
   expect(
     state.execute.mock.calls[0][0].patch.value.columns.find(
@@ -216,7 +218,9 @@ it("writes the displayed 16 character default together with truncate, not as an 
 it("links the read-only time format and decimal controls to their visible explanation", async () => {
   const { user } = await mount();
   await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
-  await user.click(screen.getByRole("option", { name: "Última vuelta" }));
+  await user.click(
+    await screen.findByRole("option", { name: "Última vuelta" }),
+  );
   const explanation = screen.getByText(text.timeReadOnly);
   for (const control of [
     screen.getByRole("combobox", { name: text.timeFormat }),
@@ -230,7 +234,7 @@ it("uses the same closed patch path for Delta content", async () => {
   const { user } = await mount(contentInstance("delta"));
   await user.click(screen.getByRole("combobox", { name: text.reference }));
   await user.click(
-    screen.getByRole("option", { name: text.references.optimal }),
+    await screen.findByRole("option", { name: text.references.optimal }),
   );
   expect(state.execute).toHaveBeenCalledWith(
     expect.objectContaining({

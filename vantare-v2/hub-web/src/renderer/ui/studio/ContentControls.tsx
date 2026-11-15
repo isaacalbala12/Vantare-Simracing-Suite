@@ -10,6 +10,7 @@ export function ContentNumber({
   min,
   max,
   model,
+  editableWhilePending = false,
   integer = true,
   step,
   normalize = Number,
@@ -21,6 +22,7 @@ export function ContentNumber({
   min: number;
   max: number;
   model: Model;
+  editableWhilePending?: boolean;
   integer?: boolean;
   step?: number;
   normalize?: (value: number) => number;
@@ -71,7 +73,7 @@ export function ContentNumber({
       value={draft}
       inputMode={integer ? "numeric" : "decimal"}
       disabled={model.disabled}
-      readOnly={model.pending}
+      readOnly={model.pending && !editableWhilePending}
       aria-busy={model.pending || undefined}
       error={
         error

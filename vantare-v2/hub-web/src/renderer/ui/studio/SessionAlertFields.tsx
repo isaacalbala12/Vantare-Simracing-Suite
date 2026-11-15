@@ -8,7 +8,8 @@ import { studioAlertFieldsText as text } from "../../i18n/studio-alert-fields.es
 import { useAppearance } from "../../screens/studio/appearance";
 import { useStudio } from "../../screens/studio/state";
 import { Button } from "../Button";
-import { Select, Switch } from "../Forms";
+import { Switch } from "../Forms";
+import { Choice } from "./AdditionalWidgetFields";
 import { ContentNumber, Group } from "./ContentControls";
 
 type Model = ReturnType<typeof useAppearance>;
@@ -111,38 +112,28 @@ export function SessionAlertFields({
             }
           />
         ))}
-        <Select
+        <Choice
           label={text.miniSize}
           value={settings.miniSize}
-          disabled={model.disabled}
-          pending={model.pending}
-          options={limits.miniSizes.map((value) => ({
-            value,
-            label: value.toUpperCase(),
-          }))}
-          onChange={(value) => {
-            const miniSize = limits.miniSizes.find((entry) => entry === value);
-            if (miniSize)
-              void model.patch(
-                { kind: "session-alerts", miniSize },
-                text.miniSize,
-              );
-          }}
+          choices={limits.miniSizes}
+          labels={(value) => value.toUpperCase()}
+          model={model}
+          onChange={(miniSize) =>
+            void model.patch(
+              { kind: "session-alerts", miniSize },
+              text.miniSize,
+            )
+          }
         />
-        <Select
+        <Choice
           label={text.style}
           value={settings.style}
-          disabled={model.disabled}
-          pending={model.pending}
-          options={limits.styles.map((value) => ({
-            value,
-            label: text.styles[value],
-          }))}
-          onChange={(value) => {
-            const style = limits.styles.find((entry) => entry === value);
-            if (style)
-              void model.patch({ kind: "session-alerts", style }, text.style);
-          }}
+          choices={limits.styles}
+          labels={(value) => text.styles[value]}
+          model={model}
+          onChange={(style) =>
+            void model.patch({ kind: "session-alerts", style }, text.style)
+          }
         />
       </Group>
       <Thresholds id={id} settings={settings} model={model} />
@@ -169,7 +160,10 @@ function Thresholds({
     request.patch.value.kind === "session-alerts" &&
     request.patch.value.threshold !== undefined;
   const [uncertain, setUncertain] = useState(false);
-  const [snapshot, setSnapshot] = useState(0);
+  const [versions, setVersions] = useState(() =>
+    Array.from({ length: limits.thresholdSlots }, () => 0),
+  );
+  const [savingIndex, setSavingIndex] = useState<number | undefined>(undefined);
   const root = useRef<HTMLDivElement>(null);
   const focusAfter = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -186,21 +180,34 @@ function Thresholds({
     const next = await state.execute({ method: "studio.get" });
     if (next?.state === "ready") {
       setUncertain(false);
-      setSnapshot((value) => value + 1);
+      setVersions((values) => values.map((value) => value + 1));
     }
   };
   const save = async (index: number, minutes: number) => {
     if (blocked || model.pending || model.disabled) return;
     const input = root.current?.querySelectorAll("input")[index];
+    setSavingIndex(index);
     const next = await model.patch(
       { kind: "session-alerts", threshold: { index, minutes } },
       text.threshold(index),
     );
+    setSavingIndex(undefined);
     if (next) {
       // Native normalization can move/remove a threshold. Render its confirmed
       // array, not the typed number at a now different index.
       if (input && document.activeElement === input) focusAfter.current = index;
-      setSnapshot((value) => value + 1);
+      const confirmed = next.instances.find((item) => item.id === id)?.settings;
+      if (confirmed?.kind === "session-alerts") {
+        setVersions((values) =>
+          values.map((value, slot) =>
+            slot === index ||
+            (settings.thresholds[slot] ?? 0) !==
+              (confirmed.thresholds[slot] ?? 0)
+              ? value + 1
+              : value,
+          ),
+        );
+      }
     }
   };
   return (
@@ -223,8 +230,8 @@ function Thresholds({
       <div ref={root}>
         {Array.from({ length: limits.thresholdSlots }, (_, index) => (
           <ContentNumber
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed slot index is the native operation identity; snapshot resets drafts after normalization.
-            key={`${snapshot}:${index}`}
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed native slot identity; reset only the submitted or normalized slots, preserving other drafts and focus.
+            key={`${versions[index]}:${index}`}
             label={text.threshold(index)}
             aria-describedby={blocked ? `${help} ${failedHelp}` : help}
             value={settings.thresholds[index] ?? 0}
@@ -232,6 +239,7 @@ function Thresholds({
             max={limits.thresholdMax}
             step={limits.thresholdStep}
             model={{ ...model, pending: model.pending || blocked }}
+            editableWhilePending={!blocked && savingIndex !== index}
             onCommit={(minutes) => void save(index, minutes)}
           />
         ))}

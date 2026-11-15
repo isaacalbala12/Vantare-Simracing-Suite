@@ -289,6 +289,7 @@ it("rejects a volume outside the native step without sending, and keeps pending 
   await user.type(volume, "75{Enter}{Enter}");
   expect(writes()).toHaveLength(1);
   expect((volume as HTMLInputElement).readOnly).toBe(true);
+  expect(volume.getAttribute("aria-busy")).toBe("true");
   expect(volume.hasAttribute("disabled")).toBe(false);
   expect(document.activeElement).toBe(volume);
 });
@@ -341,4 +342,63 @@ it("does not steal focus after native normalization when the user moved to anoth
       }) as HTMLInputElement
     ).value,
   ).toBe("5");
+});
+
+it("preserves the next threshold's focus and draft while the previous slot confirms", async () => {
+  const initial = fixture(structuredClone(cases[0].before) as WidgetSettings);
+  const settings = initial.instances[0].settings;
+  if (settings?.kind !== "session-alerts") throw Error("Alerts fixture");
+  settings.thresholds = [5, 1];
+  const { user, accept } = await mount(initial);
+  await user.click(screen.getByRole("tab", { name: studio.content }));
+  const first = screen.getByRole("textbox", {
+    name: text.threshold(0),
+  }) as HTMLInputElement;
+  const second = screen.getByRole("textbox", {
+    name: text.threshold(1),
+  }) as HTMLInputElement;
+  await user.clear(first);
+  await user.type(first, "10");
+  await user.tab();
+  expect(document.activeElement).toBe(second);
+  await user.clear(second);
+  await user.type(second, "7");
+  expect(second.value).toBe("7");
+  expect(first.getAttribute("aria-busy")).toBe("true");
+  const next = nextView(initial, { ...settings, thresholds: [10, 1] });
+  await act(async () => accept({ method: "studio.instance", value: next }));
+  expect(screen.getByRole("textbox", { name: text.threshold(1) })).toBe(second);
+  expect(document.activeElement).toBe(second);
+  expect(second.value).toBe("7");
+  await user.tab();
+  expect(transport.request).toHaveBeenLastCalledWith({
+    method: "studio.instance",
+    id: initial.instances[0].id,
+    baseRevision: next.revision,
+    patch: {
+      field: "settings",
+      value: { kind: "session-alerts", threshold: { index: 1, minutes: 7 } },
+    },
+  });
+});
+it("shows unknown mini size and style as preserved without writing", async () => {
+  const initial = fixture(structuredClone(cases[0].before) as WidgetSettings);
+  const settings = initial.instances[0].settings;
+  if (settings?.kind !== "session-alerts") throw Error("Alerts fixture");
+  settings.miniSize = "legacy-size";
+  settings.style = "legacy-style";
+  await mount(initial);
+  await userEvent
+    .setup()
+    .click(screen.getByRole("tab", { name: studio.content }));
+  expect(
+    screen.getByRole("combobox", { name: text.miniSize }).textContent,
+  ).toContain("legacy-size");
+  expect(
+    screen.getByRole("combobox", { name: text.style }).textContent,
+  ).toContain("legacy-style");
+  expect(
+    screen.getByRole("combobox", { name: text.style }).textContent,
+  ).toContain("conservado");
+  expect(writes()).toHaveLength(0);
 });

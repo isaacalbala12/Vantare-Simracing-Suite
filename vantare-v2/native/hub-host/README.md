@@ -556,3 +556,18 @@ D recibe `studioFrequencyOptions` y380 vectores `studioFrequencyCases` de Rust,
 incluidos los cinco niveles,19 familias, herencia y overrides0/40/60. El mock
 consume esos vectores y enlaza sus fotos con el nivel de Ajustes, con conflictos
 por revisión en ambos sentidos. La interfaz del selector sigue en el PR de D.
+
+## Última exploración de aplicaciones (D031)
+
+`CatalogView.lastScan` es `null` hasta recoger una exploración completada. Después
+publica `{completedAtMs, warningCount}`: milisegundos Unix en una cadena decimal y
+recuento exacto de avisos. La fecha se toma al terminar el worker, no al consultar
+la vista. Reiniciar el anfitrión vuelve a dejarla desconocida; no se persiste.
+Mientras empieza otra exploración, se conserva el último resultado terminado,
+separado de `scanning` y de la disponibilidad del documento actual.
+
+Solo salen fecha y recuento: los diagnósticos libres pueden contener rutas y se
+quedan dentro del lector. La UI muestra un aviso genérico y no reconstruye detalles
+ni categorías. Una finalización publica un evento aunque no cambie la lista de
+aplicaciones, para que la UI pueda consultar el catálogo actualizado. Un reloj
+fuera del rango de fechas representable devuelve una observación desconocida.

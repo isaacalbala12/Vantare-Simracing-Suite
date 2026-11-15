@@ -1,3 +1,18 @@
+## VANTA-138 · D031, fecha y avisos de exploración (15/11/2026)
+
+Contrato aprobado por el orquestador: `CatalogView.lastScan` es null o contiene fecha real
+de fin del worker (`completedAtMs`, decimal) y recuento exacto (`warningCount`).
+La UI muestra fecha y un aviso genérico; no viajan textos, rutas ni categorías.
+Solo metadatos en memoria, desconocidos al arrancar; una búsqueda nueva conserva
+el último resultado completado. El evento del lector cambia también cuando solo
+cambian estos metadatos. Tests con tiempo inyectado y despacho real, sin programas
+reales ni servicios. Monitor #2358 ya fusionado en nightly (e47538725); D031 usa
+v42 sobre esa base. Bindings/corpus generados; tipos, lint y526 tests web PASS.
+Formato, Clippy -D warnings y650 tests host PASS (1omitido), por la cola; sin
+gráficos. Suite DOM adicional cancelada sin resultados, no declarada verde.
+CI/review pendientes; D recibe el PR y head final al publicarlo. Sin merge propio.
+D048 está preservado en su rama y va después, seguido de D111; preview espera Rune F1.
+
 ## VANTA-144 · conexión reapilada con monitores en caliente (15/11/2026)
 
 #2349 conserva el controlador de B (#2356): ventanas creadas por host::window,
@@ -9,6 +24,7 @@ monitores retirados. Nueva prueba CPU de geometría/fotos conservadas.
 #2344 mantiene su head revisado; base combinada ahora 063b1b213. Tras su squash,
 retirarla con --onto origin/nightly y reapilar #2357. Revalidación conjunta de
 conexión y Relative por la cola; resultados anteriores conservados abajo.
+
 
 ## VANTA-144 · Revisión de #2356: política de fallos y nits
 

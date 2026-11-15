@@ -2,6 +2,7 @@ import type { AppDraft } from "./generated/contract";
 import {
   launcherLimits,
   launcherPickPathMax,
+  launcherScanTimestampMax,
   profileLimits,
 } from "./generated/contract";
 import { exact, integer, record } from "./validation-common";
@@ -53,12 +54,24 @@ export function isPickedApp(value: unknown): boolean {
       !/[\\/:]/.test(value.fileName))
   );
 }
+export function isScanSummary(value: unknown): boolean {
+  return (
+    value === null ||
+    (record(value) &&
+      exact(value, ["completedAtMs", "warningCount"]) &&
+      typeof value.completedAtMs === "string" &&
+      /^(0|[1-9][0-9]{0,15})$/.test(value.completedAtMs) &&
+      BigInt(value.completedAtMs) <= BigInt(launcherScanTimestampMax) &&
+      integer(value.warningCount))
+  );
+}
 export function isCatalog(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["revision", "scanning", "apps"]) &&
+    exact(value, ["revision", "scanning", "lastScan", "apps"]) &&
     revision(value.revision) &&
     typeof value.scanning === "boolean" &&
+    isScanSummary(value.lastScan) &&
     Array.isArray(value.apps) &&
     value.apps.length <= launcherLimits.apps &&
     value.apps.every(

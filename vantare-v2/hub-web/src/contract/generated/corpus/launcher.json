@@ -311,6 +311,39 @@
         "method": "launcher.catalog",
         "value": {
           "apps": [],
+          "lastScan": null,
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "scanning": false
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.catalog",
+        "value": {
+          "apps": [],
+          "lastScan": {
+            "completedAtMs": "1700000000123",
+            "warningCount": 0
+          },
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "scanning": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "launcher.catalog",
+        "value": {
+          "apps": [],
+          "lastScan": {
+            "completedAtMs": "1700000000123",
+            "warningCount": 2
+          },
           "revision": "0000000000000000000000000000000000000000000000000000000000000000",
           "scanning": false
         }

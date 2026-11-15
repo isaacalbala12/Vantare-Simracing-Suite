@@ -26,9 +26,14 @@ fn initialize_missing(path: &Path) -> Result<(), HostError> {
         Err(_) => Err(HostError::Io),
     }
 }
+struct ScanResult {
+    revision: String,
+    found: Discovery,
+    summary: Option<super::apps::ScanSummary>,
+}
 struct Scan {
     cancel: Arc<AtomicBool>,
-    worker: JoinHandle<Option<(String, Discovery)>>,
+    worker: JoinHandle<Option<ScanResult>>,
 }
 impl Scan {
     fn start(revision: String, apps: Vec<vantare_launcher::App>) -> std::io::Result<Self> {
@@ -48,7 +53,15 @@ impl Scan {
                     return None;
                 }
                 let found = Discovery::scan(&apps, sources);
-                (!stop.load(Ordering::Acquire)).then_some((revision, found))
+                if stop.load(Ordering::Acquire) {
+                    return None;
+                }
+                let summary = super::apps::ScanSummary::at(&found, std::time::SystemTime::now());
+                Some(ScanResult {
+                    revision,
+                    found,
+                    summary,
+                })
             })?;
         Ok(Self { cancel, worker })
     }
@@ -62,6 +75,8 @@ pub struct Reader {
     last_check: Option<Instant>,
     last_scan: Option<Instant>,
     last_view: Option<LauncherView>,
+    last_completed_scan: Option<super::apps::ScanSummary>,
+    last_reported_scan: Option<super::apps::ScanSummary>,
 }
 impl Reader {
     pub fn new(path: PathBuf) -> Self {
@@ -74,6 +89,8 @@ impl Reader {
             last_check: None,
             last_scan: None,
             last_view: None,
+            last_completed_scan: None,
+            last_reported_scan: None,
         }
     }
     #[cfg(test)]
@@ -81,6 +98,22 @@ impl Reader {
         let mut reader = Self::new(path);
         reader.scanned_revision = Some(revision);
         reader.found = found;
+        reader
+    }
+    #[cfg(test)]
+    pub(crate) fn with_completed_discovery(
+        path: PathBuf,
+        revision: String,
+        found: Discovery,
+        now: std::time::SystemTime,
+    ) -> Self {
+        let mut reader = Self::new(path);
+        let summary = super::apps::ScanSummary::at(&found, now);
+        reader.complete_scan(ScanResult {
+            revision,
+            found,
+            summary,
+        });
         reader
     }
     fn open_document(&mut self) -> Result<Option<(Vec<u8>, Document)>, HostError> {
@@ -104,9 +137,8 @@ impl Reader {
             .is_some_and(|scan| scan.worker.is_finished())
         {
             let scan = self.scan.take().expect("finished scan");
-            if let Ok(Some((revision, found))) = scan.worker.join() {
-                self.scanned_revision = Some(revision);
-                self.found = found;
+            if let Ok(Some(result)) = scan.worker.join() {
+                self.complete_scan(result);
             }
         }
         let Ok(Some((bytes, document))) = self.open_document() else {
@@ -128,6 +160,14 @@ impl Reader {
             mailbox::read_status(&self.path).as_ref(),
             self.scan.is_some(),
         )
+    }
+    fn complete_scan(&mut self, result: ScanResult) {
+        self.scanned_revision = Some(result.revision);
+        self.found = result.found;
+        self.last_completed_scan = result.summary;
+    }
+    pub fn scan_summary(&self) -> Option<&super::apps::ScanSummary> {
+        self.last_completed_scan.as_ref()
     }
     pub fn rescan(&mut self) {
         // An explicit reload refreshes availability without launching a second worker.
@@ -163,6 +203,7 @@ impl Reader {
         if !subscribed {
             self.last_check = None;
             self.last_view = None;
+            self.last_reported_scan = None;
             return None;
         }
         if self
@@ -173,9 +214,12 @@ impl Reader {
         }
         self.last_check = Some(now);
         let view = self.view();
-        if self.last_view.as_ref() == Some(&view) {
+        if self.last_view.as_ref() == Some(&view)
+            && self.last_reported_scan == self.last_completed_scan
+        {
             return None;
         }
+        self.last_reported_scan = self.last_completed_scan.clone();
         self.last_view = Some(view.clone());
         Some(view)
     }
@@ -234,6 +278,44 @@ mod tests {
 #[cfg(all(test, windows))]
 mod initialization_tests {
     use super::*;
+    #[test]
+    fn completed_metadata_survives_reload_and_triggers_an_event_even_if_availability_is_unchanged()
+    {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("launcher.json");
+        std::fs::write(&path, b"{").expect("protected fixture, no real discovery");
+        let mut reader = Reader::new(path);
+        let now = Instant::now();
+        let before = reader.changed(true, now).expect("first view");
+        assert!(reader.scan_summary().is_none());
+        let found = Discovery {
+            warnings: vec!["private path".into()],
+            ..Default::default()
+        };
+        let summary = super::super::apps::ScanSummary::at(
+            &found,
+            std::time::UNIX_EPOCH + std::time::Duration::from_millis(1_700_000_000_123),
+        )
+        .expect("completion");
+        reader.complete_scan(ScanResult {
+            revision: "0".repeat(64),
+            found,
+            summary: Some(summary.clone()),
+        });
+        assert_eq!(
+            reader.changed(true, now + std::time::Duration::from_millis(500)),
+            Some(before)
+        );
+        assert!(
+            reader
+                .changed(true, now + std::time::Duration::from_secs(1))
+                .is_none()
+        );
+        reader.rescan();
+        assert_eq!(reader.scan_summary(), Some(&summary));
+        assert!(reader.scan.is_none());
+    }
+
     #[test]
     fn first_open_retries_after_a_busy_initialization_without_restarting_the_reader() {
         let root = crate::test_support::Root::new();

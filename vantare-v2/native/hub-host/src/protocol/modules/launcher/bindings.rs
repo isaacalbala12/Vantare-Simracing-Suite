@@ -1,6 +1,6 @@
 use crate::launcher::LauncherView;
 use crate::launcher::apps::{
-    AppDraft, AppEditor, CatalogApp, CatalogView, ExecutableSelection, PickedApp,
+    AppDraft, AppEditor, CatalogApp, CatalogView, ExecutableSelection, PickedApp, ScanSummary,
 };
 use crate::launcher::editor::{
     ProfileClose, ProfileDraft, ProfileEditorView, ProfileFailure, ProfilePolicy, ProfileRetry,
@@ -20,6 +20,7 @@ pub(crate) fn typescript() -> String {
     declare::<AppEditor>(&mut text);
     declare::<CatalogApp>(&mut text);
     declare::<CatalogView>(&mut text);
+    declare::<ScanSummary>(&mut text);
     declare::<PickedApp>(&mut text);
     append_apps_constants(&mut text);
     declare::<ProfileRunning>(&mut text);
@@ -200,6 +201,12 @@ fn duplicate_cases() -> serde_json::Value {
 fn append_apps_constants(text: &mut String) {
     writeln!(
         text,
+        "export const launcherScanTimestampMax = \"{}\" as const;",
+        crate::launcher::apps::MAX_SCAN_TIMESTAMP_MS
+    )
+    .expect("String write");
+    writeln!(
+        text,
         "export const launcherPickCooldownMs = {} as const;",
         crate::launcher::apps::PICK_COOLDOWN_MS
     )
@@ -207,12 +214,35 @@ fn append_apps_constants(text: &mut String) {
     writeln!(text, "export const launcherPickPathMax = {} as const;\nexport const launcherPickLifetimeSeconds = {} as const;", crate::launcher::apps::PICK_PATH_MAX, crate::launcher::apps::PICK_LIFETIME_SECONDS).expect("String write");
 }
 
-fn application_reply_samples() -> [Reply; 7] {
+fn application_reply_samples() -> [Reply; 9] {
     [
         Reply::LauncherCatalog {
             value: CatalogView {
                 revision: "0".repeat(64),
                 scanning: false,
+                last_scan: None,
+                apps: vec![],
+            },
+        },
+        Reply::LauncherCatalog {
+            value: CatalogView {
+                revision: "0".repeat(64),
+                scanning: true,
+                last_scan: Some(ScanSummary {
+                    completed_at_ms: "1700000000123".into(),
+                    warning_count: 0,
+                }),
+                apps: vec![],
+            },
+        },
+        Reply::LauncherCatalog {
+            value: CatalogView {
+                revision: "0".repeat(64),
+                scanning: false,
+                last_scan: Some(ScanSummary {
+                    completed_at_ms: "1700000000123".into(),
+                    warning_count: 2,
+                }),
                 apps: vec![],
             },
         },

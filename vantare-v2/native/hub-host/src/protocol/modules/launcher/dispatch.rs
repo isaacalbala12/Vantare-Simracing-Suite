@@ -287,7 +287,11 @@ impl Session {
                 let result = crate::launcher::apps::catalog(
                     &self.launcher,
                     self.launcher_reader.discovered(&view.revision),
-                );
+                )
+                .map(|mut catalog| {
+                    catalog.last_scan = self.launcher_reader.scan_summary().cloned();
+                    catalog
+                });
                 frame::write(
                     pipe,
                     &match result {

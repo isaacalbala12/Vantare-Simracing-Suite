@@ -313,3 +313,70 @@ fn prepared_copy_cannot_be_saved_after_account_change_or_logout() {
         assert_eq!(std::fs::read(&session.launcher).expect("unchanged"), before);
     }
 }
+
+#[test]
+fn catalog_dispatch_publishes_the_completed_scan_metadata_without_private_diagnostics() {
+    for warnings in [
+        None,
+        Some(vec![]),
+        Some(vec![
+            "private D:/Users/example/app.exe --secret-argument".into(),
+            "private second diagnostic".into(),
+        ]),
+    ] {
+        let fixture = Fixture::new();
+        let mut session = fixture.session();
+        let document = vantare_launcher::Document::fresh_install();
+        let bytes = serde_json::to_vec(&document).expect("local fixture");
+        std::fs::write(&session.launcher, &bytes).expect("fixture bytes");
+        let revision = vantare_services::content_hash(&bytes);
+        let expected = warnings.as_ref().map(Vec::len);
+        session.launcher_reader = if let Some(warnings) = warnings {
+            crate::launcher::Reader::with_completed_discovery(
+                session.launcher.clone(),
+                revision,
+                vantare_launcher::discovery::Discovery {
+                    warnings,
+                    ..Default::default()
+                },
+                std::time::UNIX_EPOCH + std::time::Duration::from_millis(1_700_000_000_123),
+            )
+        } else {
+            crate::launcher::Reader::with_discovery(
+                session.launcher.clone(),
+                revision,
+                vantare_launcher::discovery::Discovery::default(),
+            )
+        };
+        let mut pipe = Pipe::new(Vec::new());
+        session
+            .request(&mut pipe, 11, &Request::LauncherCatalog {})
+            .expect("real catalog dispatch");
+        pipe.set_position(0);
+        let reply: HostToUi = frame::Reader::default()
+            .next(&mut pipe)
+            .expect("frame")
+            .expect("reply");
+        let encoded = serde_json::to_string(&reply).expect("public wire");
+        assert!(!encoded.contains("private") && !encoded.contains("secret-argument"));
+        let HostToUi::Response {
+            result: crate::protocol::Reply::LauncherCatalog { value },
+            ..
+        } = reply
+        else {
+            panic!("catalog reply")
+        };
+        assert!(!value.scanning);
+        if let Some(count) = expected {
+            let summary = value
+                .last_scan
+                .expect("completed scan, including zero warnings");
+            assert_eq!(summary.completed_at_ms, "1700000000123");
+            assert_eq!(summary.warning_count, count);
+        } else {
+            assert_eq!(value.last_scan, None);
+        }
+        assert_eq!(std::fs::read(&session.launcher).expect("no write"), bytes);
+        assert_eq!(session.core.requests, 0);
+    }
+}

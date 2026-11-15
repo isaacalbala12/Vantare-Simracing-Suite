@@ -1,4 +1,4 @@
-# native — núcleo y overlays Rust (ADR 0099 / 0107)
+# native — núcleo y overlays Rust (ADR 0099 / 0107 / 0110)
 
 ADR 0107 congela el Hub GPUI; su reemplazo web vive fuera de `native/`.
 

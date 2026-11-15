@@ -55,7 +55,16 @@ jobs:
         run: |
           python native/pruebas-rune/verificar_aislamiento.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # These snapshots can outlive their PR branches after squash merging.
+          $recipes = (Get-Content native/pruebas-rune/fuentes-medicion.json -Raw | ConvertFrom-Json).variants
           foreach ($variant in @('gpui','gpui-fast')) {
+            foreach ($sha in @($recipes.$variant.base, $recipes.$variant.source)) {
+              git cat-file -e "${sha}^{commit}" 2>$null
+              if ($LASTEXITCODE) {
+                git fetch --no-tags origin $sha
+                if ($LASTEXITCODE) { exit $LASTEXITCODE }
+              }
+            }
             python native/pruebas-rune/preparar_fuentes.py $variant
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }

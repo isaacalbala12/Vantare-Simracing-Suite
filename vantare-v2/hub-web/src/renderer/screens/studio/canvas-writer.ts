@@ -243,6 +243,7 @@ export class CanvasWriter {
       epoch = this.epoch;
     const submittedRevision = this.view.revision;
     this.inflight = { job, expected };
+    this.notice = undefined;
     this.changed();
     let response: StudioView | undefined;
     try {

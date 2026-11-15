@@ -138,6 +138,7 @@ it("serializes writes and keeps only the last completed gesture while one is pen
   pending[0].resolve(ack(0, "b"));
   await Promise.resolve();
   expect(send).toHaveBeenCalledTimes(2);
+  expect(writer.notice).not.toBe("saved");
   expect(send.mock.calls[1][0]).toMatchObject({
     change: { x: 300 },
     baseRevision: "b".repeat(64),

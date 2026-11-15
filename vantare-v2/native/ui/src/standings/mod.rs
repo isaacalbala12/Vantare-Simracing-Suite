@@ -1328,7 +1328,9 @@ mod tests {
 mod session_tests;
 
 #[cfg(test)]
-trait LegacyDemand { fn legacy_demand(&self) -> vantare_ipc::Demand; }
+trait LegacyDemand {
+    fn legacy_demand(&self) -> vantare_ipc::Demand;
+}
 #[cfg(test)]
 impl LegacyDemand for Settings {
     fn legacy_demand(&self) -> vantare_ipc::Demand {

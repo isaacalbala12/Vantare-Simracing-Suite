@@ -69,6 +69,14 @@ mod tests {
         let mut changed = hub.layout().clone();
         changed.instances[0].x += 20.0;
         hub.save(&changed).expect("guardar sin falso conflicto");
+        // Dos reemplazos rápidos pueden compartir mtime; esta prueba comprueba
+        // inicialización/recarga, no la verificación periódica de bytes de IPC.
+        fs::File::options()
+            .write(true)
+            .open(&path)
+            .expect("archivo del test")
+            .set_modified(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1))
+            .expect("marca de cambio explícita");
         assert!(overlays.poll().expect("recargar en pista"));
         assert_eq!(overlays.layout(), &changed);
         overlays

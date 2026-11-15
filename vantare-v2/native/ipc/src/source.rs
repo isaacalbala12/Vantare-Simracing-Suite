@@ -1,4 +1,4 @@
-//! Fuentes de `Snapshot`s para [`crate::run_with_connection`]: pipe del núcleo o
+//! Fuentes de fotos para los hosts de overlays: pipe del núcleo o
 //! carrera sintética local para probar los widgets sin núcleo.
 
 use crate::{Demand, Photo};

@@ -76,8 +76,8 @@ impl Default for Layout {
     }
 }
 
-// El dominio sigue siendo puro y no depende de serde: el formato persistido
-// pertenece a UI, igual que las posiciones y Settings.
+// El documento IPC conserva el formato persistido de las preferencias;
+// el formateador de dominio mantiene sus tipos independientes del documento.
 mod preferences {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use vantare_domain::format::{Language, Preferences, Units};

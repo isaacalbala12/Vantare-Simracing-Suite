@@ -1,3 +1,6 @@
+> Histórico de la integración VANTA-141. ADR 0110 retira Inicio y Hub fast;
+> el kit activo conserva solo las mediciones de overlays.
+
 # Integración VANTA-141 — Refs #2213
 
 Base: origin/nightly 07825965f30322cca053174bcc17f248dfad1f5e, Rust 1.99.1.

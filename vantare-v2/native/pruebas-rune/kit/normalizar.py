@@ -14,7 +14,6 @@ from agregar import frame_metrics, gpu_metrics, noise_metrics, percentile, prese
 from analizar import PRIMARY, METRICS, block_ratio, aa_check
 from cruce_rune import cross_encoded, first_display
 from latencia import complete_replay, cross_display, read_trace
-from normalizar_inicio import normalize_home
 from resumir_aguante import summarize as summarize_endurance
 
 
@@ -194,11 +193,6 @@ def normalize(root):
                           summarize_endurance(endurance_path.parent)
                           if (endurance_path.parent / "ejecucion.json").exists() else {})}
     output["additional_observations"] = [row for row in observations if not all(row[key] == value for key, value in PRIMARY.items())]
-    hub = root / "hub-resumen.json"
-    if (root / "inicio").exists():
-        output["hub"] = normalize_home(root)
-    elif hub.exists():
-        output["hub"] = read_json(hub)
     return output
 
 

@@ -150,7 +150,7 @@ def endurance_pass(data):
 def evaluate(document):
     if document.get("schema") != 1 or document.get("configuration") != PRIMARY:
         raise InvalidEvidence("Falta el escenario principal declarado: 1 ventana con 10 Relative, 60 Hz, sin carga")
-    output = {"source": "INFORME-FABLE.md §8, corregido por Isaac: una capa por monitor", "scenario": "1 ventana con 10 Relative, 60 Hz, sin carga", "hub": "pendiente", "overlays": {}, "adopted": False}
+    output = {"source": "INFORME-FABLE.md §8, corregido por Isaac: una capa por monitor", "scenario": "1 ventana con 10 Relative, 60 Hz, sin carga", "overlays": {}, "adopted": False}
     output["measurement_contract"] = {"relative_demand_ms": 33,
         "cpu_scope":"measured process family only; dwm.exe CPU is NOT counted",
         "ipc_loss_comparison": "actual pipe sends versus subscriber receives; all origin publications retained",
@@ -278,13 +278,6 @@ def evaluate(document):
         output["overlays"][name] = {"verdict": verdict, "cpu": stats, "aa_ratios": aa, "aa_metrics":aa_metrics,
                                     "endurance_action_evidence":data.get('endurance',{}).get('action_evidence',{'monitor_sleep_resume':'declarativo','resolution_change':'R declarativa; cambio/restauración debe estar observado por Windows'}),
                                     "checks": checks, "correctness": correctness, "endurance": endurance}
-    electron = document.get("hub", {}).get("electron")
-    if electron:
-        interactive = number(electron.get("interactive_median_s"), "Electron interactivo")
-        memory = number(electron.get("private_family_median_mib"), "Electron memoria de toda la familia")
-        if electron.get("cold_starts") != 10 or electron.get("warm_starts") != 10 or electron.get("interaction_rounds") != 5:
-            raise InvalidEvidence("Prueba A incompleta")
-        output["hub"] = "revisar_ADR_0107_con_Isaac" if interactive > 3 or memory > 600 else "mantener_Electron"
     return output
 
 

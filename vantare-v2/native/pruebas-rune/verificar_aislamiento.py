@@ -8,7 +8,10 @@ BENCH = Path(__file__).resolve().parent
 REPO = BENCH.parents[2]
 PREFIX = 'vantare-v2/native/pruebas-rune/'
 EXCEPTIONS = {
-    'vantare-v2/hub-rune/scripts/check_dependencies.py',
+    'vantare-v2/native/overlays-rune/scripts/check_dependencies.py',
+    'vantare-v2/native/overlays-rune/scripts/test_dependencies.py',
+    '.github/scripts/native_gate_scope.py',
+    '.github/scripts/test_native_gate_scope.py',
     'vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md',
     '.github/workflows/rune-measurement.yml',
 }
@@ -22,9 +25,13 @@ def validate():
     provenance = json.loads((BENCH/'fuentes-medicion.json').read_text(encoding='utf-8'))
     base = subprocess.check_output(['git', 'merge-base', 'HEAD', 'origin/nightly'],
                                    cwd=REPO, text=True).strip()
-    changed = subprocess.check_output(['git', 'diff', '--name-only', base],
+    changed = subprocess.check_output(['git', 'diff', '--name-only', '--diff-filter=d', base],
                                       cwd=REPO, text=True).splitlines()
-    unexpected = unexpected_paths(changed)
+    deleted = subprocess.check_output(['git', 'diff', '--name-only', '--diff-filter=D', base],
+                                      cwd=REPO, text=True).splitlines()
+    retired = lambda path: path.startswith('vantare-v2/hub-rune/') or path in {
+        '.github/workflows/hub-rune.yml', 'vantare-v2/hub-web/scripts/rune-catalog.mjs'}
+    unexpected = unexpected_paths(changed + [path for path in deleted if not retired(path)])
     if unexpected:
         raise ValueError('El kit modifica producto u otra ruta no autorizada: '+', '.join(unexpected))
     product = tomllib.loads((BENCH.parent/'Cargo.toml').read_text(encoding='utf-8'))
@@ -32,7 +39,7 @@ def validate():
            for member in product['workspace']['members']):
         raise ValueError('El workspace de producto incluye el banco')
     bench = tomllib.loads((BENCH/'Cargo.toml').read_text(encoding='utf-8'))
-    if set(bench['workspace']['members']) != {'hola', 'contador', 'relative', 'inicio'}:
+    if set(bench['workspace']['members']) != {'hola', 'contador', 'relative'}:
         raise ValueError('La integración perdió una pieza del workspace de medición')
     patches = bench['patch']['crates-io']
     if set(patches) != {'wgpu-hal', 'winit', 'parley_engine', 'accesskit_windows'}:

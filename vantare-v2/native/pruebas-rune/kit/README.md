@@ -1,20 +1,12 @@
 # VANTA-141: campaña, recogida y análisis
 
-Los controladores de campaña, Inicio, corrección visual, aguante y recogida
+Los controladores de campaña, corrección visual, aguante y recogida
 están implementados e integrados con el muestreador. La entrega requiere además
 el inventario de binarios, cierre de DLL y ZIP verificado. Los tests sintéticos
 comprueban el análisis; no son mediciones del PC de juego.
 
-Por encargo del orquestador se permite preparar el ZIP PENDIENTE-INICIO con
-todo lo compilado y un hueco explícito únicamente para Inicio Rune. Se exige
-`--pending-inicio-rune` (o `package.ps1 -PendingInicioRune`), ready=false y la
-nota INICIO-RUNE-PENDIENTE.txt; el modo final sigue rechazando cualquier hueco.
-Read-VantareKit rechaza este paquete antes de la medición. La guía para Isaac
-es PASO_A_PASO_ISAAC.txt y el orden de los nueve PR está en ORDEN_FUSION.md.
-GENERAR_MANIFIESTO.py fija las fuentes y artefactos de esta campaña. Cuando
-Isaac despierte el Mac, COMPLETAR_SERVIDOR.ps1 -CopiarMac hace un solo intento
-de copia, genera el inventario completo y cierra un ZIP nuevo sin el hueco.
-No se ha ejecutado esa copia mientras el Mac duerme.
+ADR 0110 retira la medición de Inicio. El ZIP PENDIENTE-RUNE omite
+Hola y Relative hasta su reconstrucción auditada; no sirve para medir.
 
 El plan RONDAS.ps1 genera ABBA/BAAB y controles A/A, con registro exclusivo
 de un máximo de tres intentos. Una ventana por monitor contiene 1, 4 o 10
@@ -35,13 +27,12 @@ Conserva fallos y verifica los hashes de cada entrada. Nunca sobrescribe un zip.
 
 package.ps1 se usa solo en el servidor con Python >=3.11 y dumpbin. Recibe
 un manifiesto schema=1: files con source absoluto en D:, path relativo del
-kit y sha256; binaries con las diez funciones requeridas, path, source_sha
+kit y sha256; binaries con las siete funciones requeridas, path, source_sha
 y perfil. Cada variante relative exige Release opt-level=3, lto=false,
 codegen-units=16, debug=false. Exige grabación, PresentMon 2.6.0 oficial y los
 guiones raíz completos. Comprueba el SHA incrustado en cada binario, todas
 las dependencias de exe/DLL y el contenido/hash del zip sin ejecutar nada.
-INICIAR incluye bin/ en PATH para los CRT comunes; Electron conserva
-su árbol completo. Un staging fallido se conserva y no es una entrega válida.
+INICIAR incluye bin/ en PATH para los CRT comunes. Un staging fallido se conserva y no es una entrega válida.
 
 ANALIZAR.ps1 aplica INFORME-FABLE §8 a evidencia normalizada. Por decisión de
 Isaac, compilation.status=pending_authorized con plan explícito omite las
@@ -68,15 +59,6 @@ una vez sin overlays y se reutiliza su número de iteraciones en todos.
 Ruido >2%, CPU/GPU térmica, pérdidas o A/A >=2,5% anulan la familia completa.
 Hasta tres intentos, conservados; reanudar usa el primero completo, no el mejor.
 Un mutex impide campañas/aguantes/recogidas simultáneos en la misma sesión.
-
-INICIO registra 10 perfiles QA nuevos y 10 reutilizados por motor y cinco
-interacciones ABC/CAB/BCA. No purga cachés del sistema; primer arranque tras
-reinicio queda aparte. No hay núcleos live ni cuentas: Electron mock, GPUI demo
-y Rune estático. Ruta QA nueva y pipe privado. En Rune, el primer dibujo puede
-ser CPU antes de un Present: T1 usa marca posterior a GdiFlush/DwmFlush;
-se conserva también el primer tiempo observado por PresentMon. Las marcas
-observadas por el padre son cotas superiores. Compilación de esa marca Rune
-pendiente de Mac; no empaquetar el binario anterior con el contrato nuevo.
 
 CORRECCION guía las ocho comprobaciones y guarda capturas PNG recientes;
 S/N/P son observaciones del operador, nunca aprobaciones automáticas.

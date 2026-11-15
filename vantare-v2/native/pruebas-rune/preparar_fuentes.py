@@ -30,20 +30,7 @@ def provenance_source(data):
     return re.sub(r'\n{3,}', '\n\n', text).encode('utf-8')
 
 
-def electron_provenance_source(data):
-    text=data.decode('utf-8')
-    start=text.index('  const cwd =')
-    end=text.index('  return {',start)
-    text=text[:start]+('  const sha = process.env.VANTARE_MEASUREMENT_SOURCE_SHA;\n'
-                      '  if (!sha || !/^[a-f0-9]{40}$/u.test(sha))\n'
-                      '    throw new Error("Verified snapshot source SHA required");\n')+text[end:]
-    text=text.replace('dirty=false','dirty=not_applicable')
-    text=text.replace('import { execFileSync } from "node:child_process";\n','').replace('import { resolve } from "node:path";\n','')
-    return text.encode('utf-8')
-
-
-STAMPERS = {'vantare-v2/native/build-support/src/lib.rs':provenance_source,
-            'vantare-v2/hub-web/scripts/measurement-build.ts':electron_provenance_source}
+STAMPERS = {'vantare-v2/native/build-support/src/lib.rs':provenance_source}
 
 
 def stamp_source(destination, recipe):
@@ -130,7 +117,7 @@ def prepare(variant):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('variant', choices=('gpui', 'gpui-fast', 'hub-fast', 'electron'))
+    parser.add_argument('variant', choices=('gpui', 'gpui-fast'))
     parser.add_argument('--json', action='store_true')
     args=parser.parse_args()
     path=prepare(args.variant)

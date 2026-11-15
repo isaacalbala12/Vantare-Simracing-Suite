@@ -3,7 +3,7 @@ function Test-VantareRawThermals {
  param([Parameter(Mandatory)][string]$Root)
  . (Join-Path $PSScriptRoot 'muestreador/TERMICA.ps1')
  . (Join-Path $PSScriptRoot 'IPC.ps1')
- $descriptors=@(Get-ChildItem -LiteralPath $Root -Recurse -File | Where-Object {$_.Name -in @('observacion.json','observacion-inicio.json','ejecucion.json')})
+ $descriptors=@(Get-ChildItem -LiteralPath $Root -Recurse -File | Where-Object {$_.Name -in @('observacion.json','ejecucion.json')})
  foreach($file in $descriptors){
   $meta=Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json -AsHashtable
   $endurance=$file.Name -eq 'ejecucion.json'

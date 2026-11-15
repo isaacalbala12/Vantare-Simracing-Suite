@@ -20,8 +20,7 @@ PERMISSIVE = {
     "Unlicense", "Zlib",
 }
 LOCAL_CRATES = {
-    "build-support", "domain", "hub-host", "installer", "ipc", "launcher",
-    "profiling", "services",
+    "domain", "ipc", "profiling",
 }
 FORBIDDEN_PACKAGES = {
     "vantare-runtime", "vantare-ui", "vantare-hub", "gpui", "gpui_platform",
@@ -87,7 +86,7 @@ def permissive(expression):
 
 def audit(metadata, first_party=None):
     first_party = {
-        (ROOT.parent / "native" / crate / "Cargo.toml").resolve()
+        (ROOT.parent / crate / "Cargo.toml").resolve()
         for crate in LOCAL_CRATES
     } | {(ROOT / "Cargo.toml").resolve()} if first_party is None else {Path(path).resolve() for path in first_party}
     errors = []
@@ -116,7 +115,7 @@ def main():
     errors = audit(metadata)
     if args.report:
         rows = sorted(metadata["packages"], key=lambda p: (p["name"], p["version"]))
-        report = "# Licencias · Hub Rune\n\nGenerado con cargo metadata --locked. Todas las plataformas.\n\n"
+        report = "# Licencias · Overlays Rune\n\nGenerado con cargo metadata --locked. Todas las plataformas.\n\n"
         report += "Los crates locales existentes sin declaración SPDX conservan su licencia del repositorio; no son dependencias externas aprobadas por este informe.\n\n"
         report += "| Paquete | Versión | Licencia declarada |\n| --- | --- | --- |\n"
         report += "".join(f"| {p['name']} | {p['version']} | {p.get('license') or 'Local: licencia del repositorio'} |\n" for p in rows)

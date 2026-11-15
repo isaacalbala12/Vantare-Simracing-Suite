@@ -291,6 +291,23 @@ Tipos producto/scripts, lint web, 428 tests Studio, 491 corpus/índice y 32 gale
 PASS. CI/revisión pendientes; PR/head y detalles finales en #1995.
 D031 y D048 preservados en sus ramas, pendientes de este bloque; D111 después.
 
+## VANTA-144 · PR 7 en preparación: Eficiencia y destino de captura (15/11/2026)
+
+Worker B, #2333; rama `vantareapp/isa-2333-relative-eficiencia` apilada sobre
+64a445de3 de #2348, base de nightly 639bb40aa. Solo overlays-rune y este handoff.
+Preparado el dibujo de Relative Eficiencia a partir del Board canónico, sus
+columnas/formatos, pie, calidad por celda y muestras del movimiento compartido.
+Kit de panel/texto con las fuentes existentes, sin copia ni dependencia de UI.
+Destino de captura con API pública de Rune, sin App/ventana ni herramientas
+--snap; alfa recta, tamaño acotado y pintor falso para las pruebas CPU.
+
+Todavía no conectado al ejecutable: #2344 sigue abierto y el PR 6 aporta el
+movimiento/contadores comunes. Quedan lector/CLI de escenas, integración y F1
+del PC de juego en el horario del orquestador. No se afirma paridad ni preview
+lista; distribución mantiene bloqueado --fuente local. Sin dependencias/locks
+nuevos. Formato/diff y auditoría 425 paquetes/6 tests PASS; Clippy/tests Rune
+encolados, aún sin turno por memoria. No se ejecuta producto ni gráfica.
+
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 
 #2345 fusionado por el orquestador como df9c911b5. Worker B atiende sus nits

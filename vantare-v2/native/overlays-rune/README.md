@@ -141,6 +141,38 @@ cuentan como imágenes. Los tests CPU comparan todos los campos del flujo de dib
 el aviso; el booleano de Runtime::frame solo indica animación en curso. No miden presentaciones
 GPU ni sustituyen la campaña del PC de juego.
 
+## Relative Eficiencia y captura: preparación del PR 7
+
+`relative_eficiencia` recibe el `Board` y los ajustes de domain. No calcula
+gaps, clasificaciones, derechos ni cadencias. Conserva las medidas del Look
+GPUI (470 px, cabecera 36, filas 29, pie 38), columnas configuradas, calidad
+por celda, nombres formateados por domain y badges de vueltas ES/EN.
+`eficiencia` aporta panel, borde, tipografía y elipsis; incluye las mismas
+instancias Inter del recurso existente, sin copiar fuentes ni enlazar UI.
+El anfitrión debe registrar `eficiencia::FONTS` antes de colocar el widget.
+
+`view_rows` acepta las muestras de posición/opacidad/aviso resueltas por el
+movimiento común. `view` pinta esas mismas filas asentadas para una escena fija.
+No hay un bucle de animación ni un reloj propio del Look. La conexión al host,
+el movimiento, los contadores y el filtro de cadencias se completan contra
+PR 3/6; el ejecutable todavía no ofrece Relative ni una CLI de escenas.
+
+`offscreen` usa las API públicas `Runtime`, `Gpu`, `Renderer` y `Offscreen` de
+Rune: no llama a `--snap`, no crea App, event loop ni ventana (tampoco oculta).
+La colocación y la comprobación de tamaño son CPU. El destino está limitado a
+4096 × 4096 píxeles; comprueba longitud RGBA y convierte alfa premultiplicada
+a recta en el espacio de composición antes de codificar el PNG. Los tests
+sustituyen solo la función de pintar; nunca crean dispositivos.
+
+Esta preparación no es todavía una entrega completa del PR 7: quedan el
+lector de las mismas escenas guardadas de GPUI sobre los módulos trasladados
+de #2344, la CLI y las capturas F1 en Windows. No se habilita una fuente local
+en release ni una preview pública. La preview con canal privado/clave de un
+arranque pertenece al PR 25. `Offscreen::read` de Rune es bloqueante: el futuro
+llamante de preview debe limitar la vida del proceso hijo como fija ADR 0109.
+Sin capturas del PC de juego no se afirma paridad ni se solicita fusionar el
+widget. El cinturón del ejecutable sigue siendo su primera instrucción.
+
 ## Servidor y CI sin gráficos
 
 En el servidor, el entorno Machine debe tener `VANTARE_SIN_GRAFICOS=1` y los

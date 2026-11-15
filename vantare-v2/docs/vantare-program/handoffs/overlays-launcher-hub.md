@@ -293,8 +293,9 @@ D031 y D048 preservados en sus ramas, pendientes de este bloque; D111 después.
 
 ## VANTA-144 · PR 7 en preparación: Eficiencia y destino de captura (15/11/2026)
 
-Worker B, #2333; rama `vantareapp/isa-2333-relative-eficiencia` apilada sobre
-64a445de3 de #2348, base de nightly 639bb40aa. Solo overlays-rune y este handoff.
+Worker B, #2333; rama `vantareapp/isa-2333-relative-eficiencia`, rebasada con
+--onto nightly 8ea2e9741 tras el squash 99bbee4b4 de #2348 (head anterior
+64a445de3). Solo overlays-rune y este handoff.
 Draft [#2351](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2351),
 código inicial fd86187ee; todavía no es entrega final ni candidato a merge.
 Preparado el dibujo de Relative Eficiencia a partir del Board canónico, sus
@@ -304,7 +305,9 @@ Destino de captura con API pública de Rune, sin App/ventana ni herramientas
 --snap; alfa recta, tamaño acotado y pintor falso para las pruebas CPU.
 
 Todavía no conectado al ejecutable: #2344 sigue abierto y el PR 6 aporta el
-movimiento/contadores comunes. Quedan lector/CLI de escenas, integración y F1
+movimiento/contadores comunes. Worker A es dueño de conectar diseño, fotos y
+cadencias: B no toca esa conexión. B conserva Eficiencia y captura/CLI de escenas,
+y consume el Relative común cuando A lo exponga. Queda F1
 del PC de juego en el horario del orquestador. No se afirma paridad ni preview
 lista; distribución mantiene bloqueado --fuente local. Sin dependencias/locks
 nuevos. Windows por cola (dos jobs, target compartido): Clippy PASS y 23 tests
@@ -325,7 +328,16 @@ Plan CPU, todavía SIN PNG:
 `D:/VantareServer/evidence/overlays-rune/pr7/plan-4e4a2c80a/INDEX.md`.
 Dependencia comprobada a las 20:02 UTC: origin/nightly 80f105ba9 todavía no
 contiene ipc::layout de #2344. No se integran ni duplican los módulos antes de
-su merge. #2348 tiene CI completa verde en 64a445de3, revisión pendiente.
+su merge. #2348 ya fusionado por el orquestador como 99bbee4b4.
+
+Contrato acordado a través del orquestador: A expone un módulo Relative común
+(por ejemplo relative::scene) con VisualRow { row: domain Row, slot: f32,
+opacity: f32, alert: Option<Alert> }, además de cabecera. Alert contiene kind
+semántico y opacity ya interpolada, independiente de la opacidad de la fila.
+Los dos Looks solo eligen colores y pintan; no recalculan movimiento. No se
+crea en B otro módulo de movimiento ni se tocan fuente/diseño/cadencias.
+El arreglo de topología #2346 va en su rama propia isa-2346-monitores-rune;
+A conserva sus hooks windowless, retirada interna, waker y geometría actual.
 
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 

@@ -153,9 +153,13 @@ El anfitrión debe registrar `eficiencia::FONTS` antes de colocar el widget.
 
 `view_rows` acepta las muestras de posición/opacidad/aviso resueltas por el
 movimiento común. `view` pinta esas mismas filas asentadas para una escena fija.
-No hay un bucle de animación ni un reloj propio del Look. La conexión al host,
-el movimiento, los contadores y el filtro de cadencias se completan contra
-PR 3/6; el ejecutable todavía no ofrece Relative ni una CLI de escenas.
+No hay un bucle de animación ni un reloj propio del Look. Worker A conecta el
+host, fuente y cadencias y aporta el Relative común en PR 6. Worker B no toca
+esa conexión. El contrato común es VisualRow con Row, slot interpolado, opacity
+y Alert opcional (kind semántico y opacity interpolada, independiente de la fila),
+además de cabecera. Cada Look solo elige el color y pinta. La fachada actual
+del pintor se adaptará al módulo de A cuando lo exponga, sin otro movimiento.
+El ejecutable todavía no ofrece Relative ni una CLI de escenas.
 
 `offscreen` usa las API públicas `Runtime`, `Gpu`, `Renderer` y `Offscreen` de
 Rune: no llama a `--snap`, no crea App, event loop ni ventana (tampoco oculta).

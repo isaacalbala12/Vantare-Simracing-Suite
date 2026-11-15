@@ -4,6 +4,7 @@ import {
   studioWidgetDefaults,
 } from "../src/contract/generated/studio";
 import { isStudio } from "../src/contract/modules/studio";
+import { createMockHost } from "../src/mock/host";
 import {
   type CanvasState,
   projectedBox,
@@ -11,7 +12,18 @@ import {
 } from "../src/renderer/screens/studio/gesture-state";
 
 function view(revision = "0".repeat(64)): StudioView {
+  const reply = createMockHost("studio-canvas")({
+    kind: "request",
+    id: 1,
+    request: { method: "studio.get" },
+  });
+  if (reply?.kind !== "response" || reply.result.method !== "studio.get")
+    throw Error("Studio fixture missing");
+  const base = reply.result.value;
+  const item = base.instances.find((item) => item.kind === "delta");
+  if (!item) throw Error("Studio widget fixture missing");
   const value: StudioView = {
+    ...base,
     state: "ready",
     showing: false,
     plan: "pro",
@@ -22,6 +34,7 @@ function view(revision = "0".repeat(64)): StudioView {
     canvas: { width: 1920, height: 1080, source: "custom" },
     instances: [
       {
+        ...item,
         id: "one",
         kind: "delta",
         settings: studioWidgetDefaults.delta,

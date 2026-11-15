@@ -95,7 +95,15 @@ export function previewCatalogDrop(
     others,
     studioGeometryLimits.snapScreenPx / scale,
   );
-  return result ? { at: result.position, size, guides: result.guides } : null;
+  // studio.add accepts an origin inside the canvas; unlike a move, it rejects
+  // a negative origin. Do not advertise a valid drop the host cannot accept.
+  return result &&
+    result.position[0] >= 0 &&
+    result.position[1] >= 0 &&
+    result.position[0] < gesture.canvas[0] &&
+    result.position[1] < gesture.canvas[1]
+    ? { at: result.position, size, guides: result.guides }
+    : null;
 }
 
 /** One-use gesture, consumed even on an invalid release. Never queues/retries an add. */

@@ -56,9 +56,9 @@ export async function checkStudioCatalogDrop(
         await page.getByRole("radio", { name: /^3440 × 1440/ }).click();
         await until(
           async () =>
-            (await page.locator(".v-studio-canvas-plane").innerText()).includes(
-              "3440 × 1440",
-            ),
+            (
+              (await page.locator(".v-studio-canvas-plane").textContent()) ?? ""
+            ).includes("3440 × 1440"),
           10000,
           "ultrawide canvas",
         );
@@ -114,10 +114,19 @@ export async function checkStudioCatalogDrop(
       0,
     );
 
-    for (const mode of ["outside", "covered", "escape"] as const) {
+    for (const mode of [
+      "outside",
+      "covered",
+      "originOutside",
+      "escape",
+    ] as const) {
       await setup();
-      await start();
+      const plane = await start();
       if (mode === "outside") await page.mouse.move(10, 100, { steps: 4 });
+      if (mode === "originOutside")
+        await page.mouse.move(plane.x + 1, plane.y + plane.height / 2, {
+          steps: 4,
+        });
       if (mode === "covered") {
         const panel = await page.locator(".v-canvas-catalog").boundingBox();
         assert.ok(panel);
@@ -182,6 +191,7 @@ export async function checkStudioCatalogDrop(
           oneAddAt: true,
           outsideDoesNotAdd: true,
           coveredDoesNotAdd: true,
+          invalidOriginDoesNotAdd: true,
           escapeCancels: true,
           emptyCanvas: true,
           keyboardAlternative: true,

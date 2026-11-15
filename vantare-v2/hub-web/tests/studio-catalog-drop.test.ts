@@ -77,6 +77,18 @@ it("Escape/lost capture/unmount cancellation has no command", () => {
   expect(controller.preview(view, [200, 200], surface, access)).toBeNull();
   expect(controller.release(view, [200, 200], surface, access)).toBeNull();
 });
+it("does not send an origin the host rejects even when the pointer is inside", () => {
+  const { view, surface, controller } = setup();
+  controller.begin(view, "delta", access);
+  expect(
+    controller.release(
+      view,
+      [surface.left + 1, surface.top + surface.height / 2],
+      surface,
+      access,
+    ),
+  ).toBeNull();
+});
 
 it("does not start without capacity, a canvas or authority", () => {
   const { view, controller } = setup();

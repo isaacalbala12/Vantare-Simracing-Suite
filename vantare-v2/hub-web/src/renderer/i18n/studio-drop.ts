@@ -4,7 +4,7 @@ export const studioDropText = {
   dragHelp:
     "Arrastra hasta el lienzo. Con teclado, pulsa Intro para añadir en un hueco libre.",
   release: "Suelta para añadir",
-  outside: "Suelta dentro del lienzo para añadir",
+  outside: "Coloca el widget dentro del lienzo para añadirlo",
   snapped: "Imán",
   cancel: "Arrastre cancelado. No se ha añadido ningún widget.",
   added: (name: string) => `${name} añadido al lienzo.`,

@@ -125,6 +125,18 @@ fn resize(
     if requested.0 <= 0.0 || requested.1 <= 0.0 {
         return Err(HostError::Rejected);
     }
+    let previous = (f64::from(item.size.width), f64::from(item.size.height));
+    // Recognize a native-size round-trip before aspect correction can mistake
+    // independent f32 rounding for a new ratio. Never relax the size limits.
+    let requested = if same_size(previous.0, requested.0)
+        && same_size(previous.1, requested.1)
+        && (crate::studio::GEOMETRY_MIN.0..=crate::studio::GEOMETRY_MAX.0).contains(&requested.0)
+        && (crate::studio::GEOMETRY_MIN.1..=crate::studio::GEOMETRY_MAX.1).contains(&requested.1)
+    {
+        previous
+    } else {
+        requested
+    };
     let mut next = crate::studio::geometry::bounded_size(
         (item.size.width.into(), item.size.height.into()),
         requested,
@@ -135,8 +147,7 @@ fn resize(
     if !near(next.0, requested.0) || !near(next.1, requested.1) {
         return Err(HostError::Rejected);
     }
-    let previous = (f64::from(item.size.width), f64::from(item.size.height));
-    if near(previous.0, next.0) && near(previous.1, next.1) {
+    if same_size(previous.0, next.0) && same_size(previous.1, next.1) {
         next = previous;
     }
     coordinate(at.0)?;
@@ -157,6 +168,11 @@ fn resize(
     put(&mut stored, "size", &size.0)?;
     put(fields, "geometry", &stored.0)?;
     Ok(true)
+}
+// Native painter sizes can round-trip through f32. Half its relative epsilon
+// covers that rounding; larger size changes still produce a write.
+fn same_size(a: f64, b: f64) -> bool {
+    near(a, b) || (a - b).abs() <= a.abs().max(b.abs()) * f64::from(f32::EPSILON) / 2.0
 }
 fn position(fields: &mut Fields, at: (f64, f64)) -> Result<bool, HostError> {
     coordinate(at.0)?;

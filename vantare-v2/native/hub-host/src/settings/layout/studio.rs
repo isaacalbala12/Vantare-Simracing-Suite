@@ -79,9 +79,14 @@ impl Open {
             .iter()
             .map(|item| (f64::from(item.x), f64::from(item.y), item.visible))
             .collect();
-        let monitor = pinned
-            .or_else(|| crate::studio::monitor::choose(&source(), &positions))
-            .ok_or(HostError::Protected)?;
+        let monitors = source();
+        let monitor = match pinned {
+            Some(monitor) if monitors.contains(&monitor) => monitor,
+            Some(_) => return Err(HostError::Protected),
+            None => {
+                crate::studio::monitor::choose(&monitors, &positions).ok_or(HostError::Protected)?
+            }
+        };
         let canvas = canvas(&document.fields, monitor)?;
         for item in &mut projected {
             relative(item, monitor, canvas)?;

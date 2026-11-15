@@ -353,7 +353,8 @@ fn crossing_to_another_monitor_keeps_the_session_canvas_and_other_coordinates() 
     state.monitor_source = two_monitors;
     let access = Some(CatalogAccess::Pro);
     let before = state.view(access);
-    state.monitor_source = || panic!("a pinned session must not query monitors again");
+    // Live enumeration still contains both monitors; moving the first widget
+    // must not reselect the canvas from its new position.
     let moved = edit(
         &mut state,
         GeometryChange::Move {
@@ -445,4 +446,116 @@ fn floating_point_aspect_drift_does_not_write_or_create_undo() {
     assert_eq!(after.revision, before.revision);
     assert_eq!(std::fs::read(&path).expect("bytes"), bytes);
     assert_eq!(state.undo.len(), 0);
+}
+
+#[test]
+fn disconnecting_the_pinned_monitor_protects_without_selecting_another() {
+    let (_root, path, _) = fixture();
+    let mut state = State::new(path.clone());
+    state.monitor_source = two_monitors;
+    let access = Some(CatalogAccess::Pro);
+    let before = state.view(access);
+    let bytes = std::fs::read(&path).expect("bytes");
+    state.monitor_source = || two_monitors().into_iter().skip(1).collect();
+    assert_eq!(state.view(access).state, StudioState::Protected);
+    assert_eq!(
+        edit(
+            &mut state,
+            GeometryChange::Move {
+                x: n(100.0),
+                y: n(100.0)
+            },
+            &before.revision
+        ),
+        Err(HostError::Protected)
+    );
+    assert_eq!(std::fs::read(&path).expect("unchanged bytes"), bytes);
+    assert_eq!(state.undo.len(), 0);
+    state.monitor_source = two_monitors;
+    assert_eq!(state.view(access), before);
+}
+
+#[test]
+fn decimal_size_round_tripped_through_f32_does_not_write_or_create_undo() {
+    let (_root, path, _) = fixture();
+    let mut value = layout(&path);
+    value["instances"][0]["geometry"]["size"] = serde_json::json!({"width":84.3,"height":42.15});
+    replace_layout(&path, &value);
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let before = state.view(access);
+    let bytes = std::fs::read(&path).expect("bytes");
+    let item = &before.instances[0];
+    let after = edit(
+        &mut state,
+        GeometryChange::Resize {
+            x: item.x,
+            y: item.y,
+            width: n(f64::from(84.3_f32)),
+            height: n(f64::from(42.15_f32)),
+        },
+        &before.revision,
+    )
+    .expect("same native size");
+    assert_eq!(after, before);
+    assert_eq!(std::fs::read(&path).expect("unchanged bytes"), bytes);
+    assert_eq!(state.undo.len(), 0);
+    // A real representable resize remains a write, rather than being swallowed
+    // by a fixed tolerance chosen just for 84.3.
+    let changed = edit(
+        &mut state,
+        GeometryChange::Resize {
+            x: item.x,
+            y: item.y,
+            width: n(f64::from(84.3_f32.next_up())),
+            height: n(f64::from(42.15_f32.next_up())),
+        },
+        &before.revision,
+    )
+    .expect("different native size");
+    assert_ne!(changed.revision, before.revision);
+    assert_eq!(state.undo.len(), 1);
+}
+
+#[test]
+fn native_rounding_does_not_change_locked_aspect_or_relax_size_limits() {
+    for (stored_width, width, height) in [(84.3, 84.3_f32, 42.0_f32), (3840.0, 3840.0, 1920.0)] {
+        let (_root, path, _) = fixture();
+        let mut value = layout(&path);
+        value["instances"][0]["geometry"]["size"] =
+            serde_json::json!({"width":stored_width,"height":height});
+        replace_layout(&path, &value);
+        let mut state = State::new(path.clone());
+        let access = Some(CatalogAccess::Pro);
+        let before = state.view(access);
+        let bytes = std::fs::read(&path).expect("bytes");
+        let item = &before.instances[0];
+        let same = GeometryChange::Resize {
+            x: item.x,
+            y: item.y,
+            width: n(f64::from(width)),
+            height: n(f64::from(height)),
+        };
+        assert_eq!(
+            edit(&mut state, same, &before.revision).expect("same locked size"),
+            before
+        );
+        if width > 100.0 {
+            assert_eq!(
+                edit(
+                    &mut state,
+                    GeometryChange::Resize {
+                        x: item.x,
+                        y: item.y,
+                        width: n(3_840.000_01),
+                        height: n(1_920.000_005),
+                    },
+                    &before.revision
+                ),
+                Err(HostError::Rejected)
+            );
+        }
+        assert_eq!(std::fs::read(&path).expect("unchanged bytes"), bytes);
+        assert_eq!(state.undo.len(), 0);
+    }
 }

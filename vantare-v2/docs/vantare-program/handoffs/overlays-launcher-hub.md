@@ -1,3 +1,15 @@
+## VANTA-138 · Seguimiento pequeño de geometría #2320 (15/11/2026)
+
+El monitor fijado se contrasta con la lista viva sin volver a elegirlo por la
+posición de los widgets. Si desaparece o cambian sus límites/escala, Studio
+responde Protected y no escribe; al volver el mismo monitor conserva el lienzo.
+El resize reconoce el redondeo de tamaños nativos f32 (84.3) como no-op, sin
+reescribir ni añadir deshacer. Los cambios mayores siguen escribiendo.
+Tests con monitores falsos, bytes e historial; no se ejecutan ventanas ni GPU.
+Sin cambio de protocolo. Clippy all-targets -D warnings y 610 tests de hub-host
+pasan (1 omitido), junto con formato y revisión del diff. PR/head en #1995;
+CI y review pendientes. Sin merge ni release propios.
+
 ## VANTA-138 · D029, revisión de #2327 (15/11/2026)
 
 Preparar una copia no escribe y ahora exige que el descubrimiento de aplicaciones

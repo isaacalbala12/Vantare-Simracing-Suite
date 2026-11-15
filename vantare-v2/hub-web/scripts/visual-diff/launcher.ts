@@ -253,6 +253,13 @@ launcherScenes["launcher-perfil-duplicado"] = {
     const name = page.getByRole("textbox", { name: "Nombre", exact: true });
     await name.waitFor();
     assert.equal(await name.inputValue(), "Creador de Contenido (copia)");
-    await name.focus();
+    assert.equal(
+      await name.evaluate((node) => node === document.activeElement),
+      true,
+    );
+    // Blur the editable field through a real click before the harness toggles Ctrl+B.
+    await page
+      .getByRole("heading", { name: "Editar perfil", exact: true })
+      .click();
   },
 };

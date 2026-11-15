@@ -1,6 +1,6 @@
 # Cargo keys local packages by their absolute checkout path. Run every slot build
-# through a stable per-slot junction so switching checkouts only recompiles the
-# files that changed; registry/git dependencies stay in the shared target.
+# through a stable per-slot junction and invalidate only the local packages whose
+# content changed between the previous checkout and the current one.
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
 function Set-VantareSlotWorkspace {
     param([Parameter(Mandatory)][string]$Target, [Parameter(Mandatory)][string]$NativeRoot)
@@ -28,7 +28,7 @@ function Set-VantareSlotWorkspace {
     $workspaceRoot = Join-Path (Split-Path $target) 'slot-workspaces'
     [IO.Directory]::CreateDirectory($workspaceRoot) | Out-Null
     $junction = Join-Path $workspaceRoot $slotName
-    # Nested builds already run through the junction.
+    # Nested builds already run through the junction: no switch and no clean.
     if ($repo.TrimEnd('\', '/') -ieq $junction.TrimEnd('\', '/') -or
         $repo.StartsWith($junction + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
         return $junction
@@ -41,19 +41,66 @@ function Set-VantareSlotWorkspace {
         }
         $current = @($item.Target)[0]
     }
-    if ($current -and ([IO.Path]::GetFullPath($current).TrimEnd('\', '/') -ieq $repo.TrimEnd('\', '/'))) {
-        return $junction
+    if (-not ($current -and ([IO.Path]::GetFullPath($current).TrimEnd('\', '/') -ieq $repo.TrimEnd('\', '/')))) {
+        if (Test-Path -LiteralPath $junction) {
+            # Remove the link only, never its target.
+            if ($IsWindows) { & cmd.exe /d /c "rmdir `"$junction`"" | Out-Null }
+            else { Remove-Item -LiteralPath $junction -Force }
+            if ($LASTEXITCODE) { throw 'No se pudo retirar el enlace del workspace del slot.' }
+        }
+        if ($IsWindows) {
+            New-Item -ItemType Junction -Path $junction -Target $repo | Out-Null
+        } else {
+            New-Item -ItemType SymbolicLink -Path $junction -Target $repo | Out-Null
+        }
     }
-    if (Test-Path -LiteralPath $junction) {
-        # Remove the link only, never its target.
-        if ($IsWindows) { & cmd.exe /d /c "rmdir `"$junction`"" | Out-Null }
-        else { Remove-Item -LiteralPath $junction -Force }
-        if ($LASTEXITCODE) { throw 'No se pudo retirar el enlace del workspace del slot.' }
+    # Invalidate only the local packages whose tree changed since the last checkout.
+    $stampPath = Join-Path $target '.vantare-workspace'
+    $previous = $null
+    if (Test-Path -LiteralPath $stampPath) {
+        $raw = Get-Content -LiteralPath $stampPath -Raw
+        try {
+            $parsed = $raw | ConvertFrom-Json
+            if ($parsed.PSObject.Properties['native']) { $previous = [string]$parsed.native }
+        } catch { }
+        if (-not $previous) { $previous = $raw.Trim() }
     }
-    if ($IsWindows) {
-        New-Item -ItemType Junction -Path $junction -Target $repo | Out-Null
-    } else {
-        New-Item -ItemType SymbolicLink -Path $junction -Target $repo | Out-Null
+    if ($previous -and ([IO.Path]::GetFullPath($previous) -ine $native)) {
+        $manifest = Join-Path $native 'Cargo.toml'
+        Push-Location $native
+        try {
+            $json = & cargo metadata --manifest-path $manifest --no-deps --locked --offline --format-version 1
+            if ($LASTEXITCODE) { throw 'No se pudo identificar el workspace del slot.' }
+            $metadata = $json | ConvertFrom-Json
+            $members = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members })
+            $changed = @()
+            foreach ($package in $members) {
+                $relative = [IO.Path]::GetRelativePath($native, (Split-Path $package.manifest_path))
+                $old = Join-Path $previous $relative
+                $new = Join-Path $native $relative
+                if (-not (Test-Path -LiteralPath $old)) { $changed += $package.name; continue }
+                & git diff --no-index --quiet -- $old $new
+                if ($LASTEXITCODE -ne 0) { $changed += $package.name }
+            }
+            $vendorOld = Join-Path $previous 'vendor/gpui_windows'
+            $vendorNew = Join-Path $native 'vendor/gpui_windows'
+            if (Test-Path -LiteralPath (Join-Path $vendorNew 'Cargo.toml')) {
+                if (-not (Test-Path -LiteralPath $vendorOld)) {
+                    $changed += 'gpui_windows'
+                } else {
+                    & git diff --no-index --quiet -- $vendorOld $vendorNew
+                    if ($LASTEXITCODE -ne 0) { $changed += 'gpui_windows' }
+                }
+            }
+            if ($changed.Count) {
+                $clean = @('clean', '--manifest-path', $manifest, '--target-dir', $target, '--locked', '--offline')
+                foreach ($name in $changed) { $clean += @('-p', $name) }
+                & cargo @clean
+                if ($LASTEXITCODE) { throw 'No se pudieron invalidar los paquetes cambiados.' }
+                Write-Host "[cola] paquetes cambiados invalidados: $($changed -join ', ')"
+            }
+        } finally { Pop-Location }
     }
+    [ordered]@{ native = $native } | ConvertTo-Json | Set-Content -LiteralPath $stampPath -Encoding utf8
     return $junction
 }

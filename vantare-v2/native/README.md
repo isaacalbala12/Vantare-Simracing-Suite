@@ -532,7 +532,9 @@ de publicar, ejecuta `comprobar.ps1 <crate> -Full` y la telemetría.
 La cola publica el checkout activo mediante un enlace estable por slot
 (`<raíz de targets>/slot-workspaces/slot-N`). Cargo compila a través de esa ruta,
 así que alternar checkouts en el mismo slot reutiliza los artefactos locales y
-solo recompila lo que cambia. Los targets explícitos (mediciones, QA y
+solo recompila lo que cambia. Al cambiar de checkout se comparan los árboles de
+cada paquete con el anterior y se limpian solo los que cambiaron (`cargo clean
+-p`); los iguales se reutilizan. Los targets explícitos (mediciones, QA y
 empaquetado) conservan su ruta real y no usan el enlace.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
@@ -554,12 +556,13 @@ LocalApplicationData/Vantare/sccache. Este servidor tiene VANTARE_TARGET_ROOT=
 La cola admite como máximo dos compilaciones. CARGO_BUILD_JOBS de Machine tiene
 prioridad sobre el del proceso; en este servidor Machine fija 4. Usar `CARGO_BUILD_JOBS=4` en este
 servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
-ramas. Al cambiar de checkout se limpian únicamente los paquetes locales para
-evitar ejecutables obsoletos; las dependencias se conservan. No crear targets por rama. Los comandos anidados síncronos reutilizan la
-reserva del ancestro. En local sccache está activo. Si `cargo` o `rustc` terminan con 0xC0000005
-(STATUS_ACCESS_VIOLATION), el comando se reintenta una vez con
-`VANTARE_SCCACHE=0`; ambos intentos quedan en el log. `VANTARE_SCCACHE=0` lo
-desactiva a mano.
+ramas. Al cambiar de checkout se comparan los árboles de cada paquete con el
+anterior y solo se invalidan los que cambiaron; los iguales y las dependencias
+se conservan. No crear targets por rama. Los comandos anidados síncronos
+reutilizan la reserva del ancestro. En local sccache está activo. Si `cargo` o
+`rustc` terminan con 0xC0000005 (STATUS_ACCESS_VIOLATION), el comando se
+reintenta una vez con `VANTARE_SCCACHE=0`; ambos intentos quedan en el log.
+`VANTARE_SCCACHE=0` lo desactiva a mano.
 Un CARGO_TARGET_DIR ya definido en el entorno se trata como target explícito:
 se valida y reserva con su propio lease, en vez de usar slot-N. Es el caso de packaging.
 

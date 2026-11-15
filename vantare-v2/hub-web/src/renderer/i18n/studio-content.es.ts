@@ -1,4 +1,8 @@
 export const studioContentText = {
+  unsavedWhilePending:
+    "Este cambio no se ha guardado. Espera a que termine el guardado actual.",
+  unsavedCommit:
+    "Este cambio no se ha guardado. Vuelve a la casilla y pulsa Intro para guardarlo.",
   invalidStep: (min: number, max: number, step: number) =>
     `Usa pasos de ${step} entre ${min} y ${max}.`,
   pedalGap: "Separaci\u00f3n entre barras",

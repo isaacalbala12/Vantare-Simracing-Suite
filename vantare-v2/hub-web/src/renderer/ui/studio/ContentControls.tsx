@@ -31,6 +31,7 @@ export function ContentNumber({
 }) {
   const [draft, setDraft] = useState(String(value));
   const [error, setError] = useState(false);
+  const [needsCommit, setNeedsCommit] = useState(false);
   const edited = useRef(false);
   const submitted = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -40,10 +41,15 @@ export function ContentNumber({
       submitted.current = undefined;
       setDraft(String(value));
       setError(false);
+      setNeedsCommit(false);
     }
   }, [value, normalize]);
   function commit() {
-    if (model.disabled || model.pending || !edited.current) return;
+    if (model.disabled || !edited.current) return;
+    if (model.pending) {
+      if (editableWhilePending) setNeedsCommit(true);
+      return;
+    }
     const number = Number(draft);
     if (
       !draft.trim() ||
@@ -59,17 +65,26 @@ export function ContentNumber({
     const normalized = normalize(number);
     if (normalized !== normalize(value)) {
       submitted.current = normalized;
+      setNeedsCommit(false);
       onCommit(normalized);
     } else {
       edited.current = false;
       submitted.current = undefined;
       setDraft(String(value));
+      setNeedsCommit(false);
     }
   }
   return (
     <Input
       label={label}
       aria-describedby={describedBy}
+      description={
+        needsCommit
+          ? model.pending
+            ? text.unsavedWhilePending
+            : text.unsavedCommit
+          : undefined
+      }
       value={draft}
       inputMode={integer ? "numeric" : "decimal"}
       disabled={model.disabled}

@@ -81,7 +81,7 @@ it("names a legacy damage widget that is not offered in the add catalog", () => 
   const item = contentInstance("car-damage-numbers");
   const current = fixture(item.settings as WidgetSettings);
   expect(current.catalog.some((value) => value.kind === item.kind)).toBe(false);
-  expect(widgetName(item, current)).toBe("Daños detallados");
+  expect(widgetName(item, current)).toBe("DaÃ±os detallados");
 });
 function fixture(settings: WidgetSettings): StudioView {
   for (const message of corpus.host) {
@@ -247,6 +247,7 @@ it("does not replace the edited color after a rejection, and validates after int
   const vector = cases.find((value) => "textColor" in value.patch);
   if (!vector) throw Error("Color case");
   const { reject, control, user } = await edit(vector);
+  expect(control.getAttribute("aria-busy")).toBe("true");
   await act(async () => reject(new HostFailure({ kind: "rejected" })));
   expect((control as HTMLInputElement).value).toBe("#A1B2C3");
   await user.clear(control);
@@ -342,7 +343,7 @@ it("accepts an external color after editing back to the unchanged stored value",
     "../src/renderer/ui/studio/AdditionalWidgetFields"
   );
   const vector = cases.find((value) => value.before.kind === "racing-flags");
-  if (!vector || vector.before.kind !== "racing-flags")
+  if (vector?.before.kind !== "racing-flags")
     throw Error("Flags fixture");
   const model = {
     disabled: false,

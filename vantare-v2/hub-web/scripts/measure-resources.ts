@@ -102,18 +102,12 @@ try {
     60000,
     "QA endpoint",
   );
-  browser = await chromium.connectOverCDP(endpoint);
+  browser = await chromium.connectOverCDP(endpoint, { noDefaults: true });
   const context = browser.contexts()[0];
   const page = context.pages()[0] ?? (await context.waitForEvent("page"));
   await page
     .getByRole("button", { name: windowText.close, exact: true })
     .waitFor();
-  // Playwright enables focus emulation on attach; it forces pages visible.
-  // Disable that testing override before measuring native window visibility.
-  const visibilitySession = await context.newCDPSession(page);
-  await visibilitySession.send("Emulation.setFocusEmulationEnabled", {
-    enabled: false,
-  });
   const windowState = async (action: "minimize" | "restore") => {
     await run("pwsh", [
       "-NoProfile",

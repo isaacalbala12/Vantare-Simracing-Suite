@@ -34,9 +34,9 @@ perfil aparte, dentro de la misma reserva; también puede ejecutarse solo con `-
 informe lleva `checkOnly: true` y no contiene cifras de consumo. Electron no implementa los comandos de ventana de Browser en
 CDP: minimizar/restaurar usa únicamente el HWND del candidato, tras verificar
 ejecutable, título y propietario. El script comprueba IsIconic/IsWindowVisible y `document.hidden` real.
-Playwright activa la emulación de foco al conectar; el guion la desactiva con
-`Emulation.setFocusEmulationEnabled(false)` antes de medir, para que minimizar
-no se presente falsamente como una página visible. Cada invocación
+Playwright activa la emulación de foco al conectar; el guion conecta con
+`noDefaults: true` para no habilitarla ni modificar fuentes o preferencias
+de medios. Así minimizar no se presenta falsamente como una página visible. Cada invocación
 crea su propio perfil QA, incluso si se repite dentro de una reserva.
 
 El recorrido queda enumerado: no se afirma haber visitado diálogos, widgets
@@ -58,6 +58,27 @@ y hash ASAR, viewport, versión de Chromium y contexto de RAM/CPU de Windows. Lo
 medición/Playwright queda fuera del árbol medido; CDP y el mock sí añaden coste
 al Hub. Comparar antes/después con igual candidato QA, perfil, recorrido,
 instrumentación y estado de ventana. No extrapolar a una sesión real con Rust.
+
+## Línea base observada · 15-11-2026
+
+Una pasada, QA simulado en el servidor compartido: Chromium 156.0.8078.80, 1440 × 900, DPR 1, 8 procesadores lógicos. Fuente del producto `b18a3618d`; el código del producto no se modificó.
+
+Medias en MiB: **privada / working set**, sin sumar working sets compartidos.
+
+| Proceso (PID) | Inicio | Tras recorrido | Inicio minimizado | Calendario visible | Calendario minimizado |
+|---|---:|---:|---:|---:|---:|
+| Main (6096) | 47.7 / 102.2 | 45.2 / 104.6 | 43.5 / 103.1 | 42.9 / 102.6 | 42.8 / 102.6 |
+| Renderer (4196) | 58.8 / 109.1 | 108.8 / 168.8 | 89.5 / 150.4 | 86.4 / 148.0 | 89.5 / 151.4 |
+| GPU (8544) | 153.1 / 127.9 | 189.5 / 133.0 | 135.6 / 131.3 | 174.7 / 140.6 | 142.3 / 138.5 |
+| Utilidad (10668) | 11.5 / 43.3 | 11.5 / 43.4 | 11.4 / 43.3 | 11.3 / 43.2 | 11.3 / 43.2 |
+
+CPU media de los intervalos, normalizada a toda la máquina: renderer tras el recorrido **0,007 %**; las demás ventanas/procesos registraron 0 al nivel de resolución de estas muestras. No significa coste nulo permanente.
+
+El recorrido, módulos JS y muestras crudas están en `D:/VantareServer/evidence/hub-web/isa-1995-d-electron-resources/baseline-v8/` (`report.json`). Se observaron 807 nodos en Inicio inicial, 831 después y 333 en Calendario. Es el caso `inicio-base` del mock, no una prueba de máximo contenido ni del núcleo real.
+
+ASAR SHA-256: `19419552c8c84e012b8f44165c1901a759cd585b083c91f19ce361cde353c37c`. Las cinco fases verificaron visibilidad antes y después; el previo sin muestras verificó también minimizar/restaurar. Los intentos anteriores incompletos NO son la línea base.
+
+La caída natural de memoria entre fases mezcla tiempo, GC y cachés: no se atribuye toda a minimizar ni constituye una optimización. Antes de concluir sobre diferencias pequeñas, repetir pares alternados en el PC de juego.
 
 ## Cómo interpretar y seguir
 

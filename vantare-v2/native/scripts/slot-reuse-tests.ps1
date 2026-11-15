@@ -10,6 +10,11 @@ Remove-Item Env:RUSTC_WRAPPER -ErrorAction SilentlyContinue
 # stable workspace link. The hosted `ci` target is a single checkout.
 $previousCi = $env:VANTARE_CI_TARGET
 Remove-Item Env:VANTARE_CI_TARGET -ErrorAction SilentlyContinue
+# Do not touch the real slot target of this machine: the fixture owns its own
+# root, so the junction and the probe package stay under the evidence directory.
+# (On GitHub-hosted runners the root is already per-job.)
+$previousRoot = $env:VANTARE_TARGET_ROOT
+$env:VANTARE_TARGET_ROOT = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('slot-reuse-targets-' + [guid]::NewGuid().ToString('N'))
 try {
     $root = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('slot-reuse-' + [guid]::NewGuid().ToString('N'))
     foreach ($branch in @('A', 'B')) {
@@ -41,4 +46,6 @@ try {
     'PASS: A -> B -> A en dos checkouts con enlace de slot, sin ejecutable obsoleto.'
 } finally {
     if ($null -ne $previousCi) { $env:VANTARE_CI_TARGET = $previousCi }
+    if ($null -ne $previousRoot) { $env:VANTARE_TARGET_ROOT = $previousRoot }
+    else { Remove-Item Env:VANTARE_TARGET_ROOT -ErrorAction SilentlyContinue }
 }

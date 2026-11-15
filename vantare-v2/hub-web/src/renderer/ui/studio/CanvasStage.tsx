@@ -22,7 +22,7 @@ import {
 import { boxOf } from "../../screens/studio/gesture-state";
 import { useStudio } from "../../screens/studio/state";
 import { Button, IconButton } from "../Button";
-import { Callout } from "../Data";
+import { Callout, Keycap } from "../Data";
 import { WidgetThumb } from "../widgets/WidgetThumb";
 import { CanvasResolution } from "./CanvasResolution";
 import { CanvasTools } from "./CanvasTools";
@@ -418,9 +418,21 @@ export function CanvasStage({
               )}
             </div>
             {model.enabled && (
-              <p id={help} className="v-studio-canvas-help">
-                {t.help}
-              </p>
+              <>
+                <span id={help} className="v-canvas-accessible-help">
+                  {t.help}
+                </span>
+                <p className="v-studio-canvas-help" aria-hidden="true">
+                  <Keycap>{t.keyArrows}</Keycap>
+                  {t.keyMove}
+                  <Keycap>{t.keyAlt}</Keycap>
+                  {t.keySize}
+                  <Keycap>{t.keyShift}</Keycap>
+                  {t.keyStep}
+                  <Keycap>{t.keyEscape}</Keycap>
+                  {t.keyCancel}
+                </p>
+              </>
             )}
           </div>
           <footer role="toolbar" aria-label={t.tools}>

@@ -620,3 +620,40 @@
 .v-studio-canvas-position[data-outside="true"] {
   color: var(--warn);
 }
+.v-studio-canvas-tools .v-button[aria-pressed="true"] {
+  background: var(--accent-tint);
+  color: var(--text-1);
+}
+.v-studio-canvas-tools .v-button[aria-pressed="true"] .v-canvas-tool-glyph {
+  color: var(--accent-bright);
+}
+.v-canvas-tool-glyph {
+  inline-size: 15px;
+  block-size: 15px;
+  flex: none;
+}
+.v-studio-canvas-caption {
+  border: 1px solid var(--edge);
+}
+.v-studio-canvas-widget[data-canvas-selected="true"] .v-studio-canvas-caption {
+  border-color: var(--accent);
+}
+.v-studio-canvas-help {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  inline-size: max-content;
+  max-inline-size: calc(100% - 24px);
+  margin-block-start: -26px;
+  font-size: 11.5px;
+}
+.v-studio-canvas-help .v-keycap {
+  background: var(--surface-panel);
+}
+.v-canvas-accessible-help {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: clip;
+  clip-path: inset(50%);
+}

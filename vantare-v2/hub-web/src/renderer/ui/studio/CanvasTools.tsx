@@ -6,6 +6,44 @@ import { anchor, type Pair } from "../../screens/studio/geometry";
 import type { Box } from "../../screens/studio/gesture-state";
 import { Button } from "../Button";
 
+function ToolGlyph({ kind }: { kind: "anchor" | "ratio" | "auto" }) {
+  return (
+    <svg
+      className="v-canvas-tool-glyph"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {kind === "ratio" ? (
+        <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+      ) : kind === "auto" ? (
+        <>
+          <rect x="5" y="5" width="14" height="14" rx="2" />
+          <path d="M9 12h6M12 9v6" />
+        </>
+      ) : (
+        [4, 10, 16].flatMap((y) =>
+          [4, 10, 16].map((x) => (
+            <rect
+              key={`${x}:${y}`}
+              x={x}
+              y={y}
+              width="4"
+              height="4"
+              rx="1"
+              fill={x === 10 && y === 10 ? "currentColor" : "none"}
+            />
+          )),
+        )
+      )}
+    </svg>
+  );
+}
+
 export function CanvasTools({
   box,
   canvas,
@@ -27,6 +65,7 @@ export function CanvasTools({
           render={<Button size="sm" variant="ghost" />}
           aria-label={t.anchors}
         >
+          <ToolGlyph kind="anchor" />
           {t.anchorShort}
         </Popover.Trigger>
         <Popover.Portal>
@@ -125,6 +164,7 @@ export function CanvasTools({
             );
         }}
       >
+        <ToolGlyph kind="ratio" />
         {t.proportions}
       </Button>
       <Button
@@ -136,6 +176,7 @@ export function CanvasTools({
             write({ kind: "autoSize" }, { ...box, sizeMode: "auto" });
         }}
       >
+        <ToolGlyph kind="auto" />
         {t.natural}
       </Button>
     </div>

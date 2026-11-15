@@ -2455,7 +2455,7 @@ mod tests {
                 .instances
                 .iter()
                 .map(|instance| {
-                    let (w, h) = instance.settings.kind().size();
+                    let (w, h) = kind_size(instance.settings.kind());
                     (instance.x, instance.y, instance.x + w, instance.y + h)
                 })
                 .collect();

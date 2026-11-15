@@ -1415,23 +1415,40 @@ impl LegacyDemand for Settings {
 #[cfg(test)]
 mod demand_extraction_tests {
     use super::*;
-    use crate::widget_settings::SettingsDemand as _;
     #[test]
     fn shared_demand_matches_the_previous_renderer_dependent_union() {
         for look in crate::look::Look::ALL {
-            for header in [false,true] {
-                for footer in [false,true] {
-                    for slots in [None, Some(vec![]), Some(vec!["gap".into(),"totalLaps".into(),"estimatedLaps".into(),"track".into(),"remaining".into()])] {
+            for header in [false, true] {
+                for footer in [false, true] {
+                    for slots in [
+                        None,
+                        Some(vec![]),
+                        Some(vec![
+                            "gap".into(),
+                            "totalLaps".into(),
+                            "estimatedLaps".into(),
+                            "track".into(),
+                            "remaining".into(),
+                        ]),
+                    ] {
                         let mut settings = Settings::for_look(*look);
                         settings.show_session_header = header;
                         settings.show_session_footer = footer;
                         settings.footer_slots = slots;
-                        settings.practice_columns = Some(vantare_standard_session_template(Session::Practice));
+                        settings.practice_columns =
+                            Some(vantare_standard_session_template(Session::Practice));
                         settings.qualifying_columns = Some(session_preset(Session::Qualifying));
                         settings.columns = Some(vantare_template("expanded"));
-                        for class in ["all-classes","player-class","unknown"] {
-                            settings.class_scope = class.into();
-                            assert_eq!(settings.demand(), settings.legacy_demand(), "{settings:?}");
+                        for classification in ["single", "multiclass"] {
+                            settings.classification_mode = classification.into();
+                            for class in ["all-classes", "player-class", "unknown"] {
+                                settings.class_scope = class.into();
+                                assert_eq!(
+                                    settings.demand(),
+                                    settings.legacy_demand(),
+                                    "{settings:?}"
+                                );
+                            }
                         }
                     }
                 }

@@ -1,7 +1,6 @@
 pub(crate) use vantare_ipc::widget_demand::{information, signals};
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{Kind, Settings};
     use vantare_ipc::{Demand, Signal, widget_demand::SettingsDemand as _};
 

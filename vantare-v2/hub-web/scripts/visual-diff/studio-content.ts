@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { studioText } from "../../src/renderer/i18n/studio.ts";
+import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 import { studioScenes } from "./studio.ts";
 
@@ -27,3 +29,33 @@ for (const [id, session] of [
     },
   };
 }
+
+studioContentScenes["studio-contenido-filas"] = {
+  mock: "studio-base",
+  async prepare(page) {
+    await studioContentScenes["studio-contenido-carrera"].prepare(page);
+    const rows = page.getByRole("textbox", { name: "Filas", exact: true });
+    await rows.scrollIntoViewIfNeeded();
+    await rows.fill("8");
+    await rows.press("Enter");
+    await until(
+      async () =>
+        (await rows.inputValue()) === "8" &&
+        (await page.locator(".v-step-save").textContent()) ===
+          studioText.autoSaved &&
+        (await page.locator(".v-step-save").getAttribute("data-failed")) ===
+          "false",
+      10000,
+      "confirmed Studio row count save",
+    );
+    await rows.scrollIntoViewIfNeeded();
+    // Leave text editing through a real click before the harness uses Ctrl+B.
+    await page
+      .getByRole("heading", { name: "Clasificación", exact: true })
+      .click();
+    assert.equal(
+      await rows.evaluate((node) => node === document.activeElement),
+      false,
+    );
+  },
+};

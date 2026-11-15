@@ -1,0 +1,98 @@
+name: Overlays Rune
+
+on:
+  push:
+    branches: [nightly]
+  pull_request:
+    branches: [nightly]
+  merge_group:
+    branches: [nightly]
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: overlays-rune-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Overlays Rune Windows (sin ventana)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      RUSTUP_TOOLCHAIN: '1.99.1'
+      VANTARE_SIN_GRAFICOS: '1'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tests de los clasificadores
+        run: |
+          python .github/scripts/test_overlays_rune_scope.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python .github/scripts/test_native_gate_scope.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m unittest discover -s vantare-v2/native/scripts -p test_affected_crates.py
+          exit $LASTEXITCODE
+      - name: Clasificar entradas (sin filtrar el check requerido)
+        id: scope
+        run: |
+          $needed = 'true'
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+            $base = git rev-parse HEAD^1
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            $paths = Join-Path $env:RUNNER_TEMP 'overlays-rune-paths.bin'
+            # cmd solo redirige bytes de git; no realiza operaciones de ficheros.
+            cmd /c "git diff --no-renames --name-only -z $base HEAD > `"$paths`""
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            $needed = python .github/scripts/overlays_rune_scope.py --nul-file $paths
+            if ($LASTEXITCODE -or $needed -notin @('true', 'false')) { exit 1 }
+          }
+          "needed=$needed" >> $env:GITHUB_OUTPUT
+      - name: Target temporal de CI
+        if: steps.scope.outputs.needed != 'false'
+        run: '"CARGO_TARGET_DIR=$env:RUNNER_TEMP/overlays-rune-target" >> $env:GITHUB_ENV'
+      - name: Instalar Rust fijado
+        if: steps.scope.outputs.needed != 'false'
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal --component rustfmt,clippy
+          exit $LASTEXITCODE
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        if: steps.scope.outputs.needed != 'false'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: overlays-rune-windows-1.99.1-${{ hashFiles('vantare-v2/native/overlays-rune/Cargo.lock') }}
+          restore-keys: overlays-rune-windows-1.99.1-
+      - name: Formato
+        if: steps.scope.outputs.needed != 'false'
+        working-directory: vantare-v2/native/overlays-rune
+        run: cargo fmt --all -- --check
+      - name: Licencias permisivas y aislamiento de GPUI
+        if: steps.scope.outputs.needed != 'false'
+        working-directory: vantare-v2/native/overlays-rune
+        run: |
+          python -m unittest discover -s scripts -p test_dependencies.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/check_dependencies.py
+          exit $LASTEXITCODE
+      - name: Clippy
+        if: steps.scope.outputs.needed != 'false'
+        working-directory: vantare-v2/native/overlays-rune
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Tests solo CPU
+        if: steps.scope.outputs.needed != 'false'
+        working-directory: vantare-v2/native/overlays-rune
+        run: cargo test --locked --all-targets
+      - name: Compilar ejecutable (sin ejecutarlo)
+        if: steps.scope.outputs.needed != 'false'
+        working-directory: vantare-v2/native/overlays-rune
+        run: cargo build --locked --bin vantare-overlays-rune

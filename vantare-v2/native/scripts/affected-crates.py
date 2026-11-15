@@ -26,6 +26,9 @@ def changed_crates(packages, paths):
     changed = set()
     for path in paths:
         normalized = path.replace('\\', '/')
+        # Workspace Rune aislado y su CI: nunca seleccionan crates GPUI.
+        if normalized.startswith('vantare-v2/native/overlays-rune/') or normalized == '.github/workflows/overlays-rune.yml':
+            continue
         if normalized.startswith(hub_web_prefix):
             if not normalized.startswith(hub_web_host_inputs):
                 continue
@@ -76,6 +79,8 @@ def installation_affected(paths):
     # every integration push and whenever installer/launch/build inputs change.
     leaves = {'strategy', 'engineer', 'storage'}
     for path in paths:
+        if path.startswith('vantare-v2/native/overlays-rune/') or path == '.github/workflows/overlays-rune.yml':
+            continue
         if path.endswith('.md'):
             continue
         parts = path.replace('\\', '/').split('/')
@@ -92,6 +97,8 @@ def overlays_affected(paths):
     # independently requires the UI artifact when Runtime was selected.
     independent = {'engineer', 'strategy', 'storage', 'hub', 'admin'}
     for path in paths:
+        if path.startswith('vantare-v2/native/overlays-rune/') or path == '.github/workflows/overlays-rune.yml':
+            continue
         if path.endswith('.md'):
             continue
         parts = path.replace('\\', '/').split('/')

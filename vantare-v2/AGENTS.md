@@ -9,6 +9,16 @@ El núcleo y los overlays son **Rust** en `native/`, conforme a
 actual (`native/hub`) está congelado y no recibe trabajo nuevo. #1533 retira el código de
 la app Wails/React de este checkout; esto no publica un corte ni una release.
 Lee `native/README.md`, los README de los crates afectados y sus gates.
+ADR 0110 mantiene el Hub en Electron y migra los overlays a Rune en el workspace
+aislado `native/overlays-rune/`; GPUI sigue disponible durante la migración.
+Rune usa su propio lock y Rust 1.99.1, la copia y los cuatro parches fijados a
+`vantare-20261115-1` (`d5338988a7c1b3377adb60853815b6d0843dae7c`).
+En el servidor, Rune compila por `native/scripts/compilar.ps1` con dos jobs y
+debug=0, en los targets compartidos de D:. No ejecutar el binario ni opciones
+gráficas (`--snap`, `--frames`, `--video`, `--tree`); tampoco con el cinturón
+`VANTARE_SIN_GRAFICOS=1`, que aborta antes de crear ventana o dispositivo.
+La CI propia solo ejecuta tests CPU (`Runtime::new/frame` y funciones puras).
+Capturas y aceptación se hacen en el PC de juego; el Mac sirve para iterar.
 Los corpus y referencias se conservan en `native/retirement`; los oráculos
 Go históricos se reproducen opcionalmente desde `tools/frozen-go`.
 

@@ -698,7 +698,8 @@
     .v-focus-save,
     .v-focus-strip > footer,
     .v-focus-filters,
-    .v-focus-layout-name > button:last-child,
+    .v-focus-row > .v-tooltip-trigger,
+    .v-focus-layout-name > .v-tooltip-trigger:last-child,
     .v-focus-add .v-button-label > span
   ) {
   display: none;

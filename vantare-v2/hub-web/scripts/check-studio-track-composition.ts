@@ -41,11 +41,17 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
             await until(
               async () =>
                 Math.abs(
-                  ((await nav.boundingBox())?.width ?? 0) -
-                    (expanded ? 272 : 76),
+                  (await nav.evaluate((node) =>
+                    Number.parseFloat(getComputedStyle(node).width),
+                  )) - (expanded ? 272 : 76),
                 ) < 1,
               5000,
               "Studio sidebar settled",
+            );
+            const pixelScale = await nav.evaluate(
+              (node) =>
+                node.getBoundingClientRect().width /
+                Number.parseFloat(getComputedStyle(node).width),
             );
             const groups = page.locator(".v-studio-track-group");
             assert.equal(
@@ -113,10 +119,10 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
               "Opacity value and track share a row, as in prototype A",
             );
             assert.ok(
-              geometry.controlRight + 11 <= geometry.valueLeft,
+              geometry.controlRight + 11 * pixelScale <= geometry.valueLeft,
               "The value has a separate readable column",
             );
-            assert.equal(geometry.valueWidth, 44);
+            assert.ok(Math.abs(geometry.valueWidth / pixelScale - 44) < 0.1);
             const visibility = page.getByRole("region", {
               name: t.visibilityGroup,
             });

@@ -136,6 +136,7 @@ pub(super) fn checked_duplicate(value: PreparedDuplicate) -> Result<PreparedDupl
             value: value.clone(),
         },
     };
+    // Validate the exact wire frame limit without retaining or sending a second copy.
     crate::frame::write(&mut std::io::sink(), &response).map_err(|_| HostError::Protected)?;
     Ok(value)
 }

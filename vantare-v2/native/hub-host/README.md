@@ -465,6 +465,9 @@ D abre su editor con el borrador recibido y guarda mediante
 `launcher.profile.save { draft, baseRevision }`. La revisión es la huella de TODOS
 los bytes del documento; si cambia, incluso por otro perfil, se responde Rejected
 sin escribir la instantánea anterior. La escritura conserva el CAS del editor.
+La preparación exige discovery de esa misma revisión; si el lector va por detrás,
+responde Busy antes de reservar nada. Un cambio de generación de cuenta, cierre de
+sesión o pérdida de observación invalida las claves y el perfil reservado.
 Una nueva lectura/preparación sustituye las capacidades previas. Cada intento de
 guardado las consume, incluido Busy: hay que volver a abrir/preparar explícitamente,
 y nunca reenviar un guardado incierto. El método duplicate anterior se conserva

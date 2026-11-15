@@ -132,11 +132,24 @@ pub(super) fn subscribe(
 }
 
 impl Session {
+    pub(super) fn observe_profile_account(&mut self) -> bool {
+        if self.profile_account_generation == self.current.account_generation {
+            return false;
+        }
+        self.profile_step_keys = crate::launcher::editor::StepKeys::default();
+        self.reserved_profile = None;
+        self.profile_account_generation
+            .clone_from(&self.current.account_generation);
+        true
+    }
     pub(super) fn save_profile_draft(
         &mut self,
         draft: &crate::launcher::editor::ProfileDraft,
         base_revision: &str,
     ) -> Result<(), HostError> {
+        if self.observe_profile_account() {
+            return Err(HostError::Denied);
+        }
         if self.profile_step_keys.is_prepared_duplicate() {
             let _ = crate::launcher::editor::duplicate_bytes(&self.launcher, base_revision)?;
         } else {
@@ -169,10 +182,20 @@ impl Session {
                 id: source,
                 base_revision,
             } => {
+                self.observe_profile_account();
                 self.reserved_profile = None;
-                let result =
-                    self.profile_step_keys
-                        .prepare_duplicate(&self.launcher, source, base_revision);
+                self.profile_step_keys = crate::launcher::editor::StepKeys::default();
+                let result = self
+                    .launcher_reader
+                    .discovered(base_revision)
+                    .ok_or(HostError::Busy)
+                    .and_then(|_| {
+                        self.profile_step_keys.prepare_duplicate(
+                            &self.launcher,
+                            source,
+                            base_revision,
+                        )
+                    });
                 let message = match result {
                     Ok(value) => {
                         self.reserved_profile.clone_from(&value.draft.id);
@@ -186,6 +209,7 @@ impl Session {
                 frame::write(pipe, &message)
             }
             Request::LauncherProfileGet { id: profile_id } => {
+                self.observe_profile_account();
                 let message = match self
                     .profile_step_keys
                     .open(&self.launcher, profile_id.as_deref())

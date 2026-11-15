@@ -107,6 +107,11 @@ fn preparing_copy_is_read_only_and_stale_save_is_rejected_before_discovery() {
     let before = serde_json::to_vec(&document).expect("fixture");
     std::fs::write(&session.launcher, &before).expect("fixture");
     let revision = vantare_services::content_hash(&before);
+    session.launcher_reader = crate::launcher::Reader::with_discovery(
+        session.launcher.clone(),
+        revision.clone(),
+        vantare_launcher::discovery::Discovery::default(),
+    );
     let mut pipe = Pipe::new(Vec::new());
     session
         .request(
@@ -160,4 +165,151 @@ fn preparing_copy_is_read_only_and_stale_save_is_rejected_before_discovery() {
         bytes
     );
     assert_eq!(session.core.requests, 0);
+}
+
+#[test]
+fn preparing_with_lagging_discovery_is_busy_without_issuing_capabilities() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let document = vantare_launcher::Document::fresh_install();
+    let before = serde_json::to_vec(&document).expect("fixture");
+    std::fs::write(&session.launcher, &before).expect("fixture");
+    let revision = vantare_services::content_hash(&before);
+    session.launcher_reader = crate::launcher::Reader::with_discovery(
+        session.launcher.clone(),
+        "f".repeat(64),
+        vantare_launcher::discovery::Discovery::default(),
+    );
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            1,
+            &Request::LauncherProfilePrepareDuplicate {
+                id: document.profiles[0].id.clone(),
+                base_revision: revision.clone(),
+            },
+        )
+        .expect("prepare dispatch");
+    pipe.set_position(0);
+    assert!(matches!(
+        frame::Reader::default().next(&mut pipe).expect("frame"),
+        Some(HostToUi::Failure {
+            error: HostError::Busy,
+            ..
+        })
+    ));
+    assert!(session.reserved_profile.is_none());
+    assert!(!session.profile_step_keys.is_prepared_duplicate());
+    assert_eq!(std::fs::read(&session.launcher).expect("unchanged"), before);
+    assert!(session.launcher_reader.discovered(&revision).is_none());
+}
+
+fn available_for_duplicate(
+    document: &vantare_launcher::Document,
+) -> vantare_launcher::discovery::Discovery {
+    vantare_launcher::discovery::Discovery {
+        apps: document
+            .apps
+            .iter()
+            .map(|app| vantare_launcher::discovery::Detected {
+                id: app.id.clone(),
+                executable: None,
+                availability: vantare_launcher::discovery::Availability {
+                    launchable: true,
+                    ..Default::default()
+                },
+            })
+            .collect(),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn prepared_copy_cannot_be_saved_after_account_change_or_logout() {
+    for next in [Some("b".repeat(64)), None] {
+        let fixture = Fixture::new();
+        let mut session = fixture.session();
+        session.current.account_generation = Some("a".repeat(64));
+        let document = vantare_launcher::Document::fresh_install();
+        let before = serde_json::to_vec(&document).expect("fixture");
+        std::fs::write(&session.launcher, &before).expect("fixture");
+        let revision = vantare_services::content_hash(&before);
+        session.launcher_reader = crate::launcher::Reader::with_discovery(
+            session.launcher.clone(),
+            revision.clone(),
+            available_for_duplicate(&document),
+        );
+        let mut pipe = Pipe::new(Vec::new());
+        session
+            .request(
+                &mut pipe,
+                1,
+                &Request::LauncherProfilePrepareDuplicate {
+                    id: document.profiles[0].id.clone(),
+                    base_revision: revision,
+                },
+            )
+            .expect("prepare dispatch");
+        pipe.set_position(0);
+        let Some(HostToUi::Response {
+            result: crate::protocol::Reply::LauncherProfilePrepareDuplicate { value },
+            ..
+        }) = frame::Reader::default().next(&mut pipe).expect("frame")
+        else {
+            panic!("prepared copy")
+        };
+        assert!(session.profile_step_keys.is_prepared_duplicate());
+        assert_eq!(session.reserved_profile, value.draft.id);
+        // Prove the draft and discovery would permit a write before invalidation.
+        let positive = fixture.0.join("positive-copy.json");
+        std::fs::write(&positive, &before).expect("positive fixture");
+        crate::launcher::editor::save(
+            &positive,
+            &value.draft,
+            &value.base_revision,
+            &available_for_duplicate(&document),
+            session.reserved_profile.as_deref(),
+            Some(&session.profile_step_keys),
+        )
+        .expect("valid prepared copy can save");
+        assert_ne!(std::fs::read(&positive).expect("saved copy"), before);
+        let args = Args {
+            controlled: false,
+            pipe: String::new(),
+            data: fixture.0.join("hub"),
+            layout: fixture.0.join("layout.json"),
+            launcher: session.launcher.clone(),
+            engineer: fixture.0.join("engineer.json"),
+        };
+        session.core.status = session.current.clone();
+        session.core.status.account_generation = next;
+        session
+            .tick(&args, &mut Pipe::new(Vec::new()), Instant::now(), || false)
+            .expect("account change tick");
+        assert!(session.reserved_profile.is_none());
+        assert!(!session.profile_step_keys.is_prepared_duplicate());
+        let mut pipe = Pipe::new(Vec::new());
+        session
+            .request(
+                &mut pipe,
+                2,
+                &Request::LauncherProfileSave {
+                    draft: value.draft,
+                    base_revision: value.base_revision,
+                },
+            )
+            .expect("save dispatch");
+        pipe.set_position(0);
+        assert!(matches!(
+            frame::Reader::default().next(&mut pipe).expect("frame"),
+            Some(HostToUi::Failure {
+                error: HostError::Denied | HostError::Rejected,
+                ..
+            })
+        ));
+        assert!(session.reserved_profile.is_none());
+        assert!(!session.profile_step_keys.is_prepared_duplicate());
+        assert_eq!(std::fs::read(&session.launcher).expect("unchanged"), before);
+    }
 }

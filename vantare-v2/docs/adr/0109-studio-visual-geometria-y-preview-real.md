@@ -20,11 +20,9 @@ lienzo el Hub nuevo no puede sustituir al antiguo. Las dos vías escriben el
 mismo `layout.json` con la misma regla de revisión, así que no hay dos fuentes
 de verdad. El resto de ADR 0107 sigue igual.
 
-**Versiones del protocolo del anfitrión reservadas** para este plan: **37**
-(geometría), **39** (preview fija) y **40** (preview en vivo, solo si la
-medición la aprueba). Ningún otro trabajo debe usar esos números.
-
-Protocolo renumerado por el orquestador el 14-nov: v38 para prepareDuplicate, preview fija v39 y en vivo v40.
+Las versiones del protocolo se asignan por el orquestador en el orden de
+fusión. Geometría usa v37 y prepareDuplicate v38; preview fija y en vivo
+recibirán la siguiente versión libre al aprobar sus PR, sin reservar números.
 
 ## Palabras que se usan aquí
 
@@ -206,11 +204,9 @@ tomando como oráculo los tests del Hub congelado (que no se toca).
 
 ## Decisión 3 — Plan por PRs
 
-Versiones nuevas del protocolo, todas aditivas (no se quita ni se renombra
-nada): **37** geometría, **39** preview fija, **40** preview en vivo (solo si
-la medición la aprueba). **Los tres números quedan reservados para este
-plan.** Otro cambio del protocolo que llegue antes toma el siguiente libre a
-partir del 41.
+Los cambios de protocolo son aditivos. La versión de cada PR se asigna en
+el orden de fusión; geometría ya usa v37. Preview fija y en vivo no tienen
+un número reservado.
 
 | PR | Dueño | Qué entra | Protocolo | Cómo se verifica |
 |---|---|---|---|---|
@@ -218,9 +214,9 @@ partir del 41.
 | 1. Geometría en el anfitrión | Rust (núcleo) | Vista con lienzo y posiciones; órdenes `studio.geometry`, `studio.canvas`, `at` en `studio.add`; módulo puro de gestos; lista de casos exportada; monitor por Win32 (función ya existente de `windows-sys`, sin paquete nuevo) | 37 | Tests sin ventana: revisión y conflicto, un paso de deshacer por orden, recortes, bytes desconocidos del diseño intactos, corpus y tipos generados al día. `comprobar.ps1 hub-host` |
 | 2. Lienzo en Electron | Web | Plano a escala con las ilustraciones actuales: arrastrar, tiradores, anclas, empujón, zoom, encajar, `Esc`; borrador local y avisos de conflicto | — | Vitest: casos de Rust, máquina de estados del gesto, teclado y nombres accesibles; Playwright con anfitrión simulado; capturas comparadas a ojo con la referencia antes de fusionar |
 | 3. Catálogo al lienzo | Web | Arrastrar tarjeta con silueta, imán, guías y colocación con `at` (D025) | — | Igual que PR 2; test de «soltar fuera no añade» |
-| 4. Preview fija | Rust (overlays + núcleo) | Modo preview de `vantare-overlays`; orden `preview.render` (instancia, tipo o muestra; ejemplo o escena); medida del tamaño real; caché con tope; arranque, cierre y fallos del proceso | 39 | Sin ventana: claves, caché, límites, y ciclo de vida con un pintor falso (no arranca, tarda, muere). **En el PC de juego**: la foto coincide píxel a píxel con la captura del overlay en la misma escena; tiempo por foto, CPU y memoria anotados |
+| 4. Preview fija | Rust (overlays + núcleo) | Modo preview de `vantare-overlays`; orden `preview.render` (instancia, tipo o muestra; ejemplo o escena); medida del tamaño real; caché con tope; arranque, cierre y fallos del proceso | Por asignar | Sin ventana: claves, caché, límites, y ciclo de vida con un pintor falso (no arranca, tarda, muere). **En el PC de juego**: la foto coincide píxel a píxel con la captura del overlay en la misma escena; tiempo por foto, CPU y memoria anotados |
 | 5. Preview en las pantallas | Web | Vista de un widget, lienzo, Inicio y Onboarding usan la foto real, con la ilustración como respaldo; selector de ejemplos y escenas activo (D015, D024, D092) | — | Vitest y Playwright con PNG de ejemplo; capturas en el PC de juego con el anfitrión real |
-| 6. En vivo (condicional) | Rust + Web | Solo si la medición del PR 4 cumple: flujo lento por suscripción. Si no, estudio de la ventana nativa en un ADR corto | 40 | Medición en el PC de juego antes y después; sin ventana, el flujo con pintor falso |
+| 6. En vivo (condicional) | Rust + Web | Solo si la medición del PR 4 cumple: flujo lento por suscripción. Si no, estudio de la ventana nativa en un ADR corto | Por asignar | Medición en el PC de juego antes y después; sin ventana, el flujo con pintor falso |
 | R. Rune | Rune | Adapta cada versión en su propio PR (ADR 0108): PR 1 → lienzo; PR 4 → preview | — | Su CI (`hub-rune.yml`) y capturas en el Mac con el anfitrión de escena |
 
 Orden y dependencias: 1 → 2 → 3 en una línea; 4 → 5 → 6 en otra. Las dos

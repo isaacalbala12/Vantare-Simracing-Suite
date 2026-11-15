@@ -2,3 +2,4 @@
     reserved_profile: Option<String>,
     profile_step_keys: crate::launcher::editor::StepKeys,
     app_picker: crate::launcher::apps::Picker,
+    profile_account_generation: Option<String>,

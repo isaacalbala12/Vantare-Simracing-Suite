@@ -64,10 +64,7 @@ export async function checkStudioCanvas(
         };
       });
       await studioCanvasScenes[scene].prepare(page);
-      assert.equal(
-        await page.getByText(t.note, { exact: true }).count(),
-        0,
-      );
+      assert.equal(await page.getByText(t.note, { exact: true }).count(), 0);
       if (scene === "studio-canvas") {
         await page.getByRole("button", { name: t.note, exact: true }).hover();
         const tooltip = page.getByRole("tooltip").filter({ hasText: t.note });

@@ -310,7 +310,9 @@ export function CanvasStage({
                         <span
                           className="v-studio-canvas-caption"
                           style={{
-                            top: Math.max(-22, -(shift[1] + box.y * scale)),
+                            top: active
+                              ? 0
+                              : Math.max(-22, -(shift[1] + box.y * scale)),
                           }}
                         >
                           {name}

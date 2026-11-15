@@ -2115,6 +2115,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 15,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "standings",
               "locked": false,
@@ -2867,6 +2873,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 15,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "relative",
               "locked": false,
@@ -3067,6 +3079,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "delta",
               "locked": false,
@@ -3265,6 +3283,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "pedals",
               "locked": false,
@@ -3460,6 +3484,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "fuel-strategy",
               "locked": false,
@@ -3658,6 +3688,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 15,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "broadcast-tower",
               "locked": false,
@@ -3851,6 +3887,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "car-damage-numbers",
               "locked": false,
@@ -4042,6 +4084,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "car-damage-visual",
               "locked": false,
@@ -4235,6 +4283,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "delta-trace",
               "locked": false,
@@ -4428,6 +4482,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "fastest-lap",
               "locked": false,
@@ -4621,6 +4681,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "head-to-head",
               "locked": false,
@@ -4812,6 +4878,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "input-telemetry",
               "locked": false,
@@ -5003,6 +5075,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "track-map",
               "locked": false,
@@ -5194,6 +5272,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 15,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "multiclass-relative",
               "locked": false,
@@ -5386,6 +5470,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "pedals-telemetry",
               "locked": false,
@@ -5578,6 +5668,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "radar",
               "locked": false,
@@ -5768,6 +5864,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 0,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "snapshot"
+              },
               "id": "widget-1",
               "kind": "racing-flags",
               "locked": false,
@@ -5961,6 +6063,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "track-weather",
               "locked": false,
@@ -6155,6 +6263,12 @@
             {
               "aspectLocked": true,
               "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
               "id": "widget-1",
               "kind": "session-alerts",
               "locked": false,
@@ -6205,6 +6319,4688 @@
           "state": "ready"
         }
       }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 15,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
+              "id": "widget-1",
+              "kind": "standings",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "accent": "red",
+                "classScope": "player-class",
+                "classificationMode": "normal",
+                "columns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "contentVersion": 1,
+                "designSystem": "vantare",
+                "footerFirst": "track",
+                "footerSecond": "estimatedLaps",
+                "headerFirst": "none",
+                "headerSecond": "none",
+                "kind": "standings",
+                "playerWindow": false,
+                "practiceColumns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "qualifyingColumns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "rowCount": 20,
+                "showBrand": false,
+                "showSessionFooter": true,
+                "showSessionHeader": true,
+                "style": "neo",
+                "templateId": "signature",
+                "windowAround": 4
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 0,
+                "level": "balanced",
+                "overrideHz": 0,
+                "source": "override"
+              },
+              "id": "widget-1",
+              "kind": "standings",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "accent": "red",
+                "classScope": "player-class",
+                "classificationMode": "normal",
+                "columns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "contentVersion": 1,
+                "designSystem": "vantare",
+                "footerFirst": "track",
+                "footerSecond": "estimatedLaps",
+                "headerFirst": "none",
+                "headerSecond": "none",
+                "kind": "standings",
+                "playerWindow": false,
+                "practiceColumns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "qualifyingColumns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "rowCount": 20,
+                "showBrand": false,
+                "showSessionFooter": true,
+                "showSessionHeader": true,
+                "style": "neo",
+                "templateId": "signature",
+                "windowAround": 4
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": 40,
+                "source": "override"
+              },
+              "id": "widget-1",
+              "kind": "standings",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "accent": "red",
+                "classScope": "player-class",
+                "classificationMode": "normal",
+                "columns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "contentVersion": 1,
+                "designSystem": "vantare",
+                "footerFirst": "track",
+                "footerSecond": "estimatedLaps",
+                "headerFirst": "none",
+                "headerSecond": "none",
+                "kind": "standings",
+                "playerWindow": false,
+                "practiceColumns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "qualifyingColumns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "rowCount": 20,
+                "showBrand": false,
+                "showSessionFooter": true,
+                "showSessionHeader": true,
+                "style": "neo",
+                "templateId": "signature",
+                "windowAround": 4
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 60,
+                "level": "balanced",
+                "overrideHz": 60,
+                "source": "override"
+              },
+              "id": "widget-1",
+              "kind": "standings",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "accent": "red",
+                "classScope": "player-class",
+                "classificationMode": "normal",
+                "columns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "contentVersion": 1,
+                "designSystem": "vantare",
+                "footerFirst": "track",
+                "footerSecond": "estimatedLaps",
+                "headerFirst": "none",
+                "headerSecond": "none",
+                "kind": "standings",
+                "playerWindow": false,
+                "practiceColumns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "qualifyingColumns": [
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "position",
+                    "metricId": "position",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverNumber",
+                    "metricId": "driverNumber",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "driverName",
+                    "metricId": "driverName",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "md"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "bestLap",
+                    "metricId": "bestLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "gap",
+                    "metricId": "gap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "lastLap",
+                    "metricId": "lastLap",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": true,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "sectors",
+                    "metricId": "sectors",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "positionsGained",
+                    "metricId": "positionsGained",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "vehicle",
+                    "metricId": "vehicle",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "tireCompound",
+                    "metricId": "tireCompound",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "pit",
+                    "metricId": "pit",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  },
+                  {
+                    "enabled": false,
+                    "format": {
+                      "decimals": null,
+                      "display": null,
+                      "maxChars": null,
+                      "mode": ""
+                    },
+                    "id": "interval",
+                    "metricId": "interval",
+                    "style": {
+                      "align": null
+                    },
+                    "widthPreset": "auto"
+                  }
+                ],
+                "rowCount": 20,
+                "showBrand": false,
+                "showSessionFooter": true,
+                "showSessionHeader": true,
+                "style": "neo",
+                "templateId": "signature",
+                "windowAround": 4
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "level"
+              },
+              "id": "widget-1",
+              "kind": "pedals",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "accent": "red",
+                "designSystem": "vantare",
+                "gap": 2.0,
+                "kind": "pedals",
+                "showBrakePeak": true,
+                "style": "neo",
+                "transparentBackground": false
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 0,
+                "level": "balanced",
+                "overrideHz": 0,
+                "source": "override"
+              },
+              "id": "widget-1",
+              "kind": "pedals",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "accent": "red",
+                "designSystem": "vantare",
+                "gap": 2.0,
+                "kind": "pedals",
+                "showBrakePeak": true,
+                "style": "neo",
+                "transparentBackground": false
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 40,
+                "level": "balanced",
+                "overrideHz": 40,
+                "source": "override"
+              },
+              "id": "widget-1",
+              "kind": "pedals",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "accent": "red",
+                "designSystem": "vantare",
+                "gap": 2.0,
+                "kind": "pedals",
+                "showBrakePeak": true,
+                "style": "neo",
+                "transparentBackground": false
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 60,
+                "level": "balanced",
+                "overrideHz": 60,
+                "source": "override"
+              },
+              "id": "widget-1",
+              "kind": "pedals",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "accent": "red",
+                "designSystem": "vantare",
+                "gap": 2.0,
+                "kind": "pedals",
+                "showBrakePeak": true,
+                "style": "neo",
+                "transparentBackground": false
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 0,
+                "level": "balanced",
+                "overrideHz": null,
+                "source": "snapshot"
+              },
+              "id": "widget-1",
+              "kind": "racing-flags",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "contentVersion": 1,
+                "hideWhenGreen": false,
+                "kind": "racing-flags",
+                "showSectorFlags": true,
+                "textColor": "#ece6e7"
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 0,
+                "level": "balanced",
+                "overrideHz": 0,
+                "source": "snapshot"
+              },
+              "id": "widget-1",
+              "kind": "racing-flags",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "contentVersion": 1,
+                "hideWhenGreen": false,
+                "kind": "racing-flags",
+                "showSectorFlags": true,
+                "textColor": "#ece6e7"
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 0,
+                "level": "balanced",
+                "overrideHz": 40,
+                "source": "snapshot"
+              },
+              "id": "widget-1",
+              "kind": "racing-flags",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "contentVersion": 1,
+                "hideWhenGreen": false,
+                "kind": "racing-flags",
+                "showSectorFlags": true,
+                "textColor": "#ece6e7"
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "studio.get",
+        "value": {
+          "canRedo": false,
+          "canUndo": false,
+          "canvas": null,
+          "catalog": [
+            {
+              "about": "Clasificación completa con huecos por clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "standings",
+              "name": "Standings",
+              "suggested": true
+            },
+            {
+              "about": "Quién va justo delante y detrás en pista",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "relative",
+              "name": "Relative",
+              "suggested": true
+            },
+            {
+              "about": "Relative con el color de cada clase",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "multiclass-relative",
+              "name": "Relative multiclase",
+              "suggested": false
+            },
+            {
+              "about": "Torre compacta estilo retransmisión",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "broadcast-tower",
+              "name": "Torre de posiciones",
+              "suggested": false
+            },
+            {
+              "about": "Tú contra un rival, vuelta a vuelta",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "head-to-head",
+              "name": "Cara a cara",
+              "suggested": true
+            },
+            {
+              "about": "Mejor vuelta de la sesión y la tuya",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "fastest-lap",
+              "name": "Vuelta rápida",
+              "suggested": false
+            },
+            {
+              "about": "Cuenta atrás y cambios de sesión LMU; carreras marcadas del calendario",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "session-alerts",
+              "name": "Avisos de sesión",
+              "suggested": false
+            },
+            {
+              "about": "Bandera activa, sector y motivo",
+              "allowed": true,
+              "category": "Carrera",
+              "kind": "racing-flags",
+              "name": "Banderas",
+              "suggested": true
+            },
+            {
+              "about": "Ganas o pierdes contra tu mejor vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta",
+              "name": "Delta",
+              "suggested": true
+            },
+            {
+              "about": "Dónde ganas y pierdes a lo largo de la vuelta",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "delta-trace",
+              "name": "Historial de delta",
+              "suggested": false
+            },
+            {
+              "about": "Acelerador, freno y embrague al instante",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals",
+              "name": "Pedales",
+              "suggested": true
+            },
+            {
+              "about": "Trazas de acelerador y freno en el tiempo",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "pedals-telemetry",
+              "name": "Telemetría de pedales",
+              "suggested": false
+            },
+            {
+              "about": "Volante y pedales superpuestos",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "input-telemetry",
+              "name": "Telemetría de entrada",
+              "suggested": false
+            },
+            {
+              "about": "Coches a tu alrededor, vistos desde arriba",
+              "allowed": true,
+              "category": "Pilotaje",
+              "kind": "radar",
+              "name": "Radar",
+              "suggested": false
+            },
+            {
+              "about": "Silueta con las zonas dañadas",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "car-damage-visual",
+              "name": "Daños del coche",
+              "suggested": false
+            },
+            {
+              "about": "Combustible, consumo y vuelta de parada",
+              "allowed": true,
+              "category": "Coche",
+              "kind": "fuel-strategy",
+              "name": "Fuel y stint",
+              "suggested": true
+            },
+            {
+              "about": "Trazado con todos los coches en vivo",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-map",
+              "name": "Mapa del circuito",
+              "suggested": true
+            },
+            {
+              "about": "Temperatura, lluvia y agarre",
+              "allowed": true,
+              "category": "Pista",
+              "kind": "track-weather",
+              "name": "Tiempo en pista",
+              "suggested": false
+            }
+          ],
+          "instances": [
+            {
+              "aspectLocked": true,
+              "canvasPlacement": "inside",
+              "frequency": {
+                "appliedHz": 0,
+                "level": "balanced",
+                "overrideHz": 60,
+                "source": "snapshot"
+              },
+              "id": "widget-1",
+              "kind": "racing-flags",
+              "locked": false,
+              "offTrack": "inherit",
+              "opacity": 100,
+              "settings": {
+                "contentVersion": 1,
+                "hideWhenGreen": false,
+                "kind": "racing-flags",
+                "showSectorFlags": true,
+                "textColor": "#ece6e7"
+              },
+              "showIn": {
+                "practice": true,
+                "qualifying": true,
+                "race": true
+              },
+              "size": {
+                "height": 200.0,
+                "width": 300.0
+              },
+              "sizeMode": "auto",
+              "visible": true,
+              "x": 48.0,
+              "y": 62.0
+            }
+          ],
+          "plan": "pro",
+          "revision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "showing": false,
+          "state": "ready"
+        }
+      }
+    }
+  ],
+  "invalidFrequencies": [
+    {
+      "field": "frequency"
+    },
+    {
+      "field": "frequency",
+      "path": "arbitrary",
+      "value": null
+    },
+    {
+      "field": "frequency",
+      "value": 0
+    },
+    {
+      "field": "frequency",
+      "value": 40
+    },
+    {
+      "field": "frequency",
+      "value": 2
+    },
+    {
+      "field": "frequency",
+      "value": 61
+    },
+    {
+      "field": "frequency",
+      "value": -1
+    },
+    {
+      "field": "frequency",
+      "value": 1.5
+    },
+    {
+      "field": "frequency",
+      "value": "60"
+    },
+    {
+      "field": "frequency",
+      "value": true
+    },
+    {
+      "field": "frequency",
+      "value": []
+    },
+    {
+      "field": "frequency",
+      "value": {}
     }
   ],
   "invalidSettings": [
@@ -7758,6 +12554,123 @@
             "historyRows": 8,
             "kind": "fuel-strategy"
           }
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": 1
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": 4
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": 5
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": 15
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": 20
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": 30
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": 60
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "frequency",
+          "value": null
         }
       }
     },

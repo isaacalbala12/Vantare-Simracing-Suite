@@ -20,10 +20,14 @@ pub(crate) fn typescript() -> String {
     declare::<CanvasView>(&mut text);
     declare::<CanvasPlacement>(&mut text);
     declare::<OverlaySize>(&mut text);
+    declare::<FrequencyView>(&mut text);
+    declare::<FrequencyChange>(&mut text);
+    declare::<frequency::FrequencySource>(&mut text);
     declare::<OverlayInstance>(&mut text);
     declare::<StudioView>(&mut text);
     declare::<InstancePatch>(&mut text);
     geometry_constants(&mut text);
+    frequency_constants(&mut text);
     writeln!(text,"export const studioLimits = {{instances:{INSTANCE_LIMIT},history:{HISTORY_LIMIT},opacityMin:{OPACITY_MIN},opacityMax:{OPACITY_MAX},id:{ID_LIMIT},size:{SIZE_LIMIT},label:{LABEL_LIMIT},about:{ABOUT_LIMIT}}} as const;").expect("limits");
     text.push_str("export const studioAddAvailable = true as const;\nexport const studioEditOnScreen = false as const;\n");
     writeln!(
@@ -233,13 +237,14 @@ pub(crate) fn corpus() -> serde_json::Value {
         .map(|request| UiToHost::Request { id: 1, request })
         .collect();
     settings_samples(&mut host, &mut ui);
+    frequency_samples(&mut host, &mut ui);
     ui.push(UiToHost::Subscribe {
         topic: crate::protocol::Topic::Studio,
     });
     ui.push(UiToHost::Unsubscribe {
         topic: crate::protocol::Topic::Studio,
     });
-    serde_json::json!({"host":host,"ui":ui,"invalidSettings":invalid_settings()})
+    serde_json::json!({"host":host,"ui":ui,"invalidSettings":invalid_settings(),"invalidFrequencies":invalid_frequencies()})
 }
 
 fn geometry_requests(requests: &mut Vec<Request>) {
@@ -462,6 +467,11 @@ fn value_for_settings(kind: WidgetKind, source: &str) -> StudioView {
         aspect_locked: true,
         canvas_placement: CanvasPlacement::Inside,
         settings: WidgetSettings::from_json(kind, source).expect("settings sample"),
+        frequency: FrequencyView::new(
+            kind,
+            crate::settings::track::PerformanceLevel::default(),
+            None,
+        ),
     });
     value
 }
@@ -553,6 +563,95 @@ mod invalid_tests {
                 serde_json::from_value::<crate::studio::WidgetSettingsPatch>(input.clone())
                     .map_or(true, |patch| patch.validate().is_err());
             assert!(rejected, "{input}");
+        }
+    }
+}
+
+fn frequency_constants(text: &mut String) {
+    use crate::protocol::bindings::constants;
+    use crate::settings::track::{MAX_WIDGET_ID_BYTES, MAX_WIDGET_OVERRIDES, OVERRIDE_HZ};
+    constants!(
+        text,
+        "studioFrequencyOptions",
+        serde_json::json!({
+            "choices":frequency::FREQUENCY_CHOICES,"stored":OVERRIDE_HZ,
+            "maxOverrides":MAX_WIDGET_OVERRIDES,"maxIdBytes":MAX_WIDGET_ID_BYTES,
+            "tableKinds":["standings","relative","multiclass-relative","broadcast-tower"],
+            "snapshotKinds":["racing-flags"]
+        })
+    );
+    constants!(text, "studioFrequencyCases", frequency::cases());
+}
+
+fn frequency_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
+    for value in frequency::FREQUENCY_CHOICES
+        .into_iter()
+        .map(Some)
+        .chain(std::iter::once(None))
+    {
+        ui.push(UiToHost::Request {
+            id: 1,
+            request: Request::StudioInstance {
+                id: "widget-1".into(),
+                base_revision: "0".repeat(64),
+                patch: serde_json::from_value(
+                    serde_json::json!({"field":"frequency","value":value}),
+                )
+                .expect("frequency patch"),
+            },
+        });
+    }
+    for kind in [
+        WidgetKind::Standings,
+        WidgetKind::Pedals,
+        WidgetKind::RacingFlags,
+    ] {
+        for hz in [None, Some(0), Some(40), Some(60)] {
+            let source = crate::widget_defaults::get(kind.id()).expect("native default");
+            let mut value = value_for_settings(kind, source.settings.get());
+            value.instances[0].frequency = FrequencyView::new(
+                kind,
+                crate::settings::track::PerformanceLevel::default(),
+                hz,
+            );
+            host.push(HostToUi::Response {
+                id: 1,
+                result: Reply::StudioGet { value },
+            });
+        }
+    }
+}
+fn invalid_frequencies() -> Vec<serde_json::Value> {
+    use serde_json::json;
+    let mut values = vec![
+        json!({"field":"frequency"}),
+        json!({"field":"frequency","value":null,"path":"arbitrary"}),
+    ];
+    for value in [
+        json!(0),
+        json!(40),
+        json!(2),
+        json!(61),
+        json!(-1),
+        json!(1.5),
+        json!("60"),
+        json!(true),
+        json!([]),
+        json!({}),
+    ] {
+        values.push(json!({"field":"frequency","value":value}));
+    }
+    values
+}
+#[cfg(test)]
+mod frequency_corpus_tests {
+    #[test]
+    fn invalid_frequency_requests_are_rejected_by_the_native_decoder() {
+        for value in super::invalid_frequencies() {
+            assert!(
+                serde_json::from_value::<crate::studio::InstancePatch>(value.clone()).is_err(),
+                "{value}"
+            );
         }
     }
 }

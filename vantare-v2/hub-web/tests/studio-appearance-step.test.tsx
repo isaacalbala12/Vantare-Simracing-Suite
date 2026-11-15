@@ -14,6 +14,7 @@ import {
   studioWidgetDefaults,
   type WidgetSettings,
 } from "../src/contract/generated/studio";
+import { frequencyFor } from "../src/contract/studio-frequency";
 import { studioText as t } from "../src/renderer/i18n/studio";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioSteps } from "../src/renderer/ui/studio/StudioSteps";
@@ -44,6 +45,7 @@ function item(kind: (typeof kinds)[number]): OverlayInstance {
   return {
     id: "widget-1",
     kind,
+    frequency: frequencyFor(kind, "balanced", null),
     settings: structuredClone(studioWidgetDefaults[kind]) as WidgetSettings,
     visible: true,
     locked: false,

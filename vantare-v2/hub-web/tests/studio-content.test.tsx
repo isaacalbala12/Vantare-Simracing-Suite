@@ -6,6 +6,7 @@ import {
   studioWidgetDefaults,
   type WidgetSettings,
 } from "../src/contract/generated/studio";
+import { frequencyFor } from "../src/contract/studio-frequency";
 import { useDrivingContent } from "../src/renderer/screens/studio/driving-content";
 
 const state = vi.hoisted(() => ({
@@ -26,6 +27,7 @@ function instance(kind: "delta" | "pedals" = "delta"): OverlayInstance {
   return {
     id: "widget-1",
     kind,
+    frequency: frequencyFor(kind, "balanced", null),
     settings: structuredClone(studioWidgetDefaults[kind]) as WidgetSettings,
     visible: true,
     locked: false,

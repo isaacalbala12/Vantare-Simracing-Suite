@@ -1,5 +1,6 @@
 import {
   studioAddKinds,
+  studioFrequencyOptions,
   studioGeometryLimits,
   studioKinds,
   studioLimits,
@@ -9,6 +10,7 @@ import {
   studioRevisionPattern,
   studioStates,
 } from "../generated/studio";
+import { isFrequencyChange, isFrequencyView } from "../studio-frequency";
 import {
   isWidgetSettings,
   isWidgetSettingsPatch,
@@ -115,12 +117,15 @@ function instance(v: unknown) {
       "offTrack",
       "size",
       "settings",
+      "frequency",
       "x",
       "y",
       "sizeMode",
       "aspectLocked",
       "canvasPlacement",
     ]) &&
+    oneOf(v.kind, studioKinds) &&
+    isFrequencyView(v.frequency, v.kind) &&
     isWidgetSettings(v.settings, v.kind) &&
     coordinate(v.x) &&
     coordinate(v.y) &&
@@ -247,11 +252,14 @@ export function isRequest(v: Record<string, unknown>): boolean {
         ? integer(p.value) &&
             p.value >= studioLimits.opacityMin &&
             p.value <= studioLimits.opacityMax
-        : p.field === "showIn"
-          ? showIn(p.value)
-          : p.field === "settings"
-            ? isWidgetSettingsPatch(p.value)
-            : p.field === "offTrack" && oneOf(p.value, studioOffTracks);
+        : p.field === "frequency"
+          ? new TextEncoder().encode(v.id).length <=
+              studioFrequencyOptions.maxIdBytes && isFrequencyChange(p.value)
+          : p.field === "showIn"
+            ? showIn(p.value)
+            : p.field === "settings"
+              ? isWidgetSettingsPatch(p.value)
+              : p.field === "offTrack" && oneOf(p.value, studioOffTracks);
     }
     default:
       return false;

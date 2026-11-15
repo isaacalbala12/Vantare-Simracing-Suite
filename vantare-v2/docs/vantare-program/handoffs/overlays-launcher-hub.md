@@ -37,6 +37,21 @@ ni se ejecutó el producto. F0/lifecycle gráfico, foco, OBS y VRR pendientes:
 solo PC de juego y únicamente cuando el orquestador dé el horario de Isaac.
 Plane sigue a cargo del orquestador; CI/revisión y SHA final se enlazan en el PR.
 
+## VANTA-138 · D108, Hz por instancia (15/11/2026)
+
+Contrato v40 sobre D106 #2340, ya fusionado en nightly639bb40aa. Cada widget publica su frecuencia aplicada,
+el override opcional y su origen; Banderas sigue cada foto. Cambiar Hz o usar el
+nivel modifica solo ese id con revisión, permisos actuales y CAS. Conserva los
+0/40 antiguos, el nivel global y los demás overrides; no cambia el scheduler.
+No-op no escribe; conflicto no se reintenta. Deshacer también respeta el plan
+actual. Las opciones y380 casos salen de Rust para D, que hará el selector.
+
+La revisión cubre el mismo layout.json que lee Ajustes, incluidos performance;
+no se usa su revisión agregada. Mock y contrato distinguen null de0 y no inventan
+éxito para datos inválidos. Clippy y639 tests del host PASS (1 omitido), ambos typechecks, Biome,
+401 tests puros,718 regresiones y57 de galería integrada PASS. Detalle en #1995. Sin ejecución gráfica, dependencias ni servicios reales.
+PR/head y checks finales se actualizan en el handoff del PR y en la issue.
+
 ## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
 
 Worker B, #2333, ADR 0110 §9. PR

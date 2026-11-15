@@ -28,6 +28,8 @@ fn put<T: Serialize>(fields: &mut Fields, key: &str, value: &T) -> Result<(), Ho
     );
     Ok(())
 }
+#[path = "studio_frequency.rs"]
+mod frequency_edit;
 #[path = "studio_geometry.rs"]
 mod geometry_edit;
 #[path = "studio_fields.rs"]
@@ -67,8 +69,10 @@ impl Open {
         }
         let mut ids = HashSet::new();
         let mut projected = Vec::with_capacity(instances.len());
+        let rates = frequency_edit::Rates::read(&document.fields)?;
         for fields in &instances {
-            let item = instance(fields, None)?;
+            let mut item = instance(fields, None)?;
+            item.frequency = rates.view(&item.id, item.kind);
             companion(fields)?;
             if !ids.insert(item.id.clone()) {
                 return Err(HostError::Protected);
@@ -183,6 +187,11 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
         id,
         kind,
         settings: typed_settings(kind, &settings)?,
+        frequency: crate::studio::FrequencyView::new(
+            kind,
+            crate::settings::track::PerformanceLevel::default(),
+            None,
+        ),
         visible: optional(fields, "visible", true)?,
         locked: !kind.info(access).allowed,
         opacity: (opacity * 100.0).round() as u8,
@@ -378,7 +387,10 @@ pub(crate) fn edit_result(
 ) -> Result<(StudioView, Option<String>), HostError> {
     let mut opened = open_revision(state, revision, access)?;
     state.monitor = Some(opened.monitor);
-    let settings_edit = matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_)));
+    let settings_edit = matches!(
+        &edit,
+        Edit::Instance(_, InstancePatch::Settings(_) | InstancePatch::Frequency(_))
+    );
     let geometry_edit = matches!(
         &edit,
         Edit::Geometry(..) | Edit::Canvas(..) | Edit::AddAt(..)
@@ -390,14 +402,7 @@ pub(crate) fn edit_result(
         state.undo.clear();
         state.redo.clear();
     }
-    let known: Vec<(String, WidgetKind)> = opened
-        .instances
-        .iter()
-        .map(|fields| {
-            let settings: Fields = read(fields, "settings")?;
-            Ok::<_, HostError>((read(fields, "id")?, read(&settings, "kind")?))
-        })
-        .collect::<Result<_, _>>()?;
+    let known = instance_kinds(&opened.instances)?;
     let before = opened
         .document
         .observed
@@ -411,12 +416,17 @@ pub(crate) fn edit_result(
     let adding = matches!(edit, Edit::Add(_) | Edit::AddAt(..));
     // Undo/redo may cross a plan change: restoring a removed Pro instance is an addition.
     let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
+    if matches!(edit, Edit::Undo | Edit::Redo) {
+        frequency_edit::authorize_history(&opened.document.fields, &root, access)?;
+    }
     let restored: Vec<Fields> = read(&root, "instances")?;
     let after_canvas = canvas(&root, opened.monitor)?;
     let mut added = None;
     let mut projected = Vec::new();
+    let rates = frequency_edit::Rates::read(&root)?;
     for fields in &restored {
         let mut item = instance(fields, access)?;
+        item.frequency = rates.view(&item.id, item.kind);
         relative(&mut item, opened.monitor, after_canvas)?;
         let existed = known
             .iter()
@@ -499,6 +509,12 @@ fn apply(
             opened.bytes()?
         }
         Edit::Remove(id) => remove(opened, id)?,
+        Edit::Instance(id, InstancePatch::Frequency(value)) => {
+            if !frequency_edit::apply(opened, id, value.value(), access)? {
+                return Ok(opened.document.observed.clone().expect("existing layout"));
+            }
+            opened.bytes()?
+        }
         Edit::Instance(id, patch) => {
             let fields = opened.find(id)?;
             match patch {
@@ -508,7 +524,9 @@ fn apply(
                 {
                     put(fields, "opacity", &(f64::from(*value) / 100.0))?;
                 }
-                InstancePatch::Opacity(_) => return Err(HostError::Denied),
+                InstancePatch::Opacity(_) | InstancePatch::Frequency(_) => {
+                    return Err(HostError::Denied);
+                }
                 InstancePatch::ShowIn(value) => {
                     let mut stored: Fields = optional(fields, "showIn", Fields::default())?;
                     put(&mut stored, "practice", &value.practice)?;
@@ -626,6 +644,9 @@ pub(crate) fn track(
 #[cfg(test)]
 #[path = "studio_additional_tests.rs"]
 mod additional_tests;
+#[cfg(test)]
+#[path = "studio_frequency_tests.rs"]
+mod frequency_tests;
 
 #[cfg(test)]
 #[path = "studio_geometry_tests.rs"]
@@ -739,4 +760,14 @@ fn fits_instances(
         canvas,
         ..State::unavailable(StudioState::Ready, access)
     })
+}
+
+fn instance_kinds(instances: &[Fields]) -> Result<Vec<(String, WidgetKind)>, HostError> {
+    instances
+        .iter()
+        .map(|fields| {
+            let settings: Fields = read(fields, "settings")?;
+            Ok((read(fields, "id")?, read(&settings, "kind")?))
+        })
+        .collect()
 }

@@ -12,6 +12,24 @@ import {
 } from "../src/renderer/screens/studio/geometry";
 
 // These are the committed Rust serialization, not a second hand-maintained fixture.
+// Compare exactly, without rounding or epsilon: Rust f64 and JS Number use
+// IEEE-754 binary64, and these ports preserve the same operation order.
+// Values such as 84.00000000000006 are part of the oracle, not integer pixels.
+// A mismatch must be investigated; introducing tolerance requires justification.
+it("covers every family exported by Rust", () => {
+  expect(Object.keys(cases).sort()).toEqual(
+    [
+      "snap",
+      "resize",
+      "anchor",
+      "nudge",
+      "heldNudge",
+      "fit",
+      "previewOrigin",
+      "freeSpot",
+    ].sort(),
+  );
+});
 it.each(cases.snap)("matches Rust snap vector %#", (c) =>
   expect(snap(c.center, c.size, c.canvas, c.others, c.threshold)).toEqual(
     c.expected,

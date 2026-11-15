@@ -65,7 +65,7 @@ export async function checkStudioCanvas(
       });
       await studioCanvasScenes[scene].prepare(page);
       assert.equal(
-        await page.locator(".v-canvas-illustration-note").count(),
+        await page.getByText(t.note, { exact: true }).count(),
         0,
       );
       if (scene === "studio-canvas") {

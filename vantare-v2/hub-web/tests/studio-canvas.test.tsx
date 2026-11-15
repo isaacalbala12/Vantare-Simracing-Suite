@@ -629,8 +629,8 @@ it("shows no resize handles or keyboard help in readonly mode", async () => {
 });
 
 it("keeps the illustration disclaimer on the toolbar info, outside the canvas", async () => {
-  const { container } = await mount();
-  expect(container.querySelector(".v-canvas-illustration-note")).toBeNull();
+  await mount();
+  expect(screen.queryByText(t.note)).toBeNull();
   const info = screen.getByRole("button", { name: t.note, exact: true });
   expect(info.closest("footer")).not.toBeNull();
 });

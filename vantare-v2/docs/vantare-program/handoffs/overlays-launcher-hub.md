@@ -314,8 +314,11 @@ para dos Looks y tres escalas), sin PNG ni ejecucion grafica. Auditoria de los
 428 paquetes y 16 tests Python PASS. Formato, 4+23 tests de clasificadores y
 472 huellas anti-slop PASS. Primera pasada Clippy detecto dos campos con mayor
 visibilidad que su tipo y tests que asignaban texto al Driver completo; corregidos
-sin excepciones. Repeticion Clippy/tests Windows encolada, pendiente de RAM;
-no se afirma aun su resultado. La CI Rust no arranca con la pila en conflicto
+sin excepciones. Repeticion Windows completada sobre codigo 9d2b447ba:
+Clippy all-targets -D warnings y 53 tests CPU PASS (51 lib + 2 main), mas
+5 tests de politica sin debug_assertions PASS. Todo por cola, Rust 1.99.1,
+dos jobs y target compartido D:, sin ejecutar producto ni dispositivos.
+La CI Rust no arranca con la pila en conflicto
 con nightly; se necesita reapilar cuando A actualice #2349/#2357. Mac 13,2 GiB libres: no se abre target nuevo que
 pueda bajar de los 12 GiB. Sin dependencias/locks nuevos ni merge/release/Plane.
 
@@ -325,7 +328,8 @@ movimiento. #2356 ya fusionado por el orquestador; F0 fisico de #2346 sigue
 pendiente antes de F2 (pantallas todas apagadas/vuelta y DPI tras conectar).
 
 El lote de 96 comparaciones preparado en D:/VantareServer/evidence/overlays-rune/
-standings/plan-6192ce049 es solo un plan, sin PNG. Cada PNG futuro tiene identidad
+standings/plan-9d2b447ba es solo un plan, sin PNG. El anterior plan-6192ce049
+se conserva como historico. Cada PNG futuro tiene identidad
 del binario (build.rs/commit/copia Rune/escala) y hash propio; la clave final
 incluye tambien SHA-256 del ejecutable. El ejecutor del lote se prueba con un
 proceso falso, nunca con el producto. No se ejecutan graficos en servidor/Mac.

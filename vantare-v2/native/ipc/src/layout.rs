@@ -781,7 +781,11 @@ mod tests {
         assert!(layout.normalized().is_err());
         let dir = directory();
         let path = dir.join("layout.json");
-        fs::write(&path, vec![b' '; MAX_BYTES as usize + 1]).expect("fichero grande");
+        fs::write(
+            &path,
+            vec![b' '; usize::try_from(MAX_BYTES).expect("1 MiB fits usize") + 1],
+        )
+        .expect("fichero grande");
         assert!(matches!(Document::open(path), Err(Error::Invalid(_))));
         fs::remove_dir_all(dir).expect("limpiar");
     }

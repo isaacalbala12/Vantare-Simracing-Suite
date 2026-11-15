@@ -275,14 +275,16 @@ export function create(context: MockContext): MockHandler {
           view.plan === "unverified"
         )
           return fail("denied");
-        view.canvas =
-          request.resolution.kind === "monitor"
-            ? { width: 1920, height: 1080, source: "monitor" }
-            : {
-                width: request.resolution.width,
-                height: request.resolution.height,
-                source: "custom",
-              };
+        if (request.resolution.kind === "monitor") {
+          if (!view.monitor) return fail("denied");
+          view.canvas = { ...view.monitor, source: "monitor" };
+        } else {
+          view.canvas = {
+            width: request.resolution.width,
+            height: request.resolution.height,
+            source: "custom",
+          };
+        }
         break;
       }
       case "studio.geometry": {

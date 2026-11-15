@@ -86,11 +86,11 @@ pero no añaden ocho paradas al recorrido secuencial.
 
 La resolución se elige en presets fijos con tarjetas como Rendimiento; no hay
 entrada libre. `studio.canvas` usa CAS. Tu monitor envía `{kind:monitor}`;
-solo un preset envía `{kind:custom,width,height}`. Con source=monitor se muestra
-su resolución detectada. Si el documento ya arrancó personalizado, el contrato
-no publica por separado el monitor: la opción sigue permitiendo volver a él,
-pero no se inventa su tamaño antes de la respuesta. Una resolución detectada
-en esta sesión se conserva para la etiqueta al elegir luego un preset.
+solo un preset envía `{kind:custom,width,height}`. La primera opción muestra
+`StudioView.monitor`, en unidades lógicas del monitor fijado por Rust, incluso
+si el lienzo usa un preset distinto. Está seleccionada solo con source=monitor.
+Si monitor es null, se muestra su indisponibilidad y no se permite seleccionarlo:
+no se infiere su tamaño del lienzo, del viewport ni de una lectura anterior.
 
 La miniatura y el enlace de la tira abren la misma vista. La lista y el plano
 comparten selección; ocultos permanecen visibles en gris al 35 %, y fuera de

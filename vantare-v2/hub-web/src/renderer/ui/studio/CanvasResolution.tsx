@@ -1,10 +1,11 @@
 import { Popover } from "@base-ui/react/popover";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type {
   CanvasChoice,
   CanvasView,
+  StudioView,
 } from "../../../contract/generated/studio";
 import { canvasText as t } from "../../i18n/studio-canvas";
 import { Button } from "../Button";
@@ -18,17 +19,16 @@ export const canvasPresets = [
 ] as const;
 export function CanvasResolution({
   canvas,
+  monitor,
   enabled,
   onChange,
 }: {
   canvas: CanvasView;
+  monitor: StudioView["monitor"];
   enabled: boolean;
   onChange: (choice: CanvasChoice) => void;
 }) {
-  const monitor = useRef<string | undefined>(undefined);
   const [open, setOpen] = useState(false);
-  if (canvas.source === "monitor")
-    monitor.current = `${canvas.width} × ${canvas.height}`;
   const value =
     canvas.source === "monitor"
       ? "monitor"
@@ -61,8 +61,9 @@ export function CanvasResolution({
               aria-disabled={!enabled}
               onValueChange={(next) => {
                 if (!enabled || next === value) return;
-                if (next === "monitor") onChange({ kind: "monitor" });
-                else {
+                if (next === "monitor") {
+                  if (monitor) onChange({ kind: "monitor" });
+                } else {
                   const preset = canvasPresets.find(
                     ([w, h]) => `${w}x${h}` === next,
                   );
@@ -78,10 +79,15 @@ export function CanvasResolution({
               <Radio.Root
                 value="monitor"
                 className="v-performance-level"
-                aria-disabled={!enabled}
+                disabled={!monitor}
+                aria-disabled={!enabled || !monitor}
               >
                 <strong>{t.monitor}</strong>
-                <small>{monitor.current ?? t.detectedOnReturn}</small>
+                <small>
+                  {monitor
+                    ? `${monitor.width} × ${monitor.height}`
+                    : t.monitorUnavailable}
+                </small>
               </Radio.Root>
               {canvasPresets.map(([w, h]) => (
                 <Radio.Root

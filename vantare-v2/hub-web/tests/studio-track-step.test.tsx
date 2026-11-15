@@ -140,6 +140,25 @@ it("keeps position and size read-only and gives a reason for placing being unava
   ).toBe(true);
   expect(screen.queryByRole("button", { name: t.remove })).toBeNull();
 });
+it("formats opacity with its unit and keeps session indicators decorative", async () => {
+  mount();
+  const slider = await openTrack();
+  expect(slider.getAttribute("aria-valuetext")).toBe(t.opacityValue(100));
+  expect(screen.getByText(t.opacityValue(100), { exact: true })).toBeTruthy();
+  for (const name of [t.practiceShort, t.qualifyingShort, t.raceShort]) {
+    const button = within(
+      screen.getByRole("group", { name: t.showIn }),
+    ).getByRole("button", { name });
+    expect(button.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+  }
+  const place = screen.getByRole("region", { name: t.placeGroup });
+  expect(
+    within(place)
+      .getByRole("button", { name: t.edit })
+      .hasAttribute("disabled"),
+  ).toBe(true);
+});
 it("writes visibility with the observed revision and updates its summary", async () => {
   const requests = vi.spyOn(Client.prototype, "request");
   mount();

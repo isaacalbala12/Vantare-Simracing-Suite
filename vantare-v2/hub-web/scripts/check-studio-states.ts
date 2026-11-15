@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Page } from "playwright-core";
 import { studioText as t } from "../src/renderer/i18n/studio";
+import { checkStudioTrackComposition } from "./check-studio-track-composition";
 import { studioStateScenes } from "./visual-diff/studio-states";
 import { until } from "./wait-for";
 
@@ -87,6 +88,7 @@ export async function checkStudioStates(
       );
     }
     await checkStudioComposition(parent, base);
+    await checkStudioTrackComposition(parent, base);
     await writeFile(
       resolve(evidence, "studio-states.json"),
       JSON.stringify(

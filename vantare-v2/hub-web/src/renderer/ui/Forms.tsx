@@ -214,6 +214,7 @@ export function Slider({
   disabled = false,
   hideLabel = false,
   variant = "default",
+  formatValue,
 }: {
   variant?: "default" | "appearance";
   hideLabel?: boolean;
@@ -225,6 +226,7 @@ export function Slider({
   onChange: (value: number) => void;
   onValueCommitted: (value: number) => void;
   disabled?: boolean;
+  formatValue?: (value: number) => string;
 }) {
   return (
     <BaseSlider.Root
@@ -242,18 +244,26 @@ export function Slider({
       }}
       disabled={disabled}
     >
-      <BaseSlider.Label className={hideLabel ? "v-sr-only" : undefined}>
+      <BaseSlider.Label
+        className={hideLabel ? "v-slider-label v-sr-only" : "v-slider-label"}
+      >
         {label}
       </BaseSlider.Label>
       <BaseSlider.Value className="v-slider-value">
-        {variant === "appearance"
-          ? (_formatted, values) => `${values[0]}%`
-          : undefined}
+        {formatValue
+          ? (_formatted, values) => formatValue(values[0])
+          : variant === "appearance"
+            ? (_formatted, values) => `${values[0]}%`
+            : undefined}
       </BaseSlider.Value>
       <BaseSlider.Control className="v-slider-control">
         <BaseSlider.Track className="v-slider-track">
           <BaseSlider.Indicator className="v-slider-indicator" />
-          <BaseSlider.Thumb className="v-slider-thumb" aria-label={label} />
+          <BaseSlider.Thumb
+            className="v-slider-thumb"
+            aria-label={label}
+            aria-valuetext={formatValue?.(value)}
+          />
         </BaseSlider.Track>
       </BaseSlider.Control>
     </BaseSlider.Root>

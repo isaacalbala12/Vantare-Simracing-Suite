@@ -57,6 +57,7 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
         </div>
         <Slider
           label={t.opacity}
+          formatValue={t.opacityValue}
           value={model.opacity}
           min={studioLimits.opacityMin}
           max={studioLimits.opacityMax}
@@ -91,6 +92,7 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
                   });
               }}
             >
+              {item.showIn[key] && <Icon name="check" />}
               {labels[key]}
             </Button>
           ))}
@@ -120,10 +122,11 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
       <Group
         title={t.placeGroup}
         summary={t.placeSummary(item.size.width, item.size.height)}
+        visible={false}
       >
         <p>{t.placeHelp}</p>
         <DisabledHint label={t.editHelp}>
-          <Button disabled>
+          <Button disabled size="sm">
             <Icon name="v-studio" />
             {t.edit}
           </Button>
@@ -152,7 +155,7 @@ function Group({
       data-active={active}
     >
       <h3>{title}</h3>
-      <div className="v-studio-track-summary" data-visible={visible}>
+      <div className="v-studio-track-group-summary" data-visible={visible}>
         {summary}
       </div>
       {children}

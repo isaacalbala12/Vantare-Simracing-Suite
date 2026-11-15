@@ -15,7 +15,8 @@ export const studioText = {
   visibleOnTrack: "Visible en pista",
   visibleOnTrackHelp: "Apagado, sigue en el layout",
   offTrackHelp: "Garaje, pausa y repeticiones",
-  placeHelp: "Por ahora el overlay aparece donde lo dejaste la última vez.",
+  placeHelp:
+    "Por ahora el overlay aparece donde lo dejaste la última vez. Para quitarlo del layout, usa Más → Eliminar.",
   placeSummary: (width: number, height: number) =>
     `${width} × ${height} px · se ajustan sobre el juego`,
   trackVisibilitySummary: (visible: boolean, opacity: number) =>
@@ -174,6 +175,7 @@ export const studioText = {
   track: "En pista",
   soon: "Disponible próximamente en el Hub nuevo",
   opacity: "Opacidad",
+  opacityValue: (value: number) => `${value} %`,
   showIn: "Mostrar en",
   practice: "Mostrar en práctica",
   qualifying: "Mostrar en qualy",

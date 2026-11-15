@@ -77,7 +77,7 @@ it("Escape/lost capture/unmount cancellation has no command", () => {
   expect(controller.preview(view, [200, 200], surface, access)).toBeNull();
   expect(controller.release(view, [200, 200], surface, access)).toBeNull();
 });
-it("does not send an origin the host rejects even when the pointer is inside", () => {
+it("uses the canonical snap clamp for a pointer just inside the edge", () => {
   const { view, surface, controller } = setup();
   controller.begin(view, "delta", access);
   expect(
@@ -87,7 +87,7 @@ it("does not send an origin the host rejects even when the pointer is inside", (
       surface,
       access,
     ),
-  ).toBeNull();
+  ).toMatchObject({ method: "studio.add", at: { x: 0, y: 522 } });
 });
 it("projects an accepted origin whose widget extends outside the canvas", () => {
   const { host, view } = setup();

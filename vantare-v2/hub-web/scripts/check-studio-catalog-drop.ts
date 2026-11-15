@@ -114,19 +114,10 @@ export async function checkStudioCatalogDrop(
       0,
     );
 
-    for (const mode of [
-      "outside",
-      "covered",
-      "originOutside",
-      "escape",
-    ] as const) {
+    for (const mode of ["outside", "covered", "escape"] as const) {
       await setup();
-      const plane = await start();
+      await start();
       if (mode === "outside") await page.mouse.move(10, 100, { steps: 4 });
-      if (mode === "originOutside")
-        await page.mouse.move(plane.x + 1, plane.y + plane.height / 2, {
-          steps: 4,
-        });
       if (mode === "covered") {
         const panel = await page.locator(".v-canvas-catalog").boundingBox();
         assert.ok(panel);
@@ -148,6 +139,19 @@ export async function checkStudioCatalogDrop(
         assert.equal(await page.locator(".v-canvas-catalog").count(), 0);
       }
     }
+    await setup();
+    const edgePlane = await start();
+    await page.mouse.move(edgePlane.x + 1, edgePlane.y + edgePlane.height / 2, {
+      steps: 4,
+    });
+    assert.equal((await adds()).length, 0);
+    await page.mouse.up();
+    await until(
+      async () => (await adds()).length === 1,
+      10000,
+      "edge snapped catalogue add",
+    );
+    assert.deepEqual((await adds())[0].at, { x: 0, y: 522 });
     await setup("studio-vacio");
     await start();
     await page.mouse.up();
@@ -191,7 +195,7 @@ export async function checkStudioCatalogDrop(
           oneAddAt: true,
           outsideDoesNotAdd: true,
           coveredDoesNotAdd: true,
-          invalidOriginDoesNotAdd: true,
+          edgeSnapsInside: true,
           escapeCancels: true,
           emptyCanvas: true,
           keyboardAlternative: true,

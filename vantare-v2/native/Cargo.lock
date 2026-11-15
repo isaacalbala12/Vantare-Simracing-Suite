@@ -6629,6 +6629,7 @@ dependencies = [
 name = "vantare-ipc"
 version = "0.0.0"
 dependencies = [
+ "flume",
  "libc",
  "serde",
  "serde_json",

@@ -264,17 +264,7 @@ impl SettingsPresentation for Settings {
     }
 }
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapTimes, Positions, Relative, Sectors, SessionInfo};
-        let mut demand = crate::demand::signals(33, &[Positions, Relative, LapTimes, SessionInfo]);
-        if self.show_sectors {
-            demand.request(LapTimes, 250);
-            demand.request(Sectors, 250);
-        }
-        demand
-    }
-}
+
 
 #[cfg(test)]
 use crate::widget_settings::SettingsDemand as _;

@@ -1,37 +1,8 @@
-//! Señales de la presentación: ni geometría ni datos del simulador.
-use vantare_ipc::{Demand, Signal};
-
-pub(crate) fn signals(interval_ms: u16, signals: &[Signal]) -> Demand {
-    let mut demand = Demand::default();
-    for &signal in signals {
-        demand.request(signal, interval_ms);
-    }
-    demand
-}
-
-pub(crate) fn information(demand: &mut Demand, id: &str, slots: bool) {
-    use Signal::{
-        LapCount, LapTimes, LapsRemaining, Positions, SessionClock, SessionInfo, TrackName, Weather,
-    };
-    let signal = match id {
-        "trackTemperature" | "airTemperature" | "ambient" | "wind" | "rain" | "wetness" => Weather,
-        "track" if slots => Weather,
-        "track" => TrackName,
-        "estimatedLaps" => LapsRemaining,
-        "totalLaps" => SessionInfo,
-        "remaining" | "time" => SessionClock,
-        "lap" => LapCount,
-        "position" => Positions,
-        "lastLap" | "bestLap" => LapTimes,
-        _ => return,
-    };
-    demand.request(signal, 250);
-}
-
+pub(crate) use vantare_ipc::widget_demand::{information, signals};
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{Kind, Settings};
+    use vantare_ipc::{Demand, Signal, widget_demand::SettingsDemand as _};
 
     const LIVE_EXTRA_SETTINGS: &[&str] = &[
         r#"{"kind":"standings","classScope":"all-classes","classificationMode":"multiclass","columns":[{"metricId":"position"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"class"},{"metricId":"gap"},{"metricId":"interval"},{"metricId":"currentLap"},{"metricId":"lastLap"},{"metricId":"bestLap"},{"metricId":"pit"}]}"#,

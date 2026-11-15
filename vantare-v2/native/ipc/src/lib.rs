@@ -361,3 +361,8 @@ mod tests {
 #[cfg(feature = "qa-e2e")]
 pub mod qa;
 pub mod session_alerts;
+
+pub mod layout;
+pub mod motion_policy;
+pub mod source;
+pub mod widget_demand;

@@ -6,6 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 use vantare_domain::{Snapshot, format::Preferences};
+use vantare_ipc::widget_demand::SettingsDemand as _;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     vantare_profiling::initialize_trace();

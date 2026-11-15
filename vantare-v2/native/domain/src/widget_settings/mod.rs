@@ -46,3 +46,6 @@ pub mod radar;
 pub mod session_alerts;
 pub mod track_map;
 pub mod track_weather;
+
+mod catalog;
+pub use catalog::{Kind, Settings};

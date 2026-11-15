@@ -304,13 +304,7 @@ impl SettingsPresentation for Settings {
     }
 }
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Flags, LapTimes, PitStatus, Positions, Relative};
-        crate::demand::signals(33, &[Positions, Relative, PitStatus, LapTimes, Flags])
-    }
-}
+
 
 
 

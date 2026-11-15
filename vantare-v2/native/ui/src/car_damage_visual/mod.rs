@@ -361,13 +361,7 @@ impl SettingsKeyboard for Settings {
     }
 }
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::Damage;
-        crate::demand::signals(500, &[Damage])
-    }
-}
+
 
 
 

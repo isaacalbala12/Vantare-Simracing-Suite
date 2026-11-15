@@ -23,32 +23,7 @@ const SIZE: (f32, f32) = (1400.0, 56.0);
 
 pub use vantare_domain::widget_settings::broadcast_tower::Settings;
 
-impl crate::widget_settings::SettingsDemand for Settings {
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{
-            ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,
-            SessionInfo, Weather,
-        };
-        let mut demand = crate::demand::signals(
-            250,
-            &[
-                SessionInfo,
-                SessionClock,
-                Positions,
-                LapTimes,
-                Gaps,
-                ClassGaps,
-                PitStatus,
-                Flags,
-                LapCount,
-            ],
-        );
-        if self.show_weather {
-            demand.request(Weather, 500);
-        }
-        demand
-    }
-}
+
 
 
 

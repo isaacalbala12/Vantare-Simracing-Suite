@@ -29,3 +29,12 @@ El adaptador vigila sus bloques; Core vigila silencio y retiene la última foto
 viva durante pausa. El consumidor conserva su plazo Lost de cinco segundos.
 `Adapter::freshness_detail` es opcional, local y solo diagnóstico: sus detalles
 no cruzan Snapshot/DTO y el núcleo no los interpreta.
+
+## Overlays compartidos — ADR 0110, PR 3 (#2333)
+
+`widget_settings::{Kind, Settings}` contiene el catálogo y el agregado serializado,
+además de los ajustes de cada familia extraídos en VANTA-138. `performance`
+conserva niveles, overrides y Cadence con reloj inyectado; `widget_session`
+conserva pestañas y filtros, `geometry` tamaños y resize, y `motion_policy`
+la precedencia de movimiento reducido. Ninguno depende de un renderer ni hace I/O.
+UI mantiene las mismas rutas públicas mediante fachadas y reexports.

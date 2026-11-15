@@ -4,75 +4,6 @@ macro_rules! widgets {
     ($($kind:ident => $module:ident: $name:literal),+ $(,)?) => {
         $(pub mod $module;)+
 
-        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-        pub enum Kind { $($kind),+ }
-
-        impl Kind {
-            pub const ALL: &'static [Self] = &[$(Self::$kind),+];
-            pub const CATALOG:&'static[Self]=&[Self::Standings,Self::Relative,Self::Delta,Self::Pedals,Self::MulticlassRelative,Self::Radar,Self::InputTelemetry,Self::DeltaTrace,Self::PedalsTelemetry,Self::TrackMap,Self::TrackWeather,Self::RacingFlags,Self::FastestLap,Self::HeadToHead,Self::BroadcastTower,Self::CarDamageVisual,Self::FuelStrategy,Self::SessionAlerts];
-
-
-            /// Nombre de producto; los identificadores de persistencia no cambian.
-            pub fn label(self) -> &'static str {
-                match self {
-                    Self::Standings => "Standings",
-                    Self::Radar => "Radar",
-                    Self::Pedals => "Pedales",
-                    Self::Delta => "Delta",
-                    Self::CarDamageVisual => "Daños del coche",
-                    Self::InputTelemetry => "Telemetría de entrada",
-                    Self::MulticlassRelative => "Relative multiclase",
-                    Self::BroadcastTower => "Torre de posiciones",
-                    Self::DeltaTrace => "Historial de delta",
-                    Self::TrackMap => "Mapa del circuito",
-                    Self::TrackWeather => "Tiempo en pista",
-                    Self::CarDamageNumbers => "Daños detallados",
-                    Self::HeadToHead => "Cara a cara",
-                    Self::FuelStrategy => "Fuel y stint",
-                    Self::PedalsTelemetry => "Telemetría de pedales",
-                    Self::Relative => "Relative",
-                    Self::RacingFlags => "Banderas",
-                    Self::FastestLap => "Vuelta rápida",
-                    Self::SessionAlerts => "Avisos de sesión",
-                }
-            }
-
-            pub fn name(self) -> &'static str {
-                match self { $(Self::$kind => $name),+ }
-            }
-        }
-
-        impl std::str::FromStr for Kind {
-            type Err = ();
-
-            fn from_str(name: &str) -> Result<Self, Self::Err> {
-                match name { $($name => Ok(Self::$kind)),+, _ => Err(()) }
-            }
-        }
-
-        #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-        #[serde(tag = "kind", rename_all = "kebab-case")]
-        pub enum Settings { $($kind($module::Settings)),+ }
-
-        impl Settings {
-            pub fn demand(&self) -> vantare_ipc::Demand {
-                match self { $(Self::$kind(settings) => settings.demand()),+ }
-            }
-
-            pub fn kind(&self) -> Kind {
-                match self { $(Self::$kind(_) => Kind::$kind),+ }
-            }
-
-            pub fn default_for(kind: Kind) -> Self {
-                match kind { $(Kind::$kind => Self::$kind($module::Settings::default())),+ }
-            }
-
-            #[must_use]
-            pub fn normalized(&self) -> Self {
-                match self { $(Self::$kind(settings) => Self::$kind(settings.normalized())),+ }
-            }
-        }
-
         pub(crate) enum Widget { $($kind(Box<$module::Widget>)),+ }
 
         impl Widget {
@@ -105,24 +36,4 @@ macro_rules! widgets {
     }
 }
 
-widgets! {
-    Standings => standings: "standings",
-    Radar => radar: "radar",
-    Pedals => pedals: "pedals",
-    Delta => delta: "delta",
-    CarDamageVisual => car_damage_visual: "car-damage-visual",
-    InputTelemetry => input_telemetry: "input-telemetry",
-    MulticlassRelative => multiclass_relative: "multiclass-relative",
-    BroadcastTower => broadcast_tower: "broadcast-tower",
-    DeltaTrace => delta_trace: "delta-trace",
-    TrackMap => track_map: "track-map",
-    TrackWeather => track_weather: "track-weather",
-    CarDamageNumbers => car_damage_numbers: "car-damage-numbers",
-    HeadToHead => head_to_head: "head-to-head",
-    FuelStrategy => fuel_strategy: "fuel-strategy",
-    PedalsTelemetry => pedals_telemetry: "pedals-telemetry",
-    Relative => relative: "relative",
-    RacingFlags => racing_flags: "racing-flags",
-    FastestLap => fastest_lap: "fastest-lap",
-    SessionAlerts => session_alerts: "session-alerts",
-}
+vantare_domain::widget_catalog!(widgets);

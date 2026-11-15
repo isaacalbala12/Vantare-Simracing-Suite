@@ -156,6 +156,64 @@ con bytes exactos. Clippy y 642 tests del host PASS, 1 omitido, por la cola y si
 ventanas. No se toca runtime/domain/ipc, por lo que no hace falta telemetría nueva.
 D no necesita adaptar el contrato. CI y revisión pendientes; PR/head en #1995.
 Siguiente cola de E: D031, D048 y D111; preview espera Rune F1.
+## VANTA-144 · PR 3: código común de overlays (15/11/2026)
+
+Worker A, #2333, ADR 0110 decisión 1. Rama
+`vantareapp/isa-2333-codigo-comun`, PR #2344. Se inició apilada sobre E
+#2341 ca31f3b9e74e45a0f92e75ee65a20cb450d06a23 por encargo. Tras el squash
+se aplicó `git rebase --onto origin/nightly ca31f3b9e`; base real ahora
+`e56c79b26245c8efdfe00ae5d5bebf470c4344fb`. Único conflicto en el handoff,
+conservados completos los bloques de A y B. El diff ya no incluye la extracción E.
+
+`domain::widget_settings::{Kind, Settings}` posee la lista única y el agregado;
+UI consume esa lista para su despacho. Las familias de ajustes siguen siendo
+las de E. Cadencias, geometría, filtros de sesión y precedencia de movimiento
+reducido son puras. No se cambia el scheduler ni el dibujo/animación GPUI.
+`ipc::{layout, widget_demand, source, motion_policy}` posee documento/CAS,
+demanda, transporte/fotos y lectura de apariencia. UI reexporta o hace de
+fachada para conservar su API; solo la inicialización mantiene el cálculo de
+tamaños GPUI y entrega ese diseño a IPC. Sin versiones de protocolo nuevas.
+
+La demanda Standings ya incluía en su unión base todas las señales de sus
+columnas; conserva la misma unión, plazos y pies, sin resolver un estilo GPUI.
+Un oráculo con el camino anterior compara variantes de tablas y sesiones.
+El escritor y enum anteriores están congelados para comparar bytes de fixtures,
+todas las familias y Looks, con y sin preserve_order. Geometría idéntica a la
+base, incluidas reglas de resize y tests, salvo el permiso numérico ya heredado
+por esos tests de UI. Flume 0.12 acompaña a la fuente: ya estaba en UI/lock;
+el lock nativo solo añade esa arista. El lock aislado Rune incorpora flume,
+futures-sink y spin en las mismas versiones ya presentes en producto; ningún
+paquete ni versión nuevo para el repositorio.
+
+Validación por cola, Rust 1.99.1, target compartido en D: y cuatro jobs:
+Clippy all-targets de los nueve crates afectados, Hub congelado y bench PASS.
+2.095 tests nativos PASS (16 omisiones del perfil/opt-in); UI 354 PASS,
+con el único test de aplicación gráfica excluido y seis opt-in ya ignorados.
+Telemetría 34 PASS (1 omisión del perfil). Escritor: 79 casos, incluidos tres
+fixtures y las 19 familias en ambas versiones/Looks, PASS con preserve_order
+y en IPC aislado sin ese feature: 158 comparaciones de bytes en total.
+Las 18 demandas
+restantes son idénticas salvo rutas; Standings conserva su oráculo anterior
+y compara 144 variantes. Catálogo y plantillas conservan orden y etiquetas.
+Seis tests Python del catálogo, formato, 472 huellas y 428 licencias Rune PASS.
+
+CI completa PASS en 6810594c900f75dea357f6b2fde0cd6264688480: lint/build,
+Rune, contrato Hub en ambos órdenes, dos suites nativas, telemetría,
+lifecycle, distribución e instalación. El test original de inicialización
+fija ahora explícitamente la mtime de la escritura: antes asumía una marca
+distinta para dos reemplazos rápidos. No cambia lector/escritor ni se añaden
+esperas; el test IPC de sustitución con igual mtime permanece intacto.
+La revisión del orquestador está pendiente. Los tests Hub y la aplicación
+UI gráfica se validan en CI; ninguno se ejecuta en servidor. Plane comprobado
+En curso, sin modificarlo. Sin merge, release ni promoción propios.
+PR/head final y resultado de sus checks en #2333.
+
+Siguiente: revisión de PR 3. B ha publicado la base independiente del proceso,
+PR #2345, head 9847099e81045d74290970d9d2d437d5b72f5165; aún rechaza --layout
+porque faltan diseño/Presentation, fuente/DemandHandle, cadencias y geometría.
+PR 6 necesita que B conecte esa parte con estas APIs compartidas. Preparadas
+las referencias del Relative Rune de medición y sus tests CPU; no se duplica
+el host de B ni se ejecutan gráficos. F0/F1 quedan para el PC de juego.
 
 ## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
 

@@ -56,3 +56,8 @@ pub use session_timing::{SessionTiming, StartPhase};
 pub mod text;
 
 pub mod session_alerts;
+
+pub mod geometry;
+pub mod motion_policy;
+pub mod performance;
+pub mod widget_session;

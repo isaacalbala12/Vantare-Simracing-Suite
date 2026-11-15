@@ -230,26 +230,7 @@ impl crate::widget_settings::WorkshopSettings for Settings {
         s
     }
 }
-impl crate::widget_settings::SettingsDemand for Settings {
-    fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Cars, Flags, LapProgress, PitStatus, Positions, Sectors};
-        use vantare_ipc::Signal::{Delta, LapCount, LapTimes};
-        crate::demand::signals(
-            16,
-            &[
-                Delta,
-                LapTimes,
-                LapCount,
-                Cars,
-                Positions,
-                Sectors,
-                LapProgress,
-                PitStatus,
-                Flags,
-            ],
-        )
-    }
-}
+
 #[cfg(test)]
 mod tests {
     #[test]

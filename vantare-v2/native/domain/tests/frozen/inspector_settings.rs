@@ -1,3 +1,4 @@
+// UNSUPPORTED lists copied verbatim from pre-extraction UI at 13981d4b9.
 pub(super) mod broadcast_tower {
     // Frozen UI Settings before D106; migration oracle, never product code.
     #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -20,6 +21,10 @@ pub(super) mod broadcast_tower {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+            "showSof",
+            "Eficiencia no ofrece SOF y Snapshot no transporta rating",
+        )];
         #[must_use]
         pub fn normalized(&self) -> Self {
             let mut value = self.clone();
@@ -47,6 +52,7 @@ pub(super) mod car_damage_numbers {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             Self {
@@ -78,6 +84,7 @@ pub(super) mod car_damage_visual {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             let mut s = self.clone();
@@ -119,6 +126,16 @@ pub(super) mod delta_trace {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
+            (
+                "showSectors",
+                "El diseño mantiene los indicadores de sector en el pie",
+            ),
+            (
+                "showTrackMap",
+                "Snapshot no publica trackPath ni turnInsight",
+            ),
+        ];
         #[must_use]
         pub fn normalized(&self) -> Self {
             Self {
@@ -158,6 +175,7 @@ pub(super) mod fastest_lap {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             Self {
@@ -186,6 +204,7 @@ pub(super) mod head_to_head {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             let mut settings = self.clone();
@@ -214,6 +233,7 @@ pub(super) mod input_telemetry {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             Self {
@@ -241,6 +261,10 @@ pub(super) mod track_map {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+            "showTrackLabel",
+            "TrackMapFunctional dibuja el pie sin consultar showTrackLabel",
+        )];
         #[must_use]
         pub fn normalized(&self) -> Self {
             self.clone()
@@ -267,6 +291,7 @@ pub(super) mod multiclass_relative {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             let mut value = self.clone();
@@ -299,6 +324,10 @@ pub(super) mod pedals_telemetry {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+            "showPosition",
+            "PedalsAdvancedEfficiency no dibuja posición",
+        )];
         #[must_use]
         pub fn normalized(&self) -> Self {
             if vantare_domain::pedals_telemetry::WHEELS.contains(&self.steering_wheel.as_str()) {
@@ -326,6 +355,7 @@ pub(super) mod radar {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             self.clone()
@@ -356,6 +386,7 @@ pub(super) mod racing_flags {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             let value = self.text_color.as_bytes();
@@ -407,6 +438,18 @@ pub(super) mod track_weather {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
+            (
+                "showAmbient",
+                "TrackWeatherFunctional no consulta este filtro",
+            ),
+            (
+                "showTrack",
+                "TrackWeatherFunctional no consulta este filtro",
+            ),
+            ("showRain", "TrackWeatherFunctional no consulta este filtro"),
+            ("showWind", "TrackWeatherFunctional no consulta este filtro"),
+        ];
         #[must_use]
         pub fn normalized(&self) -> Self {
             self.clone()
@@ -465,6 +508,7 @@ pub(super) mod session_alerts {
         }
     }
     impl Settings {
+        pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
         #[must_use]
         pub fn normalized(&self) -> Self {
             let mut s = self.clone();

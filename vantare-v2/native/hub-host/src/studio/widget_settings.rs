@@ -406,7 +406,14 @@ macro_rules! patch {
 }
 #[path = "widget_settings/additional.rs"]
 pub(crate) mod additional;
-pub use additional::*;
+pub use additional::{
+    AlertStyle, BroadcastTowerWidgetPatch, CarDamageNumbersWidgetPatch, CarDamageVisualWidgetPatch,
+    DamageView, DeltaTraceWidgetPatch, FastestLapWidgetPatch, FlagColor, HeadTarget,
+    HeadToHeadWidgetPatch, InputTelemetryWidgetPatch, MiniSize, MulticlassMode,
+    MulticlassRelativeWidgetPatch, PedalsTelemetryWidgetPatch, RacingFlagsWidgetPatch,
+    RadarWidgetPatch, SessionAlertsWidgetPatch, SteeringWheel, ThresholdPatch, ToggleKey,
+    TrackMapWidgetPatch, TrackWeatherWidgetPatch,
+};
 
 patch!(WidgetColumnFormatPatch {
     mode: ColumnNameMode => "some",

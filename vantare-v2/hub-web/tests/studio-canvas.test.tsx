@@ -185,7 +185,8 @@ it("captures pointer movement and writes only after pointerup", async () => {
   await waitFor(() => expect(requests(spy)).toHaveLength(1));
   expect(requests(spy)[0].change).toMatchObject({
     kind: "move",
-    x: 432,
+    // 100 CSS px at the full 640/1920 fit = 300 layout units, from x=48.
+    x: 348,
     y: 76,
   });
 });

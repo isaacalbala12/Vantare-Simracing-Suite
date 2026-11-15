@@ -25,6 +25,7 @@ import {
 } from "../../contract/studio-widget-settings";
 import type { MockContext, MockHandler } from "../context";
 import { studioStateScene } from "../studio-states";
+import { studioFieldKind } from "../studio-widget-scenes";
 export function create(context: MockContext): MockHandler {
   const { sceneName } = context;
   if (sceneName.startsWith("studio-")) {
@@ -57,6 +58,16 @@ export function create(context: MockContext): MockHandler {
     aspectLocked: true,
     canvasPlacement: "inside",
   })) as OverlayInstance[];
+  const fieldKind = studioFieldKind(sceneName);
+  if (fieldKind) {
+    instances.splice(0, instances.length, {
+      ...instances[0],
+      kind: fieldKind,
+      settings: widgetDefault(fieldKind),
+      size: { ...studioSizes[fieldKind] },
+      frequency: frequencyFor(fieldKind, performanceLevel, null),
+    });
+  }
   if (sceneName === "studio-muchos" || sceneName === "studio-nueve") {
     const originals = structuredClone(instances);
     instances.splice(

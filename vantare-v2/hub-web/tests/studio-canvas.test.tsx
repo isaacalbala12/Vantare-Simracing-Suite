@@ -185,7 +185,7 @@ it("captures pointer movement and writes only after pointerup", async () => {
   await waitFor(() => expect(requests(spy)).toHaveLength(1));
   expect(requests(spy)[0].change).toMatchObject({
     kind: "move",
-    x: 348,
+    x: 446,
     y: 80,
   });
 });
@@ -378,7 +378,7 @@ it("returns focus to the mode button when leaving the canvas", async () => {
   await mount();
   await userEvent.setup().click(screen.getByRole("button", { name: t.close }));
   expect(document.activeElement).toBe(
-    screen.getByRole("button", { name: t.open }),
+    screen.getByRole("button", { name: t.close }),
   );
 });
 
@@ -548,4 +548,81 @@ it("keeps the read fence across modes after a failed reconciliation", async () =
     baseRevision: "1".padStart(64, "0"),
     change: { kind: "move", x: 50 },
   });
+});
+
+it("replaces steps with the canvas, keeps one plane tab stop, and restores the active step with Done", async () => {
+  const { move, container } = await mount();
+  const user = userEvent.setup();
+  expect(screen.queryByRole("tab", { name: "En pista" })).toBeNull();
+  expect(
+    container.querySelectorAll(
+      '.v-studio-canvas-viewport button[tabindex="0"]',
+    ),
+  ).toHaveLength(1);
+  fireEvent.keyDown(move, { key: "ArrowRight" });
+  fireEvent.keyDown(move, { key: "Escape" });
+  expect(screen.getByRole("region", { name: t.title })).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: t.done }));
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: t.close }),
+  );
+  await user.click(screen.getByRole("tab", { name: "En pista" }));
+  await user.click(screen.getByRole("button", { name: t.open }));
+  await user.click(screen.getByRole("button", { name: t.done }));
+  expect(
+    screen.getByRole("tab", { name: "En pista" }).getAttribute("aria-selected"),
+  ).toBe("true");
+});
+
+it("uses fixed resolution presets and returns to the detected monitor with CAS", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: t.resolution }));
+  expect(
+    screen
+      .getByRole("radio", { name: /Tu monitor/ })
+      .getAttribute("aria-checked"),
+  ).toBe("true");
+  await user.click(screen.getByRole("radio", { name: /2560 × 1440/ }));
+  await waitFor(() =>
+    expect(
+      spy.mock.calls.filter(([r]) => r.method === "studio.canvas"),
+    ).toHaveLength(1),
+  );
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole("radio", { name: /2560 × 1440/ })
+        .getAttribute("aria-checked"),
+    ).toBe("true"),
+  );
+  await user.click(screen.getByRole("radio", { name: /Tu monitor/ }));
+  await waitFor(() =>
+    expect(
+      spy.mock.calls.filter(([r]) => r.method === "studio.canvas"),
+    ).toHaveLength(2),
+  );
+  expect(
+    spy.mock.calls
+      .filter(([r]) => r.method === "studio.canvas")
+      .map(([r]) => r),
+  ).toEqual([
+    {
+      method: "studio.canvas",
+      baseRevision: "0".repeat(64),
+      resolution: { kind: "custom", width: 2560, height: 1440 },
+    },
+    {
+      method: "studio.canvas",
+      baseRevision: "1".padStart(64, "0"),
+      resolution: { kind: "monitor" },
+    },
+  ]);
+});
+
+it("shows no resize handles or keyboard help in readonly mode", async () => {
+  const { container } = await mount("studio-canvas-readonly");
+  expect(container.querySelectorAll("[data-canvas-handle]")).toHaveLength(0);
+  expect(screen.queryByText(t.help)).toBeNull();
 });

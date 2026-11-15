@@ -127,8 +127,18 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                     className="v-focus-row-name"
                     id={`${addHint}-name-${index}`}
                   >
-                    <strong>{widgetName(item, view)}</strong>{" "}
-                    <small>{widgetStatus(item)}</small>
+                    <strong>{widgetName(item, view)}</strong>
+                    <small
+                      data-outside={
+                        state.canvasMode && item.canvasPlacement === "outside"
+                      }
+                    >
+                      {state.canvasMode
+                        ? item.canvasPlacement === "outside"
+                          ? canvasText.outside
+                          : canvasText.coordinates(item.x, item.y)
+                        : widgetStatus(item)}
+                    </small>
                   </span>
                 </button>
                 <IconButton
@@ -199,6 +209,11 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
         <span>
           {state.canvasMode ? canvasText.placementHint : t.placementHint}
         </span>
+        {!state.canvasMode && (
+          <button type="button" onClick={() => state.setCanvasMode(true)}>
+            {canvasText.openLink}
+          </button>
+        )}
       </footer>
     </aside>
   );

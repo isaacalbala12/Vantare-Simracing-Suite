@@ -188,7 +188,10 @@ function useStateValue() {
             // Keep the original failure; reading did not confirm duplication.
           }
         }
-        if (request.method === "studio.geometry") {
+        if (
+          request.method === "studio.geometry" ||
+          request.method === "studio.canvas"
+        ) {
           // An uncertain result may already be on disk. Fence all Studio writes
           // until a fresh read, including if Canvas is closed in the meantime.
           mustRead.current = true;

@@ -1,57 +1,44 @@
-import { canvasText as c } from "../../i18n/studio-canvas";
-import { useStudio } from "../../screens/studio/state";
-import { Button } from "../Button";
-import { Tooltip } from "../Layers";
-import { CanvasStage } from "./CanvasStage";
+import { canvasText as t } from "../../i18n/studio-canvas";
 import { Stage } from "./Stage";
 import type { ReturnTypeOfStudioFocus } from "./StudioFocus";
 import { widgetName } from "./Widgets";
 
 export function StudioStage({ model }: { model: ReturnTypeOfStudioFocus }) {
-  const state = useStudio();
-  const switchButton = useRef<HTMLButtonElement>(null);
-  const wasCanvas = useRef(state.canvasMode);
-  useLayoutEffect(() => {
-    if (wasCanvas.current && !state.canvasMode) switchButton.current?.focus();
-    wasCanvas.current = state.canvasMode;
-  }, [state.canvasMode]);
-  const selected = model.selected;
+  const { state, selected } = model;
   const view = state.view;
   if (!selected || !view) return null;
-  const switcher = (
-    <Tooltip
-      label={state.canvasMode ? c.close : view.canvas ? c.open : c.unavailable}
-    >
-      <Button
-        ref={switchButton}
-        size="sm"
-        variant="ghost"
-        aria-pressed={state.canvasMode}
-        aria-label={state.canvasMode ? c.close : c.open}
-        disabled={!state.canvasMode && !view.canvas}
-        onClick={() => state.setCanvasMode(!state.canvasMode)}
-      >
-        {state.canvasMode ? c.widget : c.layout}
-      </Button>
-    </Tooltip>
-  );
-  return state.canvasMode ? (
-    <CanvasStage
-      view={view}
-      selected={selected}
-      onSelect={model.select}
-      actions={switcher}
-    />
-  ) : (
+  const canvas = view.canvas;
+  return (
     <Stage
       item={selected}
       name={widgetName(selected, view)}
       blocked={model.blocked}
       pending={state.pending}
       onShow={() => model.toggle(selected.id)}
-      actions={switcher}
+      canvasPreview={
+        canvas && (
+          <button
+            type="button"
+            className="v-studio-minimap"
+            aria-label={t.openMini}
+            onClick={() => state.setCanvasMode(true)}
+          >
+            {view.instances.map((item) => (
+              <i
+                key={item.id}
+                data-selected={item.id === selected.id}
+                style={{
+                  left: `${(item.x / canvas.width) * 100}%`,
+                  top: `${(item.y / canvas.height) * 100}%`,
+                  width: `${(item.size.width / canvas.width) * 100}%`,
+                  height: `${(item.size.height / canvas.height) * 100}%`,
+                }}
+              />
+            ))}
+            <span>{`${t.layout} ↗`}</span>
+          </button>
+        )
+      }
     />
   );
 }
-
-import { useLayoutEffect, useRef } from "react";

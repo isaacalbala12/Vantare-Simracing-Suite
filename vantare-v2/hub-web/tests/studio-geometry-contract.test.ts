@@ -73,9 +73,10 @@ it("projects fractional geometry while mock-only unsupported orders never preten
   expect(
     host(
       message({
-        method: "studio.canvas",
+        method: "studio.add",
+        kind: "delta",
+        at: { x: 10, y: 20 },
         baseRevision: revision,
-        resolution: { kind: "monitor" },
       }),
     ),
   ).toMatchObject({

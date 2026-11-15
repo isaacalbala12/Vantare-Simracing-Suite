@@ -188,8 +188,9 @@ export function create(context: MockContext): MockHandler {
   }
   if (view.state !== "ready") view.monitor = null;
   const stateScene = studioStateScene(sceneName, view);
-  const undo: OverlayInstance[][] = [],
-    redo: OverlayInstance[][] = [];
+  type LayoutSnapshot = Pick<StudioView, "instances" | "canvas">;
+  const undo: LayoutSnapshot[] = [],
+    redo: LayoutSnapshot[] = [];
   let conflict =
     sceneName === "studio-error" || sceneName === "studio-canvas-conflict";
   const bump = () => {
@@ -226,11 +227,8 @@ export function create(context: MockContext): MockHandler {
     )
       return;
     const { request, id } = message;
-    // Resolution selection and catalog drops are not implemented by this UI PR.
-    if (
-      request.method === "studio.canvas" ||
-      (request.method === "studio.add" && request.at !== undefined)
-    ) {
+    // Catalogue drops are implemented in ADR 0109 PR 3.
+    if (request.method === "studio.add" && request.at !== undefined) {
       return { kind: "failure", id, error: { kind: "unsupported" } };
     }
     const fail = (kind: "denied" | "protected"): HostToUi => ({
@@ -256,9 +254,30 @@ export function create(context: MockContext): MockHandler {
         error: { kind: "studioConflict", current: structuredClone(view) },
       };
     }
-    const before = structuredClone(view.instances);
+    const before = structuredClone({
+      instances: view.instances,
+      canvas: view.canvas,
+    });
     let added: string | null = null;
     switch (request.method) {
+      case "studio.canvas": {
+        if (
+          context.core.live ||
+          context.core.rights !== "connected" ||
+          !context.core.access.verified ||
+          view.plan === "unverified"
+        )
+          return fail("denied");
+        view.canvas =
+          request.resolution.kind === "monitor"
+            ? { width: 1920, height: 1080, source: "monitor" }
+            : {
+                width: request.resolution.width,
+                height: request.resolution.height,
+                source: "custom",
+              };
+        break;
+      }
       case "studio.geometry": {
         if (
           !view.canvas ||
@@ -293,7 +312,7 @@ export function create(context: MockContext): MockHandler {
         const prior = undo.pop();
         if (!prior) return fail("denied");
         redo.push(before);
-        view.instances = prior;
+        Object.assign(view, prior);
         bump();
         break;
       }
@@ -301,7 +320,7 @@ export function create(context: MockContext): MockHandler {
         const next = redo.pop();
         if (!next) return fail("denied");
         undo.push(before);
-        view.instances = next;
+        Object.assign(view, next);
         bump();
         break;
       }

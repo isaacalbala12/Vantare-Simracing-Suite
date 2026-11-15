@@ -24,6 +24,7 @@ import { useStudio } from "../../screens/studio/state";
 import { Button, IconButton } from "../Button";
 import { Callout } from "../Data";
 import { WidgetThumb } from "../widgets/WidgetThumb";
+import { CanvasResolution } from "./CanvasResolution";
 import { CanvasTools } from "./CanvasTools";
 import { widgetName } from "./Widgets";
 import "./studio-canvas.css";
@@ -65,7 +66,12 @@ export function CanvasStage({
     : [1, 1];
   const percent = canvasZoomSteps[zoom];
   const scale =
-    percent === null ? (fitCanvas(area, canvas) ?? 1) : percent / 100;
+    percent === null
+      ? (fitCanvas(
+          [Math.max(1, area[0] - 72), Math.max(1, area[1] - 88)],
+          canvas,
+        ) ?? 1)
+      : percent / 100;
   const input = useCanvasInputs(model, viewport, scale, onSelect, setGuides);
   const cancel = input.cancel;
   const help = useId();
@@ -92,9 +98,7 @@ export function CanvasStage({
     observer.observe(node);
     return () => observer.disconnect();
   }, [cancel]);
-  const visible = view.instances.filter(
-    (item) => item.visible || item.id === selected.id,
-  );
+  const visible = view.instances;
   const rendered = visible.map((item) => ({
     item,
     box: model.box(item.id) ?? boxOf(item),
@@ -173,13 +177,6 @@ export function CanvasStage({
       aria-label={t.title}
       aria-busy={model.pending}
     >
-      <header>
-        <span>
-          <Icon name="info" />
-          {studioText.illustrationNote}
-        </span>
-        <div className="v-studio-stage-actions">{actions}</div>
-      </header>
       {!view.canvas ? (
         <Callout
           title={t.unavailable}
@@ -199,6 +196,10 @@ export function CanvasStage({
             </p>
           )}
           <div ref={viewport} className="v-studio-canvas-viewport">
+            <span className="v-canvas-illustration-note">
+              <Icon name="info" />
+              {t.note}
+            </span>
             <div
               className="v-studio-canvas-space"
               style={{
@@ -215,7 +216,7 @@ export function CanvasStage({
                   height: canvas[1] * scale,
                 }}
               >
-                <span>{`${canvas[0]} × ${canvas[1]}`}</span>
+                <span>{`${canvas[0]} × ${canvas[1]} · ${view.canvas.source === "monitor" ? t.monitorSource : t.customSource}`}</span>
               </div>
               {rendered.map(({ item, box }) => {
                 const active = item.id === selected.id,
@@ -267,7 +268,7 @@ export function CanvasStage({
                       onKeyDown={(event) => input.keyDown(event, item.id)}
                       onBlur={input.blur}
                     />
-                    {active && (
+                    {(active || !item.visible || outside) && (
                       <>
                         <span
                           className="v-studio-canvas-caption"
@@ -282,34 +283,37 @@ export function CanvasStage({
                               ? ` · ${t.hidden}`
                               : ""}
                         </span>
-                        {handles.map((handle, i) => (
-                          <button
-                            key={t.handles[i]}
-                            type="button"
-                            className="v-studio-canvas-handle"
-                            data-canvas-handle={i}
-                            aria-label={t.resize(name, t.handles[i])}
-                            aria-describedby={help}
-                            aria-disabled={!model.enabled || item.locked}
-                            tabIndex={0}
-                            style={{
-                              left: `${(handle[0] + 1) * 50}%`,
-                              top: `${(handle[1] + 1) * 50}%`,
-                              cursor: `${["nwse", "ns", "nesw", "ew", "nwse", "ns", "nesw", "ew"][i]}-resize`,
-                            }}
-                            onPointerDown={(event) =>
-                              input.pointerDown(event, item.id, handle)
-                            }
-                            onPointerMove={input.pointerMove}
-                            onPointerUp={input.pointerUp}
-                            onPointerCancel={input.pointerLost}
-                            onLostPointerCapture={input.pointerLost}
-                            onKeyDown={(event) =>
-                              input.keyDown(event, item.id, handle)
-                            }
-                            onBlur={input.blur}
-                          />
-                        ))}
+                        {active &&
+                          model.enabled &&
+                          !item.locked &&
+                          handles.map((handle, i) => (
+                            <button
+                              key={t.handles[i]}
+                              type="button"
+                              className="v-studio-canvas-handle"
+                              data-canvas-handle={i}
+                              aria-label={t.resize(name, t.handles[i])}
+                              aria-describedby={help}
+                              aria-disabled={!model.enabled || item.locked}
+                              tabIndex={-1}
+                              style={{
+                                left: `${(handle[0] + 1) * 50}%`,
+                                top: `${(handle[1] + 1) * 50}%`,
+                                cursor: `${["nwse", "ns", "nesw", "ew", "nwse", "ns", "nesw", "ew"][i]}-resize`,
+                              }}
+                              onPointerDown={(event) =>
+                                input.pointerDown(event, item.id, handle)
+                              }
+                              onPointerMove={input.pointerMove}
+                              onPointerUp={input.pointerUp}
+                              onPointerCancel={input.pointerLost}
+                              onLostPointerCapture={input.pointerLost}
+                              onKeyDown={(event) =>
+                                input.keyDown(event, item.id, handle)
+                              }
+                              onBlur={input.blur}
+                            />
+                          ))}
                       </>
                     )}
                   </div>
@@ -324,7 +328,13 @@ export function CanvasStage({
                     top: shift[1],
                     height: canvas[1] * scale,
                   }}
-                />
+                >
+                  <em>
+                    {guides[0] === canvas[0] / 2
+                      ? t.center
+                      : `x ${Math.round(guides[0])}`}
+                  </em>
+                </span>
               )}
               {guides[1] !== null && (
                 <span
@@ -335,42 +345,49 @@ export function CanvasStage({
                     left: shift[0],
                     width: canvas[0] * scale,
                   }}
-                />
+                >
+                  <em>
+                    {guides[1] === canvas[1] / 2
+                      ? t.center
+                      : `y ${Math.round(guides[1])}`}
+                  </em>
+                </span>
+              )}
+              {model.snapshot.gesture && (
+                <>
+                  <div
+                    className="v-canvas-origin-ghost"
+                    style={{
+                      left: shift[0] + model.snapshot.gesture.origin.x * scale,
+                      top: shift[1] + model.snapshot.gesture.origin.y * scale,
+                      width: model.snapshot.gesture.origin.size.width * scale,
+                      height: model.snapshot.gesture.origin.size.height * scale,
+                    }}
+                  />
+                  <span
+                    className="v-canvas-readout"
+                    style={{
+                      left: shift[0] + box.x * scale,
+                      top: shift[1] + (box.y + box.size.height) * scale + 10,
+                    }}
+                  >
+                    {t.coordinates(box.x, box.y)}
+                    {guides.some((v) => v !== null) ? ` · ${t.snap}` : ""}
+                  </span>
+                </>
               )}
             </div>
+            {model.enabled && (
+              <p id={help} className="v-studio-canvas-help">
+                {t.help}
+              </p>
+            )}
           </div>
-          <footer>
+          <footer role="toolbar" aria-label={t.tools}>
             <output className="v-studio-canvas-position" aria-live="off">
               {t.position(box.x, box.y, box.size.width, box.size.height)}
               {selected.canvasPlacement === "outside" ? ` · ${t.outside}` : ""}
             </output>
-            <div className="v-studio-canvas-zoom">
-              <IconButton
-                label={t.zoomLess}
-                variant="ghost"
-                disabled={zoom === 0}
-                onClick={() => changeZoom(zoom - 1)}
-              >
-                {"−"}
-              </IconButton>
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-label={t.fit}
-                onClick={() => changeZoom(0)}
-              >
-                {percent === null ? "↔ " : ""}
-                {`${Math.round(scale * 100)} %`}
-              </Button>
-              <IconButton
-                label={t.zoomMore}
-                variant="ghost"
-                disabled={zoom === canvasZoomSteps.length - 1}
-                onClick={() => changeZoom(zoom + 1)}
-              >
-                {"+"}
-              </IconButton>
-            </div>
             <CanvasTools
               box={box}
               canvas={canvas}
@@ -390,12 +407,67 @@ export function CanvasStage({
                 });
               }}
             />
+            <span className="v-canvas-grow" />
+            <span
+              className="v-canvas-save-state"
+              role="status"
+              data-error={!!notice}
+            >
+              {notice
+                ? t.failedShort
+                : !model.enabled
+                  ? t.readonlyShort
+                  : model.pending
+                    ? t.saving
+                    : model.snapshot.saved
+                      ? t.savedShort
+                      : ""}
+            </span>
+            <div className="v-studio-canvas-zoom">
+              <IconButton
+                label={t.zoomLess}
+                variant="ghost"
+                disabled={zoom === 0}
+                onClick={() => changeZoom(zoom - 1)}
+              >
+                {"−"}
+              </IconButton>
+              <output>{`${Math.round(scale * 100)} %`}</output>
+              <IconButton
+                label={t.zoomMore}
+                variant="ghost"
+                disabled={zoom === canvasZoomSteps.length - 1}
+                onClick={() => changeZoom(zoom + 1)}
+              >
+                {"+"}
+              </IconButton>
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={t.fit}
+                onClick={() => changeZoom(0)}
+              >
+                {t.fitShort}
+              </Button>
+            </div>
+            {actions}
           </footer>
+          <div className="v-canvas-resolution-slot">
+            <CanvasResolution
+              canvas={view.canvas}
+              enabled={model.enabled && !studio.pending && !model.pending}
+              onChange={(resolution) => {
+                input.cancel();
+                void studio.execute({
+                  method: "studio.canvas",
+                  resolution,
+                  baseRevision: view.revision,
+                });
+              }}
+            />
+          </div>
         </>
       )}
-      <p id={help} className="v-studio-canvas-help">
-        {t.help}
-      </p>
       <div className="v-studio-canvas-feedback">
         <p role="alert" className="v-studio-canvas-status">
           {notice

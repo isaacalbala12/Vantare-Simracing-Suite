@@ -138,47 +138,49 @@ export async function checkStudioCanvas(
               document.documentElement.dataset.scheme = value;
             }, scheme);
             const stage = page.locator(".v-studio-canvas-stage");
-            const header = await stage.locator(":scope > header").boundingBox();
             const viewport = await stage
               .locator(".v-studio-canvas-viewport")
               .boundingBox();
             const footer = await stage.locator(":scope > footer").boundingBox();
-            const help = await stage
-              .locator(".v-studio-canvas-help")
+            const header = await page.locator(".v-focus-header").boundingBox();
+            const plane = await stage
+              .locator(".v-studio-canvas-plane")
               .boundingBox();
-            const stageBox = await stage.boundingBox();
-            const actions = await stage
-              .locator(".v-studio-stage-actions")
-              .boundingBox();
-            const feedback = await stage
-              .locator(".v-studio-canvas-feedback")
-              .boundingBox();
-            assert.ok(header && viewport && footer && help);
-            assert.ok(stageBox && feedback);
-            assert.ok(actions);
-            assert.ok(
-              Math.abs(
-                actions.x + actions.width - viewport.x - viewport.width,
-              ) <= 1,
-              "view switch stays aligned to the right",
-            );
-            assert.ok(
-              stageBox.y + stageBox.height >= feedback.y + feedback.height,
-              "feedback stays inside the stage",
-            );
+            assert.ok(viewport && footer && header && plane);
             assert.ok(
               header.y + header.height <= viewport.y,
-              "header cannot overlap canvas",
+              "header precedes full-height canvas",
             );
             assert.ok(
-              viewport.y + viewport.height <= footer.y,
-              "footer cannot overlap canvas",
+              viewport.y + viewport.height <= footer.y + 1,
+              "toolbar does not cover canvas",
             );
             assert.ok(
-              footer.y + footer.height <= help.y,
-              "help cannot overlap footer",
+              viewport.height >= (width === 1440 ? 500 : 400),
+              "canvas uses column height",
             );
-            assert.ok(viewport.height >= 200, "canvas remains usable");
+            assert.ok(
+              plane.width / 1920 >= (width === 1440 ? 0.4 : 0.35),
+              "fit stays legible",
+            );
+            assert.equal(
+              await page
+                .getByRole("tab", { name: "En pista", exact: true })
+                .count(),
+              1,
+            );
+            assert.equal(
+              await page
+                .getByRole("tab", { name: "En pista", exact: true })
+                .isVisible(),
+              false,
+            );
+            assert.equal(
+              await stage
+                .locator('.v-studio-canvas-viewport button[tabindex="0"]')
+                .count(),
+              1,
+            );
             layout.push({ width, sidebar, scheme });
           }
         }

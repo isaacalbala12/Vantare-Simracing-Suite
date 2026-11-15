@@ -13,6 +13,7 @@ export function Stage({
   pending,
   onShow,
   actions,
+  canvasPreview,
 }: {
   item: OverlayInstance;
   name: string;
@@ -20,6 +21,7 @@ export function Stage({
   pending: boolean;
   onShow: () => void;
   actions?: ReactNode;
+  canvasPreview?: ReactNode;
 }) {
   return (
     <section className="v-focus-stage">
@@ -57,6 +59,7 @@ export function Stage({
           stage
         />
       </div>
+      {canvasPreview}
       {!item.visible && (
         <div className="v-focus-hidden">
           <span>

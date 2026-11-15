@@ -1,10 +1,13 @@
 import { useUi } from "../../app/UiState";
 import { studioText as t } from "../../i18n/studio";
+import { canvasText } from "../../i18n/studio-canvas";
 import { useStudioFocus } from "../../screens/studio/focus";
 import { Button } from "../Button";
 import { Callout } from "../Data";
 import { ActionNotice } from "./ActionNotice";
+import { CanvasStage } from "./CanvasStage";
 import { CatalogDialog } from "./CatalogDialog";
+import { EmptyCanvas } from "./EmptyCanvas";
 import { EmptyStudio } from "./EmptyStudio";
 import { FocusHeader } from "./FocusHeader";
 import { LayoutStrip } from "./LayoutStrip";
@@ -27,6 +30,7 @@ export function StudioFocus() {
         className="v-studio-focus-layout"
         data-missing={view?.state === "missing"}
         data-state={view?.state ?? (state.failure ? "error" : "loading")}
+        data-view={state.canvasMode ? "canvas" : "widget"}
         ref={model.root}
       >
         <RemoveWidget />
@@ -56,7 +60,26 @@ export function StudioFocus() {
             <span className="v-skeleton" aria-hidden="true" />
           ) : null}
           <StudioFeedback model={model} />
-          {view?.state === "missing" ? (
+          {state.canvasMode && view ? (
+            selected ? (
+              <CanvasStage
+                view={view}
+                selected={selected}
+                onSelect={model.select}
+                actions={
+                  <Button
+                    size="sm"
+                    variant="neutral"
+                    onClick={() => state.setCanvasMode(false)}
+                  >
+                    {canvasText.done}
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyCanvas model={model} />
+            )
+          ) : view?.state === "missing" ? (
             <section
               className="v-studio-unavailable"
               aria-label={t.missing}
@@ -87,9 +110,14 @@ export function StudioFocus() {
           ) : !state.failure ? (
             <LoadingStudio />
           ) : null}
-          {view?.state === "ready" && <ActionNotice />}
+          {!state.canvasMode && view?.state === "ready" && <ActionNotice />}
           {view && view.state !== "missing" && selected && (
-            <div className="v-studio-temporary" aria-busy={state.pending}>
+            <div
+              className="v-studio-temporary"
+              aria-busy={state.pending}
+              hidden={state.canvasMode}
+              inert={state.canvasMode || undefined}
+            >
               {selected &&
                 (view.state === "protected" ? (
                   <ReadonlyStudio>

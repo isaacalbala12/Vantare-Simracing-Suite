@@ -5,6 +5,7 @@ import type {
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button } from "../Button";
+import { CanvasViewSwitch } from "./CanvasViewSwitch";
 import { DisabledHint } from "./DisabledHint";
 import { MoreMenu } from "./MoreMenu";
 import { WidgetThumb, widgetName } from "./Widgets";
@@ -57,6 +58,7 @@ export function FocusHeader({
         )}
       </div>
       <div className="v-focus-actions">
+        <CanvasViewSwitch />
         {item && (
           <MoreMenu
             item={item}

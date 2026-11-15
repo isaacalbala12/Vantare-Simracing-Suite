@@ -1,7 +1,8 @@
 import { Popover } from "@base-ui/react/popover";
+import { useRef, useState } from "react";
 import type { GeometryChange } from "../../../contract/generated/studio";
 import { canvasText as t } from "../../i18n/studio-canvas";
-import { anchor, nudge, type Pair } from "../../screens/studio/geometry";
+import { anchor, type Pair } from "../../screens/studio/geometry";
 import type { Box } from "../../screens/studio/gesture-state";
 import { Button } from "../Button";
 
@@ -16,73 +17,96 @@ export function CanvasTools({
   enabled: boolean;
   write: (change: GeometryChange, target: Box) => void;
 }) {
-  const directions: Pair[] = [
-    [-1, 0],
-    [0, -1],
-    [1, 0],
-    [0, 1],
-  ];
-  const move = (direction: Pair) => {
-    if (!enabled) return;
-    const p = nudge([box.x, box.y], direction, false);
-    if (p)
-      write({ kind: "move", x: p[0], y: p[1] }, { ...box, x: p[0], y: p[1] });
-  };
+  const [open, setOpen] = useState(false),
+    [active, setActive] = useState(4);
+  const points = useRef<(HTMLButtonElement | null)[]>([]);
   return (
     <div className="v-studio-canvas-tools">
-      <fieldset aria-label={t.moveGroup}>
-        {directions.map((direction, i) => (
-          <Button
-            key={t.nudge[i]}
-            size="sm"
-            variant="ghost"
-            aria-label={t.nudge[i]}
-            aria-disabled={!enabled}
-            onClick={() => move(direction)}
-          >
-            {["←", "↑", "→", "↓"][i]}
-          </Button>
-        ))}
-      </fieldset>
-      <Popover.Root modal={false}>
-        <Popover.Trigger render={<Button size="sm" variant="ghost" />}>
-          {t.anchors}
+      <Popover.Root modal={false} open={open} onOpenChange={setOpen}>
+        <Popover.Trigger
+          render={<Button size="sm" variant="ghost" />}
+          aria-label={t.anchors}
+        >
+          {t.anchorShort}
         </Popover.Trigger>
         <Popover.Portal>
-          <Popover.Positioner className="v-positioner" sideOffset={6}>
+          <Popover.Positioner
+            className="v-positioner"
+            sideOffset={8}
+            side="top"
+          >
             <Popover.Popup
               className="v-popover v-studio-canvas-anchors"
               aria-label={t.anchors}
+              initialFocus={() => points.current[active]}
             >
-              {Array.from({ length: 9 }, (_, i) => {
-                const row = Math.floor(i / 3),
-                  column = i % 3;
-                return (
-                  <Button
-                    key={`${row}:${column}`}
-                    size="sm"
-                    variant="ghost"
-                    aria-label={t.anchor(t.rows[row], t.columns[column])}
-                    aria-disabled={!enabled}
-                    onClick={() => {
-                      if (!enabled) return;
-                      const p = anchor(
-                        [box.size.width, box.size.height],
-                        canvas,
-                        column,
-                        row,
+              <strong>{t.anchorShort}</strong>
+              <div role="toolbar" aria-label={t.anchors}>
+                {[0, 1, 2].map((row) => (
+                  <div key={row}>
+                    {[0, 1, 2].map((column) => {
+                      const i = row * 3 + column;
+                      return (
+                        <span key={column}>
+                          <Button
+                            ref={(node) => {
+                              points.current[i] = node;
+                            }}
+                            tabIndex={active === i ? 0 : -1}
+                            size="sm"
+                            variant="ghost"
+                            aria-label={t.anchor(
+                              t.rows[row],
+                              t.columns[column],
+                            )}
+                            aria-disabled={!enabled}
+                            onFocus={() => setActive(i)}
+                            onKeyDown={(event) => {
+                              const next =
+                                event.key === "ArrowLeft" && column > 0
+                                  ? i - 1
+                                  : event.key === "ArrowRight" && column < 2
+                                    ? i + 1
+                                    : event.key === "ArrowUp" && row > 0
+                                      ? i - 3
+                                      : event.key === "ArrowDown" && row < 2
+                                        ? i + 3
+                                        : event.key === "Home"
+                                          ? 0
+                                          : event.key === "End"
+                                            ? 8
+                                            : i;
+                              if (next !== i) {
+                                event.preventDefault();
+                                points.current[next]?.focus();
+                              }
+                            }}
+                            onClick={() => {
+                              if (!enabled) return;
+                              const p = anchor(
+                                [box.size.width, box.size.height],
+                                canvas,
+                                column,
+                                row,
+                              );
+                              if (p) {
+                                write(
+                                  { kind: "anchor", column, row },
+                                  { ...box, x: p[0], y: p[1] },
+                                );
+                                setOpen(false);
+                              }
+                            }}
+                          >
+                            <i />
+                          </Button>
+                        </span>
                       );
-                      if (p)
-                        write(
-                          { kind: "anchor", column, row },
-                          { ...box, x: p[0], y: p[1] },
-                        );
-                    }}
-                  >
-                    {["↖", "↑", "↗", "←", "·", "→", "↙", "↓", "↘"][i]}
-                  </Button>
-                );
-              })}
+                    })}
+                  </div>
+                ))}
+              </div>
+              <small>{t.anchorHelp}</small>
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>
@@ -90,6 +114,7 @@ export function CanvasTools({
       <Button
         size="sm"
         variant="ghost"
+        aria-label={t.lockAspect}
         aria-pressed={box.aspectLocked}
         aria-disabled={!enabled}
         onClick={() => {
@@ -100,7 +125,7 @@ export function CanvasTools({
             );
         }}
       >
-        {t.lockAspect}
+        {t.proportions}
       </Button>
       <Button
         size="sm"

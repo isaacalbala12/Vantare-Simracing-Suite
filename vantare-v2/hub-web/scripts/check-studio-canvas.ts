@@ -64,6 +64,17 @@ export async function checkStudioCanvas(
         };
       });
       await studioCanvasScenes[scene].prepare(page);
+      assert.equal(
+        await page.locator(".v-canvas-illustration-note").count(),
+        0,
+      );
+      if (scene === "studio-canvas") {
+        await page.getByRole("button", { name: t.note, exact: true }).hover();
+        const tooltip = page.getByRole("tooltip").filter({ hasText: t.note });
+        await tooltip.waitFor({ timeout: 5000 });
+        await page.mouse.move(0, 0);
+        await tooltip.waitFor({ state: "hidden", timeout: 5000 });
+      }
       const count = () =>
         page.evaluate(
           () => (Reflect.get(window, "canvasRequests") as unknown[]).length,

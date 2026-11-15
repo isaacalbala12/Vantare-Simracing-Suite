@@ -143,31 +143,12 @@
     linear-gradient(90deg, var(--ill-grid) 1px, transparent 1px);
   background-size: 5% 8.3333%;
 }
-.v-studio-canvas-plane > span:not(.v-canvas-illustration-note) {
+.v-studio-canvas-plane > span {
   position: absolute;
   inset-inline-end: 8px;
   inset-block-end: 6px;
   font: 11px var(--font-mono);
   color: var(--text-caption);
-}
-.v-canvas-illustration-note {
-  position: absolute;
-  z-index: 4;
-  inset: 10px auto auto 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-caption);
-  background: var(--surface-panel);
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--edge);
-  pointer-events: none;
-}
-.v-canvas-illustration-note .v-icon {
-  inline-size: 13px;
-  block-size: 13px;
 }
 .v-studio-canvas-widget {
   position: absolute;

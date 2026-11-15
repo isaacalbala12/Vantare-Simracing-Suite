@@ -628,6 +628,13 @@ it("shows no resize handles or keyboard help in readonly mode", async () => {
   expect(screen.queryByText(t.help)).toBeNull();
 });
 
+it("keeps the illustration disclaimer on the toolbar info, outside the canvas", async () => {
+  const { container } = await mount();
+  expect(container.querySelector(".v-canvas-illustration-note")).toBeNull();
+  const info = screen.getByRole("button", { name: t.note, exact: true });
+  expect(info.closest("footer")).not.toBeNull();
+});
+
 it("blocks sidebar, anchors and removal in the readonly canvas without writes", async () => {
   const spy = vi.spyOn(Client.prototype, "request");
   const { move } = await mount("studio-canvas-readonly");

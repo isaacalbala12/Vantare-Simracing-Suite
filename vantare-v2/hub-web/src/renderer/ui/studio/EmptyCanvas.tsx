@@ -12,7 +12,6 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
       aria-label={t.title}
     >
       <div className="v-studio-canvas-viewport v-canvas-empty">
-        <span className="v-canvas-illustration-note">{t.note}</span>
         {view?.canvas && (
           <div
             className="v-canvas-empty-plane"

@@ -23,7 +23,6 @@ import { boxOf } from "../../screens/studio/gesture-state";
 import { useStudio } from "../../screens/studio/state";
 import { Button, IconButton } from "../Button";
 import { Callout } from "../Data";
-import { Tooltip } from "../Layers";
 import { WidgetThumb } from "../widgets/WidgetThumb";
 import { CanvasResolution } from "./CanvasResolution";
 import { CanvasTools } from "./CanvasTools";
@@ -249,10 +248,6 @@ export function CanvasStage({
                   height: canvas[1] * scale,
                 }}
               >
-                <span className="v-canvas-illustration-note">
-                  <Icon name="info" />
-                  {t.note}
-                </span>
                 <span>{`${canvas[0]} × ${canvas[1]} · ${view.canvas.source === "monitor" ? t.monitorSource : t.customSource}`}</span>
               </div>
               {rendered.map(({ item, box }) => {
@@ -470,11 +465,9 @@ export function CanvasStage({
                 }}
               />
             </div>
-            <Tooltip label={t.help}>
-              <IconButton label={t.help} variant="ghost" size="sm">
-                <Icon name="info" />
-              </IconButton>
-            </Tooltip>
+            <IconButton label={t.note} variant="ghost" size="sm">
+              <Icon name="info" />
+            </IconButton>
             <span className="v-canvas-grow" />
             <span
               className="v-canvas-save-state"

@@ -144,41 +144,51 @@ Siguiente: conectar los módulos de #2344 cuando se fusione y preparar Relative
 Eficiencia/captura (PR 7). No se modifica el worktree ajeno preparado para
 datos/cadencias; PR 3 sigue siendo autoridad de esos tipos. Ningún gráfico ni
 ejecución del producto en el servidor; F0 solo en el horario del orquestador.
-## VANTA-144 · PR 6 Relative Vantare Rune en validación (15/11/2026)
+## VANTA-144 · PR 6 Relative Vantare Rune para revisión (15/11/2026)
 
-Worker A continúa el encargo aceptado tras #2345. Rama propia
-`vantareapp/isa-2333-relative-vantare`, worktree D:, apilada sobre #2349
-`39d4ad6f57e72ba07af0f0edc60618dca6bd7f41`. El anterior head afdd0834a
-tenía todos los checks verdes; la pila incorpora ahora el cierre F0 #2348.
-#2344 sigue en revisión y conserva el head revisado.
-Tras su squash, rebasear #2349 retirando `0a3af2785`; después trasladar
-los commits propios de PR 6 sobre el nuevo head de #2349.
+Worker A, PR #2357, código validado ce94f45025263606d38fadc9cd52e87c0275d33e.
+Rama `vantareapp/isa-2333-relative-vantare`, worktree propio D:, apilada sobre
+#2349, head 39d4ad6f57e72ba07af0f0edc60618dca6bd7f41. Base nightly 8ea2e9741,
+incluido el cierre F0 #2348: preview local sigue bloqueado en distribución.
+#2344 conserva su head revisado 5e11dd339; sigue abierto a la última lectura.
+Tras su squash, retirar la base combinada 0a3af2785 de #2349 con --onto y después
+reapilar los commits propios de #2357 sobre el nuevo head de la conexión.
 
 Relative Vantare consume la proyección existente de domain y el FrameSet de
 la conexión. Plan de columnas y etiquetas portados del pintor GPUI; tokens
 Rust generados del JSON canónico y fuentes del producto, sin dependencias.
 Neo/Neutro, acentos, tres plantillas, columnas personalizadas, idiomas, boxes,
-tráfico y tira; la pausa conserva la última proyección y añade su franja.
-Valores Rune Live para texto, color, posición y opacidad. Los textos de ancho fijo no reconstruyen la vista; un cambio de nombre/detalle
-o dorsal reajusta su caja con el medidor de Rune. Solo las transiciones
-finitas solicitan cada refresco; el pulso se limita a la cadencia del widget y
-reducir movimiento lo detiene. Los widgets fuera del monitor no mantienen pintor.
+tráfico y tira. Pausa con última proyección y franja propia. API común del Look
+en `vantare::{Style,FONTS,paint}`: familias, texto, colores y píldoras.
+Valores Rune Live para celdas de ancho fijo, color, posición y opacidad;
+nombres/detalles, dorsales y cabeceras reajustan sus cajas al cambiar.
 
-Contadores por ventana y proceso desde on_frame_drawn (presentación), con
-causas data/animation/design y diagnóstico unattributed; una imagen puede tener
-varias causas. Consultables en Shared::paint_counts y State::meter, además de
-la salida al cerrar. Sin hilo periódico de estadísticas. Clasificador/CI vigilan
-estilos y fuentes canónicos y comprueban los tokens generados.
+Contadores por ventana y proceso desde on_frame_drawn: data/animation/design y
+diagnóstico unattributed; una imagen puede tener varias causas. Consultables
+en Shared::paint_counts y State::meter y registrados al cerrar, sin hilo de
+estadísticas. Transiciones finitas; pulso a la cadencia del widget; movimiento
+reducido sin animación. No se conserva pintor fuera del monitor. CI vigila también
+estilos/fuentes del producto y comprueba los tokens generados.
 
-Validación en curso por cola Windows/Rust 1.99.1/dos jobs. Pasan tokens,
-8 tests Python de generador/licencias, 4 tests del clasificador y auditoría de
-428 paquetes. Los tests Rust nuevos usan Runtime/árbol CPU: reposo virtual 30 s,
-coalescencia de diez widgets, cadencias 5/15/20, texto retenido, permisos,
-monitores/DPI lógicos, fin de movimiento, pausa y plantillas. No afirmar resultados
-Rust hasta terminar la cola. No se ejecuta ningún binario Rune, ventana,
-dispositivo ni opción gráfica. La paridad visual/consumo quedan para PC de juego.
-B conserva Eficiencia, captura y monitores en caliente. Sin merge/release ni
-cambio de Plane propios.
+Validación final por cola Windows/Rust 1.99.1/dos jobs: formato, Clippy -D warnings,
+36 tests CPU (34 biblioteca + 2 main), 5 tests puros de política de distribución
+sin debug_assertions y enlace del ejecutable sin ejecutarlo PASS. Tokens y
+428 paquetes permisivos PASS; 8 tests Python de licencias/generador y los
+clasificadores Rune (4) y nativo (23) PASS. Diff completo revisado.
+
+Los tests comparan todos los campos del flujo CPU de dibujo antes de simular
+on_frame_drawn; Runtime::frame devuelve continuidad de animación y no sirve
+como contador de imágenes. Cero cambios de dibujo en 30 s quietos, con y sin
+movimiento reducido, y sin temporizadores pendientes. Diez widgets: exactamente
+5/15/20 cambios por segundo para esas cadencias con 1.000 fotos de entrada.
+Fin de transiciones, cero frames de animación con movimiento reducido, texto
+retenido, reajuste de nombres, permisos, geometría/DPI, pausa y pipe real PASS.
+
+Sin ejecución del producto Rune, ventanas, dispositivo ni opción gráfica en el
+servidor. La paridad visual, presentación GPU, consumo, foco/clics/OBS/VRR quedan
+para el PC de juego y el horario que asigne el orquestador. B conserva Eficiencia,
+captura y monitores en caliente. CI/revisión y head final en PR/#2333.
+Sin merge/promoción/release ni cambio de Plane propios.
 
 ## VANTA-144 · conexión de diseño/fotos/cadencias Rune (15/11/2026)
 

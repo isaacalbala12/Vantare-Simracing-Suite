@@ -65,6 +65,12 @@ export const profileText = {
   noResident:
     "Supervisor no disponible: los ajustes quedan guardados. Inicia la aplicación con vantare para activar los atajos y el inicio Windows.",
   conflict: "El perfil ha cambiado en otro proceso. Tu borrador se conserva.",
+  duplicatePrepareBusy:
+    "Launcher est\u00e1 ocupado. No se ha creado ninguna copia. Vuelve a intentarlo m\u00e1s tarde.",
+  duplicateDenied:
+    "La cuenta o los permisos han cambiado. No se ha guardado esta copia. Tu texto se conserva; vuelve a abrirla desde la cuenta correcta.",
+  duplicateUnconfirmed:
+    "No se ha confirmado el guardado de la copia. Tu texto se conserva. Comprueba la lista antes de volver a duplicar; no se reenviar\u00e1 este intento.",
   retry: "Reintentar guardado",
   discard: "Descartar",
   protected: "El documento está protegido. Vuelve a cargarlo antes de editar.",

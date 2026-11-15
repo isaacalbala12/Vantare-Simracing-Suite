@@ -8,6 +8,7 @@ import { useHost } from "../../app/Host";
 import { useLauncherRequest } from "../../app/LauncherRequest";
 import { HostFailure } from "../../bridge/client";
 import { launcherText as text } from "../../i18n/launcher";
+import { profileText } from "../../i18n/profile-editor";
 import { Button } from "../../ui/Button";
 import { Callout, Skeleton } from "../../ui/Data";
 import {
@@ -17,7 +18,6 @@ import {
 import {
   ProfileActionFeedback,
   type ProfileCardAction,
-  RemoveProfileDialog,
 } from "../../ui/launcher/ProfileActions";
 import { LauncherProfiles } from "../../ui/launcher/Profiles";
 import { snapshot, useProfileEditorState } from "./editor-state";
@@ -62,7 +62,6 @@ export function Launcher({
     profile: LauncherProfile;
     target?: ResidentRemoveTarget;
   }>();
-  const [duplicating, setDuplicating] = useState<LauncherProfile>();
   const editor = useProfileEditorState();
   const query = useQueryClient();
   const { view, selected } = useLauncherSnapshot();
@@ -148,6 +147,37 @@ export function Launcher({
       if (alive.current) setPending(false);
     }
   }
+  async function prepareDuplicate(profile: LauncherProfile) {
+    if (!client || !view || busy.current || view.protected) return;
+    busy.current = true;
+    setPending(true);
+    setError(undefined);
+    try {
+      const reply = await client.request({
+        method: "launcher.profile.prepareDuplicate",
+        id: profile.id,
+        baseRevision: view.revision,
+      });
+      if (alive.current && reply.method === "launcher.profile.prepareDuplicate")
+        editor.set({
+          ...snapshot(
+            { revision: reply.value.baseRevision, draft: reply.value.draft },
+            true,
+          ),
+          preparedDuplicate: true,
+        });
+    } catch (failure) {
+      if (alive.current)
+        setError(
+          failure instanceof HostFailure && failure.detail.kind === "busy"
+            ? profileText.duplicatePrepareBusy
+            : profileFailure(failure, true),
+        );
+    } finally {
+      busy.current = false;
+      if (alive.current) setPending(false);
+    }
+  }
   async function launch(profile: LauncherProfile) {
     if (
       !client ||
@@ -202,7 +232,7 @@ export function Launcher({
         });
         break;
       case "duplicate":
-        setDuplicating(profile);
+        void prepareDuplicate(profile);
         break;
       case "trigger":
         void action.execute({
@@ -290,24 +320,6 @@ export function Launcher({
         onClose={() => {
           setRemoving(undefined);
           removal.dismiss();
-        }}
-      />
-      <RemoveProfileDialog
-        name={duplicating?.name}
-        duplicate={duplicating !== undefined}
-        pending={action.pending}
-        onCancel={() => {
-          setDuplicating(undefined);
-        }}
-        onConfirm={() => {
-          if (!duplicating) return;
-          const profile = duplicating;
-          setDuplicating(undefined);
-          void action.execute({
-            method: "launcher.profile.duplicate",
-            id: profile.id,
-            baseRevision: view.revision,
-          });
         }}
       />
     </>

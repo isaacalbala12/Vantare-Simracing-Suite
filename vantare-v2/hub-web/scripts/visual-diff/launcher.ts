@@ -242,3 +242,24 @@ launcherScenes["launcher-decision-sidebar"] = {
       .waitFor();
   },
 };
+launcherScenes["launcher-perfil-duplicado"] = {
+  mock: "launcher-base",
+  async prepare(page) {
+    await launcherScenes["launcher-base"].prepare(page);
+    await page
+      .getByRole("button", { name: "Creador de Contenido", exact: true })
+      .click({ button: "right" });
+    await page.getByRole("menuitem", { name: "Duplicar", exact: true }).click();
+    const name = page.getByRole("textbox", { name: "Nombre", exact: true });
+    await name.waitFor();
+    assert.equal(await name.inputValue(), "Creador de Contenido (copia)");
+    assert.equal(
+      await name.evaluate((node) => node === document.activeElement),
+      true,
+    );
+    // Blur the editable field through a real click before the harness toggles Ctrl+B.
+    await page
+      .getByRole("heading", { name: "Editar perfil", exact: true })
+      .click();
+  },
+};

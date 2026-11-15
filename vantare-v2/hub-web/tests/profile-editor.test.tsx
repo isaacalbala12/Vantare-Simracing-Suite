@@ -28,7 +28,7 @@ import {
   SectionRailSlot,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
-import { Client } from "../src/renderer/bridge/client";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { launcherText } from "../src/renderer/i18n/launcher";
 import { actionText } from "../src/renderer/i18n/launcher-actions";
 import { removalText } from "../src/renderer/i18n/launcher-removal";
@@ -489,37 +489,122 @@ describe("profile editor", () => {
       expect(within(pro).getByText(launcherText.favorite)).toBeTruthy(),
     );
   });
-  it("duplicates from a saved profile and toggles its LMU trigger", async () => {
+  it("opens a duplicate as an editable draft and saves only on confirmation", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
     mount();
+    const user = userEvent.setup();
     const creator = await screen.findByRole("button", {
       name: "Creador de Contenido",
     });
     fireEvent.contextMenu(creator);
+    await user.click(
+      await screen.findByRole("menuitem", { name: actionText.duplicate }),
+    );
+    const name = await screen.findByRole("textbox", { name: text.name });
+    expect(name).toHaveProperty("value", "Creador de Contenido (copia)");
+    expect(document.activeElement).toBe(name);
+    expect(
+      requests.mock.calls.filter(([r]) => r.method === "launcher.profile.save"),
+    ).toHaveLength(0);
+    const preparedCall = requests.mock.calls.findIndex(
+      ([r]) => r.method === "launcher.profile.prepareDuplicate",
+    );
+    const prepared = await requests.mock.results[preparedCall].value;
+    expect(prepared.method).toBe("launcher.profile.prepareDuplicate");
+    if (prepared.method !== "launcher.profile.prepareDuplicate")
+      throw new Error("missing prepared draft");
+    const down = screen.getAllByRole("button", { name: text.down })[0];
+    await user.click(down);
+    await user.clear(name);
+    await user.type(name, "Copia revisada");
+    await user.click(screen.getByRole("button", { name: text.save }));
+    await screen.findByRole("button", { name: "Copia revisada" });
+    const saved = requests.mock.calls.find(
+      ([r]) => r.method === "launcher.profile.save",
+    )?.[0];
+    expect(saved).toMatchObject({
+      method: "launcher.profile.save",
+      baseRevision: prepared.value.baseRevision,
+      draft: {
+        id: prepared.value.draft.id,
+        name: "Copia revisada",
+        steps: [
+          prepared.value.draft.steps[1],
+          prepared.value.draft.steps[0],
+          ...prepared.value.draft.steps.slice(2),
+        ],
+      },
+    });
+    expect(
+      requests.mock.calls.some(([r]) => r.method === "launcher.profile.get"),
+    ).toBe(false);
+    expect(
+      requests.mock.calls.some(
+        ([r]) => r.method === "launcher.profile.duplicate",
+      ),
+    ).toBe(false);
+  });
+  it.each(["busy", "rejected", "coreUnavailable"] as const)(
+    "does not create a fallback copy when preparation is %s",
+    async (kind) => {
+      const native = Client.prototype.request;
+      const requests = vi
+        .spyOn(Client.prototype, "request")
+        .mockImplementation(function (this: Client, request) {
+          if (request.method === "launcher.profile.prepareDuplicate")
+            return Promise.reject(new HostFailure({ kind }));
+          return native.call(this, request);
+        });
+      mount();
+      fireEvent.contextMenu(
+        await screen.findByRole("button", { name: "Creador de Contenido" }),
+      );
+      fireEvent.click(
+        await screen.findByRole("menuitem", { name: actionText.duplicate }),
+      );
+      await screen.findByText(
+        kind === "busy"
+          ? text.duplicatePrepareBusy
+          : kind === "coreUnavailable"
+            ? text.coreUnavailable
+            : text.openFailed,
+      );
+      expect(screen.queryByRole("textbox", { name: text.name })).toBeNull();
+      expect(
+        requests.mock.calls.some(([r]) =>
+          [
+            "launcher.profile.save",
+            "launcher.profile.get",
+            "launcher.profile.duplicate",
+          ].includes(r.method),
+        ),
+      ).toBe(false);
+    },
+  );
+  it("cancels a prepared duplicate without creating a profile or reading its new id", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    fireEvent.contextMenu(
+      await screen.findByRole("button", { name: "Creador de Contenido" }),
+    );
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.duplicate }),
     );
-    const duplicateDialog = await screen.findByRole("dialog", {
-      name: actionText.duplicateTitle,
-    });
-    fireEvent.click(
-      within(duplicateDialog).getByRole("button", {
-        name: actionText.duplicate,
-      }),
-    );
-    await screen.findByRole("button", { name: "Creador de Contenido (copia)" });
-    await waitFor(() => expect(creator).toHaveProperty("disabled", false));
-    fireEvent.contextMenu(creator);
-    fireEvent.click(
-      await screen.findByRole("menuitem", { name: actionText.trigger }),
-    );
-    await waitFor(() => expect(creator).toHaveProperty("disabled", false));
-    fireEvent.contextMenu(creator);
-    fireEvent.click(
-      await screen.findByRole("menuitem", { name: actionText.triggered }),
-    );
-    await waitFor(() => expect(creator).toHaveProperty("disabled", false));
-    fireEvent.contextMenu(creator);
-    await screen.findByRole("menuitem", { name: actionText.trigger });
+    await screen.findByRole("textbox", { name: text.name });
+    fireEvent.click(screen.getByRole("button", { name: text.cancel }));
+    await screen.findByRole("button", { name: "Creador de Contenido" });
+    expect(
+      screen.queryByRole("button", { name: "Creador de Contenido (copia)" }),
+    ).toBeNull();
+    expect(
+      requests.mock.calls.some(([r]) =>
+        [
+          "launcher.profile.save",
+          "launcher.profile.get",
+          "launcher.profile.duplicate",
+        ].includes(r.method),
+      ),
+    ).toBe(false);
   });
   it("saves rail preferences and retains a custom first-step delay", async () => {
     mount("launcher-options-custom");
@@ -545,65 +630,46 @@ describe("profile editor", () => {
     await user.click(screen.getByRole("option", { name: "20 s" }));
     await waitFor(() => expect(delay.textContent).toContain("20 s"));
   });
-  it.each(["duplicate"] as const)(
-    "requires a new confirmation after a %s conflict",
+  it.each(["unknown", "busy", "rejected", "denied"] as const)(
+    "retains a %s duplicate draft and never rereads or replays the consumed save",
     async (kind) => {
-      const requests = vi.spyOn(Client.prototype, "request");
-      mount("launcher-actions-conflicto");
-      const name = "Creador de Contenido";
-      const creator = await screen.findByRole("button", { name });
-      fireEvent.contextMenu(creator);
-      fireEvent.click(
-        await screen.findByRole("menuitem", {
-          name: actionText.duplicate,
-        }),
+      const native = Client.prototype.request;
+      const requests = vi
+        .spyOn(Client.prototype, "request")
+        .mockImplementation(function (this: Client, request) {
+          if (request.method === "launcher.profile.save")
+            return Promise.reject(
+              kind === "unknown"
+                ? new Error("transport lost")
+                : new HostFailure({ kind }),
+            );
+          return native.call(this, request);
+        });
+      mount();
+      fireEvent.contextMenu(
+        await screen.findByRole("button", { name: "Creador de Contenido" }),
       );
-      const title = actionText.duplicateTitle;
-      let dialog = await screen.findByRole("dialog", { name: title });
       fireEvent.click(
-        within(dialog).getByRole("button", {
-          name: actionText.duplicate,
-        }),
+        await screen.findByRole("menuitem", { name: actionText.duplicate }),
       );
-      await screen.findByText(actionText.conflict);
-      expect(screen.queryByRole("dialog")).toBeNull();
+      const name = await screen.findByRole("textbox", { name: text.name });
+      fireEvent.change(name, { target: { value: "Conservar mi texto" } });
+      fireEvent.click(screen.getByRole("button", { name: text.save }));
+      await screen.findByText(
+        kind === "denied" ? text.duplicateDenied : text.duplicateUnconfirmed,
+      );
+      expect(name).toHaveProperty("value", "Conservar mi texto");
+      expect(screen.queryByText(text.saved)).toBeNull();
+      expect(screen.queryByRole("button", { name: text.retry })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: text.save }));
       expect(
-        screen.queryByRole("button", { name: actionText.retry }),
-      ).toBeNull();
-      expect(screen.getByText(actionText.reconfirm)).toBeTruthy();
-      const method = "launcher.profile.duplicate";
-      expect(
-        requests.mock.calls.filter(([r]) => r.method === method),
+        requests.mock.calls.filter(
+          ([r]) => r.method === "launcher.profile.save",
+        ),
       ).toHaveLength(1);
       expect(
-        screen.queryByRole("button", { name: `${name} (copia)` }),
-      ).toBeNull();
-      fireEvent.contextMenu(screen.getByRole("button", { name }));
-      fireEvent.click(
-        await screen.findByRole("menuitem", {
-          name: actionText.duplicate,
-        }),
-      );
-      dialog = await screen.findByRole("dialog", { name: title });
-      expect(
-        requests.mock.calls.filter(([r]) => r.method === method),
-      ).toHaveLength(1);
-      fireEvent.click(
-        within(dialog).getByRole("button", {
-          name: actionText.duplicate,
-        }),
-      );
-      await waitFor(() =>
-        expect(
-          requests.mock.calls.filter(([r]) => r.method === method),
-        ).toHaveLength(2),
-      );
-      if (kind === "duplicate")
-        await screen.findByRole("button", { name: `${name} (copia)` });
-      else
-        await waitFor(() =>
-          expect(screen.queryByRole("button", { name })).toBeNull(),
-        );
+        requests.mock.calls.some(([r]) => r.method === "launcher.profile.get"),
+      ).toBe(false);
     },
   );
   it.each(["launcher-actions-limit", "launcher-actions-long-name"])(

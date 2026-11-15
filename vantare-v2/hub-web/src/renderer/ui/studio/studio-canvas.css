@@ -687,6 +687,11 @@
 .v-studio-focus-layout[data-view="canvas"] .v-focus-layout-icon {
   display: none;
 }
+.v-studio-focus-layout[data-view="canvas"]
+  .v-focus-layout-name
+  > .v-tooltip-trigger:first-child {
+  display: inline-flex;
+}
 .v-studio-focus-layout[data-view="canvas"][data-missing="false"][data-list-collapsed="true"] {
   grid-template-columns: 72px minmax(0, 1fr);
 }

@@ -181,12 +181,21 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
             const thumb = page.locator(
               ".v-studio-track-groups .v-slider-thumb",
             );
+            const focus = await thumb.evaluate((node) => ({
+              width: Number.parseFloat(getComputedStyle(node).outlineWidth),
+              style: getComputedStyle(node).outlineStyle,
+              keyboard: node.matches(":has(:focus-visible)"),
+              dpr: window.devicePixelRatio,
+            }));
+            // Chromium rounds outline strokes to device pixels at CSS zoom.
+            // The 100% cases require 2px; smaller scales retain that painted stroke.
+            const paintedWidth =
+              Math.floor(2 * pixelScale * focus.dpr) / (pixelScale * focus.dpr);
             assert.ok(
-              await thumb.evaluate(
-                (node) =>
-                  Number.parseFloat(getComputedStyle(node).outlineWidth) >= 2,
-              ),
-              "Opacity retains a visible keyboard focus ring",
+              focus.keyboard &&
+                focus.style !== "none" &&
+                focus.width >= paintedWidth - 0.02,
+              `Opacity keyboard ring ${width}/${scheme}/${expanded}: ${JSON.stringify({ ...focus, pixelScale, paintedWidth })}`,
             );
           }
           const slider = page.getByRole("slider", {

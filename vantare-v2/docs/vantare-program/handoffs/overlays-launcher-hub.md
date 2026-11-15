@@ -1,3 +1,26 @@
+## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
+
+#2345 fusionado por el orquestador como df9c911b5. Worker B atiende sus nits
+en `vantareapp/isa-2333-rune-ajustes`, base nightly 639bb40aa.
+Topología dinámica registrada en
+[#2346](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2346),
+area:overlays-runtime y Project Vantare, enlazada a #2333. Se resolverá antes
+de F2; no se presenta como soportada en el host actual.
+
+--fuente local queda reservada a desarrollo debug: el parser la rechaza con
+DevelopmentOnly en release y Access::LocalPreview usa la misma política de
+build para no conceder widgets. No depende de una variable modificable al
+ejecutar. CI compila además los tests puros del parser sin debug_assertions:
+5 PASS ya comprobados en Windows y Mac, sin enlazar Rune ni crear gráficos.
+Clippy del workspace Rune PASS; tests completos en curso. No cambia ninguna
+dependencia ni lock. F0 explicita que el DPI por monitor depende del parche
+winit fijado de la copia y debe comprobarse en el PC de juego con escalas mixtas.
+
+Siguiente: conectar los módulos de #2344 cuando se fusione y preparar Relative
+Eficiencia/captura (PR 7). No se modifica el worktree ajeno preparado para
+datos/cadencias; PR 3 sigue siendo autoridad de esos tipos. Ningún gráfico ni
+ejecución del producto en el servidor; F0 solo en el horario del orquestador.
+
 ## VANTA-144 · PR 5: proceso y ventanas, parte independiente (15/11/2026)
 
 Worker B, #2333, ADR 0110 §9; continuación autorizada por el orquestador.

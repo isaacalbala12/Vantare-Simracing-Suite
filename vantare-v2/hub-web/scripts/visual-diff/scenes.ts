@@ -26,6 +26,7 @@ import { settingsSearchScenes } from "./settings-search.ts";
 import { studioScenes } from "./studio.ts";
 import { studioCatalogScenes } from "./studio-catalog.ts";
 import { studioContentScenes } from "./studio-content.ts";
+import { studioFrequencyScenes } from "./studio-frequency.ts";
 import { studioStateScenes } from "./studio-states.ts";
 import { sweepScenes } from "./sweep.ts";
 import { testingScenes } from "./testing-scenes.ts";
@@ -48,6 +49,7 @@ const settingsTabs: Record<string, string> = {
 };
 // Each screen worker adds its own module, imported here. No fallback to another scene.
 export const visualScenes: Record<string, VisualScene> = {
+  ...studioFrequencyScenes,
   ...studioContentScenes,
   ...settingsSearchScenes,
   ...questionnaireNoteScenes,

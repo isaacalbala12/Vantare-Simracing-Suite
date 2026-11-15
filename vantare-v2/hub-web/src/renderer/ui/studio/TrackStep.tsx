@@ -14,6 +14,7 @@ import {
 import { Button } from "../Button";
 import { Select, Slider, Switch } from "../Forms";
 import { DisabledHint } from "./DisabledHint";
+import { FrequencyControls } from "./FrequencyControls";
 import "./studio-track-step.css";
 
 const labels = {
@@ -132,6 +133,7 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
           </Button>
         </DisabledHint>
       </Group>
+      <FrequencyControls item={item} model={model} />
     </div>
   );
 }

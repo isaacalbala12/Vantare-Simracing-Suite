@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { windowText } from "../src/renderer/i18n/window.es.ts";
@@ -19,16 +19,11 @@ assert.ok(
 const qaRoot = process.env.VANTARE_HUB_QA_ROOT;
 assert.ok(qaRoot, "VANTARE_HUB_QA_ROOT required");
 const lock = "D:/VantareServer/qa/captura.lock";
-const nonce = randomUUID();
-await mkdir(lock); // Busy is explicit; never delete somebody else's lock.
-await writeFile(
-  join(lock, "owner.json"),
-  JSON.stringify({
-    worker: "D resources",
-    nonce,
-    pid: process.pid,
-    started: new Date().toISOString(),
-  }),
+const owner = JSON.parse(await readFile(join(lock, "owner.json"), "utf8"));
+const nonce = process.env.VANTARE_HUB_RESOURCE_LEASE;
+assert.ok(
+  nonce && owner.nonce === nonce && owner.pid === process.ppid,
+  "Use scripts/measure-resources.ps1 to reserve the capture and native slots",
 );
 let browser: Awaited<ReturnType<typeof chromium.connectOverCDP>> | undefined;
 let child: ReturnType<typeof spawn> | undefined;
@@ -58,15 +53,15 @@ async function run(file: string, args: string[]) {
 }
 try {
   await mkdir(destination, { recursive: true });
-  const rust = await run("pwsh", [
+  const active = await run("pwsh", [
     "-NoProfile",
     "-Command",
     "@(Get-Process cargo,rustc -ErrorAction SilentlyContinue).Count",
   ]);
   assert.equal(
-    Number(rust.trim()),
+    Number(active.trim()),
     0,
-    "Rust active; release capture lock and retry later",
+    "Rust active despite the slot reservation; not opening Electron",
   );
   const binary = resolve(
     "release/package-qa/vantare-hub-ui-win32-x64/vantare-hub-ui.exe",
@@ -132,6 +127,7 @@ try {
     resources: string[];
   }[] = [];
   const sample = async (name: string) => {
+    console.log(`Sampling ${name}`);
     const path = join(destination, `${name}.json`);
     await run("pwsh", [
       "-NoProfile",
@@ -195,6 +191,7 @@ try {
       done.push(name.trim());
     }
     visited.push({ section, tabs: done });
+    console.log(`Visited ${section}: ${done.join(", ")}`);
   }
   await page
     .getByRole("button", { name: "Notificaciones", exact: true })
@@ -258,6 +255,12 @@ try {
         schema: 1,
         at: new Date().toISOString(),
         source: process.env.VANTARE_HUB_QA_SOURCE ?? "not supplied",
+        viewport: await page.evaluate(() => ({
+          width: innerWidth,
+          height: innerHeight,
+          dpr: devicePixelRatio,
+        })),
+        browserVersion: browser.version(),
         asarSha256: createHash("sha256")
           .update(await readFile(asar))
           .digest("hex"),
@@ -284,9 +287,4 @@ try {
   await browser?.close().catch(() => {});
   if (child && child.exitCode === null) child.kill();
   await writeFile(join(destination, "stderr.log"), stderr).catch(() => {});
-  const owner = JSON.parse(await readFile(join(lock, "owner.json"), "utf8"));
-  if (owner.nonce === nonce) {
-    await rm(join(lock, "owner.json"));
-    await rmdir(lock);
-  }
 }

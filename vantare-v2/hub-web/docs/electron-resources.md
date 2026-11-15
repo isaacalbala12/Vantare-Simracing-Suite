@@ -16,13 +16,15 @@ bun run build
 bun run package
 $env:VANTARE_HUB_QA_ROOT='D:/VantareServer/qa/isa-1995-d-electron-resources'
 $env:VANTARE_HUB_QA_SOURCE=(git rev-parse HEAD)
-node --experimental-strip-types scripts/measure-resources.ts D:/VantareServer/evidence/hub-web/isa-1995-d-electron-resources/baseline
+pwsh -NoProfile -File scripts/measure-resources.ps1 -Output D:/VantareServer/evidence/hub-web/isa-1995-d-electron-resources/baseline
 ```
 
 El script toma `captura.lock` de forma exclusiva y lo libera en `finally`.
 Si está ocupado, esperar fuera del script y repetir cada 60 s; no borrar un
-cerrojo ajeno. Con Rust activo aborta antes de abrir Electron. La cola nativa
-respeta el mismo cerrojo. Cada sesión dura aproximadamente tres minutos.
+cerrojo ajeno. El cerrojo reserva los futuros huecos nativos (#2332). Si ya hay Rust activo,
+se deja terminar mediante `Enter-HubCaptureTurn` antes de abrir Electron; no se cancela nada.
+No basta con crear el directorio: el helper existente posee los dos mutex de
+compilación y los libera al terminar. El script Node exige la reserva del padre. Cada sesión dura aproximadamente tres minutos.
 
 Se abre un único candidato QA con el núcleo simulado, perfil nuevo y sin red.
 Se miden cinco ventanas de 20 s: Inicio recién abierto, Inicio tras recorrer

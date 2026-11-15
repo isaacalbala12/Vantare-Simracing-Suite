@@ -2,7 +2,9 @@
 # Uso: native/scripts/compilar.ps1 <comando> [args...]
 # Target persistente configurable por slot; cuatro jobs en el servidor (#1993).
 # El mínimo y el umbral de memoria se releen de Machine en cada vuelta.
-# VANTARE_SCCACHE=0 permite repetir un fallo sin caché.
+# En local sccache está activado por defecto. Si cargo o rustc terminan con
+# 0xC0000005 (STATUS_ACCESS_VIOLATION), el comando se reintenta una vez con
+# VANTARE_SCCACHE=0 y se conservan ambos resultados.
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
 # Normalize Cargo's inline spelling before validating or acquiring a target.
 $normalized = @()
@@ -45,9 +47,28 @@ function Invoke-VantareQueuedCommand {
             # sccache keys CARGO_TARGET_DIR; use the CLI path to share dependencies across slots.
             Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
         }
-        $global:LASTEXITCODE = 0
-        & $CommandName @CommandArguments
-        $script:commandExitCode = if ($?) { [int]$global:LASTEXITCODE } else { [math]::Max(1, [int]$global:LASTEXITCODE) }
+        $attempt = 0
+        while ($true) {
+            $attempt++
+            $global:LASTEXITCODE = 0
+            $script:commandOutput = @()
+            & $CommandName @CommandArguments 2>&1 | ForEach-Object {
+                $script:commandOutput += $_
+                $_
+            }
+            $script:commandExitCode = [int]$global:LASTEXITCODE
+            if (-not $? -and $script:commandExitCode -eq 0) { $script:commandExitCode = 1 }
+            $text = ($script:commandOutput | Out-String)
+            $crashed = ($script:commandExitCode -in @(-1073741819, 3221225477)) -or
+                ($text -match '0xC0000005|STATUS_ACCESS_VIOLATION|3221225477|-1073741819')
+            if ($crashed -and $attempt -eq 1 -and $env:VANTARE_SCCACHE -ne '0') {
+                Write-Host '[cola] 0xC0000005 en la compilación; reintento una vez sin sccache (VANTARE_SCCACHE=0).'
+                $env:VANTARE_SCCACHE = '0'
+                Remove-Item Env:RUSTC_WRAPPER -ErrorAction SilentlyContinue
+                continue
+            }
+            break
+        }
     } finally {
         [Environment]::SetEnvironmentVariable('CARGO_TARGET_DIR', $previousTarget, 'Process')
     }
@@ -80,7 +101,8 @@ if (-not $env:SCCACHE_DIR) {
 }
 $env:SCCACHE_SERVER_PORT = $env:SCCACHE_SERVER_PORT ?? '4227'
 $env:SCCACHE_CACHE_SIZE = $(if ($IsWindows) { [Environment]::GetEnvironmentVariable('SCCACHE_CACHE_SIZE', 'Machine') }) ?? $env:SCCACHE_CACHE_SIZE ?? '5G'
-if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
+$sccacheEnabled = $env:VANTARE_SCCACHE -ne '0'
+if ($sccacheEnabled -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
 $slots = [math]::Min(2, [int]($env:VANTARE_CARGO_SLOTS ?? 2))
 if ($slots -lt 1) { $slots = 1 }
 $machineJobs = [Environment]::GetEnvironmentVariable('CARGO_BUILD_JOBS', 'Machine')

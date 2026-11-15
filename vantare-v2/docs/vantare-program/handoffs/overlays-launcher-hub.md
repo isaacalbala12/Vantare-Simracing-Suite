@@ -12,7 +12,7 @@ DevelopmentOnly en release y Access::LocalPreview usa la misma política de
 build para no conceder widgets. No depende de una variable modificable al
 ejecutar. CI compila además los tests puros del parser sin debug_assertions:
 5 PASS ya comprobados en Windows y Mac, sin enlazar Rune ni crear gráficos.
-Clippy del workspace Rune PASS; tests completos en curso. No cambia ninguna
+Clippy del workspace Rune y 14 tests CPU Windows PASS. No cambia ninguna
 dependencia ni lock. F0 explicita que el DPI por monitor depende del parche
 winit fijado de la copia y debe comprobarse en el PC de juego con escalas mixtas.
 

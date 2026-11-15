@@ -1,0 +1,17 @@
+.v-studio-frequency {
+  grid-column: 1 / -1;
+}
+.v-studio-frequency-choices {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.v-studio-frequency-choices .v-button {
+  border: 1px solid var(--edge);
+}
+.v-studio-frequency-choices .v-button[aria-pressed="true"] {
+  border-color: var(--accent);
+}

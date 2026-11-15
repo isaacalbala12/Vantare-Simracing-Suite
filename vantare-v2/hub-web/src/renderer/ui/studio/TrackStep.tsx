@@ -14,6 +14,7 @@ import {
 import { Button } from "../Button";
 import { Select, Slider, Switch } from "../Forms";
 import { DisabledHint } from "./DisabledHint";
+import { FrequencyControls } from "./FrequencyControls";
 import "./studio-track-step.css";
 
 const labels = {
@@ -121,6 +122,7 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
       </Group>
       <Group
         title={t.placeGroup}
+        placement
         summary={t.placeSummary(item.size.width, item.size.height)}
         visible={false}
       >
@@ -132,6 +134,7 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
           </Button>
         </DisabledHint>
       </Group>
+      <FrequencyControls item={item} model={model} />
     </div>
   );
 }
@@ -140,17 +143,19 @@ function Group({
   summary,
   visible,
   active,
+  placement,
   children,
 }: {
   title: string;
   summary: string;
   visible?: boolean;
   active?: boolean;
+  placement?: boolean;
   children: ReactNode;
 }) {
   return (
     <section
-      className="v-studio-track-group"
+      className={`v-studio-track-group${placement ? " v-studio-track-group--placement" : ""}`}
       aria-label={title}
       data-active={active}
     >

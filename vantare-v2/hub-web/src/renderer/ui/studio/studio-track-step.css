@@ -146,7 +146,7 @@
   .v-studio-track-groups {
     grid-template-columns: 1fr 1fr;
   }
-  .v-studio-track-groups > section:last-child {
+  .v-studio-track-groups > .v-studio-track-group--placement {
     grid-column: 1 / -1;
   }
 }

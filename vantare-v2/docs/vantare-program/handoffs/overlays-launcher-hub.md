@@ -142,6 +142,22 @@ formato, Clippy, 52 tests CPU, 5 tests de política de distribución, enlace sin
 y auditoría de 428 paquetes PASS. Tokens y 12 tests Python PASS. Sin gráficos ni
 cambios de Plane; el PR recoge el head final y la CI pendiente.
 
+## VANTA-144 / Worker B: Delta local mientras A termina su pila
+
+Encargo vigente: Delta en local sobre la cabeza de #2357; no abrir PR hasta que
+la pila de A este en nightly. Rama isa-2333-delta-rune, base exacta 59f2d099d.
+Solo primer pintor Vantare, datos simulados en CPU y repintado a demanda.
+Reutiliza domain::delta, tokens/fuentes y Tween existente; sin capa nueva de
+movimiento, transporte ni opciones. Cambio de renderer limitado al despacho.
+Sin Eficiencia/avisos/capturas aun; ver src/delta/README.md. Formato y auditoria
+de 428 paquetes PASS; Clippy/tests encolados, sin afirmar resultado todavia.
+No se ejecutan producto ni graficos. Sin PR, push, merge/release ni Plane.
+
+#2349 con #2344 ya fusionado por el orquestador en 529f1374b. #2351 y #2359
+necesitan tambien el kit de #2357: se reapilan cuando entre este, preservando
+solo los commits propios de B. #2359 sigue draft, retenido hasta la medicion
+corta de Relative y la posterior paridad Windows. No se toca la pila de A.
+
 ## VANTA-144 · validación final de conexión y Relative con monitores (15/11/2026)
 
 Conexión #2349, head 8a313ac0f97ff526bd42f280990ceb20323fd39d: todos los checks

@@ -1,7 +1,7 @@
 # Catálogo al lienzo: Vista Lienzo A
 
 ADR 0109 PR 3, VANTA-138 / #1995. Depende del controlador de PR 2 (#2323).
-Le montage utiliza la Vista Lienzo A aprobada: catálogo lateral sobre el plano,
+El montaje utiliza la Vista Lienzo A aprobada: catálogo lateral sobre el plano,
 sin modal centrado ni fondo inerte que impida soltar. Widget conserva el
 catálogo modal anterior. Abrir el panel no reduce el tamaño del lienzo.
 

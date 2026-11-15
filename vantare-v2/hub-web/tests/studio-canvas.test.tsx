@@ -725,12 +725,9 @@ const additions = (spy: MockInstance<Client["request"]>) =>
 async function openDrop() {
   await userEvent
     .setup()
-    .click(
-      screen.getAllByRole("button", { name: studioText.add, exact: true })[0],
-    );
+    .click(screen.getAllByRole("button", { name: studioText.add })[0]);
   return screen.findByRole("button", {
     name: dropText.drag("Delta"),
-    exact: true,
   });
 }
 function dropPoint() {

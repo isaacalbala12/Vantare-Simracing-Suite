@@ -13,6 +13,12 @@ decisión de Isaac, el Hub se construye también en Rune como vía paralela a
 Electron, con el mismo anfitrión y protocolo. Este ADR sigue vigente; el
 criterio para elegir entre los dos Hubs está en ADR 0108.
 
+**Enmendada por [ADR 0110](0110-overlays-en-rune.md) (2026-11-15):** decisión
+definitiva de Isaac. El Hub se queda en Electron (se abandona la vía de ADR
+0108) y los overlays pasan a Rune: el punto 3 de este ADR (GPUI, GPUI kit y
+fast, Rune fuera hasta 2027) queda sustituido por ADR 0110. El requisito de
+G-Sync / FreeSync sigue vigente.
+
 **Punto 4 corregido por [ADR 0109](0109-studio-visual-geometria-y-preview-real.md)
 (2026-11-14):** la posición y el tamaño se editan también en el lienzo del
 Hub, además del modo edición sobre los overlays, por paridad con el Hub

@@ -1,6 +1,7 @@
 ## VANTA-144 · Monitores en caliente, Worker B (#2346)
 
-Rama `vantareapp/isa-2346-monitores-rune`, base 64a445de3 de #2348. Reparto
+Rama `vantareapp/isa-2346-monitores-rune`, base nightly 8ea2e9741 tras rebasar
+con --onto desde 64a445de3 de #2348 (squash 99bbee4b4). Reparto
 confirmado por el orquestador: B solo vida/topología de ventanas; A conecta
 diseño, fuente y cadencias, y hace Relative Vantare. No se toca esa conexión.
 

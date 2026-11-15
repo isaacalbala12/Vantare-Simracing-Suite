@@ -15,11 +15,15 @@ impl<'de> Deserialize<'de> for Ordered {
             }
             fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Ordered, A::Error> {
                 let mut fields: Vec<(String, Box<RawValue>)> = vec![];
-                while let Some((key, value)) = map.next_entry::<String, Box<RawValue>>()? {
-                    if fields.iter().any(|(old, _)| old == &key) {
+                let mut seen = std::collections::BTreeSet::new();
+                while let Some(key) = map.next_key::<String>()? {
+                    if fields.len() >= crate::settings::track::MAX_WIDGET_OVERRIDES {
+                        return Err(A::Error::custom("too many members"));
+                    }
+                    if !seen.insert(key.clone()) {
                         return Err(A::Error::custom("duplicate key"));
                     }
-                    fields.push((key, value));
+                    fields.push((key, map.next_value()?));
                 }
                 Ok(Ordered(fields))
             }
@@ -134,4 +138,36 @@ pub(super) fn rates(
                 .map_err(|_| HostError::Protected)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Ordered;
+    #[test]
+    fn ordered_reader_rejects_the_257th_key_before_reading_its_value() {
+        let members = (0..256)
+            .map(|n| format!(r#""id-{n}":20"#))
+            .collect::<Vec<_>>()
+            .join(",");
+        let accepted = format!("{{{members}}}");
+        let ordered: Ordered = serde_json::from_str(&accepted).expect("256 entries");
+        assert_eq!(ordered.0.len(), 256);
+        assert_eq!(
+            serde_json::to_string(&ordered).expect("same order"),
+            accepted
+        );
+        // A malformed value distinguishes early rejection from parsing a large tail.
+        for key in ["id-256", "id-0"] {
+            let rejected = format!("{{{members},\"{key}\":[invalid");
+            let error = serde_json::from_str::<Ordered>(&rejected)
+                .err()
+                .expect("reject before tail");
+            assert_eq!(error.classify(), serde_json::error::Category::Data);
+        }
+        let duplicate = r#"{"id-0":20,"id-0":[invalid"#;
+        let error = serde_json::from_str::<Ordered>(duplicate)
+            .err()
+            .expect("reject duplicate before tail");
+        assert_eq!(error.classify(), serde_json::error::Category::Data);
+    }
 }

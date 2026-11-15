@@ -387,10 +387,8 @@ pub(crate) fn edit_result(
 ) -> Result<(StudioView, Option<String>), HostError> {
     let mut opened = open_revision(state, revision, access)?;
     state.monitor = Some(opened.monitor);
-    let settings_edit = matches!(
-        &edit,
-        Edit::Instance(_, InstancePatch::Settings(_) | InstancePatch::Frequency(_))
-    );
+    let settings_edit = matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_)));
+    let frequency_only = matches!(&edit, Edit::Instance(_, InstancePatch::Frequency(_)));
     let geometry_edit = matches!(
         &edit,
         Edit::Geometry(..) | Edit::Canvas(..) | Edit::AddAt(..)
@@ -410,7 +408,7 @@ pub(crate) fn edit_result(
         .expect("existing layout")
         .to_vec();
     let after = apply(&mut opened, state, &edit, access)?;
-    if (settings_edit || geometry_edit) && after == before {
+    if (settings_edit || geometry_edit || frequency_only) && after == before {
         return Ok((view(state, access), None));
     }
     let adding = matches!(edit, Edit::Add(_) | Edit::AddAt(..));

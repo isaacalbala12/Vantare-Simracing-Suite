@@ -284,3 +284,62 @@ fn every_inspector_frequency_writes_the_exact_value_and_same_value_is_a_noop() {
         assert_eq!(std::fs::read(&layout_path).expect("unchanged bytes"), bytes);
     }
 }
+
+#[test]
+fn frequency_does_not_require_the_settings_projection_to_fit_a_frame() {
+    let (_root, path, _) = fixture();
+    let instances: Vec<_> = (0..crate::studio::INSTANCE_LIMIT).map(|n| json!({
+        "id":format!("widget-{}",n+1), "x":0,"y":0,
+        "settings":{"kind":"standings","columns":[{"id":"x".repeat(3800),"metricId":"driverName"}]}
+    })).collect();
+    let source = serde_json::to_vec(&json!({"version":1,"instances":instances}))
+        .expect("compact stored layout");
+    assert!(u64::try_from(source.len()).expect("stored byte length") < super::LIMIT);
+    std::fs::write(&path, &source).expect("large projection");
+    let access = Some(CatalogAccess::Pro);
+    let mut state = State::new(path.clone());
+    let opened = open(&mut state).expect("valid source within file limit");
+    assert!(!opened.fits_frame(access));
+    let before = state.view(access);
+    assert_eq!(before.state, StudioState::Protected);
+    let after = state
+        .edit(frequency(Some(20)), &before.revision, access)
+        .expect("frequency independent of settings size");
+    assert_eq!(after.state, StudioState::Protected);
+    assert_ne!(after.revision, before.revision);
+    let saved = layout(&path);
+    assert_eq!(saved["performance"]["widgets"]["widget-1"], 20);
+    assert_eq!(
+        saved["instances"],
+        serde_json::from_slice::<serde_json::Value>(&source).expect("original")["instances"]
+    );
+    assert_eq!(state.undo.len(), 1);
+}
+
+#[test]
+fn history_can_restore_an_inert_orphan_override_without_a_widget() {
+    let (_root, path, _) = fixture();
+    let mut document = layout(&path);
+    document["performance"] = json!({"widgets":{"orphan":20}});
+    replace_layout(&path, &document);
+    let current = std::fs::read(&path).expect("current bytes");
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let before = state.view(access);
+    // A valid historical document can contain an override with no corresponding instance.
+    document["performance"]["widgets"]["orphan"] = json!(40);
+    let historical = serde_json::to_vec(&document).expect("historical bytes");
+    state.undo.push(historical.clone());
+    let undone = state
+        .edit(Edit::Undo, &before.revision, access)
+        .expect("orphan does not block undo");
+    assert_eq!(
+        std::fs::read(&path).expect("exact restored bytes"),
+        historical
+    );
+    assert_eq!(undone.instances[0].frequency, before.instances[0].frequency);
+    state
+        .edit(Edit::Redo, &undone.revision, access)
+        .expect("redo orphan change");
+    assert_eq!(std::fs::read(&path).expect("redo bytes"), current);
+}

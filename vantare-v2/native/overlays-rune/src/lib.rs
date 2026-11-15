@@ -19,6 +19,7 @@ mod multiclass_relative;
 mod radar;
 pub mod relative;
 mod renderer;
+pub mod standings;
 pub mod stats;
 mod track_map;
 pub mod vantare;

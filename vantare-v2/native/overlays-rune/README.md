@@ -1,5 +1,49 @@
 # Overlays Rune · VANTA-144 / #2333
 
+## Standings en preparación (Worker B, F2 bloqueada)
+
+`standings::Standings` consume `domain::standings::{Board, Plan}` sin copiar los
+tipos ni calcular posiciones, gaps o calidad. Dos vistas sobre la misma salida:
+Vantare y Eficiencia. Columnas por sesión, formatos de nombres/vueltas, selección
+de clase/ventana del jugador, multiclase, pausa retenida y pies desde domain.
+Los tokens Eficiencia se generan del JSON existente de GPUI; Vantare reutiliza
+el kit de #2357. No modifica los contratos de domain/ipc ni la conexión de A.
+El único cambio del proceso es el despacho a este pintor desde `renderer`.
+Las fotos siguen pasando por Cadence del host antes de llegar al widget.
+
+Esta entrega prepara cuadros asentados: todavía no porta las transiciones,
+avisos y barridos de Standings GPUI. Ningún Look crea un reloj de animación.
+La comparación Windows de los dos Looks y la migración de esos canales quedan
+pendientes antes de aceptar F2. No se presenta como paridad visual demostrada.
+El PR es draft apilado sobre #2351/#2357/#2349 y NO se fusiona hasta que Relative
+pase su medición corta en el PC de juego y el orquestador acepte las capturas.
+
+La captura reutiliza el mismo árbol del pintor, con `Runtime::with_text` y el
+destino `Offscreen`, sin App, ventana, event loop o activación del escritorio.
+`standings::capture::prepare/render_with` se prueban solo en CPU/pintor falso.
+El ejecutable debug añade un modo de escena aislado de derechos/fuente/supervisor:
+
+```powershell
+# SOLO PC de juego y con horario autorizado. Nunca en este servidor ni CI.
+vantare-overlays-rune.exe --capture-scene --layout escena.layout.json --snapshot foto.json --output rune.png --scale 1.25
+```
+
+La entrada usa los lectores canónicos IPC, exactamente un Standings, archivos
+acotados y escalas 1/1.25/1.5. No admite argumentos de Rune, rechaza distribución
+release y no sobrescribe una evidencia existente. El cinturón de máquina sigue
+siendo la primera comprobación, antes de analizar siquiera estos argumentos.
+Es una herramienta QA; el canal de preview firmado de Studio sigue siendo PR 25.
+
+Preparar el lote sin ejecutar ningún motor:
+
+```powershell
+python native/overlays-rune/scripts/preparar_escenas.py --widget standings --escenas native/ui/src/standings/scenes.json --look vantare --look eficiencia --salida D:/VantareServer/evidence/overlays-rune/standings/plan-<commit>
+```
+
+Las 16 escenas originales producen 96 pares pendientes con identidad del motor,
+commit, copia Rune, datos y escala. Se conserva el corpus, salvo la elección de
+Look. Un plan sin PNG no es evidencia gráfica ni una medición.
+
 Base y proceso (PR 4/5) de [ADR 0110](../../docs/adr/0110-overlays-en-rune.md).
 El Hub permanece en Electron. Este workspace independiente conserva su propio
 `Cargo.lock` y `rust-toolchain.toml` (1.99.1). No cambia la resolución de

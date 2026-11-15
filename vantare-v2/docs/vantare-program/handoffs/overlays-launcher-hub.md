@@ -291,6 +291,35 @@ Tipos producto/scripts, lint web, 428 tests Studio, 491 corpus/índice y 32 gale
 PASS. CI/revisión pendientes; PR/head y detalles finales en #1995.
 D031 y D048 preservados en sus ramas, pendientes de este bloque; D111 después.
 
+## VANTA-144 / Worker B: Standings preparado por adelantado, F2 bloqueada
+
+Encargo del orquestador tras fusionar #2356 como 881c6214d: adelantar Standings,
+primero Vantare y luego Eficiencia, sin esperar la medicion corta de Relative
+para escribir codigo; su fusion SI la espera. Rama isa-2333-standings-rune,
+apilada sobre #2351 (9b434617f), a su vez sobre #2357 ce94f4502 y la conexion de
+#2349. #2344 sigue incluido en esa base revisada. No se modifican ramas de A.
+
+Pintor desde Board/Plan de domain, dos Looks sobre la misma salida visible,
+columnas por sesion, ventanas de filas y multiclase, formato/calidad del nucleo,
+pausa retenida y geometria antes del recorte por monitor. Despacho minimo en
+renderer: fuente, DemandHandle, Cadence, permisos y cierre siguen siendo de A.
+Los cuadros asentados no crean relojes. Transiciones, avisos y barridos GPUI
+no se portan aun: pendientes antes de aceptar F2, sin atribuirse paridad.
+
+Captura debug por el MISMO ejecutable y pintor: --capture-scene, entradas IPC
+acotadas y Offscreen sin App/ventana/event loop. Cinturon primero, distribuido
+cerrado a escenas sinteticas; preview firmada sigue siendo PR 25. Tests CPU con
+pintor falso y Runtime real. Se prepara el corpus original (16 escenas, 96 pares
+para dos Looks y tres escalas), sin PNG ni ejecucion grafica. Auditoria de los
+428 paquetes y 13 tests Python PASS. Clippy/tests Windows encolados, pendientes;
+no se afirma aun su resultado. Mac 13,2 GiB libres: no se abre target nuevo que
+pueda bajar de los 12 GiB. Sin dependencias/locks nuevos ni merge/release/Plane.
+
+#2351 reapilado sobre #2357 sin tocar su codigo: en ce94f4502 todavia no hay API
+publica VisualRow/Alert. Se adapta en cuanto A la exponga; no se duplica el
+movimiento. #2356 ya fusionado por el orquestador; F0 fisico de #2346 sigue
+pendiente antes de F2 (pantallas todas apagadas/vuelta y DPI tras conectar).
+
 ## VANTA-144 · PR 7 en preparación: Eficiencia y destino de captura (15/11/2026)
 
 Worker B, #2333; rama `vantareapp/isa-2333-relative-eficiencia`, rebasada con

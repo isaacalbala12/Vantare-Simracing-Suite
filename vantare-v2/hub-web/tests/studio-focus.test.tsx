@@ -274,6 +274,31 @@ describe("Studio Foco structure", () => {
     );
     expect(screen.queryByText(t.presetApplied(t.formatCompact))).toBeNull();
   });
+  it("rehaces a confirmed change with Ctrl+Y and keeps the selected row focused", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const user = userEvent.setup();
+    const first = await listRow("Standings");
+    await user.click(
+      screen.getByRole("button", { name: t.applyFormat(t.formatCompact) }),
+    );
+    await screen.findByText(t.presetApplied(t.formatCompact));
+    await user.click(first);
+    await user.keyboard("{Control>}z{/Control}");
+    await waitFor(() =>
+      expect(screen.queryByText(t.presetApplied(t.formatCompact))).toBeNull(),
+    );
+    requests.mockClear();
+    await user.keyboard("{Control>}y{/Control}");
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.filter(
+          ([request]) => request.method === "studio.redo",
+        ),
+      ).toHaveLength(1),
+    );
+    expect(document.activeElement).toBe(first);
+  });
   it("does not announce a no-op preset and never announces a conflicted write", async () => {
     mount();
     const user = userEvent.setup();

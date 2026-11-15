@@ -20,7 +20,7 @@ it("only lets the three exact zoom actions cross partial-window modality", () =>
       expect(dialogShortcut(event), binding.action).toBe(!zoom);
     }
   }
-  for (const key of ["s", "r", "p", "z"])
+  for (const key of ["s", "r", "p", "z", "y"])
     expect(
       dialogShortcut(new KeyboardEvent("keydown", { key, ctrlKey: true })),
       key,

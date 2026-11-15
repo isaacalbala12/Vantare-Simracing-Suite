@@ -850,6 +850,19 @@ it("cancels a failed catalogue pointer capture but keeps keyboard addition avail
   await waitFor(() => expect(additions(spy)).toHaveLength(1));
   expect(additions(spy)[0]).not.toHaveProperty("at");
 });
+it("keeps the separate Add button usable after cancelling a drag", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const handle = await openDrop();
+  beginDrop(handle);
+  fireEvent.keyDown(handle, { key: "Escape" });
+  fireEvent.pointerUp(handle, dropPoint());
+  fireEvent.click(screen.getByRole("button", { name: "Añadir Delta" }), {
+    detail: 1,
+  });
+  await waitFor(() => expect(additions(spy)).toHaveLength(1));
+  expect(additions(spy)[0]).not.toHaveProperty("at");
+});
 it("can drop the first widget onto an empty canvas", async () => {
   const spy = vi.spyOn(Client.prototype, "request");
   await renderStudio("studio-vacio");

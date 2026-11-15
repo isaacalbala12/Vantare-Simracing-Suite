@@ -50,6 +50,7 @@ export function useCatalogInputs(
   const studio = useStudio();
   const controller = useRef(catalogDropController());
   const held = useRef<Held | undefined>(undefined),
+    clickSource = useRef<HTMLButtonElement | undefined>(undefined),
     alive = useRef(true),
     sending = useRef(false),
     suppressClick = useRef(false);
@@ -216,6 +217,8 @@ export function useCatalogInputs(
         moved: false,
       };
       held.current = value;
+      clickSource.current = event.currentTarget;
+      setMessage("");
       event.currentTarget.focus({ preventScroll: true });
       try {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -280,7 +283,12 @@ export function useCatalogInputs(
     },
     click(event: MouseEvent<HTMLButtonElement>, kind: WidgetKind) {
       if (held.current) return;
-      if (event.detail > 1 || (event.detail > 0 && suppressClick.current))
+      if (
+        event.detail > 1 ||
+        (event.detail > 0 &&
+          suppressClick.current &&
+          event.currentTarget === clickSource.current)
+      )
         return;
       if (!beginCatalogDrop(latest.current.view, kind, access())) return;
       void send({

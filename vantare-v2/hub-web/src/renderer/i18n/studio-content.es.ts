@@ -18,6 +18,10 @@ export const studioContentText = {
   resetBlocked:
     "Este preset no puede restablecerse con los campos disponibles. Sus ajustes se conservan.",
   classification: "Clasificación",
+  rows: "Filas",
+  relativeAhead: "Filas alrededor · delante",
+  relativeBehind: "Filas alrededor · detrás",
+  historyRows: "Filas del historial",
   header: "Cabecera de sesión",
   footer: "Pie de sesión",
   firstFooter: "Primera métrica del pie",

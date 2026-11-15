@@ -89,6 +89,19 @@ export function ContentStep({ item }: { item: OverlayInstance }) {
       ) : settings.kind === "fuel-strategy" &&
         settings.designSystem === "eficiencia" ? (
         <Group title={studio.content}>
+          <ContentNumber
+            label={text.historyRows}
+            value={settings.historyRows}
+            min={studioWidgetOptions.fuel.historyMin}
+            max={studioWidgetOptions.fuel.historyMax}
+            model={model}
+            onCommit={(historyRows) =>
+              void model.patch(
+                { kind: "fuel-strategy", historyRows },
+                text.historyRows,
+              )
+            }
+          />
           {toggle(
             text.projection,
             settings.showProjection,
@@ -174,6 +187,36 @@ function TableContent({
       )}
       {settings.kind === "standings" && (
         <StandingsContent settings={settings} model={model} />
+      )}
+      {settings.kind === "relative" && (
+        <Group title={studio.content}>
+          <ContentNumber
+            label={text.relativeAhead}
+            value={settings.rangeAhead}
+            min={studioWidgetOptions.relative.rangeMin}
+            max={studioWidgetOptions.relative.rangeMax}
+            model={model}
+            onCommit={(rangeAhead) =>
+              void model.patch(
+                { kind: "relative", rangeAhead },
+                text.relativeAhead,
+              )
+            }
+          />
+          <ContentNumber
+            label={text.relativeBehind}
+            value={settings.rangeBehind}
+            min={studioWidgetOptions.relative.rangeMin}
+            max={studioWidgetOptions.relative.rangeMax}
+            model={model}
+            onCommit={(rangeBehind) =>
+              void model.patch(
+                { kind: "relative", rangeBehind },
+                text.relativeBehind,
+              )
+            }
+          />
+        </Group>
       )}
     </div>
   );
@@ -371,6 +414,16 @@ function StandingsContent({
   };
   return (
     <Group title={text.classification}>
+      <ContentNumber
+        label={text.rows}
+        value={settings.rowCount}
+        min={studioWidgetOptions.standings.rowsMin}
+        max={studioWidgetOptions.standings.rowsMax}
+        model={model}
+        onCommit={(rowCount) =>
+          void model.patch({ kind: "standings", rowCount }, text.rows)
+        }
+      />
       <Select
         label={text.classification}
         value={settings.classificationMode}

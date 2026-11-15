@@ -744,11 +744,14 @@ function dropPoint() {
 function beginDrop(handle: HTMLElement) {
   fireEvent.pointerDown(handle, {
     button: 0,
+    isPrimary: true,
     pointerId: 7,
     clientX: 620,
     clientY: 50,
   });
+  expect(handle.hasPointerCapture(7)).toBe(true);
   fireEvent.pointerMove(handle, dropPoint());
+  expect(document.querySelector(".v-canvas-drop-ghost")).not.toBeNull();
 }
 it("previews the catalogue silhouette and magnets without writing, then adds once at the snapped point", async () => {
   const spy = vi.spyOn(Client.prototype, "request");
@@ -839,10 +842,12 @@ it("cancels a failed catalogue pointer capture but keeps keyboard addition avail
   });
   fireEvent.pointerDown(handle, {
     button: 0,
+    isPrimary: true,
     pointerId: 7,
     clientX: 620,
     clientY: 50,
   });
+  expect(handle.setPointerCapture).toHaveBeenCalledExactlyOnceWith(7);
   fireEvent.pointerUp(handle, dropPoint());
   fireEvent.click(handle, { detail: 1 });
   expect(additions(spy)).toHaveLength(0);

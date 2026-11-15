@@ -142,6 +142,40 @@ formato, Clippy, 52 tests CPU, 5 tests de política de distribución, enlace sin
 y auditoría de 428 paquetes PASS. Tokens y 12 tests Python PASS. Sin gráficos ni
 cambios de Plane; el PR recoge el head final y la CI pendiente.
 
+## VANTA-144 / Worker B: bloqueo de paridad y consulta de arquitectura
+
+Reglas nuevas de Isaac aplicadas a Eficiencia, Standings y Delta: identidad
+visible con GPUI; cualquier diferencia se consulta con captura antes de seguir.
+Toda decisión nueva de arquitectura requiere OK previo. Implementación visual
+y cambios de arquitectura detenidos. No se aceptan aproximaciones o mejoras.
+
+Las descripciones de #2351 y #2359 enumeran las desviaciones conocidas por
+código, sin presentarlas como diferencias medidas. En #2351 falta conexión
+de Eficiencia/movimiento al proceso. En #2359 faltan animaciones y PIT lateral;
+cabeceras, tipografía, marca, resaltados y chips son simplificados. Delta local
+tiene cápsula vertical en vez de horizontal, barra plana sin escala/degradado,
+cabecera/sectores/marca simplificados, sin avisos ni Eficiencia; pausa provisional.
+Lista concreta en src/delta/README.md. No hay capturas comparativas Windows.
+
+Esquema propuesto PARA OK, antes de implementar la integración pendiente:
+FrameSet/Cadence/permisos de A -> renderer::Painter (enum concreto para Relative,
+Standings y Delta) -> pintor existente desde domain -> Runtime -> ventana de
+pista o Offscreen existente. Se conservaría el Tween actual para la barra Delta,
+con el reloj de Runtime y fin a 150 ms. No se proponen tipos de datos de negocio,
+contratos, hilos, canales, dependencias o módulos genéricos nuevos.
+
+Para obtener las capturas pendientes se propone ampliar SOLO el despacho de
+la CLI --capture-scene existente a las vistas actuales de Eficiencia y Delta,
+sin cambiar su aspecto ni crear otro camino de dibujo. Falta OK de este esquema
+y horario del PC de juego. Las diferencias se consultarán con las capturas;
+no se corrigen visuales antes. Rebase de #2351/#2359 espera aviso de #2357.
+
+Delta mantiene locales y sin publicar los arreglos de tests: fuente simulada
+con líder de clase/tiempo disponibles y expectativa de rectángulo ajustada por
+bordes a la rejilla 1/64 px de Rune. El código de producto no cambia por esos
+arreglos. Clippy previo PASS; aquella suite tuvo 53 PASS / 2 FAIL, no se oculta.
+Repetición ya encolada antes de la parada; resultado todavía pendiente.
+
 ## VANTA-144 / Worker B: Delta local mientras A termina su pila
 
 Encargo vigente: Delta en local sobre la cabeza de #2357; no abrir PR hasta que

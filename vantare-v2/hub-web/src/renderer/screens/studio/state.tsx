@@ -23,6 +23,7 @@ function useStateValue() {
   const lastSelected = useRef(remembered);
   lastSelected.current = remembered;
   const [view, setView] = useState<StudioView>(),
+    [canvasMode, setCanvasMode] = useState(false),
     [selected, setSelected] = useState<string | null>(null),
     [added, setAdded] = useState<{
       id: string;
@@ -203,6 +204,8 @@ function useStateValue() {
     );
   };
   return {
+    canvasMode,
+    setCanvasMode,
     view,
     selected,
     setSelected,

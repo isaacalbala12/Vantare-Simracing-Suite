@@ -82,7 +82,12 @@ export function useCanvas(view: StudioView) {
     })();
   }, [pending, execute, dispatch]);
   const begin = (id: string, mode: "move" | "resize") => {
-    if (!enabled || (studio.pending && !current.current.pending)) return false;
+    if (
+      !enabled ||
+      current.current.gesture ||
+      (studio.pending && !current.current.pending)
+    )
+      return false;
     return !!dispatch({ type: "begin", id, mode }).gesture;
   };
   return {

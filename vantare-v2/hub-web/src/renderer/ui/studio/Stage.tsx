@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { OverlayInstance } from "../../../contract/generated/contract";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
@@ -11,12 +12,14 @@ export function Stage({
   blocked,
   pending,
   onShow,
+  actions,
 }: {
   item: OverlayInstance;
   name: string;
   blocked: boolean;
   pending: boolean;
   onShow: () => void;
+  actions?: ReactNode;
 }) {
   return (
     <section className="v-focus-stage">
@@ -25,17 +28,20 @@ export function Stage({
           <Icon name="info" />
           {t.illustrationNote}
         </span>
-        <fieldset aria-label={t.dataLabel}>
-          <span>{t.dataLabel}</span>
-          <Button size="sm" variant="ghost" aria-pressed="true">
-            {t.example}
-          </Button>
-          <DisabledHint label={t.liveHelp}>
-            <Button size="sm" variant="ghost" disabled>
-              {t.live}
+        <div className="v-studio-stage-actions">
+          {actions}
+          <fieldset aria-label={t.dataLabel}>
+            <span>{t.dataLabel}</span>
+            <Button size="sm" variant="ghost" aria-pressed="true">
+              {t.example}
             </Button>
-          </DisabledHint>
-        </fieldset>
+            <DisabledHint label={t.liveHelp}>
+              <Button size="sm" variant="ghost" disabled>
+                {t.live}
+              </Button>
+            </DisabledHint>
+          </fieldset>
+        </div>
       </header>
       <div
         className="v-focus-drawing"

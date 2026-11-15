@@ -108,6 +108,12 @@ try {
   await page
     .getByRole("button", { name: windowText.close, exact: true })
     .waitFor();
+  // Playwright enables focus emulation on attach; it forces pages visible.
+  // Disable that testing override before measuring native window visibility.
+  const visibilitySession = await context.newCDPSession(page);
+  await visibilitySession.send("Emulation.setFocusEmulationEnabled", {
+    enabled: false,
+  });
   const windowState = async (action: "minimize" | "restore") => {
     await run("pwsh", [
       "-NoProfile",

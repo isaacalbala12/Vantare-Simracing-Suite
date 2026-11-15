@@ -9,11 +9,15 @@ using System;
 using System.Runtime.InteropServices;
 public static class HubResourceWindow {
  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window,out uint process);
+ [DllImport("user32.dll")] static extern bool IsIconic(IntPtr window);
+ [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
  [DllImport("user32.dll")] static extern bool ShowWindowAsync(IntPtr window,int command);
  public static void Set(IntPtr window,int process,bool minimize) {
   uint owner; GetWindowThreadProcessId(window,out owner);
   if(owner!=(uint)process)throw new InvalidOperationException("Unexpected HWND owner");
   ShowWindowAsync(window,minimize?6:9);
+  if(!System.Threading.SpinWait.SpinUntil(()=>IsIconic(window)==minimize && (minimize || IsWindowVisible(window)),5000))
+   throw new InvalidOperationException("QA native window state did not settle");
  }
 }
 '@

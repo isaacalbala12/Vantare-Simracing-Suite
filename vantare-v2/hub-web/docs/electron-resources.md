@@ -31,9 +31,12 @@ Se miden cinco ventanas de 20 s: Inicio recién abierto, Inicio tras recorrer
 las secciones implementadas y sus pestañas disponibles, e Inicio minimizado; después Calendario visible y minimizado.
 Cada medición comprueba primero el recorrido y minimizar/restaurar en un
 perfil aparte, dentro de la misma reserva; también puede ejecutarse solo con `-CheckOnly`; ese
-informe lleva `checkOnly: true` y no contiene cifras de consumo. Electron no implementa el dominio Browser de
+informe lleva `checkOnly: true` y no contiene cifras de consumo. Electron no implementa los comandos de ventana de Browser en
 CDP: minimizar/restaurar usa únicamente el HWND del candidato, tras verificar
-ejecutable, título y propietario. El script espera `document.hidden` real. Cada invocación
+ejecutable, título y propietario. El script comprueba IsIconic/IsWindowVisible y `document.hidden` real.
+Playwright activa la emulación de foco al conectar; el guion la desactiva con
+`Emulation.setFocusEmulationEnabled(false)` antes de medir, para que minimizar
+no se presente falsamente como una página visible. Cada invocación
 crea su propio perfil QA, incluso si se repite dentro de una reserva.
 
 El recorrido queda enumerado: no se afirma haber visitado diálogos, widgets
@@ -46,7 +49,8 @@ working set y CPU. CPU se deriva del tiempo de procesador y tiempo real medido;
 el informe distingue porcentaje de un núcleo de porcentaje de toda la máquina.
 La primera muestra no tiene delta: es `null`, no un cero ficticio. No se guardan
 líneas de comandos; solo se consultan para clasificar procesos de este árbol.
-No se fuerza GC o vaciado de cachés para bajar las cifras. Working set incluye páginas compartidas: **su suma no es
+No se fuerza GC o vaciado de cachés para bajar las cifras. No se mide VRAM dedicada ni el consumo del núcleo/residente.
+Working set incluye páginas compartidas: **su suma no es
 RAM física exclusiva**. `privateBytes` tampoco equivale a RAM residente.
 
 `report.json` contiene medias y máximos por proceso, recorrido, SHA del candidato

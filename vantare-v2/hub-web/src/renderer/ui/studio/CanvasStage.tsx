@@ -240,6 +240,8 @@ export function CanvasStage({
             >
               <div
                 className="v-studio-canvas-plane"
+                data-canvas-width={canvas[0]}
+                data-canvas-height={canvas[1]}
                 style={{
                   left: shift[0],
                   top: shift[1],

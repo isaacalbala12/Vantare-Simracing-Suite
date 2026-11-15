@@ -17,6 +17,26 @@ export async function checkStudioCanvas(
   const measuredLayout: unknown[] = [];
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${base}?escena=studio-canvas`);
+    await page
+      .getByRole("button", { name: /^(Studio|Overlays Studio)$/ })
+      .click();
+    await page.keyboard.press("Control+b");
+    assert.equal(await page.locator(".v-sidebar--collapsed").count(), 0);
+    await page.getByRole("button", { name: t.open, exact: true }).click();
+    await until(
+      async () => (await page.locator(".v-sidebar--collapsed").count()) === 1,
+      5000,
+      "canvas collapses main navigation",
+    );
+    await page.keyboard.press("Control+b");
+    assert.equal(await page.locator(".v-sidebar--collapsed").count(), 0);
+    await page.getByRole("button", { name: t.done, exact: true }).click();
+    assert.equal(
+      await page.locator(".v-sidebar--collapsed").count(),
+      0,
+      "Widget restores the previous main navigation",
+    );
     for (const scene of [
       "studio-canvas",
       "studio-canvas-conflict",
@@ -229,6 +249,23 @@ export async function checkStudioCanvas(
         }
       }
       assert.equal(layout.length, 8);
+      const beforeCollapse = await page
+        .locator(".v-studio-canvas-plane")
+        .boundingBox();
+      assert.ok(beforeCollapse);
+      await page
+        .getByRole("button", { name: t.collapseList, exact: true })
+        .click();
+      await until(
+        async () =>
+          ((await page.locator(".v-studio-canvas-plane").boundingBox())
+            ?.width ?? 0) > beforeCollapse.width,
+        5000,
+        "collapsed widget list increases canvas fit",
+      );
+      await page
+        .getByRole("button", { name: t.expandList, exact: true })
+        .click();
     }
     await writeFile(
       resolve(evidence, "studio-canvas.json"),

@@ -63,3 +63,11 @@ que tenga comprobación. El redondeo de la barra de coordenadas solo es visual.
 
 No se cambia el protocolo, el anfitrión, el instalador ni el núcleo. La
 resolución manual y arrastrar desde el catálogo pertenecen a entregas posteriores.
+
+### Origen del plano y pérdida de foco
+
+Durante el gesto se conserva el desplazamiento (`shift`) del último plano en
+reposo y se suspende el auto-scroll de selección. El borrador puede cruzar cero
+sin mover su marco bajo el puntero. Al acabar/cancelar vuelve a calcularse el
+origen y se recupera el desplazamiento de selección. La pérdida de foco de la
+ventana cancela tanto puntero como teclado sin guardar el borrador.

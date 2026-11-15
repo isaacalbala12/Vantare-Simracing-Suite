@@ -189,6 +189,69 @@ it("captures pointer movement and writes only after pointerup", async () => {
     y: 80,
   });
 });
+it("keeps the plane and scroll fixed while a captured draft crosses zero", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  const { move, container } = await mount();
+  const plane = container.querySelector<HTMLElement>(".v-studio-canvas-plane");
+  const viewport = container.querySelector<HTMLElement>(
+    ".v-studio-canvas-viewport",
+  );
+  if (!plane || !viewport) throw Error("canvas missing");
+  const before = [
+    plane.style.left,
+    plane.style.top,
+    viewport.scrollLeft,
+    viewport.scrollTop,
+  ];
+  fireEvent.pointerDown(move, {
+    button: 0,
+    pointerId: 17,
+    clientX: 100,
+    clientY: 100,
+  });
+  fireEvent.pointerMove(move, { pointerId: 17, clientX: -100, clientY: -100 });
+  expect(
+    container
+      .querySelector('[data-canvas-selected="true"]')
+      ?.getAttribute("data-outside"),
+  ).toBe("true");
+  expect([
+    plane.style.left,
+    plane.style.top,
+    viewport.scrollLeft,
+    viewport.scrollTop,
+  ]).toEqual(before);
+  fireEvent.pointerMove(move, { pointerId: 17, clientX: -150, clientY: -150 });
+  expect([
+    plane.style.left,
+    plane.style.top,
+    viewport.scrollLeft,
+    viewport.scrollTop,
+  ]).toEqual(before);
+  fireEvent.lostPointerCapture(move, { pointerId: 17 });
+  expect(requests(spy)).toHaveLength(0);
+});
+it.each(["pointer", "keyboard"])(
+  "blur cancels a %s gesture without sending its draft",
+  async (mode) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    const { move } = await mount();
+    if (mode === "pointer") {
+      fireEvent.pointerDown(move, {
+        button: 0,
+        pointerId: 18,
+        clientX: 20,
+        clientY: 20,
+      });
+      fireEvent.pointerMove(move, { pointerId: 18, clientX: 120, clientY: 20 });
+    } else fireEvent.keyDown(move, { key: "ArrowRight" });
+    fireEvent.blur(window);
+    fireEvent.keyUp(window, { key: "ArrowRight" });
+    fireEvent.pointerUp(move, { pointerId: 18, clientX: 120, clientY: 20 });
+    await act(async () => {});
+    expect(requests(spy)).toHaveLength(0);
+  },
+);
 it("lost pointer capture discards movement", async () => {
   const spy = vi.spyOn(Client.prototype, "request");
   const { move } = await mount();

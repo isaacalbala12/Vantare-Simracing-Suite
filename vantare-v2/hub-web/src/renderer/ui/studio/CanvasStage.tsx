@@ -110,11 +110,22 @@ export function CanvasStage({
       ...rendered.map(({ box }) => box.y + box.size.height),
     );
   const origin = previewOrigin(area, canvas, scale) ?? [0, 0];
-  const shift: Pair = [origin[0] - minX * scale, origin[1] - minY * scale];
+  const proposedShift: Pair = [
+    origin[0] - minX * scale,
+    origin[1] - minY * scale,
+  ];
+  const idleShift = useRef<Pair>(proposedShift);
+  const gesturing = !!model.snapshot.gesture;
+  // The coordinate frame belongs to the gesture, not to its moving draft.
+  // Otherwise crossing zero moves the plane underneath a captured pointer.
+  const shift = gesturing ? idleShift.current : proposedShift;
+  useLayoutEffect(() => {
+    if (!gesturing) idleShift.current = proposedShift;
+  }, [gesturing, proposedShift[0], proposedShift[1]]);
   const box = model.box(selected.id) ?? boxOf(selected);
   useLayoutEffect(() => {
     const node = viewport.current;
-    if (!node) return;
+    if (!node || gesturing) return;
     // Keep an out-of-canvas selection reachable without inventing its coordinates.
     const x = shift[0] + box.x * scale,
       y = shift[1] + box.y * scale;
@@ -135,6 +146,7 @@ export function CanvasStage({
         y + (box.size.height * scale - node.clientHeight) / 2,
       );
   }, [
+    gesturing,
     scale,
     shift[0],
     shift[1],

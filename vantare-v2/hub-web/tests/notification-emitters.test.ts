@@ -14,6 +14,12 @@ import { createAccountSession } from "../src/renderer/app/AccountSession";
 import type { Client, RequestObservation } from "../src/renderer/bridge/client";
 import { connectEmitters } from "../src/renderer/screens/notifications/emitters";
 import { createNotifications } from "../src/renderer/screens/notifications/NotificationsState";
+import {
+  finished,
+  notificationCore,
+  received,
+  residentCompletionView,
+} from "./helpers/launcher-completion";
 
 function fixture(method: string) {
   const message = (corpus.host as HostToUi[]).find(
@@ -51,8 +57,15 @@ function harness() {
     },
     session,
   );
-  const response = (result: Reply) =>
-    receive({ kind: "response", id: 0, result });
+  let requestId = 10000;
+  const response = (result: Reply) => {
+    const id = ++requestId;
+    if (result.method === "core.get") {
+      observe({ phase: "start", id, method: result.method });
+      observe({ phase: "done", id, method: result.method, reply: result });
+    }
+    receive({ kind: "response", id, result });
+  };
   const settings = fixture("settings.get") as SettingsView;
   const account = fixture("account.get") as AccountView;
   const preferences = (enabled: boolean) =>
@@ -125,6 +138,7 @@ function harness() {
     store,
     connection,
     response,
+    receive: (message: HostToUi) => receive(message),
     observe: (value: RequestObservation) => observe(value),
     preferences,
     login,
@@ -164,6 +178,74 @@ it("does not call an offline/protected or questioned execution ready", () => {
   h.resident({ running: true });
   h.resident({ decision: { id: "1", kind: "failure", actions: [] } });
   expect(h.records()).toEqual([]);
+  h.connection.dispose();
+});
+it("publishes Applications ready only after a scoped Finished and keeps it in the center", () => {
+  const h = harness();
+  h.login();
+  h.preferences(true);
+  h.response({ method: "core.get", value: notificationCore });
+  h.resident(residentCompletionView());
+  h.resident(residentCompletionView([received]));
+  expect(h.records()).toEqual([]);
+  h.resident(residentCompletionView([received, finished]));
+  expect(h.records()).toHaveLength(1);
+  expect(h.records()[0]).toEqual(
+    expect.objectContaining({
+      title: "Aplicaciones listas",
+      source: "launcher",
+      action: "launcher",
+      unread: true,
+    }),
+  );
+  h.resident(residentCompletionView([received, finished]));
+  expect(h.records()).toHaveLength(1);
+  h.connection.dispose();
+});
+it("does not reuse the previous core generation after a local account boundary", () => {
+  const h = harness();
+  h.login();
+  h.preferences(true);
+  h.response({ method: "core.get", value: notificationCore });
+  h.resident(residentCompletionView());
+  h.session.invalidate();
+  h.login();
+  for (const events of [[], [received], [received, finished]])
+    h.resident(residentCompletionView(events));
+  expect(h.records()).toEqual([]);
+  h.connection.dispose();
+});
+it("drops an old core.get through both request observation and raw delivery after account change", () => {
+  const h = harness();
+  h.login();
+  h.preferences(true);
+  h.response({ method: "core.get", value: notificationCore });
+  h.resident(residentCompletionView());
+  h.observe({ phase: "start", id: 900, method: "core.get" });
+  h.session.invalidate();
+  h.login();
+  h.receive({
+    kind: "event",
+    event: {
+      topic: "core",
+      value: { ...notificationCore, accountGeneration: "e".repeat(64) },
+    },
+  });
+  const reply: Reply = { method: "core.get", value: notificationCore };
+  h.observe({ phase: "done", id: 900, method: "core.get", reply });
+  h.receive({ kind: "response", id: 900, result: reply });
+  for (const events of [[], [received], [received, finished]])
+    h.resident(residentCompletionView(events));
+  expect(h.records()).toEqual([]);
+  h.connection.dispose();
+});
+it("still reads update readiness when the startup core request fails", async () => {
+  const h = harness();
+  h.client.request.mockRejectedValueOnce(new Error("core unavailable"));
+  await vi.waitFor(() => {
+    expect(h.client.request).toHaveBeenCalledWith({ method: "core.get" });
+    expect(h.client.request).toHaveBeenCalledWith({ method: "updates.get" });
+  });
   h.connection.dispose();
 });
 it("uses typed update readiness, not a release note or restart availability alone", () => {

@@ -44,6 +44,11 @@ export const notices = {
   busy: "Vantare está ocupado.",
   failure: "No se pudo completar la acción.",
   launchFailed: "Error del Launcher",
+  launchReady: "Aplicaciones listas",
+  launchReadyBody: (profile?: string) =>
+    profile
+      ? `${profile} · Aplicaciones listas`
+      : "La cadena de lanzamiento ha terminado correctamente.",
   residentFailure:
     "El residente del Launcher comunica un error. Revísalo en Launcher.",
   launchFailure: "No se pudo completar el lanzamiento. Revisa el Launcher.",

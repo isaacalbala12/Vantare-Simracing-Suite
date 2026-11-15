@@ -355,10 +355,10 @@ export const settingsText = {
   "general.notices": "Avisos",
   "general.updates": "Avisos de actualización",
   "general.updatesHelp":
-    "Avisa en el centro del Hub cuando una actualización Beta queda preparada.",
+    "Avisa en el centro del Hub cuando una actualización Beta queda preparada. También en Windows si sus notificaciones están activadas.",
   "general.launcher": "Avisos del Launcher",
   "general.launcherHelp":
-    "Avisa de fallos de lanzamiento en el centro del Hub. El aviso de aplicaciones listas aún no está disponible.",
+    "Avisa de fallos en el centro del Hub. Al terminar correctamente la cadena, avisa de aplicaciones listas; también en Windows si sus notificaciones están activadas.",
   "general.toasts": "Notificaciones de Windows",
   "general.toastsHelp":
     "Este interruptor gobierna todas las notificaciones de Windows del Hub, incluido el Calendario. Puedes comprobarlo con «Enviar prueba»; los canales del Calendario se configuran en Calendario › Avisos.",

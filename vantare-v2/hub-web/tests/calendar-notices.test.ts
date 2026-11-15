@@ -372,6 +372,12 @@ it("presents trusted host events and preserves the General test gate", () => {
 });
 
 import { notificationDelivery } from "../src/main/notification-delivery";
+import {
+  finished,
+  notificationCore,
+  received,
+  residentCompletionView,
+} from "./helpers/launcher-completion";
 
 it.each([
   { mockRequested: false, mockAllowed: false, qa: false, doubled: false },
@@ -391,10 +397,28 @@ it.each([
       throw Error("settings corpus");
     const settings = structuredClone(sample.result.value);
     settings.general.toasts = true;
+    settings.general.launcher = true;
     const delivery = notificationDelivery(mode, () => 1000);
     delivery.calendar.receive(testNotice());
     expect(delivery.test(settings)).toBe(true);
-    expect(electron.show).toHaveBeenCalledTimes(mode.doubled ? 0 : 2);
+    delivery.operations.observe({
+      kind: "response",
+      id: 1,
+      result: { method: "settings.get", value: settings },
+    });
+    delivery.operations.observe({
+      kind: "event",
+      event: { topic: "core", value: notificationCore },
+    });
+    for (const events of [[], [received], [received, finished]])
+      delivery.operations.observe({
+        kind: "event",
+        event: {
+          topic: "launcherResident",
+          value: residentCompletionView(events),
+        },
+      });
+    expect(electron.show).toHaveBeenCalledTimes(mode.doubled ? 0 : 3);
   },
 );
 it("accepts a host clock up to five seconds ahead and rejects anything beyond", () => {

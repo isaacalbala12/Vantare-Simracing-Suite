@@ -19,6 +19,13 @@ for (const [id, tab, region] of [
           exact: true,
         })
         .click();
+      const sidebar = page.locator(".v-sidebar");
+      if (
+        !(await sidebar.evaluate((node) =>
+          node.classList.contains("v-sidebar--collapsed"),
+        ))
+      )
+        await page.keyboard.press("Control+b");
       await page.getByRole("tab", { name: tab, exact: true }).click();
       const group = page.getByRole("region", { name: region, exact: true });
       await group.waitFor();

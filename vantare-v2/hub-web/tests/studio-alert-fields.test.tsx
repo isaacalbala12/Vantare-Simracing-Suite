@@ -292,3 +292,53 @@ it("rejects a volume outside the native step without sending, and keeps pending 
   expect(volume.hasAttribute("disabled")).toBe(false);
   expect(document.activeElement).toBe(volume);
 });
+it("keeps a threshold blocked if the explicit reload also fails", async () => {
+  const initial = fixture(structuredClone(cases[0].before) as WidgetSettings);
+  const { user, reject } = await mount(initial);
+  await user.click(screen.getByRole("tab", { name: studio.content }));
+  const input = screen.getByRole("textbox", {
+    name: text.threshold(0),
+  }) as HTMLInputElement;
+  await user.clear(input);
+  await user.type(input, "20{Enter}");
+  await act(async () => reject(new HostFailure({ kind: "coreUnavailable" })));
+  transport.request.mockRejectedValue(
+    new HostFailure({ kind: "coreUnavailable" }),
+  );
+  await user.click(screen.getByRole("button", { name: text.reload }));
+  expect(input.readOnly).toBe(true);
+  expect(input.value).toBe("20");
+  expect(screen.getByText(text.thresholdUncertain)).toBeTruthy();
+});
+it("does not steal focus after native normalization when the user moved to another control", async () => {
+  const vector = cases.find(
+    (value) =>
+      "threshold" in value.patch &&
+      value.patch.threshold.index === 1 &&
+      value.patch.threshold.minutes === 30,
+  );
+  if (!vector) throw Error("Threshold fixture");
+  const initial = fixture(structuredClone(vector.before) as WidgetSettings);
+  const { user, accept } = await mount(initial);
+  await user.click(screen.getByRole("tab", { name: studio.content }));
+  const input = screen.getByRole("textbox", { name: text.threshold(1) });
+  await user.clear(input);
+  await user.type(input, "30{Enter}");
+  const other = screen.getByRole("switch", { name: text.calendar });
+  await user.click(other);
+  expect(writes()).toHaveLength(1);
+  await act(async () =>
+    accept({
+      method: "studio.instance",
+      value: nextView(initial, structuredClone(vector.after) as WidgetSettings),
+    }),
+  );
+  expect(document.activeElement).toBe(other);
+  expect(
+    (
+      screen.getByRole("textbox", {
+        name: text.threshold(1),
+      }) as HTMLInputElement
+    ).value,
+  ).toBe("5");
+});

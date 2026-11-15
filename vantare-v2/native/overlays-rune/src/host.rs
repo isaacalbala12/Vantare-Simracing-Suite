@@ -2,7 +2,10 @@
 use rune::{App, AppSpec, Cx, Display, El, Tx, Waker, WindowOptions, WindowSpec, el};
 use std::{
     io,
-    sync::{Arc, Condvar, Mutex, PoisonError},
+    sync::{
+        Arc, Condvar, Mutex, PoisonError,
+        atomic::{AtomicBool, Ordering},
+    },
     thread::JoinHandle,
     time::Duration,
 };
@@ -125,6 +128,13 @@ impl Shared {
         // Incluye EOF/derechos recibidos antes del setup, también con ventana oculta.
         wake();
     }
+    pub(crate) fn remove_waker(&self, wake: &Waker) {
+        self.pending
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .wakers
+            .retain(|registered| !Arc::ptr_eq(registered, wake));
+    }
 }
 
 pub struct Rights {
@@ -170,6 +180,10 @@ pub struct State {
     shared: Arc<Shared>,
     seen: u64,
     pub access: Access,
+    /// Geometría actual del monitor, para colocar contenido sin recrear el estado.
+    pub monitor: Option<Display>,
+    retiring: Arc<AtomicBool>,
+    wake: Option<Waker>,
 }
 impl State {
     pub fn new(shared: Arc<Shared>) -> Self {
@@ -183,6 +197,24 @@ impl State {
             shared,
             seen: 0,
             access,
+            monitor: None,
+            retiring: Arc::new(AtomicBool::new(false)),
+            wake: None,
+        }
+    }
+    #[cfg(windows)]
+    pub(crate) fn set_monitor(&mut self, display: Display) -> bool {
+        if self.monitor.as_ref() == Some(&display) {
+            return false;
+        }
+        self.monitor = Some(display);
+        true
+    }
+}
+impl Drop for State {
+    fn drop(&mut self) {
+        if let Some(wake) = self.wake.take() {
+            self.shared.remove_waker(&wake);
         }
     }
 }
@@ -190,6 +222,9 @@ fn init() -> State {
     State::new(Shared::new(false))
 }
 fn setup(state: &mut State, wake: Waker) {
+    if let Some(previous) = state.wake.replace(wake.clone()) {
+        state.shared.remove_waker(&previous);
+    }
     state.shared.install_waker(wake);
 }
 pub fn poll(state: &mut State, _: f64, tx: &mut Tx) -> bool {
@@ -210,6 +245,11 @@ pub fn poll(state: &mut State, _: f64, tx: &mut Tx) -> bool {
     true
 }
 fn close(state: &mut State, tx: &mut Tx) {
+    // WindowHandle::close ya está cerrando esta superficie. Devolver sin Quit
+    // permite a Rune retirarla; otro Close aquí repetiría el callback.
+    if state.retiring.load(Ordering::Acquire) {
+        return;
+    }
     state.shared.close(CloseReason::Window);
     tx.quit();
 }
@@ -225,44 +265,66 @@ pub fn windows(displays: &[Display], shared: Arc<Shared>, hidden: bool) -> Vec<W
         .enumerate()
         .filter(|(_, d)| d.size.0 > 0 && d.size.1 > 0 && d.scale.is_finite() && d.scale > 0.0)
         .map(|(index, display)| {
-            let mut options = WindowOptions::overlay(display);
-            options.visible = !hidden;
-            options.resizable = false;
-            let spec = AppSpec {
-                setup: Some(setup),
-                poll: Some(poll),
-                ..AppSpec::new(
-                    "Vantare · Overlays Rune",
-                    (
-                        display.size.0 as f32 / display.scale as f32,
-                        display.size.1 as f32 / display.scale as f32,
-                    ),
-                    init,
-                    view,
-                )
-            };
-            let bus = shared.clone();
-            WindowSpec::from_app(
+            window(
+                display,
                 format!("monitor-{index}"),
-                App::new(spec)
-                    .init({
-                        let shared = shared.clone();
-                        move || State::new(shared)
-                    })
-                    .args(Vec::<String>::new())
-                    .on_close(close)
-                    .on_quit(close),
+                shared.clone(),
+                hidden,
+                Arc::new(AtomicBool::new(false)),
             )
-            .options(options)
-            .inactive()
-            .on_created(move |window| {
-                if let Err(error) = crate::native_window::configure(&window) {
-                    eprintln!("overlays-rune: ventana no segura: {error}");
-                    bus.close(CloseReason::NativeError);
-                }
-            })
         })
         .collect()
+}
+
+pub(crate) fn window(
+    display: &Display,
+    key: String,
+    shared: Arc<Shared>,
+    hidden: bool,
+    retiring: Arc<AtomicBool>,
+) -> WindowSpec<State> {
+    let mut options = WindowOptions::overlay(display);
+    options.visible = !hidden;
+    options.resizable = false;
+    let spec = AppSpec {
+        setup: Some(setup),
+        poll: Some(poll),
+        ..AppSpec::new(
+            "Vantare · Overlays Rune",
+            (
+                display.size.0 as f32 / display.scale as f32,
+                display.size.1 as f32 / display.scale as f32,
+            ),
+            init,
+            view,
+        )
+    };
+    let bus = shared.clone();
+    let monitor = display.clone();
+    WindowSpec::from_app(
+        key,
+        App::new(spec)
+            .init({
+                let shared = shared.clone();
+                move || {
+                    let mut state = State::new(shared);
+                    state.retiring = retiring;
+                    state.monitor = Some(monitor);
+                    state
+                }
+            })
+            .args(Vec::<String>::new())
+            .on_close(close)
+            .on_quit(close),
+    )
+    .options(options)
+    .inactive()
+    .on_created(move |window| {
+        if let Err(error) = crate::native_window::configure(&window) {
+            eprintln!("overlays-rune: ventana no segura: {error}");
+            bus.close(CloseReason::NativeError);
+        }
+    })
 }
 
 pub fn run(shared: Arc<Shared>, hidden: bool) -> Result<(), String> {
@@ -270,7 +332,19 @@ pub fn run(shared: Arc<Shared>, hidden: bool) -> Result<(), String> {
     let result = rune::try_run_windows_with_args(
         rune::RunOptions { accessory: true },
         Vec::<String>::new(),
-        move |displays| windows(displays, bus, hidden),
+        move |displays| {
+            #[cfg(windows)]
+            {
+                crate::monitores::specs(displays, bus, hidden)
+            }
+            #[cfg(not(windows))]
+            {
+                windows(displays, bus, hidden)
+                    .into_iter()
+                    .map(rune::AnyWindowSpec::from)
+                    .collect()
+            }
+        },
     );
     shared.close(CloseReason::Window);
     result?;
@@ -287,6 +361,55 @@ mod tests {
     use super::*;
     use rune::{Env, Runtime, Shell};
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn retiring_one_surface_does_not_quit_the_process_but_user_close_does() {
+        let bus = Shared::new(false);
+        let mut rt = runtime(bus.clone());
+        rt.state.retiring.store(true, Ordering::Release);
+        rt.update(close);
+        assert_eq!(bus.close_reason(), None);
+        assert_eq!(rt.shell_request.take(), None);
+        rt.state.retiring.store(false, Ordering::Release);
+        rt.update(close);
+        assert_eq!(bus.close_reason(), Some(CloseReason::Window));
+        assert_eq!(rt.shell_request.take(), Some(Shell::Quit));
+    }
+
+    #[test]
+    fn retired_wakers_are_removed_and_eof_reaches_only_live_states() {
+        let bus = Shared::new(false);
+        let calls = Arc::new(AtomicUsize::new(0));
+        for _ in 0..100 {
+            let mut state = State::new(bus.clone());
+            let calls = calls.clone();
+            setup(
+                &mut state,
+                Arc::new(move || {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                }),
+            );
+            assert_eq!(bus.pending.lock().unwrap().wakers.len(), 1);
+        }
+        assert_eq!(bus.pending.lock().unwrap().wakers.len(), 0);
+        assert_eq!(calls.load(Ordering::SeqCst), 100);
+        let mut live = State::new(bus.clone());
+        let counter = calls.clone();
+        setup(
+            &mut live,
+            Arc::new(move || {
+                counter.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+        bus.close(CloseReason::SupervisorEof);
+        assert_eq!(calls.load(Ordering::SeqCst), 102);
+        let mut rt = Runtime::new(live, view, (100.0, 100.0), Env::new(true, 1.0));
+        rt.poll = Some(poll);
+        rt.frame(0.0);
+        assert_eq!(rt.shell_request.take(), Some(Shell::Quit));
+        drop(rt);
+        assert_eq!(bus.pending.lock().unwrap().wakers.len(), 0);
+    }
 
     fn runtime(bus: Arc<Shared>) -> Runtime<State> {
         let mut runtime = Runtime::new(State::new(bus), view, (1280.0, 720.0), Env::new(true, 1.0));

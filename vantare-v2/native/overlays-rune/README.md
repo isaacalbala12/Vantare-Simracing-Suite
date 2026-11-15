@@ -14,15 +14,31 @@ etiqueta `vantare-20261115-1`, commit
 No hay nuevas dependencias directas fuera de Rune y los crates existentes
 `domain`, `ipc` y `profiling`.
 
-El proceso crea una ventana transparente por cada monitor válido de la topología
-inicial. Conserva origen físico (también negativo), tamaño y DPI de cada monitor;
+En Windows el proceso mantiene una ventana transparente por cada monitor válido,
+también al conectar/desconectar monitores. Conserva origen físico (también
+negativo), tamaño y DPI de cada monitor;
 las claves no dependen del nombre del monitor. Usa click-through, siempre encima,
 sin foco/activación, ni entrada en Alt-Tab/barra de tareas en Windows. Los ajustes
 nativos se aplican sobre el handle prestado de Rune; un error cierra el proceso.
 `--start-hidden` crea las ventanas ocultas. No hay widgets ni capturas todavía.
-El seguimiento de conectar/desconectar monitores está en
+El arreglo de conectar/desconectar monitores está en
 [#2346](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2346)
-(padre #2333), obligatorio antes de F2.
+(padre #2333); su comprobación física sigue siendo obligatoria antes de F2.
+
+`monitores.rs` mantiene un controlador `App::windowless`: no es otra ventana
+oculta ni una superficie gráfica. Conserva el proceso cuando se retira el último
+monitor. Un observador Windows consulta la topología una vez por segundo mediante
+`EnumDisplayMonitors`/`GetMonitorInfoW` y el mismo DPI efectivo que winit de la
+copia fijada. Solo publica cambios; una consulta idéntica o reordenada no despierta
+la GUI. Los errores transitorios conservan la última topología completa.
+Las ventanas se identifican por HMONITOR, con generación al abrirlas; los nombres
+duplicados no son claves. Cambiar límites/DPI recoloca la ventana existente;
+retirarla marca su cierre como interno y elimina su waker al destruir el estado.
+El cierre del usuario o supervisor sigue cerrando todo. El observador cancela su
+espera antes del join; no tiene un sueño de un segundo que bloquee la salida.
+Una comprobación única tras abrir detecta errores de creación, sin reloj de GUI
+en reposo. Diseño, fotos y cadencias no se modifican en este arreglo (Worker A).
+En Mac/Linux se conserva por ahora la topología inicial; la aceptación es Windows.
 
 La CLI del supervisor acepta `--fuente local|pipe[:nombre]`, `--control-stdin`
 y `--start-hidden`. El valor por defecto es el pipe del núcleo del usuario.
@@ -63,8 +79,9 @@ copiar los tipos que está trasladando Worker A:
 
 Tras el PR 3 se importarán desde domain/ipc. Hasta entonces el marco está vacío
 y `--layout` o los números de campaña devuelven Unsupported antes de crear
-ventanas: no se ignoran diseños ni se simulan fotos de producto. El seguimiento
-de cambios de topología/presentación y los widgets se conectarán con esos módulos.
+ventanas: no se ignoran diseños ni se simulan fotos de producto. Worker A conecta
+diseño, presentación, fotos y cadencias contra esos módulos; este arreglo solo
+gestiona topología y vida de ventanas. Worker B continúa Eficiencia y captura.
 No se anuncia aún el PR 5 completo, preview ni paridad visual.
 
 ## Servidor y CI sin gráficos
@@ -121,6 +138,12 @@ datos reales. La prueba comprueba:
 4. Inicio oculto sin flash. La presentación desde el Hub espera el lector compartido.
 5. Cerrar el supervisor termina todas las ventanas y el proceso; repetir con el padre vivo y cierre local.
 6. Registrar fallos nativos y consumo/frames de reposo. Los contadores de presentación y los widgets llegan en PR 6/7.
+7. Conectar/desconectar monitores, reordenarlos y cambiar resolución/DPI en marcha:
+   queda una ventana por monitor, sin activar el Hub ni robar el foco. Comprobar
+   que una retirada interna no termina el proceso y que reconectar vuelve a crear
+   la superficie. Repetir con nombres duplicados, 100/125/150 y orígenes negativos.
+8. Cerrar el supervisor mientras cambia la topología: no quedan procesos, lectores
+   ni ventanas huérfanos. La prueba física de #2346 es requisito antes de F2.
 
 Los tests CPU prueban la descripción de las ventanas, el EOF/cancelación con
 pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del

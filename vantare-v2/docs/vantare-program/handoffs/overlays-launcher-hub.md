@@ -1,3 +1,40 @@
+## VANTA-144 · Monitores en caliente, Worker B (#2346)
+
+Rama `vantareapp/isa-2346-monitores-rune`, base 64a445de3 de #2348. Reparto
+confirmado por el orquestador: B solo vida/topología de ventanas; A conecta
+diseño, fuente y cadencias, y hace Relative Vantare. No se toca esa conexión.
+
+`monitores.rs`: reconciliación por identidad nativa, controlador windowless
+que permanece sin monitores y observador Windows cancelable de 1 Hz. Sin cambios
+no despierta la GUI. Altas crean ventanas inactivas con el marco seguro existente;
+bajas marcan retirada interna y no cierran el proceso; cambios de límites/DPI
+recolocan conservando el estado. `topologia_windows.rs` aísla la FFI de consulta,
+sin crear HWND/DC/dispositivo. La lista solo se publica si la consulta es completa.
+Se comprueban errores de creación una sola vez tras abrir. State elimina su waker
+al destruirse; EOF/cierre mantiene prioridad. Mac/Linux conservan topología inicial.
+
+Hooks a conservar por A en host.rs: `window(display, key, shared, hidden, retiring)`,
+marca `retiring` por estado, alta/baja del waker y factory `App::windowless`.
+`State.monitor` expone los límites/DPI actuales: se actualiza en el mismo estado
+al recolocar, para que la conexión de A no conserve un origen inicial obsoleto.
+Ninguna foto, diseño, cadencia, derecho o proyección duplicados.
+Tests CPU: altas/bajas/reordenación, límites/DPI, rechazo de snapshots parciales,
+cierre interno frente a usuario, baja de wakers, EOF concurrente y join cancelable;
+no se enumera el escritorio real ni se ejecuta el producto. Windows: Clippy y
+22 tests CPU PASS (20 lib + 2 main), más 5 de política sin debug_assertions;
+todo por cola con dos jobs y target compartido D:. Licencias: 425 paquetes PASS.
+Primera pasada detectó tres llamadas a una API de test inexistente; corregidas
+usando el shell público de Runtime, sin excepciones ni tests desactivados.
+No hay dependencias/locks
+nuevos. F0 físico, DPI mixto, foco y click-through siguen pendientes en PC de juego
+con hora del orquestador; #2346 debe cerrarse antes de F2 tras esa verificación.
+
+Contrato Relative acordado para PR 7: A produce filas visuales comunes con
+Row de domain, slot interpolado, opacity y Alert { kind semántico, opacity }.
+La intensidad del aviso es independiente de la fila. Cada Look elige solo el
+color y pinta; ni Vantare ni Eficiencia recalculan movimiento. B adapta su pintor
+y captura en #2351 a ese módulo cuando A lo exponga, coordinado por el orquestador.
+
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 
 #2345 fusionado por el orquestador como df9c911b5. Worker B atiende sus nits

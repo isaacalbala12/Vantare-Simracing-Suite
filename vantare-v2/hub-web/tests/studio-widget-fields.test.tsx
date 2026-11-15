@@ -250,7 +250,7 @@ it("blocks writes for an unverified plan and does not expose unsupported SOF", a
   expect(screen.queryByRole("switch", { name: /SOF/ })).toBeNull();
   expect(transport.request).toHaveBeenCalledTimes(1);
 });
-it("keeps the fractional DeltaTrace window allowed by the native field", async () => {
+it("rejects fractional DeltaTrace writes before sending the u8 field", async () => {
   const vector = cases.find((value) => value.before.kind === "delta-trace");
   if (!vector) throw Error("DeltaTrace case");
   const initial = fixture(structuredClone(vector.before) as WidgetSettings);
@@ -259,13 +259,6 @@ it("keeps the fractional DeltaTrace window allowed by the native field", async (
   const input = screen.getByRole("textbox", { name: text.window });
   await user.clear(input);
   await user.type(input, "2.5{Enter}");
-  expect(transport.request).toHaveBeenLastCalledWith({
-    method: "studio.instance",
-    id: initial.instances[0].id,
-    baseRevision: initial.revision,
-    patch: {
-      field: "settings",
-      value: { kind: "delta-trace", windowSeconds: 2.5 },
-    },
-  });
+  expect(input.getAttribute("aria-invalid")).toBe("true");
+  expect(transport.request).toHaveBeenCalledTimes(1);
 });

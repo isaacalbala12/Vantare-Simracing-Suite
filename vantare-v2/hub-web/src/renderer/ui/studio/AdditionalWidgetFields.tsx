@@ -69,7 +69,6 @@ export function AdditionalWidgetFields({
     min: number,
     max: number,
     patch: (value: number) => WidgetSettingsPatch,
-    integer = true,
   ) => (
     <ContentNumber
       key={label}
@@ -77,7 +76,6 @@ export function AdditionalWidgetFields({
       value={value}
       min={min}
       max={max}
-      integer={integer}
       model={model}
       onCommit={(value) => void model.patch(patch(value), label)}
     />
@@ -175,7 +173,6 @@ export function AdditionalWidgetFields({
             options.deltaTrace.secondsMin,
             options.deltaTrace.secondsMax,
             (windowSeconds) => ({ kind: s.kind, windowSeconds }),
-            false,
           ),
         ];
       break;

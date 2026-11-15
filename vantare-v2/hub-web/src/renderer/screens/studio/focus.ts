@@ -103,26 +103,36 @@ export function useStudioFocus() {
     const key = (event: KeyboardEvent) => {
       if (
         !view ||
+        blocked ||
+        state.pending ||
+        event.defaultPrevented ||
+        event.repeat ||
+        event.isComposing ||
+        event.altKey ||
+        event.getModifierState("AltGraph") ||
         document.querySelector('[role="dialog"],[role="alertdialog"]') ||
         (event.target instanceof Element &&
-          event.target.matches("input,textarea,[contenteditable=true]"))
+          event.target.closest(
+            'input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="combobox"],[role="menu"]',
+          ))
       )
         return;
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === hubKeys.undo
-      ) {
-        event.preventDefault();
-        if (event.shiftKey ? view.canRedo : view.canUndo)
-          void state.execute({
-            method: event.shiftKey ? "studio.redo" : "studio.undo",
-            baseRevision: view.revision,
-          });
-      }
+      if (event.ctrlKey === event.metaKey) return;
+      const key = event.key.toLowerCase();
+      const redo =
+        (key === hubKeys.redo && !event.shiftKey) ||
+        (key === hubKeys.undo && event.shiftKey);
+      if (key !== hubKeys.undo && !redo) return;
+      event.preventDefault();
+      if (redo ? view.canRedo : view.canUndo)
+        void state.execute({
+          method: redo ? "studio.redo" : "studio.undo",
+          baseRevision: view.revision,
+        });
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [view, state.execute]);
+  }, [view, state.execute, blocked, state.pending]);
   const toggle = (id: string) => {
     const item = view?.instances.find((item) => item.id === id);
     if (!view || !item || item.locked || blocked || state.pending) return;

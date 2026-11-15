@@ -1,3 +1,33 @@
+## VANTA-138 · D048, bandas existentes sin horario (16/11/2026)
+
+E permite editar una banda guardada por su seriesId sin exigir horario vigente;
+nueva identidad o renombrado siguen requiriéndolo. Mismo calendar.alertsSave,
+revisión/CAS y errores tipados. Sin nuevos métodos ni servicios. Vectores Rust y
+mock contrastados; tests con reloj inyectado y bytes sin cambios tras rechazo.
+Formato/exportador/Clippy y648 tests host PASS (1omitido); ambos typechecks,
+lint y508 tests web PASS tras rebase sobre #2363 fusionado. Sin mensajes nuevos: versión asignada al fusionar,
+sin reservar. D hace la UI; CI/revisión pendientes en el PR draft.
+Después D111; preview espera Rune F1. Sin merge, promoción ni release propios.
+
+## VANTA-144 · ajustes de la segunda revisión de #2357 (16/11/2026)
+
+La raíz aprueba lo esencial del head 279e0c37c y pide ajustes acotados, sin
+cambiar el esquema ni el aspecto. Positions usa get antes de mutar y conserva
+el último movimiento válido si faltan coordenadas. Plan/etiquetas se calculan
+solo al cambiar el Arc del board y targets reutiliza ese plan. La estructura
+anterior queda guardada: se construye y compara una sola vez por sync.
+La escena compara el board por identidad y los demás datos por valor.
+Cambiar Hz también llama a animate para reprogramar el pulso. Advance documentado
+antes del muestreo, reduced como método, altura de pausa única y retain con
+conjuntos de IDs. Regresiones de posiciones incompletas/recuperación, caché del
+plan/etiquetas, identidad del board y subida/bajada de Hz. Por cola Windows/Rust
+1.99.1/dos jobs: formato, Clippy, 58 CPU, cinco tests de política, enlace sin
+ejecutar y auditoría de 428 paquetes PASS. Tokens y ocho tests Python PASS.
+CI completa de e62e24650 PASS, incluido Rune. Rebase sobre nightly 129ff215b:
+solo conflictos de este handoff, sin cambiar Rune ni sus dependencias. Se
+conserva al principio el bloque de nightly para no colisionar con nuevos bloques
+que otros workers añadan arriba. El PR recoge head y CI nuevos. Sin gráficos ni Plane.
+
 ## VANTA-144 · escena y coordenadas aprobadas de #2357 (16/11/2026)
 
 El nuevo suborquestador recibe a A; la horda la dirige él. #2357 completa la revisión
@@ -54,16 +84,6 @@ y el verificador de aislamiento del kit se conservan sin cambios. No se ejecutó
 producto, ventana, dispositivo ni opción gráfica. Sin merge/release ni cambio de
 Plane. La aceptación visual y de consumo espera al PC.
 
-## VANTA-138 · D048, bandas existentes sin horario (16/11/2026)
-
-E permite editar una banda guardada por su seriesId sin exigir horario vigente;
-nueva identidad o renombrado siguen requiriéndolo. Mismo calendar.alertsSave,
-revisión/CAS y errores tipados. Sin nuevos métodos ni servicios. Vectores Rust y
-mock contrastados; tests con reloj inyectado y bytes sin cambios tras rechazo.
-Formato/exportador/Clippy y648 tests host PASS (1omitido); ambos typechecks,
-lint y508 tests web PASS tras rebase sobre #2363 fusionado. Sin mensajes nuevos: versión asignada al fusionar,
-sin reservar. D hace la UI; CI/revisión pendientes en el PR draft.
-Después D111; preview espera Rune F1. Sin merge, promoción ni release propios.
 
 ## VANTA-144 · Relative y monitores de B conectados (15/11/2026)
 

@@ -1,6 +1,6 @@
 //! Vantare paints the shared Relative scene; retained Rune values stay in this Look.
 use super::{
-    Update,
+    PAUSE_HEIGHT, Update,
     layout::{Footer, Item, Kind},
 };
 use crate::vantare::alpha;
@@ -14,7 +14,10 @@ use super::{
 };
 use crate::vantare::Style;
 use rune::Live;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 use vantare_domain::{
     CarId,
     format::{Language, Preferences},
@@ -83,6 +86,7 @@ pub(super) struct Painter {
     dot_order: Vec<u32>,
     pub(super) header: [LiveText; 6],
     paused: bool,
+    last_structure: Option<Structure>,
 }
 impl Painter {
     pub fn new(
@@ -105,27 +109,36 @@ impl Painter {
             dot_order: Vec::new(),
             header: std::array::from_fn(|_| LiveText::new("")),
             paused: scene.paused,
+            last_structure: None,
         };
         painter.sync(scene);
         painter
     }
     pub fn size(&self) -> Size {
+        self.size_for(self.paused)
+    }
+    pub fn size_for(&self, paused: bool) -> Size {
         Size {
             width: self.plan.width,
-            height: self.plan.height + if self.paused { 22.0 } else { 0.0 },
+            height: self.plan.height + if paused { PAUSE_HEIGHT } else { 0.0 },
         }
-    }
-    pub fn plan_height(&self) -> f32 {
-        self.plan.height
     }
     pub fn has_strip(&self) -> bool {
         self.options.cols.strip
     }
-    pub fn targets(&self, board: &Board) -> Vec<f32> {
-        layout::plan(Some(board), &self.options, &self.style)
+    fn prepare_board(&mut self, board: &Arc<Board>) {
+        if !Arc::ptr_eq(&self.board, board) {
+            self.plan = layout::plan(Some(board), &self.options, &self.style);
+            self.labels = Labels::new(Some(board), &self.options, self.prefs.language);
+            self.board = board.clone();
+        }
+    }
+    pub fn targets(&mut self, board: &Arc<Board>) -> Vec<f32> {
+        self.prepare_board(board);
+        self.plan
             .items
-            .into_iter()
-            .filter_map(|(y, item)| {
+            .iter()
+            .filter_map(|&(y, item)| {
                 matches!(item, Item::Slot(_) | Item::Skeleton(_, _)).then_some(y)
             })
             .collect()
@@ -195,12 +208,9 @@ impl Painter {
     }
     /// The only build decision: compare structure, while fixed-size values stay Live.
     pub fn sync(&mut self, scene: &Scene) -> Update {
-        let before = self.structure();
         let mut pixels = false;
-        self.board = scene.board.clone();
+        self.prepare_board(&scene.board);
         self.paused = scene.paused;
-        self.plan = layout::plan(Some(&scene.board), &self.options, &self.style);
-        self.labels = Labels::new(Some(&scene.board), &self.options, self.prefs.language);
         self.order.clear();
         for visual in &scene.rows {
             let row = &visual.row;
@@ -290,7 +300,8 @@ impl Painter {
             live.active = scene.board.slots.iter().flatten().any(|r| r.id == row.id);
             self.order.push(row.id.0);
         }
-        self.rows.retain(|id, _| self.order.contains(id));
+        let retained: BTreeSet<_> = self.order.iter().copied().collect();
+        self.rows.retain(|id, _| retained.contains(id));
         self.dot_order.clear();
         if self.options.cols.strip {
             for visual in &scene.strip {
@@ -313,14 +324,15 @@ impl Painter {
                 self.dot_order.push(dot.id.0);
             }
         }
-        self.dots.retain(|id, _| self.dot_order.contains(id));
+        let retained: BTreeSet<_> = self.dot_order.iter().copied().collect();
+        self.dots.retain(|id, _| retained.contains(id));
         for (live, text) in self.header.iter().zip(header_values(self)) {
             pixels |= live.set(text);
         }
-        Update {
-            build: before != self.structure(),
-            pixels,
-        }
+        let structure = self.structure();
+        let build = self.last_structure.as_ref() != Some(&structure);
+        self.last_structure = Some(structure);
+        Update { build, pixels }
     }
     fn values(row: &Row, label: &layout::RowLabels, language: Language) -> [String; 8] {
         let es = language == Language::Es;
@@ -527,14 +539,14 @@ pub(super) fn view(state: &Painter) -> El {
         };
         root = root.child(
             el().key("pause-band")
-                .size(width, 22.0)
+                .size(width, PAUSE_HEIGHT)
                 .fill(rune::color::hex("#101113f2").expect("pause color"))
                 .pin(Some(0.0), Some(state.plan.height), None, None)
                 .child(
                     text(title)
-                        .font(font(s, Face::Body, 11.0, 22.0, 0.22, 600.0))
+                        .font(font(s, Face::Body, 11.0, PAUSE_HEIGHT, 0.22, 600.0))
                         .color(WHITE)
-                        .h(22.0)
+                        .h(PAUSE_HEIGHT)
                         .pin(Some(8.0), Some(0.0), None, None),
                 ),
         );

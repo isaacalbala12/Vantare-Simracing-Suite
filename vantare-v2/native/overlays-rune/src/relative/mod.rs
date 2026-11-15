@@ -14,6 +14,8 @@ use vantare_domain::{
     widget_settings::relative::Settings,
 };
 
+const PAUSE_HEIGHT: f32 = 22.0;
+
 #[derive(Default)]
 pub(crate) struct Update {
     pub build: bool,
@@ -41,7 +43,7 @@ impl Relative {
     ) -> Self {
         let settings = settings.normalized();
         let style = crate::vantare::Style::compiled();
-        let motion = Motion::new(
+        let mut motion = Motion::new(
             Timing {
                 reorder: f64::from(style.motion.reorder_ms) / 1000.0,
                 fade: f64::from(style.motion.fade_ms) / 1000.0,
@@ -59,6 +61,7 @@ impl Relative {
             &settings.footer_slots,
             None,
         );
+        motion.advance(&board, clock);
         let initial = scene::sample(board.clone(), &motion, false, clock);
         let painter = render::Painter::new(&settings, prefs, &initial);
         Self {
@@ -91,10 +94,7 @@ impl Relative {
         let paused = snapshot.map_or(self.paused, |s| {
             s.state.source_state == vantare_domain::SourceState::Paused
         });
-        Size {
-            width: self.size().width,
-            height: self.painter.plan_height() + if paused { 22.0 } else { 0.0 },
-        }
+        self.painter.size_for(paused)
     }
     pub fn view(&self) -> El {
         self.painter.view()
@@ -130,7 +130,7 @@ impl Relative {
             );
             let boundary = Some((snapshot.epoch, snapshot.state.session.id.0, self.prefs));
             if !Arc::ptr_eq(&board, &self.board) || self.boundary != boundary {
-                let snap = self.motion.reduced
+                let snap = self.motion.reduced()
                     || self.boundary != boundary
                     || scene::waiting(&self.board)
                     || scene::waiting(&board);
@@ -146,7 +146,11 @@ impl Relative {
     pub fn animate(&mut self, clock: f64) -> Update {
         self.motion.advance(&self.board, clock);
         let visual = scene::sample(self.board.clone(), &self.motion, self.paused, clock);
-        if self.visual == visual {
+        if Arc::ptr_eq(&self.visual.board, &visual.board)
+            && self.visual.rows == visual.rows
+            && self.visual.strip == visual.strip
+            && self.visual.paused == visual.paused
+        {
             return Update::default();
         }
         let update = self.painter.sync(&visual);
@@ -242,6 +246,13 @@ mod tests {
         assert!(!painter.animate(0.1).pixels);
         assert!(painter.animate(0.2).pixels);
         assert!(!painter.animate(0.25).pixels);
+        painter.policy(false, 20, 0.25);
+        assert_eq!(
+            painter.motion.next_wake(0.25, true),
+            Some(0.25 + 1.0 / 20.0)
+        );
+        painter.policy(false, 5, 0.25);
+        assert_eq!(painter.motion.next_wake(0.25, true), Some(0.25 + 1.0 / 5.0));
         assert!(painter.policy(true, 5, 0.3).pixels);
         assert!(painter.motion.next_pulse.is_none());
         assert!(!painter.animate(1.0).pixels);
@@ -338,6 +349,28 @@ mod tests {
         }
     }
     #[test]
+    fn targets_and_motion_ticks_reuse_layout_and_labels_for_the_same_board() {
+        let mut relative = painter(false);
+        relative.update(&crate::testdata::snapshot(), 0.0);
+        let board = Arc::new((*relative.board).clone());
+        relative.painter.targets(&board);
+        let plan = relative.painter.plan.items.as_ptr();
+        let title = relative.painter.labels.title.as_ptr();
+        let mut visual = relative.visual.clone();
+        visual.board = board.clone();
+        assert!(!relative.painter.sync(&visual).build);
+        visual.rows[0].opacity = 0.5;
+        assert!(!relative.painter.sync(&visual).build);
+        relative.painter.targets(&board);
+        assert_eq!(relative.painter.plan.items.as_ptr(), plan);
+        assert_eq!(relative.painter.labels.title.as_ptr(), title);
+        relative.board = board;
+        relative.animate(0.0);
+        assert!(Arc::ptr_eq(&relative.visual.board, &relative.board));
+        assert_eq!(relative.painter.plan.items.as_ptr(), plan);
+        assert_eq!(relative.painter.labels.title.as_ptr(), title);
+    }
+    #[test]
     fn appearing_and_disappearing_banner_interpolates_canonical_layout_coordinates() {
         let mut relative = painter(false);
         let mut snapshot = crate::testdata::snapshot();
@@ -414,7 +447,7 @@ mod tests {
         paused.state.cars[2].number = "unexpected".into();
         assert!(painter.update(&paused, 1.0).build);
         assert!(Arc::ptr_eq(&board, &painter.board));
-        assert_eq!(painter.size().height, height + 22.0);
+        assert_eq!(painter.size().height, height + PAUSE_HEIGHT);
         assert!(!painter.update(&paused, 2.0).build);
         let mut opened = Relative::new(&Settings::default(), Preferences::default(), true, 5, 0.0);
         opened.update(&paused, 0.0);

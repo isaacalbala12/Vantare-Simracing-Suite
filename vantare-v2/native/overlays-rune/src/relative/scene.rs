@@ -74,7 +74,7 @@ pub struct Motion {
     order: Vec<u32>,
     dots: Vec<MovingDot>,
     timing: Timing,
-    pub(super) reduced: bool,
+    reduced: bool,
     hz: u16,
     started: f64,
     pub(super) next_pulse: Option<f64>,
@@ -106,7 +106,8 @@ impl Motion {
     }
     pub fn policy(&mut self, reduced: bool, hz: u16) -> bool {
         let changed = self.reduced != reduced;
-        if self.hz != hz {
+        let hz_changed = self.hz != hz;
+        if hz_changed {
             self.next_pulse = None;
         }
         if changed && reduced {
@@ -125,10 +126,16 @@ impl Motion {
         }
         self.reduced = reduced;
         self.hz = hz;
-        changed
+        changed || hz_changed
+    }
+    pub fn reduced(&self) -> bool {
+        self.reduced
     }
     /// `positions` contains the canonical layout target for each Board::slots entry.
     pub fn update(&mut self, board: &Board, positions: &[f32], snap: bool, clock: f64) {
+        let Some(positions) = positions.get(..board.slots.len()) else {
+            return; // Preserve the last valid motion when the layout is incomplete.
+        };
         let snap = snap || self.reduced || waiting(board);
         let active: BTreeSet<_> = board.slots.iter().flatten().map(|row| row.id.0).collect();
         for (&id, row) in &mut self.rows {
@@ -139,15 +146,11 @@ impl Motion {
         }
         self.order.clear();
         if !waiting(board) {
-            for (slot, row) in board
-                .slots
-                .iter()
-                .enumerate()
-                .filter_map(|(i, r)| r.as_ref().map(|r| (i, r)))
-            {
+            for (position, row) in positions.iter().zip(&board.slots) {
+                let Some(row) = row else { continue };
                 if let Some(moving) = self.rows.get_mut(&row.id.0) {
                     if snap {
-                        moving.slot = Tween::fixed(positions[slot]);
+                        moving.slot = Tween::fixed(*position);
                         moving.fade = Tween::linear(1.0);
                         moving.flash = None;
                     } else {
@@ -163,9 +166,7 @@ impl Motion {
                         if let Some(kind) = kind {
                             moving.flash = Some((kind, clock));
                         }
-                        moving
-                            .slot
-                            .retarget(positions[slot], clock, self.timing.reorder);
+                        moving.slot.retarget(*position, clock, self.timing.reorder);
                         moving.fade.retarget(1.0, clock, self.timing.fade);
                     }
                     moving.row = row.clone();
@@ -179,7 +180,7 @@ impl Motion {
                         row.id.0,
                         MovingRow {
                             row: row.clone(),
-                            slot: Tween::fixed(positions[slot]),
+                            slot: Tween::fixed(*position),
                             fade,
                             flash: None,
                             active: true,
@@ -224,6 +225,7 @@ impl Motion {
                 .collect()
         };
     }
+    /// Call after update/policy and before sampling visual_rows or sample at this clock.
     pub fn advance(&mut self, board: &Board, clock: f64) {
         let pulsing = !self.reduced
             && board.banner != Some(Banner::FullCourseYellow)
@@ -270,6 +272,7 @@ impl Motion {
 }
 
 /// Pure sampling: a Look chooses colors and pixel geometry, never movement or alert strength.
+/// Call Motion::advance with the same clock before sampling; sampling never advances state.
 pub fn visual_rows(motion: &Motion, clock: f64) -> Vec<VisualRow> {
     motion
         .order
@@ -301,6 +304,7 @@ pub fn visual_rows(motion: &Motion, clock: f64) -> Vec<VisualRow> {
         })
         .collect()
 }
+/// Call Motion::advance with these data and clock before sampling the scene.
 pub fn sample(board: Arc<Board>, motion: &Motion, paused: bool, clock: f64) -> Scene {
     Scene {
         board,
@@ -358,6 +362,7 @@ mod tests {
         let second = occupied[1].0;
         board.slots.swap(first, second);
         motion.update(&board, &positions(&board), false, 1.0);
+        motion.advance(&board, 1.5);
         let rows = visual_rows(&motion, 1.5);
         let row = rows.iter().find(|r| r.row.id == id).expect("retained row");
         assert!(row.slot > positions(&board)[first] && row.slot < positions(&board)[second]);
@@ -369,6 +374,7 @@ mod tests {
         );
         board.slots[second] = None;
         motion.update(&board, &positions(&board), false, 3.0);
+        motion.advance(&board, 3.5);
         assert_eq!(
             visual_rows(&motion, 3.5)
                 .iter()
@@ -379,6 +385,34 @@ mod tests {
         );
         motion.advance(&board, 4.0);
         assert!(!visual_rows(&motion, 4.0).iter().any(|r| r.row.id == id));
+    }
+    #[test]
+    fn incomplete_positions_preserve_the_last_valid_motion_and_recover() {
+        let board = board();
+        let targets = positions(&board);
+        let mut motion = motion();
+        motion.update(&board, &[], true, 0.0);
+        motion.advance(&board, 0.0);
+        assert!(visual_rows(&motion, 0.0).is_empty());
+        motion.update(&board, &targets, true, 0.0);
+        motion.advance(&board, 0.0);
+        let before = visual_rows(&motion, 0.0);
+        let mut changed = board.clone();
+        let first = changed.slots.iter().position(Option::is_some).expect("row");
+        let last = changed
+            .slots
+            .iter()
+            .rposition(Option::is_some)
+            .expect("row");
+        changed.slots.swap(first, last);
+        for incomplete in [&[][..], &targets[..targets.len() - 1]] {
+            motion.update(&changed, incomplete, false, 1.0);
+            motion.advance(&changed, 1.0);
+            assert_eq!(visual_rows(&motion, 1.0), before);
+        }
+        motion.update(&changed, &targets, false, 2.0);
+        motion.advance(&changed, 2.5);
+        assert_ne!(visual_rows(&motion, 2.5), before);
     }
     #[test]
     fn pulse_and_flash_coexist_with_strengths_independent_of_row_opacity() {

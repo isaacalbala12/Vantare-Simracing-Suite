@@ -127,6 +127,8 @@ muestreo es puro; no contiene colores ni valores Rune Live. El Look
 traduce esa escena a sus medidas/colores y conserva sus valores Live. El pulso
 (`traffic_opacity`) y el destello (`alert`) tienen intensidades independientes
 y se superponen como en GPUI.
+Tras `update` o `policy`, llamar a `advance` con los mismos datos e instante
+antes de `visual_rows`/`sample`; el muestreo no avanza el estado.
 La reconstrucción se decide en un solo punto al comparar la estructura anterior
 y la nueva; las actualizaciones de valores de ancho fijo no reconstruyen.
 La [plantilla de encargo](PLANTILLA.md) fija qué reutilizar para los otros widgets.

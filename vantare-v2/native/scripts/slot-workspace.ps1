@@ -1,66 +1,59 @@
-# Cargo can treat equal package names in different checkouts as fresh.
-# Invalidate local packages on a checkout change; keep registry/git dependencies.
+# Cargo keys local packages by their absolute checkout path. Run every slot build
+# through a stable per-slot junction so switching checkouts only recompiles the
+# files that changed; registry/git dependencies stay in the shared target.
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
 function Set-VantareSlotWorkspace {
     param([Parameter(Mandatory)][string]$Target, [Parameter(Mandatory)][string]$NativeRoot)
-    $root = [IO.Path]::GetFullPath($NativeRoot)
-    $manifest = Join-Path $root 'Cargo.toml'
-    $stamp = Join-Path $Target '.vantare-workspace'
-    if ((Test-Path -LiteralPath $stamp) -and
-        [IO.File]::ReadAllText($stamp) -ceq $root) { return }
-    if (-not (Test-Path -LiteralPath (Join-Path $Target 'CACHEDIR.TAG'))) {
-        [IO.Directory]::CreateDirectory($Target) | Out-Null
+    $target = [IO.Path]::GetFullPath($Target)
+    $native = [IO.Path]::GetFullPath($NativeRoot)
+    $repo = Split-Path (Split-Path $native)
+    if (-not (Test-Path -LiteralPath $target)) {
+        [IO.Directory]::CreateDirectory($target) | Out-Null
+    } elseif (-not (Test-Path -LiteralPath (Join-Path $target 'CACHEDIR.TAG'))) {
         # The queue creates its stamps/tmp before Cargo's first invocation.
         # Cargo refuses clean on that fresh directory; never manufacture its tag.
-        $unknown = @(Get-ChildItem -LiteralPath $Target -Force | Where-Object {
+        $unknown = @(Get-ChildItem -LiteralPath $target -Force | Where-Object {
             $_.Name -notin @('.vantare-last-build', '.vantare-workspace', 'tmp')
         })
-        if (-not $unknown.Count) {
-            [IO.File]::WriteAllText($stamp, $root)
-            return
-        }
-        # Legacy targets are accepted only with compiler metadata and a build lock.
-        if (-not (Test-VantareCargoCache $Target)) {
+        if ($unknown.Count -and -not (Test-VantareCargoCache $target)) {
             throw 'Target sin CACHEDIR.TAG con contenido desconocido; no se limpia.'
         }
     }
-    if (Get-ChildItem -LiteralPath $Target -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
+    if (Get-ChildItem -LiteralPath $target -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
         throw 'Hay enlaces dentro del target; no se invalidan paquetes.'
     }
-    # Newer Cargo refuses clean on legacy caches without its tag. Migrate only
-    # the verified cache above, under the queue lease and with no links/active Cargo.
-    $tag = Join-Path $Target 'CACHEDIR.TAG'
-    if (-not (Test-Path -LiteralPath $tag)) {
-        $buildLocks = @()
-        try {
-            # Legacy validation requires debug's lock. Release may coexist;
-            # hold both existing locks before writing, under the queue lease.
-            foreach ($profile in @('debug', 'release')) {
-                $lockPath = Join-Path $Target "$profile/.cargo-lock"
-                if ($profile -eq 'debug' -or (Test-Path -LiteralPath $lockPath)) {
-                    $buildLocks += [IO.File]::Open($lockPath, 'Open', 'ReadWrite', 'None')
-                }
-            }
-            [IO.File]::WriteAllText($tag, "Signature: 8a477f597d28d172789f06886806bc55`n", [Text.Encoding]::ASCII)
-        } finally {
-            foreach ($buildLock in $buildLocks) { $buildLock.Dispose() }
-        }
+    $slotName = Split-Path $target -Leaf
+    # Explicit targets (measurements, QA, packaging) keep their real path.
+    if ($slotName -notmatch '^slot-[01]$') { return $null }
+    $workspaceRoot = Join-Path (Split-Path $target) 'slot-workspaces'
+    [IO.Directory]::CreateDirectory($workspaceRoot) | Out-Null
+    $junction = Join-Path $workspaceRoot $slotName
+    # Nested builds already run through the junction.
+    if ($repo.TrimEnd('\', '/') -ieq $junction.TrimEnd('\', '/') -or
+        $repo.StartsWith($junction + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        return $junction
     }
-    # --manifest-path does not select rustup's toolchain. Enter the native root
-    # so clean uses the same pinned Cargo that produced the artifacts.
-    Push-Location $root
-    try {
-        $json = & cargo metadata --manifest-path $manifest --no-deps --locked --offline --format-version 1
-        if ($LASTEXITCODE) { throw 'No se pudo identificar el workspace del slot.' }
-        $metadata = $json | ConvertFrom-Json
-        $packages = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members } | ForEach-Object name)
-        if (Test-Path -LiteralPath (Join-Path $root 'vendor/gpui_windows/Cargo.toml')) { $packages += 'gpui_windows' }
-        $clean = @('clean', '--manifest-path', $manifest, '--target-dir', $Target, '--locked', '--offline')
-        foreach ($package in $packages) { $clean += @('-p', $package) }
-        & cargo @clean
-        if ($LASTEXITCODE) { throw 'No se pudieron invalidar los paquetes locales del checkout anterior.' }
-    } finally { Pop-Location }
-    [IO.Directory]::CreateDirectory($Target) | Out-Null
-    [IO.File]::WriteAllText($stamp, $root)
-    Write-Host '[cola] checkout nuevo: paquetes locales invalidados; dependencias conservadas.'
+    $current = $null
+    if (Test-Path -LiteralPath $junction) {
+        $item = Get-Item -LiteralPath $junction -Force
+        if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "La ruta del workspace del slot existe y no es un enlace: $junction"
+        }
+        $current = @($item.Target)[0]
+    }
+    if ($current -and ([IO.Path]::GetFullPath($current).TrimEnd('\', '/') -ieq $repo.TrimEnd('\', '/'))) {
+        return $junction
+    }
+    if (Test-Path -LiteralPath $junction) {
+        # Remove the link only, never its target.
+        if ($IsWindows) { & cmd.exe /d /c "rmdir `"$junction`"" | Out-Null }
+        else { Remove-Item -LiteralPath $junction -Force }
+        if ($LASTEXITCODE) { throw 'No se pudo retirar el enlace del workspace del slot.' }
+    }
+    if ($IsWindows) {
+        New-Item -ItemType Junction -Path $junction -Target $repo | Out-Null
+    } else {
+        New-Item -ItemType SymbolicLink -Path $junction -Target $repo | Out-Null
+    }
+    return $junction
 }

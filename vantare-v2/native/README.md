@@ -528,6 +528,12 @@ el workspace completo.
 Si tocas `runtime`, `domain`, `ipc`, `ui` o `storage`, el gate rápido imprime un
 aviso: faltan Clippy y tests de los dependientes y la telemetría (#1498). Antes
 de publicar, ejecuta `comprobar.ps1 <crate> -Full` y la telemetría.
+
+La cola publica el checkout activo mediante un enlace estable por slot
+(`<raíz de targets>/slot-workspaces/slot-N`). Cargo compila a través de esa ruta,
+así que alternar checkouts en el mismo slot reutiliza los artefactos locales y
+solo recompila lo que cambia. Los targets explícitos (mediciones, QA y
+empaquetado) conservan su ruta real y no usan el enlace.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.

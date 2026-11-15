@@ -2,74 +2,54 @@ param([Parameter(Mandatory)][string]$EvidenceDirectory)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'slot-workspace.ps1')
-$target = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('fresh-slot-' + [guid]::NewGuid().ToString('N'))
-[IO.Directory]::CreateDirectory((Join-Path $target 'tmp')) | Out-Null
-[IO.File]::WriteAllText((Join-Path $target '.vantare-last-build'), 'queue stamp')
-function cargo { throw 'Un target nuevo no debe invocar cargo clean.' }
-Set-VantareSlotWorkspace -Target (Join-Path $target 'new-explicit-target') -NativeRoot $PSScriptRoot
-Remove-Item -LiteralPath (Join-Path $target 'new-explicit-target/.vantare-workspace')
-[IO.Directory]::Delete((Join-Path $target 'new-explicit-target'))
-Set-VantareSlotWorkspace -Target $target -NativeRoot $PSScriptRoot
-if ([IO.File]::ReadAllText((Join-Path $target '.vantare-workspace')) -cne $PSScriptRoot) {
-    throw 'No se ha registrado el primer checkout.'
+$root = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('slot-workspace-' + [guid]::NewGuid().ToString('N'))
+$slot = Join-Path $root 'slot-0'
+[IO.Directory]::CreateDirectory((Join-Path $slot 'tmp')) | Out-Null
+[IO.File]::WriteAllText((Join-Path $slot '.vantare-last-build'), 'queue stamp')
+function cargo { throw 'El workspace del slot no debe invocar cargo.' }
+$native = Split-Path $PSScriptRoot
+$junction = Set-VantareSlotWorkspace -Target $slot -NativeRoot $native
+$expected = Join-Path $root 'slot-workspaces/slot-0'
+if ($junction -cne $expected) { throw "Junction inesperada: $junction" }
+if (-not (Test-Path -LiteralPath $junction)) { throw 'No se creó el enlace del workspace del slot.' }
+$item = Get-Item -LiteralPath $junction -Force
+if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'El workspace del slot no es un enlace.' }
+$repo = Split-Path (Split-Path $native)
+if ([IO.Path]::GetFullPath(@($item.Target)[0]).TrimEnd('\', '/') -ine $repo.TrimEnd('\', '/')) {
+    throw "El enlace no apunta al checkout: $($item.Target)"
 }
-if (Test-Path -LiteralPath (Join-Path $target 'CACHEDIR.TAG')) { throw 'No inventar el tag de Cargo.' }
-[IO.File]::WriteAllText((Join-Path $target 'foreign.txt'), 'preserve')
+if (Test-Path -LiteralPath (Join-Path $slot 'CACHEDIR.TAG')) { throw 'No inventar el tag de Cargo.' }
+if (Test-Path -LiteralPath (Join-Path $slot '.vantare-workspace')) { throw 'El sello de checkout ya no se usa.' }
+
+# Cambiar de checkout reutiliza el mismo enlace, sin limpiar paquetes.
+$fakeNative = Join-Path $root 'fake/vantare-v2/native'
+[IO.Directory]::CreateDirectory($fakeNative) | Out-Null
+$fakeRepo = Join-Path $root 'fake'
+Set-VantareSlotWorkspace -Target $slot -NativeRoot $fakeNative | Out-Null
+$switched = Get-Item -LiteralPath $junction -Force
+if ([IO.Path]::GetFullPath(@($switched.Target)[0]).TrimEnd('\', '/') -ine $fakeRepo.TrimEnd('\', '/')) {
+    throw 'El enlace no cambió al nuevo checkout.'
+}
+
+# Un target explícito (mediciones) conserva su ruta real.
+$explicit = Join-Path $root 'medicion-g'
+[IO.Directory]::CreateDirectory($explicit) | Out-Null
+if (Set-VantareSlotWorkspace -Target $explicit -NativeRoot $native) { throw 'Un target explícito no debe tener enlace.' }
+if (Test-Path -LiteralPath (Join-Path $root 'slot-workspaces/medicion-g')) { throw 'Se creó un enlace para un target explícito.' }
+
+# Contenido desconocido sin CACHEDIR.TAG se rechaza sin borrar nada.
+$foreign = Join-Path $root 'foreign-slot'
+[IO.Directory]::CreateDirectory($foreign) | Out-Null
+[IO.File]::WriteAllText((Join-Path $foreign 'foreign.txt'), 'preserve')
 $rejected = $false
-try { Set-VantareSlotWorkspace -Target $target -NativeRoot (Split-Path $PSScriptRoot) }
+try { Set-VantareSlotWorkspace -Target $foreign -NativeRoot $native | Out-Null }
 catch { $rejected = $_.Exception.Message -like '*contenido desconocido*' }
-if (-not $rejected -or -not (Test-Path -LiteralPath (Join-Path $target 'foreign.txt'))) {
+if (-not $rejected -or -not (Test-Path -LiteralPath (Join-Path $foreign 'foreign.txt'))) {
     throw 'El target desconocido debe rechazarse sin borrar contenido.'
 }
-'PASS: primer slot sin clean; contenido desconocido conservado y rechazado.'
 
-# Migration must reject an active legacy build before creating Cargo's tag.
-$legacy = Join-Path $target 'legacy'
-[IO.Directory]::CreateDirectory((Join-Path $legacy 'debug')) | Out-Null
-[IO.File]::WriteAllText((Join-Path $legacy '.rustc_info.json'), '{"rustc_fingerprint":123}')
-[IO.Directory]::CreateDirectory((Join-Path $legacy 'release')) | Out-Null
-foreach ($profile in @('debug', 'release')) {
-    [IO.File]::WriteAllText((Join-Path $legacy "$profile/.cargo-lock"), '')
-}
-foreach ($profile in @('debug', 'release')) {
-    $active = [IO.File]::Open((Join-Path $legacy "$profile/.cargo-lock"), 'Open', 'ReadWrite', 'None')
-    try {
-        $rejected = $false
-        try { Set-VantareSlotWorkspace -Target $legacy -NativeRoot $PSScriptRoot }
-        catch { $rejected = $_.Exception.InnerException -is [IO.IOException] }
-        if (-not $rejected -or (Test-Path (Join-Path $legacy 'CACHEDIR.TAG'))) {
-            throw "El target legacy con $profile ocupado no debe migrarse."
-        }
-    } finally { $active.Dispose() }
-    # A failed second lock must release the first one too.
-    foreach ($released in @('debug', 'release')) {
-        $probe = [IO.File]::Open((Join-Path $legacy "$released/.cargo-lock"), 'Open', 'ReadWrite', 'None')
-        $probe.Dispose()
-    }
-}
-function cargo {
-    if ($args[0] -eq 'metadata') { '{"packages":[],"workspace_members":[]}' }
-    elseif ($args[0] -eq 'clean') {
-        $tag = [IO.File]::ReadAllText((Join-Path $legacy 'CACHEDIR.TAG'))
-        if (-not $tag.StartsWith('Signature: 8a477f597d28d172789f06886806bc55')) {
-            throw 'Cargo clean necesita el marcador válido antes de invalidar.'
-        }
-    } else { throw 'Comando Cargo inesperado.' }
-    $global:LASTEXITCODE = 0
-}
-Set-VantareSlotWorkspace -Target $legacy -NativeRoot $PSScriptRoot
-if (-not (Test-Path (Join-Path $legacy '.vantare-workspace'))) { throw 'Falta el sello del checkout migrado.' }
-foreach ($profile in @('debug', 'release')) {
-    $probe = [IO.File]::Open((Join-Path $legacy "$profile/.cargo-lock"), 'Open', 'ReadWrite', 'None')
-    $probe.Dispose()
-}
-$legacy = Join-Path $target 'legacy-debug-only'
-[IO.Directory]::CreateDirectory((Join-Path $legacy 'debug')) | Out-Null
-[IO.File]::WriteAllText((Join-Path $legacy '.rustc_info.json'), '{"rustc_fingerprint":123}')
-[IO.File]::WriteAllText((Join-Path $legacy 'debug/.cargo-lock'), '')
-Set-VantareSlotWorkspace -Target $legacy -NativeRoot $PSScriptRoot
-if ((Test-Path (Join-Path $legacy 'release')) -or -not (Test-Path (Join-Path $legacy '.vantare-workspace'))) {
-    throw 'El target debug-only debe migrar sin inventar un perfil release.'
-}
-Remove-Item Function:cargo
-'PASS: migración legacy con locks debug/release; marcador válido antes de clean.'
+# Retirar solo los enlaces antes de borrar el temporal.
+if ($IsWindows) { & cmd.exe /d /c "rmdir `"$junction`"" | Out-Null }
+else { Remove-Item -LiteralPath $junction -Force }
+Remove-Item -LiteralPath $root -Recurse -Force
+'PASS: enlace estable por slot, cambio de checkout sin limpiar y target explícito intacto.'

@@ -220,9 +220,25 @@ try {
     }
     if ($targetLease) { $env:CARGO_TARGET_DIR = $explicitTarget; $env:VANTARE_SLOT_TARGET = $explicitTarget }
     . (Join-Path $PSScriptRoot 'slot-workspace.ps1')
-    Set-VantareSlotWorkspace -Target $env:CARGO_TARGET_DIR -NativeRoot (Split-Path $PSScriptRoot)
-    Invoke-VantareQueuedCommand -CommandName $cmd -CommandArguments $rest
-    $code = $script:commandExitCode
+    $slotWorkspace = Set-VantareSlotWorkspace -Target $env:CARGO_TARGET_DIR -NativeRoot (Split-Path $PSScriptRoot)
+    $restoreWorkspace = $false
+    if ($slotWorkspace) {
+        $repoRoot = Split-Path (Split-Path (Split-Path $PSScriptRoot))
+        $relative = [IO.Path]::GetRelativePath($repoRoot, (Get-Location).Path)
+        if ($relative -eq '.' -or (-not [IO.Path]::IsPathRooted($relative) -and -not $relative.StartsWith('..'))) {
+            $mapped = [IO.Path]::GetFullPath((Join-Path $slotWorkspace $relative))
+            if (Test-Path -LiteralPath $mapped) {
+                Push-Location $mapped
+                $restoreWorkspace = $true
+            }
+        }
+    }
+    try {
+        Invoke-VantareQueuedCommand -CommandName $cmd -CommandArguments $rest
+        $code = $script:commandExitCode
+    } finally {
+        if ($restoreWorkspace) { Pop-Location }
+    }
 } catch {
     Write-Host "[cola] el comando falló: $_"
     $code = 1

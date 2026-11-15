@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { copyFile, mkdir, readFile, rmdir, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
@@ -229,6 +229,48 @@ async function capture(executable: string, batch: string) {
       );
   }
 }
+function startCaptureSlots(): Promise<ChildProcess> {
+  const script = join(project, "scripts/capture-lock.ps1").replace(/'/g, "''");
+  const command = [
+    `. '${script}'`,
+    "$slots = Enter-HubCompileSlots",
+    "Write-Output 'ready'",
+    "[Console]::In.ReadLine() | Out-Null",
+    "Exit-HubCompileSlots $slots",
+  ].join("; ");
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      "pwsh",
+      ["-NoProfile", "-NonInteractive", "-Command", command],
+      { stdio: ["pipe", "pipe", "inherit"], windowsHide: true },
+    );
+    let output = "";
+    let settled = false;
+    const finish = (action: () => void) => {
+      if (settled) return;
+      settled = true;
+      child.stdout?.removeAllListeners("data");
+      child.removeAllListeners("exit");
+      action();
+    };
+    const onData = (chunk: Buffer) => {
+      output += chunk.toString();
+      if (output.includes("ready")) finish(() => resolve(child));
+    };
+    const onExit = (code: number | null) => {
+      finish(() => reject(new Error(`capture slot helper exited (${code})`)));
+    };
+    child.stdout?.on("data", onData);
+    child.once("exit", onExit);
+  });
+}
+async function stopCaptureSlots(child: ChildProcess) {
+  if (child.exitCode !== null) return;
+  child.stdin?.write("\n");
+  child.stdin?.end();
+  await new Promise<void>((resolve) => child.once("exit", () => resolve()));
+}
+
 export async function run(args: string[]) {
   const { manifest, defaults } = await load();
   if (!args.includes("--capture")) {
@@ -286,7 +328,9 @@ export async function run(args: string[]) {
       await new Promise((done) => setTimeout(done, 60_000));
     }
   }
+  let slots: ChildProcess | null = null;
   try {
+    slots = await startCaptureSlots();
     requirePushedWorktrees();
     const requests = [];
     for (const item of manifest.widgets) {
@@ -336,6 +380,7 @@ export async function run(args: string[]) {
       `${JSON.stringify(manifest, null, 2)}\n`,
     );
   } finally {
+    if (slots) await stopCaptureSlots(slots);
     await rmdir(lock);
   }
 }

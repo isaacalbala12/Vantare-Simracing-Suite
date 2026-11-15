@@ -1,3 +1,30 @@
+# La captura reserva los dos huecos de la cola de compilación mientras dura.
+# Los mutex son los mismos que usa native/scripts/compilar.ps1; si el proceso
+# muere, Windows los abandona y la cola los recupera.
+function Enter-HubCompileSlots {
+    $mutexes = @()
+    try {
+        foreach ($name in @('Global\VantareCargoSlot0', 'Global\VantareCargoSlot1')) {
+            $mutex = [Threading.Mutex]::new($false, $name)
+            try { $null = $mutex.WaitOne() } catch [Threading.AbandonedMutexException] { }
+            $mutexes += $mutex
+        }
+        return ,$mutexes
+    } catch {
+        foreach ($mutex in $mutexes) {
+            try { $mutex.ReleaseMutex() } catch { }
+            $mutex.Dispose()
+        }
+        throw
+    }
+}
+function Exit-HubCompileSlots($Mutexes) {
+    if (-not $Mutexes) { return }
+    foreach ($mutex in $Mutexes) {
+        try { $mutex.ReleaseMutex() } catch { }
+        $mutex.Dispose()
+    }
+}
 function Enter-HubCaptureTurn([string]$Scene) {
     $lock='D:\VantareServer\qa\captura.lock'
     while ($true) {
@@ -18,10 +45,24 @@ function Enter-HubCaptureTurn([string]$Scene) {
     }
     $lease=@{pid=$PID;nonce=[guid]::NewGuid().ToString('N');started=(Get-Date -Format o);scene=$Scene}
     $lease | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $lock 'owner.json') -Encoding utf8
+    try {
+        $lease.slots = Enter-HubCompileSlots
+    } catch {
+        Remove-Item -LiteralPath $lock -Recurse -Force -ErrorAction SilentlyContinue
+        throw
+    }
     return $lease
 }
 function Exit-HubCaptureTurn($Lease) {
     $lock='D:\VantareServer\qa\captura.lock'
-    $owner=Get-Content -LiteralPath (Join-Path $lock 'owner.json') -Raw | ConvertFrom-Json
-    if ($owner.nonce -eq $Lease.nonce -and [IO.Path]::GetFullPath($lock) -eq 'D:\VantareServer\qa\captura.lock') { Remove-Item -LiteralPath $lock -Recurse }
+    try {
+        if (Test-Path -LiteralPath (Join-Path $lock 'owner.json')) {
+            $owner=Get-Content -LiteralPath (Join-Path $lock 'owner.json') -Raw | ConvertFrom-Json
+            if ($owner.nonce -eq $Lease.nonce -and [IO.Path]::GetFullPath($lock) -eq 'D:\VantareServer\qa\captura.lock') {
+                Remove-Item -LiteralPath $lock -Recurse
+            }
+        }
+    } finally {
+        Exit-HubCompileSlots $Lease.slots
+    }
 }

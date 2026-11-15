@@ -28,7 +28,6 @@ foreach ($scene in $Scenes) {
         Write-Output "$(Get-Date -Format o) $scene exit=$captureExit"
         if ($captureExit -in @(-1073741819,-2146233082)) { throw "Fatal process exit $captureExit; record and retry this scene once" }
     } finally {
-        $owner = Get-Content -LiteralPath (Join-Path $lock 'owner.json') -Raw | ConvertFrom-Json
-        if ($owner.nonce -eq $nonce -and [IO.Path]::GetFullPath($lock) -eq 'D:\VantareServer\qa\captura.lock') { Remove-Item -LiteralPath $lock -Recurse }
+        Exit-HubCaptureTurn $lease
     }
 }

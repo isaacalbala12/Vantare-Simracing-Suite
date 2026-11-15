@@ -60,10 +60,17 @@ export function CanvasTools({
   const points = useRef<(HTMLButtonElement | null)[]>([]);
   return (
     <div className="v-studio-canvas-tools">
-      <Popover.Root modal={false} open={open} onOpenChange={setOpen}>
+      <Popover.Root
+        modal={false}
+        open={open}
+        onOpenChange={(next) => {
+          if (!next || enabled) setOpen(next);
+        }}
+      >
         <Popover.Trigger
           render={<Button size="sm" variant="ghost" />}
           aria-label={t.anchors}
+          aria-disabled={!enabled}
         >
           <ToolGlyph kind="anchor" />
           {t.anchorShort}

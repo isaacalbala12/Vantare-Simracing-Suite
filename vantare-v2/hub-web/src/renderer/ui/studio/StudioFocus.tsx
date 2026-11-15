@@ -46,6 +46,7 @@ export function StudioFocus() {
               item={selected}
               view={view}
               pending={state.pending}
+              readOnly={model.canvasReadOnly}
               onRemove={() => {
                 if (selected) state.setRemoving(selected.id);
               }}

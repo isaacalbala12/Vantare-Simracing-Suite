@@ -274,9 +274,7 @@ it("lost pointer capture discards movement", async () => {
 it("does not send geometry with a live simulator", async () => {
   const spy = vi.spyOn(Client.prototype, "request");
   const { move } = await mount("studio-canvas-readonly");
-  expect(
-    await screen.findByText(`${t.liveReadOnly} ${t.liveReadOnlyHelp}`),
-  ).toBeTruthy();
+  expect(await screen.findByText(t.liveReadOnly)).toBeTruthy();
   expect(move.getAttribute("aria-disabled")).toBe("true");
   arrow(move);
   await act(async () => {});
@@ -627,6 +625,45 @@ it("shows no resize handles or keyboard help in readonly mode", async () => {
   const { container } = await mount("studio-canvas-readonly");
   expect(container.querySelectorAll("[data-canvas-handle]")).toHaveLength(0);
   expect(screen.queryByText(t.help)).toBeNull();
+});
+
+it("blocks sidebar, anchors and removal in the readonly canvas without writes", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  const { move } = await mount("studio-canvas-readonly");
+  const user = userEvent.setup();
+  expect(
+    screen
+      .getByRole("button", { name: studioText.add })
+      .hasAttribute("disabled"),
+  ).toBe(true);
+  const anchor = screen.getByRole("button", { name: t.anchors });
+  expect(anchor.getAttribute("aria-disabled")).toBe("true");
+  expect(
+    screen
+      .getByRole("button", { name: t.resolution })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  await user.click(anchor);
+  expect(screen.queryByRole("toolbar", { name: t.anchors })).toBeNull();
+  const row = screen.getByRole("button", { name: /^Standings, / });
+  await user.click(row);
+  await user.keyboard(" {Delete}");
+  await user.click(screen.getByRole("button", { name: /Más/ }));
+  expect(
+    screen
+      .getByRole("menuitem", { name: /Standings/ })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  await user.keyboard("{Escape}");
+  await user.click(row);
+  await user.keyboard("{Enter}");
+  expect(document.activeElement).toBe(move);
+  expect(
+    spy.mock.calls.filter(
+      ([request]) =>
+        request.method.startsWith("studio.") && request.method !== "studio.get",
+    ),
+  ).toHaveLength(0);
 });
 
 it("navigates the nine anchors with the keyboard and restores trigger focus", async () => {

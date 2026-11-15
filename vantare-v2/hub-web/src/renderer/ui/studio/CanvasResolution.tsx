@@ -1,7 +1,7 @@
 import { Popover } from "@base-ui/react/popover";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type {
   CanvasChoice,
   CanvasView,
@@ -26,6 +26,7 @@ export function CanvasResolution({
   onChange: (choice: CanvasChoice) => void;
 }) {
   const monitor = useRef<string | undefined>(undefined);
+  const [open, setOpen] = useState(false);
   if (canvas.source === "monitor")
     monitor.current = `${canvas.width} × ${canvas.height}`;
   const value =
@@ -33,10 +34,17 @@ export function CanvasResolution({
       ? "monitor"
       : `${canvas.width}x${canvas.height}`;
   return (
-    <Popover.Root modal={false}>
+    <Popover.Root
+      modal={false}
+      open={open}
+      onOpenChange={(next) => {
+        if (!next || enabled) setOpen(next);
+      }}
+    >
       <Popover.Trigger
         render={<Button size="sm" variant="ghost" />}
         aria-label={t.resolution}
+        aria-disabled={!enabled}
       >
         {canvas.source === "monitor" ? `${t.monitor} · ` : ""}
         {`${canvas.width} × ${canvas.height} ▾`}

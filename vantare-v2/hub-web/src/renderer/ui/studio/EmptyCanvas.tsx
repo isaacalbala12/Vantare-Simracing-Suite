@@ -31,9 +31,10 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
                 : t.unavailable
               : t.emptyTitle}
           </h2>
-          {!unavailable && <p>{t.emptyHelp}</p>}
+          {!unavailable && <p>{model.blocked ? t.readOnly : t.emptyHelp}</p>}
           <Button
             variant={unavailable ? "neutral" : "primary"}
+            disabled={!unavailable && model.blocked}
             onClick={() => {
               if (unavailable)
                 void model.state.execute({ method: "studio.get" });

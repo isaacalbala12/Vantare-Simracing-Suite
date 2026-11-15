@@ -221,13 +221,18 @@ export function CanvasStage({
       ) : (
         <>
           {!model.enabled && notice !== "uncertain" && (
-            <p className="v-studio-canvas-readonly">
-              {studio.needsRead
-                ? t.uncertain
-                : model.live
-                  ? `${t.liveReadOnly} ${t.liveReadOnlyHelp}`
-                  : t.readOnly}
-            </p>
+            <div className="v-studio-canvas-readonly" role="status">
+              {studio.needsRead ? (
+                t.uncertain
+              ) : model.live ? (
+                <>
+                  <strong>{t.liveReadOnly}</strong>
+                  <small>{t.liveReadOnlyHelp}</small>
+                </>
+              ) : (
+                t.readOnly
+              )}
+            </div>
           )}
           <div ref={viewport} className="v-studio-canvas-viewport">
             <span className="v-canvas-illustration-note">

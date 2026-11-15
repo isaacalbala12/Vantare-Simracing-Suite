@@ -20,7 +20,9 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
   const addLabel =
     view && view.instances.length >= studioLimits.instances
       ? t.atLimit(studioLimits.instances)
-      : blocked
+      : model.canvasReadOnly
+        ? canvasText.readOnly
+        : blocked
         ? view?.plan === "unverified"
           ? t.verifyWidget
           : t.protectedAction

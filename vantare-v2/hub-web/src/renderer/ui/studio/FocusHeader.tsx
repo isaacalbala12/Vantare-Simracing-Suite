@@ -16,12 +16,14 @@ export function FocusHeader({
   pending,
   onTrack,
   onRemove,
+  readOnly = false,
 }: {
   item?: OverlayInstance;
   view: StudioView;
   pending: boolean;
   onTrack: () => void;
   onRemove: () => void;
+  readOnly?: boolean;
 }) {
   const info = view.catalog.find((value) => value.kind === item?.kind);
   const unavailable =
@@ -65,6 +67,7 @@ export function FocusHeader({
             view={view}
             pending={pending}
             onRemove={onRemove}
+            readOnly={readOnly}
           />
         )}
         <DisabledHint

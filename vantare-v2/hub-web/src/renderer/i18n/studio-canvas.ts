@@ -26,7 +26,8 @@ export const canvasText = {
   failedShort: "No se ha guardado",
   readonlyShort: "Solo lectura",
   liveReadOnly: "Solo lectura mientras los overlays están en pista.",
-  liveReadOnlyHelp: "Deja de mostrar en pista para editar.",
+  liveReadOnlyHelp:
+    "Puedes mirar la distribución, pero no moverla. Deja de mostrar en pista para editar.",
   proportions: "Proporción",
   center: "Centro",
   dismiss: "Entendido",

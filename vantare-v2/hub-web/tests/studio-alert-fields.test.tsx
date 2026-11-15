@@ -402,3 +402,53 @@ it("shows unknown mini size and style as preserved without writing", async () =>
   ).toContain("conservado");
   expect(writes()).toHaveLength(0);
 });
+
+it("makes an unsent draft visible after blurring another threshold while a write is pending", async () => {
+  const { studioContentText } = await import(
+    "../src/renderer/i18n/studio-content.es"
+  );
+  const initial = fixture(structuredClone(cases[0].before) as WidgetSettings);
+  const settings = initial.instances[0].settings;
+  if (settings?.kind !== "session-alerts") throw Error("Alerts fixture");
+  settings.thresholds = [5, 1];
+  const { user, accept } = await mount(initial);
+  await user.click(screen.getByRole("tab", { name: studio.content }));
+  const first = screen.getByRole("textbox", { name: text.threshold(0) });
+  const second = screen.getByRole("textbox", {
+    name: text.threshold(1),
+  }) as HTMLInputElement;
+  await user.clear(first);
+  await user.type(first, "10");
+  await user.tab();
+  await user.clear(second);
+  await user.type(second, "7");
+  await user.tab();
+  expect(writes()).toHaveLength(1);
+  expect(screen.getByText(studioContentText.unsavedWhilePending)).toBeTruthy();
+  const next = nextView(initial, { ...settings, thresholds: [10, 1] });
+  await act(async () => accept({ method: "studio.instance", value: next }));
+  expect(writes()).toHaveLength(1);
+  expect(second.value).toBe("7");
+  const help = screen.getByText(studioContentText.unsavedCommit);
+  expect((second.getAttribute("aria-describedby") ?? "").split(" ")).toContain(
+    help.id,
+  );
+  await user.click(second);
+  await user.keyboard("{Enter}");
+  expect(writes()).toHaveLength(2);
+  expect(transport.request).toHaveBeenLastCalledWith({
+    method: "studio.instance",
+    id: initial.instances[0].id,
+    baseRevision: next.revision,
+    patch: {
+      field: "settings",
+      value: { kind: "session-alerts", threshold: { index: 1, minutes: 7 } },
+    },
+  });
+  const confirmed = nextView(next, { ...settings, thresholds: [10, 7] });
+  confirmed.revision = "c".repeat(64);
+  await act(async () =>
+    accept({ method: "studio.instance", value: confirmed }),
+  );
+  expect(screen.queryByText(studioContentText.unsavedCommit)).toBeNull();
+});

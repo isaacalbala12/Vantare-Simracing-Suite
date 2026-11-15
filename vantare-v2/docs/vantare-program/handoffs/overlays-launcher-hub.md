@@ -27,15 +27,35 @@ el lock nativo solo añade esa arista. El lock aislado Rune incorpora flume,
 futures-sink y spin en las mismas versiones ya presentes en producto; ningún
 paquete ni versión nuevo para el repositorio.
 
-Estado: compilación inicial domain/ipc PASS con Rust 1.99.1; seis tests del
-lector Python del catálogo e integridad de 472 huellas PASS. Clippy Full y Hub,
-tests sin gráfica y telemetría pendientes de completar por cola. Los tests
-UI/Hub que crean aplicación/ventanas se reservan a CI; ningún binario ni
-herramienta gráfica se ejecuta en servidor. PR/head/checks finales en #2333.
-Sin merge, release, promoción ni movimiento de Plane propios.
+Validación por cola, Rust 1.99.1, target compartido en D: y cuatro jobs:
+Clippy all-targets de los nueve crates afectados, Hub congelado y bench PASS.
+2.095 tests nativos PASS (16 omisiones del perfil/opt-in); UI 354 PASS,
+con el único test de aplicación gráfica excluido y seis opt-in ya ignorados.
+Telemetría 34 PASS (1 omisión del perfil). Escritor: 79 casos, incluidos tres
+fixtures y las 19 familias en ambas versiones/Looks, PASS con preserve_order
+y en IPC aislado sin ese feature: 158 comparaciones de bytes en total.
+Las 18 demandas
+restantes son idénticas salvo rutas; Standings conserva su oráculo anterior
+y compara 144 variantes. Catálogo y plantillas conservan orden y etiquetas.
+Seis tests Python del catálogo, formato, 472 huellas y 428 licencias Rune PASS.
 
-Siguiente: cerrar PR 3 y empezar Relative Vantare (PR 6) sobre el workspace
-PR 4 y proceso PR 5 del Worker B, cuando estén disponibles.
+CI completa PASS en 6810594c900f75dea357f6b2fde0cd6264688480: lint/build,
+Rune, contrato Hub en ambos órdenes, dos suites nativas, telemetría,
+lifecycle, distribución e instalación. El test original de inicialización
+fija ahora explícitamente la mtime de la escritura: antes asumía una marca
+distinta para dos reemplazos rápidos. No cambia lector/escritor ni se añaden
+esperas; el test IPC de sustitución con igual mtime permanece intacto.
+La revisión del orquestador está pendiente. Los tests Hub y la aplicación
+UI gráfica se validan en CI; ninguno se ejecuta en servidor. Plane comprobado
+En curso, sin modificarlo. Sin merge, release ni promoción propios.
+PR/head final y resultado de sus checks en #2333.
+
+Siguiente: revisión de PR 3. B ha publicado la base independiente del proceso,
+PR #2345, head 9847099e81045d74290970d9d2d437d5b72f5165; aún rechaza --layout
+porque faltan diseño/Presentation, fuente/DemandHandle, cadencias y geometría.
+PR 6 necesita que B conecte esa parte con estas APIs compartidas. Preparadas
+las referencias del Relative Rune de medición y sus tests CPU; no se duplica
+el host de B ni se ejecutan gráficos. F0/F1 quedan para el PC de juego.
 
 ## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
 

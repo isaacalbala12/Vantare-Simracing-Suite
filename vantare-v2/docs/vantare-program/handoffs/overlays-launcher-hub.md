@@ -3,7 +3,8 @@
 Worker B, #2333, ADR 0110 §9; continuación autorizada por el orquestador.
 Rama `vantareapp/isa-2333-overlays-rune-proceso`, base nightly e56c79b26,
 incluido el squash 13981d4b9 de #2343. Retirado su antiguo head 23f629586
-mediante --onto. Código d13cdcef3; PR draft en preparación.
+mediante --onto. Código d13cdcef3; PR draft
+[#2345](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2345).
 
 Arranque con cinturón antes de leer argumentos; CLI aislada de los modos
 gráficos de Rune. Una superficie transparente por monitor válido inicial,

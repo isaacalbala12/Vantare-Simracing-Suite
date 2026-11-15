@@ -254,10 +254,6 @@ export function create(context: MockContext): MockHandler {
     )
       return;
     const { request, id } = message;
-    // Catalogue drops are implemented in ADR 0109 PR 3.
-    if (request.method === "studio.add" && request.at !== undefined) {
-      return { kind: "failure", id, error: { kind: "unsupported" } };
-    }
     const fail = (kind: "denied" | "protected"): HostToUi => ({
       kind: "failure",
       id,
@@ -355,6 +351,25 @@ export function create(context: MockContext): MockHandler {
       }
       case "studio.add": {
         if (!studioAddAvailable) return fail("protected");
+        if (request.at) {
+          if (
+            context.core.live ||
+            context.core.rights !== "connected" ||
+            !context.core.access.verified ||
+            view.plan === "unverified"
+          )
+            return fail("denied");
+          if (
+            !view.canvas ||
+            !Number.isFinite(request.at.x) ||
+            !Number.isFinite(request.at.y) ||
+            request.at.x < 0 ||
+            request.at.y < 0 ||
+            request.at.x >= view.canvas.width ||
+            request.at.y >= view.canvas.height
+          )
+            return { kind: "failure", id, error: { kind: "rejected" } };
+        }
         const widget = view.catalog.find((w) => w.kind === request.kind);
         if (!widget?.allowed || view.instances.length >= studioLimits.instances)
           return fail("denied");
@@ -371,8 +386,8 @@ export function create(context: MockContext): MockHandler {
           opacity: 100,
           showIn: { practice: true, qualifying: true, race: true },
           offTrack: "inherit",
-          x: 38.4,
-          y: 38.4,
+          x: request.at?.x ?? 38.4,
+          y: request.at?.y ?? 38.4,
           sizeMode: "auto",
           aspectLocked: true,
           canvasPlacement: "inside",

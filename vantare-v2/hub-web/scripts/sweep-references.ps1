@@ -20,7 +20,6 @@ foreach ($scene in $Scenes) { foreach ($theme in @('dark','light')) {
         # A receipt proves the input event, not that the bank supports toggling.
         # The report author must inspect both images before accepting an expanded reference.
     } finally {
-        $owner=Get-Content -LiteralPath (Join-Path $lock 'owner.json') -Raw | ConvertFrom-Json
-        if ($owner.nonce -eq $nonce -and [IO.Path]::GetFullPath($lock) -eq 'D:\VantareServer\qa\captura.lock') { Remove-Item -LiteralPath $lock -Recurse }
+        Exit-HubCaptureTurn $lease
     }
 } }

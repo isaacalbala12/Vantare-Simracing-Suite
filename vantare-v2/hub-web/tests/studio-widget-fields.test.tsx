@@ -81,7 +81,7 @@ it("names a legacy damage widget that is not offered in the add catalog", () => 
   const item = contentInstance("car-damage-numbers");
   const current = fixture(item.settings as WidgetSettings);
   expect(current.catalog.some((value) => value.kind === item.kind)).toBe(false);
-  expect(widgetName(item, current)).toBe("DaÃ±os detallados");
+  expect(widgetName(item, current)).toBe("Daños detallados");
 });
 function fixture(settings: WidgetSettings): StudioView {
   for (const message of corpus.host) {
@@ -343,8 +343,7 @@ it("accepts an external color after editing back to the unchanged stored value",
     "../src/renderer/ui/studio/AdditionalWidgetFields"
   );
   const vector = cases.find((value) => value.before.kind === "racing-flags");
-  if (vector?.before.kind !== "racing-flags")
-    throw Error("Flags fixture");
+  if (vector?.before.kind !== "racing-flags") throw Error("Flags fixture");
   const model = {
     disabled: false,
     pending: false,

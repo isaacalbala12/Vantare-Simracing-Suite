@@ -30,8 +30,8 @@
     },
     {
       "error": {
-        "expected": 37,
-        "found": 38,
+        "expected": 38,
+        "found": 39,
         "kind": "incompatible"
       },
       "id": 1,

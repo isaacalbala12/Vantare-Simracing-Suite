@@ -51,8 +51,9 @@ export const canvasText = {
     "El diseño o los permisos han cambiado. Se ha cancelado el gesto; revisa la posición.",
   failed:
     "No se han confirmado los cambios. Revisa el diseño antes de repetir.",
+  saving: "Guardando...",
   saved: "Posición y tamaño guardados.",
-  cancelled: "Gesto cancelado; no se ha guardado.",
+  cancelled: "Gesto local cancelado.",
   invalid: "Introduce un número finito dentro de los límites del lienzo.",
   unavailable:
     "No se puede editar el lienzo: faltan el monitor, la conexión o los derechos vigentes.",

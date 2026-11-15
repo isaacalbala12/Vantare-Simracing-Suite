@@ -24,7 +24,7 @@ export function CanvasFields({
     width: String(item.size.width),
     height: String(item.size.height),
   }));
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<keyof typeof values>();
   const help = useId();
   useEffect(() => {
     setValues({
@@ -36,8 +36,11 @@ export function CanvasFields({
     setError(undefined);
   }, [item.x, item.y, item.size.width, item.size.height]);
   function commit(field: keyof typeof values) {
-    if (disabled) return;
+    if (disabled || writer.inflight) return;
     const n = Number(values[field]);
+    const previous =
+      field === "x" || field === "y" ? item[field] : item.size[field];
+    if (values[field].trim() && n === previous) return;
     const limit =
       field === "x" || field === "y"
         ? limits.nudgeLimit
@@ -47,7 +50,7 @@ export function CanvasFields({
         ? -limit
         : limits.minSize[field === "width" ? 0 : 1];
     if (!values[field].trim() || !Number.isFinite(n) || n < min || n > limit) {
-      setError(t.invalid);
+      setError(field);
       return;
     }
     if (field === "x" || field === "y")
@@ -88,6 +91,7 @@ export function CanvasFields({
             label={t[field]}
             inputMode="decimal"
             value={values[field]}
+            error={error === field ? t.invalid : undefined}
             readOnly={disabled || !!writer.inflight}
             aria-describedby={help}
             onChange={(e) => {
@@ -104,9 +108,7 @@ export function CanvasFields({
           />
         ))}
       </div>
-      <p id={help} role={error ? "alert" : undefined}>
-        {error ?? t.help}
-      </p>
+      <p id={help}>{t.help}</p>
       <Switch
         label={t.aspect}
         checked={item.aspectLocked}

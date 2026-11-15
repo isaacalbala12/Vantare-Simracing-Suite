@@ -15,11 +15,13 @@ import {
 } from "../../contract/generated/studio";
 import { isWidgetSettings } from "../../contract/studio-widget-settings";
 import type { MockContext, MockHandler } from "../context";
+import { applyCanvas, applyGeometry } from "../studio-geometry";
 import { studioStateScene } from "../studio-states";
 export function create(context: MockContext): MockHandler {
   const { sceneName } = context;
   if (sceneName.startsWith("studio-")) {
     context.core.rights = "connected";
+    context.core.photos = "connected";
     context.core.access.verified = true;
   }
   const instances: OverlayInstance[] = [
@@ -31,7 +33,7 @@ export function create(context: MockContext): MockHandler {
       kind: "fuel-strategy",
       size: { width: 296, height: 136 },
     },
-  ].map((item) => ({
+  ].map((item, index) => ({
     ...item,
     settings: widgetDefault(item.kind as WidgetKind),
     visible: true,
@@ -39,8 +41,8 @@ export function create(context: MockContext): MockHandler {
     opacity: 100,
     showIn: { practice: true, qualifying: true, race: true },
     offTrack: "inherit",
-    x: 48,
-    y: 62,
+    x: [48, 760, 700, 1180][index],
+    y: [62, 40, 480, 62][index],
     sizeMode: "auto",
     aspectLocked: true,
     canvasPlacement: "inside",
@@ -100,8 +102,13 @@ export function create(context: MockContext): MockHandler {
     view.catalog = view.catalog.map((w) => ({ ...w, allowed: false }));
   }
   const stateScene = studioStateScene(sceneName, view);
-  const undo: OverlayInstance[][] = [],
-    redo: OverlayInstance[][] = [];
+  type Snapshot = Pick<StudioView, "instances" | "canvas">;
+  const snapshot = (): Snapshot => ({
+    instances: structuredClone(view.instances),
+    canvas: structuredClone(view.canvas),
+  });
+  const undo: Snapshot[] = [],
+    redo: Snapshot[] = [];
   let conflict = sceneName === "studio-error";
   const bump = () => {
     view.revision = (BigInt(`0x${view.revision}`) + 1n)
@@ -124,20 +131,23 @@ export function create(context: MockContext): MockHandler {
     )
       return;
     const { request, id } = message;
-    // The canvas UI PR will share its Rust-vector-verified gesture implementation
-    // with these mocks. Until then no geometry success is invented.
-    if (
-      request.method === "studio.geometry" ||
-      request.method === "studio.canvas" ||
-      (request.method === "studio.add" && request.at !== undefined)
-    ) {
+    if (request.method === "studio.add" && request.at !== undefined)
       return { kind: "failure", id, error: { kind: "unsupported" } };
-    }
-    const fail = (kind: "denied" | "protected"): HostToUi => ({
+    const fail = (kind: "denied" | "protected" | "rejected"): HostToUi => ({
       kind: "failure",
       id,
       error: { kind },
     });
+    if (
+      (request.method === "studio.geometry" ||
+        request.method === "studio.canvas") &&
+      (!context.core.access.verified ||
+        context.core.access.blocked ||
+        context.core.live ||
+        context.core.photos !== "connected" ||
+        view.plan === "unverified")
+    )
+      return fail("denied");
     if (
       request.method !== "studio.get" &&
       !(request.method === "studio.track" && !request.show) &&
@@ -156,7 +166,7 @@ export function create(context: MockContext): MockHandler {
         error: { kind: "studioConflict", current: structuredClone(view) },
       };
     }
-    const before = structuredClone(view.instances);
+    const before = snapshot();
     let added: string | null = null;
     switch (request.method) {
       case "studio.get":
@@ -168,7 +178,8 @@ export function create(context: MockContext): MockHandler {
         const prior = undo.pop();
         if (!prior) return fail("denied");
         redo.push(before);
-        view.instances = prior;
+        view.instances = prior.instances;
+        view.canvas = prior.canvas;
         bump();
         break;
       }
@@ -176,8 +187,24 @@ export function create(context: MockContext): MockHandler {
         const next = redo.pop();
         if (!next) return fail("denied");
         undo.push(before);
-        view.instances = next;
+        view.instances = next.instances;
+        view.canvas = next.canvas;
         bump();
+        break;
+      }
+      case "studio.geometry":
+      case "studio.canvas": {
+        const result =
+          request.method === "studio.geometry"
+            ? applyGeometry(view, request.id, request.change)
+            : applyCanvas(view, request.resolution);
+        if (result === "same")
+          return {
+            kind: "response",
+            id,
+            result: { method: request.method, value: structuredClone(view) },
+          };
+        if (result !== "changed") return fail(result);
         break;
       }
       case "studio.add": {

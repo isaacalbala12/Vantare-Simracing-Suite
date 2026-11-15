@@ -246,17 +246,15 @@ it("Next focuses En pista and changing widget resets to Appearance", async () =>
   expect(screen.queryByRole("slider")).toBeNull();
 });
 
-it("Content can receive arrow focus without activating a promised panel", async () => {
+it("Content activates from arrow focus without writing the supported widget", async () => {
   mount();
   const user = userEvent.setup();
   await user.click(screen.getByRole("tab", { name: t.track }));
   await user.keyboard("{ArrowRight}");
   const content = screen.getByRole("tab", { name: t.content });
   expect(document.activeElement).toBe(content);
-  expect(content.getAttribute("aria-disabled")).toBe("true");
-  expect(
-    screen.getByRole("tab", { name: t.track }).getAttribute("aria-selected"),
-  ).toBe("true");
+  expect(content.getAttribute("aria-disabled")).not.toBe("true");
+  expect(content.getAttribute("aria-selected")).toBe("true");
   await user.keyboard("{Enter} ");
   expect(state.execute).not.toHaveBeenCalled();
 });

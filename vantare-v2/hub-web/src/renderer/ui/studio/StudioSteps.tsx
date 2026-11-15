@@ -8,6 +8,7 @@ import { Button } from "../Button";
 import { Spinner } from "../Data";
 import { Tooltip } from "../Layers";
 import { AppearanceStep } from "./AppearanceStep";
+import { ContentStep } from "./ContentStep";
 import { TrackStep } from "./TrackStep";
 import "./studio-steps.css";
 export function StudioSteps({
@@ -39,7 +40,8 @@ function Steps({
       onValueChange={(value) => {
         if (
           !readOnly &&
-          (value === "track" || (value === "appearance" && item.settings))
+          (value === "track" ||
+            ((value === "appearance" || value === "content") && item.settings))
         )
           setStep(String(value));
       }}
@@ -67,13 +69,18 @@ function Steps({
             </span>
             {t.track}
           </Tabs.Tab>
-          <Tooltip label={t.contentSoonHelp}>
-            <Tabs.Tab value="content" aria-disabled="true">
+          <Tooltip label={item.settings ? t.content : t.contentSoonHelp}>
+            <Tabs.Tab
+              value="content"
+              aria-disabled={readOnly || !item.settings || undefined}
+            >
               <span className="v-step-number" aria-hidden="true">
                 {t.stepNumbers[2]}
               </span>
               {t.content}
-              <small aria-hidden="true">{t.contentSoonBadge}</small>
+              {!item.settings && (
+                <small aria-hidden="true">{t.contentSoonBadge}</small>
+              )}
             </Tabs.Tab>
           </Tooltip>
         </Tabs.List>
@@ -126,6 +133,9 @@ function Steps({
           </Tabs.Panel>
           <Tabs.Panel value="track">
             <TrackStep item={item} />
+          </Tabs.Panel>
+          <Tabs.Panel value="content">
+            <ContentStep item={item} />
           </Tabs.Panel>
         </>
       )}

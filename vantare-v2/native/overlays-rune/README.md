@@ -107,7 +107,7 @@ hasta el modo captura del Worker B; un diseño normal puede tener diez Relative.
 La paridad visual y el consumo real esperan a la comparación en el PC de juego.
 
 `src/vantare` usa las fuentes del producto y los tokens del JSON canónico de UI.
-`python scripts/generar_vantare.py --check` verifica los tokens Rust generados;
+`python tools/generar_vantare.py --check` verifica los tokens Rust generados;
 regenerar sin `--check` al cambiar el JSON. No hay segundo parser ni librería nueva.
 La CI se activa también al cambiar esas fuentes o estilos.
 

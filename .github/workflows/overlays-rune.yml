@@ -80,9 +80,9 @@ jobs:
         if: steps.scope.outputs.needed != 'false'
         working-directory: vantare-v2/native/overlays-rune
         run: |
-          python scripts/generar_vantare.py --check
+          python tools/generar_vantare.py --check
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python -m unittest discover -s scripts -p test_vantare.py
+          python -m unittest discover -s tools -p test_vantare.py
           exit $LASTEXITCODE
       - name: Licencias permisivas y aislamiento de GPUI
         if: steps.scope.outputs.needed != 'false'

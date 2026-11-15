@@ -1,3 +1,26 @@
+## VANTA-144 · validación final de conexión y Relative con monitores (15/11/2026)
+
+Conexión #2349, head 8a313ac0f97ff526bd42f280990ceb20323fd39d: todos los checks
+GitHub verdes y sin conflictos a la última lectura. Cola local Windows/1.99.1/dos
+jobs: formato, Clippy, 37 tests CPU (35 biblioteca + 2 main), enlace sin ejecutar
+y 428 paquetes permisivos PASS. Incluye monitores de B y su nueva prueba de
+viewport/foto retenida. Base combinada 063b1b213 sobre nightly dfa431062; #2344
+sigue abierto con su head revisado. Retirar esa base al entrar su squash.
+
+Relative #2357, código validado f616489e21139ea2cb6144923d7c4ea7d953ac51:
+formato, Clippy, 51 tests CPU (49 biblioteca + 2 main), enlace sin ejecutar y
+licencias PASS en la misma reserva. Nuevo caso de origen/DPI conserva la foto y
+cuenta diseño; primary solo no cambia el dibujo. Conservados los módulos de B
+sin modificaciones. Siguen pasando reposo 30 s, fin de movimiento y diez widgets
+a 5/15/20 Hz. Rune Windows PASS en GitHub; resto de CI y revisión en el PR.
+
+El kit de medición observa el directorio compartido scripts, reservado a las
+licencias, y rechaza diffs de producto. Las herramientas nuevas de estilos viven
+en overlays-rune/tools y las valida el workflow propio de producto. El workflow
+y el verificador de aislamiento del kit se conservan sin cambios. No se ejecutó
+producto, ventana, dispositivo ni opción gráfica. Sin merge/release ni cambio de
+Plane. La aceptación visual y de consumo espera al PC.
+
 ## VANTA-138 · D048, bandas existentes sin horario (16/11/2026)
 
 E permite editar una banda guardada por su seriesId sin exigir horario vigente;

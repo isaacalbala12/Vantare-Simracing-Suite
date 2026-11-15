@@ -1,7 +1,7 @@
 /* Vista Lienzo A: the definite column supplies height, the plane only fills it. */
 .v-studio-focus-layout[data-view="canvas"] .v-focus-column {
   overflow: visible;
-  gap: 14px;
+  gap: 8px;
   min-block-size: 0;
 }
 .v-studio-focus-layout[data-view="canvas"] .v-focus-header {
@@ -19,6 +19,10 @@
 }
 .v-studio-temporary[hidden] {
   display: none;
+}
+.v-canvas-resolution-slot .v-button {
+  font-size: 11px;
+  padding-inline: 6px;
 }
 .v-studio-view-switch {
   display: flex;
@@ -91,7 +95,7 @@
 .v-focus-stage.v-studio-canvas-stage {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   flex: 1 1 0;
   min-block-size: 0;
   min-inline-size: 0;
@@ -316,11 +320,12 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-block-size: 48px;
-  padding: 0 8px 0 14px;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-block-size: 44px;
+  padding: 4px 6px;
   border: 1px solid var(--edge);
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   background: var(--surface-1);
   color: var(--text-2);
   white-space: nowrap;
@@ -411,15 +416,6 @@
   font-size: 11.5px;
   color: var(--text-caption);
   margin-block-start: 8px;
-}
-.v-studio-canvas-help {
-  position: sticky;
-  inset: auto auto 10px 12px;
-  margin: -24px 12px 8px;
-  pointer-events: none;
-  font-size: 11px;
-  color: var(--text-caption);
-  line-height: 1.4;
 }
 .v-studio-canvas-readonly {
   flex: none;
@@ -567,7 +563,7 @@
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
-  inline-size: min(calc(100cqw - 72px), calc((100cqh - 88px) * 16 / 9));
+  inline-size: min(100cqw, calc(100cqh * 16 / 9));
   background: var(--ill-ground);
   border: 1px solid var(--line-3);
 }
@@ -631,18 +627,6 @@
 .v-studio-canvas-widget[data-canvas-selected="true"] .v-studio-canvas-caption {
   border-color: var(--accent);
 }
-.v-studio-canvas-help {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  inline-size: max-content;
-  max-inline-size: calc(100% - 24px);
-  margin-block-start: -26px;
-  font-size: 11.5px;
-}
-.v-studio-canvas-help .v-keycap {
-  background: var(--surface-panel);
-}
 .v-canvas-accessible-help {
   position: absolute;
   inline-size: 1px;
@@ -678,9 +662,6 @@
 .v-studio-focus-layout[data-view="canvas"][data-missing="false"] {
   grid-template-columns: 176px minmax(0, 1fr);
   gap: 12px;
-}
-.v-studio-focus-layout[data-view="canvas"] .v-focus-column {
-  gap: 8px;
 }
 .v-studio-focus-layout[data-view="canvas"] .v-focus-strip {
   inline-size: auto;
@@ -726,22 +707,4 @@
   .v-focus-row
   > button {
   justify-content: center;
-}
-.v-focus-stage.v-studio-canvas-stage {
-  gap: 0;
-}
-.v-focus-stage.v-studio-canvas-stage > footer {
-  flex-wrap: wrap;
-  min-block-size: 44px;
-  gap: 4px;
-  padding: 4px 6px;
-  border-radius: 0;
-}
-.v-canvas-resolution-slot .v-button {
-  font-size: 11px;
-  padding-inline: 6px;
-}
-.v-canvas-empty-plane {
-  inline-size: min(100cqw, calc(100cqh * 16 / 9));
-  box-shadow: none;
 }

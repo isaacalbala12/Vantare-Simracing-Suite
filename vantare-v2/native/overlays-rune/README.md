@@ -20,6 +20,9 @@ las claves no dependen del nombre del monitor. Usa click-through, siempre encima
 sin foco/activación, ni entrada en Alt-Tab/barra de tareas en Windows. Los ajustes
 nativos se aplican sobre el handle prestado de Rune; un error cierra el proceso.
 `--start-hidden` crea las ventanas ocultas. No hay widgets ni capturas todavía.
+El seguimiento de conectar/desconectar monitores está en
+[#2346](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2346)
+(padre #2333), obligatorio antes de F2.
 
 La CLI del supervisor acepta `--fuente local|pipe[:nombre]`, `--control-stdin`
 y `--start-hidden`. El valor por defecto es el pipe del núcleo del usuario.
@@ -34,8 +37,14 @@ En la fuente real se conecta el Feed de derechos existente, que comprueba la
 identidad del núcleo. La autorización por widget sigue exactamente
 `ui::rights::allowed_at`: observación fresca, estado que permite acceso y catálogo.
 Caducidad, revocación y reinicio retiran el acceso. Renovar el TTL sin cambiar
-la autorización no solicita otro frame. `local` es solo preview sintético,
-explícito, sin cuenta ni credenciales. El núcleo admite ahora ambos ejecutables
+la autorización no solicita otro frame. `--fuente local` es solo desarrollo:
+preview sintético explícito, sin cuenta ni credenciales, en compilaciones debug.
+Las distribuciones release (debug_assertions desactivado) rechazan ese argumento
+antes de crear hilos o ventanas; LocalPreview tampoco concede widgets en ese
+perfil aunque se construya internamente. Se usa una única política para ambos
+caminos, cubierta por tests CPU compilados también sin debug_assertions en CI.
+Los PR 6/7 deben conservar este cierre al incorporar widgets y el modo de captura.
+El núcleo admite ahora ambos ejecutables
 hermanos (`vantare-overlays.exe` y `vantare-overlays-rune.exe`) como lectores;
 Services sigue siendo el único mutador. Una copia en otra carpeta no es admitida.
 
@@ -105,6 +114,8 @@ usar `--overlays-bin` del supervisor existente y fuente `local`, sin cuentas ni
 datos reales. La prueba comprueba:
 
 1. Un HWND por monitor, límites físicos y DPI 100/125/150, incluidos orígenes negativos.
+   El DPI por monitor depende del parche winit de la copia Rune fijada al commit
+   d5338988; verificarlo en ese PC de juego, incluidos monitores con escalas distintas.
 2. Clics y teclado llegan al juego; foco y ventana activa no cambian al iniciar.
 3. Siempre encima, sin entrada en Alt-Tab o barra de tareas; OBS y VRR pendientes de prueba real.
 4. Inicio oculto sin flash. La presentación desde el Hub espera el lector compartido.

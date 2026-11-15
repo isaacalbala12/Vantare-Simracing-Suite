@@ -96,3 +96,12 @@ jobs:
         if: steps.scope.outputs.needed != 'false'
         working-directory: vantare-v2/native/overlays-rune
         run: cargo build --locked --bin vantare-overlays-rune
+      - name: Política de distribución sin preview local (solo CPU)
+        if: steps.scope.outputs.needed != 'false'
+        working-directory: vantare-v2/native/overlays-rune
+        run: |
+          $policyTest = Join-Path $env:RUNNER_TEMP 'overlays-rune-release-policy-tests.exe'
+          rustc --edition=2024 --test -C debug-assertions=no src/options.rs -o $policyTest
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & $policyTest
+          exit $LASTEXITCODE

@@ -174,6 +174,10 @@ impl Layout {
         };
         let column_header = if vantare {
             g.column_header_height
+        } else if broadcast {
+            super::tokens::GEOMETRY_BROADCAST_COLUMN_HEIGHT
+        } else if settings.show_session_header && identity_span(columns) {
+            0.0
         } else {
             super::tokens::GEOMETRY_COLUMN_HEADER_HEIGHT
         };
@@ -263,6 +267,27 @@ impl Layout {
             banner,
         }
     }
+}
+fn identity_span(columns: &[ColumnSetting]) -> bool {
+    let prefix: Vec<_> = columns
+        .iter()
+        .take_while(|c| {
+            matches!(
+                c.metric_id.as_str(),
+                "position" | "driverNumber" | "carNumber" | "driverName" | "vehicleClass" | "class"
+            )
+        })
+        .collect();
+    prefix.iter().any(|c| c.metric_id == "driverName")
+        && prefix
+            .iter()
+            .map(|c| match c.metric_id.as_str() {
+                "driverName" => 188.0,
+                "vehicleClass" | "class" => 54.0,
+                _ => 30.0,
+            })
+            .sum::<f32>()
+            >= 238.0
 }
 fn width(c: &ColumnSetting, vantare: bool, broadcast: bool, s: &Style) -> f32 {
     let g = &s.geometry;

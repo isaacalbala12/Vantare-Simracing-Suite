@@ -54,6 +54,10 @@ fn both_looks_use_domain_rows_gaps_quality_and_selection() {
         let plan = Plan::new(board, String::new(), input.sequence);
         let mut painter = Standings::new(&s, Preferences::default());
         assert!(painter.update(&input));
+        assert!(
+            !painter.display.rows.is_empty(),
+            "the original scene must actually paint cars"
+        );
         assert_eq!(
             painter
                 .display
@@ -84,7 +88,7 @@ fn pause_keeps_the_last_picture_and_resume_applies_the_new_picture() {
         let before = painter.display.rows.clone();
         let size = painter.size();
         input.state.source_state = SourceState::Paused;
-        input.state.cars[0].driver = "not a live update".into();
+        input.state.cars[0].driver.name = "not a live update".into();
         assert!(painter.update(&input));
         assert_eq!(painter.display.rows, before);
         assert_eq!(painter.size().height, size.height + 22.0);
@@ -160,6 +164,51 @@ fn session_columns_formats_duplicate_keys_disabled_and_unknown_columns() {
         row.cells[2].text,
         canonical.row(id).expect("projected car").last_lap
     );
+}
+
+#[test]
+fn sectors_pits_compounds_and_predicted_size_follow_the_projection() {
+    let mut input = snapshot();
+    input.state.cars[0].current_sectors_s = vec![
+        Quality::Reliable(30.0),
+        Quality::Unavailable,
+        Quality::Unavailable,
+    ];
+    input.state.cars[0].in_pits = Quality::Reliable(true);
+    input.state.cars[0].tyre_compound = Quality::Reliable(vantare_domain::TyreCompound::Soft);
+    for look in [Look::Vantare, Look::Eficiencia] {
+        let s = Settings {
+            classification_mode: "multiclass".into(),
+            columns: Some(vec![
+                column("driverName"),
+                column("pit"),
+                column("sectors"),
+                column("tireCompound"),
+            ]),
+            ..settings(look)
+        };
+        let mut painter = Standings::new(&s, Preferences::default());
+        let predicted = painter.size_for(Some(&input));
+        assert!(painter.update(&input));
+        assert_eq!(
+            painter.size(),
+            predicted,
+            "placement uses the first useful size, including class bands"
+        );
+        let row = painter
+            .display
+            .rows
+            .iter()
+            .find(|r| r.id == input.state.cars[0].id.0)
+            .expect("visible car");
+        assert!(
+            row.cells
+                .iter()
+                .any(|c| c.text == "BOX" && c.fill.is_some())
+        );
+        assert!(row.cells.iter().any(|c| c.text == "S" && c.fill.is_some()));
+        assert!(row.cells.iter().any(|c| c.segments.len() == 3));
+    }
 }
 
 #[test]
@@ -262,6 +311,13 @@ fn thirty_seconds_of_sequences_and_hidden_data_produce_zero_new_cpu_images() {
         runtime.settle_all();
         runtime.frame(0.0);
         let before = payload(&runtime);
+        assert!(
+            runtime
+                .elements()
+                .iter()
+                .any(|e| e.key.as_deref().is_some_and(|k| k.starts_with("car-"))),
+            "exercise the connected Standings, not an empty host"
+        );
         for n in 1..=300 {
             input.sequence += 1;
             input.state.cars[0].relative_s = Quality::Reliable(f64::from(n)); // Not displayed by Standings.
@@ -308,10 +364,16 @@ fn visible_data_never_paints_faster_than_the_host_widget_cadence() {
             runtime.settle_all();
             runtime.frame(0.0);
             let mut before = payload(&runtime);
+            assert!(
+                runtime
+                    .elements()
+                    .iter()
+                    .any(|e| e.key.as_deref().is_some_and(|k| k.starts_with("car-")))
+            );
             let mut images = 0;
             for ms in 1..=1000 {
                 input.sequence += 1;
-                input.state.cars[0].driver = format!("Driver {ms}");
+                input.state.cars[0].driver.name = format!("Driver {ms}");
                 if scene.ingest(
                     Photo::full(Arc::new(input.clone())),
                     start + Duration::from_millis(ms),

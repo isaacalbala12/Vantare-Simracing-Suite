@@ -155,7 +155,8 @@ fn read(path: &std::path::Path, max: u64) -> io::Result<Vec<u8>> {
 /// The executable's machine graphics guard precedes even parsing this request.
 pub fn run(args: &[OsString]) -> Result<(), Box<dyn std::error::Error>> {
     let request = Request::parse(args, crate::options::LOCAL_PREVIEW_ENABLED)?;
-    if request.output.try_exists()? {
+    let identity = request.output.with_extension("capture.txt");
+    if request.output.try_exists()? || identity.try_exists()? {
         return Err(io::Error::new(
             io::ErrorKind::AlreadyExists,
             "la captura no reemplaza evidencias anteriores",
@@ -166,6 +167,17 @@ pub fn run(args: &[OsString]) -> Result<(), Box<dyn std::error::Error>> {
     let image = render_gpu(&mut capture)?;
     let (w, h) = image.size.pixels();
     rune::render::write_png(&request.output, w, h, &image.pixels)?;
+    use std::io::Write;
+    let mut record = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(identity)?;
+    writeln!(
+        record,
+        "engine=rune\ncommit={}\nrune_rev=d5338988a7c1b3377adb60853815b6d0843dae7c\nscale={}\nwidth={w}\nheight={h}",
+        env!("VANTARE_OVERLAYS_COMMIT"),
+        image.size.scale()
+    )?;
     Ok(())
 }
 

@@ -27,6 +27,8 @@ pub(super) struct Cell {
     pub text: String,
     pub ink: Color,
     pub align: Align,
+    pub segments: Vec<Color>,
+    pub fill: Option<Color>,
 }
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Row {
@@ -87,7 +89,22 @@ impl Display {
                 cells: layout
                     .columns
                     .iter()
-                    .map(|column| cell(row, &column.setting, plan, &s))
+                    .map(|column| {
+                        let mut cell = cell(row, &column.setting, plan, &s);
+                        if column.setting.metric_id == "driverName" {
+                            if settings.design_system == Look::Eficiencia {
+                                cell.text = cell.text.to_uppercase();
+                            }
+                            if settings.columns.as_ref().is_some_and(|cols| {
+                                cols.iter().any(|c| c.enabled && c.metric_id == "vehicle")
+                            }) && !row.vehicle.is_empty()
+                            {
+                                cell.text.push_str(" · ");
+                                cell.text.push_str(&row.vehicle);
+                            }
+                        }
+                        cell
+                    })
                     .collect(),
             })
             .collect();
@@ -172,12 +189,7 @@ fn cell(row: &SelectedRow, column: &ColumnSetting, plan: &Plan, style: &Style) -
             Pit::Stops(n) => n.to_string(),
             Pit::Unknown => PLACEHOLDER.into(),
         },
-        "sectors" => row
-            .sectors
-            .iter()
-            .map(|m| if *m == Mark::Pending { "—" } else { "▪" })
-            .collect::<Vec<_>>()
-            .join(" "),
+        "sectors" => String::new(),
         _ => PLACEHOLDER.into(),
     };
     let ink = match metric {
@@ -209,7 +221,33 @@ fn cell(row: &SelectedRow, column: &ColumnSetting, plan: &Plan, style: &Style) -
             }
         }
     };
-    Cell { text, ink, align }
+    let segments = if metric == "sectors" {
+        row.sectors.iter().map(|m| mark(*m, style)).collect()
+    } else {
+        Vec::new()
+    };
+    let fill = match metric {
+        "driverNumber" | "carNumber" => Some(style.class(&row.class).tint),
+        "pit" => Some(if row.in_pits {
+            style.colors.box_fill
+        } else {
+            style.colors.stops_fill
+        }),
+        "tireCompound" => row.compound.map(|compound| match compound {
+            TyreCompound::Soft => style.colors.compound_soft,
+            TyreCompound::Medium => style.colors.compound_medium,
+            TyreCompound::Hard => style.colors.compound_hard,
+            TyreCompound::Wet => style.colors.compound_wet,
+        }),
+        _ => None,
+    };
+    Cell {
+        text,
+        ink,
+        align,
+        segments,
+        fill,
+    }
 }
 fn mark(value: Mark, s: &Style) -> Color {
     match value {
@@ -489,6 +527,34 @@ fn table(
                 );
         }
         for (column_index, (cell, column)) in row.cells.iter().zip(&l.columns).enumerate() {
+            if let Some(fill) = cell.fill {
+                item = item.child(
+                    el().key(format!("chip-{column_index}"))
+                        .absolute(column.x, 4.0)
+                        .size(column.width, (l.row - 8.0).max(0.0))
+                        .radius(s.geometry.chip_radius)
+                        .fill(fill),
+                );
+            }
+            if !cell.segments.is_empty() {
+                let gap = s.geometry.sector_gap;
+                let width = ((column.width - gap * (cell.segments.len().saturating_sub(1)) as f32)
+                    / cell.segments.len() as f32)
+                    .max(0.0);
+                for (segment, ink) in cell.segments.iter().enumerate() {
+                    item = item.child(
+                        el().key(format!("sector-{column_index}-{segment}"))
+                            .absolute(
+                                column.x + segment as f32 * (width + gap),
+                                (l.row - s.geometry.sector_height) / 2.0,
+                            )
+                            .size(width, s.geometry.sector_height)
+                            .radius(s.geometry.sector_radius)
+                            .fill(*ink),
+                    );
+                }
+                continue;
+            }
             item = item.child(label(
                 &format!("cell-{column_index}"),
                 &cell.text,

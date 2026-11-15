@@ -43,6 +43,13 @@ python native/overlays-rune/scripts/preparar_escenas.py --widget standings --esc
 Las 16 escenas originales producen 96 pares pendientes con identidad del motor,
 commit, copia Rune, datos y escala. Se conserva el corpus, salvo la elección de
 Look. Un plan sin PNG no es evidencia gráfica ni una medición.
+El binario incrusta su commit mediante `build.rs` (solo std/git). Cada PNG lleva
+un archivo `rune.capture.txt` con el motor, commit, copia Rune, tamaño y escala.
+En la sesión autorizada del PC de juego, `scripts/capturar_standings.py --plan
+<plan.json> --exe <binario-debug>` ejecuta el lote offscreen. Valida todas las
+entradas antes de lanzar un proceso, conserva hashes de binario/PNG y rechaza
+una identidad distinta del plan. Deja el resultado como capturado sin revisar;
+no afirma PASS ni lanza GPUI. El servidor rechaza ese guion antes de leer rutas.
 
 Base y proceso (PR 4/5) de [ADR 0110](../../docs/adr/0110-overlays-en-rune.md).
 El Hub permanece en Electron. Este workspace independiente conserva su propio

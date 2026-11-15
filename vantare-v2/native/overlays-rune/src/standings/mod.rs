@@ -20,8 +20,8 @@ pub struct Standings {
     settings: Settings,
     prefs: Preferences,
     board: Arc<Board>,
-    pub(super) layout: layout::Layout,
-    pub(super) display: paint::Display,
+    layout: layout::Layout,
+    display: paint::Display,
     paused: bool,
     live: bool,
 }

@@ -44,7 +44,7 @@ export function CanvasTools({
           </Button>
         ))}
       </fieldset>
-      <Popover.Root>
+      <Popover.Root modal={false}>
         <Popover.Trigger render={<Button size="sm" variant="ghost" />}>
           {t.anchors}
         </Popover.Trigger>

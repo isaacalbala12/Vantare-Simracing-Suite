@@ -125,6 +125,11 @@ async function mount(scene = "studio-canvas") {
   await screen.findByRole("button", { name: /^Standings, / });
   await userEvent.setup().click(screen.getByRole("button", { name: t.open }));
   const move = await screen.findByRole("button", { name: t.move("Standings") });
+  await waitFor(() =>
+    expect(move.getAttribute("aria-disabled")).toBe(
+      scene.endsWith("readonly") ? "true" : "false",
+    ),
+  );
   return { ...ui, move };
 }
 function requests(spy: MockInstance<Client["request"]>) {
@@ -158,6 +163,7 @@ it("Escape discards a keyboard gesture without a write", async () => {
   const { move } = await mount();
   fireEvent.keyDown(move, { key: "ArrowLeft" });
   fireEvent.keyDown(move, { key: "Escape" });
+  fireEvent.keyDown(move, { key: "ArrowLeft", repeat: true });
   fireEvent.keyUp(move, { key: "ArrowLeft" });
   await act(async () => {});
   expect(requests(spy)).toHaveLength(0);
@@ -248,4 +254,53 @@ it("keeps only the last queued gesture while a save is in flight", async () => {
     baseRevision: "1".padStart(64, "0"),
     change: { kind: "move", x: 51, y: 62 },
   });
+});
+
+it("provides eight keyboard resize handles and persists only changed geometry", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  expect(document.querySelectorAll("[data-canvas-handle]")).toHaveLength(8);
+  const top = screen.getByRole("button", {
+    name: t.resize("Standings", t.handles[1]),
+  });
+  // Horizontal movement cannot change a top-only handle or auto size mode.
+  arrow(top, "ArrowRight");
+  expect(requests(spy)).toHaveLength(0);
+  const right = screen.getByRole("button", {
+    name: t.resize("Standings", t.handles[3]),
+  });
+  arrow(right);
+  await waitFor(() => expect(requests(spy)).toHaveLength(1));
+  expect(requests(spy)[0]).toMatchObject({
+    change: { kind: "resize", x: 48, y: 62, width: 339 },
+  });
+});
+
+it("anchors with a click alternative and keeps canvas zoom local", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: t.zoomMore }));
+  await user.click(screen.getByRole("button", { name: t.fit }));
+  expect(requests(spy)).toHaveLength(0);
+  await user.click(screen.getByRole("button", { name: t.anchors }));
+  await user.click(
+    await screen.findByRole("button", {
+      name: t.anchor(t.rows[2], t.columns[2]),
+    }),
+  );
+  await waitFor(() => expect(requests(spy)).toHaveLength(1));
+  expect(requests(spy)[0]).toMatchObject({
+    change: { kind: "anchor", column: 2, row: 2 },
+  });
+});
+
+it("discards an unfinished gesture on unmount without leaving a key listener", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  const { move, unmount } = await mount();
+  fireEvent.keyDown(move, { key: "ArrowRight" });
+  unmount();
+  fireEvent.keyUp(window, { key: "ArrowRight" });
+  await act(async () => {});
+  expect(requests(spy)).toHaveLength(0);
 });

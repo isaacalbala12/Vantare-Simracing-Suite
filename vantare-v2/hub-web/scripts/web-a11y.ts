@@ -26,6 +26,7 @@ import { checkResidentAnswer } from "./check-resident-answer.ts";
 import { checkResidentControls } from "./check-resident-control.ts";
 import { checkResidentRemoval } from "./check-resident-removal.ts";
 import { checkResidentResults } from "./check-resident-results.ts";
+import { checkStudioCanvas } from "./check-studio-canvas.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
 import { until } from "./wait-for";
@@ -225,6 +226,7 @@ try {
       `Studio/${scheme}: accessibility violations`,
     );
   }
+  await checkStudioCanvas(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await writeFile(
     resolve(evidence, "interactions.json"),
     JSON.stringify({

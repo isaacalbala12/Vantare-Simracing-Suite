@@ -70,9 +70,60 @@ it("projects fractional geometry while mock-only unsupported orders never preten
   changed.result.value.instances[0].size.width = 338.5;
   changed.result.value.instances[0].canvasPlacement = "outside";
   expect(isHostMessage(changed)).toBe(true);
-  expect(host(geometry({ kind: "move", x: 1, y: 2 }))).toMatchObject({
+  expect(
+    host(
+      message({
+        method: "studio.canvas",
+        baseRevision: revision,
+        resolution: { kind: "monitor" },
+      }),
+    ),
+  ).toMatchObject({
     kind: "failure",
     error: { kind: "unsupported" },
   });
   expect(host(message({ method: "studio.get" }))).toEqual(snapshot);
+});
+
+it("persists fractional geometry in the QA host and rejects a stale gesture", () => {
+  const host = createMockHost("studio-canvas");
+  const response = host(geometry({ kind: "move", x: -12.5, y: 48.25 }));
+  expect(response).toMatchObject({
+    kind: "response",
+    result: {
+      method: "studio.geometry",
+      value: {
+        revision: "1".padStart(64, "0"),
+        instances: [
+          expect.objectContaining({
+            id: "widget-1",
+            x: -12.5,
+            y: 48.25,
+            canvasPlacement: "outside",
+          }),
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+        ],
+      },
+    },
+  });
+  expect(isHostMessage(response)).toBe(true);
+  expect(host(geometry({ kind: "move", x: 99, y: 99 }))).toMatchObject({
+    kind: "failure",
+    error: { kind: "studioConflict" },
+  });
+  expect(host(message({ method: "studio.get" }))).toMatchObject({
+    kind: "response",
+    result: {
+      value: {
+        instances: [
+          expect.objectContaining({ x: -12.5, y: 48.25 }),
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+        ],
+      },
+    },
+  });
 });

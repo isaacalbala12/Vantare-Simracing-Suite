@@ -250,6 +250,9 @@ export function useCanvasInputs(
     if (!direction) return;
     event.preventDefault();
     event.stopPropagation();
+    // Escape/blur must cancel until the held key is released, not just until
+    // the operating system delivers its next repeat.
+    if (event.repeat && !held.current) return;
     const active = held.current;
     if (active) {
       if (active.key === event.key) {

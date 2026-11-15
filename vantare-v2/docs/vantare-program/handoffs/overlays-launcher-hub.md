@@ -150,7 +150,8 @@ Solo primer pintor Vantare, datos simulados en CPU y repintado a demanda.
 Reutiliza domain::delta, tokens/fuentes y Tween existente; sin capa nueva de
 movimiento, transporte ni opciones. Cambio de renderer limitado al despacho.
 Sin Eficiencia/avisos/capturas aun; ver src/delta/README.md. Formato y auditoria
-de 428 paquetes PASS; Clippy/tests encolados, sin afirmar resultado todavia.
+de 428 paquetes PASS. Primer Clippy detecto un mut innecesario en el constructor;
+retirado sin excepciones. Repeticion Clippy/tests encolada; aun sin resultado.
 No se ejecutan producto ni graficos. Sin PR, push, merge/release ni Plane.
 
 #2349 con #2344 ya fusionado por el orquestador en 529f1374b. #2351 y #2359

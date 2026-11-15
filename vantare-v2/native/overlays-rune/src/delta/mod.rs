@@ -33,7 +33,7 @@ impl Delta {
     pub fn new(settings: &Settings, prefs: Preferences, reduced: bool) -> Self {
         let settings = settings.normalized();
         let board = delta::project_reference(&Snapshot::default(), prefs, reference(&settings));
-        let mut value = Self {
+        let value = Self {
             settings,
             prefs,
             board,

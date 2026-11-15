@@ -533,9 +533,9 @@ La cola publica el checkout activo mediante un enlace estable por slot
 (`<raíz de targets>/slot-workspaces/slot-N`). Cargo compila a través de esa ruta,
 así que alternar checkouts en el mismo slot reutiliza los artefactos locales y
 solo recompila lo que cambia. Al cambiar de checkout se comparan los árboles de
-cada paquete con el anterior y se limpian solo los que cambiaron (`cargo clean
--p`); los iguales se reutilizan. Los targets explícitos (mediciones, QA y
-empaquetado) conservan su ruta real y no usan el enlace.
+cada paquete con el anterior y solo se invalidan los que cambiaron adelantando
+el mtime de sus ficheros; los iguales se reutilizan. Los targets explícitos
+(mediciones, QA y empaquetado) conservan su ruta real y no usan el enlace.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.

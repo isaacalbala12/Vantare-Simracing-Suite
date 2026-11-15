@@ -78,26 +78,38 @@ function Set-VantareSlotWorkspace {
                 $relative = [IO.Path]::GetRelativePath($native, (Split-Path $package.manifest_path))
                 $old = Join-Path $previous $relative
                 $new = Join-Path $native $relative
-                if (-not (Test-Path -LiteralPath $old)) { $changed += $package.name; continue }
-                & git diff --no-index --quiet -- $old $new
-                if ($LASTEXITCODE -ne 0) { $changed += $package.name }
+                if (-not (Test-Path -LiteralPath $old)) {
+                    $changed += [pscustomobject]@{ name = $package.name; relative = $relative }
+                    continue
+                }
+                & git diff --no-index --quiet -- $old $new 2>$null
+                if ($LASTEXITCODE -ne 0) {
+                    $changed += [pscustomobject]@{ name = $package.name; relative = $relative }
+                }
             }
             $vendorOld = Join-Path $previous 'vendor/gpui_windows'
             $vendorNew = Join-Path $native 'vendor/gpui_windows'
             if (Test-Path -LiteralPath (Join-Path $vendorNew 'Cargo.toml')) {
                 if (-not (Test-Path -LiteralPath $vendorOld)) {
-                    $changed += 'gpui_windows'
+                    $changed += [pscustomobject]@{ name = 'gpui_windows'; relative = 'vendor/gpui_windows' }
                 } else {
-                    & git diff --no-index --quiet -- $vendorOld $vendorNew
-                    if ($LASTEXITCODE -ne 0) { $changed += 'gpui_windows' }
+                    & git diff --no-index --quiet -- $vendorOld $vendorNew 2>$null
+                    if ($LASTEXITCODE -ne 0) {
+                        $changed += [pscustomobject]@{ name = 'gpui_windows'; relative = 'vendor/gpui_windows' }
+                    }
                 }
             }
             if ($changed.Count) {
-                $clean = @('clean', '--manifest-path', $manifest, '--target-dir', $target, '--locked', '--offline')
-                foreach ($name in $changed) { $clean += @('-p', $name) }
-                & cargo @clean
-                if ($LASTEXITCODE) { throw 'No se pudieron invalidar los paquetes cambiados.' }
-                Write-Host "[cola] paquetes cambiados invalidados: $($changed -join ', ')"
+                # `cargo clean -p` exige CACHEDIR.TAG y falla en targets nuevos.
+                # Adelantar el mtime de los ficheros del paquete hace que Cargo
+                # lo recompile y deja intactos los paquetes iguales.
+                $now = [DateTime]::UtcNow
+                foreach ($item in $changed) {
+                    $directory = Join-Path $native $item.relative
+                    Get-ChildItem -LiteralPath $directory -Recurse -File -Force -ErrorAction SilentlyContinue |
+                        ForEach-Object { $_.LastWriteTimeUtc = $now }
+                }
+                Write-Host "[cola] paquetes cambiados invalidados: $($changed.name -join ', ')"
             }
         } finally { Pop-Location }
     }

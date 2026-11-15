@@ -12,6 +12,7 @@ import { useHost } from "../../app/Host";
 import { useUi } from "../../app/UiState";
 import { HostFailure } from "../../bridge/client";
 import { studioText as t } from "../../i18n/studio";
+import { canRetryStudio } from "./retry";
 import { initialStudioSelection } from "./selection";
 
 type StudioRequest = Extract<Request, { method: `studio.${string}` }>;
@@ -159,13 +160,7 @@ function useStateValue() {
     };
   }, [client, execute, update]);
   const retry = () => {
-    if (
-      !failure ||
-      !["studio.visibility", "studio.instance", "studio.track"].includes(
-        failure.request.method,
-      )
-    )
-      return;
+    if (!failure || !canRetryStudio(failure.request)) return;
     void execute(
       "baseRevision" in failure.request && view
         ? { ...failure.request, baseRevision: view.revision }
@@ -186,11 +181,7 @@ function useStateValue() {
     failure,
     execute,
     retry,
-    canRetry:
-      failure !== undefined &&
-      ["studio.visibility", "studio.instance", "studio.track"].includes(
-        failure.request.method,
-      ),
+    canRetry: failure !== undefined && canRetryStudio(failure.request),
     discard: () => setFailure(undefined),
   };
 }

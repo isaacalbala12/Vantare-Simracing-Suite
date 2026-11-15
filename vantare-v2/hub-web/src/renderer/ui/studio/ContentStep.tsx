@@ -26,6 +26,7 @@ import {
   hasAdditionalFields,
 } from "./AdditionalWidgetFields";
 import { ContentNumber, Group } from "./ContentControls";
+import { SessionAlertFields } from "./SessionAlertFields";
 import "./studio-content.css";
 
 type Model = ReturnType<typeof useAppearance>;
@@ -37,6 +38,10 @@ export function ContentStep({ item }: { item: OverlayInstance }) {
     return <p>{studio.appearanceUnavailable}</p>;
   if (settings.kind === "standings" || settings.kind === "relative")
     return <TableContent key={item.id} settings={settings} model={model} />;
+  if (settings.kind === "session-alerts")
+    return (
+      <SessionAlertFields id={item.id} settings={settings} model={model} />
+    );
   if (hasAdditionalFields(settings.kind))
     return (
       <div className="v-studio-content">

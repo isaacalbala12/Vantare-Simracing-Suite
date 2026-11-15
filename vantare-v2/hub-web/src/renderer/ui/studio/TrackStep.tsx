@@ -16,6 +16,7 @@ import { Select, Slider, Switch } from "../Forms";
 import { AdditionalBehavior } from "./AdditionalWidgetFields";
 import { DisabledHint } from "./DisabledHint";
 import { FrequencyControls } from "./FrequencyControls";
+import { SessionAlertBehavior } from "./SessionAlertFields";
 import "./studio-track-step.css";
 
 const labels = {
@@ -137,6 +138,7 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
       </Group>
       <FrequencyControls item={item} model={model} />
       <AdditionalBehavior item={item} />
+      <SessionAlertBehavior item={item} />
     </div>
   );
 }

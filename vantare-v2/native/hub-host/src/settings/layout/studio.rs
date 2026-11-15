@@ -28,6 +28,8 @@ fn put<T: Serialize>(fields: &mut Fields, key: &str, value: &T) -> Result<(), Ho
     );
     Ok(())
 }
+#[path = "studio_geometry.rs"]
+mod geometry_edit;
 #[path = "studio_fields.rs"]
 mod ordered;
 #[path = "studio_settings.rs"]
@@ -36,17 +38,29 @@ struct Open {
     document: Document,
     instances: Vec<Fields>,
     projected: Vec<OverlayInstance>,
+    monitor: crate::studio::monitor::Monitor,
+    canvas: crate::studio::CanvasView,
 }
 impl Open {
-    fn read(path: &Path) -> Result<Self, HostError> {
+    fn read(
+        path: &Path,
+        source: fn() -> Vec<crate::studio::monitor::Monitor>,
+        pinned: Option<crate::studio::monitor::Monitor>,
+    ) -> Result<Self, HostError> {
         if !vantare_launcher::is_local_path(path) {
             return Err(HostError::Denied);
         }
         let document = Document::open(path).map_err(|()| HostError::Protected)?;
+        Self::project(document, source, pinned)
+    }
+    fn project(
+        document: Document,
+        source: fn() -> Vec<crate::studio::monitor::Monitor>,
+        pinned: Option<crate::studio::monitor::Monitor>,
+    ) -> Result<Self, HostError> {
         if document.observed.is_none() {
             return Err(HostError::Protected);
         }
-        canvas(&document.fields)?;
         let instances: Vec<Fields> = read(&document.fields, "instances")?;
         if instances.len() > INSTANCE_LIMIT {
             return Err(HostError::Protected);
@@ -61,10 +75,23 @@ impl Open {
             }
             projected.push(item);
         }
+        let positions: Vec<_> = projected
+            .iter()
+            .map(|item| (f64::from(item.x), f64::from(item.y), item.visible))
+            .collect();
+        let monitor = pinned
+            .or_else(|| crate::studio::monitor::choose(&source(), &positions))
+            .ok_or(HostError::Protected)?;
+        let canvas = canvas(&document.fields, monitor)?;
+        for item in &mut projected {
+            relative(item, monitor, canvas)?;
+        }
         Ok(Self {
             document,
             instances,
             projected,
+            monitor,
+            canvas,
         })
     }
     fn fits_frame(&self, access: Option<CatalogAccess>) -> bool {
@@ -80,6 +107,7 @@ impl Open {
                 })
                 .collect(),
             access,
+            Some(self.canvas),
         )
     }
     fn bytes(&self) -> Result<Vec<u8>, HostError> {
@@ -109,13 +137,8 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
     if id.is_empty() || id.len() > ID_LIMIT || id.contains('\0') {
         return Err(HostError::Protected);
     }
-    // Required native coordinates are validated, but never projected or edited.
-    for axis in ["x", "y"] {
-        let value: f64 = read(fields, axis)?;
-        if !value.is_finite() || value.abs() > f64::from(f32::MAX) {
-            return Err(HostError::Protected);
-        }
-    }
+    let x = coordinate(read(fields, "x")?)?;
+    let y = coordinate(read(fields, "y")?)?;
     let settings: Fields = read(fields, "settings")?;
     let kind: WidgetKind = read(&settings, "kind")?;
     let opacity: f64 = optional(fields, "opacity", 1.0)?;
@@ -168,10 +191,40 @@ fn instance(fields: &Fields, access: Option<CatalogAccess>) -> Result<OverlayIns
         },
         off_track,
         size: OverlaySize {
-            width: width.round() as u32,
-            height: height.round() as u32,
+            width: coordinate(width)?,
+            height: coordinate(height)?,
         },
+        x,
+        y,
+        size_mode: if size.is_some() {
+            crate::studio::SizeMode::Explicit
+        } else {
+            crate::studio::SizeMode::Auto
+        },
+        aspect_locked: optional(&geometry, "aspectLocked", true)?,
+        canvas_placement: crate::studio::CanvasPlacement::Inside,
     })
+}
+fn coordinate(value: f64) -> Result<crate::studio::Coordinate, HostError> {
+    value.try_into().map_err(|_| HostError::Protected)
+}
+fn relative(
+    item: &mut OverlayInstance,
+    monitor: crate::studio::monitor::Monitor,
+    canvas: crate::studio::CanvasView,
+) -> Result<(), HostError> {
+    item.x = coordinate(f64::from(item.x) - monitor.origin.0)?;
+    item.y = coordinate(f64::from(item.y) - monitor.origin.1)?;
+    let outside = f64::from(item.x) < 0.0
+        || f64::from(item.y) < 0.0
+        || f64::from(item.x) + f64::from(item.size.width) > f64::from(canvas.width)
+        || f64::from(item.y) + f64::from(item.size.height) > f64::from(canvas.height);
+    item.canvas_placement = if outside {
+        crate::studio::CanvasPlacement::Outside
+    } else {
+        crate::studio::CanvasPlacement::Inside
+    };
+    Ok(())
 }
 fn merged_settings(kind: WidgetKind, stored: &Fields) -> Result<Fields, HostError> {
     let defaults = crate::widget_defaults::get(kind.id()).ok_or(HostError::Protected)?;
@@ -211,46 +264,28 @@ fn typed_settings(
 }
 
 fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
-    let (width, height) = canvas(&opened.document.fields)?;
     let taken: Vec<_> = opened
-        .instances
+        .projected
         .iter()
-        .map(|f| {
-            let item = instance(f, None)?;
-            Ok::<_, HostError>((
-                read::<f64>(f, "x")?,
-                read::<f64>(f, "y")?,
+        .map(|item| {
+            (
+                f64::from(item.x),
+                f64::from(item.y),
                 f64::from(item.size.width),
                 f64::from(item.size.height),
-            ))
+            )
         })
-        .collect::<Result<_, _>>()?;
-    let margin = width * 0.02;
-    let step = width * 0.01;
-    let gap = 12.0;
-    let mut y = margin;
-    while y + size.1 <= height - margin {
-        let mut x = margin;
-        while x + size.0 <= width - margin {
-            if !taken.iter().any(|r| {
-                x < r.0 + r.2 + gap
-                    && x + size.0 + gap > r.0
-                    && y < r.1 + r.3 + gap
-                    && y + size.1 + gap > r.1
-            }) {
-                return Ok((x, y));
-            }
-            x += step;
-        }
-        y += step;
-    }
-    Ok((
-        (width - size.0).max(0.0) / 2.0,
-        (height - size.1).max(0.0) / 2.0,
-    ))
+        .collect();
+    crate::studio::geometry::free_spot(opened.canvas.size(), size, &taken)
+        .ok_or(HostError::Protected)
+}
+fn open(state: &mut State) -> Result<Open, HostError> {
+    let opened = Open::read(&state.path, state.monitor_source, state.monitor)?;
+    state.monitor = Some(opened.monitor);
+    Ok(opened)
 }
 pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioView {
-    let opened = Open::read(&state.path);
+    let opened = open(state);
     let Ok(opened) = opened else {
         let mut unavailable = State::unavailable(
             if state.path.try_exists().unwrap_or(true) {
@@ -288,6 +323,7 @@ pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioVi
         showing: showing(&state.path),
         can_undo: !state.undo.is_empty(),
         can_redo: !state.redo.is_empty(),
+        canvas: Some(opened.canvas),
         ..State::unavailable(StudioState::Ready, access)
     };
     if crate::studio::widget_settings::fits_view(&value) {
@@ -307,21 +343,43 @@ pub(crate) fn edit(
 ) -> Result<StudioView, HostError> {
     edit_result(state, edit, revision, access).map(|(value, _)| value)
 }
+fn open_revision(
+    state: &mut State,
+    revision: &str,
+    access: Option<CatalogAccess>,
+) -> Result<Open, HostError> {
+    if !vantare_launcher::is_local_path(&state.path) {
+        return Err(HostError::Denied);
+    }
+    let observed = files::read_optional(&state.path, LIMIT).map_err(|_| HostError::Protected)?;
+    if observed
+        .as_deref()
+        .map(vantare_services::content_hash)
+        .as_deref()
+        != Some(revision)
+    {
+        return Err(HostError::StudioConflict {
+            current: view(state, access),
+        });
+    }
+    let document = Document::from_observed(observed).map_err(|()| HostError::Protected)?;
+    Open::project(document, state.monitor_source, state.monitor)
+}
 pub(crate) fn edit_result(
     state: &mut State,
     edit: Edit,
     revision: &str,
     access: Option<CatalogAccess>,
 ) -> Result<(StudioView, Option<String>), HostError> {
-    let mut opened = Open::read(&state.path)?;
+    let mut opened = open_revision(state, revision, access)?;
+    state.monitor = Some(opened.monitor);
     let settings_edit = matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_)));
-    if settings_edit && !opened.fits_frame(access) {
+    let geometry_edit = matches!(
+        &edit,
+        Edit::Geometry(..) | Edit::Canvas(..) | Edit::AddAt(..)
+    );
+    if (settings_edit || geometry_edit) && !opened.fits_frame(access) {
         return Err(HostError::Protected);
-    }
-    if opened.revision() != revision {
-        return Err(HostError::StudioConflict {
-            current: view(state, access),
-        });
     }
     if state.revision.as_ref().is_some_and(|last| last != revision) {
         state.undo.clear();
@@ -342,17 +400,19 @@ pub(crate) fn edit_result(
         .expect("existing layout")
         .to_vec();
     let after = apply(&mut opened, state, &edit, access)?;
-    if settings_edit && after == before {
+    if (settings_edit || geometry_edit) && after == before {
         return Ok((view(state, access), None));
     }
-    let adding = matches!(edit, Edit::Add(_));
+    let adding = matches!(edit, Edit::Add(_) | Edit::AddAt(..));
     // Undo/redo may cross a plan change: restoring a removed Pro instance is an addition.
     let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
     let restored: Vec<Fields> = read(&root, "instances")?;
+    let after_canvas = canvas(&root, opened.monitor)?;
     let mut added = None;
     let mut projected = Vec::new();
     for fields in &restored {
-        let item = instance(fields, access)?;
+        let mut item = instance(fields, access)?;
+        relative(&mut item, opened.monitor, after_canvas)?;
         let existed = known
             .iter()
             .any(|(id, kind)| *id == item.id && *kind == item.kind);
@@ -362,11 +422,11 @@ pub(crate) fn edit_result(
         if !existed && item.locked {
             return Err(HostError::Denied);
         }
-        if settings_edit && companion(fields)?.is_none() {
+        if (settings_edit || geometry_edit) && companion(fields)?.is_none() {
             projected.push(item);
         }
     }
-    if settings_edit && !fits_instances(projected, access) {
+    if (settings_edit || geometry_edit) && !fits_instances(projected, access, Some(after_canvas)) {
         return Err(HostError::Protected);
     }
     if let Err(error) = files::save(
@@ -468,7 +528,23 @@ fn apply(
             }
             opened.bytes()?
         }
-        Edit::Add(kind) => add(opened, *kind, access)?,
+        Edit::Add(kind) => add(opened, *kind, None, access)?,
+        Edit::AddAt(kind, at) => add(opened, *kind, Some(*at), access)?,
+        Edit::Geometry(id, change) => {
+            if !geometry_edit::apply(opened, id, *change, access)? {
+                return Ok(opened.document.observed.clone().expect("existing layout"));
+            }
+            opened.bytes()?
+        }
+        Edit::Canvas(choice) => {
+            if access.is_none() {
+                return Err(HostError::Denied);
+            }
+            if !geometry_edit::canvas(opened, *choice)? {
+                return Ok(opened.document.observed.clone().expect("existing layout"));
+            }
+            opened.bytes()?
+        }
     })
 }
 fn showing(path: &Path) -> bool {
@@ -489,7 +565,7 @@ pub(crate) fn track(
         if access.is_none() {
             return Err(HostError::Denied);
         }
-        Open::read(&state.path)?;
+        open(state)?;
     }
     if show && showing(&state.path) {
         return Ok(view(state, access));
@@ -543,15 +619,19 @@ pub(crate) fn track(
 }
 
 #[cfg(test)]
-#[path = "studio_tests.rs"]
-mod tests;
+#[path = "studio_geometry_tests.rs"]
+mod geometry_tests;
 #[cfg(test)]
 #[path = "table_preset_tests.rs"]
 mod table_preset_tests;
+#[cfg(test)]
+#[path = "studio_tests.rs"]
+mod tests;
 
 fn add(
     opened: &mut Open,
     kind: WidgetKind,
+    at: Option<crate::studio::Point>,
     access: Option<CatalogAccess>,
 ) -> Result<Vec<u8>, HostError> {
     if !kind.info(access).allowed
@@ -570,13 +650,24 @@ fn add(
                 .any(|f| read::<String>(f, "id").as_deref() == Ok(id.as_str()))
         })
         .ok_or(HostError::Denied)?;
-    let (x, y) = free_spot(
-        opened,
-        (
-            f64::from(defaults.size.width),
-            f64::from(defaults.size.height),
-        ),
-    )?;
+    let (x, y) = if let Some(at) = at {
+        let point = at.pair();
+        let bounds = opened.canvas.size();
+        if point.0 < 0.0 || point.1 < 0.0 || point.0 >= bounds.0 || point.1 >= bounds.1 {
+            return Err(HostError::Rejected);
+        }
+        point
+    } else {
+        free_spot(
+            opened,
+            (
+                f64::from(defaults.size.width),
+                f64::from(defaults.size.height),
+            ),
+        )?
+    };
+    let x = x + opened.monitor.origin.0;
+    let y = y + opened.monitor.origin.1;
     let mut fields = Fields::default();
     put(&mut fields, "id", &id)?;
     put(&mut fields, "x", &x)?;
@@ -604,9 +695,12 @@ fn remove(opened: &mut Open, id: &str) -> Result<Vec<u8>, HostError> {
     opened.bytes()
 }
 
-fn canvas(fields: &Fields) -> Result<(f64, f64), HostError> {
+fn canvas(
+    fields: &Fields,
+    monitor: crate::studio::monitor::Monitor,
+) -> Result<crate::studio::CanvasView, HostError> {
     let canvas: Option<Fields> = optional(fields, "canvasResolution", None)?;
-    let (width, height) = canvas.as_ref().map_or(Ok((1920.0, 1080.0)), |f| {
+    let (width, height) = canvas.as_ref().map_or(Ok(monitor.size), |f| {
         Ok::<_, HostError>((read::<f64>(f, "width")?, read::<f64>(f, "height")?))
     })?;
     if ![width, height]
@@ -615,12 +709,25 @@ fn canvas(fields: &Fields) -> Result<(f64, f64), HostError> {
     {
         return Err(HostError::Protected);
     }
-    Ok((width, height))
+    Ok(crate::studio::CanvasView {
+        width: coordinate(width)?,
+        height: coordinate(height)?,
+        source: if canvas.is_some() {
+            crate::studio::geometry::CanvasSource::Custom
+        } else {
+            crate::studio::geometry::CanvasSource::Monitor
+        },
+    })
 }
 
-fn fits_instances(instances: Vec<OverlayInstance>, access: Option<CatalogAccess>) -> bool {
+fn fits_instances(
+    instances: Vec<OverlayInstance>,
+    access: Option<CatalogAccess>,
+    canvas: Option<crate::studio::CanvasView>,
+) -> bool {
     crate::studio::widget_settings::fits_view(&StudioView {
         instances,
+        canvas,
         ..State::unavailable(StudioState::Ready, access)
     })
 }

@@ -256,3 +256,95 @@ fn saved_draft(fields: &crate::testing::ReportFields) -> services::Reply {
         message: String::new(),
     }
 }
+
+#[test]
+fn session_score_only_answers_preserve_refreshed_and_answered_notes_but_not_another_account() {
+    use services::testing_document::{Participation, Questionnaire};
+    let root = Root::new();
+    let mut session = restart_session(&root.path, "testing-note-local-unused");
+    let local = session.core.isolate_services(true);
+    session.current.access.verified = true;
+    session.current.account_generation = Some("a".repeat(32));
+    session.current.access.tester = true;
+    let (mut pipe, mut peer) = pipes();
+    let questionnaire = "15350000-0000-0000-0000-000000000001";
+    let participation = |note: &str| services::Reply::Testing {
+        data: Participation {
+            questionnaires: vec![Questionnaire {
+                id: questionnaire.into(),
+                version: "QA".into(),
+                title: "QA".into(),
+                question: "QA".into(),
+                score: Some(4),
+                note: note.into(),
+            }],
+            ..Default::default()
+        },
+    };
+    session
+        .testing_request(&mut pipe, 1, &Request::TestingRefresh {})
+        .unwrap();
+    assert!(matches!(
+        local.incoming.try_recv().unwrap(),
+        (1, services::Command::TestingRefresh)
+    ));
+    local
+        .outgoing
+        .send((1, Ok(participation("Anterior"))))
+        .unwrap();
+    let (id, result) = session.core.reply().unwrap();
+    assert!(matches!(
+        session.service_reply(id, result),
+        Ok(Some(crate::protocol::Reply::TestingRefresh { .. }))
+    ));
+
+    // The answer reply must also refresh the snapshot, not just TestingRefresh.
+    for (id, previous, returned) in [(2, "Anterior", "Actualizada"), (3, "Actualizada", "Final")] {
+        session
+            .testing_request(
+                &mut pipe,
+                id,
+                &Request::TestingAnswer {
+                    id: questionnaire.into(),
+                    score: 5,
+                    note: None,
+                },
+            )
+            .unwrap();
+        assert!(
+            matches!(local.incoming.try_recv().unwrap(), (actual, services::Command::TestingAnswer { note, .. }) if actual == id && note == previous)
+        );
+        local
+            .outgoing
+            .send((id, Ok(participation(returned))))
+            .unwrap();
+        let (actual, result) = session.core.reply().unwrap();
+        assert!(matches!(
+            session.service_reply(actual, result),
+            Ok(Some(crate::protocol::Reply::TestingAnswer { .. }))
+        ));
+    }
+    session.current.account_generation = Some("b".repeat(32));
+    session
+        .testing_request(
+            &mut pipe,
+            4,
+            &Request::TestingAnswer {
+                id: questionnaire.into(),
+                score: 5,
+                note: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        next(&mut peer),
+        HostToUi::Failure {
+            id: 4,
+            error: HostError::Rejected
+        }
+    );
+    assert!(
+        local.incoming.try_recv().is_err(),
+        "account change sends no Services command"
+    );
+}

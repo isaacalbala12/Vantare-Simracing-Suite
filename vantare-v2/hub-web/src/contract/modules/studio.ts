@@ -1,5 +1,6 @@
 import {
   studioAddKinds,
+  studioGeometryLimits,
   studioKinds,
   studioLimits,
   studioMethods,
@@ -23,6 +24,77 @@ const id = (v: unknown): v is string =>
   new TextEncoder().encode(v).length <= studioLimits.id;
 const revision = (v: unknown) =>
   typeof v === "string" && new RegExp(studioRevisionPattern).test(v);
+const coordinate = (v: unknown): v is number =>
+  typeof v === "number" &&
+  Number.isFinite(v) &&
+  Math.abs(v) <= studioGeometryLimits.coordinateMax;
+const position = (v: unknown): v is number =>
+  coordinate(v) && Math.abs(v) <= studioGeometryLimits.nudgeLimit;
+function point(v: unknown) {
+  return (
+    record(v) && exact(v, ["x", "y"]) && coordinate(v.x) && coordinate(v.y)
+  );
+}
+function resolution(width: unknown, height: unknown) {
+  return (
+    coordinate(width) &&
+    coordinate(height) &&
+    width >= studioGeometryLimits.canvasMin &&
+    height >= studioGeometryLimits.canvasMin &&
+    width <= studioGeometryLimits.canvasMax &&
+    height <= studioGeometryLimits.canvasMax
+  );
+}
+function canvas(v: unknown) {
+  return (
+    v === null ||
+    (record(v) &&
+      exact(v, ["width", "height", "source"]) &&
+      resolution(v.width, v.height) &&
+      (v.source === "monitor" || v.source === "custom"))
+  );
+}
+function geometry(v: unknown) {
+  if (!record(v)) return false;
+  switch (v.kind) {
+    case "move":
+      return exact(v, ["kind", "x", "y"]) && position(v.x) && position(v.y);
+    case "resize":
+      return (
+        exact(v, ["kind", "x", "y", "width", "height"]) &&
+        position(v.x) &&
+        position(v.y) &&
+        coordinate(v.width) &&
+        coordinate(v.height) &&
+        v.width > 0 &&
+        v.height > 0
+      );
+    case "anchor":
+      return (
+        exact(v, ["kind", "column", "row"]) &&
+        integer(v.column) &&
+        integer(v.row) &&
+        v.column <= 2 &&
+        v.row <= 2
+      );
+    case "autoSize":
+      return exact(v, ["kind"]);
+    case "aspectLocked":
+      return exact(v, ["kind", "value"]) && typeof v.value === "boolean";
+    default:
+      return false;
+  }
+}
+function canvasChoice(v: unknown) {
+  return (
+    record(v) &&
+    (v.kind === "monitor"
+      ? exact(v, ["kind"])
+      : v.kind === "custom" &&
+        exact(v, ["kind", "width", "height"]) &&
+        resolution(v.width, v.height))
+  );
+}
 function showIn(v: unknown) {
   return (
     record(v) &&
@@ -43,8 +115,18 @@ function instance(v: unknown) {
       "offTrack",
       "size",
       "settings",
+      "x",
+      "y",
+      "sizeMode",
+      "aspectLocked",
+      "canvasPlacement",
     ]) &&
     isWidgetSettings(v.settings, v.kind) &&
+    coordinate(v.x) &&
+    coordinate(v.y) &&
+    (v.sizeMode === "auto" || v.sizeMode === "explicit") &&
+    typeof v.aspectLocked === "boolean" &&
+    (v.canvasPlacement === "inside" || v.canvasPlacement === "outside") &&
     id(v.id) &&
     oneOf(v.kind, studioKinds) &&
     typeof v.visible === "boolean" &&
@@ -55,8 +137,8 @@ function instance(v: unknown) {
     oneOf(v.offTrack, studioOffTracks) &&
     record(v.size) &&
     exact(v.size, ["width", "height"]) &&
-    integer(v.size.width) &&
-    integer(v.size.height) &&
+    coordinate(v.size.width) &&
+    coordinate(v.size.height) &&
     v.size.width > 0 &&
     v.size.height > 0 &&
     v.size.width <= studioLimits.size &&
@@ -75,7 +157,9 @@ export function isStudio(v: unknown) {
       "plan",
       "canUndo",
       "canRedo",
+      "canvas",
     ]) &&
+    canvas(v.canvas) &&
     oneOf(v.state, studioStates) &&
     revision(v.revision) &&
     Array.isArray(v.instances) &&
@@ -122,8 +206,25 @@ export function isRequest(v: Record<string, unknown>): boolean {
       return exact(v, ["method", "baseRevision"]);
     case "studio.add":
       return (
-        exact(v, ["method", "kind", "baseRevision"]) &&
+        exact(v, [
+          "method",
+          "kind",
+          "baseRevision",
+          ...(Object.hasOwn(v, "at") ? ["at"] : []),
+        ]) &&
+        (!Object.hasOwn(v, "at") || point(v.at)) &&
         oneOf(v.kind, studioAddKinds)
+      );
+    case "studio.geometry":
+      return (
+        exact(v, ["method", "id", "change", "baseRevision"]) &&
+        id(v.id) &&
+        geometry(v.change)
+      );
+    case "studio.canvas":
+      return (
+        exact(v, ["method", "resolution", "baseRevision"]) &&
+        canvasChoice(v.resolution)
       );
     case "studio.remove":
       return exact(v, ["method", "id", "baseRevision"]) && id(v.id);

@@ -43,9 +43,10 @@ pub(super) fn dispatch(
             )?,
             Request::StudioAdd {
                 kind,
+                at,
                 base_revision,
             } => {
-                let (value, id) = session.studio.add(*kind, base_revision, catalog)?;
+                let (value, id) = session.studio.add_at(*kind, *at, base_revision, catalog)?;
                 added = Some(id);
                 value
             }
@@ -63,6 +64,21 @@ pub(super) fn dispatch(
                 base_revision,
                 catalog,
             )?,
+            Request::StudioGeometry {
+                id,
+                change,
+                base_revision,
+            } => {
+                session
+                    .studio
+                    .edit(Edit::Geometry(id.clone(), *change), base_revision, catalog)?
+            }
+            Request::StudioCanvas {
+                resolution,
+                base_revision,
+            } => session
+                .studio
+                .edit(Edit::Canvas(*resolution), base_revision, catalog)?,
             Request::StudioUndo { base_revision } => {
                 session.studio.edit(Edit::Undo, base_revision, catalog)?
             }
@@ -81,6 +97,8 @@ pub(super) fn dispatch(
             },
             Request::StudioRemove { .. } => Reply::StudioRemove { value },
             Request::StudioInstance { .. } => Reply::StudioInstance { value },
+            Request::StudioGeometry { .. } => Reply::StudioGeometry { value },
+            Request::StudioCanvas { .. } => Reply::StudioCanvas { value },
             Request::StudioUndo { .. } => Reply::StudioUndo { value },
             Request::StudioRedo { .. } => Reply::StudioRedo { value },
             _ => Reply::StudioTrack { value },

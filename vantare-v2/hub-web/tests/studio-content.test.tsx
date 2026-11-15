@@ -33,6 +33,11 @@ function instance(kind: "delta" | "pedals" = "delta"): OverlayInstance {
     showIn: { practice: true, qualifying: true, race: true },
     offTrack: "inherit",
     size: { width: 400, height: 300 },
+    x: 48,
+    y: 62,
+    sizeMode: "auto",
+    aspectLocked: true,
+    canvasPlacement: "inside",
   };
 }
 function expectPatch(value: object) {

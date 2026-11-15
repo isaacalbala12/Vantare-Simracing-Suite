@@ -39,6 +39,11 @@ export function create(context: MockContext): MockHandler {
     opacity: 100,
     showIn: { practice: true, qualifying: true, race: true },
     offTrack: "inherit",
+    x: 48,
+    y: 62,
+    sizeMode: "auto",
+    aspectLocked: true,
+    canvasPlacement: "inside",
   })) as OverlayInstance[];
   if (sceneName === "studio-muchos" || sceneName === "studio-nueve") {
     const originals = structuredClone(instances);
@@ -69,6 +74,7 @@ export function create(context: MockContext): MockHandler {
     plan: "pro",
     canUndo: false,
     canRedo: false,
+    canvas: { width: 1920, height: 1080, source: "monitor" },
   };
   if (sceneName === "studio-oculto") view.instances[0].visible = false;
   if (view.state !== "ready") view.instances = [];
@@ -118,6 +124,15 @@ export function create(context: MockContext): MockHandler {
     )
       return;
     const { request, id } = message;
+    // The canvas UI PR will share its Rust-vector-verified gesture implementation
+    // with these mocks. Until then no geometry success is invented.
+    if (
+      request.method === "studio.geometry" ||
+      request.method === "studio.canvas" ||
+      (request.method === "studio.add" && request.at !== undefined)
+    ) {
+      return { kind: "failure", id, error: { kind: "unsupported" } };
+    }
     const fail = (kind: "denied" | "protected"): HostToUi => ({
       kind: "failure",
       id,
@@ -182,6 +197,11 @@ export function create(context: MockContext): MockHandler {
           opacity: 100,
           showIn: { practice: true, qualifying: true, race: true },
           offTrack: "inherit",
+          x: 38.4,
+          y: 38.4,
+          sizeMode: "auto",
+          aspectLocked: true,
+          canvasPlacement: "inside",
           size: {
             width: Math.round(studioSizes[request.kind].width),
             height: Math.round(studioSizes[request.kind].height),

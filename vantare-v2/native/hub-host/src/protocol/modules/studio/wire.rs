@@ -17,6 +17,13 @@ pub enum Request {
     #[serde(rename = "studio.add")]
     StudioAdd {
         kind: crate::studio::WidgetKind,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "crate::studio::geometry::optional_point"
+        )]
+        #[cfg_attr(any(test, feature = "bindings"), ts(optional))]
+        at: Option<crate::studio::Point>,
         #[serde(rename = "baseRevision")]
         base_revision: String,
     },
@@ -30,6 +37,19 @@ pub enum Request {
     StudioInstance {
         id: String,
         patch: crate::studio::InstancePatch,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "studio.geometry")]
+    StudioGeometry {
+        id: String,
+        change: crate::studio::GeometryChange,
+        #[serde(rename = "baseRevision")]
+        base_revision: String,
+    },
+    #[serde(rename = "studio.canvas")]
+    StudioCanvas {
+        resolution: crate::studio::CanvasChoice,
         #[serde(rename = "baseRevision")]
         base_revision: String,
     },
@@ -50,6 +70,10 @@ pub enum Request {
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "studio.geometry")]
+    StudioGeometry { value: crate::studio::StudioView },
+    #[serde(rename = "studio.canvas")]
+    StudioCanvas { value: crate::studio::StudioView },
     #[serde(rename = "studio.get")]
     StudioGet { value: crate::studio::StudioView },
     #[serde(rename = "studio.visibility")]

@@ -96,7 +96,7 @@ describe("Studio document contract", () => {
     send(host, "studio.redo", { baseRevision: restored.revision });
     expect(view(host).instances).toEqual(hidden.instances);
   });
-  it("keeps membership equal to visibility and never projects a path or editable geometry", () => {
+  it("keeps membership equal to visibility and projects closed geometry without private paths", () => {
     const host = createMockHost("studio-base");
     const before = view(host);
     send(host, "studio.instance", {
@@ -105,8 +105,16 @@ describe("Studio document contract", () => {
       baseRevision: before.revision,
     });
     const after = view(host);
-    expect(after.instances[0]).toMatchObject({ visible: true, opacity: 20 });
-    for (const forbidden of ['"x":', '"y":', "Users", ":/", "executable"])
+    expect(after.instances[0]).toMatchObject({
+      visible: true,
+      opacity: 20,
+      x: 48,
+      y: 62,
+      sizeMode: "auto",
+      aspectLocked: true,
+      canvasPlacement: "inside",
+    });
+    for (const forbidden of ["Users", ":/", "executable"])
       expect(JSON.stringify(after)).not.toContain(forbidden);
   });
   it("does not seed a missing document and denies a locked add", () => {

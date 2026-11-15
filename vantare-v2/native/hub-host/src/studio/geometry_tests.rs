@@ -152,3 +152,29 @@ fn geometry_wire_is_closed_and_v36_add_bytes_remain_readable() {
         assert!(serde_json::from_value::<crate::protocol::Request>(request).is_err());
     }
 }
+
+#[test]
+fn snap_stays_inside_and_extreme_aspects_can_be_resized() {
+    let snapped = snap(
+        (50.0, 200.0),
+        (100.0, 100.0),
+        (1000.0, 800.0),
+        &[(-3.0, 500.0, 100.0, 100.0)],
+        8.0,
+    )
+    .expect("snap");
+    assert_eq!(snapped.position, (0.0, 150.0));
+    assert_eq!(snapped.guides.0, None);
+    for (size, expected) in [
+        ((100_000.0, 1.0), (3840.0, 32.0)),
+        ((1.0, 100_000.0), (64.0, 2160.0)),
+    ] {
+        let (_, next) =
+            resize((0.0, 0.0), size, (1, 1), (10.0, 10.0), true).expect("closest feasible aspect");
+        assert!((MIN_SIZE.0..=MAX_SIZE.0).contains(&next.0));
+        assert!(next.1 >= MIN_SIZE.1 - EPSILON && next.1 <= MAX_SIZE.1 + EPSILON);
+        assert!(near(next.0, expected.0) && near(next.1, expected.1));
+    }
+    assert!(position_valid((100_000.0, -100_000.0)));
+    assert!(!position_valid((100_001.0, 0.0)));
+}

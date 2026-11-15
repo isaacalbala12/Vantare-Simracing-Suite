@@ -76,6 +76,16 @@ tests de Electron. Hasta que su UI incorpore esas funciones contrastadas, el moc
 rechaza las nuevas órdenes con `Unsupported`, sin simular un guardado correcto.
 Esta entrega no inicia ningún pintor ni implementa preview.
 
+El monitor del lienzo queda fijado durante la sesión de Studio: mover el primer
+widget a otro monitor no cambia el origen ni recoloca los demás. Resize rechaza
+un tamaño que requiera corrección de límites o proporción, conservando así la
+posición solicitada solo cuando el tamaño es válido. La tolerancia absoluta de
+geometría es `studioGeometryLimits.epsilon` (1e-7 píxeles lógicos): evita escrituras
+por deriva de coma flotante. Los aspectos extremos se llevan a la proporción
+representable más cercana entre los límites de tamaño. Mover y empujar comparten
+el límite local ±100000. El PR2 web DEBE contrastar `studioGeometryCases`, con
+comparación exacta o esa tolerancia documentada; no basta con exportar los casos.
+
 ## Cola de servicios
 
 D060 conserva el comentario de los cuestionarios: la vista publica `note` y

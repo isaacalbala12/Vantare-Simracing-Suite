@@ -218,7 +218,7 @@ fn adding_uses_versioned_native_settings_and_a_free_identity() {
         .unwrap();
     assert_eq!(added.instances.len(), 2);
     assert_eq!(added.instances[1].id, "widget-2");
-    let opened = Open::read(&path, crate::studio::monitor::snapshot).unwrap();
+    let opened = Open::read(&path, crate::studio::monitor::snapshot, None).unwrap();
     let x: f64 = read(&opened.instances[1], "x").unwrap();
     let y: f64 = read(&opened.instances[1], "y").unwrap();
     // GPUI free_spot: 2% margin, 1% steps and 12 px between occupied rectangles.
@@ -606,7 +606,11 @@ fn a_full_canvas_uses_the_native_fallback_and_invalid_canvas_does_not_write() {
         let view = state.view(access);
         assert_eq!(view.state, StudioState::Protected);
         assert_eq!(
-            state.add(WidgetKind::Delta, &view.revision, access),
+            state.add(
+                WidgetKind::Delta,
+                &vantare_services::content_hash(&bytes),
+                access
+            ),
             Err(HostError::Protected)
         );
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
@@ -726,7 +730,7 @@ fn projected_settings_that_exceed_the_transport_become_protected() {
     assert!(matches!(
         state.edit(
             Edit::Instance("widget-1".into(), update),
-            &view.revision,
+            &vantare_services::content_hash(&bytes),
             Some(CatalogAccess::Pro)
         ),
         Err(HostError::Protected)
@@ -925,7 +929,7 @@ fn unreadable_supported_settings_protect_the_whole_document_without_creating_fil
         assert!(matches!(
             state.edit(
                 Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(update))),
-                &view.revision,
+                &vantare_services::content_hash(bytes),
                 access,
             ),
             Err(HostError::Protected)

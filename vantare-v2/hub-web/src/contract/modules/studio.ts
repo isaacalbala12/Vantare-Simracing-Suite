@@ -28,6 +28,8 @@ const coordinate = (v: unknown): v is number =>
   typeof v === "number" &&
   Number.isFinite(v) &&
   Math.abs(v) <= studioGeometryLimits.coordinateMax;
+const position = (v: unknown): v is number =>
+  coordinate(v) && Math.abs(v) <= studioGeometryLimits.nudgeLimit;
 function point(v: unknown) {
   return (
     record(v) && exact(v, ["x", "y"]) && coordinate(v.x) && coordinate(v.y)
@@ -56,12 +58,12 @@ function geometry(v: unknown) {
   if (!record(v)) return false;
   switch (v.kind) {
     case "move":
-      return exact(v, ["kind", "x", "y"]) && coordinate(v.x) && coordinate(v.y);
+      return exact(v, ["kind", "x", "y"]) && position(v.x) && position(v.y);
     case "resize":
       return (
         exact(v, ["kind", "x", "y", "width", "height"]) &&
-        coordinate(v.x) &&
-        coordinate(v.y) &&
+        position(v.x) &&
+        position(v.y) &&
         coordinate(v.width) &&
         coordinate(v.height) &&
         v.width > 0 &&

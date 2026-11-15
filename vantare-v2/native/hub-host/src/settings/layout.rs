@@ -60,6 +60,9 @@ struct Document {
 impl Document {
     fn open(path: &Path) -> Result<Self, ()> {
         let observed = files::read_optional(path, LIMIT).map_err(|_| ())?;
+        Self::from_observed(observed)
+    }
+    fn from_observed(observed: Option<Vec<u8>>) -> Result<Self, ()> {
         let Some(bytes) = &observed else {
             return Ok(Self {
                 observed,
@@ -270,7 +273,7 @@ impl Layout {
     }
 }
 
-#[path="layout/studio.rs"]
-pub(crate) mod studio;
 #[path = "layout/onboarding.rs"]
 pub(crate) mod onboarding;
+#[path = "layout/studio.rs"]
+pub(crate) mod studio;

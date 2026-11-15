@@ -103,8 +103,8 @@ fn resize_enforces_aspect_and_limits_and_auto_preserves_extensions() {
         GeometryChange::Resize {
             x: n(48.5),
             y: n(62.0),
-            width: n(40000.0),
-            height: n(50000.0),
+            width: n(676.0),
+            height: n(608.0),
         },
         &initial.revision,
     )
@@ -124,8 +124,8 @@ fn resize_enforces_aspect_and_limits_and_auto_preserves_extensions() {
         GeometryChange::Resize {
             x: n(48.5),
             y: n(62.0),
-            width: n(1.0),
-            height: n(50000.0),
+            width: n(64.0),
+            height: n(2160.0),
         },
         &unlocked.revision,
     )
@@ -280,6 +280,7 @@ fn bad_geometry_no_rights_and_missing_monitor_never_write() {
         state.edit(Edit::Canvas(CanvasChoice::Monitor), &initial.revision, None),
         Err(HostError::Denied)
     );
+    let mut state = State::new(path.clone());
     state.monitor_source = Vec::new;
     assert_eq!(state.view(access).state, StudioState::Protected);
     assert_eq!(
@@ -320,4 +321,128 @@ fn resetting_a_component_with_unknown_fields_preserves_it_instead_of_dropping_da
         Err(HostError::Protected)
     );
     assert_eq!(std::fs::read(&path).expect("bytes"), bytes);
+}
+
+fn two_monitors() -> Vec<crate::studio::monitor::Monitor> {
+    vec![
+        crate::studio::monitor::Monitor {
+            origin: (0.0, 0.0),
+            size: (1920.0, 1080.0),
+            primary: true,
+        },
+        crate::studio::monitor::Monitor {
+            origin: (1920.0, 0.0),
+            size: (2560.0, 1440.0),
+            primary: false,
+        },
+    ]
+}
+#[test]
+fn crossing_to_another_monitor_keeps_the_session_canvas_and_other_coordinates() {
+    let (_root, path, _) = fixture();
+    let mut value = layout(&path);
+    let mut second = value["instances"][0].clone();
+    second["id"] = serde_json::json!("widget-2");
+    second["x"] = serde_json::json!(200);
+    value["instances"]
+        .as_array_mut()
+        .expect("instances")
+        .push(second);
+    replace_layout(&path, &value);
+    let mut state = State::new(path);
+    state.monitor_source = two_monitors;
+    let access = Some(CatalogAccess::Pro);
+    let before = state.view(access);
+    state.monitor_source = || panic!("a pinned session must not query monitors again");
+    let moved = edit(
+        &mut state,
+        GeometryChange::Move {
+            x: n(2100.0),
+            y: n(100.0),
+        },
+        &before.revision,
+    )
+    .expect("move");
+    assert_eq!(moved.canvas, before.canvas);
+    assert_eq!(moved.instances[1], before.instances[1]);
+    assert_eq!(
+        moved.instances[0].canvas_placement,
+        crate::studio::CanvasPlacement::Outside
+    );
+    assert_eq!(state.view(access), moved);
+    let undone = state
+        .edit(Edit::Undo, &moved.revision, access)
+        .expect("undo");
+    assert_eq!(undone.instances, before.instances);
+    assert_eq!(undone.canvas, before.canvas);
+    let redone = state
+        .edit(Edit::Redo, &undone.revision, access)
+        .expect("redo");
+    assert_eq!(redone.instances, moved.instances);
+    assert_eq!(state.view(access), redone);
+}
+#[test]
+fn revision_precedes_invalid_document_and_resize_rejects_adjusted_size() {
+    let (_root, path, _) = fixture();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let before = state.view(access);
+    let bytes = std::fs::read(&path).expect("bytes");
+    for change in [
+        GeometryChange::Resize {
+            x: n(0.0),
+            y: n(0.0),
+            width: n(40000.0),
+            height: n(50000.0),
+        },
+        GeometryChange::Move {
+            x: n(100_001.0),
+            y: n(0.0),
+        },
+    ] {
+        assert_eq!(
+            edit(&mut state, change, &before.revision),
+            Err(HostError::Rejected)
+        );
+        assert_eq!(std::fs::read(&path).expect("bytes"), bytes);
+    }
+    std::fs::write(&path, b"{broken").expect("protected");
+    assert!(matches!(
+        edit(&mut state, GeometryChange::AutoSize, &before.revision),
+        Err(HostError::StudioConflict { .. })
+    ));
+    assert_eq!(
+        edit(
+            &mut state,
+            GeometryChange::AutoSize,
+            &vantare_services::content_hash(b"{broken")
+        ),
+        Err(HostError::Protected)
+    );
+}
+#[test]
+fn floating_point_aspect_drift_does_not_write_or_create_undo() {
+    let (_root, path, _) = fixture();
+    let mut value = layout(&path);
+    value["instances"][0]["geometry"]["size"] = serde_json::json!({"width":84.0,"height":42.0});
+    replace_layout(&path, &value);
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let before = state.view(access);
+    let bytes = std::fs::read(&path).expect("bytes");
+    let item = &before.instances[0];
+    let after = edit(
+        &mut state,
+        GeometryChange::Resize {
+            x: item.x,
+            y: item.y,
+            width: n(84.000_000_000_000_06),
+            height: n(42.0),
+        },
+        &before.revision,
+    )
+    .expect("equivalent resize");
+    assert_eq!(after.revision, before.revision);
+    assert_eq!(std::fs::read(&path).expect("bytes"), bytes);
+    assert_eq!(state.undo.len(), 0);
 }

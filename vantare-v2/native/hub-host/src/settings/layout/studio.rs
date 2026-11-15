@@ -45,11 +45,19 @@ impl Open {
     fn read(
         path: &Path,
         source: fn() -> Vec<crate::studio::monitor::Monitor>,
+        pinned: Option<crate::studio::monitor::Monitor>,
     ) -> Result<Self, HostError> {
         if !vantare_launcher::is_local_path(path) {
             return Err(HostError::Denied);
         }
         let document = Document::open(path).map_err(|()| HostError::Protected)?;
+        Self::project(document, source, pinned)
+    }
+    fn project(
+        document: Document,
+        source: fn() -> Vec<crate::studio::monitor::Monitor>,
+        pinned: Option<crate::studio::monitor::Monitor>,
+    ) -> Result<Self, HostError> {
         if document.observed.is_none() {
             return Err(HostError::Protected);
         }
@@ -71,8 +79,9 @@ impl Open {
             .iter()
             .map(|item| (f64::from(item.x), f64::from(item.y), item.visible))
             .collect();
-        let monitor =
-            crate::studio::monitor::choose(&source(), &positions).ok_or(HostError::Protected)?;
+        let monitor = pinned
+            .or_else(|| crate::studio::monitor::choose(&source(), &positions))
+            .ok_or(HostError::Protected)?;
         let canvas = canvas(&document.fields, monitor)?;
         for item in &mut projected {
             relative(item, monitor, canvas)?;
@@ -270,8 +279,13 @@ fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
     crate::studio::geometry::free_spot(opened.canvas.size(), size, &taken)
         .ok_or(HostError::Protected)
 }
+fn open(state: &mut State) -> Result<Open, HostError> {
+    let opened = Open::read(&state.path, state.monitor_source, state.monitor)?;
+    state.monitor = Some(opened.monitor);
+    Ok(opened)
+}
 pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioView {
-    let opened = Open::read(&state.path, state.monitor_source);
+    let opened = open(state);
     let Ok(opened) = opened else {
         let mut unavailable = State::unavailable(
             if state.path.try_exists().unwrap_or(true) {
@@ -329,13 +343,36 @@ pub(crate) fn edit(
 ) -> Result<StudioView, HostError> {
     edit_result(state, edit, revision, access).map(|(value, _)| value)
 }
+fn open_revision(
+    state: &mut State,
+    revision: &str,
+    access: Option<CatalogAccess>,
+) -> Result<Open, HostError> {
+    if !vantare_launcher::is_local_path(&state.path) {
+        return Err(HostError::Denied);
+    }
+    let observed = files::read_optional(&state.path, LIMIT).map_err(|_| HostError::Protected)?;
+    if observed
+        .as_deref()
+        .map(vantare_services::content_hash)
+        .as_deref()
+        != Some(revision)
+    {
+        return Err(HostError::StudioConflict {
+            current: view(state, access),
+        });
+    }
+    let document = Document::from_observed(observed).map_err(|()| HostError::Protected)?;
+    Open::project(document, state.monitor_source, state.monitor)
+}
 pub(crate) fn edit_result(
     state: &mut State,
     edit: Edit,
     revision: &str,
     access: Option<CatalogAccess>,
 ) -> Result<(StudioView, Option<String>), HostError> {
-    let mut opened = Open::read(&state.path, state.monitor_source)?;
+    let mut opened = open_revision(state, revision, access)?;
+    state.monitor = Some(opened.monitor);
     let settings_edit = matches!(&edit, Edit::Instance(_, InstancePatch::Settings(_)));
     let geometry_edit = matches!(
         &edit,
@@ -343,11 +380,6 @@ pub(crate) fn edit_result(
     );
     if (settings_edit || geometry_edit) && !opened.fits_frame(access) {
         return Err(HostError::Protected);
-    }
-    if opened.revision() != revision {
-        return Err(HostError::StudioConflict {
-            current: view(state, access),
-        });
     }
     if state.revision.as_ref().is_some_and(|last| last != revision) {
         state.undo.clear();
@@ -533,7 +565,7 @@ pub(crate) fn track(
         if access.is_none() {
             return Err(HostError::Denied);
         }
-        Open::read(&state.path, state.monitor_source)?;
+        open(state)?;
     }
     if show && showing(&state.path) {
         return Ok(view(state, access));

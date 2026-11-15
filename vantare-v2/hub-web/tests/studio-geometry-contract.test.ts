@@ -24,6 +24,8 @@ it("accepts each closed geometry order and rejects arbitrary data", () => {
     { kind: "move", x: Number.NaN, y: 0 },
     { kind: "move", x: Number.POSITIVE_INFINITY, y: 0 },
     { kind: "move", x: 1e100, y: 0 },
+    { kind: "move", x: 100001, y: 0 },
+    { kind: "resize", x: -100001, y: 0, width: 100, height: 100 },
     { kind: "move", x: 0, y: 0, command: "never" },
     { kind: "resize", x: 0, y: 0, width: 0, height: 300 },
     { kind: "anchor", column: 3, row: 0 },

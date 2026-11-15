@@ -6,6 +6,13 @@ use ts_rs::TS;
 pub const MIN_SIZE: (f64, f64) = (64.0, 32.0);
 pub const MAX_SIZE: (f64, f64) = (3840.0, 2160.0);
 pub const NUDGE_LIMIT: f64 = 100_000.0;
+pub const EPSILON: f64 = 1e-7;
+pub fn near(a: f64, b: f64) -> bool {
+    (a - b).abs() <= EPSILON
+}
+pub fn position_valid(at: Pair) -> bool {
+    finite(at) && at.0.abs() <= NUDGE_LIMIT && at.1.abs() <= NUDGE_LIMIT
+}
 pub type Pair = (f64, f64);
 pub type Rect = (f64, f64, f64, f64);
 
@@ -175,9 +182,14 @@ pub fn snap(
     }
     let (x, gx) = axis(center.0, size.0, canvas.0, xs);
     let (y, gy) = axis(center.1, size.1, canvas.1, ys);
+    let final_x = x.clamp(0.0, (canvas.0 - size.0).max(0.0));
+    let final_y = y.clamp(0.0, (canvas.1 - size.1).max(0.0));
     Some(Snap {
-        position: (x, y),
-        guides: (gx, gy),
+        position: (final_x, final_y),
+        guides: (
+            if near(x, final_x) { gx } else { None },
+            if near(y, final_y) { gy } else { None },
+        ),
     })
 }
 /// Native resize rule: keep the opposite edges fixed, including at size limits.
@@ -223,7 +235,7 @@ pub fn bounded_size(
             requested.1.clamp(MIN_SIZE.1, MAX_SIZE.1),
         ));
     }
-    let aspect = previous.0 / previous.1;
+    let aspect = (previous.0 / previous.1).clamp(MIN_SIZE.0 / MAX_SIZE.1, MAX_SIZE.0 / MIN_SIZE.1);
     let by_width = horizontal
         || ((requested.0 - previous.0) / previous.0).abs()
             >= ((requested.1 - previous.1) / previous.1).abs();

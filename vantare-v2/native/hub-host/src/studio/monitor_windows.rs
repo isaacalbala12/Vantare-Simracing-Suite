@@ -33,14 +33,14 @@ unsafe extern "system" fn collect(
     // EnumDisplayMonitors is synchronous: data uniquely borrows this call's Vec.
     let output = unsafe { &mut *(data as *mut Vec<Monitor>) };
     if output.len() >= 64 {
-        return 0;
+        return 1;
     }
     let mut info = MONITORINFO {
         cbSize: u32::try_from(std::mem::size_of::<MONITORINFO>()).expect("monitor info size"),
         ..Default::default()
     };
     if unsafe { GetMonitorInfoW(monitor, &raw mut info) } == 0 {
-        return 0;
+        return 1;
     }
     let mut x = 0;
     let mut y = 0;
@@ -48,7 +48,7 @@ unsafe extern "system" fn collect(
         || x == 0
         || x != y
     {
-        return 0;
+        return 1;
     }
     let r = info.rcMonitor;
     let Some(logical) = Monitor::from_physical(
@@ -56,9 +56,9 @@ unsafe extern "system" fn collect(
         x,
         info.dwFlags & MONITORINFOF_PRIMARY != 0,
     ) else {
-        return 0;
+        return 1;
     };
-    output.push(logical);
+    super::retain(output, Some(logical));
     1
 }
 pub(super) fn snapshot() -> Vec<Monitor> {
@@ -70,13 +70,13 @@ pub(super) fn snapshot() -> Vec<Monitor> {
     }
     let _restore = Restore(previous);
     let mut output = Vec::new();
-    let result = unsafe {
+    unsafe {
         EnumDisplayMonitors(
             std::ptr::null_mut(),
             std::ptr::null(),
             Some(collect),
             &raw mut output as LPARAM,
-        )
-    };
-    if result == 0 { vec![] } else { output }
+        );
+    }
+    output
 }

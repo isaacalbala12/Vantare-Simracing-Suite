@@ -36,6 +36,14 @@ pub(crate) fn choose(monitors: &[Monitor], positions: &[(f64, f64, bool)]) -> Op
         .or_else(|| monitors.iter().copied().find(|m| m.primary))
         .or_else(|| monitors.first().copied())
 }
+#[cfg(any(windows, test))]
+pub(super) fn retain(output: &mut Vec<Monitor>, candidate: Option<Monitor>) {
+    if output.len() < 64
+        && let Some(monitor) = candidate
+    {
+        output.push(monitor);
+    }
+}
 pub(crate) fn snapshot() -> Vec<Monitor> {
     #[cfg(test)]
     {
@@ -79,4 +87,20 @@ mod tests {
         assert!(Monitor::from_physical((0, 0, 0, 100), 96, true).is_none());
         assert!(Monitor::from_physical((0, 0, 100, 100), 0, true).is_none());
     }
+}
+
+#[cfg(test)]
+#[test]
+fn a_bad_or_excess_monitor_does_not_remove_valid_records() {
+    let valid = Monitor::from_physical((0, 0, 1920, 1080), 96, true);
+    let mut monitors = Vec::new();
+    retain(&mut monitors, valid);
+    retain(&mut monitors, None);
+    retain(&mut monitors, valid);
+    assert_eq!(monitors.len(), 2);
+    for _ in 0..70 {
+        retain(&mut monitors, valid);
+    }
+    assert_eq!(monitors.len(), 64);
+    assert!(monitors.iter().all(|m| Some(*m) == valid));
 }

@@ -133,4 +133,16 @@ fn geometry_canvas_and_drop_require_current_rights_and_not_live() {
         matches!(response(&mut session,&requests[0]),HostToUi::Response{result:Reply::StudioGeometry{value},..} if value.instances[0].x==100_u32.into())
     );
     assert_ne!(std::fs::read(&path).expect("changed"), bytes);
+    let saved = std::fs::read(&path).expect("saved");
+    for _ in 0..2 {
+        assert!(matches!(
+            response(&mut session, &requests[0]),
+            HostToUi::Failure {
+                error: HostError::StudioConflict { .. },
+                ..
+            }
+        ));
+        assert_eq!(std::fs::read(&path).expect("no retry write"), saved);
+        assert_eq!(session.studio.undo.len(), 1);
+    }
 }

@@ -104,7 +104,7 @@ fn geometry_constants(text: &mut String) {
         "studioGeometryLimits",
         serde_json::json!({
         "minSize":geometry::MIN_SIZE,"maxSize":geometry::MAX_SIZE,"coordinateMax":f64::from(f32::MAX),
-        "canvasMin":64,"canvasMax":SIZE_LIMIT,"snapScreenPx":7.0,"nudgeLimit":geometry::NUDGE_LIMIT})
+        "canvasMin":64,"canvasMax":SIZE_LIMIT,"snapScreenPx":7.0,"nudgeLimit":geometry::NUDGE_LIMIT,"epsilon":geometry::EPSILON})
     );
 }
 fn metadata(text: &mut String) {

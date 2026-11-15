@@ -133,6 +133,7 @@ pub struct State {
     pub(crate) revision: Option<String>,
     last: Option<(Instant, StudioView)>,
     pub(crate) monitor_source: fn() -> Vec<monitor::Monitor>,
+    pub(crate) monitor: Option<monitor::Monitor>,
 }
 impl State {
     pub fn new(path: PathBuf) -> Self {
@@ -143,6 +144,7 @@ impl State {
             revision: None,
             last: None,
             monitor_source: monitor::snapshot,
+            monitor: None,
         }
     }
     pub fn unavailable(

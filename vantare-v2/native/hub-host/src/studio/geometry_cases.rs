@@ -4,6 +4,13 @@ use serde_json::{Value, json};
 
 pub fn vectors() -> Value {
     let snap_cases = [
+        (
+            (50.0, 200.0),
+            (100.0, 100.0),
+            (1000.0, 800.0),
+            vec![(-3.0, 500.0, 100.0, 100.0)],
+            8.0,
+        ),
         ((496.0, 398.0), (200.0, 100.0), (1000.0, 800.0), vec![], 8.0),
         ((492.0, 200.0), (200.0, 100.0), (1000.0, 800.0), vec![], 8.0),
         (
@@ -65,6 +72,12 @@ pub fn vectors() -> Value {
                 );
             }
         }
+    }
+    for size in [(100_000.0, 1.0), (1.0, 100_000.0)] {
+        resizes.push(
+            json!({"start":[0.0,0.0],"size":size,"handle":[1,1],"delta":[10.0,10.0],"locked":true,
+            "expected":resize((0.0,0.0),size,(1,1),(10.0,10.0),true)}),
+        );
     }
     let anchors: Vec<_> = (0..3)
         .flat_map(|column| {

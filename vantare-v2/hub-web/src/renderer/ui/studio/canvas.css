@@ -1,0 +1,287 @@
+.v-studio-canvas-root {
+  height: 100%;
+  min-height: 0;
+}
+.v-canvas-mode {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  height: 100%;
+  min-height: 0;
+}
+.v-canvas-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+.v-canvas-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  font-size: 11px;
+  color: var(--text-caption);
+}
+.v-canvas-status {
+  margin-left: auto;
+  color: var(--ok);
+}
+.v-canvas-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-md);
+  background: var(--ill-ground);
+}
+.v-canvas-viewport:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.v-canvas-scroll {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+}
+.v-canvas-paper {
+  position: absolute;
+  overflow: hidden;
+  background: var(--grad-panel);
+}
+.v-canvas-widget {
+  position: absolute;
+}
+.v-canvas-move {
+  appearance: none;
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid transparent;
+  background: none;
+  padding: 0;
+  color: inherit;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.v-canvas-move[aria-disabled="true"] {
+  cursor: default;
+}
+.v-canvas-widget[data-selected="true"] .v-canvas-move {
+  border-color: var(--focus-ring);
+}
+.v-canvas-move > :where(img, svg, span) {
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.v-canvas-move:active {
+  cursor: grabbing;
+}
+.v-canvas-caption {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  white-space: nowrap;
+  color: var(--on-accent);
+  background: var(--focus-ring);
+  font-size: 10px;
+  padding: 1px 4px;
+  pointer-events: none;
+}
+.v-canvas-handle {
+  appearance: none;
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--text-1);
+  background: var(--focus-ring);
+  padding: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transform: translate(-50%, -50%);
+}
+.v-canvas-handle[data-index="0"] {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.v-canvas-handle[data-index="1"] {
+  left: 50%;
+  top: 0;
+  cursor: ns-resize;
+}
+.v-canvas-handle[data-index="2"] {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.v-canvas-handle[data-index="3"] {
+  left: 100%;
+  top: 50%;
+  cursor: ew-resize;
+}
+.v-canvas-handle[data-index="4"] {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
+}
+.v-canvas-handle[data-index="5"] {
+  left: 50%;
+  top: 100%;
+  cursor: ns-resize;
+}
+.v-canvas-handle[data-index="6"] {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+.v-canvas-handle[data-index="7"] {
+  left: 0;
+  top: 50%;
+  cursor: ew-resize;
+}
+.v-canvas-guide {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  background: var(--focus-ring);
+}
+.v-canvas-guide[data-axis="0"] {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.v-canvas-guide[data-axis="1"] {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+.v-canvas-resolution {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  color: var(--text-caption);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  pointer-events: none;
+}
+.v-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+.v-canvas-toolbar > .v-field {
+  max-width: 190px;
+}
+.v-canvas-toolbar > span {
+  margin-right: auto;
+}
+.v-canvas-toolbar :where(label) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.v-canvas-list {
+  display: flex;
+  gap: 8px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+  background: var(--grad-panel);
+}
+.v-canvas-list > button {
+  flex: none;
+  gap: 8px;
+  border: 1px solid var(--edge);
+}
+.v-canvas-list > button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--active);
+}
+.v-canvas-list .v-widget-icon {
+  width: 24px;
+  height: 24px;
+}
+.v-canvas-help {
+  font-size: 11px;
+  color: var(--text-caption);
+  margin: 0;
+}
+.v-canvas-inspector {
+  overflow: auto;
+  min-height: 0;
+  border-left: 1px solid var(--edge);
+  padding-left: 16px;
+}
+.v-canvas-inspector > h2 {
+  font-size: 18px;
+  margin: 6px 0 20px;
+}
+.v-canvas-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--edge);
+  margin-bottom: 20px;
+}
+.v-canvas-fields h3 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin: 0;
+}
+.v-canvas-numbers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.v-canvas-fields p {
+  margin: 0;
+  color: var(--text-caption);
+  font-size: 11px;
+}
+.v-canvas-fields p[role="alert"] {
+  color: var(--err);
+}
+.v-canvas-anchors {
+  display: grid;
+  grid-template-columns: repeat(3, 36px);
+  gap: 4px;
+}
+.v-canvas-anchors legend {
+  margin-bottom: 8px;
+}
+.v-canvas-inspector .v-studio-appearance-grid {
+  grid-template-columns: 1fr;
+}
+@container studio-main (max-width: 1000px) {
+  .v-canvas-mode {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 16px;
+  }
+  .v-canvas-heading > span:not([role]) {
+    display: none;
+  }
+  .v-canvas-toolbar > span {
+    display: none;
+  }
+}

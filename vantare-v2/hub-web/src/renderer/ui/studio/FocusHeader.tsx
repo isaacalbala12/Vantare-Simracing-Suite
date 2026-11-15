@@ -1,9 +1,11 @@
+import type { Ref } from "react";
 import type {
   OverlayInstance,
   StudioView,
 } from "../../../contract/generated/contract";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
+import { canvasText } from "../../i18n/studio-canvas.es";
 import { Button } from "../Button";
 import { DisabledHint } from "./DisabledHint";
 import { MoreMenu } from "./MoreMenu";
@@ -15,12 +17,16 @@ export function FocusHeader({
   pending,
   onTrack,
   onRemove,
+  onCanvas,
+  canvasRef,
 }: {
   item?: OverlayInstance;
   view: StudioView;
   pending: boolean;
   onTrack: () => void;
   onRemove: () => void;
+  onCanvas?: () => void;
+  canvasRef?: Ref<HTMLButtonElement>;
 }) {
   const info = view.catalog.find((value) => value.kind === item?.kind);
   const unavailable =
@@ -57,12 +63,22 @@ export function FocusHeader({
         )}
       </div>
       <div className="v-focus-actions">
+        {onCanvas && (
+          <Button
+            ref={canvasRef}
+            disabled={view.state !== "ready" || !view.canvas}
+            onClick={onCanvas}
+          >
+            {canvasText.open}
+          </Button>
+        )}
         {item && (
           <MoreMenu
             item={item}
             view={view}
             pending={pending}
             onRemove={onRemove}
+            onCanvas={onCanvas}
           />
         )}
         <DisabledHint

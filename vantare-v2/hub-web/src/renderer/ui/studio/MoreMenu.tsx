@@ -16,11 +16,13 @@ export function MoreMenu({
   view,
   pending,
   onRemove,
+  onCanvas,
 }: {
   item: OverlayInstance;
   view: StudioView;
   pending: boolean;
   onRemove: () => void;
+  onCanvas?: () => void;
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -58,17 +60,16 @@ export function MoreMenu({
             {/* Base UI useMenuItem keeps disabled entries focusable. */}
             <Menu.Item
               className="v-option v-studio-more-item"
-              disabled
-              closeOnClick={false}
+              disabled={!!reason || !onCanvas}
+              onClick={() => {
+                if (!reason) onCanvas?.();
+              }}
               aria-describedby={`${id}-edit`}
             >
               <MoreActionIcon action="place" />
               <span>
-                <strong>
-                  {t.edit}
-                  <span className="v-studio-more-soon">{text.moreSoon}</span>
-                </strong>
-                <small id={`${id}-edit`}>{text.moreEditHelp}</small>
+                <strong>{t.edit}</strong>
+                <small id={`${id}-edit`}>{t.editHelp}</small>
               </span>
             </Menu.Item>
             <Menu.Item

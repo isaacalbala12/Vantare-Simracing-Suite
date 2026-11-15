@@ -14,18 +14,24 @@ import "./studio-steps.css";
 export function StudioSteps({
   item,
   readOnly = false,
+  onCanvas,
 }: {
   item: OverlayInstance;
   readOnly?: boolean;
+  onCanvas?: () => void;
 }) {
-  return <Steps key={item.id} item={item} readOnly={readOnly} />;
+  return (
+    <Steps key={item.id} item={item} readOnly={readOnly} onCanvas={onCanvas} />
+  );
 }
 function Steps({
   item,
   readOnly,
+  onCanvas,
 }: {
   item: OverlayInstance;
   readOnly: boolean;
+  onCanvas?: () => void;
 }) {
   const state = useStudio();
   const [step, setStep] = useState(item.settings ? "appearance" : "track");
@@ -132,7 +138,7 @@ function Steps({
             <AppearanceStep item={item} />
           </Tabs.Panel>
           <Tabs.Panel value="track">
-            <TrackStep item={item} />
+            <TrackStep item={item} onCanvas={onCanvas} />
           </Tabs.Panel>
           <Tabs.Panel value="content">
             <ContentStep item={item} />

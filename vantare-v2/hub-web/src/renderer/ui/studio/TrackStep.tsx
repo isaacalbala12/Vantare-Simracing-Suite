@@ -27,7 +27,13 @@ const offTrackOptions: { value: OffTrack; label: string }[] = [
   { value: "alwaysVisible", label: t.always },
   { value: "hide", label: t.offHide },
 ];
-export function TrackStep({ item }: { item: OverlayInstance }) {
+export function TrackStep({
+  item,
+  onCanvas,
+}: {
+  item: OverlayInstance;
+  onCanvas?: () => void;
+}) {
   const model = useTrack(item);
   const visibleHelp = useId();
   if (!model.readable) return <p>{t.appearanceUnavailable}</p>;
@@ -125,8 +131,15 @@ export function TrackStep({ item }: { item: OverlayInstance }) {
         visible={false}
       >
         <p>{t.placeHelp}</p>
-        <DisabledHint label={t.editHelp}>
-          <Button disabled size="sm">
+        <DisabledHint label={t.editHelp} disabled={!onCanvas || disabled}>
+          <Button
+            disabled={!onCanvas || disabled}
+            aria-disabled={pending}
+            size="sm"
+            onClick={() => {
+              if (!pending) onCanvas?.();
+            }}
+          >
             <Icon name="v-studio" />
             {t.edit}
           </Button>

@@ -1,4 +1,6 @@
 export const studioContentText = {
+  invalidStep: (min: number, max: number, step: number) =>
+    `Usa pasos de ${step} entre ${min} y ${max}.`,
   pedalGap: "Separaci\u00f3n entre barras",
   columns: "Columnas",
   sessions: "Columnas por sesión",

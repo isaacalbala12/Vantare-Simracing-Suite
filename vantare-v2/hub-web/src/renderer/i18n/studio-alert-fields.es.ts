@@ -1,0 +1,35 @@
+export const studioAlertFieldsText = {
+  content: "Avisos de sesión",
+  behavior: "Comportamiento de los avisos",
+  session: "Cuenta atrás LMU",
+  calendar: "Carreras del calendario",
+  finished: "Prácticas y qualy terminadas",
+  starts: "Formación y salida (señales pendientes)",
+  durationSeconds: "Duración (segundos)",
+  volume: "Volumen (%)",
+  miniLimit: "Mini: máximo a la vez",
+  soundZero: "Pitido al llegar a 0",
+  miniFinal: "Mini del último minuto",
+  sound: "Sonido",
+  mini: "Mini cuenta atrás",
+  miniSession: "Mini de la sesión",
+  miniCalendar: "Mini del calendario",
+  miniStart: "Mini de salida",
+  miniSize: "Tamaño mini",
+  style: "Estilo",
+  styles: {
+    neo: "Neo",
+    carmin: "Carmín",
+    limpio: "Limpio",
+    transparente: "Transparente",
+  },
+  thresholds: "Umbrales de aviso",
+  threshold: (index: number) => `Umbral ${index + 1} (min; 0 desactiva)`,
+  thresholdHelp:
+    "Al guardar se ordenan y se eliminan los umbrales repetidos. 0 desactiva ese umbral.",
+  thresholdUncertain:
+    "No se ha confirmado el cambio. Recarga los umbrales y revísalos antes de decidir otra vez; no se reenviará la orden anterior.",
+  reload: "Recargar umbrales",
+  signalPending:
+    "Las señales de formación y salida siguen pendientes en el núcleo. El valor guardado se conserva.",
+};

@@ -10,18 +10,24 @@ export function ContentNumber({
   min,
   max,
   model,
+  editableWhilePending = false,
   integer = true,
+  step,
   normalize = Number,
   onCommit,
+  "aria-describedby": describedBy,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
   model: Model;
+  editableWhilePending?: boolean;
   integer?: boolean;
+  step?: number;
   normalize?: (value: number) => number;
   onCommit: (value: number) => void;
+  "aria-describedby"?: string;
 }) {
   const [draft, setDraft] = useState(String(value));
   const [error, setError] = useState(false);
@@ -43,6 +49,7 @@ export function ContentNumber({
       !draft.trim() ||
       !Number.isFinite(number) ||
       (integer && !Number.isInteger(number)) ||
+      (step !== undefined && !Number.isInteger((number - min) / step)) ||
       number < min ||
       number > max
     ) {
@@ -62,16 +69,19 @@ export function ContentNumber({
   return (
     <Input
       label={label}
+      aria-describedby={describedBy}
       value={draft}
       inputMode={integer ? "numeric" : "decimal"}
       disabled={model.disabled}
-      readOnly={model.pending}
+      readOnly={model.pending && !editableWhilePending}
       aria-busy={model.pending || undefined}
       error={
         error
-          ? integer
-            ? text.invalidNumber(min, max)
-            : text.invalidDecimal(min, max)
+          ? step !== undefined && step > 1
+            ? text.invalidStep(min, max, step)
+            : integer
+              ? text.invalidNumber(min, max)
+              : text.invalidDecimal(min, max)
           : undefined
       }
       onChange={(event) => {

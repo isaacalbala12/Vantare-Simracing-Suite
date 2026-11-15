@@ -181,6 +181,24 @@ function pending(s: CanvasState) {
   if (!s.pending) throw Error("Expected one in-flight request");
   return s.pending;
 }
+
+it("keeps the queued size when a newer move replaces a queued resize", () => {
+  let s = reduce(move(initial(), 80), { type: "finish" });
+  const firstToken = pending(s).token;
+  s = reduce(s, { type: "begin", id: "one", mode: "resize" });
+  s = reduce(s, {
+    type: "preview",
+    box: { ...gesture(s).draft, size: { width: 400, height: 150 } },
+  });
+  s = reduce(s, { type: "finish" });
+  s = reduce(move(s, 120), { type: "finish" });
+  const authoritative = saved(s);
+  s = reduce(s, { type: "reply", token: firstToken, view: authoritative });
+  expect(pending(s).request).toMatchObject({
+    baseRevision: authoritative.revision,
+    change: { kind: "resize", x: 120, y: 20, width: 400, height: 150 },
+  });
+});
 function gesture(s: CanvasState) {
   if (!s.gesture) throw Error("Expected active gesture");
   return s.gesture;

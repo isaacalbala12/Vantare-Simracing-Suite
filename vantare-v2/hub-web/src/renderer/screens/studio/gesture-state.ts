@@ -192,16 +192,22 @@ export function canvasReducer(
       if (!g) return state;
       const next = { ...state, gesture: undefined };
       if (sameBox(g.origin, g.draft)) return next;
-      const change: GeometryChange =
-        g.mode === "move"
-          ? { kind: "move", x: g.draft.x, y: g.draft.y }
-          : {
-              kind: "resize",
-              x: g.draft.x,
-              y: g.draft.y,
-              width: g.draft.size.width,
-              height: g.draft.size.height,
-            };
+      // A newer move can continue the locally queued resize. Its one final
+      // order must include that size too, rather than previewing unsent fields.
+      const resized =
+        g.mode === "resize" ||
+        !near(g.expected.size.width, g.draft.size.width) ||
+        !near(g.expected.size.height, g.draft.size.height) ||
+        g.expected.sizeMode !== g.draft.sizeMode;
+      const change: GeometryChange = !resized
+        ? { kind: "move", x: g.draft.x, y: g.draft.y }
+        : {
+            kind: "resize",
+            x: g.draft.x,
+            y: g.draft.y,
+            width: g.draft.size.width,
+            height: g.draft.size.height,
+          };
       return enqueue(next, {
         id: g.id,
         expected: g.expected,

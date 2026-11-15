@@ -363,16 +363,18 @@ export function CanvasStage({
               enabled={
                 model.enabled &&
                 !selected.locked &&
-                (!studio.pending || model.pending)
+                !studio.pending &&
+                !model.pending
               }
-              write={(change, target) =>
+              write={(change, target) => {
+                if (model.current.current.pending) return;
                 model.dispatch({
                   type: "write",
                   id: selected.id,
                   change,
                   target,
-                })
-              }
+                });
+              }}
             />
           </footer>
         </>

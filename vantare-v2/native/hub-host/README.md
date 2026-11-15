@@ -86,6 +86,11 @@ representable más cercana entre los límites de tamaño. Mover y empujar compar
 el límite local ±100000. El PR2 web DEBE contrastar `studioGeometryCases`, con
 comparación exacta o esa tolerancia documentada; no basta con exportar los casos.
 
+El monitor del lienzo permanece fijado durante la sesión. Cada lectura contrasta
+sus límites y escala con la lista viva; si ya no está, Studio queda Protected en
+vez de cambiar de monitor o conservar un origen desconectado. Un resize que solo
+redondea el tamaño al pasar por f32 conserva los bytes y no añade deshacer.
+
 ## Cola de servicios
 
 D060 conserva el comentario de los cuestionarios: la vista publica `note` y

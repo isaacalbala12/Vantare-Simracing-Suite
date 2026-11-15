@@ -313,6 +313,12 @@ El fixture guardado original de Relative se decodifica por IPC y se proyecta
 por domain en tests CPU; la vista y la captura con pintor falso comparan los
 mismos textos y cajas en tres escalas. Se retiró solo el pequeño target Mac
 de tests de política ya terminados; 13,25 GiB libres, sin nueva compilación Mac.
+Preparador CPU del lote: lee los siete scenes GPUI originales, conserva fotos
+y diseño salvo el Look solicitado, genera 42 pares pendientes con hashes y
+claves motor/commit/Rune/escala. No genera PNG ni ejecuta motores. Dos tests
+del preparador PASS; ocho Python en total. Primeras pasadas locales de Clippy
+detectaron llamadas bg en lugar de fill y un lint de chunks; corregidos sin
+excepciones. Pasada final CPU por la cola pendiente, no se ocultan los fallos.
 
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 

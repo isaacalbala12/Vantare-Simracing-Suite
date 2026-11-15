@@ -173,6 +173,21 @@ llamante de preview debe limitar la vida del proceso hijo como fija ADR 0109.
 Sin capturas del PC de juego no se afirma paridad ni se solicita fusionar el
 widget. El cinturón del ejecutable sigue siendo su primera instrucción.
 
+Preparar el lote es CPU y no ejecuta ninguno de los motores:
+
+```powershell
+python native/overlays-rune/scripts/preparar_escenas.py --salida D:/VantareServer/evidence/overlays-rune/pr7/plan-<commit> --look eficiencia --look vantare
+```
+
+Lee los siete casos originales de `ui/src/relative/scenes.json`, conserva los
+diseños y las fotos, y añade solo el Look solicitado a sus ajustes. Produce
+42 comparaciones pendientes (dos Looks y 100/125/150), entradas con hash y
+claves que distinguen motor, commit, copia de Rune, datos y escala. El índice
+rotula explícitamente que no hay capturas. Rechaza rutas fuera del corpus,
+otros widgets, escenas repetidas o pasos desconocidos; no sobrescribe pruebas
+anteriores. La CLI que consume el plan y genera los PNG sigue pendiente de
+la conexión de PR 3/6. El plan no abre ventanas ni solicita dispositivos.
+
 ## Servidor y CI sin gráficos
 
 En el servidor, el entorno Machine debe tener `VANTARE_SIN_GRAFICOS=1` y los

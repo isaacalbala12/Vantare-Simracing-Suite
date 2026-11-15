@@ -83,19 +83,22 @@ pub fn label(value: &str, x: f32, base: f32, style: TextStyle, ink: Color) -> El
 }
 
 pub fn rect(x: f32, y: f32, w: f32, h: f32, ink: Color) -> El {
-    el().absolute(x, y).size(w.max(0.0), h.max(0.0)).bg(ink)
+    el().absolute(x, y).size(w.max(0.0), h.max(0.0)).fill(ink)
 }
 
 pub fn panel(w: f32, h: f32) -> El {
-    el().size(w, h).radius(RADIUS).bg(color(PANEL, 0.87)).child(
-        el().absolute(0.0, 0.0)
-            .size(w, h)
-            .radius(RADIUS)
-            .linear_gradient(
-                120.0,
-                [(0.0, color(0xffffff, 0.03)), (0.38, color(0xffffff, 0.0))],
-            ),
-    )
+    el().size(w, h)
+        .radius(RADIUS)
+        .fill(color(PANEL, 0.87))
+        .child(
+            el().absolute(0.0, 0.0)
+                .size(w, h)
+                .radius(RADIUS)
+                .linear_gradient(
+                    120.0,
+                    [(0.0, color(0xffffff, 0.03)), (0.38, color(0xffffff, 0.0))],
+                ),
+        )
 }
 
 pub fn outline(w: f32, h: f32) -> El {

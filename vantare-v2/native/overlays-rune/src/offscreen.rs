@@ -138,7 +138,7 @@ pub fn render_gpu<S: 'static>(
 // Equivalente CPU del AlphaSurface privado de Rune. El target sRGB contiene
 // color premultiplicado en lineal: dividir sus bytes sRGB produce halos.
 fn straight_alpha(pixels: &mut [u8], srgb_blend: bool) {
-    for pixel in pixels.chunks_exact_mut(4) {
+    for pixel in pixels.as_chunks_mut::<4>().0 {
         let alpha = pixel[3] as f32 / 255.0;
         for channel in &mut pixel[..3] {
             let encoded = *channel as f32 / 255.0;

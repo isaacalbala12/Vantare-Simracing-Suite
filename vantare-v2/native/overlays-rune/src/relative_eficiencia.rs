@@ -282,7 +282,7 @@ fn paint_row(
         .opacity(paint.opacity);
     let configured = settings.columns.is_some();
     if row.side == Side::Player {
-        node = node.bg(color(0xbfc2ca, 0.23));
+        node = node.fill(color(0xbfc2ca, 0.23));
         if !configured {
             node = node
                 .child(el().absolute(0.0, 0.0).size(WIDTH, height).linear_gradient(

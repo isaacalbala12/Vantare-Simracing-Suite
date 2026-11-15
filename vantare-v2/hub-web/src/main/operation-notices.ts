@@ -14,6 +14,18 @@ import {
 } from "../shared/launcher-completion";
 import type { SystemNotice } from "./system-notifications";
 
+/** Keep a malformed operation feed from skipping the other host listeners. */
+export function observeOperationNoticeSafely(
+  operations: ReturnType<typeof operationNotices>,
+  message: HostToUi,
+) {
+  try {
+    operations.observe(message);
+  } catch {
+    operations.reset();
+  }
+}
+
 /** Trusted host observations only; no renderer route accepts notification content. */
 export function operationNotices(present: (value: SystemNotice) => boolean) {
   let closed = false;
@@ -26,8 +38,24 @@ export function operationNotices(present: (value: SystemNotice) => boolean) {
     notificationGeneration(core),
   );
   function observeCore(value: CoreStatus) {
+    // The first core snapshot establishes the scope of the bootstrap settings.
+    if (
+      core &&
+      notificationGeneration(core) !== notificationGeneration(value)
+    ) {
+      settings = undefined;
+      updateKey = undefined;
+    }
     core = value;
     if (lastResident) completions.observe(lastResident);
+  }
+  function reset() {
+    settings = undefined;
+    updateKey = undefined;
+    core = undefined;
+    launcher = undefined;
+    lastResident = undefined;
+    completions.reset();
   }
   function updates(value: UpdatesView) {
     if (value.beta?.state !== "ready") return;
@@ -52,10 +80,7 @@ export function operationNotices(present: (value: SystemNotice) => boolean) {
       if (message.kind === "failure") {
         if (message.error.kind === "conflict") settings = message.error.current;
         if (message.id === 0) {
-          settings = undefined;
-          core = undefined;
-          lastResident = undefined;
-          completions.reset();
+          reset();
         }
         return;
       }
@@ -109,13 +134,10 @@ export function operationNotices(present: (value: SystemNotice) => boolean) {
             silent: false,
           });
     },
+    reset,
     close() {
       closed = true;
-      settings = undefined;
-      core = undefined;
-      launcher = undefined;
-      lastResident = undefined;
-      completions.reset();
+      reset();
     },
   };
 }

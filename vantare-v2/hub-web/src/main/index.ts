@@ -32,6 +32,7 @@ import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
 import { notificationDelivery } from "./notification-delivery";
+import { observeOperationNoticeSafely } from "./operation-notices";
 import { reportExportSession } from "./report-export";
 import {
   assetPath,
@@ -175,7 +176,8 @@ async function start() {
   });
   const calendarNotices = notices.calendar;
   const removeHostFailure = host.listen((message) => {
-    if (!currentWindow.isDestroyed()) notices.operations.observe(message);
+    if (!currentWindow.isDestroyed())
+      observeOperationNoticeSafely(notices.operations, message);
     if (
       message.kind === "event" &&
       message.event.topic === "calendarNotice" &&

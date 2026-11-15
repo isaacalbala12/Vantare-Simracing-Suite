@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, it, vi } from "vitest";
 import type {
   HostToUi,
@@ -5,7 +6,10 @@ import type {
   UpdatesView,
 } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
-import { operationNotices } from "../src/main/operation-notices";
+import {
+  observeOperationNoticeSafely,
+  operationNotices,
+} from "../src/main/operation-notices";
 import type { SystemNotice } from "../src/main/system-notifications";
 import {
   finished,
@@ -45,6 +49,135 @@ const update: UpdatesView = {
   news: [],
   restartAvailable: true,
 };
+it("forgets the previous account preferences before a new settings snapshot arrives", () => {
+  const present = vi.fn((_: SystemNotice) => true);
+  const observer = operationNotices(present);
+  const core = (accountGeneration: string) =>
+    observer.observe({
+      kind: "event",
+      event: {
+        topic: "core",
+        value: { ...notificationCore, accountGeneration },
+      },
+    });
+  if (!notificationCore.accountGeneration)
+    throw Error("account generation fixture");
+  core(notificationCore.accountGeneration);
+  observer.observe({
+    kind: "response",
+    id: 1,
+    result: { method: "settings.get", value: settings() },
+  });
+  observer.observe({
+    kind: "event",
+    event: { topic: "launcherResident", value: residentCompletionView([]) },
+  });
+  const nextGeneration = "e".repeat(64);
+  core(nextGeneration);
+  for (const events of [[], [received], [received, finished]]) {
+    const value = residentCompletionView(events);
+    if (value.execution?.results.kind !== "known") throw Error("results");
+    value.execution.results.value.accountGeneration = nextGeneration;
+    observer.observe({
+      kind: "event",
+      event: { topic: "launcherResident", value },
+    });
+  }
+  observer.observe({
+    kind: "event",
+    event: { topic: "updates", value: update },
+  });
+  expect(present).not.toHaveBeenCalled();
+  observer.observe({
+    kind: "response",
+    id: 2,
+    result: { method: "settings.get", value: settings(false, false) },
+  });
+  observer.observe({
+    kind: "event",
+    event: { topic: "updates", value: update },
+  });
+  expect(present).not.toHaveBeenCalled();
+});
+it("resets the update deduplication key at an account transition", () => {
+  const present = vi.fn((_: SystemNotice) => true),
+    observer = operationNotices(present);
+  for (const accountGeneration of [
+    notificationCore.accountGeneration,
+    "e".repeat(64),
+  ]) {
+    observer.observe({
+      kind: "event",
+      event: {
+        topic: "core",
+        value: { ...notificationCore, accountGeneration },
+      },
+    });
+    observer.observe({
+      kind: "response",
+      id: 1,
+      result: { method: "settings.get", value: settings() },
+    });
+    observer.observe({
+      kind: "event",
+      event: { topic: "updates", value: update },
+    });
+  }
+  expect(present).toHaveBeenCalledTimes(2);
+});
+it("isolates a malformed sequence and resets the feed before other host work continues", () => {
+  const present = vi.fn((_: SystemNotice) => true),
+    observer = operationNotices(present);
+  observer.observe({
+    kind: "event",
+    event: { topic: "core", value: notificationCore },
+  });
+  observer.observe({
+    kind: "response",
+    id: 1,
+    result: { method: "settings.get", value: settings() },
+  });
+  observer.observe({
+    kind: "event",
+    event: { topic: "launcherResident", value: residentCompletionView([]) },
+  });
+  const malformed = residentCompletionView([
+    { ...received, seq: "not-a-number" },
+  ]);
+  const reset = vi.spyOn(observer, "reset"),
+    continuation = vi.fn();
+  expect(() => {
+    observeOperationNoticeSafely(observer, {
+      kind: "event",
+      event: { topic: "launcherResident", value: malformed },
+    });
+    continuation();
+  }).not.toThrow();
+  expect(reset).toHaveBeenCalledTimes(1);
+  expect(continuation).toHaveBeenCalledTimes(1);
+  for (const events of [[], [received], [received, finished]])
+    observer.observe({
+      kind: "event",
+      event: {
+        topic: "launcherResident",
+        value: residentCompletionView(events),
+      },
+    });
+  expect(present).not.toHaveBeenCalled();
+});
+it("wires the guarded observer before calendar delivery in the shared host callback", () => {
+  const main = readFileSync(
+    new URL("../src/main/index.ts", import.meta.url),
+    "utf8",
+  );
+  expect(main).toContain(
+    "observeOperationNoticeSafely(notices.operations, message)",
+  );
+  expect(main).not.toContain("notices.operations.observe(message)");
+  expect(
+    main.indexOf("observeOperationNoticeSafely(notices.operations, message)"),
+  ).toBeLessThan(main.indexOf("calendarNotices.receive(message.event.value)"));
+});
 it.each([
   [false, false],
   [false, true],

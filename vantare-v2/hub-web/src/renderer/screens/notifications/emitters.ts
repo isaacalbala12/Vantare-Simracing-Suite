@@ -155,7 +155,7 @@ export function connectEmitters(
         launcher = value.value;
         break;
       case "core.get":
-        observeCore(value.value);
+        // Only the request observer can verify the account at dispatch time.
         break;
       case "settings.get":
       case "settings.update":
@@ -175,12 +175,24 @@ export function connectEmitters(
   const unobserve = client.observeRequests((event: RequestObservation) => {
     if (!active) return;
     if (event.phase === "start") {
-      if (event.method.startsWith("testing.") || event.method === "triage.send")
+      if (
+        event.method.startsWith("testing.") ||
+        event.method === "triage.send" ||
+        event.method === "core.get"
+      )
         requests.set(event.id, session.getSnapshot());
       return;
     }
     const started = requests.get(event.id);
     requests.delete(event.id);
+    if (event.method === "core.get") {
+      if (
+        event.reply?.method === "core.get" &&
+        started?.generation === generation
+      )
+        observeCore(event.reply.value);
+      return;
+    }
     if (event.method === "settings.update" && event.error?.kind === "conflict")
       reply({ method: "settings.get", value: event.error.current });
     if (

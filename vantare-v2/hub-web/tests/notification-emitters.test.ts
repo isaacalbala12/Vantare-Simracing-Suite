@@ -57,8 +57,15 @@ function harness() {
     },
     session,
   );
-  const response = (result: Reply) =>
-    receive({ kind: "response", id: 0, result });
+  let requestId = 10000;
+  const response = (result: Reply) => {
+    const id = ++requestId;
+    if (result.method === "core.get") {
+      observe({ phase: "start", id, method: result.method });
+      observe({ phase: "done", id, method: result.method, reply: result });
+    }
+    receive({ kind: "response", id, result });
+  };
   const settings = fixture("settings.get") as SettingsView;
   const account = fixture("account.get") as AccountView;
   const preferences = (enabled: boolean) =>
@@ -131,6 +138,7 @@ function harness() {
     store,
     connection,
     response,
+    receive: (message: HostToUi) => receive(message),
     observe: (value: RequestObservation) => observe(value),
     preferences,
     login,
@@ -202,6 +210,30 @@ it("does not reuse the previous core generation after a local account boundary",
   h.resident(residentCompletionView());
   h.session.invalidate();
   h.login();
+  for (const events of [[], [received], [received, finished]])
+    h.resident(residentCompletionView(events));
+  expect(h.records()).toEqual([]);
+  h.connection.dispose();
+});
+it("drops an old core.get through both request observation and raw delivery after account change", () => {
+  const h = harness();
+  h.login();
+  h.preferences(true);
+  h.response({ method: "core.get", value: notificationCore });
+  h.resident(residentCompletionView());
+  h.observe({ phase: "start", id: 900, method: "core.get" });
+  h.session.invalidate();
+  h.login();
+  h.receive({
+    kind: "event",
+    event: {
+      topic: "core",
+      value: { ...notificationCore, accountGeneration: "e".repeat(64) },
+    },
+  });
+  const reply: Reply = { method: "core.get", value: notificationCore };
+  h.observe({ phase: "done", id: 900, method: "core.get", reply });
+  h.receive({ kind: "response", id: 900, result: reply });
   for (const events of [[], [received], [received, finished]])
     h.resident(residentCompletionView(events));
   expect(h.records()).toEqual([]);

@@ -3,6 +3,7 @@ export const canvasText = {
   close: "Volver a la vista de widget",
   layout: "Lienzo",
   widget: "Widget",
+  placementHint: "Posición y tamaño: en el lienzo o sobre el juego.",
   moveGroup: "Mover widget",
   title: "Lienzo del diseño",
   unavailable:

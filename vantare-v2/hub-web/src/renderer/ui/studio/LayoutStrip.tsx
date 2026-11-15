@@ -196,8 +196,12 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
       </Tooltip>
       <footer>
         <Icon name="v-studio" />
-        <span>{t.placementHint}</span>
+        <span>
+          {state.canvasMode ? canvasText.placementHint : t.placementHint}
+        </span>
       </footer>
     </aside>
   );
 }
+
+import { canvasText } from "../../i18n/studio-canvas";

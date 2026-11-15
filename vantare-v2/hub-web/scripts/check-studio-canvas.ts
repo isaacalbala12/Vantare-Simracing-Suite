@@ -81,6 +81,7 @@ export async function checkStudioCanvas(
       await move.focus();
       await page.keyboard.down("ArrowLeft");
       await page.keyboard.press("Escape");
+
       await page.keyboard.up("ArrowLeft");
       assert.equal(await count(), 1, "Escape cancels");
       await page.keyboard.down("ArrowRight");
@@ -117,6 +118,62 @@ export async function checkStudioCanvas(
         "anchor writes once",
       );
       await page.keyboard.press("Escape");
+      const layout = [];
+      for (const width of [1440, 1280]) {
+        await page.setViewportSize({
+          width,
+          height: width === 1440 ? 900 : 800,
+        });
+        for (const sidebar of ["closed", "open"]) {
+          const nav = page.locator(".v-sidebar");
+          if (
+            (await nav.evaluate((node) =>
+              node.classList.contains("v-sidebar--collapsed"),
+            )) !==
+            (sidebar === "closed")
+          )
+            await page.keyboard.press("Control+b");
+          for (const scheme of ["dark", "light"]) {
+            await page.evaluate((value) => {
+              document.documentElement.dataset.scheme = value;
+            }, scheme);
+            const stage = page.locator(".v-studio-canvas-stage");
+            const header = await stage.locator(":scope > header").boundingBox();
+            const viewport = await stage
+              .locator(".v-studio-canvas-viewport")
+              .boundingBox();
+            const footer = await stage.locator(":scope > footer").boundingBox();
+            const help = await stage
+              .locator(".v-studio-canvas-help")
+              .boundingBox();
+            const stageBox = await stage.boundingBox();
+            const feedback = await stage
+              .locator(".v-studio-canvas-feedback")
+              .boundingBox();
+            assert.ok(header && viewport && footer && help);
+            assert.ok(stageBox && feedback);
+            assert.ok(
+              stageBox.y + stageBox.height >= feedback.y + feedback.height,
+              "feedback stays inside the stage",
+            );
+            assert.ok(
+              header.y + header.height <= viewport.y,
+              "header cannot overlap canvas",
+            );
+            assert.ok(
+              viewport.y + viewport.height <= footer.y,
+              "footer cannot overlap canvas",
+            );
+            assert.ok(
+              footer.y + footer.height <= help.y,
+              "help cannot overlap footer",
+            );
+            assert.ok(viewport.height >= 200, "canvas remains usable");
+            layout.push({ width, sidebar, scheme });
+          }
+        }
+      }
+      assert.equal(layout.length, 8);
     }
     await writeFile(
       resolve(evidence, "studio-canvas.json"),
@@ -130,6 +187,7 @@ export async function checkStudioCanvas(
           anchor: true,
           readonly: true,
           conflictNotRetried: true,
+          responsiveLayout: true,
         },
         null,
         2,

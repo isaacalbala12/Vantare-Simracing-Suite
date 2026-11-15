@@ -144,6 +144,7 @@ function arrow(node: HTMLElement, key = "ArrowRight") {
 it("moves with a held key locally and sends one revision-bound request on release", async () => {
   const spy = vi.spyOn(Client.prototype, "request");
   const { move } = await mount();
+  expect(screen.getByText(t.placementHint)).toBeTruthy();
   await waitFor(() => expect(move.getAttribute("aria-disabled")).toBe("false"));
   fireEvent.keyDown(move, { key: "ArrowRight" });
   fireEvent.keyDown(move, { key: "ArrowRight", repeat: true });

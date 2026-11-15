@@ -11,16 +11,17 @@
   padding: 0;
   border: 0;
 }
-.v-studio-canvas-stage {
+.v-focus-stage.v-studio-canvas-stage {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 14px 16px;
-  min-block-size: 380px;
+  min-block-size: min-content;
   flex: 1 0 380px;
+  overflow: visible;
 }
-.v-studio-canvas-stage > header,
-.v-studio-canvas-stage > footer {
+.v-focus-stage.v-studio-canvas-stage > header,
+.v-focus-stage.v-studio-canvas-stage > footer {
   position: relative;
   inset: auto;
   display: flex;
@@ -28,12 +29,15 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.v-studio-canvas-stage > header {
+.v-focus-stage.v-studio-canvas-stage > header {
   justify-content: space-between;
 }
-.v-studio-canvas-stage > footer {
+.v-focus-stage.v-studio-canvas-stage > footer {
   flex: none;
   font-size: 11px;
+}
+.v-focus-stage.v-studio-canvas-stage::before {
+  content: none;
 }
 .v-studio-canvas-viewport {
   position: relative;

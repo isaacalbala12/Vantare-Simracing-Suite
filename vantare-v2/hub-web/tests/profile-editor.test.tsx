@@ -28,7 +28,7 @@ import {
   SectionRailSlot,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
-import { Client } from "../src/renderer/bridge/client";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { launcherText } from "../src/renderer/i18n/launcher";
 import { actionText } from "../src/renderer/i18n/launcher-actions";
 import { removalText } from "../src/renderer/i18n/launcher-removal";
@@ -513,6 +513,8 @@ describe("profile editor", () => {
     expect(prepared.method).toBe("launcher.profile.prepareDuplicate");
     if (prepared.method !== "launcher.profile.prepareDuplicate")
       throw new Error("missing prepared draft");
+    const down = screen.getAllByRole("button", { name: text.down })[0];
+    await user.click(down);
     await user.clear(name);
     await user.type(name, "Copia revisada");
     await user.click(screen.getByRole("button", { name: text.save }));
@@ -526,7 +528,11 @@ describe("profile editor", () => {
       draft: {
         id: prepared.value.draft.id,
         name: "Copia revisada",
-        steps: prepared.value.draft.steps,
+        steps: [
+          prepared.value.draft.steps[1],
+          prepared.value.draft.steps[0],
+          ...prepared.value.draft.steps.slice(2),
+        ],
       },
     });
     expect(
@@ -587,36 +593,45 @@ describe("profile editor", () => {
     await user.click(screen.getByRole("option", { name: "20 s" }));
     await waitFor(() => expect(delay.textContent).toContain("20 s"));
   });
-  it("retains an uncertain duplicate draft and never rereads or replays the consumed save", async () => {
-    const native = Client.prototype.request;
-    const requests = vi
-      .spyOn(Client.prototype, "request")
-      .mockImplementation(function (this: Client, request) {
-        if (request.method === "launcher.profile.save")
-          return Promise.reject(new Error("transport lost"));
-        return native.call(this, request);
-      });
-    mount();
-    fireEvent.contextMenu(
-      await screen.findByRole("button", { name: "Creador de Contenido" }),
-    );
-    fireEvent.click(
-      await screen.findByRole("menuitem", { name: actionText.duplicate }),
-    );
-    const name = await screen.findByRole("textbox", { name: text.name });
-    fireEvent.change(name, { target: { value: "Conservar mi texto" } });
-    fireEvent.click(screen.getByRole("button", { name: text.save }));
-    await screen.findByText(text.duplicateUnconfirmed);
-    expect(name).toHaveProperty("value", "Conservar mi texto");
-    expect(screen.queryByRole("button", { name: text.retry })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: text.save }));
-    expect(
-      requests.mock.calls.filter(([r]) => r.method === "launcher.profile.save"),
-    ).toHaveLength(1);
-    expect(
-      requests.mock.calls.some(([r]) => r.method === "launcher.profile.get"),
-    ).toBe(false);
-  });
+  it.each(["unknown", "busy", "rejected"] as const)(
+    "retains a %s duplicate draft and never rereads or replays the consumed save",
+    async (kind) => {
+      const native = Client.prototype.request;
+      const requests = vi
+        .spyOn(Client.prototype, "request")
+        .mockImplementation(function (this: Client, request) {
+          if (request.method === "launcher.profile.save")
+            return Promise.reject(
+              kind === "unknown"
+                ? new Error("transport lost")
+                : new HostFailure({ kind }),
+            );
+          return native.call(this, request);
+        });
+      mount();
+      fireEvent.contextMenu(
+        await screen.findByRole("button", { name: "Creador de Contenido" }),
+      );
+      fireEvent.click(
+        await screen.findByRole("menuitem", { name: actionText.duplicate }),
+      );
+      const name = await screen.findByRole("textbox", { name: text.name });
+      fireEvent.change(name, { target: { value: "Conservar mi texto" } });
+      fireEvent.click(screen.getByRole("button", { name: text.save }));
+      await screen.findByText(text.duplicateUnconfirmed);
+      expect(name).toHaveProperty("value", "Conservar mi texto");
+      expect(screen.queryByRole("button", { name: text.retry })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: text.save }));
+      expect(
+        requests.mock.calls.filter(
+          ([r]) => r.method === "launcher.profile.save",
+        ),
+      ).toHaveLength(1);
+      expect(
+        requests.mock.calls.some(([r]) => r.method === "launcher.profile.get"),
+      ).toBe(false);
+    },
+  );
   it.each(["launcher-actions-limit", "launcher-actions-long-name"])(
     "disables duplicate when its native bounds cannot be met (%s)",
     async (scene) => {

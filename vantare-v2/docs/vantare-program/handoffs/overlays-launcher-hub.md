@@ -92,10 +92,10 @@ ejecución del producto en el servidor; F0 solo en el horario del orquestador.
 Encargo ampliado de A tras #2345: conectar diseño, fuente y cadencias; después
 PR 6 Relative Vantare y contadores. B conserva PR 7 (Eficiencia/captura) y
 monitores en caliente. Rama `vantareapp/isa-2333-rune-datos-cadencias`, worktree
-propio D:. Base local combinada `93c0c35924407a269577735d4511a8a4acba017e`:
-nightly 639bb40aa (incluye #2345 df9c911b5 y #2340) más #2344 5e11dd339.
+propio D:. Base local combinada `68cb7e319`:
+nightly 80f105ba9 (incluye #2345 df9c911b5, #2340, #2347 y #2342) más #2344 5e11dd339.
 Solo hubo conflicto documental; bloques A/B conservados. Tras el squash de
-#2344, retirar esta base con `git rebase --onto origin/nightly 93c0c3592`.
+#2344, retirar esta base con `git rebase --onto origin/nightly 68cb7e319`.
 
 `feed::DataFeed` lee/vigila Document y Presentation de IPC sin escribir bytes,
 conserva el último documento válido y une su lector al cerrar. Fuente existente
@@ -107,7 +107,7 @@ GPUI. Se prepara solo Relative y no se adquieren widgets sin migrar.
 El contenedor sigue visualmente vacío hasta PR 6; campañas numéricas rechazadas.
 Un documento ausente/vacío no se inicializa ni reescribe automáticamente.
 
-PR #2349, código 47e6bdf9b. Dos pasadas por cola Windows/Rust 1.99.1/dos jobs:
+PR #2349, código c51203a4d, idéntico a 47e6bdf9b tras actualizar la pila. Dos pasadas por cola Windows/Rust 1.99.1/dos jobs:
 formato, Clippy estricto, 22 tests CPU y auditoría de 428 paquetes PASS.
 Incluye el caso real de pipe solicitado que entrega fotos a Runtime sin ventana. Pruebas de relojes
 inyectados, cadencias por instancia, cambio de época, visibilidad, permisos,
@@ -115,7 +115,7 @@ bytes intactos, edición parcial y cierre con fuente viva. Ningún binario Rune,
 ventana, dispositivo, captura ni opción gráfica ejecutado. CI/revisión y head
 final en el PR y #2333. Sin merge/promoción/release propios; Plane no se modifica.
 
-PR 6 iniciado en `vantareapp/isa-2333-relative-vantare` desde 47e6bdf9b, con
+PR 6 iniciado en `vantareapp/isa-2333-relative-vantare` apilado sobre esta conexión, con
 worktree propio D:. Generador estándar Python de tokens del JSON canónico de UI,
 con tipos/colores de Rune y ninguna biblioteca nueva. Relative reutiliza la
 proyección domain; se añaden presentación Vantare y contadores por causa.

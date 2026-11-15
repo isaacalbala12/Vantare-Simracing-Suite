@@ -72,15 +72,13 @@ export function previewCatalogDrop(
   )
     return null;
   const scale = surface.width / gesture.canvas[0];
-  // Reject a stale/non-uniform measured surface instead of writing a guessed point.
-  if (
-    Math.abs(surface.height / gesture.canvas[1] - scale) >
-    studioGeometryLimits.epsilon
-  )
-    return null;
+  // DOM rectangles can round subpixels. Allow at most half a CSS pixel of
+  // aspect mismatch; this is not the epsilon used for Rust geometry results.
+  // Real stretching/stale surfaces still fail instead of guessing a point.
+  if (Math.abs(surface.height - gesture.canvas[1] * scale) > 0.5) return null;
   const center: Pair = [
     (pointer[0] - surface.left) / scale,
-    (pointer[1] - surface.top) / scale,
+    (pointer[1] - surface.top) / (surface.height / gesture.canvas[1]),
   ];
   const defaults = studioSizes[gesture.kind];
   const size: Pair = [defaults.width, defaults.height];

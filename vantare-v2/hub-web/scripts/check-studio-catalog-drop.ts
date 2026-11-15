@@ -41,7 +41,7 @@ export async function checkStudioCatalogDrop(
             at?: { x: number; y: number };
           }[],
       );
-    const setup = async (scene = "studio-canvas") => {
+    const setup = async (scene = "studio-canvas", ultrawide = false) => {
       await page.goto(`${base}?escena=${scene}`);
       await page
         .getByRole("button", { name: /^(Studio|Overlays Studio)$/ })
@@ -49,6 +49,21 @@ export async function checkStudioCatalogDrop(
       await page
         .getByRole("button", { name: canvasText.open, exact: true })
         .click();
+      if (ultrawide) {
+        await page
+          .getByRole("button", { name: canvasText.resolution, exact: true })
+          .click();
+        await page.getByRole("radio", { name: /^3440 × 1440/ }).click();
+        await until(
+          async () =>
+            (await page.locator(".v-studio-canvas-plane").innerText()).includes(
+              "3440 × 1440",
+            ),
+          10000,
+          "ultrawide canvas",
+        );
+        await page.keyboard.press("Escape");
+      }
       await page
         .getByRole("button", { name: studioText.add, exact: true })
         .first()
@@ -134,6 +149,15 @@ export async function checkStudioCatalogDrop(
     );
     assert.ok((await adds())[0].at);
     await page.getByRole("button", { name: /^Delta, / }).waitFor();
+    await setup("studio-canvas", true);
+    await start();
+    await page.mouse.up();
+    await until(
+      async () => (await adds()).length === 1,
+      10000,
+      "ultrawide catalogue add",
+    );
+    assert.deepEqual((await adds())[0].at, { x: 1645, y: 702 });
 
     await setup();
     const handle = page.getByRole("button", {
@@ -161,6 +185,7 @@ export async function checkStudioCatalogDrop(
           escapeCancels: true,
           emptyCanvas: true,
           keyboardAlternative: true,
+          roundedUltrawideSurface: true,
         },
         null,
         2,

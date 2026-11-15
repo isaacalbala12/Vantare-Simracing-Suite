@@ -96,6 +96,24 @@ it("does not start without capacity, a canvas or authority", () => {
   expect(controller.begin(full, "delta", access)).toBe(false);
   expect(controller.begin(view, "delta", access)).toBe(true);
 });
+it("accepts subpixel-rounded ultrawide DOM bounds but rejects a stretched plane", () => {
+  const { view, controller } = setup();
+  view.canvas = { width: 3440, height: 1440, source: "custom" };
+  const measured = { left: 100, top: 50, width: 974, height: 407.719 };
+  expect(controller.begin(view, "delta", access)).toBe(true);
+  expect(
+    controller.release(view, [587, 253.8595], measured, access),
+  ).toMatchObject({ method: "studio.add", at: { x: 1645, y: 702 } });
+  expect(controller.begin(view, "delta", access)).toBe(true);
+  expect(
+    controller.release(
+      view,
+      [587, 253.8595],
+      { ...measured, height: 408.719 },
+      access,
+    ),
+  ).toBeNull();
+});
 
 it.each(["pending", "disabled", "protected", "unverified", "locked", "canvas"])(
   "rechecks %s at release",

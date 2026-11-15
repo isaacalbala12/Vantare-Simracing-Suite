@@ -12,6 +12,10 @@ usando el rectángulo real del plano, devuelve silueta y guías con el mismo
 gesto y devuelve como máximo una orden tipada `studio.add { kind, at,
 baseRevision }`. El punto `at` es el origen superior izquierdo, no el centro.
 Conserva fracciones y usa epsilon y umbral de imán generados desde Rust.
+La medida DOM admite como máximo medio píxel CSS de discrepancia de proporción
+por redondeo de la caja; cada eje se transforma con su tamaño medido. Esa
+tolerancia de presentación no cambia el epsilon de los vectores ni redondea
+las coordenadas enviadas. Una superficie estirada más allá de ella se rechaza.
 
 Se vuelven a comprobar permisos, límite, documento, operación pendiente y
 resolución al soltar. Un cambio de revisión sin cambio de resolución usa la

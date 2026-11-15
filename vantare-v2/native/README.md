@@ -1,6 +1,22 @@
-# native — núcleo y overlays Rust (ADR 0099 / 0107)
+# native — núcleo y overlays Rust (ADR 0099 / 0107 / 0110)
 
 ADR 0107 congela el Hub GPUI; su reemplazo web vive fuera de `native/`.
+
+ADR 0110 mantiene el Hub Electron y migra los overlays a Rune en
+[`overlays-rune/`](overlays-rune/README.md), un workspace separado con lock y
+Rust 1.99.1 propios. No añade Rune a este workspace ni enlaza `ui`/GPUI.
+`domain`, `ipc` y `profiling` se resuelven también desde su lock independiente;
+sus cambios activan tanto los gates nativos como los de Rune. Un PR que solo
+toque overlays-rune activa su CI Windows sin reconstruir el producto GPUI.
+El check «Overlays Rune Windows (sin ventana)» se reporta siempre: solo omite
+los pasos pesados si no hay entradas afectadas. No se cambia ninguna ruleset.
+GPUI conserva el ejecutable distribuido hasta la aceptación de Isaac.
+
+En el servidor: `CARGO_BUILD_JOBS=2`, perfiles sin debug y targets de la cola en
+D:. `VANTARE_SIN_GRAFICOS=1` hace fallar el arranque antes de crear gráficos.
+No ejecutar el binario para probar esa defensa, ni usar `--snap`, `--frames`,
+`--video` o `--tree`; los tests CPU sí están permitidos. Detalles y comandos en
+el README del workspace aislado.
 
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. La cola asigna un target persistente configurable (D: en el servidor); ver «Workers».

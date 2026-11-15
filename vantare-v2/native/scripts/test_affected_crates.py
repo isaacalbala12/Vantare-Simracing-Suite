@@ -12,6 +12,18 @@ spec.loader.exec_module(affected)
 
 
 class ScopeTests(unittest.TestCase):
+    def test_isolated_rune_workspace_does_not_select_gpui_or_packaging(self):
+        paths = ['vantare-v2/native/overlays-rune/Cargo.toml',
+                 'vantare-v2/native/overlays-rune/src/main.rs',
+                 '.github/workflows/overlays-rune.yml']
+        packages = [{'name': 'vantare-ui', 'manifest_path': 'D:/repo/vantare-v2/native/ui/Cargo.toml',
+                     'dependencies': []}]
+        self.assertEqual(affected.select(packages, paths), [])
+        self.assertFalse(affected.installation_affected(paths))
+        self.assertFalse(affected.overlays_affected(paths))
+        self.assertEqual(affected.select(packages, paths + ['vantare-v2/native/ui/src/lib.rs']),
+                         ['vantare-ui'])
+
     def setUp(self):
         self.packages = [
             {'name': name, 'manifest_path': f'D:/repo/vantare-v2/native/{name}/Cargo.toml',

@@ -1,3 +1,38 @@
+## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
+
+Worker B, #2333, ADR 0110 §9. PR
+[#2343](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2343),
+rama `vantareapp/isa-2333-overlays-rune-base`, worktree propio en D:.
+Base origin/nightly `1b29613b668ed6d6890d2c38d88a15479d297ea2`, que ya
+incluye #2337 por squash; retirado el antiguo head `8e28720c1` de la pila
+con --onto. El PR muestra solo el workspace y los gates nuevos.
+
+Workspace aislado `native/overlays-rune`, Rust 1.99.1 y lock propio. Rune y sus
+cuatro parches usan isaacalbala12/rune, etiqueta vantare-20261115-1 y rev
+d5338988a7c1b3377adb60853815b6d0843dae7c. Ogg desactivado; ninguna dependencia
+de UI/GPUI/runtime. Se reutiliza el auditor trasladado en PR 1, sin duplicarlo.
+CI Windows siempre reportada; compila solo si las rutas afectadas lo necesitan.
+Cambios aislados de overlays-rune no seleccionan producto/empaquetado GPUI;
+domain/ipc/profiling siguen activando ambos gates. Se actualizan las guías.
+
+Cinturón Machine VANTARE_SIN_GRAFICOS=1 establecido y comprobado. Main lo
+consulta antes de inicializar Rune o leer argumentos. El proceso todavía sale
+con error incluso fuera del servidor: las ventanas llegan en PR 5.
+Clippy -D warnings y 2 tests CPU PASS en Windows por la cola, --locked y
+--jobs 2, target compartido D:/VantareServer/targets/slot-0. Cargo.toml, lock y
+Rust no cambian con el rebase. Clasificadores 23+3+15 tests; licencias 6 tests y
+425 paquetes PASS. Formato y diff-check PASS. El build ordinario queda para la
+CI: se retiró su espera local sin slot después de validar Clippy y el enlace
+de los tests CPU. El estado remoto y head final se consultan en el PR.
+
+PR 5 iniciado en `vantareapp/isa-2333-overlays-rune-proceso`: argumentos del
+supervisor y tests puros, todavía sin publicación ni conexión gráfica.
+El resto espera los módulos compartidos de PR 3; no se duplican tipos de UI.
+F0 y capturas quedan para el PC de juego. No se ejecutó el producto ni ninguna
+opción gráfica en el servidor; no se usó el Mac para gráficos. Sin merge,
+release, cambios del instalador ni distribución propios; Plane lo lleva el
+orquestador.
+
 ## VANTA-144 · PR 1: retirada del Hub Rune (15/11/2026)
 
 Worker A, #2333, ADR 0110 §8–9. Base origin/nightly

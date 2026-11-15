@@ -17,6 +17,17 @@ from native_gate_scope import classify_paths  # noqa: E402
 
 
 class ClassifyPathsTest(unittest.TestCase):
+    def test_rune_workspace_is_isolated_but_shared_crates_still_run_native(self):
+        paths = ['vantare-v2/native/overlays-rune/Cargo.toml',
+                 'vantare-v2/native/overlays-rune/Cargo.lock',
+                 'vantare-v2/native/overlays-rune/src/main.rs',
+                 '.github/workflows/overlays-rune.yml']
+        self.assertFalse(classify_paths(paths).native)
+        for crate in ('domain', 'ipc', 'profiling'):
+            with self.subTest(crate=crate):
+                self.assertTrue(classify_paths(paths + [
+                    f'vantare-v2/native/{crate}/src/lib.rs']).native)
+
     def test_shared_contract_still_runs_native(self):
         paths = ['vantare-v2/hub-web/src/app.tsx']
         self.assertFalse(classify_paths(paths).native)

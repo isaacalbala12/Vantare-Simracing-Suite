@@ -103,8 +103,9 @@ it("projects an accepted origin whose widget extends outside the canvas", () => 
   });
   if (reply?.kind !== "response" || reply.result.method !== "studio.add")
     throw Error("Positioned add missing");
+  const result = reply.result;
   expect(
-    reply.result.value.instances.find((item) => item.id === reply.result.added),
+    result.value.instances.find((item) => item.id === result.added),
   ).toMatchObject({ x: 1919, y: 1079, canvasPlacement: "outside" });
 });
 

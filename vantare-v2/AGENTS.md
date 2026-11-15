@@ -227,8 +227,11 @@ Usar cuatro jobs en este servidor (`CARGO_BUILD_JOBS=4`); nextest los recibe en
 merge_group validan el workspace entero. Usa RUNNER_TEMP, Nextest precompilado,
 sccache GHA y tests archivados para suite/telemetría/lifecycle en paralelo.
 No registrar runners propios para este repositorio público.
-Si falla sin diagnóstico del compilador, repetir con `VANTARE_SCCACHE=0` y
-conservar ambos resultados. Detalles y límites en `native/README.md`.
+En local sccache está desactivado por defecto: los builds dev/test son
+incrementales y no se cachean (0 aciertos), y 0.18.0 puede fallar con
+0xC0000005. `VANTARE_SCCACHE=1` lo activa; la CI lo mantiene. Si falla sin
+diagnóstico, repetir con `VANTARE_SCCACHE=0` y conservar ambos resultados.
+Detalles y límites en `native/README.md`.
 La cola PowerShell es solo Windows. En macOS se usa el flujo de bibliotecas
 con target propio y cuatro jobs descrito en `native/README.md`, sección Workers;
 la integración Windows sigue siendo obligatoria en CI.

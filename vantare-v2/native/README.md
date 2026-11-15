@@ -534,10 +534,11 @@ prioridad sobre el del proceso; en este servidor Machine fija 4. Usar `CARGO_BUI
 servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
 ramas. Al cambiar de checkout se limpian únicamente los paquetes locales para
 evitar ejecutables obsoletos; las dependencias se conservan. No crear targets por rama. Los comandos anidados síncronos reutilizan la
-reserva del ancestro. Sccache local usa `D:/VantareServer/cache/sccache` (30 GB, puerto 4227) y es opcional;
+reserva del ancestro. Sccache local está desactivado por defecto: los builds
+dev/test son incrementales y no se cachean (0 aciertos), y 0.18.0 puede fallar
+con 0xC0000005. `VANTARE_SCCACHE=1` lo activa; la CI lo mantiene.
 Un CARGO_TARGET_DIR ya definido en el entorno se trata como target explícito:
 se valida y reserva con su propio lease, en vez de usar slot-N. Es el caso de packaging.
-`VANTARE_SCCACHE=0` permite repetir un fallo conservando su primera evidencia.
 
 Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB.
 El tamaño se mide como máximo una vez por hora; entre medidas se usa su sello.

@@ -2,7 +2,9 @@
 # Uso: native/scripts/compilar.ps1 <comando> [args...]
 # Target persistente configurable por slot; cuatro jobs en el servidor (#1993).
 # El mínimo y el umbral de memoria se releen de Machine en cada vuelta.
-# VANTARE_SCCACHE=0 permite repetir un fallo sin caché.
+# En local sccache está desactivado por defecto: los builds dev/test son
+# incrementales (0 aciertos) y 0.18.0 puede fallar con 0xC0000005 en Windows.
+# VANTARE_SCCACHE=1 lo activa; la CI (VANTARE_CI_TARGET=1) lo mantiene.
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
 # Normalize Cargo's inline spelling before validating or acquiring a target.
 $normalized = @()
@@ -80,7 +82,9 @@ if (-not $env:SCCACHE_DIR) {
 }
 $env:SCCACHE_SERVER_PORT = $env:SCCACHE_SERVER_PORT ?? '4227'
 $env:SCCACHE_CACHE_SIZE = $(if ($IsWindows) { [Environment]::GetEnvironmentVariable('SCCACHE_CACHE_SIZE', 'Machine') }) ?? $env:SCCACHE_CACHE_SIZE ?? '5G'
-if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
+$sccacheEnabled = $env:VANTARE_SCCACHE -eq '1' -or
+    ($env:VANTARE_SCCACHE -ne '0' -and $env:VANTARE_CI_TARGET -eq '1')
+if ($sccacheEnabled -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
 $slots = [math]::Min(2, [int]($env:VANTARE_CARGO_SLOTS ?? 2))
 if ($slots -lt 1) { $slots = 1 }
 $machineJobs = [Environment]::GetEnvironmentVariable('CARGO_BUILD_JOBS', 'Machine')

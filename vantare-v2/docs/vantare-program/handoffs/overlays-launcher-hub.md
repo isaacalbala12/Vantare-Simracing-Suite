@@ -307,8 +307,9 @@ Todavía no conectado al ejecutable: #2344 sigue abierto y el PR 6 aporta el
 movimiento/contadores comunes. Quedan lector/CLI de escenas, integración y F1
 del PC de juego en el horario del orquestador. No se afirma paridad ni preview
 lista; distribución mantiene bloqueado --fuente local. Sin dependencias/locks
-nuevos. Formato/diff y auditoría 425 paquetes/6 tests PASS; Clippy/tests Rune
-encolados, aún sin turno por memoria. No se ejecuta producto ni gráfica.
+nuevos. Windows por cola (dos jobs, target compartido): Clippy PASS y 23 tests
+CPU PASS; también 5 tests reales de política sin debug_assertions PASS.
+Formato/diff y auditoría 425 paquetes PASS. No se ejecuta producto ni gráfica.
 El fixture guardado original de Relative se decodifica por IPC y se proyecta
 por domain en tests CPU; la vista y la captura con pintor falso comparan los
 mismos textos y cajas en tres escalas. Se retiró solo el pequeño target Mac
@@ -318,7 +319,13 @@ y diseño salvo el Look solicitado, genera 42 pares pendientes con hashes y
 claves motor/commit/Rune/escala. No genera PNG ni ejecuta motores. Dos tests
 del preparador PASS; ocho Python en total. Primeras pasadas locales de Clippy
 detectaron llamadas bg en lugar de fill y un lint de chunks; corregidos sin
-excepciones. Pasada final CPU por la cola pendiente, no se ocultan los fallos.
+excepciones. Un test esperaba Sebring, pero domain entrega SEBRING: corregida
+la expectativa, conservada la comprobación del texto y pasada completa PASS.
+Plan CPU, todavía SIN PNG:
+`D:/VantareServer/evidence/overlays-rune/pr7/plan-4e4a2c80a/INDEX.md`.
+Dependencia comprobada a las 20:02 UTC: origin/nightly 80f105ba9 todavía no
+contiene ipc::layout de #2344. No se integran ni duplican los módulos antes de
+su merge. #2348 tiene CI completa verde en 64a445de3, revisión pendiente.
 
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 

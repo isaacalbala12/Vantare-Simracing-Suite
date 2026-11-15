@@ -868,6 +868,7 @@ mod tests {
                 None,
             );
             assert!(board.status.is_none());
+            assert_eq!(board.track, "SEBRING", "el rótulo lo normaliza domain");
             assert!(board.slots.iter().flatten().any(|r| r.side == Side::Player));
             for scale in [1.0, 1.25, 1.5] {
                 let size = crate::offscreen::Size::new(natural_size(&settings), scale).unwrap();
@@ -900,7 +901,7 @@ mod tests {
                         assert!(
                             after
                                 .iter()
-                                .any(|(_, _, text)| text.as_deref() == Some("Sebring"))
+                                .any(|(_, _, text)| text.as_deref() == Some("SEBRING"))
                         );
                         let (w, h) = size.pixels();
                         Ok(vec![0; w as usize * h as usize * 4])

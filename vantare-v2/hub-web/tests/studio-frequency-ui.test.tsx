@@ -212,3 +212,61 @@ it("does not write the already selected choice", async () => {
   );
   expect(transport.request).toHaveBeenCalledTimes(1);
 });
+it("does not accept Hz while the previous opacity is only a local draft, then uses the confirmed revision", async () => {
+  const { initial, user, resolve } = await mount();
+  const slider = screen.getByRole("slider", { name: studio.opacity });
+  slider.focus();
+  await user.keyboard("{ArrowLeft}");
+  const opacityRequest = transport.request.mock.lastCall?.[0] as Request;
+  if (
+    opacityRequest.method !== "studio.instance" ||
+    opacityRequest.patch.field !== "opacity"
+  )
+    throw Error("Expected opacity write");
+  const opacity = opacityRequest.patch.value;
+  expect(slider.getAttribute("aria-valuetext")).toBe(
+    studio.opacityValue(opacity),
+  );
+  const visibility = screen.getByRole("region", {
+    name: studio.visibilityGroup,
+  });
+  expect(
+    within(visibility).getByText(
+      studio.trackVisibilitySummary(true, initial.instances[0].opacity),
+    ),
+  ).toBeTruthy();
+  expect(
+    within(visibility).queryByText(
+      studio.trackVisibilitySummary(true, opacity),
+    ),
+  ).toBeNull();
+  const hz = within(choices()).getByRole("button", { name: text.hz(10) });
+  await user.click(hz);
+  await user.keyboard("{Enter}");
+  expect(
+    transport.request.mock.calls.filter(
+      ([r]) => r.method === "studio.instance",
+    ),
+  ).toHaveLength(1);
+  const confirmed = structuredClone(initial);
+  confirmed.revision = "b".repeat(64);
+  confirmed.instances[0].opacity = opacity;
+  await act(async () =>
+    resolve({ method: "studio.instance", value: confirmed }),
+  );
+  expect(
+    within(visibility).getByText(studio.trackVisibilitySummary(true, opacity)),
+  ).toBeTruthy();
+  expect(document.activeElement).toBe(hz);
+  await user.keyboard("{Enter}");
+  expect(transport.request).toHaveBeenLastCalledWith({
+    method: "studio.instance",
+    id: initial.instances[0].id,
+    baseRevision: confirmed.revision,
+    patch: { field: "frequency", value: 10 },
+  });
+  const final = structuredClone(confirmed);
+  final.instances[0].frequency = frequencyFor("standings", "balanced", 10);
+  await act(async () => resolve({ method: "studio.instance", value: final }));
+  expect(hz.getAttribute("aria-pressed")).toBe("true");
+});

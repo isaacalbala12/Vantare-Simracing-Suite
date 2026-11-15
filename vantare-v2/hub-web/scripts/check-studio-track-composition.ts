@@ -291,12 +291,18 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
           await slider.focus();
           await page.keyboard.press("ArrowLeft");
           await until(
-            () =>
-              slider
-                .getAttribute("aria-valuetext")
-                .then((value) => value === t.opacityValue(84)),
+            async () =>
+              (await page
+                .getByRole("region", { name: t.visibilityGroup, exact: true })
+                .getByText(t.trackVisibilitySummary(true, 84), { exact: true })
+                .count()) === 1 &&
+              (await page
+                .locator(".v-studio-temporary")
+                .getAttribute("aria-busy")) === "false" &&
+              (await slider.getAttribute("aria-valuetext")) ===
+                t.opacityValue(84),
             5000,
-            "Formatted opacity follows the saved value",
+            "Host-confirmed opacity and completed write before choosing Hz",
           );
           assert.ok(
             await slider.evaluate((node) => document.activeElement === node),
@@ -310,10 +316,21 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
             exact: true,
           });
           await selected.focus();
+          await until(
+            () => selected.evaluate((node) => document.activeElement === node),
+            5000,
+            "Frequency choice has keyboard focus",
+          );
           await page.keyboard.press("Enter");
           await until(
             async () =>
-              (await selected.getAttribute("aria-pressed")) === "true",
+              (await selected.getAttribute("aria-pressed")) === "true" &&
+              (
+                await page
+                  .getByRole("region", { name: frequency.title, exact: true })
+                  .getByRole("status")
+                  .textContent()
+              )?.includes(frequency.hz(10)) === true,
             5000,
             "Keyboard frequency selection is confirmed",
           );

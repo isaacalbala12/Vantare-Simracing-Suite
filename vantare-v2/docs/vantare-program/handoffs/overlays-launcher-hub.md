@@ -296,7 +296,7 @@ D031 y D048 preservados en sus ramas, pendientes de este bloque; D111 después.
 Encargo del orquestador tras fusionar #2356 como 881c6214d: adelantar Standings,
 primero Vantare y luego Eficiencia, sin esperar la medicion corta de Relative
 para escribir codigo; su fusion SI la espera. Rama isa-2333-standings-rune,
-apilada sobre #2351 (9b434617f), a su vez sobre #2357 ce94f4502 y la conexion de
+PR draft #2359 a nightly, apilado sobre #2351 (9b434617f), a su vez sobre #2357 ce94f4502 y la conexion de
 #2349. #2344 sigue incluido en esa base revisada. No se modifican ramas de A.
 
 Pintor desde Board/Plan de domain, dos Looks sobre la misma salida visible,
@@ -311,14 +311,24 @@ acotadas y Offscreen sin App/ventana/event loop. Cinturon primero, distribuido
 cerrado a escenas sinteticas; preview firmada sigue siendo PR 25. Tests CPU con
 pintor falso y Runtime real. Se prepara el corpus original (16 escenas, 96 pares
 para dos Looks y tres escalas), sin PNG ni ejecucion grafica. Auditoria de los
-428 paquetes y 13 tests Python PASS. Clippy/tests Windows encolados, pendientes;
-no se afirma aun su resultado. Mac 13,2 GiB libres: no se abre target nuevo que
+428 paquetes y 16 tests Python PASS. Formato, 4+23 tests de clasificadores y
+472 huellas anti-slop PASS. Primera pasada Clippy detecto dos campos con mayor
+visibilidad que su tipo y tests que asignaban texto al Driver completo; corregidos
+sin excepciones. Repeticion Clippy/tests Windows encolada, pendiente de RAM;
+no se afirma aun su resultado. La CI Rust no arranca con la pila en conflicto
+con nightly; se necesita reapilar cuando A actualice #2349/#2357. Mac 13,2 GiB libres: no se abre target nuevo que
 pueda bajar de los 12 GiB. Sin dependencias/locks nuevos ni merge/release/Plane.
 
-#2351 reapilado sobre #2357 sin tocar su codigo: en ce94f4502 todavia no hay API
+#2351 reapilado sobre #2357 sin tocar su codigo: hasta 25249e0b4 todavia no hay API
 publica VisualRow/Alert. Se adapta en cuanto A la exponga; no se duplica el
 movimiento. #2356 ya fusionado por el orquestador; F0 fisico de #2346 sigue
 pendiente antes de F2 (pantallas todas apagadas/vuelta y DPI tras conectar).
+
+El lote de 96 comparaciones preparado en D:/VantareServer/evidence/overlays-rune/
+standings/plan-6192ce049 es solo un plan, sin PNG. Cada PNG futuro tiene identidad
+del binario (build.rs/commit/copia Rune/escala) y hash propio; la clave final
+incluye tambien SHA-256 del ejecutable. El ejecutor del lote se prueba con un
+proceso falso, nunca con el producto. No se ejecutan graficos en servidor/Mac.
 
 ## VANTA-144 · PR 7 en preparación: Eficiencia y destino de captura (15/11/2026)
 

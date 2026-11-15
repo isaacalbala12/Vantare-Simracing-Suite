@@ -63,10 +63,15 @@ pub(super) fn columns(settings: &Settings, snapshot: Option<&Snapshot>) -> Vec<C
         }
     }
     let mut seen = std::collections::BTreeSet::new();
-    columns.retain(|c| supported(&c.metric_id) && seen.insert(c.metric_id.clone()));
+    columns.retain(|c| {
+        supported(&c.metric_id, settings.design_system) && seen.insert(c.metric_id.clone())
+    });
     columns
 }
-fn supported(metric: &str) -> bool {
+fn supported(metric: &str, look: Look) -> bool {
+    if look == Look::Eficiencia {
+        return vantare_domain::widget_settings::columns::LEGACY_TABLE_COLUMNS.contains(&metric);
+    }
     matches!(
         metric,
         "position"
@@ -75,8 +80,6 @@ fn supported(metric: &str) -> bool {
             | "carNumber"
             | "driverName"
             | "vehicle"
-            | "vehicleClass"
-            | "class"
             | "tireCompound"
             | "pit"
             | "sectors"
@@ -146,6 +149,7 @@ pub(super) struct Layout {
     pub rows: Vec<f32>,
     pub classes: Vec<(f32, String)>,
     pub banner: f32,
+    pub vehicle: bool,
 }
 impl Layout {
     pub fn new(settings: &Settings, columns: &[ColumnSetting], plan: &Plan) -> Self {
@@ -265,6 +269,7 @@ impl Layout {
             rows,
             classes,
             banner,
+            vehicle: columns.iter().any(|c| c.metric_id == "vehicle"),
         }
     }
 }

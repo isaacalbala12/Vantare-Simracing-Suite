@@ -206,8 +206,19 @@ fn sectors_pits_compounds_and_predicted_size_follow_the_projection() {
                 .iter()
                 .any(|c| c.text == "BOX" && c.fill.is_some())
         );
-        assert!(row.cells.iter().any(|c| c.text == "S" && c.fill.is_some()));
-        assert!(row.cells.iter().any(|c| c.segments.len() == 3));
+        if look == Look::Vantare {
+            assert!(row.cells.iter().any(|c| c.text == "S" && c.fill.is_some()));
+            assert!(row.cells.iter().any(|c| c.segments.len() == 3));
+        } else {
+            assert!(
+                !painter
+                    .layout
+                    .columns
+                    .iter()
+                    .any(|c| matches!(c.setting.metric_id.as_str(), "sectors" | "tireCompound")),
+                "Eficiencia follows its existing column catalogue"
+            );
+        }
     }
 }
 

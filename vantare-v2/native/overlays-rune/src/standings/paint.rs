@@ -95,10 +95,7 @@ impl Display {
                             if settings.design_system == Look::Eficiencia {
                                 cell.text = cell.text.to_uppercase();
                             }
-                            if settings.columns.as_ref().is_some_and(|cols| {
-                                cols.iter().any(|c| c.enabled && c.metric_id == "vehicle")
-                            }) && !row.vehicle.is_empty()
-                            {
+                            if layout.vehicle && !row.vehicle.is_empty() {
                                 cell.text.push_str(" · ");
                                 cell.text.push_str(&row.vehicle);
                             }

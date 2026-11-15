@@ -53,7 +53,8 @@ def run(plan_file, executable, launch=subprocess.run):
             raise ValueError("Executable differs from the plan commit; capture preserved, not accepted")
         with output.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        rows.append({**entry, "binary_sha256": binary_sha, "png_sha256": digest, "identity": identity})
+        rows.append({**entry, "rune_key": entry["rune_key"] + ":binary:" + binary_sha,
+                     "binary_sha256": binary_sha, "png_sha256": digest, "identity": identity})
     record = root / "rune-captures.json"
     with record.open("x", encoding="utf-8") as stream:
         json.dump({"status": "captured-not-reviewed", "entries": rows}, stream, indent=2)

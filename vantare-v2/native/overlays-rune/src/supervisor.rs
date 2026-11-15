@@ -126,6 +126,46 @@ fn ready(input: &File) -> io::Result<Ready> {
     })
 }
 
+#[cfg(unix)]
+fn ready(input: &File) -> io::Result<Ready> {
+    use std::os::{fd::AsRawFd, raw::c_int};
+    #[repr(C)]
+    struct PollFd {
+        fd: c_int,
+        events: i16,
+        revents: i16,
+    }
+    #[cfg(target_os = "macos")]
+    type Count = u32;
+    #[cfg(not(target_os = "macos"))]
+    type Count = usize;
+    unsafe extern "C" {
+        fn poll(fds: *mut PollFd, count: Count, timeout: c_int) -> c_int;
+    }
+    let mut descriptor = PollFd {
+        fd: input.as_raw_fd(),
+        events: 1,
+        revents: 0,
+    };
+    // SAFETY: un descriptor poseído por File y un único pollfd inicializado;
+    // timeout cero. Solo este hilo lee el extremo, por lo que read no bloquea.
+    let result = unsafe { poll(&mut descriptor, 1, 0) };
+    if result < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if descriptor.revents & 0x20 != 0 {
+        return Err(io::ErrorKind::InvalidInput.into());
+    }
+    if descriptor.revents & 0x10 != 0 && descriptor.revents & 1 == 0 {
+        return Ok(Ready::Eof);
+    }
+    Ok(if result == 0 {
+        Ready::Pending
+    } else {
+        Ready::Read(4096)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -228,44 +268,4 @@ mod tests {
         assert_eq!(shared.close_reason(), Some(CloseReason::SupervisorError));
         drop(reader);
     }
-}
-
-#[cfg(unix)]
-fn ready(input: &File) -> io::Result<Ready> {
-    use std::os::{fd::AsRawFd, raw::c_int};
-    #[repr(C)]
-    struct PollFd {
-        fd: c_int,
-        events: i16,
-        revents: i16,
-    }
-    #[cfg(target_os = "macos")]
-    type Count = u32;
-    #[cfg(not(target_os = "macos"))]
-    type Count = usize;
-    unsafe extern "C" {
-        fn poll(fds: *mut PollFd, count: Count, timeout: c_int) -> c_int;
-    }
-    let mut descriptor = PollFd {
-        fd: input.as_raw_fd(),
-        events: 1,
-        revents: 0,
-    };
-    // SAFETY: un descriptor poseído por File y un único pollfd inicializado;
-    // timeout cero. Solo este hilo lee el extremo, por lo que read no bloquea.
-    let result = unsafe { poll(&mut descriptor, 1, 0) };
-    if result < 0 {
-        return Err(io::Error::last_os_error());
-    }
-    if descriptor.revents & 0x20 != 0 {
-        return Err(io::ErrorKind::InvalidInput.into());
-    }
-    if descriptor.revents & 0x10 != 0 && descriptor.revents & 1 == 0 {
-        return Ok(Ready::Eof);
-    }
-    Ok(if result == 0 {
-        Ready::Pending
-    } else {
-        Ready::Read(4096)
-    })
 }

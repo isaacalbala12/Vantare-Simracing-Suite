@@ -204,8 +204,9 @@ cuatro widgets). Hoy, con diez, Rune está en 0,044 y GPUI en 0,015 (de los
 
 **Si un objetivo no se cumple tras optimizar:**
 
-- La migración **no se para** mientras se respeten las líneas rojas. Cada
-  fase tiene hasta cinco días de trabajo de optimización por medida que falle.
+- La migración **no se para** mientras se respeten las líneas rojas. La
+  optimización tiene su hueco al final del plan (días 10 a 12). Si hace falta
+  más, se alarga el plazo; no se rebajan las líneas rojas.
 - Lo que siga sin cumplirse se apunta en #2333 como deuda de consumo (medido,
   objetivo y causa) y el orquestador se lo enseña a Isaac antes de dar Rune a
   testers.
@@ -215,16 +216,27 @@ cuatro widgets). Hoy, con diez, Rune está en 0,044 y GPUI en 0,015 (de los
 
 ### 5. Orden de migración
 
-| Fase | Widgets | Medición en el PC de juego al cerrar |
-|---|---|---|
-| F0 | Ninguno: base (copia de Rune, crate común, proceso y ventana) | Arranca, lee el diseño, no roba foco, los clics pasan |
-| F1 | Relative (2 Looks) | Recuento por causa, medición corta y **campaña B completa** |
-| F2 | Standings (2 Looks) | Medición corta y aguante de 30 minutos |
-| F3 | Delta y Fuel (2 Looks cada uno) | Igual que F2 |
-| F4 | Los 14 restantes, en tres tandas: tablas (Relative multiclase, Torre, Cara a cara, Vuelta rápida); trazas y dibujo (Pedales con 2 Looks, Telemetría de pedales, Telemetría de entrada, Historial de delta, Mapa, Radar, Daños); avisos (Banderas, Avisos de sesión, Tiempo en pista) | Igual que F2 por tanda; al final, **campaña B completa con los 18** y prueba de G-Sync/FreeSync |
+| Fase | Días | Widgets | Medición en el PC de juego |
+|---|---|---|---|
+| F0 | 1 a 3 | Ninguno: base (copia de Rune, código común, proceso y ventana) | Arranca, lee el diseño, no roba foco, los clics pasan |
+| F1 | 3 a 5 | Relative (2 Looks) | Recuento por causa y **medición corta**: con eso se abre el paso a los demás. La **campaña B completa** de Relative corre después en el PC, sin frenar a los workers |
+| F2 | 5 a 10 | Los 17 restantes, un widget por PR | Una tanda al día: capturas de paridad y medición corta de todo lo terminado ese día |
+| F3 | 10 a 12 | Cierre | **Campaña B completa con los 18**, aguante de 4 horas y prueba de G-Sync/FreeSync |
 
-«Daños detallados» está en el código pero no en el catálogo: se migra en la
-última tanda solo si el orquestador confirma que sigue en producto.
+La campaña B completa se hace solo dos veces: con Relative y al final. En
+medio, mediciones cortas.
+
+En F2 **no hay orden fijo**, salvo dependencias reales. Las conocidas: las
+piezas de dibujo comunes de los dos Looks (Vantare y Eficiencia) salen con
+Relative, y Relative multiclase reutiliza Relative. Si aparece otra, el worker
+la declara en su PR. Pudiendo elegir, primero los más grandes y con dos Looks:
+Standings, Delta, Fuel y Pedales.
+
+Los 17: Standings, Delta, Fuel, Pedales, Relative multiclase, Torre, Cara a
+cara, Vuelta rápida, Telemetría de pedales, Telemetría de entrada, Historial
+de delta, Mapa, Radar, Daños, Banderas, Avisos de sesión y Tiempo en pista.
+«Daños detallados» está en el código pero no en el catálogo: se migra al
+final solo si el orquestador confirma que sigue en producto.
 
 **Qué no cambia:** las proyecciones de `domain`, el transporte de `ipc`, el
 anfitrión y el Hub. `runtime` solo cambia en dos puntos pequeños: el núcleo
@@ -241,7 +253,8 @@ tocan aquí.
 El Relative de medición se convierte en el de producto en F1 y se borra de
 `pruebas-rune`: el kit pasa a compilar el de producto. No puede haber dos.
 
-**Paridad visual**, por widget y Look, antes de fusionar:
+**Paridad visual**, por widget y Look, antes de fusionar. Las capturas se
+hacen por tandas diarias en el PC de juego, no una sesión por widget:
 
 - Mismas escenas fijas que ya existen (`scenes.json` de cada widget),
   pintadas por GPUI y por Rune **en Windows**. Las capturas del Mac sirven
@@ -317,46 +330,74 @@ arrastrarlo en cada subida de Rune.
 
 ### 9. Plan de PRs
 
-Días de trabajo de un worker; son estimaciones por volumen, no medidas.
+Objetivo: **unas dos semanas de calendario** hasta tener los 18 widgets en
+Rune, medidos y con la opción lista. Referencia: la migración de todos los
+overlays a GPUI se hizo en menos de una semana. Es un objetivo, no una medida.
 
-| PR | Dueño | Qué entra | Cómo se verifica | Días |
+| Días | PR | Dueño | Qué entra | Cómo se verifica |
 |---|---|---|---|---|
-| 0 | Arquitectura | Este ADR | Revisión del orquestador | hecho |
-| 1 | Trabajo mecánico | Retirar `hub-rune` y lo del Hub en el kit; mudar licencias | CI verde; tests de clasificadores | 0,5 |
-| 2 | Orquestador | Crear `isaacalbala12/rune` (ramas, etiqueta, `PARCHES.md`); apuntar el kit a la copia, mismo commit | `Cargo.lock` solo cambia de origen | 0,5 |
-| 3 | Ejecutor principal | Lo que falte tras el traslado de ajustes de VANTA-138 (D106) a `domain::widget_settings`: lista de widgets y tipo que agrupa los ajustes. Si ese traslado ya lo trae, este PR no existe | `comprobar.ps1 ui -Full`, Hub y telemetría; diseños guardados idénticos byte a byte | 0 a 1 |
-| 4 | Ejecutor principal | Sin crate nuevo: a `domain`, cadencias, sesión, geometría y movimiento; a `ipc`, demanda, diseño y fuente | Igual que el 3 | 2 |
-| 5 | Ejecutor principal | Workspace `overlays-rune`: Rune fijado, trabajo de CI, clasificadores, cinturón del servidor, `AGENTS.md` y `native/README.md` | Compila para Windows; un test sin ventana; un PR solo de overlays no lanza lo nativo | 1 |
-| 6 | Ejecutor principal | Proceso: ventana por monitor, diseño, fuente, cadencias, derechos, cierre por el supervisor; el núcleo admite el segundo ejecutable | Tests sin ventana; F0 en el PC de juego | 3 |
-| 7 | Ejecutor principal | Relative Vantare con repintado a demanda y contadores | Tests de la decisión 3; paridad en Windows | 2 |
-| 8 | Ejecutor principal | Relative Eficiencia; modo de captura de escenas | Paridad en Windows | 2 |
-| 9 | Ejecutor principal | Optimización tras medir F1 (solo si hace falta) | Campaña B completa | hasta 5 |
-| 10 | Ejecutor principal | Preview sobre Rune (PR 4 de ADR 0109) | Lo que fija ADR 0109, con este motor | 3 |
-| 11–12 | Ejecutor principal | Standings, un Look por PR | Paridad; medición F2 | 4 |
-| 13–14 | Dos workers | Delta; Fuel | Paridad; medición F3 | 4 |
-| 15–17 | Dos workers | Las tres tandas de F4 | Paridad; medición por tanda | 10 |
-| 18 | Ejecutor principal | Empaquetado, avisos de terceros y opción «Motor de overlays» | Tests de empaquetado; campaña B con los 18 | 2 |
-| 19 | Ejecutor principal | Tras el ciclo de testers: retirar el overlay GPUI y renombrar | Solo con orden de Isaac | 2 |
+| — | 0 | Arquitectura | Este ADR | Revisión del orquestador |
+| 1 a 3 | 1 | Worker A | Retirar `hub-rune` y lo del Hub en el kit; mudar la comprobación de licencias | CI verde; tests de clasificadores |
+| 1 a 3 | 2 | Orquestador | Crear `isaacalbala12/rune` (ramas, etiqueta, `PARCHES.md`); apuntar el kit a la copia, mismo commit | `Cargo.lock` solo cambia de origen |
+| 1 a 3 | 3 | Worker A | Traslado a `domain` e `ipc` (decisión 1): lo que deje fuera VANTA-138, más cadencias, sesión, geometría, movimiento, demanda, diseño y fuente | `comprobar.ps1 ui -Full`, Hub y telemetría; diseños guardados idénticos byte a byte |
+| 1 a 3 | 4 | Worker B | Workspace `overlays-rune`: Rune fijado, trabajo de CI, clasificadores, cinturón del servidor, `AGENTS.md` y `native/README.md` | Compila para Windows; un test sin ventana; un PR solo de overlays no lanza lo nativo |
+| 1 a 3 | 5 | Worker B | Proceso y ventana: una ventana por monitor, diseño, fuente, cadencias, derechos y cierre por el supervisor; el núcleo admite el segundo ejecutable | Tests sin ventana; F0 en el PC de juego |
+| 3 a 5 | 6 | Worker A | Relative Vantare, piezas comunes de ese Look, repintado a demanda y contadores | Tests de la decisión 3 |
+| 3 a 5 | 7 | Worker B | Relative Eficiencia, piezas comunes de ese Look y modo de captura de escenas | Paridad en Windows; medición corta de F1 |
+| 5 a 10 | 8 a 24 | Cuatro workers | Los 17 restantes, **un widget por PR** | Tests sin ventana en la CI; tanda diaria de paridad y medición corta |
+| 5 a 10 | 25 | Un worker aparte | Preview sobre Rune (PR 4 de ADR 0109), en cuanto Relative esté fusionado | Lo que fija ADR 0109, con este motor |
+| 10 a 12 | 26 | Ejecutor principal | Optimización, solo si la campaña la pide | Campaña B completa con los 18 |
+| 10 a 12 | 27 | Ejecutor principal | Empaquetado, avisos de terceros y opción «Motor de overlays» | Tests de empaquetado |
+| Después | 28 | Ejecutor principal | Tras el ciclo de testers: retirar el overlay GPUI y renombrar | Solo con orden de Isaac |
 
-Orden: 1 y 2 en paralelo; el 3 espera a que se fusione el traslado de
-VANTA-138; 3 → 4 → 5 → 6 → 7 → 8 → 9. El 10 puede empezar
-tras el 8. Del 11 en adelante, dos workers en paralelo sobre widgets
-distintos. Total aproximado: unos 40 días de worker, cuatro o cinco semanas
-de calendario.
+Dependencias: el 3 necesita fusionado el traslado de ajustes de VANTA-138; el
+5 necesita el 3 y el 4; del 8 en adelante necesitan el 6 y el 7.
+
+Cómo se trabaja en paralelo:
+
+- **Dónde se compila.** La cola del servidor tiene dos huecos y 16 GB. Dos
+  workers compilan ahí y los otros dos en el Mac, que genera el ejecutable de
+  Windows como ya se hizo en la medición.
+- **Tanda diaria en el PC de juego.** Una sesión al día con todo lo terminado:
+  capturas de GPUI y de Rune de las mismas escenas y medición corta. Diseño y
+  el orquestador las revisan lado a lado y se fusiona lo aprobado. Un PR
+  espera como mucho un día.
+- **Sin pisarse.** Cada widget vive en su carpeta y se apunta con una línea en
+  la lista de widgets. El orquestador fusiona a diario para que los choques
+  sean de una línea.
+- **Rune no se sube** durante estas dos semanas, salvo que haga falta un
+  arreglo suyo.
+
+Riesgos de plazo:
+
+- **El PC de juego.** Sin él no hay capturas ni mediciones y nada se fusiona.
+  Cada día sin PC es un día más.
+- **Sorpresas de Rune en Windows.** Nadie lo ha probado con un juego delante:
+  texto, escala, transparencia, DirectX 12. Si aparece una en F0 o F1, frena a
+  todos; por eso los 17 no empiezan hasta que Relative pase su medición corta.
+- **El traslado de VANTA-138.** Si no está fusionado el día 1, retrasa el PR 3
+  y con él el proceso.
+- **El Mac.** Si no está disponible, cuatro workers comparten dos huecos.
+- **Optimizar más de lo previsto.** Si la campaña pide más de lo que cabe en
+  los días 10 a 12, el plazo se alarga.
+
+Total: 12 días de plan, unas dos semanas de calendario con margen. El PR 28
+queda fuera: depende del ciclo de testers.
 
 ## Riesgos
 
 | Riesgo | Qué hacemos |
 |---|---|
 | El original cambia muy deprisa y no acepta aportaciones | Copia propia, commit fijado, subidas cada dos semanas con pruebas |
-| Rune no llega al objetivo de CPU | Repintado a demanda, cinco días por fase y líneas rojas (decisión 4) |
+| Rune no llega al objetivo de CPU | Repintado a demanda, optimización al final del plan y líneas rojas (decisión 4) |
 | El texto se ve distinto al de GPUI | Capturas en Windows y revisión a ojo por widget |
 | Mover código a `domain` y a `ipc` rompe el overlay GPUI | Es un traslado sin cambios; tests de `ui`, Hub y telemetría; diseños idénticos byte a byte |
 | Dos traslados a la vez sobre los mismos archivos (este plan y VANTA-138) | Los ajustes los mueve solo VANTA-138; el PR 3 empieza cuando eso esté fusionado |
 | DirectX 12 en gráficas antiguas | Aguante de 4 horas en F1 y al final; GPUI elegible un ciclo |
 | Alguien ejecuta algo gráfico en el servidor | Variable de máquina que lo impide |
 | La preview de Studio se retrasa | Depende solo de F1; mientras, la ilustración rotulada |
-| El PC de juego no está encendido | Las mediciones se agrupan por fase; el código no espera, la fusión de cada widget sí |
+| El PC de juego no está encendido | Capturas y mediciones en una tanda al día; el código no espera, la fusión sí |
+| Rune se porta distinto en Windows con un juego delante | F0 y F1 se prueban en el PC de juego antes de repartir los 17 |
 
 ## Consecuencias
 

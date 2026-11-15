@@ -295,6 +295,8 @@ D031 y D048 preservados en sus ramas, pendientes de este bloque; D111 después.
 
 Worker B, #2333; rama `vantareapp/isa-2333-relative-eficiencia` apilada sobre
 64a445de3 de #2348, base de nightly 639bb40aa. Solo overlays-rune y este handoff.
+Draft [#2351](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2351),
+código inicial fd86187ee; todavía no es entrega final ni candidato a merge.
 Preparado el dibujo de Relative Eficiencia a partir del Board canónico, sus
 columnas/formatos, pie, calidad por celda y muestras del movimiento compartido.
 Kit de panel/texto con las fuentes existentes, sin copia ni dependencia de UI.
@@ -307,6 +309,10 @@ del PC de juego en el horario del orquestador. No se afirma paridad ni preview
 lista; distribución mantiene bloqueado --fuente local. Sin dependencias/locks
 nuevos. Formato/diff y auditoría 425 paquetes/6 tests PASS; Clippy/tests Rune
 encolados, aún sin turno por memoria. No se ejecuta producto ni gráfica.
+El fixture guardado original de Relative se decodifica por IPC y se proyecta
+por domain en tests CPU; la vista y la captura con pintor falso comparan los
+mismos textos y cajas en tres escalas. Se retiró solo el pequeño target Mac
+de tests de política ya terminados; 13,25 GiB libres, sin nueva compilación Mac.
 
 ## VANTA-144 · nits de revisión del proceso Rune (15/11/2026)
 

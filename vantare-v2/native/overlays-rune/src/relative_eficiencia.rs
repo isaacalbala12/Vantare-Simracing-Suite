@@ -841,4 +841,73 @@ mod tests {
             && e.rect[0] + e.rect[2] <= WIDTH
             && e.rect[1] + e.rect[3] <= h));
     }
+
+    #[test]
+    fn original_gpui_snapshot_uses_domain_projection_and_the_same_capture_view() {
+        let snapshot = vantare_ipc::snapshot_from_saved_json(include_str!(
+            "../../ui/fixtures/relative.snapshot.json"
+        ))
+        .expect("fixture guardado del Relative GPUI");
+        for (ahead, behind, same_class) in [(3, 3, false), (1, 2, false), (3, 3, true)] {
+            let settings = Settings {
+                range_ahead: ahead,
+                range_behind: behind,
+                class_scope: if same_class { "sameClass" } else { "all" }.into(),
+                ..Settings::eficiencia()
+            };
+            let board = vantare_domain::relative::project_cached(
+                &snapshot,
+                Preferences::default(),
+                vantare_domain::relative::Content {
+                    range_ahead: ahead,
+                    range_behind: behind,
+                    same_class,
+                    include_player: true,
+                },
+                &[],
+                None,
+            );
+            assert!(board.status.is_none());
+            assert!(board.slots.iter().flatten().any(|r| r.side == Side::Player));
+            for scale in [1.0, 1.25, 1.5] {
+                let size = crate::offscreen::Size::new(natural_size(&settings), scale).unwrap();
+                let mut rt = runtime(
+                    Scene {
+                        board: (*board).clone(),
+                        settings: settings.clone(),
+                        language: Language::Es,
+                    },
+                    scale,
+                );
+                let before: Vec<_> = rt
+                    .elements()
+                    .into_iter()
+                    .map(|e| (e.key, e.rect, e.text))
+                    .collect();
+                crate::offscreen::render_with::<_, crate::offscreen::Error>(
+                    &mut rt,
+                    size,
+                    |rt, size| {
+                        let after: Vec<_> = rt
+                            .elements()
+                            .into_iter()
+                            .map(|e| (e.key, e.rect, e.text))
+                            .collect();
+                        assert_eq!(
+                            before, after,
+                            "captura y vista usan el mismo dibujo asentado"
+                        );
+                        assert!(
+                            after
+                                .iter()
+                                .any(|(_, _, text)| text.as_deref() == Some("Sebring"))
+                        );
+                        let (w, h) = size.pixels();
+                        Ok(vec![0; w as usize * h as usize * 4])
+                    },
+                )
+                .unwrap();
+            }
+        }
+    }
 }

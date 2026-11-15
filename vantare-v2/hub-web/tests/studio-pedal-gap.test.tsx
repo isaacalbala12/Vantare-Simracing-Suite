@@ -27,9 +27,19 @@ afterEach(cleanup);
 const cases = [
   {
     kind: "pedals",
+    look: "vantare",
     label: text.pedalGap,
     field: "gap",
     value: 0.1,
+    min: 0,
+    max: 12,
+  },
+  {
+    kind: "pedals",
+    look: "eficiencia",
+    label: text.pedalGap,
+    field: "gap",
+    value: 0.25,
     min: 0,
     max: 12,
   },
@@ -47,8 +57,10 @@ async function mount(item: OverlayInstance) {
   return user;
 }
 for (const entry of cases) {
-  it(`saves only ${entry.kind}.${entry.field} with the current revision after commit`, async () => {
+  it(`saves only ${entry.kind}.${entry.look}.${entry.field} with the current revision after commit`, async () => {
     const item = contentInstance(entry.kind);
+    if (item.settings?.kind === "pedals")
+      item.settings.designSystem = entry.look;
     const before = structuredClone(item.settings);
     const user = await mount(item);
     const input = screen.getByRole("textbox", {
@@ -71,8 +83,10 @@ for (const entry of cases) {
     expect(item.settings).toEqual(before);
     expect(document.activeElement).toBe(input);
   });
-  it(`validates ${entry.field} bounds after interaction and clears its error on edit`, async () => {
+  it(`validates ${entry.look}.${entry.field} bounds after interaction and clears its error on edit`, async () => {
     const item = contentInstance(entry.kind);
+    if (item.settings?.kind === "pedals")
+      item.settings.designSystem = entry.look;
     const user = await mount(item);
     const input = screen.getByRole("textbox", { name: entry.label });
     await user.clear(input);

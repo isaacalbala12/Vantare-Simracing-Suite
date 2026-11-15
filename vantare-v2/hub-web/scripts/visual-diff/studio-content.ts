@@ -49,5 +49,13 @@ studioContentScenes["studio-contenido-filas"] = {
       "confirmed Studio row count save",
     );
     await rows.scrollIntoViewIfNeeded();
+    // Leave text editing through a real click before the harness uses Ctrl+B.
+    await page
+      .getByRole("heading", { name: "Clasificación", exact: true })
+      .click();
+    assert.equal(
+      await rows.evaluate((node) => node === document.activeElement),
+      false,
+    );
   },
 };

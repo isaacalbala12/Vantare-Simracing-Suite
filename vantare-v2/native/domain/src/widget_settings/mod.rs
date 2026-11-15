@@ -31,3 +31,18 @@ pub mod look;
 pub mod pedals;
 pub mod relative;
 pub mod standings;
+
+pub mod broadcast_tower;
+pub mod car_damage_numbers;
+pub mod car_damage_visual;
+pub mod delta_trace;
+pub mod fastest_lap;
+pub mod head_to_head;
+pub mod input_telemetry;
+pub mod multiclass_relative;
+pub mod pedals_telemetry;
+pub mod racing_flags;
+pub mod radar;
+pub mod session_alerts;
+pub mod track_map;
+pub mod track_weather;

@@ -246,27 +246,23 @@ fn phrase(vm: &ViewModel, es: bool) -> String {
 use crate::app::{Paint, Wake, replace_if_changed};
 use vantare_domain::{Snapshot, format::Preferences};
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub show_phrases: bool,
-}
-impl Default for Settings {
-    fn default() -> Self {
-        Self { show_phrases: true }
-    }
-}
-impl Settings {
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        self.clone()
+pub use vantare_domain::widget_settings::radar::Settings;
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{LapCount, LapProgress, Spatial, TrackLength, Velocity};
+        crate::demand::signals(33, &[Spatial, Velocity, LapCount, LapProgress, TrackLength])
     }
 }
 
-impl Settings {
-    /// `RadarFunctional` no ofrece ajustes visuales ni de contenido.
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
-}
+#[cfg(test)]
+use crate::widget_settings::SettingsDemand as _;
+
+
+
+
+
 
 pub(crate) struct Widget {
     vm: ViewModel,
@@ -329,13 +325,7 @@ impl Widget {
     }
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapCount, LapProgress, Spatial, TrackLength, Velocity};
-        crate::demand::signals(33, &[Spatial, Velocity, LapCount, LapProgress, TrackLength])
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

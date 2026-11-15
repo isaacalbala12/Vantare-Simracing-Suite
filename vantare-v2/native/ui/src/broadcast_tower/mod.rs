@@ -21,38 +21,38 @@ use vantare_domain::{
 
 const SIZE: (f32, f32) = (1400.0, 56.0);
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub driver_carousel: bool,
-    pub row_count: usize,
-    pub show_weather: bool,
-    /// SOF está desactivado también en el contrato Eficiencia productivo.
-    pub show_sof: bool,
-}
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            driver_carousel: false,
-            row_count: 11,
-            show_weather: false,
-            show_sof: false,
+pub use vantare_domain::widget_settings::broadcast_tower::Settings;
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{
+            ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,
+            SessionInfo, Weather,
+        };
+        let mut demand = crate::demand::signals(
+            250,
+            &[
+                SessionInfo,
+                SessionClock,
+                Positions,
+                LapTimes,
+                Gaps,
+                ClassGaps,
+                PitStatus,
+                Flags,
+                LapCount,
+            ],
+        );
+        if self.show_weather {
+            demand.request(Weather, 500);
         }
+        demand
     }
 }
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
-        "showSof",
-        "Eficiencia no ofrece SOF y Snapshot no transporta rating",
-    )];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        let mut value = self.clone();
-        value.row_count = value.row_count.clamp(3, 11);
-        value.show_sof = false;
-        value
-    }
-}
+
+
+
+
 
 struct PaintLabels {
     lap: String,
@@ -490,32 +490,7 @@ fn class_color(accent: Accent) -> u32 {
     }
 }
 
-impl Settings {
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{
-            ClassGaps, Flags, Gaps, LapCount, LapTimes, PitStatus, Positions, SessionClock,
-            SessionInfo, Weather,
-        };
-        let mut demand = crate::demand::signals(
-            250,
-            &[
-                SessionInfo,
-                SessionClock,
-                Positions,
-                LapTimes,
-                Gaps,
-                ClassGaps,
-                PitStatus,
-                Flags,
-                LapCount,
-            ],
-        );
-        if self.show_weather {
-            demand.request(Weather, 500);
-        }
-        demand
-    }
-}
+
 
 #[cfg(test)]
 fn card_bounds(slot: f32, count: usize, player: Option<usize>, width: f32) -> (f32, f32) {

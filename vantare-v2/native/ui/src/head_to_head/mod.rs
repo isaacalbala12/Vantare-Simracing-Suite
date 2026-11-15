@@ -249,23 +249,12 @@ fn paint_content(
     }
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub target: String,
-    /// Muestra los sectores fiables de la última vuelta y la mejor vuelta.
-    pub show_sectors: bool,
+pub use vantare_domain::widget_settings::head_to_head::Settings;
+
+trait SettingsPresentation {
+    fn target(&self) -> Target;
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            target: "ahead".into(),
-            show_sectors: true,
-        }
-    }
-}
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
+impl SettingsPresentation for Settings {
     fn target(&self) -> Target {
         if self.target == "behind" {
             Target::Behind
@@ -273,16 +262,25 @@ impl Settings {
             Target::Ahead
         }
     }
+}
 
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        let mut settings = self.clone();
-        if settings.target != "behind" {
-            settings.target = "ahead".into();
+impl crate::widget_settings::SettingsDemand for Settings {
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{LapTimes, Positions, Relative, Sectors, SessionInfo};
+        let mut demand = crate::demand::signals(33, &[Positions, Relative, LapTimes, SessionInfo]);
+        if self.show_sectors {
+            demand.request(LapTimes, 250);
+            demand.request(Sectors, 250);
         }
-        settings
+        demand
     }
 }
+
+#[cfg(test)]
+use crate::widget_settings::SettingsDemand as _;
+
+
+
 
 pub(crate) struct Widget {
     vm: ViewModel,
@@ -327,17 +325,7 @@ impl Widget {
     }
 }
 
-impl Settings {
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapTimes, Positions, Relative, Sectors, SessionInfo};
-        let mut demand = crate::demand::signals(33, &[Positions, Relative, LapTimes, SessionInfo]);
-        if self.show_sectors {
-            demand.request(LapTimes, 250);
-            demand.request(Sectors, 250);
-        }
-        demand
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

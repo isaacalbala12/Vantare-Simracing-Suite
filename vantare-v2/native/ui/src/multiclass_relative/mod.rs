@@ -281,33 +281,13 @@ fn paint(vm: &ViewModel, size: (f32, f32), prefs: Preferences, window: &mut Wind
     );
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub row_count: usize,
-    pub class_mode: String,
-    pub show_class_divider: bool,
+pub use vantare_domain::widget_settings::multiclass_relative::Settings;
+
+trait SettingsPresentation {
+    fn content(&self) -> Content;
+    fn size(&self) -> (f32, f32);
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            row_count: 7,
-            class_mode: "all".into(),
-            show_class_divider: false,
-        }
-    }
-}
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        let mut value = self.clone();
-        value.row_count = multiclass_relative::row_count(value.row_count);
-        if !["all", "same", "other"].contains(&value.class_mode.as_str()) {
-            value.class_mode = "all".into();
-        }
-        value
-    }
+impl SettingsPresentation for Settings {
     fn content(&self) -> Content {
         Content {
             row_count: self.row_count,
@@ -323,6 +303,18 @@ impl Settings {
         (SIZE.0, SIZE.1 + (self.row_count as f32 - 7.0) * 24.0)
     }
 }
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{Flags, LapTimes, PitStatus, Positions, Relative};
+        crate::demand::signals(33, &[Positions, Relative, PitStatus, LapTimes, Flags])
+    }
+}
+
+
+
+
 
 pub(crate) struct Widget {
     vm: ViewModel,
@@ -369,13 +361,7 @@ impl Widget {
     }
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Flags, LapTimes, PitStatus, Positions, Relative};
-        crate::demand::signals(33, &[Positions, Relative, PitStatus, LapTimes, Flags])
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

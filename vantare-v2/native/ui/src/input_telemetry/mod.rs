@@ -18,29 +18,12 @@ use crate::vantare::style::{Color, Style};
 const SIZE: (f32, f32) = (600.0, 84.0);
 const TRANSITION: Duration = Duration::from_millis(80);
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub history_seconds: u8,
-    pub show_clutch: bool,
+pub use vantare_domain::widget_settings::input_telemetry::Settings;
+
+trait SettingsPresentation {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            history_seconds: 6,
-            show_clutch: false,
-        }
-    }
-}
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        Self {
-            history_seconds: self.history_seconds.clamp(1, 8),
-            ..self.clone()
-        }
-    }
+impl SettingsPresentation for Settings {
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         let mut vm = vantare_domain::input_telemetry::project(snapshot, prefs);
         vm.show_clutch = self.show_clutch && vm.pedals[0].is_some();
@@ -50,6 +33,19 @@ impl Settings {
         vm
     }
 }
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // El estado de ausencia también depende de clutch, aunque su barra esté oculta.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain};
+        // La traza necesita observar cada revisión para detectar pérdidas reales.
+        crate::demand::signals(0, &[Pedals, Clutch, Powertrain])
+    }
+}
+
+
+
+
 
 pub(crate) struct Widget {
     settings: Settings,
@@ -383,14 +379,7 @@ fn paint(
     );
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // El estado de ausencia también depende de clutch, aunque su barra esté oculta.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain};
-        // La traza necesita observar cada revisión para detectar pérdidas reales.
-        crate::demand::signals(0, &[Pedals, Clutch, Powertrain])
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

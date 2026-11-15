@@ -28,28 +28,12 @@ mod wheels;
 const SIZE: (f32, f32) = (380.0, 64.0);
 const TRANSITION: Duration = Duration::from_millis(60);
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub steering_wheel: String,
-    pub show_clutch: bool,
-    /// Eficiencia no dibuja posición aunque el contenido general la conserve.
-    pub show_position: bool,
+pub use vantare_domain::widget_settings::pedals_telemetry::Settings;
+
+trait SettingsPresentation {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            steering_wheel: "generic".into(),
-            show_clutch: true,
-            show_position: true,
-        }
-    }
-}
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
-        "showPosition",
-        "PedalsAdvancedEfficiency no dibuja posición",
-    )];
+impl SettingsPresentation for Settings {
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         let mut vm = pedals_telemetry::project(snapshot, prefs);
         vm.steering_wheel = pedals_telemetry::WHEELS
@@ -60,19 +44,19 @@ impl Settings {
         vm.show_clutch = self.show_clutch;
         vm
     }
+}
 
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        if pedals_telemetry::WHEELS.contains(&self.steering_wheel.as_str()) {
-            self.clone()
-        } else {
-            Self {
-                steering_wheel: "generic".into(),
-                ..self.clone()
-            }
-        }
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // El estado de ausencia también depende de clutch, aunque su barra esté oculta.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain, Steering};
+        crate::demand::signals(16, &[Pedals, Clutch, Steering, Powertrain])
     }
 }
+
+
+
+
 
 #[derive(Default)]
 struct WheelArtwork {
@@ -440,13 +424,7 @@ mod status_render_tests {
     }
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // El estado de ausencia también depende de clutch, aunque su barra esté oculta.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{Clutch, Pedals, Powertrain, Steering};
-        crate::demand::signals(16, &[Pedals, Clutch, Steering, Powertrain])
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

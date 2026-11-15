@@ -29,33 +29,13 @@ struct Notice {
     started: Instant,
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-pub struct Settings {
-    pub show_personal: bool,
-    pub show_class: bool,
-    pub duration_seconds: u8,
-    pub show_driver: bool,
+pub use vantare_domain::widget_settings::fastest_lap::Settings;
+
+trait SettingsPresentation {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
+    fn lifetime(&self) -> Duration;
 }
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            show_personal: true,
-            show_class: true,
-            duration_seconds: 6,
-            show_driver: true,
-        }
-    }
-}
-impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
-    #[must_use]
-    pub fn normalized(&self) -> Self {
-        Self {
-            duration_seconds: self.duration_seconds.clamp(3, 15),
-            ..self.clone()
-        }
-    }
+impl SettingsPresentation for Settings {
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         let mut vm = fastest_lap::project(snapshot, prefs);
         vm.show_driver = self.show_driver;
@@ -65,6 +45,21 @@ impl Settings {
         Duration::from_secs(u64::from(self.duration_seconds))
     }
 }
+
+impl crate::widget_settings::SettingsDemand for Settings {
+    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
+    fn demand(&self) -> vantare_ipc::Demand {
+        use vantare_ipc::Signal::{LapCount, LapTimes, SessionClock, SessionInfo, TrackName};
+        crate::demand::signals(
+            250,
+            &[LapTimes, LapCount, TrackName, SessionInfo, SessionClock],
+        )
+    }
+}
+
+
+
+
 
 pub(crate) struct Widget {
     settings: Settings,
@@ -648,16 +643,7 @@ fn paint(
     );
 }
 
-impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
-    pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{LapCount, LapTimes, SessionClock, SessionInfo, TrackName};
-        crate::demand::signals(
-            250,
-            &[LapTimes, LapCount, TrackName, SessionInfo, SessionClock],
-        )
-    }
-}
+
 
 #[cfg(test)]
 mod tests {

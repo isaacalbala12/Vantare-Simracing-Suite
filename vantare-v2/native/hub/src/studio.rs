@@ -27,6 +27,7 @@ use gpui::{
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
 use vantare_domain::{Snapshot, format::Preferences};
+use vantare_ui::car_damage_visual::SettingsKeyboard as _;
 use vantare_ui::{
     Kind, Overlay, Settings,
     layout::{CanvasResolution, Instance, Layout, Presentation},

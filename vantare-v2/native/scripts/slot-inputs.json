@@ -1,0 +1,26 @@
+{
+  "external": [
+    "vantare-v2/hub-web/design",
+    "vantare-v2/hub-web/fixtures",
+    "vantare-v2/fixtures",
+    "vantare-v2/testdata",
+    "vantare-v2/native/assets",
+    "vantare-v2/native/packaging/fixtures",
+    "vantare-v2/native/packaging/installer-cleanup.ps1",
+    "vantare-v2/native/packaging/matrix/guard.ps1",
+    "vantare-v2/native/pruebas-rune",
+    "vantare-v2/native/resources",
+    "vantare-v2/native/vendor",
+    "supabase/tests/fixtures",
+    "tools/triage"
+  ],
+  "rootFiles": [
+    "vantare-v2/native/Cargo.toml",
+    "vantare-v2/native/Cargo.lock",
+    "vantare-v2/native/.cargo/config.toml",
+    "vantare-v2/native/rust-toolchain.toml"
+  ],
+  "externalPackages": [
+    "gpui_windows"
+  ]
+}

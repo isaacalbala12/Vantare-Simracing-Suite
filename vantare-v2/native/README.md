@@ -529,13 +529,16 @@ Si tocas `runtime`, `domain`, `ipc`, `ui` o `storage`, el gate rápido imprime u
 aviso: faltan Clippy y tests de los dependientes y la telemetría (#1498). Antes
 de publicar, ejecuta `comprobar.ps1 <crate> -Full` y la telemetría.
 
-La cola publica el checkout activo mediante un enlace estable por slot
-(`<raíz de targets>/slot-workspaces/slot-N`). Cargo compila a través de esa ruta,
-así que alternar checkouts en el mismo slot reutiliza los artefactos locales y
-solo recompila lo que cambia. Al cambiar de checkout se comparan los árboles de
-cada paquete con el anterior y solo se invalidan los que cambiaron adelantando
-el mtime de sus ficheros; los iguales se reutilizan. Los targets explícitos
-(mediciones, QA y empaquetado) conservan su ruta real y no usan el enlace.
+La cola comparte los dos targets persistentes entre checkouts. Antes de cada
+build de slot se calcula la huella de contenido de cada paquete del workspace y
+la de las entradas externas declaradas en `native/scripts/slot-inputs.json`
+(`include_str!`/`include_bytes!`/`include!` fuera de su paquete, `Cargo.toml`,
+`Cargo.lock`, `.cargo/config.toml`, `rust-toolchain` y `vendor`). Solo los
+paquetes cuya huella cambió se limpian con `cargo clean -p`; si cambia una
+entrada externa se limpian todos. La limpieza es persistente: un build parcial
+que no compile un paquete limpiado no puede dejar un artefacto obsoleto. El sello
+se escribe tras limpiar y antes de compilar. Los targets explícitos (mediciones,
+QA y empaquetado) no pasan por este control.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.
@@ -556,13 +559,13 @@ LocalApplicationData/Vantare/sccache. Este servidor tiene VANTARE_TARGET_ROOT=
 La cola admite como máximo dos compilaciones. CARGO_BUILD_JOBS de Machine tiene
 prioridad sobre el del proceso; en este servidor Machine fija 4. Usar `CARGO_BUILD_JOBS=4` en este
 servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
-ramas. Al cambiar de checkout se comparan los árboles de cada paquete con el
-anterior y solo se invalidan los que cambiaron; los iguales y las dependencias
-se conservan. No crear targets por rama. Los comandos anidados síncronos
-reutilizan la reserva del ancestro. En local sccache está activo. Si `cargo` o
-`rustc` terminan con 0xC0000005 (STATUS_ACCESS_VIOLATION), el comando se
-reintenta una vez con `VANTARE_SCCACHE=0`; ambos intentos quedan en el log.
-`VANTARE_SCCACHE=0` lo desactiva a mano.
+ramas. Antes de compilar se invalidan solo los paquetes cuya huella de contenido
+cambió; los iguales y las dependencias se conservan. No crear targets por rama.
+Los comandos anidados síncronos reutilizan la reserva del ancestro. En local
+sccache está activo. Si `cargo` o `rustc` terminan con 0xC0000005
+(STATUS_ACCESS_VIOLATION), el comando se reintenta una vez con
+`VANTARE_SCCACHE=0`; ambos intentos quedan en el log. `VANTARE_SCCACHE=0` lo
+desactiva a mano.
 Un CARGO_TARGET_DIR ya definido en el entorno se trata como target explícito:
 se valida y reserva con su propio lease, en vez de usar slot-N. Es el caso de packaging.
 

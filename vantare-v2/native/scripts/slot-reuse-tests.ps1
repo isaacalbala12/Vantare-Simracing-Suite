@@ -6,13 +6,12 @@ if (-not (Test-VantareTargetPath $EvidenceDirectory)) { throw 'Evidencia fuera d
 if ($env:VANTARE_CARGO_QUEUE_OWNER) { throw 'Ejecutar este orquestador de pruebas sin una reserva exterior.' }
 $env:VANTARE_SCCACHE = '0'
 Remove-Item Env:RUSTC_WRAPPER -ErrorAction SilentlyContinue
-# This test exercises the local slot path, where compilar.ps1 publishes the
-# stable workspace link. The hosted `ci` target is a single checkout.
+# This test exercises the local slot path, where compilar.ps1 invalidates the
+# packages that changed. The hosted `ci` target is a single checkout.
 $previousCi = $env:VANTARE_CI_TARGET
 Remove-Item Env:VANTARE_CI_TARGET -ErrorAction SilentlyContinue
 # Do not touch the real slot target of this machine: the fixture owns its own
-# root, so the junction and the probe package stay under the evidence directory.
-# (On GitHub-hosted runners the root is already per-job.)
+# root. (On GitHub-hosted runners the root is already per-job.)
 $previousRoot = $env:VANTARE_TARGET_ROOT
 $env:VANTARE_TARGET_ROOT = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('slot-reuse-targets-' + [guid]::NewGuid().ToString('N'))
 try {
@@ -30,9 +29,23 @@ try {
         foreach ($file in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
             Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $native "scripts/$file")
         }
+        [IO.File]::WriteAllText((Join-Path $native 'scripts/slot-inputs.json'), (@'
+{
+  "external": [],
+  "rootFiles": ["vantare-v2/native/Cargo.toml", "vantare-v2/native/Cargo.lock"],
+  "externalPackages": []
+}
+'@))
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../.cargo/config.toml') -Destination (Join-Path $native '.cargo/config.toml')
         & cargo generate-lockfile --manifest-path (Join-Path $native 'Cargo.toml') --offline
         if ($LASTEXITCODE) { throw 'Preparar fixture de checkout.' }
+        Push-Location $worktree
+        try {
+            & git init -q
+            & git -c user.email=test@example.invalid -c user.name=test add -A
+            & git -c user.email=test@example.invalid -c user.name=test commit -qm inicial
+            if ($LASTEXITCODE) { throw 'Preparar repositorio del fixture.' }
+        } finally { Pop-Location }
     }
     foreach ($branch in @('A', 'B', 'A')) {
         $worktree = Join-Path $root $branch
@@ -43,7 +56,7 @@ try {
             if ($LASTEXITCODE -or $output[-1] -cne $branch) { throw "Artefacto de otra rama; esperado $branch." }
         } finally { Pop-Location }
     }
-    'PASS: A -> B -> A en dos checkouts con enlace de slot, sin ejecutable obsoleto.'
+    'PASS: A -> B -> A en dos checkouts con target de slot y limpieza dirigida.'
 } finally {
     if ($null -ne $previousCi) { $env:VANTARE_CI_TARGET = $previousCi }
     if ($null -ne $previousRoot) { $env:VANTARE_TARGET_ROOT = $previousRoot }

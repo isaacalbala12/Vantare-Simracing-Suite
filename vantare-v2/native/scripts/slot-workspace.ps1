@@ -9,7 +9,13 @@ function Set-VantareSlotWorkspace {
     $repo = Split-Path (Split-Path $native)
     if (-not (Test-Path -LiteralPath $target)) {
         [IO.Directory]::CreateDirectory($target) | Out-Null
-    } elseif (-not (Test-Path -LiteralPath (Join-Path $target 'CACHEDIR.TAG'))) {
+    }
+    $slotName = Split-Path $target -Leaf
+    # Explicit targets (measurements, QA, packaging) keep their real path. Their
+    # gates may write evidence next to the build before invoking Cargo, so the
+    # slot ownership checks below do not apply to them.
+    if ($slotName -notmatch '^slot-[01]$') { return $null }
+    if (-not (Test-Path -LiteralPath (Join-Path $target 'CACHEDIR.TAG'))) {
         # The queue creates its stamps/tmp before Cargo's first invocation.
         # Cargo refuses clean on that fresh directory; never manufacture its tag.
         $unknown = @(Get-ChildItem -LiteralPath $target -Force | Where-Object {
@@ -22,9 +28,6 @@ function Set-VantareSlotWorkspace {
     if (Get-ChildItem -LiteralPath $target -Recurse -Force | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }) {
         throw 'Hay enlaces dentro del target; no se invalidan paquetes.'
     }
-    $slotName = Split-Path $target -Leaf
-    # Explicit targets (measurements, QA, packaging) keep their real path.
-    if ($slotName -notmatch '^slot-[01]$') { return $null }
     $workspaceRoot = Join-Path (Split-Path $target) 'slot-workspaces'
     [IO.Directory]::CreateDirectory($workspaceRoot) | Out-Null
     $junction = Join-Path $workspaceRoot $slotName

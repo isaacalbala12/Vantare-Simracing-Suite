@@ -29,14 +29,16 @@ if (((Get-Content -LiteralPath $stamp -Raw | ConvertFrom-Json).native) -ine $nat
 $again = Set-VantareSlotWorkspace -Target $slot -NativeRoot $native
 if ($again -cne $junction) { throw 'El enlace cambió con el mismo checkout.' }
 
-# Un target explícito (mediciones) conserva su ruta real.
+# Un target explícito (mediciones) conserva su ruta real, aunque el gate escriba
+# evidencia junto al build y no haya CACHEDIR.TAG.
 $explicit = Join-Path $root 'medicion-g'
 [IO.Directory]::CreateDirectory($explicit) | Out-Null
+[IO.File]::WriteAllText((Join-Path $explicit 'distribution.json'), '{}')
 if (Set-VantareSlotWorkspace -Target $explicit -NativeRoot $native) { throw 'Un target explícito no debe tener enlace.' }
 if (Test-Path -LiteralPath (Join-Path $root 'slot-workspaces/medicion-g')) { throw 'Se creó un enlace para un target explícito.' }
 
-# Contenido desconocido sin CACHEDIR.TAG se rechaza sin borrar nada.
-$foreign = Join-Path $root 'foreign-slot'
+# Contenido desconocido sin CACHEDIR.TAG se rechaza sin borrar nada (slot real).
+$foreign = Join-Path $root 'slot-1'
 [IO.Directory]::CreateDirectory($foreign) | Out-Null
 [IO.File]::WriteAllText((Join-Path $foreign 'foreign.txt'), 'preserve')
 $rejected = $false

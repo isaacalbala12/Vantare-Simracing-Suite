@@ -1,3 +1,4 @@
+import { Tooltip } from "@base-ui/react/tooltip";
 import {
   type ReactNode,
   useId,
@@ -70,6 +71,7 @@ export function CanvasStage({
   const input = useCanvasInputs(model, viewport, scale, onSelect, setGuides);
   const cancel = input.cancel;
   const help = useId();
+  const noteId = useId();
   const measured = useRef<Pair>([0, 0]);
   useLayoutEffect(() => {
     const node = viewport.current;
@@ -465,9 +467,27 @@ export function CanvasStage({
                 }}
               />
             </div>
-            <IconButton label={t.note} variant="ghost" size="sm">
-              <Icon name="info" />
-            </IconButton>
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                render={<Button variant="ghost" size="sm" />}
+                aria-label={t.note}
+                aria-describedby={noteId}
+              >
+                <Icon name="info" />
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Positioner className="v-positioner" sideOffset={6}>
+                  <Tooltip.Popup
+                    className="v-tooltip"
+                    role="tooltip"
+                    id={noteId}
+                  >
+                    {t.note}
+                    <Tooltip.Arrow />
+                  </Tooltip.Popup>
+                </Tooltip.Positioner>
+              </Tooltip.Portal>
+            </Tooltip.Root>
             <span className="v-canvas-grow" />
             <span
               className="v-canvas-save-state"

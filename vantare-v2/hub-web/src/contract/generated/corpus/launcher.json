@@ -325,7 +325,7 @@
         "value": {
           "apps": [],
           "lastScan": {
-            "completedAtMs": "1700000000123",
+            "completedAtMs": 1700000000123,
             "warningCount": 0
           },
           "revision": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -341,7 +341,7 @@
         "value": {
           "apps": [],
           "lastScan": {
-            "completedAtMs": "1700000000123",
+            "completedAtMs": 1700000000123,
             "warningCount": 2
           },
           "revision": "0000000000000000000000000000000000000000000000000000000000000000",

@@ -201,12 +201,6 @@ fn duplicate_cases() -> serde_json::Value {
 fn append_apps_constants(text: &mut String) {
     writeln!(
         text,
-        "export const launcherScanTimestampMax = \"{}\" as const;",
-        crate::launcher::apps::MAX_SCAN_TIMESTAMP_MS
-    )
-    .expect("String write");
-    writeln!(
-        text,
         "export const launcherPickCooldownMs = {} as const;",
         crate::launcher::apps::PICK_COOLDOWN_MS
     )
@@ -229,7 +223,7 @@ fn application_reply_samples() -> [Reply; 9] {
                 revision: "0".repeat(64),
                 scanning: true,
                 last_scan: Some(ScanSummary {
-                    completed_at_ms: "1700000000123".into(),
+                    completed_at_ms: 1_700_000_000_123,
                     warning_count: 0,
                 }),
                 apps: vec![],
@@ -240,7 +234,7 @@ fn application_reply_samples() -> [Reply; 9] {
                 revision: "0".repeat(64),
                 scanning: false,
                 last_scan: Some(ScanSummary {
-                    completed_at_ms: "1700000000123".into(),
+                    completed_at_ms: 1_700_000_000_123,
                     warning_count: 2,
                 }),
                 apps: vec![],

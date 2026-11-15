@@ -2,7 +2,6 @@ import type { AppDraft } from "./generated/contract";
 import {
   launcherLimits,
   launcherPickPathMax,
-  launcherScanTimestampMax,
   profileLimits,
 } from "./generated/contract";
 import { exact, integer, record } from "./validation-common";
@@ -59,9 +58,10 @@ export function isScanSummary(value: unknown): boolean {
     value === null ||
     (record(value) &&
       exact(value, ["completedAtMs", "warningCount"]) &&
-      typeof value.completedAtMs === "string" &&
-      /^(0|[1-9][0-9]{0,15})$/.test(value.completedAtMs) &&
-      BigInt(value.completedAtMs) <= BigInt(launcherScanTimestampMax) &&
+      typeof value.completedAtMs === "number" &&
+      Number.isInteger(value.completedAtMs) &&
+      value.completedAtMs >= 0 &&
+      value.completedAtMs <= 8_640_000_000_000_000 &&
       integer(value.warningCount))
   );
 }

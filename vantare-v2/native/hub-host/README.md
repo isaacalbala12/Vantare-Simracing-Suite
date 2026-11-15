@@ -560,7 +560,7 @@ por revisión en ambos sentidos. La interfaz del selector sigue en el PR de D.
 ## Última exploración de aplicaciones (D031)
 
 `CatalogView.lastScan` es `null` hasta recoger una exploración completada. Después
-publica `{completedAtMs, warningCount}`: milisegundos Unix en una cadena decimal y
+publica `{completedAtMs, warningCount}`: milisegundos Unix como número entero seguro de JavaScript y
 recuento exacto de avisos. La fecha se toma al terminar el worker, no al consultar
 la vista. Reiniciar el anfitrión vuelve a dejarla desconocida; no se persiste.
 Mientras empieza otra exploración, se conserva el último resultado terminado,

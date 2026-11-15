@@ -70,28 +70,29 @@ pub struct CatalogView {
     pub last_scan: Option<ScanSummary>,
     pub apps: Vec<CatalogApp>,
 }
-pub const MAX_SCAN_TIMESTAMP_MS: u128 = 8_640_000_000_000_000;
+const MAX_SCAN_TIMESTAMP_MS: u64 = 8_640_000_000_000_000;
 /// Completion metadata only; raw discovery diagnostics may contain private paths.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ScanSummary {
-    pub completed_at_ms: String,
+    #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
+    pub completed_at_ms: u64,
     pub warning_count: usize,
 }
 impl ScanSummary {
     pub(super) fn at(found: &Discovery, now: std::time::SystemTime) -> Option<Self> {
         Self::at_millis(
             found,
-            now.duration_since(std::time::UNIX_EPOCH).ok()?.as_millis(),
+            u64::try_from(now.duration_since(std::time::UNIX_EPOCH).ok()?.as_millis()).ok()?,
         )
     }
-    fn at_millis(found: &Discovery, millis: u128) -> Option<Self> {
+    fn at_millis(found: &Discovery, millis: u64) -> Option<Self> {
         if millis > MAX_SCAN_TIMESTAMP_MS {
             return None;
         }
         Some(Self {
-            completed_at_ms: millis.to_string(),
+            completed_at_ms: millis,
             warning_count: found.warnings.len(),
         })
     }
@@ -788,12 +789,12 @@ mod scan_metadata_tests {
             };
             let time = UNIX_EPOCH + Duration::from_millis(1_700_000_000_123);
             let summary = ScanSummary::at(&found, time).expect("real timestamp");
-            assert_eq!(summary.completed_at_ms, "1700000000123");
+            assert_eq!(summary.completed_at_ms, 1_700_000_000_123);
             assert_eq!(summary.warning_count, found.warnings.len());
             let json = serde_json::to_value(&summary).expect("closed projection");
             assert_eq!(
                 json,
-                serde_json::json!({"completedAtMs":"1700000000123","warningCount":found.warnings.len()})
+                serde_json::json!({"completedAtMs":1_700_000_000_123_u64,"warningCount":found.warnings.len()})
             );
             assert!(
                 !serde_json::to_string(&summary)
@@ -813,7 +814,7 @@ mod scan_metadata_tests {
             ScanSummary::at_millis(&found, MAX_SCAN_TIMESTAMP_MS)
                 .expect("last valid date")
                 .completed_at_ms,
-            MAX_SCAN_TIMESTAMP_MS.to_string()
+            MAX_SCAN_TIMESTAMP_MS
         );
         assert_eq!(
             ScanSummary::at_millis(&found, MAX_SCAN_TIMESTAMP_MS + 1),

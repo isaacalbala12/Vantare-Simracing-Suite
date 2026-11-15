@@ -267,6 +267,27 @@ mod tests {
         assert!(!reader.opened);
     }
     #[test]
+    fn invalid_completion_clears_previous_scan_metadata() {
+        use std::time::{Duration, UNIX_EPOCH};
+        let mut reader = Reader::with_completed_discovery(
+            PathBuf::from("unused-launcher-fixture.json"),
+            "0".repeat(64),
+            Discovery::default(),
+            UNIX_EPOCH + Duration::from_secs(1),
+        );
+        assert!(reader.scan_summary().is_some());
+        let found = Discovery::default();
+        let summary =
+            super::super::apps::ScanSummary::at(&found, UNIX_EPOCH - Duration::from_millis(1));
+        reader.complete_scan(ScanResult {
+            revision: "1".repeat(64),
+            found,
+            summary,
+        });
+        assert_eq!(reader.scan_summary(), None);
+    }
+
+    #[test]
     fn no_subscription_means_no_discovery_or_status_watch() {
         let mut reader = Reader::new(PathBuf::from("absent-launcher-fixture.json"));
         assert!(reader.changed(false, Instant::now()).is_none());
@@ -279,7 +300,7 @@ mod tests {
 mod initialization_tests {
     use super::*;
     #[test]
-    fn completed_metadata_survives_reload_and_triggers_an_event_even_if_availability_is_unchanged()
+    fn completed_metadata_survives_rescan_and_triggers_an_event_even_if_availability_is_unchanged()
     {
         let root = crate::test_support::Root::new();
         let path = root.path.join("launcher.json");

@@ -371,7 +371,7 @@ fn catalog_dispatch_publishes_the_completed_scan_metadata_without_private_diagno
             let summary = value
                 .last_scan
                 .expect("completed scan, including zero warnings");
-            assert_eq!(summary.completed_at_ms, "1700000000123");
+            assert_eq!(summary.completed_at_ms, 1_700_000_000_123);
             assert_eq!(summary.warning_count, count);
         } else {
             assert_eq!(value.last_scan, None);

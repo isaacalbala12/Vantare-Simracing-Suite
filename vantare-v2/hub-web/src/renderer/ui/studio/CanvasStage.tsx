@@ -69,10 +69,17 @@ export function CanvasStage({
   const input = useCanvasInputs(model, viewport, scale, onSelect, setGuides);
   const cancel = input.cancel;
   const help = useId();
+  const measured = useRef<Pair>([0, 0]);
   useLayoutEffect(() => {
     const node = viewport.current;
     if (!node) return;
     const measure = () => {
+      if (
+        measured.current[0] === node.clientWidth &&
+        measured.current[1] === node.clientHeight
+      )
+        return;
+      measured.current = [node.clientWidth, node.clientHeight];
       cancel();
       setArea((previous) =>
         previous[0] === node.clientWidth && previous[1] === node.clientHeight
@@ -194,9 +201,7 @@ export function CanvasStage({
                   height: canvas[1] * scale,
                 }}
               >
-                <span>
-                  {canvas[0]} × {canvas[1]}
-                </span>
+                <span>{`${canvas[0]} × ${canvas[1]}`}</span>
               </div>
               {rendered.map(({ item, box }) => {
                 const active = item.id === selected.id,
@@ -332,7 +337,7 @@ export function CanvasStage({
                 disabled={zoom === 0}
                 onClick={() => changeZoom(zoom - 1)}
               >
-                −
+                {"−"}
               </IconButton>
               <Button
                 size="sm"
@@ -341,7 +346,7 @@ export function CanvasStage({
                 onClick={() => changeZoom(0)}
               >
                 {percent === null ? "↔ " : ""}
-                {Math.round(scale * 100)} %
+                {`${Math.round(scale * 100)} %`}
               </Button>
               <IconButton
                 label={t.zoomMore}
@@ -349,7 +354,7 @@ export function CanvasStage({
                 disabled={zoom === canvasZoomSteps.length - 1}
                 onClick={() => changeZoom(zoom + 1)}
               >
-                +
+                {"+"}
               </IconButton>
             </div>
             <CanvasTools
@@ -375,9 +380,14 @@ export function CanvasStage({
       <p id={help} className="v-studio-canvas-help">
         {t.help}
       </p>
-      <p role={notice ? "alert" : "status"} className="v-studio-canvas-status">
-        {notice ? (notice === "failed" ? t.failed : t.changed) : ""}
-      </p>
+      <div className="v-studio-canvas-feedback">
+        <p role="alert" className="v-studio-canvas-status">
+          {notice ? (notice === "failed" ? t.failed : t.changed) : ""}
+        </p>
+        <p role="status" className="v-studio-canvas-status">
+          {!notice && model.snapshot.saved ? t.saved : ""}
+        </p>
+      </div>
     </section>
   );
 }

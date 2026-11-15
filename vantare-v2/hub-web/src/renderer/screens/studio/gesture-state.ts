@@ -35,6 +35,7 @@ export type CanvasState = {
   pending?: Pending;
   queued?: Intent;
   serial: number;
+  saved?: number;
   notice?: "changed" | "conflict" | "failed";
 };
 export type CanvasAction =
@@ -231,7 +232,11 @@ export function canvasReducer(
       return observe(state, action.view);
     case "reply": {
       if (state.pending?.token !== action.token) return state;
-      const next = { ...observe(state, action.view), pending: undefined };
+      const next = {
+        ...observe(state, action.view),
+        pending: undefined,
+        saved: action.token,
+      };
       return next.queued ? startWrite(next, next.queued) : next;
     }
     case "error": {

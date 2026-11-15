@@ -9,10 +9,9 @@ import { EmptyStudio } from "./EmptyStudio";
 import { FocusHeader } from "./FocusHeader";
 import { LayoutStrip } from "./LayoutStrip";
 import { RemoveWidget } from "./RemoveWidget";
-import { Stage } from "./Stage";
+import { StudioStage } from "./StudioStage";
 import { LoadingStudio, ReadonlyStudio, StudioFeedback } from "./StudioStates";
 import { StudioSteps as StudioInspector } from "./StudioSteps";
-import { widgetName } from "./Widgets";
 import "./focus.css";
 import "./studio-states.css";
 
@@ -79,13 +78,7 @@ export function StudioFocus() {
                   }
                 />
               )}
-              <Stage
-                item={selected}
-                name={widgetName(selected, view)}
-                blocked={model.blocked}
-                pending={state.pending}
-                onShow={() => model.toggle(selected.id)}
-              />
+              <StudioStage model={model} />
             </>
           ) : view?.state === "protected" ? (
             <ReadonlyStudio />

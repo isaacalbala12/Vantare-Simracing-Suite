@@ -8,7 +8,7 @@ import {
 } from "react";
 import { studioGeometryLimits as limits } from "../../../contract/generated/studio";
 import type { useCanvas } from "./canvas";
-import { heldNudgeDistance, type Pair, resize, snap } from "./geometry";
+import { heldNudgeDistance, near, type Pair, resize, snap } from "./geometry";
 import { type Box, sameBox } from "./gesture-state";
 
 type Model = ReturnType<typeof useCanvas>;
@@ -145,7 +145,11 @@ export function useCanvasInputs(
           x: result[0][0],
           y: result[0][1],
           size: { width: result[1][0], height: result[1][1] },
-          sizeMode: "explicit",
+          sizeMode:
+            near(result[1][0], g.origin.size.width) &&
+            near(result[1][1], g.origin.size.height)
+              ? g.origin.sizeMode
+              : "explicit",
         });
     } else {
       const canvas = state().view.canvas;
@@ -207,7 +211,11 @@ export function useCanvasInputs(
           x: result[0][0],
           y: result[0][1],
           size: { width: result[1][0], height: result[1][1] },
-          sizeMode: "explicit",
+          sizeMode:
+            near(result[1][0], h.base.size.width) &&
+            near(result[1][1], h.base.size.height)
+              ? h.base.sizeMode
+              : "explicit",
         });
     } else
       preview({

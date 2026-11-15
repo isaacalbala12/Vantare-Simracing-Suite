@@ -230,3 +230,10 @@
   min-inline-size: 0;
   flex: 1;
 }
+
+.v-studio-canvas-viewport {
+  scrollbar-width: none;
+}
+.v-studio-canvas-feedback {
+  min-block-size: 32px;
+}

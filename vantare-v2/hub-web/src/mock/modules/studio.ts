@@ -26,6 +26,7 @@ import {
   isWidgetSettingsPatch,
 } from "../../contract/studio-widget-settings";
 import type { MockContext, MockHandler } from "../context";
+import { applyGeometry } from "../studio-geometry";
 import { studioStateScene } from "../studio-states";
 import { studioFieldKind } from "../studio-widget-scenes";
 export function create(context: MockContext): MockHandler {
@@ -85,6 +86,23 @@ export function create(context: MockContext): MockHandler {
     );
   }
   if (sceneName === "studio-pocos") instances.splice(2);
+  if (sceneName.startsWith("studio-canvas")) {
+    const positions = [
+      [48, 62],
+      [900, 80],
+      [580, 620],
+      [1380, 720],
+    ];
+    instances.forEach((item, i) => {
+      item.x = positions[i][0];
+      item.y = positions[i][1];
+    });
+    if (sceneName === "studio-canvas-outside") {
+      instances[0].x = -80;
+      instances[0].canvasPlacement = "outside";
+    }
+    if (sceneName === "studio-canvas-readonly") context.core.live = true;
+  }
   const view: StudioView = {
     state:
       sceneName === "studio-missing"
@@ -167,7 +185,8 @@ export function create(context: MockContext): MockHandler {
   const stateScene = studioStateScene(sceneName, view);
   const undo: OverlayInstance[][] = [],
     redo: OverlayInstance[][] = [];
-  let conflict = sceneName === "studio-error";
+  let conflict =
+    sceneName === "studio-error" || sceneName === "studio-canvas-conflict";
   const bump = () => {
     view.revision = (BigInt(`0x${view.revision}`) + 1n)
       .toString(16)
@@ -202,10 +221,8 @@ export function create(context: MockContext): MockHandler {
     )
       return;
     const { request, id } = message;
-    // The canvas UI PR will share its Rust-vector-verified gesture implementation
-    // with these mocks. Until then no geometry success is invented.
+    // Resolution selection and catalog drops are not implemented by this UI PR.
     if (
-      request.method === "studio.geometry" ||
       request.method === "studio.canvas" ||
       (request.method === "studio.add" && request.at !== undefined)
     ) {
@@ -237,6 +254,31 @@ export function create(context: MockContext): MockHandler {
     const before = structuredClone(view.instances);
     let added: string | null = null;
     switch (request.method) {
+      case "studio.geometry": {
+        if (
+          !view.canvas ||
+          context.core.live ||
+          context.core.rights !== "connected" ||
+          !context.core.access.verified ||
+          view.plan === "unverified"
+        )
+          return fail("denied");
+        const item = view.instances.find((item) => item.id === request.id);
+        if (!item || item.locked) return fail("denied");
+        const changed = applyGeometry(item, request.change, [
+          view.canvas.width,
+          view.canvas.height,
+        ]);
+        if (changed === "rejected")
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        if (!changed)
+          return {
+            kind: "response",
+            id,
+            result: { method: "studio.geometry", value: structuredClone(view) },
+          };
+        break;
+      }
       case "studio.get":
         break;
       case "studio.track":

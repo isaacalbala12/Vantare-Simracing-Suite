@@ -1,6 +1,6 @@
 # Overlays Rune · VANTA-144 / #2333
 
-Base del PR 4 de [ADR 0110](../../docs/adr/0110-overlays-en-rune.md).
+Base y proceso (PR 4/5) de [ADR 0110](../../docs/adr/0110-overlays-en-rune.md).
 El Hub permanece en Electron. Este workspace independiente conserva su propio
 `Cargo.lock` y `rust-toolchain.toml` (1.99.1). No cambia la resolución de
 `native/Cargo.lock` ni depende de `ui`, GPUI o `runtime`.
@@ -14,9 +14,49 @@ etiqueta `vantare-20261115-1`, commit
 No hay nuevas dependencias directas fuera de Rune y los crates existentes
 `domain`, `ipc` y `profiling`.
 
-El ejecutable todavía devuelve error: el proceso, el supervisor y las ventanas
-corresponden al PR 5 tras el traslado de tipos compartidos a domain/ipc (PR 3).
-No se anuncia soporte de widgets, preview ni captura en esta base.
+El proceso crea una ventana transparente por cada monitor válido de la topología
+inicial. Conserva origen físico (también negativo), tamaño y DPI de cada monitor;
+las claves no dependen del nombre del monitor. Usa click-through, siempre encima,
+sin foco/activación, ni entrada en Alt-Tab/barra de tareas en Windows. Los ajustes
+nativos se aplican sobre el handle prestado de Rune; un error cierra el proceso.
+`--start-hidden` crea las ventanas ocultas. No hay widgets ni capturas todavía.
+
+La CLI del supervisor acepta `--fuente local|pipe[:nombre]`, `--control-stdin`
+y `--start-hidden`. El valor por defecto es el pipe del núcleo del usuario.
+Con `--control-stdin`, EOF cierra todas las ventanas y termina los lectores;
+los bytes recibidos no se interpretan como órdenes. Un error de lectura también
+cierra, con salida fallida. El cierre local cancela la espera y une los hilos
+sin esperar a que el padre cierre su pipe. No se emplea un read bloqueante sobre
+un pipe vacío: Windows consulta los bytes disponibles; Unix usa poll sin espera.
+Entre consultas hay una espera cancelable de 250 ms, sin despertar la GUI.
+
+En la fuente real se conecta el Feed de derechos existente, que comprueba la
+identidad del núcleo. La autorización por widget sigue exactamente
+`ui::rights::allowed_at`: observación fresca, estado que permite acceso y catálogo.
+Caducidad, revocación y reinicio retiran el acceso. Renovar el TTL sin cambiar
+la autorización no solicita otro frame. `local` es solo preview sintético,
+explícito, sin cuenta ni credenciales. El núcleo admite ahora ambos ejecutables
+hermanos (`vantare-overlays.exe` y `vantare-overlays-rune.exe`) como lectores;
+Services sigue siendo el único mutador. Una copia en otra carpeta no es admitida.
+
+### Integración pendiente de PR 3
+
+Esta entrega implementa la parte independiente del PR 5 autorizada por el
+orquestador. Usa el contrato actual de UI como referencia, sin enlazar GPUI ni
+copiar los tipos que está trasladando Worker A:
+
+| Código actual que se conectará | Uso en el host Rune |
+| --- | --- |
+| `ui::layout::{Document, Presentation}` | Leer/vigilar diseño y presentación, sin reescribir sus bytes. |
+| `ui::source::{DemandHandle, layout_feed}` | Demanda y fotos del mismo transporte existente. |
+| `ui::performance::{Preferences, Cadence}` | Filtrar fotos antes de actualizar cada widget. |
+| `ui::session` y `ui::geometry` | Visibilidad por sesión y coordenadas del diseño. |
+
+Tras el PR 3 se importarán desde domain/ipc. Hasta entonces el marco está vacío
+y `--layout` o los números de campaña devuelven Unsupported antes de crear
+ventanas: no se ignoran diseños ni se simulan fotos de producto. El seguimiento
+de cambios de topología/presentación y los widgets se conectarán con esos módulos.
+No se anuncia aún el PR 5 completo, preview ni paridad visual.
 
 ## Servidor y CI sin gráficos
 
@@ -54,3 +94,23 @@ La defensa de entorno se prueba con valores inyectados, sin mutar el entorno
 global ni arrancar el producto. Ningún test crea un Painter ni dispositivo.
 Las capturas y mediciones de aceptación esperan al PC de juego; el Mac solo
 sirve para compilación e iteración. No se abren ventanas delante de Isaac.
+
+## F0 manual pendiente: PC de juego, únicamente en el horario de Isaac
+
+No se ha ejecutado esta prueba. El orquestador dará la hora antes de iniciar
+cualquier ventana. Fijar VANTARE_NATIVE_DATA_ROOT absoluto, LOCALAPPDATA y APPDATA
+a carpetas QA vacías y separadas de los datos del usuario. Preparar una carpeta
+QA con núcleo y ejecutable Rune hermanos;
+usar `--overlays-bin` del supervisor existente y fuente `local`, sin cuentas ni
+datos reales. La prueba comprueba:
+
+1. Un HWND por monitor, límites físicos y DPI 100/125/150, incluidos orígenes negativos.
+2. Clics y teclado llegan al juego; foco y ventana activa no cambian al iniciar.
+3. Siempre encima, sin entrada en Alt-Tab o barra de tareas; OBS y VRR pendientes de prueba real.
+4. Inicio oculto sin flash. La presentación desde el Hub espera el lector compartido.
+5. Cerrar el supervisor termina todas las ventanas y el proceso; repetir con el padre vivo y cierre local.
+6. Registrar fallos nativos y consumo/frames de reposo. Los contadores de presentación y los widgets llegan en PR 6/7.
+
+Los tests CPU prueban la descripción de las ventanas, el EOF/cancelación con
+pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del
+marco quieto. No prueban foco, GPU, OBS, VRR ni presentación en pantalla.

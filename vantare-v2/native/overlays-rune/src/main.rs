@@ -1,4 +1,10 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
 use std::{ffi::OsStr, process::ExitCode};
+use vantare_overlays_rune::{
+    host::{self, Rights, Shared},
+    options::{self, Source},
+    supervisor::Supervisor,
+};
 
 const GRAPHICS_DISABLED: &str = "Overlays Rune: gráficos desactivados por VANTARE_SIN_GRAFICOS; no se crea ventana ni dispositivo.";
 
@@ -9,9 +15,43 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    // ADR 0110, PR 4: la conexión al supervisor y las ventanas llegan en PR 5.
-    eprintln!("Overlays Rune: base preparada; proceso y ventanas pendientes del PR 5.");
-    ExitCode::FAILURE
+    match start() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("overlays-rune: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn start() -> Result<(), Box<dyn std::error::Error>> {
+    let options = options::parse(std::env::args_os().skip(1))?;
+    // PR 5, parte independiente. No aceptar un diseño o campaña ignorándolos:
+    // se conectan contra los módulos compartidos de PR 3, sin arrastrar UI/GPUI.
+    if options.layout.is_some() || options.benchmark_count.is_some() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "diseño y campañas pendientes del traslado compartido de PR 3",
+        )
+        .into());
+    }
+    let shared = Shared::new(options.source == Source::Local);
+    let _parent = options
+        .controlled
+        .then(|| Supervisor::stdin(shared.clone()))
+        .transpose()?;
+    let _rights = match options.source {
+        Source::Local => None,
+        Source::Pipe(name) => {
+            let name = name.map_or_else(vantare_ipc::default_pipe_name, Ok)?;
+            let core = std::env::current_exe()?.with_file_name("vantare-core.exe");
+            Some(Rights::start(
+                vantare_ipc::control::Feed::connect(&name, core)?,
+                shared.clone(),
+            )?)
+        }
+    };
+    host::run(shared, options.start_hidden).map_err(Into::into)
 }
 
 fn graphics_disabled(value: Option<&OsStr>) -> bool {

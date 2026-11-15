@@ -177,6 +177,52 @@ fn test_root() -> std::path::PathBuf {
         ))
 }
 
+#[test]
+fn rune_and_gpui_overlays_are_readers_but_only_services_can_mutate() {
+    let root = test_root();
+    let bin = root.join("bin");
+    let outside = root.join("outside");
+    std::fs::create_dir_all(&bin).expect("bin QA");
+    std::fs::create_dir_all(&outside).expect("fuera de bin QA");
+    let consumers = Consumers::new(
+        &bin.join("vantare-core.exe"),
+        bin.join("vantare-engineer.exe"),
+    );
+    for name in [
+        "vantare-overlays.exe",
+        "vantare-overlays-rune.exe",
+        "vantare-hub.exe",
+        "vantare.exe",
+        "vantare-engineer.exe",
+        "vantare-services.exe",
+    ] {
+        let image = bin.join(name);
+        // Solo marcadores de identidad para canonicalize; jamás se ejecutan.
+        std::fs::write(&image, b"QA identity, not an executable").expect("marcador");
+        let peer = vantare_ipc::Peer { pid: 0, image };
+        assert!(consumers.allows(&peer, false), "lector {name}");
+        assert_eq!(
+            consumers.allows(&peer, true),
+            name == "vantare-services.exe"
+        );
+    }
+    for image in [
+        outside.join("vantare-overlays-rune.exe"),
+        bin.join("otro.exe"),
+    ] {
+        std::fs::write(&image, b"QA identity").expect("marcador no admitido");
+        let peer = vantare_ipc::Peer { pid: 0, image };
+        assert!(!consumers.allows(&peer, false));
+        assert!(!consumers.allows(&peer, true));
+    }
+    let missing = vantare_ipc::Peer {
+        pid: 0,
+        image: outside.join("missing.exe"),
+    };
+    assert!(!consumers.allows(&missing, false));
+    std::fs::remove_dir_all(root).expect("limpiar solo QA propio");
+}
+
 fn identified_photo() -> Snapshot {
     let mut snapshot = photo(true);
     snapshot.origin.source.simulator = "lmu";

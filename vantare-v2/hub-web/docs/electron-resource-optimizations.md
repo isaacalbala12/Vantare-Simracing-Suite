@@ -27,11 +27,11 @@ las transiciones de diálogos.
 
 Tres candidatos, construidos y empaquetados por separado:
 
-| Candidato | Código | Cambio |
-|---|---|---|
-| A | `b18a3618d` | Producto previo |
-| B | `c5bf648d2` | Importación diferida del asistente |
-| C | `0005545d3` | B + pausa de relojes visuales |
+| Candidato | Código      | Cambio                             |
+| --------- | ----------- | ---------------------------------- |
+| A         | `b18a3618d` | Producto previo                    |
+| B         | `c5bf648d2` | Importación diferida del asistente |
+| C         | `0005545d3` | B + pausa de relojes visuales      |
 
 Carpeta: `D:/VantareServer/evidence/hub-web/isa-1995-d-electron-resources/`.
 `baseline-v8/report.json` es A; `compare-lazy/report.json` es B;
@@ -54,12 +54,12 @@ PC de juego con el mismo guion y estado de ventana.
 Resultados observados, MiB privados / working set. Se conservan los PID y las
 muestras de cada proceso en los JSON y la tabla completa en `COMPARACION.md`:
 
-| Proceso | A: Inicio | B: Inicio | C: Inicio | A: tras recorrido | B: tras recorrido | C: tras recorrido |
-|---|---:|---:|---:|---:|---:|---:|
-| Main | 47,7 / 102,2 | 52,0 / 106,2 | 47,8 / 103,4 | 45,2 / 104,6 | 48,1 / 107,5 | 44,7 / 104,9 |
-| Renderer | 58,8 / 109,1 | 56,6 / 107,8 | 53,8 / 106,4 | 108,8 / 168,8 | 106,6 / 166,6 | 104,8 / 164,8 |
-| GPU | 153,1 / 127,9 | 145,6 / 126,2 | 145,5 / 126,5 | 189,5 / 133,0 | 189,6 / 132,3 | 180,4 / 132,9 |
-| Utilidad | 11,5 / 43,3 | 11,3 / 43,3 | 11,4 / 43,4 | 11,5 / 43,4 | 11,2 / 43,3 | 11,3 / 43,4 |
+| Proceso  |     A: Inicio |     B: Inicio |     C: Inicio | A: tras recorrido | B: tras recorrido | C: tras recorrido |
+| -------- | ------------: | ------------: | ------------: | ----------------: | ----------------: | ----------------: |
+| Main     |  47,7 / 102,2 |  52,0 / 106,2 |  47,8 / 103,4 |      45,2 / 104,6 |      48,1 / 107,5 |      44,7 / 104,9 |
+| Renderer |  58,8 / 109,1 |  56,6 / 107,8 |  53,8 / 106,4 |     108,8 / 168,8 |     106,6 / 166,6 |     104,8 / 164,8 |
+| GPU      | 153,1 / 127,9 | 145,6 / 126,2 | 145,5 / 126,5 |     189,5 / 133,0 |     189,6 / 132,3 |     180,4 / 132,9 |
+| Utilidad |   11,5 / 43,3 |   11,3 / 43,3 |   11,4 / 43,4 |       11,5 / 43,4 |       11,2 / 43,3 |       11,3 / 43,4 |
 
 En Calendario minimizado el renderer registra A 89,5 / 151,4, B 91,7 / 153,4 y
 C 88,7 / 150,3 MiB. La CPU media normalizada a toda la máquina es 0 en las

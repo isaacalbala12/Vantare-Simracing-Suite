@@ -544,6 +544,43 @@ describe("profile editor", () => {
       ),
     ).toBe(false);
   });
+  it.each(["busy", "rejected", "coreUnavailable"] as const)(
+    "does not create a fallback copy when preparation is %s",
+    async (kind) => {
+      const native = Client.prototype.request;
+      const requests = vi
+        .spyOn(Client.prototype, "request")
+        .mockImplementation(function (this: Client, request) {
+          if (request.method === "launcher.profile.prepareDuplicate")
+            return Promise.reject(new HostFailure({ kind }));
+          return native.call(this, request);
+        });
+      mount();
+      fireEvent.contextMenu(
+        await screen.findByRole("button", { name: "Creador de Contenido" }),
+      );
+      fireEvent.click(
+        await screen.findByRole("menuitem", { name: actionText.duplicate }),
+      );
+      await screen.findByText(
+        kind === "busy"
+          ? text.busy
+          : kind === "coreUnavailable"
+            ? text.coreUnavailable
+            : text.openFailed,
+      );
+      expect(screen.queryByRole("textbox", { name: text.name })).toBeNull();
+      expect(
+        requests.mock.calls.some(([r]) =>
+          [
+            "launcher.profile.save",
+            "launcher.profile.get",
+            "launcher.profile.duplicate",
+          ].includes(r.method),
+        ),
+      ).toBe(false);
+    },
+  );
   it("cancels a prepared duplicate without creating a profile or reading its new id", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();

@@ -243,7 +243,7 @@ launcherScenes["launcher-decision-sidebar"] = {
   },
 };
 launcherScenes["launcher-perfil-duplicado"] = {
-  mock: "launcher-editor-ready",
+  mock: "launcher-base",
   async prepare(page) {
     await launcherScenes["launcher-base"].prepare(page);
     await page

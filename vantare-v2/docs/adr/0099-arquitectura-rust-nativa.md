@@ -9,6 +9,11 @@ Plan: [arquitectura Rust nativa por fases](../superpowers/plans/2026-09-29-arqui
 (orquestador) y GPT-6 Astra (advisor) en tres rondas de debate. Cada fase se
 ejecuta en su propia issue con autorización de Isaac.
 
+**Enmendada por [ADR 0110](0110-overlays-en-rune.md) (2026-11-15):** por
+decisión de Isaac, los overlays pasan de GPUI a Rune. Donde este documento
+dice «UI GPUI» para los overlays, manda ADR 0110. El núcleo, los flujos y la
+topología de procesos siguen igual.
+
 ## Contexto
 
 - Isaac ha decidido retirar Go por completo y reescribir la UI en Rust + GPUI.

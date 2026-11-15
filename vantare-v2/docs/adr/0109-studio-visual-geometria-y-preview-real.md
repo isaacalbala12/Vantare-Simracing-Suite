@@ -24,6 +24,12 @@ Las versiones del protocolo se asignan por el orquestador en el orden de
 fusión. Geometría usa v37 y prepareDuplicate v38; preview fija y en vivo
 recibirán la siguiente versión libre al aprobar sus PR, sin reservar números.
 
+**Enmendado por [ADR 0110](0110-overlays-en-rune.md) (2026-11-15):** el pintor
+de la preview pasa a ser Rune, no GPUI. El PR 4 se hace sobre Rune y espera a
+que Relative esté migrado; no se construye la captura con GPUI. La fila «R»
+(Hub en Rune) y el «anfitrión de escena» de Rune quedan sin objeto. El
+contrato y la Decisión 2 (geometría) no cambian.
+
 ## Palabras que se usan aquí
 
 - **Anfitrión**: `native/hub-host`, el proceso Rust con el que hablan el Hub de

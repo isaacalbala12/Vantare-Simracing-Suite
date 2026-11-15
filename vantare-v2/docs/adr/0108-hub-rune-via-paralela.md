@@ -10,6 +10,12 @@ documento lo fija el orquestador por delegación de Isaac y queda aceptado al
 fusionar su PR. No autoriza releases, promociones de canal ni cambios en el
 instalador.
 
+**Cerrada por [ADR 0110](0110-overlays-en-rune.md) (2026-11-15):** Isaac
+decide que el Hub se queda en Electron. La vía paralela se abandona, no hay
+cortes 1 y 2, y `hub-rune/` se retira de `nightly`. Este documento queda como
+histórico. Corrección: su punto 1 decía que los parches de Rune cambiarían los
+overlays dentro de `native/`; a las versiones fijadas no es así (ver ADR 0110).
+
 ## Contexto
 
 - ADR 0107 dejó Rune fuera hasta 2027 y el informe de arquitectura del 12-nov

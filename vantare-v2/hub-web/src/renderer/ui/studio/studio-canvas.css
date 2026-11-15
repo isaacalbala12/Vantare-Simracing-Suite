@@ -675,7 +675,7 @@
 .v-studio-focus:has([data-view="canvas"]) {
   padding: 8px;
 }
-.v-studio-focus-layout[data-view="canvas"] {
+.v-studio-focus-layout[data-view="canvas"][data-missing="false"] {
   grid-template-columns: 176px minmax(0, 1fr);
   gap: 12px;
 }
@@ -706,7 +706,7 @@
 .v-studio-focus-layout[data-view="canvas"] .v-focus-layout-icon {
   display: none;
 }
-.v-studio-focus-layout[data-view="canvas"][data-list-collapsed="true"] {
+.v-studio-focus-layout[data-view="canvas"][data-missing="false"][data-list-collapsed="true"] {
   grid-template-columns: 72px minmax(0, 1fr);
 }
 .v-studio-focus-layout[data-view="canvas"][data-list-collapsed="true"]

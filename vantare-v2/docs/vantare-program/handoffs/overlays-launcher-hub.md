@@ -74,7 +74,8 @@ La revisión cubre el mismo layout.json que lee Ajustes, incluidos performance;
 no se usa su revisión agregada. Mock y contrato distinguen null de0 y no inventan
 éxito para datos inválidos. Clippy y639 tests del host PASS (1 omitido), ambos typechecks, Biome,
 401 tests puros,718 regresiones y57 de galería integrada PASS. Detalle en #1995. Sin ejecución gráfica, dependencias ni servicios reales.
-PR/head y checks finales se actualizan en el handoff del PR y en la issue.
+Fusionado en nightly mediante #2347 (0825363f0); head revisado 5ee9a5193.
+El selector de D sigue separado; preview depende de Rune F1 según ADR 0110.
 
 ## VANTA-144 · PR 4: base de overlays Rune (15/11/2026)
 
@@ -152,9 +153,10 @@ normalized y set_threshold de catorce familias pasan de ui a domain. UI
 reexporta los mismos tipos; presentación/demanda/teclas permanecen en UI.
 Originales congelados comprueban bytes y normalización; defaults contra el
 corpus nativo existente. Sin protocolo, host, web, pintores ni scheduler.
-Gate Full no gráfico y telemetría en curso; PR/head se registran en #1995.
+Fusionado en nightly mediante #2341 (e56c79b26). Gate Full no gráfico y
+telemetría PASS; detalles de entrega y checks en #1995.
 
-## VANTA-138 · D106 en curso, protocolo v39 (15/11/2026)
+## VANTA-138 · D106 fusionado, protocolo v39 (15/11/2026)
 
 Los datos puros de los 14 widgets se extraen de UI a domain con autorización del
 orquestador, sin cambiar pintores ni comportamiento. UI reexporta los tipos;
@@ -167,15 +169,26 @@ Host proyecta los 14 tipos y sus 48 controles cerrados mediante studio.instance,
 con id/revisión, derechos, conflicto sin reintento y preservación de campos
 internos/desconocidos/no soportados. Los umbrales usan una orden de índice/minutos
 con el helper nativo; nunca un array ni reenvío automático. Listas y casos salen
-de Rust hacia D. D108 (Hz por instancia) y preview siguen después, separados.
+de Rust hacia D. D108 (Hz por instancia) va separado en #2347, también fusionado;
+preview sigue después de Rune F1.
 Rama y evidencia en #1995. Clippy all-targets de ocho crates y 1983 tests
-no gráficos PASS (16 omitidos); 34 tests de telemetría PASS (1 omitido). CI y review pendientes. Typechecks, Biome,
-505 tests puros y 120 DOM PASS. Ventana sin Rust hasta16:15UTC respetada.
+no gráficos PASS (16 omitidos); 34 tests de telemetría PASS (1 omitido). Typechecks, Biome,
+505 tests puros y 120 DOM PASS. Fusionado en nightly mediante #2340 (639bb40aa).
+Ventana sin Rust hasta16:15UTC respetada.
 
 Seguimiento del fallo web de #2340: Apariencia requiere designSystem, no solo
 ajustes tipados. Radar conserva sus datos y En pista, pero no puede activar Look
 ni enviar una orden de Apariencia. El test usa el dato nativo real y mantiene los
 casos positivos. Ambos typechecks, Biome y57 tests galería/AppearanceStep PASS.
+
+Nits separados de D106: tests por State::edit para rangos inválidos, conservación
+de miembros desconocidos en más familias y migración de color/negro legado sin
+cambiar versión al tocar otro control. Exportaciones adicionales explícitas y
+comentario del lector TS; listas UNSUPPORTED congeladas de los 14 tipos contrastadas
+con domain. Sin cambio de protocolo ni comportamiento de pintores. Clippy Full y
+bench PASS; 1.986 tests no gráficos PASS, 16 omitidos. Telemetría #1498:
+34 PASS, 1 omitido. Biome PASS. Rebase limpio sobre nightly con D108 fusionado;
+CI y revisión del seguimiento pendientes. PR/head en #1995.
 
 
 ## VANTA-138 · Seguimiento pequeño de geometría #2320 (15/11/2026)

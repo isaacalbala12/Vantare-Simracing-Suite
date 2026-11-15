@@ -7,6 +7,7 @@ macro_rules! migration {
     ($name:ident, [$($sample:expr),* $(,)?]) => {
         #[test]
         fn $name() {
+            assert_eq!(frozen::$name::Settings::UNSUPPORTED, native::$name::Settings::UNSUPPORTED);
             for input in [json!({}), $($sample),*] {
                 let old: frozen::$name::Settings = serde_json::from_value(input.clone()).expect("old settings");
                 let new: native::$name::Settings = serde_json::from_value(input).expect("new settings");

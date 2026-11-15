@@ -88,6 +88,9 @@ function settingObject(
     )
   );
 }
+// Read values have already been normalized by the native host. Validate their
+// shape here without rejecting legacy settings for pre-normalization ranges;
+// renderer writes use the stricter ranges in isWidgetSettingsPatch below.
 export function isWidgetSettings(
   value: unknown,
   kind: unknown,

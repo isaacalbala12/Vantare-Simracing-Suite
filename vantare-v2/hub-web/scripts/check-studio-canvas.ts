@@ -65,7 +65,9 @@ export async function checkStudioCanvas(
           exact: true,
         });
         assert.equal(await anchors.getAttribute("aria-disabled"), "true");
-        await anchors.click();
+        // aria-disabled preserves focusability; exercise the actual event guard
+        // instead of Playwright's enabled-state refusal before sending a click.
+        await anchors.click({ force: true });
         assert.equal(
           await page
             .getByRole("toolbar", { name: t.anchors, exact: true })

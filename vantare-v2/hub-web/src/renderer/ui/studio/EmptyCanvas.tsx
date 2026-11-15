@@ -1,6 +1,7 @@
 import { studioText } from "../../i18n/studio";
 import { canvasText as t } from "../../i18n/studio-canvas";
 import { Button } from "../Button";
+import { CanvasResolution } from "./CanvasResolution";
 import type { ReturnTypeOfStudioFocus } from "./StudioFocus";
 
 export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
@@ -47,6 +48,16 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
       <footer>
         <span className="v-studio-canvas-position">{"—"}</span>
         <span className="v-canvas-grow" />
+        {view && (
+          <div className="v-canvas-resolution-slot">
+            <CanvasResolution
+              canvas={view.canvas}
+              monitor={view.monitor}
+              enabled={false}
+              onChange={() => {}}
+            />
+          </div>
+        )}
         <Button
           size="sm"
           variant="neutral"

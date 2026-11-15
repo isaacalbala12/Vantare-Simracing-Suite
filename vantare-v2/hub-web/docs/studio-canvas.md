@@ -89,8 +89,11 @@ entrada libre. `studio.canvas` usa CAS. Tu monitor envía `{kind:monitor}`;
 solo un preset envía `{kind:custom,width,height}`. La primera opción muestra
 `StudioView.monitor`, en unidades lógicas del monitor fijado por Rust, incluso
 si el lienzo usa un preset distinto. Está seleccionada solo con source=monitor.
-Si monitor es null, se muestra su indisponibilidad y no se permite seleccionarlo:
-no se infiere su tamaño del lienzo, del viewport ni de una lectura anterior.
+Si monitor es null, el selector queda cerrado y deshabilitado con «Monitor no
+detectado · 1920 × 1080», el tooltip y la descripción accesible aprobados. Es una
+presentación de lectura: no se crea un tablero ni se cambia canvas:null, tampoco
+se escribe al host. No se infiere el monitor del lienzo, del viewport ni de una
+lectura anterior.
 
 La miniatura y el enlace de la tira abren la misma vista. La lista y el plano
 comparten selección; ocultos permanecen visibles en gris al 35 %, y fuera de

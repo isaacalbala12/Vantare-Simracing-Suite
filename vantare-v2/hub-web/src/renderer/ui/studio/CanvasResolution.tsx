@@ -1,14 +1,14 @@
 import { Popover } from "@base-ui/react/popover";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type {
   CanvasChoice,
-  CanvasView,
   StudioView,
 } from "../../../contract/generated/studio";
 import { canvasText as t } from "../../i18n/studio-canvas";
 import { Button } from "../Button";
+import { DisabledHint } from "./DisabledHint";
 import "../performance.css";
 
 export const canvasPresets = [
@@ -23,16 +23,36 @@ export function CanvasResolution({
   enabled,
   onChange,
 }: {
-  canvas: CanvasView;
+  canvas: StudioView["canvas"];
   monitor: StudioView["monitor"];
   enabled: boolean;
   onChange: (choice: CanvasChoice) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const description = useId();
+  if (!monitor)
+    return (
+      <>
+        <DisabledHint label={t.monitorNotDetectedHelp}>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled
+            aria-describedby={description}
+          >
+            {t.monitorNotDetected}
+          </Button>
+        </DisabledHint>
+        <span id={description} className="v-canvas-accessible-help">
+          {t.monitorNotDetectedHelp}
+        </span>
+      </>
+    );
+  const size = canvas?.source === "custom" ? canvas : monitor;
   const value =
-    canvas.source === "monitor"
-      ? "monitor"
-      : `${canvas.width}x${canvas.height}`;
+    canvas?.source === "custom"
+      ? `${canvas.width}x${canvas.height}`
+      : "monitor";
   return (
     <Popover.Root
       modal={false}
@@ -46,8 +66,8 @@ export function CanvasResolution({
         aria-label={t.resolution}
         aria-disabled={!enabled}
       >
-        {canvas.source === "monitor" ? `${t.monitor} · ` : ""}
-        {`${canvas.width} × ${canvas.height} ▾`}
+        {canvas?.source !== "custom" ? `${t.monitor} · ` : ""}
+        {`${size.width} × ${size.height} ▾`}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner className="v-positioner" sideOffset={8}>
@@ -62,7 +82,7 @@ export function CanvasResolution({
               onValueChange={(next) => {
                 if (!enabled || next === value) return;
                 if (next === "monitor") {
-                  if (monitor) onChange({ kind: "monitor" });
+                  onChange({ kind: "monitor" });
                 } else {
                   const preset = canvasPresets.find(
                     ([w, h]) => `${w}x${h}` === next,
@@ -79,15 +99,10 @@ export function CanvasResolution({
               <Radio.Root
                 value="monitor"
                 className="v-performance-level"
-                disabled={!monitor}
-                aria-disabled={!enabled || !monitor}
+                aria-disabled={!enabled}
               >
                 <strong>{t.monitor}</strong>
-                <small>
-                  {monitor
-                    ? `${monitor.width} × ${monitor.height}`
-                    : t.monitorUnavailable}
-                </small>
+                <small>{`${monitor.width} × ${monitor.height}`}</small>
               </Radio.Root>
               {canvasPresets.map(([w, h]) => (
                 <Radio.Root

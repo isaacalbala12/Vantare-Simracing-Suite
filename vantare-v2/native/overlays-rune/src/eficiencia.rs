@@ -4,6 +4,7 @@ use rune::{Color, El, Family, TextStyle, el, text};
 pub const INK: u32 = 0xf5f5f5;
 pub const MUTED: u32 = 0xb9b9bd;
 pub const PANEL: u32 = 0x101113;
+pub const LOSS: u32 = 0xd95360;
 pub const RADIUS: f32 = 6.0;
 // Referencias al recurso del producto, sin otra copia de los ficheros.
 pub const FONTS: &[&[u8]] = &[
@@ -270,4 +271,15 @@ mod parity_tests {
         assert_eq!(ink.a, 0.5);
         assert_eq!(color(0x000000, 0.0).r, 0.0);
     }
+}
+
+// Estimación literal de efficiency/mod.rs para pies de Standings.
+pub fn footer_rows(cells: &[vantare_domain::standings::InfoCell], inner_width: f32) -> usize {
+    let total = cells
+        .iter()
+        .map(|cell| {
+            cell.label.chars().count() as f32 * 5.5 + cell.value.chars().count() as f32 * 7.5 + 26.0
+        })
+        .sum::<f32>();
+    (total / inner_width.max(80.0)).ceil() as usize
 }

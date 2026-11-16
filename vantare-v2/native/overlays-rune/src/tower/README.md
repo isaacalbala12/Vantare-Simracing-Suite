@@ -1,6 +1,6 @@
 # Torre (broadcast tower) — Rune
 
-Escena pura en `scene.rs`, sin Rune ni ventana. La pintura llega en otro PR.
+Escena pura en `scene.rs` y Look Vantare en `render.rs`; sin Rune en la escena.
 
 - El carrusel de pilotos es la única animación continua: reloj solo mientras el
   ajuste esté activo, haya filas y el estado sea listo, a la cadencia del widget;

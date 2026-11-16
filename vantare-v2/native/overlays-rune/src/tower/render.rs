@@ -69,6 +69,7 @@ impl Palette {
 
 struct CardLive {
     id: u32,
+    copy: u8,
     player: bool,
     place: LiveText,
     code: LiveText,
@@ -77,13 +78,16 @@ struct CardLive {
     ink: Live<Color>,
     highlight: Live<Color>,
     cue: Live<Color>,
+    /// Texto y ancho con los que se midió cada recorte; solo se remide si cambian.
+    code_key: (String, f32),
+    gap_key: (String, f32),
 }
 
 #[derive(PartialEq)]
 struct Structure {
     ready: bool,
     width: f32,
-    cards: Vec<(u32, bool)>,
+    cards: Vec<((u32, u8), bool)>,
     classes: Vec<(usize, String, Accent)>,
     intervals: Vec<usize>,
 }
@@ -97,8 +101,8 @@ pub(super) struct Painter {
     width: f32,
     classes: Vec<(usize, String, Accent)>,
     intervals: Vec<usize>,
-    cards: BTreeMap<u32, CardLive>,
-    order: Vec<u32>,
+    cards: BTreeMap<(u32, u8), CardLive>,
+    order: Vec<(u32, u8)>,
     session: LiveText,
     lap: LiveText,
     status: LiveText,
@@ -150,12 +154,18 @@ impl Painter {
         pixels |= self
             .status
             .set(broadcast_tower::status_text(view.status, self.prefs.language).to_string());
-        pixels |= self.weather.set(view.weather.clone());
+        if self.show_weather {
+            pixels |= self.weather.set(view.weather.clone());
+        }
         self.order.clear();
-        for visual in &scene.rows {
+        let per_copy = view.rows.len().max(1);
+        for (index, visual) in scene.rows.iter().enumerate() {
             let row = &visual.row;
-            let live = self.cards.entry(row.id.0).or_insert_with(|| CardLive {
+            let copy = u8::try_from(index / per_copy).unwrap_or(0).min(1);
+            let key = (row.id.0, copy);
+            let live = self.cards.entry(key).or_insert_with(|| CardLive {
                 id: row.id.0,
+                copy,
                 player: row.is_player,
                 place: LiveText::new(""),
                 code: LiveText::new(""),
@@ -164,27 +174,39 @@ impl Painter {
                 ink: Live::new(CLEAR),
                 highlight: Live::new(CLEAR),
                 cue: Live::new(CLEAR),
+                code_key: (String::new(), -1.0),
+                gap_key: (String::new(), -1.0),
             });
             live.player = row.is_player;
             pixels |= live.place.set(place(row));
-            pixels |= live.code.set(fitted(
-                &self.style,
-                &scene::driver_code(&row.name),
-                (self.width - 29.0).max(0.0),
-                Face::Display,
-                16.0,
-                20.0,
-                1.2,
-            ));
-            pixels |= live.gap.set(fitted(
-                &self.style,
-                &gap(row),
-                (self.width - 69.0).max(0.0),
-                Face::Mono,
-                10.0,
-                18.0,
-                0.0,
-            ));
+            let code = scene::driver_code(&row.name);
+            let code_max = (self.width - 29.0).max(0.0);
+            if live.code_key != (code.clone(), code_max) {
+                live.code_key = (code.clone(), code_max);
+                pixels |= live.code.set(fitted(
+                    &self.style,
+                    &code,
+                    code_max,
+                    Face::Display,
+                    16.0,
+                    20.0,
+                    1.2,
+                ));
+            }
+            let gap = gap(row);
+            let gap_max = (self.width - 69.0).max(0.0);
+            if live.gap_key != (gap.clone(), gap_max) {
+                live.gap_key = (gap.clone(), gap_max);
+                pixels |= live.gap.set(fitted(
+                    &self.style,
+                    &gap,
+                    gap_max,
+                    Face::Mono,
+                    10.0,
+                    18.0,
+                    0.0,
+                ));
+            }
             let x = scene::card_left(visual.slot, self.width, view) - MASK_X;
             pixels |= live.position.set([x, 0.0]);
             pixels |= live.ink.set(alpha(self.palette.title, visual.opacity));
@@ -199,9 +221,9 @@ impl Painter {
                 alpha(color, cue.opacity)
             });
             pixels |= live.cue.set(cue);
-            self.order.push(row.id.0);
+            self.order.push(key);
         }
-        let retained: BTreeSet<u32> = self.order.iter().copied().collect();
+        let retained: BTreeSet<(u32, u8)> = self.order.iter().copied().collect();
         self.cards.retain(|id, _| retained.contains(id));
         let classes: Vec<(usize, String, Accent)> = scene::class_starts(view)
             .map(|start| {
@@ -222,7 +244,7 @@ impl Painter {
             cards: self
                 .order
                 .iter()
-                .map(|id| (*id, self.cards[id].player))
+                .map(|key| (*key, self.cards[key].player))
                 .collect(),
             classes: classes.clone(),
             intervals: intervals.clone(),
@@ -266,10 +288,10 @@ impl Painter {
         ink: Color,
         align: Align,
     ) -> El {
-        let baseline = if matches!(face, Face::Display) {
-            self.style.fonts.display_baseline
-        } else {
-            0.0
+        let baseline = match face {
+            Face::Display => self.style.fonts.display_baseline,
+            Face::Mono => self.style.fonts.mono_baseline,
+            Face::Body => 0.0,
         };
         text(value.get().to_string())
             .key(key)
@@ -281,16 +303,17 @@ impl Painter {
             .truncate_fade_width(0.0)
             .pin(Some(x), Some(top + baseline), None, None)
     }
-    fn card(&self, live: &CardLive, nth: usize) -> El {
+    fn card(&self, live: &CardLive) -> El {
         let width = self.width;
         let mut node = el()
-            .key(format!("tower-card-{}-{nth}", live.id))
+            .key(format!("tower-card-{}-{}", live.id, live.copy))
             .size(width, MASK_H)
             .pin(Some(0.0), Some(0.0), None, None)
             .live_offset(&live.position);
         if live.player {
             node = node.child(
-                el().size((width - 4.0).max(0.0), 36.0)
+                el().key(format!("tower-highlight-{}-{}", live.id, live.copy))
+                    .size((width - 4.0).max(0.0), 36.0)
                     .radius(6.0)
                     .linear_gradient(std::f32::consts::PI, [(0.0, CLEAR), (1.0, CLEAR)])
                     .live_gradient(&live.highlight, &live.highlight)
@@ -299,7 +322,8 @@ impl Painter {
         }
         let s = &self.style;
         node.child(
-            el().size((width - 8.0).max(0.0), 2.0)
+            el().key(format!("tower-cue-{}-{}", live.id, live.copy))
+                .size((width - 8.0).max(0.0), 2.0)
                 .radius(1.0)
                 .linear_gradient(std::f32::consts::PI, [(0.0, CLEAR), (1.0, CLEAR)])
                 .live_gradient(&live.cue, &live.cue)
@@ -307,7 +331,7 @@ impl Painter {
         )
         .child(self.caption(
             &live.place,
-            format!("tower-place-{}-{nth}", live.id),
+            format!("tower-place-{}-{}", live.id, live.copy),
             6.0,
             17.0,
             19.0,
@@ -322,7 +346,7 @@ impl Painter {
         .child(
             self.caption(
                 &live.code,
-                format!("tower-code-{}-{nth}", live.id),
+                format!("tower-code-{}-{}", live.id, live.copy),
                 25.0,
                 17.0,
                 (width - 29.0).max(0.0),
@@ -338,7 +362,7 @@ impl Painter {
         )
         .child(self.caption(
             &live.gap,
-            format!("tower-gap-{}-{nth}", live.id),
+            format!("tower-gap-{}-{}", live.id, live.copy),
             65.0,
             18.0,
             (width - 69.0).max(0.0),
@@ -398,17 +422,17 @@ pub(super) fn fitted(
     };
     let shape = font(style, face, size, height, tracking, weight);
     let width = |text: &str| rune::text::measure(text, &[], shape, None).0;
-    if width(value) <= max {
+    if width(value) <= max + 0.01 {
         return value.to_string();
     }
     let mut kept: Vec<char> = value.chars().collect();
     while kept.pop().is_some() {
         let candidate: String = kept.iter().collect::<String>() + "…";
-        if width(&candidate) <= max {
+        if width(&candidate) <= max + 0.01 {
             return candidate;
         }
     }
-    "…".into()
+    String::new()
 }
 
 pub(super) fn view(state: &Painter) -> El {
@@ -561,8 +585,8 @@ pub(super) fn view(state: &Painter) -> El {
         el().size(MASK_W, MASK_H)
             .clip_rounded(0.0)
             .pin(Some(MASK_X), Some(MASK_Y), None, None);
-    for (nth, id) in state.order.iter().enumerate() {
-        mask = mask.child(state.card(&state.cards[id], nth));
+    for key in &state.order {
+        mask = mask.child(state.card(&state.cards[key]));
     }
     root = root.child(mask);
     if state.show_weather {

@@ -95,6 +95,7 @@ pub struct Scene {
     pub view: Arc<ViewModel>,
     pub labels: Arc<Labels>,
     pub rows: Vec<VisualRow>,
+    pub carousel: bool,
 }
 
 struct Moving {
@@ -115,6 +116,7 @@ pub struct Motion {
     reduced: bool,
     hz: u16,
     carousel: bool,
+    requested: bool,
     /// Instante del último límite (época, sesión o calidad): la fase del carrusel
     /// se mide desde aquí, como `carousel_start` en GPUI.
     anchor: f64,
@@ -144,6 +146,7 @@ impl Motion {
             reduced,
             hz,
             carousel: false,
+            requested: false,
             anchor: clock,
         };
         motion.reset();
@@ -182,6 +185,10 @@ impl Motion {
             }
         }
         self.reduced = reduced;
+        if changed && !reduced {
+            self.carousel =
+                self.requested && self.view.status == Status::Ready && !self.view.rows.is_empty();
+        }
         true
     }
     /// `snap` viene del cambio de época, sesión o calidad; `carousel` es el ajuste guardado.
@@ -229,6 +236,7 @@ impl Motion {
             self.transitions(&view, clock);
         }
         self.view = view;
+        self.requested = carousel;
         self.carousel = carousel
             && !self.reduced
             && self.view.status == Status::Ready
@@ -250,6 +258,7 @@ impl Motion {
             .enumerate()
             .map(|(slot, row)| {
                 let old = self.cards.iter().find(|card| card.row.id == row.id);
+                let entering = !before.contains(&row.id.0);
                 let cue = match (
                     common_before.iter().position(|id| *id == row.id.0),
                     common_after.iter().position(|id| *id == row.id.0),
@@ -258,12 +267,10 @@ impl Motion {
                     (Some(a), Some(b)) if b > a => Some(CueKind::Lost),
                     _ => None,
                 };
+                let from = old.map_or(slot as f32, |card| card.slot.value(clock));
                 let mut moving = Moving {
                     row: row.clone(),
-                    slot: old.map_or_else(
-                        || Tween::fixed(slot as f32).with_curve(SLIDE),
-                        |card| card.slot,
-                    ),
+                    slot: Tween::fixed(from).with_curve(SLIDE),
                     fade: old.map_or_else(
                         || Tween::fixed(0.0).with_curve(FADE_CURVE),
                         |card| card.fade,
@@ -276,11 +283,15 @@ impl Motion {
                     fading.retarget(0.0, clock, CUE);
                     moving.cue = Some((kind, fading));
                 }
-                let travelled = f64::from((moving.slot.value(clock) - slot as f32).abs());
+                let travelled = f64::from((from - slot as f32).abs());
                 let duration =
                     (SLIDE_MS + travelled * LEGACY_CARD * 0.28).min(SLIDE_MAX_MS) / 1000.0;
                 moving.slot.retarget(slot as f32, clock, duration);
-                moving.fade.retarget(1.0, clock, FADE);
+                if entering {
+                    moving.fade.retarget(1.0, clock, FADE);
+                } else {
+                    moving.fade = Tween::fixed(1.0).with_curve(FADE_CURVE);
+                }
                 moving
             })
             .collect();
@@ -355,12 +366,14 @@ pub fn visual_rows(motion: &Motion, clock: f64) -> Vec<VisualRow> {
             row: card.row.clone(),
             slot: card.slot.value(clock),
             opacity: card.fade.value(clock),
-            cue: card.cue.map(|(kind, control)| Cue {
-                kind,
-                opacity: control.value(clock),
-            }),
+            cue: card
+                .cue
+                .map(|(kind, control)| Cue {
+                    kind,
+                    opacity: control.value(clock),
+                })
+                .filter(|cue| cue.opacity > 0.0),
         })
-        .filter(|row| row.cue.is_none_or(|cue| cue.opacity > 0.0))
         .collect()
 }
 
@@ -369,6 +382,7 @@ pub fn sample(motion: &Motion, clock: f64) -> Scene {
         view: motion.view.clone(),
         labels: motion.labels.clone(),
         rows: visual_rows(motion, clock),
+        carousel: motion.carousel,
     }
 }
 

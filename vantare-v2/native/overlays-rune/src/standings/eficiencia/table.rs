@@ -76,6 +76,45 @@ pub(super) fn paint(v: &Visual, language: Language) -> Vec<El> {
         index += span;
     }
     let body_top = p.table_top + p.head_row;
+    for (index, (top, class)) in p.class_bands.iter().enumerate() {
+        let y = body_top + top;
+        let id = class.trim().to_uppercase();
+        let rgb = if id.contains("HYPER") || ["HYP", "DP"].contains(&id.as_str()) {
+            s.colors.hypercar.0
+        } else if id.contains("LMP") || id == "P2" {
+            s.colors.lmp.0
+        } else if id.contains("GTE") || id.contains("GT3") {
+            s.colors.gold.0
+        } else {
+            s.colors.muted.0
+        };
+        let alpha = if rgb == s.colors.muted.0 { 0.05 } else { 0.11 };
+        nodes.push(
+            rect(0.0, y, c.width, s.geometry.class_band_height)
+                .key(format!("class-band-{index}"))
+                .linear_gradient(
+                    180.0f32.to_radians(),
+                    [(0.0, color(rgb, alpha)), (1.0, color(rgb, 0.0))],
+                ),
+        );
+        nodes.push(rect(0.0, y, c.width, 1.0).fill(color(s.colors.ink.0, 0.10)));
+        nodes.push(
+            rect(0.0, y + s.geometry.class_band_height - 1.0, c.width, 1.0)
+                .fill(color(s.colors.ink.0, 0.10)),
+        );
+        nodes.push(
+            rect(10.0, y + 7.0, 2.0, 14.0)
+                .key(format!("class-band-tick-{index}"))
+                .fill(color(rgb, 1.0)),
+        );
+        nodes.push(label(
+            &format!("class-band-label-{index}"),
+            &id,
+            20.0,
+            y + 18.0,
+            ink(s, s.fonts.badge_size, s.fonts.bold_weight, 0.14, rgb),
+        ));
+    }
     for (i, row) in v.content_plan.rows.iter().take(p.visible_rows).enumerate() {
         let top = body_top + p.row_tops[i];
         let mut layer = rect(0.0, top, c.width, s.geometry.row_height)

@@ -135,6 +135,9 @@ it("does not submit a form while a described submit button is disabled", async (
   await user.dblClick(button);
   await user.keyboard("{Enter} ");
   expect(submit).not.toHaveBeenCalled();
+  await user.tab();
+  await user.tab();
+  await screen.findByRole("tooltip");
   result.rerender(
     <TooltipProvider delay={0}>
       <form onSubmit={submit}>
@@ -148,7 +151,9 @@ it("does not submit a form while a described submit button is disabled", async (
   );
   expect(document.activeElement).toBe(button);
   expect(button.getAttribute("aria-disabled")).not.toBe("true");
-  expect(screen.getByRole("tooltip").textContent).toBe("Wait for validation");
+  expect(document.getElementById("submit-help")?.textContent).toBe(
+    "Wait for validation",
+  );
   await user.click(button);
   expect(submit).toHaveBeenCalledOnce();
 });

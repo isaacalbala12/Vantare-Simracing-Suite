@@ -18,7 +18,6 @@ pub(crate) struct Pedals {
     state: scene::State,
     scene: scene::Scene,
     painter: Painter,
-    revision: Option<(u64, u64)>,
 }
 
 fn project(settings: &Settings, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
@@ -42,7 +41,6 @@ impl Pedals {
             state,
             scene,
             painter,
-            revision: None,
         }
     }
     fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
@@ -56,11 +54,6 @@ impl Pedals {
         }
     }
     fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> Update {
-        let revision = (snapshot.epoch, snapshot.sequence);
-        if self.revision == Some(revision) {
-            return Update::default();
-        }
-        self.revision = Some(revision);
         let vm = project(&self.settings, snapshot, self.prefs);
         self.state.update(snapshot, &vm);
         let scene = scene::sample(&vm, &self.state);

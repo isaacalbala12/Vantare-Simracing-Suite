@@ -13,6 +13,7 @@ button {
   cursor: pointer;
 }
 button:disabled,
+.v-tooltip-trigger .v-button[aria-disabled="true"],
 [data-disabled] {
   opacity: var(--disabled-opacity);
   cursor: default;
@@ -45,10 +46,10 @@ button:disabled,
   background: var(--surface-1);
   transition: background var(--dur-fast);
 }
-.v-button:hover:not(:disabled) {
+.v-button:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--surface-3);
 }
-.v-button:active:not(:disabled) {
+.v-button:active:not(:disabled):not([aria-disabled="true"]) {
   background: var(--active);
 }
 .v-button--primary {
@@ -56,21 +57,21 @@ button:disabled,
   color: var(--text-on-accent);
   border-color: var(--accent-bright);
 }
-.v-button--primary:hover:not(:disabled) {
+.v-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--grad-button-hover);
 }
 .v-button--neutral {
   background: transparent;
   color: var(--text-1);
 }
-.v-button--neutral:hover:not(:disabled) {
+.v-button--neutral:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--hover);
 }
 .v-button--ghost {
   background: transparent;
   border-color: transparent;
 }
-.v-button--ghost:hover:not(:disabled) {
+.v-button--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--hover);
 }
 .v-button--danger {

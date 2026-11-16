@@ -1,5 +1,5 @@
 import { Button as BaseButton } from "@base-ui/react/button";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { Tooltip } from "./Layers";
 export type ButtonProps = BaseButton.Props & {
   variant?: "primary" | "neutral" | "ghost" | "danger";
@@ -11,17 +11,56 @@ export function Button({
   size = "md",
   busy = false,
   disabled,
+  focusableWhenDisabled,
+  onClick,
+  onKeyDown,
+  onKeyUp,
   children,
   className,
   ...props
 }: ButtonProps) {
+  const blocked = !!(
+    disabled ||
+    busy ||
+    (focusableWhenDisabled &&
+      (props["aria-disabled"] === true || props["aria-disabled"] === "true"))
+  );
   return (
     <BaseButton
       {...props}
       className={(state) =>
-        `v-button v-button--${variant} v-button--${size} ${typeof className === "function" ? className(state) : (className ?? "")}`
+        `v-button v-button--${variant} v-button--${size} ${typeof className === "function" ? className({ ...state, disabled: blocked }) : (className ?? "")}`
       }
-      disabled={disabled || busy}
+      disabled={blocked && !focusableWhenDisabled}
+      aria-disabled={
+        blocked && focusableWhenDisabled ? true : props["aria-disabled"]
+      }
+      data-disabled={blocked && focusableWhenDisabled ? "" : undefined}
+      focusableWhenDisabled={focusableWhenDisabled}
+      onClick={(event) => {
+        if (blocked) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onClick?.(event);
+      }}
+      onKeyDown={(event) => {
+        if (blocked && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onKeyDown?.(event);
+      }}
+      onKeyUp={(event) => {
+        if (blocked && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onKeyUp?.(event);
+      }}
       aria-busy={busy || props["aria-busy"]}
     >
       <span className="v-button-label">{children}</span>
@@ -37,10 +76,19 @@ export function IconButton({
   className,
   ...props
 }: Omit<ButtonProps, "aria-label"> & { label: string; children: ReactNode }) {
+  const tooltipId = useId();
   return (
-    <Tooltip label={label}>
+    <Tooltip id={tooltipId} label={label}>
       <span>
-        <Button {...props} className={className} aria-label={label}>
+        <Button
+          {...props}
+          className={className}
+          aria-label={label}
+          aria-describedby={[props["aria-describedby"], tooltipId]
+            .filter(Boolean)
+            .join(" ")}
+          focusableWhenDisabled
+        >
           {children}
         </Button>
       </span>

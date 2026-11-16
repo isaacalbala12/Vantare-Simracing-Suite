@@ -73,8 +73,8 @@ it("routes favorite and safe launch actions; leaves undelivered actions disabled
   fireEvent.click(screen.getByRole("button", { name: text.launch }));
   expect(props.onLaunch).toHaveBeenCalledOnce();
   expect(screen.getByRole("button", { name: text.add })).toHaveProperty(
-    "disabled",
-    true,
+    "ariaDisabled",
+    "true",
   );
   expect(screen.getByRole("button", { name: text.series })).toHaveProperty(
     "disabled",
@@ -86,9 +86,10 @@ it("routes favorite and safe launch actions; leaves undelivered actions disabled
   expect(document.activeElement).toBe(pending);
   fireEvent.click(pending);
   expect(props.onLaunch).toHaveBeenCalledOnce();
-  expect(pending.getAttribute("aria-description")).toBe(
-    calendarText.launchPending,
-  );
+  expect(
+    document.getElementById(pending.getAttribute("aria-describedby") ?? "")
+      ?.textContent,
+  ).toBe(calendarText.launchPending);
 });
 it("does not launch or change favorites when rights are unavailable and closes by its button", () => {
   show({ ...props, canLaunch: false, canFollow: false });

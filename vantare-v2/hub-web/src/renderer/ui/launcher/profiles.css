@@ -409,9 +409,9 @@
   color: var(--text-1);
   border-color: var(--line-2);
 }
-.v-launcher-page .v-button--neutral:disabled,
-.v-profile-editor .v-button--neutral:disabled,
-.v-launcher-rail .v-button--ghost:disabled,
+.v-launcher-page .v-button--neutral:is(:disabled, [aria-disabled="true"]),
+.v-profile-editor .v-button--neutral:is(:disabled, [aria-disabled="true"]),
+.v-launcher-rail .v-button--ghost:is(:disabled, [aria-disabled="true"]),
 .v-launcher-app-tile:disabled,
 .v-launcher-profile--new:disabled {
   opacity: 1;

@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import type {
   CalendarAlerts,
   CalendarBand,
@@ -97,6 +97,7 @@ export function CalendarDetail(props: Props) {
   );
 }
 function DetailBody(p: Props & { series: CalendarSeries }) {
+  const launchHint = useId();
   const { series: s, schedule, now, utc, alerts } = p;
   const picks = detailDepartures(schedule, s, now, p.limit);
   const [selected, setSelected] = useState(p.initialAt),
@@ -403,12 +404,12 @@ function DetailBody(p: Props & { series: CalendarSeries }) {
             {text.launch}
           </Button>
           {launchAt !== undefined && launchAt > now && (
-            <Tooltip label={calendarText.launchPending}>
+            <Tooltip id={launchHint} label={calendarText.launchPending}>
               <span>
                 <Button
                   disabled
                   focusableWhenDisabled
-                  aria-description={calendarText.launchPending}
+                  aria-describedby={launchHint}
                 >
                   <Icon name="clock" />
                   {calendarText.launchAt(hm(launchAt))}

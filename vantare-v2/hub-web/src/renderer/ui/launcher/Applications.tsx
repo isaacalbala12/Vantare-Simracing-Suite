@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import type {
   AppDraft,
   AppEditor,
@@ -90,6 +90,7 @@ export function ApplicationCatalog({
   onRetry: () => void;
   onDiscard: () => void;
 }) {
+  const scanHint = useId();
   const completedAt = value.lastScan
     ? new Date(value.lastScan.completedAtMs)
     : null;
@@ -137,9 +138,14 @@ export function ApplicationCatalog({
           onChange={(event) => onQuery(event.currentTarget.value)}
         />
         <div className="v-launcher-actions">
-          <Tooltip label={text.detectionBusy}>
+          <Tooltip id={scanHint} label={text.detectionBusy}>
             <span>
-              <Button disabled={pending || value.scanning} onClick={onScan}>
+              <Button
+                disabled={pending || value.scanning}
+                focusableWhenDisabled
+                aria-describedby={scanHint}
+                onClick={onScan}
+              >
                 {value.scanning ? text.detecting : text.detect}
               </Button>
             </span>

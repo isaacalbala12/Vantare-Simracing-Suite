@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { studioLimits } from "../../../contract/generated/studio";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
@@ -14,6 +15,7 @@ import {
 
 export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
   const { state, items, selected, blocked } = model;
+  const addHint = useId();
   const view = state.view;
   return (
     <aside className="v-focus-strip" aria-label={t.layoutLabel}>
@@ -162,6 +164,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           )}
       </section>
       <Tooltip
+        id={addHint}
         label={
           view && view.instances.length >= studioLimits.instances
             ? t.atLimit(studioLimits.instances)
@@ -176,6 +179,8 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           className="v-focus-add"
           data-empty={view?.state === "ready" && !view.instances.length}
           aria-label={t.add}
+          aria-describedby={addHint}
+          focusableWhenDisabled
           data-add-widget
           disabled={
             blocked || (view?.instances.length ?? 0) >= studioLimits.instances

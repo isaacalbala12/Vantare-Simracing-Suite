@@ -142,7 +142,7 @@ impl Motion {
     }
     pub fn event(&self, now: f64) -> Option<Event> {
         let (start, event) = self.event?;
-        (now - start < event_life(event)).then_some(event)
+        (now - start < event_life(event) + FADE).then_some(event)
     }
     /// Opacidad del aviso: entrada cúbica, vida y salida cúbica.
     pub fn notice_alpha(&self, now: f64) -> f32 {
@@ -401,8 +401,8 @@ mod revisited_tests {
         let prev = board(Tone::Gaining, 90.0, None);
         motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
         motion.ingest(Some(&prev), &board(Tone::Gaining, 89.0, None), 0.0, [0.5, 0.0], 1.0, false);
-        // A mitad de la vida (2,6 s de ÚLT. VUELTA o 4 de récord) el despertar es el fin.
-        assert_eq!(motion.next_wake_full(2.0), Some(5.0));
+        // A mitad de la vida del aviso (ya sin destello): el despertar es el fin.
+        assert_eq!(motion.next_wake_full(3.0), Some(5.0));
     }
 
     #[test]
@@ -435,7 +435,7 @@ mod revisited_tests {
         motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
         motion.ingest(Some(&prev), &board(Tone::Gaining, 89.0, None), 0.0, [0.5, 0.0], 1.0, false);
         motion.settle();
-        assert_eq!(motion.event(1.0), Some(Event::PersonalBest));
+        assert_eq!(motion.event(1.0), None, "clear_record retira el récord");
         assert_eq!(motion.flash(1.0), None);
     }
 

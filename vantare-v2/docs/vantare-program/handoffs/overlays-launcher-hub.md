@@ -1,3 +1,21 @@
+## VANTA-144 · Radar en Rune (16/11/2026)
+
+Esquema y dos detalles aprobados por raíz y sub-orquestador: ViewModel de
+domain como escena, caja fija 220×220, sin movimiento ni reloj, incluso con
+solapamiento. radar/mod.rs implementa Widget y radar/render.rs copia el pintor
+GPUI actual: 8 px/m, recorte por centro, colores de clase, anillos y frases.
+El resplandor usa el degradado radial elíptico nativo aprobado, con los mismos
+centros, radios (54,121), color y alfa que el SVG de GPUI; sin caché ni hilos.
+Una declaración de módulo y un brazo del registro conectan Radar. En el test
+común solo cambia el Kind no migrado a CarDamageNumbers, con aserciones intactas.
+Sin cambios en domain/ipc/host/feed/monitores, ajustes, demanda ni documentos
+guardados. Tests CPU para geometría, recorte, tintas, frases, pérdida de fuente,
+valores Live sin rebuild, registro, contadores y reposo con movimiento reducido.
+Gates por la cola y CI se registran en el PR. No se ejecuta ningún gráfico.
+Desviaciones visibles conocidas: ninguna comprobada; la comparación visual,
+incluido el rasterizado del degradado, queda pendiente de la tanda del PC (#2365).
+Sin merge, promoción ni release.
+
 ## VANTA-138 · D022, formatos de columnas (16/11/2026)
 
 Esquema aprobado por raíz: ampliar el patch existente con display/decimals para

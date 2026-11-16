@@ -211,7 +211,10 @@ mod tests {
     }
 
     fn update(runtime: &mut Runtime<MulticlassRelative>, photo: &Snapshot) {
-        runtime.update_if(|widget, _| widget.update(photo));
+        runtime.update_if(|widget, tx| {
+            tx.instant(); // Same transaction as host::poll: no implicit Rune presence animation.
+            widget.update(photo)
+        });
     }
 
     #[test]

@@ -1,3 +1,25 @@
+## VANTA-144 · Standings Eficiencia E2 (16/11/2026)
+
+PR #2495 a nightly, no draft; código verificado fcf26af67; revisión Sonnet pendiente.
+Port literal de panel/marco, banda de marca, franja de bandera y cabecera de sesión
+(Signature/Broadcast, Stale ES/EN y Focus) de ui/standings/view.rs. Constructor
+pendiente de E3, junto con th/filas/celdas/control; E4 añade bandas, pies, espera
+y badges PIT; E5/E6 movimiento/efectos. No promover a testers antes de completarlos.
+Primer commit separado: revisión E1 con TODOS los campos del JSON fijados por
+literales, PIT real (474; estrecho [156,82]), seis slots/pie 15+filas·14, etiquetas,
+helper antes de tests, comentario corregido y las SEIS adaptaciones en PARIDAD.md.
+Tests de pintura antes del código. Capas con pin y assert_inside_window en ambas
+geometrías; logo/sombra adjuntos al runtime. Caché de imágenes local del widget.
+Logo reducido con el algoritmo f32 por área: 2304 bytes idénticos al GPUI original;
+generador verificable con --check, sin dependencia Cargo nueva. Sombra gaussiana
+limitada al rail de 34 px; no se añade sombra bajo el panel translúcido.
+Base nightly c9c9fee04 (incluye #2493). Mac: fmt y clippy -D warnings PASS;
+538 tests de biblioteca + 3 de binario PASS. Código/generador 565 líneas cambiadas
+(altas+bajas), tests 546; recurso RGBA 2304 bytes. Tests fuera del tope de producción.
+E2+E3 preparados en local superan 1200 de producción formateada: se mantienen
+separados, sin comprimir ni eliminar comportamiento. Tabla de funciones en PARIDAD.md.
+Sin gráficos en servidor, cambios en domain/ipc/Cargo ni promoción de canal.
+
 ## VANTA-144 · Standings Eficiencia E1 (16/11/2026)
 
 E1 porta Config/plan/opciones/etiquetas y defaults de Style, función por función

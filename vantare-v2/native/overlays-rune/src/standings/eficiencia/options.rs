@@ -1,4 +1,4 @@
-//! Contrato de columnas V3. Reutilizado por las dos tablas de esta familia.
+//! Columnas V3 del pintor Eficiencia; Vantare usa su propio layout.
 use super::model::{Align, Column, Metric, NameMode, Preset};
 use vantare_domain::widget_settings::columns as keys;
 

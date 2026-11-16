@@ -10,7 +10,15 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   type CloseReason,
   type CoreStatus,
@@ -33,6 +41,11 @@ import {
 import { ToastProvider, ToastViewport } from "../src/renderer/ui/Layers";
 
 const caches: QueryClient[] = [];
+// Client.connect() imports the mock host graph on demand; the first mount paid
+// that cold module load inside waitFor's default 1 s budget (#2486).
+beforeAll(async () => {
+  await import("../src/mock/host");
+});
 beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({
     matches: false,

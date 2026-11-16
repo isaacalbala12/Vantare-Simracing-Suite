@@ -26,6 +26,7 @@ mod renderer;
 pub mod stats;
 mod tower;
 mod track_map;
+pub mod track_weather;
 pub mod vantare;
 mod widget;
 

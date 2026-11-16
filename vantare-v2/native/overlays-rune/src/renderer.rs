@@ -8,6 +8,7 @@ use crate::{
     scene::{FrameSet, Placement, Viewport},
     stats::{Cause, Meter},
     tower::Tower,
+    track_weather::TrackWeather,
     widget::Widget,
 };
 use rune::{El, Tx, el};
@@ -37,6 +38,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
             Some(<crate::fuel::Fuel as Widget>::new)
         }
         Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),
+        Settings::TrackWeather(_) => Some(<TrackWeather as Widget>::new),
         Settings::BroadcastTower(_) => Some(<Tower as Widget>::new),
         Settings::InputTelemetry(_) => Some(<InputTelemetry as Widget>::new),
         Settings::RacingFlags(_) => Some(<crate::racing_flags::RacingFlags as Widget>::new),
@@ -330,5 +332,26 @@ pub(crate) mod tests {
                 .expect("instancia");
         assert!(painter.configured(&settings, prefs));
         assert_eq!((painter.size().width, painter.size().height), (380.0, 64.0));
+    }
+
+    #[test]
+    fn dispatch_constructs_track_weather_in_both_layouts() {
+        let prefs = Preferences::default();
+        for (vertical, size) in [(false, (280.0, 210.0)), (true, (132.0, 440.0))] {
+            let settings =
+                Settings::TrackWeather(vantare_domain::widget_settings::track_weather::Settings {
+                    vertical,
+                    ..Default::default()
+                });
+            let painter =
+                constructor(&settings).expect("Track weather")(&settings, prefs, true, 15, 0.0)
+                    .expect("instancia");
+            assert!(painter.configured(&settings, prefs));
+            assert_eq!(
+                (painter.size().width, painter.size().height),
+                size,
+                "vertical {vertical}"
+            );
+        }
     }
 }

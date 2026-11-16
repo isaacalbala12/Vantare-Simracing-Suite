@@ -26,8 +26,6 @@ struct Watched {
     appearance: MotionPolicy,
     /// Layout file the calendar agenda lives next to.
     layout: PathBuf,
-    /// The agenda error is reported once, never on every poll.
-    calendar_error: bool,
 }
 impl Watched {
     fn poll(&mut self, scene: &mut Scene, now: Instant) -> bool {
@@ -49,15 +47,7 @@ impl Watched {
         // Only a design with Avisos de sesión touches the agenda file.
         if crate::calendar::wanted(self.document.layout()) {
             let wall = vantare_ipc::control::wall_ms().unwrap_or(0);
-            match crate::calendar::read(&self.layout, wall) {
-                Ok(events) => changed |= scene.set_calendar(events, now),
-                Err(error) => {
-                    if !self.calendar_error {
-                        self.calendar_error = true;
-                        eprintln!("overlays-rune: agenda del calendario: {}", error.message());
-                    }
-                }
-            }
+            changed |= scene.set_calendar(crate::calendar::read(&self.layout, wall), now);
         }
         changed
     }
@@ -98,7 +88,6 @@ impl DataFeed {
             presentation,
             appearance_path,
             appearance,
-            calendar_error: false,
         };
         let demand = DemandHandle::new(scene.required());
         // Publicar antes del setup también respeta inicio oculto y EOF temprano.
@@ -233,7 +222,6 @@ mod tests {
             appearance_path: None,
             appearance: MotionPolicy(false),
             layout: path.clone(),
-            calendar_error: false,
         };
         let now = Instant::now();
         let mut scene = Scene::new(

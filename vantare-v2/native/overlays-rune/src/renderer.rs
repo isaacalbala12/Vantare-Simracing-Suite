@@ -461,6 +461,7 @@ pub(crate) mod tests {
             visible: std::collections::BTreeSet::from(["avisos".to_owned()]),
             shown: true,
             reduced_motion: false,
+            calendar: Arc::default(),
         };
         let shared = Sharing::default();
         let mut painters = Painters {

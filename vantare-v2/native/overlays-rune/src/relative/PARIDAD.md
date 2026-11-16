@@ -5,9 +5,13 @@ Port del Look Eficiencia del Relative de GPUI (`native/ui/src/relative/eficienci
 
 ## Movimiento y escena
 
-- La escena y `relative::scene::Motion` son las mismas del Look Vantare: FLIP al
-  reordenar, fundido de entrada y salida y avisos de adelantamiento, con el `Tween`
-  común de `crate::motion`. Este Look no añade canales ni reloj propio.
+- La escena y `relative::scene::Motion` son las mismas del Look Vantare; cada Look solo
+  cambia su perfil de movimiento (`scene::Kinetics`), con el `Tween` común de
+  `crate::motion`:
+  - **Eficiencia**: deslizamiento con `ease(.2,.65,.3,1)` y
+    `min(300, 220 + 20·filas)` ms; fundido de 120 ms y destello de 480 ms con
+    `ease(0,0,.58,1)` (alfa `0,04·(1−ease)`).
+  - **Vantare**: su curva y duraciones del diseño, sin cambios.
 - Sin tira de tráfico: `has_strip()` es falso, así que no hay latido de puntos.
 
 ## Banda de pausa

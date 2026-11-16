@@ -48,12 +48,68 @@ pub struct Scene {
     pub paused: bool,
 }
 
+/// Cómo anima cada Look: GPUI usa curvas y duraciones distintas.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kinetics {
+    /// Deslizamiento fijo del diseño y fundido lineal.
+    Vantare,
+    /// Deslizamiento de 220 ms + 20 ms por fila (techo 300), fundido y destello
+    /// con `ease(0,0,.58,1)`; el destello dura 480 ms.
+    Eficiencia,
+}
+
+/// Curva del deslizamiento de Eficiencia (`ease(.2,.65,.3,1)`).
+const SLIDE: [f32; 4] = [0.2, 0.65, 0.3, 1.0];
+/// Curva del fundido y del destello de Eficiencia (`ease(0,0,.58,1)`).
+const EASE_OUT: [f32; 4] = [0.0, 0.0, 0.58, 1.0];
+const FADE: f64 = 0.12;
+const FLASH: f64 = 0.48;
+
 #[derive(Clone, Copy)]
 pub struct Timing {
     pub reorder: f64,
     pub fade: f64,
     pub flash: f64,
     pub pulse: f64,
+    pub kinetics: Kinetics,
+}
+
+impl Timing {
+    /// Duración y curva del deslizamiento; `row` es la altura de fila en px.
+    fn slide(&self, delta: f32, row: f32) -> (f64, Option<[f32; 4]>) {
+        match self.kinetics {
+            Kinetics::Vantare => (self.reorder, None),
+            Kinetics::Eficiencia => {
+                let rows = f64::from((delta.abs() / row.max(1.0)).abs());
+                (((220.0 + rows * 20.0).min(300.0)) / 1000.0, Some(SLIDE))
+            }
+        }
+    }
+    fn fade(&self) -> (f64, Option<[f32; 4]>) {
+        match self.kinetics {
+            Kinetics::Vantare => (self.fade, None),
+            Kinetics::Eficiencia => (FADE, Some(EASE_OUT)),
+        }
+    }
+    fn flash(&self) -> f64 {
+        match self.kinetics {
+            Kinetics::Vantare => self.flash,
+            Kinetics::Eficiencia => FLASH,
+        }
+    }
+}
+
+/// Altura de fila que usan los Look sin bandas de clase; 1 px si no hay dos filas.
+fn row_step(positions: &[f32]) -> f32 {
+    let step = positions
+        .windows(2)
+        .map(|pair| (pair[1] - pair[0]).abs())
+        .fold(f32::INFINITY, f32::min);
+    if step.is_finite() && step > 0.5 {
+        step
+    } else {
+        1.0
+    }
 }
 
 pub(super) struct MovingRow {
@@ -137,11 +193,14 @@ impl Motion {
             return; // Preserve the last valid motion when the layout is incomplete.
         };
         let snap = snap || self.reduced || waiting(board);
+        let timing = self.timing;
+        let (fade_time, fade_curve) = timing.fade();
+        let row_height = row_step(positions);
         let active: BTreeSet<_> = board.slots.iter().flatten().map(|row| row.id.0).collect();
         for (&id, row) in &mut self.rows {
             if !active.contains(&id) && row.active {
                 row.active = false;
-                row.fade.retarget(0.0, clock, self.timing.fade);
+                row.fade.retarget(0.0, clock, fade_time);
             }
         }
         self.order.clear();
@@ -166,15 +225,23 @@ impl Motion {
                         if let Some(kind) = kind {
                             moving.flash = Some((kind, clock));
                         }
-                        moving.slot.retarget(*position, clock, self.timing.reorder);
-                        moving.fade.retarget(1.0, clock, self.timing.fade);
+                        let (duration, curve) =
+                            timing.slide(*position - moving.slot.value(clock), row_height);
+                        if let Some(curve) = curve {
+                            moving.slot = moving.slot.with_curve(curve);
+                        }
+                        moving.slot.retarget(*position, clock, duration);
+                        moving.fade.retarget(1.0, clock, fade_time);
                     }
                     moving.row = row.clone();
                     moving.active = true;
                 } else {
-                    let mut fade = Tween::linear(if snap { 1.0 } else { 0.0 });
+                    let mut fade = match fade_curve {
+                        Some(curve) => Tween::fixed(if snap { 1.0 } else { 0.0 }).with_curve(curve),
+                        None => Tween::linear(if snap { 1.0 } else { 0.0 }),
+                    };
                     if !snap {
-                        fade.retarget(1.0, clock, self.timing.fade);
+                        fade.retarget(1.0, clock, fade_time);
                     }
                     self.rows.insert(
                         row.id.0,
@@ -215,7 +282,7 @@ impl Motion {
                     if snap {
                         offset = Tween::fixed(dot.offset_s as f32);
                     } else {
-                        offset.retarget(dot.offset_s as f32, clock, self.timing.reorder);
+                        offset.retarget(dot.offset_s as f32, clock, timing.reorder);
                     }
                     MovingDot {
                         dot: dot.clone(),
@@ -245,11 +312,9 @@ impl Motion {
         }
         self.rows.retain(|_, r| r.active || r.fade.active(clock));
         self.order.retain(|id| self.rows.contains_key(id));
+        let flash = self.timing.flash();
         for row in self.rows.values_mut() {
-            if row
-                .flash
-                .is_some_and(|(_, start)| clock >= start + self.timing.flash)
-            {
+            if row.flash.is_some_and(|(_, start)| clock >= start + flash) {
                 row.flash = None;
             }
         }
@@ -271,6 +336,19 @@ impl Motion {
     }
 }
 
+/// Fuerza del aviso (0..1, el pintor aplica su alfa). GPUI Eficiencia lo apaga con
+/// `ease(0,0,.58,1)` en 480 ms; Vantare, lineal.
+fn alert_strength(kinetics: Kinetics, flash: f64, elapsed: f64) -> f32 {
+    match kinetics {
+        Kinetics::Vantare => (1.0 - (elapsed / flash.max(0.001)) as f32).clamp(0.0, 1.0),
+        Kinetics::Eficiencia => {
+            let t = (elapsed / FLASH).clamp(0.0, 1.0) as f32;
+            (1.0 - rune::Easing::cubic(EASE_OUT[0], EASE_OUT[1], EASE_OUT[2], EASE_OUT[3]).eval(t))
+                .clamp(0.0, 1.0)
+        }
+    }
+}
+
 /// Pure sampling: a Look chooses colors and pixel geometry, never movement or alert strength.
 /// Call Motion::advance with the same clock before sampling; sampling never advances state.
 pub fn visual_rows(motion: &Motion, clock: f64) -> Vec<VisualRow> {
@@ -283,8 +361,11 @@ pub fn visual_rows(motion: &Motion, clock: f64) -> Vec<VisualRow> {
                 .flash
                 .map(|(kind, start)| Alert {
                     kind,
-                    opacity: (1.0 - ((clock - start) / motion.timing.flash.max(0.001)) as f32)
-                        .clamp(0.0, 1.0),
+                    opacity: alert_strength(
+                        motion.timing.kinetics,
+                        motion.timing.flash,
+                        clock - start,
+                    ),
                 })
                 .filter(|a| a.opacity > 0.0);
             VisualRow {
@@ -324,7 +405,7 @@ pub fn sample(board: Arc<Board>, motion: &Motion, paused: bool, clock: f64) -> S
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vantare_domain::format::Preferences;
+    use vantare_domain::{CarId, format::Preferences};
 
     fn board() -> Board {
         vantare_domain::relative::project(&crate::testdata::snapshot(), Preferences::default())
@@ -341,6 +422,7 @@ mod tests {
                 fade: 1.0,
                 flash: 1.0,
                 pulse: 1.0,
+                kinetics: Kinetics::Vantare,
             },
             false,
             5,
@@ -488,5 +570,113 @@ mod tests {
         motion.policy(true, 5);
         motion.advance(&board, 3.0);
         assert_eq!(motion.next_wake(3.0, true), None);
+    }
+    /// Curvas y duraciones de GPUI Eficiencia: `ease(.2,.65,.3,1)` con
+    /// `min(300, 220 + 20·filas)` ms, fundido de 120 ms con `ease(0,0,.58,1)`.
+    fn eficiencia() -> Motion {
+        Motion::new(
+            Timing {
+                reorder: 1.0,
+                fade: 1.0,
+                flash: 1.0,
+                pulse: 1.0,
+                kinetics: Kinetics::Eficiencia,
+            },
+            false,
+            5,
+            0.0,
+        )
+    }
+    fn row_of(motion: &Motion, id: CarId, clock: f64) -> VisualRow {
+        visual_rows(motion, clock)
+            .into_iter()
+            .find(|r| r.row.id == id)
+            .expect("fila muestreada")
+    }
+    #[test]
+    fn eficiencia_kinetics_match_the_gpui_curves_and_durations() {
+        let mut board = board();
+        let mut motion = eficiencia();
+        motion.update(&board, &positions(&board), true, 0.0);
+        let occupied: Vec<_> = board
+            .slots
+            .iter()
+            .enumerate()
+            .filter_map(|(i, r)| r.as_ref().map(|r| (i, r.id)))
+            .collect();
+        let (first, id) = occupied[0];
+        let target = occupied[2].0;
+        let before = positions(&board)[first];
+        board.slots.swap(first, target);
+        motion.update(&board, &positions(&board), false, 1.0);
+        let after = positions(&board)[target];
+        let eased = rune::Easing::cubic(0.2, 0.65, 0.3, 1.0);
+        // Dos filas de recorrido: 220 + 2·20 = 260 ms.
+        let middle = row_of(&motion, id, 1.13).slot;
+        assert!(
+            (middle - (before + (after - before) * eased.eval(0.5))).abs() < 0.01,
+            "mitad del deslizamiento: {middle}"
+        );
+        assert!(
+            (row_of(&motion, id, 1.26).slot - after).abs() < 0.01,
+            "termina a 260 ms"
+        );
+        assert!(row_of(&motion, id, 1.48).slot == after);
+
+        // Salida: fundido de 120 ms con `ease(0,0,.58,1)`.
+        board.slots[target] = None;
+        motion.update(&board, &positions(&board), false, 2.0);
+        let ghost = 1.0 - rune::Easing::cubic(0.0, 0.0, 0.58, 1.0).eval(0.5);
+        assert!((row_of(&motion, id, 2.06).opacity - ghost).abs() < 0.01);
+        motion.advance(&board, 2.13);
+        assert!(
+            visual_rows(&motion, 2.13).iter().all(|r| r.row.id != id),
+            "el fantasma se retira a los 120 ms"
+        );
+        assert_eq!(
+            motion.next_wake(2.13, false),
+            None,
+            "cero despertares al acabar"
+        );
+    }
+    #[test]
+    fn eficiencia_flash_fades_with_the_gpui_ease_for_480_ms() {
+        let mut board = board();
+        let mut motion = eficiencia();
+        motion.update(&board, &positions(&board), true, 0.0);
+        let index = board
+            .slots
+            .iter()
+            .position(|r| r.as_ref().is_some_and(|r| r.side == Side::Ahead))
+            .expect("fila por delante");
+        let id = board.slots[index].as_ref().expect("fila").id;
+        Arc::make_mut(board.slots[index].as_mut().expect("fila")).side = Side::Behind;
+        motion.update(&board, &positions(&board), false, 1.0);
+        let eased = rune::Easing::cubic(0.0, 0.0, 0.58, 1.0);
+        let strength = |clock: f64| row_of(&motion, id, clock).alert.expect("aviso").opacity;
+        assert!(
+            (strength(1.24) - (1.0 - eased.eval(0.5))).abs() < 0.01,
+            "mitad del destello: {}",
+            strength(1.24)
+        );
+        assert!(
+            strength(1.46) < strength(1.24),
+            "el destello baja mientras dura"
+        );
+        assert!(
+            row_of(&motion, id, 1.48).alert.is_none(),
+            "a 480 ms ya no hay aviso"
+        );
+        motion.advance(&board, 1.49);
+        assert!(
+            visual_rows(&motion, 1.49)
+                .iter()
+                .find(|r| r.row.id == id)
+                .expect("fila")
+                .alert
+                .is_none(),
+            "el destello se apaga a los 480 ms"
+        );
+        assert_eq!(motion.next_wake(1.49, false), None);
     }
 }

@@ -13,7 +13,7 @@ use vantare_domain::{
     widget_settings::{look::Look, relative::Settings},
 };
 
-const PAUSE_HEIGHT: f32 = 22.0;
+pub(crate) const PAUSE_HEIGHT: f32 = 22.0;
 
 pub(crate) use crate::widget::Update;
 
@@ -94,11 +94,6 @@ impl Relative {
     }
 }
 
-/// Looks migrados del widget; el brazo del `match` de `constructor()` decide.
-fn supported(look: Look) -> bool {
-    matches!(look, Look::Vantare | Look::Eficiencia)
-}
-
 pub(crate) struct Relative {
     settings: Settings,
     prefs: Preferences,
@@ -120,12 +115,19 @@ impl Relative {
     ) -> Self {
         let settings = settings.normalized();
         let style = crate::vantare::Style::compiled();
+        // GPUI anima Vantare y Eficiencia con curvas y duraciones distintas.
+        let kinetics = if settings.design_system == Look::Eficiencia {
+            scene::Kinetics::Eficiencia
+        } else {
+            scene::Kinetics::Vantare
+        };
         let mut motion = Motion::new(
             Timing {
                 reorder: f64::from(style.motion.reorder_ms) / 1000.0,
                 fade: f64::from(style.motion.fade_ms) / 1000.0,
                 flash: f64::from(style.motion.flash_ms) / 1000.0,
                 pulse: f64::from(style.relative.pulse_ms) / 1000.0,
+                kinetics,
             },
             reduced,
             hz,
@@ -252,9 +254,7 @@ impl crate::widget::Widget for Relative {
         let vantare_domain::widget_settings::Settings::Relative(settings) = settings else {
             return None;
         };
-        if !supported(settings.design_system) {
-            return None;
-        }
+
         Some(Box::new(Relative::new(settings, prefs, reduced, hz, clock)))
     }
     fn configured(
@@ -265,7 +265,7 @@ impl crate::widget::Widget for Relative {
         let vantare_domain::widget_settings::Settings::Relative(settings) = settings else {
             return false;
         };
-        supported(settings.design_system) && Relative::configured(self, settings, prefs)
+        Relative::configured(self, settings, prefs)
     }
     fn size(&self) -> Size {
         Relative::size(self)

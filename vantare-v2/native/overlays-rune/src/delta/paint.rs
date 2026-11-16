@@ -161,8 +161,8 @@ impl Painter {
                 400.0
             },
         );
-        let label_width = eficiencia::width("DELTA", label_font.clone());
-        let width = (2.0 * pad + label_width + 14.0 + eficiencia::width(value, value_font.clone()))
+        let label_width = eficiencia::width("DELTA", label_font);
+        let width = (2.0 * pad + label_width + 14.0 + eficiencia::width(value, value_font))
             .min(self.scene.width);
         let root = if self.scene.options.transparent {
             root
@@ -341,7 +341,7 @@ impl Painter {
         let s = &self.style;
         let b = &s.brand;
         let name_font = font(s, Face::Display, b.size, h, b.tracking, 600.0);
-        let name = eficiencia::width("VANTARE", name_font.clone());
+        let name = eficiencia::width("VANTARE", name_font);
         let scale = b.symbol_height / 41.0;
         let symbol = 46.0 * scale;
         let left = right - name - b.gap - symbol;
@@ -453,7 +453,7 @@ impl Painter {
         let width = self.scene.width;
         let (value, color) = self.number();
         let value_font = font(s, Face::Display, d.big, d.big, 0.5, 600.0);
-        let value_width = eficiencia::width(value, value_font.clone());
+        let value_width = eficiencia::width(value, value_font);
         root = root.child(
             text(value.to_owned())
                 .key("big-number")
@@ -499,7 +499,7 @@ impl Painter {
                 0.0,
                 s.fonts.regular_weight,
             );
-            let lead_width = eficiencia::width(lead, lead_font.clone());
+            let lead_width = eficiencia::width(lead, lead_font);
             root = root
                 .child(
                     text(lead)
@@ -656,7 +656,7 @@ impl Painter {
         let top = y + d.bar + 2.0;
         let h = d.tick_labels - 2.0;
         let left_font = font(s, Face::Mono, 9.0, h, 0.0, 400.0);
-        let zero_width = eficiencia::width("0", left_font.clone());
+        let zero_width = eficiencia::width("0", left_font);
         root = root
             .child(
                 text(self.scene.labels.range[0].clone())
@@ -728,8 +728,8 @@ impl Painter {
             let fill = fill.or_else(|| {
                 sector
                     .live
-                    .then_some(())
-                    .and_then(|()| sector.progress)
+                    .then_some(sector.progress)
+                    .flatten()
                     .map(|fraction| (fraction, if gain { c.green } else { d.fill_loss }))
             });
             if let Some((fraction, color)) = fill {

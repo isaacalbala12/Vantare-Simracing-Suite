@@ -160,7 +160,6 @@ pub fn sample(board: &Board, settings: &Settings, prefs: Preferences, style: &St
         Tone::Neo => &style.styles.neo,
         Tone::Neutro => &style.styles.neutro,
     };
-    let es = prefs.language == Language::Es;
     let message = message(board);
     let grey = grey(board);
     let shown = !waiting(Some((board.source_state, board.player_present)));

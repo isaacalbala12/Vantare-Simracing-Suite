@@ -1,7 +1,7 @@
 //! Delta Vantare: domain projects the board; the scene decides layout and texts
 //! and the painter draws it. No clock and no motion in this part.
 mod paint;
-pub mod scene;
+mod scene;
 #[cfg(test)]
 mod tests;
 

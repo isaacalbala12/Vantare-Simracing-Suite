@@ -12,6 +12,7 @@ pub mod feed;
 pub mod scene;
 
 pub mod fastest_lap;
+mod head_to_head;
 mod motion;
 mod multiclass_relative;
 pub mod pedals;

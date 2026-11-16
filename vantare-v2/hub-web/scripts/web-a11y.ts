@@ -26,6 +26,7 @@ import { checkResidentAnswer } from "./check-resident-answer.ts";
 import { checkResidentControls } from "./check-resident-control.ts";
 import { checkResidentRemoval } from "./check-resident-removal.ts";
 import { checkResidentResults } from "./check-resident-results.ts";
+import { checkMainScreens } from "./check-screens-a11y.ts";
 import { checkStudioCanvas } from "./check-studio-canvas.ts";
 import { checkStudioCatalogDrop } from "./check-studio-catalog-drop.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
@@ -227,6 +228,7 @@ try {
       `Studio/${scheme}: accessibility violations`,
     );
   }
+  await checkMainScreens(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkStudioCanvas(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkStudioCatalogDrop(
     page,

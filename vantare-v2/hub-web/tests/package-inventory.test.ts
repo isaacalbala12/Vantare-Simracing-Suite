@@ -90,6 +90,9 @@ it("detects stale uncommitted and untracked sources without consulting ignored o
   expect(() => assertPackageBuild(null, dirty)).toThrow();
   await writeFile(join(directory, ".env.private"), "never read");
   expect(() => packageSource(directory)).toThrow(/before reading/);
+  await rm(join(directory, ".env.private"));
+  await writeFile(join(directory, ".ENV.PRIVATE"), "never read");
+  expect(() => packageSource(directory)).toThrow(/before reading/);
 });
 it("covers every resource and EXE sidecar and detects mutation, missing and extra files", async () => {
   const directory = await root();
@@ -137,6 +140,9 @@ it("rejects links and .env before inventory reads outside the package", async ()
   await expect(inventoryPackage(directory)).rejects.toThrow(/links/);
   await rm(join(directory, "linked"));
   await writeFile(join(directory, ".env.local"), "never read");
+  await expect(inventoryPackage(directory)).rejects.toThrow(/before reading/);
+  await rm(join(directory, ".env.local"));
+  await writeFile(join(directory, ".ENV.LOCAL"), "never read");
   await expect(inventoryPackage(directory)).rejects.toThrow(/before reading/);
   expect(await readFile(join(outside, "keep.txt"), "utf8")).toBe("untouched");
 });

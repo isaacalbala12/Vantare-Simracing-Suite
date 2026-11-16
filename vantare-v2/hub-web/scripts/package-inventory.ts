@@ -38,7 +38,9 @@ export function packageSource(project: string) {
     .sort();
   const source = createHash("sha256");
   for (const path of paths) {
-    if (path.split(/[\\/]/).some((part) => part.startsWith(".env")))
+    if (
+      path.split(/[\\/]/).some((part) => part.toLowerCase().startsWith(".env"))
+    )
       throw new Error("Source provenance rejects .env before reading");
     const file = join(project, path);
     const metadata = lstatSync(file);
@@ -82,7 +84,7 @@ export async function packageFiles(directory: string) {
   const paths: string[] = [];
   async function visit(folder: string) {
     for (const entry of await readdir(folder, { withFileTypes: true })) {
-      if (entry.name.startsWith(".env"))
+      if (entry.name.toLowerCase().startsWith(".env"))
         throw new Error("Package rejects .env before reading");
       if (entry.isSymbolicLink()) throw new Error("Package rejects links");
       const path = join(folder, entry.name);

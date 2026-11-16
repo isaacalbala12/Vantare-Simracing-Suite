@@ -468,3 +468,15 @@ fn duckdb_is_not_in_any_live_package_dependency_tree() {
         }
     }
 }
+
+#[test]
+fn missing_open_has_a_typed_code_and_unknown_diagnostic_stays_unreadable() {
+    let db = Database::new();
+    let mut output = Vec::new();
+    assert!(serve(&db.0, true, &b""[..], &mut output).is_err());
+    let frame: Value = serde_json::from_slice(output.trim_ascii()).unwrap();
+    assert_eq!(frame[1], "missing");
+    assert!(!db.0.exists());
+    let unknown = io::Error::other("unknown disk failure");
+    assert_eq!(inspection::open_error(&unknown)[1], "unreadable");
+}

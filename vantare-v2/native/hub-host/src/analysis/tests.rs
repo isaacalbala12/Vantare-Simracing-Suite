@@ -1,0 +1,280 @@
+#![allow(clippy::unwrap_used)]
+use super::*;
+use std::sync::atomic::AtomicU64;
+static NEXT: AtomicU64 = AtomicU64::new(0);
+struct Directory(PathBuf);
+impl Directory {
+    fn new() -> Self {
+        let p = std::env::temp_dir().join(format!(
+            "host-analysis-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&p).unwrap();
+        Self(p)
+    }
+    fn db(&self) -> PathBuf {
+        self.0.join("recording.duckdb")
+    }
+}
+impl Drop for Directory {
+    fn drop(&mut self) {
+        fs::remove_dir_all(&self.0).unwrap();
+    }
+}
+fn cancel() -> Cancel {
+    Arc::new(AtomicBool::new(false))
+}
+#[test]
+fn catalog_boundaries_and_absent_directory() {
+    let dir = Directory::new();
+    let absent = dir.0.join("absent");
+    assert_eq!(recordings(&absent).unwrap(), Vec::<PathBuf>::new());
+    assert!(!absent.exists());
+    fs::create_dir(dir.0.join("sub.duckdb")).unwrap();
+    for i in 0..257 {
+        if i == 255 || i == 256 {
+            let paths = recordings(&dir.0).unwrap();
+            assert_eq!(paths.len(), i);
+            assert!(paths.windows(2).all(|p| p[0] < p[1]));
+        }
+        fs::write(dir.0.join(format!("{i:03}.duckdb")), []).unwrap();
+    }
+    assert_eq!(recordings(&dir.0).unwrap_err().code, ErrorCode::Limit);
+}
+#[cfg(windows)]
+mod real {
+    use super::*;
+    fn exe() -> PathBuf {
+        let path = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
+        assert!(
+            path.is_file(),
+            "gates.ps1 construye el helper en el mismo target"
+        );
+        path
+    }
+    fn writer(db: &Path) -> Child {
+        Command::new(exe())
+            .arg(db)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap()
+    }
+    fn fixture(db: &Path, car: u32, chunks: u64, gap: bool) {
+        let mut child = writer(db);
+        let mut out = BufReader::new(child.stdout.take().unwrap());
+        let mut line = String::new();
+        out.read_line(&mut line).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        for index in 1..=chunks {
+            let sample = json!([
+                index,
+                [1, f64::from(u32::try_from(index - 1).unwrap())],
+                [1, f64::from(u32::try_from(index - 1).unwrap())],
+                [1, 50.0],
+                [2, 0.5],
+                [0, null]
+            ]);
+            let chunk = json!([
+                "vantare.series-chunk.v1",
+                index,
+                0,
+                index - 1,
+                ["vantare.player-lap.v1", 1, 3, car, 5, null, gap, [sample]]
+            ]);
+            writeln!(
+                child.stdin.as_mut().unwrap(),
+                "{}",
+                json!(["append", chunk])
+            )
+            .unwrap();
+            line.clear();
+            out.read_line(&mut line).unwrap();
+            assert_eq!(
+                serde_json::from_str::<Value>(&line).unwrap()[0],
+                "ack",
+                "{line}"
+            );
+        }
+        writeln!(
+            child.stdin.as_mut().unwrap(),
+            "{}",
+            json!(["finish", chunks])
+        )
+        .unwrap();
+        line.clear();
+        out.read_line(&mut line).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "finished");
+        drop(child.stdin.take());
+        assert!(child.wait().unwrap().success());
+    }
+    #[test]
+    fn opens_summarizes_and_reads_bounded_pages_with_null_quality() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 33, false);
+        let original = fs::read(dir.db()).unwrap();
+        let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+        let summary = reader.summaries().unwrap();
+        assert_eq!(
+            (
+                summary.watermark,
+                summary.total,
+                summary.finished,
+                summary.attempted
+            ),
+            (33, 1, true, 33)
+        );
+        assert_eq!(summary.laps[0].speed.mean, Some(50.0));
+        let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+        let mut counts = vec![];
+        while !cursor.done() {
+            let page = reader.page(&mut cursor, 16).unwrap();
+            counts.push(page.chunks);
+            for sample in page.samples {
+                let sample = sample.unwrap();
+                assert_eq!(sample.speed, Some(50.0));
+                assert_eq!(sample.throttle, None);
+                assert_eq!(sample.brake, None);
+            }
+        }
+        assert_eq!(counts, vec![16, 16, 1]);
+        drop(reader);
+        assert_eq!(fs::read(dir.db()).unwrap(), original);
+    }
+    #[test]
+    fn gaps_are_explicit_and_cancel_reaps_helper_releasing_writer_lock() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 2, true);
+        let token = cancel();
+        let mut reader = Reader::open(&exe(), &dir.db(), token.clone()).unwrap();
+        let summary = reader.summaries().unwrap();
+        assert!(summary.laps[0].gap);
+        let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+        let page = reader.page(&mut cursor, 16).unwrap();
+        assert_eq!(page.samples.iter().filter(|p| p.is_none()).count(), 4);
+        token.store(true, Ordering::Release);
+        assert_eq!(reader.summaries().unwrap_err().code, ErrorCode::Cancelled);
+        assert!(reader.child.try_wait().unwrap().is_some());
+        assert!(reader.pump.is_none());
+        let mut writer = writer(&dir.db());
+        let mut line = String::new();
+        BufReader::new(writer.stdout.take().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        drop(writer.stdin.take());
+        assert!(writer.wait().unwrap().success());
+    }
+    #[test]
+    fn actual_windows_writer_lock_has_typed_code() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 1, false);
+        let mut child = writer(&dir.db());
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        let failure = Reader::open(&exe(), &dir.db(), cancel()).err().unwrap();
+        drop(child.stdin.take());
+        assert!(child.wait().unwrap().success());
+        assert_eq!(failure.code, ErrorCode::Locked, "{}", failure.diagnostic);
+    }
+    #[test]
+    fn absent_and_unreadable_are_distinct() {
+        let dir = Directory::new();
+        assert_eq!(
+            Reader::open(&exe(), &dir.db(), cancel())
+                .err()
+                .unwrap()
+                .code,
+            ErrorCode::Missing
+        );
+        fs::write(dir.db(), b"broken database").unwrap();
+        assert_eq!(
+            Reader::open(&exe(), &dir.db(), cancel())
+                .err()
+                .unwrap()
+                .code,
+            ErrorCode::Unreadable
+        );
+    }
+    #[test]
+    fn replacement_and_changed_identity_reject_old_cursor() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 1, false);
+        let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+        let summary = reader.summaries().unwrap();
+        let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+        drop(reader);
+        fs::remove_file(dir.db()).unwrap();
+        fixture(&dir.db(), 8, 2, false);
+        let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+        reader.summaries().unwrap();
+        assert_eq!(
+            reader.page(&mut cursor, 16).err().unwrap().code,
+            ErrorCode::Changed
+        );
+    }
+    #[test]
+    fn watermark_mismatch_is_rejected_before_samples() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 1, false);
+        let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+        let summary = reader.summaries().unwrap();
+        let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+        reader.summary.watermark += 1;
+        assert_eq!(
+            reader.page(&mut cursor, 16).err().unwrap().code,
+            ErrorCode::Changed
+        );
+        assert!(reader.child.try_wait().unwrap().is_some());
+    }
+    #[test]
+    fn helper_codes_override_diagnostic_text() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 0, false);
+        for (code, expected) in [
+            ("locked", ErrorCode::Locked),
+            ("incompatible", ErrorCode::Incompatible),
+            ("missing", ErrorCode::Missing),
+            ("unreadable", ErrorCode::Unreadable),
+            ("unknown", ErrorCode::Unreadable),
+        ] {
+            let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+            let (sender, receiver) = mpsc::sync_channel(1);
+            reader.output = receiver;
+            sender
+                .send(Ok(json!(["error", code, "being used by another process"])))
+                .unwrap();
+            assert_eq!(reader.receive().unwrap_err().code, expected);
+        }
+    }
+    #[test]
+    fn deadline_on_real_helper_cleans_up_open() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 0, false);
+        assert_eq!(
+            Reader::open_with_timeout(&exe(), &dir.db(), cancel(), Duration::ZERO)
+                .err()
+                .unwrap()
+                .code,
+            ErrorCode::Deadline
+        );
+        let mut child = writer(&dir.db());
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        drop(child.stdin.take());
+        assert!(child.wait().unwrap().success());
+    }
+}

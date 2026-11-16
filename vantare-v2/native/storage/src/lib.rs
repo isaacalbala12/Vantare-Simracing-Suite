@@ -27,7 +27,7 @@ impl Store {
     fn open(path: &Path, read_only: bool) -> Result<Self> {
         let exists = path.exists();
         if read_only && !exists {
-            return Err("DB histórica inexistente".into());
+            return Err(io::Error::new(io::ErrorKind::NotFound, "DB histórica inexistente").into());
         }
         // Inspección sin permiso de escribir antes de abrir DB existentes RW:
         // ni el engine puede migrar/checkpointar originales Go/LMU ajenos.

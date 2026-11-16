@@ -9,7 +9,7 @@ use crate::{
 use rune::{Align, Color, El, LineCap, LiveText, Path, Shape, canvas, el, text};
 use std::sync::Arc;
 use vantare_domain::{
-    delta_trace::{Details, LapHistory, Sample, ViewModel},
+    delta_trace::{Details, LapHistory, LapPoint, Sample, ViewModel},
     format::{Language, Preferences},
 };
 
@@ -19,14 +19,6 @@ pub(super) enum Op {
     Fill([[f32; 2]; 4], u32, f32),
     Rect([f32; 4], f32, u32, f32),
 }
-type Points = Vec<(f32, f32, bool)>;
-#[derive(PartialEq)]
-struct GraphKey {
-    current: Points,
-    previous: Points,
-    invalid: bool,
-}
-#[derive(PartialEq)]
 struct Scene {
     texts: [String; 7],
     colors: [u32; 4],
@@ -38,7 +30,8 @@ pub(super) struct Painter {
     scene: Scene,
     texts: [LiveText; 7],
     samples: Arc<Vec<Sample>>,
-    key: GraphKey,
+    history_version: u64,
+    invalid: bool,
     shape: Shape,
 }
 fn color(rgb: u32, a: f32) -> Color {
@@ -50,29 +43,24 @@ fn color(rgb: u32, a: f32) -> Color {
         a,
     }
 }
-fn graph_key(history: &LapHistory, invalid: bool) -> GraphKey {
-    let points = |p: &[vantare_domain::delta_trace::LapPoint]| {
-        p.iter().map(|p| (p.progress, p.delta, p.cut)).collect()
-    };
-    GraphKey {
-        current: points(&history.points),
-        previous: points(&history.previous),
-        invalid,
-    }
-}
 fn gain(delta: f32) -> u32 {
     if delta < 0.0 { 0x4ade80 } else { 0xff7a82 }
 }
-fn graph(samples: &[Sample], key: &GraphKey) -> Vec<Op> {
+fn graph(samples: &[Sample], history: &LapHistory, invalid: bool) -> Vec<Op> {
     let mut ops = Vec::new();
-    let position = |p: (f32, f32, bool)| [12.0 + 736.0 * p.0, 92.0 - 108.0 * p.1.clamp(-0.5, 0.5)];
-    if key.current.is_empty() {
+    let position = |p: &LapPoint| {
+        [
+            12.0 + 736.0 * p.progress,
+            92.0 - 108.0 * p.delta.clamp(-0.5, 0.5),
+        ]
+    };
+    if history.points.is_empty() {
         let end = samples.last().map_or(std::time::Duration::ZERO, |s| s.at);
         let start = samples.first().map_or(end, |s| s.at);
         let span = end.saturating_sub(start).as_secs_f32().max(0.001);
         let mut connected = false;
         for (index, pair) in samples.windows(2).enumerate() {
-            if key.invalid && index / 3 % 2 == 1 {
+            if invalid && index / 3 % 2 == 1 {
                 continue;
             }
             if let (Some(a), Some(b)) = (pair[0].delta_seconds, pair[1].delta_seconds) {
@@ -89,7 +77,7 @@ fn graph(samples: &[Sample], key: &GraphKey) -> Vec<Op> {
                     point(&pair[0], a),
                     point(&pair[1], b),
                     2.2,
-                    if key.invalid {
+                    if invalid {
                         0x6e6668
                     } else if b < 0.0 {
                         0x4ade80
@@ -110,19 +98,19 @@ fn graph(samples: &[Sample], key: &GraphKey) -> Vec<Op> {
             ));
         }
     } else {
-        for (points, previous) in [(&key.previous, true), (&key.current, false)] {
+        for (points, previous) in [(&history.previous, true), (&history.points, false)] {
             for (index, pair) in points.windows(2).enumerate() {
-                if pair[1].2 || (key.invalid && !previous && index / 3 % 2 == 1) {
+                if pair[1].cut || (invalid && !previous && index / 3 % 2 == 1) {
                     continue;
                 }
-                let a = position(pair[0]);
-                let b = position(pair[1]);
+                let a = position(&pair[0]);
+                let b = position(&pair[1]);
                 let rgb = if previous {
                     0xffffff
-                } else if key.invalid {
+                } else if invalid {
                     0x6e6668
                 } else {
-                    gain(pair[1].1)
+                    gain(pair[1].delta)
                 };
                 ops.push(Op::Line(
                     a,
@@ -131,12 +119,12 @@ fn graph(samples: &[Sample], key: &GraphKey) -> Vec<Op> {
                     rgb,
                     if previous { 0.22 } else { 1.0 },
                 ));
-                if !previous && !key.invalid {
+                if !previous && !invalid {
                     ops.push(Op::Fill([a, b, [b[0], 92.0], [a[0], 92.0]], rgb, 0.22));
                 }
             }
         }
-        let last = *key.current.last().expect("current lap");
+        let last = history.points.last().expect("current lap");
         let p = position(last);
         ops.push(Op::Rect([p[0], 32.0, 1.0, 120.0], 0.0, 0xffffff, 0.25));
         ops.push(Op::Rect(
@@ -148,31 +136,30 @@ fn graph(samples: &[Sample], key: &GraphKey) -> Vec<Op> {
     }
     ops
 }
-fn scene(vm: &ViewModel, details: &Details, graph: Arc<Vec<Op>>) -> Scene {
-    Scene {
-        texts: [
-            details.header.clone(),
-            details.position.clone(),
-            vm.current_text.clone(),
-            vm.status_text.unwrap_or_default().into(),
-            details.sector_text[0].clone(),
-            details.sector_text[1].clone(),
-            details.sector_text[2].clone(),
-        ],
-        colors: [
-            if details.invalid {
-                0x6e6668
-            } else if vm.current_text.starts_with(['-', '−']) {
-                0x4ade80
-            } else {
-                0xff7a82
-            },
-            details.sectors[0].map_or(0x3a3335, |v| if v < 0.0 { 0x22c55e } else { 0xf25a5a }),
-            details.sectors[1].map_or(0x3a3335, |v| if v < 0.0 { 0x22c55e } else { 0xf25a5a }),
-            details.sectors[2].map_or(0x3a3335, |v| if v < 0.0 { 0x22c55e } else { 0xf25a5a }),
-        ],
-        graph,
-    }
+fn texts<'a>(vm: &'a ViewModel, details: &'a Details) -> [&'a str; 7] {
+    [
+        &details.header,
+        &details.position,
+        &vm.current_text,
+        vm.status_text.unwrap_or_default(),
+        &details.sector_text[0],
+        &details.sector_text[1],
+        &details.sector_text[2],
+    ]
+}
+fn colors(vm: &ViewModel, details: &Details) -> [u32; 4] {
+    [
+        if details.invalid {
+            0x6e6668
+        } else if vm.current_text.starts_with(['-', '−']) {
+            0x4ade80
+        } else {
+            0xff7a82
+        },
+        details.sectors[0].map_or(0x3a3335, |v| if v < 0.0 { 0x22c55e } else { 0xf25a5a }),
+        details.sectors[1].map_or(0x3a3335, |v| if v < 0.0 { 0x22c55e } else { 0xf25a5a }),
+        details.sectors[2].map_or(0x3a3335, |v| if v < 0.0 { 0x22c55e } else { 0xf25a5a }),
+    ]
 }
 impl Painter {
     pub fn new(
@@ -182,9 +169,11 @@ impl Painter {
         details: &Details,
         prefs: Preferences,
     ) -> Self {
-        let key = graph_key(history, details.invalid);
-        let graph = Arc::new(graph(samples, &key));
-        let scene = scene(vm, details, graph);
+        let scene = Scene {
+            texts: texts(vm, details).map(str::to_owned),
+            colors: colors(vm, details),
+            graph: Arc::new(graph(samples, history, details.invalid)),
+        };
         let texts = std::array::from_fn(|i| LiveText::new(scene.texts[i].as_str()));
         let mut p = Self {
             style: Style::compiled(),
@@ -192,7 +181,8 @@ impl Painter {
             scene,
             texts,
             samples: samples.clone(),
-            key,
+            history_version: 0,
+            invalid: details.invalid,
             shape: Shape::new(),
         };
         p.shape = p.make_shape();
@@ -203,33 +193,44 @@ impl Painter {
         vm: &ViewModel,
         samples: &Arc<Vec<Sample>>,
         history: &LapHistory,
+        history_version: u64,
         details: &Details,
     ) -> Update {
-        let key = graph_key(history, details.invalid);
-        let graph = if Arc::ptr_eq(samples, &self.samples) && key == self.key {
+        let graph = if Arc::ptr_eq(samples, &self.samples)
+            && history_version == self.history_version
+            && details.invalid == self.invalid
+        {
             self.scene.graph.clone()
         } else {
-            Arc::new(graph(samples, &key))
+            Arc::new(graph(samples, history, details.invalid))
         };
-        let next = scene(vm, details, graph);
-        if next == self.scene {
-            self.samples = samples.clone();
-            self.key = key;
+        let changed_graph = !Arc::ptr_eq(&graph, &self.scene.graph) && graph != self.scene.graph;
+        let texts = texts(vm, details);
+        let colors = colors(vm, details);
+        let changed_texts = texts
+            .iter()
+            .zip(&self.scene.texts)
+            .any(|(a, b)| *a != b.as_str());
+        let changed_colors = colors != self.scene.colors;
+        self.samples = samples.clone();
+        self.history_version = history_version;
+        self.invalid = details.invalid;
+        if !changed_graph && !changed_texts && !changed_colors {
             return Update::default();
         }
-        let build = next.graph != self.scene.graph || next.colors != self.scene.colors;
-        for (live, value) in self.texts.iter().zip(&next.texts) {
-            live.set(value.clone());
+        for ((live, stored), value) in self.texts.iter().zip(&mut self.scene.texts).zip(texts) {
+            if stored.as_str() != value {
+                live.set(value);
+                value.clone_into(stored);
+            }
         }
-        let changed_graph = next.graph != self.scene.graph;
-        self.scene = next;
-        self.samples = samples.clone();
-        self.key = key;
+        self.scene.colors = colors;
         if changed_graph {
+            self.scene.graph = graph;
             self.shape = self.make_shape();
         }
         Update {
-            build,
+            build: changed_graph || changed_colors,
             pixels: true,
         }
     }
@@ -256,7 +257,7 @@ impl Painter {
                     }
                     shape = shape.fill_path(&p.close(), color(*rgb, *opacity));
                 }
-                Op::Rect(..) => {} // Exact rounded primitives follow the ordered graph paths.
+                Op::Rect(..) => {} // Rects are painted separately as El children, not in this path.
             }
         }
         shape
@@ -494,13 +495,25 @@ impl Painter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn history(current: &[(f32, f32, bool)], previous: &[(f32, f32, bool)]) -> LapHistory {
+        let points = |values: &[(f32, f32, bool)]| {
+            values
+                .iter()
+                .map(|&(progress, delta, cut)| LapPoint {
+                    progress,
+                    delta,
+                    cut,
+                })
+                .collect()
+        };
+        let mut history = LapHistory::default();
+        history.points = points(current);
+        history.previous = points(previous);
+        history
+    }
     #[test]
     fn temporal_fallback_keeps_gpui_endpoints_and_never_bridges_a_cut() {
-        let key = GraphKey {
-            previous: vec![],
-            current: vec![],
-            invalid: false,
-        };
+        let history = LapHistory::default();
         let mut samples = [
             Sample {
                 at: std::time::Duration::ZERO,
@@ -514,24 +527,23 @@ mod tests {
             },
         ];
         assert_eq!(
-            graph(&samples, &key),
+            graph(&samples, &history, false),
             vec![
                 Op::Line([12.0, 65.0], [748.0, 119.0], 2.2, 0x4ade80, 1.0),
                 Op::Rect([744.0, 115.0, 8.0, 8.0], 4.0, 0xffffff, 1.0),
             ]
         );
         samples[1].break_before = true;
-        assert!(graph(&samples, &key).is_empty());
+        assert!(graph(&samples, &history, false).is_empty());
     }
     #[test]
     fn lap_segments_keep_literal_gpui_line_fill_and_cursor_order() {
-        let key = GraphKey {
-            previous: vec![(0.0, 0.0, false), (0.5, 0.25, false)],
-            current: vec![(0.0, 0.0, false), (0.5, -0.25, false)],
-            invalid: false,
-        };
+        let history = history(
+            &[(0.0, 0.0, false), (0.5, -0.25, false)],
+            &[(0.0, 0.0, false), (0.5, 0.25, false)],
+        );
         assert_eq!(
-            graph(&[], &key),
+            graph(&[], &history, false),
             vec![
                 Op::Line([12.0, 92.0], [380.0, 65.0], 1.2, 0xffffff, 0.22),
                 Op::Line([12.0, 92.0], [380.0, 119.0], 2.2, 0x4ade80, 1.0),
@@ -547,16 +559,123 @@ mod tests {
     }
     #[test]
     fn invalid_and_cut_segments_do_not_gain_fills_or_bridge_gaps() {
-        let key = GraphKey {
-            previous: vec![],
-            current: vec![(0.0, 0.0, false), (0.5, 0.25, true), (1.0, 0.5, false)],
-            invalid: true,
-        };
-        let ops = graph(&[], &key);
+        let history = history(
+            &[(0.0, 0.0, false), (0.5, 0.25, true), (1.0, 0.5, false)],
+            &[],
+        );
+        let ops = graph(&[], &history, true);
         assert_eq!(
             ops[0],
             Op::Line([380.0, 65.0], [748.0, 38.0], 2.2, 0x6e6668, 1.0)
         );
         assert!(!ops.iter().any(|op| matches!(op, Op::Fill(..))));
+    }
+
+    #[test]
+    fn invalid_history_skips_three_segments_then_resumes_without_dashing_previous_lap() {
+        let points: Vec<_> = (0..=8).map(|i| (i as f32 / 8.0, 0.25, false)).collect();
+        let history = history(&points, &points);
+        let ops = graph(&[], &history, true);
+        assert_eq!(
+            ops.iter()
+                .filter(|op| matches!(op, Op::Line(_, _, 1.2, _, _)))
+                .count(),
+            8
+        );
+        // GPUI keeps indices 0,1,2,6,7 and skips 3,4,5; previous lap stays solid.
+        let expected = vec![
+            Op::Line([12.0, 65.0], [104.0, 65.0], 2.2, 0x6e6668, 1.0),
+            Op::Line([104.0, 65.0], [196.0, 65.0], 2.2, 0x6e6668, 1.0),
+            Op::Line([196.0, 65.0], [288.0, 65.0], 2.2, 0x6e6668, 1.0),
+            Op::Line([564.0, 65.0], [656.0, 65.0], 2.2, 0x6e6668, 1.0),
+            Op::Line([656.0, 65.0], [748.0, 65.0], 2.2, 0x6e6668, 1.0),
+        ];
+        assert_eq!(
+            ops.into_iter()
+                .filter(|op| matches!(op, Op::Line(_, _, 2.2, _, _)))
+                .collect::<Vec<_>>(),
+            expected
+        );
+        let samples: Vec<_> = (0..=8)
+            .map(|i| Sample {
+                at: std::time::Duration::from_secs(i),
+                delta_seconds: Some(0.25),
+                break_before: false,
+            })
+            .collect();
+        assert_eq!(
+            graph(&samples, &LapHistory::default(), true)
+                .into_iter()
+                .filter(|op| matches!(op, Op::Line(..)))
+                .collect::<Vec<_>>(),
+            expected
+        );
+    }
+
+    #[test]
+    fn both_histories_clip_delta_plus_and_minus_two_to_the_gpui_plot() {
+        let history = history(&[(0.0, 2.0, false), (1.0, -2.0, false)], &[]);
+        assert_eq!(
+            graph(&[], &history, false)[0],
+            Op::Line([12.0, 38.0], [748.0, 146.0], 2.2, 0x4ade80, 1.0)
+        );
+        let samples = [
+            Sample {
+                at: std::time::Duration::ZERO,
+                delta_seconds: Some(2.0),
+                break_before: false,
+            },
+            Sample {
+                at: std::time::Duration::from_secs(1),
+                delta_seconds: Some(-2.0),
+                break_before: false,
+            },
+        ];
+        assert_eq!(
+            graph(&samples, &LapHistory::default(), false)[0],
+            Op::Line([12.0, 38.0], [748.0, 146.0], 2.2, 0x4ade80, 1.0)
+        );
+    }
+
+    #[test]
+    fn actual_shape_paints_each_line_before_its_fill() {
+        let snapshot = vantare_domain::Snapshot::default();
+        let prefs = Preferences::default();
+        let board = vantare_domain::delta_trace::project_board(&snapshot, prefs, "best");
+        let vm = vantare_domain::delta_trace::project(&snapshot, prefs);
+        let details = Details::from(&snapshot, prefs, &board);
+        let history = history(
+            &[
+                (0.0, -0.125, false),
+                (0.5, -0.25, false),
+                (1.0, -0.375, false),
+            ],
+            &[],
+        );
+        let painter = Painter::new(&vm, &Arc::new(vec![]), &history, &details, prefs);
+        let mut rt = rune::Runtime::new(
+            painter.shape.clone(),
+            |shape, _| canvas(shape.clone()).size(760.0, 192.0),
+            (760.0, 192.0),
+            rune::Env::new(true, 1.0),
+        );
+        rt.frame(0.0);
+        use rune::render::{KIND_SEGMENT, KIND_TRIANGLE};
+        assert_eq!(
+            rt.instances
+                .iter()
+                .map(|i| (i.params[1], i.fill[3]))
+                .collect::<Vec<_>>(),
+            vec![
+                (KIND_SEGMENT, 1.0),
+                (KIND_TRIANGLE, 0.22),
+                (KIND_TRIANGLE, 0.22),
+                (KIND_SEGMENT, 1.0),
+                (KIND_TRIANGLE, 0.22),
+                (KIND_TRIANGLE, 0.22),
+            ]
+        );
+        assert_eq!(rt.instances[0].radii, [12.0, 105.5, 380.0, 119.0]);
+        assert_eq!(rt.instances[3].radii, [380.0, 119.0, 748.0, 132.5]);
     }
 }

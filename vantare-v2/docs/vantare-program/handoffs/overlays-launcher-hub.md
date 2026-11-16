@@ -3134,3 +3134,10 @@ Sin reloj ni Tween; movimiento reducido mantiene el dibujo. Capas con pin,
 tests CPU de límites reales de ventana, orden de segmentos y fotos repetidas.
 Gates y CI en el PR; rasterizado pendiente de captura del PC. Sin gráficos
 en el servidor, dependencias nuevas ni cambios de domain/ipc/host.
+
+## VANTA-144 · Seguimiento de Historial de delta (16/11/2026)
+
+Tras #2439: invalidación por versión local de LapHistory, vectores prestados,
+una comparación del gráfico y textos conservados cuando no cambian. Mismo dibujo.
+Tests CPU de los tramos inválidos, recorte ±2 y orden línea/relleno del Shape real.
+Gates/head en el PR; sin domain/ipc/host nuevos ni gráficos. #2430 espera sus bases.

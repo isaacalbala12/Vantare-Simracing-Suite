@@ -3054,3 +3054,14 @@ se conservan. Test de despacho positivo y dos negativos; sin captura porque
 No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
 Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
 Sin gráficos, Plane, merge, promoción ni release propios.
+
+
+### VANTA-144 · fuente única Eficiencia (Worker B, 16/11/2026)
+
+Extracción independiente de src/eficiencia.rs desde #2351: producción idéntica,
+Inter por include_bytes desde ui/assets, sin copiar fuentes ni tokens. Publicado
+como módulo para Fuel, Relative y Standings; ningún widget nuevo ni despacho.
+Tests CPU fijan familias/pesos de font y elipsis Unicode con límites medidos por
+la fuente cargada, sin anchuras esperadas por plataforma. Sin dependencias,
+gráficos, derechos ni cambios de movimiento. Head y gates definitivos en el PR
+y #2333; no se fusiona ni publica release desde el worker.

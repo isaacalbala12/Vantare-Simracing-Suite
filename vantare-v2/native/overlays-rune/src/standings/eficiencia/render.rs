@@ -1,4 +1,4 @@
-//! view.rs de GPUI: panel, marca, franja de bandera y contexto de sesión (E2).
+//! Pintura literal de view.rs de GPUI; movimiento/efectos se conectan en E5/E6.
 use super::{
     Visual,
     model::{self, Status},
@@ -325,6 +325,7 @@ fn paint_unavailable(v: &Visual, language: Language) -> Vec<El> {
 fn paint_pit_rail(v: &Visual) -> Vec<El> {
     let (c, p) = (&v.config, &v.plan);
     let s = &c.style;
+    debug_assert_eq!(p.visible_rows,p.row_tops.len());
     let origin = p.table_top + p.table_header;
     let font = ink(
         s,

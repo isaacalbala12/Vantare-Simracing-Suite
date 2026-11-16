@@ -66,7 +66,7 @@ fn gpui_footer_rows_recalculate_for_more_than_five_slots_without_growing_the_fix
     assert_eq!(v.config.footer_height(), 43.0);
     assert_eq!(v.config.height, 364.0);
     let mut next = (*v.content_plan).clone();
-    Arc::make_mut(&mut next.board).footer_cells = cells(1);
+    Arc::make_mut(&mut next.board).footer_cells = cells(6);
     v.ingest(Arc::new(next));
     assert_eq!(v.config.footer_height(), 29.0);
 }
@@ -90,6 +90,9 @@ fn gpui_class_bands_keep_the_palette_geometry_and_nine_pixel_badge_font() {
             named(&rt, "class-band-tick-0").rect,
             [10.0, 50.0, 2.0, 14.0]
         );
+        for y in [43.0,70.0] {
+            assert!(rt.elements().iter().any(|e|e.rect==[0.0,y,440.0,1.0] && e.fill.hex()=="#f5f5f51a"));
+        }
         let gradient = rt
             .instances
             .iter()
@@ -185,6 +188,10 @@ fn gpui_pit_rail_uses_the_declared_header_plus_the_two_pixel_badge_inset() {
             .iter()
             .any(|i| i.rect == badge.rect && i.radii == [0.0, 3.0, 3.0, 0.0])
     );
+    assert!(rt.instances.iter().any(|i| i.rect==badge.rect && i.uv==[2.0,2.0,2.0,1.0]
+        && i.border==rune::color::hex("#151517").unwrap().premul(1.0)));
+    assert!(rt.instances.iter().any(|i|i.params[1]==1.0 && i.params[2]==2.0
+        && i.fill==rune::color::hex("#e2c568").unwrap().premul(0.22))); // blur4 -> sigma2 en Rune.
     crate::testdata::assert_inside_window(&mut rt, size);
 }
 #[test]
@@ -205,6 +212,7 @@ fn gpui_missing_and_disconnected_paint_gold_notice_in_both_languages_without_row
             assert_eq!(text.text.as_deref(), Some(title));
             assert_eq!(&text.rect[..2], &[12.0, 94.0]); // table_top42 + loose42 +10.
             assert_eq!(text.text_color.unwrap().hex(), "#e2c568ff");
+            assert_eq!(named(&rt,"footer-value-0").text.as_deref(),Some("—"));
             assert!(!rt.elements().iter().any(|e| {
                 e.key
                     .as_deref()
@@ -247,4 +255,42 @@ fn every_e4_layer_stays_inside_the_gpui_box_for_each_footer_band_and_rail_combin
             }
         }
     }
+}
+
+#[test]
+fn host_bounds_include_absence_pause_and_each_real_settings_combination() {
+    use crate::widget::Widget;
+    use vantare_domain::{Quality,SourceState,format::Preferences,
+        widget_settings::{columns::ColumnSetting,standings::Settings}};
+    let photo=vantare_ipc::snapshot_from_json(include_str!("../../../../ui/fixtures/standings.snapshot.json")).unwrap();
+    let assets=Arc::new(rune::ImageCache::new(Arc::new(||{})));
+    for broadcast in [false,true] { for multiclass in [false,true] { for footer in [false,true] {
+        for slots in [false,true] { for pit in [false,true] {
+            let mut columns=[("position","xs"),("driverNumber","sm"),("driverName","lg"),("gap","md"),("bestLap","lg")].into_iter()
+                .map(|(metric,preset)|ColumnSetting{metric_id:metric.into(),width_preset:preset.into(),..ColumnSetting::default()}).collect::<Vec<_>>();
+            if pit { columns.push(ColumnSetting{metric_id:"pit".into(),..ColumnSetting::default()}); }
+            let settings=Settings{row_count:7,columns:Some(columns),show_session_footer:footer,
+                template_id:if broadcast {"broadcast"} else {"signature"}.into(),
+                classification_mode:if multiclass {"multiclass"} else {"normal"}.into(),class_scope:"all-classes".into(),
+                footer_slots:slots.then(||["track","trackTemperature","airTemperature","remaining","rain","wetness","totalLaps","estimatedLaps"].into_iter().map(String::from).collect()),
+                ..Settings::eficiencia()};
+            for state in [SourceState::Live,SourceState::Stale,SourceState::Waiting,SourceState::Lost,SourceState::Paused] {
+                let mut w=super::control::Eficiencia::new(&settings,Preferences::default());
+                w.attach_assets(&assets);
+                let mut snapshot=photo.clone();
+                snapshot.state.cars[0].in_pits=Quality::Reliable(true);
+                if state==SourceState::Paused { w.update(&snapshot,0.0); }
+                snapshot.state.source_state=state;
+                let predicted=w.size_for(Some(&snapshot));
+                w.update(&snapshot,0.1);
+                assert_eq!(w.size(),predicted);
+                for image in w.capture_images() { image.wait().unwrap(); }
+                let mut rt=rune::Runtime::with_text(w,|s,_|s.view(),(predicted.width,predicted.height),rune::Env::new(true,1.0),rune::text::TextSystem::new(crate::eficiencia::FONTS,("Inter W400","Inter W400")));
+                rt.frame(0.0);
+                assert_eq!(rt.elements().iter().any(|e|e.key.as_deref()==Some("footer-rule")),footer);
+                assert_eq!(rt.elements().iter().any(|e|e.key.as_deref()==Some("pause-band")),state==SourceState::Paused);
+                crate::testdata::assert_inside_window(&mut rt,(predicted.width,predicted.height));
+            }
+        }}
+    }}}
 }

@@ -86,14 +86,19 @@ impl Motion {
             return;
         };
         if reset(previous, next) {
-            // GPUI limpia los avisos y corta la interpolación; la barra se desliza.
+            // GPUI limpia los avisos y corta la interpolación; con movimiento
+            // reducido la barra salta, sin reloj.
             self.record = None;
             self.event = None;
             self.cross = None;
             self.last_tone = side(next.tone);
             self.offset = Tween::linear(fill[0]);
             self.width = Tween::linear(fill[1]);
-            self.bar.retarget(target, now, self.ease_ms);
+            if reduced {
+                self.bar = Tween::fixed(target);
+            } else {
+                self.bar.retarget(target, now, self.ease_ms);
+            }
             return;
         }
         self.last_tone = side(previous.tone).or(self.last_tone);
@@ -209,14 +214,16 @@ impl Motion {
         }
         due.map(|value| value.max(now))
     }
-    /// Movimiento reducido: estado final directo y sin destello.
+    /// Movimiento reducido: estado final directo y sin destello. Como GPUI,
+    /// solo se retira el aviso de récord; el resto de avisos y el cruce siguen.
     pub fn settle(&mut self) {
         self.bar.settle();
         self.offset.settle();
         self.width.settle();
         self.record = None;
-        self.event = None;
-        self.cross = None;
+        if matches!(self.event, Some((_, Event::PersonalBest))) {
+            self.event = None;
+        }
     }
     /// Estado de Eficiencia sin reloj: relleno final y avisos dentro de su vida.
     pub fn reduced_frame(&self, now: f64) -> (Option<Event>, Option<Tone>) {
@@ -368,5 +375,79 @@ mod tests {
         assert_eq!(motion.next_wake(0.0), None);
         motion.settle();
         assert_eq!(motion.bar(0.0), 0.5);
+    }
+}
+
+#[cfg(test)]
+mod revisited_tests {
+    use super::*;
+
+    fn board(tone: Tone, best: f64, progress: Option<f32>) -> Board {
+        let mut board = delta::project_reference(
+            &crate::testdata::snapshot(),
+            vantare_domain::format::Preferences::default(),
+            vantare_domain::delta::Reference::PersonalBest,
+        );
+        board.status = Status::Ready;
+        board.tone = tone;
+        board.best_lap = vantare_domain::Quality::Reliable(best);
+        board.progress = progress;
+        board
+    }
+
+    #[test]
+    fn a_notice_waiting_for_its_fade_wakes_at_the_end_not_now() {
+        let mut motion = Motion::new(150.0, 1400.0);
+        let prev = board(Tone::Gaining, 90.0, None);
+        motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
+        motion.ingest(Some(&prev), &board(Tone::Gaining, 89.0, None), 0.0, [0.5, 0.0], 1.0, false);
+        // A mitad de la vida (2,6 s de ÚLT. VUELTA o 4 de récord) el despertar es el fin.
+        assert_eq!(motion.next_wake_full(2.0), Some(5.0));
+    }
+
+    #[test]
+    fn crossing_remembers_neutral_and_keeps_the_previous_side() {
+        let mut motion = Motion::new(150.0, 1400.0);
+        motion.ingest(None, &board(Tone::Gaining, 90.0, None), 0.0, [0.5, 0.0], 0.0, false);
+        motion.ingest(Some(&board(Tone::Gaining, 90.0, None)), &board(Tone::Neutral, 90.0, None), 0.0, [0.5, 0.0], 0.1, false);
+        assert_eq!(motion.cross(0.1).0, None, "sin cambio de lado");
+        motion.ingest(Some(&board(Tone::Neutral, 90.0, None)), &board(Tone::Losing, 90.0, None), 0.0, [0.5, 0.0], 0.2, false);
+        assert_eq!(motion.cross(0.2).0, Some(Tone::Losing));
+    }
+
+    #[test]
+    fn notices_and_the_cross_expire_with_gpui_times() {
+        let mut motion = Motion::new(150.0, 1400.0);
+        let prev = board(Tone::Gaining, 90.0, None);
+        motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
+        motion.ingest(Some(&prev), &board(Tone::Losing, 89.0, None), 0.0, [0.5, 0.0], 1.0, false);
+        assert_eq!(motion.event(1.0 + 4.0 + 0.179), Some(Event::PersonalBest));
+        assert_eq!(motion.event(1.0 + 4.0 + 0.181), None);
+        assert_eq!(motion.cross(1.0 + 0.7 + 0.349).0, Some(Tone::Losing));
+        assert_eq!(motion.cross(1.0 + 0.7 + 0.351).0, None);
+        assert_eq!(motion.next_wake_full(10.0), None);
+    }
+
+    #[test]
+    fn settle_only_drops_the_record_notice() {
+        let mut motion = Motion::new(150.0, 1400.0);
+        let prev = board(Tone::Gaining, 90.0, None);
+        motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
+        motion.ingest(Some(&prev), &board(Tone::Gaining, 89.0, None), 0.0, [0.5, 0.0], 1.0, false);
+        motion.settle();
+        assert_eq!(motion.event(1.0), Some(Event::PersonalBest));
+        assert_eq!(motion.flash(1.0), None);
+    }
+
+    #[test]
+    fn reduced_reset_keeps_the_bar_fixed_without_a_wake() {
+        let mut motion = Motion::new(150.0, 1400.0);
+        let prev = board(Tone::Gaining, 90.0, None);
+        motion.ingest(None, &prev, 0.1, [0.5, 0.0], 0.0, false);
+        let mut other = prev.clone();
+        other.identity = (99, prev.identity.1, None);
+        motion.ingest(Some(&prev), &other, 0.6, [0.5, 0.0], 0.1, true);
+        assert_eq!(motion.bar(0.1), 0.6);
+        assert_eq!(motion.next_wake(0.1), None);
     }
 }

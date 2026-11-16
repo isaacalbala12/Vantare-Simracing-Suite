@@ -112,8 +112,12 @@ impl DeltaEficiencia {
             }
             return;
         }
-        if self.motion.next_wake_full(clock).is_some() {
-            tx.wake_after(std::time::Duration::ZERO);
+        if let Some(due) = self.motion.next_wake_full(clock) {
+            if due <= clock {
+                tx.wake_after(std::time::Duration::ZERO);
+            } else {
+                tx.wake_at(due);
+            }
         }
     }
     fn frame(&self, clock: f64) -> scene::Scene {

@@ -2,7 +2,7 @@
 //! value, scale, fill, tone cross and notices.
 use super::scene::Scene;
 use crate::eficiencia::{self, INK, MUTED};
-use rune::{Color, El, TextStyle, el, text};
+use rune::{Color, El, TextStyle, el};
 use vantare_domain::delta::{Event, Tone};
 
 const WIDTH: f32 = 280.0;
@@ -30,7 +30,7 @@ fn mix(from: u32, to: u32, t: f32) -> Color {
     let channel = |shift: u32| {
         let a = ((from >> shift) & 255) as f32;
         let b = ((to >> shift) & 255) as f32;
-        (a + (b - a) * t) / 255.0
+        (a + (b - a) * t).round() / 255.0
     };
     Color {
         r: channel(16),
@@ -41,20 +41,25 @@ fn mix(from: u32, to: u32, t: f32) -> Color {
 }
 
 fn text_at(value: &str, x: f32, base: f32, style: TextStyle, ink: Color) -> El {
-    let ascent = (style.size * 1984.0 / 2048.0).round();
-    text(value)
-        .font(style)
-        .color(ink)
-        .pin(Some(x), Some(base - ascent), None, None)
+    eficiencia::label(value, x, base, style, ink)
 }
 
-fn soot(color: Color, alpha: f32, blur: f32, width: f32, height: f32) -> El {
+/// Esquinas del relleno de la cápsula: solo el extremo de salida (GPUI [5,0,0,5]).
+fn capsule_corners(gaining: bool) -> [f32; 4] {
+    if gaining {
+        [5.0, 0.0, 0.0, 5.0]
+    } else {
+        [0.0, 5.0, 5.0, 0.0]
+    }
+}
+
+fn soot_at(x: f32, y: f32, color: Color, alpha: f32, blur: f32, width: f32, height: f32) -> El {
     let tint = Color { a: alpha, ..color };
     el().size(width, height)
         .radius(3.0)
         .fill(tint)
         .shadow(0.0, blur, tint)
-        .pin(Some(0.0), Some(0.0), None, None)
+        .pin(Some(x), Some(y), None, None)
 }
 
 pub(super) fn view(scene: &Scene) -> El {
@@ -116,9 +121,16 @@ pub(super) fn view(scene: &Scene) -> El {
     };
     if let Some(tone) = cross {
         root = root.child(
-            el().pin(Some(136.0), Some(61.0), None, None)
-                .size(9.0, 19.0)
-                .child(soot(tone_color(tone), 0.7 * cross_alpha, 8.0, 1.0, 11.0)),
+            soot_at(
+                140.0,
+                65.0,
+                tone_color(tone),
+                0.7 * cross_alpha,
+                8.0,
+                1.0,
+                11.0,
+            )
+            .key("delta-cross"),
         );
     }
     root = root.child(
@@ -139,11 +151,7 @@ pub(super) fn view(scene: &Scene) -> El {
             (1.0, 0.3)
         };
         root = root
-            .child(
-                el().pin(Some(x - 3.5), Some(64.5), None, None)
-                    .size(w + 7.0, 12.0)
-                    .child(soot(color, 0.4, 7.0, w, 5.0)),
-            )
+            .child(soot_at(x, 68.0, color, 0.4, 7.0, w, 5.0))
             .child(
                 el().key("delta-fill")
                     .pin(Some(x), Some(68.0), None, None)
@@ -203,6 +211,7 @@ fn notices(mut root: El, s: &Scene, capsule: bool) -> El {
     if event == Event::PersonalBest {
         root = notice(
             root,
+            "notice-best",
             s.best_label,
             &s.best_lap_text,
             false,
@@ -213,6 +222,7 @@ fn notices(mut root: El, s: &Scene, capsule: bool) -> El {
     }
     notice(
         root,
+        "notice-last",
         s.last_label,
         &s.last_lap_text,
         true,
@@ -224,6 +234,7 @@ fn notices(mut root: El, s: &Scene, capsule: bool) -> El {
 
 fn notice(
     root: El,
+    key: &str,
     label: &str,
     value: &str,
     right: bool,
@@ -233,22 +244,24 @@ fn notice(
 ) -> El {
     let slide = 6.0 * (1.0 - alpha) * if right { 1.0 } else { -1.0 };
     let mut root = root;
-    for (value_text, top, height, style) in [
+    for (value_text, top, height, style, is_label) in [
         (
             label,
             if capsule { 37.0 } else { 26.75 },
             7.0,
             eficiencia::font(7.0, 600, 0.1),
+            true,
         ),
         (
             value,
             if capsule { 47.0 } else { 36.75 },
             12.0,
             eficiencia::font(12.0, 650, 0.0),
+            false,
         ),
     ] {
         let fitted = eficiencia::fit(value_text, style, 75.0);
-        let ink = eficiencia::color(color, alpha);
+        let ink = eficiencia::color(if is_label { MUTED } else { color }, alpha);
         let x = if right {
             (if capsule { 264.0 } else { 272.0 }) - eficiencia::width(&fitted, style)
         } else if capsule {
@@ -256,13 +269,16 @@ fn notice(
         } else {
             8.0
         };
-        root = root.child(text_at(
-            &fitted,
-            x + slide,
-            eficiencia::baseline(top, height, style.size),
-            style,
-            ink,
-        ));
+        root = root.child(
+            text_at(
+                &fitted,
+                x + slide,
+                eficiencia::baseline(top, height, style.size),
+                style,
+                ink,
+            )
+            .key(format!("{key}-{}", if is_label { "label" } else { "value" })),
+        );
     }
     root
 }
@@ -274,10 +290,19 @@ fn capsule(s: &Scene) -> El {
         .size(WIDTH, HEIGHT)
         .motion(rune::Spring::NONE);
     root = root.child(
-        el().pin(Some(10.0), Some(8.0), None, None)
+        el().key("delta-capsule-track")
+            .pin(Some(10.0), Some(8.0), None, None)
             .size(260.0, 17.0)
             .radius(8.5)
-            .fill(eficiencia::color(0x0a0a0e, 0.88)),
+            .fill(eficiencia::color(0x0a0a0e, 0.88))
+            .box_shadow(rune::Shadow {
+                x: 0.0,
+                y: 2.0,
+                blur: 6.0,
+                spread: 0.0,
+                color: eficiencia::color(0x000000, 0.7),
+                inset: true,
+            }),
     );
     let mut clipped = el()
         .pin(Some(10.0), Some(8.0), None, None)
@@ -288,19 +313,12 @@ fn capsule(s: &Scene) -> El {
         let x = offset * 260.0;
         let w = width * 260.0;
         let gaining = s.tone == Tone::Gaining;
-        let corners = if gaining {
-            [5.0, 0.0, 0.0, 5.0]
-        } else {
-            [0.0, 5.0, 5.0, 0.0]
-        };
+        let corners = capsule_corners(gaining);
         clipped = clipped
+            .child(soot_at(x, 3.0, color, 0.45, 10.0, w, 11.0))
             .child(
-                el().pin(Some(x - 5.0), Some(0.0), None, None)
-                    .size(w + 10.0, 17.0)
-                    .child(soot(color, 0.45, 10.0, w, 11.0)),
-            )
-            .child(
-                el().pin(Some(x), Some(3.0), None, None)
+                el().key("delta-fill")
+                    .pin(Some(x), Some(3.0), None, None)
                     .size(w, 11.0)
                     .corners(corners)
                     .linear_gradient(
@@ -330,9 +348,16 @@ fn capsule(s: &Scene) -> El {
     let center = mix(INK, center_hex, cross_alpha);
     if let Some(tone) = cross {
         clipped = clipped.child(
-            el().pin(Some(126.0), Some(0.0), None, None)
-                .size(9.0, 17.0)
-                .child(soot(tone_color(tone), 0.7 * cross_alpha, 8.0, 1.0, 17.0)),
+            soot_at(
+                130.0,
+                0.0,
+                tone_color(tone),
+                0.7 * cross_alpha,
+                8.0,
+                1.0,
+                17.0,
+            )
+            .key("delta-cross"),
         );
     }
     clipped = clipped.child(

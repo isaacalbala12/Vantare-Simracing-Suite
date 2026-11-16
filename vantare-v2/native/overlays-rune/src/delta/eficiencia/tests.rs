@@ -144,3 +144,68 @@ fn every_state_and_template_stays_inside_the_window() {
         }
     }
 }
+
+#[test]
+fn capsule_corners_round_only_the_exit_side() {
+    use super::paint::capsule_corners;
+    assert_eq!(capsule_corners(true), [5.0, 0.0, 0.0, 5.0]);
+    assert_eq!(capsule_corners(false), [0.0, 5.0, 5.0, 0.0]);
+}
+
+#[test]
+fn the_tone_cross_lights_its_gpui_box_in_both_templates() {
+    for (template, expected) in [
+        ("instrument", [140.0, 65.0, 1.0, 11.0]),
+        ("capsule", [140.0, 8.0, 1.0, 17.0]),
+    ] {
+        let mut widget = delta(&settings(template));
+        let mut prev = crate::testdata::snapshot();
+        prev.state.capabilities.delta = vantare_domain::Capability::Fresh;
+        prev.state.player.as_mut().expect("player").delta_best_s = Reliable(-0.2);
+        widget.update(&prev, 0.0);
+        let mut next = prev.clone();
+        next.state.player.as_mut().expect("player").delta_best_s = Reliable(0.2);
+        widget.update(&next, 0.1);
+        let runtime = harness(widget);
+        let elements = runtime.elements();
+        let cross = by_key(&elements, "delta-cross");
+        assert_eq!(cross.rect, expected, "{template}");
+    }
+}
+
+#[test]
+fn notice_labels_are_muted_and_values_take_the_tone() {
+    let mut widget = delta(&settings("instrument"));
+    let mut prev = crate::testdata::snapshot();
+    prev.state.capabilities.lap_times = vantare_domain::Capability::Fresh;
+    prev.state.capabilities.delta = vantare_domain::Capability::Fresh;
+    prev.state.player.as_mut().expect("player").delta_best_s = Reliable(-0.2);
+    let car_id = prev.state.player.expect("player").car;
+    prev.state
+        .cars
+        .iter_mut()
+        .find(|car| car.id == car_id)
+        .expect("player car")
+        .best_lap_s = Reliable(100.0);
+    widget.update(&prev, 0.0);
+    let mut record = prev.clone();
+    record
+        .state
+        .cars
+        .iter_mut()
+        .find(|car| car.id == car_id)
+        .expect("player car")
+        .best_lap_s = Reliable(99.0);
+    widget.update(&record, 1.0);
+    widget.animate(1.18);
+    let runtime = harness(widget);
+    let elements = runtime.elements();
+    assert_eq!(
+        by_key(&elements, "notice-best-label").text_color,
+        Some(crate::eficiencia::color(crate::eficiencia::MUTED, 1.0))
+    );
+    assert_eq!(
+        by_key(&elements, "notice-best-value").text_color,
+        Some(crate::eficiencia::color(0x7fb686, 1.0))
+    );
+}

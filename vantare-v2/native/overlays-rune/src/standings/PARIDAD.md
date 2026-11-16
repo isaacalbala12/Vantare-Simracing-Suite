@@ -55,3 +55,22 @@ Espera: mismo título y pista, cuatro esqueletos en compacto y cinco en los dem�
 Todas las capas llevan pin. Tests de textos ES/EN, banda, esqueletos y límites.
 Sin Motion: filas saltan y no hay flashes ni fundidos; #2465 sigue congelado.
 Capturas de píxeles pendientes exclusivamente del PC (#2365).
+
+## Revisión A3 — pausa y oráculos contextuales
+
+La banda común de GPUI (app.rs, PAUSE_BANNER_HEIGHT=22) se porta como Relative:
+EN PAUSA/PAUSED, #101113f2, posición y=plan.height y 22 px adicionales solo en
+pausa, también en size_for antes de ingerir la foto. Se conserva la proyección
+viva y una ventana abierta en pausa proyecta la foto retenida como Live.
+El test rojo previo devuelve 289 en vez de 311; cubre entrar, repetir, salir,
+abrir en pausa, ES/EN, las tres anchuras, pines y reposo sin reloj.
+
+El separador recibe de plan el hueco superior de 6 px; label añade Display +1
+y Mono +0. Tests fijan esos literales y el extremo derecho width−12.
+Los casos contextuales se identifican por caption y texto, sin índices de foto.
+El pie estrecho de GPUI escribe VR/FL y «31 °C · seca/dry», sin Pista/Track.
+Se prueba con XS+Last (391 px, por debajo de narrow_width=400); el preset
+compacto de 340 sin tiempos no pide pie Session. Estándar con Best (520 px)
+sí conserva Pista/Track. También se prueban Pole, Tuya/Yours +1.234 y Parada/Stop 3.
+Waiting (Missing) y Lost pintan espera y esqueletos; Stale y Paused conservan
+la presentación de datos de GPUI. Límites de 340/520 con banner, pie y espera.

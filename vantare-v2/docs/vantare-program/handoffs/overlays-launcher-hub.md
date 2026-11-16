@@ -16,15 +16,22 @@ entrega, utilizable tras el PR B de captura; sin gráficos, merge ni release pro
 
 ## VANTA-144 · Standings literal A3 (16/11/2026)
 
-A1 #2472 prepara geometría; A2 #2475 fusionado por squash 19ac26786;
-A3 #2476 completa banners, separadores, pies Frozen/Pits/Spectator/Session
-y espera. Rebase --onto nightly desde el último A2 a61d588d4, sin conflictos;
-range-diff confirma los mismos tres parches. Base pública cambiada a nightly.
-Producción +340/-1 (341 líneas cambiadas), tests +99/-0; documentación aparte.
-Tabla de funciones y decisiones en `standings/PARIDAD.md`.
-Mac sobre nightly: fmt y Clippy -D warnings PASS; 468 + 2 tests PASS.
-CI Rune Windows y revisión Sonnet del head rebasado pendientes.
-Sin gráficos en servidor. Motion #2465 congelado y capturas PC pendientes.
+A2 #2475 fusionado por squash 19ac26786; A3 #2476 rebasado sobre nightly
+f7b0350bd, incluida captura B (#2484). Conflicto solo en este handoff, conservando
+ambas entradas. lib.rs/capture.rs/main.rs/README/workflow conservan nightly.
+Port literal contextual confirmado por
+Sonnet; se añade la banda común de pausa que faltaba: 22 px, EN PAUSA/PAUSED,
+#101113f2, pin en plan.height, size/size_for +22 solo en pausa y retención viva.
+Test primero (15c0d5fa7): rojo 289 frente a 311 antes del arreglo 2048b3a1d.
+Oráculos: límites 340/520 con banda/pie/espera, abreviaturas del pie estrecho,
+Pista/Track, Tuya/Yours, Pole, Parada/Stop, gap superior y baselines del separador,
+detalle derecho, Missing/Stale/Paused y casos por nombre de foto y texto.
+Diff real contra nightly: producción +407/-8 = 415 líneas cambiadas;
+tests +387/-5 = 392; documentación aparte. Recuento de git diff --numstat origin/nightly...HEAD.
+Mac tras el rebase: fmt y Clippy -D warnings PASS; 482 + 3 tests PASS.
+CI Rune Windows y segunda revisión del head corregido pendientes.
+PARIDAD documenta las ramas literales del pie; captura PC pendiente (#2365).
+Sin gráficos en servidor ni cambios de domain/ipc/Cargo. Motion #2465 congelado.
 Registro A2 aceptado con A3 inmediatamente detrás, antes de promover a testers.
 
 ## VANTA-144 · Standings literal A2 (16/11/2026)

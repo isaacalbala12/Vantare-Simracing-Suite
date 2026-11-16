@@ -78,7 +78,7 @@ function Screen() {
   const item = state.view?.instances[0];
   return item ? <StudioSteps item={item} /> : null;
 }
-async function edit() {
+async function edit(decimals = false) {
   const initial = view();
   let accept: (reply: Reply) => void = () => {
     throw Error("No pending save");
@@ -108,12 +108,18 @@ async function edit() {
   );
   const user = userEvent.setup();
   await user.click(await screen.findByRole("tab", { name: studio.content }));
+  if (decimals) {
+    await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+    await user.click(
+      await screen.findByRole("option", { name: "Última vuelta" }),
+    );
+  }
   const input = screen.getByRole("textbox", {
-    name: text.maxChars,
+    name: decimals ? text.decimals : text.maxChars,
   }) as HTMLInputElement;
   await user.clear(input);
-  await user.type(input, "0022{Enter}");
-  expect(input.value).toBe("0022");
+  await user.type(input, decimals ? "02{Enter}" : "0022{Enter}");
+  expect(input.value).toBe(decimals ? "02" : "0022");
   expect(input.readOnly).toBe(true);
   const request = transport.request.mock.calls.find(
     ([request]) => request.method === "studio.instance",
@@ -124,11 +130,38 @@ async function edit() {
   });
   expect(
     request.patch.value.columns.find(
-      (column: { metric: string }) => column.metric === "driverName",
+      (column: { metric: string }) =>
+        column.metric === (decimals ? "lastLap" : "driverName"),
     ).format,
-  ).toEqual({ maxChars: 22 });
+  ).toEqual(decimals ? { decimals: 2 } : { maxChars: 22 });
   return { initial, input, accept, reject };
 }
+it.each(["Rejected", "Unknown", "Conflict"] as const)(
+  "retains the decimal draft and never calls it saved after %s",
+  async (kind) => {
+    const { initial, input, reject } = await edit(true);
+    const error: HostError =
+      kind === "Rejected"
+        ? { kind: "rejected" }
+        : kind === "Unknown"
+          ? { kind: "coreUnavailable" }
+          : { kind: "studioConflict", current: initial };
+    await act(async () => reject(new HostFailure(error)));
+    expect(input.value).toBe("02");
+    expect(input.readOnly).toBe(false);
+    expect(document.activeElement).toBe(input);
+    const status = screen
+      .getAllByRole("status")
+      .find((node) => node.classList.contains("v-step-save"));
+    expect(status?.getAttribute("data-failed")).toBe("true");
+    expect(status?.textContent).toContain(studio.notSaved);
+    expect(
+      transport.request.mock.calls.filter(
+        ([request]) => request.method === "studio.instance",
+      ),
+    ).toHaveLength(1);
+  },
+);
 it.each(["Rejected", "Unknown", "Conflict"] as const)(
   "keeps the exact draft and marks it unsaved after %s",
   async (kind) => {

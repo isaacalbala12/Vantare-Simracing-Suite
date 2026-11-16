@@ -20,7 +20,7 @@ import {
   type TableSettings,
 } from "../../screens/studio/content-columns";
 import { Button } from "../Button";
-import { Input, Select, Switch } from "../Forms";
+import { Select, Switch } from "../Forms";
 import {
   AdditionalWidgetFields,
   hasAdditionalFields,
@@ -268,7 +268,6 @@ function ColumnSettings({
   const column =
     columns?.find((item) => item.metricId === selection) ?? columns?.[0];
   const resetHelp = useId();
-  const timeHelp = useId();
   const save = (value: WidgetSettingsPatch | null, control: string) => {
     if (value) void model.patch(value, control);
   };
@@ -408,20 +407,25 @@ function ColumnSettings({
               <Select
                 label={text.timeFormat}
                 value={column.format.display ?? "normal"}
-                disabled
-                aria-describedby={timeHelp}
+                disabled={model.disabled || !editable}
+                pending={model.pending}
                 options={Object.entries(text.timeNames).map(
                   ([value, label]) => ({ value, label }),
                 )}
-                onChange={() => {}}
+                onChange={(display) => {
+                  if (display === "normal" || display === "compact")
+                    edit({ format: { display } });
+                }}
               />
-              <Input
+              <ContentNumber
+                key={column.id}
                 label={text.decimals}
-                value={String(column.format.decimals ?? 3)}
-                disabled
-                aria-describedby={timeHelp}
+                value={column.format.decimals ?? 3}
+                min={0}
+                max={studioWidgetOptions.columns.decimalsMax}
+                model={{ ...model, disabled: model.disabled || !editable }}
+                onCommit={(decimals) => edit({ format: { decimals } })}
               />
-              <p id={timeHelp}>{text.timeReadOnly}</p>
             </>
           )}
         </Group>

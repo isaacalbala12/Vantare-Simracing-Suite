@@ -147,7 +147,7 @@ it("keeps unknown column sets read-only rather than pretending a toggle saved", 
   await user.click(gap);
   expect(state.execute).not.toHaveBeenCalled();
 });
-it("preserves unsupported time formatting and explains the disabled reset", async () => {
+it("reads saved time formats and enables reset without pretending an edit was saved", async () => {
   const item = contentInstance();
   if (item.settings?.kind !== "standings") throw Error("standings");
   const time = item.settings.columns?.find((c) => c.metricId === "lastLap");
@@ -165,19 +165,25 @@ it("preserves unsupported time formatting and explains the disabled reset", asyn
         name: text.timeFormat,
       }) as HTMLButtonElement
     ).disabled,
-  ).toBe(true);
+  ).toBe(false);
   expect(
     (screen.getByRole("textbox", { name: text.decimals }) as HTMLInputElement)
       .value,
   ).toBe("1");
-  expect(screen.getByText(text.timeReadOnly)).toBeTruthy();
+  expect(screen.queryByText(text.timeReadOnly)).toBeNull();
   expect(
     (screen.getByRole("button", { name: text.reset }) as HTMLButtonElement)
       .disabled,
-  ).toBe(true);
-  const ids = Array.from(document.querySelectorAll("[id]"), (node) => node.id);
-  expect(new Set(ids).size).toBe(ids.length);
-  expect(state.execute).not.toHaveBeenCalled();
+  ).toBe(false);
+  await user.click(screen.getByRole("button", { name: text.reset }));
+  const format = state.execute.mock.calls[0][0].patch.value.columns.find(
+    (column: { metric: string }) => column.metric === "lastLap",
+  ).format;
+  expect(format).toMatchObject({ mode: null, display: null, decimals: null });
+  expect(
+    (screen.getByRole("textbox", { name: text.decimals }) as HTMLInputElement)
+      .value,
+  ).toBe("1");
 });
 it("validates the name limit after commit and retains focus after a confirmed value changes", async () => {
   const item = contentInstance();
@@ -219,21 +225,69 @@ it("writes the displayed 16 character default together with truncate, not as an 
     ).format,
   ).toEqual({ mode: "truncate", maxChars: 16 });
 });
-it("links the read-only time format and decimal controls to their visible explanation", async () => {
-  const { user } = await mount();
-  await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
-  await user.click(
-    await screen.findByRole("option", { name: "Última vuelta" }),
-  );
-  const explanation = screen.getByText(text.timeReadOnly);
-  for (const control of [
-    screen.getByRole("combobox", { name: text.timeFormat }),
-    screen.getByRole("textbox", { name: text.decimals }),
-  ])
-    expect(control.getAttribute("aria-describedby")?.split(/\s+/)).toContain(
-      explanation.id,
+it.each(["Carrera", "Práctica", "Qualy"])(
+  "edits the time display in %s without changing other sessions",
+  async (session) => {
+    const { user } = await mount();
+    await user.click(screen.getByRole("tab", { name: session }));
+    await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+    await user.click(
+      await screen.findByRole("option", { name: "Última vuelta" }),
     );
+    await user.click(screen.getByRole("combobox", { name: text.timeFormat }));
+    await user.click(await screen.findByRole("option", { name: "Compacto" }));
+    const key =
+      session === "Carrera"
+        ? "columns"
+        : session === "Práctica"
+          ? "practiceColumns"
+          : "qualifyingColumns";
+    expect(state.execute.mock.calls[0][0]).toMatchObject({
+      method: "studio.instance",
+      baseRevision: "a".repeat(64),
+      patch: { field: "settings", value: { kind: "standings" } },
+    });
+    expect(
+      state.execute.mock.calls[0][0].patch.value[key].find(
+        (column: { metric: string }) => column.metric === "lastLap",
+      ).format,
+    ).toEqual({ display: "compact" });
+    expect(
+      screen.getByRole("combobox", { name: text.timeFormat }).textContent,
+    ).toContain("Completo");
+  },
+);
+it.each([0, 1, 2, 3])(
+  "commits decimal count %s explicitly without showing a saved value early",
+  async (decimals) => {
+    const item = contentInstance();
+    if (item.settings?.kind !== "standings") throw Error("standings");
+    const column = item.settings.columns?.find(
+      (column) => column.metricId === "bestLap",
+    );
+    if (!column) throw Error("column");
+    column.format.decimals = (decimals + 1) % 4;
+    const { user } = await mount(item);
+    await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+    await user.click(
+      await screen.findByRole("option", { name: "Mejor vuelta" }),
+    );
+    const input = screen.getByRole("textbox", { name: text.decimals });
+    await user.clear(input);
+    await user.type(input, `${decimals}{Enter}`);
+    expect(
+      state.execute.mock.calls[0][0].patch.value.columns.find(
+        (column: { metric: string }) => column.metric === "bestLap",
+      ).format,
+    ).toEqual({ decimals });
+  },
+);
+it("never exposes editable time formatting for Relative", async () => {
+  await mount(contentInstance("relative"));
+  expect(screen.queryByRole("combobox", { name: text.timeFormat })).toBeNull();
+  expect(screen.queryByRole("textbox", { name: text.decimals })).toBeNull();
 });
+
 it("uses the same closed patch path for Delta content", async () => {
   const { user } = await mount(contentInstance("delta"));
   await user.click(screen.getByRole("combobox", { name: text.reference }));

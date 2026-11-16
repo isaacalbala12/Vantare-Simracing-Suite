@@ -1,9 +1,12 @@
 # Canales de ramas y promociones
 
 > **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
-> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
-> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
-> estados de trackers anteriores son evidencia histórica, no instrucciones.
+> Project Vantare.** Leer la issue y actualizarla tras cada cambio material; el
+> worker escribe su entrada del handoff en el cuerpo del PR y el orquestador la
+> traslada al fusionar, en un PR de docs propio que agrupe varias fusiones.
+> Handoff e issue reflejan el mismo estado; registrar PR, checks, SHA y canal
+> real. Los enlaces y estados de trackers anteriores son evidencia histórica, no
+> instrucciones.
 
 
 ## Contrato canónico

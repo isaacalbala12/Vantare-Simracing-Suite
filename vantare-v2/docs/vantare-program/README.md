@@ -1,9 +1,12 @@
 # Vantare — expediente canónico del programa
 
 > **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
-> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
-> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
-> estados de trackers anteriores son evidencia histórica, no instrucciones.
+> Project Vantare.** Leer la issue y actualizarla tras cada cambio material; el
+> worker escribe su entrada del handoff en el cuerpo del PR y el orquestador la
+> traslada al fusionar, en un PR de docs propio que agrupe varias fusiones.
+> Handoff e issue reflejan el mismo estado; registrar PR, checks, SHA y canal
+> real. Los enlaces y estados de trackers anteriores son evidencia histórica, no
+> instrucciones.
 
 
 Estado: vigente desde ISA-120; revisado el 2026-08-05.
@@ -53,10 +56,10 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 ## Reglas de continuidad
 
 - Cada proyecto mantiene un único handoff vivo.
-- Todo worker lo actualiza si cambia estado, arquitectura, decisiones, tests,
-  riesgos o siguiente acción.
-- El orquestador lo actualiza inmediatamente despues de revisar cada worker o
-  tomar una decision material; no se espera al final de una fase larga.
+- El worker escribe su entrada del handoff en el cuerpo del PR y no edita el
+  handoff; el orquestador la traslada al fusionar, en un PR de docs propio que
+  agrupe varias fusiones, sin esperar al final de una fase larga. Handoff e issue
+  reflejan el mismo estado real.
 - Los workers no crean subagentes por defecto. La delegacion anidada requiere
   autorizacion expresa y acotada del orquestador.
 - La entrega en la issue GitHub enlaza el handoff y enumera evidencia real.

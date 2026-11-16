@@ -177,8 +177,9 @@ Todo encargo incluye:
   Isaac de cada hito con una línea: qué cambió y qué significa.
 - Revisa por tu cuenta las cifras que importan (diffs, mediciones) en vez de
   repetir las del worker.
-- Al terminar cada worker: revisión, decisión sobre sus preguntas, actualización
-  del handoff vivo y de la issue GitHub (ver `AGENTS.md`).
+- Al terminar cada worker: revisión, decisión sobre sus preguntas y actualización
+  de la issue GitHub. El worker escribe su entrada del handoff en el cuerpo del
+  PR y el orquestador la traslada al handoff al fusionar (ver `AGENTS.md`).
 
 ## Compilaciones de workers (#1993)
 

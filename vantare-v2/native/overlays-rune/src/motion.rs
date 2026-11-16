@@ -10,6 +10,16 @@ pub struct Tween {
 }
 /// Vantare's cubic ease-out; a widget that GPUI eases differently passes its own.
 const CURVE: [f32; 4] = [1.0 / 3.0, 1.0, 2.0 / 3.0, 1.0];
+/// Curva FLIP de GPUI para reordenar filas.
+pub const FLIP: [f32; 4] = [0.22, 0.9, 0.3, 1.0];
+/// Curva de salida de GPUI para el fundido de entrada y salida.
+pub const EASE_OUT: [f32; 4] = [0.0, 0.0, 0.58, 1.0];
+/// Fundido de una fila que aparece o desaparece, en milisegundos.
+pub const FADE_MS: u64 = 200;
+/// El FLIP de GPUI dura 280 ms más 1,1 ms por píxel recorrido, con techo 460.
+pub fn flip_ms(distance: f32) -> f64 {
+    (280.0 + f64::from(distance.abs()) * 1.1).min(460.0)
+}
 impl Tween {
     pub fn fixed(value: f32) -> Self {
         Self {
@@ -103,5 +113,29 @@ mod tests {
     #[test]
     fn linear_ignores_the_curve() {
         assert!((halfway(Tween::linear(0.0)) - 0.5).abs() < 1e-6);
+    }
+    #[test]
+    fn standings_curves_are_the_gpui_ones_and_do_not_invert() {
+        assert_eq!(FLIP, [0.22, 0.9, 0.3, 1.0]);
+        assert_eq!(EASE_OUT, [0.0, 0.0, 0.58, 1.0]);
+        assert_eq!(FADE_MS, 200);
+        let flip = rune::Easing::cubic(FLIP[0], FLIP[1], FLIP[2], FLIP[3]);
+        // Sale rápido y llega suave, sin pasar del destino.
+        let mut last = 0.0;
+        for step in 0..=20 {
+            let t = f64::from(step) / 20.0;
+            let y = flip.eval(t as f32);
+            assert!(y >= last - 1e-6, "la curva nunca retrocede en {t}");
+            assert!((-1e-6..=1.0 + 1e-6).contains(&y), "sin sobrepasar en {t}");
+            last = y;
+        }
+        assert!(
+            flip.eval(0.5) > 0.5,
+            "a mitad de tiempo ya recorrió más de la mitad"
+        );
+        // Duración: 280 ms de base, 1,1 ms por píxel, techo de 460.
+        assert!((flip_ms(0.0) - 280.0).abs() < 1e-9);
+        assert!((flip_ms(100.0) - 390.0).abs() < 1e-9);
+        assert!((flip_ms(400.0) - 460.0).abs() < 1e-9);
     }
 }

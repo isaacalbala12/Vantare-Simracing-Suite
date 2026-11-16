@@ -181,71 +181,20 @@ fn table(
             Align::Start,
         ));
     }
+    // Los fantasmas van debajo: la fila viva siempre se lee por encima.
+    for ghost in &state.visual.ghosts {
+        root = root.child(row_el(&ghost.row, l, ghost.top, ghost.alpha, &s, &label));
+    }
     for (index, row) in state.scene.display.rows.iter().enumerate() {
-        let y = l.rows[index];
-        let mut item = el()
-            .key(format!("car-{}", row.id))
-            .pin(Some(0.0), Some(y), None, None)
-            .size(l.width, l.row)
-            .motion(Spring::NONE);
-        if row.player {
-            item = item
-                .child(
-                    el().key("player-fill")
-                        .pin(Some(0.0), Some(0.0), None, None)
-                        .size(l.width, l.row)
-                        .fill(vantare::alpha(s.class(&row.class).tint, 0.17)),
-                )
-                .child(
-                    el().key("player-marker")
-                        .size(2.0, l.row - 4.0)
-                        .pin(Some(0.0), Some(2.0), None, None)
-                        .fill(s.accents.red),
-                );
-        }
-        for (column_index, (cell, column)) in row.cells.iter().zip(&l.columns).enumerate() {
-            if let Some(fill) = cell.fill {
-                item = item.child(
-                    el().key(format!("chip-{column_index}"))
-                        .pin(Some(column.x), Some(4.0), None, None)
-                        .size(column.width, (l.row - 8.0).max(0.0))
-                        .radius(s.geometry.chip_radius)
-                        .fill(fill),
-                );
-            }
-            if !cell.segments.is_empty() {
-                let gap = s.geometry.sector_gap;
-                let width = ((column.width - gap * (cell.segments.len().saturating_sub(1)) as f32)
-                    / cell.segments.len() as f32)
-                    .max(0.0);
-                for (segment, ink) in cell.segments.iter().enumerate() {
-                    item = item.child(
-                        el().key(format!("sector-{column_index}-{segment}"))
-                            .pin(
-                                Some(column.x + segment as f32 * (width + gap)),
-                                Some((l.row - s.geometry.sector_height) / 2.0),
-                                None,
-                                None,
-                            )
-                            .size(width, s.geometry.sector_height)
-                            .radius(s.geometry.sector_radius)
-                            .fill(*ink),
-                    );
-                }
-                continue;
-            }
-            item = item.child(label(
-                &format!("cell-{column_index}"),
-                &cell.text,
-                column.x,
-                0.0,
-                column.width,
-                l.row,
-                cell.ink,
-                cell.align,
-            ));
-        }
-        root = root.child(item);
+        let vis = state.visual.rows.get(&row.id).copied().unwrap_or_default();
+        root = root.child(row_el(
+            row,
+            l,
+            l.rows[index] + vis.dy,
+            vis.alpha,
+            &s,
+            &label,
+        ));
     }
     if !state.scene.display.status.is_empty() {
         root = root.child(label(
@@ -261,6 +210,81 @@ fn table(
     }
     root
 }
+/// Una fila de la tabla en su `y` viva y con su opacidad; sirve a vivos y fantasmas.
+fn row_el(
+    row: &super::scene::Row,
+    l: &super::layout::Layout,
+    y: f32,
+    alpha: f32,
+    s: &Style,
+    label: &impl Fn(&str, &str, f32, f32, f32, f32, Color, Align) -> El,
+) -> El {
+    let mut item = el()
+        .key(format!("car-{}", row.id))
+        .pin(Some(0.0), Some(y), None, None)
+        .size(l.width, l.row)
+        .opacity(alpha)
+        .motion(Spring::NONE);
+    if row.player {
+        item = item
+            .child(
+                el().key("player-fill")
+                    .pin(Some(0.0), Some(0.0), None, None)
+                    .size(l.width, l.row)
+                    .fill(vantare::alpha(s.class(&row.class).tint, 0.17)),
+            )
+            .child(
+                el().key("player-marker")
+                    .pin(Some(0.0), Some(2.0), None, None)
+                    .size(2.0, l.row - 4.0)
+                    .fill(s.accents.red),
+            );
+    }
+    for (column_index, (cell, column)) in row.cells.iter().zip(&l.columns).enumerate() {
+        if let Some(fill) = cell.fill {
+            item = item.child(
+                el().key(format!("chip-{column_index}"))
+                    .pin(Some(column.x), Some(4.0), None, None)
+                    .size(column.width, (l.row - 8.0).max(0.0))
+                    .radius(s.geometry.chip_radius)
+                    .fill(fill),
+            );
+        }
+        if !cell.segments.is_empty() {
+            let gap = s.geometry.sector_gap;
+            let width = ((column.width - gap * (cell.segments.len().saturating_sub(1)) as f32)
+                / cell.segments.len() as f32)
+                .max(0.0);
+            for (segment, ink) in cell.segments.iter().enumerate() {
+                item = item.child(
+                    el().key(format!("sector-{column_index}-{segment}"))
+                        .pin(
+                            Some(column.x + segment as f32 * (width + gap)),
+                            Some((l.row - s.geometry.sector_height) / 2.0),
+                            None,
+                            None,
+                        )
+                        .size(width, s.geometry.sector_height)
+                        .radius(s.geometry.sector_radius)
+                        .fill(*ink),
+                );
+            }
+            continue;
+        }
+        item = item.child(label(
+            &format!("cell-{column_index}"),
+            &cell.text,
+            column.x,
+            0.0,
+            column.width,
+            l.row,
+            cell.ink,
+            cell.align,
+        ));
+    }
+    item
+}
+
 fn footer(
     mut root: El,
     state: &Standings,

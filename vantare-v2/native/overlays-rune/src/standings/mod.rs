@@ -1,5 +1,6 @@
 //! Standings: one canonical projection/selection, one painter, no I/O or timer.
 mod layout;
+mod motion;
 mod paint;
 mod scene;
 #[cfg(test)]
@@ -22,12 +23,20 @@ pub struct Standings {
     prefs: Preferences,
     board: Arc<Board>,
     scene: scene::Scene,
+    motion: motion::Motion,
+    visual: motion::Visual,
+    /// Hay que recomponer aunque la escena no cambie (una fila que salta).
+    repaint: bool,
     paused: bool,
     live: bool,
 }
 
 impl Standings {
     pub fn new(settings: &Settings, prefs: Preferences) -> Self {
+        Self::build(settings, prefs, false, 0.0)
+    }
+
+    pub fn build(settings: &Settings, prefs: Preferences, reduced: bool, clock: f64) -> Self {
         let settings = settings.normalized();
         let columns = layout::columns(&settings, None);
         let board = standings::project_cached(
@@ -39,11 +48,17 @@ impl Standings {
         let plan = Plan::new(board.clone(), String::new(), 0);
         let layout = layout::Layout::new(&settings, &columns, &plan);
         let display = scene::Display::new(&settings, prefs, &plan, &layout, false);
+        let mut motion = motion::Motion::new();
+        motion.policy(reduced);
+        let visual = motion.sample(clock);
         Self {
             settings,
             prefs,
             board,
             scene: scene::Scene { display, layout },
+            motion,
+            visual,
+            repaint: false,
             paused: false,
             live: false,
         }
@@ -66,13 +81,62 @@ impl Standings {
             return self.size();
         };
         let mut preview = self.clone();
-        preview.update(snapshot);
+        preview.apply(snapshot);
         preview.size()
     }
 
     /// Called only with the instance's photo already accepted by the host Cadence.
     /// The host owns rates, permissions, demand, visibility and source cancellation.
-    pub fn update(&mut self, snapshot: &Snapshot) -> bool {
+    pub(crate) fn update(&mut self, snapshot: &Snapshot, clock: f64) -> crate::widget::Update {
+        let changed = self.apply(snapshot);
+        if changed {
+            let rows: Vec<(&scene::Row, f32)> = self
+                .scene
+                .display
+                .rows
+                .iter()
+                .zip(&self.scene.layout.rows)
+                .map(|(row, y)| (row, *y))
+                .collect();
+            self.motion.update(&rows, clock);
+        }
+        self.repaint |= changed;
+        crate::widget::Update {
+            build: changed,
+            pixels: false,
+        }
+    }
+
+    /// Movimiento del instante; solo pide recomponer si cambió algo visible.
+    pub(crate) fn animate(&mut self, clock: f64) -> crate::widget::Update {
+        let visual = self.motion.sample(clock);
+        let mut build = visual != self.visual;
+        if build {
+            self.visual = visual;
+        }
+        build |= std::mem::take(&mut self.repaint);
+        crate::widget::Update {
+            build,
+            pixels: false,
+        }
+    }
+
+    /// Con movimiento reducido las filas saltan y no queda reloj.
+    pub(crate) fn policy(&mut self, reduced: bool, _hz: u16, clock: f64) -> crate::widget::Update {
+        if !self.motion.policy(reduced) {
+            return crate::widget::Update::default();
+        }
+        self.animate(clock)
+    }
+
+    pub(crate) fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
+        if let Some(due) = self.motion.next_wake(clock) {
+            tx.wake_at(due);
+        }
+    }
+
+    /// Recompone la escena visible; el movimiento se sincroniza en update.
+    fn apply(&mut self, snapshot: &Snapshot) -> bool {
         let paused = snapshot.state.source_state == SourceState::Paused;
         if paused && self.paused && self.live {
             return false;
@@ -132,9 +196,9 @@ impl crate::widget::Widget for Standings {
     fn new(
         settings: &AnySettings,
         prefs: Preferences,
-        _reduced: bool,
+        reduced: bool,
         _hz: u16,
-        _clock: f64,
+        clock: f64,
     ) -> Option<Box<dyn crate::widget::Widget>> {
         let AnySettings::Standings(settings) = settings else {
             return None;
@@ -142,7 +206,7 @@ impl crate::widget::Widget for Standings {
         if !supported(settings.design_system) {
             return None;
         }
-        Some(Box::new(Standings::new(settings, prefs)))
+        Some(Box::new(Standings::build(settings, prefs, reduced, clock)))
     }
     fn configured(&self, settings: &AnySettings, prefs: Preferences) -> bool {
         let AnySettings::Standings(settings) = settings else {
@@ -156,19 +220,18 @@ impl crate::widget::Widget for Standings {
     fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
         Standings::size_for(self, snapshot)
     }
-    fn policy(&mut self, _reduced: bool, _hz: u16, _clock: f64) -> crate::widget::Update {
-        Default::default()
+    fn policy(&mut self, reduced: bool, hz: u16, clock: f64) -> crate::widget::Update {
+        Standings::policy(self, reduced, hz, clock)
     }
-    fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> crate::widget::Update {
-        crate::widget::Update {
-            build: Standings::update(self, snapshot),
-            pixels: false,
-        }
+    fn update(&mut self, snapshot: &Snapshot, clock: f64) -> crate::widget::Update {
+        Standings::update(self, snapshot, clock)
     }
-    fn animate(&mut self, _clock: f64) -> crate::widget::Update {
-        Default::default()
+    fn animate(&mut self, clock: f64) -> crate::widget::Update {
+        Standings::animate(self, clock)
     }
-    fn schedule(&self, _clock: f64, _tx: &mut rune::Tx) {}
+    fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
+        Standings::schedule(self, clock, tx);
+    }
     fn view(&self) -> El {
         Standings::view(self)
     }

@@ -1,20 +1,20 @@
 # Paridad - Standings en Rune
 
 Widget portado de GPUI (`native/ui/src/standings/`) con la proyección y la selección de
-`domain::standings`. Un Look (Vantare). Este PR entrega la tabla estable: filas, columnas,
-bandas de clase, banners, pie y pausa.
+`domain::standings`. Un Look (Vantare). Este PR añade el movimiento de la tabla sobre la
+tabla estable que entregó A.
 
-## Diferencia declarada
+## Movimiento
 
-- **Movimiento de reordenación: pendiente en A2.** Una fila que cambia de puesto salta a
-  su nueva `y` en la siguiente foto; no hay FLIP ni fundido de entrada y salida. GPUI los
-  anima con `FLIP (0.22, 0.9, 0.3, 1)`, `EASE_OUT (0, 0, 0.58, 1)` y 200 ms de fundido.
-  Hasta que llegue A2, una reordenación no arma ningún reloj: el overlay queda quieto
-  después de pintar la tabla nueva.
+- **FLIP por identidad.** Una fila que cambia de puesto arranca en su `y` anterior y llega
+  a la nueva con `FLIP (0.22, 0.9, 0.3, 1)`. La duración es la de GPUI: 280 ms más 1,1 ms
+  por píxel recorrido, con techo de 460 ms.
+- **Fundido de entrada y salida.** Una fila que entra aparece en 200 ms con
+  `EASE_OUT (0, 0, 0.58, 1)`; la que sale se retiene en su última `y` hasta apagarse.
+- **Reloj solo durante la transición.** Al acabar no queda ningún despertar. Con
+  movimiento reducido las filas saltan al destino y no se arma reloj.
 
-## Funcionalidad pendiente (PR aparte, A2)
+## Funcionalidad pendiente (PR aparte)
 
-- **Sin movimiento de reordenación**: FLIP por identidad, fundido de entrada y salida,
-  reloj solo durante la transición y salto con movimiento reducido.
 - **Sin los demás efectos de GPUI**: destello de posición, chip `+n`/`−n`, barrido de
   vuelta rápida, batalla, marcador de mejor vuelta y punto de boxes.

@@ -23,8 +23,9 @@ export async function checkStudioCanvas(
       .click();
     await page.keyboard.press("Control+b");
     assert.equal(await page.locator(".v-sidebar--collapsed").count(), 0);
-    assert.ok(
-      (await page.locator(".v-focus-row-name small").count()) > 0,
+    await until(
+      async () => (await page.locator(".v-focus-row-name small").count()) > 0,
+      5000,
       "Widget keeps its status lines",
     );
     await page.getByRole("button", { name: t.open, exact: true }).click();

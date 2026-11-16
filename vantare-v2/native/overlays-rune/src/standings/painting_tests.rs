@@ -5,7 +5,7 @@ use vantare_domain::{
     format::Language,
     widget_settings::look::{Look, Tone},
 };
-fn config(name: &str) -> Config {
+pub(super) fn config(name: &str) -> Config {
     Config {
         design_system: Look::Vantare,
         columns: Some(vantare_domain::widget_settings::standings::vantare_template(name)),
@@ -14,8 +14,11 @@ fn config(name: &str) -> Config {
         ..Config::default()
     }
 }
-fn host(mut widget: Standings, photo: &Snapshot) -> Runtime<Standings> {
+pub(super) fn host(mut widget: Standings, photo: &Snapshot) -> Runtime<Standings> {
     widget.update(photo, 0.0);
+    paint(widget)
+}
+pub(super) fn paint(widget: Standings) -> Runtime<Standings> {
     let size = widget.size();
     let mut runtime = Runtime::with_text(
         widget,
@@ -31,7 +34,7 @@ fn host(mut widget: Standings, photo: &Snapshot) -> Runtime<Standings> {
     runtime.frame(0.0);
     runtime
 }
-fn texts(runtime: &Runtime<Standings>) -> Vec<String> {
+pub(super) fn texts(runtime: &Runtime<Standings>) -> Vec<String> {
     runtime
         .elements()
         .iter()

@@ -793,3 +793,7 @@ impl Painter<'_> {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "review_tests.rs"]
+mod review_tests;

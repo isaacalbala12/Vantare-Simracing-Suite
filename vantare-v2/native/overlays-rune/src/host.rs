@@ -293,6 +293,8 @@ pub struct State {
     window_key: Option<String>,
     pub frames: Option<Arc<FrameSet>>,
     pub viewport: Viewport,
+    // Fields drop in declaration order: widgets and Painters release their Arcs first.
+    assets: Option<Arc<rune::ImageCache>>,
 }
 impl State {
     pub fn new(shared: Arc<Shared>) -> Self {
@@ -328,6 +330,7 @@ impl State {
                     height: 720.0,
                 },
             },
+            assets: None,
         }
     }
     #[cfg(windows)]
@@ -384,6 +387,10 @@ fn setup(state: &mut State, wake: Waker) {
     if let Some(previous) = state.wake.replace(wake.clone()) {
         state.shared.remove_waker(&previous);
     }
+    let assets = state
+        .assets
+        .get_or_insert_with(|| Arc::new(rune::ImageCache::new(wake.clone())));
+    state.painters.attach_assets(assets);
     state.shared.install_waker(wake);
 }
 pub fn poll(state: &mut State, clock: f64, tx: &mut Tx) -> bool {
@@ -610,6 +617,63 @@ mod tests {
     use super::*;
     use rune::{Env, Runtime, Shell};
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn setup_attaches_one_shared_cache_to_widgets_created_before_it() {
+        let mut state = State::new(Shared::new(true));
+        let (painters, attached) = crate::renderer::tests::image_widgets();
+        state.painters = painters;
+        let mut rt = Runtime::new(state, view, (10.0, 10.0), Env::new(true, 1.0));
+        rt.frame(0.0);
+        assert!(rt.state.assets.is_none());
+        assert!(attached.lock().unwrap().is_empty());
+        setup(&mut rt.state, Arc::new(|| {}));
+        {
+            let observed = attached.lock().unwrap();
+            assert_eq!(observed.len(), 2);
+            assert!(Arc::ptr_eq(&observed[0], &observed[1]));
+            assert!(Arc::ptr_eq(&observed[0], rt.state.assets.as_ref().unwrap()));
+        }
+        let builds = rt.stats.commits;
+        assert!(rt.update_if(|s, tx| s.painters.animate(0.0, tx, &s.meter)));
+        rt.frame(0.0); // update_if marks the view dirty; only frame commits it.
+        assert_eq!(rt.stats.commits, builds + 1);
+        assert!(!rt.update_if(|s, tx| s.painters.animate(0.0, tx, &s.meter)));
+        rt.frame(0.0);
+        assert_eq!(rt.stats.commits, builds + 1);
+        attached.lock().unwrap().clear();
+    }
+
+    #[test]
+    fn closing_drops_widgets_and_cache_and_finishes_queued_image_workers() {
+        struct WorkerExit(std::sync::mpsc::Sender<()>);
+        impl Drop for WorkerExit {
+            fn drop(&mut self) {
+                let _ = self.0.send(());
+            }
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        let exit = WorkerExit(tx);
+        let bus = Shared::new(true);
+        let mut state = State::new(bus.clone());
+        let (painters, attached) = crate::renderer::tests::image_widgets();
+        state.painters = painters;
+        setup(
+            &mut state,
+            Arc::new(move || {
+                let _keep_until_waker_drop = &exit;
+            }),
+        );
+        attached.lock().unwrap().clear(); // Observers must not keep the cache alive.
+        let image = state.assets.as_ref().unwrap().rgba(1, 1, vec![0, 0, 0, 0]);
+        bus.close(CloseReason::Window);
+        drop(state); // Close the sender with RGBA work queued; do not await decoding first.
+        // Workers finish asynchronously: the last waker clone signals their exit, without polling.
+        rx.recv_timeout(Duration::from_secs(5))
+            .expect("image workers release the waker");
+        assert_eq!(image.size(), Some([1, 1]));
+        assert!(bus.pending.lock().unwrap().wakers.is_empty());
+    }
 
     fn queued_scene() -> crate::scene::Scene {
         let mut layout = design();

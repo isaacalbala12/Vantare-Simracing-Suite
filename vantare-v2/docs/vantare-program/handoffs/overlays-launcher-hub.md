@@ -1,3 +1,20 @@
+## VANTA-144 · Caché de imágenes propiedad del host Rune (16/11/2026)
+
+Variante attach_assets aprobada por raíz y sub-orquestador: método del trait
+con implementación vacía por defecto, sin cambiar new ni los seis widgets.
+Cada State crea un Arc<ImageCache> en setup con su waker; Painters lo conecta
+a instancias nuevas y a las que ya existían. El alta tardía pide una sola
+reconstrucción para incorporar imágenes. State declara la caché después del
+registro: primero se sueltan widgets/Painters y después el Arc del host.
+Tests sin ventana: dos widgets anteriores a setup reciben el mismo Arc
+(ptr_eq), una reconstrucción y reposo; al cerrar, una petición RGBA 1×1 termina
+y el Drop del último waker avisa por canal, con timeout de 5 s para detectar
+workers retenidos. Sin sleeps ni recuentos globales de hilos. La plantilla
+reserva attach_assets a widgets con imágenes/SVG; guardan el Arc del host,
+sin cachés propias ni OnceLock global. Gates y CI completa en el PR draft;
+revisión Sonnet de la raíz antes de fusionar. Sin cambios visuales conocidos,
+gráficos en el servidor, nuevas dependencias, release ni estado de Plane.
+
 ## VANTA-144 · Baseline y marca Neutro del Relative (16/11/2026)
 
 Corrección visible aprobada por raíz y sub-orquestador: solo «VANTARE» y el

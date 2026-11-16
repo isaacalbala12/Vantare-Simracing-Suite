@@ -304,6 +304,25 @@ mod tests {
     }
 
     #[test]
+    fn changing_the_visible_records_rebuilds_the_widget() {
+        // show_class/show_personal cambian qué récord se pinta: el host debe
+        // reconstruir el widget en vez de conservar la proyección anterior.
+        let prefs = Preferences::default();
+        let painter = widget(&Config::default(), prefs, false);
+        let hidden_class = Settings::FastestLap(Config {
+            show_class: false,
+            ..Config::default()
+        });
+        assert!(!painter.configured(&hidden_class, prefs));
+        let hidden_personal = Settings::FastestLap(Config {
+            show_personal: false,
+            ..Config::default()
+        });
+        assert!(!painter.configured(&hidden_personal, prefs));
+        assert!(painter.configured(&Settings::FastestLap(Config::default()), prefs));
+    }
+
+    #[test]
     fn still_data_draws_nothing_and_a_visible_notice_draws_once() {
         let prefs = Preferences::default();
         let mut runtime = runtime(widget(&Config::default(), prefs, false));
@@ -367,6 +386,7 @@ mod tests {
 
     #[test]
     fn the_workshop_demo_previews_its_record_without_notice_or_clock() {
+        use vantare_domain::fastest_lap::Kind;
         let prefs = Preferences::default();
         let demo = demo_photo();
         let mut widget = widget(&Config::default(), prefs, false);
@@ -377,9 +397,29 @@ mod tests {
         assert!(widget.animate(0.0).build, "una imagen");
         let scene = widget.visual.as_ref().expect("récord fijo");
         assert_eq!(scene.opacity, 1.0);
-        assert_ne!(scene.time.as_ref(), "—");
+        assert_eq!(scene.kind, Kind::Class);
+        // Récord de clase exacto de la foto final del fixture.
+        assert_eq!(scene.time.as_ref(), "1:30.864");
+        assert_eq!(scene.title, "VUELTA RÁPIDA");
+        assert_eq!(
+            scene.sectors, [None; 3],
+            "la vuelta del récord no es la última: sin sectores"
+        );
         assert_eq!(widget.motion.next_wake(0.0), None, "sin reloj");
         assert!(!widget.update(&demo, 0.1).pixels, "la misma foto reposa");
+    }
+
+    #[test]
+    fn leaving_the_demo_removes_the_preview_image() {
+        let prefs = Preferences::default();
+        let mut widget = widget(&Config::default(), prefs, false);
+        widget.update(&demo_photo(), 0.0);
+        assert!(widget.animate(0.0).build);
+        assert!(widget.visual.is_some(), "preview fijo");
+        // Foto viva más lenta que el récord: no anuncia nada y retira la imagen.
+        widget.update(&photo(9, 95.0), 0.1);
+        assert!(widget.animate(0.1).build, "la vista previa se retira");
+        assert!(widget.visual.is_none());
     }
 
     #[test]

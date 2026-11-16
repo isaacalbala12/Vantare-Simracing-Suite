@@ -1,4 +1,5 @@
 use super::*;
+use crate::widget::Widget;
 use rune::{Env, Runtime};
 use vantare_domain::{Quality::Reliable, SourceState};
 

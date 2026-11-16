@@ -36,6 +36,8 @@ jobs:
       - run: bun run test
       - name: Verify production renderer isolation
         run: bun scripts/renderer-production.ts
+      - name: Verify settings field guard
+        run: bun scripts/settings-field-guard.ts
       - name: Install Chromium and system dependencies
         run: |
           set -o pipefail

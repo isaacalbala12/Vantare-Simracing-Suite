@@ -26,6 +26,15 @@ renderer de producción no incluye mocks ni fixtures congeladas. Es un paso
 aparte del test unitario porque en este servidor un build en frío tarda
 decenas de segundos y no cabe en un plazo de test.
 
+`bun scripts/settings-field-guard.ts` comprueba que la guarda
+`fieldsCoverContract` de `src/contract/generated/settings.ts` rechaza una lista
+de campos incompleta y otra con campos fuera del contrato (dos errores
+`TS2322`, en `missing.ts` y `extra.ts`). También es un paso de CI y no un test:
+el compilador de TypeScript 7 es un proceso nativo y en este servidor tarda
+156–209 ms en solitario, 9,8 s con un build en paralelo y 21,4 s en una pasada
+completa de la suite (#2486). El script se da 60 s y sale con código distinto
+de cero si el resultado no cumple.
+
 `bun run test` usa el pool `threads`. En este servidor, un worker `forks` en
 frío podía agotar el plazo interno de 60 s de Vitest antes de ejecutar ningún
 test (#2442): el arranque pagaba la transformación e importación del grafo del

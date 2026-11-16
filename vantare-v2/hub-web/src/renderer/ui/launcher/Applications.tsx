@@ -149,23 +149,6 @@ export function ApplicationCatalog({
           </Button>
         </div>
       </div>
-      <p className="v-muted">
-        {text.lastScan}{" "}
-        {completedAt ? (
-          <time dateTime={completedAt.toISOString()}>
-            {completedAt.toLocaleString("es-ES", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-              hourCycle: "h23",
-            })}
-          </time>
-        ) : (
-          text.lastScanUnknown
-        )}
-      </p>
       <section
         className="v-launcher-catalog"
         aria-label={text.title}
@@ -173,10 +156,31 @@ export function ApplicationCatalog({
       >
         <header>
           <h2>{text.title}</h2>
-          <span>
-            {value.apps.some((app) => app.found)
-              ? text.detectedCount(value.apps.filter((app) => app.found).length)
-              : text.catalogCount(value.apps.length)}
+          <span className="v-launcher-scan-meta">
+            <span>
+              {text.lastScan}{" "}
+              {completedAt ? (
+                <time dateTime={completedAt.toISOString()}>
+                  {completedAt.toLocaleString("es-ES", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hourCycle: "h23",
+                  })}
+                </time>
+              ) : (
+                text.lastScanUnknown
+              )}
+            </span>
+            <span>
+              {value.apps.some((app) => app.found)
+                ? text.detectedCount(
+                    value.apps.filter((app) => app.found).length,
+                  )
+                : text.catalogCount(value.apps.length)}
+            </span>
           </span>
         </header>
         <div className="v-launcher-catalog-body">

@@ -16,7 +16,6 @@ import { launcherText as text } from "../../i18n/launcher";
 import { actionText } from "../../i18n/launcher-actions";
 import { appText } from "../../i18n/launcher-apps";
 import { Button } from "../Button";
-import { Callout } from "../Data";
 import { Select, Switch } from "../Forms";
 import { AppMark } from "./Profiles";
 
@@ -116,7 +115,9 @@ export function LauncherApplicationsRail({
         </div>
       </section>
       {lastScan && lastScan.warningCount > 0 && (
-        <Callout title={appText.scanWarnings(lastScan.warningCount)} />
+        <div role="status" className="v-launcher-scan-warning">
+          {appText.scanWarnings(lastScan.warningCount)}
+        </div>
       )}
       {options && (
         <section aria-labelledby={headingId}>

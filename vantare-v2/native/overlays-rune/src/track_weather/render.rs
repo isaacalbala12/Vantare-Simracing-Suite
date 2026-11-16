@@ -934,4 +934,44 @@ mod tests {
                 .is_some_and(|text| text.ends_with('…'))
         );
     }
+
+    #[test]
+    fn no_painted_element_falls_outside_the_window() {
+        let vm = reference();
+        for (layout, (width, height)) in [
+            (Layout::Wide, (280.0, 210.0)),
+            (Layout::Vertical, (132.0, 440.0)),
+        ] {
+            for (status, wet) in [
+                (Status::Ready, Some(25.0)),
+                (Status::Stale, None),
+                (Status::Missing, None),
+            ] {
+                let mut view = vm.clone();
+                view.status = status;
+                if status != Status::Ready {
+                    view.status_text = "SIN DATOS";
+                    view.metrics.clear();
+                }
+                let scene = build(
+                    layout,
+                    &view,
+                    Language::Es,
+                    "Carrera · 08:42",
+                    Some(0.7),
+                    wet,
+                );
+                let elements = elements(Preferences::default(), &scene);
+                for element in &elements {
+                    let [x, y, w, h] = element.rect;
+                    assert!(
+                        x >= -0.01 && y >= -0.01 && x + w <= width + 0.01 && y + h <= height + 0.01,
+                        "{layout:?} {status:?}: {} fuera de la ventana: {:?}",
+                        element.key.as_deref().unwrap_or("?"),
+                        element.rect
+                    );
+                }
+            }
+        }
+    }
 }

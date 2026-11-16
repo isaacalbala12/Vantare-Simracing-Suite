@@ -1,3 +1,23 @@
+## VANTA-138 · #2380, motivo de lienzo no disponible (16/11/2026)
+
+Esquema aprobado por raíz: StudioState.monitorUnavailable, fallo privado cerrado
+en el adaptador y mutaciones todavía Protected. Sin métodos, módulos, hilos,
+estado persistente, ipc/domain ni dependencias nuevos. Contrato v45, bump separado
+sobre nightly verificada en v44. Núcleo y contrato solamente; Sol-Hub hará UI/textos
+en #2362. Implementado en vantareapp/isa-2380-studio-monitor-state, draft enlazado
+por #2380. Formato/exportador, Clippy y666 tests host correctos (1 omitido), por la
+cola del servidor; ambos tipos/lint y525 tests web correctos. CI/revisión pendientes;
+sin merge, release ni gráficos.
+
+Textos aprobados para el consumidor:
+- monitorUnavailable: «Vantare no detecta el monitor de este lienzo» + «Conéctalo y
+  pulsa Volver a cargar.»; selector de resolución oculto (canvas/monitor null).
+- resto de Protected/Missing: «No se puede abrir este diseño» + «Vuelve a cargar.
+  Si sigue igual, el archivo puede estar dañado o no ser compatible.».
+
+Se conserva el primer error confirmado y no se infiere la causa desde null.
+Protected sigue cubriendo otros límites de proyección; no afirma corrupción.
+
 ## VANTA-144 · Caché de imágenes propiedad del host Rune (16/11/2026)
 
 Variante attach_assets aprobada por raíz y sub-orquestador: método del trait

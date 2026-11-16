@@ -20,7 +20,7 @@ import {
   type TableSettings,
 } from "../../screens/studio/content-columns";
 import { Button } from "../Button";
-import { Input, Select, Switch } from "../Forms";
+import { Segmented, Select, Switch } from "../Forms";
 import {
   AdditionalWidgetFields,
   hasAdditionalFields,
@@ -268,7 +268,6 @@ function ColumnSettings({
   const column =
     columns?.find((item) => item.metricId === selection) ?? columns?.[0];
   const resetHelp = useId();
-  const timeHelp = useId();
   const save = (value: WidgetSettingsPatch | null, control: string) => {
     if (value) void model.patch(value, control);
   };
@@ -281,11 +280,12 @@ function ColumnSettings({
   };
   return (
     <div className="v-studio-content-table-grid">
-      <Group title={text.columns}>
-        {settings.kind === "standings" && (
-          <>
+      <section className="v-studio-appearance-group" aria-label={text.columns}>
+        <header className="v-studio-content-heading">
+          <h3>{text.columns}</h3>
+          {settings.kind === "standings" && (
             <Button
-              variant="ghost"
+              variant="neutral"
               size="sm"
               disabled={model.disabled || !canResetColumns(settings, session)}
               aria-disabled={model.pending || undefined}
@@ -299,11 +299,12 @@ function ColumnSettings({
             >
               {text.reset}
             </Button>
-            {!canResetColumns(settings, session) && (
-              <p id={resetHelp}>{text.resetBlocked}</p>
-            )}
-          </>
-        )}
+          )}
+        </header>
+        {settings.kind === "standings" &&
+          !canResetColumns(settings, session) && (
+            <p id={resetHelp}>{text.resetBlocked}</p>
+          )}
         {!columns?.length && (
           <p>{columns ? text.noColumns : text.unreadable}</p>
         )}
@@ -335,11 +336,11 @@ function ColumnSettings({
             </div>
           ))}
         </div>
-      </Group>
+      </section>
       {settings.kind === "standings" && column && (
         <Group title={text.columnFormat}>
           <Select
-            label={text.columnFormat}
+            label={text.column}
             value={column.metricId}
             options={(columns ?? []).map((entry) => ({
               value: entry.metricId,
@@ -408,20 +409,35 @@ function ColumnSettings({
               <Select
                 label={text.timeFormat}
                 value={column.format.display ?? "normal"}
-                disabled
-                aria-describedby={timeHelp}
+                disabled={model.disabled || !editable}
+                pending={model.pending}
                 options={Object.entries(text.timeNames).map(
                   ([value, label]) => ({ value, label }),
                 )}
-                onChange={() => {}}
+                onChange={(display) => {
+                  if (display === "normal" || display === "compact")
+                    edit({ format: { display } });
+                }}
               />
-              <Input
-                label={text.decimals}
-                value={String(column.format.decimals ?? 3)}
-                disabled
-                aria-describedby={timeHelp}
-              />
-              <p id={timeHelp}>{text.timeReadOnly}</p>
+              <div className="v-field">
+                <span>{text.decimals}</span>
+                <Segmented
+                  label={text.decimals}
+                  value={String(column.format.decimals ?? 3)}
+                  disabled={model.disabled || !editable}
+                  pending={model.pending}
+                  options={Array.from(
+                    { length: studioWidgetOptions.columns.decimalsMax + 1 },
+                    (_, value) => ({
+                      value: String(value),
+                      label: String(value),
+                    }),
+                  )}
+                  onChange={(value) =>
+                    edit({ format: { decimals: Number(value) } })
+                  }
+                />
+              </div>
             </>
           )}
         </Group>

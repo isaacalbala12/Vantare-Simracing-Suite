@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import type {
@@ -78,7 +78,7 @@ function Screen() {
   const item = state.view?.instances[0];
   return item ? <StudioSteps item={item} /> : null;
 }
-async function edit() {
+async function edit(decimals = false) {
   const initial = view();
   let accept: (reply: Reply) => void = () => {
     throw Error("No pending save");
@@ -108,13 +108,34 @@ async function edit() {
   );
   const user = userEvent.setup();
   await user.click(await screen.findByRole("tab", { name: studio.content }));
-  const input = screen.getByRole("textbox", {
-    name: text.maxChars,
-  }) as HTMLInputElement;
-  await user.clear(input);
-  await user.type(input, "0022{Enter}");
-  expect(input.value).toBe("0022");
-  expect(input.readOnly).toBe(true);
+  if (decimals) {
+    await user.click(screen.getByRole("combobox", { name: text.column }));
+    await user.click(
+      await screen.findByRole("option", { name: "Última vuelta" }),
+    );
+  }
+  const input = (
+    decimals
+      ? within(screen.getByRole("group", { name: text.decimals })).getByRole(
+          "button",
+          { name: "2" },
+        )
+      : screen.getByRole("textbox", { name: text.maxChars })
+  ) as HTMLInputElement;
+  if (decimals) {
+    await user.click(input);
+    expect(input.getAttribute("aria-pressed")).toBe("false");
+    expect(
+      screen
+        .getByRole("group", { name: text.decimals })
+        .getAttribute("aria-busy"),
+    ).toBe("true");
+  } else {
+    await user.clear(input);
+    await user.type(input, "0022{Enter}");
+    expect(input.value).toBe("0022");
+    expect(input.readOnly).toBe(true);
+  }
   const request = transport.request.mock.calls.find(
     ([request]) => request.method === "studio.instance",
   )?.[0];
@@ -124,11 +145,42 @@ async function edit() {
   });
   expect(
     request.patch.value.columns.find(
-      (column: { metric: string }) => column.metric === "driverName",
+      (column: { metric: string }) =>
+        column.metric === (decimals ? "lastLap" : "driverName"),
     ).format,
-  ).toEqual({ maxChars: 22 });
+  ).toEqual(decimals ? { decimals: 2 } : { maxChars: 22 });
   return { initial, input, accept, reject };
 }
+it.each(["Rejected", "Unknown", "Conflict"] as const)(
+  "retains the confirmed decimal selection and never calls it saved after %s",
+  async (kind) => {
+    const { initial, input, reject } = await edit(true);
+    const error: HostError =
+      kind === "Rejected"
+        ? { kind: "rejected" }
+        : kind === "Unknown"
+          ? { kind: "coreUnavailable" }
+          : { kind: "studioConflict", current: initial };
+    await act(async () => reject(new HostFailure(error)));
+    expect(input.getAttribute("aria-pressed")).toBe("false");
+    expect(
+      within(screen.getByRole("group", { name: text.decimals }))
+        .getByRole("button", { name: "3" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(document.activeElement).toBe(input);
+    const status = screen
+      .getAllByRole("status")
+      .find((node) => node.classList.contains("v-step-save"));
+    expect(status?.getAttribute("data-failed")).toBe("true");
+    expect(status?.textContent).toContain(studio.notSaved);
+    expect(
+      transport.request.mock.calls.filter(
+        ([request]) => request.method === "studio.instance",
+      ),
+    ).toHaveLength(1);
+  },
+);
 it.each(["Rejected", "Unknown", "Conflict"] as const)(
   "keeps the exact draft and marks it unsaved after %s",
   async (kind) => {

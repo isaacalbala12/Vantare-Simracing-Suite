@@ -9,6 +9,7 @@ export const studioContentText = {
   columns: "Columnas",
   sessions: "Columnas por sesión",
   reset: "Restablecer preset",
+  column: "Columna",
   columnFormat: "Formato de columna",
   name: "Nombre del piloto",
   width: "Ancho del piloto",

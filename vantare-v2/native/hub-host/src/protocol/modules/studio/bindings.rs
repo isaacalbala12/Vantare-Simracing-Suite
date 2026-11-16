@@ -125,6 +125,7 @@ fn metadata(text: &mut String) {
             serde_json::to_string(&[
                 StudioState::Missing,
                 StudioState::Protected,
+                StudioState::MonitorUnavailable,
                 StudioState::Ready,
             ])
             .expect("states"),
@@ -531,6 +532,12 @@ fn value_for_settings(kind: WidgetKind, source: &str) -> StudioView {
 }
 
 fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
+    host.push(HostToUi::Response {
+        id: 1,
+        result: Reply::StudioGet {
+            value: State::unavailable(StudioState::MonitorUnavailable, None),
+        },
+    });
     for kind in [
         WidgetKind::Standings,
         WidgetKind::Relative,
@@ -744,6 +751,12 @@ fn monitor_vectors() -> serde_json::Value {
         value.monitor = Some(Box::new(size));
         cases.push(serde_json::json!({"name":name,"value":value}));
     }
-    cases.push(serde_json::json!({"name":"disconnected","value":State::unavailable(StudioState::Protected,None)}));
+    for (name, status) in [
+        ("disconnected", StudioState::MonitorUnavailable),
+        ("unreadable", StudioState::Protected),
+        ("missing", StudioState::Missing),
+    ] {
+        cases.push(serde_json::json!({"name":name,"value":State::unavailable(status,None)}));
+    }
     serde_json::Value::Array(cases)
 }

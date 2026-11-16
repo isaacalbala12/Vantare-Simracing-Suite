@@ -517,6 +517,7 @@ it.each(["studio-canvas-monitor-missing", "studio-missing"])(
       await screen.findByRole("heading", { name: canvasText.noCanvasTitle }),
     ).toBeTruthy();
     expect(screen.getByText(canvasText.noCanvasHelp)).toBeTruthy();
+    expect(document.querySelector(".v-studio-canvas-position")).toBeNull();
     expect(screen.queryByText(t.protected)).toBeNull();
     expect(
       screen.queryByRole("button", { name: canvasText.resolution }),

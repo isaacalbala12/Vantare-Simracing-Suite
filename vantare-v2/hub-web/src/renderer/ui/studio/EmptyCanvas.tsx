@@ -55,7 +55,6 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
         </div>
       </div>
       <footer>
-        <span className="v-studio-canvas-position">{"—"}</span>
         <span className="v-canvas-grow" />
         {view && (
           <div className="v-canvas-resolution-slot">

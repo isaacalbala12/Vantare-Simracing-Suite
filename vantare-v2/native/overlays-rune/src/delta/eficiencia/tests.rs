@@ -83,6 +83,7 @@ fn a_record_shows_its_notice_and_expires_without_a_clock() {
     let mut slow = crate::testdata::snapshot();
     slow.state.capabilities.lap_times = vantare_domain::Capability::Fresh;
     slow.state.capabilities.delta = vantare_domain::Capability::Fresh;
+    slow.state.player.as_mut().expect("player").delta_best_s = Reliable(-0.2);
     let car_id = slow.state.player.expect("player").car;
     let car = slow
         .state

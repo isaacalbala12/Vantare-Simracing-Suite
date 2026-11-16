@@ -19,6 +19,10 @@ import {
   type MockInstance,
   vi,
 } from "vitest";
+import {
+  type StudioView,
+  studioLimits,
+} from "../src/contract/generated/studio";
 import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
@@ -878,4 +882,191 @@ it("can drop the first widget onto an empty canvas", async () => {
   await waitFor(() => expect(additions(spy)).toHaveLength(1));
   expect(additions(spy)[0]).toHaveProperty("at");
   expect(await screen.findByRole("button", { name: "Delta" })).toBeTruthy();
+});
+
+it.each(["rejected", "denied", "studioConflict"] as const)(
+  "clears the drop status after %s, reads authority once and never replays add",
+  async (kind) => {
+    const original = Client.prototype.request;
+    let current: StudioView | undefined;
+    const spy = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request, ...rest) {
+        if (request.method === "studio.add") {
+          if (kind === "studioConflict") {
+            if (!current) throw Error("Initial view required");
+            throw new HostFailure({ kind, current: structuredClone(current) });
+          }
+          throw new HostFailure({ kind });
+        }
+        const response = await original.call(this, request, ...rest);
+        if (response.method === "studio.get") current = response.value;
+        return response;
+      });
+    await mount();
+    const handle = await openDrop();
+    beginDrop(handle);
+    const status = document.querySelector(
+      '.v-canvas-accessible-help[role="status"]',
+    );
+    expect(status?.textContent).toContain(dropText.release);
+    fireEvent.pointerUp(handle, dropPoint());
+    await waitFor(() =>
+      expect(
+        spy.mock.calls.filter(([request]) => request.method === "studio.get"),
+      ).toHaveLength(2),
+    );
+    await waitFor(() => expect(status?.textContent).toBe(""));
+    expect(
+      await screen.findByText(
+        kind === "studioConflict" ? studioText.conflict : studioText.failed,
+      ),
+    ).toBeTruthy();
+    expect(additions(spy)).toHaveLength(1);
+    expect(additions(spy)[0]).toHaveProperty("at");
+    expect(screen.queryByRole("button", { name: studioText.retry })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: studioText.discard }));
+    await act(async () => {});
+    expect(additions(spy)).toHaveLength(1);
+  },
+);
+
+it.each(["button", "Enter"] as const)(
+  "reconciles an applied unpositioned %s add after timeout without replaying it",
+  async (trigger) => {
+    const original = Client.prototype.request;
+    let reads = 0;
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const spy = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request, ...rest) {
+        if (request.method === "studio.get" && ++reads === 2) await held;
+        const response = await original.call(this, request, ...rest);
+        if (request.method === "studio.add")
+          throw new HostFailure({ kind: "coreUnavailable" });
+        return response;
+      });
+    try {
+      await mount();
+      const handle = await openDrop();
+      if (trigger === "button")
+        fireEvent.click(screen.getByRole("button", { name: "Añadir Delta" }));
+      else {
+        handle.focus();
+        await userEvent.setup().keyboard("{Enter}");
+      }
+      await waitFor(() => expect(reads).toBe(2));
+      expect(additions(spy)).toHaveLength(1);
+      expect(additions(spy)[0]).not.toHaveProperty("at");
+      expect(handle.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(screen.getByRole("button", { name: "Añadir Delta" }));
+      expect(additions(spy)).toHaveLength(1);
+      await act(async () => {
+        release();
+      });
+      expect(
+        await screen.findByRole("button", { name: "Delta 2" }),
+      ).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: studioText.retry }),
+      ).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: studioText.discard }));
+      await act(async () => {});
+      expect(reads).toBe(2);
+      expect(additions(spy)).toHaveLength(1);
+    } finally {
+      release();
+    }
+  },
+);
+
+it.each(["protected", "readOnly", "limit", "pro", "noCanvas"] as const)(
+  "prevents catalogue writes in the %s UI state",
+  async (mode) => {
+    const original = Client.prototype.request;
+    const spy = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request, ...rest) {
+        const response = await original.call(this, request, ...rest);
+        if (response.method !== "studio.get") return response;
+        const value = structuredClone(response.value);
+        if (mode === "protected") value.state = "protected";
+        if (mode === "limit")
+          value.instances = Array.from(
+            { length: studioLimits.instances },
+            (_, i) => ({
+              ...structuredClone(value.instances[0]),
+              id: `widget-${i + 1}`,
+            }),
+          );
+        if (mode === "pro") {
+          const radar = value.catalog.find((widget) => widget.kind === "radar");
+          if (!radar) throw Error("Radar catalogue fixture required");
+          radar.allowed = false;
+          value.plan = "free";
+        }
+        if (mode === "noCanvas") value.canvas = null;
+        return { ...response, value };
+      });
+    await renderStudio(
+      mode === "readOnly" ? "studio-canvas-readonly" : "studio-canvas",
+    );
+    await screen.findAllByRole("button", {
+      name: "Standings Visible",
+    });
+    await userEvent.setup().click(screen.getByRole("button", { name: t.open }));
+    if (mode === "pro") {
+      await openDrop();
+      const handle = screen.getByRole("button", {
+        name: dropText.drag("Radar"),
+      });
+      expect(handle.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.pointerDown(handle, {
+        button: 0,
+        isPrimary: true,
+        pointerId: 7,
+        clientX: 620,
+        clientY: 50,
+      });
+      expect(handle.hasPointerCapture(7)).toBe(false);
+      fireEvent.pointerMove(handle, dropPoint());
+      fireEvent.pointerUp(handle, dropPoint());
+      fireEvent.click(handle);
+      fireEvent.click(screen.getByRole("button", { name: "Añadir Radar" }));
+      handle.focus();
+      await userEvent.setup().keyboard("{Enter}");
+    } else {
+      const add = screen.getByRole("button", {
+        name: studioText.add,
+      });
+      if (mode !== "noCanvas")
+        expect(add.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(add);
+      expect(
+        screen.queryByRole("complementary", { name: studioText.catalog }),
+      ).toBeNull();
+      if (mode === "noCanvas")
+        expect(document.querySelector(".v-studio-canvas-plane")).toBeNull();
+    }
+    await act(async () => {});
+    expect(additions(spy)).toHaveLength(0);
+    expect(document.querySelector(".v-canvas-drop-ghost")).toBeNull();
+  },
+);
+
+it("releases catalogue pointer capture on unmount and cannot submit the detached drag", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  const { unmount } = await mount();
+  const handle = await openDrop();
+  beginDrop(handle);
+  const point = dropPoint();
+  unmount();
+  expect(handle.hasPointerCapture(7)).toBe(false);
+  fireEvent.pointerUp(handle, point);
+  fireEvent.click(handle);
+  await act(async () => {});
+  expect(additions(spy)).toHaveLength(0);
 });

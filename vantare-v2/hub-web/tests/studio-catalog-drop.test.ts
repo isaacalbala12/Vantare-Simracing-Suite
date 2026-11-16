@@ -109,6 +109,58 @@ it("projects an accepted origin whose widget extends outside the canvas", () => 
   ).toMatchObject({ x: 1919, y: 1079, canvasPlacement: "outside" });
 });
 
+it("preserves fractional add origins without clamping the overflowing widget", () => {
+  const { host, view } = setup();
+  if (!view.canvas) throw Error("Canvas required");
+  const at = { x: view.canvas.width - 0.25, y: view.canvas.height - 0.5 };
+  const reply = host({
+    kind: "request",
+    id: 2,
+    request: {
+      method: "studio.add",
+      kind: "delta",
+      at,
+      baseRevision: view.revision,
+    },
+  });
+  if (reply?.kind !== "response" || reply.result.method !== "studio.add")
+    throw Error("Positioned add missing");
+  const result = reply.result;
+  expect(
+    result.value.instances.find((item) => item.id === result.added),
+  ).toMatchObject({ ...at, canvasPlacement: "outside" });
+});
+
+it.each(["left", "top", "right", "bottom"] as const)(
+  "rejects a %s add origin without clamping or mutating the document",
+  (edge) => {
+    const { host, view } = setup();
+    if (!view.canvas) throw Error("Canvas required");
+    const at = {
+      x: edge === "left" ? -0.25 : edge === "right" ? view.canvas.width : 0,
+      y: edge === "top" ? -0.25 : edge === "bottom" ? view.canvas.height : 0,
+    };
+    expect(
+      host({
+        kind: "request",
+        id: 2,
+        request: {
+          method: "studio.add",
+          kind: "delta",
+          at,
+          baseRevision: view.revision,
+        },
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "rejected" } });
+    expect(
+      host({ kind: "request", id: 3, request: { method: "studio.get" } }),
+    ).toMatchObject({
+      kind: "response",
+      result: { method: "studio.get", value: view },
+    });
+  },
+);
+
 it("does not start without capacity, a canvas or authority", () => {
   const { view, controller } = setup();
   expect(controller.begin(view, "delta", { ...access, enabled: false })).toBe(

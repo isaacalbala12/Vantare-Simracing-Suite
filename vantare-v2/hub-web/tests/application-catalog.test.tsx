@@ -322,6 +322,8 @@ describe("application catalog", () => {
     expect(document.body.textContent).not.toContain(".exe");
   });
   it("requires a selection, preserves a draft on conflict and retries its latest fields explicitly", async () => {
+    const listeners = vi.spyOn(Client.prototype, "listen");
+    const requests = vi.spyOn(Client.prototype, "request");
     mount("launcher-aplicaciones-conflicto");
     const add = await screen.findByRole("button", {
       name: /Añadir aplicación/,
@@ -345,10 +347,32 @@ describe("application catalog", () => {
       target: { value: "Último cambio QA" },
     });
     fireEvent.click(within(form).getByRole("button", { name: text.retry }));
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.filter(
+          ([request]) => request.method === "launcher.app.save",
+        ),
+      ).toHaveLength(2),
+    );
+    const index = requests.mock.calls.findLastIndex(
+      ([request]) => request.method === "launcher.app.save",
+    );
+    const saved = await requests.mock.results[index].value;
+    if (saved.method !== "launcher.app.save")
+      throw new Error("Missing save reply");
+    await act(async () => {
+      for (const [receive] of listeners.mock.calls)
+        receive({
+          kind: "event",
+          event: { topic: "launcher", value: saved.value },
+        });
+    });
     await screen.findByRole("button", { name: "Editar Último cambio QA" });
     expect(screen.queryByRole("dialog", { name: text.editor })).toBeNull();
   });
   it("asks before removing a custom app and leaves official apps without a delete action", async () => {
+    const listeners = vi.spyOn(Client.prototype, "listen");
+    const requests = vi.spyOn(Client.prototype, "request");
     mount();
     await screen.findByRole("button", { name: "Editar Vantare Overlay" });
     expect(
@@ -371,6 +395,19 @@ describe("application catalog", () => {
     );
     const confirm = await screen.findByRole("dialog");
     fireEvent.click(within(confirm).getByRole("button", { name: text.remove }));
+    const index = requests.mock.calls.findIndex(
+      ([request]) => request.method === "launcher.app.remove",
+    );
+    const removed = await requests.mock.results[index].value;
+    if (removed.method !== "launcher.app.remove")
+      throw new Error("Missing remove reply");
+    await act(async () => {
+      for (const [receive] of listeners.mock.calls)
+        receive({
+          kind: "event",
+          event: { topic: "launcher", value: removed.value },
+        });
+    });
     await waitFor(() =>
       expect(
         screen.queryByRole("button", { name: "Editar Vantare Overlay" }),
@@ -438,5 +475,53 @@ it.each([false, true])(
         ([request]) => request.method === "launcher.catalog",
       ),
     ).toHaveLength(readsBefore + 1);
+  },
+);
+
+it.each([
+  { action: "favorito", method: "launcher.app.favorite" },
+  { action: "explorar", method: "launcher.scan" },
+] as const)(
+  "reads the catalog once after the $action response and its Launcher event",
+  async ({ action, method }) => {
+    const listeners = vi.spyOn(Client.prototype, "listen");
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: text.edit("OBS Studio") });
+    await act(async () => {
+      await Promise.all(requests.mock.results.map((result) => result.value));
+    });
+    const reads = () =>
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.catalog",
+      ).length;
+    const before = reads();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: action === "favorito" ? text.favorite("OBS Studio") : text.detect,
+      }),
+    );
+    const index = await waitFor(() => {
+      const found = requests.mock.calls.findIndex(
+        ([request]) => request.method === method,
+      );
+      expect(found).toBeGreaterThanOrEqual(0);
+      return found;
+    });
+    const response = await requests.mock.results[index].value;
+    if (
+      response.method !== "launcher.app.favorite" &&
+      response.method !== "launcher.scan"
+    )
+      throw new Error("Missing Launcher reply");
+    await act(async () => {
+      for (const [receive] of listeners.mock.calls)
+        receive({
+          kind: "event",
+          event: { topic: "launcher", value: response.value },
+        });
+      await Promise.all(requests.mock.results.map((result) => result.value));
+    });
+    expect(reads()).toBe(before + 1);
   },
 );

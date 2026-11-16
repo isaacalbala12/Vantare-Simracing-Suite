@@ -452,7 +452,7 @@ impl Motion {
                     }
                     if let Some(notice) = notice {
                         match notice.kind {
-                            EventKind::Position | EventKind::Lead => {
+                            EventKind::Position => {
                                 let kind = self.flash_kind.get(id).copied().unwrap_or(
                                     if notice.places > 0 {
                                         Flash::Gain

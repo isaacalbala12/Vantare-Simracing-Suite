@@ -41,7 +41,20 @@ pub(crate) struct SessionAlerts {
 }
 impl SessionAlerts {
     pub fn new(settings: &Settings, prefs: Preferences, clock: f64) -> Self {
-        let wall = wall_base(clock, vantare_ipc::control::wall_ms().unwrap_or(0));
+        let wall = match vantare_ipc::control::wall_ms() {
+            Ok(wall) => wall_base(clock, wall),
+            Err(_) => {
+                // A calendar compares wall milliseconds: say it once instead of hiding it.
+                static ONCE: std::sync::atomic::AtomicBool =
+                    std::sync::atomic::AtomicBool::new(true);
+                if ONCE.swap(false, std::sync::atomic::Ordering::Relaxed) {
+                    eprintln!(
+                        "overlays-rune: sin hora de pared; los avisos de calendario no estarán disponibles"
+                    );
+                }
+                wall_base(clock, 0)
+            }
+        };
         Self::with_wall(settings, prefs, wall)
     }
     /// Deterministic constructor: the tests hand the wall base instead of reading a clock.
@@ -161,9 +174,10 @@ impl SessionAlerts {
     /// One wake per second while a notice or a row is drawn; frames only while the notice
     /// fades. Without either there is no clock at all, reduced motion or not.
     pub fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
-        let main = self.settings.companion_for.is_none();
-        let active = main && self.view.active.is_some();
-        let ticking = active || !self.view.minis.is_empty();
+        let companion = self.settings.companion_for.is_some();
+        let active = !companion && self.view.active.is_some();
+        // The main never draws the rows, so it keeps no clock for them; the companion does.
+        let ticking = (companion && self.settings.mini && !self.view.minis.is_empty()) || active;
         if active && !self.reduced && self.fade.active(clock) {
             let step = 1.0 / f64::from(if self.hz == 0 { 30 } else { self.hz });
             tx.wake_at(clock + step);
@@ -176,7 +190,10 @@ impl SessionAlerts {
                     .active
                     .as_ref()
                     .map_or(1, |notice| {
-                        notice.ends_at_ms.saturating_sub(now).saturating_sub(150)
+                        // Only the fade needs the 150 ms margin; with reduced motion there is
+                        // no fade, and subtracting it would schedule 1 ms wakes at the end.
+                        let margin = if self.reduced { 0 } else { 150 };
+                        notice.ends_at_ms.saturating_sub(now).saturating_sub(margin)
                     })
                     .max(1)
             } else {
@@ -362,9 +379,9 @@ mod tests {
         runtime
     }
     /// Paints one scene on its own, without photos or machine.
-    fn painted(scene: &scene::Scene) -> Runtime<render::Painter> {
+    fn painted_with(scene: &scene::Scene, style: &str) -> Runtime<render::Painter> {
         let mut runtime = Runtime::with_text(
-            render::Painter::new(scene, "neo"),
+            render::Painter::new(scene, style),
             |painter: &render::Painter, _: &mut rune::Cx<render::Painter>| painter.view(),
             scene.size,
             Env::new(true, 1.0),
@@ -372,6 +389,9 @@ mod tests {
         );
         runtime.frame(0.0);
         runtime
+    }
+    fn painted(scene: &scene::Scene) -> Runtime<render::Painter> {
+        painted_with(scene, "neo")
     }
     fn rows(count: usize) -> Vec<scene::Row> {
         (0..count)
@@ -503,6 +523,74 @@ mod tests {
             rendered_frame(&mut runtime, 0.5);
         }
         assert!(runtime.state.visual.notice.is_none(), "el aviso termina");
+    }
+
+    #[test]
+    fn the_transparent_style_shadows_the_ghost_like_gpui() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let studio = companion();
+        let ghost = scene::Scene {
+            ghost: Some("Mini cuenta atrás".into()),
+            ..row_scene(&studio, 0)
+        };
+        let transparent = keys(&painted_with(&ghost, "transparente"));
+        assert!(
+            transparent.iter().any(|key| key == "ghost-shadow"),
+            "el ghost lleva sombra en transparente: {transparent:?}"
+        );
+        assert!(transparent.iter().any(|key| key == "ghost"));
+        let neo = keys(&painted(&ghost));
+        assert!(!neo.iter().any(|key| key == "ghost-shadow"), "en neo no");
+    }
+
+    #[test]
+    fn reduced_motion_does_not_schedule_one_millisecond_wakes() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut runtime = opened();
+        runtime.state.policy(true, 5, 1.0);
+        for step in 1..=7 {
+            push(photo(f64::from(step)));
+            rendered_frame(&mut runtime, 1.0);
+        }
+        push(photo(7.9));
+        assert!(rendered_frame(&mut runtime, 0.9), "queda el último tramo");
+        let deadline = runtime
+            .wake_deadline()
+            .expect("despierta al terminar el aviso");
+        assert!(
+            deadline - 7.9 >= 0.05,
+            "sin despertares de 1 ms: {}",
+            deadline - 7.9
+        );
+    }
+
+    #[test]
+    fn only_the_companion_keeps_the_second_clock_for_its_rows() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut main = opened();
+        for step in 1..=40 {
+            push(photo(f64::from(step) * 0.5));
+            rendered_frame(&mut main, 0.5);
+        }
+        assert!(main.state.visual.notice.is_none(), "el aviso terminó");
+        assert!(
+            main.wake_deadline().is_none(),
+            "el principal no late por unas minis que no pinta"
+        );
+        let settings = companion();
+        let mut mini = host(SessionAlerts::with_wall(
+            &settings,
+            Preferences::default(),
+            0,
+        ));
+        mini.frame(0.0);
+        for step in 1..=40 {
+            push(photo(f64::from(step) * 0.5));
+            rendered_frame(&mut mini, 0.5);
+        }
+        assert!(!mini.state.visual.rows.is_empty(), "la mini pinta filas");
+        let deadline = mini.wake_deadline().expect("late con las filas");
+        assert!(deadline <= 21.0, "la mini late cada segundo: {deadline}");
     }
 
     #[test]

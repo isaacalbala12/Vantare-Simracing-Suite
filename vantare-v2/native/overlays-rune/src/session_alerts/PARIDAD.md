@@ -11,6 +11,13 @@ limpio, transparente).
   El centrado del texto se mueve 0,5 px. GPUI pierde ese mismo píxel porque lo
   recorta la ventana. Aceptado por la raíz: no se cambia.
 
+## Reloj de pared
+
+`new()` lee `wall_ms()` una sola vez y descuenta el reloj del runtime; los tests inyectan
+la base (`with_wall`), así que ninguno depende del reloj real. Si esa lectura falla se
+registra un aviso una sola vez y la base queda en 0: la cuenta atrás de sesión sigue
+funcionando, pero los avisos de calendario no estarán disponibles.
+
 ## Funcionalidad pendiente (PR aparte)
 
 - **Sin sonido**: GPUI pitaba con tonos WAV por `winmm`; Rune no tiene ese camino.

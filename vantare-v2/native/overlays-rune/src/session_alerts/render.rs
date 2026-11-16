@@ -559,34 +559,36 @@ fn view(state: &Painter) -> El {
         );
     } else if let Some(ghost) = &scene.ghost {
         let scale = scene.scale;
-        root = root
-            .child(panel(
-                s,
-                v,
-                "ghost-panel",
-                MINI_WIDTH * scale,
-                MINI_HEIGHT * scale,
-            ))
-            .child(fixed_node(
-                s,
-                ghost,
-                "ghost",
-                Rect {
-                    x: 16.0 * scale,
-                    y: 0.0,
-                    w: MINI_WIDTH * scale - 16.0 * scale,
-                    h: MINI_HEIGHT * scale,
-                },
-                Ink {
-                    face: Face::Body,
-                    size: 11.0 * scale,
-                    tracking: 0.3,
-                    weight: s.fonts.regular_weight,
-                },
-                Align::Start,
-                s.colors.muted,
-                false,
-            ));
+        root = root.child(panel(
+            s,
+            v,
+            "ghost-panel",
+            MINI_WIDTH * scale,
+            MINI_HEIGHT * scale,
+        ));
+        // GPUI paints the hint through `draw_label`, so the transparent style shadows it.
+        root = fixed(
+            s,
+            root,
+            ghost,
+            "ghost",
+            Rect {
+                x: 16.0 * scale,
+                y: 0.0,
+                w: MINI_WIDTH * scale - 16.0 * scale,
+                h: MINI_HEIGHT * scale,
+            },
+            Ink {
+                face: Face::Body,
+                size: 11.0 * scale,
+                tracking: 0.3,
+                weight: s.fonts.regular_weight,
+            },
+            Align::Start,
+            s.colors.muted,
+            shadow,
+            false,
+        );
     }
     for (index, (label, calm)) in scene.rows.iter().enumerate() {
         let scale = scene.scale;

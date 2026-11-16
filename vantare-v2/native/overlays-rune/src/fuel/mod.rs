@@ -755,6 +755,23 @@ mod extra_tests {
             }
         }
     }
+
+    #[test]
+    fn efficiency_panel_covers_the_catalogue_frame() {
+        let mut fuel = Fuel::new(
+            &Settings {
+                design_system: Look::Eficiencia,
+                ..Settings::default()
+            },
+            Preferences::default(),
+            true,
+            4,
+            0.0,
+        );
+        fuel.update(&photo(11.3, 25), 0.0);
+        let instances = draw(fuel);
+        assert!(has(&instances, 0.0, 0.0, 523.0, 272.0), "panel de 523×272");
+    }
 }
 
 

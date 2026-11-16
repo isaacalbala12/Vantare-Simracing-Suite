@@ -99,18 +99,20 @@ fn view(state: &Painter) -> El {
         .key("fuel-efi-view")
         .size(SIZE.0, SIZE.1)
         .motion(rune::Spring::NONE)
-        .child(panel());
+        .child(eficiencia::panel(SIZE.0, SIZE.1).pin(Some(0.0), Some(0.0), None, None));
     if let Some(status) = state.labels.status {
         let style = eficiencia::font(14.0, 600, 0.14);
         let x = (SIZE.0 - eficiencia::width(status, style)) / 2.0;
         let base = eficiencia::baseline((SIZE.1 - 14.0) / 2.0, 14.0, 14.0);
-        return frame(root.child(eficiencia::label(
-            status,
-            x,
-            base,
-            style,
-            eficiencia::color(MUTED, 1.0),
-        )));
+        return root
+            .child(outline().pin(Some(0.0), Some(0.0), None, None))
+            .child(eficiencia::label(
+                status,
+                x,
+                base,
+                style,
+                eficiencia::color(MUTED, 1.0),
+            ));
     }
     let ink = eficiencia::color(INK, 1.0);
     let muted = eficiencia::color(MUTED, 1.0);
@@ -259,51 +261,12 @@ fn view(state: &Painter) -> El {
             );
         }
     }
-    frame(root)
+    root.child(outline().pin(Some(0.0), Some(0.0), None, None))
 }
 
-/// Marco del panel, en dos capas como GPUI: el anillo completo al 12 % y,
-/// encima, la tira superior con el borde al 24 % compuesto.
-fn frame(root: El) -> El {
-    root.child(
-        el().key("efi-frame")
-            .size(SIZE.0, SIZE.1)
-            .radius(RADIUS)
-            .border(1.0, eficiencia::color(0xffffff, FRAME))
-            .pin(Some(0.0), Some(0.0), None, None),
-    )
-    .child(
-        el().key("efi-frame-top")
-            .size(SIZE.0, RADIUS)
-            .radius(RADIUS)
-            .border_sides(
-                [1.0, 0.0, 0.0, 0.0],
-                eficiencia::color(0xffffff, (FRAME_TOP - FRAME) / (1.0 - FRAME)),
-            )
-            .pin(Some(0.0), Some(0.0), None, None),
-    )
-}
-
-/// Fondo del panel con su brillo: mismo degradado que GPUI (120°).
-fn panel() -> El {
-    el().key("efi-panel")
-        .size(SIZE.0, SIZE.1)
-        .radius(RADIUS)
-        .fill(eficiencia::color(PANEL, 0.87))
-        .pin(Some(0.0), Some(0.0), None, None)
-        .child(
-            el().key("efi-shine")
-                .absolute(0.0, 0.0)
-                .size(SIZE.0, SIZE.1)
-                .radius(RADIUS)
-                .linear_gradient(
-                    std::f32::consts::PI * 120.0 / 180.0,
-                    [
-                        (0.0, eficiencia::color(0xffffff, 0.03)),
-                        (0.38, eficiencia::color(0xffffff, 0.0)),
-                    ],
-                ),
-        )
+/// Marco común con los valores de GPUI de Fuel: 12 % de base y 24 % arriba.
+fn outline() -> El {
+    eficiencia::outline(SIZE.0, SIZE.1, FRAME, FRAME_TOP)
 }
 
 /// Caja de una vuelta del historial: dos columnas de cuatro como máximo.

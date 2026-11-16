@@ -1,13 +1,15 @@
-## VANTA-138 · #2184: escaneo y pasos antes de lanzar (en curso)
+## VANTA-138 · #2184: escaneo y pasos antes de lanzar (por revisar)
 
-Rama propia `vantareapp/isa-2184-launch-discovery`, base nightly `8bc9f251e`.
+Rama propia `vantareapp/isa-2184-launch-discovery`, base nightly `9ff6f97e2`.
 El despacho de ambos métodos de lanzamiento exige discovery terminado para la
 revisión actual y pasos disponibles. Se conservan los errores existentes y la
 precedencia de autoridad y revisión; no cambia el protocolo ni la UI.
 Tests de despacho con escaneo invalidado, discovery rezagado, pasos ausentes/no
 lanzables, revisión obsoleta y un envío válido seguido de un segundo rechazado.
 Comprueban bytes del documento y buzón; sin aplicaciones ni gráficos.
-Gate local hub-host por cola en curso; PR/CI pendientes. No hay merge ni release.
+Gate local por cola: Clippy -D warnings y 667 tests PASS (1 omisión existente).
+Fmt de los archivos tocados y comprobación de fuentes del host PASS.
+PR y CI se enlazan en #2184; sin merge ni release propios.
 Después: #2028, migrar el lanzamiento ordinario Electron a checked sin fallback.
 
 ## VANTA-144 · Reglas de presentación compartidas en domain (16/11/2026)

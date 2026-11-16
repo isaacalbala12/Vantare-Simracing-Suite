@@ -11,7 +11,7 @@ use vantare_domain::{
     Snapshot,
     format::Preferences,
     geometry::Size,
-    input_telemetry::{self, Sample, Trace, ViewModel},
+    input_telemetry::{Sample, SettingsPresentation as _, Trace, ViewModel},
     widget_settings::input_telemetry::Settings,
 };
 
@@ -19,17 +19,6 @@ pub const SIZE: Size = Size {
     width: 600.0,
     height: 84.0,
 };
-
-/// TEMPORAL: la regla «embrague visible = ajuste && hay dato» vive hoy en el GPUI
-/// (`SettingsPresentation`). Pasa a domain en el PR mecánico; entonces esto será una llamada.
-fn projected(settings: &Settings, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-    let mut view = input_telemetry::project(snapshot, prefs);
-    view.show_clutch = settings.show_clutch && view.pedals[0].is_some();
-    if !view.show_clutch {
-        view.pedals[0] = None;
-    }
-    view
-}
 
 pub(crate) struct InputTelemetry {
     settings: Settings,
@@ -50,7 +39,7 @@ pub(crate) struct InputTelemetry {
 impl InputTelemetry {
     pub fn new(settings: &Settings, prefs: Preferences, reduced: bool, clock: f64) -> Self {
         let settings = settings.normalized();
-        let view = Arc::new(projected(&settings, &Snapshot::default(), prefs));
+        let view = Arc::new(settings.project(&Snapshot::default(), prefs));
         let motion = Motion::new(reduced);
         let samples = Arc::new(Vec::new());
         let segments = Arc::new(Vec::new());
@@ -99,7 +88,7 @@ impl InputTelemetry {
     }
     /// Cada foto entra en la historia, en orden, aunque la cola entregue varias seguidas.
     pub fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
-        let projected = projected(&self.settings, snapshot, self.prefs);
+        let projected = self.settings.project(snapshot, self.prefs);
         let view = if *self.view == projected {
             self.view.clone()
         } else {
@@ -312,10 +301,10 @@ mod tests {
             show_clutch: true,
             ..Settings::default()
         };
-        let view = projected(&settings, &snapshot, Preferences::default());
+        let view = settings.project(&snapshot, Preferences::default());
         assert!(!view.show_clutch, "sin dato de embrague no se muestra");
         assert_eq!(view.pedals[0], None);
-        let view = projected(&settings, &photo(1, 0, 0.2), Preferences::default());
+        let view = settings.project(&photo(1, 0, 0.2), Preferences::default());
         assert!(view.show_clutch);
         assert_eq!(view.pedals[0], Some(25.0));
     }

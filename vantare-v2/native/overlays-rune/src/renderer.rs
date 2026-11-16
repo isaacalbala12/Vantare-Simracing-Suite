@@ -8,7 +8,7 @@ use crate::{
     widget::Widget,
 };
 use rune::{El, Tx, el};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 use vantare_domain::{
     format::Preferences,
     widget_settings::{Settings, look::Look},
@@ -44,8 +44,25 @@ struct Entry {
 pub(crate) struct Painters {
     entries: BTreeMap<String, Entry>,
     order: Vec<String>,
+    assets: Option<Arc<rune::ImageCache>>,
+    assets_changed: bool,
 }
 impl Painters {
+    pub fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
+        if self
+            .assets
+            .as_ref()
+            .is_some_and(|old| Arc::ptr_eq(old, assets))
+        {
+            return;
+        }
+        self.assets = Some(assets.clone());
+        for entry in self.entries.values_mut() {
+            entry.painter.attach_assets(assets);
+        }
+        // Setup can follow the first view: rebuild once to include its images.
+        self.assets_changed |= !self.entries.is_empty();
+    }
     pub fn sync(
         &mut self,
         frames: Option<&FrameSet>,
@@ -79,7 +96,7 @@ impl Painters {
                         .painter
                         .size_for(frames.photos.get(&instance.id).map(|p| p.snapshot.as_ref()))
                 } else {
-                    let Some(painter) = new(
+                    let Some(mut painter) = new(
                         settings,
                         frames.layout.preferences,
                         frames.reduced_motion,
@@ -88,6 +105,9 @@ impl Painters {
                     ) else {
                         continue;
                     };
+                    if let Some(assets) = &self.assets {
+                        painter.attach_assets(assets);
+                    }
                     let size = painter
                         .size_for(frames.photos.get(&instance.id).map(|p| p.snapshot.as_ref()));
                     fresh = Some(painter);
@@ -132,7 +152,10 @@ impl Painters {
         build
     }
     pub fn animate(&mut self, clock: f64, tx: &mut Tx, meter: &Meter) -> bool {
-        let mut build = false;
+        let mut build = std::mem::take(&mut self.assets_changed);
+        if build {
+            meter.mark(Cause::Design);
+        }
         for entry in self.entries.values_mut() {
             let update = entry.painter.animate(clock);
             if update.pixels || update.build {
@@ -174,8 +197,77 @@ impl Painters {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+    use std::sync::Mutex;
+    use vantare_domain::{Snapshot, geometry::Size};
+
+    pub(crate) type AttachedAssets = Arc<Mutex<Vec<Arc<rune::ImageCache>>>>;
+
+    struct ImageWidget {
+        attached: AttachedAssets,
+        assets: Option<Arc<rune::ImageCache>>,
+    }
+    impl Widget for ImageWidget {
+        fn new(_: &Settings, _: Preferences, _: bool, _: u16, _: f64) -> Option<Box<dyn Widget>> {
+            None // The fixture installs these widgets before setup, outside the product registry.
+        }
+        fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
+            self.assets = Some(assets.clone());
+            self.attached.lock().unwrap().push(assets.clone());
+        }
+        fn configured(&self, _: &Settings, _: Preferences) -> bool {
+            true
+        }
+        fn size(&self) -> Size {
+            Size {
+                width: 1.0,
+                height: 1.0,
+            }
+        }
+        fn size_for(&self, _: Option<&Snapshot>) -> Size {
+            self.size()
+        }
+        fn policy(&mut self, _: bool, _: u16, _: f64) -> crate::widget::Update {
+            Default::default()
+        }
+        fn update(&mut self, _: &Snapshot, _: f64) -> crate::widget::Update {
+            Default::default()
+        }
+        fn animate(&mut self, _: f64) -> crate::widget::Update {
+            Default::default()
+        }
+        fn schedule(&self, _: f64, _: &mut Tx) {}
+        fn view(&self) -> El {
+            el()
+        }
+    }
+
+    pub(crate) fn image_widgets() -> (Painters, AttachedAssets) {
+        let attached = AttachedAssets::default();
+        let mut painters = Painters::default();
+        for id in ["first", "second"] {
+            let painter = ImageWidget {
+                attached: attached.clone(),
+                assets: None,
+            };
+            let placement = Placement {
+                x: 0.0,
+                y: 0.0,
+                size: painter.size(),
+                opacity: 1.0,
+            };
+            painters.entries.insert(
+                id.into(),
+                Entry {
+                    painter: Box::new(painter),
+                    placement,
+                },
+            );
+            painters.order.push(id.into());
+        }
+        (painters, attached)
+    }
 
     #[test]
     fn dispatch_constructs_vantare_relative_and_rejects_unmigrated_looks_and_kinds() {

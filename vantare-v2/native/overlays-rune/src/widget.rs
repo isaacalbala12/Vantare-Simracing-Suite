@@ -1,5 +1,6 @@
 //! Operations used by the retained painter registry; no window or data ownership.
 use rune::{El, Tx};
+use std::sync::Arc;
 use vantare_domain::{Snapshot, format::Preferences, geometry::Size, widget_settings::Settings};
 
 #[derive(Default)]
@@ -19,6 +20,7 @@ pub(crate) trait Widget {
     ) -> Option<Box<dyn Widget>>
     where
         Self: Sized;
+    fn attach_assets(&mut self, _assets: &Arc<rune::ImageCache>) {}
     fn configured(&self, settings: &Settings, prefs: Preferences) -> bool;
     fn size(&self) -> Size;
     fn size_for(&self, snapshot: Option<&Snapshot>) -> Size;

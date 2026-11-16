@@ -18,6 +18,9 @@ que corresponda. Soporte y creación usan ese mismo registro; `new` solo se llam
 al necesitar una instancia, no al consultar soporte. `Update` distingue
 reconstrucción (`build`) de cambio de píxeles (`pixels`).
 
+Implementar `attach_assets` solo si el widget pinta imágenes o SVG: guardar el
+`Arc<ImageCache>` recibido del host. No crear una caché propia ni un OnceLock global.
+
 Copiar: `Painters`, `Meter`, test `rendered_frame`, primitivas `vantare::paint`,
 `Tween` finito y política de movimiento reducido.
 

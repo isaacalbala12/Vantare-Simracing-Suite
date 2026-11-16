@@ -100,12 +100,14 @@ fn view(state: &Painter) -> El {
             el().key("efi-panel")
                 .size(SIZE.0, SIZE.1)
                 .radius(tokens::RADIUS)
-                .fill(color(tokens::PANEL, 0.87)),
+                .fill(color(tokens::PANEL, 0.87))
+                .pin(Some(0.0), Some(0.0), None, None),
         )
         .child(
             el().key("efi-shine")
                 .size(SIZE.0, SIZE.1)
                 .radius(tokens::RADIUS)
+                .pin(Some(0.0), Some(0.0), None, None)
                 .linear_gradient(
                     std::f32::consts::PI * 120.0 / 180.0,
                     [(0.0, color(0xffffff, 0.03)), (1.0, color(0xffffff, 0.0))],
@@ -307,6 +309,7 @@ fn frame() -> El {
             [1.0, 0.0, 0.0, 0.0],
             color(0xffffff, (0.24 - 0.12) / (1.0 - 0.12)),
         )
+        .pin(Some(0.0), Some(0.0), None, None)
 }
 
 /// Caja de una vuelta del historial: dos columnas de cuatro como máximo.

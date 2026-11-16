@@ -884,3 +884,88 @@ mod efficiency_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod layout_bounds {
+    use super::*;
+
+    fn elements(fuel: Fuel) -> Vec<rune::ElementInfo> {
+        fn view(fuel: &Fuel, _: &mut rune::Cx<Fuel>) -> El {
+            fuel.view()
+        }
+        fn poll(fuel: &mut Fuel, clock: f64, tx: &mut rune::Tx) -> bool {
+            let update = fuel.animate(clock);
+            fuel.schedule(clock, tx);
+            update.build
+        }
+        let mut runtime = rune::Runtime::with_text(
+            fuel,
+            view,
+            (523.0, 272.0),
+            rune::Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        runtime.poll = Some(poll);
+        runtime.frame(0.0);
+        runtime.elements()
+    }
+
+    /// Ninguna capa pintada puede caer fuera de la ventana del widget.
+    fn inside(elements: &[rune::ElementInfo], width: f32, height: f32) {
+        for element in elements {
+            let [x, y, w, h] = element.rect;
+            if w <= 0.0 || h <= 0.0 {
+                continue;
+            }
+            assert!(
+                x >= -0.5 && y >= -0.5 && x + w <= width + 0.5 && y + h <= height + 0.5,
+                "fuera de la ventana: {:?} {:?}",
+                element.key,
+                element.rect
+            );
+        }
+    }
+
+    fn efi() -> Fuel {
+        Fuel::new(
+            &Settings {
+                design_system: Look::Eficiencia,
+                ..Settings::default()
+            },
+            Preferences::default(),
+            true,
+            4,
+            0.0,
+        )
+    }
+
+    #[test]
+    fn no_layer_falls_outside_the_efficiency_window() {
+        let mut fuel = efi();
+        fuel.update(&photo(11.3, 25), 0.0);
+        inside(&elements(fuel), 523.0, 272.0);
+    }
+
+    #[test]
+    fn no_layer_falls_outside_the_vantare_sizes() {
+        for (size, width, height) in [
+            ("compact", 230.0, 137.0),
+            ("standard", 300.0, 204.0),
+            ("expanded", 460.0, 440.0),
+        ] {
+            let mut fuel = Fuel::new(
+                &Settings {
+                    design_system: Look::Vantare,
+                    size: size.into(),
+                    ..Settings::default()
+                },
+                Preferences::default(),
+                true,
+                4,
+                0.0,
+            );
+            fuel.update(&photo(11.3, 25), 0.0);
+            inside(&elements(fuel), width, height);
+        }
+    }
+}

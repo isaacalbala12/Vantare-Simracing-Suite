@@ -45,4 +45,4 @@ foreach($level in $levels){
         if($reader.ReadUInt16() -ne 8){throw 'ZIP no longer uses Deflate'}
     }finally{$reader.Dispose();$input.Dispose()}
 }
-'PASS ZIP: invalid/unavailable requests create no archive; both levels preserve members and bytes, without directory records.'
+'PASS ZIP: invalid/unavailable requests create no archive; available levels preserve members and bytes, without directory records.'

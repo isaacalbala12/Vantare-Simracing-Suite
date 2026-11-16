@@ -1,4 +1,4 @@
-﻿# Repository-only packaging helpers. Never copied into an installed generation.
+# Repository-only packaging helpers. Never copied into an installed generation.
 #requires -Version 5.1
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -25,14 +25,16 @@ function Get-NativeHash([string]$Path) {
 function Write-BuildJson([string]$Path,$Value) {
     [IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 100),[Text.UTF8Encoding]::new($false))
 }
-function New-BuildZip([string]$Directory,[string]$Destination) {
+function New-BuildZip([string]$Directory,[string]$Destination,[ValidateSet('Optimal','SmallestSize')][string]$CompressionLevel='Optimal') {
     $directory=Assert-BuildPath $Directory;$destination=Assert-BuildPath $Destination
+    # Resolve before creating the archive: PS 5.1 has no SmallestSize.
+    $level=[Enum]::Parse([IO.Compression.CompressionLevel],$CompressionLevel,$true)
     $zip=[IO.Compression.ZipFile]::Open($destination,[IO.Compression.ZipArchiveMode]::Create)
     try{
         foreach($item in Get-ChildItem -LiteralPath $directory -Recurse -Force){
             $null=Assert-BuildPath $item.FullName
             $name=$item.FullName.Substring($directory.Length+1).Replace('\','/')
-            if(-not $item.PSIsContainer){$null=[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,$item.FullName,$name)}
+            if(-not $item.PSIsContainer){$null=[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,$item.FullName,$name,$level)}
         }
     }finally{$zip.Dispose()}
 }

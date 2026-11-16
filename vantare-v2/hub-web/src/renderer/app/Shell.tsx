@@ -500,31 +500,29 @@ function ShellContent() {
                   <span>{launcher.profiles.length}</span>
                 </div>
                 <div className="v-sidebar-profile-list">
-                  {launcher.profiles.map((profile) => (
-                    <Button
-                      variant="ghost"
-                      className="v-sidebar-profile"
-                      key={profile.id}
-                      aria-label={shellText.launchProfile(profile.name)}
-                      onClick={() => {
-                        void launchProfile(profile.id, launcher.revision);
-                      }}
-                    >
-                      <span className="v-sidebar-profile-dot" />
-                      <span className="v-sidebar-profile-copy">
-                        <span>{profile.name}</span>
-                        <small>
-                          {profile.apps
-                            .map(
-                              (id) =>
-                                launcher.apps.find((app) => app.id === id)
-                                  ?.name ?? id,
-                            )
-                            .join(" → ")}
-                        </small>
-                      </span>
-                    </Button>
-                  ))}
+                  {launcher.profiles.map((profile) => {
+                    const apps = profile.apps.map(
+                      (id) =>
+                        launcher.apps.find((app) => app.id === id)?.name ?? id,
+                    );
+                    return (
+                      <Button
+                        variant="ghost"
+                        className="v-sidebar-profile"
+                        key={profile.id}
+                        aria-label={`${shellText.launchProfile(profile.name)} ${apps.join(" → ")}`}
+                        onClick={() => {
+                          void launchProfile(profile.id, launcher.revision);
+                        }}
+                      >
+                        <span className="v-sidebar-profile-dot" />
+                        <span className="v-sidebar-profile-copy">
+                          <span>{profile.name}</span>{" "}
+                          <small>{apps.join(" → ")}</small>
+                        </span>
+                      </Button>
+                    );
+                  })}
                 </div>
               </section>
             ) : undefined
@@ -628,7 +626,6 @@ function ShellContent() {
                 <Button
                   variant="ghost"
                   className="v-sidebar-account"
-                  aria-label={accountText.title}
                   aria-current={ui.section === "account" ? "page" : undefined}
                   onClick={() => navigate("account")}
                 >

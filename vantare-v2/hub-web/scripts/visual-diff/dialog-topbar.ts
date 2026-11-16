@@ -242,11 +242,9 @@ scenes["dialog-topbar-app-remove"] = {
 scenes["dialog-topbar-app-edit"] = {
   mock: "launcher-aplicaciones",
   async prepare(page) {
-    await page.getByRole("button", { name: "Launcher", exact: true }).click();
+    await page.getByRole("button", { name: /^Launcher ?\d*$/ }).click();
     await page.getByRole("tab", { name: "Aplicaciones", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Editar OBS Studio", exact: true })
-      .click();
+    await page.getByRole("button", { name: /^OBS Studio/ }).click();
     await page
       .getByRole("dialog", {
         name: "Aplicación · borrador sin guardar",
@@ -277,9 +275,7 @@ scenes["dialog-topbar-studio-remove"] = {
 scenes["dialog-topbar-account-reset"] = {
   mock: "cuenta-sesion",
   async prepare(page) {
-    await page
-      .getByRole("button", { name: /^(?:.+, )?cuenta$/iu, exact: true })
-      .click();
+    await page.locator(".v-sidebar-account, .v-account-link").first().click();
     await page
       .getByRole("button", { name: "Restablecer dispositivo", exact: true })
       .click();

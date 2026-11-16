@@ -14,7 +14,7 @@ export async function prepareResidentRemoval(page: Page, state: string) {
   await observeResidentControls(page);
   if (state === "timeout" || state === "accepted-expired")
     await page.clock.install();
-  await page.getByRole("button", { name: "Launcher", exact: true }).click();
+  await page.getByRole("button", { name: /^Launcher ?\d*$/ }).click();
   await page
     .getByRole("heading", { name: "Creador de Contenido", exact: true })
     .waitFor();
@@ -51,14 +51,14 @@ export async function prepareResidentRemoval(page: Page, state: string) {
         await page.getByText(text.removed, { exact: true }).waitFor();
         assert.equal(
           await page
-            .locator('.v-launcher-profile[aria-label="Creador de Contenido"]')
+            .getByRole("button", { name: /Creador de Contenido/ })
             .count(),
           0,
         );
         await until(
           () =>
             page
-              .getByRole("heading", { name: "Launcher", exact: true })
+              .getByRole("heading", { name: /^Launcher ?\d*$/ })
               .evaluate((node) => node === document.activeElement),
           5000,
           "removed origin returns focus to heading",
@@ -98,7 +98,7 @@ export async function prepareResidentRemoval(page: Page, state: string) {
         }
         assert.equal(
           await page
-            .locator('.v-launcher-profile[aria-label="Creador de Contenido"]')
+            .getByRole("button", { name: /Creador de Contenido/ })
             .count(),
           1,
         );

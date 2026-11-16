@@ -34,11 +34,11 @@ export function CalendarFrame({
           <Button
             onClick={onAlerts}
             disabled={!onAlerts}
-            aria-label={text.alerts}
+            aria-label={`${text.alerts} ${count}`}
             aria-describedby={alertsCountId}
           >
             <Icon name="bell-fill" />
-            <span className="v-calendar-header-long">{text.alerts}</span>
+            <span className="v-calendar-header-long">{text.alerts}</span>{" "}
             <span
               id={alertsCountId}
               className="v-calendar-pill v-calendar-pill--accent"

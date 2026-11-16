@@ -117,7 +117,7 @@ function mount(scene = "launcher-editor-ready") {
 describe("profile editor", () => {
   it("uses only the resident registration matching the current profile and hotkey", async () => {
     mount("launcher-shortcuts");
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     await screen.findByText(residentText.registration.registered);
     const hotkey = screen.getByRole("textbox", { name: text.hotkey });
@@ -131,14 +131,14 @@ describe("profile editor", () => {
   });
   it("retains freshly read custom arguments when only the profile name was edited", async () => {
     mount("launcher-editor-custom-conflicto");
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.change(name, { target: { value: "Solo cambia el nombre" } });
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByText(text.conflict);
     fireEvent.click(screen.getByRole("button", { name: text.retry }));
-    await screen.findByRole("button", { name: "Solo cambia el nombre" });
+    await screen.findByRole("button", { name: /Solo cambia el nombre/ });
     expect(screen.queryByRole("alertdialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     await screen.findByRole("textbox", { name: text.name });
@@ -148,7 +148,7 @@ describe("profile editor", () => {
   it("confirms tab changes including arrow activation, keeps on cancel and restores edit focus on discard", async () => {
     mount();
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     expect(screen.getByRole("tab", { name: "Aplicaciones" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
@@ -164,7 +164,7 @@ describe("profile editor", () => {
     fireEvent.click(screen.getByRole("tab", { name: /^Perfiles$/ }));
     await screen.findByRole("alertdialog", { name: text.discardTitle });
     fireEvent.click(screen.getByRole("button", { name: text.confirmDiscard }));
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: "Editar perfil" }),
     );
@@ -172,7 +172,7 @@ describe("profile editor", () => {
   it("vetoes window close and restart without discarding, and permits Live", async () => {
     const registrations = vi.spyOn(Client.prototype, "addCloseGuard");
     mount();
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.change(name, { target: { value: "No descartar al vetar" } });
@@ -203,7 +203,7 @@ describe("profile editor", () => {
   it("does not save again after conflict when there are no local edits to apply", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("launcher-conflicto");
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     await screen.findByRole("textbox", { name: text.name });
     fireEvent.click(screen.getByRole("button", { name: text.save }));
@@ -219,7 +219,7 @@ describe("profile editor", () => {
   });
   it("preserves a dirty draft while its screen is unmounted", async () => {
     mount();
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.change(name, { target: { value: "Borrador entre secciones" } });
@@ -234,11 +234,11 @@ describe("profile editor", () => {
       ).value,
     ).toBe("Borrador entre secciones");
     fireEvent.click(screen.getByRole("button", { name: text.save }));
-    await screen.findByRole("button", { name: "Borrador entre secciones" });
+    await screen.findByRole("button", { name: /Borrador entre secciones/ });
   });
   it("expires an acknowledgment when no running transition is observed", async () => {
     mount();
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     const request = Client.prototype.request;
     let response: ReturnType<Client["request"]> | undefined;
     let notifySent!: () => void;
@@ -282,7 +282,7 @@ describe("profile editor", () => {
   });
   it("creates a profile using the native default and exposes advanced notes without editable arguments", async () => {
     mount();
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(
       screen.getAllByRole("button", { name: "+ Nuevo perfil" })[0],
     );
@@ -295,12 +295,12 @@ describe("profile editor", () => {
     fireEvent.change(name, { target: { value: "Perfil guardado QA" } });
     fireEvent.click(screen.getByRole("button", { name: text.save }));
     await screen.findByRole("button", {
-      name: "Perfil guardado QA",
+      name: /Perfil guardado QA/,
     });
   });
   it("keeps a draft after CAS conflict and saves only on explicit retry", async () => {
     mount("launcher-conflicto");
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.change(name, { target: { value: "Cambio conservado" } });
@@ -312,13 +312,13 @@ describe("profile editor", () => {
     ).toBe("Cambio conservado");
     fireEvent.click(screen.getByRole("button", { name: text.retry }));
     await screen.findByRole("button", {
-      name: "Cambio conservado",
+      name: /Cambio conservado/,
     });
   });
   it("shows argument status and asks before Escape discards changes", async () => {
     mount();
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.click(screen.getByRole("button", { name: text.mode }));
@@ -341,12 +341,12 @@ describe("profile editor", () => {
       expect(screen.queryByRole("textbox", { name: text.name })).toBeNull(),
     );
     expect(
-      screen.getByRole("heading", { name: "Creador de Contenido" }),
+      screen.getByRole("heading", { name: /Creador de Contenido/ }),
     ).toBeTruthy();
   });
   it("requires confirmation before removing a step with private arguments", async () => {
     mount("launcher-editor-custom");
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     await screen.findByRole("textbox", { name: text.name });
     fireEvent.click(screen.getAllByRole("button", { name: text.remove })[0]);
@@ -370,7 +370,7 @@ describe("profile editor", () => {
   });
   it("reorders a step without discarding its custom arguments", async () => {
     mount("launcher-editor-custom");
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     await screen.findByRole("textbox", { name: text.name });
     fireEvent.click(screen.getAllByRole("button", { name: text.down })[0]);
@@ -387,7 +387,7 @@ describe("profile editor", () => {
   it("warns before saving an app change that discards private arguments", async () => {
     mount("launcher-editor-custom");
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     await screen.findByRole("textbox", { name: text.name });
     await user.click(
@@ -404,7 +404,7 @@ describe("profile editor", () => {
   });
   it("rereads after conflict and warns instead of rebinding custom arguments across revisions", async () => {
     mount("launcher-editor-custom-conflicto");
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     fireEvent.click(screen.getByRole("button", { name: "Editar perfil" }));
     const name = await screen.findByRole("textbox", { name: text.name });
     fireEvent.change(name, { target: { value: "Borrador tras conflicto" } });
@@ -432,14 +432,14 @@ describe("profile editor", () => {
     fireEvent.click(
       screen.getByRole("button", { name: text.confirmArgumentLoss }),
     );
-    await screen.findByRole("button", { name: "Borrador tras conflicto" });
+    await screen.findByRole("button", { name: /Borrador tras conflicto/ });
   });
   it("marks another favorite from the list without clearing the existing favorite", async () => {
     mount();
     const creator = await screen.findByRole("button", {
-      name: "Creador de Contenido",
+      name: /Creador de Contenido/,
     });
-    const pro = screen.getByRole("button", { name: "Pro" });
+    const pro = screen.getByRole("button", { name: /^Pro ?\d+ apps/ });
     fireEvent.contextMenu(pro);
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.favorite }),
@@ -452,7 +452,7 @@ describe("profile editor", () => {
   it("confirms profile deletion and cancellation has no effect", async () => {
     mount("launcher-removal-finished");
     const creator = await screen.findByRole("button", {
-      name: "Creador de Contenido",
+      name: /Creador de Contenido/,
     });
     fireEvent.contextMenu(creator);
     fireEvent.click(
@@ -483,7 +483,7 @@ describe("profile editor", () => {
       () =>
         expect(
           screen.queryByRole("button", {
-            name: "Creador de Contenido",
+            name: /Creador de Contenido/,
           }),
         ).toBeNull(),
       { timeout: 3000 },
@@ -491,7 +491,7 @@ describe("profile editor", () => {
   });
   it("keeps an action after conflict and only saves on explicit retry", async () => {
     mount("launcher-actions-conflicto");
-    const pro = await screen.findByRole("button", { name: "Pro" });
+    const pro = await screen.findByRole("button", { name: /^Pro ?\d+ apps/ });
     fireEvent.contextMenu(pro);
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.favorite }),
@@ -508,7 +508,7 @@ describe("profile editor", () => {
     mount();
     const user = userEvent.setup();
     const creator = await screen.findByRole("button", {
-      name: "Creador de Contenido",
+      name: /Creador de Contenido/,
     });
     fireEvent.contextMenu(creator);
     await user.click(
@@ -532,7 +532,7 @@ describe("profile editor", () => {
     await user.clear(name);
     await user.type(name, "Copia revisada");
     await user.click(screen.getByRole("button", { name: text.save }));
-    await screen.findByRole("button", { name: "Copia revisada" });
+    await screen.findByRole("button", { name: /Copia revisada/ });
     const saved = requests.mock.calls.find(
       ([r]) => r.method === "launcher.profile.save",
     )?.[0];
@@ -541,7 +541,7 @@ describe("profile editor", () => {
       baseRevision: prepared.value.baseRevision,
       draft: {
         id: prepared.value.draft.id,
-        name: "Copia revisada",
+        name: /Copia revisada/,
         steps: [
           prepared.value.draft.steps[1],
           prepared.value.draft.steps[0],
@@ -571,7 +571,7 @@ describe("profile editor", () => {
         });
       mount();
       fireEvent.contextMenu(
-        await screen.findByRole("button", { name: "Creador de Contenido" }),
+        await screen.findByRole("button", { name: /Creador de Contenido/ }),
       );
       fireEvent.click(
         await screen.findByRole("menuitem", { name: actionText.duplicate }),
@@ -599,16 +599,16 @@ describe("profile editor", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     fireEvent.contextMenu(
-      await screen.findByRole("button", { name: "Creador de Contenido" }),
+      await screen.findByRole("button", { name: /Creador de Contenido/ }),
     );
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.duplicate }),
     );
     await screen.findByRole("textbox", { name: text.name });
     fireEvent.click(screen.getByRole("button", { name: text.cancel }));
-    await screen.findByRole("button", { name: "Creador de Contenido" });
+    await screen.findByRole("button", { name: /Creador de Contenido/ });
     expect(
-      screen.queryByRole("button", { name: "Creador de Contenido (copia)" }),
+      screen.queryByRole("button", { name: /Creador de Contenido \(copia\)/ }),
     ).toBeNull();
     expect(
       requests.mock.calls.some(([r]) =>
@@ -623,7 +623,7 @@ describe("profile editor", () => {
   it("saves rail preferences and retains a custom first-step delay", async () => {
     mount("launcher-options-custom");
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Creador de Contenido" });
+    await screen.findByRole("heading", { name: /Creador de Contenido/ });
     const delay = screen.getByRole("combobox", {
       name: launcherText.firstDelay,
     });
@@ -661,7 +661,7 @@ describe("profile editor", () => {
         });
       mount();
       fireEvent.contextMenu(
-        await screen.findByRole("button", { name: "Creador de Contenido" }),
+        await screen.findByRole("button", { name: /Creador de Contenido/ }),
       );
       fireEvent.click(
         await screen.findByRole("menuitem", { name: actionText.duplicate }),
@@ -693,7 +693,9 @@ describe("profile editor", () => {
       const name = scene.endsWith("long-name")
         ? "a".repeat(profileLimits.name)
         : "Creador de Contenido";
-      fireEvent.contextMenu(await screen.findByRole("button", { name }));
+      fireEvent.contextMenu(
+        await screen.findByRole("button", { name: new RegExp(name) }),
+      );
       const item = await screen.findByRole("menuitem", {
         name: actionText.duplicate,
       });
@@ -717,7 +719,7 @@ describe("profile editor", () => {
     mount();
     const user = userEvent.setup();
     const creator = await screen.findByRole("button", {
-      name: "Creador de Contenido",
+      name: /Creador de Contenido/,
     });
     await user.click(
       screen.getByRole("combobox", { name: launcherText.retries }),

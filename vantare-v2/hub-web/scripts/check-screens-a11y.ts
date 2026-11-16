@@ -13,20 +13,16 @@ import { homeScenes } from "./visual-diff/home.ts";
  * rules such as heading-order, unlike the specimen's wcag2a/wcag2aa/wcag21aa
  * tags.
  *
- * A screen with findings already filed as an issue keeps an explicit `pending`
- * entry (rule + help + issue): CI stays green while that finding is open and
- * fails as soon as a different rule appears. Screens without `pending` must be
- * clean.
+ * Every scanned screen must be clean: there are no pending exceptions. A new
+ * finding fails the step and gets its own issue, as the three Label in Name
+ * findings (#2497, #2498, #2499) did before they were fixed.
  */
 
-type Pending = { rule: string; help: string; issue: number };
 type Screen = {
   id: string;
   name: string;
   mock: string;
   prepare: (page: Page) => Promise<void>;
-  /** Violations already filed as issues; a new rule still fails the scan. */
-  pending?: Pending[];
 };
 
 const mainNav = (page: Page) =>
@@ -72,16 +68,10 @@ const screens: Screen[] = [
     id: "launcher-perfiles",
     name: "Launcher · Perfiles",
     mock: "launcher-base",
-    pending: [
-      {
-        rule: "label-content-name-mismatch",
-        help: "Elements must have their visible text as part of their accessible name",
-        issue: 2497,
-      },
-    ],
+
     prepare: async (page) => {
       await mainNav(page)
-        .getByRole("button", { name: "Launcher", exact: true })
+        .getByRole("button", { name: /^Launcher ?\d*$/ })
         .click();
       await page.locator(".v-launcher-profiles").waitFor();
       await selectTab(page, "Perfiles");
@@ -91,16 +81,10 @@ const screens: Screen[] = [
     id: "launcher-aplicaciones",
     name: "Launcher · Aplicaciones",
     mock: "launcher-aplicaciones",
-    pending: [
-      {
-        rule: "label-content-name-mismatch",
-        help: "Elements must have their visible text as part of their accessible name",
-        issue: 2497,
-      },
-    ],
+
     prepare: async (page) => {
       await mainNav(page)
-        .getByRole("button", { name: "Launcher", exact: true })
+        .getByRole("button", { name: /^Launcher ?\d*$/ })
         .click();
       await page.locator(".v-launcher-profiles").waitFor();
       await selectTab(page, "Aplicaciones");
@@ -110,16 +94,7 @@ const screens: Screen[] = [
     id: `ajustes-${tab.toLowerCase().replaceAll(" ", "-")}`,
     name: `Ajustes · ${tab}`,
     mock: "ajustes-con-diseno",
-    pending:
-      tab === "General" || tab === "Rendimiento en pista"
-        ? [
-            {
-              rule: "label-content-name-mismatch",
-              help: "Elements must have their visible text as part of their accessible name",
-              issue: 2498,
-            },
-          ]
-        : [],
+
     prepare: async (page) => {
       await page.getByRole("tab", { name: tab, exact: true }).waitFor();
       await selectTab(page, tab);
@@ -129,13 +104,7 @@ const screens: Screen[] = [
     id: "calendario",
     name: "Calendario · Próximas",
     mock: "calendar-live-reference",
-    pending: [
-      {
-        rule: "label-content-name-mismatch",
-        help: "Elements must have their visible text as part of their accessible name",
-        issue: 2499,
-      },
-    ],
+
     prepare: (page) => calendarScenes["calendario-r6-proximas"].prepare(page),
   },
   {
@@ -240,29 +209,15 @@ export async function checkMainScreens(
     resolve(evidence, "screens-axe.json"),
     JSON.stringify(results, null, 2),
   );
-  const unexpected: string[] = [];
-  for (const result of results) {
-    const screen = screens.find((entry) => entry.id === result.id);
-    assert.ok(screen, `unknown screen ${result.id}`);
-    const expected = new Map(
-      (screen.pending ?? []).map((pending) => [pending.rule, pending]),
-    );
-    for (const violation of result.violations) {
-      const pending = expected.get(violation.id);
-      if (pending) {
-        console.log(
-          `${screen.name}/${result.scheme}: pending ${violation.id} (#${pending.issue})`,
-        );
-        continue;
-      }
-      unexpected.push(
-        `${screen.name}/${result.scheme}: ${violation.id} — ${violation.help} (${violation.targets.join(", ")})`,
-      );
-    }
-  }
+  const failures = results.flatMap((result) =>
+    result.violations.map(
+      (violation) =>
+        `${result.screen}/${result.scheme}: ${violation.id} — ${violation.help} (${violation.targets.join(", ")})`,
+    ),
+  );
   assert.deepEqual(
-    unexpected,
+    failures,
     [],
-    `New accessibility violations outside the filed list:\n${unexpected.join("\n")}`,
+    `Accessibility violations on the main screens:\n${failures.join("\n")}`,
   );
 }

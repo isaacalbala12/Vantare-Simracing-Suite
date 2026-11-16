@@ -5,7 +5,9 @@ export const upcomingScenes: Record<string, VisualScene> = {
   "strategy-proximamente": {
     mock: "proximamente-base",
     async prepare(page) {
-      await page.getByRole("button", { name: "Strategy", exact: true }).click();
+      await page
+        .getByRole("button", { name: /^Strategy ?(Próximamente)?$/ })
+        .click();
       await page
         .getByRole("heading", { name: "Plan de paradas", exact: true })
         .waitFor();
@@ -15,7 +17,9 @@ export const upcomingScenes: Record<string, VisualScene> = {
   "engineer-base": {
     mock: "proximamente-base",
     async prepare(page) {
-      await page.getByRole("button", { name: "Engineer", exact: true }).click();
+      await page
+        .getByRole("button", { name: /^Engineer ?(Próximamente)?$/ })
+        .click();
       await page
         .getByRole("heading", { name: "Avisos de voz en pista", exact: true })
         .waitFor();

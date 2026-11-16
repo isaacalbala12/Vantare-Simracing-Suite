@@ -92,7 +92,6 @@ export function PerformanceLevels({
           type="button"
           className="v-performance-level v-performance-custom"
           disabled={Boolean(studioLock)}
-          aria-label={text.customAction}
           aria-description={studioLock}
           onClick={onStudio}
         >

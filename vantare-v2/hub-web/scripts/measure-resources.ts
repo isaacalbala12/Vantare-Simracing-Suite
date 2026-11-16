@@ -224,7 +224,7 @@ try {
   ]) {
     const button =
       section === "account"
-        ? page.getByRole("button", { name: /^(?:.+, )?cuenta$/iu, exact: true })
+        ? page.locator(".v-sidebar-account, .v-account-link").first()
         : section === "settings"
           ? page.getByRole("button", { name: "Ajustes", exact: true })
           : page.locator(`[data-nav="${section}"]`);

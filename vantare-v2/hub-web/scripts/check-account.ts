@@ -64,9 +64,7 @@ export async function checkAccount(page: Page, base: string, evidence: string) {
     await page.locator(".v-sidebar").waitFor();
     await page.keyboard.press("Control+b");
     await page.getByRole("region", { name: "Perfiles", exact: true }).waitFor();
-    await page
-      .getByRole("button", { name: /^(?:.+, )?cuenta$/iu, exact: true })
-      .click();
+    await page.locator(".v-sidebar-account, .v-account-link").first().click();
     await page
       .getByRole("heading", { name: "Isaac Albalá", exact: true })
       .waitFor();
@@ -125,9 +123,7 @@ export async function checkAccount(page: Page, base: string, evidence: string) {
       .getByRole("button", { name: accessText.email, exact: true })
       .waitFor();
     await page.goto(`${base}?escena=visual-${scheme}:cuenta-founders`);
-    await page
-      .getByRole("button", { name: /^(?:.+, )?cuenta$/iu, exact: true })
-      .click();
+    await page.locator(".v-sidebar-account, .v-account-link").first().click();
     await page.getByText(text.foundersOwned, { exact: true }).waitFor();
     await page.waitForFunction(
       (expected) => document.documentElement.dataset.scheme === expected,

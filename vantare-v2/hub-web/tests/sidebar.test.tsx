@@ -49,7 +49,7 @@ it("keeps keyboard navigation and collapse available with expanded groups", () =
       </TooltipProvider>
     </CSPProvider>,
   );
-  const launcher = screen.getByRole("button", { name: "Launcher" });
+  const launcher = screen.getByRole("button", { name: /^Launcher ?\d*$/ });
   expect(launcher.getAttribute("aria-current")).toBe("page");
   fireEvent.keyDown(launcher, { key: "ArrowDown" });
   expect(document.activeElement).toBe(

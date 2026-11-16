@@ -45,7 +45,7 @@ export async function checkCalendarDensity(page: Page, base: string) {
           );
           assert.ok(
             (await page
-              .getByRole("button", { name: "Avisos", exact: true })
+              .getByRole("button", { name: /^Avisos ?\d*$/ })
               .count()) > 0,
           );
           const rail = page.locator(".v-context:has(.v-calendar-rail)");

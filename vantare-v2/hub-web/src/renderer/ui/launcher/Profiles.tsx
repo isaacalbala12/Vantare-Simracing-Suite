@@ -396,7 +396,6 @@ export function LauncherProfiles({
                   <button
                     type="button"
                     className="v-launcher-profile"
-                    aria-label={item.name}
                     aria-pressed={item.id === profile.id}
                     disabled={pending || view.running}
                     onClick={() => onSelect(item.id)}

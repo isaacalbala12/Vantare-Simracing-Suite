@@ -140,7 +140,7 @@ export function Sidebar({
               data-nav={item.id}
               variant="ghost"
               aria-current={active === item.id ? "page" : undefined}
-              aria-label={item.label}
+              aria-label={collapsed ? item.label : undefined}
               aria-disabled={Boolean(item.locked)}
               title={item.locked}
               tabIndex={focused === item.id ? 0 : -1}

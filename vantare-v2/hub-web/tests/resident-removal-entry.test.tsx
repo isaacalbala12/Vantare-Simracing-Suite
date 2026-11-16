@@ -90,7 +90,7 @@ function mount(scene = "launcher-editor-ready") {
 async function confirmRemoval(scene: string) {
   mount(scene);
   const origin = await screen.findByRole("button", {
-    name: "Creador de Contenido",
+    name: /Creador de Contenido/,
   });
   fireEvent.contextMenu(origin);
   fireEvent.click(await screen.findByRole("menuitem", { name: "Eliminar" }));
@@ -110,9 +110,7 @@ it("entry uses removeChecked and leaves the profile and dialog intact after Acce
   await within(dialog).findByText(removalText.accepted);
   expect(screen.getByRole("dialog", { name: "Eliminar perfil" })).toBeTruthy();
   expect(
-    document.querySelector(
-      '.v-launcher-profile[aria-label="Creador de Contenido"]',
-    ),
+    screen.getByRole("button", { name: /Creador de Contenido/ }),
   ).toBeTruthy();
   expect(
     requests.mock.calls.filter(([r]) => r.method === "launcher.profile.delete"),
@@ -148,9 +146,7 @@ it("entry waits for Removed before closing, refreshes the document and restores 
   );
   await waitFor(() =>
     expect(
-      document.querySelector(
-        '.v-launcher-profile[aria-label="Creador de Contenido"]',
-      ),
+      screen.queryByRole("button", { name: /Creador de Contenido/ }),
     ).toBeNull(),
   );
   expect(screen.getByText(removalText.removed)).toBeTruthy();
@@ -193,9 +189,7 @@ it.each(["gap", "restart"])(
     await within(dialog).findByText(removalText.unknown);
     expect(screen.queryByText(removalText.removed)).toBeNull();
     expect(
-      document.querySelector(
-        '.v-launcher-profile[aria-label="Creador de Contenido"]',
-      ),
+      screen.getByRole("button", { name: /Creador de Contenido/ }),
     ).toBeTruthy();
   },
 );
@@ -211,7 +205,7 @@ it("requires reconfirmation with a fresh revision after a conflict, never blind 
   fireEvent.click(within(dialog).getByRole("button", { name: "Cerrar" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   fireEvent.contextMenu(
-    screen.getByRole("button", { name: "Creador de Contenido" }),
+    screen.getByRole("button", { name: /Creador de Contenido/ }),
   );
   fireEvent.click(await screen.findByRole("menuitem", { name: "Eliminar" }));
   const fresh = await screen.findByRole("dialog", { name: "Eliminar perfil" });

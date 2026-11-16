@@ -205,7 +205,6 @@ export function ApplicationCatalog({
                   type="button"
                   className="v-launcher-app-name"
                   disabled={pending}
-                  aria-label={text.edit(app.name)}
                   onClick={() => onEdit(app.id)}
                 >
                   <strong>{app.name}</strong>

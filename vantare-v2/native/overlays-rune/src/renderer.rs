@@ -4,17 +4,32 @@ use crate::{
     relative::Relative,
     scene::{FrameSet, Placement, Viewport},
     stats::{Cause, Meter},
+    widget::Widget,
 };
 use rune::{El, Tx, el};
 use std::collections::BTreeMap;
-use vantare_domain::widget_settings::{Settings, look::Look};
+use vantare_domain::{
+    format::Preferences,
+    widget_settings::{Settings, look::Look},
+};
 use vantare_ipc::layout::Instance;
 
+type Constructor = fn(&Settings, Preferences, bool, u16, f64) -> Option<Box<dyn Widget>>;
+
+fn constructor(settings: &Settings) -> Option<Constructor> {
+    match settings {
+        Settings::Relative(s) if s.design_system == Look::Vantare => {
+            Some(<Relative as Widget>::new)
+        }
+        _ => None,
+    }
+}
+
 pub(crate) fn supports(instance: &Instance) -> bool {
-    matches!(&instance.settings, Settings::Relative(settings) if settings.design_system == Look::Vantare)
+    constructor(&instance.settings).is_some()
 }
 struct Entry {
-    painter: Relative,
+    painter: Box<dyn Widget>,
     placement: Placement,
 }
 #[derive(Default)]
@@ -36,10 +51,11 @@ impl Painters {
         if let Some(frames) = frames
             && frames.shown
         {
-            for instance in frames.visible_instances(access).filter(|i| supports(i)) {
-                let Settings::Relative(settings) = &instance.settings else {
+            for instance in frames.visible_instances(access) {
+                let Some(new) = constructor(&instance.settings) else {
                     continue;
                 };
+                let settings = &instance.settings;
                 let hz = frames
                     .layout
                     .performance
@@ -55,13 +71,15 @@ impl Painters {
                         .painter
                         .size_for(frames.photos.get(&instance.id).map(|p| p.snapshot.as_ref()))
                 } else {
-                    let painter = Relative::new(
+                    let Some(painter) = new(
                         settings,
                         frames.layout.preferences,
                         frames.reduced_motion,
                         hz,
                         clock,
-                    );
+                    ) else {
+                        continue;
+                    };
                     let size = painter
                         .size_for(frames.photos.get(&instance.id).map(|p| p.snapshot.as_ref()));
                     fresh = Some(painter);
@@ -144,5 +162,35 @@ impl Painters {
             );
         }
         root
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dispatch_constructs_vantare_relative_and_rejects_unmigrated_looks_and_kinds() {
+        let mut relative = vantare_domain::widget_settings::relative::Settings {
+            design_system: Look::Vantare,
+            ..Default::default()
+        };
+        let settings = Settings::Relative(relative.clone());
+        let prefs = Preferences::default();
+        let painter =
+            constructor(&settings).expect("Vantare constructor")(&settings, prefs, true, 15, 0.0)
+                .expect("Relative instance");
+        assert!(painter.configured(&settings, prefs));
+        assert_eq!(
+            painter.size(),
+            Relative::new(&relative, prefs, true, 15, 0.0).size()
+        );
+        relative.design_system = Look::Eficiencia;
+        let efficiency = Settings::Relative(relative);
+        let pedals = Settings::Pedals(Default::default());
+        assert!(constructor(&efficiency).is_none());
+        assert!(constructor(&pedals).is_none());
+        assert!(!painter.configured(&efficiency, prefs));
+        assert!(!painter.configured(&pedals, prefs));
     }
 }

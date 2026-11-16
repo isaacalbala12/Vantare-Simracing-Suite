@@ -1,6 +1,6 @@
 //! Telemetría de entrada, Look Vantare: pinta la escena y mantiene los valores vivos.
 use super::Update;
-use super::scene::{PLOT, Scene, Segment};
+use super::scene::{self, PLOT, Scene, Segment};
 use crate::vantare::Style;
 use crate::vantare::alpha;
 use crate::vantare::paint::{Face, font};
@@ -8,15 +8,20 @@ use rune::{Align, Color, El, LineCap, Live, LiveText, Shape, canvas, el, text};
 use std::sync::Arc;
 use vantare_domain::geometry::Size;
 
-const WIDTH: f32 = 600.0;
-const HEIGHT: f32 = 84.0;
+const WIDTH: f32 = scene::WIDTH;
+const HEIGHT: f32 = scene::HEIGHT;
 const GRID: [(f32, f32); 4] = [(0.25, 0.05), (0.5, 0.05), (0.75, 0.05), (1.0, 0.12)];
+const WHITE: Color = Color {
+    r: 1.0,
+    g: 1.0,
+    b: 1.0,
+    a: 1.0,
+};
 
 struct Palette {
     clutch: Color,
     brake: Color,
     throttle: Color,
-    white: Color,
 }
 
 impl Palette {
@@ -26,7 +31,6 @@ impl Palette {
             clutch: hex("#4f8ef7"),
             brake: hex("#e14a54"),
             throttle: hex("#22c55e"),
-            white: hex("#ffffff"),
         }
     }
     fn signal(&self, signal: usize) -> Color {
@@ -58,6 +62,11 @@ pub(super) struct Painter {
     bars: [Live<[f32; 4]>; 3],
     dot: Live<[f32; 2]>,
     dot_opacity: Live<f32>,
+    seconds_now: u8,
+    status_now: Option<&'static str>,
+    rpm_now: String,
+    gear_now: String,
+    speed_now: String,
     last: Option<Last>,
 }
 
@@ -77,6 +86,11 @@ impl Painter {
             bars: std::array::from_fn(|_| Live::new([0.0; 4])),
             dot: Live::new([0.0, 0.0]),
             dot_opacity: Live::new(0.0),
+            seconds_now: scene.seconds.wrapping_add(1),
+            status_now: None,
+            rpm_now: String::new(),
+            gear_now: String::new(),
+            speed_now: String::new(),
             last: None,
         };
         painter.sync(scene);
@@ -110,13 +124,29 @@ impl Painter {
             self.segments = scene.segments.clone();
         }
         let view = &scene.view;
-        pixels |= self.seconds_text.set(format!("{} s", scene.seconds));
-        pixels |= self
-            .status
-            .set(view.status_text.unwrap_or_default().to_string());
-        pixels |= self.rpm.set(format!("{} rpm", view.rpm));
-        pixels |= self.gear.set(view.gear.clone());
-        pixels |= self.speed.set(view.speed.replace("KPH", "km/h"));
+        if self.seconds_now != scene.seconds {
+            self.seconds_now = scene.seconds;
+            pixels |= self.seconds_text.set(format!("{} s", scene.seconds));
+        }
+        if self.status_now != view.status_text {
+            self.status_now = view.status_text;
+            pixels |= self
+                .status
+                .set(view.status_text.unwrap_or_default().to_string());
+        }
+        if self.rpm_now != view.rpm {
+            self.rpm_now = view.rpm.clone();
+            pixels |= self.rpm.set(format!("{} rpm", view.rpm));
+        }
+        if self.gear_now != view.gear {
+            self.gear_now = view.gear.clone();
+            pixels |= self.gear.set(view.gear.clone());
+        }
+        let speed = view.speed.replace("KPH", "km/h");
+        if self.speed_now != speed {
+            self.speed_now = speed.clone();
+            pixels |= self.speed.set(speed);
+        }
         let start = usize::from(!scene.show_clutch);
         for index in start..3 {
             let height = scene.pedals[index].map_or(0.0, |value| 64.0 * value / 100.0);
@@ -146,10 +176,10 @@ impl Painter {
         ink: Color,
         align: Align,
     ) -> El {
-        let baseline = if matches!(face, Face::Display) {
-            self.style.fonts.display_baseline
-        } else {
-            0.0
+        let baseline = match face {
+            Face::Display => self.style.fonts.display_baseline,
+            Face::Mono => self.style.fonts.mono_baseline,
+            Face::Body => 0.0,
         };
         text(value.get().to_string())
             .key(key)
@@ -223,13 +253,18 @@ pub(super) fn view(state: &Painter) -> El {
                     ),
                 ),
         );
-    for (fraction, opacity) in GRID {
-        root = root.child(el().size(PLOT.2, 1.0).fill(alpha(p.white, opacity)).pin(
-            Some(PLOT.0),
-            Some(PLOT.1 + fraction * PLOT.3 - 0.5),
-            None,
-            None,
-        ));
+    for (index, (fraction, opacity)) in GRID.into_iter().enumerate() {
+        root = root.child(
+            el().key(format!("grid-{index}"))
+                .size(PLOT.2, 1.0)
+                .fill(alpha(WHITE, opacity))
+                .pin(
+                    Some(PLOT.0),
+                    Some(PLOT.1 + fraction * PLOT.3 - 0.5),
+                    None,
+                    None,
+                ),
+        );
     }
     let mut plot = el().key("plot").size(PLOT.2, PLOT.3).clip_rounded(0.0).pin(
         Some(PLOT.0),
@@ -246,14 +281,17 @@ pub(super) fn view(state: &Painter) -> El {
                     .stroke_with(segment.points.clone(), false, 2.0, LineCap::Butt, color),
             )
             .key(format!("trace-{index}"))
-            .size(PLOT.2, PLOT.3),
+            .size(PLOT.2, PLOT.3)
+            .pin(Some(0.0), Some(0.0), None, None),
         );
     }
     root = root.child(plot);
     root = root.child(
-        el().size(6.0, 6.0)
+        el().key("dot")
+            .size(6.0, 6.0)
             .radius(3.0)
-            .fill(p.white)
+            .fill(WHITE)
+            .pin(Some(0.0), Some(0.0), None, None)
             .live_offset(&state.dot)
             .live_opacity(&state.dot_opacity),
     );
@@ -291,13 +329,16 @@ pub(super) fn view(state: &Painter) -> El {
         let x = 462.0 + (index - start) as f32 * 12.0;
         root = root
             .child(
-                el().size(9.0, 64.0)
+                el().key(format!("track-{index}"))
+                    .size(9.0, 64.0)
                     .radius(4.0)
-                    .fill(alpha(p.white, 0.08))
+                    .fill(alpha(WHITE, 0.08))
                     .pin(Some(x), Some(10.0), None, None),
             )
             .child(
-                el().radius(4.0)
+                // Radio 4: Rune lo recorta a la mitad del lado, como el min(4, h/2) de GPUI.
+                el().key(format!("bar-{index}"))
+                    .radius(4.0)
                     .live_rect(&state.bars[index])
                     .fill(p.signal(index)),
             );
@@ -309,7 +350,7 @@ pub(super) fn view(state: &Painter) -> El {
             "rpm".into(),
             centre,
             10.0,
-            120.0,
+            96.0,
             10.0,
             Face::Mono,
             9.0,
@@ -322,7 +363,7 @@ pub(super) fn view(state: &Painter) -> El {
             "gear".into(),
             centre,
             22.0,
-            160.0,
+            96.0,
             36.0,
             Face::Display,
             40.0,
@@ -335,7 +376,7 @@ pub(super) fn view(state: &Painter) -> El {
             "speed".into(),
             centre,
             60.0,
-            160.0,
+            96.0,
             14.0,
             Face::Mono,
             10.0,

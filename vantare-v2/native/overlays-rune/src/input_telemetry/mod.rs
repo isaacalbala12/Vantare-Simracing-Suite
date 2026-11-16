@@ -320,12 +320,12 @@ mod tests {
         assert_eq!(view.pedals[0], Some(25.0));
     }
 
-    #[test]
-    fn every_trace_canvas_is_clipped_inside_the_plot_box() {
+    fn dense(settings: &Settings) -> rune::Runtime<Box<dyn crate::widget::Widget>> {
         let _fonts = rune::text::with_families("Inter", "Inter");
-        let mut widget = widget(&Settings::default(), false);
-        for index in 0..4 {
-            widget.update(&photo(index + 1, index * 1000, 1.0), 0.0);
+        let mut widget = widget(settings, false);
+        for index in 1..=8 {
+            let throttle = 0.1 * index as f64;
+            widget.update(&photo(index, (index - 1) * 20, throttle), 0.0);
         }
         let mut runtime = rune::Runtime::with_text(
             Box::new(widget) as Box<dyn crate::widget::Widget>,
@@ -340,11 +340,31 @@ mod tests {
             update.build
         });
         runtime.frame(1.0);
-        let plot = runtime
-            .elements()
-            .into_iter()
-            .find(|element| element.key.as_deref() == Some("plot"))
-            .expect("recuadro de trazas");
+        runtime
+    }
+
+    #[test]
+    fn the_painted_layout_matches_the_approved_strip() {
+        let runtime = dense(&Settings {
+            show_clutch: true,
+            ..Settings::default()
+        });
+        let elements = runtime.elements();
+        let find = |key: &str| {
+            elements
+                .iter()
+                .find(|element| element.key.as_deref() == Some(key))
+                .unwrap_or_else(|| panic!("falta {key}"))
+        };
+        for (index, fraction) in [0.25_f32, 0.5, 0.75, 1.0].into_iter().enumerate() {
+            let grid = find(&format!("grid-{index}"));
+            assert_eq!(
+                grid.target[1],
+                scene::PLOT.1 + fraction * scene::PLOT.3 - 0.5,
+                "rejilla {index}"
+            );
+        }
+        let plot = find("plot");
         assert_eq!(
             (
                 plot.target[0],
@@ -352,9 +372,105 @@ mod tests {
                 plot.target[2],
                 plot.target[3]
             ),
-            (scene::PLOT.0, scene::PLOT.1, scene::PLOT.2, scene::PLOT.3),
-            "el recorte mide 440×64 en (12,10)"
+            (scene::PLOT.0, scene::PLOT.1, scene::PLOT.2, scene::PLOT.3)
         );
+        let mut traces = 0;
+        for element in &elements {
+            if element
+                .key
+                .as_deref()
+                .is_some_and(|key| key.starts_with("trace-"))
+            {
+                traces += 1;
+                assert!(
+                    element.rect[0] >= plot.rect[0] - 0.01
+                        && element.rect[1] >= plot.rect[1] - 0.01
+                        && element.rect[0] + element.rect[2] <= plot.rect[0] + plot.rect[2] + 0.01
+                        && element.rect[1] + element.rect[3] <= plot.rect[1] + plot.rect[3] + 0.01,
+                    "traza fuera del recuadro: {:?}",
+                    element.rect
+                );
+            }
+        }
+        assert_eq!(traces, 3, "las tres señales en la misma caja");
+        let dot = find("dot");
+        assert_eq!(dot.rect[0], 448.0);
+        assert!((dot.rect[1] - (70.0 - 62.0 * 80.0 / 100.0)).abs() < 0.01);
+        for index in 0..3 {
+            let track = find(&format!("track-{index}"));
+            assert_eq!(track.target[0], 462.0 + 12.0 * index as f32);
+            let bar = find(&format!("bar-{index}"));
+            assert_eq!(bar.rect[0], 462.0 + 12.0 * index as f32);
+            assert_eq!(bar.rect[3], 64.0 * 50.0 / 100.0, "freno al 50 %");
+        }
+        let gear = find("gear");
+        assert_eq!(
+            gear.rect[0] + gear.rect[2] / 2.0,
+            550.0,
+            "centro con embrague"
+        );
+        let speed = find("speed");
+        assert_eq!(speed.rect[1], 60.0);
+        assert_eq!(speed.rect[3], 14.0);
+    }
+
+    #[test]
+    fn nothing_is_painted_outside_the_window() {
+        let runtime = dense(&Settings {
+            show_clutch: true,
+            ..Settings::default()
+        });
+        for element in runtime.elements() {
+            let [x, y, width, height] = element.rect;
+            assert!(
+                x >= -0.01
+                    && y >= -0.01
+                    && x + width <= SIZE.width + 0.01
+                    && y + height <= SIZE.height + 0.01,
+                "elemento fuera: {:?} {:?}",
+                element.key,
+                element.rect
+            );
+        }
+    }
+
+    #[test]
+    fn a_new_identity_clears_the_observed_history() {
+        let mut widget = widget(&Settings::default(), false);
+        widget.update(&photo(1, 0, 0.2), 0.0);
+        widget.update(&photo(2, 20, 0.3), 0.1);
+        assert_eq!(widget.trace.samples().len(), 2);
+        let mut epoch = photo(3, 40, 0.4);
+        epoch.epoch += 1;
+        widget.update(&epoch, 0.2);
+        assert_eq!(widget.trace.samples().len(), 1, "época");
+        let mut session = photo(4, 60, 0.5);
+        session.state.session.id = vantare_domain::SessionId(9);
+        widget.update(&session, 0.3);
+        assert_eq!(widget.trace.samples().len(), 1, "sesión");
+        let mut car = photo(5, 80, 0.6);
+        car.state.player.as_mut().expect("jugador").car = vantare_domain::CarId(7);
+        widget.update(&car, 0.4);
+        assert_eq!(widget.trace.samples().len(), 1, "coche");
+    }
+
+    #[test]
+    fn hiding_the_clutch_leaves_two_bars_and_two_traces() {
+        let mut shown = widget(
+            &Settings {
+                show_clutch: true,
+                ..Settings::default()
+            },
+            false,
+        );
+        let mut hidden = widget(&Settings::default(), false);
+        for index in 1..=4 {
+            let photo = photo(index, (index - 1) * 20, 0.4);
+            shown.update(&photo, 0.0);
+            hidden.update(&photo, 0.0);
+        }
+        assert!(shown.segments.iter().any(|segment| segment.signal == 0));
+        assert!(!hidden.segments.iter().any(|segment| segment.signal == 0));
     }
 
     #[test]

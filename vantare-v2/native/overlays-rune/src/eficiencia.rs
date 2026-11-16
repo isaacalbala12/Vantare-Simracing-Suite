@@ -86,6 +86,9 @@ pub fn rect(x: f32, y: f32, w: f32, h: f32, ink: Color) -> El {
     el().absolute(x, y).size(w.max(0.0), h.max(0.0)).fill(ink)
 }
 
+/// Ángulo del brillo del panel, en grados, como GPUI (Rune lo pide en radianes).
+pub const PANEL_ANGLE_DEG: f32 = 120.0;
+
 pub fn panel(w: f32, h: f32) -> El {
     el().size(w, h)
         .radius(RADIUS)
@@ -95,22 +98,40 @@ pub fn panel(w: f32, h: f32) -> El {
                 .size(w, h)
                 .radius(RADIUS)
                 .linear_gradient(
-                    120.0,
+                    PANEL_ANGLE_DEG.to_radians(),
                     [(0.0, color(0xffffff, 0.03)), (0.38, color(0xffffff, 0.0))],
                 ),
         )
 }
 
-pub fn outline(w: f32, h: f32) -> El {
+/// Alfa del refuerzo superior para que, sobre `base`, componga `top`.
+#[must_use]
+pub fn top_overlay(base: f32, top: f32) -> f32 {
+    let (base, top) = (base.clamp(0.0, 1.0), top.clamp(0.0, 1.0));
+    if top <= base {
+        0.0
+    } else {
+        (top - base) / (1.0 - base)
+    }
+}
+
+/// Marco del panel en dos capas, como GPUI: el anillo completo a `base` y,
+/// encima, una tira de `RADIUS` de alto con el borde a `top` compuesto.
+pub fn outline(w: f32, h: f32, base: f32, top: f32) -> El {
+    let overlay = top_overlay(base, top);
     el().size(w, h)
         .absolute(0.0, 0.0)
-        .radius(RADIUS)
-        .border(1.0, color(0xffffff, 0.085))
         .child(
             el().absolute(0.0, 0.0)
-                .size(w, 6.0)
+                .size(w, h)
                 .radius(RADIUS)
-                .border_sides([1.0, 0.0, 0.0, 0.0], color(0xffffff, 0.085)),
+                .border(1.0, color(0xffffff, base.clamp(0.0, 1.0))),
+        )
+        .child(
+            el().absolute(0.0, 0.0)
+                .size(w, RADIUS)
+                .radius(RADIUS)
+                .border_sides([1.0, 0.0, 0.0, 0.0], color(0xffffff, overlay)),
         )
 }
 
@@ -173,5 +194,80 @@ mod width_tests {
             (delta - expected).abs() <= 0.5,
             "Rune mide {delta} px de tracking; GPUI suma {expected} px ({chars} caracteres)"
         );
+    }
+}
+
+#[cfg(test)]
+mod parity_tests {
+    use super::*;
+
+    #[test]
+    fn panel_angle_is_gpui_120_degrees_in_runes_radians() {
+        assert_eq!(PANEL_ANGLE_DEG, 120.0);
+        let radians = PANEL_ANGLE_DEG.to_radians();
+        assert!(
+            (radians - std::f32::consts::TAU / 3.0).abs() < 1e-6,
+            "120° = 2π/3"
+        );
+        assert!(
+            (radians.to_degrees() - 120.0).abs() < 1e-3,
+            "vuelta a grados {radians:?}"
+        );
+    }
+
+    #[test]
+    fn outline_composes_the_top_edge_over_the_base_ring() {
+        let overlay = top_overlay(0.12, 0.24);
+        assert!((overlay - 0.136_363_64).abs() < 1e-5, "overlay {overlay}");
+        assert!(
+            (0.12 + overlay * (1.0 - 0.12) - 0.24).abs() < 1e-6,
+            "compone 24 %"
+        );
+        assert_eq!(top_overlay(0.085, 0.085), 0.0, "Relative: marco uniforme");
+        assert_eq!(
+            top_overlay(0.12, 0.12),
+            0.0,
+            "Delta/Pedales: marco uniforme"
+        );
+        assert_eq!(top_overlay(0.2, 0.1), 0.0, "un tope menor no resta");
+        assert_eq!(top_overlay(2.0, 3.0), 0.0, "fuera de rango se recorta");
+    }
+
+    #[test]
+    fn font_keeps_the_css_line_height_and_the_tracking_in_points() {
+        let style = font(14.0, 600, 0.14);
+        let normal = (14.0_f32 * 1984.0 / 2048.0).round() + (14.0_f32 * 494.0 / 2048.0).round();
+        assert_eq!(style.line_height, normal, "línea normal CSS");
+        assert!(
+            (style.tracking - 0.14 * 14.0).abs() < 1e-6,
+            "tracking en puntos"
+        );
+        assert_eq!(style.weight, 400.0, "el peso va en la familia estática");
+    }
+
+    #[test]
+    fn baseline_matches_the_css_half_leading_of_gpui() {
+        let ascent = (11.0_f32 * 1984.0 / 2048.0).round();
+        let descent = (11.0_f32 * 494.0 / 2048.0).round();
+        let expected = 22.0 + ascent + ((11.0_f32 - ascent - descent) / 2.0).floor();
+        assert_eq!(baseline(22.0, 11.0, 11.0), expected);
+        assert_eq!(
+            baseline(14.0, 14.0, 14.0),
+            14.0 + 14.0 + ((14.0_f32 - 14.0 - 3.0) / 2.0).floor()
+        );
+    }
+
+    #[test]
+    fn tokens_are_the_gpui_efficiency_ones() {
+        assert_eq!(INK, 0xf5f5f5);
+        assert_eq!(MUTED, 0xb9b9bd);
+        assert_eq!(PANEL, 0x101113);
+        assert_eq!(RADIUS, 6.0);
+        let ink = color(INK, 0.5);
+        assert!((ink.r - 245.0 / 255.0).abs() < 1e-6);
+        assert!((ink.g - 245.0 / 255.0).abs() < 1e-6);
+        assert!((ink.b - 245.0 / 255.0).abs() < 1e-6);
+        assert_eq!(ink.a, 0.5);
+        assert_eq!(color(0x000000, 0.0).r, 0.0);
     }
 }

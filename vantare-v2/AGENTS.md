@@ -108,9 +108,12 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   `testers` o `master`.
 - Terminado, integrado, promocionado y publicado son estados distintos. Nunca
   afirmes uno sin verificar la rama/SHA remota, PR, CI y release aplicables.
-- Cada proyecto mantiene un unico handoff vivo. Actualizalo despues de cada
-  worker, decision o cambio material de estado, arquitectura, evidencia,
-  riesgos o siguiente accion; refleja el mismo estado real en la issue de GitHub.
+- Cada proyecto mantiene un unico handoff vivo. El worker escribe su entrada en
+  el cuerpo del PR (que cambio, evidencia, siguiente paso, riesgos y canal) y no
+  edita el handoff. El orquestador de la seccion la traslada al handoff al
+  fusionar, en un PR de docs propio que agrupe varias fusiones. Tras cada worker,
+  decision o cambio material, el handoff y la issue de GitHub reflejan el mismo
+  estado real.
 - Todo trabajo nuevo debe estar cubierto por una issue de GitHub antes de
   editar. Los hallazgos fuera de alcance se documentan como issues y no se
   incorporan silenciosamente.

@@ -20,8 +20,11 @@ orquestador. El flujo, script y nombres obligatorios están en
 3. Leer [las reglas activas](vantare-v2/AGENTS.md), el
    [expediente técnico](vantare-v2/docs/vantare-program/README.md), contratos
    y único handoff vivo del proyecto.
-4. Actualizar y verificar la issue y el handoff tras cada cambio material:
-   alcance, estado, dependencias, siguiente paso, PR, checks y SHA/canal.
+4. Actualizar y verificar la issue tras cada cambio material: alcance, estado,
+   dependencias, siguiente paso, PR, checks y SHA/canal. El worker escribe su
+   entrada del handoff en el cuerpo del PR; el orquestador de la sección la
+   traslada al handoff al fusionar, en un PR de docs propio que agrupe varias
+   fusiones.
    Cada issue pertenece a su proyecto (`area:*`, GitHub Project Vantare) y,
    si está comprometida para una versión, a su milestone de GitHub.
 

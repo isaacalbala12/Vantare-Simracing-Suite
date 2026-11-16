@@ -529,22 +529,13 @@ impl Painter {
             let x0 = v.padding_x - g.player_bleed;
             let flash_y = y + (d.big - g.row_height) / 2.0;
             let background = if v.player_white > 0.0 {
-                el().fill(crate::vantare::alpha(
-                    c.purple,
-                    if v.player_white > 0.0 { 0.3 } else { v.player_white } * alpha,
-                ))
+                el().fill(crate::vantare::alpha(c.purple, 0.3 * alpha))
             } else {
                 el().linear_gradient(
-                    if v.player_vertical { 180.0 } else { 90.0 }.to_radians(),
+                    (if v.player_vertical { 180.0f32 } else { 90.0 }).to_radians(),
                     [
-                        (
-                            0.0,
-                            crate::vantare::alpha(c.purple, v.player_from * alpha),
-                        ),
-                        (
-                            1.0,
-                            crate::vantare::alpha(c.purple, v.player_to * alpha),
-                        ),
+                        (0.0, crate::vantare::alpha(c.purple, v.player_from * alpha)),
+                        (1.0, crate::vantare::alpha(c.purple, v.player_to * alpha)),
                     ],
                 )
             };

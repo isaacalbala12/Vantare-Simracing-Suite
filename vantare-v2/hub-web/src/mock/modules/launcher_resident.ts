@@ -21,7 +21,13 @@ export function create(
     ownership: { kind: "unsupported" },
     registrations: [],
   };
-  if (context.sceneName === "calendar-launch-reference")
+  if (
+    context.sceneName === "calendar-launch-reference" ||
+    context.sceneName === "launcher-ready" ||
+    context.sceneName === "launcher-editor-ready" ||
+    context.sceneName.startsWith("launcher-editor-custom") ||
+    context.sceneName === "inicio-base"
+  )
     view.execution = {
       instance: "b".repeat(64),
       revisionCheckedLaunch: true,

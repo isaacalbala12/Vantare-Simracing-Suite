@@ -180,7 +180,6 @@ impl Scene {
     pub fn set_calendar(
         &mut self,
         events: Vec<vantare_domain::session_alerts::CalendarInput>,
-        _now: Instant,
     ) -> bool {
         if *self.frames.calendar == events {
             return false;

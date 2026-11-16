@@ -45,6 +45,11 @@ pub(crate) struct SessionAlerts {
 }
 impl SessionAlerts {
     pub fn new(settings: &Settings, prefs: Preferences, clock: f64) -> Self {
+        // Los tests inyectan la hora de pared: nadie lee el reloj real.
+        #[cfg(test)]
+        if let Some(wall) = TEST_WALL.with(std::cell::Cell::get) {
+            return Self::with_wall(settings, prefs, wall);
+        }
         let wall = match vantare_ipc::control::wall_ms() {
             Ok(wall) => wall_base(clock, wall),
             Err(_) => {
@@ -253,6 +258,17 @@ impl SessionAlerts {
         }
         tones
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Hora de pared que los tests inyectan con `inject_wall`.
+    static TEST_WALL: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+/// Fija (o retira) la hora de pared que verán los widgets construidos en este hilo.
+#[cfg(test)]
+pub(crate) fn inject_wall(wall: Option<u64>) {
+    TEST_WALL.with(|slot| slot.set(wall));
 }
 
 /// Wall milliseconds are what a calendar compares. The runtime clock already ran when the

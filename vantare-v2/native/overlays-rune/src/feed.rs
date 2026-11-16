@@ -28,7 +28,7 @@ struct Watched {
     layout: PathBuf,
 }
 impl Watched {
-    fn poll(&mut self, scene: &mut Scene, now: Instant) -> bool {
+    fn poll(&mut self, scene: &mut Scene, now: Instant, wall: u64) -> bool {
         if let Err(error) = self.document.poll() {
             eprintln!("overlays-rune: diseño protegido: {error}");
         }
@@ -46,8 +46,7 @@ impl Watched {
         }
         // Only a design with Avisos de sesión touches the agenda file.
         if crate::calendar::wanted(self.document.layout()) {
-            let wall = vantare_ipc::control::wall_ms().unwrap_or(0);
-            changed |= scene.set_calendar(crate::calendar::read(&self.layout, wall), now);
+            changed |= scene.set_calendar(crate::calendar::read(&self.layout, wall));
         }
         changed
     }
@@ -149,7 +148,11 @@ impl DataFeed {
                     let mut changed = scene.set_access(bus.access(), now);
                     if now.saturating_duration_since(observed) >= DOCUMENT_INTERVAL {
                         observed = now;
-                        changed |= watched.poll(&mut scene, now);
+                        changed |= watched.poll(
+                            &mut scene,
+                            now,
+                            vantare_ipc::control::wall_ms().unwrap_or(0),
+                        );
                     }
                     let required = scene.required();
                     if required != requested {
@@ -230,25 +233,25 @@ mod tests {
             false,
             MotionPolicy(false),
         );
-        assert!(!watched.poll(&mut scene, now));
+        assert!(!watched.poll(&mut scene, now, 0));
         assert!(!scene.frames.shown, "do not replay an old show request");
         assert_eq!(fs::read(&path).expect("unchanged"), bytes);
         Presentation::show(&path).expect("new request");
-        assert!(watched.poll(&mut scene, now));
+        assert!(watched.poll(&mut scene, now, 0));
         assert!(scene.frames.shown);
         fs::write(&path, b"{").expect("partial edit");
         set_stamp(&path, 2);
-        assert!(!watched.poll(&mut scene, now));
+        assert!(!watched.poll(&mut scene, now, 0));
         assert!(scene.frames.layout.instances.is_empty());
         let complete = br#"{"version":1,"instances":[{"id":"relative","x":10,"y":20,"settings":{"kind":"relative"}}]}"#;
         fs::write(&path, complete).expect("completed edit");
         set_stamp(&path, 2);
         // Documento reintenta tras error aunque el FS conserve la misma marca.
-        assert!(watched.poll(&mut scene, now));
+        assert!(watched.poll(&mut scene, now, 0));
         assert_eq!(scene.frames.layout.instances.len(), 1);
         assert_eq!(fs::read(&path).expect("preserved"), complete);
         Presentation::hide(&path).expect("hide");
-        assert!(watched.poll(&mut scene, now));
+        assert!(watched.poll(&mut scene, now, 0));
         assert!(!scene.frames.shown);
         fs::remove_dir_all(dir).expect("cleanup own fixture");
     }
@@ -350,5 +353,52 @@ mod tests {
         drop(feed);
         drop(publisher);
         fs::remove_dir_all(dir).expect("cleanup own fixture");
+    }
+    #[test]
+    fn the_agenda_appears_and_disappears_through_the_host_poll() {
+        let dir = directory();
+        let layout_path = dir.join("layout.json");
+        fs::write(
+            &layout_path,
+            br#"{ "version": 2, "instances": [{"id":"avisos","x":0,"y":0,"settings":{"kind":"session-alerts"}}] }"#,
+        )
+        .expect("diseño");
+        set_stamp(&layout_path, 1);
+        let document = Document::open(layout_path.clone()).expect("document");
+        let mut watched = Watched {
+            document,
+            presentation: Presentation::watch(&layout_path).expect("presentation"),
+            appearance_path: None,
+            appearance: MotionPolicy(false),
+            layout: layout_path.clone(),
+        };
+        let now = Instant::now();
+        let mut scene = Scene::new(
+            watched.document.layout().clone(),
+            crate::host::Access::LocalPreview,
+            true,
+            MotionPolicy(false),
+        );
+        let wall = 1_000_u64;
+        // Sin agenda no hay eventos.
+        assert!(!watched.poll(&mut scene, now, wall));
+        assert!(scene.frames.calendar.is_empty());
+        // Aparece la agenda con una carrera dentro de un minuto.
+        let agenda = dir.join("session-alerts-feed.json");
+        fs::write(
+            &agenda,
+            format!(
+                r#"{{"version":1,"updatedAtMs":{wall},"events":[{{"id":"race","label":"Spa","startsAtMs":{}}}]}}"#,
+                wall + 60_000
+            ),
+        )
+        .expect("agenda");
+        assert!(watched.poll(&mut scene, now, wall));
+        assert_eq!(scene.frames.calendar.len(), 1);
+        assert_eq!(scene.frames.calendar[0].label, "Spa");
+        // Y desaparece: la lista vuelve a quedar vacía.
+        fs::remove_file(&agenda).expect("borrar");
+        assert!(watched.poll(&mut scene, now, wall));
+        assert!(scene.frames.calendar.is_empty());
     }
 }

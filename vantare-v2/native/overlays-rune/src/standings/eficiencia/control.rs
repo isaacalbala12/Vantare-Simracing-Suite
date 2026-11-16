@@ -174,6 +174,7 @@ impl Widget for Eficiencia {
             self.motion.update(
                 &self.visual.content_plan,
                 self.visual.plan.visible_rows,
+                self.visual.plan.columns.iter().any(|c|c.metric==super::model::Metric::BestLap),
                 clock,
             );
         }
@@ -234,6 +235,7 @@ impl Widget for Eficiencia {
             self.motion.update(
                 &self.visual.content_plan,
                 self.visual.plan.visible_rows,
+                self.visual.plan.columns.iter().any(|c|c.metric==super::model::Metric::BestLap),
                 clock,
             );
         }

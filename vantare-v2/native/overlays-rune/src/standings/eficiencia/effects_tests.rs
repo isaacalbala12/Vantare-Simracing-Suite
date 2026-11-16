@@ -58,7 +58,7 @@ fn position_flash_grows_for_500_ms_chip_for_180_and_notice_expires_at_1200() {
         let half=m.frame_shared(1.09).row(CarId(1)); near(half.chip.unwrap().1,ease([0.25,0.1,0.25,1.0],0.5));
         let chip=m.frame_shared(1.18).row(CarId(1)); near(chip.chip.unwrap().1,1.0);
         let flash=m.frame_shared(1.5).row(CarId(1)); near(flash.flash,1.0); assert_eq!(flash.flash_up,places>0);
-        assert_eq!(m.wake(1.5),Wake::At(0.7));
+        assert!(matches!(m.wake(1.5),Wake::At(delay) if (delay-0.7).abs()<1e-9));
         m.frame_shared(2.2); assert_eq!(m.wake(2.2),Wake::Idle); assert!(m.next_wake(2.2,60).is_none());
     }
 }

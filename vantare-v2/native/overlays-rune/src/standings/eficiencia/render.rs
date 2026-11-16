@@ -1,4 +1,4 @@
-//! Pintura literal de view.rs de GPUI; efectos independientes en E6.
+//! Pintura literal de view.rs de GPUI.
 use super::{
     Visual,
     model::{self, Status},
@@ -352,14 +352,13 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
                 .iter()
                 .take(p.visible_rows)
                 .enumerate()
-                .map(|(i, row)| (row, origin + p.row_tops[i], v.frame.row(row.id))),
+                .map(|(i, row)| (row, origin + p.row_tops[i], v.frame.row_for(row))),
         );
-    for (index, (row, top, pose)) in rows.enumerate() {
-        let alpha = if row.in_pits { pose.alpha } else { 0.0 };
+    for (index, (_row, top, pose)) in rows.enumerate() {
+        let alpha = pose.pit_alpha*pose.alpha;
         if alpha <= 0.001 {
             continue;
         }
-        // E6 añade el canal independiente de entrada/salida de boxes.
         let top = top + pose.offset * s.geometry.row_height / model::ROW_HEIGHT;
         let y = top + s.geometry.row_height / 2.0 - s.geometry.pit_badge_height / 2.0;
         let w = s.geometry.pit_rail_width;
@@ -373,7 +372,7 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
         )
         .round();
         nodes.push(
-            rect(c.width, y, w, h)
+            rect(c.width+pose.pit_dx, y, w, h)
                 .key(format!("pit-badge-{index}"))
                 .opacity(alpha)
                 .corners([0.0, s.geometry.pit_radius, s.geometry.pit_radius, 0.0])

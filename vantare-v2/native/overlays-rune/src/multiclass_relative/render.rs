@@ -36,9 +36,20 @@ fn auxiliary(row: &Row, fcy: bool) -> Auxiliary {
 }
 
 #[derive(PartialEq)]
+struct RowStructure {
+    id: CarId,
+    slot: usize,
+    class: String,
+    intrinsic: [String; 3],
+    player: bool,
+    divider: bool,
+    auxiliary: Auxiliary,
+}
+
+#[derive(PartialEq)]
 struct Structure {
     fcy: bool,
-    rows: Vec<(CarId, usize, String, bool, bool, Auxiliary)>,
+    rows: Vec<RowStructure>,
 }
 
 pub(super) struct Painter {
@@ -110,15 +121,14 @@ impl Painter {
             rows: scene
                 .rows
                 .iter()
-                .map(|r| {
-                    (
-                        r.id,
-                        r.slot,
-                        r.class_name.clone(),
-                        r.is_player,
-                        r.divider,
-                        auxiliary(r, scene.fcy),
-                    )
+                .map(|r| RowStructure {
+                    id: r.id,
+                    slot: r.slot,
+                    class: r.class_name.clone(),
+                    intrinsic: [r.place.clone(), r.number.clone(), r.name.clone()],
+                    player: r.is_player,
+                    divider: r.divider,
+                    auxiliary: auxiliary(r, scene.fcy),
                 })
                 .collect(),
         };
@@ -280,7 +290,12 @@ impl Painter {
         };
         let aux = auxiliary(r, fcy);
         let mut line = row().size(width - 150.0, 24.0).child(
-            self.label(&c[2], Face::Body, 13.0, 24.0, s.colors.text)
+            // Rune cannot combine live_text and ellipsis. As in Relative, the name
+            // is plain text and belongs to the one structure comparison above.
+            text(c[2].get().to_string())
+                .font(font(s, Face::Body, 13.0, 24.0, 0.0, s.fonts.regular_weight))
+                .color(s.colors.text)
+                .h(24.0)
                 .key(format!("multiclass-name-{}", r.id.0))
                 .grow(1.0)
                 .min_w(0.0)
@@ -462,9 +477,14 @@ mod tests {
         let mut scene = scene();
         let mut painter = Painter::new(7, Preferences::default(), &scene);
         scene.rows[0].gap = "-1.0".into();
-        scene.rows[0].name = "A longer driver name".into();
         assert!(!painter.sync(&scene));
         assert_eq!(&*painter.cells[1][3].get(), "-1.0");
+        scene.rows[0].name = "A longer driver name".into();
+        assert!(painter.sync(&scene));
+        scene.rows[0].place = "P20".into();
+        assert!(painter.sync(&scene));
+        scene.rows[0].number = "123".into();
+        assert!(painter.sync(&scene));
         scene.rows[0].nearby = true;
         assert!(painter.sync(&scene));
         assert_eq!(&*painter.cells[1][4].get(), "▲ encima");

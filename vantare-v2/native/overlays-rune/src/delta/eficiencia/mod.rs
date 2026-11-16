@@ -149,6 +149,4 @@ impl DeltaEficiencia {
     }
 }
 
-use super::delta_widget;
-
 delta_widget!(DeltaEficiencia, Look::Eficiencia);

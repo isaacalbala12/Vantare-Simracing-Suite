@@ -18,6 +18,7 @@ type Constructor = fn(&Settings, Preferences, bool, u16, f64) -> Option<Box<dyn 
 
 fn constructor(settings: &Settings) -> Option<Constructor> {
     match settings {
+        Settings::Radar(_) => Some(<crate::radar::Radar as Widget>::new),
         Settings::Relative(s) if s.design_system == Look::Vantare => {
             Some(<Relative as Widget>::new)
         }

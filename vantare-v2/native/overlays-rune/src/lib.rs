@@ -13,6 +13,7 @@ pub mod scene;
 
 mod motion;
 mod multiclass_relative;
+mod radar;
 pub mod relative;
 mod renderer;
 pub mod stats;

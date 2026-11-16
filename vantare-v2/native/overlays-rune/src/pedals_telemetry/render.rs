@@ -1,5 +1,6 @@
-//! Vantare paints the shared Pedals telemetry scene; the wheel waits for the SVG cache.
+//! Vantare paints the shared Pedals telemetry scene; the wheel is the same SVG GPUI uses.
 use super::scene::{SIZE, Scene};
+use super::wheels;
 use crate::vantare::paint::{Face, WHITE, font};
 use crate::vantare::{Style, alpha};
 use rune::{Align, Color, El, el, text};
@@ -40,7 +41,7 @@ const STALE: Color = Color {
     a: 1.0,
 };
 
-/// What the Look actually paints: the wheel id and its rotation wait for the SVG cache.
+/// What the Look actually paints: the wheel id and its rotation, so a steering change redraws.
 #[derive(PartialEq)]
 struct Painted {
     bars: [Option<f32>; 3],
@@ -50,6 +51,8 @@ struct Painted {
     stale: bool,
     status_text: &'static str,
     angle_text: String,
+    wheel: &'static str,
+    rotation_deg: f64,
 }
 
 fn painted(scene: &Scene) -> Painted {
@@ -61,6 +64,8 @@ fn painted(scene: &Scene) -> Painted {
         stale: scene.stale,
         status_text: scene.status_text,
         angle_text: scene.angle_text.clone(),
+        wheel: scene.wheel,
+        rotation_deg: scene.wheel_rotation_deg,
     }
 }
 
@@ -88,7 +93,7 @@ impl Painter {
             pixels: false,
         }
     }
-    pub fn view(&self) -> El {
+    pub fn view(&self, assets: Option<&Arc<rune::ImageCache>>) -> El {
         let s = &self.style;
         let c = &s.colors;
         let v = &s.styles.neo;
@@ -190,13 +195,23 @@ impl Painter {
                     ),
             );
         }
-        // TODO(volante): espera decisión de caché SVG
-        root = root.child(el().key("pedals-telemetry-wheel").size(40.0, 40.0).pin(
-            Some(320.0),
-            Some(2.0),
-            None,
-            None,
-        ));
+        // The wheel rasterizes from the same SVG GPUI uses; without assets, a hole its size.
+        let wheel = match assets {
+            Some(cache) => el()
+                .key("pedals-telemetry-wheel")
+                .size(40.0, 40.0)
+                .pixels(cache.svg(wheels::svg(p.wheel), 40.0, 1.0).pixels())
+                .rotate((p.rotation_deg as f32).to_radians())
+                .opacity(if p.stale { 0.55 } else { 1.0 })
+                .pin(Some(320.0), Some(2.0), None, None),
+            None => el().key("pedals-telemetry-wheel").size(40.0, 40.0).pin(
+                Some(320.0),
+                Some(2.0),
+                None,
+                None,
+            ),
+        };
+        root = root.child(wheel);
         root = root.child(
             text(p.angle_text.clone())
                 .key("pedals-telemetry-angle")
@@ -232,7 +247,7 @@ mod tests {
     struct Stub(Painter);
 
     fn stub_view(stub: &Stub, _: &mut Cx<Stub>) -> El {
-        stub.0.view()
+        stub.0.view(None)
     }
 
     fn elements(prefs: Preferences, scene: &Scene) -> Vec<ElementInfo> {

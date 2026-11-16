@@ -1,9 +1,11 @@
 //! Pedals telemetry projection/controller; both the scene and the Look are shared.
 mod render;
 pub mod scene;
+mod wheels;
 use crate::widget::{Update, Widget};
 use render::Painter;
 use rune::El;
+use std::sync::Arc;
 use vantare_domain::{
     Snapshot,
     format::Preferences,
@@ -19,6 +21,7 @@ pub(crate) struct PedalsTelemetry {
     motion: scene::Motion,
     scene: scene::Scene,
     painter: Painter,
+    assets: Option<Arc<rune::ImageCache>>,
 }
 
 fn project(settings: &Settings, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
@@ -48,7 +51,11 @@ impl PedalsTelemetry {
             motion,
             scene,
             painter,
+            assets: None,
         }
+    }
+    fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
+        self.assets = Some(assets.clone());
     }
     fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
         matches!(settings, WidgetSettings::PedalsTelemetry(s) if s.normalized() == self.settings)
@@ -80,7 +87,7 @@ impl PedalsTelemetry {
         self.settle(clock)
     }
     fn view(&self) -> El {
-        self.painter.view()
+        self.painter.view(self.assets.as_ref())
     }
 }
 
@@ -101,6 +108,9 @@ impl Widget for PedalsTelemetry {
     }
     fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
         PedalsTelemetry::configured(self, settings, prefs)
+    }
+    fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
+        PedalsTelemetry::attach_assets(self, assets);
     }
     fn size(&self) -> Size {
         PedalsTelemetry::size(self)
@@ -297,5 +307,95 @@ mod tests {
         assert!(frame(&mut runtime, 0.001), "aterriza en el valor final");
         assert!(!frame(&mut runtime, 0.001), "reposo");
         assert!(runtime.wake_deadline().is_none(), "sin reloj");
+    }
+
+    fn near_rect(rect: [f32; 4], expected: [f32; 4]) -> bool {
+        rect.iter()
+            .zip(expected)
+            .all(|(left, right)| (left - right).abs() < 0.01)
+    }
+
+    #[test]
+    fn attached_wheel_draws_the_svg_with_quantized_rotation_and_stale_opacity() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let waker: rune::Waker = Arc::new(|| {});
+        let cache = Arc::new(rune::ImageCache::new(waker));
+        assert_eq!(
+            cache
+                .svg(wheels::svg("generic"), 40.0, 1.0)
+                .wait()
+                .expect("volante"),
+            [40, 40]
+        );
+
+        let mut snapshot = live_snapshot();
+        snapshot
+            .state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .telemetry
+            .steering = Reliable(0.0);
+        let mut plain = make_runtime(PedalsTelemetry::new(
+            &Settings::default(),
+            Preferences::default(),
+            true,
+            0.0,
+        ));
+        plain.state.next = Some(snapshot.clone());
+        assert!(frame(&mut plain, 0.0));
+        let without = plain.instances.len();
+
+        let mut widget =
+            PedalsTelemetry::new(&Settings::default(), Preferences::default(), true, 0.0);
+        widget.attach_assets(&cache);
+        assert!(widget.assets.is_some(), "attach_assets guarda la caché");
+        let mut runtime = make_runtime(widget);
+        runtime.state.next = Some(snapshot.clone());
+        assert!(frame(&mut runtime, 0.0), "primera imagen");
+        assert!(
+            runtime.instances.len() > without,
+            "la imagen del volante añade píxeles"
+        );
+        let elements = runtime.elements();
+        let wheel = elements
+            .iter()
+            .find(|element| element.key.as_deref() == Some("pedals-telemetry-wheel"))
+            .expect("volante");
+        assert!(near_rect(wheel.rect, [320.0, 2.0, 40.0, 40.0]));
+        assert_eq!(wheel.opacity, 1.0);
+
+        snapshot
+            .state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .telemetry
+            .steering = Reliable(0.000_000_2);
+        runtime.state.next = Some(snapshot.clone());
+        assert!(
+            !frame(&mut runtime, 0.1),
+            "misma cuantización: no hay imagen"
+        );
+
+        snapshot
+            .state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .telemetry
+            .steering = Reliable(0.081);
+        runtime.state.next = Some(snapshot.clone());
+        assert!(frame(&mut runtime, 0.1), "36,5° frente a 36°");
+
+        snapshot.state.source_state = SourceState::Stale;
+        runtime.state.next = Some(snapshot);
+        assert!(frame(&mut runtime, 0.1), "atenúa el volante");
+        let elements = runtime.elements();
+        let wheel = elements
+            .iter()
+            .find(|element| element.key.as_deref() == Some("pedals-telemetry-wheel"))
+            .expect("volante");
+        assert_eq!(wheel.opacity, 0.55);
     }
 }

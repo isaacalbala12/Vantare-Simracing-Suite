@@ -384,6 +384,8 @@ jobs:
       VANTARE_CI_TARGET: '1'
       CARGO_INCREMENTAL: '0'
       CARGO_BUILD_JOBS: '4'
+      SCCACHE_LOG: 'debug'
+      SCCACHE_ERROR_LOG: ${{ runner.temp }}/sccache-server.log
     defaults:
       run:
         shell: pwsh
@@ -415,6 +417,31 @@ jobs:
           if ($env:TELEMETRIA_SCOPE -ne 'false') { $telemetry = @('-Telemetry') }
           pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry -ArchiveOnly
           if ($LASTEXITCODE) { throw 'Native test archive failed' }
+
+      - name: Extract sccache debug evidence
+        if: always()
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'sccache-server.log'
+          if (-not (Test-Path -LiteralPath $log)) { Write-Host 'No hay log del servidor sccache.'; return }
+          Write-Host "sccache log: $((Get-Item -LiteralPath $log).Length) bytes"
+          Select-String -Path $log -Pattern 'crate-name|Cache miss|Cache hit|Compile request|cache miss|cache hit' |
+            ForEach-Object { $_.Line } |
+            Set-Content (Join-Path $env:RUNNER_TEMP 'sccache-debug.txt') -Encoding utf8
+          Write-Host "lineas filtradas: $((Get-Content (Join-Path $env:RUNNER_TEMP 'sccache-debug.txt')).Count)"
+
+      - name: Upload sccache debug evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: sccache-debug-${{ github.sha }}
+          overwrite: true
+          path: |
+            ${{ runner.temp }}/sccache-debug.txt
+            ${{ runner.temp }}/sccache-server.log
+          if-no-files-found: warn
+          compression-level: 1
+          retention-days: 1
 
       - name: Share one compiled test archive
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

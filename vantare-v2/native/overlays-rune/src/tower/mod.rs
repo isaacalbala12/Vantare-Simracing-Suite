@@ -12,7 +12,8 @@ use vantare_domain::{
 };
 
 /// Horizontal places from the approved Eficiencia strip: 1400 × 56.
-pub const SIZE: Size = Size {
+#[cfg(test)]
+const SIZE: Size = Size {
     width: 1400.0,
     height: 56.0,
 };

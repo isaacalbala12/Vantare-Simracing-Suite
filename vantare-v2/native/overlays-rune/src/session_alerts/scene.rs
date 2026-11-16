@@ -106,14 +106,15 @@ pub fn sample(
         rows,
     };
     let companion = settings.companion_for.is_some();
-    if companion && !settings.mini {
+    if companion {
+        // The companion only paints rows: the main notice belongs to the main widget.
+        if settings.mini && preview && scene.rows.is_empty() {
+            scene.ghost = Some("Mini cuenta atrás".into());
+        }
         return scene;
     }
-    if preview && companion && scene.rows.is_empty() {
-        scene.ghost = Some("Mini cuenta atrás".into());
-    }
     let Some(notice) = &view.active else {
-        if preview && !companion {
+        if preview {
             scene.placeholder = Some(Placeholder {
                 band: "Avisos de sesión".into(),
                 context: "vista del Studio".into(),

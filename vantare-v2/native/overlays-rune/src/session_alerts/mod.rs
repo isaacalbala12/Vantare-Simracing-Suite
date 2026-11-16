@@ -30,7 +30,6 @@ pub(crate) struct SessionAlerts {
     hz: u16,
     fade: Tween,
     shown: Option<(String, u64)>,
-    last_input: Option<model::SessionInput>,
     /// Agenda plug of the next PR: the calendar feed will arrive here, empty for now.
     #[allow(dead_code)]
     calendar: Vec<model::CalendarInput>,
@@ -57,7 +56,6 @@ impl SessionAlerts {
             hz: 0,
             fade: Tween::linear(1.0),
             shown: None,
-            last_input: None,
             calendar: Vec::new(),
             painter,
             visual: initial,
@@ -89,12 +87,11 @@ impl SessionAlerts {
     }
     pub fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
         let now = self.now(clock);
-        let input = model::project(snapshot);
         self.live = true;
-        if input != self.last_input {
-            self.last_input = input.clone();
-            self.machine.session(input, now, &self.options);
-        }
+        // Every photo refreshes the machine, as the GPUI ingest does: a threshold stays
+        // fresh while the session keeps talking to us.
+        let input = model::project(snapshot);
+        self.machine.session(input, now, &self.options);
         self.animate(clock)
     }
     pub fn animate(&mut self, clock: f64) -> Update {
@@ -249,14 +246,14 @@ mod tests {
         widget_settings::{self, session_alerts::Settings as Stored},
     };
 
-    /// A live LMU practice session ending in five minutes, so the first threshold fires.
-    fn snapshot() -> Snapshot {
+    /// A live LMU practice session ending in five minutes, so its threshold fires.
+    fn photo(elapsed: f64) -> Snapshot {
         let mut snapshot = crate::testdata::snapshot();
-        snapshot.origin.source.simulator = "lmu".into();
+        snapshot.origin.source.simulator = "lmu";
         snapshot.origin.source.kind = SourceKind::Live;
         snapshot.state.source_state = SourceState::Live;
         snapshot.state.session.kind = Reliable(SessionKind::Practice);
-        snapshot.state.session.elapsed_s = Reliable(0.0);
+        snapshot.state.session.elapsed_s = Reliable(elapsed);
         snapshot.state.session.timing.scheduled_end_s = Reliable(300.0);
         snapshot
     }
@@ -290,15 +287,19 @@ mod tests {
         widget.view()
     }
     thread_local! {
-        /// Photo the next poll syncs, as the host's pending revision does.
+        /// The photo the host keeps delivering, as its revision does.
         static NEXT: std::cell::RefCell<Option<Snapshot>> = const { std::cell::RefCell::new(None) };
     }
     fn push(snapshot: Snapshot) {
         NEXT.with(|next| *next.borrow_mut() = Some(snapshot));
     }
     fn poll(widget: &mut SessionAlerts, clock: f64, tx: &mut rune::Tx) -> bool {
-        let photo = NEXT.with(|next| next.borrow_mut().take());
-        let build = photo.is_some_and(|photo| SessionAlerts::update(widget, &photo, clock).build);
+        // Own finite curves update the Live values: no implicit Rune springs on data.
+        tx.instant();
+        let mut build = SessionAlerts::animate(widget, clock).build;
+        if let Some(photo) = NEXT.with(|next| next.borrow().clone()) {
+            build |= SessionAlerts::update(widget, &photo, clock).build;
+        }
         SessionAlerts::schedule(widget, clock, tx);
         build
     }
@@ -314,36 +315,50 @@ mod tests {
         runtime.poll = Some(poll);
         runtime
     }
+    /// Primes the runtime, then delivers the first photo: the notice appears.
+    fn opened() -> Runtime<SessionAlerts> {
+        let mut runtime = host(widget());
+        runtime.frame(0.0);
+        push(photo(0.0));
+        assert!(rendered_frame(&mut runtime, 0.0), "el aviso aparece");
+        runtime
+    }
 
     #[test]
-    fn one_image_per_second_and_nothing_in_between() {
+    fn the_controller_turns_a_live_photo_into_a_notice() {
+        let mut widget = widget();
+        let update = widget.update(&photo(0.0), 0.0);
+        assert!(widget.live, "la foto marca la pista");
+        assert!(widget.visual.notice.is_some(), "el umbral produce aviso");
+        assert!(update.build || update.pixels, "algo que pintar");
+    }
+
+    #[test]
+    fn the_countdown_changes_once_per_second_and_nothing_in_between() {
         let _fonts = rune::text::with_families("Inter", "Inter");
-        push(snapshot());
-        let mut runtime = host(widget());
-        assert!(rendered_frame(&mut runtime, 0.0), "el aviso aparece");
+        let mut runtime = opened();
         assert!(runtime.wake_deadline().is_some(), "hay reloj con aviso");
         for second in 1..=3 {
+            push(photo(f64::from(second)));
             assert!(
-                rendered_frame(&mut runtime, 0.2),
+                rendered_frame(&mut runtime, 1.0),
                 "la cuenta atrás cambia en el segundo {second}"
             );
-            assert!(!rendered_frame(&mut runtime, 0.2), "y no pinta de más");
+            assert!(!rendered_frame(&mut runtime, 0.1), "y no pinta de más");
         }
-        assert!(runtime.wake_deadline().is_some(), "sigue habiendo aviso");
     }
 
     #[test]
     fn the_notice_leaves_after_its_duration_and_the_clock_stops() {
         let _fonts = rune::text::with_families("Inter", "Inter");
-        push(snapshot());
-        let mut runtime = host(widget());
-        assert!(rendered_frame(&mut runtime, 0.0), "el aviso aparece");
+        let mut runtime = opened();
         let mut painted = 0;
-        for _ in 0..20 {
+        for step in 1..=40 {
+            push(photo(f64::from(step) * 0.5));
             painted += u8::from(rendered_frame(&mut runtime, 0.5));
         }
         assert!(painted >= 1, "el aviso se marcha");
-        assert!(rendered_frame(&mut runtime, 0.5), "el panel desaparece");
+        assert!(runtime.state.visual.notice.is_none(), "el panel desaparece");
         assert!(
             runtime.wake_deadline().is_none(),
             "sin aviso no queda reloj"
@@ -353,19 +368,40 @@ mod tests {
     #[test]
     fn reduced_motion_settles_the_fade_and_leaves_no_clock() {
         let _fonts = rune::text::with_families("Inter", "Inter");
-        push(snapshot());
-        let mut runtime = host(widget());
-        assert!(rendered_frame(&mut runtime, 0.0), "el aviso aparece");
+        let mut runtime = opened();
         runtime.state.policy(true, 5, 1.0);
-        assert!(
-            rendered_frame(&mut runtime, 0.0),
-            "la transición se asienta"
-        );
+        rendered_frame(&mut runtime, 0.1);
+        assert_eq!(runtime.state.visual.opacity, 1.0, "la opacidad queda fija");
         assert!(
             runtime.wake_deadline().is_none(),
             "con reducir movimiento no hay reloj"
         );
-        assert_eq!(runtime.state.visual.opacity, 1.0);
+    }
+
+    #[test]
+    fn nothing_painted_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for settings in [
+            Stored::default(),
+            Stored {
+                companion_for: Some("main".into()),
+                ..Stored::default()
+            },
+            Stored {
+                companion_for: Some("main".into()),
+                mini_limit: 3,
+                mini_size: "l".into(),
+                ..Stored::default()
+            },
+        ] {
+            let size = scene::size(&settings);
+            let mut runtime = host(SessionAlerts::new(&settings, Preferences::default()));
+            runtime.frame(0.0);
+            push(photo(0.0));
+            rendered_frame(&mut runtime, 0.0);
+            assert!(!runtime.elements().is_empty(), "la vista pinta algo");
+            crate::testdata::assert_inside_window(&mut runtime, size);
+        }
     }
 
     #[test]

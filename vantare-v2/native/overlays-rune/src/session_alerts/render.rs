@@ -195,6 +195,7 @@ fn panel(s: &Style, v: &Variant, key: &str, w: f32, h: f32) -> El {
     };
     el().key(key)
         .size(w, h)
+        .pin(Some(0.0), Some(0.0), None, None)
         .radius(v.radius)
         .border(1.0, border)
         .linear_gradient(std::f32::consts::PI, [(0.0, v.top), (1.0, v.bottom)])
@@ -214,6 +215,7 @@ fn band(s: &Style, v: &Variant, key: &str, w: f32, fill: Color) -> El {
     let radius = (v.radius - 1.0).max(0.0);
     el().key(key)
         .size(w, s.geometry.banner_height)
+        .pin(Some(0.0), Some(0.0), None, None)
         .corners([radius, radius, 0.0, 0.0])
         .fill(fill)
 }

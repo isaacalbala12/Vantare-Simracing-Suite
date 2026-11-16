@@ -1534,3 +1534,45 @@ fn time_format_override_detaches_only_the_chosen_session() {
     state.edit(Edit::Undo, &after.revision, access).unwrap();
     assert_eq!(std::fs::read(path).unwrap(), bytes);
 }
+
+#[test]
+fn preview_reads_exact_checked_settings_without_writing_or_undo() {
+    let (_root, path, bytes) = fixture();
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let view = state.view(access);
+    let (kind, settings) = state
+        .preview_settings("widget-1", &view.revision, access)
+        .expect("checked snapshot");
+    assert_eq!(kind, WidgetKind::Standings);
+    let settings: serde_json::Value = serde_json::from_slice(&settings).expect("settings");
+    assert_eq!(settings["private"]["a"], serde_json::json!(1.0));
+    assert_eq!(std::fs::read(&path).expect("unchanged"), bytes);
+    assert_eq!(state.view(access).revision, view.revision);
+    assert_eq!(state.undo, Vec::<Vec<u8>>::new());
+    assert_eq!(
+        state.preview_settings("missing", &view.revision, access),
+        Err(HostError::Denied)
+    );
+    assert_eq!(
+        state.preview_settings("widget-1", &view.revision, None),
+        Err(HostError::Denied)
+    );
+    std::fs::write(&path, b"broken").expect("external edit");
+    assert!(matches!(
+        state.preview_settings("widget-1", &view.revision, access),
+        Err(HostError::StudioConflict { .. })
+    ));
+    assert_eq!(
+        state.preview_settings(
+            "widget-1",
+            &vantare_services::content_hash(b"broken"),
+            access
+        ),
+        Err(HostError::Protected)
+    );
+    assert_eq!(
+        std::fs::read(&path).expect("protected unchanged"),
+        b"broken"
+    );
+}

@@ -640,3 +640,63 @@ No cambia el protocolo ni la interfaz.
 La validación vive dentro de esos métodos y usa el Reader de la sesión, también
 al disparar el Calendario (`launch_for_instance`). El despacho no la duplica.
 La autoridad precede al documento y la revisión precede al escaneo pendiente.
+
+## Preview Rune por foto · v46 / VANTA-138 / #2481
+
+`preview.render` recibe un destino cerrado: `instance { id, baseRevision }` o
+`catalog { widget }`, `scene: "demo"` y escala `"1" | "1.25" | "1.5"`.
+Responde una sola vez con `{width, height, pngBase64}` o un error tipado;
+no hay acuse de aceptación, caché, reenvío ni modo interactivo. La interfaz no
+forma parte de esta entrega. #2025 sigue aparcada y studioEditOnScreen=false.
+
+El host exige cuenta observada, permisos del widget y ausencia de Live. Lee los
+ajustes privados con el lector existente y revisión; nunca recibe rutas, JSON
+de ajustes, fotos o argumentos del renderer. Ejecuta únicamente el hermano
+`vantare-overlays-rune.exe`, junto al anfitrión, sin buscarlo en PATH ni shell.
+Cada llamada usa un directorio propio, entradas create_new y salida nueva;
+el PNG create_new y los assets/cierre/release son responsabilidad del PR B de
+captura. El protocolo consume los códigos y primer token de stderr de #2474;
+ningún detalle humano de ese archivo se transmite al Hub.
+
+Sin snapshot/sequence la CLI actual devuelve NO_DEMO para todos los widgets:
+no incorpora escenas implícitas. Se devuelve `NoDemo`, sin inventar una foto.
+La captura con datos canónicos la prepara F; B aporta el pintor único.
+Flags y CLI no se duplican ni se cambia la vía de captura. La UI posterior deberá
+mostrar los estados y errores que aprueben Opus, el orquestador e Isaac.
+
+Solo una captura activa; otra devuelve Busy. Se observa desde el tick existente,
+sin nuevos hilos ni temporizadores. Plazo total 15 s. Cambio de cuenta/permisos,
+Live, cierre y Drop terminan el Job, recogen el hijo y retiran los archivos.
+PNG máximo 512 KiB, dimensiones 1..4096; se comprueba la envoltura PNG y el
+mensaje JSON completo contra 1 MiB. No se decodifican ni repintan píxeles;
+una imagen transparente/uniforme sigue siendo válida. La codificación usa
+base64 0.22.1 ya en el lock, MIT OR Apache-2.0, sin paquetes nuevos.
+
+Errores propios: InvalidInput, NoDemo, GpuUnavailable, CaptureFailed,
+GraphicsDisabled, Timeout, TooLarge y Unavailable; permisos/revisión/ocupación
+usan Denied/StudioConflict/Busy existentes. Ejecutable ausente: Unavailable.
+Servidor y CI solo usan pintor falso sin ventana/GPU. La medida real de tamaños
+(Standings ampliado, Delta history y Fuel 460x440, escala1.5), latencia, CPU y
+memoria se hace en PC de juego autorizado mediante el script de medición.
+No se sube el tope de 512 KiB sin revisar los resultados con la raíz.
+
+Medición (no ejecutada en servidor):
+`pwsh -NoProfile -File native/hub-host/scripts/measure-preview.ps1 -Executable <Rune aprobado> -SceneRoot <escenas F> -OutputDirectory <evidencia nueva>`.
+Cada subcarpeta standings-expanded/delta-history/fuel-460x440 contiene layout.json
+con una instancia y snapshot.json XOR sequence.tsv. El script registra duración,
+CPU del hijo, pico de RAM, bytes y dimensiones; aborta al superar 512 KiB o 15 s.
+No mide la carga GPU: esa aceptación y los píxeles corresponden a la campaña del
+PC de juego. No se ejecuta el binario de Rune en los tests de este crate.
+
+### Restos de una caída y stderr
+
+Antes de la primera captura de cada State se barre únicamente su root de preview.
+Se rechaza un root redirigido y las junctions/reparse points descendientes se
+retiran como enlaces, sin recorrer su destino. Un fallo impide empezar la captura.
+Cada poll comprueba stderr: hasta64KiB permitido, por encima CaptureFailed,
+terminación del hijo y retirada de los archivos. No cambia la versión del contrato.
+Antes del barrido se fija la DACL protegida al SID actual, heredable por archivos
+y subdirectorios, con el MISMO helper private_acl que usa services::storage::Store.
+No se confía en las ACL de --data-dir: no se heredan grants a otros usuarios.
+Si no se puede fijar la DACL, devuelve Io sin lanzar el hijo. API reutilizada
+mediante pub use cfg(windows), autorizada por raíz; sin algoritmo Win32 nuevo.

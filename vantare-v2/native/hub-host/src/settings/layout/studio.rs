@@ -403,6 +403,22 @@ fn open_revision(
     let document = Document::from_observed(observed).map_err(|()| HostError::Protected)?;
     Open::project(document, state.monitor_source, state.monitor).map_err(HostError::from)
 }
+pub(crate) fn preview_settings(
+    state: &mut State,
+    id: &str,
+    revision: &str,
+    access: Option<CatalogAccess>,
+) -> Result<(WidgetKind, Vec<u8>), HostError> {
+    let mut opened = open_revision(state, revision, access)?;
+    let fields = opened.find(id)?;
+    let item = instance(fields, access)?;
+    if item.locked {
+        return Err(HostError::Denied);
+    }
+    let settings: Fields = read(fields, "settings")?;
+    let bytes = serde_json::to_vec(&settings.0).map_err(|_| HostError::Io)?;
+    Ok((item.kind, bytes))
+}
 pub(crate) fn edit_result(
     state: &mut State,
     edit: Edit,

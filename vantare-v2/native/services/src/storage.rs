@@ -17,6 +17,10 @@ use crate::{Error, Result};
 #[cfg(windows)]
 mod windows;
 
+/// Protect a host-owned directory with the current-user DACL used by Store.
+#[cfg(windows)]
+pub use windows::private_acl;
+
 #[cfg(any(test, feature = "test-support"))]
 mod fixtures;
 

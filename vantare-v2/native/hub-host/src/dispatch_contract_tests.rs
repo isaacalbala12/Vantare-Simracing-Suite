@@ -401,3 +401,6 @@ fn checked_dispatch_cannot_replace_the_scope_captured_by_the_caller() {
     ));
     assert!(!mailbox::request_path(&session.launcher).exists());
 }
+
+#[path = "protocol/modules/preview/dispatch_tests.rs"]
+mod preview_dispatch_tests;

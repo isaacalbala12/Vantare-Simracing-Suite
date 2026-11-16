@@ -7,6 +7,7 @@ import type {
   UiToHost,
 } from "../contract/generated/contract";
 export interface MockContext {
+  studioData?: import("../contract/generated/contract").StudioView;
   settingsData?: import("../contract/generated/contract").SettingsView;
   launchForNotice?: (profile: string) => void;
   removeLauncherProfile?: (profile: string) => void;

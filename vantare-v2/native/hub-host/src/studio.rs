@@ -251,6 +251,15 @@ impl State {
             Err(crate::protocol::HostError::Protected)
         }
     }
+    #[cfg(windows)]
+    pub(crate) fn preview_settings(
+        &mut self,
+        id: &str,
+        revision: &str,
+        access: Option<vantare_ipc::control::CatalogAccess>,
+    ) -> Result<(WidgetKind, Vec<u8>), crate::protocol::HostError> {
+        crate::settings::studio::preview_settings(self, id, revision, access)
+    }
     pub fn reset_subscription(&mut self) {
         self.last = None;
     }

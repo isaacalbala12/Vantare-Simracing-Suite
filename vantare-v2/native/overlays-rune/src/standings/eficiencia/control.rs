@@ -1,4 +1,4 @@
-//! Registro y retención de pausa del host GPUI; movimiento en E5.
+//! Registro y retención de pausa del host GPUI; movimiento finito de Eficiencia.
 #[cfg(test)]
 #[path = "review_e3_tests.rs"]
 mod review_e3_tests;
@@ -25,6 +25,9 @@ pub(crate) struct Eficiencia {
     board: Option<Arc<Board>>,
     paused: bool,
     live_projection: bool,
+    pub(super) motion: super::motion::Motion,
+    reduced: bool,
+    hz: u16,
 }
 impl Eficiencia {
     pub(super) fn new(settings: &Options, prefs: Preferences) -> Self {
@@ -37,7 +40,16 @@ impl Eficiencia {
             board: None,
             paused: false,
             live_projection: false,
+            motion: super::motion::Motion::default(),
+            reduced: false,
+            hz: 60,
         }
+    }
+    fn sample(&mut self, clock: f64) -> bool {
+        let frame = if self.reduced { Arc::default() } else { self.motion.frame_shared(clock) };
+        let changed = *frame != *self.visual.frame;
+        self.visual.frame = frame;
+        changed
     }
     fn settings_for(&self, session: Session) -> Options {
         let mut settings = self.settings.clone();
@@ -67,14 +79,17 @@ impl Widget for Eficiencia {
     fn new(
         settings: &Settings,
         prefs: Preferences,
-        _reduced: bool,
-        _hz: u16,
+        reduced: bool,
+        hz: u16,
         _clock: f64,
     ) -> Option<Box<dyn Widget>> {
         let Settings::Standings(s) = settings else {
             return None;
         };
-        Some(Box::new(Self::new(s, prefs)))
+        let mut widget=Self::new(s,prefs);
+        widget.reduced=reduced;
+        widget.hz=hz.max(1);
+        Some(Box::new(widget))
     }
     fn attach_assets(&mut self, cache: &Arc<rune::ImageCache>) {
         self.visual.attach_assets(cache);
@@ -141,10 +156,17 @@ impl Widget for Eficiencia {
                 },
         }
     }
-    fn policy(&mut self, _reduced: bool, _hz: u16, _clock: f64) -> Update {
-        Update::default()
+    fn policy(&mut self, reduced: bool, hz: u16, clock: f64) -> Update {
+        self.hz=hz.max(1);
+        if reduced==self.reduced { return Update::default(); }
+        self.reduced=reduced;
+        self.motion=super::motion::Motion::default();
+        if !reduced {
+            self.motion.update(&self.visual.content_plan,self.visual.plan.visible_rows,clock);
+        }
+        Update { build:self.sample(clock),pixels:false }
     }
-    fn update(&mut self, photo: &Snapshot, _clock: f64) -> Update {
+    fn update(&mut self, photo: &Snapshot, clock: f64) -> Update {
         let paused = photo.state.source_state == SourceState::Paused;
         if paused && self.paused {
             return Update::default();
@@ -190,15 +212,25 @@ impl Widget for Eficiencia {
         // Metadato de continuidad de GPUI para E5/E6; sequence no decide proyección/repintado.
         let next = Arc::new(ContentPlan::new(board.clone(), identity, photo.sequence));
         self.board = Some(board);
+        let changed=self.visual.ingest(next);
+        // Visual::ingest de GPUI solo actualiza Motion si cambia el contenido visible.
+        if changed && !self.reduced {
+            self.motion.update(&self.visual.content_plan,self.visual.plan.visible_rows,clock);
+        }
         Update {
-            build: self.visual.ingest(next) || pause_changed || session_changed,
+            build: self.sample(clock) || changed || pause_changed || session_changed,
             pixels: false,
         }
     }
-    fn animate(&mut self, _clock: f64) -> Update {
-        Update::default()
+    fn animate(&mut self, clock: f64) -> Update {
+        if self.paused || self.reduced {return Update::default();}
+        Update {build:self.sample(clock),pixels:false}
     }
-    fn schedule(&self, _clock: f64, _tx: &mut rune::Tx) {}
+    fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
+        if !self.paused && !self.reduced && let Some(due)=self.motion.next_wake(clock,self.hz) {
+            tx.wake_at(due);
+        }
+    }
     fn view(&self) -> rune::El {
         let mut root = self.visual.view(self.prefs.language);
         if self.paused {

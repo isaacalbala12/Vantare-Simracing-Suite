@@ -16,14 +16,16 @@ impl Visual {
             content_plan,
             plan,
             assets: None,
+            frame: Arc::default(),
         }
     }
-    fn clone_for_test(&self) -> Self {
+    pub(super) fn clone_for_test(&self) -> Self {
         Self {
             config: self.config.clone(),
             content_plan: self.content_plan.clone(),
             plan: self.plan.clone(),
             assets: None,
+            frame: self.frame.clone(),
         }
     }
 }

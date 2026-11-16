@@ -155,7 +155,7 @@ fn animated_rows_and_ghosts_stay_inside_the_window() {
         p.rows.swap(0,1); p.rows.remove(2); v.ingest(Arc::new(p.clone())); m.update(&p,2,1.0);
         for clock in [1.0,1.05,1.1,1.2,1.313] {
             v.frame=m.frame_shared(clock);
-            let clone=v.clone_for_motion_test();
+            let clone=v.clone_for_test();
             let size=clone.size(); let mut rt=paint_tests::paint(clone,Language::Es);
             crate::testdata::assert_inside_window(&mut rt,size);
             let elements=rt.elements();

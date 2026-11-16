@@ -11,9 +11,7 @@ pub(crate) use control::Eficiencia;
 mod control_tests;
 mod model;
 mod options;
-#[cfg(test)]
-#[path = "motion_tests.rs"]
-mod motion_tests;
+mod motion;
 #[cfg(test)]
 mod paint_tests;
 mod render;
@@ -29,6 +27,7 @@ pub(super) struct Visual {
     content_plan: Arc<ContentPlan>,
     plan: Arc<Plan>,
     assets: Option<assets::Assets>,
+    frame: Arc<motion::Frame>,
 }
 impl Visual {
     pub fn new(settings: &Settings) -> Self {
@@ -41,6 +40,7 @@ impl Visual {
             content_plan: Arc::new(content_plan),
             plan: Arc::new(plan),
             assets: None,
+            frame: Arc::default(),
         }
     }
     pub fn ingest(&mut self, next: Arc<ContentPlan>) -> bool {

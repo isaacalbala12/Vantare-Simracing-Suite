@@ -13,7 +13,7 @@ use vantare_domain::{
     widget_settings::session_alerts::Settings,
 };
 
-/// The GPUI painter fades the panel in and out over 150 ms.
+/// The GPUI painter fades the notice in and out over 150 ms.
 const FADE: f64 = 0.15;
 
 pub(crate) struct SessionAlerts {
@@ -22,7 +22,7 @@ pub(crate) struct SessionAlerts {
     prefs: Preferences,
     machine: Machine,
     view: View,
-    /// Wall clock when the widget was built; the runtime clock adds what elapsed since.
+    /// Wall clock the runtime clock is added to, already discounted on construction.
     wall: u64,
     /// A photo arrived: the widget is in track, not in the Studio preview.
     live: bool,
@@ -30,6 +30,9 @@ pub(crate) struct SessionAlerts {
     hz: u16,
     fade: Tween,
     shown: Option<(String, u64)>,
+    /// Last photo seen, to deduplicate like the GPUI ingest does.
+    cursor: Option<(u64, u64)>,
+    input: Option<model::SessionInput>,
     /// Agenda plug of the next PR: the calendar feed will arrive here, empty for now.
     #[allow(dead_code)]
     calendar: Vec<model::CalendarInput>,
@@ -37,10 +40,14 @@ pub(crate) struct SessionAlerts {
     visual: scene::Scene,
 }
 impl SessionAlerts {
-    pub fn new(settings: &Settings, prefs: Preferences) -> Self {
+    pub fn new(settings: &Settings, prefs: Preferences, clock: f64) -> Self {
         let settings = settings.normalized();
         let options = options(&settings);
-        let wall = vantare_ipc::control::wall_ms().unwrap_or(0);
+        // Wall milliseconds are what a calendar compares; the runtime clock already ran,
+        // so its offset is subtracted here and added back in `now`.
+        let wall = vantare_ipc::control::wall_ms()
+            .unwrap_or(0)
+            .saturating_sub((clock.max(0.0) * 1000.0) as u64);
         let view = View::default();
         let initial = scene::sample(&settings, &view, None, false, 1.0);
         let painter = render::Painter::new(&initial, &settings.style);
@@ -56,6 +63,8 @@ impl SessionAlerts {
             hz: 0,
             fade: Tween::linear(1.0),
             shown: None,
+            cursor: None,
+            input: None,
             calendar: Vec::new(),
             painter,
             visual: initial,
@@ -86,12 +95,16 @@ impl SessionAlerts {
         }
     }
     pub fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
-        let now = self.now(clock);
-        self.live = true;
-        // Every photo refreshes the machine, as the GPUI ingest does: a threshold stays
-        // fresh while the session keeps talking to us.
+        let cursor = (snapshot.epoch, snapshot.sequence);
         let input = model::project(snapshot);
-        self.machine.session(input, now, &self.options);
+        // The same photo twice is not news: dedupe on the sequence, as GPUI's ingest does.
+        if self.cursor == Some(cursor) && self.input == input {
+            return Update::default();
+        }
+        self.cursor = Some(cursor);
+        self.input = input.clone();
+        self.live = true;
+        self.machine.session(input, self.now(clock), &self.options);
         self.animate(clock)
     }
     pub fn animate(&mut self, clock: f64) -> Update {
@@ -122,7 +135,8 @@ impl SessionAlerts {
         self.visual = next;
         update
     }
-    /// 150 ms in and out; with reduced motion the final value is fixed at once.
+    /// 150 ms in and out for the main notice; reduced motion removes the animation, not
+    /// the notice, so it stays at full opacity until it ends.
     fn fade(&mut self, now: u64, clock: f64) {
         let key = self
             .view
@@ -134,7 +148,7 @@ impl SessionAlerts {
             self.fade = Tween::linear(0.0);
         }
         let target = match &self.view.active {
-            Some(notice) if now.saturating_add(150) >= notice.ends_at_ms => 0.0,
+            Some(notice) if !self.reduced && now.saturating_add(150) >= notice.ends_at_ms => 0.0,
             Some(_) => 1.0,
             None => 0.0,
         };
@@ -144,24 +158,32 @@ impl SessionAlerts {
             self.fade.retarget(target, clock, FADE);
         }
     }
+    /// One wake per second while a notice or a row is drawn; frames only while the notice
+    /// fades. Without either there is no clock at all, reduced motion or not.
     pub fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
-        if self.reduced {
-            return;
-        }
-        if self.fade.active(clock) {
+        let main = self.settings.companion_for.is_none();
+        let active = main && self.view.active.is_some();
+        let ticking = active || !self.view.minis.is_empty();
+        if active && !self.reduced && self.fade.active(clock) {
             let step = 1.0 / f64::from(if self.hz == 0 { 30 } else { self.hz });
             tx.wake_at(clock + step);
             return;
         }
         let now = self.now(clock);
-        if let Some(notice) = &self.view.active {
-            let end = notice
-                .ends_at_ms
-                .saturating_sub(now)
-                .saturating_sub(150)
-                .max(1);
+        if ticking {
+            let until_end = if active {
+                self.view
+                    .active
+                    .as_ref()
+                    .map_or(1, |notice| {
+                        notice.ends_at_ms.saturating_sub(now).saturating_sub(150)
+                    })
+                    .max(1)
+            } else {
+                1_000
+            };
             let second = 1000 - now % 1000;
-            tx.wake_at(clock + f64::from(second.min(end) as u32) / 1000.0);
+            tx.wake_at(clock + f64::from(second.min(until_end) as u32) / 1000.0);
             return;
         }
         if let Some(at) = self.machine.next_wake_at(now, &self.options) {
@@ -196,12 +218,12 @@ impl crate::widget::Widget for SessionAlerts {
         prefs: Preferences,
         _reduced: bool,
         _hz: u16,
-        _clock: f64,
+        clock: f64,
     ) -> Option<Box<dyn crate::widget::Widget>> {
         let vantare_domain::widget_settings::Settings::SessionAlerts(settings) = settings else {
             return None;
         };
-        Some(Box::new(SessionAlerts::new(settings, prefs)))
+        Some(Box::new(SessionAlerts::new(settings, prefs, clock)))
     }
     fn configured(
         &self,
@@ -235,7 +257,6 @@ impl crate::widget::Widget for SessionAlerts {
         SessionAlerts::view(self)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -257,8 +278,17 @@ mod tests {
         snapshot.state.session.timing.scheduled_end_s = Reliable(300.0);
         snapshot
     }
+    fn settings() -> Stored {
+        Stored::default()
+    }
     fn widget() -> SessionAlerts {
-        SessionAlerts::new(&Stored::default(), Preferences::default())
+        SessionAlerts::new(&settings(), Preferences::default(), 0.0)
+    }
+    fn companion() -> Stored {
+        Stored {
+            companion_for: Some("main".into()),
+            ..Stored::default()
+        }
     }
     fn paint_payload(instance: &rune::render::Instance) -> [[u32; 4]; 8] {
         [
@@ -323,6 +353,54 @@ mod tests {
         assert!(rendered_frame(&mut runtime, 0.0), "el aviso aparece");
         runtime
     }
+    /// Paints one scene on its own, without photos or machine.
+    fn painted(scene: &scene::Scene) -> Runtime<render::Painter> {
+        let mut runtime = Runtime::with_text(
+            render::Painter::new(scene, "neo"),
+            |painter: &render::Painter, _: &mut rune::Cx<render::Painter>| painter.view(),
+            scene.size,
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        runtime.frame(0.0);
+        runtime
+    }
+    fn rows(count: usize) -> Vec<scene::Row> {
+        (0..count)
+            .map(|index| scene::Row {
+                label: format!("FIN · PRÁCTICAS {index}"),
+                value: format!("0{}:30", index + 1),
+                calm: index % 2 == 0,
+            })
+            .collect()
+    }
+    fn row_scene(settings: &Stored, count: usize) -> scene::Scene {
+        scene::Scene {
+            size: scene::size(settings),
+            scale: scene::scale(settings),
+            opacity: 1.0,
+            notice: None,
+            placeholder: None,
+            ghost: None,
+            rows: rows(count),
+        }
+    }
+    fn keys<T: 'static>(runtime: &Runtime<T>) -> Vec<String> {
+        runtime
+            .elements()
+            .into_iter()
+            .filter_map(|element| element.key)
+            .collect()
+    }
+
+    #[test]
+    fn the_wall_base_discounts_the_runtime_clock() {
+        let widget = SessionAlerts::new(&settings(), Preferences::default(), 5.0);
+        let now = widget.now(5.0);
+        let wall = vantare_ipc::control::wall_ms().unwrap_or(0);
+        assert!(now <= wall, "la hora de pared no se adelanta");
+        assert!(wall - now <= 2_000, "ni se queda atrás: {}", wall - now);
+    }
 
     #[test]
     fn the_controller_turns_a_live_photo_into_a_notice() {
@@ -334,17 +412,34 @@ mod tests {
     }
 
     #[test]
+    fn the_same_photo_is_not_projected_twice() {
+        let mut widget = widget();
+        assert!(widget.update(&photo(0.0), 0.0).build);
+        let again = widget.update(&photo(0.0), 0.0);
+        assert!(!again.build && !again.pixels, "la misma foto no repite");
+        let mut next = photo(5.0);
+        next.sequence += 1;
+        let newer = widget.update(&next, 0.0);
+        assert!(
+            newer.build || newer.pixels,
+            "la misma secuencia no repite; un dato nuevo sí"
+        );
+    }
+
+    #[test]
     fn the_countdown_changes_once_per_second_and_nothing_in_between() {
         let _fonts = rune::text::with_families("Inter", "Inter");
         let mut runtime = opened();
         assert!(runtime.wake_deadline().is_some(), "hay reloj con aviso");
-        for second in 1..=3 {
+        for second in 1..=2 {
             push(photo(f64::from(second)));
             assert!(
                 rendered_frame(&mut runtime, 1.0),
                 "la cuenta atrás cambia en el segundo {second}"
             );
-            assert!(!rendered_frame(&mut runtime, 0.1), "y no pinta de más");
+            // Tras un dato nuevo el widget puede asentarse; después se queda quieto.
+            rendered_frame(&mut runtime, 0.1);
+            assert!(!rendered_frame(&mut runtime, 0.1), "y se queda quieto");
         }
     }
 
@@ -359,43 +454,132 @@ mod tests {
         }
         assert!(painted >= 1, "el aviso se marcha");
         assert!(runtime.state.visual.notice.is_none(), "el panel desaparece");
-        assert!(
-            runtime.wake_deadline().is_none(),
-            "sin aviso no queda reloj"
-        );
     }
 
     #[test]
-    fn reduced_motion_settles_the_fade_and_leaves_no_clock() {
+    fn reduced_motion_keeps_the_data_clock_and_leaves_no_clock_afterwards() {
         let _fonts = rune::text::with_families("Inter", "Inter");
         let mut runtime = opened();
         runtime.state.policy(true, 5, 1.0);
         rendered_frame(&mut runtime, 0.1);
-        assert_eq!(runtime.state.visual.opacity, 1.0, "la opacidad queda fija");
+        assert_eq!(runtime.state.visual.opacity, 1.0, "el aviso no se apaga");
+        assert!(
+            runtime.wake_deadline().is_some(),
+            "la cuenta atrás sigue con reloj"
+        );
+        for step in 1..=40 {
+            push(photo(f64::from(step) * 0.5));
+            rendered_frame(&mut runtime, 0.5);
+        }
+        assert!(runtime.state.visual.notice.is_none(), "el aviso termina");
+    }
+
+    #[test]
+    fn without_a_session_there_is_no_clock() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut runtime = host(widget());
+        runtime.frame(0.0);
         assert!(
             runtime.wake_deadline().is_none(),
-            "con reducir movimiento no hay reloj"
+            "sin sesión ni filas no hay reloj"
         );
+    }
+
+    #[test]
+    fn the_studio_hint_is_painted_at_full_opacity_without_photos() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut runtime = host(widget());
+        runtime.frame(0.0);
+        assert!(
+            runtime.state.visual.placeholder.is_some(),
+            "vista del Studio"
+        );
+        let elements = runtime.elements();
+        assert!(!elements.is_empty(), "la pista pinta el cartel");
+        assert!(
+            elements.iter().all(|element| element.opacity > 0.99),
+            "sin foto todo se ve: el fade es solo del aviso"
+        );
+    }
+
+    #[test]
+    fn the_companion_paints_its_rows_without_a_notice_and_never_fades() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let settings = companion();
+        let mut runtime = painted(&row_scene(&settings, 3));
+        let painted_keys = keys(&runtime);
+        for index in 0..3 {
+            assert!(
+                painted_keys
+                    .iter()
+                    .any(|key| key == &format!("row-{index}")),
+                "fila {index}: {painted_keys:?}"
+            );
+        }
+        assert!(
+            runtime
+                .elements()
+                .iter()
+                .all(|element| element.opacity > 0.99),
+            "las filas no se apagan con el fade"
+        );
+        crate::testdata::assert_inside_window(&mut runtime, scene::size(&settings));
+    }
+
+    #[test]
+    fn the_companion_ghost_and_the_three_row_variants_fit_their_windows() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let studio = companion();
+        let ghost = scene::Scene {
+            ghost: Some("Mini cuenta atrás".into()),
+            ..row_scene(&studio, 0)
+        };
+        let mut painted_ghost = painted(&ghost);
+        assert!(
+            keys(&painted_ghost).iter().any(|key| key == "ghost-panel"),
+            "el aviso de la vista previa se pinta"
+        );
+        crate::testdata::assert_inside_window(&mut painted_ghost, scene::size(&studio));
+        for size in ["s", "m", "l"] {
+            let settings = Stored {
+                mini_size: size.into(),
+                mini_limit: 3,
+                ..studio.clone()
+            };
+            let mut runtime = painted(&row_scene(&settings, 3));
+            crate::testdata::assert_inside_window(&mut runtime, scene::size(&settings));
+        }
+    }
+
+    #[test]
+    fn the_main_widget_never_paints_companion_rows() {
+        let scene = scene::sample(
+            &settings(),
+            &View {
+                minis: vec![vantare_domain::session_alerts::Mini {
+                    event: "session:1:7".into(),
+                    label: "PRÁCTICAS".into(),
+                    calendar: false,
+                    seconds: 30,
+                    distance_m: None,
+                    scheduled: false,
+                    distance_estimated: false,
+                }],
+                ..Default::default()
+            },
+            None,
+            true,
+            1.0,
+        );
+        assert!(scene.rows.is_empty(), "el principal no pinta filas");
     }
 
     #[test]
     fn nothing_painted_falls_outside_the_window() {
         let _fonts = rune::text::with_families("Inter", "Inter");
-        for settings in [
-            Stored::default(),
-            Stored {
-                companion_for: Some("main".into()),
-                ..Stored::default()
-            },
-            Stored {
-                companion_for: Some("main".into()),
-                mini_limit: 3,
-                mini_size: "l".into(),
-                ..Stored::default()
-            },
-        ] {
+        for settings in [settings(), companion()] {
             let size = scene::size(&settings);
-            let mut runtime = host(SessionAlerts::new(&settings, Preferences::default()));
+            let mut runtime = host(SessionAlerts::new(&settings, Preferences::default(), 0.0));
             runtime.frame(0.0);
             push(photo(0.0));
             rendered_frame(&mut runtime, 0.0);
@@ -406,7 +590,7 @@ mod tests {
 
     #[test]
     fn the_constructor_takes_its_settings_and_rejects_other_kinds() {
-        let stored = widget_settings::Settings::SessionAlerts(Stored::default());
+        let stored = widget_settings::Settings::SessionAlerts(settings());
         let prefs = Preferences::default();
         let painter = <SessionAlerts as crate::widget::Widget>::new(&stored, prefs, false, 5, 0.0)
             .expect("avisos");
@@ -418,12 +602,9 @@ mod tests {
                 height: 88.0
             }
         );
-        let companion = widget_settings::Settings::SessionAlerts(Stored {
-            companion_for: Some("main".into()),
-            ..Stored::default()
-        });
+        let mini = widget_settings::Settings::SessionAlerts(companion());
         assert_eq!(
-            <SessionAlerts as crate::widget::Widget>::new(&companion, prefs, false, 5, 0.0)
+            <SessionAlerts as crate::widget::Widget>::new(&mini, prefs, false, 5, 0.0)
                 .expect("mini")
                 .size(),
             Size {

@@ -42,7 +42,7 @@ struct Ink {
 }
 
 /// Everything that decides a rebuild; the texts that change every second stay Live.
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Structure {
     size: (f32, f32),
     scale: f32,
@@ -55,41 +55,35 @@ struct Structure {
 
 pub(super) struct Painter {
     style: Arc<Style>,
-    panel_style: String,
-    size: (f32, f32),
-    scale: f32,
-    notice: Option<Notice>,
-    placeholder: Option<Placeholder>,
-    ghost: Option<String>,
-    rows: Vec<(String, bool)>,
+    state: Structure,
     opacity: Live<f32>,
     value: LiveText,
     row_values: Vec<LiveText>,
-    last: Option<Structure>,
 }
 impl Painter {
     pub fn new(scene: &Scene, panel_style: &str) -> Self {
         let mut painter = Self {
             style: Style::compiled(),
-            panel_style: panel_style.to_owned(),
-            size: scene.size,
-            scale: scene.scale,
-            notice: None,
-            placeholder: None,
-            ghost: None,
-            rows: Vec::new(),
+            state: Structure {
+                size: scene.size,
+                scale: scene.scale,
+                notice: None,
+                placeholder: None,
+                ghost: None,
+                rows: Vec::new(),
+                style: panel_style.to_owned(),
+            },
             opacity: Live::new(scene.opacity),
             value: LiveText::new(""),
             row_values: Vec::new(),
-            last: None,
         };
         painter.sync(scene);
         painter
     }
     pub fn size(&self) -> Size {
         Size {
-            width: self.size.0,
-            height: self.size.1,
+            width: self.state.size.0,
+            height: self.state.size.1,
         }
     }
     pub fn view(&self) -> El {
@@ -101,12 +95,7 @@ impl Painter {
         if let Some(notice) = &scene.notice {
             pixels |= self.value.set(notice.value.clone());
         }
-        self.rows = scene
-            .rows
-            .iter()
-            .map(|row| (row.label.clone(), row.calm))
-            .collect();
-        if self.row_values.len() != self.rows.len() {
+        if self.row_values.len() != scene.rows.len() {
             self.row_values = scene
                 .rows
                 .iter()
@@ -117,26 +106,22 @@ impl Painter {
                 pixels |= live.set(row.value.clone());
             }
         }
-        self.size = scene.size;
-        self.scale = scene.scale;
-        self.notice = scene.notice.clone();
-        self.placeholder = scene.placeholder.clone();
-        self.ghost = scene.ghost.clone();
-        let structure = self.structure();
-        let build = self.last.as_ref() != Some(&structure);
-        self.last = Some(structure);
+        let next = Structure {
+            size: scene.size,
+            scale: scene.scale,
+            notice: scene.notice.clone(),
+            placeholder: scene.placeholder.clone(),
+            ghost: scene.ghost.clone(),
+            rows: scene
+                .rows
+                .iter()
+                .map(|row| (row.label.clone(), row.calm))
+                .collect(),
+            style: self.state.style.clone(),
+        };
+        let build = next != self.state;
+        self.state = next;
         crate::widget::Update { build, pixels }
-    }
-    fn structure(&self) -> Structure {
-        Structure {
-            size: self.size,
-            scale: self.scale,
-            notice: self.notice.clone(),
-            placeholder: self.placeholder.clone(),
-            ghost: self.ghost.clone(),
-            rows: self.rows.clone(),
-            style: self.panel_style.clone(),
-        }
     }
 }
 
@@ -220,7 +205,7 @@ fn band(s: &Style, v: &Variant, key: &str, w: f32, fill: Color) -> El {
         .fill(fill)
 }
 #[allow(clippy::too_many_arguments)] // Una celda de texto con su sombra, como la primitiva del kit.
-fn text_node(
+fn fixed_node(
     s: &Style,
     value: &str,
     key: &str,
@@ -260,36 +245,8 @@ fn live_node(
         .truncate_fade_width(0.0)
         .pin(Some(at.x), Some(top(s, ink.face, at.y)), None, None)
 }
-/// GPUI draws every label twice, one pixel lower, in the transparent style.
-#[allow(clippy::too_many_arguments)] // Envoltorio de la sombra de una celda.
-fn shadowed(
-    s: &Style,
-    root: El,
-    value: &str,
-    key: &str,
-    at: Rect,
-    ink: Ink,
-    align: Align,
-    shadow: bool,
-) -> El {
-    if !shadow {
-        return root;
-    }
-    root.child(text_node(
-        s,
-        value,
-        &format!("{key}-shadow"),
-        Rect {
-            y: at.y + 1.0,
-            ..at
-        },
-        ink,
-        align,
-        SHADOW_INK,
-        false,
-    ))
-}
-#[allow(clippy::too_many_arguments)]
+/// GPUI draws most labels twice in the transparent style, one pixel lower.
+#[allow(clippy::too_many_arguments)] // Una celda fija con su sombra opcional.
 fn fixed(
     s: &Style,
     root: El,
@@ -302,10 +259,27 @@ fn fixed(
     shadow: bool,
     truncate: bool,
 ) -> El {
-    let root = shadowed(s, root, value, key, at, ink, align, shadow);
-    root.child(text_node(s, value, key, at, ink, align, color, truncate))
+    let root = if shadow {
+        root.child(fixed_node(
+            s,
+            value,
+            &format!("{key}-shadow"),
+            Rect {
+                y: at.y + 1.0,
+                ..at
+            },
+            ink,
+            align,
+            SHADOW_INK,
+            false,
+        ))
+    } else {
+        root
+    };
+    root.child(fixed_node(s, value, key, at, ink, align, color, truncate))
 }
-#[allow(clippy::too_many_arguments)]
+/// A live label keeps its own `LiveText`, shadow included, so the countdown moves whole.
+#[allow(clippy::too_many_arguments)] // Una celda viva con su sombra opcional.
 fn live(
     s: &Style,
     root: El,
@@ -317,40 +291,51 @@ fn live(
     color: Color,
     shadow: bool,
 ) -> El {
-    let root = shadowed(s, root, &value.get(), key, at, ink, align, shadow);
+    let root = if shadow {
+        root.child(live_node(
+            s,
+            value,
+            &format!("{key}-shadow"),
+            Rect {
+                y: at.y + 1.0,
+                ..at
+            },
+            ink,
+            align,
+            SHADOW_INK,
+        ))
+    } else {
+        root
+    };
     root.child(live_node(s, value, key, at, ink, align, color))
 }
 
 fn view(state: &Painter) -> El {
     let s = &state.style;
-    let v = &variant(s, &state.panel_style);
-    let (width, height) = state.size;
-    let shadow = state.panel_style == "transparente";
+    let scene = &state.state;
+    let v = &variant(s, &scene.style);
+    let shadow = scene.style == "transparente";
+    let (width, height) = scene.size;
     let mut root = el()
         .key("session-alerts")
         .size(width, height)
-        .motion(Spring::NONE)
-        .live_opacity(&state.opacity);
-    if let Some(notice) = &state.notice {
+        .motion(Spring::NONE);
+    if let Some(notice) = &scene.notice {
+        // The fade belongs to the notice alone: the companion rows and the Studio
+        // hints stay opaque, as GPUI's `with_opacity` wraps only the active notice.
+        let mut group = el()
+            .key("notice")
+            .size(MAIN_WIDTH, MAIN_HEIGHT)
+            .pin(Some(0.0), Some(0.0), None, None)
+            .live_opacity(&state.opacity);
         let (fill, ink) = tones(s, notice.tone);
-        let band_ink = Ink {
-            face: Face::Display,
-            size: s.fonts.banner,
-            tracking: s.fonts.banner_tracking,
-            weight: 600.0,
-        };
-        let mono = Ink {
-            face: Face::Mono,
-            size: s.fonts.mono_small,
-            tracking: 0.0,
-            weight: 400.0,
-        };
-        root = root
+        group = group
             .child(panel(s, v, "panel", MAIN_WIDTH, MAIN_HEIGHT))
             .child(band(s, v, "band", MAIN_WIDTH, fill));
-        root = fixed(
+        // The band paints its texts directly in GPUI: never shadowed.
+        group = fixed(
             s,
-            root,
+            group,
             &notice.band.to_uppercase(),
             "band-title",
             Rect {
@@ -359,15 +344,20 @@ fn view(state: &Painter) -> El {
                 w: MAIN_WIDTH / 2.0,
                 h: s.geometry.banner_height,
             },
-            band_ink,
+            Ink {
+                face: Face::Display,
+                size: s.fonts.banner,
+                tracking: s.fonts.banner_tracking,
+                weight: 600.0,
+            },
             Align::Start,
             ink,
-            shadow,
+            false,
             false,
         );
-        root = fixed(
+        group = fixed(
             s,
-            root,
+            group,
             &notice.context,
             "band-context",
             Rect {
@@ -376,15 +366,20 @@ fn view(state: &Painter) -> El {
                 w: MAIN_WIDTH - 2.0 * v.padding_x,
                 h: s.geometry.banner_height,
             },
-            mono,
+            Ink {
+                face: Face::Mono,
+                size: s.fonts.mono_small,
+                tracking: 0.0,
+                weight: 400.0,
+            },
             Align::End,
             ink,
-            shadow,
+            false,
             false,
         );
-        root = fixed(
+        group = fixed(
             s,
-            root,
+            group,
             &notice.title,
             "title",
             Rect {
@@ -404,9 +399,9 @@ fn view(state: &Painter) -> El {
             shadow,
             true,
         );
-        root = fixed(
+        group = fixed(
             s,
-            root,
+            group,
             &notice.detail,
             "detail",
             Rect {
@@ -426,9 +421,9 @@ fn view(state: &Painter) -> El {
             shadow,
             true,
         );
-        root = live(
+        group = live(
             s,
-            root,
+            group,
             &state.value,
             "value",
             Rect {
@@ -447,9 +442,9 @@ fn view(state: &Painter) -> El {
             s.colors.text,
             shadow,
         );
-        root = fixed(
+        group = fixed(
             s,
-            root,
+            group,
             &notice.small,
             "small",
             Rect {
@@ -469,7 +464,8 @@ fn view(state: &Painter) -> El {
             shadow,
             false,
         );
-    } else if let Some(placeholder) = &state.placeholder {
+        root = root.child(group);
+    } else if let Some(placeholder) = &scene.placeholder {
         root = root
             .child(panel(s, v, "panel", MAIN_WIDTH, MAIN_HEIGHT))
             .child(band(s, v, "band", MAIN_WIDTH, s.colors.stops_fill));
@@ -492,7 +488,7 @@ fn view(state: &Painter) -> El {
             },
             Align::Start,
             s.colors.text,
-            shadow,
+            false,
             false,
         );
         root = fixed(
@@ -514,7 +510,7 @@ fn view(state: &Painter) -> El {
             },
             Align::End,
             s.colors.text,
-            shadow,
+            false,
             false,
         );
         root = fixed(
@@ -561,8 +557,8 @@ fn view(state: &Painter) -> El {
             shadow,
             false,
         );
-    } else if let Some(ghost) = &state.ghost {
-        let scale = state.scale;
+    } else if let Some(ghost) = &scene.ghost {
+        let scale = scene.scale;
         root = root
             .child(panel(
                 s,
@@ -571,7 +567,7 @@ fn view(state: &Painter) -> El {
                 MINI_WIDTH * scale,
                 MINI_HEIGHT * scale,
             ))
-            .child(text_node(
+            .child(fixed_node(
                 s,
                 ghost,
                 "ghost",
@@ -592,11 +588,14 @@ fn view(state: &Painter) -> El {
                 false,
             ));
     }
-    for (index, (label, calm)) in state.rows.iter().enumerate() {
-        let scale = state.scale;
+    for (index, (label, calm)) in scene.rows.iter().enumerate() {
+        let scale = scene.scale;
         let y = index as f32 * MINI_STEP * scale;
         let width = MINI_WIDTH * scale;
         let row = MINI_HEIGHT * scale;
+        // El texto Display suma la línea base: en la última fila se recorta una pizca
+        // para que su caja no se salga de la ventana.
+        let value_row = row.min(height - (y + s.fonts.display_baseline));
         root = root.child(panel(s, v, &format!("row-{index}"), width, row).pin(
             Some(0.0),
             Some(y),
@@ -622,7 +621,7 @@ fn view(state: &Painter) -> El {
             },
             Align::Start,
             s.colors.muted,
-            false,
+            shadow,
             true,
         );
         let color = if *calm {
@@ -640,7 +639,7 @@ fn view(state: &Painter) -> El {
                     x: 16.0 * scale,
                     y,
                     w: 194.0 * scale - 16.0 * scale,
-                    h: row,
+                    h: value_row,
                 },
                 Ink {
                     face: Face::Display,
@@ -650,7 +649,7 @@ fn view(state: &Painter) -> El {
                 },
                 Align::End,
                 color,
-                false,
+                shadow,
             );
         }
     }

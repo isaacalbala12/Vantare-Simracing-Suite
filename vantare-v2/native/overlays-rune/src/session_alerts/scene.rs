@@ -74,6 +74,8 @@ pub fn size(settings: &Settings) -> (f32, f32) {
 }
 
 /// Pure sampling: same view, same strings, no colours and no clock.
+/// Pure sampling: same view, same strings, no colours and no clock.
+/// The companion never paints the main notice, and the main never paints rows.
 pub fn sample(
     settings: &Settings,
     view: &View,
@@ -82,32 +84,35 @@ pub fn sample(
     opacity: f32,
 ) -> Scene {
     let preview = !live;
-    let rows: Vec<Row> = view
-        .minis
-        .iter()
-        .map(|mini| Row {
-            label: format!(
-                "{}{}{}",
-                if mini.scheduled { "FIN " } else { "" },
-                mini.label,
-                if mini.calendar { " · cal" } else { "" }
-            ),
-            value: mini.value(),
-            calm: mini.tone() != Tone::Final,
-        })
-        .collect();
+    let companion = settings.companion_for.is_some();
+    let rows: Vec<Row> = if companion {
+        view.minis
+            .iter()
+            .map(|mini| Row {
+                label: format!(
+                    "{}{}{}",
+                    if mini.scheduled { "FIN " } else { "" },
+                    mini.label,
+                    if mini.calendar { " · cal" } else { "" }
+                ),
+                value: mini.value(),
+                calm: mini.tone() != Tone::Final,
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     let mut scene = Scene {
         size: size(settings),
         scale: scale(settings),
-        opacity,
+        // Only the main notice fades; the companion rows and the Studio hints never do.
+        opacity: if companion { 1.0 } else { opacity },
         notice: None,
         placeholder: None,
         ghost: None,
         rows,
     };
-    let companion = settings.companion_for.is_some();
     if companion {
-        // The companion only paints rows: the main notice belongs to the main widget.
         if settings.mini && preview && scene.rows.is_empty() {
             scene.ghost = Some("Mini cuenta atrás".into());
         }
@@ -127,7 +132,6 @@ pub fn sample(
     scene.notice = Some(notice_texts(settings, view, notice, counter));
     scene
 }
-
 fn notice_texts(
     settings: &Settings,
     view: &View,
@@ -309,7 +313,11 @@ mod tests {
             minis: vec![mini(90, None), mini(30, None)],
             ..Default::default()
         };
-        let scene = scene_of(&view, None);
+        let companion = Settings {
+            companion_for: Some("main".into()),
+            ..Settings::default()
+        };
+        let scene = sample(&companion, &view, None, true, 1.0);
         assert_eq!(
             scene
                 .rows

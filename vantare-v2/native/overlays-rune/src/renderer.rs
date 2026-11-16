@@ -1,5 +1,6 @@
 //! One retained painter per visible instance; monitor windows coalesce their work.
 use crate::{
+    car_damage_numbers::CarDamageNumbers,
     host::Access,
     input_telemetry::InputTelemetry,
     pedals::Pedals,
@@ -39,6 +40,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         }
         Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),
         Settings::TrackWeather(_) => Some(<TrackWeather as Widget>::new),
+        Settings::CarDamageNumbers(_) => Some(<CarDamageNumbers as Widget>::new),
         Settings::BroadcastTower(_) => Some(<Tower as Widget>::new),
         Settings::InputTelemetry(_) => Some(<InputTelemetry as Widget>::new),
         Settings::RacingFlags(_) => Some(<crate::racing_flags::RacingFlags as Widget>::new),
@@ -351,6 +353,36 @@ pub(crate) mod tests {
                 (painter.size().width, painter.size().height),
                 size,
                 "vertical {vertical}"
+            );
+        }
+    }
+
+    #[test]
+    fn dispatch_constructs_car_damage_numbers_with_its_catalogue_size() {
+        let prefs = Preferences::default();
+        let mut photo = crate::testdata::snapshot();
+        photo.state.capabilities.damage = vantare_domain::Capability::Fresh;
+        photo.state.player.as_mut().expect("player").damage = vantare_domain::Damage {
+            aero: vantare_domain::Quality::Reliable(0.0),
+            ..Default::default()
+        };
+        for (show_tyres, height) in [(true, 132.0), (false, 103.0)] {
+            let settings = Settings::CarDamageNumbers(
+                vantare_domain::widget_settings::car_damage_numbers::Settings {
+                    show_tyres,
+                    ..Default::default()
+                },
+            );
+            let painter = constructor(&settings).expect("Car damage numbers")(
+                &settings, prefs, true, 15, 0.0,
+            )
+            .expect("instancia");
+            assert!(painter.configured(&settings, prefs));
+            let size = painter.size_for(Some(&photo));
+            assert_eq!(
+                (size.width, size.height),
+                (164.0, height),
+                "show_tyres {show_tyres}"
             );
         }
     }

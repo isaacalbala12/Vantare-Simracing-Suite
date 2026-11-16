@@ -2,6 +2,7 @@
 //! Sin sonido y sin avisos de calendario: diferencia declarada, se hace en un PR aparte.
 mod render;
 pub mod scene;
+pub(crate) mod sound;
 use crate::motion::Tween;
 use crate::widget::Update;
 use rune::El;
@@ -9,7 +10,7 @@ use vantare_domain::{
     Snapshot,
     format::Preferences,
     geometry::Size,
-    session_alerts::{self as model, Machine, Options, View},
+    session_alerts::{self as model, Machine, Options, Tone, View},
     widget_settings::session_alerts::Settings,
 };
 
@@ -33,6 +34,9 @@ pub(crate) struct SessionAlerts {
     /// Last photo seen, to deduplicate like the GPUI ingest does.
     cursor: Option<(u64, u64)>,
     input: Option<model::SessionInput>,
+    /// Tones already played, so each notice rings once, as the GPUI revisions do.
+    sound_revision: u64,
+    zero_revision: u64,
     /// Agenda plug of the next PR: the calendar feed will arrive here, empty for now.
     #[allow(dead_code)]
     calendar: Vec<model::CalendarInput>,
@@ -78,6 +82,8 @@ impl SessionAlerts {
             shown: None,
             cursor: None,
             input: None,
+            sound_revision: 0,
+            zero_revision: 0,
             calendar: Vec::new(),
             painter,
             visual: initial,
@@ -210,6 +216,28 @@ impl SessionAlerts {
     pub fn view(&self) -> El {
         self.painter.view()
     }
+    /// Tones this frame: one when a notice enters, and another when its countdown hits zero
+    /// if the setting asks for it. Never in the companion, never silent or at volume 0.
+    pub fn sound(&mut self) -> Vec<(Tone, u8)> {
+        let mut tones = Vec::new();
+        if self.settings.companion_for.is_some() || !self.live {
+            return tones;
+        }
+        let audible = self.settings.sound && self.settings.volume > 0;
+        if self.view.sound_revision != self.sound_revision {
+            self.sound_revision = self.view.sound_revision;
+            if audible && let Some(notice) = &self.view.active {
+                tones.push((notice.tone(), self.settings.volume));
+            }
+        }
+        if self.view.zero_revision != self.zero_revision {
+            self.zero_revision = self.view.zero_revision;
+            if audible && self.settings.sound_zero {
+                tones.push((Tone::Final, self.settings.volume));
+            }
+        }
+        tones
+    }
 }
 
 /// Wall milliseconds are what a calendar compares. The runtime clock already ran when the
@@ -276,6 +304,9 @@ impl crate::widget::Widget for SessionAlerts {
     }
     fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
         SessionAlerts::schedule(self, clock, tx);
+    }
+    fn sound(&mut self) -> Vec<(Tone, u8)> {
+        SessionAlerts::sound(self)
     }
     fn view(&self) -> El {
         SessionAlerts::view(self)
@@ -591,6 +622,42 @@ mod tests {
         assert!(!mini.state.visual.rows.is_empty(), "la mini pinta filas");
         let deadline = mini.wake_deadline().expect("late con las filas");
         assert!(deadline <= 21.0, "la mini late cada segundo: {deadline}");
+    }
+
+    #[test]
+    fn a_notice_rings_once_in_the_recorder() {
+        let mut widget = widget();
+        widget.update(&photo(0.0), 0.0);
+        let mut recorder = sound::Recorder::default();
+        recorder.record(widget.sound());
+        assert_eq!(
+            recorder.played,
+            [(Tone::Mild, 70)],
+            "un tono al entrar el aviso, con su volumen"
+        );
+        recorder.record(widget.sound());
+        assert_eq!(recorder.played.len(), 1, "la misma revisión no repite");
+    }
+
+    #[test]
+    fn silent_settings_and_the_companion_never_ring() {
+        for settings in [
+            Stored {
+                sound: false,
+                ..settings()
+            },
+            Stored {
+                volume: 0,
+                ..settings()
+            },
+            companion(),
+        ] {
+            let mut widget = SessionAlerts::with_wall(&settings, Preferences::default(), 0);
+            widget.update(&photo(0.0), 0.0);
+            let mut recorder = sound::Recorder::default();
+            recorder.record(widget.sound());
+            assert!(recorder.played.is_empty(), "sin tono: {recorder:?}");
+        }
     }
 
     #[test]

@@ -2,7 +2,7 @@
 use crate::scene::{FrameSet, Viewport};
 use rune::{App, AppSpec, Cx, Display, El, Tx, Waker, WindowHandle, WindowOptions, WindowSpec};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, VecDeque},
     io,
     sync::{
         Arc, Condvar, Mutex, PoisonError,
@@ -14,6 +14,7 @@ use std::{
 use vantare_ipc::control::{AccessState, CatalogAccess, Feed, Policy};
 
 pub(crate) const OBSERVE_INTERVAL: Duration = Duration::from_millis(250);
+const MAX_PENDING_FRAMES: usize = 256;
 
 /// Misma decisión de ui::rights::allowed_at, sin refrescar por renovar el TTL.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -60,7 +61,28 @@ struct Pending {
     close: Option<CloseReason>,
     wakers: Vec<Waker>,
     frames: Option<Arc<FrameSet>>,
+    queue: VecDeque<(u64, Arc<FrameSet>)>,
+    published: u64,
+    cursors: BTreeMap<u64, u64>,
+    next_cursor: u64,
     windows: BTreeMap<String, WindowHandle>,
+}
+impl Pending {
+    fn prune(&mut self) {
+        let unread = self
+            .cursors
+            .values()
+            .map(|cursor| self.published.wrapping_sub(*cursor))
+            .max()
+            .unwrap_or(0);
+        while self
+            .queue
+            .front()
+            .is_some_and(|(ordinal, _)| self.published.wrapping_sub(*ordinal) >= unread)
+        {
+            self.queue.pop_front();
+        }
+    }
 }
 pub struct Shared {
     counts: Arc<crate::stats::Counts>,
@@ -81,6 +103,10 @@ impl Shared {
                 close: None,
                 wakers: Vec::new(),
                 frames: None,
+                queue: VecDeque::new(),
+                published: 0,
+                cursors: BTreeMap::new(),
+                next_cursor: 0,
                 windows: BTreeMap::new(),
             }),
             stop: Condvar::new(),
@@ -140,6 +166,15 @@ impl Shared {
                 .as_ref()
                 .is_none_or(|old| old.shown != frames.shown);
             let shown = frames.shown;
+            state.published = state.published.wrapping_add(1);
+            let ordinal = state.published;
+            if !state.cursors.is_empty() {
+                state.queue.push_back((ordinal, frames.clone()));
+                if state.queue.len() > MAX_PENDING_FRAMES {
+                    state.queue.pop_front();
+                    self.counts.dropped_frame_set();
+                }
+            }
             state.frames = Some(frames);
             state.revision = state.revision.wrapping_add(1);
             (
@@ -244,6 +279,9 @@ impl Drop for Rights {
 pub struct State {
     shared: Arc<Shared>,
     seen: u64,
+    cursor: u64,
+    #[cfg(test)]
+    deliveries: Vec<u64>,
     painters: crate::renderer::Painters,
     pub meter: crate::stats::Meter,
     pub access: Access,
@@ -256,18 +294,25 @@ pub struct State {
 }
 impl State {
     pub fn new(shared: Arc<Shared>) -> Self {
-        let (access, frames) = {
-            let pending = shared
+        let (access, frames, cursor) = {
+            let mut pending = shared
                 .pending
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner);
-            (pending.access.clone(), pending.frames.clone())
+            let cursor = pending.next_cursor;
+            pending.next_cursor = pending.next_cursor.wrapping_add(1);
+            let published = pending.published;
+            pending.cursors.insert(cursor, published);
+            (pending.access.clone(), pending.frames.clone(), cursor)
         };
         Self {
             meter: crate::stats::Meter::new(shared.counts.clone()),
             painters: crate::renderer::Painters::default(),
             shared,
             seen: 0,
+            cursor,
+            #[cfg(test)]
+            deliveries: Vec::new(),
             access,
             monitor: None,
             retiring: Arc::new(AtomicBool::new(false)),
@@ -310,6 +355,15 @@ impl Drop for State {
         if let Some(wake) = self.wake.take() {
             self.shared.remove_waker(&wake);
         }
+        {
+            let mut pending = self
+                .shared
+                .pending
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner);
+            pending.cursors.remove(&self.cursor);
+            pending.prune();
+        }
         if let Some(key) = self.window_key.take() {
             eprintln!("overlays-rune: ventana {key} {:?}", self.meter.snapshot());
             self.shared
@@ -331,8 +385,8 @@ fn setup(state: &mut State, wake: Waker) {
     state.shared.install_waker(wake);
 }
 pub fn poll(state: &mut State, clock: f64, tx: &mut Tx) -> bool {
-    let changed = {
-        let pending = state
+    let (changed, backlog) = {
+        let mut pending = state
             .shared
             .pending
             .lock()
@@ -342,25 +396,59 @@ pub fn poll(state: &mut State, clock: f64, tx: &mut Tx) -> bool {
             return false;
         }
         if pending.revision == state.seen {
-            false
+            (false, Vec::new())
         } else {
+            let previous = pending
+                .cursors
+                .get(&state.cursor)
+                .copied()
+                .unwrap_or(pending.published);
+            let unread = pending.published.wrapping_sub(previous);
+            let count = usize::try_from(unread)
+                .unwrap_or(MAX_PENDING_FRAMES)
+                .min(pending.queue.len());
+            // The last FrameSet already follows the original path below. A queue of one
+            // allocates no backlog and still calls sync exactly once.
+            let backlog = pending
+                .queue
+                .iter()
+                .skip(pending.queue.len() - count)
+                .take(count.saturating_sub(1))
+                .map(|(_, frames)| frames.clone())
+                .collect::<Vec<_>>();
+            let published = pending.published;
+            pending.cursors.insert(state.cursor, published);
+            pending.prune();
             state.seen = pending.revision;
             state.access = pending.access.clone();
             state.frames = pending.frames.clone();
-            true
+            (true, backlog)
         }
     };
     // Own finite curves update Live values. No implicit spring/presence on data.
     tx.instant();
     let mut build = false;
     if changed {
-        build = state.painters.sync(
-            state.frames.as_deref(),
-            &state.access,
-            state.viewport,
-            clock,
-            &state.meter,
-        );
+        for frames in backlog
+            .iter()
+            .map(|frames| Some(frames.as_ref()))
+            .chain(std::iter::once(state.frames.as_deref()))
+        {
+            build |=
+                state
+                    .painters
+                    .sync(frames, &state.access, state.viewport, clock, &state.meter);
+            #[cfg(test)]
+            if let Some(frames) = frames {
+                // CPU probe of deliveries to the registry; no product counter or allocation.
+                state.deliveries.extend(
+                    frames
+                        .visible_instances(&state.access)
+                        .filter_map(|i| frames.photos.get(&i.id))
+                        .map(|photo| photo.snapshot.sequence),
+                );
+            }
+        }
     }
     build |= state.painters.animate(clock, tx, &state.meter);
     build
@@ -512,6 +600,293 @@ mod tests {
     use super::*;
     use rune::{Env, Runtime, Shell};
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    fn queued_scene() -> crate::scene::Scene {
+        let mut layout = design();
+        layout.performance.widgets.insert("r".into(), 0);
+        crate::scene::Scene::new(
+            layout,
+            Access::LocalPreview,
+            true,
+            vantare_domain::motion_policy::MotionPolicy(true),
+        )
+    }
+
+    fn publish_sequence(
+        bus: &Shared,
+        scene: &mut crate::scene::Scene,
+        sequence: u64,
+        at: std::time::Instant,
+    ) {
+        let mut photo = crate::testdata::snapshot();
+        photo.sequence = sequence;
+        assert!(scene.ingest(vantare_ipc::Photo::full(Arc::new(photo)), at));
+        bus.publish_frames(Arc::new(scene.frames.clone()));
+    }
+
+    #[test]
+    fn every_window_receives_the_batch_in_order_and_presents_once() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let bus = Shared::new(true);
+        let mut first = live_runtime(bus.clone());
+        let mut second = live_runtime(bus.clone());
+        let builds = [first.stats.commits, second.stats.commits];
+        let mut scene = queued_scene();
+        let at = std::time::Instant::now();
+        for sequence in 1..=3 {
+            publish_sequence(&bus, &mut scene, sequence, at);
+        }
+        assert!(rendered_frame(&mut first, 0.0));
+        assert_eq!(first.state.deliveries, [1, 2, 3]);
+        assert_eq!(first.stats.commits, builds[0] + 1);
+        assert_eq!(bus.paint_counts().frames, 1);
+        assert_eq!(bus.pending.lock().unwrap().queue.len(), 3);
+        assert!(rendered_frame(&mut second, 0.0));
+        assert_eq!(second.state.deliveries, [1, 2, 3]);
+        assert_eq!(second.stats.commits, builds[1] + 1);
+        assert_eq!(bus.paint_counts().frames, 2);
+        assert!(bus.pending.lock().unwrap().queue.is_empty());
+        assert!(!rendered_frame(&mut first, 0.016));
+        assert_eq!(bus.paint_counts().frames, 2);
+        assert_eq!(first.state.deliveries, [1, 2, 3]);
+    }
+
+    #[test]
+    fn the_limit_counts_each_discard_once_for_two_pending_windows() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let bus = Shared::new(true);
+        let mut first = live_runtime(bus.clone());
+        let mut second = live_runtime(bus.clone());
+        let mut scene = queued_scene();
+        let at = std::time::Instant::now();
+        for sequence in 1..=257 {
+            publish_sequence(&bus, &mut scene, sequence, at);
+        }
+        assert_eq!(bus.pending.lock().unwrap().queue.len(), MAX_PENDING_FRAMES);
+        assert_eq!(bus.paint_counts().dropped_frame_sets, 1);
+        let expected: Vec<_> = (2..=257).collect();
+        first.update_if(|state, tx| poll(state, 0.0, tx));
+        assert_eq!(first.state.deliveries, expected);
+        assert_eq!(bus.pending.lock().unwrap().queue.len(), MAX_PENDING_FRAMES);
+        second.update_if(|state, tx| poll(state, 0.0, tx));
+        assert_eq!(second.state.deliveries, expected);
+        assert!(bus.pending.lock().unwrap().queue.is_empty());
+        assert_eq!(bus.paint_counts().dropped_frame_sets, 1);
+        assert_eq!(bus.paint_counts().frames, 0);
+    }
+
+    #[test]
+    fn rights_revisions_do_not_count_as_photo_publications() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let bus = Shared::new(true);
+        let mut rt = live_runtime(bus.clone());
+        let mut scene = queued_scene();
+        let at = std::time::Instant::now();
+        publish_sequence(&bus, &mut scene, 1, at);
+        bus.publish_access(Access::at(&Policy::default(), 0));
+        bus.publish_access(Access::LocalPreview);
+        publish_sequence(&bus, &mut scene, 2, at);
+        publish_sequence(&bus, &mut scene, 3, at);
+        rt.update_if(|state, tx| poll(state, 0.0, tx));
+        assert_eq!(rt.state.deliveries, [1, 2, 3]);
+        assert_eq!(bus.pending.lock().unwrap().published, 3);
+        assert!(bus.pending.lock().unwrap().queue.is_empty());
+        assert_eq!(bus.paint_counts().dropped_frame_sets, 0);
+    }
+
+    #[test]
+    fn closing_or_retiring_a_window_with_pending_photos_leaves_no_cursor_or_loss() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for retiring in [false, true] {
+            let bus = Shared::new(true);
+            let mut rt = live_runtime(bus.clone());
+            let mut scene = queued_scene();
+            let at = std::time::Instant::now();
+            for sequence in 1..=3 {
+                publish_sequence(&bus, &mut scene, sequence, at);
+            }
+            assert_eq!(bus.pending.lock().unwrap().queue.len(), 3);
+            rt.state.retiring.store(retiring, Ordering::Release);
+            rt.update(close);
+            drop(rt);
+            assert!(bus.pending.lock().unwrap().cursors.is_empty());
+            assert!(bus.pending.lock().unwrap().queue.is_empty());
+            assert_eq!(bus.paint_counts().dropped_frame_sets, 0);
+        }
+    }
+
+    #[test]
+    fn an_error_after_creating_the_state_also_unregisters_its_pending_cursor() {
+        fn fail(bus: Arc<Shared>) -> Result<(), ()> {
+            let _window = State::new(bus.clone());
+            let mut scene = queued_scene();
+            publish_sequence(&bus, &mut scene, 1, std::time::Instant::now());
+            bus.close(CloseReason::NativeError);
+            Err(())
+        }
+        let bus = Shared::new(true);
+        assert!(fail(bus.clone()).is_err());
+        assert_eq!(bus.close_reason(), Some(CloseReason::NativeError));
+        assert!(bus.pending.lock().unwrap().cursors.is_empty());
+        assert!(bus.pending.lock().unwrap().queue.is_empty());
+        assert_eq!(bus.paint_counts().dropped_frame_sets, 0);
+    }
+
+    #[test]
+    fn dropping_the_lagging_window_prunes_photos_already_consumed_by_the_other() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let bus = Shared::new(true);
+        let mut first = live_runtime(bus.clone());
+        let lagging = State::new(bus.clone());
+        let mut scene = queued_scene();
+        let at = std::time::Instant::now();
+        publish_sequence(&bus, &mut scene, 1, at);
+        publish_sequence(&bus, &mut scene, 2, at);
+        first.update_if(|state, tx| poll(state, 0.0, tx));
+        assert_eq!(first.state.deliveries, [1, 2]);
+        assert_eq!(bus.pending.lock().unwrap().queue.len(), 2);
+        drop(lagging);
+        assert_eq!(bus.pending.lock().unwrap().cursors.len(), 1);
+        assert!(bus.pending.lock().unwrap().queue.is_empty());
+        assert_eq!(bus.paint_counts().dropped_frame_sets, 0);
+    }
+
+    #[test]
+    fn one_accepted_photo_keeps_the_current_build_and_present_counts() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let bus = Shared::new(true);
+        let mut rt = live_runtime(bus.clone());
+        let initial_builds = rt.stats.commits;
+        let mut scene = crate::scene::Scene::new(
+            design(),
+            Access::LocalPreview,
+            true,
+            vantare_domain::motion_policy::MotionPolicy(true),
+        );
+        let start = std::time::Instant::now();
+        let mut photo = crate::testdata::snapshot();
+        for step in 0..3 {
+            photo.sequence = step + 1;
+            if step == 1 {
+                photo.state.cars[2].relative_s = vantare_domain::Quality::Reliable(1.25);
+            }
+            assert!(scene.ingest(
+                vantare_ipc::Photo::full(Arc::new(photo.clone())),
+                start + Duration::from_secs(step)
+            ));
+            bus.publish_frames(Arc::new(scene.frames.clone()));
+            assert_eq!(
+                rendered_frame(&mut rt, if step == 0 { 0.0 } else { 1.0 }),
+                step < 2
+            );
+            assert_eq!(rt.stats.commits, initial_builds + 1);
+            assert_eq!(bus.paint_counts().frames, if step == 0 { 1 } else { 2 });
+            assert!(bus.pending.lock().unwrap().queue.is_empty());
+        }
+    }
+
+    #[test]
+    fn accepted_photo_delivery_measurement() {
+        use crate::scene::Scene;
+        use std::{collections::BTreeSet, time::Instant};
+        use vantare_domain::{Snapshot, motion_policy::MotionPolicy, widget_settings::Kind};
+
+        fn observed(rt: &mut Runtime<State>, at: Duration, delivered: &mut BTreeSet<u64>) {
+            rt.update_if(|state, tx| poll(state, at.as_secs_f64(), tx));
+            delivered.extend(rt.state.deliveries.drain(..));
+        }
+        fn measure(photos: &[Snapshot], hz: Option<u16>, interval: Duration) -> (usize, usize) {
+            // Radar has the same non-table cadence as DeltaTrace; the latter is not migrated yet.
+            let mut layout = vantare_ipc::layout::Layout::from_json(
+                br#"{"version":2,"reducedMotion":true,"instances":[{"id":"r","x":0,"y":0,"settings":{"kind":"radar"}}]}"#,
+            ).expect("layout");
+            if let Some(hz) = hz {
+                layout.performance.widgets.insert("r".into(), hz);
+            }
+            assert_eq!(
+                layout.performance.hz("r", Kind::Radar),
+                layout.performance.hz("r", Kind::DeltaTrace)
+            );
+            let bus = Shared::new(true);
+            let mut rt = live_runtime(bus.clone());
+            let mut scene = Scene::new(layout, Access::LocalPreview, true, MotionPolicy(true));
+            let start = Instant::now();
+            let origin = photos[0].origin.received_at;
+            let mut next_poll = Duration::ZERO;
+            let mut accepted = BTreeSet::new();
+            let mut delivered = BTreeSet::new();
+            for photo in photos {
+                let at = photo.origin.received_at - origin;
+                while next_poll < at {
+                    observed(&mut rt, next_poll, &mut delivered);
+                    next_poll += interval;
+                }
+                if scene.ingest(
+                    vantare_ipc::Photo::full(Arc::new(photo.clone())),
+                    start + at,
+                ) {
+                    let stored = &scene.frames.photos["r"];
+                    assert_eq!(stored.snapshot.sequence, photo.sequence);
+                    accepted.insert(photo.sequence);
+                    // Same publication as DataFeed, after the real Scene cadence has accepted it.
+                    bus.publish_frames(Arc::new(scene.frames.clone()));
+                }
+            }
+            observed(&mut rt, next_poll, &mut delivered);
+            assert!(delivered.is_subset(&accepted));
+            assert!(bus.pending.lock().unwrap().queue.is_empty());
+            assert_eq!(bus.paint_counts().dropped_frame_sets, 0);
+            (accepted.len(), delivered.len())
+        }
+
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let fixture = vantare_ipc::snapshots_from_json(include_str!(
+            "../../ui/fixtures/delta-trace-design-system.sequence.json"
+        ))
+        .expect("canonical delta trace sequence");
+        // The local source sleeps 1000/30 = 33 ms. Preserve its normal arrival period.
+        let local: Vec<_> = (0..=300)
+            .map(|tick| {
+                let mut photo = vantare_ipc::source::realistic(tick);
+                photo.sequence = tick + 1;
+                photo.origin.received_at = Duration::from_millis(tick * 33);
+                photo
+            })
+            .collect();
+        // Same integer period as runtime::adapter::lmu::live::READ_INTERVAL.
+        let lmu: Vec<_> = (0..=600)
+            .map(|tick| {
+                let mut photo = vantare_ipc::source::realistic(tick);
+                photo.sequence = tick + 1;
+                photo.origin.received_at = Duration::from_nanos(tick * (1_000_000_000 / 60));
+                photo
+            })
+            .collect();
+        assert_eq!(fixture.len(), 197);
+        assert_eq!(local.len(), 301);
+        for (name, photos) in [
+            ("fixture20Hz", &fixture),
+            ("local30Hz", &local),
+            ("lmu60Hz", &lmu),
+        ] {
+            for hz in [None, Some(0), Some(60)] {
+                let admitted = if name == "lmu60Hz" && hz != Some(0) {
+                    301
+                } else {
+                    photos.len()
+                };
+                for millis in [16, 100] {
+                    let (accepted, delivered) = measure(photos, hz, Duration::from_millis(millis));
+                    println!(
+                        "delivery {name} hz={hz:?} poll={millis}ms accepted={accepted} delivered={delivered} lost={}",
+                        accepted - delivered
+                    );
+                    assert_eq!(accepted, admitted);
+                    assert_eq!(delivered, admitted);
+                }
+            }
+        }
+    }
 
     #[test]
     fn retiring_one_surface_does_not_quit_the_process_but_user_close_does() {

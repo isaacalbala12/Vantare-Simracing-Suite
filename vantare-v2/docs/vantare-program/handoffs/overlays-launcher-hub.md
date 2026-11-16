@@ -1,3 +1,21 @@
+## VANTA-144 · Cola de fotos aceptadas del host Rune (16/11/2026)
+
+Esquema y condiciones aprobados por raíz y sub-orquestador, tras #2392:
+host conserva hasta 256 FrameSets por ordinal de publicación, independiente
+de la revisión de derechos. Cada State registra su cursor en new y lo retira
+siempre en Drop; se poda hasta el cursor mínimo, también al cerrar, retirar
+una ventana o salir por error. Sin consumidores, no se retiene historia.
+El contador global dropped_frame_sets de paint-stats cuenta solo expulsiones
+por el límite de datos aún pendientes; dos ventanas afectadas cuentan una vez.
+Cada poll entrega el tramo ordenado al registro existente y acumula build;
+anima y presenta una vez. Con una foto, conserva una única llamada a sync y
+no asigna vector de pendientes. Tests CPU fijan builds/presentaciones previos,
+orden para dos ventanas, límite, derechos, cierre/retirada/error y medición
+permanente con las fuentes de 20/30/60 Hz y ajustes de 40/0/60 Hz.
+Solo host.rs, el contador en stats.rs y este handoff; renderer/Widget/scene/feed,
+monitores y domain/ipc intactos. Gates y CI completa en el PR draft; revisión
+Sonnet de la raíz antes de fusionar. Sin gráficos, release ni cambio de Plane.
+
 ## VANTA-144 · Datos del Historial de delta a domain (16/11/2026)
 
 Traslado mecánico aprobado por raíz y sub-orquestador: LapHistory, LapPoint,

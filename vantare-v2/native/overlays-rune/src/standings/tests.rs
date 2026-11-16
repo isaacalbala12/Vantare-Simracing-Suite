@@ -401,3 +401,50 @@ fn no_layer_falls_outside_the_window_in_any_template_size_or_state() {
         }
     }
 }
+
+/// Intercambia la posición de dos coches de la foto: el orden del tablero cambia.
+fn swap_positions(input: &mut Snapshot, a: usize, b: usize) {
+    let first = input.state.cars[a].position;
+    input.state.cars[a].position = input.state.cars[b].position;
+    input.state.cars[b].position = first;
+}
+
+#[test]
+fn reordering_rows_jump_and_leave_no_clock() {
+    let start = Instant::now();
+    let mut scene = Scene::new(layout(20), Access::LocalPreview, true, MotionPolicy(false));
+    let bus = Shared::new(true);
+    let mut input = snapshot();
+    scene.ingest(Photo::full(Arc::new(input.clone())), start);
+    bus.publish_frames(Arc::new(scene.frames.clone()));
+    let mut runtime = live_runtime(bus.clone());
+    runtime.frame(0.0);
+    runtime.settle_all();
+    runtime.frame(0.0);
+    let before = payload(&runtime);
+    let y_before = runtime.presented("car-2").expect("fila pintada").0[1];
+    assert!(runtime.wake_deadline().is_none(), "en reposo no hay reloj");
+    swap_positions(&mut input, 1, 2);
+    input.sequence += 1;
+    assert!(scene.ingest(
+        Photo::full(Arc::new(input.clone())),
+        start + Duration::from_millis(200)
+    ));
+    bus.publish_frames(Arc::new(scene.frames.clone()));
+    runtime.frame(0.2);
+    assert_ne!(payload(&runtime), before, "el reordenamiento se pinta");
+    let row = crate::vantare::Style::compiled().geometry.row_height;
+    let y_after = runtime.presented("car-2").expect("fila pintada").0[1];
+    assert!(
+        (y_after - y_before - row).abs() < 0.01,
+        "la fila salta una fila entera: {y_before} -> {y_after}, alto {row}"
+    );
+    assert!(
+        runtime.wake_deadline().is_none(),
+        "sin movimiento no queda reloj"
+    );
+    let stable = payload(&runtime);
+    runtime.frame(0.016);
+    assert_eq!(payload(&runtime), stable, "y no hay transición detrás");
+    assert!(runtime.wake_deadline().is_none());
+}

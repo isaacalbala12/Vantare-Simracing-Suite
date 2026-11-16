@@ -164,7 +164,37 @@ fn content(settings: &Config) -> standings::Content {
             })
             .filter(|f| f.compact || f.decimals != 3)
     };
+    let visible = |metric: &str| {
+        settings
+            .columns
+            .as_ref()
+            .is_some_and(|columns| columns.iter().any(|c| c.enabled && c.metric_id == metric))
+    };
+    let footer_slots = settings
+        .footer_slots
+        .as_ref()
+        .is_some_and(|s| !s.is_empty());
     standings::Content {
+        lap_visible: visible("currentLap"),
+        interval_visible: visible("interval"),
+        footer_visible: settings.show_session_footer,
+        legacy_track_visible: settings.show_session_footer
+            && !footer_slots
+            && [&settings.footer_first, &settings.footer_second]
+                .iter()
+                .all(|id| ["none", "track", "estimatedLaps"].contains(&id.as_str()))
+            && [&settings.footer_first, &settings.footer_second]
+                .iter()
+                .any(|id| id.as_str() == "track"),
+        footer_ids: if footer_slots {
+            settings.footer_slots.clone().unwrap_or_default()
+        } else {
+            vec![
+                settings.footer_first.clone(),
+                settings.footer_second.clone(),
+            ]
+        },
+        footer_slots,
         player_class: settings.class_scope != "all-classes",
         row_count: settings.row_count,
         player_window: settings.player_window,
@@ -174,6 +204,5 @@ fn content(settings: &Config) -> standings::Content {
             || settings.classification_mode == "multiclass",
         last_lap_format: lap_format("lastLap"),
         best_lap_format: lap_format("bestLap"),
-        ..standings::Content::default()
     }
 }

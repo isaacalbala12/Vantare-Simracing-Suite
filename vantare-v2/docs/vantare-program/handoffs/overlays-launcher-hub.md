@@ -10,6 +10,12 @@ tests PASS, sin gráficos. CI Rune Windows y revisión pendientes.
 A3 #2476 espera la fusión de A2; para su siguiente --onto el padre antiguo es
 22c36765297d1d8baa7151abfad014c374107ef2 (no el nuevo head de A2).
 
+Revisión A2: flags derivados como GPUI, contrato/proyección comprobados; la
+cabecera Vantare sigue literal (no consulta esos flags). El registro de A2 se
+acepta antes de A3, con A3 inmediatamente detrás y ANTES de promover a testers.
+Excepción puntual de raíz: tests P2 en commit aparte, fuera del tope de 1200;
+el código de producción conserva ese tope. Verificación de revisión en curso.
+
 ## VANTA-144 · Revisión Sonnet de Standings A1 (16/11/2026)
 
 Se restaura lib.rs desde nightly y se añade solo mod standings. Documentación

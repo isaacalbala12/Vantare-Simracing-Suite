@@ -1,6 +1,7 @@
 # Standings Vantare — port literal GPUI
 
-A1 prepara geometría; no registra un widget ni cambia la imagen publicada.
+A1 prepara geometría; A2 registra Vantare y porta cabecera, filas y celdas.
+A3 debe entrar inmediatamente detrás, antes de cualquier promoción a testers.
 Origen: `native/ui/src/standings/vantare.rs` de nightly `178611306`.
 No se usa `domain::standings::Plan`. El Board y las plantillas compartidas
 siguen siendo los de domain. No cambia GPUI, domain, IPC ni Cargo.
@@ -34,3 +35,13 @@ fuentes y baselines. Nombres y lista de clases usan el mismo ajuste con «…».
 Registro solo para Look Vantare; Scene compara estructura tras project_cached,
 sin claves por sequence. Política estática, sin reloj. Se retira dead_code.
 A3 completa la pintura de los elementos contextuales ya colocados por A1.
+
+## Contrato y tipografía comprobados en revisión A2
+
+Los flags solo los consume el plan de Eficiencia; la cabecera Vantare de GPUI no
+los consulta. Se conserva esa cabecera literal, incluso sin currentLap visible.
+content deriva los seis flags y los pies con las mismas reglas de GPUI.
+fit reutiliza el helper Rune equivalente a efficiency/text.rs::fit_measured:
+tolerancia 0,01 px y «…»; no se añade tolerancia a la selección de clases.
+GPUI text::font activa tnum=1 y kern=1, también para Body y tras cambiar la familia;
+el ink local de Standings declara ambas features. Alfa cero omite sombra y borde.

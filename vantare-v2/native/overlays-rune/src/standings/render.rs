@@ -65,27 +65,32 @@ pub(super) fn view(
     } else {
         v.border
     };
+    let mut panel = el()
+        .key("standings-panel")
+        .size(plan.width, plan.content)
+        .radius(v.radius)
+        .linear_gradient(std::f32::consts::PI, [(0.0, v.top), (1.0, v.bottom)])
+        .pin(Some(0.0), Some(0.0), None, None);
+    if border.a > 0.0 {
+        panel = panel.border(1.0, border);
+    }
+    if v.shadow_alpha > 0.0 {
+        panel = panel.shadow(
+            v.shadow_y,
+            v.shadow_blur,
+            alpha(
+                Color {
+                    a: 1.0,
+                    ..style.colors.shadow
+                },
+                v.shadow_alpha,
+            ),
+        );
+    }
     let mut root = el()
         .size(plan.width, plan.height)
         .motion(rune::Spring::NONE)
-        .child(
-            el().size(plan.width, plan.content)
-                .radius(v.radius)
-                .border(1.0, border)
-                .linear_gradient(std::f32::consts::PI, [(0.0, v.top), (1.0, v.bottom)])
-                .shadow(
-                    v.shadow_y,
-                    v.shadow_blur,
-                    alpha(
-                        Color {
-                            a: 1.0,
-                            ..style.colors.shadow
-                        },
-                        v.shadow_alpha,
-                    ),
-                )
-                .pin(Some(0.0), Some(0.0), None, None),
-        );
+        .child(panel);
     for node in p.nodes {
         root = root.child(node);
     }
@@ -106,42 +111,21 @@ impl Painter<'_> {
         self.language == Language::Es
     }
     fn ink(&self, face: Face, size: f32, tracking: f32, color: Color) -> (TextStyle, Color) {
-        (
-            font(
-                self.style,
-                face,
-                size,
-                1.0,
-                tracking,
-                match face {
-                    Face::Body => self.style.fonts.regular_weight,
-                    Face::Display => 600.0,
-                    Face::Mono => 400.0,
-                },
-            ),
-            color,
-        )
+        let weight = match face {
+            Face::Body => self.style.fonts.regular_weight,
+            Face::Display => 600.0,
+            Face::Mono => 400.0,
+        };
+        let mut style = font(self.style, face, size, 1.0, tracking, weight);
+        style.features = "'tnum' 1, 'kern' 1";
+        (style, color)
     }
     fn width(&self, value: &str, ink: &(TextStyle, Color)) -> f32 {
         rune::text::measure(value, &[], ink.0, None).0
     }
+    // GPUI efficiency/text.rs::fit_measured: tolerancia de 0,01 px y elipsis Unicode.
     fn fit(&self, value: &str, ink: &(TextStyle, Color), room: f32) -> String {
-        if self.width(value, ink) <= room + 0.01 {
-            return value.into();
-        }
-        let mut value = value.to_owned();
-        while !value.is_empty() {
-            value.pop();
-            let candidate = format!("{value}…");
-            if self.width(&candidate, ink) <= room + 0.01 {
-                return candidate;
-            }
-        }
-        if self.width("…", ink) <= room + 0.01 {
-            "…".into()
-        } else {
-            String::new()
-        }
+        crate::eficiencia::fit(value, ink.0, room)
     }
     #[allow(clippy::too_many_arguments)] // Mismos argumentos que Kit::label en GPUI.
     fn label(
@@ -401,9 +385,9 @@ impl Painter<'_> {
                 ));
                 parts.join(" · ").to_uppercase()
             };
-            let right = if !ambiguous && self.width(&listed, &ink) <= room + 0.01 {
+            let right = if !ambiguous && self.width(&listed, &ink) <= room {
                 listed
-            } else if named.len() > 1 && self.width(&counted(), &ink) <= room + 0.01 {
+            } else if named.len() > 1 && self.width(&counted(), &ink) <= room {
                 counted()
             } else {
                 self.fit(&listed, &ink, room.max(0.0))

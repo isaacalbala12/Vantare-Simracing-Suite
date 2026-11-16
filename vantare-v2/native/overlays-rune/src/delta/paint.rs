@@ -114,7 +114,7 @@ impl Painter {
             v.border
         };
         el().key("panel")
-            .absolute(0.0, 0.0)
+            .pin(Some(0.0), Some(0.0), None, None)
             .size(width, height)
             .radius(v.radius)
             .border(1.0, border)
@@ -213,13 +213,13 @@ impl Painter {
         let radius = (v.radius - 1.0).max(0.0);
         let mut band = el()
             .key("banner")
-            .absolute(0.0, 0.0)
+            .pin(Some(0.0), Some(0.0), None, None)
             .size(self.scene.width, g.banner_height)
             .corners([radius, radius, 0.0, 0.0])
             .fill(fill);
         if let Some(line) = line {
             band = band.child(
-                el().absolute(0.0, g.banner_height - 1.0)
+                el().pin(Some(0.0), Some(g.banner_height - 1.0), None, None)
                     .size(self.scene.width, 1.0)
                     .fill(line),
             );
@@ -358,11 +358,11 @@ impl Painter {
             .close();
         let element = el()
             .key("brand")
-            .absolute(0.0, 0.0)
+            .pin(Some(0.0), Some(0.0), None, None)
             .size(self.scene.width, self.scene.height)
             .child(
                 canvas(Shape::new().fill_path(&mark, b.symbol))
-                    .absolute(left, top)
+                    .pin(Some(left), Some(top), None, None)
                     .size(symbol.max(1.0), b.symbol_height.max(1.0)),
             )
             .child(
@@ -415,7 +415,7 @@ impl Painter {
             if on {
                 root = root.child(
                     el().key(format!("segment-{index}"))
-                        .absolute(x, top)
+                        .pin(Some(x), Some(top), None, None)
                         .size(width, d.segment_height)
                         .radius(4.0)
                         .fill(crate::vantare::alpha(self.accent(), 0.25))
@@ -599,7 +599,7 @@ impl Painter {
         let transparent = self.scene.options.transparent;
         let mut track = el()
             .key("bar-track")
-            .absolute(pad, y)
+            .pin(Some(pad), Some(y), None, None)
             .size(span, d.bar)
             .radius(d.bar / 2.0);
         if transparent {
@@ -626,7 +626,7 @@ impl Painter {
             };
             root = root.child(
                 el().key("bar-fill")
-                    .absolute(x, y)
+                    .pin(Some(x), Some(y), None, None)
                     .size(length, d.bar)
                     .corners(corners)
                     .linear_gradient(
@@ -645,7 +645,7 @@ impl Painter {
         };
         root = root.child(
             el().key("bar-center")
-                .absolute(mid - 1.0, y + (d.bar - d.tick) / 2.0)
+                .pin(Some(mid - 1.0), Some(y + (d.bar - d.tick) / 2.0), None, None)
                 .size(2.0, d.tick)
                 .radius(1.0)
                 .fill(center),
@@ -711,7 +711,7 @@ impl Painter {
             let x = pad + index as f32 * (cell + gap);
             root = root.child(
                 el().key(format!("sector-track-{index}"))
-                    .absolute(x, top)
+                    .pin(Some(x), Some(top), None, None)
                     .size(cell, d.sector_bar)
                     .radius(d.sector_bar / 2.0)
                     .fill(c.sector_pending),
@@ -736,7 +736,7 @@ impl Painter {
             if let Some((fraction, color)) = fill {
                 root = root.child(
                     el().key(format!("sector-fill-{index}"))
-                        .absolute(x, top)
+                        .pin(Some(x), Some(top), None, None)
                         .size(cell * fraction, d.sector_bar)
                         .radius(d.sector_bar / 2.0)
                         .fill(color),

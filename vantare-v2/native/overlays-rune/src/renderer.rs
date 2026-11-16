@@ -37,6 +37,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         }
         Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),
         Settings::BroadcastTower(_) => Some(<Tower as Widget>::new),
+        Settings::RacingFlags(_) => Some(<crate::racing_flags::RacingFlags as Widget>::new),
         _ => None,
     }
 }

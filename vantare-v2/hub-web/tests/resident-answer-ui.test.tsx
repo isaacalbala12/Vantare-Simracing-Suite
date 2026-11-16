@@ -60,9 +60,11 @@ it("Trust explains the editor requirement and cannot answer, while offered Cance
   const trust = screen.getByRole("button", { name: "Confiar y lanzar" });
   expect(trust.getAttribute("aria-disabled")).toBe("true");
   expect(
-    document.getElementById(trust.getAttribute("aria-describedby") as string)
-      ?.textContent,
-  ).toBe(text.trustUnavailable);
+    trust
+      .getAttribute("aria-describedby")
+      ?.split(" ")
+      .map((id) => document.getElementById(id)?.textContent),
+  ).toContain(text.trustUnavailable);
   fireEvent.click(trust);
   expect(answer).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));

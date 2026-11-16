@@ -88,9 +88,11 @@ it("disabled capability has a keyboard-readable reason and never sends", () => {
   const button = screen.getByRole("button", { name: "Probar sin el juego" });
   expect(button.getAttribute("aria-disabled")).toBe("true");
   expect(
-    document.getElementById(button.getAttribute("aria-describedby") ?? "")
-      ?.textContent,
-  ).toBe(
+    button
+      .getAttribute("aria-describedby")
+      ?.split(" ")
+      .map((id) => document.getElementById(id)?.textContent),
+  ).toContain(
     "El residente actual no admite cancelar ni probar perfiles de forma comprobada.",
   );
   fireEvent.click(button);

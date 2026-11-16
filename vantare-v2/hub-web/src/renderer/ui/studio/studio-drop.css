@@ -54,7 +54,7 @@
   padding: 10px 0;
   border-bottom: 1px solid var(--edge);
 }
-.v-canvas-catalog-card > span {
+.v-canvas-catalog-card > span:not(.v-canvas-catalog-grip) {
   width: 56px;
   height: 48px;
   display: grid;
@@ -74,6 +74,8 @@
   justify-self: start;
 }
 .v-canvas-catalog-grip {
+  display: grid;
+  place-items: center;
   grid-column: 3;
   grid-row: 1 / span 2;
   min-height: 40px;

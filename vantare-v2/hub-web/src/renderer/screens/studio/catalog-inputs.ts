@@ -26,7 +26,7 @@ import { useStudio } from "./state";
 type Held = {
   id: number;
   kind: WidgetKind;
-  node: HTMLButtonElement;
+  node: HTMLElement;
   x: number;
   y: number;
   surface: DropSurface;
@@ -50,7 +50,7 @@ export function useCatalogInputs(
   const studio = useStudio();
   const controller = useRef(catalogDropController());
   const held = useRef<Held | undefined>(undefined),
-    clickSource = useRef<HTMLButtonElement | undefined>(undefined),
+    clickSource = useRef<HTMLElement | undefined>(undefined),
     alive = useRef(true),
     sending = useRef(false),
     suppressClick = useRef(false);
@@ -193,7 +193,7 @@ export function useCatalogInputs(
     visual,
     message,
     cancel,
-    pointerDown(event: PointerEvent<HTMLButtonElement>, kind: WidgetKind) {
+    pointerDown(event: PointerEvent<HTMLElement>, kind: WidgetKind) {
       if (event.button !== 0 || !event.isPrimary || held.current) return;
       suppressClick.current = false;
       const measured = surface();
@@ -214,7 +214,6 @@ export function useCatalogInputs(
       held.current = value;
       clickSource.current = event.currentTarget;
       setMessage("");
-      event.currentTarget.focus({ preventScroll: true });
       try {
         event.currentTarget.setPointerCapture(event.pointerId);
       } catch {
@@ -222,7 +221,7 @@ export function useCatalogInputs(
         clear(true);
       }
     },
-    pointerMove(event: PointerEvent<HTMLButtonElement>) {
+    pointerMove(event: PointerEvent<HTMLElement>) {
       const value = held.current;
       if (!value || value.id !== event.pointerId) return;
       if (
@@ -248,7 +247,7 @@ export function useCatalogInputs(
         );
       }
     },
-    pointerUp(event: PointerEvent<HTMLButtonElement>) {
+    pointerUp(event: PointerEvent<HTMLElement>) {
       const value = held.current;
       if (!value || value.id !== event.pointerId) return;
       const result = value.moved
@@ -270,13 +269,13 @@ export function useCatalogInputs(
       clear(value.moved && !request);
       if (request) void send(request);
     },
-    pointerLost(event: PointerEvent<HTMLButtonElement>) {
+    pointerLost(event: PointerEvent<HTMLElement>) {
       if (held.current?.id === event.pointerId) {
         suppressClick.current = true;
         clear(true);
       }
     },
-    click(event: MouseEvent<HTMLButtonElement>, kind: WidgetKind) {
+    click(event: MouseEvent<HTMLElement>, kind: WidgetKind) {
       if (held.current) return;
       if (
         event.detail > 1 ||

@@ -1,3 +1,16 @@
+## VANTA-144 · Standings literal A1 (16/11/2026)
+
+Sustituye el planteamiento de #2463: port local de la geometría de
+`ui/src/standings/vantare.rs`, sin constructor registrado en esta entrega.
+Tests primero (`bab6deab5`): catálogo GPUI, 340/520/900, altura fija,
+selección de filas, sectores numéricos y etiquetas ES/EN. Sin Plan de domain.
+Corte autorizado en tres PR <1200 líneas: A1 geometría; A2 cabecera/filas/celdas
+con registro y tests de pintura; A3 banners/separadores/pies/espera.
+`allow(dead_code)` temporal en A1, se retira en A2; #2465 Motion congelado.
+Fmt y Clippy -D warnings PASS; tests completos por cola: 395 biblioteca + 2
+binario PASS con Rust 1.99.1, sin gráficos. Canal: rama A1; CI y revisión
+pendientes al abrir el PR; no hay merge ni publicación de producto.
+
 ## VANTA-138 · #2028: Electron usa lanzamiento checked (retoques de review)
 
 PR #2437, rama `vantareapp/isa-2028-electron-checked`, rebasada sobre nightly

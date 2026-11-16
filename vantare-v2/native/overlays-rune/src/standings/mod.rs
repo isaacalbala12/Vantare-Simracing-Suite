@@ -11,15 +11,18 @@ use crate::{
 use layout::{Options, Plan};
 use std::sync::Arc;
 use vantare_domain::{
-    Snapshot,
+    Snapshot, SourceState,
     format::Preferences,
     geometry::Size,
     standings::{self, Board},
     widget_session::Session,
     widget_settings::{Settings, standings::Settings as Config},
 };
+const PAUSE_HEIGHT: f32 = 22.0;
+
 #[derive(PartialEq)]
 struct Scene {
+    paused: bool,
     board: Option<Arc<Board>>,
     plan: Plan,
     options: Options,
@@ -31,6 +34,7 @@ pub(crate) struct Standings {
     scene: Scene,
     session: Session,
     content: standings::Content,
+    live_projection: bool,
 }
 impl Standings {
     fn new(settings: &Config, prefs: Preferences) -> Self {
@@ -45,7 +49,9 @@ impl Standings {
             style,
             session: Session::Race,
             content,
+            live_projection: false,
             scene: Scene {
+                paused: false,
                 board: None,
                 plan,
                 options,
@@ -83,17 +89,20 @@ impl Widget for Standings {
     fn size(&self) -> Size {
         Size {
             width: self.scene.plan.width,
-            height: self.scene.plan.height,
+            height: self.scene.plan.height + if self.scene.paused { PAUSE_HEIGHT } else { 0.0 },
         }
     }
     fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
+        let paused = snapshot.map_or(self.scene.paused, |s| {
+            s.state.source_state == SourceState::Paused
+        });
         let session = snapshot
             .and_then(|s| Session::of(&s.state.session.kind))
             .unwrap_or(self.session);
         let o = Options::from_settings(&self.settings_for(session));
         Size {
             width: o.layout(&self.style, o.driver_max(&self.style)).1,
-            height: layout::fixed_height(&o, &self.style),
+            height: layout::fixed_height(&o, &self.style) + if paused { PAUSE_HEIGHT } else { 0.0 },
         }
     }
 
@@ -101,6 +110,28 @@ impl Widget for Standings {
         Update::default()
     }
     fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> Update {
+        // GPUI app::project_snapshot conserva la proyección viva durante la pausa.
+        let paused = snapshot.state.source_state == SourceState::Paused;
+        if paused && self.scene.paused {
+            return Update::default();
+        }
+        let pause_changed = self.scene.paused != paused;
+        self.scene.paused = paused;
+        if paused && self.live_projection {
+            return Update {
+                build: pause_changed,
+                pixels: false,
+            };
+        }
+        self.live_projection = vantare_domain::freshness::shows_last_live(snapshot);
+        let mut retained;
+        let snapshot = if paused {
+            retained = snapshot.clone();
+            retained.state.source_state = SourceState::Live;
+            &retained
+        } else {
+            snapshot
+        };
         let session = Session::of(&snapshot.state.session.kind).unwrap_or(self.session);
         let options = if session != self.session {
             self.session = session;
@@ -123,14 +154,18 @@ impl Widget for Standings {
             .is_some_and(|old| Arc::ptr_eq(old, &board))
             && self.scene.options == options
         {
-            return Update::default();
+            return Update {
+                build: pause_changed,
+                pixels: false,
+            };
         }
         let scene = Scene {
+            paused,
             plan: layout::plan(Some(&board), &options, &self.style),
             board: Some(board),
             options,
         };
-        let build = scene != self.scene;
+        let build = scene != self.scene || pause_changed;
         self.scene = scene;
         Update {
             build,
@@ -148,6 +183,7 @@ impl Widget for Standings {
             &self.scene.plan,
             &self.style,
             self.prefs.language,
+            self.scene.paused,
         )
     }
 }

@@ -26,6 +26,16 @@ renderer de producción no incluye mocks ni fixtures congeladas. Es un paso
 aparte del test unitario porque en este servidor un build en frío tarda
 decenas de segundos y no cabe en un plazo de test.
 
+`bun run test` usa el pool `threads`. En este servidor, un worker `forks` en
+frío podía agotar el plazo interno de 60 s de Vitest antes de ejecutar ningún
+test (#2442): el arranque pagaba la transformación e importación del grafo del
+test y el montaje de jsdom. Medido con el archivo jsdom más pesado en frío:
+**16,9 s con `threads` frente a 26,2 s con `forks`** (un worker; 589 MB y 572 MB
+de RSS). `maxWorkers` se calcula con la CPU y la RAM del equipo (2 en el
+servidor de 16 GB) para no arrancar siete workers a la vez; en CI se mantiene el
+valor por defecto de Vitest. Revertir el pool es una línea: cambiar
+`pool: "threads"` por `pool: "forks"` en `vitest.config.ts`.
+
 `release/package/vantare-hub-ui-win32-x64/vantare-hub-ui.exe` es una carpeta
 sin instalador, firma ni despliegue. El puente y la preparación del anfitrión
 están documentados en `native/hub-host/README.md`.

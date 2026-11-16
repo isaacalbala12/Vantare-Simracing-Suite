@@ -3,8 +3,12 @@
 A2 conecta cabecera, filas y celdas GPUI con el constructor Look Vantare;
 retira dead_code de A1 (#2472). Tests de pintura, pines, ES/EN, sectores
 numéricos, recorte de nombres, Lost sin cambiar sequence y reposo sin reloj.
-Fmt y Clippy -D warnings PASS; suite Windows por cola: 427 + 2 tests PASS.
-A3 completará banners/separadores/pies/espera; CI y revisión pendientes.
+A1 fusionado por squash en nightly (9fa8b4abb); A2 #2475 rebasado con --onto
+sobre esa base y dirigido a nightly. Captura prueba el Look Eficiencia como caso
+sin migrar: Vantare ya está registrado. Mac: fmt, Clippy -D warnings y 439 + 2
+tests PASS, sin gráficos. CI Rune Windows y revisión pendientes.
+A3 #2476 espera la fusión de A2; para su siguiente --onto el padre antiguo es
+22c36765297d1d8baa7151abfad014c374107ef2 (no el nuevo head de A2).
 
 ## VANTA-144 · Revisión Sonnet de Standings A1 (16/11/2026)
 

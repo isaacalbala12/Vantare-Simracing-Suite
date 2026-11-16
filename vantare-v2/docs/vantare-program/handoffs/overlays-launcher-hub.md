@@ -1,7 +1,8 @@
 ## VANTA-138 · #2028: Electron usa lanzamiento checked (retoques de review)
 
-PR #2437, rama `vantareapp/isa-2028-electron-checked`. Se fusiona después de #2432
-y se rebasará sobre nightly cuando aquel entre. No cambia contrato ni versión.
+PR #2437, rama `vantareapp/isa-2028-electron-checked`, rebasada sobre nightly
+`4fdcee334` tras fusionarse #2432. Lógica intacta; conflicto solo del handoff,
+conservando ambos textos. No cambia contrato ni versión.
 Inicio, Launcher, rail, paleta y favorito usan checked con cuenta capturada.
 El favorito es el primero marcado en el orden de la vista; la UI no copia el
 orden de Rust. Se eliminan ramas imposibles del único resultado Queued.
@@ -12,9 +13,10 @@ launcher.launch ni launcher.favorite, usando el observador existente del Client.
 El barrido completo anterior dio 3.016 PASS; CI del nuevo head pendiente.
 No hay texto/estado visual nuevo, gráficos, merge, release ni preview propios.
 
-## VANTA-138 · #2184: escaneo y pasos antes de lanzar (review corregida)
+## VANTA-138 · #2184: escaneo y pasos antes de lanzar (fusionado en nightly)
 
-PR #2432, rama `vantareapp/isa-2184-launch-discovery`, base nightly `9ff6f97e2`.
+PR #2432 fusionado en nightly `4fdcee334d17e14894c6f07741e6dbca7330ae5d`.
+#2184 cerrada por encargo del orquestador; sin merge propio.
 La validación vive en `launcher::launch` y `checked::launch_inner`, con el Reader
 de la sesión; el despacho solo delega. También cubre `launch_for_instance` del
 Calendario. Autoridad → revisión → discovery/perfil → buzón, sin reenvío.
@@ -22,8 +24,8 @@ Tests: escaneo real (`rescan` + `view`), precedencia con revisión y permisos
 inválidos, Calendario al disparar con escaneo pendiente (buzón vacío y ocupado),
 pasos ausentes/no disponibles y un único envío válido. Sin aplicaciones/gráficos.
 Gate local de la revisión: Clippy -D warnings y 668 tests PASS (1 omisión existente);
-formato/arquitectura PASS. La CI anterior era verde; el nuevo head se valida en CI.
-Sin bump, runtime/ipc, merge ni release. Se fusiona antes de #2437 (#2028).
+formato/arquitectura PASS. CI validada para la fusión por el orquestador.
+Sin bump, cambios de runtime/ipc ni release. #2437 (#2028) continúa después.
 
 ## VANTA-144 · Reglas de presentación compartidas en domain (16/11/2026)
 

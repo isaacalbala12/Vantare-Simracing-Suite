@@ -3124,3 +3124,13 @@ se conservan. Test de despacho positivo y dos negativos; sin captura porque
 No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
 Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
 Sin gráficos, Plane, merge, promoción ni release propios.
+## VANTA-144 · Historial de delta en Rune (16/11/2026)
+
+Pintor aprobado: domain conserva Trace/LapHistory/LapPoint/Details/ViewModel;
+el widget mantiene su caché Arc de muestras y compara la escena visible para
+repintar, sin usar sequence como invalidación. Canvas de segmentos rectos en
+orden GPUI línea/relleno, cursores, textos y sectores; tamaño fijo 760×192.
+Sin reloj ni Tween; movimiento reducido mantiene el dibujo. Capas con pin,
+tests CPU de límites reales de ventana, orden de segmentos y fotos repetidas.
+Gates y CI en el PR; rasterizado pendiente de captura del PC. Sin gráficos
+en el servidor, dependencias nuevas ni cambios de domain/ipc/host.

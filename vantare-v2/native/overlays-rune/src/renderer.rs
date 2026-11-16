@@ -25,6 +25,7 @@ type Constructor = fn(&Settings, Preferences, bool, u16, f64) -> Option<Box<dyn 
 
 fn constructor(settings: &Settings) -> Option<Constructor> {
     match settings {
+        Settings::DeltaTrace(_) => Some(<crate::delta_trace::DeltaTrace as Widget>::new),
         Settings::TrackMap(_) => Some(<crate::track_map::TrackMap as Widget>::new),
         Settings::FastestLap(_) => Some(<crate::fastest_lap::FastestLap as Widget>::new),
         Settings::Radar(_) => Some(<crate::radar::Radar as Widget>::new),

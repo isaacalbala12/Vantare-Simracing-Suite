@@ -295,6 +295,7 @@ jobs:
       VANTARE_CI_TARGET: '1'
       CARGO_INCREMENTAL: '0'
       CARGO_BUILD_JOBS: '4'
+      VANTARE_FORCE_FAST_SCOPE: '1'
     defaults:
       run:
         shell: pwsh
@@ -384,6 +385,7 @@ jobs:
       VANTARE_CI_TARGET: '1'
       CARGO_INCREMENTAL: '0'
       CARGO_BUILD_JOBS: '4'
+      VANTARE_FORCE_FAST_SCOPE: '1'
     defaults:
       run:
         shell: pwsh

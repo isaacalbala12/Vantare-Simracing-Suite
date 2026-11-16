@@ -19,6 +19,11 @@ try {
         if ($LASTEXITCODE) { throw 'No se pudieron seleccionar consumidores legacy.' }
         if ($legacy) { $legacyChecks = $legacy.Split(',') }
     }
+    # TEMP measurement: simulate the --fast scope of a crate PR (Hub/Admin out)
+    # even when the diff is global because this branch touches CI files.
+    if ($env:VANTARE_FORCE_FAST_SCOPE -eq '1' -and $packages.Count) {
+        $packages = @($packages | Where-Object { $_ -notin @('vantare-hub', 'vantare-admin') })
+    }
     Write-Host "Scope: $(if ($packages.Count) { $packages -join ', ' } else { 'workspace completo' })"
     if (-not $ArchiveOnly) {
         & cargo fmt --all -- --check

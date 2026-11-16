@@ -101,6 +101,9 @@ impl Widget for PedalsTelemetry {
     fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
         PedalsTelemetry::attach_assets(self, assets);
     }
+    fn capture_images(&self) -> Vec<rune::Image> {
+        self.painter.capture_images(self.assets.as_ref())
+    }
     fn size(&self) -> Size {
         PedalsTelemetry::size(self)
     }
@@ -360,6 +363,10 @@ mod tests {
             PedalsTelemetry::new(&Settings::default(), Preferences::default(), true, 0.0);
         widget.attach_assets(&cache);
         assert!(widget.assets.is_some(), "attach_assets guarda la caché");
+        let images = Widget::capture_images(&widget);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].size(), Some([40, 40]));
+        assert!(images[0].error().is_none());
         let mut runtime = make_runtime(widget);
         runtime.state.next = Some(snapshot.clone());
         assert!(frame(&mut runtime, 0.0), "primera imagen");

@@ -212,25 +212,56 @@ pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del
 marco quieto. No prueban foco, GPU, OBS, VRR ni presentación en pantalla.
 
 
-## Captura de escena Relative Vantare (solo debug, sin ventana)
+## Captura ampliada: corte A (debug, sin ventana)
 
-Preparar layout/snapshot desde `native/ui/src/relative/scenes.json` con el
-preparador QA existente. El modo captura recorta una instancia a su tamaño natural,
-inyecta el snapshot validado por IPC con `Widget::update` antes del frame CPU y
-usa el mismo pintor y fuentes del producto. No conecta al núcleo, pipe ni perfil.
+La captura usa `constructor()` del registro, `Widget::update` y el mismo pintor,
+fuentes y ajustes del producto. No usa núcleo, derechos, feed, monitor ni sonido.
+El guard `VANTARE_SIN_GRAFICOS=1` sigue siendo la primera operación del ejecutable;
+no ejecutarlo en el servidor aunque Offscreen no abra ventana: requiere GPU.
 
 ```sh
-vantare-overlays-rune --capture-scene --layout asymmetric.layout.json --snapshot relative.snapshot.json --output asymmetric.png --scale 1
+vantare-overlays-rune --capture-scene --layout scene.layout.json --instance variant --snapshot photo.json --output scene.png --scale 1.25
+vantare-overlays-rune --capture-scene --widget relative --settings settings.json --sequence photos.tsv --at-ms 500 --motion true --wall-ms 1767225600000 --output sequence.png
 ```
 
-Solo debug; el guard `VANTARE_SIN_GRAFICOS=1` se evalúa antes de procesar argumentos.
-Offscreen no crea ventana ni toma foco, pero requiere GPU: nunca ejecutarlo en el
-servidor. Compilación/tests CPU por la cola; PNG únicamente en Mac autorizado o
-PC de juego con horario. Admite escalas 1/1.25/1.5 y hasta 4096 px por lado.
-El ejecutable de depuración conserva la consola de Windows para mostrar errores;
-solo Release usa el subsistema de ventanas. Rechaza salidas previas, RGBA
-transparente o uniforme. La comprobación de archivo previo y la escritura del PNG
-no son atómicas: otra captura con la misma ruta podría crear el archivo entre ambas
-y ser sobrescrita. Usar rutas de salida distintas por ejecución. El `.capture.txt` registra
-epoch/sequence, coches, resultado del update y dimensiones; no sustituye revisar
-el PNG. No admite Eficiencia, Standings, Delta ni multiclase en este modo.
+`--layout` exige una instancia o un `--instance` existente. La alternativa
+`--widget KIND --settings archivo.json` admite el objeto Settings completo o
+sus ajustes sin `kind`, validados por el mismo lector IPC. No combinar orígenes.
+Se ignoran posición y resize del layout: el PNG usa el tamaño natural del widget.
+`--snapshot` y `--sequence` son excluyentes; sin foto no hay demo implícita y se
+responde `NO_DEMO` (no hay demos incorporadas). F prepara las entradas canónicas.
+
+TSV: una fila `t_ms<TAB>ruta.json`; las rutas relativas parten de su directorio.
+Tiempos enteros no decrecientes, empates en orden de archivo; cada foto llega
+una vez a update aunque `sequence` se repita o retroceda. `--at-ms` no puede
+preceder la última foto y por defecto vale su instante. El reloj es virtual,
+incluye animate/schedule/Runtime y no usa settle_all. `--motion false` es el
+valor por defecto; `--motion true` muestrea el movimiento en el instante pedido.
+`--wall-ms` fija solo Avisos antes del primer update; su valor por defecto es
+1767225600000 (2026-01-01T00:00:00Z), nunca la hora de la máquina.
+
+Cotas: 60 s/10 000 pasos, 256 fotos/64 MiB de entradas fotográficas en total,
+8 MiB por foto, 1 MiB para layout/ajustes/TSV. Escalas 1/1.25/1.5; dimensiones
+round(size_for(Some(foto)) × escala), entre 1 y 4096 por eje y RGBA ≤64 MiB.
+Un PNG RGBA transparente por llamada; se acepta un widget realmente vacío.
+
+Contrato del código de proceso y primer token de stderr (detalle humano después):
+
+| Código | Token | Caso |
+| --- | --- | --- |
+| 0 | OK | PNG completo |
+| 2 | INVALID_INPUT | Flags/JSON/tiempos/cotas/widget no soportado |
+| 3 | NO_DEMO | Sin demo canónica disponible |
+| 4 | GPU_UNAVAILABLE | Sin adaptador/dispositivo |
+| 5 | CAPTURE_FAILED | Assets/render/lectura/PNG/E/S/salida existente |
+| 6 | GRAPHICS_DISABLED | Guard de máquina, antes de argumentos/hilos/GPU |
+
+Este corte mantiene **solo debug**; Windows debug conserva consola, Release sigue
+con windows_subsystem. El corte B habilita Release y completa assets/cierre y PNG
+con create_new real. A añade capture_images (volante, mismos handles que view)
+y set_wall_base (solo Avisos); el host de producción no usa esos hooks.
+Aún no se adjunta una caché en captura: un widget con assets puede verse incompleto.
+El PNG de A conserva la carrera exists/escritura de #2391; usar rutas distintas.
+El .capture.txt sí usa create_new. El guard no se desactiva en servidor.
+Tests de A solo CPU; el PNG y el cierre GPU se verifican en PC autorizado.
+E monta v46 encima de esta CLI; alimentador/reproductor QA y medición de F aparte.

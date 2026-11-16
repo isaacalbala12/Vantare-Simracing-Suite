@@ -3168,6 +3168,21 @@ histórico íntegro, para no competir con las entregas al final del handoff.
 Validación nueva por cola y resultados en el PR; ampliación de captura aún
 sin código, pendiente de esquema y aprobación.
 
+### VANTA-144 · B, captura ampliada A (16/11/2026)
+
+Esquema de A aprobado por raíz: registro único, entradas/layout/instancia,
+replay virtual (sin filtro sequence), reloj de pared fijo y hooks mínimos.
+Rama vantareapp/isa-2333-captura-ampliada-a desde nightly c31e2244f; Refs #2333.
+Guard primero, códigos/tokens 0/2/3/4/5/6 conservados como contrato de E/v46.
+Sin cambios en domain/ipc, host, permisos, pintores ni dependencias; el volante
+expone los mismos Image que pinta y solo Avisos admite la base de pared inyectada.
+Corte A todavía debug: assets/cierre/publicación PNG exclusiva/Release en B.
+No hay demos implícitas; F prepara escenas/fotos como pieza independiente.
+Verificación local CPU en Mac (máximo dos ranuras y mínimo 10 GiB); resultados
+vigentes y CI en el PR. Mac: fmt, Clippy -D warnings y 396 tests CPU PASS
+(394 lib + 2 main); seis tests Python PASS. Sin ejecución gráfica ni merge propios.
+#2351 aparcado; Standings y Delta son de otros agentes y no se tocan.
+
 ## VANTA-144 · contrato Widget de Rune (16/11/2026)
 
 Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa

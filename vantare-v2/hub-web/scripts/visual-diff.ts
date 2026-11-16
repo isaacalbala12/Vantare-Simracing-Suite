@@ -84,6 +84,14 @@ await writeFile(
   JSON.stringify(await auditFontSources(), null, 2),
 );
 const report: Record<string, unknown>[] = [];
+// #2317: on 60 QA windows (#2308), the guarded close answered in 13-40 ms, the
+// window closed 19-25 ms later and the CDP client disconnected 9-12 ms after
+// that. Chromium can then spend 2-5 s tearing down its own child processes,
+// which a QA capture does not need. This margin covers the guarded close with
+// slack and still leaves a real hang (seconds, no page-close) as forcedKill.
+// Declared before the capture loop: capture() reads it during teardown, and a
+// declaration after the first call would hit the temporal dead zone.
+const QA_CLOSE_MARGIN_MS = 250;
 for (const scheme of schemes) {
   assert.ok(scheme === "dark" || scheme === "light");
   const directory = join(reference, scheme);
@@ -208,13 +216,6 @@ await writeFile(
 );
 console.log(join(output, "report.json"));
 if (report.some((item) => item.status === "failed")) process.exitCode = 1;
-
-// #2317: on 60 QA windows (#2308), the guarded close answered in 13-40 ms, the
-// window closed 19-25 ms later and the CDP client disconnected 9-12 ms after
-// that. Chromium can then spend 2-5 s tearing down its own child processes,
-// which a QA capture does not need. This margin covers the guarded close with
-// slack and still leaves a real hang (seconds, no page-close) as forcedKill.
-const QA_CLOSE_MARGIN_MS = 250;
 
 async function capture(
   adapter: (typeof visualScenes)[string],

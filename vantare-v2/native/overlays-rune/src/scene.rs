@@ -324,9 +324,9 @@ mod tests {
     fn unsupported_widgets_are_not_acquired_and_unchanged_updates_do_not_publish() {
         let now = Instant::now();
         let mut design = layout();
-        // Widget aún no migrado; al migrar Standings, cambiar a otro Kind sin constructor.
+        // Delta aún no tiene constructor en el registro de pintores.
         design.instances[0].settings =
-            Settings::default_for(vantare_domain::widget_settings::Kind::Standings);
+            Settings::default_for(vantare_domain::widget_settings::Kind::Delta);
         let mut scene = Scene::new(
             design.clone(),
             Access::LocalPreview,

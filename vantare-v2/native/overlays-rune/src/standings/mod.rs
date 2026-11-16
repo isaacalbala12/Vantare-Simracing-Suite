@@ -21,8 +21,7 @@ pub struct Standings {
     settings: Settings,
     prefs: Preferences,
     board: Arc<Board>,
-    layout: layout::Layout,
-    display: scene::Display,
+    scene: scene::Scene,
     paused: bool,
     live: bool,
 }
@@ -44,8 +43,7 @@ impl Standings {
             settings,
             prefs,
             board,
-            layout,
-            display,
+            scene: scene::Scene { display, layout },
             paused: false,
             live: false,
         }
@@ -57,8 +55,8 @@ impl Standings {
 
     pub fn size(&self) -> Size {
         Size {
-            width: self.layout.width,
-            height: self.layout.height,
+            width: self.scene.layout.width,
+            height: self.scene.layout.height,
         }
     }
 
@@ -81,8 +79,8 @@ impl Standings {
         }
         if paused && self.live {
             self.paused = true;
-            self.layout.height += 22.0;
-            self.display.paused = true;
+            self.scene.layout.height += 22.0;
+            self.scene.display.paused = true;
             return true;
         }
         // Opening a window while paused uses the retained photo, as the existing host.
@@ -104,16 +102,17 @@ impl Standings {
             &layout::content(&self.settings, &columns),
             Some(&self.board),
         );
-        let plan = Plan::new(board.clone(), String::new(), snapshot.sequence);
+        // La foto y su sequence no deciden: solo la estructura visible.
+        let plan = Plan::new(board.clone(), String::new(), 0);
         let mut layout = layout::Layout::new(&self.settings, &columns, &plan);
         if paused {
             layout.height += 22.0;
         }
         let display = scene::Display::new(&self.settings, self.prefs, &plan, &layout, paused);
-        let changed = display != self.display || layout != self.layout;
+        let next = scene::Scene { display, layout };
+        let changed = next != self.scene;
         self.board = board;
-        self.layout = layout;
-        self.display = display;
+        self.scene = next;
         self.paused = paused;
         self.live = vantare_domain::freshness::shows_last_live(snapshot);
         changed

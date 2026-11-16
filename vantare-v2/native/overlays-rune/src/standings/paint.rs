@@ -25,13 +25,14 @@ pub(super) fn view(state: &Standings) -> El {
         Accent::Green => s.accents.green,
         Accent::White => s.accents.white,
     };
-    let l = &state.layout;
+    let l = &state.scene.layout;
     let mut root = el()
         .key("standings-vantare")
         .size(l.width, l.height)
         .motion(Spring::NONE)
         .child(
             el().key("panel")
+                .pin(Some(0.0), Some(0.0), None, None)
                 .size(l.width, l.content_height)
                 .radius(v.radius)
                 .linear_gradient(90.0, [(0.0, v.top), (1.0, v.bottom)])
@@ -48,7 +49,7 @@ pub(super) fn view(state: &Standings) -> El {
     root = root.child(vlabel(
         &s,
         "title",
-        &state.display.title,
+        &state.scene.display.title,
         l.pad,
         header_y,
         l.width * 0.55,
@@ -64,7 +65,7 @@ pub(super) fn view(state: &Standings) -> El {
     root = root.child(vlabel(
         &s,
         "session",
-        &state.display.right,
+        &state.scene.display.right,
         l.width * 0.55,
         header_y,
         l.width * 0.45 - l.pad,
@@ -125,7 +126,7 @@ fn vlabel(
 ) -> El {
     text(value)
         .key(key)
-        .absolute(x, y)
+        .pin(Some(x), Some(y), None, None)
         .size(w.max(0.0), h)
         .color(ink)
         .font(font(s, face, size, h, 0.0, s.fonts.regular_weight))
@@ -137,16 +138,16 @@ fn table(
     state: &Standings,
     label: impl Fn(&str, &str, f32, f32, f32, f32, Color, Align) -> El,
 ) -> El {
-    let l = &state.layout;
+    let l = &state.scene.layout;
     let s = Style::compiled();
-    if !state.display.banner.is_empty() {
+    if !state.scene.display.banner.is_empty() {
         root = root.child(
             el().key("banner")
                 .size(l.width, l.banner)
                 .fill(s.colors.fcy_fill)
                 .child(label(
                     "banner-text",
-                    &state.display.banner,
+                    &state.scene.display.banner,
                     8.0,
                     0.0,
                     l.width - 16.0,
@@ -159,7 +160,7 @@ fn table(
     for (index, column) in l.columns.iter().enumerate() {
         root = root.child(label(
             &format!("column-{index}"),
-            &state.display.labels[index],
+            &state.scene.display.labels[index],
             column.x,
             l.header + l.banner,
             column.width,
@@ -180,24 +181,25 @@ fn table(
             Align::Start,
         ));
     }
-    for (index, row) in state.display.rows.iter().enumerate() {
+    for (index, row) in state.scene.display.rows.iter().enumerate() {
         let y = l.rows[index];
         let mut item = el()
             .key(format!("car-{}", row.id))
-            .absolute(0.0, y)
+            .pin(Some(0.0), Some(y), None, None)
             .size(l.width, l.row)
             .motion(Spring::NONE);
         if row.player {
             item = item
                 .child(
                     el().key("player-fill")
+                        .pin(Some(0.0), Some(0.0), None, None)
                         .size(l.width, l.row)
                         .fill(vantare::alpha(s.class(&row.class).tint, 0.17)),
                 )
                 .child(
                     el().key("player-marker")
                         .size(2.0, l.row - 4.0)
-                        .absolute(0.0, 2.0)
+                        .pin(Some(0.0), Some(2.0), None, None)
                         .fill(s.accents.red),
                 );
         }
@@ -205,7 +207,7 @@ fn table(
             if let Some(fill) = cell.fill {
                 item = item.child(
                     el().key(format!("chip-{column_index}"))
-                        .absolute(column.x, 4.0)
+                        .pin(Some(column.x), Some(4.0), None, None)
                         .size(column.width, (l.row - 8.0).max(0.0))
                         .radius(s.geometry.chip_radius)
                         .fill(fill),
@@ -219,9 +221,11 @@ fn table(
                 for (segment, ink) in cell.segments.iter().enumerate() {
                     item = item.child(
                         el().key(format!("sector-{column_index}-{segment}"))
-                            .absolute(
-                                column.x + segment as f32 * (width + gap),
-                                (l.row - s.geometry.sector_height) / 2.0,
+                            .pin(
+                                Some(column.x + segment as f32 * (width + gap)),
+                                Some((l.row - s.geometry.sector_height) / 2.0),
+                                None,
+                                None,
                             )
                             .size(width, s.geometry.sector_height)
                             .radius(s.geometry.sector_radius)
@@ -243,10 +247,10 @@ fn table(
         }
         root = root.child(item);
     }
-    if !state.display.status.is_empty() {
+    if !state.scene.display.status.is_empty() {
         root = root.child(label(
             "status",
-            &state.display.status,
+            &state.scene.display.status,
             l.pad,
             l.header + l.column_header + l.banner,
             l.width - 2.0 * l.pad,
@@ -262,10 +266,10 @@ fn footer(
     state: &Standings,
     label: impl Fn(&str, &str, f32, f32, f32, f32) -> El,
 ) -> El {
-    let l = &state.layout;
+    let l = &state.scene.layout;
     if l.footer > 0.0 {
         let w = (l.width - 2.0 * l.pad) / 3.0;
-        for (index, value) in state.display.footer.iter().enumerate() {
+        for (index, value) in state.scene.display.footer.iter().enumerate() {
             root = root.child(label(
                 &format!("footer-{index}"),
                 value,
@@ -276,7 +280,7 @@ fn footer(
             ));
         }
     }
-    if state.display.paused {
+    if state.scene.display.paused {
         let text = if state.prefs.language == Language::Es {
             "Pausa · última imagen"
         } else {

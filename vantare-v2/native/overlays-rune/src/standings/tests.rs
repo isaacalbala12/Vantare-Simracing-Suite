@@ -9,7 +9,7 @@ use vantare_domain::{
     Quality, SourceState,
     format::Language,
     motion_policy::MotionPolicy,
-    widget_settings::{Settings as WidgetSettings, columns::ColumnSetting},
+    widget_settings::{Settings as WidgetSettings, columns::ColumnSetting, look::Tone},
 };
 use vantare_ipc::{Photo, layout::Layout};
 
@@ -50,11 +50,12 @@ fn the_vantare_look_uses_domain_rows_gaps_and_selection() {
     let mut painter = Standings::new(&s, Preferences::default());
     assert!(painter.update(&input));
     assert!(
-        !painter.display.rows.is_empty(),
+        !painter.scene.display.rows.is_empty(),
         "the original scene must actually paint cars"
     );
     assert_eq!(
         painter
+            .scene
             .display
             .rows
             .iter()
@@ -62,7 +63,7 @@ fn the_vantare_look_uses_domain_rows_gaps_and_selection() {
             .collect::<Vec<_>>(),
         plan.rows.iter().map(|r| r.id.0).collect::<Vec<_>>()
     );
-    for (row, canonical) in painter.display.rows.iter().zip(&plan.rows) {
+    for (row, canonical) in painter.scene.display.rows.iter().zip(&plan.rows) {
         let gap = columns
             .iter()
             .filter(|c| c.metric_id != "vehicle")
@@ -78,17 +79,17 @@ fn pause_keeps_the_last_picture_and_resume_applies_the_new_picture() {
     let mut input = snapshot();
     let mut painter = Standings::new(&settings(), Preferences::default());
     painter.update(&input);
-    let before = painter.display.rows.clone();
+    let before = painter.scene.display.rows.clone();
     let size = painter.size();
     input.state.source_state = SourceState::Paused;
     input.state.cars[0].driver.name = "not a live update".into();
     assert!(painter.update(&input));
-    assert_eq!(painter.display.rows, before);
+    assert_eq!(painter.scene.display.rows, before);
     assert_eq!(painter.size().height, size.height + 22.0);
     assert!(!painter.update(&input));
     input.state.source_state = SourceState::Live;
     assert!(painter.update(&input));
-    assert_ne!(painter.display.rows, before);
+    assert_ne!(painter.scene.display.rows, before);
     assert_eq!(painter.size().height, size.height);
 }
 
@@ -137,6 +138,7 @@ fn session_columns_formats_duplicate_keys_disabled_and_unknown_columns() {
         assert!(painter.update(&input));
         assert_eq!(
             painter
+                .scene
                 .layout
                 .columns
                 .iter()
@@ -150,6 +152,7 @@ fn session_columns_formats_duplicate_keys_disabled_and_unknown_columns() {
     let canonical = standings::project(&input, Preferences::default());
     let id = input.state.cars[0].id;
     let row = painter
+        .scene
         .display
         .rows
         .iter()
@@ -190,6 +193,7 @@ fn sectors_pits_compounds_and_predicted_size_follow_the_projection() {
         "placement uses the first useful size, including class bands"
     );
     let row = painter
+        .scene
         .display
         .rows
         .iter()
@@ -326,5 +330,74 @@ fn visible_data_never_paints_faster_than_the_host_widget_cadence() {
             }
         }
         assert!(images > 0 && images <= hz, "hz={hz},images={images}");
+    }
+}
+
+#[test]
+fn a_repeated_photo_or_a_new_sequence_alone_does_not_repaint() {
+    let mut painter = Standings::new(&settings(), Preferences::default());
+    let input = snapshot();
+    assert!(painter.update(&input), "la primera foto compone");
+    assert!(!painter.update(&input), "la misma foto no repinta");
+    let mut newer = input.clone();
+    newer.sequence += 1;
+    assert!(
+        !painter.update(&newer),
+        "cambiar solo la secuencia no repinta"
+    );
+    newer.state.cars[0].relative_s = Quality::Reliable(99.0);
+    assert!(
+        !painter.update(&newer),
+        "un dato que este overlay no pinta no repinta"
+    );
+    newer.state.cars[0].driver.name = "Visible Change".into();
+    assert!(painter.update(&newer), "un texto visible sí repinta");
+    assert!(!painter.update(&newer), "y solo una vez");
+}
+
+fn widget_runtime(painter: Standings, window: (f32, f32)) -> Runtime<Standings> {
+    fn view(painter: &Standings, _: &mut rune::Cx<Standings>) -> El {
+        painter.view()
+    }
+    Runtime::with_text(
+        painter,
+        view,
+        window,
+        Env::new(true, 1.0),
+        rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+    )
+}
+
+#[test]
+fn no_layer_falls_outside_the_window_in_any_template_size_or_state() {
+    for template in ["signature", "broadcast"] {
+        for tone in [Tone::Neo, Tone::Neutro] {
+            for rows in [1, 10, 30] {
+                for state in 0..3 {
+                    let s = Settings {
+                        template_id: template.into(),
+                        style: tone,
+                        row_count: rows,
+                        classification_mode: "multiclass".into(),
+                        ..settings()
+                    };
+                    let mut painter = Standings::new(&s, Preferences::default());
+                    let mut input = snapshot();
+                    match state {
+                        1 => input.state.source_state = SourceState::Waiting,
+                        2 => {
+                            assert!(painter.update(&input), "la imagen viva entra antes");
+                            input.state.source_state = SourceState::Paused;
+                        }
+                        _ => {}
+                    }
+                    painter.update(&input);
+                    let size = painter.size();
+                    let mut runtime = widget_runtime(painter, (size.width, size.height));
+                    runtime.frame(0.0);
+                    crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+                }
+            }
+        }
     }
 }

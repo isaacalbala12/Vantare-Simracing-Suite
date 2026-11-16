@@ -124,6 +124,14 @@ impl Display {
     }
 }
 
+/// Estructura visible retenida: la única causa legítima de repintado. La foto y
+/// su `sequence` no entran aquí; solo lo que el pintor dibuja.
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct Scene {
+    pub display: Display,
+    pub layout: Layout,
+}
+
 fn cell(row: &SelectedRow, column: &ColumnSetting, plan: &Plan, style: &Style) -> Cell {
     let metric = column.metric_id.as_str();
     let text = match metric {

@@ -12,7 +12,7 @@ el movimiento van en el PR 2.
   cabecera con marca y selector de referencia (ampliado) o referencia mono
   (barra), número grande con predicha y vuelta, barra con degradado, extremos
   redondeados, marca central, escalas −X/+X y sectores con su barra y valores.
-- **Transparente**: sin panel, textos con sombra y carril de la barra con borde.
+- **Transparente**: sin panel, textos con las cinco sombras de GPUI (marca y aviso excluidos) y carril de la barra con borde.
 - **Estados**: espera, sin referencia, espectador, vuelta invalidada (tachado),
   pausa (boxes, vuelta de salida, FCY) y sin datos.
 

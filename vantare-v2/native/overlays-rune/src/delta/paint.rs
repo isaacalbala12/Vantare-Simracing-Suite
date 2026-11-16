@@ -11,6 +11,13 @@ use vantare_domain::{
     format::Language,
 };
 
+const BLACK: Color = Color {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 1.0,
+};
+
 pub(super) struct Painter {
     style: std::sync::Arc<Style>,
     prefs: vantare_domain::format::Preferences,
@@ -41,8 +48,8 @@ impl Painter {
     fn es(&self) -> bool {
         self.prefs.language == Language::Es
     }
+    /// Sobre el juego la cabecera y el texto atenuado suben de contraste.
     fn ink(&self, color: Color) -> Color {
-        // Sobre el juego, la cabecera y el texto atenuado suben de contraste.
         let s = &self.style;
         if !self.scene.options.transparent {
             return color;
@@ -77,9 +84,68 @@ impl Painter {
         if self.scene.message || self.scene.grey {
             return (&self.scene.labels.number, self.style.delta.grey);
         }
-        let delta = self.scene.delta_s.unwrap_or(0.0);
-        let color = if delta < 0.0 { c.gain } else { c.loss };
+        let color = if self.scene.gain { c.gain } else { c.loss };
         (&self.scene.labels.number, color)
+    }
+    #[allow(clippy::too_many_arguments)] // Una celda de texto: caja, cara e ink.
+    fn label(
+        &self,
+        key: impl Into<String>,
+        value: impl Into<String>,
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        face: Face,
+        size: f32,
+        tracking: f32,
+        weight: f32,
+        ink: Color,
+        align: Align,
+    ) -> El {
+        let name = key.into();
+        let value = value.into();
+        let style = font(&self.style, face, size, height, tracking, weight);
+        if !self.scene.options.transparent {
+            return text(value)
+                .key(name)
+                .font(style)
+                .color(ink)
+                .size(width, height)
+                .align(align)
+                .pin(Some(x), Some(y), None, None);
+        }
+        // Sobre el juego, GPUI dibuja cuatro sombras y una copia baja.
+        let mut node = el().key(name).size(width, height).pin(Some(x), Some(y), None, None);
+        for (index, (dx, dy, strength)) in [
+            (-1.0f32, 0.0f32, 0.35f32),
+            (1.0, 0.0, 0.35),
+            (0.0, -1.0, 0.35),
+            (0.0, 2.0, 0.35),
+            (0.0, 1.0, 0.9),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            node = node.child(
+                text(value.clone())
+                    .key(format!("{name}-shadow-{index}"))
+                    .font(style)
+                    .color(crate::vantare::alpha(BLACK, strength))
+                    .size(width, height)
+                    .align(align)
+                    .pin(Some(dx), Some(dy), None, None),
+            );
+        }
+        node.child(
+            text(value)
+                .key(format!("{name}-ink"))
+                .font(style)
+                .color(ink)
+                .size(width, height)
+                .align(align)
+                .pin(Some(0.0), Some(0.0), None, None),
+        )
     }
     pub fn view(&self) -> El {
         let size = (self.scene.width, self.scene.height);
@@ -128,6 +194,7 @@ impl Painter {
     fn pill(&self, root: El) -> El {
         let s = &self.style;
         let d = &s.delta;
+        let content = self.scene.content;
         let pad = if self.scene.options.transparent {
             16.0
         } else {
@@ -149,44 +216,50 @@ impl Painter {
         } else {
             (Face::Mono, d.pill_value - 2.0)
         };
-        let value_font = font(
-            s,
-            face,
-            size,
-            size,
-            0.0,
-            if matches!(face, Face::Display) {
-                600.0
-            } else {
-                400.0
-            },
-        );
+        let weight = if matches!(face, Face::Display) {
+            600.0
+        } else {
+            400.0
+        };
+        let value_font = font(s, face, size, size, 0.0, weight);
         let label_width = eficiencia::width("DELTA", label_font);
         let width = (2.0 * pad + label_width + 14.0 + eficiencia::width(value, value_font))
             .min(self.scene.width);
         let root = if self.scene.options.transparent {
             root
         } else {
-            root.child(self.panel(width, self.scene.height))
+            root.child(self.panel(width, content))
         };
         let x = pad + label_width + 14.0;
         let offset = text_top(s, face, 0.0);
-        root.child(
-            text("DELTA")
-                .key("pill-label")
-                .font(label_font)
-                .color(label_ink)
-                .size(label_width + 2.0, self.scene.height)
-                .pin(Some(pad), Some(0.0), None, None),
-        )
-        .child(
-            text(value.to_owned())
-                .key("pill-value")
-                .font(value_font)
-                .color(color)
-                .size((self.scene.width - x).max(0.0), self.scene.height - offset)
-                .pin(Some(x), Some(offset), None, None),
-        )
+        root.child(self.label(
+            "pill-label",
+            "DELTA",
+            pad,
+            0.0,
+            label_width + 2.0,
+            content,
+            Face::Body,
+            d.pill_label,
+            0.3,
+            s.fonts.regular_weight,
+            label_ink,
+            Align::Start,
+        ))
+        .child(self.label(
+            "pill-value",
+            value.to_owned(),
+            x,
+            offset,
+            (self.scene.width - x).max(0.0),
+            content - offset,
+            face,
+            size,
+            0.0,
+            weight,
+            color,
+            Align::Start,
+        ))
     }
     fn banner(&self, mut root: El) -> El {
         let Some(kind) = self.scene.banner else {
@@ -211,16 +284,17 @@ impl Painter {
         };
         let pad = v.padding_x;
         let radius = (v.radius - 1.0).max(0.0);
+        let width = self.scene.width;
         let mut band = el()
             .key("banner")
             .pin(Some(0.0), Some(0.0), None, None)
-            .size(self.scene.width, g.banner_height)
+            .size(width, g.banner_height)
             .corners([radius, radius, 0.0, 0.0])
             .fill(fill);
         if let Some(line) = line {
             band = band.child(
                 el().pin(Some(0.0), Some(g.banner_height - 1.0), None, None)
-                    .size(self.scene.width, 1.0)
+                    .size(width, 1.0)
                     .fill(line),
             );
         }
@@ -243,8 +317,13 @@ impl Painter {
                         600.0,
                     ))
                     .color(ink)
-                    .size(self.scene.width * 0.5, g.banner_height)
-                    .pin(Some(pad), Some(text_top(s, Face::Display, 0.0)), None, None),
+                    .size(width * 0.5, g.banner_height)
+                    .pin(
+                        Some(pad),
+                        Some(text_top(s, Face::Display, 0.0)),
+                        None,
+                        None,
+                    ),
             )
             .child(
                 text(right)
@@ -258,10 +337,10 @@ impl Painter {
                         400.0,
                     ))
                     .color(ink)
-                    .size(self.scene.width * 0.45, g.banner_height)
+                    .size(200.0, g.banner_height)
                     .align(Align::End)
                     .pin(
-                        Some(self.scene.width * 0.5),
+                        Some(width - pad - 200.0),
                         Some(text_top(s, Face::Mono, 0.0)),
                         None,
                         None,
@@ -278,26 +357,26 @@ impl Painter {
         } else {
             Face::Body
         };
+        let weight = if matches!(face, Face::Display) {
+            600.0
+        } else {
+            s.fonts.regular_weight
+        };
         let (pad, width) = (v.padding_x, self.scene.width);
-        root = root.child(
-            text(self.scene.labels.title.clone())
-                .key("header-title")
-                .font(font(
-                    s,
-                    face,
-                    v.header_size,
-                    h,
-                    v.header_tracking,
-                    if matches!(face, Face::Display) {
-                        600.0
-                    } else {
-                        s.fonts.regular_weight
-                    },
-                ))
-                .color(self.header_color())
-                .size(width * 0.62, h)
-                .pin(Some(pad), Some(text_top(s, face, y)), None, None),
-        );
+        root = root.child(self.label(
+            "header-title",
+            self.scene.labels.title.clone(),
+            pad,
+            text_top(s, face, y),
+            width * 0.62,
+            h,
+            face,
+            v.header_size,
+            v.header_tracking,
+            weight,
+            self.header_color(),
+            Align::Start,
+        ));
         let mut edge = width - pad;
         if self.scene.options.brand {
             let (brand, used) = self.brand(edge, y, h);
@@ -307,22 +386,21 @@ impl Painter {
         if self.scene.options.size == Size::Expanded {
             root = self.segments(root, edge, y, h);
         } else {
-            let ink = self.ink(s.colors.header_em);
             let box_width = (edge - pad).max(0.0);
-            root = root.child(
-                text(self.scene.labels.reference.clone())
-                    .key("header-reference")
-                    .font(font(s, Face::Mono, s.fonts.mono_small, h, 0.0, 400.0))
-                    .color(ink)
-                    .size(box_width, h)
-                    .align(Align::End)
-                    .pin(
-                        Some(edge - box_width),
-                        Some(text_top(s, Face::Mono, y)),
-                        None,
-                        None,
-                    ),
-            );
+            root = root.child(self.label(
+                "header-reference",
+                self.scene.labels.reference.clone(),
+                edge - box_width,
+                text_top(s, Face::Mono, y),
+                box_width,
+                h,
+                Face::Mono,
+                s.fonts.mono_small,
+                0.0,
+                400.0,
+                self.ink(s.colors.header_em),
+                Align::End,
+            ));
         }
         if v.header_rule > 0.0 {
             root = root.child(
@@ -347,7 +425,8 @@ impl Painter {
         let symbol = 46.0 * scale;
         let left = right - name - b.gap - symbol;
         let top = y + (h - b.symbol_height) / 2.0;
-        let at = |x: f32, y: f32| [left + (x - 9.0) * scale, top + (y - 10.0) * scale];
+        // El canvas es local: mismo trazado de mark.svg, sin sumar su origen.
+        let at = |x: f32, y: f32| [(x - 9.0) * scale, (y - 10.0) * scale];
         let mark = Path::new()
             .move_to(at(9.0, 51.0))
             .line_to(at(32.0, 10.0))
@@ -362,20 +441,17 @@ impl Painter {
             .size(self.scene.width, self.scene.height)
             .child(
                 canvas(Shape::new().fill_path(&mark, b.symbol))
+                    .key("brand-symbol")
                     .pin(Some(left), Some(top), None, None)
                     .size(symbol.max(1.0), b.symbol_height.max(1.0)),
             )
             .child(
                 text("VANTARE")
+                    .key("brand-name")
                     .font(name_font)
-                    .color(self.header_color())
+                    .color(self.variant().header_color)
                     .size(name + 2.0, h)
-                    .pin(
-                        Some(right - name),
-                        Some(text_top(s, Face::Display, y)),
-                        None,
-                        None,
-                    ),
+                    .pin(Some(right - name), Some(text_top(s, Face::Display, y)), None, None),
             );
         (element, name + b.gap + symbol)
     }
@@ -385,11 +461,7 @@ impl Painter {
         let c = &s.colors;
         let ink = self.ink(c.value);
         let active = self.ink(c.text);
-        let names = [
-            self.scene.labels.segments[0],
-            self.scene.labels.segments[1],
-            self.scene.labels.segments[2],
-        ];
+        let names = self.scene.labels.segments;
         let widths = names.map(|name| {
             eficiencia::width(
                 name,
@@ -422,26 +494,20 @@ impl Painter {
                         .border(1.0, crate::vantare::alpha(self.accent(), 0.5)),
                 );
             }
-            root = root.child(
-                text((*name).to_owned())
-                    .key(format!("segment-text-{index}"))
-                    .font(font(
-                        s,
-                        Face::Body,
-                        s.fonts.small,
-                        d.segment_height,
-                        0.0,
-                        s.fonts.regular_weight,
-                    ))
-                    .color(if on { active } else { ink })
-                    .size(width - 10.0, d.segment_height)
-                    .pin(
-                        Some(x + 10.0),
-                        Some(text_top(s, Face::Body, top)),
-                        None,
-                        None,
-                    ),
-            );
+            root = root.child(self.label(
+                format!("segment-text-{index}"),
+                (*name).to_owned(),
+                x + 10.0,
+                text_top(s, Face::Body, top),
+                width - 10.0,
+                d.segment_height,
+                Face::Body,
+                s.fonts.small,
+                0.0,
+                s.fonts.regular_weight,
+                if on { active } else { ink },
+                Align::Start,
+            ));
             x += width;
         }
         root
@@ -475,77 +541,78 @@ impl Painter {
         let base = y + 12.0;
         let label_h = d.big - 6.0;
         if let Some(note) = self.scene.labels.phase_note {
-            root = root.child(
-                text(note)
-                    .key("big-note")
-                    .font(font(
-                        s,
-                        Face::Body,
-                        s.fonts.small,
-                        label_h,
-                        0.0,
-                        s.fonts.regular_weight,
-                    ))
-                    .color(muted)
-                    .size((width - pad - x).max(1.0), label_h)
-                    .pin(Some(x), Some(text_top(s, Face::Body, base)), None, None),
-            );
-        } else {
-            let lead = self.scene.labels.predicted_lead;
-            let lead_font = font(
-                s,
+            root = root.child(self.label(
+                "big-note",
+                note,
+                x,
+                text_top(s, Face::Body, base),
+                (width - pad - x).max(1.0),
+                label_h,
                 Face::Body,
                 s.fonts.small,
-                label_h,
                 0.0,
                 s.fonts.regular_weight,
+                muted,
+                Align::Start,
+            ));
+        } else {
+            let lead = self.scene.labels.predicted_lead;
+            let lead_width = eficiencia::width(
+                lead,
+                font(
+                    s,
+                    Face::Body,
+                    s.fonts.small,
+                    label_h,
+                    0.0,
+                    s.fonts.regular_weight,
+                ),
             );
-            let lead_width = eficiencia::width(lead, lead_font);
             root = root
-                .child(
-                    text(lead)
-                        .key("big-lead")
-                        .font(lead_font)
-                        .color(muted)
-                        .size(lead_width + 2.0, label_h)
-                        .pin(Some(x), Some(text_top(s, Face::Body, base)), None, None),
-                )
-                .child(
-                    text(self.scene.labels.predicted.clone())
-                        .key("big-predicted")
-                        .font(font(s, Face::Mono, s.fonts.mono, label_h, 0.0, 400.0))
-                        .color(c.text)
-                        .size((width - pad - x - lead_width).max(1.0), label_h)
-                        .pin(
-                            Some(x + lead_width),
-                            Some(text_top(s, Face::Mono, base)),
-                            None,
-                            None,
-                        ),
-                );
+                .child(self.label(
+                    "big-lead",
+                    lead,
+                    x,
+                    text_top(s, Face::Body, base),
+                    lead_width + 2.0,
+                    label_h,
+                    Face::Body,
+                    s.fonts.small,
+                    0.0,
+                    s.fonts.regular_weight,
+                    muted,
+                    Align::Start,
+                ))
+                .child(self.label(
+                    "big-predicted",
+                    self.scene.labels.predicted.clone(),
+                    x + lead_width,
+                    text_top(s, Face::Mono, base),
+                    (width - pad - x - lead_width).max(1.0),
+                    label_h,
+                    Face::Mono,
+                    s.fonts.mono,
+                    0.0,
+                    400.0,
+                    c.text,
+                    Align::Start,
+                ));
         }
         if self.scene.options.size == Size::Expanded {
-            root = root.child(
-                text(self.scene.labels.lap.clone())
-                    .key("big-lap")
-                    .font(font(
-                        s,
-                        Face::Body,
-                        s.fonts.small,
-                        label_h,
-                        0.0,
-                        s.fonts.regular_weight,
-                    ))
-                    .color(muted)
-                    .size(width * 0.3, label_h)
-                    .align(Align::End)
-                    .pin(
-                        Some(width - pad - width * 0.3),
-                        Some(text_top(s, Face::Body, base)),
-                        None,
-                        None,
-                    ),
-            );
+            root = root.child(self.label(
+                "big-lap",
+                self.scene.labels.lap.clone(),
+                width - pad - width * 0.3,
+                text_top(s, Face::Body, base),
+                width * 0.3,
+                label_h,
+                Face::Body,
+                s.fonts.small,
+                0.0,
+                s.fonts.regular_weight,
+                muted,
+                Align::End,
+            ));
         }
         root
     }
@@ -557,36 +624,34 @@ impl Painter {
             return root;
         };
         root = root
-            .child(
-                text(title)
-                    .key("message-title")
-                    .font(font(
-                        s,
-                        Face::Display,
-                        f.wait_title,
-                        f.wait_title,
-                        f.separator_tracking,
-                        600.0,
-                    ))
-                    .color(self.ink(c.header_em))
-                    .size(self.scene.width, f.wait_title)
-                    .align(Align::Center)
-                    .pin(
-                        Some(0.0),
-                        Some(text_top(s, Face::Display, y + 4.0)),
-                        None,
-                        None,
-                    ),
-            )
-            .child(
-                text(hint)
-                    .key("message-hint")
-                    .font(font(s, Face::Body, f.small, 18.0, 0.0, f.regular_weight))
-                    .color(self.ink(c.muted))
-                    .size(self.scene.width, 18.0)
-                    .align(Align::Center)
-                    .pin(Some(0.0), Some(y + 20.0), None, None),
-            );
+            .child(self.label(
+                "message-title",
+                title,
+                0.0,
+                text_top(s, Face::Display, y + 4.0),
+                self.scene.width,
+                f.wait_title,
+                Face::Display,
+                f.wait_title,
+                f.separator_tracking,
+                600.0,
+                self.ink(c.header_em),
+                Align::Center,
+            ))
+            .child(self.label(
+                "message-hint",
+                hint,
+                0.0,
+                y + 20.0,
+                self.scene.width,
+                18.0,
+                Face::Body,
+                f.small,
+                0.0,
+                f.regular_weight,
+                self.ink(c.muted),
+                Align::Start,
+            ));
         root
     }
     fn bar(&self, mut root: El, y: f32) -> El {
@@ -610,20 +675,25 @@ impl Painter {
             track = track.fill(d.track);
         }
         root = root.child(track);
-        let value = scene::bar_target(self.scene.delta_s, self.scene.phase, d.range_s);
-        if self.scene.phase == Phase::Live && value != 0.0 {
+        if !self.scene.message && self.scene.phase == Phase::Live && self.scene.bar != 0.0 {
             let half = span / 2.0;
-            let length = half * value.abs();
-            let (x, solid, angle, corners): (f32, Color, f32, [f32; 4]) = if value < 0.0 {
-                (
-                    mid - length,
-                    d.fill_gain,
-                    270.0,
-                    [d.bar / 2.0, 0.0, 0.0, d.bar / 2.0],
-                )
-            } else {
-                (mid, d.fill_loss, 90.0, [0.0, d.bar / 2.0, d.bar / 2.0, 0.0])
-            };
+            let length = half * self.scene.bar.abs();
+            let (x, solid, angle, corners): (f32, Color, f32, [f32; 4]) =
+                if self.scene.bar < 0.0 {
+                    (
+                        mid - length,
+                        d.fill_gain,
+                        270.0,
+                        [d.bar / 2.0, 0.0, 0.0, d.bar / 2.0],
+                    )
+                } else {
+                    (
+                        mid,
+                        d.fill_loss,
+                        90.0,
+                        [0.0, d.bar / 2.0, d.bar / 2.0, 0.0],
+                    )
+                };
             root = root.child(
                 el().key("bar-fill")
                     .pin(Some(x), Some(y), None, None)
@@ -645,12 +715,7 @@ impl Painter {
         };
         root = root.child(
             el().key("bar-center")
-                .pin(
-                    Some(mid - 1.0),
-                    Some(y + (d.bar - d.tick) / 2.0),
-                    None,
-                    None,
-                )
+                .pin(Some(mid - 1.0), Some(y + (d.bar - d.tick) / 2.0), None, None)
                 .size(2.0, d.tick)
                 .radius(1.0)
                 .fill(center),
@@ -661,44 +726,53 @@ impl Painter {
         let ink = self.ink(c.column);
         let top = y + d.bar + 2.0;
         let h = d.tick_labels - 2.0;
-        let left_font = font(s, Face::Mono, 9.0, h, 0.0, 400.0);
-        let zero_width = eficiencia::width("0", left_font);
+        let zero_width = eficiencia::width(
+            "0",
+            font(s, Face::Mono, 9.0, h, 0.0, 400.0),
+        );
         root = root
-            .child(
-                text(self.scene.labels.range[0].clone())
-                    .key("bar-min")
-                    .font(left_font)
-                    .color(ink)
-                    .size(80.0, h)
-                    .pin(Some(pad), Some(text_top(s, Face::Mono, top)), None, None),
-            )
-            .child(
-                text("0")
-                    .key("bar-zero")
-                    .font(font(s, Face::Mono, 9.0, h, 0.0, 400.0))
-                    .color(ink)
-                    .size(zero_width + 2.0, h)
-                    .pin(
-                        Some(mid - zero_width / 2.0),
-                        Some(text_top(s, Face::Mono, top)),
-                        None,
-                        None,
-                    ),
-            )
-            .child(
-                text(self.scene.labels.range[1].clone())
-                    .key("bar-max")
-                    .font(font(s, Face::Mono, 9.0, h, 0.0, 400.0))
-                    .color(ink)
-                    .size(80.0, h)
-                    .align(Align::End)
-                    .pin(
-                        Some(width - pad - 80.0),
-                        Some(text_top(s, Face::Mono, top)),
-                        None,
-                        None,
-                    ),
-            );
+            .child(self.label(
+                "bar-min",
+                self.scene.labels.range[0].clone(),
+                pad,
+                text_top(s, Face::Mono, top),
+                80.0,
+                h,
+                Face::Mono,
+                9.0,
+                0.0,
+                400.0,
+                ink,
+                Align::Start,
+            ))
+            .child(self.label(
+                "bar-zero",
+                "0",
+                mid - zero_width / 2.0,
+                text_top(s, Face::Mono, top),
+                zero_width + 2.0,
+                h,
+                Face::Mono,
+                9.0,
+                0.0,
+                400.0,
+                ink,
+                Align::Start,
+            ))
+            .child(self.label(
+                "bar-max",
+                self.scene.labels.range[1].clone(),
+                width - pad - 80.0,
+                text_top(s, Face::Mono, top),
+                80.0,
+                h,
+                Face::Mono,
+                9.0,
+                0.0,
+                400.0,
+                ink,
+                Align::End,
+            ));
         root
     }
     fn sectors(&self, mut root: El, y: f32) -> El {
@@ -711,7 +785,6 @@ impl Painter {
         let cell = (width - 2.0 * pad - gap * (count - 1) as f32) / count as f32;
         let top = y + 6.0;
         let muted = self.ink(c.muted);
-        let gain = self.scene.delta_s.is_some_and(|d| d < 0.0);
         for (index, sector) in self.scene.labels.sectors.iter().enumerate() {
             let x = pad + index as f32 * (cell + gap);
             root = root.child(
@@ -736,7 +809,7 @@ impl Painter {
                     .live
                     .then_some(sector.progress)
                     .flatten()
-                    .map(|fraction| (fraction, if gain { c.green } else { d.fill_loss }))
+                    .map(|fraction| (fraction, if self.scene.gain { c.green } else { d.fill_loss }))
             });
             if let Some((fraction, color)) = fill {
                 root = root.child(
@@ -748,43 +821,39 @@ impl Painter {
                 );
             }
             let label_top = top + d.sector_bar + 3.0;
-            root = root.child(
-                text(sector.title.clone())
-                    .key(format!("sector-title-{index}"))
-                    .font(font(s, Face::Mono, 10.0, 14.0, 0.0, 400.0))
-                    .color(muted)
-                    .size(cell, 14.0)
-                    .pin(
-                        Some(x),
-                        Some(text_top(s, Face::Mono, label_top)),
-                        None,
-                        None,
-                    ),
-            );
-            let value = if sector.value.is_empty() {
-                String::new()
-            } else {
-                sector.value.clone()
-            };
+            root = root.child(self.label(
+                format!("sector-title-{index}"),
+                sector.title.clone(),
+                x,
+                text_top(s, Face::Mono, label_top),
+                cell,
+                14.0,
+                Face::Mono,
+                10.0,
+                0.0,
+                400.0,
+                muted,
+                Align::Start,
+            ));
             let value_color = sector.tone.map_or(c.muted, |tone| match tone {
                 SectorTone::SessionBest => c.purple,
                 SectorTone::PersonalBest => c.gain,
                 SectorTone::Slower => c.yellow,
             });
-            root = root.child(
-                text(value)
-                    .key(format!("sector-value-{index}"))
-                    .font(font(s, Face::Mono, 10.0, 14.0, 0.0, 400.0))
-                    .color(self.ink(value_color))
-                    .size(cell, 14.0)
-                    .align(Align::End)
-                    .pin(
-                        Some(x),
-                        Some(text_top(s, Face::Mono, label_top + d.sector_bar + 3.0)),
-                        None,
-                        None,
-                    ),
-            );
+            root = root.child(self.label(
+                format!("sector-value-{index}"),
+                sector.value.clone(),
+                x,
+                text_top(s, Face::Mono, label_top),
+                cell,
+                14.0,
+                Face::Mono,
+                10.0,
+                0.0,
+                400.0,
+                self.ink(value_color),
+                Align::End,
+            ));
         }
         root
     }

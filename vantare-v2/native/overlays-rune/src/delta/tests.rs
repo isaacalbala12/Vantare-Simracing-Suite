@@ -98,10 +98,12 @@ fn values_and_reference_come_from_the_canonical_projection() {
         assert!(changed(painter.update(&input, 0.0)), "{name}");
         let board = project(&settings, &input, Preferences::default());
         assert_eq!(board.phase, Phase::Live, "simulated {name} is available");
-        assert_eq!(
-            painter.scene.labels.number,
-            board.delta_text().replace('-', "−")
-        );
+        let expected_number = match name {
+            "best" => "−0.214",
+            "optimal" => "−0.300",
+            _ => "+0.400",
+        };
+        assert_eq!(painter.scene.labels.number, expected_number, "{name}");
         let expected = match name {
             "best" => "MEJOR",
             "optimal" => "ÓPTIMA",
@@ -246,7 +248,6 @@ fn the_bar_fill_paints_the_target_and_its_sign() {
     let [x, _, w, _] = fill.0;
     assert!(w > 0.0);
     assert!(x < 380.0 / 2.0, "negativo a la izquierda");
-    let _ = fill;
     let mut positive = snapshot();
     positive.state.player.as_mut().expect("player").delta_best_s = Reliable(0.4);
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
@@ -351,6 +352,142 @@ fn configured_rebuilds_for_every_visible_setting_and_language() {
         ..prefs
     };
     assert!(!<Delta as Widget>::configured(&painter, &same, english));
+}
+
+#[test]
+fn the_pill_uses_the_thirty_four_pixel_content_box() {
+    use super::paint::text_top;
+    use crate::vantare::paint::Face;
+    let mut painter = Delta::new(&settings("pill"), Preferences::default());
+    painter.update(&snapshot(), 0.0);
+    let runtime = harness(painter);
+    let style = crate::vantare::Style::compiled();
+    let panel = runtime.presented("panel").expect("panel de la píldora");
+    assert_eq!(panel.0[3], 34.0, "el panel mide el contenido, no la caja");
+    let label = runtime.presented("pill-label").expect("rótulo");
+    assert_eq!(label.0[1], 0.0);
+    assert_eq!(label.0[3], 34.0);
+    let value = runtime.presented("pill-value").expect("valor");
+    let offset = text_top(&style, Face::Display, 0.0);
+    assert_eq!(value.0[1], offset, "centrado como el rótulo");
+    assert_eq!(value.0[3], 34.0 - offset);
+}
+
+#[test]
+fn sector_values_share_the_title_line() {
+    let mut painter = Delta::new(&settings("expanded"), Preferences::default());
+    painter.update(&snapshot(), 0.0);
+    let runtime = harness(painter);
+    let title = runtime.presented("sector-title-0").expect("título");
+    let value = runtime.presented("sector-value-0").expect("valor");
+    assert_eq!(
+        value.0[1], title.0[1],
+        "GPUI pinta ambos en la misma línea de base"
+    );
+}
+
+#[test]
+fn the_brand_ends_at_the_header_edge() {
+    let mut painter = Delta::new(
+        &Settings {
+            brand_visible: Some(true),
+            ..settings("bar")
+        },
+        Preferences::default(),
+    );
+    painter.update(&snapshot(), 0.0);
+    let runtime = harness(painter);
+    let name = runtime.presented("brand-name").expect("marca");
+    let pad = crate::vantare::Style::compiled().styles.neo.padding_x;
+    let right = name.0[0] + name.0[2];
+    assert!(
+        (right - (380.0 - pad)).abs() < 0.01,
+        "borde derecho {right}"
+    );
+    let symbol = runtime.presented("brand-symbol").expect("símbolo");
+    assert!(symbol.0[0] >= 0.0);
+    assert!(
+        symbol.0[0] + symbol.0[2] <= name.0[0] + 0.5,
+        "símbolo a la izquierda del nombre"
+    );
+}
+
+#[test]
+fn transparent_labels_carry_the_game_shadow() {
+    let mut painter = Delta::new(
+        &Settings {
+            brand_visible: Some(true),
+            ..settings("bar")
+        },
+        Preferences::default(),
+    );
+    painter.update(&snapshot(), 0.0);
+    let runtime = harness(painter);
+    assert!(
+        runtime.presented("big-number-shadow-0").is_none(),
+        "sin sombra sobre el panel"
+    );
+    assert!(runtime.presented("brand-name-shadow-0").is_none());
+    let mut painter = Delta::new(
+        &Settings {
+            transparent_background: true,
+            brand_visible: Some(true),
+            ..settings("bar")
+        },
+        Preferences::default(),
+    );
+    painter.update(&snapshot(), 0.0);
+    let runtime = harness(painter);
+    assert!(
+        runtime.presented("big-number-shadow-0").is_some(),
+        "sombra sobre el juego"
+    );
+    assert!(
+        runtime.presented("brand-name-shadow-0").is_none(),
+        "la marca nunca lleva sombra"
+    );
+}
+
+#[test]
+fn transparent_brand_banner_and_every_state_stay_inside_the_window() {
+    for size in ["pill", "bar", "expanded"] {
+        for brand in [false, true] {
+            for case in 0..7 {
+                let mut input = snapshot();
+                match case {
+                    1 => {
+                        if let Some(player) = input.state.player.as_mut() {
+                            let car_id = player.car;
+                            if let Some(car) =
+                                input.state.cars.iter_mut().find(|car| car.id == car_id)
+                            {
+                                car.in_pits = Reliable(true);
+                            }
+                        }
+                    }
+                    2 => {
+                        input.state.player.as_mut().expect("player").lap_invalid = Reliable(true);
+                    }
+                    3 => input.state.cars[0].best_lap_s = Unavailable,
+                    4 => input.state.player = None,
+                    5 => input.state.source_state = SourceState::Waiting,
+                    _ => input.state.source_state = SourceState::Lost,
+                }
+                let settings = Settings {
+                    size: size.into(),
+                    transparent_background: true,
+                    brand_visible: brand.then_some(true),
+                    reference: "leader".into(),
+                    ..Default::default()
+                };
+                let mut painter = Delta::new(&settings, Preferences::default());
+                painter.update(&input, 0.0);
+                let (width, height) = (painter.size().width, painter.size().height);
+                let mut runtime = harness(painter);
+                crate::testdata::assert_inside_window(&mut runtime, (width, height));
+            }
+        }
+    }
 }
 
 #[test]

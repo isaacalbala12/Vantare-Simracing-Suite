@@ -119,7 +119,7 @@ export function useStudioFocus() {
         return;
       if (event.ctrlKey === event.metaKey) return;
       const key = event.key.toLowerCase();
-      if (key === "d" && event.ctrlKey && !event.shiftKey) {
+      if (key === hubKeys.duplicate && event.ctrlKey && !event.shiftKey) {
         const target =
           event.target instanceof HTMLButtonElement ? event.target : null;
         if (

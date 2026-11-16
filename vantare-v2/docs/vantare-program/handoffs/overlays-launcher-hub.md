@@ -3124,3 +3124,19 @@ se conservan. Test de despacho positivo y dos negativos; sin captura porque
 No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
 Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
 Sin gráficos, Plane, merge, promoción ni release propios.
+
+
+## VANTA-144 · captura Relative Vantare sin ventana (Worker B, 16/11/2026)
+
+PR separado desde nightly a3f2c3c9a: capture.rs reutiliza constructor/Widget,
+inyecta snapshot IPC con update antes del frame CPU y dibuja con Rune Offscreen.
+Solo debug y Relative Vantare; guard del servidor antes de argumentos. No se
+inician feed, supervisor, App, ventanas ni cuentas. Sin nuevas dependencias o Looks.
+Mac: build y tres tests CPU de captura PASS; PNG asymmetric validado visualmente,
+420x193, 1454 colores, Giovinazzi/Tu/Jensen con posiciones y gaps. Registro:
+epoch 3, sequence 2, 20 coches, update_build/update_pixels true. Evidencia en
+D:/VantareServer/evidence/overlays-rune/capture-pr/. Clippy Windows PASS y suite
+CPU completa por cola en curso. Auditoria 428 paquetes y seis tests politica PASS.
+El PR recoge head/checks definitivos; captura no acredita paridad GPUI ni medicion.
+Sin graficos en servidor/PC de juego ni merge/release/Plane. Despues: rebasar
+#2359/#2375 conservando los widgets de nightly; luego #2351 con Scene y tools.

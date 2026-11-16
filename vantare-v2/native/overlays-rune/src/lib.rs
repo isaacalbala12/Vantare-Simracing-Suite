@@ -1,4 +1,6 @@
 //! Arranque y política del proceso de overlays; sin crear dispositivos gráficos.
+#[cfg(debug_assertions)]
+pub mod capture;
 pub mod host;
 pub mod input_telemetry;
 #[cfg(any(windows, test))]

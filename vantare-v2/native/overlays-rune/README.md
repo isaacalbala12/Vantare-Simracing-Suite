@@ -210,3 +210,23 @@ datos reales. La prueba comprueba:
 Los tests CPU prueban la descripción de las ventanas, el EOF/cancelación con
 pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del
 marco quieto. No prueban foco, GPU, OBS, VRR ni presentación en pantalla.
+
+
+## Captura de escena Relative Vantare (solo debug, sin ventana)
+
+Preparar layout/snapshot desde `native/ui/src/relative/scenes.json` con el
+preparador QA existente. El modo captura recorta una instancia a su tamaño natural,
+inyecta el snapshot validado por IPC con `Widget::update` antes del frame CPU y
+usa el mismo pintor y fuentes del producto. No conecta al núcleo, pipe ni perfil.
+
+```sh
+vantare-overlays-rune --capture-scene --layout asymmetric.layout.json --snapshot relative.snapshot.json --output asymmetric.png --scale 1
+```
+
+Solo debug; el guard `VANTARE_SIN_GRAFICOS=1` se evalúa antes de procesar argumentos.
+Offscreen no crea ventana ni toma foco, pero requiere GPU: nunca ejecutarlo en el
+servidor. Compilación/tests CPU por la cola; PNG únicamente en Mac autorizado o
+PC de juego con horario. Admite escalas 1/1.25/1.5 y hasta 4096 px por lado.
+Rechaza salidas previas, RGBA transparente o uniforme. El `.capture.txt` registra
+epoch/sequence, coches, resultado del update y dimensiones; no sustituye revisar
+el PNG. No admite Eficiencia, Standings, Delta ni multiclase en este modo.

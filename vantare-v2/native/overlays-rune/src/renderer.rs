@@ -22,7 +22,7 @@ use vantare_ipc::layout::Instance;
 
 type Constructor = fn(&Settings, Preferences, bool, u16, f64) -> Option<Box<dyn Widget>>;
 
-fn constructor(settings: &Settings) -> Option<Constructor> {
+pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
     match settings {
         Settings::TrackMap(_) => Some(<crate::track_map::TrackMap as Widget>::new),
         Settings::FastestLap(_) => Some(<crate::fastest_lap::FastestLap as Widget>::new),

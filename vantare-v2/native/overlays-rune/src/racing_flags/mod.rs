@@ -273,6 +273,20 @@ mod tests {
                 .ne(runtime.instances.iter().map(payload))
     }
 
+    /// Deja asentar una recompostura de texto antes de exigir reposo.
+    fn settle(runtime: &mut Runtime<RacingFlags>) {
+        for _ in 0..3 {
+            rendered(runtime, 0.05);
+        }
+    }
+
+    fn element<'a>(elements: &'a [rune::ElementInfo], key: &str) -> &'a rune::ElementInfo {
+        elements
+            .iter()
+            .find(|element| element.key.as_deref() == Some(key))
+            .unwrap_or_else(|| panic!("falta el elemento {key}"))
+    }
+
     #[test]
     fn dispatch_builds_the_widget_with_its_settings() {
         let layout = vantare_ipc::layout::Layout::from_json(
@@ -313,6 +327,7 @@ mod tests {
             runtime.clock,
         );
         assert!(rendered(&mut runtime, 0.05), "entra la bandera verde");
+        settle(&mut runtime);
         assert!(!rendered(&mut runtime, 0.05), "quieta no repinta");
         assert!(runtime.wake_deadline().is_none(), "ni pulso ni reloj");
     }
@@ -334,12 +349,15 @@ mod tests {
             rendered(&mut runtime, 0.05),
             "el verde oculto retira la tarjeta"
         );
+        settle(&mut runtime);
         assert!(!rendered(&mut runtime, 0.05), "sigue oculta");
         runtime.state.update(
             &photo(3, SourceState::Waiting, vec![session_flag(FlagKind::Green)]),
             runtime.clock,
         );
         assert!(rendered(&mut runtime, 0.05), "la espera vuelve a verse");
+        settle(&mut runtime);
+        assert!(!rendered(&mut runtime, 0.05), "vuelve al reposo");
     }
 
     #[test]
@@ -352,6 +370,7 @@ mod tests {
             runtime.clock,
         );
         assert!(rendered(&mut runtime, 0.05), "amarilla");
+        settle(&mut runtime);
         runtime.state.update(
             &photo(
                 3,
@@ -365,6 +384,7 @@ mod tests {
             "la espera sustituye la bandera"
         );
         assert!(runtime.state.waiting);
+        settle(&mut runtime);
         runtime.state.update(
             &photo(4, SourceState::Lost, vec![session_flag(FlagKind::Yellow)]),
             runtime.clock,
@@ -375,7 +395,39 @@ mod tests {
             runtime.clock,
         );
         assert!(rendered(&mut runtime, 0.05), "recupera la bandera");
+        settle(&mut runtime);
+        assert!(!rendered(&mut runtime, 0.05), "reposo tras recuperar");
         assert!(runtime.wake_deadline().is_none());
+    }
+
+    #[test]
+    fn display_texts_use_the_display_baseline() {
+        let prefs = Preferences::default();
+        let mut runtime = runtime(RacingFlags::new(&Config::default(), prefs, false, 15, 0.0));
+        let mut yellow = photo(2, SourceState::Live, vec![session_flag(FlagKind::Yellow)]);
+        yellow.state.flags = Quality::Reliable(vec![
+            session_flag(FlagKind::Yellow),
+            Flag {
+                kind: FlagKind::Yellow,
+                scope: FlagScope::Sector(0),
+            },
+        ]);
+        runtime.state.update(&yellow, runtime.clock);
+        assert!(rendered(&mut runtime, 0.05), "amarilla con sectores");
+        settle(&mut runtime);
+        let elements = runtime.elements();
+        let baseline = crate::vantare::Style::compiled().fonts.display_baseline;
+        assert!(baseline > 0.0, "el estilo canónico desplaza la Display");
+        assert_eq!(element(&elements, "title").rect[1], 11.0 + baseline);
+        assert_eq!(
+            element(&elements, "sector-label-0").rect[1],
+            59.0 + baseline
+        );
+        assert_eq!(
+            element(&elements, "message").rect[1],
+            37.0,
+            "Body sin desplazamiento"
+        );
     }
 
     #[test]

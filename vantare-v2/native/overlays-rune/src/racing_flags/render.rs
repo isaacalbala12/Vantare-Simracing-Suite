@@ -88,6 +88,7 @@ fn view(style: &Style, scene: Option<&Scene>) -> El {
         return root;
     };
     let tone = tone(scene);
+    let baseline = style.fonts.display_baseline;
     let mut card = el()
         .key("card")
         .size(WIDTH, HEIGHT)
@@ -108,7 +109,7 @@ fn view(style: &Style, scene: Option<&Scene>) -> El {
                 .color(ink(scene.text_color))
                 .size(250.0, 22.0)
                 .truncate()
-                .pin(Some(76.0), Some(title_top), None, None),
+                .pin(Some(76.0), Some(title_top + baseline), None, None),
         )
         .child(
             text(scene.message.to_string())
@@ -253,6 +254,7 @@ fn chip(style: &Style, index: usize, active: bool) -> El {
         .pin(Some(x), Some(59.0), None, None)
         .child(
             text(["S1", "S2", "S3"][index])
+                .key(format!("sector-label-{index}"))
                 .font(font(style, Face::Display, 10.0, 14.0, 1.0, 600.0))
                 .color(if active {
                     hex("#1a1205")
@@ -260,7 +262,7 @@ fn chip(style: &Style, index: usize, active: bool) -> El {
                     hex("#8e8587")
                 })
                 .size(24.0, 14.0)
-                .pin(Some(8.0), Some(0.0), None, None),
+                .pin(Some(8.0), Some(style.fonts.display_baseline), None, None),
         )
 }
 

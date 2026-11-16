@@ -454,7 +454,12 @@ impl Painter {
                     .font(name_font)
                     .color(self.variant().header_color)
                     .size(name, h)
-                    .pin(Some(right - name), Some(text_top(s, Face::Display, y)), None, None),
+                    .pin(
+                        Some(right - name),
+                        Some(text_top(s, Face::Display, y)),
+                        None,
+                        None,
+                    ),
             );
         (element, name + b.gap + symbol)
     }

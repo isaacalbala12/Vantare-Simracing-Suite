@@ -135,8 +135,8 @@ fn the_sweep_uses_800_ms_and_the_notice_expires_at_1200() {
     let ended = motion.sample(1.0 + 0.801);
     assert!(ended.rows[&1].sweep.is_none(), "800 ms de barrido");
     assert_eq!(motion.next_wake(1.0), Some(1.0), "mientras barre, frame");
-    assert_eq!(motion.next_wake(1.1), Some(2.2), "solo caduca el aviso");
-    assert_eq!(motion.next_wake(2.3), None, "cero despertares");
+    assert_eq!(motion.next_wake(1.1), Some(1.1), "aún dura el destello");
+    assert_eq!(motion.next_wake(2.5), None, "cero despertares");
 }
 
 #[test]

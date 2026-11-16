@@ -18,6 +18,7 @@ pub(crate) struct Pedals {
     state: scene::State,
     scene: scene::Scene,
     painter: Painter,
+    revision: Option<(u64, u64)>,
 }
 
 fn project(settings: &Settings, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
@@ -41,6 +42,7 @@ impl Pedals {
             state,
             scene,
             painter,
+            revision: None,
         }
     }
     fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
@@ -54,6 +56,11 @@ impl Pedals {
         }
     }
     fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> Update {
+        let revision = (snapshot.epoch, snapshot.sequence);
+        if self.revision == Some(revision) {
+            return Update::default();
+        }
+        self.revision = Some(revision);
         let vm = project(&self.settings, snapshot, self.prefs);
         self.state.update(snapshot, &vm);
         let scene = scene::sample(&vm, &self.state);
@@ -111,13 +118,6 @@ mod tests {
     use super::*;
     use rune::{Env, Runtime, render::Instance, text::TextSystem};
     use vantare_domain::{Quality::Reliable, widget_settings::look::Look};
-
-    fn for_look(look: Look) -> Settings {
-        Settings {
-            design_system: look,
-            ..Settings::for_look(look)
-        }
-    }
 
     fn live_snapshot() -> Snapshot {
         let mut snapshot = crate::testdata::snapshot();
@@ -181,6 +181,8 @@ mod tests {
             TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
         );
         runtime.poll = Some(|harness, clock, tx| {
+            // Como `host::poll`: sin muelles ni presencia implícita por datos.
+            tx.instant();
             let mut build = false;
             if let Some(snapshot) = harness.next.take() {
                 build = harness.pedals.update(&snapshot, clock).build;
@@ -195,7 +197,7 @@ mod tests {
     #[test]
     fn both_looks_keep_their_width_and_accept_their_settings() {
         for (look, width) in [(Look::Vantare, 96.0), (Look::Eficiencia, 108.0)] {
-            let settings = for_look(look);
+            let settings = Settings::for_look(look);
             let widget = Pedals::new(&settings, Preferences::default());
             assert_eq!(widget.size().width, width, "{look:?}");
             assert_eq!(widget.size().height, scene::HEIGHT);
@@ -212,7 +214,10 @@ mod tests {
         let _fonts = rune::text::with_families("Inter", "Inter");
         for look in [Look::Vantare, Look::Eficiencia] {
             let mut snapshot = live_snapshot();
-            let mut runtime = make_runtime(Pedals::new(&for_look(look), Preferences::default()));
+            let mut runtime = make_runtime(Pedals::new(
+                &Settings::for_look(look),
+                Preferences::default(),
+            ));
             runtime.state.next = Some(snapshot.clone());
             assert!(frame(&mut runtime, 0.0), "{look:?}: primera imagen");
             runtime.state.next = Some(snapshot.clone());
@@ -230,6 +235,7 @@ mod tests {
                 .expect("jugador")
                 .telemetry
                 .throttle = Reliable(0.93);
+            snapshot.sequence += 1;
             runtime.state.next = Some(snapshot.clone());
             assert!(
                 frame(&mut runtime, 0.3),
@@ -244,7 +250,7 @@ mod tests {
     fn hidden_peak_and_efficiency_limiter_do_not_present_images() {
         let _fonts = rune::text::with_families("Inter", "Inter");
         // Vantare con el pico apagado: cambia el pico, no lo visible.
-        let mut options = for_look(Look::Vantare);
+        let mut options = Settings::for_look(Look::Vantare);
         options.show_brake_peak = false;
         let mut snapshot = live_snapshot();
         set_brake(&mut snapshot, 0.50);
@@ -259,7 +265,7 @@ mod tests {
         // Eficiencia no pinta el limitador.
         let mut snapshot = live_snapshot();
         let mut runtime = make_runtime(Pedals::new(
-            &for_look(Look::Eficiencia),
+            &Settings::for_look(Look::Eficiencia),
             Preferences::default(),
         ));
         runtime.state.next = Some(snapshot.clone());
@@ -276,5 +282,100 @@ mod tests {
             !frame(&mut runtime, 0.1),
             "limitador invisible en Eficiencia"
         );
+    }
+
+    #[test]
+    fn the_efficiency_frame_and_gradient_stay_inside_the_widget() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let settings = Settings::for_look(Look::Eficiencia);
+        let width = scene::width_for_gap(Look::Eficiencia, settings.gap);
+        let mut runtime = make_runtime(Pedals::new(&settings, Preferences::default()));
+        runtime.state.next = Some(live_snapshot());
+        assert!(frame(&mut runtime, 0.0));
+        let mut full = Vec::new();
+        for instance in &runtime.instances {
+            let [x, y, w, h] = instance.rect;
+            assert!(
+                y >= -0.01 && y + h <= scene::HEIGHT + 0.01,
+                "instancia fuera del widget"
+            );
+            if (w - width).abs() < 0.01 && (h - scene::HEIGHT).abs() < 0.01 {
+                full.push((x, y, instance.border[3] > 0.0));
+            }
+        }
+        assert_eq!(full.len(), 3, "panel, degradado y marco");
+        assert!(
+            full.iter()
+                .all(|(x, y, _)| x.abs() < 0.01 && y.abs() < 0.01),
+            "capas desplazadas: {full:?}"
+        );
+        assert_eq!(
+            full.iter().filter(|(_, _, frame)| *frame).count(),
+            1,
+            "marco"
+        );
+    }
+
+    #[test]
+    fn the_vantare_limiter_and_peak_present_images() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut snapshot = live_snapshot();
+        set_brake(&mut snapshot, 0.25);
+        let mut runtime = make_runtime(Pedals::new(
+            &Settings::for_look(Look::Vantare),
+            Preferences::default(),
+        ));
+        runtime.state.next = Some(snapshot.clone());
+        assert!(frame(&mut runtime, 0.0), "primera imagen");
+        let peak = |runtime: &Runtime<Harness>| {
+            runtime
+                .instances
+                .iter()
+                .find(|instance| {
+                    (instance.rect[2] - 22.0).abs() < 0.01 && (instance.rect[3] - 2.0).abs() < 0.01
+                })
+                .map(|instance| instance.rect[1])
+                .expect("línea del pico")
+        };
+        let first = peak(&runtime);
+
+        set_brake(&mut snapshot, 0.75);
+        snapshot.sequence += 1;
+        runtime.state.next = Some(snapshot.clone());
+        assert!(frame(&mut runtime, 0.1), "el pico se pinta");
+        assert_ne!(peak(&runtime), first, "el pico se mueve");
+
+        snapshot
+            .state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .pit_limiter_active = Reliable(true);
+        snapshot.sequence += 1;
+        runtime.state.next = Some(snapshot.clone());
+        assert!(frame(&mut runtime, 0.2), "la banda del limitador se pinta");
+        assert!(!frame(&mut runtime, 0.3), "reposo tras la banda");
+    }
+
+    #[test]
+    fn transparent_background_paints_no_panel() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for look in [Look::Vantare, Look::Eficiencia] {
+            let mut settings = Settings::for_look(look);
+            settings.transparent_background = true;
+            let width = scene::width_for_gap(look, settings.gap);
+            let mut runtime = make_runtime(Pedals::new(&settings, Preferences::default()));
+            runtime.state.next = Some(live_snapshot());
+            assert!(frame(&mut runtime, 0.0), "{look:?}: primera imagen");
+            assert!(!runtime.instances.is_empty(), "{look:?}: no pinta nada");
+            assert!(
+                runtime
+                    .instances
+                    .iter()
+                    .all(|instance| !(instance.rect[2] >= width - 0.01
+                        && instance.rect[3] >= scene::HEIGHT - 0.01)),
+                "{look:?}: panel con fondo transparente"
+            );
+        }
     }
 }

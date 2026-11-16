@@ -2,7 +2,7 @@
 use super::scene::{self, HEIGHT, Scene};
 use crate::vantare::paint::{Face, WHITE, font};
 use crate::vantare::{Style, alpha};
-use rune::{Align, Color, El, el, text};
+use rune::{Align, Color, El, Shape, canvas, el, text};
 use std::sync::Arc;
 use vantare_domain::{
     format::{Language, Preferences},
@@ -287,7 +287,7 @@ impl Painter {
     fn shadowed(&self, value: &str, mid: f32, top: f32) -> El {
         let mut node = el().size(TEXT_BOX, VANTARE_VALUE_H).pin(
             Some(mid - TEXT_BOX / 2.0),
-            Some(text_top(&self.style, Face::Mono, top)),
+            Some(top),
             None,
             None,
         );
@@ -311,7 +311,12 @@ impl Painter {
                     .color(alpha(BLACK, strength))
                     .size(TEXT_BOX, VANTARE_VALUE_H)
                     .align(Align::Center)
-                    .pin(Some(dx), Some(dy), None, None),
+                    .pin(
+                        Some(dx),
+                        Some(dy + text_top(&self.style, Face::Mono, 0.0)),
+                        None,
+                        None,
+                    ),
             );
         }
         node.child(self.vantare_value(value, TEXT_BOX / 2.0, 0.0))
@@ -324,14 +329,17 @@ impl Painter {
             .motion(rune::Spring::NONE);
         if !self.transparent {
             root = root.radius(6.0).fill(alpha(hex("#101113"), 0.90)).child(
-                el().size(width, HEIGHT).radius(6.0).linear_gradient(
-                    std::f32::consts::PI,
-                    [
-                        (0.0, alpha(WHITE, 0.04)),
-                        (0.32, alpha(WHITE, 0.0)),
-                        (1.0, alpha(WHITE, 0.0)),
-                    ],
-                ),
+                el().size(width, HEIGHT)
+                    .radius(6.0)
+                    .linear_gradient(
+                        std::f32::consts::PI,
+                        [
+                            (0.0, alpha(WHITE, 0.04)),
+                            (0.32, alpha(WHITE, 0.0)),
+                            (1.0, alpha(WHITE, 0.0)),
+                        ],
+                    )
+                    .pin(Some(0.0), Some(0.0), None, None),
             );
         }
         let (mut root, status_height) = self.eficiencia_status(root, width);
@@ -364,20 +372,12 @@ impl Painter {
                 let inner = track_h - 2.0;
                 let h = fill * inner;
                 let y = track_top + 1.0 + inner - h;
-                root = root.child(el().size(12.0, h).radius(3.0).fill(colors[index]).pin(
-                    Some(track_x + 1.0),
-                    Some(y),
-                    None,
-                    None,
-                ));
-                // GPUI redondea solo las esquinas de arriba; el pie cuadrado lo tapa.
-                let foot = h.min(3.0);
-                root = root.child(el().size(12.0, foot).fill(colors[index]).pin(
-                    Some(track_x + 1.0),
-                    Some(track_top + 1.0 + inner - foot),
-                    None,
-                    None,
-                ));
+                root = root.child(
+                    canvas(Shape::new().fill(fill_points(h), colors[index]))
+                        .key(format!("pedals-fill-{index}"))
+                        .size(12.0, h)
+                        .pin(Some(track_x + 1.0), Some(y), None, None),
+                );
             }
             let label_top = track_top + track_h + 4.0;
             root = root.child(
@@ -426,7 +426,8 @@ impl Painter {
                 .child(
                     el().size(width, HEIGHT)
                         .radius(6.0)
-                        .border(1.0, alpha(WHITE, 0.12)),
+                        .border(1.0, alpha(WHITE, 0.12))
+                        .pin(Some(0.0), Some(0.0), None, None),
                 )
                 .child(
                     el().size(width, 6.0)
@@ -491,6 +492,30 @@ fn hex(value: &str) -> Color {
     rune::color::hex(value).expect("canonical Eficiencia color")
 }
 
+/// GPUI paints the Eficiencia fill with 3 px top corners and a square base; the
+/// box clips those arcs on very low fills. Rune has no per-corner radius.
+fn fill_points(height: f32) -> Vec<[f32; 2]> {
+    const WIDTH: f32 = 12.0;
+    const RADIUS: f32 = 3.0;
+    const STEPS: usize = 8;
+    let arc = |y: f32| (RADIUS * RADIUS - (RADIUS - y).powi(2)).max(0.0).sqrt();
+    let end = height.min(RADIUS);
+    let mut points = vec![[RADIUS, 0.0], [WIDTH - RADIUS, 0.0]];
+    for step in 1..=STEPS {
+        let y = end * step as f32 / STEPS as f32;
+        points.push([WIDTH - RADIUS + arc(y), y]);
+    }
+    if height > RADIUS {
+        points.push([WIDTH, height]);
+        points.push([0.0, height]);
+    }
+    for step in (1..=STEPS).rev() {
+        let y = end * step as f32 / STEPS as f32;
+        points.push([RADIUS - arc(y), y]);
+    }
+    points
+}
+
 /// GPUI's `baseline` adds the face offset; Rune's layout needs it in the y.
 fn text_top(style: &Style, face: Face, top: f32) -> f32 {
     top + match face {
@@ -532,5 +557,19 @@ mod tests {
         assert!(scene.status.is_some(), "aviso de fuente ausente");
         let painter = Painter::new(&settings, prefs, &scene);
         assert_eq!(painter.band_top(), 1.0);
+    }
+
+    #[test]
+    fn the_fill_keeps_three_pixel_top_corners_and_a_square_base() {
+        let tall = fill_points(40.0);
+        assert!(tall.contains(&[0.0, 40.0]), "base cuadrada izquierda");
+        assert!(tall.contains(&[12.0, 40.0]), "base cuadrada derecha");
+        assert!(tall.contains(&[3.0, 0.0]) && tall.contains(&[9.0, 0.0]));
+
+        // Con menos de 3 px, GPUI recorta los arcos contra la caja: no llega a los lados.
+        let low = fill_points(2.0);
+        assert!(low.iter().all(|[x, _]| *x > 0.0 && *x < 12.0));
+        let left = low.iter().map(|point| point[0]).fold(f32::MAX, f32::min);
+        assert!((left - (3.0 - 8.0_f32.sqrt())).abs() < 0.001);
     }
 }

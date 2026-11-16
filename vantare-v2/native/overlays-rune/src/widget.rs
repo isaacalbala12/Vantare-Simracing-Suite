@@ -21,6 +21,9 @@ pub(crate) trait Widget {
     where
         Self: Sized;
     fn attach_assets(&mut self, _assets: &Arc<rune::ImageCache>) {}
+    fn shortcut(&mut self) -> Update {
+        Update::default()
+    }
     fn configured(&self, settings: &Settings, prefs: Preferences) -> bool;
     fn size(&self) -> Size;
     fn size_for(&self, snapshot: Option<&Snapshot>) -> Size;

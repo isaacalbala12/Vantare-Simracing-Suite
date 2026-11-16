@@ -3152,3 +3152,15 @@ sigue en Cargo.lock y el manifiesto. README declara la carrera entre comprobar
 y escribir PNG y exige rutas distintas. Sin cambios de derechos ni gráficos en
 el servidor. Clippy, suite CPU y subsistema PE pendientes de cola en este cambio;
 resultado final y head en #2391.
+
+
+### #2391 · rebase para preview Studio (Worker B, 16/11/2026)
+
+Rebasado sobre nightly e8a0591b9, conservando todos los widgets y attach_assets
+del trait Widget. Captura sigue limitada a Relative Vantare, cuyo hook de assets
+es el default sin recursos; no se amplía despacho ni permisos. Se conservan
+size_for(Some(snapshot)) antes de update, test Paused, consola solo debug y
+registro sin rune_rev manual; carrera de salida documentada. Comentarios y
+reviews publicados en el PR leídos; los tres ajustes conocidos ya estaban en
+7414d2c26. Nueva verificación completa por cola, sin gráficos; head/checks
+definitivos en el PR. Mac offline: no se repite captura GPU en este rebase.

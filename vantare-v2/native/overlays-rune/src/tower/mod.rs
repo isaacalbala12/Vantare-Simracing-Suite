@@ -280,10 +280,84 @@ mod tests {
         });
         runtime.frame(1.0);
         assert!(runtime.find("tower-session").is_some(), "vista construida");
+        let elements = runtime.elements();
+        let cards: Vec<_> = elements
+            .iter()
+            .filter(|element| {
+                element
+                    .key
+                    .as_deref()
+                    .is_some_and(|key| key.starts_with("tower-card-"))
+            })
+            .collect();
+        assert_eq!(cards.len(), 10, "dos copias de cinco pilotos");
+        let mut xs: Vec<f32> = cards.iter().map(|card| card.target[0]).collect();
+        xs.sort_by(|a, b| a.partial_cmp(b).expect("orden"));
+        xs.dedup();
+        assert_eq!(xs.len(), 10, "cada copia en su propia ranura");
+        let highlights = elements
+            .iter()
+            .filter(|element| {
+                element
+                    .key
+                    .as_deref()
+                    .is_some_and(|key| key.starts_with("tower-highlight-"))
+            })
+            .count();
+        assert_eq!(highlights, 2, "el jugador se resalta una vez por copia");
         assert!(runtime.wake_deadline().is_some(), "carrusel con condición");
         runtime.state.policy(true, 5, 1.1);
         runtime.frame(0.3);
         assert_eq!(runtime.wake_deadline(), None, "reducido no late");
+    }
+
+    #[test]
+    fn the_overtake_cue_is_painted_with_its_position_and_strength() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut tower = tower(&Settings::default(), false);
+        let photo = snapshot();
+        tower.update(&photo, 0.0);
+        let mut runtime = rune::Runtime::with_text(
+            Box::new(tower) as Box<dyn crate::widget::Widget>,
+            |state, _| state.view(),
+            (SIZE.width, SIZE.height),
+            rune::Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        runtime.poll = Some(|tower, clock, tx| {
+            let update = tower.animate(clock);
+            tower.schedule(clock, tx);
+            update.build
+        });
+        runtime.frame(1.0);
+        let mut swapped = photo.clone();
+        swapped.sequence += 1;
+        swapped.state.cars[0].position = Reliable(2);
+        swapped.state.cars[1].position = Reliable(1);
+        runtime.state.update(&swapped, 1.0);
+        runtime.frame(0.1);
+        let cue = |runtime: &rune::Runtime<Box<dyn crate::widget::Widget>>| {
+            runtime
+                .elements()
+                .into_iter()
+                .find(|element| element.key.as_deref() == Some("tower-cue-1-0"))
+                .expect("barra de aviso")
+        };
+        let painted = cue(&runtime);
+        assert_eq!(painted.target[1], 44.0, "la barra va en y=44");
+        assert!(
+            painted.fill.a > 0.9,
+            "aviso a plena fuerza: {:?}",
+            painted.fill
+        );
+        runtime.state.animate(2.0);
+        runtime.frame(1.0);
+        let off = cue(&runtime);
+        assert_eq!(off.fill.a, 0.0, "el aviso se apaga");
+        assert!(
+            runtime.find("tower-card-1-0").is_some(),
+            "la fila sigue pintada"
+        );
     }
 
     #[test]

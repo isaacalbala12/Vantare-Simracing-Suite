@@ -315,8 +315,7 @@ impl Painter {
                 el().key(format!("tower-highlight-{}-{}", live.id, live.copy))
                     .size((width - 4.0).max(0.0), 36.0)
                     .radius(6.0)
-                    .linear_gradient(std::f32::consts::PI, [(0.0, CLEAR), (1.0, CLEAR)])
-                    .live_gradient(&live.highlight, &live.highlight)
+                    .live_fill(&live.highlight)
                     .pin(Some(0.0), Some(9.0), None, None),
             );
         }
@@ -325,8 +324,7 @@ impl Painter {
             el().key(format!("tower-cue-{}-{}", live.id, live.copy))
                 .size((width - 8.0).max(0.0), 2.0)
                 .radius(1.0)
-                .linear_gradient(std::f32::consts::PI, [(0.0, CLEAR), (1.0, CLEAR)])
-                .live_gradient(&live.cue, &live.cue)
+                .live_fill(&live.cue)
                 .pin(Some(4.0), Some(43.0), None, None),
         )
         .child(self.caption(

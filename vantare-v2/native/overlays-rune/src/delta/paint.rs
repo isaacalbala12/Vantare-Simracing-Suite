@@ -321,12 +321,7 @@ impl Painter {
                     ))
                     .color(ink)
                     .size(width * 0.5, g.banner_height)
-                    .pin(
-                        Some(pad),
-                        Some(text_top(s, Face::Display, 0.0)),
-                        None,
-                        None,
-                    ),
+                    .pin(Some(pad), Some(text_top(s, Face::Display, 0.0)), None, None),
             )
             .child(
                 text(right)
@@ -454,7 +449,12 @@ impl Painter {
                     .font(name_font)
                     .color(self.variant().header_color)
                     .size(name + 2.0, h)
-                    .pin(Some(right - name), Some(text_top(s, Face::Display, y)), None, None),
+                    .pin(
+                        Some(right - name),
+                        Some(text_top(s, Face::Display, y)),
+                        None,
+                        None,
+                    ),
             );
         (element, name + b.gap + symbol)
     }
@@ -681,22 +681,16 @@ impl Painter {
         if !self.scene.message && self.scene.phase == Phase::Live && self.scene.bar != 0.0 {
             let half = span / 2.0;
             let length = half * self.scene.bar.abs();
-            let (x, solid, angle, corners): (f32, Color, f32, [f32; 4]) =
-                if self.scene.bar < 0.0 {
-                    (
-                        mid - length,
-                        d.fill_gain,
-                        270.0,
-                        [d.bar / 2.0, 0.0, 0.0, d.bar / 2.0],
-                    )
-                } else {
-                    (
-                        mid,
-                        d.fill_loss,
-                        90.0,
-                        [0.0, d.bar / 2.0, d.bar / 2.0, 0.0],
-                    )
-                };
+            let (x, solid, angle, corners): (f32, Color, f32, [f32; 4]) = if self.scene.bar < 0.0 {
+                (
+                    mid - length,
+                    d.fill_gain,
+                    270.0,
+                    [d.bar / 2.0, 0.0, 0.0, d.bar / 2.0],
+                )
+            } else {
+                (mid, d.fill_loss, 90.0, [0.0, d.bar / 2.0, d.bar / 2.0, 0.0])
+            };
             root = root.child(
                 el().key("bar-fill")
                     .pin(Some(x), Some(y), None, None)
@@ -718,7 +712,12 @@ impl Painter {
         };
         root = root.child(
             el().key("bar-center")
-                .pin(Some(mid - 1.0), Some(y + (d.bar - d.tick) / 2.0), None, None)
+                .pin(
+                    Some(mid - 1.0),
+                    Some(y + (d.bar - d.tick) / 2.0),
+                    None,
+                    None,
+                )
                 .size(2.0, d.tick)
                 .radius(1.0)
                 .fill(center),
@@ -729,10 +728,7 @@ impl Painter {
         let ink = self.ink(c.column);
         let top = y + d.bar + 2.0;
         let h = d.tick_labels - 2.0;
-        let zero_width = eficiencia::width(
-            "0",
-            font(s, Face::Mono, 9.0, h, 0.0, 400.0),
-        );
+        let zero_width = eficiencia::width("0", font(s, Face::Mono, 9.0, h, 0.0, 400.0));
         root = root
             .child(self.label(
                 "bar-min",
@@ -812,7 +808,16 @@ impl Painter {
                     .live
                     .then_some(sector.progress)
                     .flatten()
-                    .map(|fraction| (fraction, if self.scene.gain { c.green } else { d.fill_loss }))
+                    .map(|fraction| {
+                        (
+                            fraction,
+                            if self.scene.gain {
+                                c.green
+                            } else {
+                                d.fill_loss
+                            },
+                        )
+                    })
             });
             if let Some((fraction, color)) = fill {
                 root = root.child(

@@ -202,11 +202,11 @@ mediante el mismo clip por widget que renderer.rs:268–279. No cambia el helper
 | view::paint_table y paint_row (508–525,983–986) | fantasmas antes de presencias; top y alfa vivos, cada capa con pin |
 | view::paint_pit_rail (1776–1786) | rail acompaña filas y fantasmas; multiplica alfa de presencia; canal PIT en E6 |
 
-FLIP usa [0,22;0,9;0,3;1], umbral0,5 y duración entera
+FLIP usa [0,22;0,9;0,3;1], umbral 0,5 y duración entera
 min(280+abs(from)·1,1,460) ms: 30 px→313 ms, 400 px→460 ms.
 Entrada/salida usa 200 ms EASE_OUT [0;0;0,58;1]. Se reutiliza Tween compartido:
-el test numérico contrasta las tres curvas con la bisección GPUI de30 iteraciones
-(tolerancia2e−6). Retarget y reentrada parten del valor vivo, sin salto.
+el test numérico contrasta las tres curvas con la bisección GPUI de 30 iteraciones
+(tolerancia 2e−6). Retarget y reentrada parten del valor vivo, sin salto.
 Sequence solo participa en la continuidad de GPUI; no cambia la proyección,
 el cache de Board ni la comparación estructural de Frame para repintar.
 Con foto atrasada y contenido distinto se rompe continuidad y se resiembra sin
@@ -220,4 +220,4 @@ La entrada de handoff de E5 se entrega en el cuerpo del futuro PR, por orden de 
 
 ## Erratas numéricas del plan/inventario E5
 
-- Inventario decía FLIP(0,5)≈0,93; GPUI da0,94859246 con [0,22;0,9;0,3;1] y la bisección de motion.rs:27–53.
+- Inventario decía FLIP(0,5)≈0,93; GPUI da 0,94859246 con [0,22;0,9;0,3;1] y la bisección de motion.rs:27–53.

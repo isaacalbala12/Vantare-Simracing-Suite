@@ -225,7 +225,7 @@ fn animated_rows_and_ghosts_stay_inside_the_window() {
         let mut m = Motion::default();
         m.update(&p, 3, 0.0);
         p.rows.swap(0, 1);
-        p.rows.remove(2);
+        let departed=p.rows.remove(2).id;
         v.ingest(Arc::new(p.clone()));
         m.update(&p, 2, 1.0);
         for clock in [1.0, 1.05, 1.1, 1.2, 1.313] {
@@ -235,6 +235,17 @@ fn animated_rows_and_ghosts_stay_inside_the_window() {
             let mut rt = paint_tests::paint(clone, Language::Es);
             crate::testdata::assert_inside_window(&mut rt, size);
             let elements = rt.elements();
+            let ghost_key=format!("efficiency-row-{}",departed.0);
+            let ghost=elements.iter().find(|e|e.key.as_deref()==Some(&ghost_key));
+            if clock<1.2 {
+                let ghost=ghost.expect("el fantasma se pinta durante los 200 ms");
+                close(ghost.rect[1],v.plan.table_top+v.plan.head_row+60.0);
+                close(ghost.opacity,1.0-gpui_bezier([0.0,0.0,0.58,1.0],((clock-1.0)/0.2) as f32));
+            } else { assert!(ghost.is_none(),"no hay capa del fantasma al terminar"); }
+            let row_key=format!("efficiency-row-{}",p.rows[0].id.0);
+            let row=elements.iter().find(|e|e.key.as_deref()==Some(&row_key)).unwrap();
+            let remaining=1.0-gpui_bezier([0.22,0.9,0.3,1.0],((clock-1.0)/0.313) as f32);
+            close(row.rect[1],(v.plan.table_top+v.plan.head_row+30.0*remaining+0.5).floor());
             assert!(
                 elements.iter().any(
                     |e| e.key.as_deref() == Some(&format!("efficiency-row-{}", p.rows[0].id.0))

@@ -303,6 +303,11 @@ impl Motion {
                 Some(Flash::Lead)
             } else if session_best && valid_lap(*old_best) != valid_lap(row.best_lap_s) {
                 Some(Flash::Best)
+            } else if match (valid_lap(*old_best), valid_lap(row.best_lap_s)) {
+                (Some(old), Some(new)) => new < old - 0.0005,
+                _ => false,
+            } {
+                Some(Flash::PersonalBest)
             } else if row.position < *old_position {
                 Some(Flash::Gain)
             } else if row.position > *old_position {

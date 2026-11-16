@@ -1,7 +1,10 @@
 //! Canales literales de GPUI standings::motion::Motion::update_rows (Vantare).
 use crate::{motion::Tween, vantare::Style};
 use std::collections::{HashMap, HashSet};
-use vantare_domain::{CarId, standings::Board};
+use vantare_domain::{
+    CarId,
+    standings::{Board, Mark},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Flash {
@@ -9,7 +12,6 @@ pub(super) enum Flash {
     Loss,
     Lead,
     Best,
-    PersonalBest,
     Pit,
 }
 
@@ -19,8 +21,7 @@ struct Snap {
     position: i64,
     leader: bool,
     pit: bool,
-    best: Option<f64>,
-    fastest: bool,
+    best_mark: Mark,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -55,30 +56,33 @@ pub(super) struct Motion {
     seeded: bool,
 }
 impl Motion {
-    /// Destellos por transición de fila, en el orden de GPUI: boxes, liderato,
-    /// posición y vuelta rápida. La fuerza baja linealmente durante flash_ms.
-    pub fn observe(&mut self, board: &Board, style: &Style, clock: f64, reduced: bool) {
+    /// Destellos por transición de fila visible, en el orden de GPUI: boxes,
+    /// liderato, posición y vuelta rápida. La fuerza baja linealmente durante
+    /// flash_ms. Una fila que aparece no tiene estado anterior y no destella.
+    pub fn observe(
+        &mut self,
+        board: &Board,
+        targets: &[(CarId, f32)],
+        style: &Style,
+        clock: f64,
+        reduced: bool,
+    ) {
         self.flash_ms = f64::from(style.motion.flash_ms) / 1000.0;
-        let rows: Vec<_> = board.rows();
-        let fastest = rows
-            .iter()
-            .filter_map(|row| Some((row.id, row.best_lap_s?)))
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-            .map(|(id, _)| id);
-        let next: Vec<Snap> = rows
-            .iter()
+        let visible: HashSet<_> = targets.iter().map(|(id, _)| *id).collect();
+        let next: Vec<Snap> = board
+            .rows()
+            .into_iter()
+            .filter(|row| visible.contains(&row.id))
             .map(|row| Snap {
                 id: row.id,
                 position: row.position.parse().unwrap_or(0),
                 leader: row.is_leader,
                 pit: row.in_pits,
-                best: row.best_lap_s,
-                fastest: fastest == Some(row.id),
+                best_mark: row.best_mark,
             })
             .collect();
         // Una fila que sale deja de pintar su destello.
-        self.flash
-            .retain(|id, _| next.iter().any(|row| row.id == *id));
+        self.flash.retain(|id, _| visible.contains(id));
         if reduced {
             self.prev = Some(next);
             self.flash.clear();
@@ -98,15 +102,10 @@ impl Motion {
                 Some(Flash::Lead)
             } else if now.position > 0 && now.position < old.position {
                 Some(Flash::Gain)
-            } else if now.position > old.position {
+            } else if old.position > 0 && now.position > old.position {
                 Some(Flash::Loss)
-            } else if now.fastest && !old.fastest {
+            } else if now.best_mark == Mark::Fastest && old.best_mark != Mark::Fastest {
                 Some(Flash::Best)
-            } else if match (old.best, now.best) {
-                (Some(old), Some(new)) => new < old - 0.0005,
-                _ => false,
-            } {
-                Some(Flash::PersonalBest)
             } else {
                 None
             };

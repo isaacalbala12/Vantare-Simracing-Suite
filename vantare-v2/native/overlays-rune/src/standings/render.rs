@@ -1158,7 +1158,7 @@ impl Painter<'_> {
 /// Colores literales de `vantare.rs` para el destello de fila.
 pub(super) fn flash_color(kind: motion::Flash, style: &Style) -> Color {
     match kind {
-        motion::Flash::Gain | motion::Flash::PersonalBest => style.colors.flash_gain,
+        motion::Flash::Gain => style.colors.flash_gain,
         motion::Flash::Loss => style.colors.flash_loss,
         motion::Flash::Lead => style.colors.leader,
         motion::Flash::Best => style.colors.purple,

@@ -4,6 +4,7 @@ use rune::Runtime;
 use vantare_domain::{
     CarId,
     Quality::Reliable,
+    standings::Mark,
     widget_settings::look::{Accent, Tone},
 };
 
@@ -403,30 +404,19 @@ fn a_flash_decays_linearly_for_1400_ms_and_releases_the_clock() {
     let style = Style::compiled();
     assert_eq!(style.motion.flash_ms, 1400.0);
     assert_eq!(style.motion.flash_boost, 1.0);
-    assert_eq!(
-        render::flash_color(motion::Flash::Gain, &style),
-        style.colors.flash_gain
-    );
-    assert_eq!(
-        render::flash_color(motion::Flash::PersonalBest, &style),
-        style.colors.flash_gain
-    );
-    assert_eq!(
-        render::flash_color(motion::Flash::Loss, &style),
-        style.colors.flash_loss
-    );
-    assert_eq!(
-        render::flash_color(motion::Flash::Lead, &style),
-        style.colors.leader
-    );
-    assert_eq!(
-        render::flash_color(motion::Flash::Best, &style),
-        style.colors.purple
-    );
-    assert_eq!(
-        render::flash_color(motion::Flash::Pit, &style),
-        style.colors.box_fill
-    );
+    for (kind, hex) in [
+        (motion::Flash::Gain, "#22c55eff"),
+        (motion::Flash::Loss, "#e14a54ff"),
+        (motion::Flash::Lead, "#f5c518ff"),
+        (motion::Flash::Best, "#b26bffff"),
+        (motion::Flash::Pit, "#f59e0bff"),
+    ] {
+        assert_eq!(
+            render::flash_color(kind, &style).hex(),
+            hex,
+            "color GPUI de {kind:?}"
+        );
+    }
     let mut rt = runtime("expanded", Tone::Neo);
     let mut input = photo();
     swap(&mut input);
@@ -471,27 +461,20 @@ fn the_pit_flash_uses_the_box_fill_kind() {
     );
 }
 #[test]
-fn the_fastest_lap_and_a_personal_best_flash_with_their_kinds() {
+fn the_fastest_mark_flashes_best_and_a_personal_best_does_not() {
     let mut rt = runtime("expanded", Tone::Neo);
     let rows = rt.state.scene.board.as_ref().unwrap().rows();
-    let (fastest, best) = rows
+    let best = rows
         .iter()
-        .filter_map(|row| Some((row.id, row.best_lap_s?)))
-        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .filter_map(|row| row.best_lap_s)
+        .min_by(f64::total_cmp)
         .expect("vuelta rápida");
     let challenger = rows
         .iter()
-        .find(|row| row.id != fastest && row.best_lap_s.is_some_and(|lap| lap > best + 0.050))
-        .expect("otra vuelta")
-        .id;
-    let slow = rows
-        .iter()
         .find(|row| {
-            row.id != fastest
-                && row.id != challenger
-                && row.best_lap_s.is_some_and(|lap| lap > best + 0.200)
+            row.best_mark != Mark::Fastest && row.best_lap_s.is_some_and(|lap| lap > best + 0.050)
         })
-        .expect("una vuelta mejorable")
+        .expect("otra vuelta")
         .id;
     let mut record = photo();
     for car in &mut record.state.cars {
@@ -502,26 +485,35 @@ fn the_fastest_lap_and_a_personal_best_flash_with_their_kinds() {
     rt.update_if(|s, _| s.update(&record, 0.0).build);
     assert_eq!(
         flash(&rt, challenger).map(|(kind, _)| kind),
-        Some(motion::Flash::Best)
+        Some(motion::Flash::Best),
+        "pasa a Mark::Fastest"
     );
-    let mut personal = photo();
-    let previous = personal
+    let mut rt = runtime("expanded", Tone::Neo);
+    let rows = rt.state.scene.board.as_ref().unwrap().rows();
+    let slow = rows
+        .iter()
+        .find(|row| {
+            row.best_mark != Mark::Fastest && row.best_lap_s.is_some_and(|lap| lap > best + 0.200)
+        })
+        .expect("una vuelta mejorable")
+        .id;
+    let previous = photo()
         .state
         .cars
         .iter()
         .find(|car| car.id == slow)
         .and_then(|car| car.best_lap_s.current().copied())
         .expect("vuelta propia");
+    let mut personal = photo();
     for car in &mut personal.state.cars {
         if car.id == slow {
             car.best_lap_s = Reliable(previous - 0.100);
         }
     }
-    let mut rt = runtime("expanded", Tone::Neo);
     rt.update_if(|s, _| s.update(&personal, 0.0).build);
-    assert_eq!(
-        flash(&rt, slow).map(|(kind, _)| kind),
-        Some(motion::Flash::PersonalBest)
+    assert!(
+        flash(&rt, slow).is_none(),
+        "GPUI Vantare no emite mejor personal"
     );
 }
 #[test]
@@ -540,6 +532,126 @@ fn reduced_motion_paints_no_flash_and_requests_no_wakes() {
         "reducido no destella"
     );
     rt.frame(0.0);
+    assert!(rt.wake_deadline().is_none());
+    bounds(&mut rt);
+}
+#[test]
+fn entering_pits_beats_lead_and_gain_on_the_same_row() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let ids: Vec<_> = rt
+        .state
+        .scene
+        .board
+        .as_ref()
+        .unwrap()
+        .rows()
+        .iter()
+        .map(|row| row.id)
+        .collect();
+    let (leader, second) = (ids[0], ids[1]);
+    let mut input = photo();
+    for car in &mut input.state.cars {
+        if car.id == second {
+            car.in_pits = Reliable(true);
+            car.position = Reliable(1);
+            car.class_position = Reliable(1);
+        }
+        if car.id == leader {
+            car.position = Reliable(2);
+            car.class_position = Reliable(2);
+        }
+    }
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    assert_eq!(
+        flash(&rt, second).map(|(kind, _)| kind),
+        Some(motion::Flash::Pit),
+        "boxes manda sobre liderato y subida"
+    );
+}
+#[test]
+fn a_repeated_photo_and_a_lower_sequence_do_not_flash_again() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let mut input = photo();
+    swap(&mut input);
+    let id = input.state.cars[0].id;
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    assert_eq!(flash(&rt, id).unwrap().1, 1.0);
+    rt.frame(0.700);
+    let mid = flash(&rt, id).unwrap().1;
+    assert!((mid - 0.5).abs() < 1e-3);
+    assert!(!rt.update_if(|s, _| s.update(&input, 0.700).build));
+    input.sequence = input.sequence.saturating_sub(1);
+    assert!(!rt.update_if(|s, _| s.update(&input, 0.700).build));
+    let after = flash(&rt, id).unwrap().1;
+    assert!((after - mid).abs() < 1e-6, "no se reinicia el destello");
+    rt.frame(0.700);
+    assert!(flash(&rt, id).is_none());
+    assert!(rt.wake_deadline().is_none());
+}
+#[test]
+fn options_only_change_does_not_flash() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let input = photo();
+    assert!(rt.update_if(|s, _| {
+        s.settings.accent = Accent::Amber;
+        s.update(&input, 0.0).build
+    }));
+    assert!(
+        rt.state
+            .scene
+            .frame
+            .values()
+            .all(|pose| pose.flash.is_none()),
+        "solo opciones: sin destello"
+    );
+    rt.frame(0.020);
+    assert!(rt.wake_deadline().is_none());
+}
+#[test]
+fn a_hidden_row_that_becomes_visible_does_not_flash() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let mut input = photo();
+    let class = input.state.cars[0].class.clone();
+    let hidden = input
+        .state
+        .cars
+        .iter()
+        .find(|car| car.position.current().is_some_and(|position| *position > 8))
+        .expect("una fila fuera del top 8")
+        .id;
+    assert!(!rt.state.scene.frame.contains_key(&hidden));
+    for car in &mut input.state.cars {
+        if car.id == hidden {
+            car.position = Reliable(1);
+            car.class_position = Reliable(1);
+            car.class = class.clone();
+        }
+    }
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    assert!(
+        rt.state.scene.frame.contains_key(&hidden),
+        "ahora es visible"
+    );
+    assert!(flash(&rt, hidden).is_none(), "aparecer no destella");
+}
+#[test]
+fn leaving_reduced_motion_does_not_flash() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    rt.update_if(|s, _| s.policy(true, 60, 0.0).build);
+    let mut input = photo();
+    swap(&mut input);
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    rt.update_if(|s, _| s.policy(false, 60, 0.0).build);
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    assert!(
+        rt.state
+            .scene
+            .frame
+            .values()
+            .all(|pose| pose.flash.is_none()),
+        "salir de reducido no destella"
+    );
+    rt.frame(0.020);
     assert!(rt.wake_deadline().is_none());
     bounds(&mut rt);
 }

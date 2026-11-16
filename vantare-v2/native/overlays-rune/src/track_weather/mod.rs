@@ -1,5 +1,5 @@
-//! Track weather projection/controller. Session label, wind heading and wet fraction
-//! wait for the domain presentation PR; TEMPORAL fields mark the plug-in point.
+//! Track weather projection/controller. Session label and wind heading come from
+//! `domain::track_weather`; the wet fraction is `ViewModel::wet_percent`.
 mod render;
 pub mod scene;
 use crate::widget::{Update, Widget};
@@ -9,7 +9,7 @@ use vantare_domain::{
     Snapshot,
     format::Preferences,
     geometry::Size,
-    track_weather::ViewModel,
+    track_weather::{self, ViewModel},
     widget_settings::{Settings as WidgetSettings, track_weather::Settings},
 };
 
@@ -20,28 +20,25 @@ pub(crate) struct TrackWeather {
     layout: scene::Layout,
     scene: scene::Scene,
     painter: Painter,
-    /// TEMPORAL(PR A): etiqueta de sesión desde domain; hoy vacía.
+    /// Etiqueta de sesión cacheada de `track_weather::session_label`.
     session: String,
-    /// TEMPORAL(PR A): rumbo del viento desde domain; hoy ausente.
+    /// Rumbo del viento cacheado de `track_weather::wind_heading`.
     wind_heading: Option<f32>,
-    /// TEMPORAL(PR A): humedad numérica desde domain; hoy ausente.
-    wet: Option<f32>,
 }
 
 impl TrackWeather {
     fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
         let default = Snapshot::default();
-        let vm = vantare_domain::track_weather::project(&default, prefs);
+        let vm = track_weather::project(&default, prefs);
         let layout = if settings.vertical {
             scene::Layout::Vertical
         } else {
             scene::Layout::Wide
         };
-        let session = String::new();
-        let wind_heading = None;
-        let wet = None;
-        let scene = scene::sample(&vm, layout, prefs.language, &session, wind_heading, wet);
+        let session = track_weather::session_label(&default, prefs);
+        let wind_heading = track_weather::wind_heading(&default);
+        let scene = scene::sample(&vm, layout, prefs.language, &session, wind_heading);
         let painter = Painter::new(prefs, &scene);
         Self {
             settings,
@@ -52,7 +49,6 @@ impl TrackWeather {
             painter,
             session,
             wind_heading,
-            wet,
         }
     }
     fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
@@ -64,16 +60,15 @@ impl TrackWeather {
         Size { width, height }
     }
     fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> Update {
-        let vm = vantare_domain::track_weather::project(snapshot, self.prefs);
-        self.vm = vm;
-        // TEMPORAL(PR A): session/wind_heading/wet se rellenarán desde domain.
+        self.vm = track_weather::project(snapshot, self.prefs);
+        self.session = track_weather::session_label(snapshot, self.prefs);
+        self.wind_heading = track_weather::wind_heading(snapshot);
         let scene = scene::sample(
             &self.vm,
             self.layout,
             self.prefs.language,
             &self.session,
             self.wind_heading,
-            self.wet,
         );
         if scene == self.scene {
             return Update::default();
@@ -235,13 +230,22 @@ mod tests {
     }
 
     #[test]
-    fn the_three_temporal_inputs_start_empty_until_domain_supplies_them() {
-        let widget = TrackWeather::new(&Settings::default(), Preferences::default());
-        assert!(widget.session.is_empty());
-        assert_eq!(widget.wind_heading, None);
-        assert_eq!(widget.wet, None);
-        assert_eq!(widget.scene.session, "");
-        assert_eq!(widget.scene.wind_heading, None);
-        assert_eq!(widget.scene.wet, None);
+    fn the_domain_presentation_helpers_feed_the_scene() {
+        let prefs = Preferences::default();
+        let mut snapshot = live_snapshot();
+        snapshot.state.session.kind = Reliable(vantare_domain::SessionKind::Qualifying);
+        snapshot.state.session.remaining_s = Reliable(522.0);
+        snapshot.state.session.weather.wind_direction_rad = Reliable(1.25);
+        let mut widget = TrackWeather::new(&Settings::default(), prefs);
+        widget.update(&snapshot, 0.0);
+        assert_eq!(
+            widget.session,
+            track_weather::session_label(&snapshot, prefs)
+        );
+        assert!(widget.session.ends_with(" · 08:42"));
+        assert_eq!(widget.wind_heading, track_weather::wind_heading(&snapshot));
+        assert_eq!(widget.scene.session, widget.session);
+        assert_eq!(widget.scene.wind_heading, widget.wind_heading);
+        assert_eq!(widget.scene.wet, Some(25.0), "wet_percent de la PISTA");
     }
 }

@@ -1,6 +1,5 @@
-//! Vantare paints the shared Track weather scene. The session label, the wind heading
-//! and the wet fraction arrive from domain in the presentation PR; TEMPORAL fields keep
-//! the plug-in point explicit and are never derived from the formatted metrics here.
+//! Vantare paints the shared Track weather scene. The session label and the wind
+//! heading come from `domain::track_weather`; the wet fraction is `ViewModel::wet_percent`.
 use super::scene::{self, Layout, Scene};
 use crate::vantare::paint::{Face, WHITE, font};
 use crate::vantare::{Style, alpha};
@@ -655,6 +654,7 @@ mod tests {
                     value: "1013 hPa".into(),
                 },
             ],
+            wet_percent: Some(25),
         }
     }
 
@@ -664,9 +664,8 @@ mod tests {
         language: Language,
         session: &str,
         heading: Option<f32>,
-        wet: Option<f32>,
     ) -> Scene {
-        scene::sample(vm, layout, language, session, heading, wet)
+        scene::sample(vm, layout, language, session, heading)
     }
 
     fn elements(prefs: Preferences, scene: &Scene) -> Vec<ElementInfo> {
@@ -716,9 +715,8 @@ mod tests {
             Layout::Wide,
             &vm,
             Language::Es,
-            "Carrera · 08:42",
+            "CARRERA · 08:42",
             Some(0.0),
-            Some(25.0),
         );
         let elements = elements(Preferences::default(), &scene);
         let style = Style::compiled();
@@ -797,7 +795,7 @@ mod tests {
     #[test]
     fn the_vertical_column_stacks_the_same_facts() {
         let vm = reference();
-        let scene = build(Layout::Vertical, &vm, Language::Es, "", None, Some(25.0));
+        let scene = build(Layout::Vertical, &vm, Language::Es, "", None);
         let elements = elements(Preferences::default(), &scene);
         let style = Style::compiled();
         let banner = by_key(&elements, "track-weather-banner");
@@ -855,7 +853,8 @@ mod tests {
         vm.status = Status::Missing;
         vm.status_text = "SIN DATOS";
         vm.metrics.clear();
-        let scene = build(Layout::Wide, &vm, Language::Es, "", None, None);
+        vm.wet_percent = None;
+        let scene = build(Layout::Wide, &vm, Language::Es, "", None);
         let elements = elements(Preferences::default(), &scene);
         assert_eq!(
             by_key(&elements, "track-weather-title").text.as_deref(),
@@ -884,7 +883,8 @@ mod tests {
         vm.status = Status::Stale;
         vm.status_text = "DATOS ANTIGUOS";
         vm.metrics.clear();
-        let scene = build(Layout::Wide, &vm, Language::Es, "", None, None);
+        vm.wet_percent = None;
+        let scene = build(Layout::Wide, &vm, Language::Es, "", None);
         let elements = elements(Preferences::default(), &scene);
         assert_eq!(
             by_key(&elements, "track-weather-banner").text.as_deref(),
@@ -905,9 +905,10 @@ mod tests {
 
     #[test]
     fn english_changes_the_words_and_a_long_session_is_not_ellipsized() {
-        let vm = reference();
-        let long = "Carrera · 08:42 · Circuit de Barcelona-Catalunya";
-        let scene = build(Layout::Wide, &vm, Language::En, long, None, Some(0.0));
+        let mut vm = reference();
+        vm.wet_percent = Some(0);
+        let long = "CARRERA · 08:42 · CIRCUIT DE BARCELONA-CATALUNYA";
+        let scene = build(Layout::Wide, &vm, Language::En, long, None);
         let elements = elements(
             Preferences {
                 language: Language::En,
@@ -926,7 +927,7 @@ mod tests {
             Some("Now")
         );
         let session = by_key(&elements, "track-weather-session");
-        assert_eq!(session.text.as_deref(), Some(long.to_uppercase().as_str()));
+        assert_eq!(session.text.as_deref(), Some(long));
         assert!(
             !session
                 .text
@@ -942,25 +943,15 @@ mod tests {
             (Layout::Wide, (280.0, 210.0)),
             (Layout::Vertical, (132.0, 440.0)),
         ] {
-            for (status, wet) in [
-                (Status::Ready, Some(25.0)),
-                (Status::Stale, None),
-                (Status::Missing, None),
-            ] {
+            for status in [Status::Ready, Status::Stale, Status::Missing] {
                 let mut view = vm.clone();
                 view.status = status;
                 if status != Status::Ready {
                     view.status_text = "SIN DATOS";
                     view.metrics.clear();
+                    view.wet_percent = None;
                 }
-                let scene = build(
-                    layout,
-                    &view,
-                    Language::Es,
-                    "Carrera · 08:42",
-                    Some(0.7),
-                    wet,
-                );
+                let scene = build(layout, &view, Language::Es, "CARRERA · 08:42", Some(0.7));
                 let elements = elements(Preferences::default(), &scene);
                 for element in &elements {
                     let [x, y, w, h] = element.rect;

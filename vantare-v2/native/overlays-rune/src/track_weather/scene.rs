@@ -1,6 +1,6 @@
 //! Track weather scene: status, notice, metrics, the two catalogue footprints and
-//! the wind arrow. Session label, heading and wet fraction arrive as parameters until
-//! the domain presentation PR lands; nothing here parses the formatted values.
+//! the wind arrow. Session label and heading come from `domain::track_weather`; the
+//! wet fraction is `ViewModel::wet_percent`. Nothing parses the formatted values.
 use vantare_domain::{
     format::Language,
     track_weather::{Metric, Status, ViewModel},
@@ -35,11 +35,11 @@ pub struct Scene {
     pub status_text: &'static str,
     /// Etiqueta y valor ya formateados por domain, en el orden del productivo.
     pub metrics: Vec<Metric>,
-    /// TEMPORAL: etiqueta de sesión tal cual la pintará la tarjeta (sin mayúsculas).
+    /// Etiqueta de sesión ya formateada por domain (mayúsculas incluidas).
     pub session: String,
-    /// TEMPORAL: rumbo del viento en radianes (0 = norte, sentido horario).
+    /// Rumbo del viento en radianes (0 = norte, sentido horario).
     pub wind_heading: Option<f32>,
-    /// TEMPORAL: humedad de pista 0–100; `None` sin dato.
+    /// Humedad de pista 0–100 desde `ViewModel::wet_percent`; `None` sin dato.
     pub wet: Option<f32>,
     /// Banda superior ya resuelta: aviso, PISTA MOJADA/WET TRACK o SECO/DRY.
     pub banner: &'static str,
@@ -53,8 +53,8 @@ pub fn sample(
     language: Language,
     session: &str,
     wind_heading: Option<f32>,
-    wet: Option<f32>,
 ) -> Scene {
+    let wet = vm.wet_percent.map(f32::from);
     let banner = if vm.status != Status::Ready {
         vm.status_text
     } else if wet.is_some_and(|value| value > 0.0) {
@@ -73,7 +73,7 @@ pub fn sample(
         status: vm.status,
         status_text: vm.status_text,
         metrics: vm.metrics.clone(),
-        session: session.to_uppercase(),
+        session: session.to_owned(),
         wind_heading,
         wet,
         banner,
@@ -115,6 +115,7 @@ mod tests {
                     value: "100%".into(),
                 },
             ],
+            wet_percent: Some(25),
         }
     }
 
@@ -126,14 +127,7 @@ mod tests {
 
     #[test]
     fn the_scene_copies_status_notice_and_metrics_in_order() {
-        let scene = sample(
-            &vm(),
-            Layout::Wide,
-            Language::Es,
-            "CARRERA",
-            Some(0.5),
-            Some(25.0),
-        );
+        let scene = sample(&vm(), Layout::Wide, Language::Es, "CARRERA", Some(0.5));
         assert_eq!(scene.layout, Layout::Wide);
         assert_eq!(scene.status, Status::Ready);
         assert_eq!(scene.status_text, "");
@@ -152,36 +146,42 @@ mod tests {
         missing.status = Status::Missing;
         missing.status_text = "SIN DATOS";
         missing.metrics.clear();
-        let scene = sample(&missing, Layout::Vertical, Language::Es, "", None, None);
+        missing.wet_percent = None;
+        let scene = sample(&missing, Layout::Vertical, Language::Es, "", None);
         assert_eq!(scene.status, Status::Missing);
         assert_eq!(scene.status_text, "SIN DATOS");
+        assert_eq!(scene.wet, None);
         assert!(scene.metrics.is_empty());
     }
 
     #[test]
     fn the_banner_follows_status_and_wetness_in_the_users_language() {
-        let ready = vm();
+        let mut ready = vm();
+        ready.wet_percent = None;
         assert_eq!(
-            sample(&ready, Layout::Wide, Language::Es, "", None, None).banner,
+            sample(&ready, Layout::Wide, Language::Es, "", None).banner,
             "SECO"
         );
+        ready.wet_percent = Some(0);
         assert_eq!(
-            sample(&ready, Layout::Wide, Language::En, "", None, Some(0.0)).banner,
+            sample(&ready, Layout::Wide, Language::En, "", None).banner,
             "DRY"
         );
+        ready.wet_percent = Some(12);
         assert_eq!(
-            sample(&ready, Layout::Wide, Language::En, "", None, Some(12.0)).banner,
+            sample(&ready, Layout::Wide, Language::En, "", None).banner,
             "WET TRACK"
         );
         assert_eq!(
-            sample(&ready, Layout::Wide, Language::Es, "", None, Some(12.0)).banner,
+            sample(&ready, Layout::Wide, Language::Es, "", None).banner,
             "PISTA MOJADA"
         );
         let mut stale = vm();
         stale.status = Status::Stale;
         stale.status_text = "DATOS ANTIGUOS";
+        stale.wet_percent = Some(12);
         assert_eq!(
-            sample(&stale, Layout::Wide, Language::Es, "", None, Some(12.0)).banner,
+            sample(&stale, Layout::Wide, Language::Es, "", None).banner,
             "DATOS ANTIGUOS"
         );
     }

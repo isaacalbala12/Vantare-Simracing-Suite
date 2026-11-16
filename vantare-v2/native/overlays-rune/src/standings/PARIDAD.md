@@ -45,3 +45,13 @@ fit reutiliza el helper Rune equivalente a efficiency/text.rs::fit_measured:
 tolerancia 0,01 px y «…»; no se añade tolerancia a la selección de clases.
 GPUI text::font activa tnum=1 y kern=1, también para Body y tras cambiar la familia;
 el ink local de Standings declara ambas features. Alfa cero omite sombra y borde.
+
+## A3 — estados contextuales
+
+Se portan `banner`, `separator`, `footer` y `Kit::{band,rule,wait,skeleton}`.
+FCY, amarilla local y última vuelta conservan sus colores, mayúsculas,
+regla y damero; pies Frozen/Pits/Spectator/Session y bandas de clase literales.
+Espera: mismo título y pista, cuatro esqueletos en compacto y cinco en los demás.
+Todas las capas llevan pin. Tests de textos ES/EN, banda, esqueletos y límites.
+Sin Motion: filas saltan y no hay flashes ni fundidos; #2465 sigue congelado.
+Capturas de píxeles pendientes exclusivamente del PC (#2365).

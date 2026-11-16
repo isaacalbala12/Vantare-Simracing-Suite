@@ -171,35 +171,99 @@ fn numeric_sectors_and_qualifying_opacity_match_gpui() {
 
 #[test]
 fn contextual_banners_footers_and_waiting_copy_gpui_in_both_languages() {
-    for language in [Language::Es,Language::En] {
-        let es=language==Language::Es;let prefs=Preferences {language,..Preferences::default()};
-        let expected=if es { ["Vuelta rápida ","Gaps congelados","AMARILLA · SECTOR 2","ÚLTIMA VUELTA","En boxes","ESPERANDO AL SIMULADOR","Siguiendo al líder"] } else { ["Fastest lap ","Gaps frozen","YELLOW · SECTOR 2","FINAL LAP","In the pits","WAITING FOR THE SIMULATOR","Following the leader"] };
-        for (index,photo) in super::tests::photos().iter().enumerate() {
-            let mut rt=host(Standings::new(&config("expanded"),prefs),photo);let actual=texts(&rt);
-            assert!(actual.iter().any(|t|t==expected[index]),"{index}: {actual:?}");
-            if index==1 {assert!(actual.iter().any(|t|t=="FCY"));assert!(rt.elements().iter().any(|e|e.fill==Style::compiled().colors.fcy_fill&&e.rect==[0.0,0.0,900.0,22.0]));}
-            if index==3 {assert!(actual.iter().any(|t|t=="38/38"));}
-            if index==5 {assert!(actual.iter().all(|t|!t.ends_with('…')));}
-            crate::testdata::assert_inside_window(&mut rt,(900.0,307.0));
+    for language in [Language::Es, Language::En] {
+        let es = language == Language::Es;
+        let prefs = Preferences {
+            language,
+            ..Preferences::default()
+        };
+        let expected = if es {
+            [
+                "Vuelta rápida ",
+                "Gaps congelados",
+                "AMARILLA · SECTOR 2",
+                "ÚLTIMA VUELTA",
+                "En boxes",
+                "ESPERANDO AL SIMULADOR",
+                "Siguiendo al líder",
+            ]
+        } else {
+            [
+                "Fastest lap ",
+                "Gaps frozen",
+                "YELLOW · SECTOR 2",
+                "FINAL LAP",
+                "In the pits",
+                "WAITING FOR THE SIMULATOR",
+                "Following the leader",
+            ]
+        };
+        for (index, photo) in super::tests::photos().iter().enumerate() {
+            let mut rt = host(Standings::new(&config("expanded"), prefs), photo);
+            let actual = texts(&rt);
+            assert!(
+                actual.iter().any(|t| t == expected[index]),
+                "{index}: {actual:?}"
+            );
+            if index == 1 {
+                assert!(actual.iter().any(|t| t == "FCY"));
+                assert!(
+                    rt.elements()
+                        .iter()
+                        .any(|e| e.fill == Style::compiled().colors.fcy_fill
+                            && e.rect == [0.0, 0.0, 900.0, 22.0])
+                );
+            }
+            if index == 3 {
+                assert!(actual.iter().any(|t| t == "38/38"));
+            }
+            if index == 5 {
+                assert!(actual.iter().all(|t| !t.ends_with('…')));
+            }
+            crate::testdata::assert_inside_window(&mut rt, (900.0, 307.0));
         }
     }
 }
 #[test]
 fn class_separator_has_the_catalogue_band_and_right_aligned_detail() {
-    let mut settings=config("expanded");settings.classification_mode="multiclass".into();
-    let mut rt=host(Standings::new(&settings,Preferences::default()),&super::tests::photos()[0]);
-    let actual=texts(&rt);assert!(actual.iter().any(|t|t=="HYPERCAR"));
-    assert!(actual.iter().any(|t|t=="7 coches · mejor 3:27.046"),"{actual:?}");
-    let style=Style::compiled();assert!(rt.elements().iter().any(|e| e.fill==style.colors.separator_band&&e.rect[2]==900.0&&e.rect[3]==22.0));
-    crate::testdata::assert_inside_window(&mut rt,(900.0,397.0));
+    let mut settings = config("expanded");
+    settings.classification_mode = "multiclass".into();
+    let mut rt = host(
+        Standings::new(&settings, Preferences::default()),
+        &super::tests::photos()[0],
+    );
+    let actual = texts(&rt);
+    assert!(actual.iter().any(|t| t == "HYPERCAR"));
+    assert!(
+        actual.iter().any(|t| t == "7 coches · mejor 3:27.046"),
+        "{actual:?}"
+    );
+    let style = Style::compiled();
+    assert!(
+        rt.elements()
+            .iter()
+            .any(|e| e.fill == style.colors.separator_band
+                && e.rect[2] == 900.0
+                && e.rect[3] == 22.0)
+    );
+    crate::testdata::assert_inside_window(&mut rt, (900.0, 397.0));
 }
 #[test]
 fn waiting_keeps_four_or_five_skeleton_rows_and_no_clock_when_lost() {
-    for (name,count) in [("compact",4),("standard",5),("expanded",5)] {
-        let mut photo=super::tests::photos().remove(0);photo.state.source_state=SourceState::Lost;
-        let rt=host(Standings::new(&config(name),Preferences::default()),&photo);
-        let style=Style::compiled();
-        let bars=rt.elements().iter().filter(|e|e.fill==style.colors.skeleton).count();
-        assert_eq!(bars,count*4);assert!(rt.wake_deadline().is_none());
+    for (name, count) in [("compact", 4), ("standard", 5), ("expanded", 5)] {
+        let mut photo = super::tests::photos().remove(0);
+        photo.state.source_state = SourceState::Lost;
+        let rt = host(
+            Standings::new(&config(name), Preferences::default()),
+            &photo,
+        );
+        let style = Style::compiled();
+        let bars = rt
+            .elements()
+            .iter()
+            .filter(|e| e.fill == style.colors.skeleton)
+            .count();
+        assert_eq!(bars, count * 4);
+        assert!(rt.wake_deadline().is_none());
     }
 }

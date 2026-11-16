@@ -57,7 +57,11 @@ pub(super) fn view(
                     p.nodes.push(row);
                 }
             }
-            _ => {}
+            Item::Banner => p.banner(),
+            Item::Separator(g) => p.separator(y, g),
+            Item::Wait => p.wait(y),
+            Item::Skeleton(i) => p.skeleton(y, i),
+            Item::Footer(f) => p.footer(y, f),
         }
     }
     let border = if v.border_accent > 0.0 {
@@ -775,6 +779,341 @@ impl Painter<'_> {
                 color,
             );
         }
+    }
+    fn banner(&mut self) {
+        let Some(board) = self.board else { return };
+        let Some(banner) = &board.banner else { return };
+        let c = &self.style.colors;
+        let es = self.es();
+        match banner {
+            Banner::FullCourseYellow => {
+                self.band(c.fcy_fill, c.fcy_text, "FCY", None, false, None);
+            }
+            Banner::LocalYellow(sector) => {
+                let title = if es {
+                    format!("Amarilla · Sector {sector}")
+                } else {
+                    format!("Yellow · Sector {sector}")
+                };
+                let line = Some(c.yellow_line);
+                self.band(c.yellow_fill, c.yellow_text, &title, None, false, line);
+            }
+            Banner::FinalLap => {
+                let title = if es { "Última vuelta" } else { "Final lap" };
+                let lap = Some(board.lap.as_str());
+                self.band(c.final_fill, c.final_text, title, lap, true, None);
+            }
+        }
+    }
+    fn separator(&mut self, y: f32, group: usize) {
+        let Some(board) = self.board else { return };
+        let Some(group) = board.groups.get(group) else {
+            return;
+        };
+        let g = &self.style.geometry;
+        let f = &self.style.fonts;
+        let c = &self.style.colors;
+        let (pad, w, h) = (self.variant.padding_x, self.plan.width, g.separator_height);
+        self.rect(0.0, y, w, h, 0.0, c.separator_band);
+        let class = self.style.class(&group.class);
+        let name = if group.class.is_empty() {
+            PLACEHOLDER.to_owned()
+        } else {
+            group.class.to_uppercase()
+        };
+        let ink = self.ink(Face::Display, f.separator, f.separator_tracking, class.ink);
+        self.label(&name, pad, None, y, h, Face::Display, &ink);
+        let detail = format!(
+            "{} {} · {} {}",
+            group.cars,
+            match (self.es(), group.cars) {
+                (true, 1) => "coche",
+                (true, _) => "coches",
+                (false, 1) => "car",
+                (false, _) => "cars",
+            },
+            if self.es() { "mejor" } else { "best" },
+            group.best_lap
+        );
+        let ink = self.ink(Face::Mono, f.mono_small, 0.0, c.muted);
+        self.label(&detail, 0.0, Some(w - pad), y, h, Face::Mono, &ink);
+    }
+    fn footer(&mut self, y: f32, footer: Footer) {
+        let Some(board) = self.board else { return };
+        let g = &self.style.geometry;
+        let f = &self.style.fonts;
+        let c = &self.style.colors;
+        let (pad, w) = (self.variant.padding_x, self.plan.width);
+        self.rule(y);
+        let top = y + 1.0 + g.footer_gap;
+        let h = g.footer_height;
+        let ink = self.ink(Face::Body, f.header, 0.0, c.muted);
+        let es = self.es();
+        match footer {
+            Footer::Frozen => {
+                let message = if es { "Gaps congelados" } else { "Gaps frozen" };
+                self.label(message, pad, None, top, h, Face::Body, &ink);
+            }
+            Footer::Spectator => {
+                let pulse = g.pulse;
+                self.rect(
+                    pad,
+                    top + (h - pulse) / 2.0,
+                    pulse,
+                    pulse,
+                    pulse / 2.0,
+                    c.pulse,
+                );
+                let left = if es {
+                    "No estás en esta sesión · modo espectador"
+                } else {
+                    "You are not in this session · spectator mode"
+                };
+                self.label(
+                    left,
+                    pad + pulse + g.cell_gap,
+                    None,
+                    top,
+                    h,
+                    Face::Body,
+                    &ink,
+                );
+                let right = if es {
+                    "Siguiendo al líder"
+                } else {
+                    "Following the leader"
+                };
+                self.label(right, 0.0, Some(w - pad), top, h, Face::Body, &ink);
+            }
+            Footer::Pits => {
+                let width = self.pill_width(BOX);
+                let pill_top = top + (h - g.pill_height) / 2.0;
+                self.rect(
+                    pad,
+                    pill_top,
+                    width,
+                    g.pill_height,
+                    g.chip_radius,
+                    c.box_fill,
+                );
+                let pill = self.pill_ink(c.box_text);
+                self.label(
+                    BOX,
+                    pad + g.pill_padding,
+                    None,
+                    pill_top,
+                    g.pill_height,
+                    Face::Body,
+                    &pill,
+                );
+                let stops = board
+                    .groups
+                    .iter()
+                    .flat_map(|group| &group.rows)
+                    .find(|row| row.is_player)
+                    .and_then(|row| match row.pit {
+                        Pit::Stops(n) => Some(n),
+                        _ => None,
+                    });
+                let text = match (stops, es) {
+                    (Some(n), true) => format!("Parada {}", n + 1),
+                    (Some(n), false) => format!("Stop {}", n + 1),
+                    (None, true) => "En boxes".to_owned(),
+                    (None, false) => "In the pits".to_owned(),
+                };
+                self.label(
+                    &text,
+                    pad + width + g.cell_gap,
+                    None,
+                    top,
+                    h,
+                    Face::Body,
+                    &ink,
+                );
+            }
+            Footer::Session => {
+                let mut x = pad;
+                let compact = self.narrow();
+                if let Some((time, driver)) = &board.fastest {
+                    let lead = if board.qualifying {
+                        "Pole "
+                    } else {
+                        match (compact, es) {
+                            (true, true) => "VR ",
+                            (true, false) => "FL ",
+                            (false, true) => "Vuelta rápida ",
+                            (false, false) => "Fastest lap ",
+                        }
+                    };
+                    x += self.label(lead, x, None, top, h, Face::Body, &ink);
+                    let mono = self.ink(Face::Mono, f.mono_small, 0.0, c.purple);
+                    x += self.label(time, x, None, top, h, Face::Mono, &mono);
+                    self.label(&format!(" · {driver}"), x, None, top, h, Face::Body, &ink);
+                } else {
+                    let lead = if es {
+                        "Vuelta rápida —"
+                    } else {
+                        "Fastest lap —"
+                    };
+                    self.label(lead, x, None, top, h, Face::Body, &ink);
+                }
+                let track = if board.gap_to_best_lap {
+                    let own = board
+                        .groups
+                        .iter()
+                        .flat_map(|g| &g.rows)
+                        .find(|r| r.is_player)
+                        .and_then(|r| r.classification_gap_s);
+                    format!(
+                        "{} {}",
+                        if es { "Tuya" } else { "Yours" },
+                        own.map_or_else(|| PLACEHOLDER.into(), |v| format!("+{v:.3}"))
+                    )
+                } else if compact {
+                    format!("{} · {}", board.track_temperature, board.surface)
+                } else {
+                    format!(
+                        "{} {} · {}",
+                        if es { "Pista" } else { "Track" },
+                        board.track_temperature,
+                        board.surface
+                    )
+                };
+                self.label(&track, 0.0, Some(w - pad), top, h, Face::Body, &ink);
+            }
+        }
+    }
+    fn wait(&mut self, y: f32) {
+        let g = &self.style.geometry;
+        let f = &self.style.fonts;
+        let c = &self.style.colors;
+        let center = self.plan.width / 2.0;
+        let pulse = g.pulse;
+        self.rect(
+            center - pulse / 2.0,
+            y + 10.0,
+            pulse,
+            pulse,
+            pulse / 2.0,
+            c.pulse,
+        );
+        let title = if self.es() {
+            "ESPERANDO AL SIMULADOR"
+        } else {
+            "WAITING FOR THE SIMULATOR"
+        };
+        let ink = self.ink(
+            Face::Display,
+            f.wait_title,
+            f.separator_tracking,
+            c.header_em,
+        );
+        let width = self.width(title, &ink);
+        self.label(
+            title,
+            center - width / 2.0,
+            None,
+            y + 22.0,
+            f.wait_title,
+            Face::Display,
+            &ink,
+        );
+        let hint = if self.es() {
+            "Abre el simulador y entra en una sesión"
+        } else {
+            "Open the simulator and join a session"
+        };
+        let ink = self.ink(Face::Body, f.small, 0.0, c.muted);
+        let width = self.width(hint, &ink);
+        self.label(
+            hint,
+            center - width / 2.0,
+            None,
+            y + 40.0,
+            20.0,
+            Face::Body,
+            &ink,
+        );
+    }
+    fn skeleton(&mut self, y: f32, index: usize) {
+        let g = &self.style.geometry;
+        let color = self.style.colors.skeleton;
+        let (pad, w, h) = (self.variant.padding_x, self.plan.width, g.row_height);
+        let bar = g.skeleton_bar;
+        let top = y + (h - bar) / 2.0;
+        let mut x = pad;
+        self.rect(x, top, 16.0, bar, 2.0, color);
+        x += 16.0 + g.cell_gap;
+        let dot = g.class_dot;
+        self.rect(x, y + (h - dot) / 2.0, dot, dot, dot / 2.0, color);
+        x += dot + g.cell_gap;
+        let name = 110.0 + ((index * 37) % 70) as f32;
+        self.rect(x, top, name, bar, 2.0, color);
+        self.rect(w - pad - 48.0, top, 48.0, bar, 2.0, color);
+    }
+    fn band(
+        &mut self,
+        fill: Color,
+        ink: Color,
+        title: &str,
+        right: Option<&str>,
+        chequered: bool,
+        line: Option<Color>,
+    ) {
+        let f = &self.style.fonts;
+        let g = &self.style.geometry;
+        let (w, h) = (self.plan.width, g.banner_height);
+        let radius = (self.variant.radius - 1.0).max(0.0);
+        self.nodes.push(
+            el().size(w, h)
+                .fill(fill)
+                .corners([radius, radius, 0.0, 0.0])
+                .pin(Some(0.0), Some(0.0), None, None),
+        );
+        if let Some(line) = line {
+            self.rect(0.0, h - 1.0, w, 1.0, 0.0, line);
+        }
+        let pad = self.variant.padding_x;
+        let mut x = pad;
+        if chequered {
+            let top = (h - 8.0) / 2.0;
+            for (col, row) in [(0, 0), (2, 0), (1, 1), (3, 1)] {
+                self.rect(
+                    x + col as f32 * 4.0,
+                    top + row as f32 * 4.0,
+                    4.0,
+                    4.0,
+                    0.0,
+                    ink,
+                );
+            }
+            x += 16.0 + 8.0;
+        }
+        if let Some(right) = right {
+            let mono = self.ink(Face::Mono, f.mono_small, 0.0, ink);
+            self.label(right, 0.0, Some(w - pad), 0.0, h, Face::Mono, &mono);
+        }
+        let display = self.ink(Face::Display, f.banner, f.banner_tracking, ink);
+        self.label(
+            &title.to_uppercase(),
+            x,
+            None,
+            0.0,
+            h,
+            Face::Display,
+            &display,
+        );
+    }
+    fn rule(&mut self, y: f32) {
+        let pad = self.variant.padding_x;
+        self.rect(
+            pad,
+            y,
+            self.plan.width - 2.0 * pad,
+            1.0,
+            0.0,
+            self.style.colors.line,
+        );
     }
 }
 

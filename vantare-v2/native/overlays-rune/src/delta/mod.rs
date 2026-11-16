@@ -1,56 +1,6 @@
 //! Delta Vantare: domain projects the board; the scene decides layout and texts
 //! and the painter draws it. La barra se desliza y el récord destella con reloj
 //! finito; al terminar no queda ningún despertar.
-/// Common `Widget` armazón for both looks: one look check and plain delegations.
-macro_rules! delta_widget {
-    ($t:ty, $look:expr) => {
-        impl crate::widget::Widget for $t {
-            fn new(
-                settings: &WidgetSettings,
-                prefs: Preferences,
-                reduced: bool,
-                _hz: u16,
-                clock: f64,
-            ) -> Option<Box<dyn crate::widget::Widget>> {
-                let WidgetSettings::Delta(settings) = settings else {
-                    return None;
-                };
-                if settings.design_system != $look {
-                    return None;
-                }
-                Some(Box::new(<$t>::new(settings, prefs, reduced, clock)))
-            }
-            fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
-                let WidgetSettings::Delta(settings) = settings else {
-                    return false;
-                };
-                <$t>::configured(self, settings, prefs)
-            }
-            fn size(&self) -> Size {
-                <$t>::size(self)
-            }
-            fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
-                <$t>::size_for(self, snapshot)
-            }
-            fn policy(&mut self, reduced: bool, _hz: u16, clock: f64) -> Update {
-                <$t>::policy(self, reduced, clock)
-            }
-            fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
-                <$t>::update(self, snapshot, clock)
-            }
-            fn animate(&mut self, clock: f64) -> Update {
-                <$t>::animate(self, clock)
-            }
-            fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
-                <$t>::schedule(self, clock, tx);
-            }
-            fn view(&self) -> El {
-                <$t>::view(self)
-            }
-        }
-    };
-}
-
 pub(crate) mod eficiencia;
 mod motion;
 mod paint;
@@ -58,7 +8,7 @@ mod scene;
 #[cfg(test)]
 mod tests;
 
-use crate::widget::Update;
+use crate::widget::{Update, Widget};
 use motion::Motion;
 use paint::Painter;
 use rune::El;
@@ -197,4 +147,47 @@ fn sample(board: &Board, settings: &Settings, prefs: Preferences) -> scene::Scen
     scene::sample(board, settings, prefs, &crate::vantare::Style::compiled())
 }
 
-delta_widget!(Delta, Look::Vantare);
+impl Widget for Delta {
+    fn new(
+        settings: &WidgetSettings,
+        prefs: Preferences,
+        reduced: bool,
+        _hz: u16,
+        clock: f64,
+    ) -> Option<Box<dyn Widget>> {
+        let WidgetSettings::Delta(settings) = settings else {
+            return None;
+        };
+        if settings.design_system != Look::Vantare {
+            return None;
+        }
+        Some(Box::new(Delta::new(settings, prefs, reduced, clock)))
+    }
+    fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
+        let WidgetSettings::Delta(settings) = settings else {
+            return false;
+        };
+        Delta::configured(self, settings, prefs)
+    }
+    fn size(&self) -> Size {
+        Delta::size(self)
+    }
+    fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
+        Delta::size_for(self, snapshot)
+    }
+    fn policy(&mut self, reduced: bool, _hz: u16, clock: f64) -> Update {
+        Delta::policy(self, reduced, clock)
+    }
+    fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
+        Delta::update(self, snapshot, clock)
+    }
+    fn animate(&mut self, clock: f64) -> Update {
+        Delta::animate(self, clock)
+    }
+    fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
+        Delta::schedule(self, clock, tx);
+    }
+    fn view(&self) -> El {
+        Delta::view(self)
+    }
+}

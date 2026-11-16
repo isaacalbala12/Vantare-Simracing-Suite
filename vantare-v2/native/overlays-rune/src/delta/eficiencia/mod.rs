@@ -6,7 +6,7 @@ mod scene;
 mod tests;
 
 use super::{motion, project};
-use crate::widget::Update;
+use crate::widget::{Update, Widget};
 use motion::Motion;
 use rune::El;
 use vantare_domain::{
@@ -149,4 +149,49 @@ impl DeltaEficiencia {
     }
 }
 
-delta_widget!(DeltaEficiencia, Look::Eficiencia);
+impl Widget for DeltaEficiencia {
+    fn new(
+        settings: &WidgetSettings,
+        prefs: Preferences,
+        reduced: bool,
+        _hz: u16,
+        clock: f64,
+    ) -> Option<Box<dyn Widget>> {
+        let WidgetSettings::Delta(settings) = settings else {
+            return None;
+        };
+        if settings.design_system != Look::Eficiencia {
+            return None;
+        }
+        Some(Box::new(DeltaEficiencia::new(
+            settings, prefs, reduced, clock,
+        )))
+    }
+    fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
+        let WidgetSettings::Delta(settings) = settings else {
+            return false;
+        };
+        DeltaEficiencia::configured(self, settings, prefs)
+    }
+    fn size(&self) -> Size {
+        DeltaEficiencia::size(self)
+    }
+    fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
+        DeltaEficiencia::size_for(self, snapshot)
+    }
+    fn policy(&mut self, reduced: bool, _hz: u16, clock: f64) -> Update {
+        DeltaEficiencia::policy(self, reduced, clock)
+    }
+    fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
+        DeltaEficiencia::update(self, snapshot, clock)
+    }
+    fn animate(&mut self, clock: f64) -> Update {
+        DeltaEficiencia::animate(self, clock)
+    }
+    fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
+        DeltaEficiencia::schedule(self, clock, tx);
+    }
+    fn view(&self) -> El {
+        DeltaEficiencia::view(self)
+    }
+}

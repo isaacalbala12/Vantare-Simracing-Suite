@@ -1,3 +1,15 @@
+## VANTA-144 · Fuente única de la demo del Mapa (16/11/2026)
+
+Traslado mecánico aprobado por raíz y sub-orquestador: los 621 pares de Le Mans
+y same_scene pasan a domain::track_map; el lector de fotos/secuencias pasa a ipc
+y workshop lo reexporta. GPUI conserva los tests, OnceLock, selector cerrado y
+Sebring privado bajo parity-capture. Sin datos, lógica, archivos o dependencias
+nuevos. Mismos pares byte a byte; solo cambian visibilidad y rutas de llamada.
+Sin includes externos nuevos: slot-inputs.json no necesita ajustes. Gates Full
+de domain/ipc/ui y telemetría por cola; resultados y CI en el PR draft del traslado.
+Mapa Rune se desarrolla apilado; su PR espera este merge y rebase --onto.
+Sin gráficos, merge, promoción, release ni movimiento de Plane.
+
 ## VANTA-144 · Radar en Rune (16/11/2026)
 
 Esquema y dos detalles aprobados por raíz y sub-orquestador: ViewModel de

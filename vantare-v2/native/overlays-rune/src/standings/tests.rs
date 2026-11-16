@@ -216,3 +216,79 @@ fn gpui_qualifying_labels_and_clock_formats() {
         assert_eq!(gap_text(&b, &row), "—");
     }
 }
+
+#[test]
+fn gpui_driver_box_reserves_the_class_dot_only_without_number() {
+    let style = Style::compiled();
+    let mut o = options("compact");
+    let driver = |o: &Options| o.layout(&style, o.driver_max(&style)).0.into_iter()
+        .find(|c| c.kind == Kind::Driver).unwrap();
+    let with_number = driver(&o);
+    assert_eq!((with_number.x, with_number.width), (101.0, 155.0));
+    o.cols.order.retain(|k| *k != Kind::Number);
+    let without_number = driver(&o);
+    assert_eq!((without_number.x, without_number.width), (40.0, 172.0));
+    let standard = driver(&options("standard"));
+    assert_eq!((standard.x, standard.width), (76.0, 360.0));
+}
+#[test]
+fn gpui_driver_max_keeps_each_preset_width() {
+    let style = Style::compiled();
+    let mut o = options("compact");
+    o.cols.driver = Preset::Xs;
+    assert_eq!(o.driver_max(&style), 120.0);
+    o.cols.driver = Preset::Sm;
+    assert_eq!(o.driver_max(&style), 155.0);
+    o.cols.driver = Preset::Md;
+    assert_eq!(o.driver_max(&style), 205.0);
+    o.cols.driver = Preset::Lg;
+    assert_eq!(o.driver_max(&style), 387.0);
+}
+#[test]
+fn gpui_rows_keep_the_player_tail_and_small_limit_rules_in_each_mode() {
+    let mut board = vantare_domain::standings::project(&photos()[0], Preferences::default());
+    for group in &mut board.groups {
+        for row in &mut group.rows { std::sync::Arc::make_mut(row).is_player = false; }
+    }
+    let mut o = options("standard");
+    o.mode = Mode::PlayerClass;
+    o.rows = 4;
+    std::sync::Arc::make_mut(&mut board.groups[0].rows[5]).is_player = true;
+    assert_eq!(rows(&board, &o), [(0,0),(0,4),(0,5),(0,6)]);
+    std::sync::Arc::make_mut(&mut board.groups[0].rows[5]).is_player = false;
+    std::sync::Arc::make_mut(&mut board.groups[0].rows[6]).is_player = true;
+    assert_eq!(rows(&board, &o), [(0,0),(0,4),(0,5),(0,6)]);
+    for (limit, expected) in [(1, vec![(0,0)]),(2, vec![(0,0),(0,1)]),(3, vec![(0,0),(0,1),(0,2)])] {
+        o.rows = limit;
+        assert_eq!(rows(&board, &o), expected);
+        o.mode = Mode::Multiclass;
+        assert_eq!(rows(&board, &o), expected);
+        o.mode = Mode::PlayerClass;
+    }
+    std::sync::Arc::make_mut(&mut board.groups[0].rows[6]).is_player = false;
+    std::sync::Arc::make_mut(&mut board.groups[2].rows[3]).is_player = true;
+    o.mode = Mode::Multiclass;
+    o.rows = 8;
+    assert_eq!(rows(&board, &o), [(0,0),(0,1),(0,2),(0,3),(0,4),(2,2),(2,3),(2,4)]);
+    std::sync::Arc::make_mut(&mut board.groups[2].rows[3]).is_player = false;
+    std::sync::Arc::make_mut(&mut board.groups[2].rows[4]).is_player = true;
+    assert_eq!(rows(&board, &o), [(0,0),(0,1),(0,2),(0,3),(0,4),(2,2),(2,3),(2,4)]);
+}
+#[test]
+fn gpui_vehicle_detail_covers_short_presets_empty_and_disabled_vehicle() {
+    let board = vantare_domain::standings::project(&photos()[0], Preferences::default());
+    let mut row = (*board.groups[0].rows[2]).clone();
+    let mut cols = options("expanded").cols;
+    for preset in [Preset::Md, Preset::Sm, Preset::Xs] {
+        cols.driver = preset;
+        assert_eq!(vehicle_detail(&row, &cols), " · Ferrari");
+    }
+    cols.vehicle = false;
+    assert_eq!(vehicle_detail(&row, &cols), "");
+    cols.vehicle = true;
+    row.vehicle.clear();
+    for preset in [Preset::Xs, Preset::Sm, Preset::Md, Preset::Lg] {
+        cols.driver = preset;
+        assert_eq!(vehicle_detail(&row, &cols), "");
+    }
+}

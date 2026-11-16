@@ -1,3 +1,11 @@
+## VANTA-144 · Revisión Sonnet de Standings A1 (16/11/2026)
+
+Se restaura lib.rs desde nightly y se añade solo mod standings. Documentación
+verificada como UTF-8 sin doble codificación. Tests con oráculos GPUI literales:
+Driver con/sin dorsal, los cuatro presets, ventanas del jugador en PlayerClass
+y Multiclass con límites pequeños y final de parrilla, y ramas de vehicle_detail.
+Verificación Mac y propagación a A2/A3 en curso; sin cambios del pintor.
+
 ## VANTA-144 · Standings literal A1 (16/11/2026)
 
 Sustituye el planteamiento de #2463: port local de la geometría de

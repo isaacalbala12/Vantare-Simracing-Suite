@@ -23,6 +23,10 @@ export async function checkStudioCanvas(
       .click();
     await page.keyboard.press("Control+b");
     assert.equal(await page.locator(".v-sidebar--collapsed").count(), 0);
+    assert.ok(
+      (await page.locator(".v-focus-row-name small").count()) > 0,
+      "Widget keeps its status lines",
+    );
     await page.getByRole("button", { name: t.open, exact: true }).click();
     await until(
       async () => (await page.locator(".v-sidebar--collapsed").count()) === 1,
@@ -64,11 +68,27 @@ export async function checkStudioCanvas(
         };
       });
       await studioCanvasScenes[scene].prepare(page);
+      assert.equal(
+        await page.locator(".v-focus-row-name small").count(),
+        0,
+        "Canvas rows show names without coordinates",
+      );
+      const title = page.locator(".v-focus-layout-name strong");
+      assert.deepEqual(
+        await title.evaluate((node) => ({
+          whiteSpace: getComputedStyle(node).whiteSpace,
+          overflow: getComputedStyle(node).textOverflow,
+        })),
+        { whiteSpace: "nowrap", overflow: "ellipsis" },
+      );
       assert.equal(await page.getByText(t.note, { exact: true }).count(), 0);
       if (scene === "studio-canvas") {
         await page.getByRole("button", { name: t.note, exact: true }).hover();
         const tooltip = page.getByRole("tooltip").filter({ hasText: t.note });
         await tooltip.waitFor({ timeout: 5000 });
+        assert.equal(await tooltip.locator(".v-keycap").count(), 4);
+        for (const text of [t.keyMove, t.keySize, t.keyStep, t.keyCancel])
+          assert.ok((await tooltip.textContent())?.includes(text));
         await page.mouse.move(0, 0);
         await tooltip.waitFor({ state: "hidden", timeout: 5000 });
       }
@@ -236,8 +256,8 @@ export async function checkStudioCanvas(
               "canvas uses column height",
             );
             assert.ok(
-              plane.width / 1920 >=
-                (sidebar === "closed" ? (width === 1440 ? 0.6 : 0.52) : 0.4),
+              Math.round((plane.width / 1920) * 10000) / 100 >=
+                (sidebar === "closed" ? (width === 1440 ? 60.42 : 52.08) : 40),
               "fit stays legible",
             );
             assert.ok(

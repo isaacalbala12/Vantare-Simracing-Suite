@@ -692,3 +692,12 @@ it("navigates the nine anchors with the keyboard and restores trigger focus", as
   });
   await waitFor(() => expect(document.activeElement).toBe(trigger));
 });
+
+it("hides row coordinates only in Canvas and keeps Widget status lines", async () => {
+  const { container } = await mount();
+  expect(container.querySelectorAll(".v-focus-row-name small")).toHaveLength(0);
+  await userEvent.setup().click(screen.getByRole("button", { name: t.close }));
+  expect(
+    container.querySelectorAll(".v-focus-row-name small").length,
+  ).toBeGreaterThan(0);
+});

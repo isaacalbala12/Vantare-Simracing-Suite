@@ -23,7 +23,7 @@ import {
 import { boxOf } from "../../screens/studio/gesture-state";
 import { useStudio } from "../../screens/studio/state";
 import { Button, IconButton } from "../Button";
-import { Callout } from "../Data";
+import { Callout, Keycap } from "../Data";
 import { WidgetThumb } from "../widgets/WidgetThumb";
 import { CanvasResolution } from "./CanvasResolution";
 import { CanvasTools } from "./CanvasTools";
@@ -478,11 +478,23 @@ export function CanvasStage({
               <Tooltip.Portal>
                 <Tooltip.Positioner className="v-positioner" sideOffset={6}>
                   <Tooltip.Popup
-                    className="v-tooltip"
+                    className="v-tooltip v-canvas-info-tooltip"
                     role="tooltip"
                     id={noteId}
                   >
-                    {t.note}
+                    <p>{t.note}</p>
+                    <div>
+                      <Keycap>{t.keyArrows}</Keycap> {t.keyMove}
+                    </div>
+                    <div>
+                      <Keycap>{t.keyAlt}</Keycap> {t.keySize}
+                    </div>
+                    <div>
+                      <Keycap>{t.keyShift}</Keycap> {t.keyStep}
+                    </div>
+                    <div>
+                      <Keycap>{t.keyEscape}</Keycap> {t.keyCancel}
+                    </div>
                     <Tooltip.Arrow />
                   </Tooltip.Popup>
                 </Tooltip.Positioner>

@@ -48,3 +48,12 @@ export const studioCanvasScenes: Record<string, VisualScene> =
       },
     ]),
   );
+
+studioCanvasScenes["studio-canvas-info"] = {
+  mock: "studio-canvas",
+  async prepare(page) {
+    await studioCanvasScenes["studio-canvas"].prepare(page);
+    await page.getByRole("button", { name: t.note, exact: true }).hover();
+    await page.getByRole("tooltip").filter({ hasText: t.note }).waitFor();
+  },
+};

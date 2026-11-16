@@ -1,3 +1,4 @@
+import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
 import { useId } from "react";
 import { studioLimits } from "../../../contract/generated/studio";
 import { useUi } from "../../app/UiState";
@@ -49,7 +50,26 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
         </span>
         <div>
           <small>{t.layoutLabel}</small>
-          <strong>{t.local}</strong>
+          {state.canvasMode ? (
+            <BaseTooltip.Root>
+              <BaseTooltip.Trigger render={<strong />}>
+                {t.local}
+              </BaseTooltip.Trigger>
+              <BaseTooltip.Portal>
+                <BaseTooltip.Positioner className="v-positioner" sideOffset={6}>
+                  <BaseTooltip.Popup
+                    className="v-tooltip"
+                    role="tooltip"
+                    aria-hidden="true"
+                  >
+                    {t.local}
+                  </BaseTooltip.Popup>
+                </BaseTooltip.Positioner>
+              </BaseTooltip.Portal>
+            </BaseTooltip.Root>
+          ) : (
+            <strong>{t.local}</strong>
+          )}
         </div>
         <IconButton label={t.localHelp} size="sm" variant="ghost">
           <Icon name="info" />
@@ -144,17 +164,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                     id={`${addHint}-name-${index}`}
                   >
                     <strong>{widgetName(item, view)}</strong>
-                    <small
-                      data-outside={
-                        state.canvasMode && item.canvasPlacement === "outside"
-                      }
-                    >
-                      {state.canvasMode
-                        ? item.canvasPlacement === "outside"
-                          ? canvasText.outside
-                          : canvasText.coordinates(item.x, item.y)
-                        : widgetStatus(item)}
-                    </small>
+                    {!state.canvasMode && <small>{widgetStatus(item)}</small>}
                   </span>
                 </button>
                 <IconButton

@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   existsSync,
@@ -11,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PNG } from "pngjs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   captureOnlyMode,
   captureUncompared,
@@ -131,7 +130,7 @@ describe("visual comparison", () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
-  it("captures without metrics or a diff when a reference is explicitly invalid", () => {
+  it("captures without metrics or a diff when a reference is explicitly invalid", async () => {
     const directory = mkdtempSync(join(tmpdir(), "invalid reference "));
     try {
       const refs = join(directory, "refs");
@@ -155,27 +154,33 @@ describe("visual comparison", () => {
       const supplied = join(directory, "current.png");
       writeFileSync(supplied, bytes);
       const output = join(directory, "evidence");
-      execFileSync(
+      // Run the real CLI module in this process: its cold `node` startup paid
+      // the TypeScript transform/module load against the 5 s test timeout.
+      const originalArgv = process.argv;
+      const originalExitCode = process.exitCode;
+      process.argv = [
         process.execPath,
-        [
-          "--experimental-strip-types",
-          "scripts/visual-diff.ts",
-          "--scene",
-          "onboarding-2",
-          "--theme",
-          "light",
-          "--references",
-          refs,
-          "--output",
-          output,
-          "--current",
-          supplied,
-          "--capture-only",
-          "--invalid-reference-reason",
-          "bank panel empty",
-        ],
-        { encoding: "utf8" },
-      );
+        "scripts/visual-diff.ts",
+        "--scene",
+        "onboarding-2",
+        "--theme",
+        "light",
+        "--references",
+        refs,
+        "--output",
+        output,
+        "--current",
+        supplied,
+        "--capture-only",
+        "--invalid-reference-reason",
+        "bank panel empty",
+      ];
+      try {
+        await import("../scripts/visual-diff.ts");
+      } finally {
+        process.argv = originalArgv;
+        process.exitCode = originalExitCode;
+      }
       const [report] = JSON.parse(
         readFileSync(join(output, "report.json"), "utf8"),
       );
@@ -199,18 +204,25 @@ describe("visual comparison", () => {
       rmSync(directory, { recursive: true, force: true });
     }
   });
-  it("bank CLI produces the native receipt for a path with spaces", () => {
+  it("bank CLI produces the native receipt for a path with spaces", async () => {
     const directory = mkdtempSync(join(tmpdir(), "bank receipt "));
     try {
       const path = join(directory, "capture with spaces.png");
       const bytes = Buffer.alloc(1024 * 1024 + 1, 7);
       writeFileSync(path, bytes);
-      const actual = execFileSync(
-        process.execPath,
-        ["--experimental-strip-types", "scripts/reference-receipt.ts", path],
-        { encoding: "utf8" },
-      ).trim();
-      expect(actual).toBe(referenceReceiptHash(bytes));
+      const originalArgv = process.argv;
+      let printed = "";
+      const log = vi.spyOn(console, "log").mockImplementation((value) => {
+        printed += String(value);
+      });
+      process.argv = [process.execPath, "scripts/reference-receipt.ts", path];
+      try {
+        await import("../scripts/reference-receipt.ts");
+      } finally {
+        process.argv = originalArgv;
+        log.mockRestore();
+      }
+      expect(printed.trim()).toBe(referenceReceiptHash(bytes));
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

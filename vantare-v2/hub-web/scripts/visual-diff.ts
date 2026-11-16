@@ -654,7 +654,7 @@ async function capture(
         }
       }
     };
-    const deadline = setTimeout(stopTree, 5000);
+    const deadline = setTimeout(stopTree, 10000);
     lifecycle.push({ event: "teardown-start", at: Date.now() });
     try {
       const close = cleanupPage?.getByRole("button", {

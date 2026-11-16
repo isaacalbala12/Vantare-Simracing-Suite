@@ -10,21 +10,43 @@ use std::sync::Arc;
 use vantare_domain::geometry::Size;
 use vantare_domain::session_alerts::Tone;
 
-const fn rgb(value: u32, a: f32) -> Color {
-    Color {
-        r: ((value >> 16) & 0xff) as f32 / 255.0,
-        g: ((value >> 8) & 0xff) as f32 / 255.0,
-        b: (value & 0xff) as f32 / 255.0,
-        a,
-    }
-}
 /// GPUI literals: the title ink, the transparent-style shadow and the three panel styles.
-const TITLE_INK: Color = rgb(0xfaf7f7, 1.0);
-const SHADOW_INK: Color = rgb(0, 0.9);
-const CARMIN_TOP: Color = rgb(0x341018, 0.96);
-const CARMIN_BOTTOM: Color = rgb(0x14080c, 0.96);
-const CLEAN: Color = rgb(0x080809, 0.82);
-const CLEAR: Color = rgb(0, 0.0);
+const TITLE_INK: Color = Color {
+    r: 0.9559733,
+    g: 0.9301109,
+    b: 0.9301109,
+    a: 1.0,
+}; // #faf7f7
+const SHADOW_INK: Color = Color {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 0.9,
+}; // #000000
+const CARMIN_TOP: Color = Color {
+    r: 0.03433981,
+    g: 0.00518152,
+    b: 0.00913406,
+    a: 0.96,
+}; // #341018
+const CARMIN_BOTTOM: Color = Color {
+    r: 0.00699541,
+    g: 0.00242822,
+    b: 0.00367651,
+    a: 0.96,
+}; // #14080c
+const CLEAN: Color = Color {
+    r: 0.00242822,
+    g: 0.00242822,
+    b: 0.00273174,
+    a: 0.82,
+}; // #080809
+const CLEAR: Color = Color {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 0.0,
+}; // #000000
 
 #[derive(Clone, Copy)]
 struct Rect {
@@ -656,4 +678,19 @@ fn view(state: &Painter) -> El {
         }
     }
     root
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gpui_colors_are_srgb_decoded_in_linear_rune() {
+        assert_eq!(TITLE_INK.hex(), "#faf7f7ff");
+        assert_eq!(SHADOW_INK.hex(), "#000000e6");
+        assert_eq!(CARMIN_TOP.hex(), "#341018f5");
+        assert_eq!(CARMIN_BOTTOM.hex(), "#14080cf5");
+        assert_eq!(CLEAN.hex(), "#080809d1");
+        assert_eq!(CLEAR.hex(), "#00000000");
+    }
 }

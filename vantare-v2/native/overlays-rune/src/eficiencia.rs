@@ -18,10 +18,14 @@ pub const FONTS: &[&[u8]] = &[
 ];
 
 pub fn color(rgb: u32, alpha: f32) -> Color {
+    let channel = |shift: u32| {
+        let byte = ((rgb >> shift) & 255) as f32 / 255.0;
+        rune::color::srgb_decode(byte)
+    };
     Color {
-        r: ((rgb >> 16) & 255) as f32 / 255.0,
-        g: ((rgb >> 8) & 255) as f32 / 255.0,
-        b: (rgb & 255) as f32 / 255.0,
+        r: channel(16),
+        g: channel(8),
+        b: channel(0),
         a: alpha,
     }
 }
@@ -278,10 +282,9 @@ mod parity_tests {
         assert_eq!(PANEL, 0x101113);
         assert_eq!(RADIUS, 6.0);
         let ink = color(INK, 0.5);
-        assert!((ink.r - 245.0 / 255.0).abs() < 1e-6);
-        assert!((ink.g - 245.0 / 255.0).abs() < 1e-6);
-        assert!((ink.b - 245.0 / 255.0).abs() < 1e-6);
+        assert_eq!(ink.hex(), "#f5f5f580", "sRGB de GPUI, alfa intacta");
         assert_eq!(ink.a, 0.5);
+        assert_eq!(color(0x101113, 1.0).hex(), "#101113ff");
         assert_eq!(color(0x000000, 0.0).r, 0.0);
     }
 }

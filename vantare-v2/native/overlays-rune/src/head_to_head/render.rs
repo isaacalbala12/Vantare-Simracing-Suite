@@ -67,23 +67,23 @@ const LAP_WIDTH: f32 = 96.0;
 const SECTOR_WIDTH: f32 = 96.0;
 /// Colours of the GPUI painter literals: the player band, the name cell and the pause band.
 const PLAYER_FILL: Color = Color {
-    r: 0xe1 as f32 / 255.0,
-    g: 0x4a as f32 / 255.0,
-    b: 0x54 as f32 / 255.0,
+    r: 0.7529422,
+    g: 0.06847817,
+    b: 0.08865559,
     a: 0.18,
-};
+}; // #e14a54
 const NAME_INK: Color = Color {
-    r: 0xfa as f32 / 255.0,
-    g: 0xf7 as f32 / 255.0,
-    b: 0xf7 as f32 / 255.0,
+    r: 0.9559733,
+    g: 0.9301109,
+    b: 0.9301109,
     a: 1.0,
-};
+}; // #faf7f7
 const PAUSE_FILL: Color = Color {
-    r: 16.0 / 255.0,
-    g: 17.0 / 255.0,
-    b: 19.0 / 255.0,
+    r: 0.00518152,
+    g: 0.00560539,
+    b: 0.00651209,
     a: 242.0 / 255.0,
-};
+}; // #101113
 
 struct HalfLive {
     x: f32,
@@ -586,4 +586,16 @@ fn view(state: &Painter) -> El {
             ));
     }
     root
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gpui_colors_are_srgb_decoded_in_linear_rune() {
+        assert_eq!(PLAYER_FILL.hex(), "#e14a542e");
+        assert_eq!(NAME_INK.hex(), "#faf7f7ff");
+        assert_eq!(PAUSE_FILL.hex(), "#101113f2");
+    }
 }

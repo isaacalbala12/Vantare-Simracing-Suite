@@ -27,11 +27,13 @@ fn tone_hex(tone: Tone) -> u32 {
 }
 
 fn mix(from: u32, to: u32, t: f32) -> Color {
-    let channel = |shift: u32| {
+    // GPUI mezcla los bytes sRGB y después pinta; Rune recibe el resultado ya decodificado.
+    let byte = |shift: u32| {
         let a = ((from >> shift) & 255) as f32;
         let b = ((to >> shift) & 255) as f32;
-        (a + (b - a) * t).round() / 255.0
+        (a + (b - a) * t).round()
     };
+    let channel = |shift: u32| rune::color::srgb_decode(byte(shift) / 255.0);
     Color {
         r: channel(16),
         g: channel(8),
@@ -437,8 +439,6 @@ mod tests {
         assert_eq!(tone_color(Tone::Gaining), eficiencia::color(GAIN, 1.0));
         assert_eq!(tone_color(Tone::Neutral), eficiencia::color(INK, 1.0));
         let half = mix(INK, GAIN, 0.5);
-        let red = ((INK >> 16) & 255) as f32;
-        let green = ((GAIN >> 16) & 255) as f32;
-        assert!((half.r * 255.0 - (red + green) / 2.0).abs() < 1.0);
+        assert_eq!(half.hex(), "#bad6beff", "mezcla de bytes sRGB de GPUI");
     }
 }

@@ -1,5 +1,5 @@
 use super::{Visual, assets, model::*, render, style::Style};
-use crate::eficiencia::{FONTS, color};
+use crate::eficiencia::FONTS;
 use rune::{ElementInfo, Env, ImageCache, Runtime, text::TextSystem};
 use std::sync::Arc;
 use vantare_domain::{
@@ -76,16 +76,16 @@ fn gpui_brand_and_session_baselines_logo_sizes_and_context_colours() {
     assert_eq!(brand.text.as_deref(), Some("VANTARE"));
     near(brand.rect[0], 40.0);
     near(brand.rect[1], 13.0); // baseline 25 - ascenso Inter 12.
-    assert_eq!(brand.text_color, Some(color(0xf5f5f5, 1.0)));
+    assert_eq!(brand.text_color.unwrap().hex(), "#f5f5f5ff");
     let rule = named(&rt, "session-rule");
     near(rule.rect[0], brand.rect[0] + brand.rect[2] + 8.0);
     assert_eq!(&rule.rect[1..], &[6.0, 1.0, 30.0]);
-    assert_eq!(rule.fill, color(0xf5f5f5, 0.23));
+    assert_eq!(rule.fill.hex(), "#f5f5f53b");
     near(named(&rt, "session-kind").rect[1], 5.0); // baseline 12 - ascenso 7.
     near(named(&rt, "session-clock").rect[1], 17.0); // baseline 32 - ascenso 15.
     assert_eq!(
-        named(&rt, "session-kind").text_color,
-        Some(color(0xb8bac0, 1.0))
+        named(&rt, "session-kind").text_color.unwrap().hex(),
+        "#b8bac0ff"
     );
     assert_eq!(named(&rt, "class-chip").rect[1], 11.0); // snap(10.5).
     near(named(&rt, "session-class").rect[1], 16.0);
@@ -103,10 +103,10 @@ fn gpui_stale_plain_brand_band_and_focus_header_branches() {
         let kind = named(&rt, "session-kind");
         assert!(!kind.text.as_ref().unwrap().is_empty());
         assert!(title.starts_with(kind.text.unwrap().trim_end_matches('…')));
-        assert_eq!(kind.text_color, Some(color(0xe2c568, 1.0)));
+        assert_eq!(kind.text_color.unwrap().hex(), "#e2c568ff");
         assert_eq!(
-            named(&rt, "session-clock").text_color,
-            Some(color(0xb9b9bd, 1.0))
+            named(&rt, "session-clock").text_color.unwrap().hex(),
+            "#b9b9bdff"
         );
     }
     let mut v = visual();
@@ -128,10 +128,10 @@ fn gpui_stale_plain_brand_band_and_focus_header_branches() {
             .iter()
             .any(|e| e.key.as_deref() == Some("flag-ribbon-0"))
     );
-    assert_eq!(named(&rt, "session-rule").fill, color(0xf5f5f5, 0.10));
+    assert_eq!(named(&rt, "session-rule").fill.hex(), "#f5f5f51a");
     assert_eq!(
-        named(&rt, "session-class").text_color,
-        Some(color(0xd6d6da, 1.0))
+        named(&rt, "session-class").text_color.unwrap().hex(),
+        "#d6d6daff"
     );
     let mut v = visual();
     let c = Arc::make_mut(&mut v.config);
@@ -198,7 +198,7 @@ fn gpui_panel_and_each_superposed_layer_stay_inside_signature_and_broadcast() {
             let size = v.size();
             let mut rt = paint(v, Language::Es);
             let panel = named(&rt, "efficiency-panel");
-            assert_eq!(panel.fill, color(0x101113, 0.87));
+            assert_eq!(panel.fill.hex(), "#101113de");
             assert_eq!(panel.radius, 6.0);
             assert_eq!(
                 named(&rt, "pit-shadow").rect,

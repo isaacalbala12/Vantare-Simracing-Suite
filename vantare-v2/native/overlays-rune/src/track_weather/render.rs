@@ -11,47 +11,47 @@ use vantare_domain::{
 };
 
 const WET_BANNER: Color = Color {
-    r: 0x20 as f32 / 255.0,
-    g: 0x33 as f32 / 255.0,
-    b: 0x4f as f32 / 255.0,
+    r: 0.01444384,
+    g: 0.03310477,
+    b: 0.07818742,
     a: 1.0,
-};
+}; // #20334f
 const DRY_BANNER: Color = Color {
-    r: 0x2b as f32 / 255.0,
-    g: 0x25 as f32 / 255.0,
-    b: 0x27 as f32 / 255.0,
+    r: 0.02415763,
+    g: 0.01850022,
+    b: 0.02028856,
     a: 1.0,
-};
+}; // #2b2527
 const BIG: Color = Color {
-    r: 0xfa as f32 / 255.0,
-    g: 0xf7 as f32 / 255.0,
-    b: 0xf7 as f32 / 255.0,
+    r: 0.9559733,
+    g: 0.9301109,
+    b: 0.9301109,
     a: 1.0,
-};
+}; // #faf7f7
 const BLUE: Color = Color {
-    r: 0x4f as f32 / 255.0,
-    g: 0x8e as f32 / 255.0,
-    b: 0xf7 as f32 / 255.0,
+    r: 0.07818742,
+    g: 0.2704978,
+    b: 0.9301109,
     a: 1.0,
-};
+}; // #4f8ef7
 const CARD_NOW: Color = Color {
-    r: 0x2a as f32 / 255.0,
-    g: 0x24 as f32 / 255.0,
-    b: 0x26 as f32 / 255.0,
+    r: 0.02315337,
+    g: 0.01764195,
+    b: 0.01938236,
     a: 1.0,
-};
+}; // #2a2426
 const CARD: Color = Color {
-    r: 0x11 as f32 / 255.0,
-    g: 0x0f as f32 / 255.0,
-    b: 0x10 as f32 / 255.0,
+    r: 0.00560539,
+    g: 0.00477695,
+    b: 0.00518152,
     a: 1.0,
-};
+}; // #110f10
 const PLACEHOLDER: Color = Color {
-    r: 0x5e as f32 / 255.0,
-    g: 0x56 as f32 / 255.0,
-    b: 0x58 as f32 / 255.0,
+    r: 0.11193243,
+    g: 0.09305896,
+    b: 0.09758735,
     a: 1.0,
-};
+}; // #5e5658
 
 pub(super) struct Painter {
     prefs: Preferences,
@@ -1211,6 +1211,20 @@ mod tests {
                 let mut runtime = runtime(Preferences::default(), &scene);
                 crate::testdata::assert_inside_window(&mut runtime, size);
             }
+        }
+    }
+    #[test]
+    fn gpui_colors_are_srgb_decoded_in_linear_rune() {
+        for (color, hex) in [
+            (WET_BANNER, "#20334fff"),
+            (DRY_BANNER, "#2b2527ff"),
+            (BIG, "#faf7f7ff"),
+            (BLUE, "#4f8ef7ff"),
+            (CARD_NOW, "#2a2426ff"),
+            (CARD, "#110f10ff"),
+            (PLACEHOLDER, "#5e5658ff"),
+        ] {
+            assert_eq!(color.hex(), hex);
         }
     }
 }

@@ -4,3 +4,6 @@
 mod layout;
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod painting_tests;

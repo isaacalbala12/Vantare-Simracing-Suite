@@ -83,14 +83,18 @@ try {
             ForEach-Object { "$($_.name)/test-support" })
     }
     $features = @($defaults) + @($testFeatures)
+    # Los examples no son targets de test: nextest y `cargo test --no-run` los
+    # compilan solo para comprobar que compilan. `--tests` los excluye del gate;
+    # `ci-gates.ps1` y `comprobar.ps1` los siguen comprobando con Clippy
+    # `--all-targets` (#2431, D).
     $arguments = switch ($Gate) {
         'check' { @('check', '--workspace', '--all-targets') }
         'clippy' { @('clippy', '--workspace', '--all-targets') }
-        'test' { @('nextest', 'run', '--workspace') }
+        'test' { @('nextest', 'run', '--workspace', '--tests') }
         'telemetria' { @('nextest', 'run', '--workspace', '--profile', 'telemetria') }
         # Todo menos lifecycle en una sola invocación: para CI (#1654 ronda 7).
         'completa' { @('nextest', 'run', '--workspace', '--profile', 'ci') }
-        'archive' { @('test', '--workspace', '--no-run', '--message-format=json') }
+        'archive' { @('test', '--workspace', '--no-run', '--message-format=json', '--tests') }
         'lifecycle' { @('test', '--workspace', '--test', 'lifecycle') }
         # Banco de capturas QA del instalador (#1735): solo existe con parity-capture,
         # que ningún build por defecto ni de release activa.

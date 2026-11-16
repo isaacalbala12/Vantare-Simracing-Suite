@@ -13,6 +13,7 @@ import {
   studioFreeKinds,
   studioFrequencyOptions,
   studioLimits,
+  studioMonitorCases,
   studioSizes,
   studioWidgetDefaults,
 } from "../../contract/generated/studio";
@@ -101,6 +102,18 @@ export function create(context: MockContext): MockHandler {
     canvas: { width: 1920, height: 1080, source: "monitor" },
     monitor: { width: 1920, height: 1080 },
   };
+  const monitorCase = studioMonitorCases.find(
+    (sample) => sceneName === `studio-monitor-${sample.name}`,
+  );
+  if (monitorCase) {
+    view.state = monitorCase.value.state;
+    view.canvas = monitorCase.value.canvas
+      ? { ...monitorCase.value.canvas }
+      : null;
+    view.monitor = monitorCase.value.monitor
+      ? { ...monitorCase.value.monitor }
+      : null;
+  }
   if (context.settingsData && sceneName.startsWith("studio-")) {
     context.settingsData.track.exists = view.state !== "missing";
     context.settingsData.track.protected = view.state === "protected";

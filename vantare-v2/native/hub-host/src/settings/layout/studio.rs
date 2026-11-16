@@ -36,6 +36,24 @@ mod geometry_edit;
 mod ordered;
 #[path = "studio_settings.rs"]
 mod setting_edit;
+#[derive(Debug)]
+enum OpenFailure {
+    Other(Box<HostError>),
+    MonitorUnavailable,
+}
+impl From<HostError> for OpenFailure {
+    fn from(error: HostError) -> Self {
+        Self::Other(Box::new(error))
+    }
+}
+impl From<OpenFailure> for HostError {
+    fn from(error: OpenFailure) -> Self {
+        match error {
+            OpenFailure::Other(error) => *error,
+            OpenFailure::MonitorUnavailable => Self::Protected,
+        }
+    }
+}
 struct Open {
     document: Document,
     instances: Vec<Fields>,
@@ -49,9 +67,9 @@ impl Open {
         path: &Path,
         source: fn() -> Vec<crate::studio::monitor::Monitor>,
         pinned: Option<crate::studio::monitor::Monitor>,
-    ) -> Result<Self, HostError> {
+    ) -> Result<Self, OpenFailure> {
         if !vantare_launcher::is_local_path(path) {
-            return Err(HostError::Denied);
+            return Err(HostError::Denied.into());
         }
         let document = Document::open(path).map_err(|()| HostError::Protected)?;
         Self::project(document, source, pinned)
@@ -60,13 +78,13 @@ impl Open {
         document: Document,
         source: fn() -> Vec<crate::studio::monitor::Monitor>,
         pinned: Option<crate::studio::monitor::Monitor>,
-    ) -> Result<Self, HostError> {
+    ) -> Result<Self, OpenFailure> {
         if document.observed.is_none() {
-            return Err(HostError::Protected);
+            return Err(HostError::Protected.into());
         }
         let instances: Vec<Fields> = read(&document.fields, "instances")?;
         if instances.len() > INSTANCE_LIMIT {
-            return Err(HostError::Protected);
+            return Err(HostError::Protected.into());
         }
         let mut ids = HashSet::new();
         let mut projected = Vec::with_capacity(instances.len());
@@ -76,7 +94,7 @@ impl Open {
             item.frequency = rates.view(&item.id, item.kind);
             companion(fields)?;
             if !ids.insert(item.id.clone()) {
-                return Err(HostError::Protected);
+                return Err(HostError::Protected.into());
             }
             projected.push(item);
         }
@@ -87,12 +105,11 @@ impl Open {
         let monitors = source();
         let monitor = match pinned {
             Some(monitor) if monitors.contains(&monitor) => monitor,
-            Some(_) => return Err(HostError::Protected),
-            None => {
-                crate::studio::monitor::choose(&monitors, &positions).ok_or(HostError::Protected)?
-            }
+            Some(_) => return Err(OpenFailure::MonitorUnavailable),
+            None => crate::studio::monitor::choose(&monitors, &positions)
+                .ok_or(OpenFailure::MonitorUnavailable)?,
         };
-        let monitor_size = monitor.size_view().ok_or(HostError::Protected)?;
+        let monitor_size = monitor.size_view().ok_or(OpenFailure::MonitorUnavailable)?;
         let canvas = canvas(&document.fields, monitor)?;
         for item in &mut projected {
             relative(item, monitor, canvas)?;
@@ -296,24 +313,26 @@ fn free_spot(opened: &Open, size: (f64, f64)) -> Result<(f64, f64), HostError> {
     crate::studio::geometry::free_spot(opened.canvas.size(), size, &taken)
         .ok_or(HostError::Protected)
 }
-fn open(state: &mut State) -> Result<Open, HostError> {
+fn open(state: &mut State) -> Result<Open, OpenFailure> {
     let opened = Open::read(&state.path, state.monitor_source, state.monitor)?;
     state.monitor = Some(opened.monitor);
     Ok(opened)
 }
 pub(crate) fn view(state: &mut State, access: Option<CatalogAccess>) -> StudioView {
-    let opened = open(state);
-    let Ok(opened) = opened else {
-        let mut unavailable = State::unavailable(
-            if state.path.try_exists().unwrap_or(true) {
-                StudioState::Protected
-            } else {
-                StudioState::Missing
-            },
-            access,
-        );
-        unavailable.showing = showing(&state.path);
-        return unavailable;
+    let opened = match open(state) {
+        Ok(opened) => opened,
+        Err(failure) => {
+            let status = match failure {
+                OpenFailure::MonitorUnavailable => StudioState::MonitorUnavailable,
+                OpenFailure::Other(_) if !state.path.try_exists().unwrap_or(true) => {
+                    StudioState::Missing
+                }
+                OpenFailure::Other(_) => StudioState::Protected,
+            };
+            let mut unavailable = State::unavailable(status, access);
+            unavailable.showing = showing(&state.path);
+            return unavailable;
+        }
     };
     let revision = opened.revision();
     if state
@@ -382,7 +401,7 @@ fn open_revision(
         });
     }
     let document = Document::from_observed(observed).map_err(|()| HostError::Protected)?;
-    Open::project(document, state.monitor_source, state.monitor)
+    Open::project(document, state.monitor_source, state.monitor).map_err(HostError::from)
 }
 pub(crate) fn edit_result(
     state: &mut State,

@@ -1,5 +1,6 @@
 ## VANTA-144 · Standings Eficiencia E3 (16/11/2026)
 
+PR #2501 a nightly, no draft; CI Windows y Sonnet pendientes.
 E3 porta th/filas/celdas de view.rs y conecta el constructor Eficiencia; lectura
 literal de todas las métricas, nombres, unidades, alineación, fondo/filetes del
 jugador y marca roja. Wrapper de fila/celda con pin/key, sin colisiones de claves.

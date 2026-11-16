@@ -10,6 +10,9 @@ use vantare_domain::CarId;
 #[cfg(test)]
 #[path = "motion_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "effects_tests.rs"]
+mod effects_tests;
 const FADE: f64 = 0.200;
 const EASE_OUT: [f32; 4] = [0.0, 0.0, 0.58, 1.0];
 const FLIP: [f32; 4] = [0.22, 0.9, 0.3, 1.0];

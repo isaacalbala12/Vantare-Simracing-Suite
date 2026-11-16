@@ -447,9 +447,6 @@ jobs:
           - suite: test
             label: test 2/2
             partition: hash:2/2
-          - suite: telemetria
-            label: telemetria
-            partition: ''
     defaults:
       run:
         shell: pwsh
@@ -480,6 +477,31 @@ jobs:
           path: ${{ runner.temp }}/vantare-test-archive
       - name: Run compiled tests without rebuilding
         run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite '${{ matrix.suite }}' -Partition '${{ matrix.partition }}'
+
+  native_telemetry:
+    name: Run native telemetria
+    timeout-minutes: 20
+    needs: policy
+    if: needs.policy.outputs.native != 'false' && needs.policy.outputs.telemetria != 'false'
+    runs-on: windows-latest
+    env:
+      VANTARE_CI_TARGET: '1'
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '4'
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: ${{ env.VANTARE_DIR }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/native-build-setup
+      - name: Run telemetry corpus
+        working-directory: ${{ env.VANTARE_DIR }}/native
+        run: pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File gates.ps1 -Gate telemetria -Packages vantare-runtime
 
   native_lifecycle_build:
     name: Build lifecycle overlays in parallel
@@ -671,7 +693,7 @@ jobs:
   product:
     name: Validate Vantare blocking gates
     timeout-minutes: 5
-    needs: [policy, native_lint, native_build, native_tests, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]
+    needs: [policy, native_lint, native_build, native_tests, native_telemetry, native_lifecycle_build, native_lifecycle, native_distribution, native_installation]
     if: always()
     runs-on: ubuntu-latest
     steps:

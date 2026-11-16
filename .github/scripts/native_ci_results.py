@@ -10,8 +10,9 @@ def validate(needs):
     native = outputs.get('native') != 'false'
     installation = outputs.get('installation') != 'false'
     overlays = outputs.get('overlays') != 'false'
-    for job in ('native_lint', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
-        required = native and (job not in ('native_distribution', 'native_installation') or installation) and (job != 'native_lifecycle_build' or overlays)
+    telemetry = outputs.get('telemetria') != 'false'
+    for job in ('native_lint', 'native_build', 'native_tests', 'native_telemetry', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
+        required = native and (job not in ('native_distribution', 'native_installation') or installation) and (job != 'native_lifecycle_build' or overlays) and (job != 'native_telemetry' or telemetry)
         result = needs[job]['result']
         if (required and result != 'success') or result not in ('success', 'skipped'):
             raise ValueError(f'{job}: {result}')

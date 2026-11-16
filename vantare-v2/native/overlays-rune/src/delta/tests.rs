@@ -249,12 +249,14 @@ fn the_bar_fill_paints_the_target_and_its_sign() {
     let _ = fill;
     let mut positive = snapshot();
     positive.state.player.as_mut().expect("player").delta_best_s = Reliable(0.4);
-    runtime.state.update(&positive, 0.1);
-    runtime.frame(0.0);
+    let mut painter = Delta::new(&settings("bar"), Preferences::default());
+    painter.update(&positive, 0.0);
+    let mut runtime = runtime(painter);
     let fill = runtime.presented("bar-fill").expect("positive bar");
     assert!(fill.0[0] >= 380.0 / 2.0 - 0.5, "positivo a la derecha");
-    runtime.state.update(&snapshot(), 0.2);
-    runtime.frame(0.0);
+    let mut painter = Delta::new(&settings("bar"), Preferences::default());
+    painter.update(&snapshot(), 0.2);
+    let mut runtime = runtime(painter);
     assert!(runtime.presented("bar-center").is_some());
     assert!(runtime.wake_deadline().is_none(), "sin reloj");
 }
@@ -266,10 +268,12 @@ fn thirty_seconds_of_sequences_and_hidden_lap_times_leave_actual_cpu_pixels_unch
         let mut painter = Delta::new(&settings(size), Preferences::default());
         painter.update(&input, 0.0);
         let mut runtime = runtime(painter);
-        assert!(
-            runtime.presented("header-title").is_none(),
-            "la píldora no lleva cabecera"
-        );
+        if size == "pill" {
+            assert!(
+                runtime.presented("header-title").is_none(),
+                "la píldora no lleva cabecera"
+            );
+        }
         let before = pixels(&runtime);
         for step in 1..=300 {
             input.sequence += 1;

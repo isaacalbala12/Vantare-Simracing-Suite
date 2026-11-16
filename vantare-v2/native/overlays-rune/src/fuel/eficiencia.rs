@@ -405,9 +405,31 @@ mod tests {
         let laps: Vec<(u32, f64)> = (14..22)
             .map(|lap| (lap, 2.1 + f64::from(lap % 3) / 10.0))
             .collect();
-        let painter = Painter::new(Preferences::default(), &scene(42.0, &laps, false));
+        let mut photo = crate::fuel::photo(11.3, 25);
+        let player = photo.state.player.as_mut().expect("player");
+        player.fuel.level_l = Reliable(42.0);
+        for (slot, (lap, litres)) in laps.iter().enumerate() {
+            player.fuel.history[slot] = Some((*lap, *litres));
+        }
+        let board = fuel_strategy::project_with_config(
+            &photo,
+            Preferences::default(),
+            fuel_strategy::Config {
+                history_rows: 8,
+                ..fuel_strategy::Config::default()
+            },
+        );
+        let painter = Painter::new(
+            Preferences::default(),
+            &Scene {
+                board: Arc::new(board),
+                bars: Vec::new(),
+                border: 0.0,
+            },
+        );
         assert_eq!(painter.history.len(), 8);
-        assert_eq!(painter.history[0].0, "VUELTA 14");
+        assert_eq!(painter.history[0].0, "VUELTA 21", "recientes primero");
+        assert_eq!(painter.history[7].0, "VUELTA 14");
         let first = history_cell(0, 8);
         let fifth = history_cell(4, 8);
         assert_eq!(first[0], 7.0);

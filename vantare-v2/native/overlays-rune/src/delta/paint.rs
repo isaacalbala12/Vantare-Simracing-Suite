@@ -256,7 +256,7 @@ impl Painter {
             value.to_owned(),
             x,
             offset + 1.0,
-            (self.scene.width - x).max(0.0),
+            (self.scene.width - x - 1.0).max(0.0),
             content - offset - 2.0,
             face,
             size,

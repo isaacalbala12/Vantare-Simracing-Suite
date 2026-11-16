@@ -33,7 +33,7 @@ def main():
     expected = render()
     if args.check:
         if TARGET.read_bytes().replace(b"\r\n", b"\n") != expected:
-            raise SystemExit("Regenerate Standings tokens: python scripts/generar_standings.py")
+            raise SystemExit("Regenerate Standings tokens: python tools/generar_standings.py")
     else:
         TARGET.write_bytes(expected)
     print("PASS: Standings tokens match the canonical style")

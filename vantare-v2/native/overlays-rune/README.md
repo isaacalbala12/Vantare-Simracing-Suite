@@ -37,7 +37,7 @@ Es una herramienta QA; el canal de preview firmado de Studio sigue siendo PR 25.
 Preparar el lote sin ejecutar ningún motor:
 
 ```powershell
-python native/overlays-rune/scripts/preparar_escenas.py --widget standings --escenas native/ui/src/standings/scenes.json --look vantare --look eficiencia --salida D:/VantareServer/evidence/overlays-rune/standings/plan-<commit>
+python native/overlays-rune/tools/preparar_escenas.py --widget standings --escenas native/ui/src/standings/scenes.json --look vantare --look eficiencia --salida D:/VantareServer/evidence/overlays-rune/standings/plan-<commit>
 ```
 
 Las 16 escenas originales producen 96 pares pendientes con identidad del motor,
@@ -45,7 +45,7 @@ commit, copia Rune, datos y escala. Se conserva el corpus, salvo la elección de
 Look. Un plan sin PNG no es evidencia gráfica ni una medición.
 El binario incrusta su commit mediante `build.rs` (solo std/git). Cada PNG lleva
 un archivo `rune.capture.txt` con el motor, commit, copia Rune, tamaño y escala.
-En la sesión autorizada del PC de juego, `scripts/capturar_standings.py --plan
+En la sesión autorizada del PC de juego, `tools/capturar_standings.py --plan
 <plan.json> --exe <binario-debug>` ejecuta el lote offscreen. Valida todas las
 entradas antes de lanzar un proceso, conserva hashes de binario/PNG y rechaza
 una identidad distinta del plan. Deja el resultado como capturado sin revisar;
@@ -231,7 +231,7 @@ widget. El cinturón del ejecutable sigue siendo su primera instrucción.
 Preparar el lote es CPU y no ejecuta ninguno de los motores:
 
 ```powershell
-python native/overlays-rune/scripts/preparar_escenas.py --salida D:/VantareServer/evidence/overlays-rune/pr7/plan-<commit> --look eficiencia --look vantare
+python native/overlays-rune/tools/preparar_escenas.py --salida D:/VantareServer/evidence/overlays-rune/pr7/plan-<commit> --look eficiencia --look vantare
 ```
 
 Lee los siete casos originales de `ui/src/relative/scenes.json`, conserva los

@@ -84,7 +84,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           python -m unittest discover -s tools -p test_vantare.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python -m unittest discover -s scripts -p test_standings.py
+          python -m unittest discover -s tools -p test_standings.py
           exit $LASTEXITCODE
       - name: Licencias permisivas y aislamiento de GPUI
         if: steps.scope.outputs.needed != 'false'

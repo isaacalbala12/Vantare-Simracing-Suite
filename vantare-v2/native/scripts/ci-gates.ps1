@@ -19,6 +19,21 @@ try {
         if ($LASTEXITCODE) { throw 'No se pudieron seleccionar consumidores legacy.' }
         if ($legacy) { $legacyChecks = $legacy.Split(',') }
     }
+    # Si la selección cubre todo el workspace, `--workspace` conserva la
+    # unificación de features que siembra nightly; `-p` uno a uno la rompe y
+    # provoca fallos de sccache en dependencias de terceros (#1993).
+    if ($packages.Count) {
+        $metadata = & cargo metadata --locked --offline --no-deps --format-version 1
+        if ($LASTEXITCODE) { throw 'No se pudo leer el workspace para comprobar el ámbito completo.' }
+        $workspace = $metadata | ConvertFrom-Json
+        $members = @($workspace.packages | Where-Object { $_.id -in $workspace.workspace_members } |
+            ForEach-Object { $_.name })
+        if ($packages.Count -eq $members.Count -and
+            -not (Compare-Object -ReferenceObject $members -DifferenceObject $packages)) {
+            Write-Host 'Ámbito = workspace completo; se usa --workspace para conservar la caché.'
+            $packages = @()
+        }
+    }
     Write-Host "Scope: $(if ($packages.Count) { $packages -join ', ' } else { 'workspace completo' })"
     if (-not $ArchiveOnly) {
         & cargo fmt --all -- --check

@@ -1,31 +1,3 @@
-## VANTA-138 · #2481: preview.render sobre la CLI Rune de B
-
-Esquema aprobado por raíz: solo núcleo y contrato; no UI, caché ni canal
-interactivo. Rama `vantareapp/isa-2481-rune-preview`, rebasada sobre nightly `19ac26786`.
-`preview.render` recibe instancia/revisión o tipo del catálogo, escena demo y
-escala cerrada; devuelve una imagen PNG base64 o fallo final, sin acuse intermedio.
-El hijo es exclusivamente el ejecutable Rune hermano del host, con Job existente.
-Tope 512 KiB, dimensiones 1..4096, mensaje completo <=1 MiB y plazo 15 s.
-Tick existente, sin hilos/canales/timers nuevos. Cuenta/permisos/Live/cierre/Drop
-retiran el hijo y su salida. Se reutiliza el lector del layout y sus conflictos.
-Mock con PNG transparente fijo; contrato/corpus/validación TS propios, sin textos.
-base64 0.22.1 ya en el lock, MIT OR Apache-2.0; ningún paquete/versión añadido.
-
-#2474 está fusionado. PR B aún pendiente para assets/cierre/PNG create_new/release.
-La CLI actual no incorpora demos: sin snapshot/sequence da NoDemo en todos los
-widgets; se conserva, sin foto genérica. F prepara las entradas canónicas.
-No se considera esto un canal de edición: #2025 sigue aparcada.
-Gates finales: Clippy y 680 host PASS (2 omitidos: uno anterior y el helper
-invocado por otros tests); tipos/lint y 592 web PASS (83 dirigidos + 509 corpus/
-índice). jsdom no arrancó en la primera pasada; la repetición final sí pasó.
-Se prueban argumentos/escala/entorno, plazo con reloj inyectado y cierre del hijo
-por cuenta/permisos/Live/cierre/Drop. Bump v45→v46 en commit separado de cinco
-archivos, base verificada en v45; range-diff conserva implementación.
-CI y revisión del draft pendientes. Script de medición preparado, solo parseado;
-PNG grandes a escala1.5, latencia/CPU/RAM y píxeles/GPU esperan PC autorizado.
-No se cambia el límite sin consultar los resultados con la raíz.
-Sin merge, promoción, release ni cambios del paquete distribuido propios.
-
 ## VANTA-144 · Standings Eficiencia E1 (16/11/2026)
 
 E1 porta Config/plan/opciones/etiquetas y defaults de Style, función por función
@@ -60,7 +32,9 @@ Diff real de producción +188/-29 = 217 líneas; tests +220/-0 = 220.
 CI Rune Windows y revisión Sonnet pendientes. PR abierto, sin merge ni cierre.
 Efectos (Daños) se apilan sobre este head; Eficiencia después, corte por confirmar.
 
-## VANTA-138 · #2471: duplicar exige pertenecer al catálogo
+## VANTA-138 · #2471: duplicar exige pertenecer al catálogo (fusionado)
+
+#2479 fusionado por orquestador en nightly f7b0350bd; #2471 cerrada por E por encargo.
 
 `studio.duplicate` devuelve el mismo `Denied` que `studio.add` para tipos
 conservados fuera de `WidgetKind::CATALOG`, incluso con Pro. No escribe el
@@ -75,6 +49,44 @@ Tipos, lint y 64 tests web dirigidos PASS; Clippy y 669 tests de hub-host PASS
 (1 omisión preexistente), por la cola. CI y revisión del draft pendientes.
 #2474 ya está en nightly: preview es la siguiente
 entrega, utilizable tras el PR B de captura; sin gráficos, merge ni release propios.
+
+## VANTA-138 · #2481: preview.render sobre la CLI Rune de B
+
+Esquema aprobado por raíz: solo núcleo y contrato; no UI, caché ni canal
+interactivo. Rama `vantareapp/isa-2481-rune-preview`, rebasada sobre nightly `f7b0350bd`.
+`preview.render` recibe instancia/revisión o tipo del catálogo, escena demo y
+escala cerrada; devuelve una imagen PNG base64 o fallo final, sin acuse intermedio.
+El hijo es exclusivamente el ejecutable Rune hermano del host, con Job existente.
+Tope 512 KiB, dimensiones 1..4096, mensaje completo <=1 MiB y plazo 15 s.
+Tick existente, sin hilos/canales/timers nuevos. Cuenta/permisos/Live/cierre/Drop
+retiran el hijo y su salida. Se reutiliza el lector del layout y sus conflictos.
+Mock con PNG transparente fijo; contrato/corpus/validación TS propios, sin textos.
+base64 0.22.1 ya en el lock, MIT OR Apache-2.0; ningún paquete/versión añadido.
+
+#2474 y #2484 (08a26649f) fusionados: captura con assets/cierre/PNG create_new/release.
+La CLI actual no incorpora demos: sin snapshot/sequence da NoDemo en todos los
+widgets; se conserva, sin foto genérica. F prepara las entradas canónicas.
+No se considera esto un canal de edición: #2025 sigue aparcada.
+Gates finales: Clippy y 680 host PASS (2 omitidos: uno anterior y el helper
+invocado por otros tests); tipos/lint y 592 web PASS (83 dirigidos + 509 corpus/
+índice). jsdom no arrancó en la primera pasada; la repetición final sí pasó.
+Se prueban argumentos/escala/entorno, plazo con reloj inyectado y cierre del hijo
+por cuenta/permisos/Live/cierre/Drop. Bump v45→v46 en commit separado de cinco
+archivos, base verificada en v45; range-diff conserva implementación.
+CI y revisión del draft pendientes. Script de medición preparado, solo parseado;
+PNG grandes a escala1.5, latencia/CPU/RAM y píxeles/GPU esperan PC autorizado.
+No se cambia el límite sin consultar los resultados con la raíz.
+Sin merge, promoción, release ni cambios del paquete distribuido propios.
+
+Revisión Sonnet sin P0/P1; seguimiento autorizado: limpieza de restos en primer
+start, root reparse rechazado y junctions descendientes retiradas sin seguirlas.
+Se aplica ANTES del barrido la DACL protegida del SID actual con el helper
+existente de services::storage::Store, ahora reexportado bajo cfg(windows).
+Si falla, Io sin hijo. Test observa ACL real mediante Get-Acl contra SID actual.
+Stderr máximo64KiB comprobado en cada poll; exceso => CaptureFailed y cierre.
+Tests: caída previa/restos anidados, destino exterior intacto, root redirigido,
+64KiB exactos/+1 y DACL/SID. Gate hub-host por la cola: Clippy y 685 PASS (2 omitidos). Services: Clippy y 280 PASS (5 omitidos).
+Sin bump nuevo ni UI. La medición real sigue pendiente de acceso al PC.
 
 ## VANTA-144 · Standings literal A3 (16/11/2026)
 

@@ -687,3 +687,16 @@ con una instancia y snapshot.json XOR sequence.tsv. El script registra duración
 CPU del hijo, pico de RAM, bytes y dimensiones; aborta al superar 512 KiB o 15 s.
 No mide la carga GPU: esa aceptación y los píxeles corresponden a la campaña del
 PC de juego. No se ejecuta el binario de Rune en los tests de este crate.
+
+### Restos de una caída y stderr
+
+Antes de la primera captura de cada State se barre únicamente su root de preview.
+Se rechaza un root redirigido y las junctions/reparse points descendientes se
+retiran como enlaces, sin recorrer su destino. Un fallo impide empezar la captura.
+Cada poll comprueba stderr: hasta64KiB permitido, por encima CaptureFailed,
+terminación del hijo y retirada de los archivos. No cambia la versión del contrato.
+Antes del barrido se fija la DACL protegida al SID actual, heredable por archivos
+y subdirectorios, con el MISMO helper private_acl que usa services::storage::Store.
+No se confía en las ACL de --data-dir: no se heredan grants a otros usuarios.
+Si no se puede fijar la DACL, devuelve Io sin lanzar el hijo. API reutilizada
+mediante pub use cfg(windows), autorizada por raíz; sin algoritmo Win32 nuevo.

@@ -4,6 +4,7 @@ use crate::{
     protocol::{CoreStatus, HostError},
     studio::WidgetKind,
 };
+use std::os::windows::fs::MetadataExt as _;
 use std::{
     fs::{self, File, OpenOptions},
     io::{Read, Write},
@@ -12,6 +13,7 @@ use std::{
     time::{Duration, Instant},
 };
 use vantare_ipc::control::CatalogAccess;
+const STDERR_LIMIT: u64 = 64 * 1024;
 impl From<PreviewError> for HostError {
     fn from(reason: PreviewError) -> Self {
         Self::PreviewFailed { reason }
@@ -42,10 +44,15 @@ impl Drop for Running {
 pub(crate) struct State {
     root: PathBuf,
     active: Option<Running>,
+    cleaned: bool,
 }
 impl State {
     pub(crate) fn new(root: PathBuf) -> Self {
-        Self { root, active: None }
+        Self {
+            root,
+            active: None,
+            cleaned: false,
+        }
     }
     pub(crate) fn busy(&self) -> bool {
         self.active.is_some()
@@ -79,7 +86,16 @@ impl State {
         if self.busy() {
             return Err(HostError::Busy);
         }
-        fs::create_dir_all(&self.root).map_err(|_| HostError::Io)?;
+        if !self.cleaned {
+            fs::create_dir_all(&self.root).map_err(|_| HostError::Io)?;
+            let metadata = fs::symlink_metadata(&self.root).map_err(|_| HostError::Io)?;
+            if !metadata.is_dir() || metadata.file_attributes() & 0x400 != 0 {
+                return Err(HostError::Io);
+            }
+            vantare_services::storage::private_acl(&self.root).map_err(|_| HostError::Io)?;
+            sweep(&self.root).map_err(|_| HostError::Io)?;
+            self.cleaned = true;
+        }
         let path = self
             .root
             .join(vantare_services::random_id().map_err(|_| HostError::Io)?);
@@ -126,6 +142,10 @@ impl State {
             || !run.kind.info(access).allowed
         {
             Err(HostError::Denied)
+        } else if !fs::metadata(run.scratch.0.join("stderr"))
+            .is_ok_and(|metadata| metadata.len() <= STDERR_LIMIT)
+        {
+            Err(PreviewError::CaptureFailed.into())
         } else if now.saturating_duration_since(run.started)
             >= Duration::from_millis(u64::from(TIMEOUT_MS))
         {
@@ -143,6 +163,33 @@ impl State {
         self.active = None; // Terminate/reap and remove private files before publishing.
         Some((id, result))
     }
+}
+// Only this host-owned namespace is swept, once before its first capture.
+// Refuse a redirected root; unlink descendant reparse points without traversing them.
+fn sweep(root: &Path) -> std::io::Result<()> {
+    const REPARSE: u32 = 0x400;
+    const DIRECTORY: u32 = 0x10;
+    let metadata = fs::symlink_metadata(root)?;
+    if !metadata.is_dir() || metadata.file_attributes() & REPARSE != 0 {
+        return Err(std::io::ErrorKind::InvalidInput.into());
+    }
+    for entry in fs::read_dir(root)? {
+        let path = entry?.path();
+        let metadata = fs::symlink_metadata(&path)?;
+        if metadata.file_attributes() & REPARSE != 0 {
+            if metadata.file_attributes() & DIRECTORY != 0 {
+                fs::remove_dir(path)?;
+            } else {
+                fs::remove_file(path)?;
+            }
+        } else if metadata.is_dir() {
+            sweep(&path)?;
+            fs::remove_dir(path)?;
+        } else {
+            fs::remove_file(path)?;
+        }
+    }
+    Ok(())
 }
 fn capture_command(
     executable: &Path,

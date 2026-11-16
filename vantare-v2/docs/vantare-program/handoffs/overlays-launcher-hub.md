@@ -3041,3 +3041,14 @@ se conservan. Test de despacho positivo y dos negativos; sin captura porque
 No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
 Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
 Sin gráficos, Plane, merge, promoción ni release propios.
+
+
+## VANTA-144 · B, Delta local rebasado sin despacho (16/11/2026)
+
+Delta conserva solo los tres commits propios sobre nightly a63b17bed; el
+renderer vuelve al de nightly, sin enum ni despacho Delta hasta el trait.
+No cambia el aspecto. Se conservan sin commit los arreglos previos de tests
+y su stash de seguridad. Los tests de host necesitan la futura conexion;
+no se ignoran ni se afirma suite verde. La decision del enum queda sustituida
+por el trait Widget; propuesta enviada, pendiente de ambos OK. Sin push/PR
+de Delta, graficos, merge, release ni cambios de Plane.

@@ -93,6 +93,12 @@ impl Painter {
             pixels: false,
         }
     }
+    pub fn capture_images(&self, assets: Option<&Arc<rune::ImageCache>>) -> Vec<rune::Image> {
+        assets.map_or_else(Vec::new, |cache| vec![self.wheel(cache)])
+    }
+    fn wheel(&self, cache: &rune::ImageCache) -> rune::Image {
+        cache.svg(wheels::svg(self.painted.wheel), 40.0, 1.0)
+    }
     pub fn view(&self, assets: Option<&Arc<rune::ImageCache>>) -> El {
         let s = &self.style;
         let c = &s.colors;
@@ -200,7 +206,7 @@ impl Painter {
             Some(cache) => el()
                 .key("pedals-telemetry-wheel")
                 .size(40.0, 40.0)
-                .pixels(cache.svg(wheels::svg(p.wheel), 40.0, 1.0).pixels())
+                .pixels(self.wheel(cache).pixels())
                 .rotate((p.rotation_deg as f32).to_radians())
                 .opacity(if p.stale { 0.55 } else { 1.0 })
                 .pin(Some(320.0), Some(2.0), None, None),

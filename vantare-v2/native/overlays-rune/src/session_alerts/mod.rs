@@ -308,6 +308,9 @@ impl crate::widget::Widget for SessionAlerts {
         };
         Some(Box::new(SessionAlerts::new(settings, prefs, clock)))
     }
+    fn set_wall_base(&mut self, ms: u64) {
+        self.wall = ms;
+    }
     fn configured(
         &self,
         settings: &vantare_domain::widget_settings::Settings,
@@ -355,6 +358,16 @@ mod tests {
         SessionKind, SourceKind, SourceState,
         widget_settings::{self, session_alerts::Settings as Stored},
     };
+
+    #[test]
+    fn capture_wall_override_is_applied_before_any_photo() {
+        use crate::widget::Widget;
+        let mut widget = SessionAlerts::with_wall(&settings(), Preferences::default(), 9999);
+        widget.set_wall_base(1234);
+        assert_eq!(widget.now(0.0), 1234);
+        assert_eq!(widget.now(0.5), 1734);
+        assert!(widget.cursor.is_none());
+    }
 
     /// A live LMU practice session ending in five minutes, so its threshold fires.
     fn photo(elapsed: f64) -> Snapshot {

@@ -12,11 +12,25 @@ const GRAPHICS_DISABLED: &str = "Overlays Rune: gráficos desactivados por VANTA
 // No inicializar Rune, leer sus argumentos ni crear hilos antes de este guard.
 fn main() -> ExitCode {
     if graphics_disabled(std::env::var_os("VANTARE_SIN_GRAFICOS").as_deref()) {
-        eprintln!("{GRAPHICS_DISABLED}");
-        return ExitCode::FAILURE;
+        eprintln!("GRAPHICS_DISABLED {GRAPHICS_DISABLED}");
+        return ExitCode::from(6);
     }
 
-    match start() {
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    #[cfg(debug_assertions)]
+    if args.first().is_some_and(|a| a == "--capture-scene") {
+        return match vantare_overlays_rune::capture::run(&args[1..]) {
+            Ok(()) => {
+                eprintln!("OK");
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                ExitCode::from(error.code)
+            }
+        };
+    }
+    match start(args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("overlays-rune: {error}");
@@ -24,13 +38,7 @@ fn main() -> ExitCode {
         }
     }
 }
-
-fn start() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<_> = std::env::args_os().skip(1).collect();
-    #[cfg(debug_assertions)]
-    if args.first().is_some_and(|a| a == "--capture-scene") {
-        return vantare_overlays_rune::capture::run(&args[1..]);
-    }
+fn start(args: Vec<std::ffi::OsString>) -> Result<(), Box<dyn std::error::Error>> {
     let options = options::parse(args)?;
     // La campaña numérica llega con los pintores; nunca ignorar esa opción.
     if options.benchmark_count.is_some() {

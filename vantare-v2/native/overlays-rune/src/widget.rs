@@ -21,6 +21,12 @@ pub(crate) trait Widget {
     where
         Self: Sized;
     fn attach_assets(&mut self, _assets: &Arc<rune::ImageCache>) {}
+    /// Images used by the real view; capture keeps them until publication/readback.
+    fn capture_images(&self) -> Vec<rune::Image> {
+        Vec::new()
+    }
+    /// Deterministic capture wall clock; only SessionAlerts overrides it.
+    fn set_wall_base(&mut self, _ms: u64) {}
     fn shortcut(&mut self) -> Update {
         Update::default()
     }

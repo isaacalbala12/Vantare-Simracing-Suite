@@ -18,6 +18,10 @@ try {
         $legacy = & python (Join-Path $PSScriptRoot 'affected-crates.py') --base $DiffBase --legacy-check
         if ($LASTEXITCODE) { throw 'No se pudieron seleccionar consumidores legacy.' }
         if ($legacy) { $legacyChecks = $legacy.Split(',') }
+        # TEMP measurement: simulate the --fast scope (Hub/Admin out) for a crate PR.
+        if ($packages.Count) {
+            $packages = @($packages | Where-Object { $_ -notin @('vantare-hub', 'vantare-admin') })
+        }
     }
     Write-Host "Scope: $(if ($packages.Count) { $packages -join ', ' } else { 'workspace completo' })"
     if (-not $ArchiveOnly) {
@@ -52,3 +56,4 @@ try {
         } | ConvertTo-Json | Set-Content (Join-Path $env:VANTARE_SLOT_TARGET 'ci-scope.json') -Encoding utf8
     }
 } finally { Pop-Location }
+

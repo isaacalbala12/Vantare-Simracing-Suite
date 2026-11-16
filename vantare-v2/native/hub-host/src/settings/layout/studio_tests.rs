@@ -1189,6 +1189,38 @@ fn duplicate_uses_existing_bounds_for_offsets_at_the_edge_and_custom_canvases() 
 }
 
 #[test]
+fn duplicate_rejects_retained_non_catalog_kind_like_add_without_writing() {
+    let (_root, path, bytes) = fixture();
+    let kind = WidgetKind::CarDamageNumbers;
+    let access = Some(CatalogAccess::Pro);
+    let mut document: serde_json::Value = serde_json::from_slice(&bytes).expect("layout");
+    document["instances"][0]["settings"] = serde_json::from_str(
+        crate::widget_defaults::get(kind.id())
+            .expect("native defaults")
+            .settings
+            .get(),
+    )
+    .expect("settings");
+    let bytes = serde_json::to_vec(&document).expect("fixture");
+    std::fs::write(&path, &bytes).expect("write");
+    let mut state = State::new(path.clone());
+    let before = state.view(access);
+    assert_eq!(before.instances[0].kind, kind);
+    assert!(!before.instances[0].locked);
+    assert!(!WidgetKind::CATALOG.contains(&kind));
+    let added = state.add(kind, &before.revision, access);
+    assert_eq!(added, Err(HostError::Denied));
+    assert_eq!(std::fs::read(&path).expect("unchanged"), bytes);
+    assert_eq!(state.view(access).revision, before.revision);
+    assert_eq!(state.duplicate("widget-1", &before.revision, access), added);
+    assert_eq!(std::fs::read(&path).expect("unchanged"), bytes);
+    let after = state.view(access);
+    assert_eq!(after.revision, before.revision);
+    assert_eq!(after.instances, before.instances);
+    assert_eq!(state.undo, Vec::<Vec<u8>>::new());
+}
+
+#[test]
 fn duplicate_rejects_missing_or_locked_sources_and_instance_limit() {
     use serde_json::{Value, json};
     let (_root, path, bytes) = fixture();

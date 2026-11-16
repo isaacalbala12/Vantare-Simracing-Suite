@@ -368,6 +368,28 @@ describe("Studio Foco structure", () => {
 });
 
 describe("Studio Ctrl+D", () => {
+  it("does not send duplicate for a retained widget outside the catalog", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount("studio-conservados");
+    const row = await waitFor(() => {
+      const row = document.querySelector<HTMLButtonElement>(
+        '[data-widget="conserved-1"]',
+      );
+      if (!row) throw new Error("Retained widget row");
+      return row;
+    });
+    const user = userEvent.setup();
+    await user.click(row);
+    expect(row.getAttribute("aria-pressed")).toBe("true");
+    await user.keyboard("{Control>}d{/Control}");
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "studio.duplicate",
+      ),
+    ).toHaveLength(0);
+    expect(document.activeElement).toBe(row);
+  });
+
   it.each(studioDuplicateCases)(
     "consumes added and the native $name vector without moving focus",
     async (vector) => {

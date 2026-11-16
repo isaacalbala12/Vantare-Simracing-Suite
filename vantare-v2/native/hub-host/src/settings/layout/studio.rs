@@ -742,7 +742,7 @@ fn duplicate(
     }
     let mut copy = Fields(opened.find(source)?.0.clone());
     let item = instance(&copy, access)?;
-    if item.locked {
+    if item.locked || !WidgetKind::CATALOG.contains(&item.kind) {
         return Err(HostError::Denied);
     }
     let performance: Fields = optional(&opened.document.fields, "performance", Fields::default())?;

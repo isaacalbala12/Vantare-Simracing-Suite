@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { studioAddKinds } from "../../../contract/generated/studio";
 import { coreKey, offline } from "../../app/Host";
 import { useUi } from "../../app/UiState";
 import { hubKeys } from "../../ui/hub-shortcuts";
@@ -146,6 +147,7 @@ export function useStudioFocus() {
         if (
           selected &&
           !selected.locked &&
+          studioAddKinds.some((kind) => kind === selected.kind) &&
           target &&
           target.dataset.widget === selected.id &&
           root.current?.contains(target) &&

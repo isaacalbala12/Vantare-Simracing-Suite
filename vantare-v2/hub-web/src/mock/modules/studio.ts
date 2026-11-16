@@ -8,6 +8,7 @@ import type {
 import {
   studioAdditionalOptions as a,
   studioAddAvailable,
+  studioAddKinds,
   studioCatalog,
   studioDuplicateCases,
   studioFreeKinds,
@@ -433,6 +434,7 @@ export function create(context: MockContext): MockHandler {
         if (
           !source ||
           source.locked ||
+          !studioAddKinds.some((kind) => kind === source.kind) ||
           view.instances.length >= studioLimits.instances
         )
           return fail("denied");

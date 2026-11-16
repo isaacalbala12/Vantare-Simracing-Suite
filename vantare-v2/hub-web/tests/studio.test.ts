@@ -394,6 +394,26 @@ it.each(["standings", "relative"] as const)(
 );
 
 describe("duplicate widget contract", () => {
+  it("rejects retained non-catalog widgets without changing the snapshot", () => {
+    const host = createMockHost("studio-conservados");
+    const before = view(host);
+    const source = before.instances.find(
+      (item) => item.kind === "car-damage-numbers",
+    );
+    if (!source) throw new Error("Retained widget fixture");
+    expect(source.locked).toBe(false);
+    expect(before.catalog.some((item) => item.kind === source.kind)).toBe(
+      false,
+    );
+    expect(
+      send(host, "studio.duplicate", {
+        id: source.id,
+        baseRevision: before.revision,
+      }),
+    ).toMatchObject({ kind: "failure", error: { kind: "denied" } });
+    expect(view(host)).toEqual(before);
+  });
+
   it.each(studioDuplicateCases)(
     "copies through one request with native bounds: $name",
     (sample) => {

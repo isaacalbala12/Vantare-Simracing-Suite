@@ -1,3 +1,19 @@
+## VANTA-138 · #2471: duplicar exige pertenecer al catálogo
+
+`studio.duplicate` devuelve el mismo `Denied` que `studio.add` para tipos
+conservados fuera de `WidgetKind::CATALOG`, incluso con Pro. No escribe el
+layout ni cambia revisión o historial. No cambia el contrato ni su versión.
+El mock y Ctrl+D reutilizan `studioAddKinds`, generado desde ese mismo catálogo;
+los vectores existentes de desplazamiento y límites no cambian.
+Regresión nativa con CarDamageNumbers permitido con Pro, mock con la escena
+studio-conservados y atajo sin envío. Los tests existentes siguen cubriendo
+los duplicados válidos, opacos, Hz, undo y la mini de SessionAlerts.
+Rama `vantareapp/isa-2471-duplicate-catalog`, base original nightly `489c6c018`; rebasada sobre `19ac26786`.
+Tipos, lint y 64 tests web dirigidos PASS; Clippy y 669 tests de hub-host PASS
+(1 omisión preexistente), por la cola. CI y revisión del draft pendientes.
+#2474 ya está en nightly: preview es la siguiente
+entrega, utilizable tras el PR B de captura; sin gráficos, merge ni release propios.
+
 ## VANTA-144 · Standings literal A2 (16/11/2026)
 
 A2 conecta cabecera, filas y celdas GPUI con el constructor Look Vantare;

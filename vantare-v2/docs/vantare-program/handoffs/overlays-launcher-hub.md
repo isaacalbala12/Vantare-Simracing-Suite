@@ -3504,3 +3504,11 @@ verde. Gate focal/build/package por cola y suite global CI pendientes al abrir
 el draft; se actualizan resultados reales en el PR al cerrar P1.
 PR draft #2502: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2502.
 Base rebasada 5a1f31357; pruebas globales CI y build/package local pendientes.
+P1 · verificación local 17/11:22 tests focales, build y package PASS por cola,
+sin gráficos. Primer artefacto normal source57deb152f, limpio, versión de prueba
+0.0.989:21 archivos,312,736MiB expandidos,143,984MiB ZIP y3,619MiB app.asar.
+Versión PE comprobada; siete fuses y dos locales releídos. El ZIP de Electron
+solo ya supera128MiB; P2 prueba reducciones antes de decidir topes/relevo.
+Evidencia exacta y resultado definitivo de CI en #2502 y en
+D:/VantareServer/evidence/hub-web/package-p1/measurement.json. CI sigue pendiente;
+no hay entrega instalada ni publicación. El gate se repite tras rebase final.

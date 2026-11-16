@@ -62,6 +62,8 @@ struct Entry {
     placement: Placement,
     shortcut: Option<u8>,
     key_down: bool,
+    /// Last agenda this instance saw: a fresh painter must still receive it.
+    calendar: Option<Arc<Vec<vantare_domain::session_alerts::CalendarInput>>>,
 }
 #[derive(Default)]
 pub(crate) struct Painters {
@@ -156,6 +158,7 @@ impl Painters {
                                 _ => None,
                             },
                             key_down: false,
+                            calendar: None,
                         },
                     );
                     build = true;
@@ -179,7 +182,14 @@ impl Painters {
                     }
                     build |= update.build;
                 }
-                entry.painter.calendar(&frames.calendar);
+                if !entry
+                    .calendar
+                    .as_ref()
+                    .is_some_and(|old| Arc::ptr_eq(old, &frames.calendar))
+                {
+                    entry.painter.calendar(&frames.calendar);
+                    entry.calendar = Some(frames.calendar.clone());
+                }
                 order.push(instance.id.clone());
             }
         }
@@ -330,6 +340,7 @@ pub(crate) mod tests {
                     placement,
                     shortcut: None,
                     key_down: false,
+                    calendar: None,
                 },
             );
             painters.order.push(id.into());
@@ -531,5 +542,133 @@ pub(crate) mod tests {
             [(vantare_domain::session_alerts::Tone::Mild, 70)],
             "el bucle entrega al reproductor el tono que pide el aviso"
         );
+    }
+    /// Hora de pared inyectada: este test no lee el reloj real.
+    const WALL: u64 = 1_000_000;
+    fn agenda() -> Arc<Vec<vantare_domain::session_alerts::CalendarInput>> {
+        Arc::new(vec![vantare_domain::session_alerts::CalendarInput {
+            id: "race".into(),
+            label: "Spa".into(),
+            starts_at_ms: WALL + 300_000,
+        }])
+    }
+    fn frames_with(
+        layout: Arc<vantare_ipc::layout::Layout>,
+        calendar: Arc<Vec<vantare_domain::session_alerts::CalendarInput>>,
+    ) -> crate::scene::FrameSet {
+        let mut snapshot = lmu_photo();
+        // La sesión termina dentro de una hora: el único aviso es el del calendario.
+        snapshot.state.session.timing.scheduled_end_s = vantare_domain::Quality::Reliable(4_000.0);
+        let ids: Vec<String> = layout
+            .instances
+            .iter()
+            .map(|instance| instance.id.clone())
+            .collect();
+        crate::scene::FrameSet {
+            layout,
+            photos: ids
+                .iter()
+                .map(|id| {
+                    (
+                        id.clone(),
+                        vantare_ipc::Photo::full(Arc::new(snapshot.clone())),
+                    )
+                })
+                .collect(),
+            visible: ids.into_iter().collect(),
+            shown: true,
+            reduced_motion: false,
+            calendar,
+        }
+    }
+    fn viewport() -> crate::scene::Viewport {
+        crate::scene::Viewport {
+            origin: (0.0, 0.0),
+            size: vantare_domain::geometry::Size {
+                width: 1920.0,
+                height: 1080.0,
+            },
+        }
+    }
+
+    /// La agenda que llega por `FrameSet` acaba en el widget: su aviso suena una vez.
+    #[test]
+    fn the_calendar_agenda_reaches_the_widget_through_sync() {
+        crate::session_alerts::inject_wall(Some(WALL));
+        let design = vantare_ipc::layout::Layout::from_json(
+            br#"{"version":2,"instances":[{"id":"avisos","x":0,"y":0,"settings":{"kind":"session-alerts"}}]}"#,
+        )
+        .expect("diseño");
+        let frames = frames_with(Arc::new(design), agenda());
+        let shared = Sharing::default();
+        let mut painters = Painters {
+            sound: crate::session_alerts::sound::Speaker::with(Box::new(shared.clone())),
+            ..Default::default()
+        };
+        let meter = crate::stats::Meter::new(Arc::new(crate::stats::Counts::default()));
+        painters.sync(
+            Some(&frames),
+            &crate::host::Access::LocalPreview,
+            viewport(),
+            0.0,
+            &meter,
+        );
+        let mut tx = rune::Tx::default();
+        painters.animate(0.0, &mut tx, &meter);
+        assert_eq!(
+            shared.0.borrow().as_slice(),
+            [(vantare_domain::session_alerts::Tone::Mild, 70)],
+            "el aviso del calendario llega al widget y suena"
+        );
+        crate::session_alerts::inject_wall(None);
+    }
+
+    /// Una instancia nueva con la MISMA agenda también la recibe: el `Arc` se recuerda
+    /// por instancia, no una vez para todo el proceso.
+    #[test]
+    fn a_second_instance_receives_the_same_agenda() {
+        crate::session_alerts::inject_wall(Some(WALL));
+        let mut design = vantare_ipc::layout::Layout::from_json(
+            br#"{"version":2,"instances":[{"id":"avisos","x":0,"y":0,"settings":{"kind":"session-alerts"}}]}"#,
+        )
+        .expect("diseño");
+        let agenda = agenda();
+        let shared = Sharing::default();
+        let mut painters = Painters {
+            sound: crate::session_alerts::sound::Speaker::with(Box::new(shared.clone())),
+            ..Default::default()
+        };
+        let meter = crate::stats::Meter::new(Arc::new(crate::stats::Counts::default()));
+        let frames = frames_with(Arc::new(design.clone()), agenda.clone());
+        painters.sync(
+            Some(&frames),
+            &crate::host::Access::LocalPreview,
+            viewport(),
+            0.0,
+            &meter,
+        );
+        let mut tx = rune::Tx::default();
+        painters.animate(0.0, &mut tx, &meter);
+        assert_eq!(shared.0.borrow().len(), 1, "la primera instancia avisa");
+        // La segunda aparece después, con el mismo `Arc` de agenda.
+        let mut second = design.instances[0].clone();
+        second.id = "avisos2".into();
+        second.y = 100.0;
+        design.instances.push(second);
+        let frames = frames_with(Arc::new(design), agenda);
+        painters.sync(
+            Some(&frames),
+            &crate::host::Access::LocalPreview,
+            viewport(),
+            0.0,
+            &meter,
+        );
+        painters.animate(0.0, &mut tx, &meter);
+        assert_eq!(
+            shared.0.borrow().len(),
+            2,
+            "la instancia nueva recibe la agenda que ya estaba publicada"
+        );
+        crate::session_alerts::inject_wall(None);
     }
 }

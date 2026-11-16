@@ -3052,3 +3052,17 @@ y su stash de seguridad. Los tests de host necesitan la futura conexion;
 no se ignoran ni se afirma suite verde. La decision del enum queda sustituida
 por el trait Widget; propuesta enviada, pendiente de ambos OK. Sin push/PR
 de Delta, graficos, merge, release ni cambios de Plane.
+
+
+## VANTA-144 · B, Delta con Widget (16/11/2026)
+
+Rebase sobre nightly 5d7dfa61f. Delta implementa Widget en su carpeta y agrega
+un brazo en constructor para Vantare; se conserva el pintor y el Tween comun.
+Se incluyen los arreglos CPU previos de la fuente con lider disponible y snap
+por bordes de 1/64 px, conservados hasta ahora sin commit. No se ocultan los
+fallos historicos ni se afirma suite nueva verde. CI pendiente. Un solo widget
+en el PR draft; sin Eficiencia. Las desviaciones visibles siguen en README:
+capsula vertical, barra plana sin escala/degradado, cabecera/sectores/marca
+simplificados y ausencia de avisos. No se cambia el aspecto en esta conexion.
+Escenas/comandos QA preparados fuera del repo; PC de juego sin hora. Sin
+graficos en servidor, dependencias, merge, release ni cambios de Plane.

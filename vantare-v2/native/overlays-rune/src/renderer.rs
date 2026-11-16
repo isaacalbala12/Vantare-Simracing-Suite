@@ -26,6 +26,9 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::MulticlassRelative(_) => {
             Some(<crate::multiclass_relative::MulticlassRelative as Widget>::new)
         }
+        Settings::Delta(s) if s.design_system == Look::Vantare => {
+            Some(<crate::delta::Delta as Widget>::new)
+        }
         _ => None,
     }
 }

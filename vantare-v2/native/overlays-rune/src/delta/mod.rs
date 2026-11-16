@@ -297,6 +297,55 @@ impl Delta {
         paint::view(self)
     }
 }
+impl crate::widget::Widget for Delta {
+    fn new(
+        settings: &vantare_domain::widget_settings::Settings,
+        prefs: Preferences,
+        reduced: bool,
+        _hz: u16,
+        _clock: f64,
+    ) -> Option<Box<dyn crate::widget::Widget>> {
+        let vantare_domain::widget_settings::Settings::Delta(settings) = settings else {
+            return None;
+        };
+        if settings.design_system != vantare_domain::widget_settings::look::Look::Vantare {
+            return None;
+        }
+        Some(Box::new(Delta::new(settings, prefs, reduced)))
+    }
+    fn configured(
+        &self,
+        settings: &vantare_domain::widget_settings::Settings,
+        prefs: Preferences,
+    ) -> bool {
+        let vantare_domain::widget_settings::Settings::Delta(settings) = settings else {
+            return false;
+        };
+        Delta::configured(self, settings, prefs)
+    }
+    fn size(&self) -> Size {
+        Delta::size(self)
+    }
+    fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
+        Delta::size_for(self, snapshot)
+    }
+    fn policy(&mut self, reduced: bool, _hz: u16, clock: f64) -> Update {
+        Delta::policy(self, reduced, clock)
+    }
+    fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
+        Delta::update(self, snapshot, clock)
+    }
+    fn animate(&mut self, clock: f64) -> Update {
+        Delta::animate(self, clock)
+    }
+    fn schedule(&self, clock: f64, tx: &mut Tx) {
+        Delta::schedule(self, clock, tx);
+    }
+    fn view(&self) -> El {
+        Delta::view(self)
+    }
+}
+
 fn reference(settings: &Settings) -> Reference {
     match settings.reference.as_str() {
         "optimal" => Reference::Optimal,

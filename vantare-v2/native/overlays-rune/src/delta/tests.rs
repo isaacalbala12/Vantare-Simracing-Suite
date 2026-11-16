@@ -13,6 +13,10 @@ use vantare_ipc::{Photo, layout::Layout};
 
 fn snapshot() -> Snapshot {
     let mut s = vantare_ipc::source::fixed();
+    s.state.capabilities.delta = vantare_domain::Capability::Fresh;
+    // source::fixed is a standings scene: it has no class leader or lap times.
+    s.state.cars[0].class_position = Reliable(1);
+    s.state.cars[0].best_lap_s = Reliable(99.0);
     let p = s.state.player.as_mut().expect("simulated player");
     p.delta_best_s = Reliable(-0.214);
     p.delta_optimal_s = Reliable(-0.300);
@@ -50,8 +54,13 @@ fn values_and_reference_come_from_the_canonical_projection() {
             ..settings("bar")
         };
         let mut painter = Delta::new(&settings, Preferences::default(), false);
-        assert!(changed(painter.update(&input, 0.0)));
+        assert!(changed(painter.update(&input, 0.0)), "{reference_name}");
         let board = delta::project_reference(&input, Preferences::default(), reference(&settings));
+        assert_eq!(
+            board.phase,
+            Phase::Live,
+            "simulated {reference_name} is available"
+        );
         assert_eq!(painter.board, board);
         assert_eq!(
             painter.labels[1].get().as_ref(),
@@ -59,6 +68,20 @@ fn values_and_reference_come_from_the_canonical_projection() {
         );
         assert!(!changed(painter.update(&input, 0.1)));
     }
+    let mut missing = input.clone();
+    missing.state.cars[0].best_lap_s = vantare_domain::Quality::Unavailable;
+    let mut painter = Delta::new(
+        &Settings {
+            reference: "leader".into(),
+            ..settings("bar")
+        },
+        Preferences::default(),
+        false,
+    );
+    painter.update(&missing, 0.0);
+    assert_eq!(painter.board.phase, Phase::NoReference);
+    assert_eq!(painter.labels[1].get().as_ref(), "-.---");
+    assert!(!changed(painter.update(&missing, 0.1)));
 }
 
 #[test]
@@ -122,7 +145,7 @@ fn the_live_bar_has_real_cpu_geometry_and_reaches_its_target() {
     runtime.frame(0.0);
     assert_eq!(
         runtime.presented("bar-fill").expect("painted bar").0,
-        expected
+        snapped_rect(expected)
     );
     let mut input = snapshot();
     input.state.player.as_mut().expect("player").delta_best_s = Reliable(0.7);
@@ -131,9 +154,14 @@ fn the_live_bar_has_real_cpu_geometry_and_reaches_its_target() {
     runtime.frame(0.0);
     assert_eq!(
         runtime.presented("bar-fill").expect("updated bar").0,
-        runtime.state.bar.get()
+        snapped_rect(runtime.state.bar.get())
     );
     assert!(runtime.state.bar.get()[2] > 0.0);
+}
+fn snapped_rect([x, y, w, h]: [f32; 4]) -> [f32; 4] {
+    // Pinned Rune rounds both edges to 1/64 device pixel (rune-motion/src/snap.rs).
+    let [left, top, right, bottom] = [x, y, x + w, y + h].map(|v| (v * 64.0).round() / 64.0);
+    [left, top, right - left, bottom - top]
 }
 #[test]
 fn thirty_seconds_of_sequences_and_hidden_lap_times_leave_actual_cpu_pixels_unchanged() {

@@ -34,6 +34,8 @@ jobs:
         run: bun run typecheck:scripts
       - run: bun run lint
       - run: bun run test
+      - name: Verify production renderer isolation
+        run: bun scripts/renderer-production.ts
       - name: Install Chromium and system dependencies
         run: |
           set -o pipefail

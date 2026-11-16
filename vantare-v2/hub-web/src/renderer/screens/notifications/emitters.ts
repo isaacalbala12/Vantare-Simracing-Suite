@@ -195,6 +195,8 @@ export function connectEmitters(
     }
     if (event.method === "settings.update" && event.error?.kind === "conflict")
       reply({ method: "settings.get", value: event.error.current });
+    if (event.reply?.method === "launcher.launchChecked")
+      launcherFailure = false;
     if (
       (event.reply?.method === "launcher.launch" ||
         event.reply?.method === "launcher.favorite") &&
@@ -202,7 +204,8 @@ export function connectEmitters(
     )
       launcherFailure = false;
     if (
-      (event.method === "launcher.launch" ||
+      (event.method === "launcher.launchChecked" ||
+        event.method === "launcher.launch" ||
         event.method === "launcher.favorite") &&
       event.error
     ) {

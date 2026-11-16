@@ -1,3 +1,73 @@
+## VANTA-138 · #2028: Electron usa lanzamiento checked (retoques de review)
+
+PR #2437, rama `vantareapp/isa-2028-electron-checked`, rebasada sobre nightly
+`4fdcee334` tras fusionarse #2432. Lógica intacta; conflicto solo del handoff,
+conservando ambos textos. No cambia contrato ni versión.
+Inicio, Launcher, rail, paleta y favorito usan checked con cuenta capturada.
+El favorito es el primero marcado en el orden de la vista; la UI no copia el
+orden de Rust. Se eliminan ramas imposibles del único resultado Queued.
+`check-command-palette.ts` está activo desde web-a11y y espera launchChecked
+con armedGeneration. Las integraciones afirman globalmente que no se envía
+launcher.launch ni launcher.favorite, usando el observador existente del Client.
+Últimos gates: tipos de producto/scripts, lint, build y 165 tests dirigidos PASS.
+El barrido completo anterior dio 3.016 PASS; CI del nuevo head pendiente.
+No hay texto/estado visual nuevo, gráficos, merge, release ni preview propios.
+
+## VANTA-138 · #2184: escaneo y pasos antes de lanzar (fusionado en nightly)
+
+PR #2432 fusionado en nightly `4fdcee334d17e14894c6f07741e6dbca7330ae5d`.
+#2184 cerrada por encargo del orquestador; sin merge propio.
+La validación vive en `launcher::launch` y `checked::launch_inner`, con el Reader
+de la sesión; el despacho solo delega. También cubre `launch_for_instance` del
+Calendario. Autoridad → revisión → discovery/perfil → buzón, sin reenvío.
+Tests: escaneo real (`rescan` + `view`), precedencia con revisión y permisos
+inválidos, Calendario al disparar con escaneo pendiente (buzón vacío y ocupado),
+pasos ausentes/no disponibles y un único envío válido. Sin aplicaciones/gráficos.
+Gate local de la revisión: Clippy -D warnings y 668 tests PASS (1 omisión existente);
+formato/arquitectura PASS. CI validada para la fusión por el orquestador.
+Sin bump, cambios de runtime/ipc ni release. #2437 (#2028) continúa después.
+
+## VANTA-144 · Reglas de presentación compartidas en domain (16/11/2026)
+
+Traslado mecánico aprobado por raíz y sub-orquestador: waiting_text pasa a
+format.rs de domain, con reexport en vantare de GPUI. Los dos traits existentes
+SettingsPresentation y sus impls pasan a input_telemetry.rs y pedals_telemetry.rs
+de domain, ahora públicos; GPUI los importa sin cambiar llamadas ni tests.
+Entrada conserva show_clutch = ajuste && hay dato, y borra pedals[0] si el
+ajuste está apagado. Pedales conserva show_clutch = ajuste, sin esa condición;
+su selector sigue usando el único WHEELS y el mismo fallback generic.
+Track_weather recibe session_label y wind_heading del controlador GPUI, sin
+cambiar la flecha ni su geometría. Su ViewModel expone wet_percent: humedad de
+la pista, redondeada desde track_wetness numérico validado, sin parsear textos.
+Regresión nueva en Workshop compara con el parseo anterior las tres fuentes
+de fixtures, idiomas/unidades, empates de porcentaje, calidades y ausencias;
+los tests existentes se conservan. Los pintores GPUI consumen ese campo.
+Sin tocar normalización, tablas, memoria, animación, Rune ni dependencias.
+El Full de domain incluye toda la selección Full de ui; también telemetría,
+por la cola del servidor. Gates y CI completa en el PR draft. Los widgets Rune
+consumirán estas reglas en PRs posteriores coordinados por el orquestador.
+Sin cambios visuales, gráficos en el servidor, merge, release ni estado de Plane.
+
+## VANTA-138 · #2380, motivo de lienzo no disponible (16/11/2026)
+
+Esquema aprobado por raíz: StudioState.monitorUnavailable, fallo privado cerrado
+en el adaptador y mutaciones todavía Protected. Sin métodos, módulos, hilos,
+estado persistente, ipc/domain ni dependencias nuevos. Contrato v45, bump separado
+sobre nightly verificada en v44. Núcleo y contrato solamente; Sol-Hub hará UI/textos
+en #2362. Implementado en vantareapp/isa-2380-studio-monitor-state, draft enlazado
+por #2380. Formato/exportador, Clippy y666 tests host correctos (1 omitido), por la
+cola del servidor; ambos tipos/lint y525 tests web correctos. CI/revisión pendientes;
+sin merge, release ni gráficos.
+
+Textos aprobados para el consumidor:
+- monitorUnavailable: «Vantare no detecta el monitor de este lienzo» + «Conéctalo y
+  pulsa Volver a cargar.»; selector de resolución oculto (canvas/monitor null).
+- resto de Protected/Missing: «No se puede abrir este diseño» + «Vuelve a cargar.
+  Si sigue igual, el archivo puede estar dañado o no ser compatible.».
+
+Se conserva el primer error confirmado y no se infiere la causa desde null.
+Protected sigue cubriendo otros límites de proyección; no afirma corrupción.
+
 ## VANTA-144 · Caché de imágenes propiedad del host Rune (16/11/2026)
 
 Variante attach_assets aprobada por raíz y sub-orquestador: método del trait
@@ -3055,6 +3125,24 @@ No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
 Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
 Sin gráficos, Plane, merge, promoción ni release propios.
 
+
+## VANTA-144 · Historial de delta en Rune (16/11/2026)
+
+Pintor aprobado: domain conserva Trace/LapHistory/LapPoint/Details/ViewModel;
+el widget mantiene su caché Arc de muestras y compara la escena visible para
+repintar, sin usar sequence como invalidación. Canvas de segmentos rectos en
+orden GPUI línea/relleno, cursores, textos y sectores; tamaño fijo 760×192.
+Sin reloj ni Tween; movimiento reducido mantiene el dibujo. Capas con pin,
+tests CPU de límites reales de ventana, orden de segmentos y fotos repetidas.
+Gates y CI en el PR; rasterizado pendiente de captura del PC. Sin gráficos
+en el servidor, dependencias nuevas ni cambios de domain/ipc/host.
+
+## VANTA-144 · Seguimiento de Historial de delta (16/11/2026)
+
+Tras #2439: invalidación por versión local de LapHistory, vectores prestados,
+una comparación del gráfico y textos conservados cuando no cambian. Mismo dibujo.
+Tests CPU de los tramos inválidos, recorte ±2 y orden línea/relleno del Shape real.
+Gates/head en el PR; sin domain/ipc/host nuevos ni gráficos. #2430 espera sus bases.
 
 ### VANTA-144 · fuente única Eficiencia (Worker B, 16/11/2026)
 

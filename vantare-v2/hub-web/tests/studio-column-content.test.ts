@@ -1,5 +1,8 @@
 import { expect, it } from "vitest";
-import { studioWidgetDefaults } from "../src/contract/generated/studio";
+import {
+  studioColumnFormatCases,
+  studioWidgetDefaults,
+} from "../src/contract/generated/studio";
 import { applyWidgetSettings } from "../src/mock/modules/studio";
 import {
   canResetColumns,
@@ -132,15 +135,24 @@ it("keeps the native empty name mode when materializing fallback columns", () =>
       ?.format.mode,
   ).toBe("");
 });
-it("does not pretend to reset a custom name mode that the patch cannot clear", () => {
+it("clears a custom name mode only with a null reset", () => {
   const s = settings();
   const column = s.columns?.find((column) => column.metricId === "driverName");
   if (!column) throw Error("column");
   column.format.mode = "truncate";
-  expect(canResetColumns(s, "race")).toBe(false);
-  expect(resetColumns(s, "race")).toBeNull();
+  expect(canResetColumns(s, "race")).toBe(true);
+  const patch = resetColumns(s, "race");
+  if (patch?.kind !== "standings") throw Error("reset");
+  expect(
+    patch.columns?.find((c) => c.metric === "driverName")?.format,
+  ).toMatchObject({ mode: null });
+  const result = applyWidgetSettings(s, patch);
+  if (result?.kind !== "standings") throw Error("standings");
+  expect(
+    result.columns?.find((c) => c.metricId === "driverName")?.format.mode,
+  ).toBe("");
 });
-it("does not pretend to reset a time format the current request cannot change", () => {
+it("resets custom time formats with null while ordinary edits preserve them", () => {
   const s: import("../src/contract/generated/studio").StandingsWidgetSettings & {
     kind: "standings";
   } = settings();
@@ -148,8 +160,14 @@ it("does not pretend to reset a time format the current request cannot change", 
   if (!time) throw Error("time");
   time.format.display = "compact";
   time.format.decimals = 1;
-  expect(canResetColumns(s, "race")).toBe(false);
-  expect(resetColumns(s, "race")).toBeNull();
+  expect(canResetColumns(s, "race")).toBe(true);
+  const reset = resetColumns(s, "race");
+  if (!reset) throw Error("reset");
+  const restored = applyWidgetSettings(s, reset);
+  if (restored?.kind !== "standings") throw Error("standings");
+  expect(
+    restored.columns?.find((c) => c.metricId === "lastLap")?.format,
+  ).toMatchObject({ display: null, decimals: null });
   const patch = editColumn(s, "race", "gap", { enabled: false });
   if (!patch) throw Error("patch");
   const result = applyWidgetSettings(s, patch);
@@ -169,5 +187,23 @@ it.each(["unknown", "duplicate"])(
       kind === "unknown" ? "future-metric" : s.columns[1].metricId;
     expect(editColumn(s, "race", "gap", { enabled: false })).toBeNull();
     expect(canResetColumns(s, "race")).toBe(false);
+  },
+);
+
+it.each(studioColumnFormatCases.filter((value) => value.accepted))(
+  "uses the native supported time format vector: %j",
+  (vector) => {
+    if (!vector.accepted) return;
+    const source = settings();
+    const patch = editColumn(source, "practice", "lastLap", {
+      format: vector.format,
+    });
+    if (patch?.kind !== "standings") throw Error("patch");
+    expect(
+      patch.practiceColumns?.find((column) => column.metric === "lastLap")
+        ?.format,
+    ).toEqual(vector.format);
+    expect(patch).not.toHaveProperty("columns");
+    expect(applyWidgetSettings(source, patch)).not.toBeNull();
   },
 );

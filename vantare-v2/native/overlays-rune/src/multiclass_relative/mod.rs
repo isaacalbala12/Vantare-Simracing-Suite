@@ -129,6 +129,32 @@ mod tests {
         .expect("existing GPUI fixture")
     }
 
+    /// La ventana mide lo que pide el widget, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for row_count in [7, 9] {
+            for photo in [Snapshot::default(), snapshot()] {
+                let settings = Settings {
+                    row_count,
+                    ..Settings::default()
+                };
+                let mut widget = MulticlassRelative::new(&settings, Preferences::default());
+                widget.update(&photo);
+                let size = widget.size();
+                let mut rt = Runtime::with_text(
+                    widget,
+                    |widget: &MulticlassRelative, _| widget.view(),
+                    (size.width, size.height),
+                    Env::new(true, 1.0),
+                    rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+                );
+                rt.frame(0.0);
+                crate::testdata::assert_inside_window(&mut rt, (size.width, size.height));
+            }
+        }
+    }
+
     #[test]
     fn settings_and_physical_slots_match_the_existing_projection() {
         for count in [3, 7, 9] {

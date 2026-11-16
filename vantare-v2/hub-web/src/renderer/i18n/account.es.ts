@@ -1,5 +1,7 @@
 export const accountText = {
   title: "Cuenta",
+  navigationLabel: (letters: string) =>
+    letters ? `${letters}, cuenta` : "Cuenta",
   connected: "Cuenta conectada",
   signedOut: "Sin sesión",
   privateEmail: "Correo oculto por privacidad",

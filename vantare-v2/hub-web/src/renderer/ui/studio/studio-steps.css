@@ -118,7 +118,7 @@
   box-shadow: inset 0 1px 0 var(--neo-light);
   min-width: 0;
 }
-.v-studio-appearance-group h3 {
+.v-studio-appearance-group h2 {
   font-size: 13.5px;
   font-weight: 600;
   display: flex;
@@ -127,7 +127,7 @@
   gap: 8px;
   margin: 0;
 }
-.v-studio-appearance-group h3 small {
+.v-studio-appearance-group h2 small {
   font-weight: 400;
   color: var(--text-caption);
   font-size: 12px;

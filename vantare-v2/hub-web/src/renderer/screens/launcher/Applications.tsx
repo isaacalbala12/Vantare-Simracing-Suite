@@ -168,7 +168,6 @@ export function Applications({
         setSelected(null);
         setRemoval(null);
         retry.current = undefined;
-        await load();
       }
     } catch (failure) {
       if (!alive.current) return;
@@ -254,7 +253,6 @@ export function Applications({
       const result = await client.request({ method: "launcher.scan" });
       if (alive.current && result.method === "launcher.scan") {
         cache.setQueryData(launcherKey, result.value);
-        await load();
       }
     } catch {
       if (alive.current) setError(text.failed);

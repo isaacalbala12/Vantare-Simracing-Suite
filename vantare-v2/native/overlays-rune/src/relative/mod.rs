@@ -212,7 +212,10 @@ mod tests {
     use vantare_domain::format::Language;
     use vantare_domain::{
         Quality::Reliable,
-        widget_settings::{look::Tone, relative::vantare_template},
+        widget_settings::{
+            look::{Look, Tone},
+            relative::vantare_template,
+        },
     };
     fn painter(reduced: bool) -> Relative {
         Relative::new(
@@ -223,6 +226,42 @@ mod tests {
             0.0,
         )
     }
+    /// La ventana mide lo que pide el widget en cada estado, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let live = crate::testdata::snapshot();
+        let mut paused = live.clone();
+        paused.state.source_state = vantare_domain::SourceState::Paused;
+        for look in [Look::Vantare, Look::Eficiencia] {
+            for photo in [Snapshot::default(), live.clone(), paused.clone()] {
+                let mut painter = Relative::new(
+                    &Settings::for_look(look),
+                    Preferences::default(),
+                    true,
+                    5,
+                    0.0,
+                );
+                painter.update(&photo, 0.0);
+                let size = painter.size_for(Some(&photo));
+                let mut runtime = rune::Runtime::with_text(
+                    painter,
+                    |painter: &Relative, _| painter.view(),
+                    (size.width, size.height),
+                    rune::Env::new(true, 1.0),
+                    rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+                );
+                runtime.poll = Some(|relative, clock, tx| {
+                    relative.animate(clock);
+                    relative.schedule(clock, tx);
+                    false
+                });
+                runtime.frame(0.0);
+                crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+            }
+        }
+    }
+
     #[test]
     fn reordering_and_ghosts_finish_even_when_text_keeps_changing() {
         let mut painter = painter(false);

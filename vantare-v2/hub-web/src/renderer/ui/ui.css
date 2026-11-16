@@ -45,10 +45,10 @@ button:disabled,
   background: var(--surface-1);
   transition: background var(--dur-fast);
 }
-.v-button:hover:not(:disabled) {
+.v-button:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--surface-3);
 }
-.v-button:active:not(:disabled) {
+.v-button:active:not(:disabled):not([aria-disabled="true"]) {
   background: var(--active);
 }
 .v-button--primary {
@@ -56,21 +56,21 @@ button:disabled,
   color: var(--text-on-accent);
   border-color: var(--accent-bright);
 }
-.v-button--primary:hover:not(:disabled) {
+.v-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--grad-button-hover);
 }
 .v-button--neutral {
   background: transparent;
   color: var(--text-1);
 }
-.v-button--neutral:hover:not(:disabled) {
+.v-button--neutral:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--hover);
 }
 .v-button--ghost {
   background: transparent;
   border-color: transparent;
 }
-.v-button--ghost:hover:not(:disabled) {
+.v-button--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--hover);
 }
 .v-button--danger {
@@ -440,6 +440,7 @@ textarea.v-input:read-only {
 }
 .v-tooltip {
   min-width: 0;
+  background: var(--surface-2);
   padding: var(--space-3) var(--space-5);
   font-size: var(--text-small);
 }

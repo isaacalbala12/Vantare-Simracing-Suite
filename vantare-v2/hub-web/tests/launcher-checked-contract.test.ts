@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import launcher from "../fixtures/launcher-base.json";
 import { isResidentExecution } from "../src/contract/resident-execution-validation";
 import { isHostMessage, isUiMessage } from "../src/contract/validation";
+import { createMockHost } from "../src/mock/host";
 
 const request = {
   method: "launcher.launchChecked",
@@ -66,5 +68,36 @@ describe("checked launch surface", () => {
     expect(
       isResidentExecution({ ...value, events: [], firstRetainedSeq: "1" }),
     ).toBe(true);
+  });
+});
+
+it("the ready mock uses checked requests with account, revision, availability and mailbox exclusion", () => {
+  const launch = {
+    ...request,
+    profile: launcher.profiles[0].id,
+    baseRevision: launcher.revision,
+  };
+  const ready = createMockHost("launcher-ready");
+  expect(
+    ready(wire({ ...launch, armedGeneration: "c".repeat(64) })),
+  ).toMatchObject({ kind: "failure", error: { kind: "denied" } });
+  expect(
+    ready(wire({ ...launch, baseRevision: "c".repeat(64) })),
+  ).toMatchObject({ kind: "failure", error: { kind: "launcherConflict" } });
+  expect(ready(wire(launch))).toMatchObject({
+    kind: "response",
+    result: { method: "launcher.launchChecked", value: { kind: "queued" } },
+  });
+  expect(ready(wire(launch))).toMatchObject({
+    kind: "failure",
+    error: { kind: "busy" },
+  });
+  expect(createMockHost("launcher-base")(wire(launch))).toMatchObject({
+    kind: "failure",
+    error: { kind: "denied" },
+  });
+  expect(createMockHost("ajustes-base")(wire(launch))).toMatchObject({
+    kind: "failure",
+    error: { kind: "coreUnavailable" },
   });
 });

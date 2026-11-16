@@ -20,8 +20,10 @@ use std::{
 use vantare_domain::{
     Snapshot,
     format::Preferences,
-    pedals_telemetry::{self, Status, ViewModel},
+    pedals_telemetry::{SettingsPresentation, Status, ViewModel},
 };
+#[cfg(test)]
+use vantare_domain::pedals_telemetry;
 
 mod wheels;
 
@@ -29,22 +31,6 @@ const SIZE: (f32, f32) = (380.0, 64.0);
 const TRANSITION: Duration = Duration::from_millis(60);
 
 pub use vantare_domain::widget_settings::pedals_telemetry::Settings;
-
-trait SettingsPresentation {
-    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
-}
-impl SettingsPresentation for Settings {
-    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-        let mut vm = pedals_telemetry::project(snapshot, prefs);
-        vm.steering_wheel = pedals_telemetry::WHEELS
-            .iter()
-            .copied()
-            .find(|id| *id == self.steering_wheel)
-            .unwrap_or("generic");
-        vm.show_clutch = self.show_clutch;
-        vm
-    }
-}
 
 
 

@@ -8,7 +8,7 @@ use gpui::{App, PathBuilder, Pixels, Point, point, px};
 use vantare_domain::{
     CarId, SessionId, Snapshot,
     format::Preferences,
-    input_telemetry::{Sample, Trace, ViewModel},
+    input_telemetry::{Sample, SettingsPresentation, Trace, ViewModel},
 };
 
 use crate::app::{Paint, Wake, replace_if_changed};
@@ -19,20 +19,6 @@ const SIZE: (f32, f32) = (600.0, 84.0);
 const TRANSITION: Duration = Duration::from_millis(80);
 
 pub use vantare_domain::widget_settings::input_telemetry::Settings;
-
-trait SettingsPresentation {
-    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
-}
-impl SettingsPresentation for Settings {
-    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-        let mut vm = vantare_domain::input_telemetry::project(snapshot, prefs);
-        vm.show_clutch = self.show_clutch && vm.pedals[0].is_some();
-        if !self.show_clutch {
-            vm.pedals[0] = None;
-        }
-        vm
-    }
-}
 
 
 

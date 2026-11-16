@@ -7,7 +7,7 @@ foreach ($directory in @('src', 'scripts', '.cargo')) { [IO.Directory]::CreateDi
 [IO.File]::WriteAllText((Join-Path $root 'Cargo.toml'), "[package]`nname='caller-target-probe'`nversion='0.0.0'`nedition='2024'`n")
 [IO.File]::WriteAllText((Join-Path $root 'rust-toolchain.toml'), "[toolchain]`nchannel='1.99.1'`n")
 [IO.File]::WriteAllText((Join-Path $root 'src/main.rs'), 'fn main() { println!("caller target {:?}", std::env::args().skip(1).collect::<Vec<_>>()); }')
-foreach ($name in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
+foreach ($name in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1', 'queue-decision.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $root "scripts/$name")
 }
 Copy-Item -LiteralPath $QueueScript -Destination (Join-Path $root 'scripts/compilar.ps1') -Force
@@ -38,3 +38,4 @@ try {
     Pop-Location
 }
 'PASS: target de packaging conservado; target relativo rechazado.'
+

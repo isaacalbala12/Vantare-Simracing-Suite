@@ -39,3 +39,5 @@ cadencia y contadores por causa. Contar cambios reales del flujo CPU como hace
 Formato, Clippy, tests y enlace por la cola; ninguna ejecución gráfica en el
 servidor. Paridad visual y consumo solo en la tanda del PC de juego acordada por
 el orquestador. Sin dependencias nuevas ni cambios de Hub, Admin o releases.
+
+Toda capa superpuesta (canvas, punto, insignia, barra) lleva `.pin(...)` explícito: sin pin entra en el flujo en fila y solo se ve la primera.

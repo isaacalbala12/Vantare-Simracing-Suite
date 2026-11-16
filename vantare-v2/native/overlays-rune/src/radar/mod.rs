@@ -413,4 +413,26 @@ mod tests {
             .is_none()
         );
     }
+
+    /// La ventana mide lo que pide el widget, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for show_phrases in [true, false] {
+            for photo in [Snapshot::default(), snapshot()] {
+                let widget = widget(show_phrases);
+                let size = widget.size_for(Some(&photo));
+                let mut rt = Runtime::with_text(
+                    widget,
+                    |widget, _| widget.view(),
+                    (size.width, size.height),
+                    Env::new(true, 1.0),
+                    rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+                );
+                update(&mut rt, &photo);
+                rt.frame(0.0);
+                crate::testdata::assert_inside_window(&mut rt, (size.width, size.height));
+            }
+        }
+    }
 }

@@ -435,4 +435,29 @@ mod tests {
             .is_none()
         );
     }
+
+    /// La ventana mide lo que pide el widget, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for photo in [Snapshot::default(), snapshot()] {
+            let mut tower = tower(&Settings::default(), true);
+            let size = tower.size();
+            tower.update(&photo, 0.0);
+            let mut runtime = rune::Runtime::with_text(
+                Box::new(tower) as Box<dyn crate::widget::Widget>,
+                |state, _| state.view(),
+                (size.width, size.height),
+                rune::Env::new(true, 1.0),
+                rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+            );
+            runtime.poll = Some(|tower, clock, tx| {
+                let update = tower.animate(clock);
+                tower.schedule(clock, tx);
+                update.build
+            });
+            runtime.frame(0.0);
+            crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+        }
+    }
 }

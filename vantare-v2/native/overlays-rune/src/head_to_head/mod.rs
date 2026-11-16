@@ -232,6 +232,30 @@ mod tests {
         runtime
     }
 
+    /// La ventana mide lo que pide el widget en cada estado, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let live = snapshot();
+        let mut paused = live.clone();
+        paused.state.source_state = SourceState::Paused;
+        for photo in [Snapshot::default(), live, paused] {
+            let mut widget = widget();
+            widget.update(&photo, 0.0);
+            let size = widget.size_for(Some(&photo));
+            let mut runtime = Runtime::with_text(
+                widget,
+                paint,
+                (size.width, size.height),
+                Env::new(true, 1.0),
+                rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+            );
+            runtime.poll = Some(poll);
+            runtime.frame(0.0);
+            crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+        }
+    }
+
     #[test]
     fn one_visible_change_is_one_image_and_rest_costs_nothing() {
         let snapshot = snapshot();

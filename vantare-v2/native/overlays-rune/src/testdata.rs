@@ -13,3 +13,21 @@ pub fn snapshot() -> Snapshot {
     }
     snapshot
 }
+
+/// Falla si alguna capa pintada sale de la ventana del widget (0..ancho × 0..alto).
+/// Se toma `&mut` para servir tanto si `elements()` pide `&self` como `&mut self`.
+pub fn assert_inside_window<T>(runtime: &mut rune::Runtime<T>, size: (f32, f32)) {
+    let (width, height) = size;
+    for element in runtime.elements() {
+        let [x, y, w, h] = element.rect;
+        if w <= 0.0 || h <= 0.0 {
+            continue;
+        }
+        assert!(
+            x >= -0.5 && y >= -0.5 && x + w <= width + 0.5 && y + h <= height + 0.5,
+            "fuera de la ventana ({width}×{height}): {:?} {:?}",
+            element.key,
+            element.rect
+        );
+    }
+}

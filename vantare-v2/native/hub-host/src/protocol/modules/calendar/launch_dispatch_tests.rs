@@ -32,6 +32,7 @@ fn configured(f: &Fixture) -> (Session, Clock, Request) {
     let doc = vantare_launcher::Document::fresh_install();
     let bytes = serde_json::to_vec(&doc).unwrap();
     std::fs::write(&s.launcher, &bytes).unwrap();
+    s.launcher_reader = crate::launcher::Reader::with_available_apps(s.launcher.clone());
     let mut data: serde_json::Value = serde_json::from_str(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../hub/reference/fixtures/calendar-lmu-2026-10-06.json"
@@ -287,4 +288,48 @@ fn every_individual_ask_policy_is_projected_by_the_real_arm_path() {
             ..
         }
     ));
+}
+
+#[test]
+fn pending_discovery_at_calendar_fire_rejects_without_touching_the_mailbox_or_document() {
+    for pending in [false, true] {
+        let f = Fixture::new();
+        let (mut s, now, r) = configured(&f);
+        armed(&mut s, &r, now);
+        let Request::CalendarLaunchArm {
+            mode: CalendarLaunchMode::Once { start_at, .. },
+            ..
+        } = r
+        else {
+            unreachable!()
+        };
+        let fire = Clock {
+            wall: start_at - 180_000,
+            monotonic: now.monotonic
+                + Duration::from_millis(u64::try_from(start_at - 180_000 - now.wall).unwrap()),
+        };
+        let before = std::fs::read(&s.launcher).unwrap();
+        let mailbox = mailbox::request_path(&s.launcher);
+        if pending {
+            std::fs::write(&mailbox, b"existing request").unwrap();
+        }
+        s.launcher_reader.rescan();
+        assert!(s.launcher_reader.view().scanning);
+        status(&s, "b", false);
+        s.core.observation.as_mut().unwrap().policy.checked_at_ms =
+            vantare_ipc::control::wall_ms().unwrap();
+        calendar::launch_tick(&mut s, &mut Pipe::new(Vec::new()), fire).unwrap();
+        assert!(matches!(
+            s.calendar_launch.view().latest.unwrap().progress,
+            CalendarLaunchProgress::NotSent {
+                reason: CalendarLaunchStop::Busy
+            }
+        ));
+        assert_eq!(std::fs::read(&s.launcher).unwrap(), before);
+        if pending {
+            assert_eq!(std::fs::read(&mailbox).unwrap(), b"existing request");
+        } else {
+            assert!(!mailbox.exists());
+        }
+    }
 }

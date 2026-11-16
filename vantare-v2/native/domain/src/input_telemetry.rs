@@ -6,6 +6,20 @@ use std::time::Duration;
 use crate::format::{self, Language, Preferences, Units};
 use crate::{Quality, Snapshot};
 
+pub trait SettingsPresentation {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
+}
+impl SettingsPresentation for crate::widget_settings::input_telemetry::Settings {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = crate::input_telemetry::project(snapshot, prefs);
+        vm.show_clutch = self.show_clutch && vm.pedals[0].is_some();
+        if !self.show_clutch {
+            vm.pedals[0] = None;
+        }
+        vm
+    }
+}
+
 const MAX_SAMPLES: usize = 120;
 // Hasta ocho segundos a la cadencia del widget, incluyendo ambos extremos.
 const EXTENDED_MAX_SAMPLES: usize = 401;

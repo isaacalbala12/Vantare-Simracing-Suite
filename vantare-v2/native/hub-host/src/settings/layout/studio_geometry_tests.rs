@@ -283,7 +283,7 @@ fn bad_geometry_no_rights_and_missing_monitor_never_write() {
     let mut state = State::new(path.clone());
     state.monitor_source = Vec::new;
     let disconnected = state.view(access);
-    assert_eq!(disconnected.state, StudioState::Protected);
+    assert_eq!(disconnected.state, StudioState::MonitorUnavailable);
     assert_eq!(disconnected.monitor, None);
     assert_eq!(
         edit(
@@ -459,7 +459,7 @@ fn disconnecting_the_pinned_monitor_protects_without_selecting_another() {
     let before = state.view(access);
     let bytes = std::fs::read(&path).expect("bytes");
     state.monitor_source = || two_monitors().into_iter().skip(1).collect();
-    assert_eq!(state.view(access).state, StudioState::Protected);
+    assert_eq!(state.view(access).state, StudioState::MonitorUnavailable);
     assert_eq!(
         edit(
             &mut state,
@@ -608,7 +608,7 @@ fn a_custom_canvas_never_replaces_the_pinned_monitor_size() {
     assert_eq!(state.view(access).monitor.as_ref(), Some(&detected));
     state.monitor_source = || two_monitors().into_iter().skip(1).collect();
     let missing = state.view(access);
-    assert_eq!(missing.state, StudioState::Protected);
+    assert_eq!(missing.state, StudioState::MonitorUnavailable);
     assert_eq!(missing.monitor, None);
 }
 
@@ -656,4 +656,112 @@ fn settings_frame_guard_counts_the_detected_monitor_at_the_wire_boundary() {
         !opened.fits_frame(access),
         "monitor metadata is part of the real frame"
     );
+}
+
+#[test]
+fn unavailable_document_is_not_reported_as_a_missing_monitor() {
+    for (bytes, expected) in [
+        (None, StudioState::Missing),
+        (Some(b"broken".as_slice()), StudioState::Protected),
+        (
+            Some(br#"{"version":1,"instances":null}"#.as_slice()),
+            StudioState::Protected,
+        ),
+    ] {
+        let root = crate::test_support::Root::new();
+        let path = root.path.join("layout.json");
+        if let Some(bytes) = bytes {
+            std::fs::write(&path, bytes).expect("fixture");
+        }
+        let mut state = State::new(path.clone());
+        state.monitor_source = Vec::new;
+        let view = state.view(Some(CatalogAccess::Pro));
+        assert_eq!(view.state, expected);
+        assert!(view.canvas.is_none() && view.monitor.is_none());
+        assert!(!view.can_undo && !view.can_redo);
+        assert_eq!(std::fs::read(&path).ok().as_deref(), bytes);
+    }
+}
+
+#[test]
+fn monitor_and_document_failures_emit_distinct_events_and_recover_without_writes() {
+    use std::time::{Duration, Instant};
+    let (_root, path, original) = fixture();
+    let access = Some(CatalogAccess::Pro);
+    let mut state = State::new(path.clone());
+    state.monitor_source = two_monitors;
+    let start = Instant::now();
+    let initial = state.observed(start, access);
+    assert_eq!(initial.state, StudioState::Ready);
+    state.monitor_source = Vec::new;
+    let missing = state
+        .changed(true, start + Duration::from_millis(500), access)
+        .expect("disconnect event");
+    assert_eq!(missing.state, StudioState::MonitorUnavailable);
+    assert!(missing.canvas.is_none() && missing.monitor.is_none());
+    assert_eq!(std::fs::read(&path).expect("no read-side write"), original);
+    assert!(
+        state
+            .changed(true, start + Duration::from_secs(1), access)
+            .is_none()
+    );
+    std::fs::write(&path, b"broken").expect("corrupt fixture");
+    let protected = state
+        .changed(true, start + Duration::from_millis(1500), access)
+        .expect("document event");
+    assert_eq!(protected.state, StudioState::Protected);
+    assert_eq!(protected.canvas, missing.canvas);
+    assert_eq!(protected.monitor, missing.monitor);
+    assert_eq!(std::fs::read(&path).expect("no repair"), b"broken");
+    std::fs::write(&path, &original).expect("restore fixture");
+    assert_eq!(
+        state
+            .changed(true, start + Duration::from_secs(2), access)
+            .expect("monitor still missing")
+            .state,
+        StudioState::MonitorUnavailable
+    );
+    state.monitor_source = two_monitors;
+    assert_eq!(
+        state
+            .changed(true, start + Duration::from_millis(2500), access)
+            .expect("reconnect event"),
+        initial
+    );
+    assert_eq!(std::fs::read(&path).expect("no seed"), original);
+    assert!(state.undo.is_empty() && state.redo.is_empty());
+}
+
+#[test]
+fn missing_monitor_keeps_mutation_errors_and_hide_available() {
+    let (_root, path, original) = fixture();
+    let access = Some(CatalogAccess::Pro);
+    let mut state = State::new(path.clone());
+    state.monitor_source = Vec::new;
+    assert!(matches!(
+        state.edit(
+            Edit::Canvas(CanvasChoice::Monitor),
+            &vantare_services::content_hash(&original),
+            access
+        ),
+        Err(HostError::Protected)
+    ));
+    assert!(
+        matches!(state.edit(Edit::Canvas(CanvasChoice::Monitor), &"0".repeat(64), access), Err(HostError::StudioConflict { current }) if current.state == StudioState::MonitorUnavailable)
+    );
+    assert!(matches!(
+        state.track(true, access),
+        Err(HostError::Protected)
+    ));
+    let marker = path.with_extension("show.json");
+    assert!(!marker.exists());
+    std::fs::write(&marker, b"7").expect("show fixture");
+    let hidden = state
+        .track(false, None)
+        .expect("hide never needs a monitor");
+    assert!(!hidden.showing);
+    assert_eq!(hidden.state, StudioState::MonitorUnavailable);
+    assert!(!marker.exists());
+    assert_eq!(std::fs::read(&path).expect("no mutation"), original);
+    assert!(!state.view(access).can_undo);
 }

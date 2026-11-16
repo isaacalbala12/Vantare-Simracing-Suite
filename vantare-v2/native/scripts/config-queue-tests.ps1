@@ -9,7 +9,7 @@ foreach ($name in @('src', 'scripts', '.cargo')) { [IO.Directory]::CreateDirecto
 [IO.File]::WriteAllText((Join-Path $root 'Cargo.toml'), "[package]`nname='config-queue-probe'`nversion='0.0.0'`nedition='2024'`n")
 [IO.File]::WriteAllText((Join-Path $root 'rust-toolchain.toml'), "[toolchain]`nchannel='1.99.1'`n")
 [IO.File]::WriteAllText((Join-Path $root 'src/main.rs'), 'fn main() {}')
-foreach ($name in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
+foreach ($name in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1', 'queue-decision.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $root "scripts/$name")
 }
 Copy-Item -LiteralPath $ConfigScript -Destination (Join-Path $root 'build-config.ps1')
@@ -69,3 +69,4 @@ try {
     if (-not $ExpectBlocked -and ($blocked -or $process.ExitCode -ne 0)) { throw "La reserva anidada sigue fallando: $text" }
     Write-Host "PASS: blocked=$blocked; duración=$($clock.Elapsed.TotalSeconds); evidencia=$root"
 } finally { Pop-Location }
+

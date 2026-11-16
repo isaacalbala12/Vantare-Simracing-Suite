@@ -3,15 +3,12 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { Request } from "../../contract/generated/contract";
+import type { CoreStatus, Request } from "../../contract/generated/contract";
 import { HostFailure } from "../bridge/client";
-import { useHost } from "./Host";
+import { coreKey, useHost } from "./Host";
 
 const launchKey = ["launcher", "launch-request"] as const;
-type Launch = Extract<
-  Request,
-  { method: "launcher.launch" | "launcher.favorite" }
->;
+type Launch = Extract<Request, { method: "launcher.launchChecked" }>;
 /** One synchronous pending lease across the rail, palette and Launcher screen. */
 export function useLauncherRequest() {
   const { client } = useHost();
@@ -27,9 +24,13 @@ export function useLauncherRequest() {
   return {
     pending: useIsMutating({ mutationKey: launchKey }) > 0,
     busy,
-    request: (request: Launch) => {
+    request: (request: Omit<Launch, "armedGeneration">) => {
       if (busy()) return Promise.reject(new HostFailure({ kind: "busy" }));
-      return mutation.mutateAsync(request);
+      const generation =
+        cache.getQueryData<CoreStatus>(coreKey)?.accountGeneration;
+      if (!generation)
+        return Promise.reject(new HostFailure({ kind: "coreUnavailable" }));
+      return mutation.mutateAsync({ ...request, armedGeneration: generation });
     },
   };
 }

@@ -215,7 +215,12 @@ pub fn read(path: &Path) -> LauncherView {
         },
     }
 }
-pub fn launch(path: &Path, core: &CoreStatus, id: &str, revision: &str) -> Result<bool, HostError> {
+pub fn launch(
+    reader: &Reader,
+    core: &CoreStatus,
+    id: &str,
+    revision: &str,
+) -> Result<bool, HostError> {
     if core.rights != LinkState::Connected
         || !core.access.verified
         || core.access.blocked
@@ -226,20 +231,19 @@ pub fn launch(path: &Path, core: &CoreStatus, id: &str, revision: &str) -> Resul
     if id.is_empty() || id.len() > ID_LIMIT || id.contains('\0') {
         return Err(HostError::Denied);
     }
+    let path = &reader.path;
     let (bytes, document) = open(path)?.ok_or(HostError::Protected)?;
     if vantare_services::content_hash(&bytes) != revision {
         return Err(HostError::LauncherConflict {
             current: read(path),
         });
     }
+    reader.validate_launch(&document, id, revision)?;
     let profile = document
         .profiles
         .iter()
         .find(|profile| profile.id == id)
         .ok_or(HostError::Denied)?;
-    if profile.steps.is_empty() {
-        return Err(HostError::Denied);
-    }
     let status = mailbox::read_status(path).ok_or(HostError::CoreUnavailable)?;
     if status.running {
         return Err(HostError::Busy);
@@ -351,7 +355,12 @@ mod tests {
     #[test]
     fn launch_requires_verified_non_live_access_before_reading_files() {
         assert_eq!(
-            launch(Path::new("missing"), &CoreStatus::default(), "creator", ""),
+            launch(
+                &Reader::new("missing".into()),
+                &CoreStatus::default(),
+                "creator",
+                ""
+            ),
             Err(HostError::Denied)
         );
     }
@@ -435,7 +444,12 @@ mod windows_tests {
             "creator".to_owned(),
         ] {
             assert_eq!(
-                launch(&path, &core(), &id, &revision),
+                launch(
+                    &Reader::with_available_apps(path.clone()),
+                    &core(),
+                    &id,
+                    &revision
+                ),
                 Err(HostError::Denied)
             );
             assert_eq!(std::fs::read(&path).unwrap(), bytes);
@@ -444,7 +458,12 @@ mod windows_tests {
         let protected = br#"{"version":999}"#;
         std::fs::write(&path, protected).unwrap();
         assert_eq!(
-            launch(&path, &core(), "creator", &revision),
+            launch(
+                &Reader::with_available_apps(path.clone()),
+                &core(),
+                "creator",
+                &revision
+            ),
             Err(HostError::Protected)
         );
         assert_eq!(std::fs::read(&path).unwrap(), protected);
@@ -457,16 +476,17 @@ mod windows_tests {
         let bytes = serde_json::to_vec(&Document::fresh_install()).unwrap();
         std::fs::write(&path, &bytes).unwrap();
         let revision = vantare_services::content_hash(&bytes);
+        let reader = Reader::with_available_apps(path.clone());
         assert!(matches!(
-            launch(&path, &core(), "creator", "old"),
+            launch(&reader, &core(), "creator", "old"),
             Err(HostError::LauncherConflict { .. })
         ));
         assert_eq!(
-            launch(&path, &core(), "unknown", &revision),
+            launch(&reader, &core(), "unknown", &revision),
             Err(HostError::Denied)
         );
         assert_eq!(
-            launch(&path, &core(), "creator", &revision),
+            launch(&reader, &core(), "creator", &revision),
             Err(HostError::CoreUnavailable)
         );
         let status = mailbox::Status {
@@ -479,13 +499,13 @@ mod windows_tests {
             serde_json::to_vec(&status).unwrap(),
         )
         .unwrap();
-        assert_eq!(launch(&path, &core(), "creator", &revision), Ok(true));
+        assert_eq!(launch(&reader, &core(), "creator", &revision), Ok(true));
         let queued = std::fs::read(mailbox::request_path(&path)).unwrap();
         assert!(
             matches!(serde_json::from_slice::<mailbox::Request>(&queued).unwrap(), mailbox::Request::Launch { profile } if profile == "creator")
         );
         assert_eq!(
-            launch(&path, &core(), "pro", &revision),
+            launch(&reader, &core(), "pro", &revision),
             Err(HostError::Busy)
         );
         assert_eq!(std::fs::read(mailbox::request_path(&path)).unwrap(), queued);

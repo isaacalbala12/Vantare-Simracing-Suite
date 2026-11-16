@@ -1200,7 +1200,8 @@ fn footer(state: &Painter, y: f32, kind: Footer) -> El {
             s,
             &state.header[4],
             "footer-left",
-            width - 2.0 * pad,
+            // Sin mover el texto: la caja acaba en el borde interior derecho.
+            width - pad - left,
             g.footer_height,
             Face::Body,
             s.fonts.header,

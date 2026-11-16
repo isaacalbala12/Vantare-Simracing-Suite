@@ -179,6 +179,8 @@ export function isStudio(v: unknown) {
     canvas(v.canvas) &&
     monitor(v.monitor) &&
     oneOf(v.state, studioStates) &&
+    (v.state !== "monitorUnavailable" ||
+      (v.canvas === null && v.monitor === null)) &&
     revision(v.revision) &&
     Array.isArray(v.instances) &&
     v.instances.length <= studioLimits.instances &&

@@ -111,8 +111,22 @@ async function tabTo(
   expect(document.activeElement).toBe(element);
 }
 const listRow = (name: string) =>
-  screen.findByRole("button", { name: new RegExp(`^${name}, `) });
+  screen.findByRole("button", {
+    name: new RegExp(`^${name} (?:Visible|Oculto)`),
+  });
 describe("Studio Foco structure", () => {
+  it("takes the row name from its existing visible name and status", async () => {
+    mount();
+    const row = await screen.findByRole("button", {
+      name: "Standings Visible",
+    });
+    expect(row.getAttribute("aria-label")).toBeNull();
+    expect(
+      document.getElementById(row.getAttribute("aria-labelledby") ?? "")
+        ?.textContent,
+    ).toBe("Standings Visible");
+    expect(row.hasAttribute("data-widget")).toBe(true);
+  });
   it("selects remembered, then first visible, then first, then none", () => {
     const view = {
       instances: [
@@ -143,6 +157,19 @@ describe("Studio Foco structure", () => {
     expect(small.width / small.height).toBeCloseTo(
       natural.width / natural.height,
     );
+  });
+  it("keeps heading levels in order from the overlay title to its groups", async () => {
+    mount();
+    await screen.findByRole("heading", { name: new RegExp(t.widgetLook) });
+    const levels = Array.from(
+      document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"),
+    ).map((heading) => Number(heading.tagName.slice(1)));
+    expect(levels[0]).toBe(1);
+    for (let index = 1; index < levels.length; index++)
+      expect(
+        levels[index],
+        `heading ${index + 1} skips a level`,
+      ).toBeLessThanOrEqual(levels[index - 1] + 1);
   });
   it("uses real Tab, arrows, Home/End and Enter without moving focus on a click", async () => {
     mount();
@@ -186,7 +213,11 @@ describe("Studio Foco structure", () => {
       ).toBe(true),
     );
     await waitFor(() =>
-      expect(first.getAttribute("aria-label")).toContain(t.hidden),
+      expect(
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBe(first),
     );
     expect(document.activeElement).toBe(first);
   });

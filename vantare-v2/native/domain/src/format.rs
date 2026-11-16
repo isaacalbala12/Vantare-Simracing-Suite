@@ -27,6 +27,16 @@ pub struct Preferences {
     pub language: Language,
 }
 
+pub fn waiting_text(language: Language, uppercase: bool) -> &'static str {
+    use Language::{En, Es};
+    match (language, uppercase) {
+        (Es, false) => "Esperando al simulador",
+        (En, false) => "Waiting for the simulator",
+        (Es, true) => "ESPERANDO AL SIMULADOR",
+        (En, true) => "WAITING FOR THE SIMULATOR",
+    }
+}
+
 /// Parte entera de un número finito y no negativo.
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub(crate) fn whole(value: f64) -> u64 {

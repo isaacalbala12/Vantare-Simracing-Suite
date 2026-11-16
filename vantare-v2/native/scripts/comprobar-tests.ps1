@@ -47,6 +47,12 @@ if ($otherTests.Count -ne 1 -or $otherTests[0] -ne 'vantare-hub-host') {
 
 if ($EvidenceDirectory) {
     New-Item -ItemType Directory -Path $EvidenceDirectory -Force | Out-Null
+    $gateTarget = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) 'gate-features-target'
+    $gateArguments = & (Join-Path $PSScriptRoot '../gates.ps1') -Gate test -Packages vantare-ipc -TargetDirectory $gateTarget -ListOnly
+    if ($LASTEXITCODE) { throw 'gates.ps1 -ListOnly falló.' }
+    if (($gateArguments -join ' ') -notmatch 'vantare-ipc/test-support') {
+        throw 'El gate de worker no activa test-support para ipc.'
+    }
     [ordered]@{ fast_lint = $fastLint; fast_tests = $fastTests; full_lint = $fullLint; full_tests = $fullTests; other = $otherTests } |
         ConvertTo-Json | Set-Content (Join-Path $EvidenceDirectory 'comprobar-scope.json') -Encoding utf8
 }

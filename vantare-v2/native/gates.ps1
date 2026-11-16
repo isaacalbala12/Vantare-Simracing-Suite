@@ -7,7 +7,8 @@ param(
     [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
     [string[]]$Packages = @(),
     [switch]$NoTestsPass,
-    [switch]$PublicTargetsOnly
+    [switch]$PublicTargetsOnly,
+    [switch]$ListOnly
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -72,6 +73,16 @@ try {
     $defaults = @($defaultMembers | Where-Object { $_.name -cne 'vantare-storage' -and
         ($Gate -ne 'prueba' -or $_.name -cne 'vantare-admin') -and $null -ne $_.features.PSObject.Properties['default'] } |
         ForEach-Object { "$($_.name)/default" })
+    # Tests/clippy compile the test targets: enable test-support for every
+    # selected package that defines it (ipc uses save_with_hook from its tests).
+    $testFeatures = @()
+    if ($Gate -in @('clippy', 'test', 'telemetria', 'completa', 'archive', 'lifecycle') -or
+        ($Gate -eq 'check' -and -not $PublicTargetsOnly)) {
+        $testFeatures = @($defaultMembers | Where-Object {
+            $null -ne $_.features.PSObject.Properties['test-support'] } |
+            ForEach-Object { "$($_.name)/test-support" })
+    }
+    $features = @($defaults) + @($testFeatures)
     $arguments = switch ($Gate) {
         'check' { @('check', '--workspace', '--all-targets') }
         'clippy' { @('clippy', '--workspace', '--all-targets') }
@@ -115,9 +126,10 @@ try {
     $arguments += @('--target-dir', $TargetDirectory, '--locked', '--offline', $jobsFlag, $jobs)
     if ($Gate -ne 'captura') {
         $arguments += '--no-default-features'
-        if ($defaults.Count) { $arguments += @('--features', ($defaults -join ',')) }
+        if ($features.Count) { $arguments += @('--features', ($features -join ',')) }
     }
     if ($Gate -in @('clippy', 'captura')) { $arguments += @('--', '-D', 'warnings') }
+    if ($ListOnly) { Write-Output ($arguments -join ' '); return }
     if ($Gate -eq 'archive') {
         $messages = @(& cargo @arguments)
         if ($LASTEXITCODE) { $messages | Write-Host; throw "Gate $Gate falló (código $LASTEXITCODE)." }

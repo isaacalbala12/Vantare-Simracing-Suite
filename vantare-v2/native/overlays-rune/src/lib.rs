@@ -17,6 +17,7 @@ mod head_to_head;
 mod motion;
 mod multiclass_relative;
 pub mod pedals;
+pub mod pedals_telemetry;
 mod radar;
 pub mod relative;
 mod renderer;

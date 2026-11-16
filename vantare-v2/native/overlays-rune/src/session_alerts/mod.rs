@@ -1,5 +1,5 @@
 //! Avisos de sesión: proyección de LMU, máquina de avisos de domain y Look Vantare.
-//! Sin sonido y sin avisos de calendario: diferencia declarada, se hace en un PR aparte.
+//! Con sonido (sound) y sin avisos de calendario todavía: la agenda llega en su PR.
 mod render;
 pub mod scene;
 pub(crate) mod sound;
@@ -220,21 +220,24 @@ impl SessionAlerts {
     /// if the setting asks for it. Never in the companion, never silent or at volume 0.
     pub fn sound(&mut self) -> Vec<(Tone, u8)> {
         let mut tones = Vec::new();
+        // Las revisiones se consumen siempre: un aviso que llegó sin poder sonar no debe
+        // sonar después, cuando `live` o el destinatario cambien.
+        let entered = self.view.sound_revision != self.sound_revision;
+        let zeroed = self.view.zero_revision != self.zero_revision;
+        self.sound_revision = self.view.sound_revision;
+        self.zero_revision = self.view.zero_revision;
         if self.settings.companion_for.is_some() || !self.live {
             return tones;
         }
         let audible = self.settings.sound && self.settings.volume > 0;
-        if self.view.sound_revision != self.sound_revision {
-            self.sound_revision = self.view.sound_revision;
-            if audible && let Some(notice) = &self.view.active {
-                tones.push((notice.tone(), self.settings.volume));
-            }
+        if entered
+            && audible
+            && let Some(notice) = &self.view.active
+        {
+            tones.push((notice.tone(), self.settings.volume));
         }
-        if self.view.zero_revision != self.zero_revision {
-            self.zero_revision = self.view.zero_revision;
-            if audible && self.settings.sound_zero {
-                tones.push((Tone::Final, self.settings.volume));
-            }
+        if zeroed && audible && self.settings.sound_zero {
+            tones.push((Tone::Final, self.settings.volume));
         }
         tones
     }
@@ -639,6 +642,102 @@ mod tests {
         assert_eq!(recorder.played.len(), 1, "la misma revisión no repite");
     }
 
+    #[test]
+    fn the_same_photo_only_rings_once() {
+        let mut widget = widget();
+        widget.update(&photo(0.0), 0.0);
+        let mut recorder = sound::Recorder::default();
+        recorder.record(widget.sound());
+        assert_eq!(recorder.played.len(), 1, "el aviso suena al entrar");
+        // La misma foto no repite ni el aviso ni el tono.
+        widget.update(&photo(0.0), 0.1);
+        recorder.record(widget.sound());
+        assert_eq!(recorder.played.len(), 1, "la misma foto no repite");
+    }
+
+    #[test]
+    fn a_start_and_a_finish_ring_with_their_own_tones() {
+        // Salida: el aviso de fase es Final.
+        let mut start = widget();
+        let mut race = photo(0.0);
+        race.state.session.kind = Reliable(SessionKind::Race);
+        race.state.session.timing.start_phase = Reliable(vantare_domain::StartPhase::Countdown);
+        start.update(&race, 0.0);
+        let mut recorder = sound::Recorder::default();
+        recorder.record(start.sound());
+        assert_eq!(
+            recorder.played,
+            [(Tone::Final, 70)],
+            "la salida suena Final"
+        );
+
+        // Prácticas terminadas: el aviso de fin es Finished y llega al ver el cierre.
+        let mut finished = widget();
+        let mut open = photo(0.0);
+        open.state.session.timing.finished_at_s = vantare_domain::Quality::Unavailable;
+        finished.update(&open, 0.0);
+        let mut closed = photo(0.5);
+        closed.sequence += 1;
+        closed.state.session.timing.finished_at_s = Reliable(0.0);
+        finished.update(&closed, 0.5);
+        let mut recorder = sound::Recorder::default();
+        recorder.record(finished.sound());
+        assert_eq!(
+            recorder.played,
+            [(Tone::Finished, 70)],
+            "el fin de prácticas suena Finished"
+        );
+    }
+
+    /// Próxima sesión anunciada a medio segundo, con su hora de inicio en ambos papeles.
+    fn announced(elapsed: f64, sequence: u64) -> Snapshot {
+        let mut snapshot = photo(elapsed);
+        snapshot.sequence = sequence;
+        snapshot.state.session.timing.next_kind = Reliable(SessionKind::Race);
+        snapshot.state.session.timing.next_starts_at_s = Reliable(0.5);
+        snapshot
+    }
+
+    #[test]
+    fn the_zero_rings_only_when_the_setting_asks_for_it() {
+        for (sound_zero, expected) in [(true, 1_usize), (false, 0)] {
+            let settings = Stored {
+                sound_zero,
+                ..settings()
+            };
+            let mut widget = SessionAlerts::with_wall(&settings, Preferences::default(), 0);
+            widget.update(&announced(0.0, 1), 0.0);
+            widget.sound();
+            // La foto alcanza la hora anunciada: la cuenta atrás llega a cero.
+            widget.update(&announced(0.5, 2), 0.5);
+            let tones = widget.sound();
+            assert_eq!(
+                tones.len(),
+                expected,
+                "cero con sound_zero = {sound_zero}: {tones:?}"
+            );
+            assert!(
+                tones
+                    .iter()
+                    .all(|(tone, volume)| *tone == Tone::Final && *volume == 70),
+                "el cero suena Final: {tones:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_tone_cannot_arrive_late_after_the_widget_goes_live() {
+        let mut widget = widget();
+        widget.update(&photo(0.0), 0.0);
+        // Antes de estar en pista el tono no suena, pero la revisión se consume igual.
+        widget.live = false;
+        assert!(widget.sound().is_empty(), "sin pista no suena");
+        widget.live = true;
+        assert!(
+            widget.sound().is_empty(),
+            "y no suena atrasado al volver la pista"
+        );
+    }
     #[test]
     fn silent_settings_and_the_companion_never_ring() {
         for settings in [

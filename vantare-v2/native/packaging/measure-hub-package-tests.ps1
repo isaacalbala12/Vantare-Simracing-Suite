@@ -9,7 +9,13 @@ $root=Join-Path $qa ('measure-'+[guid]::NewGuid().ToString('N'))
 $source=Join-Path $root 'source'
 [IO.Directory]::CreateDirectory((Join-Path $source 'resources'))|Out-Null
 [IO.Directory]::CreateDirectory((Join-Path $source 'locales'))|Out-Null
-$asar=[byte[]]@(4,0,0,0)+[Text.Encoding]::UTF8.GetBytes(('ASAR fixture, never executed. '*2048))
+$payload=[Text.Encoding]::UTF8.GetBytes(('ASAR fixture, never executed. '*2048))
+$json=[Text.Encoding]::UTF8.GetBytes('{"files":{"main.js":{"size":'+$payload.Length+',"offset":"0"}}}')
+$padding=(4-($json.Length%4))%4
+$buffer=[IO.MemoryStream]::new();$writer=[IO.BinaryWriter]::new($buffer)
+$writer.Write([uint32]4);$writer.Write([uint32](8+$json.Length+$padding));$writer.Write([uint32](4+$json.Length+$padding));$writer.Write([uint32]$json.Length)
+$writer.Write($json);$writer.Write([byte[]]::new($padding));$writer.Write($payload);$writer.Flush()
+$asar=$buffer.ToArray();$writer.Dispose();$buffer.Dispose()
 [IO.File]::WriteAllBytes((Join-Path $source 'resources/app.asar'),$asar)
 foreach($path in @('vantare-hub-ui.exe','locales/es.pak','locales/en-US.pak','locales/fr.pak','resources/source.js.map')){
     [IO.File]::WriteAllText((Join-Path $source $path),('Inert fixture '+$path+' ')*1000)

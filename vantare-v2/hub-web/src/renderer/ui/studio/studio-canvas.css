@@ -651,7 +651,7 @@
 .v-studio-focus-layout[data-view="canvas"][data-list-collapsed="false"]
   .v-focus-layout-name
   > div {
-  display: block;
+  display: contents;
 }
 .v-studio-focus-layout[data-view="canvas"] .v-focus-layout-icon {
   display: none;
@@ -667,7 +667,8 @@
 .v-studio-focus-layout[data-view="canvas"][data-list-collapsed="true"]
   :is(
     .v-focus-row-name,
-    .v-focus-layout-name > div,
+    .v-focus-layout-name strong,
+    .v-focus-layout-name small,
     .v-focus-list-heading,
     .v-focus-save,
     .v-focus-strip > footer,
@@ -684,11 +685,42 @@
   justify-content: center;
 }
 
+.v-studio-focus-layout[data-view="canvas"] .v-focus-layout-name {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
 .v-studio-focus-layout[data-view="canvas"] .v-focus-layout-name > div {
-  min-inline-size: 0;
-  flex: 1;
+  display: contents;
+}
+.v-studio-focus-layout[data-view="canvas"] .v-focus-layout-name small {
+  grid-row: 1;
+  grid-column: 1;
+}
+.v-studio-focus-layout[data-view="canvas"]
+  .v-focus-layout-name
+  > .v-tooltip-trigger:first-child {
+  grid-row: 1;
+  grid-column: 2;
+}
+.v-studio-focus-layout[data-view="canvas"]
+  .v-focus-layout-name
+  > .v-tooltip-trigger:last-child {
+  grid-row: 1;
+  grid-column: 3;
+}
+.v-studio-focus-layout[data-view="canvas"][data-list-collapsed="true"]
+  .v-focus-layout-name {
+  grid-template-columns: 1fr;
+}
+.v-studio-focus-layout[data-view="canvas"][data-list-collapsed="true"]
+  .v-focus-layout-name
+  > .v-tooltip-trigger:first-child {
+  grid-column: 1;
 }
 .v-studio-focus-layout[data-view="canvas"] .v-focus-layout-name strong {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  min-inline-size: 0;
   display: block;
   white-space: nowrap;
   overflow: hidden;
@@ -701,4 +733,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.v-tooltip.v-canvas-info-tooltip {
+  background: var(--surface-elevated);
+  border-color: var(--line-3);
+  box-shadow: var(--shadow-neo);
+  color: var(--text-1);
+}
+.v-canvas-info-tooltip .v-keycap {
+  color: var(--text-1);
 }

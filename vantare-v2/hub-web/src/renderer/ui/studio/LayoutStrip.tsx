@@ -51,7 +51,13 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
         <div>
           <small>{t.layoutLabel}</small>
           {state.canvasMode ? (
-            <BaseTooltip.Root>
+            <BaseTooltip.Root
+              onOpenChange={(open, details) => {
+                const title = details.trigger;
+                if (open && (!title || title.scrollWidth <= title.clientWidth))
+                  details.cancel();
+              }}
+            >
               <BaseTooltip.Trigger render={<strong />}>
                 {t.local}
               </BaseTooltip.Trigger>

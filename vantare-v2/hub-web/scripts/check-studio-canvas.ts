@@ -82,12 +82,68 @@ export async function checkStudioCanvas(
         })),
         { whiteSpace: "nowrap", overflow: "ellipsis" },
       );
+      assert.equal(
+        await title.evaluate((node) => node.scrollWidth <= node.clientWidth),
+        true,
+        "Layout local fits without truncation",
+      );
+      const caption = await page
+        .locator(".v-focus-layout-name small")
+        .boundingBox();
+      const titleBox = await title.boundingBox();
+      const collapse = await page
+        .getByRole("button", { name: t.collapseList, exact: true })
+        .boundingBox();
+      const info = await page
+        .getByRole("button", { name: studioText.localHelp, exact: true })
+        .boundingBox();
+      assert.ok(caption && titleBox && collapse && info);
+      assert.ok(
+        titleBox.y >=
+          Math.max(collapse.y + collapse.height, info.y + info.height) - 1,
+        "name has its own full-width row",
+      );
+      assert.ok(
+        collapse.x > caption.x && info.x > collapse.x,
+        "controls follow LAYOUT",
+      );
       assert.equal(await page.getByText(t.note, { exact: true }).count(), 0);
       if (scene === "studio-canvas") {
+        await title.evaluate((node) => {
+          node.style.maxInlineSize = "40px";
+        });
+        await title.hover();
+        const fullName = page
+          .locator(".v-tooltip[aria-hidden='true']")
+          .filter({ hasText: studioText.local });
+        await fullName.waitFor({ timeout: 5000 });
+        await page.mouse.move(0, 0);
+        await fullName.waitFor({ state: "hidden", timeout: 5000 });
+        await title.evaluate((node) => {
+          node.style.maxInlineSize = "";
+        });
         await page.getByRole("button", { name: t.note, exact: true }).hover();
         const tooltip = page.getByRole("tooltip").filter({ hasText: t.note });
         await tooltip.waitFor({ timeout: 5000 });
         assert.equal(await tooltip.locator(".v-keycap").count(), 4);
+        const colors = await tooltip.evaluate((node) => ({
+          background: getComputedStyle(node).backgroundColor,
+          color: getComputedStyle(node).color,
+          shadow: getComputedStyle(node).boxShadow,
+          keys: [...node.querySelectorAll("kbd")].map(
+            (key) => getComputedStyle(key).color,
+          ),
+        }));
+        assert.match(
+          colors.background,
+          /^rgb\(/,
+          "tooltip background is opaque",
+        );
+        assert.notEqual(colors.shadow, "none");
+        assert.ok(
+          colors.keys.every((color) => color === colors.color),
+          "keys use readable tooltip foreground",
+        );
         for (const text of [t.keyMove, t.keySize, t.keyStep, t.keyCancel])
           assert.ok((await tooltip.textContent())?.includes(text));
         await page.mouse.move(0, 0);

@@ -642,8 +642,8 @@ it("blocks sidebar, anchors and removal in the readonly canvas without writes", 
   expect(
     screen
       .getByRole("button", { name: studioText.add })
-      .hasAttribute("disabled"),
-  ).toBe(true);
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
   const anchor = screen.getByRole("button", { name: t.anchors });
   expect(anchor.getAttribute("aria-disabled")).toBe("true");
   expect(

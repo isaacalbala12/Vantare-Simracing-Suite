@@ -110,62 +110,20 @@ impl WidgetSettings {
                     ..Default::default()
                 }),
             ),
-            (
-                WidgetKind::BroadcastTower,
-                Data::BroadcastTower(native::broadcast_tower::Settings::default()),
-            ),
-            (
-                WidgetKind::CarDamageNumbers,
-                Data::CarDamageNumbers(native::car_damage_numbers::Settings::default()),
-            ),
-            (
-                WidgetKind::CarDamageVisual,
-                Data::CarDamageVisual(native::car_damage_visual::Settings::default()),
-            ),
-            (
-                WidgetKind::DeltaTrace,
-                Data::DeltaTrace(native::delta_trace::Settings::default()),
-            ),
-            (
-                WidgetKind::FastestLap,
-                Data::FastestLap(native::fastest_lap::Settings::default()),
-            ),
-            (
-                WidgetKind::HeadToHead,
-                Data::HeadToHead(native::head_to_head::Settings::default()),
-            ),
-            (
-                WidgetKind::InputTelemetry,
-                Data::InputTelemetry(native::input_telemetry::Settings::default()),
-            ),
-            (
-                WidgetKind::TrackMap,
-                Data::TrackMap(native::track_map::Settings::default()),
-            ),
-            (
-                WidgetKind::MulticlassRelative,
-                Data::MulticlassRelative(native::multiclass_relative::Settings::default()),
-            ),
-            (
-                WidgetKind::PedalsTelemetry,
-                Data::PedalsTelemetry(native::pedals_telemetry::Settings::default()),
-            ),
-            (
-                WidgetKind::Radar,
-                Data::Radar(native::radar::Settings::default()),
-            ),
-            (
-                WidgetKind::RacingFlags,
-                Data::RacingFlags(native::racing_flags::Settings::default()),
-            ),
-            (
-                WidgetKind::TrackWeather,
-                Data::TrackWeather(native::track_weather::Settings::default()),
-            ),
-            (
-                WidgetKind::SessionAlerts,
-                Data::SessionAlerts(native::session_alerts::Settings::default()),
-            ),
+            (WidgetKind::BroadcastTower, Data::BroadcastTower(native::broadcast_tower::Settings::default())),
+            (WidgetKind::CarDamageNumbers, Data::CarDamageNumbers(native::car_damage_numbers::Settings::default())),
+            (WidgetKind::CarDamageVisual, Data::CarDamageVisual(native::car_damage_visual::Settings::default())),
+            (WidgetKind::DeltaTrace, Data::DeltaTrace(native::delta_trace::Settings::default())),
+            (WidgetKind::FastestLap, Data::FastestLap(native::fastest_lap::Settings::default())),
+            (WidgetKind::HeadToHead, Data::HeadToHead(native::head_to_head::Settings::default())),
+            (WidgetKind::InputTelemetry, Data::InputTelemetry(native::input_telemetry::Settings::default())),
+            (WidgetKind::TrackMap, Data::TrackMap(native::track_map::Settings::default())),
+            (WidgetKind::MulticlassRelative, Data::MulticlassRelative(native::multiclass_relative::Settings::default())),
+            (WidgetKind::PedalsTelemetry, Data::PedalsTelemetry(native::pedals_telemetry::Settings::default())),
+            (WidgetKind::Radar, Data::Radar(native::radar::Settings::default())),
+            (WidgetKind::RacingFlags, Data::RacingFlags(native::racing_flags::Settings::default())),
+            (WidgetKind::TrackWeather, Data::TrackWeather(native::track_weather::Settings::default())),
+            (WidgetKind::SessionAlerts, Data::SessionAlerts(native::session_alerts::Settings::default())),
         ];
         values
             .into_iter()

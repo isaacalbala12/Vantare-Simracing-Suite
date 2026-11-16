@@ -49,6 +49,15 @@ impl Eficiencia {
         settings.columns = columns.or(settings.columns.as_ref()).cloned();
         settings
     }
+    fn switch_session(&mut self, session: Session) {
+        self.session = session;
+        let mut config = Config::from_settings(&self.settings_for(session));
+        config.fit(config.row_count);
+        self.visual.config = Arc::new(config);
+        self.visual.content_plan = Arc::new(ContentPlan::unavailable(super::model::Status::Disconnected));
+        self.visual.plan = Arc::new(super::model::plan(&self.visual.config, &self.visual.content_plan));
+        self.board = None;
+    }
 }
 impl Widget for Eficiencia {
     fn new(
@@ -157,12 +166,7 @@ impl Widget for Eficiencia {
         let settings = self.settings_for(session);
         let session_changed = session != self.session;
         if session_changed {
-            self.session = session;
-            let mut config = Config::from_settings(&settings);
-            config.fit(config.row_count);
-            let visual = &mut self.visual;
-            visual.config = Arc::new(config);
-            visual.plan = Arc::new(super::model::plan(&visual.config, &visual.content_plan));
+            self.switch_session(session);
         }
         let content = super::super::content(&settings);
         let board = standings::project_cached(photo, self.prefs, &content, self.board.as_ref());
@@ -204,12 +208,12 @@ impl Widget for Eficiencia {
                 rune::el()
                     .key("pause-band")
                     .size(width, super::super::PAUSE_HEIGHT)
-                    .fill(rune::color::hex("#101113f2").expect("pause color"))
+                    .fill(crate::eficiencia::color(0x101113, 0.95))
                     .pin(Some(0.0), Some(height), None, None)
                     .child(crate::eficiencia::label(
                         title,
                         8.0,
-                        15.0,
+                        16.0,
                         crate::eficiencia::font(11.0, 600, 0.02),
                         crate::eficiencia::color(0xffffff, 1.0),
                     )),

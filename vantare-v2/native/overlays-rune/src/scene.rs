@@ -335,6 +335,17 @@ mod tests {
     }
     #[test]
     fn empty_layout_never_acquires_and_unchanged_updates_do_not_publish() {
+        use vantare_domain::widget_settings::{Kind, Settings, look::Look};
+        // Ya no queda un Settings válido que llegue a `_ => None`: ambos Looks
+        // de TODOS los Kind del catálogo tienen constructor. No inventamos una
+        // variante inválida para la antigua regresión; sin instancias sigue sin haber demanda.
+        for kind in Kind::ALL {
+            for look in Look::ALL {
+                let mut settings = Settings::default_for(*kind);
+                settings.set_look(*look);
+                assert!(crate::renderer::constructor(&settings).is_some(), "{kind:?}/{look:?}");
+            }
+        }
         let now = Instant::now();
         let mut design = layout();
         // Todos los Looks del catálogo ya tienen constructor; sin instancias no hay demanda.

@@ -92,7 +92,7 @@ fn column_label(v: &Visual, language: Language, column: Column, x: f32, w: f32) 
     let s = &c.style;
     let labels = model::labels(language);
     let value = labels.metric(column.metric, v.content_plan.board.gap_to_best_lap);
-    let mut cell = rect(x, p.table_top, w, p.head_row).clip_rounded(0.0);
+    let mut cell = rect(x, p.table_top, w, p.head_row);
     let pad = s.geometry.cell_padding;
     if c.broadcast {
         cell = cell.fill(color(0, 0.13));
@@ -132,6 +132,7 @@ fn column_label(v: &Visual, language: Language, column: Column, x: f32, w: f32) 
             font,
         ));
     }
+    cell = cell.clip_rounded(0.0);
     let rgb = if v.content_plan.board.gap_to_best_lap && column.metric == Metric::BestLap {
         s.colors.ink.0
     } else {

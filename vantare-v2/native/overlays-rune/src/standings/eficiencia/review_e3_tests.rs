@@ -106,7 +106,7 @@ fn gpui_nonplayer_top_three_and_player_row_alphas_are_literal() {
         let v=two_rows(true,broadcast);
         let width=v.config.width;
         let rt=paint(v,Language::Es);
-        assert_eq!(named(&rt,"player-background").fill,rune::color::hex("#bfc2ca").unwrap().with_alpha(alpha));
+        assert_eq!(named(&rt,"player-background").fill,rune::color::hex("#bfc2ca").unwrap().alpha(alpha));
         assert!(rt.elements().iter().any(|e|e.rect==[0.0,top,width,1.0] && e.fill.hex()=="#ffffff21"));
         assert_eq!(named(&rt,"row-bottom-rule").fill.hex(),"#ffffff14");
     }

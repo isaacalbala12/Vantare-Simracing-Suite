@@ -82,6 +82,18 @@ function publishAccount(patch: Partial<AccountView>) {
   for (const listener of accountListeners)
     listener({ kind: "event", event: { topic: "account", value } });
 }
+let postedMethods: string[];
+beforeEach(() => {
+  postedMethods = [];
+  const connect = Client.connect;
+  vi.spyOn(Client, "connect").mockImplementation(async () => {
+    const client = await connect.call(Client);
+    client.observeRequests((event) => {
+      if (event.phase === "start") postedMethods.push(event.method);
+    });
+    return client;
+  });
+});
 beforeEach(() => {
   accountListeners.clear();
   showAccountIdentity = false;
@@ -119,6 +131,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   cache.clear();
+  expect(postedMethods).not.toContain("launcher.launch");
+  expect(postedMethods).not.toContain("launcher.favorite");
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
@@ -659,7 +673,7 @@ it("announces unavailable zoom in the palette and reevaluates it on resize witho
   ).toHaveLength(0);
 });
 
-it("Ctrl L preserves native favorite name order and does not replace the selected profile", async () => {
+it("Ctrl L uses the first favorite supplied by the host and preserves the selected profile", async () => {
   await mount();
   await userEvent.setup().keyboard("{Escape}");
   const view = snapshot();
@@ -668,18 +682,18 @@ it("Ctrl L preserves native favorite name order and does not replace the selecte
   for (const profile of view.profiles) profile.favorite = true;
   act(() => {
     cache.setQueryData(["launcher"], view);
-    cache.setQueryData(["launcher", "selection"], view.profiles[0].id);
+    cache.setQueryData(["launcher", "selection"], view.profiles[1].id);
   });
   const send = vi.spyOn(Client.prototype, "request");
   fireEvent.keyDown(document.body, { key: "l", ctrlKey: true });
   await waitFor(() => expect(launchCalls(send)).toHaveLength(1));
   expect(launchCalls(send)[0][0]).toEqual({
     method: "launcher.launchChecked",
-    profile: view.profiles[1].id,
+    profile: view.profiles[0].id,
     baseRevision: view.revision,
     armedGeneration: "a".repeat(64),
   });
   expect(cache.getQueryData(["launcher", "selection"])).toBe(
-    view.profiles[0].id,
+    view.profiles[1].id,
   );
 });

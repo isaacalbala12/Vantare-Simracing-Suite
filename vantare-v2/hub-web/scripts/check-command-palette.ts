@@ -20,6 +20,7 @@ export async function checkCommandPalette(
           message?.kind === "request" &&
           [
             "launcher.launch",
+            "launcher.favorite",
             "launcher.launchChecked",
             "launcher.resident.answer",
             "launcher.resident.cancel",
@@ -84,7 +85,8 @@ export async function checkCommandPalette(
       await page.evaluate(() => Reflect.get(window, "paletteLaunchRequests")),
       [
         {
-          method: "launcher.launch",
+          method: "launcher.launchChecked",
+          armedGeneration: "a".repeat(64),
           profile: "pro",
           baseRevision: "0".repeat(64),
         },

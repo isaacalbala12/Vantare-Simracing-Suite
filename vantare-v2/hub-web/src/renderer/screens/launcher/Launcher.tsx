@@ -198,7 +198,7 @@ export function Launcher({
         baseRevision: view.revision,
       });
       if (alive.current && reply.method === "launcher.launchChecked") {
-        setAccepted(reply.value.kind === "queued");
+        setAccepted(true);
       }
     } catch (failure) {
       if (!alive.current) return;

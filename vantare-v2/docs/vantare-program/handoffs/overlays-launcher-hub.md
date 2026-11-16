@@ -1,16 +1,16 @@
-## VANTA-138 · #2028: Electron usa lanzamiento checked (por revisar)
+## VANTA-138 · #2028: Electron usa lanzamiento checked (retoques de review)
 
-Rama `vantareapp/isa-2028-electron-checked`, desde nightly `9ff6f97e2`.
-Inicio, Launcher, rail, paleta y favorito pasan al método checked existente.
-El guard compartido captura la generación de cuenta al solicitar; sin ella
-no envía, ni cae a v1 ante Unsupported o incertidumbre. Los avisos de solicitado
-y los resultados del residente se conservan; no hay texto ni estado visual nuevo.
-Contratos y consumidores nativos legacy intactos, sin bump ni cambios del núcleo.
-Tests del guard, generación capturada y no reenvío, más las integraciones existentes.
-Typecheck, lint, build y 3.016 tests web PASS (229 archivos).
-El fallo previo de Onboarding se reproduce en la base y queda en #2434; el
-barrido final completo pasa. PR/CI se enlazan en #2028, después de #2432 (#2184).
-Sin gráficos, merge, release o despliegue propios. Preview espera a #2391.
+PR #2437, rama `vantareapp/isa-2028-electron-checked`. Se fusiona después de #2432
+y se rebasará sobre nightly cuando aquel entre. No cambia contrato ni versión.
+Inicio, Launcher, rail, paleta y favorito usan checked con cuenta capturada.
+El favorito es el primero marcado en el orden de la vista; la UI no copia el
+orden de Rust. Se eliminan ramas imposibles del único resultado Queued.
+`check-command-palette.ts` está activo desde web-a11y y espera launchChecked
+con armedGeneration. Las integraciones afirman globalmente que no se envía
+launcher.launch ni launcher.favorite, usando el observador existente del Client.
+Últimos gates: tipos de producto/scripts, lint, build y 165 tests dirigidos PASS.
+El barrido completo anterior dio 3.016 PASS; CI del nuevo head pendiente.
+No hay texto/estado visual nuevo, gráficos, merge, release ni preview propios.
 
 ## VANTA-138 · #2184: escaneo y pasos antes de lanzar (review corregida)
 

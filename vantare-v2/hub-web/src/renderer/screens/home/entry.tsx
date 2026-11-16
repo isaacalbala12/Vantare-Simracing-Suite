@@ -150,11 +150,7 @@ export default function Home() {
         profile,
         baseRevision: view.revision,
       });
-      if (
-        result.method !== "launcher.launchChecked" ||
-        result.value.kind !== "queued"
-      )
-        setError(t.failed);
+      if (result.method !== "launcher.launchChecked") setError(t.failed);
     } catch {
       setError(t.failed);
     } finally {

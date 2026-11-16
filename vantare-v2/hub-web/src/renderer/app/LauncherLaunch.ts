@@ -85,19 +85,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
         warn(text.loading);
         return;
       }
-      const favorite = current.profiles
-        .filter((item) => item.favorite)
-        .sort((a, b) => {
-          // Match Rust String::cmp, including names outside the BMP (UTF-16 differs).
-          const left = [...a.name],
-            right = [...b.name];
-          for (let i = 0; i < Math.min(left.length, right.length); i++) {
-            const order =
-              (left[i]?.codePointAt(0) ?? 0) - (right[i]?.codePointAt(0) ?? 0);
-            if (order) return order;
-          }
-          return left.length - right.length;
-        })[0];
+      const favorite = current.profiles.find((item) => item.favorite);
       if (!favorite) {
         navigate("launcher");
         toast.add({ title: t("shell.profileNeeded") });
@@ -123,19 +111,12 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
         warn(text.failed);
         return;
       }
-      if (!favoriteRequest && reply.value.kind === "queued")
+      if (!favoriteRequest)
         cache.setQueryData(["launcher", "selection"], profile);
       navigate("launcher");
-      if (!favoriteRequest) {
-        if (reply.value.kind === "queued") toast.add({ title: text.sent });
-        else warn(text.failed);
-      } else
-        toast.add({
-          title:
-            reply.value.kind === "queued"
-              ? t("shell.favoriteSent")
-              : t("shell.profileNeeded"),
-        });
+      toast.add({
+        title: favoriteRequest ? t("shell.favoriteSent") : text.sent,
+      });
     } catch (failure) {
       if (!alive.current) return;
       if (

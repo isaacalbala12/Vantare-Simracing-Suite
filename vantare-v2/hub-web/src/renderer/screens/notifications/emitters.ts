@@ -195,10 +195,7 @@ export function connectEmitters(
     }
     if (event.method === "settings.update" && event.error?.kind === "conflict")
       reply({ method: "settings.get", value: event.error.current });
-    if (
-      event.reply?.method === "launcher.launchChecked" &&
-      event.reply.value.kind === "queued"
-    )
+    if (event.reply?.method === "launcher.launchChecked")
       launcherFailure = false;
     if (
       (event.reply?.method === "launcher.launch" ||

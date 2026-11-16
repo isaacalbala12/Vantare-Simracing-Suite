@@ -46,8 +46,15 @@ beforeAll(() =>
     },
   ),
 );
+const observedRequests: Array<ReturnType<typeof vi.fn>> = [];
 afterEach(() => {
   cleanup();
+  const methods = observedRequests.flatMap((request) =>
+    request.mock.calls.map(([value]) => value.method),
+  );
+  expect(methods).not.toContain("launcher.launch");
+  expect(methods).not.toContain("launcher.favorite");
+  observedRequests.length = 0;
   vi.restoreAllMocks();
 });
 it("uses the exact read launcher revision and cancels the Home subscription on exit", async () => {
@@ -81,6 +88,7 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
             }
           : Promise.reject(new HostFailure({ kind: "rejected" })),
   );
+  observedRequests.push(request);
   const client = {
     request,
     observeRequests: () => () => {},
@@ -174,6 +182,7 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
 });
 
 function harness(request: ReturnType<typeof vi.fn>, query = new QueryClient()) {
+  observedRequests.push(request);
   const client = {
     request,
     observeRequests: () => () => {},

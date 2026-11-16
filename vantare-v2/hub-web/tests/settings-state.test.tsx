@@ -57,6 +57,18 @@ import { ShellLayout } from "../src/renderer/ui/ShellLayout";
 type Guard = Parameters<Client["setCloseGuard"]>[0];
 const caches: QueryClient[] = [];
 const connections = new Set<Client>();
+let postedMethods: string[];
+beforeEach(() => {
+  postedMethods = [];
+  const connect = Client.connect;
+  vi.spyOn(Client, "connect").mockImplementation(async () => {
+    const client = await connect.call(Client);
+    client.observeRequests((event) => {
+      if (event.phase === "start") postedMethods.push(event.method);
+    });
+    return client;
+  });
+});
 beforeEach(() => {
   // Native-size window: jsdom's 1024px default cannot reach 100/110/125%.
   vi.stubGlobal("innerWidth", 1920);
@@ -80,6 +92,8 @@ afterEach(async () => {
   cleanup();
   for (const cache of caches) cache.clear();
   caches.length = 0;
+  expect(postedMethods).not.toContain("launcher.launch");
+  expect(postedMethods).not.toContain("launcher.favorite");
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");

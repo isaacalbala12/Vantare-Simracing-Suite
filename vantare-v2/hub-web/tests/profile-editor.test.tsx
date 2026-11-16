@@ -46,6 +46,18 @@ const caches: QueryClient[] = [];
 beforeAll(async () => {
   await import("../src/mock/host");
 });
+let postedMethods: string[];
+beforeEach(() => {
+  postedMethods = [];
+  const connect = Client.connect;
+  vi.spyOn(Client, "connect").mockImplementation(async () => {
+    const client = await connect.call(Client);
+    client.observeRequests((event) => {
+      if (event.phase === "start") postedMethods.push(event.method);
+    });
+    return client;
+  });
+});
 beforeEach(() =>
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -56,6 +68,8 @@ beforeEach(() =>
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  expect(postedMethods).not.toContain("launcher.launch");
+  expect(postedMethods).not.toContain("launcher.favorite");
   vi.restoreAllMocks();
   caches.forEach((cache) => {
     cache.clear();

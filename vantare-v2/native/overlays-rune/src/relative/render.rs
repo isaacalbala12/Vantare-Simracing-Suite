@@ -1267,7 +1267,7 @@ mod baseline_tests {
         relative.update(&snapshot, 0.0);
         assert_eq!(relative.board.banner, Some(Banner::InPits));
         assert!(relative.board.pit_limiter);
-        let painter = relative.painter;
+        let painter = relative.into_vantare();
         let size = painter.size();
         let mut rt = Runtime::with_text(
             painter,

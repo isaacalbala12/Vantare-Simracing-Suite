@@ -31,7 +31,7 @@ pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::Radar(_) => Some(<crate::radar::Radar as Widget>::new),
         Settings::HeadToHead(_) => Some(<crate::head_to_head::HeadToHead as Widget>::new),
         Settings::SessionAlerts(_) => Some(<crate::session_alerts::SessionAlerts as Widget>::new),
-        Settings::Relative(s) if s.design_system == Look::Vantare => {
+        Settings::Relative(s) if matches!(s.design_system, Look::Vantare | Look::Eficiencia) => {
             Some(<Relative as Widget>::new)
         }
         Settings::MulticlassRelative(_) => {
@@ -368,9 +368,19 @@ pub(crate) mod tests {
             Relative::new(&relative, prefs, true, 15, 0.0).size()
         );
         relative.design_system = Look::Eficiencia;
-        let efficiency = Settings::Relative(relative);
+        let efficiency = Settings::Relative(relative.clone());
         let pedals = Settings::Pedals(Default::default());
-        assert!(constructor(&efficiency).is_none());
+        let efi = constructor(&efficiency).expect("Eficiencia constructor")(
+            &efficiency,
+            prefs,
+            true,
+            15,
+            0.0,
+        )
+        .expect("Relative Eficiencia instance");
+        assert!(efi.configured(&efficiency, prefs));
+        assert_eq!(efi.size().width, 470.0);
+        assert_eq!(efi.size().height, 277.0);
         assert!(constructor(&pedals).is_some());
         assert!(!painter.configured(&efficiency, prefs));
         assert!(!painter.configured(&pedals, prefs));

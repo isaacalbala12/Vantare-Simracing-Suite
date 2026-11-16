@@ -1,3 +1,16 @@
+## VANTA-144 · Datos del Historial de delta a domain (16/11/2026)
+
+Traslado mecánico aprobado por raíz y sub-orquestador: LapHistory, LapPoint,
+Details y la preparación común del Board pasan al archivo delta_trace.rs de
+domain. GPUI reexporta los tipos y conserva sus tests de historial, dibujo y
+memoria. Solo cambian nombres, rutas y visibilidad; push queda público para
+que los tests GPUI existentes sigan llamándolo desde el crate consumidor.
+Sin cambios de geometría, comportamiento, archivos de código o dependencias.
+Gates Full de domain/ui y telemetría por cola; resultados y CI en el PR draft.
+Después se mide la pérdida de fotos entre polls con tests CPU independientes;
+el pintor Rune y cualquier cola esperan un esquema y aprobación posteriores.
+Sin gráficos, merge, promoción, release ni movimiento de Plane.
+
 ## VANTA-144 · Fuente única de la demo del Mapa (16/11/2026)
 
 Traslado mecánico aprobado por raíz y sub-orquestador: los 621 pares de Le Mans

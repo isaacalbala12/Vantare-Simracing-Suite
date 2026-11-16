@@ -315,4 +315,33 @@ mod tests {
         assert_eq!(meter.snapshot().animation, 0);
         assert_eq!(meter.snapshot().unattributed, 0);
     }
+
+    /// La ventana mide lo que pide el widget, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut states = vec![Snapshot::default()];
+        states.extend(photos());
+        for photo in states {
+            let widget = widget(MapSettings::default(), Preferences::default());
+            let size = widget.size_for(Some(&photo));
+            let mut rt = runtime(widget, size);
+            rt.update_if(|w, tx| {
+                tx.instant();
+                w.update(&photo, 0.0).build
+            });
+            rt.frame(0.0);
+            crate::testdata::assert_inside_window(&mut rt, (size.width, size.height));
+        }
+    }
+
+    fn runtime(widget: Box<dyn Widget>, size: Size) -> Runtime<Box<dyn Widget>> {
+        Runtime::with_text(
+            widget,
+            |w, _| w.view(),
+            (size.width, size.height),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        )
+    }
 }

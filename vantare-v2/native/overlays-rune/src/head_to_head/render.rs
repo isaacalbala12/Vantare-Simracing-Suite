@@ -508,7 +508,9 @@ fn view(state: &Painter) -> El {
                         Rect {
                             x: live.x,
                             y: 30.0,
-                            w: SECTOR_WIDTH,
+                            // El último sector no puede salirse de la ventana: el
+                            // valor real (Mono 12, seis cifras) cabe de sobra.
+                            w: SECTOR_WIDTH.min(WIDTH - live.x),
                             h: 16.0,
                         },
                         Ink {

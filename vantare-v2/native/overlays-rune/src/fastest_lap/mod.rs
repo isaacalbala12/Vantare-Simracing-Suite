@@ -498,6 +498,31 @@ mod tests {
         assert!(chip > end, "los chips van fuera de la capa que se funde");
     }
 
+    /// La ventana mide lo que pide el widget, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for photo in [Snapshot::default(), photo(1, 91.5)] {
+            let mut widget = widget(&Config::default(), Preferences::default(), true);
+            widget.update(&photo, 0.0);
+            let size = widget.size_for(Some(&photo));
+            let mut runtime = Runtime::with_text(
+                widget,
+                |widget: &FastestLap, _| widget.view(),
+                (size.width, size.height),
+                Env::new(true, 1.0),
+                rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+            );
+            runtime.poll = Some(|widget, clock, tx| {
+                let update = widget.animate(clock);
+                widget.schedule(clock, tx);
+                update.build
+            });
+            runtime.frame(0.0);
+            crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+        }
+    }
+
     #[test]
     fn long_subtitle_truncates_with_ellipsis_and_recomposes_once() {
         let prefs = Preferences::default();

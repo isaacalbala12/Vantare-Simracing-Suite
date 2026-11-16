@@ -46,7 +46,11 @@ impl Eficiencia {
         }
     }
     fn sample(&mut self, clock: f64) -> bool {
-        let frame = if self.reduced { Arc::default() } else { self.motion.frame_shared(clock) };
+        let frame = if self.reduced {
+            Arc::default()
+        } else {
+            self.motion.frame_shared(clock)
+        };
         let changed = *frame != *self.visual.frame;
         self.visual.frame = frame;
         changed
@@ -86,9 +90,9 @@ impl Widget for Eficiencia {
         let Settings::Standings(s) = settings else {
             return None;
         };
-        let mut widget=Self::new(s,prefs);
-        widget.reduced=reduced;
-        widget.hz=hz.max(1);
+        let mut widget = Self::new(s, prefs);
+        widget.reduced = reduced;
+        widget.hz = hz.max(1);
         Some(Box::new(widget))
     }
     fn attach_assets(&mut self, cache: &Arc<rune::ImageCache>) {
@@ -157,14 +161,23 @@ impl Widget for Eficiencia {
         }
     }
     fn policy(&mut self, reduced: bool, hz: u16, clock: f64) -> Update {
-        self.hz=hz.max(1);
-        if reduced==self.reduced { return Update::default(); }
-        self.reduced=reduced;
-        self.motion=super::motion::Motion::default();
-        if !reduced {
-            self.motion.update(&self.visual.content_plan,self.visual.plan.visible_rows,clock);
+        self.hz = hz.max(1);
+        if reduced == self.reduced {
+            return Update::default();
         }
-        Update { build:self.sample(clock),pixels:false }
+        self.reduced = reduced;
+        self.motion = super::motion::Motion::default();
+        if !reduced {
+            self.motion.update(
+                &self.visual.content_plan,
+                self.visual.plan.visible_rows,
+                clock,
+            );
+        }
+        Update {
+            build: self.sample(clock),
+            pixels: false,
+        }
     }
     fn update(&mut self, photo: &Snapshot, clock: f64) -> Update {
         let paused = photo.state.source_state == SourceState::Paused;
@@ -212,10 +225,14 @@ impl Widget for Eficiencia {
         // Metadato de continuidad de GPUI para E5/E6; sequence no decide proyección/repintado.
         let next = Arc::new(ContentPlan::new(board.clone(), identity, photo.sequence));
         self.board = Some(board);
-        let changed=self.visual.ingest(next);
+        let changed = self.visual.ingest(next);
         // Visual::ingest de GPUI solo actualiza Motion si cambia el contenido visible.
         if changed && !self.reduced {
-            self.motion.update(&self.visual.content_plan,self.visual.plan.visible_rows,clock);
+            self.motion.update(
+                &self.visual.content_plan,
+                self.visual.plan.visible_rows,
+                clock,
+            );
         }
         Update {
             build: self.sample(clock) || changed || pause_changed || session_changed,
@@ -223,11 +240,19 @@ impl Widget for Eficiencia {
         }
     }
     fn animate(&mut self, clock: f64) -> Update {
-        if self.paused || self.reduced {return Update::default();}
-        Update {build:self.sample(clock),pixels:false}
+        if self.paused || self.reduced {
+            return Update::default();
+        }
+        Update {
+            build: self.sample(clock),
+            pixels: false,
+        }
     }
     fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
-        if !self.paused && !self.reduced && let Some(due)=self.motion.next_wake(clock,self.hz) {
+        if !self.paused
+            && !self.reduced
+            && let Some(due) = self.motion.next_wake(clock, self.hz)
+        {
             tx.wake_at(due);
         }
     }

@@ -10,8 +10,8 @@ pub(crate) use control::Eficiencia;
 #[cfg(test)]
 mod control_tests;
 mod model;
-mod options;
 mod motion;
+mod options;
 #[cfg(test)]
 mod paint_tests;
 mod render;

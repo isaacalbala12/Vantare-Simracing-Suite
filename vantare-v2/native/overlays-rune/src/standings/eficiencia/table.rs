@@ -123,22 +123,32 @@ pub(super) fn paint(v: &Visual, language: Language) -> Vec<El> {
         }
     }
     for ghost in &v.frame.ghosts {
-        let top=body_top+ghost.top*s.geometry.row_height/model::ROW_HEIGHT;
-        nodes.push(row_layer(v,&ghost.row,top,ghost.pose,true));
+        let top = body_top + ghost.top * s.geometry.row_height / model::ROW_HEIGHT;
+        nodes.push(row_layer(v, &ghost.row, top, ghost.pose, true));
     }
     for (i, row) in v.content_plan.rows.iter().take(p.visible_rows).enumerate() {
         let top = body_top + p.row_tops[i];
-        nodes.push(row_layer(v,row,top,v.frame.row(row.id),i+1==p.visible_rows));
+        nodes.push(row_layer(
+            v,
+            row,
+            top,
+            v.frame.row(row.id),
+            i + 1 == p.visible_rows,
+        ));
     }
     nodes
 }
-fn row_layer(v:&Visual,row:&Row,top:f32,pose:super::motion::Pose,last:bool)->El {
-    let s=&v.config.style;
-    let y=top+pose.offset*s.geometry.row_height/model::ROW_HEIGHT;
-    let mut layer=rect(0.0,y,v.config.width,s.geometry.row_height)
-        .key(format!("efficiency-row-{}",row.id.0));
-    if pose.alpha<0.999 { layer=layer.opacity(pose.alpha.max(0.0)); }
-    for node in paint_row(v,row,last) { layer=layer.child(node); }
+fn row_layer(v: &Visual, row: &Row, top: f32, pose: super::motion::Pose, last: bool) -> El {
+    let s = &v.config.style;
+    let y = top + pose.offset * s.geometry.row_height / model::ROW_HEIGHT;
+    let mut layer = rect(0.0, y, v.config.width, s.geometry.row_height)
+        .key(format!("efficiency-row-{}", row.id.0));
+    if pose.alpha < 0.999 {
+        layer = layer.opacity(pose.alpha.max(0.0));
+    }
+    for node in paint_row(v, row, last) {
+        layer = layer.child(node);
+    }
     layer
 }
 fn column_label(v: &Visual, language: Language, column: Column, x: f32, w: f32) -> El {

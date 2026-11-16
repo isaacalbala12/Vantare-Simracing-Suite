@@ -335,15 +335,32 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
         s.colors.pit_ink.0,
     );
     let mut nodes = Vec::new();
-    let rows=v.frame.ghosts.iter().map(|g| (&g.row,
-        origin+g.top*s.geometry.row_height/model::ROW_HEIGHT,g.pose))
-        .chain(v.content_plan.rows.iter().take(p.visible_rows).enumerate()
-            .map(|(i,row)|(row,origin+p.row_tops[i],v.frame.row(row.id))));
-    for (index,(row,top,pose)) in rows.enumerate() {
-        let alpha=if row.in_pits {pose.alpha} else {0.0};
-        if alpha<=0.001 {continue;}
+    let rows = v
+        .frame
+        .ghosts
+        .iter()
+        .map(|g| {
+            (
+                &g.row,
+                origin + g.top * s.geometry.row_height / model::ROW_HEIGHT,
+                g.pose,
+            )
+        })
+        .chain(
+            v.content_plan
+                .rows
+                .iter()
+                .take(p.visible_rows)
+                .enumerate()
+                .map(|(i, row)| (row, origin + p.row_tops[i], v.frame.row(row.id))),
+        );
+    for (index, (row, top, pose)) in rows.enumerate() {
+        let alpha = if row.in_pits { pose.alpha } else { 0.0 };
+        if alpha <= 0.001 {
+            continue;
+        }
         // E6 añade el canal independiente de entrada/salida de boxes.
-        let top=top+pose.offset*s.geometry.row_height/model::ROW_HEIGHT;
+        let top = top + pose.offset * s.geometry.row_height / model::ROW_HEIGHT;
         let y = top + s.geometry.row_height / 2.0 - s.geometry.pit_badge_height / 2.0;
         let w = s.geometry.pit_rail_width;
         let h = s.geometry.pit_badge_height;

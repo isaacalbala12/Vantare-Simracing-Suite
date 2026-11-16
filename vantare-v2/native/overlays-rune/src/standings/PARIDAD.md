@@ -23,7 +23,7 @@ alturas fijas, filas seleccionadas y estados contextuales.
 
 A2 conecta cabecera, filas, celdas y constructor; retira el permiso temporal
 `dead_code`. A3 pinta banners, separadores, pies y espera con esqueletos.
-Motion (#2465) queda congelado; la animación no forma parte de estos tres PR.
+A1/A2/A3 no incluyen animación; #2465 añade ahora el movimiento literal de filas.
 La comparación de píxeles queda para la tanda del PC de juego (#2365).
 
 ## A2 — cabecera, filas y celdas
@@ -33,7 +33,7 @@ La comparación de píxeles queda para la tanda del PC de juego (#2365).
 Primitivas equivalentes a `Kit`: panel, marca, highlight, punto, chip, píldora,
 fuentes y baselines. Nombres y lista de clases usan el mismo ajuste con «…».
 Registro solo para Look Vantare; Scene compara estructura tras project_cached,
-sin claves por sequence. Política estática, sin reloj. Se retira dead_code.
+sin claves por sequence. Reposo sin reloj; #2465 añade FLIP/fade finitos. Se retira dead_code.
 A3 completa la pintura de los elementos contextuales ya colocados por A1.
 
 ## Contrato y tipografía comprobados en revisión A2
@@ -53,7 +53,7 @@ FCY, amarilla local y última vuelta conservan sus colores, mayúsculas,
 regla y damero; pies Frozen/Pits/Spectator/Session y bandas de clase literales.
 Espera: mismo título y pista, cuatro esqueletos en compacto y cinco en los demás.
 Todas las capas llevan pin. Tests de textos ES/EN, banda, esqueletos y límites.
-Sin Motion: filas saltan y no hay flashes ni fundidos; #2465 sigue congelado.
+A3 dejó las filas estáticas; #2465 añade FLIP y fundido de entrada. Los efectos van después.
 Capturas de píxeles pendientes exclusivamente del PC (#2365).
 
 ## Revisión A3 — pausa y oráculos contextuales
@@ -74,3 +74,26 @@ compacto de 340 sin tiempos no pide pie Session. Estándar con Best (520 px)
 sí conserva Pista/Track. También se prueban Pole, Tuya/Yours +1.234 y Parada/Stop 3.
 Waiting (Missing) y Lost pintan espera y esqueletos; Stale y Paused conservan
 la presentación de datos de GPUI. Límites de 340/520 con banner, pie y espera.
+
+## #2465 — movimiento literal de Vantare
+
+Origen: standings/motion.rs::Motion::{update_rows,pose,wake_rows} y
+ui/styles/vantare.json::motion. Desplazamiento de 320 ms con CubicOut;
+entrada de 220 ms lineal. El Tween común de Rune implementa CubicOut con
+[1/3,1,2/3,1] y el canal alpha usa Tween::linear. Se prueban 80/160/319/321 ms
+y 55/110/221 ms con valores numéricos literales, sin derivar el oráculo del helper.
+EASE (0.25,0.1,0.25,1) y EASE_OUT (0,0,0.58,1) pertenecen al camino Eficiencia,
+no al update_rows de Vantare. Vantare elimina las filas salientes, sin ghosts.
+
+Los destinos salen de los Item::Row del plan literal. El FLIP interrumpido
+arranca en la posición viva, con la misma duración. Cada fila se agrupa con pin
+y opacidad explícita; los tests recorren la ventana durante movimiento y banner.
+Scene incluye el Frame muestreado y solo recompone si cambia su estructura.
+instant_changes aplica esas muestras sin otra transición automática de Rune.
+sequence no decide proyección, continuidad ni animación: foto cambiada con el
+mismo contador anima; solo cambiar el contador no reinicia los 320 ms.
+El reloj se programa a los Hz del widget únicamente mientras hay transición;
+al acabar no quedan despertares. Reducido salta al destino, sin fade ni reloj,
+también si se activa a mitad de transición. La pausa conserva el frame pintado.
+Destello, chip, barrido, batalla, rombo y boxes quedan para el PR del agente de
+Daños apilado sobre #2465; la comparación de píxeles sigue en el PC (#2365).

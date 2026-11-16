@@ -1,3 +1,20 @@
+## VANTA-144 · Standings Vantare movimiento (#2465, 16/11/2026)
+
+Rebase --onto nightly desde el antiguo padre 78551a585 de #2465; A1/A2/A3
+ya fusionados (A3 bccd6f0d2). Se conserva el pintor literal; se retira la
+adaptación genérica del draft y se porta Motion::update_rows de GPUI Vantare.
+FLIP: 320 ms CubicOut. Entrada: 220 ms lineal. EASE/EASE_OUT y los ghosts
+pertenecen a Eficiencia; no se usan en este camino. Tween común sin modificar.
+Frame dentro de Scene, destinos del plan, pin por fila e instant_changes para
+aplicar muestras sin interpolación extra. Reloj finito con último wake en el
+final exacto del canal; reducido salta y no reprograma el tick ya pendiente.
+Tests primero (22877a2f9): rojo sin reloj para FLIP; oráculos numéricos,
+interrupción, reloj agotado, reducido, sequence y límites con/sin banner.
+Mac: fmt y Clippy -D warnings PASS; 488 biblioteca + 3 binario PASS.
+Diff real de producción +188/-29 = 217 líneas; tests +220/-0 = 220.
+CI Rune Windows y revisión Sonnet pendientes. PR abierto, sin merge ni cierre.
+Efectos (Daños) se apilan sobre este head; Eficiencia después, corte por confirmar.
+
 ## VANTA-138 · #2471: duplicar exige pertenecer al catálogo
 
 `studio.duplicate` devuelve el mismo `Denied` que `studio.add` para tipos

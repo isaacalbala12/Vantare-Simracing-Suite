@@ -589,7 +589,11 @@ it("explains conserved widgets once, keeps their settings and never offers to ad
   const requests = vi.spyOn(Client.prototype, "request");
   mount("studio-conservados");
   const row = await listRow("Daños detallados 1");
-  expect(screen.getAllByText(t.conservedWidgets)).toHaveLength(1);
+  expect(
+    screen.getAllByText(
+      "Este diseño tiene widgets que ya no están en el catálogo. Se conservan con sus ajustes, pero no se pueden añadir desde el catálogo.",
+    ),
+  ).toHaveLength(1);
   expect(await listRow("Daños detallados 2")).toBeTruthy();
   fireEvent.click(row);
   fireEvent.click(screen.getByRole("tab", { name: t.content }));

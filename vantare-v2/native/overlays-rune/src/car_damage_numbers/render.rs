@@ -7,29 +7,29 @@ use rune::{Align, Color, El, el, text};
 use std::sync::Arc;
 
 const PANEL: Color = Color {
-    r: 0x10 as f32 / 255.0,
-    g: 0x11 as f32 / 255.0,
-    b: 0x13 as f32 / 255.0,
+    r: 0.00518152,
+    g: 0.00560539,
+    b: 0.00651209,
     a: 1.0,
-};
+}; // #101113
 const MUTED: Color = Color {
-    r: 0xb9 as f32 / 255.0,
-    g: 0xb9 as f32 / 255.0,
-    b: 0xbd as f32 / 255.0,
+    r: 0.48514995,
+    g: 0.48514995,
+    b: 0.50888133,
     a: 1.0,
-};
+}; // #b9b9bd
 const GREEN: Color = Color {
-    r: 0x7f as f32 / 255.0,
-    g: 0xb6 as f32 / 255.0,
-    b: 0x86 as f32 / 255.0,
+    r: 0.21223076,
+    g: 0.4677838,
+    b: 0.23839757,
     a: 1.0,
-};
+}; // #7fb686
 const NOTICE: Color = Color {
-    r: 0xe2 as f32 / 255.0,
-    g: 0xc5 as f32 / 255.0,
-    b: 0x68 as f32 / 255.0,
+    r: 0.7605245,
+    g: 0.5583404,
+    b: 0.13843162,
     a: 1.0,
-};
+}; // #e2c568
 const RADIUS: f32 = 6.0;
 const ROW_H: f32 = 29.0;
 const PANEL_H: f32 = 28.0;
@@ -336,5 +336,12 @@ mod tests {
                 );
             }
         }
+    }
+    #[test]
+    fn gpui_colors_are_srgb_decoded_in_linear_rune() {
+        assert_eq!(PANEL.hex(), "#101113ff");
+        assert_eq!(MUTED.hex(), "#b9b9bdff");
+        assert_eq!(GREEN.hex(), "#7fb686ff");
+        assert_eq!(NOTICE.hex(), "#e2c568ff");
     }
 }

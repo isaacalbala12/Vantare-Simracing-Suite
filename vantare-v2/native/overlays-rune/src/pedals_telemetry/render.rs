@@ -17,29 +17,29 @@ const ANGLE_CENTER: f32 = 340.0;
 const ANGLE_BOX: f32 = 80.0;
 
 const BLUE: Color = Color {
-    r: 79.0 / 255.0,
-    g: 142.0 / 255.0,
-    b: 247.0 / 255.0,
+    r: 0.07818742,
+    g: 0.2704978,
+    b: 0.9301109,
     a: 1.0,
-};
+}; // #4f8ef7
 const RED: Color = Color {
-    r: 225.0 / 255.0,
-    g: 74.0 / 255.0,
-    b: 84.0 / 255.0,
+    r: 0.7529422,
+    g: 0.06847817,
+    b: 0.08865559,
     a: 1.0,
-};
+}; // #e14a54
 const GREEN: Color = Color {
-    r: 34.0 / 255.0,
-    g: 197.0 / 255.0,
-    b: 94.0 / 255.0,
+    r: 0.01599629,
+    g: 0.5583404,
+    b: 0.11193243,
     a: 1.0,
-};
+}; // #22c55e
 const STALE: Color = Color {
-    r: 110.0 / 255.0,
-    g: 102.0 / 255.0,
-    b: 104.0 / 255.0,
+    r: 0.15592647,
+    g: 0.13286832,
+    b: 0.13843162,
     a: 1.0,
-};
+}; // #6e6668
 
 /// What the Look actually paints: the wheel id and its rotation, so a steering change redraws.
 #[derive(PartialEq)]
@@ -517,5 +517,13 @@ mod tests {
         let width = 188.0 * 0.02;
         assert!(near(fill.rect[2], width));
         assert!(near(fill.radius, width / 2.0));
+    }
+
+    #[test]
+    fn gpui_colors_are_srgb_decoded_in_linear_rune() {
+        assert_eq!(BLUE.hex(), "#4f8ef7ff");
+        assert_eq!(RED.hex(), "#e14a54ff");
+        assert_eq!(GREEN.hex(), "#22c55eff");
+        assert_eq!(STALE.hex(), "#6e6668ff");
     }
 }

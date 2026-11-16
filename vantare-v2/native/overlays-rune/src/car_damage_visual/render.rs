@@ -7,78 +7,78 @@ use rune::{Align, Color, El, LineCap, Path, Shape, canvas, el, text};
 use std::sync::Arc;
 
 const RED: Color = Color {
-    r: 0xf2 as f32 / 255.0,
-    g: 0x5a as f32 / 255.0,
-    b: 0x5a as f32 / 255.0,
+    r: 0.8879231,
+    g: 0.10224173,
+    b: 0.10224173,
     a: 1.0,
-};
+}; // #f25a5a
 const AMBER: Color = Color {
-    r: 0xf5 as f32 / 255.0,
-    g: 0x9e as f32 / 255.0,
-    b: 0x0b as f32 / 255.0,
+    r: 0.91309863,
+    g: 0.34191442,
+    b: 0.00334654,
     a: 1.0,
-};
+}; // #f59e0b
 const GREEN: Color = Color {
-    r: 0x22 as f32 / 255.0,
-    g: 0xc5 as f32 / 255.0,
-    b: 0x5e as f32 / 255.0,
+    r: 0.01599629,
+    g: 0.5583404,
+    b: 0.11193243,
     a: 1.0,
-};
+}; // #22c55e
 const UNKNOWN: Color = Color {
-    r: 0x5a as f32 / 255.0,
-    g: 0x50 as f32 / 255.0,
-    b: 0x52 as f32 / 255.0,
+    r: 0.10224173,
+    g: 0.08021982,
+    b: 0.08437621,
     a: 1.0,
-};
+}; // #5a5052
 const BAND: Color = Color {
-    r: 0xb5 as f32 / 255.0,
-    g: 0x2b as f32 / 255.0,
-    b: 0x35 as f32 / 255.0,
+    r: 0.462077,
+    g: 0.02415763,
+    b: 0.03560131,
     a: 1.0,
-};
+}; // #b52b35
 const TAB_ON: Color = Color {
-    r: 0xe1 as f32 / 255.0,
-    g: 0x4a as f32 / 255.0,
-    b: 0x54 as f32 / 255.0,
+    r: 0.7529422,
+    g: 0.06847817,
+    b: 0.08865559,
     a: 1.0,
-};
+}; // #e14a54
 const TAB_IN: Color = Color {
-    r: 0x51 as f32 / 255.0,
-    g: 0x27 as f32 / 255.0,
-    b: 0x2c as f32 / 255.0,
+    r: 0.08228271,
+    g: 0.02028856,
+    b: 0.02518686,
     a: 1.0,
-};
+}; // #51272c
 const TAB_TEXT_ON: Color = Color {
-    r: 0xec as f32 / 255.0,
-    g: 0xe6 as f32 / 255.0,
-    b: 0xe7 as f32 / 255.0,
+    r: 0.838799,
+    g: 0.7912979,
+    b: 0.7991027,
     a: 1.0,
-};
+}; // #ece6e7
 const TAB_TEXT_OFF: Color = Color {
-    r: 0x8e as f32 / 255.0,
-    g: 0x85 as f32 / 255.0,
-    b: 0x87 as f32 / 255.0,
+    r: 0.2704978,
+    g: 0.23455058,
+    b: 0.24228112,
     a: 1.0,
-};
+}; // #8e8587
 const BODY_INTACT: Color = Color {
-    r: 0x3a as f32 / 255.0,
-    g: 0x33 as f32 / 255.0,
-    b: 0x35 as f32 / 255.0,
+    r: 0.04231141,
+    g: 0.03310477,
+    b: 0.03560131,
     a: 1.0,
-};
+}; // #3a3335
 const TYRE: Color = UNKNOWN;
 const PANEL_LINE: Color = Color {
-    r: 0x11 as f32 / 255.0,
-    g: 0x0f as f32 / 255.0,
-    b: 0x10 as f32 / 255.0,
+    r: 0.00560539,
+    g: 0.00477695,
+    b: 0.00518152,
     a: 1.0,
-};
+}; // #110f10
 const CABIN: Color = Color {
-    r: 0x0d as f32 / 255.0,
-    g: 0x0b as f32 / 255.0,
-    b: 0x0c as f32 / 255.0,
+    r: 0.00402472,
+    g: 0.00334654,
+    b: 0.00367651,
     a: 1.0,
-};
+}; // #0d0b0c
 
 /// GPUI's `tone`: red below 60 %, amber below 90 %, green otherwise.
 fn tone(value: Option<f64>) -> Color {
@@ -990,5 +990,24 @@ mod tests {
             by_key(&painted, "car-damage-visual-row-value-2").text_color,
             Some(RED)
         );
+    }
+    #[test]
+    fn gpui_colors_are_srgb_decoded_in_linear_rune() {
+        for (color, hex) in [
+            (RED, "#f25a5aff"),
+            (AMBER, "#f59e0bff"),
+            (GREEN, "#22c55eff"),
+            (UNKNOWN, "#5a5052ff"),
+            (BAND, "#b52b35ff"),
+            (TAB_ON, "#e14a54ff"),
+            (TAB_IN, "#51272cff"),
+            (TAB_TEXT_ON, "#ece6e7ff"),
+            (TAB_TEXT_OFF, "#8e8587ff"),
+            (BODY_INTACT, "#3a3335ff"),
+            (PANEL_LINE, "#110f10ff"),
+            (CABIN, "#0d0b0cff"),
+        ] {
+            assert_eq!(color.hex(), hex);
+        }
     }
 }

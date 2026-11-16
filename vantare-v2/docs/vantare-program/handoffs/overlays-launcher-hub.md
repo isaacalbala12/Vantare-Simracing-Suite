@@ -1,3 +1,25 @@
+## VANTA-144 · Revisión Sonnet de Standings A1 (16/11/2026)
+
+Se restaura lib.rs desde nightly y se añade solo mod standings. Documentación
+verificada como UTF-8 sin doble codificación. Tests con oráculos GPUI literales:
+Driver con/sin dorsal, los cuatro presets, ventanas del jugador en PlayerClass
+y Multiclass con límites pequeños y final de parrilla, y ramas de vehicle_detail.
+Mac: fmt y Clippy -D warnings PASS; 418 + 2 tests PASS. Corrección propagada
+a la pila A2/A3 mediante rebase, sin cambios del pintor.
+
+## VANTA-144 · Standings literal A1 (16/11/2026)
+
+Sustituye el planteamiento de #2463: port local de la geometría de
+`ui/src/standings/vantare.rs`, sin constructor registrado en esta entrega.
+Tests primero (`bab6deab5`): catálogo GPUI, 340/520/900, altura fija,
+selección de filas, sectores numéricos y etiquetas ES/EN. Sin Plan de domain.
+Corte autorizado en tres PR <1200 líneas: A1 geometría; A2 cabecera/filas/celdas
+con registro y tests de pintura; A3 banners/separadores/pies/espera.
+`allow(dead_code)` temporal en A1, se retira en A2; #2465 Motion congelado.
+Fmt y Clippy -D warnings PASS; tests completos por cola: 395 biblioteca + 2
+binario PASS con Rust 1.99.1, sin gráficos. Canal: rama A1; CI y revisión
+pendientes al abrir el PR; no hay merge ni publicación de producto.
+
 ## VANTA-138 · #2028: Electron usa lanzamiento checked (retoques de review)
 
 PR #2437, rama `vantareapp/isa-2028-electron-checked`, rebasada sobre nightly

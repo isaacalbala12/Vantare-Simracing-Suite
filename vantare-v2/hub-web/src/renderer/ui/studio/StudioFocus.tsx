@@ -129,7 +129,7 @@ export function StudioFocus() {
           ) : !state.failure ? (
             <LoadingStudio />
           ) : null}
-          {!state.canvasMode && view?.state === "ready" && <ActionNotice />}
+          {view?.state === "ready" && <ActionNotice />}
           {view && view.state !== "missing" && selected && (
             <div
               className="v-studio-temporary"

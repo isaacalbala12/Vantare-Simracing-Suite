@@ -6,28 +6,34 @@ export function ActionNotice() {
     { view, notice } = state;
   if (!view || !notice || notice.revision !== view.revision) return null;
   return (
-    <div className="v-studio-action-notice" role="status">
-      <span>
+    <div
+      className={
+        state.canvasMode ? "v-canvas-accessible-help" : "v-studio-action-notice"
+      }
+    >
+      <span role="status">
         {notice.kind === "preset"
           ? t.presetApplied(notice.name)
           : notice.kind === "removed"
             ? t.removedName(notice.name)
             : t.addedName(notice.name)}
       </span>
-      <Button
-        size="sm"
-        disabled={!view.canUndo}
-        aria-disabled={state.pending}
-        onClick={() => {
-          if (!state.pending)
-            void state.execute({
-              method: "studio.undo",
-              baseRevision: view.revision,
-            });
-        }}
-      >
-        {t.undo}
-      </Button>
+      {!state.canvasMode && (
+        <Button
+          size="sm"
+          disabled={!view.canUndo}
+          aria-disabled={state.pending}
+          onClick={() => {
+            if (!state.pending)
+              void state.execute({
+                method: "studio.undo",
+                baseRevision: view.revision,
+              });
+          }}
+        >
+          {t.undo}
+        </Button>
+      )}
     </div>
   );
 }

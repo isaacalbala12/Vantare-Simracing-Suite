@@ -191,7 +191,7 @@ pub fn sample(board: &Board, settings: &Settings, prefs: Preferences, style: &St
     };
     if options.size == Size::Pill {
         return Scene {
-            options,
+            options: options.clone(),
             width: d.pill_width,
             height,
             content: 34.0,

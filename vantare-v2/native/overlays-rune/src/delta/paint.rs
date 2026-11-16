@@ -5,7 +5,7 @@ use crate::vantare::{
     Style,
     paint::{Face, WHITE, font},
 };
-use rune::{Align, Color, El, LineCap, Path, Shape, canvas, el, text};
+use rune::{Align, Color, El, Path, Shape, canvas, el, text};
 use vantare_domain::{
     delta::{Banner, Phase, SectorTone},
     format::Language,
@@ -187,7 +187,7 @@ impl Painter {
                 .pin(Some(x), Some(text_top(s, face, 0.0)), None, None),
         )
     }
-    fn banner(&self, root: El) -> El {
+    fn banner(&self, mut root: El) -> El {
         let Some(kind) = self.scene.banner else {
             return root;
         };
@@ -287,7 +287,7 @@ impl Painter {
                     v.header_size,
                     h,
                     v.header_tracking,
-                    if face == Face::Display {
+                    if matches!(face, Face::Display) {
                         600.0
                     } else {
                         s.fonts.regular_weight
@@ -613,7 +613,7 @@ impl Painter {
         if self.scene.phase == Phase::Live && value != 0.0 {
             let half = span / 2.0;
             let length = half * value.abs();
-            let (x, solid, angle, corners) = if value < 0.0 {
+            let (x, solid, angle, corners): (f32, Color, f32, [f32; 4]) = if value < 0.0 {
                 (
                     mid - length,
                     d.fill_gain,

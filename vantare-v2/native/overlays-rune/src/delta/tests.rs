@@ -3,7 +3,7 @@ use crate::{
     host::{self, Access, Shared},
     scene::Scene as FrameScene,
 };
-use rune::{Cx, Env, Runtime};
+use rune::{Env, Runtime};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -11,6 +11,8 @@ use std::{
 use vantare_domain::{
     Quality::{Reliable, Unavailable},
     SourceState,
+    delta::Phase,
+    format::Language,
     motion_policy::MotionPolicy,
 };
 use vantare_ipc::{Photo, layout::Layout};
@@ -301,7 +303,7 @@ fn configured_rebuilds_for_every_visible_setting_and_language() {
     let prefs = Preferences::default();
     let painter = Delta::new(&settings("bar"), prefs);
     let same = WidgetSettings::Delta(settings("bar"));
-    assert!(painter.configured(&same, prefs));
+    assert!(<Delta as Widget>::configured(&painter, &same, prefs));
     for changed_settings in [
         settings("expanded"),
         Settings {
@@ -325,13 +327,17 @@ fn configured_rebuilds_for_every_visible_setting_and_language() {
             ..settings("bar")
         },
     ] {
-        assert!(!painter.configured(&WidgetSettings::Delta(changed_settings), prefs));
+        assert!(!<Delta as Widget>::configured(
+            &painter,
+            &WidgetSettings::Delta(changed_settings),
+            prefs
+        ));
     }
     let english = Preferences {
         language: Language::En,
         ..prefs
     };
-    assert!(!painter.configured(&same, english));
+    assert!(!<Delta as Widget>::configured(&painter, &same, english));
 }
 
 #[test]
@@ -346,7 +352,7 @@ fn the_host_applies_five_fifteen_and_twenty_hz_before_paint_and_revocation_remov
         layout.performance.widgets.insert("d".into(), hz);
         let mut frame = FrameScene::new(layout, Access::LocalPreview, true, MotionPolicy(false));
         let bus = Shared::new(true);
-        let input = snapshot();
+        let mut input = snapshot();
         frame.ingest(Photo::full(Arc::new(input.clone())), start);
         bus.publish_frames(Arc::new(frame.frames.clone()));
         let mut runtime = Runtime::with_text(
@@ -389,8 +395,4 @@ fn the_host_applies_five_fifteen_and_twenty_hz_before_paint_and_revocation_remov
         runtime.frame(0.0);
         assert!(runtime.presented("big-number").is_none());
     }
-}
-
-fn _draw(painter: &Delta, _: &mut Cx<Delta>) -> El {
-    painter.view()
 }

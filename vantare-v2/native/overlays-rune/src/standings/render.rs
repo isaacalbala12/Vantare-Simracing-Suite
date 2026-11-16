@@ -1,5 +1,5 @@
 //! Pintor literal GPUI; sin movimiento hasta el seguimiento Motion.
-use super::{PAUSE_HEIGHT, layout::*};
+use super::{PAUSE_HEIGHT, layout::*, motion};
 use crate::vantare::{
     Style, Variant, alpha,
     generated::ClassesItem as ClassColors,
@@ -44,7 +44,7 @@ pub(super) fn view(
                 let pose = frame.get(&row.id).copied().unwrap_or_default();
                 let missing = board.is_some_and(|b| b.gap_to_best_lap && row.best_lap_s.is_none());
                 let first = p.nodes.len();
-                p.row(0.0, g, r);
+                p.row(0.0, g, r, pose.flash);
                 let mut layer = el()
                     .key(format!("standings-row-{}", row.id.0))
                     .size(plan.width, style.geometry.row_height)
@@ -195,15 +195,16 @@ impl Painter<'_> {
                 .pin(Some(x), Some(y), None, None),
         );
     }
-    fn highlight(&mut self, y: f32, color: Color) {
+    fn highlight(&mut self, y: f32, color: Color, scale: f32, key: &'static str) {
         let v = self.variant;
         let x = v.padding_x - self.style.geometry.player_bleed;
         let node = el()
+            .key(key)
             .size(self.plan.width - 2.0 * x, self.style.geometry.row_height)
             .radius(v.player_radius)
             .pin(Some(x), Some(y), None, None);
         self.nodes.push(if v.player_white > 0.0 {
-            node.fill(alpha(color, v.player_white))
+            node.fill(alpha(color, v.player_white * scale))
         } else {
             node.linear_gradient(
                 if v.player_vertical {
@@ -212,8 +213,8 @@ impl Painter<'_> {
                     std::f32::consts::FRAC_PI_2
                 },
                 [
-                    (0.0, alpha(color, v.player_from)),
-                    (1.0, alpha(color, v.player_to)),
+                    (0.0, alpha(color, v.player_from * scale)),
+                    (1.0, alpha(color, v.player_to * scale)),
                 ],
             )
         });
@@ -503,7 +504,7 @@ impl Painter<'_> {
     fn narrow(&self) -> bool {
         self.plan.width < self.style.geometry.narrow_width
     }
-    fn row(&mut self, y: f32, gi: usize, ri: usize) {
+    fn row(&mut self, y: f32, gi: usize, ri: usize, flash: Option<(motion::Flash, f32)>) {
         let Some(board) = self.board else { return };
         let Some(group) = board.groups.get(gi) else {
             return;
@@ -517,6 +518,8 @@ impl Painter<'_> {
         let v = self.variant;
         let h = g.row_height;
         let me = row.is_player && board.player_present;
+        // El destello sustituye a la fila propia y se funde de vuelta en ella.
+        let strength = flash.map_or(0.0, |(_, strength)| strength);
         if me {
             self.highlight(
                 y,
@@ -525,6 +528,16 @@ impl Painter<'_> {
                 } else {
                     self.accent
                 },
+                1.0 - strength,
+                "row-player",
+            );
+        }
+        if let Some((kind, strength)) = flash {
+            self.highlight(
+                y,
+                flash_color(kind, self.style),
+                strength * self.style.motion.flash_boost,
+                "row-flash",
             );
         }
         let class = self.style.class(&group.class);
@@ -1139,6 +1152,17 @@ impl Painter<'_> {
             0.0,
             self.style.colors.line,
         );
+    }
+}
+
+/// Colores literales de `vantare.rs` para el destello de fila.
+pub(super) fn flash_color(kind: motion::Flash, style: &Style) -> Color {
+    match kind {
+        motion::Flash::Gain | motion::Flash::PersonalBest => style.colors.flash_gain,
+        motion::Flash::Loss => style.colors.flash_loss,
+        motion::Flash::Lead => style.colors.leader,
+        motion::Flash::Best => style.colors.purple,
+        motion::Flash::Pit => style.colors.box_fill,
     }
 }
 

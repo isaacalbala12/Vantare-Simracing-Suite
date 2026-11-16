@@ -87,8 +87,13 @@ fn gpui_flip_is_three_hundred_twenty_ms_cubic_out_and_leaves_zero_wakes() {
     rt.frame(0.002);
     near(row(&rt, id).rect[1], top);
     assert!(
+        rt.wake_deadline().is_some(),
+        "el destello mantiene el reloj tras el FLIP"
+    );
+    rt.frame(1.100); // 1400 ms de destello desde el cambio.
+    assert!(
         rt.wake_deadline().is_none(),
-        "cero despertares al acabar 320 ms"
+        "cero despertares al acabar el destello (1400 ms)"
     );
     assert!(!rt.frame(10.0), "el reposo no presenta otra imagen");
     assert!(rt.wake_deadline().is_none());
@@ -143,6 +148,11 @@ fn interrupted_flip_restarts_from_the_live_position_with_the_same_gpui_duration(
     near(row(&rt, id).rect[1], top + (before - top) * 0.125);
     rt.frame(0.161);
     near(row(&rt, id).rect[1], top);
+    assert!(
+        rt.wake_deadline().is_some(),
+        "el destello del segundo cambio sigue vivo"
+    );
+    rt.frame(1.100);
     assert!(rt.wake_deadline().is_none());
     bounds(&mut rt);
 }
@@ -182,6 +192,14 @@ fn moving_rows_are_pinned_inside_all_literal_widths_with_and_without_the_banner(
             let mut input = photo();
             swap(&mut input);
             rt.update_if(|s, _| s.update(&input, 0.0).build);
+            rt.frame(0.0);
+            assert!(
+                rt.elements()
+                    .iter()
+                    .any(|e| e.key.as_deref() == Some("row-flash")),
+                "{preset}/{tone:?}: destello activo"
+            );
+            bounds(&mut rt);
             for delta in [0.0, 0.080, 0.080, 0.080, 0.081] {
                 rt.frame(delta);
                 bounds(&mut rt);
@@ -196,6 +214,11 @@ fn moving_rows_are_pinned_inside_all_literal_widths_with_and_without_the_banner(
                 rt.frame(delta);
                 bounds(&mut rt);
             }
+            assert!(
+                rt.wake_deadline().is_some(),
+                "{preset}/{tone:?}: el destello mantiene el reloj"
+            );
+            rt.frame(1.100);
             assert!(rt.wake_deadline().is_none());
         }
     }
@@ -210,10 +233,13 @@ fn scene_changes_without_a_sequence_change_animate_but_metadata_does_not_restart
     input.sequence = input.sequence.saturating_sub(1);
     assert!(!rt.update_if(|s, _| s.update(&input, 0.160).build));
     rt.frame(0.161);
-    assert!(rt.wake_deadline().is_none(), "no se reinicia por sequence");
+    assert!(
+        rt.wake_deadline().is_some(),
+        "el destello sigue vivo; sequence no lo reinicia"
+    );
     input.state.source_state = SourceState::Lost;
     assert!(rt.update_if(|s, _| s.update(&input, 0.321).build));
-    rt.frame(0.0);
+    rt.frame(0.020);
     assert!(rt.wake_deadline().is_none());
     assert!(
         rt.elements()
@@ -241,8 +267,13 @@ fn changing_only_options_snaps_without_animating_a_flip() {
     rt.frame(0.020);
     near(row(&rt, id).rect[1], target(&rt, id));
     assert!(
+        rt.wake_deadline().is_some(),
+        "solo queda el destello, no un FLIP"
+    );
+    rt.frame(1.320);
+    assert!(
         rt.wake_deadline().is_none(),
-        "solo cambian las opciones: snap sin reloj"
+        "cero despertares al acabar el destello"
     );
     bounds(&mut rt);
 }
@@ -309,6 +340,206 @@ fn an_entry_and_a_reorder_animate_together() {
     );
     rt.frame(0.101);
     near(row(&rt, id).rect[1], top);
+    assert!(
+        rt.wake_deadline().is_some(),
+        "el destello mantiene el reloj"
+    );
+    rt.frame(1.100);
+    assert!(rt.wake_deadline().is_none());
+    bounds(&mut rt);
+}
+fn flash(rt: &Runtime<Standings>, id: CarId) -> Option<(motion::Flash, f32)> {
+    rt.state.scene.frame.get(&id).and_then(|pose| pose.flash)
+}
+#[test]
+fn lead_loss_and_gain_flashes_follow_the_gpui_priority() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let ids: Vec<_> = rt
+        .state
+        .scene
+        .board
+        .as_ref()
+        .unwrap()
+        .rows()
+        .iter()
+        .map(|row| row.id)
+        .collect();
+    assert!(ids.len() >= 4, "la foto tiene filas suficientes");
+    let mut input = photo();
+    swap(&mut input);
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    assert_eq!(
+        flash(&rt, ids[1]).map(|(kind, _)| kind),
+        Some(motion::Flash::Lead),
+        "el nuevo líder destella en vez de ganar puestos"
+    );
+    assert_eq!(
+        flash(&rt, ids[0]).map(|(kind, _)| kind),
+        Some(motion::Flash::Loss)
+    );
+    let mut rotate = photo();
+    for car in &mut rotate.state.cars {
+        if car.id == ids[2] {
+            car.position = Reliable(4);
+            car.class_position = Reliable(4);
+        }
+        if car.id == ids[3] {
+            car.position = Reliable(3);
+            car.class_position = Reliable(3);
+        }
+    }
+    rt.update_if(|s, _| s.update(&rotate, 0.100).build);
+    assert_eq!(
+        flash(&rt, ids[3]).map(|(kind, _)| kind),
+        Some(motion::Flash::Gain)
+    );
+    assert_eq!(
+        flash(&rt, ids[2]).map(|(kind, _)| kind),
+        Some(motion::Flash::Loss)
+    );
+}
+#[test]
+fn a_flash_decays_linearly_for_1400_ms_and_releases_the_clock() {
+    let style = Style::compiled();
+    assert_eq!(style.motion.flash_ms, 1400.0);
+    assert_eq!(style.motion.flash_boost, 1.0);
+    assert_eq!(
+        render::flash_color(motion::Flash::Gain, &style),
+        style.colors.flash_gain
+    );
+    assert_eq!(
+        render::flash_color(motion::Flash::PersonalBest, &style),
+        style.colors.flash_gain
+    );
+    assert_eq!(
+        render::flash_color(motion::Flash::Loss, &style),
+        style.colors.flash_loss
+    );
+    assert_eq!(
+        render::flash_color(motion::Flash::Lead, &style),
+        style.colors.leader
+    );
+    assert_eq!(
+        render::flash_color(motion::Flash::Best, &style),
+        style.colors.purple
+    );
+    assert_eq!(
+        render::flash_color(motion::Flash::Pit, &style),
+        style.colors.box_fill
+    );
+    let mut rt = runtime("expanded", Tone::Neo);
+    let mut input = photo();
+    swap(&mut input);
+    let id = input.state.cars[0].id;
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    let start = flash(&rt, id).expect("destello");
+    assert_eq!(start.0, motion::Flash::Loss);
+    assert_eq!(start.1, 1.0);
+    rt.frame(0.700);
+    assert!((flash(&rt, id).unwrap().1 - 0.5).abs() < 1e-3, "lineal");
+    rt.frame(0.699);
+    assert!(flash(&rt, id).unwrap().1 < 0.001);
+    rt.frame(0.001);
+    assert!(flash(&rt, id).is_none(), "1400 ms");
+    assert!(rt.wake_deadline().is_none());
+}
+#[test]
+fn the_pit_flash_uses_the_box_fill_kind() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let id = rt
+        .state
+        .scene
+        .board
+        .as_ref()
+        .unwrap()
+        .rows()
+        .get(2)
+        .unwrap()
+        .id;
+    let mut input = photo();
+    let car = input
+        .state
+        .cars
+        .iter_mut()
+        .find(|car| car.id == id)
+        .unwrap();
+    car.in_pits = Reliable(true);
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    assert_eq!(
+        flash(&rt, id).map(|(kind, _)| kind),
+        Some(motion::Flash::Pit)
+    );
+}
+#[test]
+fn the_fastest_lap_and_a_personal_best_flash_with_their_kinds() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let rows = rt.state.scene.board.as_ref().unwrap().rows();
+    let (fastest, best) = rows
+        .iter()
+        .filter_map(|row| Some((row.id, row.best_lap_s?)))
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .expect("vuelta rápida");
+    let challenger = rows
+        .iter()
+        .find(|row| row.id != fastest && row.best_lap_s.is_some_and(|lap| lap > best + 0.050))
+        .expect("otra vuelta")
+        .id;
+    let slow = rows
+        .iter()
+        .find(|row| {
+            row.id != fastest
+                && row.id != challenger
+                && row.best_lap_s.is_some_and(|lap| lap > best + 0.200)
+        })
+        .expect("una vuelta mejorable")
+        .id;
+    let mut record = photo();
+    for car in &mut record.state.cars {
+        if car.id == challenger {
+            car.best_lap_s = Reliable(best - 0.100);
+        }
+    }
+    rt.update_if(|s, _| s.update(&record, 0.0).build);
+    assert_eq!(
+        flash(&rt, challenger).map(|(kind, _)| kind),
+        Some(motion::Flash::Best)
+    );
+    let mut personal = photo();
+    let previous = personal
+        .state
+        .cars
+        .iter()
+        .find(|car| car.id == slow)
+        .and_then(|car| car.best_lap_s.current().copied())
+        .expect("vuelta propia");
+    for car in &mut personal.state.cars {
+        if car.id == slow {
+            car.best_lap_s = Reliable(previous - 0.100);
+        }
+    }
+    let mut rt = runtime("expanded", Tone::Neo);
+    rt.update_if(|s, _| s.update(&personal, 0.0).build);
+    assert_eq!(
+        flash(&rt, slow).map(|(kind, _)| kind),
+        Some(motion::Flash::PersonalBest)
+    );
+}
+#[test]
+fn reduced_motion_paints_no_flash_and_requests_no_wakes() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    rt.update_if(|s, _| s.policy(true, 60, 0.0).build);
+    let mut input = photo();
+    swap(&mut input);
+    rt.update_if(|s, _| s.update(&input, 0.0).build);
+    assert!(
+        rt.state
+            .scene
+            .frame
+            .values()
+            .all(|pose| pose.flash.is_none()),
+        "reducido no destella"
+    );
+    rt.frame(0.0);
     assert!(rt.wake_deadline().is_none());
     bounds(&mut rt);
 }

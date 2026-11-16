@@ -199,6 +199,8 @@ impl Widget for Standings {
             self.motion.snap(&targets, clock);
         } else {
             self.motion
+                .observe(&board, &self.style, clock, self.reduced);
+            self.motion
                 .update(&targets, &self.style, clock, self.reduced);
         }
         let scene = Scene {

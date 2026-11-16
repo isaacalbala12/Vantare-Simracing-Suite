@@ -3205,6 +3205,20 @@ vigentes y CI en el PR. Mac: fmt, Clippy -D warnings y 396 tests CPU PASS
 (394 lib + 2 main); seis tests Python PASS. Sin ejecución gráfica ni merge propios.
 #2351 aparcado; Standings y Delta son de otros agentes y no se tocan.
 
+### VANTA-144 · B, captura ampliada B (16/11/2026)
+
+A fusionado en 2fb61fd9a. Primer commit de B dedicado a Sonnet: reloj/Env
+confirmados en Rune, paso fijo 1/60, policy explícita y tests de cambios reales
+por flags; validación antes de salida y orden INVALID_INPUT/NO_DEMO cubiertos.
+B conserva registro/pintor único y códigos 0/2/3/4/5/6 (guard global =6).
+Assets por llamada, espera Pixels/publicación y cierre mediante el último waker;
+PNG exclusivo tras codificar con Rune en temporal propio. Captura compilada en
+Release sin cambiar derechos/host/domain/ipc. CI verifica PE GUI sin ejecutar.
+Mac: fmt, Clippy -D warnings y 443 tests CPU PASS sobre base 6de5a4c2e;
+428 licencias y 34 tests Python PASS. SHA/CI en PR; GPU pendiente de horario.
+E/v46 usa la misma CLI; QA/medición de F aparte. #2351 entregado a otro agente.
+Sin gráficos en servidor, promoción, release ni cambios Plane propios.
+
 ## VANTA-144 · contrato Widget de Rune (16/11/2026)
 
 Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa

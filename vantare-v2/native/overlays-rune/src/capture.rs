@@ -1,4 +1,4 @@
-//! Debug-only scene capture. CPU preparation and explicit data update precede GPU creation.
+//! Deterministic offscreen capture. CPU preparation and explicit data update precede GPU creation.
 use crate::widget::{Update, Widget};
 use rune::{
     Env, Runtime,
@@ -8,6 +8,8 @@ use std::{
     ffi::OsString,
     io::{self, Read, Write},
     path::{Path, PathBuf},
+    sync::{Arc, mpsc},
+    time::{Duration, Instant},
 };
 use vantare_domain::{Snapshot, widget_settings::Kind};
 use vantare_ipc::layout::Layout;
@@ -273,12 +275,94 @@ fn dimensions(size: vantare_domain::geometry::Size, scale: f32) -> Result<(u32, 
     }
     Ok((w, h))
 }
+enum AssetEvent {
+    Published,
+    Stopped,
+}
+struct WorkerExit(mpsc::Sender<AssetEvent>);
+impl Drop for WorkerExit {
+    fn drop(&mut self) {
+        let _ = self.0.send(AssetEvent::Stopped);
+    }
+}
+// One cache, one wait budget and no extra threads. Rune owns its decoders.
+struct Assets {
+    cache: Option<Arc<rune::ImageCache>>,
+    events: mpsc::Receiver<AssetEvent>,
+    deadline: Instant,
+    stopped: bool,
+}
+impl Assets {
+    fn new() -> Self {
+        let (tx, events) = mpsc::channel();
+        let exit = WorkerExit(tx.clone());
+        let wake = Arc::new(move || {
+            let _keep_until_last_worker = &exit;
+            let _ = tx.send(AssetEvent::Published);
+        });
+        Self {
+            cache: Some(Arc::new(rune::ImageCache::new(wake))),
+            events,
+            deadline: Instant::now() + Duration::from_secs(10),
+            stopped: false,
+        }
+    }
+    fn receive(&self) -> Result<AssetEvent, Failure> {
+        self.events
+            .recv_timeout(self.deadline.saturating_duration_since(Instant::now()))
+            .map_err(|e| Failure::capture(format!("assets/cierre: {e}")))
+    }
+    fn wait(&self, images: &[rune::Image]) -> Result<(), Failure> {
+        loop {
+            let mut published = true;
+            for image in images {
+                if let Some(error) = image.error() {
+                    return Err(Failure::capture(error));
+                }
+                // decoded/is_ready precedes Pixels publication inside Image::finish.
+                published &= image
+                    .size()
+                    .is_some_and(|[w, h]| image.pixels().size() == (w, h));
+            }
+            if published {
+                return Ok(());
+            }
+            if matches!(self.receive()?, AssetEvent::Stopped) {
+                return Err(Failure::capture(
+                    "cache cerrada antes de publicar sus imagenes",
+                ));
+            }
+        }
+    }
+    fn shutdown(&mut self) -> Result<(), Failure> {
+        if self.stopped {
+            return Ok(());
+        }
+        self.stopped = true;
+        drop(self.cache.take());
+        loop {
+            if matches!(self.receive()?, AssetEvent::Stopped) {
+                return Ok(());
+            }
+        }
+    }
+}
+impl Drop for Assets {
+    fn drop(&mut self) {
+        // Error unwinding still closes the cache; normal success checks shutdown explicitly.
+        if let Err(error) = self.shutdown() {
+            eprintln!("{error}");
+        }
+    }
+}
 struct Capture {
     runtime: Runtime<Box<dyn Widget>>,
     width: u32,
     height: u32,
     update: Update,
     images: Vec<rune::Image>,
+    // Declared last: runtime/widget/cache clones and image handles drop first.
+    assets: Assets,
 }
 fn poll(widget: &mut Box<dyn Widget>, clock: f64, tx: &mut rune::Tx) -> bool {
     let update = widget.animate(clock);
@@ -286,6 +370,17 @@ fn poll(widget: &mut Box<dyn Widget>, clock: f64, tx: &mut rune::Tx) -> bool {
     update.build || update.pixels
 }
 impl Capture {
+    fn finish(self) -> Result<(), Failure> {
+        let Self {
+            runtime,
+            images,
+            mut assets,
+            ..
+        } = self;
+        drop(runtime);
+        drop(images);
+        assets.shutdown()
+    }
     fn advance(&mut self, clock: &mut f64, at: f64, steps: &mut usize) -> Result<(), Failure> {
         while *clock < at {
             *steps += 1;
@@ -347,8 +442,12 @@ fn prepare(
         .hz(&instance.id, instance.settings.kind());
     let text = rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter"));
     let _families = rune::text::with_families("Inter", "Inter");
+    let assets = Assets::new();
     let mut widget = new(&instance.settings, layout.preferences, reduced, hz, 0.0)
         .ok_or_else(|| Failure::input("ajustes incompatibles"))?;
+    if let Some(cache) = &assets.cache {
+        widget.attach_assets(cache);
+    }
     widget.set_wall_base(wall);
     widget.policy(reduced, hz, 0.0);
     let size = widget.size_for(Some(&photos[0].1));
@@ -369,6 +468,7 @@ fn prepare(
         height,
         update: Update::default(),
         images: Vec::new(),
+        assets,
     };
     let (mut clock, mut steps) = (0.0, 0);
     for (ms, snapshot) in photos {
@@ -382,11 +482,16 @@ fn prepare(
         let update = capture.runtime.state.update(snapshot, clock);
         capture.update.build |= update.build;
         capture.update.pixels |= update.pixels;
+        capture.images = capture.runtime.state.capture_images();
+        capture.assets.wait(&capture.images)?;
         capture.runtime.invalidate();
         capture.runtime.frame(0.0);
-        capture.images = capture.runtime.state.capture_images();
     }
     capture.advance(&mut clock, at as f64 / 1000.0, &mut steps)?;
+    capture.images = capture.runtime.state.capture_images();
+    capture.assets.wait(&capture.images)?;
+    capture.runtime.invalidate();
+    capture.runtime.frame(0.0);
     Ok(capture)
 }
 fn validate_pixels(pixels: &[u8], width: u32, height: u32) -> io::Result<()> {
@@ -457,11 +562,14 @@ fn render(capture: &mut Capture) -> Result<Vec<u8>, Failure> {
     validate_pixels(&pixels, size.0, size.1).map_err(Failure::capture)?;
     Ok(pixels)
 }
-/// Called after the machine graphics guard and only compiled into debug builds.
+/// Called after the machine graphics guard in debug and release; never opens a window.
 pub fn run(args: &[OsString]) -> Result<(), Failure> {
+    std::panic::catch_unwind(|| execute(args))
+        .unwrap_or_else(|_| Err(Failure::capture("panico en captura")))
+}
+fn execute(args: &[OsString]) -> Result<(), Failure> {
     let request = Request::parse(args)?;
     let layout = request.design()?;
-    // Unsupported comes before NO_DEMO; neither path creates a device.
     let id = request
         .instance
         .as_deref()
@@ -480,37 +588,72 @@ pub fn run(args: &[OsString]) -> Result<(), Failure> {
         request.at,
         id,
     )?;
-    let record = request.output.with_extension("capture.txt");
-    if request.output.try_exists().map_err(Failure::capture)?
-        || record.try_exists().map_err(Failure::capture)?
-    {
+    // Complete validation precedes even the fast existing-file check.
+    if request.output.try_exists().map_err(Failure::capture)? {
         return Err(Failure::capture("conservar evidencia anterior"));
     }
-    let snapshot = &photos
-        .last()
-        .ok_or_else(|| Failure::input("fotos vacias"))?
-        .1;
-    let pixels = render(&mut capture)?;
-    rune::render::write_png(&request.output, capture.width, capture.height, &pixels)
+    let size = (capture.width, capture.height);
+    let pixels = render(&mut capture);
+    let cleanup = capture.finish();
+    cleanup?;
+    publish_png(&request.output, size, &pixels?)
+}
+struct TempPng {
+    dir: PathBuf,
+}
+impl TempPng {
+    fn new(parent: &Path) -> io::Result<Self> {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        for _ in 0..32 {
+            let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let dir = parent.join(format!(".vantare-capture-{}-{id}", std::process::id()));
+            match std::fs::create_dir(&dir) {
+                Ok(()) => return Ok(Self { dir }),
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "temporales ocupados",
+        ))
+    }
+    fn remove(&self) -> io::Result<()> {
+        match std::fs::remove_file(self.dir.join("image.png")) {
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
+        match std::fs::remove_dir(&self.dir) {
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+            result => result,
+        }
+    }
+}
+impl Drop for TempPng {
+    fn drop(&mut self) {
+        let _ = self.remove();
+    }
+}
+fn publish_png(output: &Path, size: (u32, u32), pixels: &[u8]) -> Result<(), Failure> {
+    validate_pixels(pixels, size.0, size.1).map_err(Failure::capture)?;
+    let temp = TempPng::new(output.parent().unwrap_or_else(|| Path::new(".")))
         .map_err(Failure::capture)?;
-    let mut record = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(record)
-        .map_err(Failure::capture)?;
-    writeln!(
-        record,
-        "engine=rune\nepoch={}\nsequence={}\ncars={}\nupdate_build={}\nupdate_pixels={}\nwidth={}\nheight={}\nscale={}",
-        snapshot.epoch,
-        snapshot.sequence,
-        snapshot.state.cars.len(),
-        capture.update.build,
-        capture.update.pixels,
-        capture.width,
-        capture.height,
-        request.scale
-    ).map_err(Failure::capture)?;
-    Ok(())
+    let result = (|| {
+        // Rune's writer only accepts a path and truncates it. Encode privately, then
+        // publish through our exclusive handle; no new encoder or dependency.
+        let path = temp.dir.join("image.png");
+        rune::render::write_png(&path, size.0, size.1, pixels).map_err(Failure::capture)?;
+        let png = read(&path, MAX_TOTAL + 1024 * 1024).map_err(Failure::capture)?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(output)
+            .map_err(Failure::capture)?;
+        file.write_all(&png).map_err(Failure::capture)
+    })();
+    let cleanup = temp.remove().map_err(Failure::capture);
+    result.and(cleanup)
 }
 
 #[cfg(test)]
@@ -760,10 +903,7 @@ mod tests {
                     kind.name()
                 );
                 checked += 1;
-                assert!(
-                    capture.runtime.state.capture_images().is_empty(),
-                    "no cache attached in A"
-                );
+                assert!(capture.images.iter().all(|i| i.pixels().size() != (0, 0)));
                 // No hidden filtering on unsupported kinds; the registry is the authority.
                 assert_eq!(settings.kind(), Settings::default_for(*kind).kind());
             }
@@ -1080,5 +1220,105 @@ mod tests {
         assert_eq!(no_demo.token, "NO_DEMO");
         assert_eq!(std::fs::read(&output).unwrap(), b"KEEP EVIDENCE");
         std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn assets_wait_for_pixels_and_shutdown_even_with_queued_work_or_decode_failure() {
+        let mut assets = Assets::new();
+        let image = assets
+            .cache
+            .as_ref()
+            .unwrap()
+            .rgba(128, 128, vec![0; 128 * 128 * 4]);
+        assets.wait(std::slice::from_ref(&image)).unwrap();
+        assert_eq!(image.size(), Some([128, 128]));
+        assert_eq!(image.pixels().size(), (128, 128));
+        assets.shutdown().unwrap();
+        assert!(assets.stopped && assets.cache.is_none());
+        let mut queued = Assets::new();
+        let image = queued
+            .cache
+            .as_ref()
+            .unwrap()
+            .rgba(128, 128, vec![0; 128 * 128 * 4]);
+        queued.shutdown().unwrap();
+        assert_eq!(
+            image.pixels().size(),
+            (128, 128),
+            "stop follows publication and last worker exit"
+        );
+        let mut failed = Assets::new();
+        let image = failed.cache.as_ref().unwrap().load(vec![1, 2, 3, 4]);
+        assert_eq!(failed.wait(&[image]).unwrap_err().code, 5);
+        failed.shutdown().unwrap();
+        assert!(failed.stopped);
+    }
+    #[test]
+    fn assets_closed_channel_or_wait_deadline_is_a_capture_failure() {
+        let (tx, events) = mpsc::channel();
+        let mut assets = Assets {
+            cache: None,
+            events,
+            deadline: Instant::now(),
+            stopped: true,
+        };
+        assert_eq!(assets.receive().err().unwrap().code, 5);
+        drop(tx);
+        assets.deadline = Instant::now() + Duration::from_secs(1);
+        assert_eq!(assets.receive().err().unwrap().code, 5);
+    }
+    #[test]
+    fn actual_wheel_pixels_reach_the_capture_atlas_and_workers_close_before_success() {
+        let mut design = layout();
+        design.instances[0].settings =
+            vantare_domain::widget_settings::Settings::default_for(Kind::PedalsTelemetry);
+        let snapshot = crate::testdata::snapshot();
+        let capture = single(&design, &snapshot, 1.0).unwrap();
+        assert_eq!(capture.images.len(), 1);
+        assert_eq!(capture.images[0].pixels().size(), (40, 40));
+        assert!(capture.runtime.find("pedals-telemetry-wheel").is_some());
+        assert!(!capture.runtime.images.pages.is_empty());
+        capture.finish().unwrap();
+    }
+    #[test]
+    fn png_creation_preserves_existing_evidence_and_races_have_one_winner() {
+        let folder = TempPng::new(&std::env::temp_dir()).unwrap();
+        let path = folder.dir.join("image.png");
+        publish_png(&path, (1, 1), &[0, 0, 0, 0]).unwrap();
+        let first = std::fs::read(&path).unwrap();
+        assert!(first.starts_with(b"\x89PNG\r\n\x1a\n"));
+        assert_eq!(
+            publish_png(&path, (1, 1), &[255, 0, 0, 255])
+                .unwrap_err()
+                .code,
+            5
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), first);
+        assert_eq!(
+            std::fs::read_dir(&folder.dir).unwrap().count(),
+            1,
+            "one PNG, no sidecar/temporary left"
+        );
+        let mut assets = Assets::new();
+        let png = assets.cache.as_ref().unwrap().load(first);
+        assets.wait(std::slice::from_ref(&png)).unwrap();
+        assert_eq!(png.size(), Some([1, 1]));
+        assets.shutdown().unwrap();
+        std::fs::remove_file(&path).unwrap();
+        let barrier = std::sync::Barrier::new(2);
+        std::thread::scope(|scope| {
+            let a = scope.spawn(|| {
+                barrier.wait();
+                publish_png(&path, (1, 1), &[255, 0, 0, 255])
+            });
+            let b = scope.spawn(|| {
+                barrier.wait();
+                publish_png(&path, (1, 1), &[0, 255, 0, 255])
+            });
+            let outcomes = [a.join().unwrap(), b.join().unwrap()];
+            assert_eq!(outcomes.iter().filter(|r| r.is_ok()).count(), 1);
+            assert_eq!(outcomes.into_iter().find_map(Result::err).unwrap().code, 5);
+        });
+        assert_eq!(std::fs::read_dir(&folder.dir).unwrap().count(), 1);
+        folder.remove().unwrap();
     }
 }

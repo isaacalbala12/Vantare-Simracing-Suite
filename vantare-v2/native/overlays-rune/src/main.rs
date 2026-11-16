@@ -17,7 +17,6 @@ fn main() -> ExitCode {
     }
 
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    #[cfg(debug_assertions)]
     if args.first().is_some_and(|a| a == "--capture-scene") {
         return match vantare_overlays_rune::capture::run(&args[1..]) {
             Ok(()) => {

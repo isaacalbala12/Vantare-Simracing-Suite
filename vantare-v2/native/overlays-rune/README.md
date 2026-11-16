@@ -212,7 +212,7 @@ pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del
 marco quieto. No prueban foco, GPU, OBS, VRR ni presentación en pantalla.
 
 
-## Captura ampliada: corte A (debug, sin ventana)
+## Captura ampliada (debug y Release, sin ventana)
 
 La captura usa `constructor()` del registro, `Widget::update` y el mismo pintor,
 fuentes y ajustes del producto. No usa núcleo, derechos, feed, monitor ni sonido.
@@ -245,7 +245,7 @@ Cotas: 60 s/10 000 pasos, 256 fotos/64 MiB de entradas fotográficas en total,
 round(size_for(Some(foto)) × escala), entre 1 y 4096 por eje y RGBA ≤64 MiB.
 Un PNG RGBA transparente por llamada; se acepta un widget realmente vacío.
 
-Contrato del código de proceso y primer token de stderr (detalle humano después):
+Contrato del código de proceso y token de estado en stderr (detalle humano opcional):
 
 | Código | Token | Caso |
 | --- | --- | --- |
@@ -256,14 +256,27 @@ Contrato del código de proceso y primer token de stderr (detalle humano despué
 | 5 | CAPTURE_FAILED | Assets/render/lectura/PNG/E/S/salida existente |
 | 6 | GRAPHICS_DISABLED | Guard de máquina, antes de argumentos/hilos/GPU |
 
-Este corte mantiene **solo debug**; Windows debug conserva consola, Release sigue
-con windows_subsystem. El corte B habilita Release y completa assets/cierre y PNG
-con create_new real. A añade capture_images (volante, mismos handles que view)
-y set_wall_base (solo Avisos); el host de producción no usa esos hooks.
-Aún no se adjunta una caché en captura: un widget con assets puede verse incompleto.
-El PNG de A conserva la carrera exists/escritura de #2391; usar rutas distintas.
-El .capture.txt sí usa create_new. El guard no se desactiva en servidor.
-Tests de A solo CPU; el PNG y el cierre GPU se verifican en PC autorizado.
+Disponible en debug y Release: solo se retiran los cfg del módulo/despacho.
+Windows Release conserva windows_subsystem=windows (sin consola); CI compila el
+binario optimizado y verifica PE Subsystem=2 sin ejecutarlo. El guard sigue
+antes de argumentos/hilos/GPU y nunca se desactiva en el servidor.
+
+Una caché local se adjunta antes de policy/update/view. capture_images devuelve
+los mismos handles que el pintor; se esperan decodificación Y publicación Pixels
+antes del frame. Mapa/Daños conservan sus paths nativos; el volante entrega su
+SVG real. Un plazo único de 10 s acota espera/cierre por canal, sin sleeps.
+Al éxito o error se sueltan widget/Runtime/handles y caché; la última copia del
+waker señala el final de los workers. La lectura GPU acaba antes de liberar su
+dispositivo y antes de publicar el PNG. No hay App/ventana, feed, sonido ni hijos.
+
+Rune solo ofrece un encoder por ruta que trunca: se usa dentro de un directorio
+temporal creado exclusivamente y se publica el PNG por File::create_new real.
+No hay otro encoder ni dependencias. PNG codificado ≤65 MiB; RGBA sigue ≤64 MiB.
+No se crea sidecar. Las salidas anteriores permanecen intactas, incluso si dos
+capturas compiten por la misma ruta. Un fallo de escritura puede dejar una salida
+incompleta reservada: nunca se anuncia OK ni se sobrescribe al reintentar.
+Tests de cierre/PNG/assets son CPU. Presentación, ausencia de ventanas/foco y
+cierre GPU real quedan para la tanda del PC autorizado; no se ejecuta aquí.
 E monta v46 encima de esta CLI; alimentador/reproductor QA y medición de F aparte.
 
 ### Comprobaciones de Rune y orden de validación (revisión de A)
@@ -278,5 +291,5 @@ movimiento reducido. Se configura Widget::policy y Runtime::reduced_motion
 por separado desde --motion; los tests exigen distinta salida para true/false.
 Una foto intermedia inválida o fuera de cota hace fallar toda la secuencia,
 aunque las fotos anterior y posterior sean válidas. Entradas validadas antes
-del exists-check; la exclusión definitiva de salida se completa en B.
+del exists-check y de la creación exclusiva del PNG.
 El guard devuelve 6 y GRAPHICS_DISABLED también fuera del modo captura.

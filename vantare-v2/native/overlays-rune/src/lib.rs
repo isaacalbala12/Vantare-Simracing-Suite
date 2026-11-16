@@ -14,6 +14,7 @@ pub mod scene;
 
 mod car_damage_numbers;
 mod car_damage_visual;
+mod delta_trace;
 pub mod fastest_lap;
 mod fuel;
 mod head_to_head;

@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { studioText } from "../../src/renderer/i18n/studio.ts";
 import type { VisualScene } from "./scenes.ts";
 export const studioScenes: Record<string, VisualScene> = {
   "studio-base": {
@@ -21,6 +24,54 @@ export const studioScenes: Record<string, VisualScene> = {
       )
         await page.keyboard.press("Control+b");
     },
+  },
+};
+
+studioScenes["studio-conservados"] = {
+  mock: "studio-conservados",
+  async prepare(page) {
+    await studioScenes["studio-base"].prepare(page);
+    const warning = page.getByText(studioText.conservedWidgets, {
+      exact: true,
+    });
+    await warning.waitFor();
+    assert.equal(await warning.count(), 1);
+    assert.equal(await page.locator('[data-widget^="conserved-"]').count(), 2);
+    const colors = await warning.evaluate((node) => {
+      const backgrounds = [];
+      for (
+        let parent: Element | null = node;
+        parent;
+        parent = parent.parentElement
+      )
+        backgrounds.push({
+          className: parent.className,
+          color: getComputedStyle(parent).backgroundColor,
+          image: getComputedStyle(parent).backgroundImage,
+        });
+      return {
+        text: node.textContent,
+        foreground: getComputedStyle(node).color,
+        wash: getComputedStyle(node).getPropertyValue("--wash"),
+        backgrounds,
+      };
+    });
+    const output = process.argv.indexOf("--output");
+    if (output >= 0) {
+      const scheme = await page.evaluate(
+        () => document.documentElement.dataset.scheme,
+      );
+      assert.ok(scheme);
+      await writeFile(
+        join(
+          process.argv[output + 1],
+          scheme,
+          "studio-conservados",
+          "notice-colors.json",
+        ),
+        JSON.stringify(colors, null, 2),
+      );
+    }
   },
 };
 

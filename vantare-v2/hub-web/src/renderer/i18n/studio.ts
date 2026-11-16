@@ -1,4 +1,6 @@
 export const studioText = {
+  conservedWidgets:
+    "Este diseño tiene widgets que ya no están en el catálogo. Se conservan con sus ajustes, pero no se pueden añadir más.",
   damageNumbersName: "Daños detallados",
   firstWidget: "Añade tu primer widget",
   quickStart: "O empieza por uno de estos",

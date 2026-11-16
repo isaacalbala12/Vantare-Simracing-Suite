@@ -21,7 +21,10 @@ import {
   it,
   vi,
 } from "vitest";
-import { studioLimits } from "../src/contract/generated/studio";
+import {
+  type StudioReply,
+  studioLimits,
+} from "../src/contract/generated/studio";
 import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
@@ -580,4 +583,122 @@ it("keeps the protected warning when a monitor is preserved", async () => {
     .click(await screen.findByRole("button", { name: canvasText.open }));
   expect(screen.getByText(t.protected)).toBeTruthy();
   expect(screen.queryByText(canvasText.noCanvasTitle)).toBeNull();
+});
+
+it("explains conserved widgets once, keeps their settings and never offers to add them", async () => {
+  const requests = vi.spyOn(Client.prototype, "request");
+  mount("studio-conservados");
+  const row = await listRow("Daños detallados 1");
+  expect(screen.getAllByText(t.conservedWidgets)).toHaveLength(1);
+  expect(await listRow("Daños detallados 2")).toBeTruthy();
+  fireEvent.click(row);
+  fireEvent.click(screen.getByRole("tab", { name: t.content }));
+  expect(
+    screen
+      .getByRole("switch", { name: "Neumáticos" })
+      .getAttribute("aria-checked"),
+  ).toBe("false");
+  fireEvent.click(screen.getByRole("button", { name: t.add }));
+  const dialog = await screen.findByRole("dialog", { name: t.catalog });
+  expect(
+    within(dialog).getByRole("button", { name: "Añadir Standings" }),
+  ).toBeTruthy();
+  expect(
+    within(dialog).queryByRole("button", { name: "Añadir Daños detallados" }),
+  ).toBeNull();
+  expect(
+    requests.mock.calls.filter(([request]) => request.method === "studio.add"),
+  ).toHaveLength(0);
+  expect(
+    requests.mock.calls.filter(([request]) => request.method === "studio.get"),
+  ).toHaveLength(1);
+});
+
+it("preserves the warning and exact conserved instances when saving another widget", async () => {
+  const requests = vi.spyOn(Client.prototype, "request");
+  mount("studio-conservados");
+  await listRow("Standings");
+  const initial: StudioReply =
+    await requests.mock.results[
+      requests.mock.calls.findIndex(
+        ([request]) => request.method === "studio.get",
+      )
+    ].value;
+  if (initial.method !== "studio.get") throw Error("Studio read fixture");
+  const conserved = initial.value.instances.filter(
+    (item) => item.kind === "car-damage-numbers",
+  );
+  expect(conserved).toHaveLength(2);
+  expect(screen.getAllByText(t.conservedWidgets)).toHaveLength(1);
+  fireEvent.click(screen.getByRole("radio", { name: t.accentGreen }));
+  await waitFor(() =>
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "studio.instance",
+      ),
+    ).toHaveLength(1),
+  );
+  const response: StudioReply =
+    await requests.mock.results[
+      requests.mock.calls.findIndex(
+        ([request]) => request.method === "studio.instance",
+      )
+    ].value;
+  if (response.method !== "studio.instance") throw Error("Studio save fixture");
+  expect(
+    response.value.instances.filter(
+      (item) => item.kind === "car-damage-numbers",
+    ),
+  ).toEqual(conserved);
+  expect(screen.getAllByText(t.conservedWidgets)).toHaveLength(1);
+  expect(await listRow("Daños detallados 1")).toBeTruthy();
+  expect(await listRow("Daños detallados 2")).toBeTruthy();
+  expect(
+    requests.mock.calls.filter(([request]) => request.method === "studio.get"),
+  ).toHaveLength(1);
+});
+
+it("removes the warning only after the last conserved instance is removed", async () => {
+  mount("studio-conservados");
+  for (const [name, id, remaining] of [
+    ["Standings", "widget-1", 2],
+    ["Daños detallados 1", "conserved-1", 1],
+    ["Daños detallados", "conserved-2", 0],
+  ] as const) {
+    const row = await listRow(name);
+    fireEvent.click(row);
+    fireEvent.keyDown(row, { key: "Delete" });
+    const dialog = await screen.findByRole("dialog", { name: t.removeTitle });
+    fireEvent.click(within(dialog).getByRole("button", { name: t.remove }));
+    await waitFor(() =>
+      expect(document.querySelector(`[data-widget="${id}"]`)).toBeNull(),
+    );
+    expect(screen.queryAllByText(t.conservedWidgets)).toHaveLength(
+      remaining ? 1 : 0,
+    );
+    expect(
+      document.querySelectorAll('[data-widget^="conserved-"]'),
+    ).toHaveLength(remaining);
+  }
+});
+
+it("does not mistake widgets locked by the plan for widgets outside the catalog", async () => {
+  const requests = vi.spyOn(Client.prototype, "request");
+  mount("studio-pro-bloqueado");
+  await listRow("Standings");
+  const response: StudioReply =
+    await requests.mock.results[
+      requests.mock.calls.findIndex(
+        ([request]) => request.method === "studio.get",
+      )
+    ].value;
+  if (response.method !== "studio.get") throw Error("Studio plan fixture");
+  expect(response.value.catalog.some((widget) => !widget.allowed)).toBe(true);
+  expect(response.value.instances.some((item) => item.locked)).toBe(true);
+  expect(
+    response.value.instances.every((item) =>
+      response.value.catalog.some((widget) => widget.kind === item.kind),
+    ),
+  ).toBe(true);
+  expect(screen.queryByText(t.conservedWidgets)).toBeNull();
 });

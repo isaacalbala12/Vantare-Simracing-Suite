@@ -61,6 +61,21 @@ export function create(context: MockContext): MockHandler {
     aspectLocked: true,
     canvasPlacement: "inside",
   })) as OverlayInstance[];
+  if (sceneName === "studio-conservados") {
+    for (const n of [1, 2])
+      instances.push({
+        ...structuredClone(instances[0]),
+        id: `conserved-${n}`,
+        kind: "car-damage-numbers",
+        settings: {
+          ...studioWidgetDefaults["car-damage-numbers"],
+          showTyres: false,
+        },
+        size: { ...studioSizes["car-damage-numbers"] },
+        frequency: frequencyFor("car-damage-numbers", performanceLevel, null),
+        opacity: 73,
+      });
+  }
   const fieldKind = studioFieldKind(sceneName);
   if (fieldKind) {
     instances.splice(0, instances.length, {

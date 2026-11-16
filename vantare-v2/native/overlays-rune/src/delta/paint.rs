@@ -1,5 +1,5 @@
 //! Paints the shared Delta Vantare scene with the product kit (no motion yet).
-use super::scene::{self, Item, Scene, Size};
+use super::scene::{Item, Scene, Size};
 use crate::eficiencia;
 use crate::vantare::{
     Style,
@@ -108,7 +108,7 @@ impl Painter {
         let style = font(&self.style, face, size, height, tracking, weight);
         if !self.scene.options.transparent {
             return text(value)
-                .key(name)
+                .key(name.clone())
                 .font(style)
                 .color(ink)
                 .size(width, height)

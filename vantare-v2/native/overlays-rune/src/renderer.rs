@@ -163,6 +163,7 @@ impl Painters {
                     }
                     build |= update.build;
                 }
+                entry.painter.calendar(&frames.calendar);
                 order.push(instance.id.clone());
             }
         }
@@ -422,5 +423,72 @@ pub(crate) mod tests {
                 painter.size()
             );
         }
+    }
+    /// Reproductor compartido con el test: apunta lo que el bucle pediría reproducir.
+    #[derive(Clone, Default)]
+    struct Sharing(
+        std::rc::Rc<std::cell::RefCell<Vec<(vantare_domain::session_alerts::Tone, u8)>>>,
+    );
+    impl crate::session_alerts::sound::Player for Sharing {
+        fn play(&mut self, tone: vantare_domain::session_alerts::Tone, volume: u8) {
+            self.0.borrow_mut().push((tone, volume));
+        }
+    }
+    fn lmu_photo() -> vantare_domain::Snapshot {
+        let mut snapshot = crate::testdata::snapshot();
+        snapshot.origin.source.simulator = "lmu";
+        snapshot.origin.source.kind = vantare_domain::SourceKind::Live;
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        snapshot.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Practice);
+        snapshot.state.session.elapsed_s = vantare_domain::Quality::Reliable(0.0);
+        snapshot.state.session.timing.scheduled_end_s = vantare_domain::Quality::Reliable(300.0);
+        snapshot
+    }
+
+    #[test]
+    fn the_animate_loop_hands_each_requested_tone_to_the_speaker() {
+        let design = vantare_ipc::layout::Layout::from_json(
+            br#"{"version":2,"instances":[{"id":"avisos","x":0,"y":0,"settings":{"kind":"session-alerts"}}]}"#,
+        )
+        .expect("diseño");
+        let frames = crate::scene::FrameSet {
+            layout: Arc::new(design),
+            photos: std::collections::BTreeMap::from([(
+                "avisos".to_owned(),
+                vantare_ipc::Photo::full(Arc::new(lmu_photo())),
+            )]),
+            visible: std::collections::BTreeSet::from(["avisos".to_owned()]),
+            shown: true,
+            reduced_motion: false,
+            calendar: Arc::default(),
+        };
+        let shared = Sharing::default();
+        let mut painters = Painters {
+            sound: crate::session_alerts::sound::Speaker::with(Box::new(shared.clone())),
+            ..Default::default()
+        };
+        let meter = crate::stats::Meter::new(Arc::new(crate::stats::Counts::default()));
+        let viewport = crate::scene::Viewport {
+            origin: (0.0, 0.0),
+            size: vantare_domain::geometry::Size {
+                width: 1920.0,
+                height: 1080.0,
+            },
+        };
+        assert!(painters.sync(
+            Some(&frames),
+            &crate::host::Access::LocalPreview,
+            viewport,
+            0.0,
+            &meter
+        ));
+        let mut tx = rune::Tx::default();
+        painters.animate(0.0, &mut tx, &meter);
+        assert_eq!(
+            shared.0.borrow().as_slice(),
+            [(vantare_domain::session_alerts::Tone::Mild, 70)],
+            "el bucle entrega al reproductor el tono que pide el aviso"
+        );
     }
 }

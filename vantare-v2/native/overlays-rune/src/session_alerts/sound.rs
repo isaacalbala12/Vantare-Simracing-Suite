@@ -21,6 +21,13 @@ impl Speaker {
         self.player.play(tone, volume);
     }
 }
+#[cfg(test)]
+impl Speaker {
+    /// Reproductor inyectado: los tests apuntan los tonos en vez de sonar.
+    pub fn with(player: Box<dyn Player>) -> Self {
+        Self { player }
+    }
+}
 fn platform() -> Box<dyn Player> {
     #[cfg(windows)]
     {

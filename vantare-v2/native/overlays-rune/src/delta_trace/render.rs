@@ -42,7 +42,7 @@ pub(super) struct Painter {
     shape: Shape,
 }
 fn color(rgb: u32, a: f32) -> Color {
-    let channel = |shift| rune::color::srgb_decode(((rgb >> shift) & 255) as f32 / 255.0);
+    let channel = |shift: u32| rune::color::srgb_decode(((rgb >> shift) & 255_u32) as f32 / 255.0);
     Color {
         r: channel(16),
         g: channel(8),
@@ -183,7 +183,7 @@ impl Painter {
         let key = graph_key(history, details.invalid);
         let graph = Arc::new(graph(samples, &key));
         let scene = scene(vm, details, graph);
-        let texts = std::array::from_fn(|i| LiveText::new(&scene.texts[i]));
+        let texts = std::array::from_fn(|i| LiveText::new(scene.texts[i].as_str()));
         let mut p = Self {
             style: Style::compiled(),
             es: prefs.language == Language::Es,

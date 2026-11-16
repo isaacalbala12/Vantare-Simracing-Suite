@@ -156,7 +156,8 @@ mod tests {
     #[test]
     fn actual_view_stays_inside_the_window_and_reduced_motion_has_no_clock() {
         let mut widget = DeltaTrace::new(&Settings::default(), Preferences::default());
-        widget.ingest(&photo());
+        let mut snapshot = photo();
+        widget.ingest(&snapshot);
         let mut rt = Runtime::with_text(
             widget,
             view,
@@ -168,6 +169,22 @@ mod tests {
         crate::testdata::assert_inside_window(&mut rt, (760.0, 192.0));
         let before = rt.instances.clone();
         let builds = rt.stats.commits;
+        for sequence in [snapshot.sequence, snapshot.sequence + 1] {
+            snapshot.sequence = sequence;
+            assert!(!rt.update_if(|s, _| {
+                let update = s.ingest(&snapshot);
+                assert!(!update.build && !update.pixels);
+                update.build
+            }));
+            rt.frame(0.0);
+            assert_eq!(rt.stats.commits, builds);
+            assert!(
+                before
+                    .iter()
+                    .map(payload)
+                    .eq(rt.instances.iter().map(payload))
+            );
+        }
         assert!(!rt.update_if(|s, tx| {
             s.policy(true, 60, 0.0);
             s.schedule(0.0, tx);

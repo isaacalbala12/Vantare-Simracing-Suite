@@ -538,6 +538,9 @@ fn by_key<'a>(elements: &'a [rune::ElementInfo], key: &str) -> &'a rune::Element
         .find(|element| element.key.as_deref() == Some(key))
         .unwrap_or_else(|| panic!("falta {key}"))
 }
+
+#[test]
+fn the_host_applies_five_fifteen_and_twenty_hz_before_paint_and_revocation_removes_delta() {
     for hz in [5, 15, 20] {
         let start = Instant::now();
         let mut layout = Layout::from_json(

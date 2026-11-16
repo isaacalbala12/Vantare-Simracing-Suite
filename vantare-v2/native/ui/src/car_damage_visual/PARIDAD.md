@@ -29,6 +29,8 @@ GPUI y Rune alternan Coche/Cifras una vez por pulsación de `toggleKey` (F1–F1
 sin Mayús/Ctrl/Alt/Win. En Windows funciona con cualquier ventana delante, incluido
 el juego o el Hub: el overlay nunca necesita foco. Es paridad heredada, no una diferencia.
 La vista inicial sigue saliendo de `view`; mantener la tecla no repite el evento.
+Ocultar y volver a mostrar recrea la instancia: si la tecla sigue pulsada, dispara
+su primer flanco y alterna desde `view`, igual que GPUI. No es una repetición por mantenerla.
 
 El host Rune sondea cada 32 ms solo mientras hay una instancia activa con tecla.
 Esos despertares no deben presentar imágenes si no hay flanco ni otro cambio.

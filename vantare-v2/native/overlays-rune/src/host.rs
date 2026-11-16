@@ -1395,15 +1395,17 @@ mod tests {
         let reads = rt.state.reads;
         let builds = rt.stats.commits;
         rt.state.down = 1 << 6;
-        assert!(!keyboard_frame(&mut rt, 0.031));
+        assert!(!keyboard_frame(&mut rt, 1.0 / 32.0)); // Exactly 31.25 ms.
         assert_eq!(rt.state.reads, reads);
-        assert!(keyboard_frame(&mut rt, 0.001));
+        rt.clock = 0.032; // Inject the deadline itself, never sum 0.031 + 0.001.
+        assert!(keyboard_frame(&mut rt, 0.0));
         assert_eq!(rt.stats.commits, builds + 1);
-        assert!(!keyboard_frame(&mut rt, 0.032)); // Held, no second edge.
+        let step = 1.0 / 16.0; // Exact binary steps, safely past the polling interval.
+        assert!(!keyboard_frame(&mut rt, step)); // Held, no second edge.
         rt.state.down = 0;
-        assert!(!keyboard_frame(&mut rt, 0.032));
+        assert!(!keyboard_frame(&mut rt, step));
         rt.state.down = 1 << 6;
-        assert!(keyboard_frame(&mut rt, 0.032));
+        assert!(keyboard_frame(&mut rt, step));
         assert!(
             initial
                 .iter()
@@ -1412,10 +1414,37 @@ mod tests {
         );
         let presented = rt.state.state.meter.snapshot().frames;
         for _ in 0..100 {
-            assert!(!keyboard_frame(&mut rt, 0.032));
+            assert!(!keyboard_frame(&mut rt, step));
         }
         assert_eq!(rt.state.state.meter.snapshot().frames, presented);
         assert!(rt.wake_deadline().is_some()); // Input polling, not an animation.
+    }
+    #[test]
+    fn showing_again_with_the_key_held_triggers_the_gpui_rising_edge() {
+        let (bus, mut rt) = keyboard_runtime("f7");
+        rt.state.down = 1 << 6;
+        assert!(keyboard_frame(&mut rt, 0.0)); // First press: Car -> Numbers.
+        let numbers = rt.instances.clone();
+        let reads = rt.state.reads;
+        let mut frames = (**rt.state.state.frames.as_ref().unwrap()).clone();
+        frames.shown = false;
+        bus.publish_frames(Arc::new(frames.clone()));
+        assert!(keyboard_frame(&mut rt, 0.125));
+        assert_eq!(rt.state.reads, reads);
+        assert!(rt.state.state.next_shortcut_poll.is_none());
+        // GPUI parity: showing recreates the instance, so a held key is its first edge.
+        // Without that event the fresh widget would paint its configured Car view.
+        frames.shown = true;
+        bus.publish_frames(Arc::new(frames));
+        assert!(keyboard_frame(&mut rt, 0.125));
+        assert!(rt.state.reads > reads);
+        assert!(
+            numbers
+                .iter()
+                .map(paint_payload)
+                .eq(rt.instances.iter().map(paint_payload))
+        );
+        assert!(!keyboard_frame(&mut rt, 0.125)); // Held: no repeated event.
     }
     #[test]
     fn modifiers_block_every_function_key_and_only_declared_keys_are_read() {

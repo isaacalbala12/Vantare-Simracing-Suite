@@ -3238,3 +3238,8 @@ su vista. Flanco por Entry, lector Win32 y reloj de 32 ms solo con teclas activa
 Sin teclas/instancias visibles/autorizadas no se sondea ni se programa ese reloj.
 Tests CPU inyectan teclado y tiempo; sonido/calendario y monitores se conservan.
 PARIDAD documenta primer plano heredado y CPU pendiente del PC. Head/checks en PR.
+
+### Seguimiento P3 de #2467
+Test del límite con reloj absoluto y pasos binarios, sin suma 31+1 ms.
+Test y PARIDAD fijan ocultar/volver con tecla pulsada: dispara el primer flanco
+de la instancia nueva. Cause::Input no existe; Data y producción quedan intactos.

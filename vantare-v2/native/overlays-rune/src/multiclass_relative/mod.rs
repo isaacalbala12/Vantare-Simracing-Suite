@@ -1,6 +1,7 @@
-//! Static GPUI multiclass Relative, not yet connected to the widget registry.
+//! Static GPUI multiclass Relative, using the domain ViewModel as its scene.
 mod render;
 
+use crate::widget::{Update, Widget};
 use rune::El;
 use vantare_domain::{
     Snapshot,
@@ -11,7 +12,7 @@ use vantare_domain::{
 };
 
 /// The domain ViewModel is already the complete, pure scene. No motion or history.
-pub struct MulticlassRelative {
+pub(crate) struct MulticlassRelative {
     settings: Settings,
     prefs: Preferences,
     scene: ViewModel,
@@ -54,19 +55,64 @@ impl MulticlassRelative {
         }
     }
 
-    /// Returns whether the tree needs rebuilding; fixed cells update through Live.
-    pub fn update(&mut self, snapshot: &Snapshot) -> bool {
+    pub fn update(&mut self, snapshot: &Snapshot) -> Update {
         let scene = multiclass_relative::project(snapshot, self.prefs, content(&self.settings));
         if scene == self.scene {
-            return false;
+            return Update::default();
         }
-        let build = self.painter.sync(&scene);
+        let update = self.painter.sync(&scene);
         self.scene = scene;
-        build
+        update
     }
 
     pub fn view(&self) -> El {
         self.painter.view(&self.scene, self.size())
+    }
+}
+
+impl Widget for MulticlassRelative {
+    fn new(
+        settings: &vantare_domain::widget_settings::Settings,
+        prefs: Preferences,
+        _reduced: bool,
+        _hz: u16,
+        _clock: f64,
+    ) -> Option<Box<dyn Widget>> {
+        let vantare_domain::widget_settings::Settings::MulticlassRelative(settings) = settings
+        else {
+            return None;
+        };
+        Some(Box::new(Self::new(settings, prefs)))
+    }
+    fn configured(
+        &self,
+        settings: &vantare_domain::widget_settings::Settings,
+        prefs: Preferences,
+    ) -> bool {
+        let vantare_domain::widget_settings::Settings::MulticlassRelative(settings) = settings
+        else {
+            return false;
+        };
+        Self::configured(self, settings, prefs)
+    }
+    fn size(&self) -> Size {
+        Self::size(self)
+    }
+    fn size_for(&self, _snapshot: Option<&Snapshot>) -> Size {
+        Self::size(self)
+    }
+    fn policy(&mut self, _reduced: bool, _hz: u16, _clock: f64) -> Update {
+        Update::default()
+    }
+    fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> Update {
+        Self::update(self, snapshot)
+    }
+    fn animate(&mut self, _clock: f64) -> Update {
+        Update::default()
+    }
+    fn schedule(&self, _clock: f64, _tx: &mut rune::Tx) {}
+    fn view(&self) -> El {
+        Self::view(self)
     }
 }
 
@@ -131,8 +177,9 @@ mod tests {
     fn metadata_and_hidden_cars_do_not_change_the_scene() {
         let mut photo = snapshot();
         let mut widget = MulticlassRelative::new(&Settings::default(), Preferences::default());
-        assert!(widget.update(&photo));
-        assert!(!widget.update(&photo));
+        assert!(widget.update(&photo).build);
+        let unchanged = widget.update(&photo);
+        assert!(!unchanged.build && !unchanged.pixels);
         let before = widget.scene.clone();
         photo.sequence += 1;
         photo.epoch += 1;
@@ -145,7 +192,8 @@ mod tests {
             .expect("hidden car")
             .driver
             .name = "Other name".into();
-        assert!(!widget.update(&photo));
+        let unchanged = widget.update(&photo);
+        assert!(!unchanged.build && !unchanged.pixels);
         assert_eq!(widget.scene, before);
     }
 
@@ -191,7 +239,7 @@ mod tests {
         )
     }
 
-    fn rendered_frame(runtime: &mut Runtime<MulticlassRelative>, dt: f64) -> bool {
+    fn rendered_frame<S: 'static>(runtime: &mut Runtime<S>, dt: f64) -> bool {
         // CPU drawing stream only: frame() reports ongoing animation, not changed pixels.
         fn payload(i: &rune::render::Instance) -> [[u32; 4]; 8] {
             [
@@ -213,7 +261,7 @@ mod tests {
     fn update(runtime: &mut Runtime<MulticlassRelative>, photo: &Snapshot) {
         runtime.update_if(|widget, tx| {
             tx.instant(); // Same transaction as host::poll: no implicit Rune presence animation.
-            widget.update(photo)
+            widget.update(photo).build
         });
     }
 
@@ -341,5 +389,96 @@ mod tests {
         assert_eq!(widget.scene.rows.len(), 1);
         assert_eq!(widget.scene.rows[0].id, CarId(player.0));
         assert_eq!(widget.scene.rows[0].slot, 3);
+    }
+
+    #[test]
+    fn registered_widget_accepts_photos_and_counts_live_gap_changes_without_a_clock() {
+        use crate::{
+            host::Access,
+            renderer::Painters,
+            scene::{Scene, Viewport},
+            stats::Meter,
+        };
+        use std::{
+            sync::Arc,
+            time::{Duration, Instant},
+        };
+        use vantare_domain::motion_policy::MotionPolicy;
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let layout = vantare_ipc::layout::Layout::from_json(
+            br#"{"version":2,"instances":[{"id":"m","x":0,"y":0,"settings":{"kind":"multiclass-relative"}}]}"#
+        ).expect("existing layout kind");
+        assert!(crate::renderer::supports(&layout.instances[0]));
+        let start = Instant::now();
+        let mut scene = Scene::new(layout, Access::LocalPreview, true, MotionPolicy(false));
+        let mut photo = snapshot();
+        assert!(scene.ingest(vantare_ipc::Photo::full(Arc::new(photo.clone())), start));
+        let viewport = Viewport {
+            origin: (0.0, 0.0),
+            size: Size {
+                width: 500.0,
+                height: 400.0,
+            },
+        };
+        let meter = Meter::new(Arc::default());
+        let mut painters = Painters::default();
+        assert!(painters.sync(
+            Some(&scene.frames),
+            &Access::LocalPreview,
+            viewport,
+            0.0,
+            &meter
+        ));
+        let mut rt = Runtime::with_text(
+            painters,
+            |painters, _| painters.view(),
+            (500.0, 400.0),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        assert!(rendered_frame(&mut rt, 0.0));
+        meter.presented(); // Simulated callback after an actual change in the CPU paint stream.
+        assert!(rt.find("widget-m").is_some());
+        assert!(rt.find("multiclass-relative").is_some());
+        photo.sequence += 1;
+        photo
+            .state
+            .cars
+            .iter_mut()
+            .find(|car| car.id == CarId(4))
+            .expect("visible car")
+            .relative_s = Quality::Reliable(14.5);
+        assert!(scene.ingest(
+            vantare_ipc::Photo::full(Arc::new(photo)),
+            start + Duration::from_secs(1)
+        ));
+        let before = meter.snapshot();
+        assert!(
+            !rt.update_if(|painters, tx| {
+                tx.instant();
+                painters.sync(
+                    Some(&scene.frames),
+                    &Access::LocalPreview,
+                    viewport,
+                    1.0,
+                    &meter,
+                )
+            }),
+            "a fixed gap changes pixels without rebuilding"
+        );
+        assert!(rendered_frame(&mut rt, 0.0));
+        meter.presented();
+        assert_eq!(meter.snapshot().data, before.data + 1);
+        assert_eq!(meter.snapshot().frames, before.frames + 1);
+        for clock in 2..32 {
+            rt.update_if(|painters, tx| {
+                tx.instant();
+                painters.animate(f64::from(clock), tx, &meter)
+            });
+            assert!(!rendered_frame(&mut rt, 1.0));
+            assert!(rt.wake_deadline().is_none());
+        }
+        assert_eq!(meter.snapshot().animation, 0);
+        assert_eq!(meter.snapshot().unattributed, 0);
     }
 }

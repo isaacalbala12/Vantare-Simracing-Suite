@@ -3,6 +3,7 @@ use crate::vantare::{
     Style, alpha,
     paint::{Face, WHITE, font},
 };
+use crate::widget::Update;
 use rune::{Align, Color, El, LiveText, el, row, text};
 use vantare_domain::{
     CarId,
@@ -79,9 +80,9 @@ impl Painter {
         painter
     }
 
-    pub fn sync(&mut self, scene: &ViewModel) -> bool {
+    pub fn sync(&mut self, scene: &ViewModel) -> Update {
         let es = self.prefs.language == Language::Es;
-        self.header.set(
+        let mut pixels = self.header.set(
             format!(
                 "{} {} · ±{}",
                 if es { "Tú en" } else { "You in" },
@@ -90,7 +91,7 @@ impl Painter {
             )
             .to_uppercase(),
         );
-        self.footer.set(footer(scene, es));
+        pixels |= self.footer.set(footer(scene, es));
         for r in &scene.rows {
             let Some(cells) = self.cells.get(r.slot) else {
                 continue;
@@ -112,7 +113,7 @@ impl Painter {
                 r.gap.clone(),
                 aux,
             ]) {
-                cell.set(value);
+                pixels |= cell.set(value);
             }
         }
         // One build decision; fixed-width text changes stay in Live values.
@@ -134,7 +135,10 @@ impl Painter {
         };
         let build = self.structure.as_ref() != Some(&next);
         self.structure = Some(next);
-        build
+        Update {
+            build,
+            pixels: pixels || build,
+        }
     }
 
     pub fn view(&self, scene: &ViewModel, size: Size) -> El {
@@ -477,21 +481,22 @@ mod tests {
         let mut scene = scene();
         let mut painter = Painter::new(7, Preferences::default(), &scene);
         scene.rows[0].gap = "-1.0".into();
-        assert!(!painter.sync(&scene));
+        let gap = painter.sync(&scene);
+        assert!(!gap.build && gap.pixels);
         assert_eq!(&*painter.cells[1][3].get(), "-1.0");
         scene.rows[0].name = "A longer driver name".into();
-        assert!(painter.sync(&scene));
+        assert!(painter.sync(&scene).build);
         scene.rows[0].place = "P20".into();
-        assert!(painter.sync(&scene));
+        assert!(painter.sync(&scene).build);
         scene.rows[0].number = "123".into();
-        assert!(painter.sync(&scene));
+        assert!(painter.sync(&scene).build);
         scene.rows[0].nearby = true;
-        assert!(painter.sync(&scene));
+        assert!(painter.sync(&scene).build);
         assert_eq!(&*painter.cells[1][4].get(), "▲ encima");
         scene.fcy = true;
-        assert!(painter.sync(&scene));
+        assert!(painter.sync(&scene).build);
         scene.rows.clear();
-        assert!(painter.sync(&scene));
+        assert!(painter.sync(&scene).build);
     }
 
     #[test]

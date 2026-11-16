@@ -12,7 +12,7 @@ pub mod feed;
 pub mod scene;
 
 mod motion;
-pub mod multiclass_relative;
+mod multiclass_relative;
 pub mod relative;
 mod renderer;
 pub mod stats;

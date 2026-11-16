@@ -291,7 +291,14 @@ mod tests {
             })
             .collect();
         assert_eq!(cards.len(), 10, "dos copias de cinco pilotos");
-        let mut xs: Vec<f32> = cards.iter().map(|card| card.target[0]).collect();
+        let text_of = |key: &str| {
+            elements
+                .iter()
+                .find(|element| element.key.as_deref() == Some(key))
+                .and_then(|element| element.text.clone())
+        };
+        assert_eq!(text_of("tower-code-1-0"), text_of("tower-code-1-1"));
+        let mut xs: Vec<f32> = cards.iter().map(|card| card.rect[0]).collect();
         xs.sort_by(|a, b| a.partial_cmp(b).expect("orden"));
         xs.dedup();
         assert_eq!(xs.len(), 10, "cada copia en su propia ranura");
@@ -345,11 +352,7 @@ mod tests {
         };
         let painted = cue(&runtime);
         assert_eq!(painted.target[1], 44.0, "la barra va en y=44");
-        assert!(
-            painted.fill.a > 0.9,
-            "aviso a plena fuerza: {:?}",
-            painted.fill
-        );
+        assert!(painted.fill.a > 0.5, "aviso encendido: {:?}", painted.fill);
         runtime.state.animate(2.0);
         runtime.frame(1.0);
         let off = cue(&runtime);

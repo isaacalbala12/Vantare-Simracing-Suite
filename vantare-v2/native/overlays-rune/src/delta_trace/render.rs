@@ -91,8 +91,10 @@ fn graph(samples: &[Sample], key: &GraphKey) -> Vec<Op> {
                     2.2,
                     if key.invalid {
                         0x6e6668
+                    } else if b < 0.0 {
+                        0x4ade80
                     } else {
-                        gain(b as f32)
+                        0xff7a82
                     },
                     1.0,
                 ));
@@ -492,6 +494,35 @@ impl Painter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn temporal_fallback_keeps_gpui_endpoints_and_never_bridges_a_cut() {
+        let key = GraphKey {
+            previous: vec![],
+            current: vec![],
+            invalid: false,
+        };
+        let mut samples = [
+            Sample {
+                at: std::time::Duration::ZERO,
+                delta_seconds: Some(0.25),
+                break_before: false,
+            },
+            Sample {
+                at: std::time::Duration::from_secs(1),
+                delta_seconds: Some(-0.25),
+                break_before: false,
+            },
+        ];
+        assert_eq!(
+            graph(&samples, &key),
+            vec![
+                Op::Line([12.0, 65.0], [748.0, 119.0], 2.2, 0x4ade80, 1.0),
+                Op::Rect([744.0, 115.0, 8.0, 8.0], 4.0, 0xffffff, 1.0),
+            ]
+        );
+        samples[1].break_before = true;
+        assert!(graph(&samples, &key).is_empty());
+    }
     #[test]
     fn lap_segments_keep_literal_gpui_line_fill_and_cursor_order() {
         let key = GraphKey {

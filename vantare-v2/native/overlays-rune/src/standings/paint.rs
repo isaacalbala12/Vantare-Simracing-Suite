@@ -386,27 +386,6 @@ fn row_el(
             );
         }
     }
-    if vis.pit_alpha > 0.001
-        && let Some(column) = l.columns.iter().find(|c| c.setting.metric_id == "pit")
-    {
-        item = item.child(
-            el().key("pit-badge")
-                .pin(
-                    Some(column.x + vis.pit_dx),
-                    Some((l.row - 26.0) / 2.0),
-                    None,
-                    None,
-                )
-                .size(column.width, 26.0)
-                .corners([0.0, s.geometry.chip_radius, s.geometry.chip_radius, 0.0])
-                .fill(vantare::alpha(s.colors.box_fill, vis.pit_alpha))
-                .shadow(
-                    0.0,
-                    8.0,
-                    vantare::alpha(s.colors.box_fill, 0.22 * vis.pit_alpha),
-                ),
-        );
-    }
     for (column_index, (cell, column)) in row.cells.iter().zip(&l.columns).enumerate() {
         if let Some(fill) = cell.fill {
             item = item.child(

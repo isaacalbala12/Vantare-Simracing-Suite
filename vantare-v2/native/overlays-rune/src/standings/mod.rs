@@ -4,6 +4,8 @@ mod motion;
 mod paint;
 mod scene;
 #[cfg(test)]
+mod effects_tests;
+#[cfg(test)]
 mod tests;
 
 use rune::El;

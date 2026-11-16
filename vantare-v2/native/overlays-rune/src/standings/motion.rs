@@ -170,8 +170,6 @@ pub(super) struct RowVis {
     pub chip: Option<(i64, f32)>,
     pub battle: f32,
     pub best_marker: f32,
-    pub pit_alpha: f32,
-    pub pit_dx: f32,
     pub sweep: Option<(bool, f32, f32)>,
 }
 
@@ -209,12 +207,6 @@ struct Notice {
     priority: u8,
 }
 
-#[derive(Clone, Copy)]
-struct Pit {
-    alpha: Tween,
-    dx: Tween,
-}
-
 #[derive(Clone, Default)]
 pub(super) struct Motion {
     tops: BTreeMap<u32, f32>,
@@ -230,7 +222,6 @@ pub(super) struct Motion {
     battle: BTreeMap<u32, Tween>,
     battle_pick: Option<Battle>,
     best: BTreeMap<u32, Tween>,
-    pits: BTreeMap<u32, Pit>,
 }
 
 impl Motion {
@@ -343,12 +334,6 @@ impl Motion {
                 0.0
             };
             retarget(&mut self.best, id, best, clock, 0.220, EASE);
-            let pit = self.pits.entry(id).or_insert_with(|| Pit {
-                alpha: Tween::fixed(if row.in_pits { 1.0 } else { 0.0 }),
-                dx: Tween::fixed(if row.in_pits { 0.0 } else { -5.0 }),
-            });
-            pit.alpha.retarget(if row.in_pits { 1.0 } else { 0.0 }, clock, 0.200);
-            pit.dx.retarget(if row.in_pits { 0.0 } else { -5.0 }, clock, 0.200);
         }
         self.notices.retain(|id, _| visible.contains(id));
     }
@@ -445,10 +430,6 @@ impl Motion {
                         best_marker: self.best.get(id).map_or(0.0, |t| t.value(clock)),
                         ..RowVis::default()
                     };
-                    if let Some(pit) = self.pits.get(id) {
-                        vis.pit_alpha = pit.alpha.value(clock);
-                        vis.pit_dx = pit.dx.value(clock);
-                    }
                     if notice.is_none()
                         && let (Some(kind), Some(strength)) =
                             (self.flash_kind.get(id), self.flash.get(id))
@@ -530,7 +511,6 @@ impl Motion {
             || self.best.values().any(|t| t.active(clock))
             || self.flash.values().any(|t| t.active(clock))
             || self.chip.values().any(|t| t.active(clock))
-            || self.pits.values().any(|pit| pit.alpha.active(clock) || pit.dx.active(clock))
             || self
                 .notices
                 .values()
@@ -558,10 +538,6 @@ impl Motion {
         self.chip.clear();
         self.battle.clear();
         self.best.clear();
-        for pit in self.pits.values_mut() {
-            pit.alpha.settle();
-            pit.dx.settle();
-        }
     }
 }
 

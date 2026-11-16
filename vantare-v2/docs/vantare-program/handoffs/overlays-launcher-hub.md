@@ -3126,6 +3126,7 @@ Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aqu�
 Sin gráficos, Plane, merge, promoción ni release propios.
 
 
+
 ## VANTA-144 · captura Relative Vantare sin ventana (Worker B, 16/11/2026)
 
 PR separado desde nightly a3f2c3c9a: capture.rs reutiliza constructor/Widget,
@@ -3164,3 +3165,32 @@ registro sin rune_rev manual; carrera de salida documentada. Comentarios y
 reviews publicados en el PR leídos; los tres ajustes conocidos ya estaban en
 7414d2c26. Nueva verificación completa por cola, sin gráficos; head/checks
 definitivos en el PR. Mac offline: no se repite captura GPU en este rebase.
+
+## VANTA-144 · Historial de delta en Rune (16/11/2026)
+
+Pintor aprobado: domain conserva Trace/LapHistory/LapPoint/Details/ViewModel;
+el widget mantiene su caché Arc de muestras y compara la escena visible para
+repintar, sin usar sequence como invalidación. Canvas de segmentos rectos en
+orden GPUI línea/relleno, cursores, textos y sectores; tamaño fijo 760×192.
+Sin reloj ni Tween; movimiento reducido mantiene el dibujo. Capas con pin,
+tests CPU de límites reales de ventana, orden de segmentos y fotos repetidas.
+Gates y CI en el PR; rasterizado pendiente de captura del PC. Sin gráficos
+en el servidor, dependencias nuevas ni cambios de domain/ipc/host.
+
+## VANTA-144 · Seguimiento de Historial de delta (16/11/2026)
+
+Tras #2439: invalidación por versión local de LapHistory, vectores prestados,
+una comparación del gráfico y textos conservados cuando no cambian. Mismo dibujo.
+Tests CPU de los tramos inválidos, recorte ±2 y orden línea/relleno del Shape real.
+Gates/head en el PR; sin domain/ipc/host nuevos ni gráficos. #2430 espera sus bases.
+
+
+
+### #2391 · actualización por merge de nightly (Worker B, 16/11/2026)
+
+Fusionado origin/nightly 83cb9b2e4 en la rama de captura; conflicto solo en este
+handoff resuelto conservando ambas entregas. Registro, Widget y módulos nuevos
+se conservan como nightly, salvo la visibilidad crate de constructor necesaria
+para captura. Se revalidan fmt, Clippy y tests CPU por cola, sin GPU en servidor.
+La ampliación única para captura/preview (todos los widgets, secuencias, assets
+y release) queda para otro PR, tras esquema y OK de raíz; no entra aquí.

@@ -1,18 +1,21 @@
+import { useEffect } from "react";
 import { useUi } from "../../app/UiState";
 import { studioText as t } from "../../i18n/studio";
+import { canvasText } from "../../i18n/studio-canvas";
 import { useStudioFocus } from "../../screens/studio/focus";
 import { Button } from "../Button";
 import { Callout } from "../Data";
 import { ActionNotice } from "./ActionNotice";
+import { CanvasStage } from "./CanvasStage";
 import { CatalogDialog } from "./CatalogDialog";
+import { EmptyCanvas } from "./EmptyCanvas";
 import { EmptyStudio } from "./EmptyStudio";
 import { FocusHeader } from "./FocusHeader";
 import { LayoutStrip } from "./LayoutStrip";
 import { RemoveWidget } from "./RemoveWidget";
-import { Stage } from "./Stage";
+import { StudioStage } from "./StudioStage";
 import { LoadingStudio, ReadonlyStudio, StudioFeedback } from "./StudioStates";
 import { StudioSteps as StudioInspector } from "./StudioSteps";
-import { widgetName } from "./Widgets";
 import "./focus.css";
 import "./studio-states.css";
 
@@ -22,12 +25,21 @@ export function StudioFocus() {
   const { state, selected, catalogOpen } = model;
   const view = state.view;
   const navigate = useUi((value) => value.navigate);
+  const canvasSidebar = useUi((value) => value.canvasSidebar);
+  const listCollapsed = useUi((value) => value.studioListCollapsed);
+  useEffect(() => {
+    if (!state.canvasMode) return;
+    canvasSidebar(true);
+    return () => canvasSidebar(false);
+  }, [state.canvasMode, canvasSidebar]);
   return (
     <div className="v-studio-focus">
       <div
         className="v-studio-focus-layout"
         data-missing={view?.state === "missing"}
         data-state={view?.state ?? (state.failure ? "error" : "loading")}
+        data-view={state.canvasMode ? "canvas" : "widget"}
+        data-list-collapsed={state.canvasMode && listCollapsed}
         ref={model.root}
       >
         <RemoveWidget />
@@ -43,6 +55,7 @@ export function StudioFocus() {
               item={selected}
               view={view}
               pending={state.pending}
+              readOnly={model.canvasReadOnly}
               onRemove={() => {
                 if (selected) state.setRemoving(selected.id);
               }}
@@ -57,7 +70,26 @@ export function StudioFocus() {
             <span className="v-skeleton" aria-hidden="true" />
           ) : null}
           <StudioFeedback model={model} />
-          {view?.state === "missing" ? (
+          {state.canvasMode && view ? (
+            selected ? (
+              <CanvasStage
+                view={view}
+                selected={selected}
+                onSelect={model.select}
+                actions={
+                  <Button
+                    size="sm"
+                    variant="neutral"
+                    onClick={() => state.setCanvasMode(false)}
+                  >
+                    {canvasText.done}
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyCanvas model={model} />
+            )
+          ) : view?.state === "missing" ? (
             <section
               className="v-studio-unavailable"
               aria-label={t.missing}
@@ -79,13 +111,7 @@ export function StudioFocus() {
                   }
                 />
               )}
-              <Stage
-                item={selected}
-                name={widgetName(selected, view)}
-                blocked={model.blocked}
-                pending={state.pending}
-                onShow={() => model.toggle(selected.id)}
-              />
+              <StudioStage model={model} />
             </>
           ) : view?.state === "protected" ? (
             <ReadonlyStudio />
@@ -94,9 +120,14 @@ export function StudioFocus() {
           ) : !state.failure ? (
             <LoadingStudio />
           ) : null}
-          {view?.state === "ready" && <ActionNotice />}
+          {!state.canvasMode && view?.state === "ready" && <ActionNotice />}
           {view && view.state !== "missing" && selected && (
-            <div className="v-studio-temporary" aria-busy={state.pending}>
+            <div
+              className="v-studio-temporary"
+              aria-busy={state.pending}
+              hidden={state.canvasMode}
+              inert={state.canvasMode || undefined}
+            >
               {selected &&
                 (view.state === "protected" ? (
                   <ReadonlyStudio>

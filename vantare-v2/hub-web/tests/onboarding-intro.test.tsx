@@ -24,6 +24,9 @@ import {
 } from "../src/renderer/app/AccountSession";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
+// The Gate defers the wizard behind React.lazy; registering the same module
+// keeps the retry test on the wizard instead of the Suspense fallback.
+import "../src/renderer/screens/onboarding/AccountIntro";
 import { OnboardingIntroPreview } from "../src/renderer/screens/onboarding/IntroPreview";
 import { OnboardingGate } from "../src/renderer/screens/onboarding/OnboardingGate";
 import { useOnboardingMail } from "../src/renderer/screens/onboarding/useMail";

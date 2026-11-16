@@ -26,6 +26,7 @@ import {
   isWidgetSettingsPatch,
 } from "../../contract/studio-widget-settings";
 import type { MockContext, MockHandler } from "../context";
+import { applyGeometry } from "../studio-geometry";
 import { studioStateScene } from "../studio-states";
 import { studioFieldKind } from "../studio-widget-scenes";
 export function create(context: MockContext): MockHandler {
@@ -85,6 +86,33 @@ export function create(context: MockContext): MockHandler {
     );
   }
   if (sceneName === "studio-pocos") instances.splice(2);
+  if (sceneName.startsWith("studio-canvas")) {
+    const positions = [
+      [48, 62],
+      [770, 40],
+      [1560, 300],
+      [1540, 800],
+    ];
+    instances.forEach((item, i) => {
+      item.x = positions[i][0];
+      item.y = positions[i][1];
+    });
+    // The approved Vista Lienzo A prototype uses this QA distribution.
+    instances[1].size = { width: 380, height: 72 };
+    instances[2].size = { width: 320, height: 208 };
+    instances[2].visible = false;
+    instances[3].size = { width: 300, height: 204 };
+    if (sceneName === "studio-canvas-outside") {
+      instances[0].x = -80;
+      instances[0].canvasPlacement = "outside";
+    }
+    if (sceneName === "studio-canvas-readonly") context.core.live = true;
+    if (sceneName === "studio-canvas-fractional") {
+      instances[0].x = 0.25;
+      instances[0].y = -0.5;
+      instances[0].canvasPlacement = "outside";
+    }
+  }
   const view: StudioView = {
     state:
       sceneName === "studio-missing"
@@ -95,7 +123,9 @@ export function create(context: MockContext): MockHandler {
     revision: "0".repeat(64),
     instances: sceneName === "studio-vacio" ? [] : instances,
     catalog: studioCatalog.map((item) => ({ ...item, allowed: true })),
-    showing: sceneName === "studio-mostrando",
+    showing:
+      sceneName === "studio-mostrando" ||
+      sceneName === "studio-canvas-readonly",
     plan: "pro",
     canUndo: false,
     canRedo: false,
@@ -165,9 +195,11 @@ export function create(context: MockContext): MockHandler {
   }
   if (view.state !== "ready") view.monitor = null;
   const stateScene = studioStateScene(sceneName, view);
-  const undo: OverlayInstance[][] = [],
-    redo: OverlayInstance[][] = [];
-  let conflict = sceneName === "studio-error";
+  type LayoutSnapshot = Pick<StudioView, "instances" | "canvas">;
+  const undo: LayoutSnapshot[] = [],
+    redo: LayoutSnapshot[] = [];
+  let conflict =
+    sceneName === "studio-error" || sceneName === "studio-canvas-conflict";
   const bump = () => {
     view.revision = (BigInt(`0x${view.revision}`) + 1n)
       .toString(16)
@@ -202,13 +234,8 @@ export function create(context: MockContext): MockHandler {
     )
       return;
     const { request, id } = message;
-    // The canvas UI PR will share its Rust-vector-verified gesture implementation
-    // with these mocks. Until then no geometry success is invented.
-    if (
-      request.method === "studio.geometry" ||
-      request.method === "studio.canvas" ||
-      (request.method === "studio.add" && request.at !== undefined)
-    ) {
+    // Catalogue drops are implemented in ADR 0109 PR 3.
+    if (request.method === "studio.add" && request.at !== undefined) {
       return { kind: "failure", id, error: { kind: "unsupported" } };
     }
     const fail = (kind: "denied" | "protected"): HostToUi => ({
@@ -234,9 +261,55 @@ export function create(context: MockContext): MockHandler {
         error: { kind: "studioConflict", current: structuredClone(view) },
       };
     }
-    const before = structuredClone(view.instances);
+    const before = structuredClone({
+      instances: view.instances,
+      canvas: view.canvas,
+    });
     let added: string | null = null;
     switch (request.method) {
+      case "studio.canvas": {
+        if (
+          context.core.live ||
+          context.core.rights !== "connected" ||
+          !context.core.access.verified ||
+          view.plan === "unverified"
+        )
+          return fail("denied");
+        view.canvas =
+          request.resolution.kind === "monitor"
+            ? { width: 1920, height: 1080, source: "monitor" }
+            : {
+                width: request.resolution.width,
+                height: request.resolution.height,
+                source: "custom",
+              };
+        break;
+      }
+      case "studio.geometry": {
+        if (
+          !view.canvas ||
+          context.core.live ||
+          context.core.rights !== "connected" ||
+          !context.core.access.verified ||
+          view.plan === "unverified"
+        )
+          return fail("denied");
+        const item = view.instances.find((item) => item.id === request.id);
+        if (!item || item.locked) return fail("denied");
+        const changed = applyGeometry(item, request.change, [
+          view.canvas.width,
+          view.canvas.height,
+        ]);
+        if (changed === "rejected")
+          return { kind: "failure", id, error: { kind: "rejected" } };
+        if (!changed)
+          return {
+            kind: "response",
+            id,
+            result: { method: "studio.geometry", value: structuredClone(view) },
+          };
+        break;
+      }
       case "studio.get":
         break;
       case "studio.track":
@@ -246,7 +319,7 @@ export function create(context: MockContext): MockHandler {
         const prior = undo.pop();
         if (!prior) return fail("denied");
         redo.push(before);
-        view.instances = prior;
+        Object.assign(view, prior);
         bump();
         break;
       }
@@ -254,7 +327,7 @@ export function create(context: MockContext): MockHandler {
         const next = redo.pop();
         if (!next) return fail("denied");
         undo.push(before);
-        view.instances = next;
+        Object.assign(view, next);
         bump();
         break;
       }

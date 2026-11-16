@@ -16,9 +16,15 @@ bun install --frozen-lockfile
 bun run typecheck
 bun run lint
 bun run test
+bun scripts/renderer-production.ts
 bun run build
 bun run package
 ```
+
+`bun scripts/renderer-production.ts` comprueba sobre un build real que el
+renderer de producción no incluye mocks ni fixtures congeladas. Es un paso
+aparte del test unitario porque en este servidor un build en frío tarda
+decenas de segundos y no cabe en un plazo de test.
 
 `release/package/vantare-hub-ui-win32-x64/vantare-hub-ui.exe` es una carpeta
 sin instalador, firma ni despliegue. El puente y la preparación del anfitrión

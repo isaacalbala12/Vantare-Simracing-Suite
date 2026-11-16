@@ -25,6 +25,7 @@ import { roadmapScenes } from "./roadmap.ts";
 import { settingsSearchScenes } from "./settings-search.ts";
 import { studioScenes } from "./studio.ts";
 import { studioAlertFieldScenes } from "./studio-alert-fields.ts";
+import { studioCanvasScenes } from "./studio-canvas.ts";
 import { studioCatalogScenes } from "./studio-catalog.ts";
 import { studioContentScenes } from "./studio-content.ts";
 import { studioFrequencyScenes } from "./studio-frequency.ts";
@@ -78,6 +79,7 @@ export const visualScenes: Record<string, VisualScene> = {
   ...notificationScenes,
   ...launcherScenes,
   ...studioScenes,
+  ...studioCanvasScenes,
   ...studioStateScenes,
   ...studioCatalogScenes,
   ...sweepScenes,

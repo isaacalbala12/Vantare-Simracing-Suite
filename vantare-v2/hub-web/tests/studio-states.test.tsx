@@ -505,19 +505,45 @@ describe("Studio A honest states", () => {
   });
 });
 
-it.each(["studio-canvas-monitor-missing", "studio-missing"])(
+it.each([
+  "studio-canvas-monitor-missing",
+  "studio-canvas-monitor-unreadable",
+  "studio-missing",
+])(
   "uses one no-canvas explanation without changing documents: %s",
   async (scene) => {
     const spy = vi.spyOn(Client.prototype, "request");
+    const monitorUnavailable = scene === "studio-canvas-monitor-missing";
     mount(scene);
     await userEvent
       .setup()
       .click(await screen.findByRole("button", { name: canvasText.open }));
     expect(
-      await screen.findByRole("heading", { name: canvasText.noCanvasTitle }),
+      await screen.findByRole("heading", {
+        name: monitorUnavailable
+          ? canvasText.monitorUnavailableTitle
+          : canvasText.noCanvasTitle,
+      }),
     ).toBeTruthy();
-    expect(screen.getByText(canvasText.noCanvasHelp)).toBeTruthy();
+    expect(
+      screen.getByText(
+        monitorUnavailable
+          ? canvasText.monitorUnavailableHelp
+          : canvasText.noCanvasHelp,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        monitorUnavailable
+          ? canvasText.noCanvasHelp
+          : canvasText.monitorUnavailableHelp,
+      ),
+    ).toBeNull();
     expect(document.querySelector(".v-studio-canvas-position")).toBeNull();
+    if (monitorUnavailable) {
+      expect(screen.getByRole("status", { name: t.readOnly })).toBeTruthy();
+      expect(screen.queryByRole("status", { name: t.loading })).toBeNull();
+    }
     expect(screen.queryByText(t.protected)).toBeNull();
     expect(
       screen.queryByRole("button", { name: canvasText.resolution }),

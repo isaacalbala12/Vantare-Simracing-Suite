@@ -95,10 +95,13 @@ sola vez y primero, marcado «Tu monitor»; si no coincide con ninguno, aparece
 una fila propia. Un canvas custom del mismo tamaño también selecciona esa fila;
 pulsarla usa la orden monitor existente.
 
-En Lienzo, Protected/Missing con monitor:null no muestra selector ni panel:
-solo el mensaje centrado «No se puede abrir el lienzo ahora», su explicación
-aprobada y «Volver a cargar». No se atribuye el fallo a una causa que el contrato
-no distingue. No se crea tablero ni se escribe al host. Los Protected que
+En Lienzo, monitorUnavailable muestra «Vantare no detecta el monitor de este
+lienzo» y «Conéctalo y pulsa Volver a cargar.». Protected/Missing con monitor:null
+muestra «No se puede abrir este diseño» y «Vuelve a cargar. Si sigue igual, el
+archivo puede estar dañado o no ser compatible.». Ambos conservan solo el botón
+«Volver a cargar», sin selector ni panel. monitorUnavailable muestra el estado
+«Solo lectura», nunca «Cargando». La causa procede del contrato v45; no se crea
+tablero ni se escribe al host. Los Protected que
 conservan monitor mantienen su presentación. El monitor no se infiere del
 lienzo, viewport ni una lectura anterior.
 

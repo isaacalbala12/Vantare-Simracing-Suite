@@ -26,8 +26,9 @@ export function StudioFocus() {
   const view = state.view;
   const unavailableCanvas =
     state.canvasMode &&
-    view?.monitor === null &&
-    (view.state === "protected" || view.state === "missing");
+    (view?.state === "monitorUnavailable" ||
+      (view?.monitor === null &&
+        (view.state === "protected" || view.state === "missing")));
   const navigate = useUi((value) => value.navigate);
   const canvasSidebar = useUi((value) => value.canvasSidebar);
   const listCollapsed = useUi((value) => value.studioListCollapsed);

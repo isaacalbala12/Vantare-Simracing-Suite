@@ -8,8 +8,9 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
   const view = model.state.view;
   const unavailable = !view?.canvas || view.state !== "ready";
   const noCanvas =
-    view?.monitor === null &&
-    (view.state === "protected" || view.state === "missing");
+    view?.state === "monitorUnavailable" ||
+    (view?.monitor === null &&
+      (view.state === "protected" || view.state === "missing"));
   return (
     <section
       className="v-focus-stage v-studio-canvas-stage"
@@ -28,16 +29,22 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
         )}
         <div className="v-canvas-empty-message">
           <h2>
-            {noCanvas
-              ? t.noCanvasTitle
-              : unavailable
-                ? view?.state === "protected"
-                  ? studioText.protected
-                  : t.unavailable
-                : t.emptyTitle}
+            {view?.state === "monitorUnavailable"
+              ? t.monitorUnavailableTitle
+              : noCanvas
+                ? t.noCanvasTitle
+                : unavailable
+                  ? view?.state === "protected"
+                    ? studioText.protected
+                    : t.unavailable
+                  : t.emptyTitle}
           </h2>
           {noCanvas ? (
-            <p>{t.noCanvasHelp}</p>
+            <p>
+              {view?.state === "monitorUnavailable"
+                ? t.monitorUnavailableHelp
+                : t.noCanvasHelp}
+            </p>
           ) : (
             !unavailable && <p>{model.blocked ? t.readOnly : t.emptyHelp}</p>
           )}

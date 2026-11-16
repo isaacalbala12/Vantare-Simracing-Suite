@@ -146,12 +146,17 @@ export function create(context: MockContext): MockHandler {
   }
   if (
     sceneName === "studio-canvas-monitor" ||
-    sceneName === "studio-canvas-monitor-missing"
+    sceneName === "studio-canvas-monitor-missing" ||
+    sceneName === "studio-canvas-monitor-unreadable"
   ) {
     const sample = studioMonitorCases.find(
       (item) =>
         item.name ===
-        (sceneName.endsWith("-missing") ? "disconnected" : "native"),
+        (sceneName.endsWith("-missing")
+          ? "disconnected"
+          : sceneName.endsWith("-unreadable")
+            ? "unreadable"
+            : "native"),
     );
     if (sample) {
       view.canvas = sample.value.canvas ? { ...sample.value.canvas } : null;

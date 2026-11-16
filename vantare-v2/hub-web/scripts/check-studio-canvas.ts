@@ -381,6 +381,7 @@ export async function checkStudioCanvas(
     for (const scene of [
       "studio-canvas-monitor",
       "studio-canvas-monitor-missing",
+      "studio-canvas-monitor-unreadable",
     ]) {
       await page.goto(`${base}?escena=${scene}`);
       await page.evaluate(() => {
@@ -403,12 +404,24 @@ export async function checkStudioCanvas(
         };
       });
       await studioCanvasScenes[scene].prepare(page);
-      if (scene.endsWith("-missing")) {
+      if (scene !== "studio-canvas-monitor") {
         await page
-          .getByRole("heading", { name: t.noCanvasTitle, exact: true })
+          .getByRole("heading", {
+            name: scene.endsWith("-missing")
+              ? t.monitorUnavailableTitle
+              : t.noCanvasTitle,
+            exact: true,
+          })
           .waitFor();
         assert.equal(
-          await page.getByText(t.noCanvasHelp, { exact: true }).count(),
+          await page
+            .getByText(
+              scene.endsWith("-missing")
+                ? t.monitorUnavailableHelp
+                : t.noCanvasHelp,
+              { exact: true },
+            )
+            .count(),
           1,
         );
         assert.equal(await page.getByRole("radiogroup").count(), 0);

@@ -61,6 +61,7 @@ studioCanvasScenes["studio-canvas-info"] = {
 for (const scene of [
   "studio-canvas-monitor",
   "studio-canvas-monitor-missing",
+  "studio-canvas-monitor-unreadable",
 ]) {
   studioCanvasScenes[scene] = {
     mock: scene,
@@ -69,9 +70,14 @@ for (const scene of [
         .getByRole("button", { name: /^(Studio|Overlays Studio)$/ })
         .click();
       await page.getByRole("button", { name: t.open, exact: true }).click();
-      if (scene.endsWith("-missing")) {
+      if (scene !== "studio-canvas-monitor") {
         await page
-          .getByRole("heading", { name: t.noCanvasTitle, exact: true })
+          .getByRole("heading", {
+            name: scene.endsWith("-missing")
+              ? t.monitorUnavailableTitle
+              : t.noCanvasTitle,
+            exact: true,
+          })
           .waitFor();
       } else {
         await page

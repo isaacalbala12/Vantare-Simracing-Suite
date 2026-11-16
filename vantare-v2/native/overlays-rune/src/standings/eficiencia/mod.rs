@@ -1,11 +1,13 @@
-//! Port literal de la configuración y geometría de standings/eficiencia.rs.
+//! Port literal de standings/eficiencia.rs y view.rs, por entregas.
+mod assets;
 mod model;
 mod options;
+#[cfg(test)]
+mod paint_tests;
+mod render;
 mod style;
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod paint_tests;
 use model::{Config, ContentPlan, Plan, Status};
 use std::sync::Arc;
 use vantare_domain::widget_settings::standings::Settings;
@@ -14,6 +16,7 @@ pub(super) struct Visual {
     config: Arc<Config>,
     content_plan: Arc<ContentPlan>,
     plan: Arc<Plan>,
+    assets: Option<assets::Assets>,
 }
 impl Visual {
     pub fn new(settings: &Settings) -> Self {
@@ -25,6 +28,7 @@ impl Visual {
             config: Arc::new(config),
             content_plan: Arc::new(content_plan),
             plan: Arc::new(plan),
+            assets: None,
         }
     }
     pub fn ingest(&mut self, next: Arc<ContentPlan>) -> bool {
@@ -49,6 +53,7 @@ impl Visual {
             self.plan = Arc::new(model::plan(config, &next));
             self.content_plan = next;
         }
+        self.sync_assets();
         changed
     }
     pub fn set_study(&mut self, study: &str) {
@@ -69,6 +74,7 @@ impl Visual {
             config.height += classes.len() as f32 * config.style.geometry.class_band_height;
         }
         self.plan = Arc::new(model::plan(config, &self.content_plan));
+        self.sync_assets();
     }
     pub fn size(&self) -> (f32, f32) {
         (
@@ -80,5 +86,29 @@ impl Visual {
                 },
             self.config.height,
         )
+    }
+    pub fn attach_assets(&mut self, cache: &Arc<rune::ImageCache>) {
+        self.assets = Some(assets::Assets::new(cache));
+        self.sync_assets();
+    }
+    fn sync_assets(&mut self) {
+        if let Some(assets) = &mut self.assets {
+            assets.sync(&self.config, self.plan.pit_enabled);
+        }
+    }
+    pub fn capture_images(&self) -> Vec<rune::Image> {
+        let mut images = Vec::new();
+        if let Some(assets) = &self.assets {
+            if self.plan.brand_band > 0.0 || (self.plan.has_header && self.plan.brand_visible) {
+                images.push(assets.logo.clone());
+            }
+            if let Some((_, shadow)) = &assets.shadow {
+                images.push(shadow.clone());
+            }
+        }
+        images
+    }
+    pub fn view(&self, language: vantare_domain::format::Language) -> rune::El {
+        render::view(self, language)
     }
 }

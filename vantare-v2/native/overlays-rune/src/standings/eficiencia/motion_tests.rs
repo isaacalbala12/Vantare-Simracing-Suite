@@ -174,8 +174,10 @@ fn presence_fades_in_and_out_in_200_ms_and_reuses_ghost_top_and_alpha() {
     m.update(&p, 2, 3.0);
     assert_eq!(m.wake(3.0), Wake::Frame);
     assert!(m.frame_shared(3.2).ghosts.is_empty());
-    assert_eq!(m.wake(3.2), Wake::Idle);
-    assert!(m.next_wake(3.2, 60).is_none());
+    assert_eq!(m.wake(3.2), Wake::Frame, "la fila siguiente aún termina su FLIP");
+    m.frame_shared(3.313);
+    assert_eq!(m.wake(3.313), Wake::Idle);
+    assert!(m.next_wake(3.313, 60).is_none());
 }
 #[test]
 fn ghost_keeps_the_in_flight_absolute_top_and_idle_frames_share_the_arc() {
@@ -243,48 +245,72 @@ fn animated_rows_and_ghosts_stay_inside_the_window() {
 }
 
 fn runtime(reduced: bool) -> (rune::Runtime<Eficiencia>, vantare_domain::Snapshot) {
-    let photo=vantare_ipc::snapshot_from_json(include_str!("../../../../ui/fixtures/standings.snapshot.json")).unwrap();
-    let settings=Settings {row_count:10, ..Settings::eficiencia()};
-    let mut w=Eficiencia::new(&settings,Preferences::default());
-    w.policy(reduced,60,0.0); w.update(&photo,0.0);
-    let size=w.size();
-    let mut rt=rune::Runtime::with_text(w,|s,_|s.view(),(size.width,size.height),
-        rune::Env::new(true,1.0),rune::text::TextSystem::new(crate::eficiencia::FONTS,("Inter W400","Inter W400")));
-    rt.poll=Some(|s,clock,tx|{let changed=s.animate(clock).build; s.schedule(clock,tx); changed});
-    rt.frame(0.0); (rt,photo)
+    let photo = vantare_ipc::snapshot_from_json(include_str!(
+        "../../../../ui/fixtures/standings.snapshot.json"
+    ))
+    .unwrap();
+    let settings = Settings {
+        row_count: 10,
+        class_scope: "all-classes".into(),
+        ..Settings::eficiencia()
+    };
+    let mut w = Eficiencia::new(&settings, Preferences::default());
+    w.policy(reduced, 60, 0.0);
+    w.update(&photo, 0.0);
+    let size = w.size();
+    let mut rt = rune::Runtime::with_text(
+        w,
+        |s, _| s.view(),
+        (size.width, size.height),
+        rune::Env::new(true, 1.0),
+        rune::text::TextSystem::new(crate::eficiencia::FONTS, ("Inter W400", "Inter W400")),
+    );
+    rt.poll = Some(|s, clock, tx| {
+        let changed = s.animate(clock).build;
+        s.schedule(clock, tx);
+        changed
+    });
+    rt.frame(0.0);
+    (rt, photo)
 }
-fn swap(photo:&mut vantare_domain::Snapshot) {
+fn swap(photo: &mut vantare_domain::Snapshot) {
     use vantare_domain::Quality::Reliable;
-    photo.state.cars[0].position=Reliable(2); photo.state.cars[0].class_position=Reliable(2);
-    photo.state.cars[1].position=Reliable(1); photo.state.cars[1].class_position=Reliable(1);
+    photo.state.cars[0].position = Reliable(2);
+    photo.state.cars[0].class_position = Reliable(2);
+    photo.state.cars[1].position = Reliable(1);
+    photo.state.cars[1].class_position = Reliable(1);
 }
 #[test]
 fn real_controller_emits_only_during_flip_and_stops_waking_at_313_ms() {
-    let (mut rt,mut photo)=runtime(false);
+    let (mut rt, mut photo) = runtime(false);
     assert!(rt.wake_deadline().is_none());
     swap(&mut photo);
-    assert!(rt.update_if(|s,_|s.update(&photo,0.0).build));
-    rt.frame(0.1); assert!(rt.wake_deadline().is_some());
-    let frame=rt.state.visual.frame.clone();
+    assert!(rt.update_if(|s, _| s.update(&photo, 0.0).build));
+    rt.frame(0.1);
+    assert!(rt.wake_deadline().is_some());
+    let frame = rt.state.visual.frame.clone();
     // Igual Board/Scene y solo sequence creciente: no reinicia el FLIP ni el fade.
-    photo.sequence+=1;
-    assert!(!rt.state.update(&photo,0.1).build);
-    assert!(Arc::ptr_eq(&frame,&rt.state.visual.frame));
-    rt.frame(0.1); assert!(rt.wake_deadline().is_some());
+    photo.sequence += 1;
+    assert!(!rt.state.update(&photo, 0.1).build);
+    assert!(Arc::ptr_eq(&frame, &rt.state.visual.frame));
+    rt.frame(0.1);
+    assert!(rt.wake_deadline().is_some());
     rt.frame(0.113);
     assert!(rt.wake_deadline().is_none());
-    let size=rt.state.size();
-    crate::testdata::assert_inside_window(&mut rt,(size.width,size.height));
-    assert!(!rt.frame(5.0)); assert!(rt.wake_deadline().is_none());
+    let size = rt.state.size();
+    crate::testdata::assert_inside_window(&mut rt, (size.width, size.height));
+    assert!(!rt.frame(5.0));
+    assert!(rt.wake_deadline().is_none());
 }
 #[test]
 fn real_reduced_controller_snaps_rows_and_never_schedules_a_frame() {
-    let (mut rt,mut photo)=runtime(true);
+    let (mut rt, mut photo) = runtime(true);
     swap(&mut photo);
-    assert!(rt.update_if(|s,_|s.update(&photo,0.0).build));
+    assert!(rt.update_if(|s, _| s.update(&photo, 0.0).build));
     rt.frame(0.0);
-    assert_eq!(*rt.state.visual.frame,Frame::default());
-    assert!(rt.wake_deadline().is_none()); assert!(!rt.frame(1.0));
-    let size=rt.state.size();
-    crate::testdata::assert_inside_window(&mut rt,(size.width,size.height));
+    assert_eq!(*rt.state.visual.frame, Frame::default());
+    assert!(rt.wake_deadline().is_none());
+    assert!(!rt.frame(1.0));
+    let size = rt.state.size();
+    crate::testdata::assert_inside_window(&mut rt, (size.width, size.height));
 }

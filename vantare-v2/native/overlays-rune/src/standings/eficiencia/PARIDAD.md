@@ -15,7 +15,7 @@ Se medirá cada corte consecutivo y se unirá si ambos caben completos bajo el t
 | column_width{,_for}, identity_span | Signature/Broadcast, presets y nombres literales |
 | labels, Labels::{metric,info} | Rótulos ES/EN sin reescritura |
 | model::plan | Cabecera integrada/externa, filas visibles, bandas y columnas |
-| eficiencia::Visual::{new,ingest,set_study,set_style,size} | mod.rs; canales de movimiento en E5 |
+| eficiencia::Visual::{new,ingest,set_study,set_style,size} | mod.rs; canales de movimiento en motion.rs (E5) |
 | style::{Style,Colors,Geometry,Fonts,Shadow,Opacity,Color} | Defaults de ui/styles/standings.json |
 | efficiency::tokens y footer_rows | crate::eficiencia: tokens existentes, LOSS y cálculo literal de pies |
 
@@ -49,7 +49,7 @@ Comparación de píxeles en el PC de juego; verificación de E1 CPU, sin gráfic
    campos con literales copiados de ui/styles/standings.json, sin otra dependencia.
 5. Style::compiled devuelve un Arc local en lugar del OnceLock de GPUI; así el
    widget no introduce un caché global. Los valores compilados son los mismos.
-6. Visual en E1 solo mantiene geometría y contenido: los canales Motion llegan en E5.
+6. Visual en E1 solo mantenía geometría y contenido; E5 añade su Frame y Motion local.
    No se copian las ramas de instrumentación paint-stats/parity-capture de GPUI.
 
 Revisión E1: PIT mediante columnas reales (474 y reparto estrecho [156,82]);
@@ -108,13 +108,13 @@ Todos los colores nuevos pasan por eficiencia::color o rune::color::hex.
 
 | GPUI | Rune E3 |
 | --- | --- |
-| paint_table (th/filas) | table::paint; bandas en E4, ghosts en E5 |
+| paint_table (th/filas) | table::paint; bandas de E4, ghosts y FLIP de E5 |
 | paint_column_label / aligned_x | table.rs; Signature/Broadcast, alineación, máscara y subrayado |
 | paint_row | table::paint_row; jugador, primeras filas de estudio default, filetes y marca roja |
 | paint_cell / split_seconds | table.rs; todas las métricas, nombre/ellipsis y unidad s separada |
 | Widget::{ingest_using,present,switch_session} | control.rs; project_cached y pestañas, sin gate por sequence |
 | app::{project_snapshot,wanted_size} | control.rs; retención de pausa y banda de 22 px |
-| eficiencia::Visual::frame | Visual::view con geometría estática; Motion se conecta en E5 |
+| eficiencia::Visual::frame | Visual::view con Frame puro de Motion; reducido usa Frame final sin reloj |
 
 Cada fila y celda tiene contenedor con pin y key propia; no hay claves duplicadas
 entre métricas repetidas. size_for anticipa foto/pestaña/bandas/PIT antes del recorte
@@ -129,7 +129,7 @@ Oráculos de celdas: baselines 43+21/43+19, marca 3/48/2/20, columnas lg
 texto/nombres ES/EN, elipsis solo donde GPUI, cápsulas Broadcast 145° [0,.65].
 Los colores se comparan con hex sRGB literal. Tras #2496 (c58a05690), el dorsal
 es #a5a5abff, no el #d2d2d6ff que producía el helper anterior: el oráculo no cambia.
-Sin reloj de animación en E3, con o sin movimiento reducido. E5 añadirá Tween.
+Sin reloj de animación en E3, con o sin movimiento reducido. E5 conecta Tween compartido.
 E4 retira las marcas dead_code puntuales al portar pies/bandas/ausencia/rail;
 E6 añade flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
 testers hasta completar E5/E6 y la comparación física de píxeles pendiente.
@@ -188,3 +188,36 @@ mediante el mismo clip por widget que renderer.rs:268–279. No cambia el helper
 - Plan decía valor clásico sin datos «-»; GPUI pinta «—» en view.rs:1502.
 - La fórmula simplificada sumaba el pie calculado al alto: GPUI fit conserva footer_height del estilo22; con 7 filas/slots de reserva43 el alto sigue274, no295, en model.rs:199–205. footer_height() calcula la reserva aparte.
 - La comprobación global de cajas no contemplaba el recorte1 px sin pie: GPUI da head_row43 en model.rs:486–490 y última fila253 en view.rs:463/522–525, con ventana252 (app.rs:303–313,575–578). Decisión del orquestador: test literal aparte.
+
+## E5: FLIP, presencia y reloj finito
+
+| GPUI | Rune E5 |
+| --- | --- |
+| motion_continues (motion.rs:235–241) | motion::motion_continues, misma identidad/etiqueta/Ready y sequence >= anterior |
+| Motion::update, presencia y FLIP (509–587) | motion::Motion::update; estado final de boxes conservado en presencia |
+| seed (693–701), frame_shared (710–724) | semilla sin animar, Frame quieto compartido por Arc |
+| frame, ghosts (727–797) | Frame::row devuelve Pose por identidad; Ghost guarda Row/top/alfa |
+| wake (804–830), parte FLIP/fade/exit | Wake::Frame mientras dura un canal; Idle al terminar; efectos/avisos pendientes E6 |
+| eficiencia::Visual::frame (104–133) | controlador sample/animate/schedule; reducido usa Frame final y ningún reloj |
+| view::paint_table y paint_row (508–525,983–986) | fantasmas antes de presencias; top y alfa vivos, cada capa con pin |
+| view::paint_pit_rail (1776–1786) | rail acompaña filas y fantasmas; multiplica alfa de presencia; canal PIT en E6 |
+
+FLIP usa [0,22;0,9;0,3;1], umbral0,5 y duración entera
+min(280+abs(from)·1,1,460) ms: 30 px→313 ms, 400 px→460 ms.
+Entrada/salida usa 200 ms EASE_OUT [0;0;0,58;1]. Se reutiliza Tween compartido:
+el test numérico contrasta las tres curvas con la bisección GPUI de30 iteraciones
+(tolerancia2e−6). Retarget y reentrada parten del valor vivo, sin salto.
+Sequence solo participa en la continuidad de GPUI; no cambia la proyección,
+el cache de Board ni la comparación estructural de Frame para repintar.
+Con foto atrasada y contenido distinto se rompe continuidad y se resiembra sin
+animar, como motion.rs:509–531. Una foto idéntica/solo metadatos no llega a
+Motion::update: Visual::ingest conserva same_visible, como eficiencia.rs:50–70.
+Sin canales, Frame no recorre las presencias; el reposo reutiliza el mismo Arc.
+Los tests usan Runtime CPU, pin y assert_inside_window durante FLIP/ghosts;
+el reloj acaba exactamente al final de sus canales y reducido nunca lo arma.
+No se modifica Motion de Vantare ni sus tests. E6 sigue pendiente (efectos y PIT).
+La entrada de handoff de E5 se entrega en el cuerpo del futuro PR, por orden de Isaac.
+
+## Erratas numéricas del plan/inventario E5
+
+- Inventario decía FLIP(0,5)≈0,93; GPUI da0,94859246 con [0,22;0,9;0,3;1] y la bisección de motion.rs:27–53.

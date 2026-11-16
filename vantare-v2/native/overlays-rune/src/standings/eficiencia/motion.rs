@@ -69,10 +69,12 @@ fn animate(from: f32, to: f32, now: f64, duration: f64, curve: [f32; 4]) -> Twee
     t
 }
 fn motion_continues(prev: &ContentPlan, next: &ContentPlan) -> bool {
-    prev.status==Status::Ready && next.status==Status::Ready
-        && prev.identity==next.identity && prev.session_label()==next.session_label()
+    prev.status == Status::Ready
+        && next.status == Status::Ready
+        && prev.identity == next.identity
+        && prev.session_label() == next.session_label()
         // lógica de continuidad de GPUI, no clave de proyección ni de caché
-        && next.sequence>=prev.sequence
+        && next.sequence >= prev.sequence
 }
 impl Motion {
     pub fn update(&mut self, content: &ContentPlan, visible: usize, now: f64) {

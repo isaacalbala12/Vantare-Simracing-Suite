@@ -361,7 +361,11 @@ mod tests {
         assert!((motion.notice_alpha(1.090) - 0.875).abs() < 1e-6);
         assert_eq!(motion.notice_alpha(2.0), 1.0);
         assert_eq!(motion.event(1.0), Some(Event::PersonalBest));
-        assert_eq!(motion.event(5.1), Some(Event::PersonalBest), "en su fundido");
+        assert_eq!(
+            motion.event(5.1),
+            Some(Event::PersonalBest),
+            "en su fundido"
+        );
         assert_eq!(motion.event(5.181), None, "4000 ms + 180 de fundido");
         assert_eq!(motion.flash(1.0), Some(1.0));
     }
@@ -401,7 +405,14 @@ mod revisited_tests {
         let mut motion = Motion::new(150.0, 1400.0);
         let prev = board(Tone::Gaining, 90.0, None);
         motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
-        motion.ingest(Some(&prev), &board(Tone::Gaining, 89.0, None), 0.0, [0.5, 0.0], 1.0, false);
+        motion.ingest(
+            Some(&prev),
+            &board(Tone::Gaining, 89.0, None),
+            0.0,
+            [0.5, 0.0],
+            1.0,
+            false,
+        );
         // A mitad de la vida del aviso (ya sin destello): el despertar es el fin.
         assert_eq!(motion.next_wake_full(3.0), Some(5.0));
     }
@@ -409,10 +420,31 @@ mod revisited_tests {
     #[test]
     fn crossing_remembers_neutral_and_keeps_the_previous_side() {
         let mut motion = Motion::new(150.0, 1400.0);
-        motion.ingest(None, &board(Tone::Gaining, 90.0, None), 0.0, [0.5, 0.0], 0.0, false);
-        motion.ingest(Some(&board(Tone::Gaining, 90.0, None)), &board(Tone::Neutral, 90.0, None), 0.0, [0.5, 0.0], 0.1, false);
+        motion.ingest(
+            None,
+            &board(Tone::Gaining, 90.0, None),
+            0.0,
+            [0.5, 0.0],
+            0.0,
+            false,
+        );
+        motion.ingest(
+            Some(&board(Tone::Gaining, 90.0, None)),
+            &board(Tone::Neutral, 90.0, None),
+            0.0,
+            [0.5, 0.0],
+            0.1,
+            false,
+        );
         assert_eq!(motion.cross(0.1).0, None, "sin cambio de lado");
-        motion.ingest(Some(&board(Tone::Neutral, 90.0, None)), &board(Tone::Losing, 90.0, None), 0.0, [0.5, 0.0], 0.2, false);
+        motion.ingest(
+            Some(&board(Tone::Neutral, 90.0, None)),
+            &board(Tone::Losing, 90.0, None),
+            0.0,
+            [0.5, 0.0],
+            0.2,
+            false,
+        );
         assert_eq!(motion.cross(0.2).0, Some(Tone::Losing));
     }
 
@@ -421,7 +453,14 @@ mod revisited_tests {
         let mut motion = Motion::new(150.0, 1400.0);
         let prev = board(Tone::Gaining, 90.0, None);
         motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
-        motion.ingest(Some(&prev), &board(Tone::Losing, 89.0, None), 0.0, [0.5, 0.0], 1.0, false);
+        motion.ingest(
+            Some(&prev),
+            &board(Tone::Losing, 89.0, None),
+            0.0,
+            [0.5, 0.0],
+            1.0,
+            false,
+        );
         assert_eq!(motion.event(1.0 + 4.0 + 0.179), Some(Event::PersonalBest));
         assert_eq!(motion.event(1.0 + 4.0 + 0.181), None);
         assert_eq!(motion.cross(1.0 + 0.7 + 0.349).0, Some(Tone::Losing));
@@ -434,7 +473,14 @@ mod revisited_tests {
         let mut motion = Motion::new(150.0, 1400.0);
         let prev = board(Tone::Gaining, 90.0, None);
         motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
-        motion.ingest(Some(&prev), &board(Tone::Gaining, 89.0, None), 0.0, [0.5, 0.0], 1.0, false);
+        motion.ingest(
+            Some(&prev),
+            &board(Tone::Gaining, 89.0, None),
+            0.0,
+            [0.5, 0.0],
+            1.0,
+            false,
+        );
         motion.settle();
         assert_eq!(motion.event(1.0), None, "clear_record retira el récord");
         assert_eq!(motion.flash(1.0), None);

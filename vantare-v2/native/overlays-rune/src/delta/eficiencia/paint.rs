@@ -150,18 +150,16 @@ pub(super) fn view(scene: &Scene) -> El {
         } else {
             (1.0, 0.3)
         };
-        root = root
-            .child(soot_at(x, 68.0, color, 0.4, 7.0, w, 5.0))
-            .child(
-                el().key("delta-fill")
-                    .pin(Some(x), Some(68.0), None, None)
-                    .size(w, 5.0)
-                    .radius(3.0)
-                    .linear_gradient(
-                        90.0_f32.to_radians(),
-                        [(0.0, Color { a, ..color }), (1.0, Color { a: b, ..color })],
-                    ),
-            );
+        root = root.child(soot_at(x, 68.0, color, 0.4, 7.0, w, 5.0)).child(
+            el().key("delta-fill")
+                .pin(Some(x), Some(68.0), None, None)
+                .size(w, 5.0)
+                .radius(3.0)
+                .linear_gradient(
+                    90.0_f32.to_radians(),
+                    [(0.0, Color { a, ..color }), (1.0, Color { a: b, ..color })],
+                ),
+        );
     }
     let scale_style = eficiencia::font(11.0, 400, 0.04);
     for (label, x) in [("-1.5", 16.0), ("0", 140.0), ("+1.5", 264.0)] {
@@ -278,7 +276,10 @@ fn notice(
                 style,
                 ink,
             )
-            .key(format!("{key}-{}", if is_label { "label" } else { "value" })),
+            .key(format!(
+                "{key}-{}",
+                if is_label { "label" } else { "value" }
+            )),
         );
     }
     root

@@ -10,7 +10,7 @@ use vantare_domain::{
     Snapshot,
     format::Preferences,
     geometry::Size,
-    pedals_telemetry::{ViewModel, WHEELS},
+    pedals_telemetry::{SettingsPresentation as _, ViewModel},
     widget_settings::{Settings as WidgetSettings, pedals_telemetry::Settings},
 };
 
@@ -24,22 +24,11 @@ pub(crate) struct PedalsTelemetry {
     assets: Option<Arc<rune::ImageCache>>,
 }
 
-fn project(settings: &Settings, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-    let mut vm = vantare_domain::pedals_telemetry::project(snapshot, prefs);
-    vm.steering_wheel = WHEELS
-        .iter()
-        .copied()
-        .find(|id| *id == settings.steering_wheel.as_str())
-        .unwrap_or("generic");
-    vm.show_clutch = settings.show_clutch;
-    vm
-}
-
 impl PedalsTelemetry {
     fn new(settings: &Settings, prefs: Preferences, reduced: bool, clock: f64) -> Self {
         let settings = settings.normalized();
         let default = Snapshot::default();
-        let vm = project(&settings, &default, prefs);
+        let vm = settings.project(&default, prefs);
         let mut motion = scene::Motion::new(reduced);
         motion.update(&vm, default.epoch, clock);
         let scene = scene::sample(&vm, &motion, clock);
@@ -77,7 +66,7 @@ impl PedalsTelemetry {
         update
     }
     fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
-        let vm = project(&self.settings, snapshot, self.prefs);
+        let vm = self.settings.project(snapshot, self.prefs);
         self.motion.update(&vm, snapshot.epoch, clock);
         self.vm = vm;
         self.settle(clock)

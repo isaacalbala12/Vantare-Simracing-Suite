@@ -353,7 +353,10 @@ fn waiting_lines(board: Option<&Board>, options: &Options, w: &Words, out: &mut 
                 "No car of your own · spectator",
             )
         } else {
-            w.pick("Esperando al simulador", "Waiting for the simulator")
+            vantare_domain::format::waiting_text(
+                if w.es { Language::Es } else { Language::En },
+                false,
+            )
         }
         .into(),
         right: None,

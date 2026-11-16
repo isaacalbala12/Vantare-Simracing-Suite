@@ -1,4 +1,4 @@
-﻿# Runs entirely under an injected QA root; no release is published.
+# Runs entirely under an injected QA root; no release is published.
 #requires -Version 5.1
 param([Parameter(Mandatory)][string]$QaRoot,[string]$Verifier,[string]$ServicesExecutable,[string]$PackageVerifier)
 $ErrorActionPreference='Stop'
@@ -8,6 +8,8 @@ $qa=Assert-BuildPath $QaRoot
 if(-not ($qa.StartsWith('D:\VantareServer\qa\',[StringComparison]::OrdinalIgnoreCase) -or ($env:RUNNER_TEMP -and $qa.StartsWith(([IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')+'\'),[StringComparison]::OrdinalIgnoreCase)))){throw 'Test exige raíz QA'}
 $root=Join-Path $qa ('build-tooling-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root)|Out-Null
+& (Join-Path $PSScriptRoot 'build-zip-tests.ps1') -QaRoot $root
+if($PSVersionTable.PSVersion.Major -ge 7){& (Join-Path $PSScriptRoot 'measure-hub-package-tests.ps1') -QaRoot $root}
 $probe=Join-Path $root 'stdin-probe.ps1'
 [IO.File]::WriteAllText($probe,'$s=[Console]::OpenStandardInput();$b=New-Object byte[] 3;$n=$s.Read($b,0,3);[Console]::Write([BitConverter]::ToString($b,0,$n))',[Text.UTF8Encoding]::new($false))
 $shell=if($PSVersionTable.PSVersion.Major -eq 5){Join-Path $PSHOME 'powershell.exe'}else{Join-Path $PSHOME 'pwsh.exe'}

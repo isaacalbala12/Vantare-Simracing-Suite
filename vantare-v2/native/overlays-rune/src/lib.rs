@@ -16,6 +16,7 @@ pub mod relative;
 mod renderer;
 pub mod stats;
 pub mod vantare;
+mod widget;
 
 #[cfg(test)]
 mod testdata;

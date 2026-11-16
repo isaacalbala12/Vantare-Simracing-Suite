@@ -11,7 +11,12 @@ Para Relative, reutilizar `relative::scene` sin modificarla para cada Look.
 `VisualRow.slot` es una coordenada interpolada del layout canónico, no un índice;
 el layout entrega los objetivos a Motion::update. Pulso (`traffic_opacity`) y
 destello (`alert`) mantienen intensidades separadas y se pintan superpuestos.
-No crear un trait ni un framework común para los 17 widgets.
+Implementar el contrato existente `crate::widget::Widget` dentro de la carpeta
+del widget; no crear otro trait ni un framework. Añadir una sola entrada al
+match `renderer::constructor` con `<MiWidget as Widget>::new` y la guarda de Look
+que corresponda. Soporte y creación usan ese mismo registro; `new` solo se llama
+al necesitar una instancia, no al consultar soporte. `Update` distingue
+reconstrucción (`build`) de cambio de píxeles (`pixels`).
 
 Copiar: `Painters`, `Meter`, test `rendered_frame`, primitivas `vantare::paint`,
 `Tween` finito y política de movimiento reducido.

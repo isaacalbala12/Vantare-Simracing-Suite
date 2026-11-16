@@ -15,11 +15,7 @@ use vantare_domain::{
 
 const PAUSE_HEIGHT: f32 = 22.0;
 
-#[derive(Default)]
-pub(crate) struct Update {
-    pub build: bool,
-    pub pixels: bool,
-}
+pub(crate) use crate::widget::Update;
 
 pub(crate) struct Relative {
     settings: Settings,
@@ -160,6 +156,52 @@ impl Relative {
         if let Some(due) = self.motion.next_wake(clock, self.painter.has_strip()) {
             tx.wake_at(due);
         }
+    }
+}
+
+impl crate::widget::Widget for Relative {
+    fn new(
+        settings: &vantare_domain::widget_settings::Settings,
+        prefs: Preferences,
+        reduced: bool,
+        hz: u16,
+        clock: f64,
+    ) -> Option<Box<dyn crate::widget::Widget>> {
+        let vantare_domain::widget_settings::Settings::Relative(settings) = settings else {
+            return None;
+        };
+        Some(Box::new(Relative::new(settings, prefs, reduced, hz, clock)))
+    }
+    fn configured(
+        &self,
+        settings: &vantare_domain::widget_settings::Settings,
+        prefs: Preferences,
+    ) -> bool {
+        let vantare_domain::widget_settings::Settings::Relative(settings) = settings else {
+            return false;
+        };
+        Relative::configured(self, settings, prefs)
+    }
+    fn size(&self) -> Size {
+        Relative::size(self)
+    }
+    fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
+        Relative::size_for(self, snapshot)
+    }
+    fn policy(&mut self, reduced: bool, hz: u16, clock: f64) -> Update {
+        Relative::policy(self, reduced, hz, clock)
+    }
+    fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
+        Relative::update(self, snapshot, clock)
+    }
+    fn animate(&mut self, clock: f64) -> Update {
+        Relative::animate(self, clock)
+    }
+    fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
+        Relative::schedule(self, clock, tx);
+    }
+    fn view(&self) -> El {
+        Relative::view(self)
     }
 }
 

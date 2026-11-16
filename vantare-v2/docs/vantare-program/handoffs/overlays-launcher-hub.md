@@ -2911,3 +2911,16 @@ Emisor y worker comparten el mismo reloj de la pregunta. Regresiones con barrera
 plazo cumplido antes/después del compromiso y publicación fallida de la pregunta;
 la limpieza de directorios en Drop no provoca otro panic. Sin cambios de contrato
 v33 ni del plazo exportado para D. Gates del ajuste y head vigentes en #2281.
+
+## VANTA-144 · contrato Widget de Rune (16/11/2026)
+
+Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa
+Painters, Entry con Box<dyn Widget> y un único match sobre Settings para seleccionar
+constructor. La consulta de soporte usa ese selector sin crear instancias.
+Solo Relative Vantare está migrado; Eficiencia y otros Kind siguen fuera.
+Update se traslada tal cual y Relative lo reexporta; los métodos y tests actuales
+se conservan. Test de despacho positivo y dos negativos; sin captura porque
+--capture-scene no existe en la base. PR draft, head y gates en #2333 y el PR.
+No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
+Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
+Sin gráficos, Plane, merge, promoción ni release propios.

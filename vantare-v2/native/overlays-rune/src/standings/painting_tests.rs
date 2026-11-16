@@ -15,7 +15,11 @@ pub(super) fn config(name: &str) -> Config {
     }
 }
 fn photo(name: &str) -> Snapshot {
-    super::tests::named_photos().into_iter().find(|(caption, _)| caption == name).expect(name).1
+    super::tests::named_photos()
+        .into_iter()
+        .find(|(caption, _)| caption == name)
+        .expect(name)
+        .1
 }
 pub(super) fn host(mut widget: Standings, photo: &Snapshot) -> Runtime<Standings> {
     widget.update(photo, 0.0);
@@ -323,7 +327,7 @@ fn waiting_keeps_four_or_five_skeleton_rows_and_no_clock_when_lost() {
 fn pause_band_adds_twenty_two_pixels_only_while_paused_and_retains_the_live_scene() {
     for (preset, width, height) in [
         ("compact", 340.0, 289.0),
-        ("standard", 520.0, 307.0),
+        ("standard", 520.0, 289.0),
         ("expanded", 900.0, 307.0),
     ] {
         for (language, title) in [(Language::Es, "EN PAUSA"), (Language::En, "PAUSED")] {
@@ -384,7 +388,7 @@ fn pause_band_adds_twenty_two_pixels_only_while_paused_and_retains_the_live_scen
 }
 #[test]
 fn compact_and_standard_bound_banner_footer_and_waiting_to_literal_gpui_widths() {
-    for (preset, width, height) in [("compact", 340.0, 289.0), ("standard", 520.0, 307.0)] {
+    for (preset, width, height) in [("compact", 340.0, 289.0), ("standard", 520.0, 289.0)] {
         for (name, expected) in [
             ("FCY · amarilla en todo el circuito", "Gaps congelados"),
             ("Jugador en boxes", "En boxes"),
@@ -435,14 +439,35 @@ fn compact_session_footer_keeps_gpui_abbreviations_track_pole_own_gap_and_stop()
             ..Preferences::default()
         };
         let photo = photo("Carrera · vuelta 14/38");
-        let rt = host(Standings::new(&config("compact"), prefs), &photo);
+        // GPUI: XS con última vuelta mide 391 (<400), por tanto pie compacto.
+        let mut narrow = config("compact");
+        for column in narrow.columns.as_mut().unwrap() {
+            if column.metric_id == "driverName" {
+                column.width_preset = "xs".into();
+            }
+            if column.metric_id == "lastLap" {
+                column.enabled = true;
+            }
+        }
+        let rt = host(Standings::new(&narrow, prefs), &photo);
+        assert_eq!(rt.state.size().width, 391.0);
         let actual = texts(&rt);
         assert!(actual.iter().any(|t| t == fastest), "{actual:?}");
         assert!(actual.iter().any(|t| t == compact_track), "{actual:?}");
         assert!(!actual.iter().any(|t| t == track)); // GPUI compacto omite Pista/Track.
-        let rt = host(Standings::new(&config("standard"), prefs), &photo);
+        let mut standard = config("standard");
+        standard
+            .columns
+            .as_mut()
+            .unwrap()
+            .iter_mut()
+            .find(|c| c.metric_id == "bestLap")
+            .unwrap()
+            .enabled = true;
+        let rt = host(Standings::new(&standard, prefs), &photo);
+        assert_eq!(rt.state.size().width, 520.0);
         assert!(texts(&rt).iter().any(|t| t == track));
-        let mut w = Standings::new(&config("compact"), prefs);
+        let mut w = Standings::new(&narrow, prefs);
         w.update(&photo, 0.0);
         let b = Arc::make_mut(w.scene.board.as_mut().unwrap());
         b.qualifying = true;
@@ -495,12 +520,12 @@ fn missing_stale_and_paused_keep_gpui_waiting_rules_without_a_clock() {
             let bars = rt
                 .elements()
                 .iter()
-                .filter(|e| e.fill == Style::compiled().colors.skeleton)
+                .filter(|e| e.fill == Style::compiled().colors.skeleton && e.rect[3] == 8.0)
                 .count();
             assert_eq!(
                 bars,
                 if skeletons {
-                    if preset == "compact" { 16 } else { 20 }
+                    if preset == "compact" { 12 } else { 15 }
                 } else {
                     0
                 },

@@ -85,6 +85,31 @@ pub fn snapshot_to_json(snapshot: &Snapshot) -> Result<String, Error> {
     Ok(serde_json::to_string(&dto::SnapshotDto::from(snapshot))?)
 }
 
+/// Foto DTO o secuencia no vacía; cada miembro conserva la validación del IPC.
+///
+/// # Errors
+/// JSON inválido, secuencia vacía o una foto que no supera la validación del DTO.
+pub fn snapshots_from_json(json: &str) -> Result<Vec<Snapshot>, String> {
+    if json.trim_start().starts_with('[') {
+        let values: Vec<serde_json::Value> =
+            serde_json::from_str(json).map_err(|e| e.to_string())?;
+        if values.is_empty() {
+            return Err("la escena no contiene fotos".into());
+        }
+        values
+            .into_iter()
+            .enumerate()
+            .map(|(i, value)| {
+                snapshot_from_saved_json(&value.to_string()).map_err(|e| format!("foto {i}: {e}"))
+            })
+            .collect()
+    } else {
+        snapshot_from_saved_json(json)
+            .map(|snapshot| vec![snapshot])
+            .map_err(|e| e.to_string())
+    }
+}
+
 /// Lee exclusivamente el DTO vigente del cable; no migra versiones antiguas.
 ///
 /// # Errors

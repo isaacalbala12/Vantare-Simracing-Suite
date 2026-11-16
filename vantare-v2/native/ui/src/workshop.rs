@@ -46,28 +46,7 @@ struct SceneFrame {
     snapshot: serde_json::Value,
 }
 
-/// Foto DTO o secuencia no vacía; cada miembro conserva la validación del IPC.
-pub fn snapshots_from_json(json: &str) -> Result<Vec<Snapshot>, String> {
-    if json.trim_start().starts_with('[') {
-        let values: Vec<serde_json::Value> =
-            serde_json::from_str(json).map_err(|e| e.to_string())?;
-        if values.is_empty() {
-            return Err("la escena no contiene fotos".into());
-        }
-        values
-            .into_iter()
-            .enumerate()
-            .map(|(i, value)| {
-                vantare_ipc::snapshot_from_saved_json(&value.to_string())
-                    .map_err(|e| format!("foto {i}: {e}"))
-            })
-            .collect()
-    } else {
-        vantare_ipc::snapshot_from_saved_json(json)
-            .map(|snapshot| vec![snapshot])
-            .map_err(|e| e.to_string())
-    }
-}
+pub use vantare_ipc::snapshots_from_json;
 
 fn modified(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).and_then(|m| m.modified()).ok()

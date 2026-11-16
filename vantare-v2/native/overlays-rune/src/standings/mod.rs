@@ -1,3 +1,5 @@
+#[allow(dead_code)] // Temporal: E3 registra Eficiencia; E1/E2 ejercitan el port con tests.
+mod eficiencia;
 mod layout;
 mod motion;
 #[cfg(test)]

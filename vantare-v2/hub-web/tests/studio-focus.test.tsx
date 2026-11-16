@@ -144,6 +144,19 @@ describe("Studio Foco structure", () => {
       natural.width / natural.height,
     );
   });
+  it("keeps heading levels in order from the overlay title to its groups", async () => {
+    mount();
+    await screen.findByRole("heading", { name: new RegExp(t.widgetLook) });
+    const levels = Array.from(
+      document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"),
+    ).map((heading) => Number(heading.tagName.slice(1)));
+    expect(levels[0]).toBe(1);
+    for (let index = 1; index < levels.length; index++)
+      expect(
+        levels[index],
+        `heading ${index + 1} skips a level`,
+      ).toBeLessThanOrEqual(levels[index - 1] + 1);
+  });
   it("uses real Tab, arrows, Home/End and Enter without moving focus on a click", async () => {
     mount();
     const user = userEvent.setup();

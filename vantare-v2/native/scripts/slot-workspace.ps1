@@ -167,7 +167,10 @@ function Invoke-VantareCleanPackages {
     foreach ($directory in $profileDirectories) {
         $fingerprints = Join-Path $directory.FullName '.fingerprint'
         foreach ($name in $Names) {
-            $left = @(Get-ChildItem -LiteralPath $fingerprints -Filter "$name-*" -Force -ErrorAction SilentlyContinue)
+            $pattern = '^' + [regex]::Escape($name) + '-[0-9a-f]+$'
+            $left = @(Get-ChildItem -LiteralPath $fingerprints -Force -ErrorAction SilentlyContinue | Where-Object {
+                $_.Name -match $pattern
+            })
             if ($left.Count) {
                 throw "Quedan artefactos de $name en $($directory.Name)/.fingerprint tras la limpieza."
             }

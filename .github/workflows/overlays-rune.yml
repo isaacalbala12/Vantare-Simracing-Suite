@@ -105,7 +105,7 @@ jobs:
         working-directory: vantare-v2/native/overlays-rune
         run: cargo build --locked --bin vantare-overlays-rune
       - name: Compilar Release y verificar subsistema Windows (sin ejecutarlo)
-        if: steps.scope.outputs.needed != 'false'
+        if: github.event_name != 'pull_request'
         working-directory: vantare-v2/native/overlays-rune
         run: |
           cargo build --locked --release --bin vantare-overlays-rune

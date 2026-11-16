@@ -219,9 +219,13 @@ fuentes y ajustes del producto. No usa núcleo, derechos, feed, monitor ni sonid
 El guard `VANTARE_SIN_GRAFICOS=1` sigue siendo la primera operación del ejecutable;
 no ejecutarlo en el servidor aunque Offscreen no abra ventana: requiere GPU.
 
-```sh
-vantare-overlays-rune --capture-scene --layout scene.layout.json --instance variant --snapshot photo.json --output scene.png --scale 1.25
-vantare-overlays-rune --capture-scene --widget relative --settings settings.json --sequence photos.tsv --at-ms 500 --motion true --wall-ms 1767225600000 --output sequence.png
+En Release no hay consola: E/F lanzan con Command y pipes para recoger stderr
+(código de proceso + token). Ejemplo PowerShell con redirección explícita:
+
+```powershell
+$run = Start-Process -FilePath ./vantare-overlays-rune.exe -ArgumentList @('--capture-scene', '--layout', 'scene.layout.json', '--instance', 'variant', '--snapshot', 'photo.json', '--output', 'scene.png', '--scale', '1.25') -WindowStyle Hidden -Wait -PassThru -RedirectStandardError ./capture.stderr.txt
+$run.ExitCode
+Get-Content ./capture.stderr.txt
 ```
 
 `--layout` exige una instancia o un `--instance` existente. La alternativa
@@ -258,13 +262,15 @@ Contrato del código de proceso y token de estado en stderr (detalle humano opci
 
 Disponible en debug y Release: solo se retiran los cfg del módulo/despacho.
 Windows Release conserva windows_subsystem=windows (sin consola); CI compila el
-binario optimizado y verifica PE Subsystem=2 sin ejecutarlo. El guard sigue
+binario optimizado y verifica PE Subsystem=2 sin ejecutarlo solo en merge_group
+y push a nightly. Los PR verifican el atributo mediante un test CPU barato. El guard sigue
 antes de argumentos/hilos/GPU y nunca se desactiva en el servidor.
 
 Una caché local se adjunta antes de policy/update/view. capture_images devuelve
 los mismos handles que el pintor; se esperan decodificación Y publicación Pixels
 antes del frame. Mapa/Daños conservan sus paths nativos; el volante entrega su
-SVG real. Un plazo único de 10 s acota espera/cierre por canal, sin sleeps.
+SVG real. Cada fase wait y shutdown renueva su plazo de 10 s; un render lento
+no consume el plazo del cierre. Se espera por canal, sin sleeps.
 Al éxito o error se sueltan widget/Runtime/handles y caché; la última copia del
 waker señala el final de los workers. La lectura GPU acaba antes de liberar su
 dispositivo y antes de publicar el PNG. No hay App/ventana, feed, sonido ni hijos.
@@ -272,6 +278,7 @@ dispositivo y antes de publicar el PNG. No hay App/ventana, feed, sonido ni hijo
 Rune solo ofrece un encoder por ruta que trunca: se usa dentro de un directorio
 temporal creado exclusivamente y se publica el PNG por File::create_new real.
 No hay otro encoder ni dependencias. PNG codificado ≤65 MiB; RGBA sigue ≤64 MiB.
+Se valida que el padre de salida existe y es un directorio antes de crear GPU.
 No se crea sidecar. Las salidas anteriores permanecen intactas, incluso si dos
 capturas compiten por la misma ruta. Un fallo de escritura puede dejar una salida
 incompleta reservada: nunca se anuncia OK ni se sobrescribe al reintentar.

@@ -92,6 +92,16 @@ mod tests {
     use rune::{Cx, El, Env, Runtime, col, text};
 
     #[test]
+    fn windows_gui_subsystem_attribute_is_release_only() {
+        assert_eq!(
+            include_str!("main.rs").lines().next(),
+            Some(
+                r##"#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]"##
+            )
+        );
+    }
+
+    #[test]
     fn server_guard_rejects_graphics_without_reading_arguments() {
         assert!(graphics_disabled(Some(OsStr::new("1"))));
         assert!(!graphics_disabled(None));

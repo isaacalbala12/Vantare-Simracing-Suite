@@ -285,7 +285,7 @@ impl Drop for WorkerExit {
         let _ = self.0.send(AssetEvent::Stopped);
     }
 }
-// One cache, one wait budget and no extra threads. Rune owns its decoders.
+// One cache, a fresh budget per phase and no extra threads. Rune owns its decoders.
 struct Assets {
     cache: Option<Arc<rune::ImageCache>>,
     events: mpsc::Receiver<AssetEvent>,
@@ -312,7 +312,8 @@ impl Assets {
             .recv_timeout(self.deadline.saturating_duration_since(Instant::now()))
             .map_err(|e| Failure::capture(format!("assets/cierre: {e}")))
     }
-    fn wait(&self, images: &[rune::Image]) -> Result<(), Failure> {
+    fn wait(&mut self, images: &[rune::Image]) -> Result<(), Failure> {
+        self.deadline = Instant::now() + Duration::from_secs(10);
         loop {
             let mut published = true;
             for image in images {
@@ -335,6 +336,7 @@ impl Assets {
         }
     }
     fn shutdown(&mut self) -> Result<(), Failure> {
+        self.deadline = Instant::now() + Duration::from_secs(10);
         if self.stopped {
             return Ok(());
         }
@@ -589,6 +591,12 @@ fn execute(args: &[OsString]) -> Result<(), Failure> {
         id,
     )?;
     // Complete validation precedes even the fast existing-file check.
+    if !std::fs::metadata(output_parent(&request.output))
+        .map_err(Failure::capture)?
+        .is_dir()
+    {
+        return Err(Failure::capture("el padre de salida no es un directorio"));
+    }
     if request.output.try_exists().map_err(Failure::capture)? {
         return Err(Failure::capture("conservar evidencia anterior"));
     }
@@ -597,6 +605,12 @@ fn execute(args: &[OsString]) -> Result<(), Failure> {
     let cleanup = capture.finish();
     cleanup?;
     publish_png(&request.output, size, &pixels?)
+}
+fn output_parent(output: &Path) -> &Path {
+    output
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
 }
 struct TempPng {
     dir: PathBuf,
@@ -637,8 +651,7 @@ impl Drop for TempPng {
 }
 fn publish_png(output: &Path, size: (u32, u32), pixels: &[u8]) -> Result<(), Failure> {
     validate_pixels(pixels, size.0, size.1).map_err(Failure::capture)?;
-    let temp = TempPng::new(output.parent().unwrap_or_else(|| Path::new(".")))
-        .map_err(Failure::capture)?;
+    let temp = TempPng::new(output_parent(output)).map_err(Failure::capture)?;
     let result = (|| {
         // Rune's writer only accepts a path and truncates it. Encode privately, then
         // publish through our exclusive handle; no new encoder or dependency.
@@ -659,6 +672,18 @@ fn publish_png(output: &Path, size: (u32, u32), pixels: &[u8]) -> Result<(), Fai
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct TestDir(TempPng);
+    impl TestDir {
+        fn new() -> Self {
+            Self(TempPng::new(&std::env::temp_dir()).unwrap())
+        }
+    }
+    impl Drop for TestDir {
+        fn drop(&mut self) {
+            // Owned directory came from exclusive creation, never an existing test/user folder.
+            let _ = std::fs::remove_dir_all(&self.0.dir);
+        }
+    }
     const PHOTO: &str = include_str!("../../ui/fixtures/relative.snapshot.json");
     fn single(layout: &Layout, snapshot: &Snapshot, scale: f32) -> Result<Capture, Failure> {
         prepare(
@@ -1021,8 +1046,8 @@ mod tests {
     }
     #[test]
     fn disk_inputs_use_ipc_settings_and_reject_missing_demo_without_gpu() {
-        let root = std::env::temp_dir().join(format!("vantare-capture-a-{}", std::process::id()));
-        std::fs::create_dir_all(&root).unwrap();
+        let folder = TestDir::new();
+        let root = &folder.0.dir;
         let settings = root.join("settings.json");
         let photo = root.join("photo.json");
         let seq = root.join("sequence.tsv");
@@ -1071,7 +1096,6 @@ mod tests {
             2,
             "total exceeds 64 MiB"
         );
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn virtual_clock_runs_scheduled_alerts_with_the_fixed_wall_hook() {
@@ -1196,8 +1220,8 @@ mod tests {
     }
     #[test]
     fn run_rejects_unsupported_before_demo_and_validates_before_existing_output() {
-        let root = std::env::temp_dir().join(format!("rune-capture-order-{}", std::process::id()));
-        std::fs::create_dir_all(&root).unwrap();
+        let folder = TestDir::new();
+        let root = &folder.0.dir;
         let settings = root.join("settings.json");
         let output = root.join("out.png");
         std::fs::write(&settings, "{}").unwrap();
@@ -1219,7 +1243,6 @@ mod tests {
         assert_eq!(no_demo.code, 3);
         assert_eq!(no_demo.token, "NO_DEMO");
         assert_eq!(std::fs::read(&output).unwrap(), b"KEEP EVIDENCE");
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn assets_wait_for_pixels_and_shutdown_even_with_queued_work_or_decode_failure() {
@@ -1229,7 +1252,9 @@ mod tests {
             .as_ref()
             .unwrap()
             .rgba(128, 128, vec![0; 128 * 128 * 4]);
+        assets.deadline = Instant::now() - Duration::from_secs(1);
         assets.wait(std::slice::from_ref(&image)).unwrap();
+        assert!(assets.deadline > Instant::now());
         assert_eq!(image.size(), Some([128, 128]));
         assert_eq!(image.pixels().size(), (128, 128));
         assets.shutdown().unwrap();
@@ -1320,5 +1345,71 @@ mod tests {
         });
         assert_eq!(std::fs::read_dir(&folder.dir).unwrap().count(), 1);
         folder.remove().unwrap();
+    }
+    #[test]
+    fn shutdown_refreshes_an_expired_phase_after_the_worker_stopped() {
+        let (tx, events) = mpsc::channel();
+        tx.send(AssetEvent::Stopped).unwrap();
+        drop(tx);
+        let mut assets = Assets {
+            cache: None,
+            events,
+            deadline: Instant::now() - Duration::from_secs(1),
+            stopped: false,
+        };
+        assets.shutdown().unwrap();
+        assert!(assets.stopped);
+        assert!(
+            assets.deadline > Instant::now(),
+            "shutdown owns a fresh ten-second phase"
+        );
+    }
+    #[test]
+    fn valid_run_preserves_existing_output_and_rejects_bad_parents_before_gpu() {
+        let folder = TestDir::new();
+        let settings = folder.0.dir.join("settings.json");
+        let snapshot = folder.0.dir.join("photo.json");
+        let output = folder.0.dir.join("out.png");
+        std::fs::write(&settings, "{}").unwrap();
+        std::fs::write(&snapshot, PHOTO).unwrap();
+        std::fs::write(&output, b"KEEP VALID INPUT EVIDENCE").unwrap();
+        let invoke = |output: &Path| {
+            run(&args(&[
+                "--widget",
+                "relative",
+                "--settings",
+                settings.to_str().unwrap(),
+                "--snapshot",
+                snapshot.to_str().unwrap(),
+                "--output",
+                output.to_str().unwrap(),
+            ]))
+        };
+        let error = invoke(&output).unwrap_err();
+        assert_eq!(error.code, 5);
+        assert_eq!(
+            std::fs::read(&output).unwrap(),
+            b"KEEP VALID INPUT EVIDENCE"
+        );
+        assert_eq!(
+            invoke(&folder.0.dir.join("missing/out.png"))
+                .unwrap_err()
+                .code,
+            5
+        );
+        assert_eq!(invoke(&settings.join("out.png")).unwrap_err().code, 5);
+        assert_eq!(output_parent(Path::new("out.png")), Path::new("."));
+    }
+    #[test]
+    fn test_directories_are_removed_on_assertion_unwind() {
+        let folder = TestDir::new();
+        let path = folder.0.dir.clone();
+        std::fs::write(path.join("fixture.json"), "{}").unwrap();
+        let failed = std::panic::catch_unwind(move || {
+            let _owned = folder;
+            panic!("simulate a failed test assertion");
+        });
+        assert!(failed.is_err());
+        assert!(!path.exists());
     }
 }

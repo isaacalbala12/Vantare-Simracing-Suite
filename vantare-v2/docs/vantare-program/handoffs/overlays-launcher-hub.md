@@ -3219,6 +3219,17 @@ Mac: fmt, Clippy -D warnings y 443 tests CPU PASS sobre base 6de5a4c2e;
 E/v46 usa la misma CLI; QA/medición de F aparte. #2351 entregado a otro agente.
 Sin gráficos en servidor, promoción, release ni cambios Plane propios.
 
+### #2484 · revisión Sonnet de B (16/11/2026)
+
+Plazo renovado de 10 s por fase wait/shutdown, con regresión de cierre vencido.
+Release no tiene consola: E/F invocan con Command y pipes o Start-Process con
+Wait/PassThru/RedirectStandardError. Root autoriza build Release/PE solo en
+merge_group y push nightly; PR usa test CPU del atributo windows_subsystem.
+Tests de run válido/salida existente, padres inválidos antes de GPU y guard
+Drop para limpiar fixtures incluso con aserción fallida. Sin cambios de tokens,
+códigos, host/domain/ipc o pintores. Mac: fmt, Clippy -D warnings y 447 tests
+CPU PASS; 28 tests de clasificación PASS. Nuevo SHA/CI en el mismo PR.
+
 ## VANTA-144 · contrato Widget de Rune (16/11/2026)
 
 Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa

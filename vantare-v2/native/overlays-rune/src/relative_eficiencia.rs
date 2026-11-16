@@ -1,4 +1,4 @@
-//! Dibujo de Relative Eficiencia. Recibe la proyecciÃ³n canÃ³nica; no ordena coches,
+//! Dibujo de Relative Eficiencia. Recibe la proyección canónica; no ordena coches,
 //! no calcula gaps ni cadencias. La captura usa exactamente esta vista.
 use crate::eficiencia::{self as kit, INK, MUTED, baseline, color, fit, font, label, rect, width};
 use crate::relative::scene::{AlertKind, Scene, VisualRow};
@@ -70,7 +70,7 @@ pub fn view(board: &Board, settings: &Settings, language: Language) -> El {
     view_rows(board, settings, language, &rows)
 }
 
-/// Solo pinta muestras del movimiento comÃºn; slot ya es una coordenada del layout.
+/// Solo pinta muestras del movimiento común; slot ya es una coordenada del layout.
 pub(crate) fn view_scene(scene: &Scene, settings: &Settings, language: Language) -> El {
     let panel = view_rows(&scene.board, settings, language, &scene.rows);
     if !scene.paused {
@@ -238,7 +238,7 @@ pub fn view_rows(board: &Board, settings: &Settings, language: Language, rows: &
                 .filter(|((_, v, _), _)| !v.is_empty())
             {
                 if l.is_empty() && stale {
-                    // La calidad de sesiÃ³n y tiempo es independiente en GPUI.
+                    // La calidad de sesión y tiempo es independiente en GPUI.
                     let offset = if board.session.is_empty() || board.remaining.is_empty() {
                         0.0
                     } else {
@@ -315,7 +315,7 @@ fn badge(row: &Row, language: Language) -> Option<String> {
         .map(|v| {
             format!(
                 "{}{} {}",
-                if v < 0 { "âˆ’" } else { "+" },
+                if v < 0 { "−" } else { "+" },
                 v.unsigned_abs(),
                 if language == Language::Es { "V" } else { "L" }
             )
@@ -713,8 +713,8 @@ mod tests {
         view(&scene.board, &scene.settings, scene.language)
     }
     fn scene(settings: Settings) -> Scene {
-        // La proyecciÃ³n pertenece a domain; aquÃ­ se fijan solo seÃ±ales visibles
-        // para probar texto, calidad y colocaciÃ³n sin aÃ±adir otro simulador.
+        // La proyección pertenece a domain; aquí se fijan solo señales visibles
+        // para probar texto, calidad y colocación sin añadir otro simulador.
         let mut board =
             vantare_domain::relative::project(&Snapshot::default(), Preferences::default());
         board.track = "SPA-FRANCORCHAMPS".into();
@@ -737,7 +737,7 @@ mod tests {
                 };
                 row.position = "12".into();
                 row.number = "99".into();
-                row.driver = "AndrÃ© Lotterer".into();
+                row.driver = "André Lotterer".into();
                 row.class = "HYPERCAR".into();
                 row.gap = "+1.20".into();
                 row.best_lap = "2:01.456".into();
@@ -808,7 +808,7 @@ mod tests {
                 for x in 0..60 {
                     for y in 0..4 {
                         rt.text.glyphs(
-                            "â€¦",
+                            "…",
                             style,
                             scale,
                             [x as f32 / 60.0, y as f32 / 4.0],
@@ -905,7 +905,7 @@ mod tests {
                     assert_eq!(rect, [0.0, 36.0 + slot as f32 * 29.0, 470.0, 29.0]);
                     assert!(rect[1] + rect[3] <= size.1 - 38.0);
                 }
-                // NingÃºn loop ni timer de pintura de este Look tras asentarse.
+                // Ningún loop ni timer de pintura de este Look tras asentarse.
                 for _ in 0..30 {
                     assert!(!rt.frame(1.0));
                 }
@@ -925,10 +925,10 @@ mod tests {
                 .find(|e| e.key.as_deref() == Some(key))
                 .unwrap()
         };
-        assert_eq!(cell("car-0-cell-2").text.as_deref(), Some("ANDRÃ‰ LOTTERER"));
+        assert_eq!(cell("car-0-cell-2").text.as_deref(), Some("ANDRÉ LOTTERER"));
         assert_eq!(cell("car-0-cell-3").text.as_deref(), Some("+1.20"));
         assert_eq!(cell("car-0-cell-4").text.as_deref(), Some("2:01.456"));
-        assert_eq!(cell("car-0-lap-delta").text.as_deref(), Some("âˆ’2 V"));
+        assert_eq!(cell("car-0-lap-delta").text.as_deref(), Some("−2 V"));
         assert!((cell("car-0-cell-3").text_color.unwrap().a - 0.6).abs() < 0.001);
         assert!(
             rt.presented("car-3-lap-delta").is_none(),
@@ -945,7 +945,7 @@ mod tests {
             runtime(english, 1.0)
                 .elements()
                 .iter()
-                .any(|e| e.text.as_deref() == Some("âˆ’2 L"))
+                .any(|e| e.text.as_deref() == Some("−2 L"))
         );
     }
 
@@ -1012,7 +1012,7 @@ mod tests {
             .map(|n| InfoCell {
                 id: n.to_string(),
                 label: "PISTA".into(),
-                value: "26 Â°C".into(),
+                value: "26 °C".into(),
                 stale: n == 0,
             })
             .collect();
@@ -1055,10 +1055,10 @@ mod tests {
                 None,
             );
             assert!(board.status.is_none());
-            assert_eq!(board.track, "SEBRING", "el rÃ³tulo lo normaliza domain");
+            assert_eq!(board.track, "SEBRING", "el rótulo lo normaliza domain");
             assert!(board.slots.iter().flatten().any(|r| r.side == Side::Player));
             for scale in [1.0, 1.25, 1.5] {
-                let mut rt = runtime(
+                let rt = runtime(
                     Scene {
                         board: (*board).clone(),
                         settings: settings.clone(),

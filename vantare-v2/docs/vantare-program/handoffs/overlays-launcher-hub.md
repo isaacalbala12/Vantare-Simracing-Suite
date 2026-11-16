@@ -3262,6 +3262,16 @@ deslizamiento por distancia. Se envía esquema previo para ampliar ese Timing
 existente; scene.rs y crate::motion permanecen sin cambios hasta su aprobación.
 #2391 sigue en 7414d2c26, CI completa verde y revisión del delta pendiente.
 
+### #2351 · actualizacion local tras captura y tokens comunes (16/11/2026)
+
+Rama rebasada sobre nightly; conserva todos sus widgets/trait/registro y usa
+`crate::eficiencia` de #2409/#2451, marco 0.085/0.085. Se elimina el destino
+Offscreen temporal de este PR: la captura unica pertenece a #2391 y su ampliacion.
+La conexion aprobada reutiliza Relative y Scene, sin modificar scene.rs ni los
+tests Vantare originales. Pendiente aprobacion del esquema de parametros de
+movimiento Eficiencia y nueva validacion; los gates antiguos no validan este head.
+Standings y Delta son de otros agentes, no se tocan. Sin graficos ni merge propios.
+
 ## VANTA-144 · contrato Widget de Rune (16/11/2026)
 
 Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa

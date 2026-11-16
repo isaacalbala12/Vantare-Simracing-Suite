@@ -432,7 +432,7 @@ pub(crate) mod tests {
             );
         }
     }
-    /// Reproductor compartido con el test: apunta lo que el bucle pedirÃ­a reproducir.
+    /// Reproductor compartido con el test: apunta lo que el bucle pediría reproducir.
     #[derive(Clone, Default)]
     struct Sharing(
         std::rc::Rc<std::cell::RefCell<Vec<(vantare_domain::session_alerts::Tone, u8)>>>,
@@ -459,7 +459,7 @@ pub(crate) mod tests {
         let design = vantare_ipc::layout::Layout::from_json(
             br#"{"version":2,"instances":[{"id":"avisos","x":0,"y":0,"settings":{"kind":"session-alerts"}}]}"#,
         )
-        .expect("diseÃ±o");
+        .expect("diseño");
         let frames = crate::scene::FrameSet {
             layout: Arc::new(design),
             photos: std::collections::BTreeMap::from([(

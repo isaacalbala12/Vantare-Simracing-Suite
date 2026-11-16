@@ -1,4 +1,4 @@
-//! Arranque y polÃ­tica del proceso de overlays; sin crear dispositivos grÃ¡ficos.
+//! Arranque y política del proceso de overlays; sin crear dispositivos gráficos.
 #[cfg(debug_assertions)]
 pub mod capture;
 pub mod eficiencia;

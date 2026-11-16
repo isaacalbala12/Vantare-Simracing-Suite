@@ -1,3 +1,20 @@
+## VANTA-144 · Standings Eficiencia E1 (16/11/2026)
+
+E1 porta Config/plan/opciones/etiquetas y defaults de Style, función por función
+desde ui/standings. Visual reserva las mismas filas, bandas y pies; size suma 34
+solo con PIT habilitado (440→474). Tokens/helpers de crate::eficiencia reutilizados.
+Tests primero (b10e8f5a6), fixture GPUI standings.snapshot.json y oráculos literales:
+440/364, columnas 30/30/200/92/88, integrada 43; Broadcast 460/392 y 46/24;
+ES/EN, presets/nombres, V3, multiclase, Stale/Lost y metadatos sin replanteo.
+Base nightly b39ddd50b, ya con #2465 fusionado; rebase limpio. Mac: fmt y
+Clippy -D warnings PASS, 496 biblioteca + 3 binario PASS. Producción 924 líneas;
+tests 275, excluidos por la excepción de raíz. Constructor en E3; dead_code
+temporal comentado en el módulo. Pintura y tests de pin/límites entran con E2/E3.
+Se medirá E2 completo antes de otro PR y se unirá a E1 si juntos caben <1200
+líneas de producción. Rail completo: 34×26, esquinas [0,3,3,0], bordes 2/2/2/1,
+glow CSS 8 al 22 %, dx −5→0, en el corte de pintura/efectos correspondiente.
+Sin gráficos, cambios de domain/ipc/Cargo, merge ni promoción de producto.
+
 ## VANTA-144 · Standings Vantare movimiento (#2465, 16/11/2026)
 
 Rebase --onto nightly desde el antiguo padre 78551a585 de #2465; A1/A2/A3

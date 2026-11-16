@@ -3209,3 +3209,11 @@ Tests CPU fijan familias/pesos de font y elipsis Unicode con límites medidos po
 la fuente cargada, sin anchuras esperadas por plataforma. Sin dependencias,
 gráficos, derechos ni cambios de movimiento. Head y gates definitivos en el PR
 y #2333; no se fusiona ni publica release desde el worker.
+
+## VANTA-144 · Test del volante determinista (#2445)
+
+Mac/base feed66c86: el test original falló 61/2000 veces con 16 procesos
+concurrentes; con Image retenido y señal del waker por canal, 0/2000.
+La señal confirma publicación de Pixels, no solo decoded. Sin sleeps/reintentos
+ni cambios de producto/Rune. Mac: fmt/clippy y suite 375+2 verdes; head/CI en PR.
+Logs: D:/VantareServer/evidence/overlays-rune/test-volante-2445. #2430 sigue en espera.

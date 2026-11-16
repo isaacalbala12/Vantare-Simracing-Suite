@@ -1,12 +1,14 @@
-//! Fuel: projection, retención en pausa y el Look Vantare. Un solo módulo de
+//! Fuel: projection, retención en pausa y los dos Looks. Un solo módulo de
 //! escena pura; cada Look añade su pintura y sus textos.
+mod eficiencia;
+mod eficiencia_tokens;
 mod layout;
 mod render;
 pub mod scene;
 
 use crate::widget::Update;
 use rune::El;
-use scene::{Motion, Timing};
+use scene::{Bar, Motion, Timing};
 use std::sync::Arc;
 use vantare_domain::{
     Snapshot, SourceState,
@@ -18,13 +20,59 @@ use vantare_domain::{
     widget_settings::{Settings as AnySettings, fuel_strategy::Settings, look::Look},
 };
 
+/// Pintor del Look elegido; la escena es la misma para los dos.
+enum Painter {
+    Vantare(render::Painter),
+    Eficiencia(eficiencia::Painter),
+}
+
+impl Painter {
+    fn size(&self) -> Size {
+        match self {
+            Self::Vantare(painter) => painter.size(),
+            Self::Eficiencia(painter) => painter.size(),
+        }
+    }
+    fn prepare(&mut self, board: &Arc<Board>, session: Option<Session>) -> bool {
+        match self {
+            Self::Vantare(painter) => painter.prepare(board, session),
+            Self::Eficiencia(painter) => painter.prepare(board, session),
+        }
+    }
+    fn targets(&self) -> Vec<(Bar, f32)> {
+        match self {
+            Self::Vantare(painter) => painter.targets(),
+            Self::Eficiencia(painter) => painter.targets(),
+        }
+    }
+    /// Solo el Look Vantare late con combustible bajo.
+    fn pulses(&self) -> bool {
+        match self {
+            Self::Vantare(_) => true,
+            Self::Eficiencia(painter) => painter.pulses(),
+        }
+    }
+    fn view(&self) -> El {
+        match self {
+            Self::Vantare(painter) => painter.view(),
+            Self::Eficiencia(painter) => painter.view(),
+        }
+    }
+    fn sync(&mut self, scene: &scene::Scene) -> Update {
+        match self {
+            Self::Vantare(painter) => painter.sync(scene),
+            Self::Eficiencia(painter) => painter.sync(scene),
+        }
+    }
+}
+
 pub(crate) struct Fuel {
     settings: Settings,
     prefs: Preferences,
     content: fuel_strategy::Config,
     pause: Pause,
     motion: Motion,
-    painter: render::Painter,
+    painter: Painter,
     visual: scene::Scene,
     /// Hay que sincronizar aunque la escena no cambie (sesión o idioma).
     repaint: bool,
@@ -54,9 +102,14 @@ impl Fuel {
         pause.project(&Snapshot::default(), prefs, content);
         let board = pause.board().clone();
         let initial = scene::sample(board.clone(), &motion, clock);
-        let mut painter = render::Painter::new(&settings, prefs, &initial);
+        let mut painter = match settings.design_system {
+            Look::Eficiencia => Painter::Eficiencia(eficiencia::Painter::new(prefs, &initial)),
+            _ => Painter::Vantare(render::Painter::new(&settings, prefs, &initial)),
+        };
         motion.update(&board, &painter.targets(), true, clock);
-        motion.advance(&board, clock);
+        if painter.pulses() {
+            motion.advance(&board, clock);
+        }
         let visual = scene::sample(board, &motion, clock);
         painter.sync(&visual);
         Self {
@@ -109,7 +162,9 @@ impl Fuel {
     }
     pub fn animate(&mut self, clock: f64) -> Update {
         let board = self.pause.board().clone();
-        self.motion.advance(&board, clock);
+        if self.painter.pulses() {
+            self.motion.advance(&board, clock);
+        }
         let visual = scene::sample(board, &self.motion, clock);
         let quiet = Arc::ptr_eq(&self.visual.board, &visual.board)
             && self.visual.bars == visual.bars
@@ -129,6 +184,11 @@ impl Fuel {
     }
 }
 
+/// Looks migrados del widget; el brazo del `match` de `constructor()` decide.
+fn supported(look: Look) -> bool {
+    matches!(look, Look::Vantare | Look::Eficiencia)
+}
+
 impl crate::widget::Widget for Fuel {
     fn new(
         settings: &AnySettings,
@@ -140,7 +200,7 @@ impl crate::widget::Widget for Fuel {
         let AnySettings::FuelStrategy(settings) = settings else {
             return None;
         };
-        if settings.design_system != Look::Vantare {
+        if !supported(settings.design_system) {
             return None;
         }
         Some(Box::new(Fuel::new(settings, prefs, reduced, hz, clock)))
@@ -149,7 +209,7 @@ impl crate::widget::Widget for Fuel {
         let AnySettings::FuelStrategy(settings) = settings else {
             return false;
         };
-        settings.design_system == Look::Vantare && Fuel::configured(self, settings, prefs)
+        supported(settings.design_system) && Fuel::configured(self, settings, prefs)
     }
     fn size(&self) -> Size {
         Fuel::size(self)
@@ -382,7 +442,7 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_builds_vantare_fuel_and_rejects_the_efficiency_look() {
+    fn dispatch_builds_both_looks_and_rejects_other_widgets() {
         let prefs = Preferences::default();
         let vantare = AnySettings::FuelStrategy(settings("compact"));
         let painter = <Fuel as crate::widget::Widget>::new(&vantare, prefs, true, 4, 0.0)
@@ -400,7 +460,17 @@ mod tests {
             design_system: Look::Eficiencia,
             ..settings("compact")
         });
-        assert!(<Fuel as crate::widget::Widget>::new(&efficiency, prefs, true, 4, 0.0).is_none());
+        let efi = <Fuel as crate::widget::Widget>::new(&efficiency, prefs, true, 4, 0.0)
+            .expect("fuel Eficiencia");
+        assert!(efi.configured(&efficiency, prefs));
+        assert_eq!(
+            efi.size(),
+            Size {
+                width: 523.0,
+                height: 272.0
+            },
+            "Eficiencia ignora el tamaño del ajuste"
+        );
         assert!(!painter.configured(&efficiency, prefs));
         assert!(
             <Fuel as crate::widget::Widget>::new(
@@ -687,6 +757,7 @@ mod extra_tests {
     }
 }
 
+
 #[cfg(test)]
 mod layout_bounds {
     use super::*;
@@ -734,5 +805,65 @@ mod layout_bounds {
             runtime.frame(0.0);
             crate::testdata::assert_inside_window(&mut runtime, (width, height));
         }
+    }
+}
+
+#[cfg(test)]
+mod efficiency_tests {
+    use super::*;
+
+    fn efi() -> Fuel {
+        Fuel::new(
+            &Settings {
+                design_system: Look::Eficiencia,
+                ..Settings::default()
+            },
+            Preferences::default(),
+            false,
+            4,
+            0.0,
+        )
+    }
+
+    #[test]
+    fn efficiency_never_arms_a_clock_or_animates() {
+        let mut fuel = efi();
+        fuel.update(&photo(1.2, 17), 0.0);
+        assert!(fuel.painter.targets().is_empty(), "sin canales de barra");
+        assert!(!fuel.animate(0.1).pixels, "quieto, sin valores animados");
+        assert!(
+            fuel.motion.next_wake(0.1).is_none(),
+            "sin reloj con combustible bajo"
+        );
+        assert_eq!(fuel.visual.border, 0.0, "el borde no late en Eficiencia");
+    }
+
+    #[test]
+    fn efficiency_paints_once_per_data_change() {
+        let mut fuel = efi();
+        let photo = photo(11.3, 25);
+        assert!(fuel.update(&photo, 0.0).build, "la primera foto compone");
+        assert!(
+            !fuel.update(&photo, 0.1).build,
+            "la misma foto no recompone"
+        );
+        let mut changed = photo.clone();
+        changed.state.player.as_mut().expect("player").fuel.level_l =
+            vantare_domain::Quality::Reliable(30.0);
+        assert!(fuel.update(&changed, 0.2).build, "el dato nuevo compone");
+        assert!(!fuel.animate(0.2).pixels, "y no queda animaci├│n detr├ís");
+    }
+
+    #[test]
+    fn efficiency_keeps_the_session_label_out_of_the_look() {
+        let mut fuel = efi();
+        let mut photo = photo(11.3, 25);
+        fuel.update(&photo, 0.0);
+        photo.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Practice);
+        assert!(
+            !fuel.update(&photo, 0.1).build,
+            "la sesi├│n no cambia los textos de este Look"
+        );
     }
 }

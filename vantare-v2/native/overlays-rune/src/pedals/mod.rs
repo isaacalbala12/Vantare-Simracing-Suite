@@ -187,6 +187,24 @@ mod tests {
         runtime
     }
 
+    /// La ventana mide lo que pide el widget, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for look in [Look::Vantare, Look::Eficiencia] {
+            for photo in [Snapshot::default(), live_snapshot()] {
+                let mut runtime = make_runtime(Pedals::new(
+                    &Settings::for_look(look),
+                    Preferences::default(),
+                ));
+                let size = runtime.state.pedals.size();
+                runtime.state.next = Some(photo);
+                runtime.frame(0.0);
+                crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+            }
+        }
+    }
+
     #[test]
     fn both_looks_keep_their_width_and_accept_their_settings() {
         for (look, width) in [(Look::Vantare, 96.0), (Look::Eficiencia, 108.0)] {

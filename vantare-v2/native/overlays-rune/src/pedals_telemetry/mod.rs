@@ -215,6 +215,24 @@ mod tests {
                 .ne(runtime.instances.iter().map(payload))
     }
 
+    /// La ventana mide lo que pide el widget, no una caja fija.
+    #[test]
+    fn no_layer_falls_outside_the_window() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for photo in [Snapshot::default(), live_snapshot()] {
+            let mut runtime = make_runtime(PedalsTelemetry::new(
+                &Settings::default(),
+                Preferences::default(),
+                true,
+                0.0,
+            ));
+            let size = runtime.state.widget.size();
+            runtime.state.next = Some(photo);
+            runtime.frame(0.0);
+            crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+        }
+    }
+
     #[test]
     fn a_visible_change_tweens_and_then_rests() {
         let _fonts = rune::text::with_families("Inter", "Inter");

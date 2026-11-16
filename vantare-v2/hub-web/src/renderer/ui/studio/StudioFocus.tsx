@@ -24,6 +24,10 @@ export function StudioFocus() {
   const model = useStudioFocus();
   const { state, selected, catalogOpen } = model;
   const view = state.view;
+  const hasConservedWidgets =
+    view?.instances.some(
+      (item) => !view.catalog.some((widget) => widget.kind === item.kind),
+    ) ?? false;
   const unavailableCanvas =
     state.canvasMode &&
     (view?.state === "monitorUnavailable" ||
@@ -76,7 +80,12 @@ export function StudioFocus() {
           ) : !state.failure ? (
             <span className="v-skeleton" aria-hidden="true" />
           ) : null}
-          {!unavailableCanvas && <StudioFeedback model={model} />}
+          {!unavailableCanvas && (
+            <StudioFeedback
+              model={model}
+              hasConservedWidgets={hasConservedWidgets}
+            />
+          )}
           {state.canvasMode && view ? (
             selected || (view.state === "ready" && view.canvas) ? (
               <CanvasStage

@@ -64,7 +64,13 @@ function ReloadStudio({ model }: { model: ReturnTypeOfStudioFocus }) {
   );
 }
 
-export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
+export function StudioFeedback({
+  model,
+  hasConservedWidgets,
+}: {
+  model: ReturnTypeOfStudioFocus;
+  hasConservedWidgets: boolean;
+}) {
   const { state } = model;
   const protectedView = state.view?.state === "protected";
   const readingFailure = state.failure?.request.method === "studio.get";
@@ -74,6 +80,18 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
     state.view.plan !== "unverified";
   return (
     <>
+      {hasConservedWidgets && (
+        <section
+          className="v-studio-state-feedback"
+          role="note"
+          data-tone="warn"
+        >
+          <Icon name="info" />
+          <div>
+            <p>{t.conservedWidgets}</p>
+          </div>
+        </section>
+      )}
       {protectedView && (
         <section
           className="v-studio-state-feedback"

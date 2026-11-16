@@ -265,3 +265,18 @@ El PNG de A conserva la carrera exists/escritura de #2391; usar rutas distintas.
 El .capture.txt sí usa create_new. El guard no se desactiva en servidor.
 Tests de A solo CPU; el PNG y el cierre GPU se verifican en PC autorizado.
 E monta v46 encima de esta CLI; alimentador/reproductor QA y medición de F aparte.
+
+### Comprobaciones de Rune y orden de validación (revisión de A)
+
+En la copia fijada d5338988, Runtime::wake_deadline() devuelve la base lógica
+sin escalar del reloj de Runtime; Runtime::frame(dt) la avanza con dt en modo
+sin ventana (runtime/frame.rs:306,385,424). Es la misma base en segundos que
+el clock manual de captura; no hay conversión a Instant ni reloj real para replay.
+El avance usa un paso mínimo fijo de 1/60 s, independiente del hz del widget.
+Env::new(true, scale) significa system_dark=true (runtime/cx.rs:5-11), NO
+movimiento reducido. Se configura Widget::policy y Runtime::reduced_motion
+por separado desde --motion; los tests exigen distinta salida para true/false.
+Una foto intermedia inválida o fuera de cota hace fallar toda la secuencia,
+aunque las fotos anterior y posterior sean válidas. Entradas validadas antes
+del exists-check; la exclusión definitiva de salida se completa en B.
+El guard devuelve 6 y GRAPHICS_DISABLED también fuera del modo captura.

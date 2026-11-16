@@ -286,22 +286,16 @@ fn poll(widget: &mut Box<dyn Widget>, clock: f64, tx: &mut rune::Tx) -> bool {
     update.build || update.pixels
 }
 impl Capture {
-    fn advance(
-        &mut self,
-        clock: &mut f64,
-        at: f64,
-        steps: &mut usize,
-        hz: u16,
-    ) -> Result<(), Failure> {
+    fn advance(&mut self, clock: &mut f64, at: f64, steps: &mut usize) -> Result<(), Failure> {
         while *clock < at {
             *steps += 1;
             if *steps > 10_000 {
                 return Err(Failure::input("replay supera 10000 pasos"));
             }
-            let next = self.runtime.wake_deadline().map_or(at, |due| {
-                due.max(*clock + 1.0 / f64::from(if hz == 0 { 30 } else { hz }))
-                    .min(at)
-            });
+            let next = self
+                .runtime
+                .wake_deadline()
+                .map_or(at, |due| due.max(*clock + 1.0 / 60.0).min(at));
             self.runtime.frame(next - *clock);
             *clock = next;
         }
@@ -356,6 +350,7 @@ fn prepare(
     let mut widget = new(&instance.settings, layout.preferences, reduced, hz, 0.0)
         .ok_or_else(|| Failure::input("ajustes incompatibles"))?;
     widget.set_wall_base(wall);
+    widget.policy(reduced, hz, 0.0);
     let size = widget.size_for(Some(&photos[0].1));
     let (width, height) = dimensions(size, scale)?;
     let mut runtime = Runtime::with_text(
@@ -377,7 +372,7 @@ fn prepare(
     };
     let (mut clock, mut steps) = (0.0, 0);
     for (ms, snapshot) in photos {
-        capture.advance(&mut clock, *ms as f64 / 1000.0, &mut steps, hz)?;
+        capture.advance(&mut clock, *ms as f64 / 1000.0, &mut steps)?;
         let size = capture.runtime.state.size_for(Some(snapshot));
         (capture.width, capture.height) = dimensions(size, scale)?;
         capture
@@ -391,7 +386,7 @@ fn prepare(
         capture.runtime.frame(0.0);
         capture.images = capture.runtime.state.capture_images();
     }
-    capture.advance(&mut clock, at as f64 / 1000.0, &mut steps, hz)?;
+    capture.advance(&mut clock, at as f64 / 1000.0, &mut steps)?;
     Ok(capture)
 }
 fn validate_pixels(pixels: &[u8], width: u32, height: u32) -> io::Result<()> {
@@ -465,12 +460,6 @@ fn render(capture: &mut Capture) -> Result<Vec<u8>, Failure> {
 /// Called after the machine graphics guard and only compiled into debug builds.
 pub fn run(args: &[OsString]) -> Result<(), Failure> {
     let request = Request::parse(args)?;
-    let record = request.output.with_extension("capture.txt");
-    if request.output.try_exists().map_err(Failure::capture)?
-        || record.try_exists().map_err(Failure::capture)?
-    {
-        return Err(Failure::capture("conservar evidencia anterior"));
-    }
     let layout = request.design()?;
     // Unsupported comes before NO_DEMO; neither path creates a device.
     let id = request
@@ -491,6 +480,12 @@ pub fn run(args: &[OsString]) -> Result<(), Failure> {
         request.at,
         id,
     )?;
+    let record = request.output.with_extension("capture.txt");
+    if request.output.try_exists().map_err(Failure::capture)?
+        || record.try_exists().map_err(Failure::capture)?
+    {
+        return Err(Failure::capture("conservar evidencia anterior"));
+    }
     let snapshot = &photos
         .last()
         .ok_or_else(|| Failure::input("fotos vacias"))?
@@ -630,7 +625,7 @@ mod tests {
         let mut wrong = layout();
         wrong.instances[0].settings =
             vantare_domain::widget_settings::Settings::default_for(Kind::Standings);
-        assert!(single(&wrong, &snapshot, 1.0).is_err());
+        assert_eq!(single(&wrong, &snapshot, 1.0).err().unwrap().code, 2);
         assert!(single(&layout(), &snapshot, f32::NAN).is_err());
     }
     #[test]
@@ -969,11 +964,121 @@ mod tests {
         let mut first = first;
         assert_eq!(
             first
-                .advance(&mut clock, 1.0, &mut exhausted, 15)
+                .advance(&mut clock, 1.0, &mut exhausted)
                 .err()
                 .unwrap()
                 .code,
             2
         );
+    }
+    #[test]
+    fn wall_and_motion_flags_change_real_alert_deadlines_and_paint() {
+        let mut design = layout();
+        design.instances[0].settings =
+            vantare_domain::widget_settings::Settings::default_for(Kind::SessionAlerts);
+        let mut photo = crate::testdata::snapshot();
+        photo.origin.source.simulator = "lmu";
+        photo.state.source_state = vantare_domain::SourceState::Live;
+        photo.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Practice);
+        photo.state.session.elapsed_s = vantare_domain::Quality::Reliable(0.0);
+        photo.state.session.timing.scheduled_end_s = vantare_domain::Quality::Reliable(300.0);
+        let photos = [(0, photo)];
+        let from_flags = |wall, motion, at| {
+            let flags = args(&[
+                "--layout",
+                "scene.json",
+                "--snapshot",
+                "photo.json",
+                "--output",
+                "out.png",
+                "--wall-ms",
+                wall,
+                "--motion",
+                motion,
+                "--at-ms",
+                at,
+            ]);
+            let request = Request::parse(&flags).unwrap();
+            prepare(
+                &design,
+                &photos,
+                request.scale,
+                request.reduced,
+                request.wall,
+                request.at,
+                None,
+            )
+            .unwrap()
+        };
+        let early = from_flags("1234", "false", "0");
+        let late = from_flags("1789", "false", "0");
+        assert!(early.runtime.wake_deadline().is_some());
+        assert_ne!(
+            early.runtime.wake_deadline(),
+            late.runtime.wake_deadline(),
+            "--wall-ms must reach the actual notice clock"
+        );
+        let animated = from_flags("1234", "true", "75");
+        let reduced = from_flags("1234", "false", "75");
+        let paint = |c: &Capture| {
+            c.runtime
+                .instances
+                .iter()
+                .map(|i| (i.rect, i.fill, i.fade))
+                .collect::<Vec<_>>()
+        };
+        assert_ne!(
+            paint(&animated),
+            paint(&reduced),
+            "--motion must reach Widget::policy and change its real fade"
+        );
+    }
+    #[test]
+    fn full_minute_replay_has_a_fixed_sixty_hz_floor() {
+        let mut design = layout();
+        design.performance.widgets.insert("variant".into(), 1000);
+        let snapshot = vantare_ipc::snapshot_from_saved_json(PHOTO).unwrap();
+        let mut capture = prepare(
+            &design,
+            &[(0, snapshot)],
+            1.0,
+            false,
+            WALL_MS,
+            Some(0),
+            None,
+        )
+        .unwrap();
+        let (mut clock, mut steps) = (0.0, 0);
+        capture.advance(&mut clock, 60.0, &mut steps).unwrap();
+        assert!(steps <= 3601);
+        assert_eq!(clock, 60.0);
+    }
+    #[test]
+    fn run_rejects_unsupported_before_demo_and_validates_before_existing_output() {
+        let root = std::env::temp_dir().join(format!("rune-capture-order-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let settings = root.join("settings.json");
+        let output = root.join("out.png");
+        std::fs::write(&settings, "{}").unwrap();
+        std::fs::write(&output, b"KEEP EVIDENCE").unwrap();
+        let flags = |kind| {
+            args(&[
+                "--widget",
+                kind,
+                "--settings",
+                settings.to_str().unwrap(),
+                "--output",
+                output.to_str().unwrap(),
+            ])
+        };
+        let unsupported = run(&flags("standings")).unwrap_err();
+        assert_eq!(unsupported.code, 2);
+        assert_eq!(unsupported.token, "INVALID_INPUT");
+        let no_demo = run(&flags("relative")).unwrap_err();
+        assert_eq!(no_demo.code, 3);
+        assert_eq!(no_demo.token, "NO_DEMO");
+        assert_eq!(std::fs::read(&output).unwrap(), b"KEEP EVIDENCE");
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

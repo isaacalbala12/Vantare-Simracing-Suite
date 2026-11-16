@@ -12,7 +12,9 @@ async function open(page: Page) {
   await page.locator(".v-studio-focus").waitFor();
 }
 async function select(page: Page, name: string) {
-  await page.getByRole("button", { name: new RegExp(`^${name}, `) }).click();
+  await page
+    .getByRole("button", { name: new RegExp(`^${name} (?:Visible|Oculto)`) })
+    .click();
   await page.getByRole("heading", { name, exact: true }).waitFor();
 }
 async function appearance(page: Page, name: string) {
@@ -230,7 +232,9 @@ export const studioStateScenes: Record<string, VisualScene> = {
   "studio-estado-recarga": scene("studio-a-recargar", async (page) => {
     await page.getByRole("alert").waitFor();
     await page.getByRole("button", { name: t.reload, exact: true }).click();
-    const row = page.getByRole("button", { name: /^Standings, / });
+    const row = page.getByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     await until(
       () => row.evaluate((node) => node === document.activeElement),
       5000,

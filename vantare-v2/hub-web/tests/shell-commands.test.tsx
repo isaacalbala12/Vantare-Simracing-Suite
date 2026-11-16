@@ -182,6 +182,24 @@ function launchCalls(spy: {
   );
 }
 
+it.each([
+  ["Ana María", "AM, cuenta"],
+  ["", "Cuenta"],
+] as const)(
+  "names the account control from the visible initials of %j",
+  async (name, expected) => {
+    showAccountIdentity = true;
+    await mount();
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("combobox")).toBeNull());
+    act(() => publishAccount({ name, photo: null }));
+    const button = await screen.findByRole("button", {
+      name: expected,
+    });
+    expect(button.classList.contains("v-account-link")).toBe(true);
+  },
+);
+
 it("the frame never replaces B's published identity with an initial GET from A", async () => {
   showAccountIdentity = true;
   const pending: ((reply: Reply) => void)[] = [];

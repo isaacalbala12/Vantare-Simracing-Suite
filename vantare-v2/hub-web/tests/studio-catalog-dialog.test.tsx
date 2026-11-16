@@ -115,7 +115,7 @@ async function openCatalog() {
 
 it("keeps Add named and operable when the compact strip hides its visible text", async () => {
   mount("studio-base", true);
-  await screen.findByRole("button", { name: /^Standings,/ });
+  await screen.findByRole("button", { name: /^Standings (?:Visible|Oculto)/ });
   const trigger = await screen.findByRole("button", { name: t.add });
   const label = Array.from(trigger.querySelectorAll<HTMLElement>("span")).find(
     (node) => node.textContent === t.add && !node.querySelector("svg"),

@@ -87,7 +87,9 @@ function mount(scene = "studio-base") {
   );
 }
 const listRow = (name: string) =>
-  screen.findByRole("button", { name: new RegExp(`^${name}, `) });
+  screen.findByRole("button", {
+    name: new RegExp(`^${name} (?:Visible|Oculto)`),
+  });
 describe("Studio A honest states", () => {
   it("guides an empty layout, explains track availability and adds with the existing CAS", async () => {
     const spy = vi.spyOn(Client.prototype, "request");
@@ -162,11 +164,13 @@ describe("Studio A honest states", () => {
   it("focuses the newly committed row after a protected document recovers", async () => {
     mount("studio-a-recargar");
     await screen.findByRole("alert");
-    expect(screen.queryByRole("button", { name: /^Standings, / })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
+    ).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: t.reload }));
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: /^Standings, / }),
+        screen.getByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
       ),
     );
     expect((document.activeElement as HTMLElement).dataset.widget).toBe(
@@ -183,7 +187,9 @@ describe("Studio A honest states", () => {
     ).toBeNull();
     expect(screen.queryByRole("button", { name: t.discard })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: t.reload }));
-    await screen.findByRole("button", { name: /^Standings, / });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     expect(
       requests.mock.calls.filter(([r]) => r.method === "studio.get"),
     ).toHaveLength(2);
@@ -292,17 +298,15 @@ describe("Studio A honest states", () => {
     fireEvent.keyDown(await listRow("Standings"), { key: " " });
     await screen.findByRole("alert");
     expect(
-      screen
-        .getByRole("button", { name: /^Standings, / })
-        .getAttribute("aria-label"),
-    ).toContain("90 %");
+      screen.getByRole("button", { name: /^Standings .*90 %/ }),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: t.retry }));
     await waitFor(() =>
       expect(
-        screen
-          .getByRole("button", { name: /^Standings, / })
-          .getAttribute("aria-label"),
-      ).toContain(t.hidden),
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBeTruthy(),
     );
     const writes = requests.mock.calls.filter(
       ([r]) => r.method === "studio.visibility",
@@ -316,7 +320,9 @@ describe("Studio A honest states", () => {
     async (scene) => {
       const requests = vi.spyOn(Client.prototype, "request");
       mount(scene);
-      await screen.findAllByRole("button", { name: /^Standings(?: \d+)?,/ });
+      await screen.findAllByRole("button", {
+        name: /^Standings(?: \d+)? (?:Visible|Oculto)/,
+      });
       const add = await screen.findByRole("button", { name: t.add });
       expect(add.hasAttribute("disabled")).toBe(false);
       expect(add.getAttribute("aria-disabled")).toBe("true");
@@ -369,7 +375,9 @@ describe("Studio A honest states", () => {
           ).queryByText(t.empty),
         ).toBeNull();
         expect(
-          screen.queryAllByRole("button", { name: /^Standings, / }),
+          screen.queryAllByRole("button", {
+            name: /^Standings (?:Visible|Oculto)/,
+          }),
         ).toHaveLength(0);
       }
       expect(
@@ -422,12 +430,20 @@ describe("Studio A honest states", () => {
     fireEvent.keyDown(row, { key: " " });
     await screen.findByRole("alert");
     expect(screen.getByRole("status", { name: t.notSaved })).toBeTruthy();
-    expect(row.getAttribute("aria-label")).toContain(t.visible);
+    expect(
+      screen.getByRole("button", {
+        name: new RegExp(`^Standings ${t.visible}`),
+      }),
+    ).toBe(row);
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: t.retry }));
     await waitFor(() =>
-      expect(row.getAttribute("aria-label")).toContain(t.hidden),
+      expect(
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBe(row),
     );
     const writes = spy.mock.calls.filter(
       ([r]) => r.method === "studio.visibility",
@@ -445,7 +461,11 @@ describe("Studio A honest states", () => {
       .setup()
       .click(screen.getByRole("button", { name: t.discard }));
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(row.getAttribute("aria-label")).toContain(t.visible);
+    expect(
+      screen.getByRole("button", {
+        name: new RegExp(`^Standings ${t.visible}`),
+      }),
+    ).toBe(row);
     expect(
       spy.mock.calls.filter(([r]) => r.method === "studio.visibility"),
     ).toHaveLength(1);

@@ -25,7 +25,6 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
           ? t.verifyWidget
           : t.protectedAction
         : t.addHelp;
-  const addDescription = addLabel === t.add ? undefined : addHint;
   return (
     <aside className="v-focus-strip" aria-label={t.layoutLabel}>
       <header className="v-focus-layout-name">
@@ -93,7 +92,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                   data-widget={item.id}
                   aria-pressed={selected?.id === item.id}
                   aria-keyshortcuts="Space Delete Control+D"
-                  aria-label={`${widgetName(item, view)}, ${widgetStatus(item)}`}
+                  aria-labelledby={`${addHint}-name-${index}`}
                   tabIndex={
                     item.id === selected?.id ||
                     (!items.some((value) => value.id === selected?.id) &&
@@ -124,8 +123,11 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                   }}
                 >
                   <WidgetPreview kind={item.kind} small />
-                  <span className="v-focus-row-name">
-                    <strong>{widgetName(item, view)}</strong>
+                  <span
+                    className="v-focus-row-name"
+                    id={`${addHint}-name-${index}`}
+                  >
+                    <strong>{widgetName(item, view)}</strong>{" "}
                     <small>{widgetStatus(item)}</small>
                   </span>
                 </button>
@@ -172,13 +174,13 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
             </p>
           )}
       </section>
-      <Tooltip id={addDescription} label={addLabel}>
+      <Tooltip id={addHint} label={addLabel}>
         <Button
           className="v-focus-add"
           data-empty={view?.state === "ready" && !view.instances.length}
           aria-label={t.add}
-          aria-describedby={addDescription}
-          focusableWhenDisabled={!!addDescription}
+          aria-describedby={addHint}
+          focusableWhenDisabled
           data-add-widget
           disabled={
             blocked || (view?.instances.length ?? 0) >= studioLimits.instances

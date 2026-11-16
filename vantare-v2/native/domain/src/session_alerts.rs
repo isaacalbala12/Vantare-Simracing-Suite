@@ -133,6 +133,44 @@ pub enum Tone {
     Final,
     Finished,
 }
+
+/// Pitido corto como WAV en memoria: 22050 Hz, mono, 16 bits y 1/8 s.
+#[must_use]
+pub fn wave(tone: Tone, volume: u8) -> Vec<u8> {
+    let rate = 22050u32;
+    let count = rate / 8;
+    let length = count * 2;
+    let mut out = Vec::with_capacity(length as usize + 44);
+    out.extend(b"RIFF");
+    out.extend((length + 36).to_le_bytes());
+    out.extend(b"WAVEfmt ");
+    out.extend(16u32.to_le_bytes());
+    out.extend(1u16.to_le_bytes());
+    out.extend(1u16.to_le_bytes());
+    out.extend(rate.to_le_bytes());
+    out.extend((rate * 2).to_le_bytes());
+    out.extend(2u16.to_le_bytes());
+    out.extend(16u16.to_le_bytes());
+    out.extend(b"data");
+    out.extend(length.to_le_bytes());
+    let hz = match tone {
+        Tone::Mild => 660.0,
+        Tone::Final => 880.0,
+        Tone::Finished => 520.0,
+    };
+    for i in 0..count {
+        let envelope = ((count - i) as f32 / count as f32)
+            .min(i as f32 / 220.0)
+            .clamp(0.0, 1.0);
+        let sample = ((i as f32 * hz * std::f32::consts::TAU / rate as f32).sin()
+            * envelope
+            * f32::from(volume.min(100))
+            / 100.0
+            * 12000.0) as i16;
+        out.extend(sample.to_le_bytes());
+    }
+    out
+}
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Kind {
     Threshold(u8),
@@ -667,3 +705,95 @@ impl Machine {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod wave_tests {
+    use super::{Tone, wave};
+
+    /// Copia literal de la lógica que vivía en `ui`, para comparar antes de borrarla.
+    fn legacy(tone: Tone, volume: u8) -> Vec<u8> {
+        let rate = 22050u32;
+        let count = rate / 8;
+        let length = count * 2;
+        let mut out = Vec::with_capacity(length as usize + 44);
+        out.extend(b"RIFF");
+        out.extend((length + 36).to_le_bytes());
+        out.extend(b"WAVEfmt ");
+        out.extend(16u32.to_le_bytes());
+        out.extend(1u16.to_le_bytes());
+        out.extend(1u16.to_le_bytes());
+        out.extend(rate.to_le_bytes());
+        out.extend((rate * 2).to_le_bytes());
+        out.extend(2u16.to_le_bytes());
+        out.extend(16u16.to_le_bytes());
+        out.extend(b"data");
+        out.extend(length.to_le_bytes());
+        let hz = match tone {
+            Tone::Mild => 660.0,
+            Tone::Final => 880.0,
+            Tone::Finished => 520.0,
+        };
+        for i in 0..count {
+            let envelope = ((count - i) as f32 / count as f32)
+                .min(i as f32 / 220.0)
+                .clamp(0.0, 1.0);
+            let sample = ((i as f32 * hz * std::f32::consts::TAU / rate as f32).sin()
+                * envelope
+                * f32::from(volume.min(100))
+                / 100.0
+                * 12000.0) as i16;
+            out.extend(sample.to_le_bytes());
+        }
+        out
+    }
+
+    #[test]
+    fn wave_matches_the_old_ui_bytes_for_every_tone_and_volume() {
+        for tone in [Tone::Mild, Tone::Final, Tone::Finished] {
+            for volume in [0u8, 1, 35, 70, 100, 200] {
+                assert_eq!(
+                    wave(tone, volume),
+                    legacy(tone, volume),
+                    "{tone:?} {volume}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn wave_is_a_short_mono_16_bit_riff() {
+        let bytes = wave(Tone::Mild, 70);
+        assert_eq!(&bytes[..4], b"RIFF");
+        assert_eq!(&bytes[8..12], b"WAVE");
+        assert_eq!(&bytes[12..16], b"fmt ");
+        assert_eq!(&bytes[36..40], b"data");
+        assert_eq!(bytes.len(), 44 + 22050 / 8 * 2);
+        assert_eq!(&bytes[20..22], 1u16.to_le_bytes(), "mono");
+        assert_eq!(&bytes[22..24], 1u16.to_le_bytes(), "un canal");
+        assert_eq!(&bytes[24..28], 22050u32.to_le_bytes(), "22 050 Hz");
+        assert_eq!(&bytes[34..36], 16u16.to_le_bytes(), "16 bits");
+        assert_eq!(
+            &bytes[40..44],
+            ((22050u32 / 8) * 2).to_le_bytes(),
+            "bytes de muestras en data"
+        );
+    }
+
+    #[test]
+    fn wave_tones_differ_and_volume_scales_the_samples() {
+        let mild = wave(Tone::Mild, 70);
+        assert_ne!(mild, wave(Tone::Final, 70));
+        assert_ne!(mild, wave(Tone::Finished, 70));
+        assert_ne!(wave(Tone::Final, 70), wave(Tone::Finished, 70));
+        assert!(wave(Tone::Mild, 0)[44..].iter().all(|byte| *byte == 0));
+        let quiet = wave(Tone::Mild, 35);
+        let loud = wave(Tone::Mild, 70);
+        assert_ne!(quiet[44..], loud[44..]);
+        assert_eq!(
+            wave(Tone::Mild, 100),
+            wave(Tone::Mild, 200),
+            "tope al 100 %"
+        );
+        assert_eq!(&mild[44..46], 0i16.to_le_bytes(), "arranca en silencio");
+    }
+}

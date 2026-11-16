@@ -626,7 +626,7 @@ fn two_publishers_racing_after_initialization_never_replace_the_winner() {
     assert_eq!(std::fs::read(&db.0).unwrap(), bytes);
     let store = Store::open(&db.0, true).unwrap();
     assert_eq!(store.watermark, 0);
-    assert!(store.page(0, 1).unwrap().is_empty());
+    assert_eq!(store.page(0, 1).unwrap(), [] as [SeriesChunk; 0]);
 }
 
 #[test]

@@ -3,6 +3,7 @@ use std::io;
 use std::io::Write;
 
 use vantare_ipc::product;
+use vantare_storage::OpenMode;
 
 use std::path::PathBuf;
 
@@ -20,7 +21,6 @@ fn main() {
 fn execute() -> vantare_storage::Result<()> {
     let mut args = std::env::args_os().skip(1);
     let path = PathBuf::from(args.next().ok_or("falta ruta de DB")?);
-    use vantare_storage::OpenMode;
     let argument = args.next();
     let mode = match argument.as_deref() {
         None => OpenMode::Legacy,

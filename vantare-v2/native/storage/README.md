@@ -1,6 +1,35 @@
 # Almacenamiento de series — ISA-1429
 
-Crate y proceso bajo demanda: `vantare-storage <ruta.duckdb> [--read-only]`.
+Crate y proceso bajo demanda:
+`vantare-storage <ruta.duckdb> [--read-only|--create|--resume]`.
+
+- `--create`: solo nombre nuevo. Inicializa y confirma el esquema en un
+  directorio hermano exclusivo `<nombre>.creating-<pid>-<contador>/`, hace
+  CHECKPOINT, cierra la conexión y comprueba que no quede WAL. Sin conexión
+  abierta, sincroniza el fichero y publica con `std::fs::hard_link`: creación
+  atómica del nombre final que nunca reemplaza un destino existente, tampoco
+  si otro creador gana después de comprobarlo. Retira el alias temporal antes
+  de abrir el writer. No copia ni renombra una DB/WAL viva. Requiere que el
+  volumen soporte enlaces duros (NTFS en Windows); si no, falla cerrado.
+- Un error/caída conserva los artefactos propios para diagnóstico, sin borrado
+  automático ni reparación. Antes de publicar solo existe el temporal;
+  después ya existe una DB inicializada, aunque aún no se haya enviado ready.
+  Un corte justo después de publicar puede dejar ambos nombres del mismo
+  fichero cerrado: no abrir el temporal ni usarlo como otra grabación.
+- `--resume`: exige un fichero existente y el prefijo válido del formato
+  propio. No sustituye ni inicializa archivos ausentes/ajenos/incompletos.
+  En Windows mantiene un handle sin permiso de compartir DELETE mientras
+  inspecciona/abre/usa DuckDB, evitando la sustitución entre esas operaciones.
+- Sin modo se conserva el comportamiento histórico crear/reabrir; el Hub
+  GPUI congelado y `--read-only` mantienen CLI y protocolo sin cambios.
+
+La publicación resuelve la carrera entre creadores, no promete persistencia
+del nombre ante pérdida eléctrica. Los temporales no son grabaciones del
+catálogo. No reanudar automáticamente tras una caída ni borrar un temporal
+que pueda pertenecer a otro proceso. El directorio de datos es local y de
+confianza; no habilita importar DB externas ni protege frente a otro editor
+deliberado del directorio en plataformas sin la guarda DELETE de Windows.
+
 Ningún paquete vivo depende de storage/DuckDB. El workspace tiene 14
 miembros y ocho default-members; storage se excluye del build por defecto para
 no compilar DuckDB bundled. Compilarlo explícitamente con `--offline -j 4`

@@ -480,3 +480,227 @@ fn missing_open_has_a_typed_code_and_unknown_diagnostic_stays_unreadable() {
     let unknown = io::Error::other("unknown disk failure");
     assert_eq!(inspection::open_error(&unknown)[1], "unreadable");
 }
+
+// Estas barreras solo existen en el ejecutable de tests, nunca en el helper.
+pub(super) fn creation_step(stage: &str) {
+    if std::env::var("VANTARE_STORAGE_TEST_CUT").as_deref() == Ok(stage) {
+        println!("creation-cut:{stage}");
+        std::io::stdout().flush().unwrap();
+        let mut line = String::new();
+        std::io::stdin().read_line(&mut line).unwrap();
+    }
+}
+
+#[test]
+#[ignore = "fixture de creación: la invoca el test padre con barrera y kill"]
+fn creation_cut_fixture() {
+    let path = PathBuf::from(std::env::var_os("VANTARE_STORAGE_TEST_DB").unwrap());
+    create_database(&path).unwrap();
+}
+
+fn creation_fixture(path: &Path, stage: &str) -> std::process::Child {
+    use std::process::{Command, Stdio};
+    use std::sync::mpsc;
+    let mut command = Command::new(std::env::current_exe().unwrap());
+    command
+        .args([
+            "--ignored",
+            "--exact",
+            "tests::creation_cut_fixture",
+            "--nocapture",
+        ])
+        .env("VANTARE_STORAGE_TEST_DB", path)
+        .env("VANTARE_STORAGE_TEST_CUT", stage)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: fixture sin consola.
+    }
+    let mut child = command.spawn().unwrap();
+    let output = child.stdout.take().unwrap();
+    let (sender, receiver) = mpsc::channel();
+    let pump = std::thread::spawn(move || {
+        let mut reader = std::io::BufReader::new(output);
+        loop {
+            let mut line = String::new();
+            if reader.read_line(&mut line).unwrap() == 0 {
+                break;
+            }
+            if let Some(start) = line.find("creation-cut:") {
+                let _sent = sender.send(line[start..].trim().to_owned());
+                break;
+            }
+        }
+        reader.into_inner()
+    });
+    let result = receiver.recv_timeout(std::time::Duration::from_secs(30));
+    if result.is_err() {
+        child.kill().unwrap();
+        child.wait().unwrap();
+    }
+    child.stdout = Some(pump.join().unwrap());
+    assert_eq!(result.unwrap(), format!("creation-cut:{stage}"));
+    child
+}
+
+fn database_files(root: &Path) -> std::collections::BTreeMap<PathBuf, Vec<u8>> {
+    let mut files = std::collections::BTreeMap::new();
+    for entry in std::fs::read_dir(root).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+            for (name, bytes) in database_files(&path) {
+                files.insert(PathBuf::from(entry.file_name()).join(name), bytes);
+            }
+        } else {
+            files.insert(
+                PathBuf::from(entry.file_name()),
+                std::fs::read(path).unwrap(),
+            );
+        }
+    }
+    files
+}
+
+#[test]
+fn interrupted_creation_preserves_its_artifacts_without_automatic_repair() {
+    for stage in [
+        "before-meta",
+        "after-meta",
+        "before-publish",
+        "after-publish",
+    ] {
+        let db = Database::new();
+        let mut child = creation_fixture(&db.0, stage);
+        assert_eq!(db.0.exists(), stage == "after-publish");
+        child.kill().unwrap();
+        child.wait().unwrap();
+        let root = db.0.parent().unwrap();
+        let original = database_files(root);
+        assert!(!original.is_empty(), "el corte debe dejar un temporal real");
+        let mut output = Vec::new();
+        let result = serve_mode(&db.0, OpenMode::Create, &b""[..], &mut output);
+        assert_eq!(result.is_ok(), stage != "after-publish");
+        let after = database_files(root);
+        for (name, bytes) in original {
+            assert_eq!(
+                after.get(&name),
+                Some(&bytes),
+                "preservar {stage}: {name:?}"
+            );
+        }
+        if stage == "before-publish" || stage == "after-publish" {
+            for name in after.keys() {
+                assert_ne!(name.extension().and_then(|v| v.to_str()), Some("wal"));
+            }
+        }
+    }
+}
+
+#[test]
+fn two_publishers_racing_after_initialization_never_replace_the_winner() {
+    let db = Database::new();
+    let mut first = creation_fixture(&db.0, "before-publish");
+    let mut second = creation_fixture(&db.0, "before-publish");
+    // Ambos han cerrado DuckDB sin WAL y han comprobado destino ausente.
+    // La carrera se decide al publicar, no por el chequeo previo de exists.
+    for child in [&mut first, &mut second] {
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(b"continue\n")
+            .unwrap();
+    }
+    let a = first.wait().unwrap();
+    let b = second.wait().unwrap();
+    assert_ne!(
+        a.success(),
+        b.success(),
+        "exactamente un creador debe publicar"
+    );
+    let bytes = std::fs::read(&db.0).unwrap();
+    assert!(create_database(&db.0).is_err());
+    assert_eq!(std::fs::read(&db.0).unwrap(), bytes);
+    let store = Store::open(&db.0, true).unwrap();
+    assert_eq!(store.watermark, 0);
+    assert!(store.page(0, 1).unwrap().is_empty());
+}
+
+#[test]
+fn explicit_resume_requires_an_existing_valid_prefix_and_preserves_bad_originals() {
+    let db = Database::new();
+    assert!(serve_mode(&db.0, OpenMode::Resume, &b""[..], Vec::new()).is_err());
+    assert!(!db.0.exists());
+    std::fs::write(&db.0, b"not a database").unwrap();
+    for mode in [OpenMode::Create, OpenMode::Resume] {
+        assert!(serve_mode(&db.0, mode, &b""[..], Vec::new()).is_err());
+        assert_eq!(std::fs::read(&db.0).unwrap(), b"not a database");
+    }
+}
+
+#[test]
+fn create_preserves_an_orphan_wal_without_publishing_a_database() {
+    let db = Database::new();
+    let wal = wal_path(&db.0);
+    std::fs::write(&wal, b"existing WAL").unwrap();
+    let result = create_database(&db.0).unwrap_err();
+    assert_eq!(
+        result.downcast_ref::<io::Error>().unwrap().kind(),
+        io::ErrorKind::AlreadyExists
+    );
+    assert!(!db.0.exists());
+    assert_eq!(std::fs::read(wal).unwrap(), b"existing WAL");
+    assert_eq!(
+        std::fs::read_dir(db.0.parent().unwrap()).unwrap().count(),
+        1
+    );
+}
+
+#[test]
+fn explicit_resume_rejects_invalid_metadata_without_rewriting_the_original() {
+    for sql in [
+        "UPDATE series_meta SET watermark=1",
+        "UPDATE series_meta SET schema_version='future'",
+        "DROP TABLE series_meta",
+    ] {
+        let db = Database::new();
+        drop(Store::open(&db.0, false).unwrap());
+        let connection = Connection::open(&db.0).unwrap();
+        connection.execute_batch(sql).unwrap();
+        drop(connection);
+        let original = std::fs::read(&db.0).unwrap();
+        assert!(serve_mode(&db.0, OpenMode::Resume, &b""[..], Vec::new()).is_err());
+        assert_eq!(std::fs::read(&db.0).unwrap(), original);
+    }
+}
+
+#[test]
+fn a_destination_or_wal_appearing_at_publication_is_never_overwritten() {
+    for sidecar in [false, true] {
+        let db = Database::new();
+        let mut child = creation_fixture(&db.0, "before-publish");
+        let collision = if sidecar {
+            wal_path(&db.0)
+        } else {
+            db.0.clone()
+        };
+        std::fs::write(&collision, b"another owner arrived").unwrap();
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(b"continue\n")
+            .unwrap();
+        assert!(!child.wait().unwrap().success());
+        assert_eq!(std::fs::read(collision).unwrap(), b"another owner arrived");
+        assert_eq!(db.0.exists(), !sidecar);
+        let files = database_files(db.0.parent().unwrap());
+        assert!(
+            files.keys().any(|p| p.components().count() == 2),
+            "el temporal inicializado se conserva al perder la carrera"
+        );
+    }
+}

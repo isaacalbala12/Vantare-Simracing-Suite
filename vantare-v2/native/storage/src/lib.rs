@@ -1,7 +1,7 @@
 //! Propietario único de una DB de series v1. No se enlaza desde UI/IPC/Core.
 
 use std::io::{self, BufRead, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use duckdb::{Config, Connection, params};
 use serde_json::{Value, json};
@@ -12,6 +12,86 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + S
 const SCHEMA: &str = "vantare.series-db.v1";
 const MAX_REQUEST_BYTES: usize = MAX_CHUNK_BYTES + 128;
 use vantare_runtime::flows::MAX_STORAGE_PAGE_CHUNKS as MAX_PAGE_CHUNKS;
+
+/// El modo histórico se conserva para los consumidores de la misma generación.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OpenMode {
+    Legacy,
+    ReadOnly,
+    Create,
+    Resume,
+}
+
+fn temporary_database(path: &Path) -> io::Result<PathBuf> {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let name = path
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "falta nombre de grabación"))?;
+    loop {
+        let mut temporary = name.to_os_string();
+        temporary.push(format!(
+            ".creating-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let directory = path.with_file_name(temporary);
+        // El directorio exclusivo reserva el nombre antes de que DuckDB cree
+        // su fichero; no abrir un fichero vacío previamente creado por otro.
+        match std::fs::create_dir(&directory) {
+            Ok(()) => return Ok(directory.join("recording.duckdb")),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+fn require_missing(path: &Path) -> io::Result<()> {
+    match std::fs::symlink_metadata(path) {
+        Ok(_) => Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "grabación o WAL existente",
+        )),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+fn wal_path(path: &Path) -> PathBuf {
+    let mut wal = path.as_os_str().to_os_string();
+    wal.push(".wal");
+    wal.into()
+}
+
+fn create_database(path: &Path) -> Result<()> {
+    require_missing(path)?;
+    require_missing(&wal_path(path))?;
+    let temporary = temporary_database(path)?;
+    // Ante error o caída se conserva el temporal para diagnóstico, sin reparación.
+    let store = Store::open(&temporary, false)?;
+    store.connection.execute_batch("CHECKPOINT")?;
+    store.connection.close().map_err(|(_, error)| error)?;
+    require_missing(&wal_path(&temporary))?;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&temporary)?
+        .sync_all()?;
+    #[cfg(test)]
+    tests::creation_step("before-publish");
+    require_missing(&wal_path(path))?;
+    // hard_link crea el destino de forma atómica y falla si YA existe,
+    // incluso si otro creador ganó después de symlink_metadata. A diferencia
+    // de rename en Unix, nunca reemplaza. No se copia ni renombra una DB viva.
+    // Si el volumen no soporta enlaces duros, falla conservando el temporal.
+    std::fs::hard_link(&temporary, path)?;
+    #[cfg(test)]
+    tests::creation_step("after-publish");
+    // Retirar el alias ANTES de volver a abrir RW: nunca dos nombres vivos
+    // con WAL distintos para el mismo fichero. Si falla, no se abre el writer.
+    std::fs::remove_file(&temporary)?;
+    std::fs::remove_dir(temporary.parent().ok_or("temporal sin directorio")?)?;
+    Ok(())
+}
 
 struct Store {
     connection: Connection,
@@ -45,6 +125,8 @@ impl Store {
         let config = configuration(read_only)?;
         let mut connection = Connection::open_with_flags(path, config)?;
         if !exists {
+            #[cfg(test)]
+            tests::creation_step("before-meta");
             let tx = connection.transaction()?;
             tx.execute_batch("CREATE TABLE series_meta (singleton BOOLEAN PRIMARY KEY CHECK(singleton), schema_version VARCHAR NOT NULL, watermark UBIGINT NOT NULL, finished BOOLEAN NOT NULL, attempted UBIGINT NOT NULL); CREATE TABLE series_chunks (idx UBIGINT PRIMARY KEY, payload BLOB NOT NULL CHECK(octet_length(payload) <= 32768));")?;
             tx.execute(
@@ -52,6 +134,8 @@ impl Store {
                 [SCHEMA],
             )?;
             tx.commit()?;
+            #[cfg(test)]
+            tests::creation_step("after-meta");
         }
         // No inicializar ni migrar archivos ajenos, aunque sean DuckDB válidos.
         let (schema, watermark, finished, attempted): (String, u64, bool, u64) = connection.query_row(
@@ -199,12 +283,45 @@ fn configuration(read_only: bool) -> duckdb::Result<Config> {
 
 /// Protocolo local de arrays JSON, un frame por línea, comandos cerrados.
 /// EOF cierra la conexión. Error termina el proceso sin ACK ni reintento oculto.
-pub fn serve(
+pub fn serve(path: &Path, read_only: bool, input: impl BufRead, output: impl Write) -> Result<()> {
+    serve_mode(
+        path,
+        if read_only {
+            OpenMode::ReadOnly
+        } else {
+            OpenMode::Legacy
+        },
+        input,
+        output,
+    )
+}
+
+/// Crear exige un nombre nuevo; reanudar nunca inicializa una DB ausente.
+pub fn serve_mode(
     path: &Path,
-    read_only: bool,
+    mode: OpenMode,
     mut input: impl BufRead,
     mut output: impl Write,
 ) -> Result<()> {
+    if mode == OpenMode::Create {
+        create_database(path)?;
+        require_missing(&wal_path(path))?;
+    }
+    // En Windows este handle impide borrar/sustituir el archivo entre la
+    // inspección y la apertura de DuckDB, y durante toda la sesión explícita.
+    let _existing = if matches!(mode, OpenMode::Create | OpenMode::Resume) {
+        let mut options = std::fs::OpenOptions::new();
+        options.read(true);
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt as _;
+            options.share_mode(0x1 | 0x2); // FILE_SHARE_READ | FILE_SHARE_WRITE, no DELETE.
+        }
+        Some(options.open(path)?)
+    } else {
+        None
+    };
+    let read_only = mode == OpenMode::ReadOnly;
     let mut store = match Store::open(path, read_only) {
         Ok(store) => store,
         Err(error) => {

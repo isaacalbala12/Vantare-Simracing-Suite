@@ -1,344 +1,97 @@
-//! Movimiento de Standings: FLIP al reordenar y fundido de entrada y salida,
-//! con las curvas y duraciones de GPUI. Sin reloj propio: el Runtime presta el
-//! instante y solo hay despertares mientras dura una transición.
-use super::scene::Row;
-use crate::motion::{self, Tween};
-use std::collections::{BTreeMap, BTreeSet};
+//! Canales literales de GPUI standings::motion::Motion::update_rows (Vantare).
+use crate::{motion::Tween, vantare::Style};
+use std::collections::{HashMap, HashSet};
+use vantare_domain::CarId;
 
-/// Umbral en píxeles por debajo del cual una fila no se mueve.
-const MIN_FLIP_PX: f32 = 0.5;
-
-#[derive(Clone)]
-struct Channels {
-    dy: Tween,
-    alpha: Tween,
-}
-#[derive(Clone)]
-struct Exit {
-    row: Row,
-    top: f32,
-    fade: Tween,
-}
-
-/// Fila del instante: desplazamiento FLIP y opacidad.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(super) struct RowVis {
-    pub dy: f32,
+pub(super) struct Pose {
+    pub offset: f32,
     pub alpha: f32,
 }
-
-impl Default for RowVis {
+impl Default for Pose {
     fn default() -> Self {
         Self {
-            dy: 0.0,
+            offset: 0.0,
             alpha: 1.0,
         }
     }
 }
-
-/// Fila que ya no está en la tabla pero sigue fundiéndose en su última `y`.
-#[derive(Clone, Debug, PartialEq)]
-pub(super) struct Ghost {
-    pub row: Row,
-    pub top: f32,
-    pub alpha: f32,
+pub(super) type Frame = HashMap<CarId, Pose>;
+struct Channels {
+    top: f32,
+    flip: Tween,
+    fade: Tween,
+    flip_end: f64,
+    fade_end: f64,
 }
-
-/// Lo que el pintor necesita del movimiento, ya muestreado en el instante.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub(super) struct Visual {
-    pub rows: BTreeMap<u32, RowVis>,
-    pub ghosts: Vec<Ghost>,
-}
-
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub(super) struct Motion {
-    /// Última `y` de layout por coche, la referencia del FLIP.
-    tops: BTreeMap<u32, f32>,
-    /// Último contenido pintado, para el fantasma de una salida.
-    last: BTreeMap<u32, Row>,
-    rows: BTreeMap<u32, Channels>,
-    exits: Vec<Exit>,
+    rows: HashMap<CarId, Channels>,
     seeded: bool,
-    reduced: bool,
 }
-
 impl Motion {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// `true` si la política cambió; con movimiento reducido se salta al destino.
-    pub fn policy(&mut self, reduced: bool) -> bool {
-        if self.reduced == reduced {
-            return false;
-        }
-        self.reduced = reduced;
-        if reduced {
-            self.snap();
-        }
-        true
-    }
-
-    /// Filas visibles en orden y su `y` de layout. Sin datos nuevos no avanza.
-    pub fn update(&mut self, rows: &[(&Row, f32)], clock: f64) {
-        if self.reduced {
-            self.tops = rows.iter().map(|(row, y)| (row.id, *y)).collect();
-            self.rows = rows
-                .iter()
-                .map(|(row, _)| {
-                    (
-                        row.id,
-                        Channels {
-                            dy: Tween::fixed(0.0),
-                            alpha: Tween::fixed(1.0),
-                        },
-                    )
-                })
-                .collect();
-            self.last = rows
-                .iter()
-                .map(|(row, _)| (row.id, (*row).clone()))
-                .collect();
-            self.exits.clear();
-            self.seeded = true;
-            return;
-        }
+    pub fn update(&mut self, targets: &[(CarId, f32)], style: &Style, clock: f64, reduced: bool) {
         let first = !self.seeded;
         self.seeded = true;
-        let current: BTreeSet<u32> = rows.iter().map(|(row, _)| row.id).collect();
-        // Salidas: se conserva la última fila y su y viva para fundirla.
-        let gone: Vec<u32> = self
-            .tops
-            .keys()
-            .copied()
-            .filter(|id| !current.contains(id))
-            .collect();
-        for id in gone {
-            let Some(top) = self.tops.remove(&id) else {
-                continue;
-            };
-            let Some(channels) = self.rows.remove(&id) else {
-                continue;
-            };
-            if let Some(row) = self.last.get(&id).cloned() {
-                let top = top + channels.dy.value(clock);
-                let from = channels.alpha.value(clock);
-                self.exits.push(Exit {
-                    row,
-                    top,
-                    fade: fade(from, 0.0, clock),
-                });
-            }
-        }
-        self.exits.retain(|exit| exit.fade.value(clock) > 0.0);
-        for (row, y) in rows {
-            let previous = self.tops.insert(row.id, *y);
-            let mut resumed = None;
-            if let Some(index) = self.exits.iter().position(|exit| exit.row.id == row.id) {
-                resumed = Some(self.exits.remove(index).fade.value(clock));
-            }
-            let channels = self.rows.entry(row.id).or_insert(Channels {
-                dy: Tween::fixed(0.0),
-                alpha: Tween::fixed(1.0),
-            });
-            if first {
-                channels.dy = Tween::fixed(0.0);
-                channels.alpha = Tween::fixed(1.0);
-            } else if previous.is_none() {
-                channels.alpha = fade(resumed.unwrap_or(0.0), 1.0, clock);
+        let visible: HashSet<_> = targets.iter().map(|(id, _)| *id).collect();
+        // Vantare elimina las presencias salientes: no usa los ghosts de Eficiencia.
+        self.rows.retain(|id, _| visible.contains(id));
+        for &(id, top) in targets {
+            if let Some(row) = self.rows.get_mut(&id) {
+                let from = row.top + row.flip.value(clock) - top;
+                if from.abs() > 0.01 {
+                    // Tween común: CubicOut, como Curve::CubicOut de GPUI.
+                    row.flip = Tween::fixed(from);
+                    row.flip
+                        .retarget(0.0, clock, f64::from(style.motion.reorder_ms) / 1000.0);
+                    row.flip_end = clock + f64::from(style.motion.reorder_ms) / 1000.0;
+                }
+                row.top = top;
             } else {
-                let from = previous.unwrap_or(*y) - *y + channels.dy.value(clock);
-                channels.dy = if from.abs() >= MIN_FLIP_PX {
-                    let duration = motion::flip_ms(from) / 1000.0;
-                    tween(from, 0.0, clock, duration, motion::FLIP)
-                } else {
-                    Tween::fixed(0.0)
-                };
+                let mut fade = Tween::linear(if first || reduced { 1.0 } else { 0.0 });
+                fade.retarget(1.0, clock, f64::from(style.motion.fade_ms) / 1000.0);
+                self.rows.insert(
+                    id,
+                    Channels {
+                        top,
+                        flip: Tween::fixed(0.0),
+                        fade,
+                        flip_end: clock,
+                        fade_end: clock + f64::from(style.motion.fade_ms) / 1000.0,
+                    },
+                );
             }
-            self.last.insert(row.id, (*row).clone());
+        }
+        if reduced {
+            self.settle();
         }
     }
-
-    /// Muestreo puro del instante; retira los fantasmas que ya se apagaron.
-    pub fn sample(&mut self, clock: f64) -> Visual {
-        self.exits.retain(|exit| exit.fade.value(clock) > 0.0);
-        Visual {
-            rows: self
-                .rows
-                .iter()
-                .filter(|(id, _)| self.tops.contains_key(id))
-                .map(|(id, channels)| {
-                    (
-                        *id,
-                        RowVis {
-                            dy: channels.dy.value(clock),
-                            alpha: channels.alpha.value(clock),
-                        },
-                    )
-                })
-                .collect(),
-            ghosts: self
-                .exits
-                .iter()
-                .map(|exit| Ghost {
-                    row: exit.row.clone(),
-                    top: exit.top,
-                    alpha: exit.fade.value(clock),
-                })
-                .collect(),
-        }
-    }
-
-    /// Instante del próximo frame; `None` en reposo, sin reloj que mantener.
-    pub fn next_wake(&self, clock: f64) -> Option<f64> {
-        if self.reduced {
-            return None;
-        }
-        let moving = self
-            .rows
-            .values()
-            .any(|channels| channels.dy.active(clock) || channels.alpha.active(clock))
-            || self.exits.iter().any(|exit| exit.fade.active(clock));
-        moving.then_some(clock)
-    }
-
-    /// Con movimiento reducido las filas saltan: ni desplazamiento ni fundido.
-    fn snap(&mut self) {
-        for channels in self.rows.values_mut() {
-            channels.dy = Tween::fixed(0.0);
-            channels.alpha = Tween::fixed(1.0);
-        }
-        self.exits.clear();
-    }
-}
-
-fn tween(from: f32, to: f32, clock: f64, duration: f64, curve: [f32; 4]) -> Tween {
-    let mut tween = Tween::fixed(from).with_curve(curve);
-    tween.retarget(to, clock, duration);
-    tween
-}
-
-fn fade(from: f32, to: f32, clock: f64) -> Tween {
-    tween(
-        from,
-        to,
-        clock,
-        motion::FADE_MS as f64 / 1000.0,
-        motion::EASE_OUT,
-    )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rune::Easing;
-
-    fn row(id: u32) -> Row {
-        Row {
-            id,
-            player: false,
-            class: "hypercar".into(),
-            cells: Vec::new(),
-        }
-    }
-
-    fn rows(order: &[(u32, f32)]) -> Vec<(Row, f32)> {
-        order.iter().map(|(id, y)| (row(*id), *y)).collect()
-    }
-
-    fn update(motion: &mut Motion, order: &[(u32, f32)], clock: f64) {
-        let list = rows(order);
-        let borrowed: Vec<(&Row, f32)> = list.iter().map(|(row, y)| (row, *y)).collect();
-        motion.update(&borrowed, clock);
-    }
-
-    #[test]
-    fn a_reorder_flips_from_the_previous_row_and_rests_at_zero() {
-        let mut motion = Motion::new();
-        update(&mut motion, &[(1, 0.0), (2, 30.0)], 0.0);
-        assert_eq!(motion.next_wake(0.0), None, "la primera foto no anima");
-        // El coche 2 sube al primer puesto: parte de su y anterior (30 px).
-        update(&mut motion, &[(2, 0.0), (1, 30.0)], 1.0);
-        let start = motion.sample(1.0);
-        assert_eq!(start.rows[&2].dy, 30.0);
-        assert_eq!(start.rows[&1].dy, -30.0);
-        assert!(motion.next_wake(1.0).is_some(), "mientras dura, hay reloj");
-        let duration = motion::flip_ms(30.0) / 1000.0;
-        // A mitad de tiempo ya recorrió más de la mitad, como en GPUI.
-        let half = motion.sample(1.0 + duration / 2.0);
-        assert!(half.rows[&2].dy > 0.0 && half.rows[&2].dy < 15.0);
-        let expected = 30.0
-            * (1.0
-                - Easing::cubic(
-                    motion::FLIP[0],
-                    motion::FLIP[1],
-                    motion::FLIP[2],
-                    motion::FLIP[3],
+    pub fn sample(&self, clock: f64) -> Frame {
+        self.rows
+            .iter()
+            .map(|(&id, row)| {
+                (
+                    id,
+                    Pose {
+                        offset: row.flip.value(clock),
+                        alpha: row.fade.value(clock),
+                    },
                 )
-                .eval(0.5));
-        assert!((half.rows[&2].dy - expected).abs() < 1e-3);
-        let end = motion.sample(1.0 + duration + 0.01);
-        assert!(end.rows[&2].dy.abs() < 1e-3);
-        assert!(end.rows[&1].dy.abs() < 1e-3);
-        assert_eq!(
-            motion.next_wake(1.0 + duration + 0.01),
-            None,
-            "cero despertares al acabar"
-        );
+            })
+            .collect()
     }
-
-    #[test]
-    fn an_exit_keeps_its_last_row_and_fades_out_while_an_entry_fades_in() {
-        let mut motion = Motion::new();
-        update(&mut motion, &[(1, 0.0), (2, 30.0)], 0.0);
-        // El coche 2 sale de la ventana y el 3 entra.
-        update(&mut motion, &[(1, 0.0), (3, 30.0)], 1.0);
-        let start = motion.sample(1.0);
-        assert_eq!(start.ghosts.len(), 1);
-        assert_eq!(start.ghosts[0].row.id, 2);
-        assert_eq!(start.ghosts[0].top, 30.0);
-        assert_eq!(start.ghosts[0].alpha, 1.0);
-        assert_eq!(start.rows[&3].alpha, 0.0, "la fila nueva empieza invisible");
-        let quarter = motion.sample(1.0 + motion::FADE_MS as f64 / 4000.0);
-        let eased = Easing::cubic(
-            motion::EASE_OUT[0],
-            motion::EASE_OUT[1],
-            motion::EASE_OUT[2],
-            motion::EASE_OUT[3],
-        )
-        .eval(0.25);
-        assert!((quarter.ghosts[0].alpha - (1.0 - eased)).abs() < 1e-4);
-        assert!(quarter.rows[&3].alpha > 0.0 && quarter.rows[&3].alpha < 1.0);
-        let end_time = 1.0 + motion::FADE_MS as f64 / 1000.0 + 0.01;
-        let end = motion.sample(end_time);
-        assert!(end.ghosts.is_empty(), "el fantasma se retira al apagarse");
-        assert!((end.rows[&3].alpha - 1.0).abs() < 1e-6);
-        assert_eq!(motion.next_wake(end_time), None);
+    pub fn next_wake(&self, clock: f64, hz: u16) -> Option<f64> {
+        // El último frame cae en el final del canal, sin un wake después del fade/FLIP.
+        self.rows.values().flat_map(|row| [
+            row.flip.active(clock).then_some(row.flip_end),
+            row.fade.active(clock).then_some(row.fade_end),
+        ]).flatten().map(|end| end.min(clock + 1.0 / f64::from(hz)))
+            .min_by(f64::total_cmp)
     }
-
-    #[test]
-    fn reduced_motion_jumps_without_any_clock() {
-        let mut motion = Motion::new();
-        update(&mut motion, &[(1, 0.0), (2, 30.0)], 0.0);
-        assert!(motion.policy(true));
-        update(&mut motion, &[(2, 0.0), (1, 30.0)], 0.1);
-        let visual = motion.sample(0.1);
-        assert_eq!(visual.rows[&2].dy, 0.0, "salta al destino");
-        assert_eq!(visual.rows[&2].alpha, 1.0);
-        assert_eq!(
-            motion.next_wake(0.1),
-            None,
-            "sin reloj con movimiento reducido"
-        );
-        // Una entrada tampoco funde.
-        update(&mut motion, &[(2, 0.0), (1, 30.0), (3, 60.0)], 0.2);
-        assert_eq!(motion.sample(0.2).rows[&3].alpha, 1.0);
-        assert_eq!(motion.next_wake(0.2), None);
-        assert!(
-            motion.policy(false),
-            "volver a movimiento completo no anima solo"
-        );
-        assert!(!motion.policy(false));
+    pub fn settle(&mut self) {
+        for row in self.rows.values_mut() {
+            row.flip = Tween::fixed(0.0);
+            row.fade = Tween::fixed(1.0);
+        }
     }
 }

@@ -1,4 +1,5 @@
 mod layout;
+mod motion;
 #[cfg(test)]
 mod motion_tests;
 #[cfg(test)]
@@ -25,6 +26,7 @@ const PAUSE_HEIGHT: f32 = 22.0;
 #[derive(PartialEq)]
 struct Scene {
     paused: bool,
+    frame: motion::Frame,
     board: Option<Arc<Board>>,
     plan: Plan,
     options: Options,
@@ -37,6 +39,9 @@ pub(crate) struct Standings {
     session: Session,
     content: standings::Content,
     live_projection: bool,
+    motion: motion::Motion,
+    reduced: bool,
+    hz: u16,
 }
 impl Standings {
     fn new(settings: &Config, prefs: Preferences) -> Self {
@@ -52,8 +57,12 @@ impl Standings {
             session: Session::Race,
             content,
             live_projection: false,
+            motion: motion::Motion::default(),
+            reduced: false,
+            hz: 60,
             scene: Scene {
                 paused: false,
+                frame: motion::Frame::new(),
                 board: None,
                 plan,
                 options,
@@ -75,14 +84,16 @@ impl Widget for Standings {
     fn new(
         settings: &Settings,
         prefs: Preferences,
-        _reduced: bool,
-        _hz: u16,
-        _clock: f64,
+        reduced: bool,
+        hz: u16,
+        clock: f64,
     ) -> Option<Box<dyn Widget>> {
         let Settings::Standings(s) = settings else {
             return None;
         };
-        Some(Box::new(Self::new(s, prefs)))
+        let mut widget = Self::new(s, prefs);
+        widget.policy(reduced, hz, clock);
+        Some(Box::new(widget))
     }
     fn configured(&self, settings: &Settings, prefs: Preferences) -> bool {
         matches!(settings,Settings::Standings(s) if s.normalized()==self.settings)
@@ -108,10 +119,24 @@ impl Widget for Standings {
         }
     }
 
-    fn policy(&mut self, _reduced: bool, _hz: u16, _clock: f64) -> Update {
-        Update::default()
+    fn policy(&mut self, reduced: bool, hz: u16, clock: f64) -> Update {
+        self.reduced = reduced;
+        self.hz = hz.max(1);
+        if reduced {
+            self.motion.settle();
+        }
+        if self.scene.paused && !reduced {
+            return Update::default();
+        }
+        let frame = self.motion.sample(clock);
+        let build = frame != self.scene.frame;
+        self.scene.frame = frame;
+        Update {
+            build,
+            pixels: false,
+        }
     }
-    fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> Update {
+    fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
         // GPUI app::project_snapshot conserva la proyección viva durante la pausa.
         let paused = snapshot.state.source_state == SourceState::Paused;
         if paused && self.scene.paused {
@@ -161,9 +186,23 @@ impl Widget for Standings {
                 pixels: false,
             };
         }
+        let plan = layout::plan(Some(&board), &options, &self.style);
+        let targets = plan
+            .items
+            .iter()
+            .filter_map(|&(y, item)| {
+                let layout::Item::Row(g, r) = item else {
+                    return None;
+                };
+                Some((board.groups.get(g)?.rows.get(r)?.id, y))
+            })
+            .collect::<Vec<_>>();
+        self.motion
+            .update(&targets, &self.style, clock, self.reduced);
         let scene = Scene {
             paused,
-            plan: layout::plan(Some(&board), &options, &self.style),
+            frame: self.motion.sample(clock),
+            plan,
             board: Some(board),
             options,
         };
@@ -174,10 +213,24 @@ impl Widget for Standings {
             pixels: false,
         }
     }
-    fn animate(&mut self, _clock: f64) -> Update {
-        Update::default()
+    fn animate(&mut self, clock: f64) -> Update {
+        if self.scene.paused {
+            return Update::default();
+        }
+        let frame = self.motion.sample(clock);
+        let build = frame != self.scene.frame;
+        self.scene.frame = frame;
+        Update {
+            build,
+            pixels: false,
+        }
     }
-    fn schedule(&self, _clock: f64, _tx: &mut rune::Tx) {}
+    fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
+        if !self.scene.paused && !self.reduced
+            && let Some(due) = self.motion.next_wake(clock, self.hz) {
+            tx.wake_at(due);
+        }
+    }
     fn view(&self) -> rune::El {
         render::view(
             &self.scene.options,
@@ -186,6 +239,7 @@ impl Widget for Standings {
             &self.style,
             self.prefs.language,
             self.scene.paused,
+            &self.scene.frame,
         )
     }
 }

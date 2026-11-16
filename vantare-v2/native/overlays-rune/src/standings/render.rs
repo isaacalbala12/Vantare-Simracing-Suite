@@ -20,6 +20,7 @@ pub(super) fn view(
     style: &Style,
     language: Language,
     paused: bool,
+    frame: &super::motion::Frame,
 ) -> El {
     let v = options.variant(style);
     let mut p = Painter {
@@ -37,26 +38,22 @@ pub(super) fn view(
             Item::Header => p.header(y),
             Item::Columns => p.columns(y),
             Item::Row(g, r) => {
+                let Some(row) = board.and_then(|b| b.groups.get(g)?.rows.get(r)) else {
+                    continue;
+                };
+                let pose = frame.get(&row.id).copied().unwrap_or_default();
+                let missing = board.is_some_and(|b| b.gap_to_best_lap && row.best_lap_s.is_none());
                 let first = p.nodes.len();
-                p.row(y, g, r);
-                if board.is_some_and(|b| {
-                    b.gap_to_best_lap
-                        && b.groups
-                            .get(g)
-                            .and_then(|g| g.rows.get(r))
-                            .is_some_and(|r| r.best_lap_s.is_none())
-                }) {
-                    let mut row = el().size(plan.width, plan.height).opacity(0.45).pin(
-                        Some(0.0),
-                        Some(0.0),
-                        None,
-                        None,
-                    );
-                    for node in p.nodes.drain(first..) {
-                        row = row.child(node);
-                    }
-                    p.nodes.push(row);
+                p.row(0.0, g, r);
+                let mut layer = el()
+                    .key(format!("standings-row-{}", row.id.0))
+                    .size(plan.width, style.geometry.row_height)
+                    .opacity(pose.alpha * if missing { 0.45 } else { 1.0 })
+                    .pin(Some(0.0), Some(y + pose.offset), None, None);
+                for node in p.nodes.drain(first..) {
+                    layer = layer.child(node);
                 }
+                p.nodes.push(layer);
             }
             Item::Banner => p.banner(),
             Item::Separator(g) => p.separator(y, g),
@@ -98,6 +95,7 @@ pub(super) fn view(
             plan.height + if paused { PAUSE_HEIGHT } else { 0.0 },
         )
         .motion(rune::Spring::NONE)
+        .instant_changes()
         .child(panel);
     for node in p.nodes {
         root = root.child(node);

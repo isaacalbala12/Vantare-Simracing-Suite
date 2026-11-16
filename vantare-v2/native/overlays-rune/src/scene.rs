@@ -325,7 +325,7 @@ mod tests {
         let now = Instant::now();
         let mut design = layout();
         design.instances[0].settings =
-            Settings::default_for(vantare_domain::widget_settings::Kind::CarDamageNumbers);
+            Settings::default_for(vantare_domain::widget_settings::Kind::CarDamageVisual);
         let mut scene = Scene::new(
             design.clone(),
             Access::LocalPreview,

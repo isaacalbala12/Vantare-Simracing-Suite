@@ -12,6 +12,7 @@ mod topologia_windows;
 pub mod feed;
 pub mod scene;
 
+mod car_damage_numbers;
 pub mod fastest_lap;
 mod fuel;
 mod head_to_head;

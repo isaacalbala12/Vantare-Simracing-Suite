@@ -44,6 +44,7 @@ const paths = await packager({
   name: "vantare-hub-ui",
   appVersion: build.version,
   buildVersion: build.version,
+  win32metadata: { CompanyName: "Vantare" },
   platform: "win32",
   arch: "x64",
   electronVersion: "45.2.3",

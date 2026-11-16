@@ -131,7 +131,7 @@ try {
     if ($Gate -in @('clippy', 'captura')) { $arguments += @('--', '-D', 'warnings') }
     if ($ListOnly) { Write-Output ($arguments -join ' '); return }
     if ($Gate -eq 'archive') {
-        $messages = @(& cargo @arguments)
+        $messages = @(& cargo @arguments @('--timings'))
         if ($LASTEXITCODE) { $messages | Write-Host; throw "Gate $Gate falló (código $LASTEXITCODE)." }
         $decoded = @($messages | ForEach-Object { $_ | ConvertFrom-Json })
         $decoded | Where-Object reason -EQ 'compiler-message' | ForEach-Object { Write-Host $_.message.rendered }

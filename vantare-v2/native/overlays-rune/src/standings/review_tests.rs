@@ -212,6 +212,7 @@ fn gpui_zero_alpha_panel_omits_shadows_and_border_work() {
     let mut w = projected();
     let v = &mut Arc::make_mut(&mut w.style).styles.neo;
     v.border.a = 0.0;
+    v.border_accent = 0.0;
     v.shadow_alpha = 0.0;
     let rt = paint(w);
     assert!(
@@ -223,6 +224,6 @@ fn gpui_zero_alpha_panel_omits_shadows_and_border_work() {
     assert!(
         !rt.instances
             .iter()
-            .any(|i| i.rect[2] == 900.0 && i.border[3] > 0.0)
+            .any(|i| i.rect[2] == 900.0 && matches!(i.params[1], 0.0 | 4.0) && i.params[0] > 0.0)
     );
 }

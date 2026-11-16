@@ -641,7 +641,7 @@ La validación vive dentro de esos métodos y usa el Reader de la sesión, tambi
 al disparar el Calendario (`launch_for_instance`). El despacho no la duplica.
 La autoridad precede al documento y la revisión precede al escaneo pendiente.
 
-## Preview Rune por foto · VANTA-138 / #2481
+## Preview Rune por foto · v46 / VANTA-138 / #2481
 
 `preview.render` recibe un destino cerrado: `instance { id, baseRevision }` o
 `catalog { widget }`, `scene: "demo"` y escala `"1" | "1.25" | "1.5"`.

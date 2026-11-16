@@ -1,7 +1,7 @@
 ## VANTA-138 · #2481: preview.render sobre la CLI Rune de B
 
 Esquema aprobado por raíz: solo núcleo y contrato; no UI, caché ni canal
-interactivo. Rama `vantareapp/isa-2481-rune-preview`, base nightly `9fa8b4abb`.
+interactivo. Rama `vantareapp/isa-2481-rune-preview`, rebasada sobre nightly `19ac26786`.
 `preview.render` recibe instancia/revisión o tipo del catálogo, escena demo y
 escala cerrada; devuelve una imagen PNG base64 o fallo final, sin acuse intermedio.
 El hijo es exclusivamente el ejecutable Rune hermano del host, con Job existente.
@@ -15,11 +15,13 @@ base64 0.22.1 ya en el lock, MIT OR Apache-2.0; ningún paquete/versión añadid
 La CLI actual no incorpora demos: sin snapshot/sequence da NoDemo en todos los
 widgets; se conserva, sin foto genérica. F prepara las entradas canónicas.
 No se considera esto un canal de edición: #2025 sigue aparcada.
-Pruebas CPU con hijo falso del test, sin ejecutar Rune ni GPU. Primera suite:
-679 host PASS (2 omitidos: uno anterior y el helper invocado por otros tests),
-tipos/lint y 56 web puros PASS; jsdom no arrancó, no se declara PASS.
-Se añade prueba de argumentos/escala/entorno antes del gate final. Bump v45→v46
-en commit separado y CI pendientes. Script de medición preparado, solo parseado;
+Gates finales: Clippy y 680 host PASS (2 omitidos: uno anterior y el helper
+invocado por otros tests); tipos/lint y 592 web PASS (83 dirigidos + 509 corpus/
+índice). jsdom no arrancó en la primera pasada; la repetición final sí pasó.
+Se prueban argumentos/escala/entorno, plazo con reloj inyectado y cierre del hijo
+por cuenta/permisos/Live/cierre/Drop. Bump v45→v46 en commit separado de cinco
+archivos, base verificada en v45; range-diff conserva implementación.
+CI y revisión del draft pendientes. Script de medición preparado, solo parseado;
 PNG grandes a escala1.5, latencia/CPU/RAM y píxeles/GPU esperan PC autorizado.
 No se cambia el límite sin consultar los resultados con la raíz.
 Sin merge, promoción, release ni cambios del paquete distribuido propios.

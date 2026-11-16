@@ -251,14 +251,16 @@ fn the_bar_fill_paints_the_target_and_its_sign() {
     positive.state.player.as_mut().expect("player").delta_best_s = Reliable(0.4);
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
     painter.update(&positive, 0.0);
-    let mut runtime = runtime(painter);
-    let fill = runtime.presented("bar-fill").expect("positive bar");
+    let mut positive_runtime = runtime(painter);
+    let fill = positive_runtime
+        .presented("bar-fill")
+        .expect("positive bar");
     assert!(fill.0[0] >= 380.0 / 2.0 - 0.5, "positivo a la derecha");
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
     painter.update(&snapshot(), 0.2);
-    let mut runtime = runtime(painter);
-    assert!(runtime.presented("bar-center").is_some());
-    assert!(runtime.wake_deadline().is_none(), "sin reloj");
+    let mut center_runtime = runtime(painter);
+    assert!(center_runtime.presented("bar-center").is_some());
+    assert!(center_runtime.wake_deadline().is_none(), "sin reloj");
 }
 
 #[test]

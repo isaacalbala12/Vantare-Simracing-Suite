@@ -241,7 +241,7 @@ fn invalid_and_paused_keep_the_grey_number_and_the_note() {
 fn the_bar_fill_paints_the_target_and_its_sign() {
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
     painter.update(&snapshot(), 0.0);
-    let mut runtime = runtime(painter);
+    let mut runtime = harness(painter);
     let fill = runtime.presented("bar-fill").expect("painted bar");
     let [x, _, w, _] = fill.0;
     assert!(w > 0.0);
@@ -251,14 +251,14 @@ fn the_bar_fill_paints_the_target_and_its_sign() {
     positive.state.player.as_mut().expect("player").delta_best_s = Reliable(0.4);
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
     painter.update(&positive, 0.0);
-    let mut positive_runtime = runtime(painter);
+    let mut positive_runtime = harness(painter);
     let fill = positive_runtime
         .presented("bar-fill")
         .expect("positive bar");
     assert!(fill.0[0] >= 380.0 / 2.0 - 0.5, "positivo a la derecha");
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
     painter.update(&snapshot(), 0.2);
-    let mut center_runtime = runtime(painter);
+    let mut center_runtime = harness(painter);
     assert!(center_runtime.presented("bar-center").is_some());
     assert!(center_runtime.wake_deadline().is_none(), "sin reloj");
 }
@@ -269,7 +269,7 @@ fn thirty_seconds_of_sequences_and_hidden_lap_times_leave_actual_cpu_pixels_unch
         let mut input = snapshot();
         let mut painter = Delta::new(&settings(size), Preferences::default());
         painter.update(&input, 0.0);
-        let mut runtime = runtime(painter);
+        let mut runtime = harness(painter);
         if size == "pill" {
             assert!(
                 runtime.presented("header-title").is_none(),
@@ -305,7 +305,7 @@ fn every_state_keeps_every_layer_inside_the_window() {
             let mut painter = Delta::new(&settings(size), Preferences::default());
             painter.update(&input, 0.0);
             let (width, height) = (painter.size().width, painter.size().height);
-            let mut runtime = runtime(painter);
+            let mut runtime = harness(painter);
             crate::testdata::assert_inside_window(&mut runtime, (width, height));
         }
     }

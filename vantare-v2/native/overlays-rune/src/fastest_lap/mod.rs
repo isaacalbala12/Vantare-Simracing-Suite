@@ -398,12 +398,13 @@ mod tests {
         let scene = widget.visual.as_ref().expect("récord fijo");
         assert_eq!(scene.opacity, 1.0);
         assert_eq!(scene.kind, Kind::Class);
-        // Récord de clase exacto de la foto final del fixture.
-        assert_eq!(scene.time.as_ref(), "1:30.864");
+        // Récord de clase exacto de la foto final del fixture (hypercar).
+        assert_eq!(scene.time.as_ref(), "3:27.046");
         assert_eq!(scene.title, "VUELTA RÁPIDA");
         assert_eq!(
-            scene.sectors, [None; 3],
-            "la vuelta del récord no es la última: sin sectores"
+            scene.sectors,
+            [Some(true), Some(true), Some(false)],
+            "sectores contra el mejor de la clase: 69, 69 y 69.046 > 68"
         );
         assert_eq!(widget.motion.next_wake(0.0), None, "sin reloj");
         assert!(!widget.update(&demo, 0.1).pixels, "la misma foto reposa");

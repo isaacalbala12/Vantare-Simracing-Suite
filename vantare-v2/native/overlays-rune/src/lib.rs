@@ -29,6 +29,7 @@ pub mod pedals_telemetry;
 pub mod racing_flags;
 mod radar;
 pub mod relative;
+mod relative_eficiencia;
 mod renderer;
 mod session_alerts;
 mod standings;

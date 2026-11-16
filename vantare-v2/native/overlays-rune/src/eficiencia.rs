@@ -79,11 +79,13 @@ pub fn label(value: &str, x: f32, base: f32, style: TextStyle, ink: Color) -> El
     text(value)
         .font(style)
         .color(ink)
-        .absolute(x, base - ascent)
+        .pin(Some(x), Some(base - ascent), None, None)
 }
 
 pub fn rect(x: f32, y: f32, w: f32, h: f32, ink: Color) -> El {
-    el().absolute(x, y).size(w.max(0.0), h.max(0.0)).fill(ink)
+    el().pin(Some(x), Some(y), None, None)
+        .size(w.max(0.0), h.max(0.0))
+        .fill(ink)
 }
 
 /// Ángulo del brillo del panel, en grados, como GPUI (Rune lo pide en radianes).
@@ -94,7 +96,7 @@ pub fn panel(w: f32, h: f32) -> El {
         .radius(RADIUS)
         .fill(color(PANEL, 0.87))
         .child(
-            el().absolute(0.0, 0.0)
+            el().pin(Some(0.0), Some(0.0), None, None)
                 .size(w, h)
                 .radius(RADIUS)
                 .linear_gradient(
@@ -119,16 +121,16 @@ pub fn top_overlay(base: f32, top: f32) -> f32 {
 /// encima, una tira de `RADIUS` de alto con el borde a `top` compuesto.
 pub fn outline(w: f32, h: f32, base: f32, top: f32) -> El {
     let overlay = top_overlay(base, top);
-    el().size(w, h)
-        .absolute(0.0, 0.0)
+    el().pin(Some(0.0), Some(0.0), None, None)
+        .size(w, h)
         .child(
-            el().absolute(0.0, 0.0)
+            el().pin(Some(0.0), Some(0.0), None, None)
                 .size(w, h)
                 .radius(RADIUS)
                 .border(1.0, color(0xffffff, base.clamp(0.0, 1.0))),
         )
         .child(
-            el().absolute(0.0, 0.0)
+            el().pin(Some(0.0), Some(0.0), None, None)
                 .size(w, RADIUS)
                 .radius(RADIUS)
                 .border_sides([1.0, 0.0, 0.0, 0.0], color(0xffffff, overlay)),

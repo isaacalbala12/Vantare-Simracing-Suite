@@ -10,19 +10,96 @@ use vantare_domain::{
     format::Preferences,
     geometry::Size,
     relative::{self, Board},
-    widget_settings::relative::Settings,
+    widget_settings::{look::Look, relative::Settings},
 };
 
-const PAUSE_HEIGHT: f32 = 22.0;
+pub(crate) const PAUSE_HEIGHT: f32 = 22.0;
 
 pub(crate) use crate::widget::Update;
+
+/// Pintor del Look elegido; la escena y el movimiento son los mismos.
+enum Painting {
+    Vantare(Box<render::Painter>),
+    Eficiencia(crate::relative_eficiencia::Painter),
+}
+
+impl Painting {
+    fn new(settings: &Settings, prefs: Preferences, initial: &scene::Scene) -> Self {
+        if settings.design_system == Look::Eficiencia {
+            Self::Eficiencia(crate::relative_eficiencia::Painter::new(
+                settings, prefs, initial,
+            ))
+        } else {
+            Self::Vantare(Box::new(render::Painter::new(settings, prefs, initial)))
+        }
+    }
+    fn size(&self) -> Size {
+        match self {
+            Self::Vantare(painter) => painter.size(),
+            Self::Eficiencia(painter) => painter.size(),
+        }
+    }
+    fn size_for(&self, paused: bool) -> Size {
+        match self {
+            Self::Vantare(painter) => painter.size_for(paused),
+            Self::Eficiencia(painter) => painter.size_for(paused),
+        }
+    }
+    fn has_strip(&self) -> bool {
+        match self {
+            Self::Vantare(painter) => painter.has_strip(),
+            Self::Eficiencia(painter) => painter.has_strip(),
+        }
+    }
+    fn targets(&mut self, board: &Arc<Board>) -> Vec<f32> {
+        match self {
+            Self::Vantare(painter) => painter.targets(board),
+            Self::Eficiencia(painter) => painter.targets(board),
+        }
+    }
+    fn sync(&mut self, scene: &scene::Scene) -> Update {
+        match self {
+            Self::Vantare(painter) => painter.sync(scene),
+            Self::Eficiencia(painter) => painter.sync(scene),
+        }
+    }
+    fn view(&self) -> El {
+        match self {
+            Self::Vantare(painter) => painter.view(),
+            Self::Eficiencia(painter) => painter.view(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Relative {
+    /// Pintor Vantare para las pruebas del plan y de los rótulos.
+    fn vantare(&self) -> &render::Painter {
+        match &self.painter {
+            Painting::Vantare(painter) => painter,
+            Painting::Eficiencia(_) => panic!("la prueba espera el pintor Vantare"),
+        }
+    }
+    fn vantare_mut(&mut self) -> &mut render::Painter {
+        match &mut self.painter {
+            Painting::Vantare(painter) => painter,
+            Painting::Eficiencia(_) => panic!("la prueba espera el pintor Vantare"),
+        }
+    }
+    fn into_vantare(self) -> render::Painter {
+        match self.painter {
+            Painting::Vantare(painter) => *painter,
+            Painting::Eficiencia(_) => panic!("la prueba espera el pintor Vantare"),
+        }
+    }
+}
 
 pub(crate) struct Relative {
     settings: Settings,
     prefs: Preferences,
     board: Arc<Board>,
     motion: Motion,
-    painter: render::Painter,
+    painter: Painting,
     visual: scene::Scene,
     boundary: Option<(u64, u64, Preferences)>,
     paused: bool,
@@ -38,12 +115,19 @@ impl Relative {
     ) -> Self {
         let settings = settings.normalized();
         let style = crate::vantare::Style::compiled();
+        // GPUI anima Vantare y Eficiencia con curvas y duraciones distintas.
+        let kinetics = if settings.design_system == Look::Eficiencia {
+            scene::Kinetics::Eficiencia
+        } else {
+            scene::Kinetics::Vantare
+        };
         let mut motion = Motion::new(
             Timing {
                 reorder: f64::from(style.motion.reorder_ms) / 1000.0,
                 fade: f64::from(style.motion.fade_ms) / 1000.0,
                 flash: f64::from(style.motion.flash_ms) / 1000.0,
                 pulse: f64::from(style.relative.pulse_ms) / 1000.0,
+                kinetics,
             },
             reduced,
             hz,
@@ -58,7 +142,7 @@ impl Relative {
         );
         motion.advance(&board, clock);
         let initial = scene::sample(board.clone(), &motion, false, clock);
-        let painter = render::Painter::new(&settings, prefs, &initial);
+        let painter = Painting::new(&settings, prefs, &initial);
         Self {
             settings,
             prefs,
@@ -170,6 +254,7 @@ impl crate::widget::Widget for Relative {
         let vantare_domain::widget_settings::Settings::Relative(settings) = settings else {
             return None;
         };
+
         Some(Box::new(Relative::new(settings, prefs, reduced, hz, clock)))
     }
     fn configured(
@@ -229,35 +314,61 @@ mod tests {
     /// La ventana mide lo que pide el widget en cada estado, no una caja fija.
     #[test]
     fn no_layer_falls_outside_the_window() {
+        use vantare_domain::widget_settings::columns::ColumnSetting;
         let _fonts = rune::text::with_families("Inter", "Inter");
         let live = crate::testdata::snapshot();
         let mut paused = live.clone();
         paused.state.source_state = vantare_domain::SourceState::Paused;
+        let configured = Some(vec![
+            ColumnSetting {
+                metric_id: "driverName".into(),
+                ..ColumnSetting::default()
+            },
+            ColumnSetting {
+                metric_id: "gap".into(),
+                ..ColumnSetting::default()
+            },
+            ColumnSetting {
+                metric_id: "lastLap".into(),
+                ..ColumnSetting::default()
+            },
+        ]);
         for look in [Look::Vantare, Look::Eficiencia] {
-            for photo in [Snapshot::default(), live.clone(), paused.clone()] {
-                let mut painter = Relative::new(
-                    &Settings::for_look(look),
-                    Preferences::default(),
-                    true,
-                    5,
-                    0.0,
-                );
-                painter.update(&photo, 0.0);
-                let size = painter.size_for(Some(&photo));
-                let mut runtime = rune::Runtime::with_text(
-                    painter,
-                    |painter: &Relative, _| painter.view(),
-                    (size.width, size.height),
-                    rune::Env::new(true, 1.0),
-                    rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
-                );
-                runtime.poll = Some(|relative, clock, tx| {
-                    relative.animate(clock);
-                    relative.schedule(clock, tx);
-                    false
-                });
-                runtime.frame(0.0);
-                crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+            let (fonts, families) = match look {
+                Look::Eficiencia => (crate::eficiencia::FONTS, ("Inter W400", "Inter W400")),
+                _ => (crate::vantare::FONTS, ("Inter", "Inter")),
+            };
+            for columns in [None, configured.clone()] {
+                for photo in [Snapshot::default(), live.clone(), paused.clone()] {
+                    let settings = Settings {
+                        columns: columns.clone(),
+                        ..Settings::for_look(look)
+                    };
+                    let mut painter =
+                        Relative::new(&settings, Preferences::default(), true, 5, 0.0);
+                    painter.update(&photo, 0.0);
+                    let size = painter.size_for(Some(&photo));
+                    if look == Look::Eficiencia {
+                        assert_eq!(size.width, 470.0, "ancho de GPUI");
+                        let paused =
+                            photo.state.source_state == vantare_domain::SourceState::Paused;
+                        assert_eq!(size.height, 277.0 + if paused { 22.0 } else { 0.0 });
+                    }
+                    let mut runtime = rune::Runtime::with_text(
+                        painter,
+                        |painter: &Relative, _| painter.view(),
+                        (size.width, size.height),
+                        rune::Env::new(true, 1.0),
+                        rune::text::TextSystem::new(fonts, families),
+                    );
+                    runtime.poll = Some(|relative, clock, tx| {
+                        relative.animate(clock);
+                        relative.schedule(clock, tx);
+                        false
+                    });
+                    runtime.frame(0.0);
+                    crate::testdata::assert_inside_window(&mut runtime, (size.width, size.height));
+                }
             }
         }
     }
@@ -388,7 +499,7 @@ mod tests {
                 painter.update(&crate::testdata::snapshot(), 0.0);
                 assert_eq!(
                     painter
-                        .painter
+                        .vantare()
                         .plan
                         .columns
                         .iter()
@@ -398,7 +509,7 @@ mod tests {
                 );
                 assert!(
                     painter
-                        .painter
+                        .vantare()
                         .labels
                         .rows
                         .iter()
@@ -406,8 +517,8 @@ mod tests {
                         .any(|r| r.driver == "You")
                 );
                 assert!(
-                    painter.painter.plan.width > 0.0
-                        && painter.painter.plan.height >= painter.painter.plan.content
+                    painter.vantare().plan.width > 0.0
+                        && painter.vantare().plan.height >= painter.vantare().plan.content
                 );
                 let _view = painter.view();
             }
@@ -423,7 +534,7 @@ mod tests {
             let painter = Relative::new(&settings, Preferences::default(), true, 15, 0.0);
             assert_eq!(painter.size().width, width, "{template}");
             assert_eq!(
-                painter.painter.header[4].get().as_ref(),
+                painter.vantare().header[4].get().as_ref(),
                 "Esperando al simulador"
             );
         }
@@ -433,22 +544,22 @@ mod tests {
         let mut relative = painter(false);
         relative.update(&crate::testdata::snapshot(), 0.0);
         let board = Arc::new((*relative.board).clone());
-        relative.painter.targets(&board);
-        let plan = relative.painter.plan.items.as_ptr();
-        let title = relative.painter.labels.title.as_ptr();
+        relative.vantare_mut().targets(&board);
+        let plan = relative.vantare().plan.items.as_ptr();
+        let title = relative.vantare().labels.title.as_ptr();
         let mut visual = relative.visual.clone();
         visual.board = board.clone();
-        assert!(!relative.painter.sync(&visual).build);
+        assert!(!relative.vantare_mut().sync(&visual).build);
         visual.rows[0].opacity = 0.5;
-        assert!(!relative.painter.sync(&visual).build);
-        relative.painter.targets(&board);
-        assert_eq!(relative.painter.plan.items.as_ptr(), plan);
-        assert_eq!(relative.painter.labels.title.as_ptr(), title);
+        assert!(!relative.vantare_mut().sync(&visual).build);
+        relative.vantare_mut().targets(&board);
+        assert_eq!(relative.vantare().plan.items.as_ptr(), plan);
+        assert_eq!(relative.vantare().labels.title.as_ptr(), title);
         relative.board = board;
         relative.animate(0.0);
         assert!(Arc::ptr_eq(&relative.visual.board, &relative.board));
-        assert_eq!(relative.painter.plan.items.as_ptr(), plan);
-        assert_eq!(relative.painter.labels.title.as_ptr(), title);
+        assert_eq!(relative.vantare().plan.items.as_ptr(), plan);
+        assert_eq!(relative.vantare().labels.title.as_ptr(), title);
     }
     #[test]
     fn appearing_and_disappearing_banner_interpolates_canonical_layout_coordinates() {
@@ -481,7 +592,8 @@ mod tests {
                 .iter()
                 .position(|r| r.as_ref().is_some_and(|r| r.id == player))
                 .expect("player slot");
-            let target = relative.painter.targets(&relative.board)[index];
+            let board = relative.board.clone();
+            let target = relative.vantare_mut().targets(&board)[index];
             assert_ne!(from, target);
             assert_eq!(
                 relative

@@ -1,3 +1,18 @@
+## VANTA-138 · D022, formatos de columnas (16/11/2026)
+
+Esquema aprobado por raíz: ampliar el patch existente con display/decimals para
+Standings lastLap/bestLap, en las tres sesiones. Una única forma de restablecer:
+null, incluido mode; el cable no acepta mode vacío. Relative no gana UI de tiempo.
+Se reutilizan studio.instance, revisión, CAS, merge de opacos y undo. Sin módulos,
+estado, dependencias ni cambios en ipc/domain. La raíz asignó v44 antes de fusionar;
+el bump va en un commit separado, sobre nightly v43. Implementado en vantareapp/isa-1995-column-formats; draft enlazado en #1995.
+Formato/exportador y Clippy verificados antes del rebase; producción D022 idéntica.
+Tras integrar D111, ambos tipos/lint y531 tests web correctos.
+El último Nextest local quedó pendiente tras20min sin RAM, con autorización del
+orquestador para usar CI. Una pasada anterior dio523 correctos y un fallo de
+fixture (faltaban x/y), corregido con aserto Ready; CI verifica la suite completa.
+Sin merge, promoción, release ni gráficos. D conecta la UI tras revisar.
+
 ## VANTA-138 · D111, duplicación seleccionada (16/11/2026)
 
 Esquema y mini aprobados por la raíz vía sub-orquestador Hub. Una orden tipada

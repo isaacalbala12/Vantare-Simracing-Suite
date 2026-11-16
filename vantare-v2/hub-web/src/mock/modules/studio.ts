@@ -548,7 +548,11 @@ export function applyWidgetSettings(
         return {
           ...old,
           ...fields,
-          format: { ...(old.format as object), ...fields.format },
+          format: {
+            ...(old.format as object),
+            ...fields.format,
+            ...(fields.format?.mode === null ? { mode: "" } : {}),
+          },
           style: { ...(old.style as object), ...fields.style },
         };
       });

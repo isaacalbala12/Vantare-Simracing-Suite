@@ -312,7 +312,9 @@ const columnPatch: Check = (v) =>
           f,
           {},
           {
-            mode: choices(o.columns.names),
+            mode: nullable(choices(o.columns.names)),
+            display: nullable(choices(o.columns.timeDisplays)),
+            decimals: nullable(range(0, o.columns.decimalsMax)),
             maxChars: nullable(range(0, o.columns.maxChars)),
           },
         ),
@@ -333,7 +335,18 @@ function columns(value: unknown, kind: "standings" | "relative"): boolean {
   const ids = value.map((v: Record<string, unknown>) => v.metric);
   return (
     new Set(ids).size === ids.length &&
-    ids.every((id) => oneOf(id, o.columns.legacy) || oneOf(id, o[kind].columns))
+    ids.every(
+      (id) => oneOf(id, o.columns.legacy) || oneOf(id, o[kind].columns),
+    ) &&
+    value.every((entry: Record<string, unknown>) => {
+      const f = entry.format as Record<string, unknown> | undefined;
+      return (
+        !f ||
+        !("display" in f || "decimals" in f) ||
+        (kind === "standings" &&
+          ["lastLap", "bestLap"].includes(String(entry.metric)))
+      );
+    })
   );
 }
 export function isWidgetSettingsPatch(value: unknown): boolean {

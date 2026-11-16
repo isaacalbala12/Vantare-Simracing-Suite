@@ -593,3 +593,15 @@ SessionAlerts copia solo la instancia seleccionable: el normalizador canónico
 crea su mini al leer, igual que GPUI. Se reserva también `<id>-mini`; no se
 normaliza ni reescribe el resto del documento. Los Hz heredados 0/40 se conservan
 al copiar; `FrequencyChange` sigue rechazándolos como nuevas selecciones de UI.
+
+## Formatos de columnas (D022)
+
+`studio.instance` conserva su revisión y respuesta. El patch de formato permite
+`display: "normal" | "compact" | null` y `decimals: 0..3 | null` en Standings,
+solo lastLap/bestLap, en las tres listas de sesión. Omitir conserva el campo;
+null restablece. También `mode: null` restablece el modo nativo: el cable rechaza
+la cadena vacía. Relative conserva los valores guardados sin habilitar su edición
+de tiempos (el pintor los declara no soportados). `studioColumnFormatCases` sirve
+como vector compartido del host y los tests web. No se añaden métodos ni cambios
+en ipc/domain. La raíz asignó v44 antes de fusionar, con el bump en un commit
+separado del cambio funcional.

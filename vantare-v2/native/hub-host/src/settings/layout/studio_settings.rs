@@ -88,7 +88,12 @@ fn column_edits(
             if key == "metric" {
                 continue;
             }
-            let merged = known_object(column.0.get(key).map(Box::as_ref), value)?;
+            let mut value = value.clone();
+            // The wire has one reset form: null. Native Format stores an empty mode.
+            if key == "format" && value.get("mode").is_some_and(Value::is_null) {
+                value["mode"] = Value::String(String::new());
+            }
+            let merged = known_object(column.0.get(key).map(Box::as_ref), &value)?;
             column.0.insert(key.clone(), merged);
         }
         result.push(column.0);

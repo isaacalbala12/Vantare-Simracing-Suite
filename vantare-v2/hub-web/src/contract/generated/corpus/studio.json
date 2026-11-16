@@ -12715,6 +12715,55 @@
             "columns": [
               {
                 "format": {
+                  "decimals": 2,
+                  "display": "compact"
+                },
+                "metric": "lastLap"
+              }
+            ],
+            "kind": "standings"
+          }
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "settings",
+          "value": {
+            "kind": "standings",
+            "practiceColumns": [
+              {
+                "format": {
+                  "decimals": null,
+                  "display": null,
+                  "mode": null
+                },
+                "metric": "bestLap"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "id": "widget-1",
+        "method": "studio.instance",
+        "patch": {
+          "field": "settings",
+          "value": {
+            "columns": [
+              {
+                "format": {
                   "maxChars": 64,
                   "mode": "full"
                 },

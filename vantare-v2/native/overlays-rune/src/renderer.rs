@@ -40,6 +40,9 @@ pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::Delta(s) if s.design_system == Look::Vantare => {
             Some(<crate::delta::Delta as Widget>::new)
         }
+        Settings::Delta(s) if s.design_system == Look::Eficiencia => {
+            Some(<crate::delta::eficiencia::DeltaEficiencia as Widget>::new)
+        }
         Settings::Pedals(_) => Some(<Pedals as Widget>::new),
         Settings::FuelStrategy(s)
             if matches!(s.design_system, Look::Vantare | Look::Eficiencia) =>

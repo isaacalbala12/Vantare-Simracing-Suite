@@ -4,6 +4,7 @@
 mod motion;
 mod paint;
 mod scene;
+pub(crate) mod eficiencia;
 #[cfg(test)]
 mod tests;
 
@@ -78,8 +79,14 @@ impl Delta {
             board.phase,
             crate::vantare::Style::compiled().delta.range_s,
         );
-        self.motion
-            .ingest(self.last.as_ref(), &board, target, clock, self.reduced);
+        self.motion.ingest(
+            self.last.as_ref(),
+            &board,
+            target,
+            motion::fill_geometry(board.progress),
+            clock,
+            self.reduced,
+        );
         self.base = sample(&board, &self.settings, self.prefs);
         self.last = Some(board);
         self.present(self.frame(clock))

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import type {
@@ -109,18 +109,33 @@ async function edit(decimals = false) {
   const user = userEvent.setup();
   await user.click(await screen.findByRole("tab", { name: studio.content }));
   if (decimals) {
-    await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+    await user.click(screen.getByRole("combobox", { name: text.column }));
     await user.click(
       await screen.findByRole("option", { name: "Última vuelta" }),
     );
   }
-  const input = screen.getByRole("textbox", {
-    name: decimals ? text.decimals : text.maxChars,
-  }) as HTMLInputElement;
-  await user.clear(input);
-  await user.type(input, decimals ? "02{Enter}" : "0022{Enter}");
-  expect(input.value).toBe(decimals ? "02" : "0022");
-  expect(input.readOnly).toBe(true);
+  const input = (
+    decimals
+      ? within(screen.getByRole("group", { name: text.decimals })).getByRole(
+          "button",
+          { name: "2" },
+        )
+      : screen.getByRole("textbox", { name: text.maxChars })
+  ) as HTMLInputElement;
+  if (decimals) {
+    await user.click(input);
+    expect(input.getAttribute("aria-pressed")).toBe("false");
+    expect(
+      screen
+        .getByRole("group", { name: text.decimals })
+        .getAttribute("aria-busy"),
+    ).toBe("true");
+  } else {
+    await user.clear(input);
+    await user.type(input, "0022{Enter}");
+    expect(input.value).toBe("0022");
+    expect(input.readOnly).toBe(true);
+  }
   const request = transport.request.mock.calls.find(
     ([request]) => request.method === "studio.instance",
   )?.[0];
@@ -137,7 +152,7 @@ async function edit(decimals = false) {
   return { initial, input, accept, reject };
 }
 it.each(["Rejected", "Unknown", "Conflict"] as const)(
-  "retains the decimal draft and never calls it saved after %s",
+  "retains the confirmed decimal selection and never calls it saved after %s",
   async (kind) => {
     const { initial, input, reject } = await edit(true);
     const error: HostError =
@@ -147,8 +162,12 @@ it.each(["Rejected", "Unknown", "Conflict"] as const)(
           ? { kind: "coreUnavailable" }
           : { kind: "studioConflict", current: initial };
     await act(async () => reject(new HostFailure(error)));
-    expect(input.value).toBe("02");
-    expect(input.readOnly).toBe(false);
+    expect(input.getAttribute("aria-pressed")).toBe("false");
+    expect(
+      within(screen.getByRole("group", { name: text.decimals }))
+        .getByRole("button", { name: "3" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
     expect(document.activeElement).toBe(input);
     const status = screen
       .getAllByRole("status")

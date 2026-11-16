@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { OverlayInstance } from "../src/contract/generated/studio";
@@ -90,13 +90,13 @@ it("sends a revision-bound Practice edit without mutating Race or painting succe
 });
 it("retains the selected metric when switching sessions, as the GPUI inspector does", async () => {
   const { user } = await mount();
-  await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+  await user.click(screen.getByRole("combobox", { name: text.column }));
   await user.click(
     await screen.findByRole("option", { name: "Última vuelta" }),
   );
   await user.click(screen.getByRole("tab", { name: "Práctica" }));
   expect(
-    screen.getByRole("combobox", { name: text.columnFormat }).textContent,
+    screen.getByRole("combobox", { name: text.column }).textContent,
   ).toContain("Última vuelta");
   expect(screen.getByRole("combobox", { name: text.timeFormat })).toBeTruthy();
   expect(state.execute).not.toHaveBeenCalled();
@@ -155,7 +155,7 @@ it("reads saved time formats and enables reset without pretending an edit was sa
   time.format.display = "compact";
   time.format.decimals = 1;
   const { user } = await mount(item);
-  await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+  await user.click(screen.getByRole("combobox", { name: text.column }));
   await user.click(
     await screen.findByRole("option", { name: "Última vuelta" }),
   );
@@ -167,9 +167,10 @@ it("reads saved time formats and enables reset without pretending an edit was sa
     ).disabled,
   ).toBe(false);
   expect(
-    (screen.getByRole("textbox", { name: text.decimals }) as HTMLInputElement)
-      .value,
-  ).toBe("1");
+    within(screen.getByRole("group", { name: text.decimals }))
+      .getByRole("button", { name: "1" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
   expect(screen.queryByText(text.timeReadOnly)).toBeNull();
   expect(
     (screen.getByRole("button", { name: text.reset }) as HTMLButtonElement)
@@ -181,9 +182,10 @@ it("reads saved time formats and enables reset without pretending an edit was sa
   ).format;
   expect(format).toMatchObject({ mode: null, display: null, decimals: null });
   expect(
-    (screen.getByRole("textbox", { name: text.decimals }) as HTMLInputElement)
-      .value,
-  ).toBe("1");
+    within(screen.getByRole("group", { name: text.decimals }))
+      .getByRole("button", { name: "1" })
+      .getAttribute("aria-pressed"),
+  ).toBe("true");
 });
 it("validates the name limit after commit and retains focus after a confirmed value changes", async () => {
   const item = contentInstance();
@@ -230,7 +232,7 @@ it.each(["Carrera", "Práctica", "Qualy"])(
   async (session) => {
     const { user } = await mount();
     await user.click(screen.getByRole("tab", { name: session }));
-    await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+    await user.click(screen.getByRole("combobox", { name: text.column }));
     await user.click(
       await screen.findByRole("option", { name: "Última vuelta" }),
     );
@@ -268,13 +270,19 @@ it.each([0, 1, 2, 3])(
     if (!column) throw Error("column");
     column.format.decimals = (decimals + 1) % 4;
     const { user } = await mount(item);
-    await user.click(screen.getByRole("combobox", { name: text.columnFormat }));
+    await user.click(screen.getByRole("combobox", { name: text.column }));
     await user.click(
       await screen.findByRole("option", { name: "Mejor vuelta" }),
     );
-    const input = screen.getByRole("textbox", { name: text.decimals });
-    await user.clear(input);
-    await user.type(input, `${decimals}{Enter}`);
+    const group = screen.getByRole("group", { name: text.decimals });
+    await user.click(
+      within(group).getByRole("button", { name: String(decimals) }),
+    );
+    expect(
+      within(group)
+        .getByRole("button", { name: String((decimals + 1) % 4) })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
     expect(
       state.execute.mock.calls[0][0].patch.value.columns.find(
         (column: { metric: string }) => column.metric === "bestLap",
@@ -285,7 +293,7 @@ it.each([0, 1, 2, 3])(
 it("never exposes editable time formatting for Relative", async () => {
   await mount(contentInstance("relative"));
   expect(screen.queryByRole("combobox", { name: text.timeFormat })).toBeNull();
-  expect(screen.queryByRole("textbox", { name: text.decimals })).toBeNull();
+  expect(screen.queryByRole("group", { name: text.decimals })).toBeNull();
 });
 
 it("uses the same closed patch path for Delta content", async () => {

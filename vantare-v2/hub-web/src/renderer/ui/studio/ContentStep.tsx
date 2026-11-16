@@ -20,7 +20,7 @@ import {
   type TableSettings,
 } from "../../screens/studio/content-columns";
 import { Button } from "../Button";
-import { Select, Switch } from "../Forms";
+import { Segmented, Select, Switch } from "../Forms";
 import {
   AdditionalWidgetFields,
   hasAdditionalFields,
@@ -280,11 +280,12 @@ function ColumnSettings({
   };
   return (
     <div className="v-studio-content-table-grid">
-      <Group title={text.columns}>
-        {settings.kind === "standings" && (
-          <>
+      <section className="v-studio-appearance-group" aria-label={text.columns}>
+        <header className="v-studio-content-heading">
+          <h3>{text.columns}</h3>
+          {settings.kind === "standings" && (
             <Button
-              variant="ghost"
+              variant="neutral"
               size="sm"
               disabled={model.disabled || !canResetColumns(settings, session)}
               aria-disabled={model.pending || undefined}
@@ -298,11 +299,12 @@ function ColumnSettings({
             >
               {text.reset}
             </Button>
-            {!canResetColumns(settings, session) && (
-              <p id={resetHelp}>{text.resetBlocked}</p>
-            )}
-          </>
-        )}
+          )}
+        </header>
+        {settings.kind === "standings" &&
+          !canResetColumns(settings, session) && (
+            <p id={resetHelp}>{text.resetBlocked}</p>
+          )}
         {!columns?.length && (
           <p>{columns ? text.noColumns : text.unreadable}</p>
         )}
@@ -334,11 +336,11 @@ function ColumnSettings({
             </div>
           ))}
         </div>
-      </Group>
+      </section>
       {settings.kind === "standings" && column && (
         <Group title={text.columnFormat}>
           <Select
-            label={text.columnFormat}
+            label={text.column}
             value={column.metricId}
             options={(columns ?? []).map((entry) => ({
               value: entry.metricId,
@@ -417,15 +419,25 @@ function ColumnSettings({
                     edit({ format: { display } });
                 }}
               />
-              <ContentNumber
-                key={column.id}
-                label={text.decimals}
-                value={column.format.decimals ?? 3}
-                min={0}
-                max={studioWidgetOptions.columns.decimalsMax}
-                model={{ ...model, disabled: model.disabled || !editable }}
-                onCommit={(decimals) => edit({ format: { decimals } })}
-              />
+              <div className="v-field">
+                <span>{text.decimals}</span>
+                <Segmented
+                  label={text.decimals}
+                  value={String(column.format.decimals ?? 3)}
+                  disabled={model.disabled || !editable}
+                  pending={model.pending}
+                  options={Array.from(
+                    { length: studioWidgetOptions.columns.decimalsMax + 1 },
+                    (_, value) => ({
+                      value: String(value),
+                      label: String(value),
+                    }),
+                  )}
+                  onChange={(value) =>
+                    edit({ format: { decimals: Number(value) } })
+                  }
+                />
+              </div>
             </>
           )}
         </Group>

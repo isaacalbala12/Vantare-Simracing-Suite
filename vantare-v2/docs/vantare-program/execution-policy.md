@@ -1,9 +1,12 @@
 # Política de ejecución, ramas y promoción
 
 > **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
-> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
-> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
-> estados de trackers anteriores son evidencia histórica, no instrucciones.
+> Project Vantare.** Leer la issue y actualizarla tras cada cambio material; el
+> worker escribe su entrada del handoff en el cuerpo del PR y el orquestador la
+> traslada al fusionar, en un PR de docs propio que agrupe varias fusiones.
+> Handoff e issue reflejan el mismo estado; registrar PR, checks, SHA y canal
+> real. Los enlaces y estados de trackers anteriores son evidencia histórica, no
+> instrucciones.
 
 
 Estado: vigente, actualizado el 2026-08-05 tras ISA-121.
@@ -39,8 +42,10 @@ reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 - Commits pequeños y staging limitado.
 - PR draft y Estado GitHub Issues `En revisión` con evidencia; nunca merge implícito.
 - La promoción utiliza issues GitHub de integración separadas con evidencia de CI.
-- Cada proyecto tiene un único handoff vivo y se actualiza tras cada worker,
-  decisión o cambio material. La continuidad operativa y el estado se actualizan
+- Cada proyecto tiene un único handoff vivo. El worker escribe su entrada del
+  handoff en el cuerpo del PR y no edita el handoff; el orquestador la traslada
+  al fusionar, en un PR de docs propio que agrupe varias fusiones. Handoff e
+  issue reflejan el mismo estado. La continuidad operativa y el estado se actualizan
   y releen en GitHub Issues al empezar, bloquear, entregar y verificar merge; el
   handoff Git conserva evidencia técnica enlazada. Los cambios de alcance y
   plan futuro se registran en GitHub Issues. Isaac indica a Codex los cambios del roadmap

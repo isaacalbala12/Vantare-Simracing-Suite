@@ -8,7 +8,8 @@ No añadir entradas fechadas ni secciones por worker/ronda: sustituir el apartad
 afectado tras cada cambio material y escribir el diario en la issue. Objetivo
 ≤150 líneas por handoff; 10 apartados. Antes de recortar, contrastar con la issue
 abierta del área y dejar permalink al SHA anterior para todo contexto histórico.
-Los workers de otras ramas deben actualizar estos apartados, sin anexar diarios.
+El orquestador actualiza estos apartados al fusionar, sin anexar diarios; el
+worker escribe su entrada en el cuerpo del PR.
 
 1. Resultado del proyecto.
 2. Autoridad GitHub Issues: URL/ID, proyecto y lectura/escritura verificadas.

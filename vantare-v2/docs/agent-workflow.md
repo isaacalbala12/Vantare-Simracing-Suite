@@ -1,9 +1,12 @@
 # Workflow de agentes
 
 > **Seguimiento vigente (#1598): Plane es el tablero de Isaac; GitHub Issues
-> y Project Vantare se mantienen para código, ramas y PRs.** Leer la issue y actualizarla junto con el handoff tras
-> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
-> estados de trackers anteriores son evidencia histórica, no instrucciones.
+> y Project Vantare se mantienen para código, ramas y PRs.** Leer la issue y
+> actualizarla tras cada cambio material; el worker escribe su entrada del
+> handoff en el cuerpo del PR y el orquestador la traslada al fusionar, en un PR
+> de docs propio que agrupe varias fusiones. Handoff e issue reflejan el mismo
+> estado; registrar PR, checks, SHA y canal real. Los enlaces y estados de
+> trackers anteriores son evidencia histórica, no instrucciones.
 
 
 > Linear fue retirado el 2026-08-20. Los IDs migrados se resuelven por su

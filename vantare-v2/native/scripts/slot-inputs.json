@@ -5,11 +5,20 @@
     "vantare-v2/fixtures",
     "vantare-v2/testdata",
     "vantare-v2/native/assets",
+    "vantare-v2/native/hub/fixtures",
+    "vantare-v2/native/hub/reference",
+    "vantare-v2/native/hub/src/calendar/model.rs",
+    "vantare-v2/native/hub/src/pilot.rs",
+    "vantare-v2/native/hub-host/data",
+    "vantare-v2/native/hub-host/fixtures",
     "vantare-v2/native/packaging/fixtures",
     "vantare-v2/native/packaging/installer-cleanup.ps1",
     "vantare-v2/native/packaging/matrix/guard.ps1",
     "vantare-v2/native/pruebas-rune",
     "vantare-v2/native/resources",
+    "vantare-v2/native/strategy/testdata",
+    "vantare-v2/native/ui/fixtures",
+    "vantare-v2/native/ui/styles",
     "vantare-v2/native/vendor",
     "supabase/tests/fixtures",
     "tools/triage"
@@ -18,7 +27,8 @@
     "vantare-v2/native/Cargo.toml",
     "vantare-v2/native/Cargo.lock",
     "vantare-v2/native/.cargo/config.toml",
-    "vantare-v2/native/rust-toolchain.toml"
+    "vantare-v2/native/rust-toolchain.toml",
+    "vantare-v2/native/clippy.toml"
   ],
   "externalPackages": [
     "gpui_windows"

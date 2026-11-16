@@ -532,13 +532,17 @@ de publicar, ejecuta `comprobar.ps1 <crate> -Full` y la telemetría.
 La cola comparte los dos targets persistentes entre checkouts. Antes de cada
 build de slot se calcula la huella de contenido de cada paquete del workspace y
 la de las entradas externas declaradas en `native/scripts/slot-inputs.json`
-(`include_str!`/`include_bytes!`/`include!` fuera de su paquete, `Cargo.toml`,
-`Cargo.lock`, `.cargo/config.toml`, `rust-toolchain` y `vendor`). Solo los
-paquetes cuya huella cambió se limpian con `cargo clean -p`; si cambia una
-entrada externa se limpian todos. La limpieza es persistente: un build parcial
-que no compile un paquete limpiado no puede dejar un artefacto obsoleto. El sello
-se escribe tras limpiar y antes de compilar. Los targets explícitos (mediciones,
-QA y empaquetado) no pasan por este control.
+(cualquier `include_str!`/`include_bytes!`/`include!` que salga de **su** paquete,
+aunque esté en otro paquete, más `Cargo.toml`, `Cargo.lock`, `clippy.toml`,
+`.cargo/config.toml`, `rust-toolchain` y `vendor`). Solo los paquetes cuya huella
+cambió se limpian con `cargo clean -p` en todos los perfiles presentes; si cambia
+una entrada externa se limpian todos. La limpieza es persistente: un build
+parcial que no compile un paquete limpiado no puede dejar un artefacto obsoleto.
+El sello se escribe tras limpiar y antes de compilar, y tras limpiar se verifica
+que no quedan fingerprints del paquete. Los targets explícitos (mediciones, QA y
+empaquetado) no pasan por este control. `include_inputs.py` recorre los
+`include_*!` y falla si una ruta queda fuera de la lista; no sigue `#[path]` ni
+`fs::read`, y un include dentro de un comentario falla a propósito.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.

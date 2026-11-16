@@ -73,3 +73,17 @@ el compacto cambiando `hidden` en el test.
 
 Para el catálogo abierto con barra expandida se usa `studio-estado-add-abierto`:
 la barra se prepara antes del modal. No se intenta atravesar su bloqueo de atajos.
+
+## Escaneo axe de la pantalla real
+
+La CI existente (`.github/workflows/hub-web.yml`) ejecuta `scripts/web-a11y.ts`.
+Además de los componentes, escanea la escena `studio-base` con su layout de
+ejemplo en claro y oscuro, una vez cargados el inspector «Look» y las fuentes.
+Guarda los resultados por tema en `axe-studio.json`, bajo la carpeta de evidencia
+del gate (`VANTARE_HUB_EVIDENCE` o `test-results/web`).
+
+Studio exige cero infracciones entre todas las reglas habilitadas por defecto
+de axe, incluidas las buenas prácticas. No usa el filtro WCAG del specimen:
+`heading-order` es una buena práctica y ese filtro no detectaría la regresión de
+#2405, corregida en #2416. No hay reglas excluidas ni deuda aceptada en este
+escaneo. Cualquier excepción futura requiere una issue y aprobación explícita.

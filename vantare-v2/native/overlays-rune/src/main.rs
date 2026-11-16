@@ -1,4 +1,4 @@
-#![cfg_attr(windows, windows_subsystem = "windows")]
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 use std::{ffi::OsStr, process::ExitCode};
 use vantare_overlays_rune::{
     feed::DataFeed,
@@ -26,7 +26,12 @@ fn main() -> ExitCode {
 }
 
 fn start() -> Result<(), Box<dyn std::error::Error>> {
-    let options = options::parse(std::env::args_os().skip(1))?;
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    #[cfg(debug_assertions)]
+    if args.first().is_some_and(|a| a == "--capture-scene") {
+        return vantare_overlays_rune::capture::run(&args[1..]);
+    }
+    let options = options::parse(args)?;
     // La campaña numérica llega con los pintores; nunca ignorar esa opción.
     if options.benchmark_count.is_some() {
         return Err(std::io::Error::new(

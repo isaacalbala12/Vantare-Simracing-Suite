@@ -3112,6 +3112,62 @@ plazo cumplido antes/después del compromiso y publicación fallida de la pregun
 la limpieza de directorios en Drop no provoca otro panic. Sin cambios de contrato
 v33 ni del plazo exportado para D. Gates del ajuste y head vigentes en #2281.
 
+## VANTA-144 · captura Relative Vantare sin ventana (Worker B, 16/11/2026)
+
+PR separado desde nightly a3f2c3c9a: capture.rs reutiliza constructor/Widget,
+inyecta snapshot IPC con update antes del frame CPU y dibuja con Rune Offscreen.
+Solo debug y Relative Vantare; guard del servidor antes de argumentos. No se
+inician feed, supervisor, App, ventanas ni cuentas. Sin nuevas dependencias o Looks.
+Mac: build y tres tests CPU de captura PASS; PNG asymmetric validado visualmente,
+420x193, 1454 colores, Giovinazzi/Tu/Jensen con posiciones y gaps. Registro:
+epoch 3, sequence 2, 20 coches, update_build/update_pixels true. Evidencia en
+D:/VantareServer/evidence/overlays-rune/capture-pr/. Clippy Windows PASS y suite
+CPU completa por cola en curso. Auditoria 428 paquetes y seis tests politica PASS.
+El PR recoge head/checks definitivos; captura no acredita paridad GPUI ni medicion.
+Sin graficos en servidor/PC de juego ni merge/release/Plane. Despues: rebasar
+#2359/#2375 conservando los widgets de nightly; luego #2351 con Scene y tools.
+
+
+### #2391 · revisión de captura (Worker B, 16/11/2026)
+
+La preparación consulta size_for con la foto entrante antes de update, como el
+proceso; una foto Paused reserva también la banda de 22 px. Test CPU a tres
+escalas. La consola Windows permanece en debug y el subsistema de ventanas solo
+en Release. Se retira rune_rev escrito a mano del registro; la revisión fijada
+sigue en Cargo.lock y el manifiesto. README declara la carrera entre comprobar
+y escribir PNG y exige rutas distintas. Sin cambios de derechos ni gráficos en
+el servidor. Clippy, suite CPU y subsistema PE pendientes de cola en este cambio;
+resultado final y head en #2391.
+
+
+### #2391 · rebase para preview Studio (Worker B, 16/11/2026)
+
+Rebasado sobre nightly e8a0591b9, conservando todos los widgets y attach_assets
+del trait Widget. Captura sigue limitada a Relative Vantare, cuyo hook de assets
+es el default sin recursos; no se amplía despacho ni permisos. Se conservan
+size_for(Some(snapshot)) antes de update, test Paused, consola solo debug y
+registro sin rune_rev manual; carrera de salida documentada. Comentarios y
+reviews publicados en el PR leídos; los tres ajustes conocidos ya estaban en
+7414d2c26. Nueva verificación completa por cola, sin gráficos; head/checks
+definitivos en el PR. Mac offline: no se repite captura GPU en este rebase.
+
+### #2391 · actualización por merge de nightly (Worker B, 16/11/2026)
+
+Fusionado origin/nightly 83cb9b2e4 en la rama de captura; conflicto solo en este
+handoff resuelto conservando ambas entregas. Registro, Widget y módulos nuevos
+se conservan como nightly, salvo la visibilidad crate de constructor necesaria
+para captura. Se revalidan fmt, Clippy y tests CPU por cola, sin GPU en servidor.
+La ampliación única para captura/preview (todos los widgets, secuencias, assets
+y release) queda para otro PR, tras esquema y OK de raíz; no entra aquí.
+
+### #2391 · sincronización final (Worker B, 16/11/2026)
+
+Merge de nightly 83232d84b; se conservan tokens Eficiencia y la corrección de
+domain/session_alerts. Notas de captura reubicadas aquí, con su contenido
+histórico íntegro, para no competir con las entregas al final del handoff.
+Validación nueva por cola y resultados en el PR; ampliación de captura aún
+sin código, pendiente de esquema y aprobación.
+
 ## VANTA-144 · contrato Widget de Rune (16/11/2026)
 
 Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa

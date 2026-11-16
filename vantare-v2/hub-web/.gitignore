@@ -4,3 +4,4 @@ out-qa/
 release/
 playwright-report/
 test-results/
+/electron.vite.config.ts.*.mjs

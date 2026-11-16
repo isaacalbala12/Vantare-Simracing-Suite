@@ -51,7 +51,10 @@ it("detects stale uncommitted and untracked sources without consulting ignored o
       stdio: "pipe",
     });
   git("init");
-  await writeFile(join(directory, ".gitignore"), "out/\n");
+  await writeFile(
+    join(directory, ".gitignore"),
+    "out/\nelectron.vite.config.ts.*.mjs\n",
+  );
   await writeFile(join(directory, "source.ts"), "first");
   git("add", ".");
   git(
@@ -70,6 +73,10 @@ it("detects stale uncommitted and untracked sources without consulting ignored o
   expect(clean.source_sha).toMatch(/^[a-f0-9]{40}$/);
   await mkdir(join(directory, "out"));
   await writeFile(join(directory, "out/build.js"), "ignored");
+  await writeFile(
+    join(directory, "electron.vite.config.ts.179-abc.mjs"),
+    "temporary bundled config",
+  );
   assertPackageBuild(packageBuild(directory), clean);
   await writeFile(join(directory, "source.ts"), "second");
   const dirty = packageBuild(directory);

@@ -42,7 +42,10 @@ fn both_templates_keep_the_frozen_box_and_rebuild_on_change() {
         assert_eq!((widget.size().width, widget.size().height), (280.0, 96.0));
         assert!(!<DeltaEficiencia as Widget>::configured(
             &widget,
-            &WidgetSettings::Delta(settings("other")),
+            &WidgetSettings::Delta(Settings {
+                reference: "optimal".into(),
+                ..settings(template)
+            }),
             Preferences::default()
         ));
         assert!(<DeltaEficiencia as Widget>::configured(
@@ -78,6 +81,8 @@ fn sequence_changes_do_not_repaint() {
 fn a_record_shows_its_notice_and_expires_without_a_clock() {
     let mut widget = delta(&settings("instrument"));
     let mut slow = crate::testdata::snapshot();
+    slow.state.capabilities.lap_times = vantare_domain::Capability::Fresh;
+    slow.state.capabilities.delta = vantare_domain::Capability::Fresh;
     let car_id = slow.state.player.expect("player").car;
     let car = slow
         .state

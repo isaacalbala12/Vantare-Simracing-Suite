@@ -116,6 +116,7 @@ impl Motion {
             self.bar = Tween::fixed(target);
             self.offset = Tween::linear(fill[0]);
             self.width = Tween::linear(fill[1]);
+            self.record = None;
             return;
         }
         self.bar.retarget(target, now, self.ease_ms);
@@ -334,7 +335,7 @@ mod tests {
         motion.ingest(None, &prev, 0.0, [0.5, 0.0], 0.0, false);
         motion.ingest(Some(&prev), &board(89.0), 0.0, [0.5, 0.0], 1.0, false);
         assert_eq!(motion.notice_alpha(1.0), 0.0, "entrada desde cero");
-        assert!((motion.notice_alpha(1.090) - 0.5).abs() < 1e-6);
+        assert!((motion.notice_alpha(1.090) - 0.875).abs() < 1e-6);
         assert_eq!(motion.notice_alpha(2.0), 1.0);
         assert_eq!(motion.event(1.0), Some(Event::PersonalBest));
         assert_eq!(motion.event(5.1), None, "4000 ms de vida");

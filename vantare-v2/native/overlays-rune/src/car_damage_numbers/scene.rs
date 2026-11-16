@@ -26,7 +26,7 @@ pub struct Scene {
     pub height: f32,
 }
 
-/// Pure sampling: the Look chooses pixels and colours, never these values.
+/// Pure sampling: the Eficiencia painter chooses pixels and colours, never these values.
 #[must_use]
 pub fn sample(vm: &ViewModel) -> Scene {
     let count = if vm.show_tyres { 4 } else { 3 };

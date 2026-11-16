@@ -241,7 +241,6 @@ impl Scene {
 mod tests {
     use super::*;
     use std::time::Duration;
-    use vantare_domain::widget_settings::Settings;
     fn layout() -> Layout {
         Layout::from_json(br#"{"version":1,"instances":[{"id":"relative","x":-200,"y":20,"settings":{"kind":"relative"}}],"performance":{"widgets":{"relative":5}}}"#).expect("layout")
     }
@@ -335,12 +334,11 @@ mod tests {
         );
     }
     #[test]
-    fn unsupported_widgets_are_not_acquired_and_unchanged_updates_do_not_publish() {
+    fn empty_layout_never_acquires_and_unchanged_updates_do_not_publish() {
         let now = Instant::now();
         let mut design = layout();
-        // Look aún no migrado.
-        design.instances[0].settings =
-            Settings::Standings(vantare_domain::widget_settings::standings::Settings::eficiencia());
+        // Todos los Looks del catálogo ya tienen constructor; sin instancias no hay demanda.
+        design.instances.clear();
         let mut scene = Scene::new(
             design.clone(),
             Access::LocalPreview,

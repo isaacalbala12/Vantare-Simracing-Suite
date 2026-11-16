@@ -28,7 +28,7 @@ impl Visual {
     }
 }
 
-fn visual() -> Visual {
+pub(super) fn visual() -> Visual {
     let photo = vantare_ipc::snapshot_from_json(include_str!(
         "../../../../ui/fixtures/standings.snapshot.json"
     ))
@@ -42,7 +42,7 @@ fn visual() -> Visual {
     ));
     Visual::from_parts_for_test(config, content)
 }
-fn paint(mut v: Visual, language: Language) -> Runtime<(Visual, Language)> {
+pub(super) fn paint(mut v: Visual, language: Language) -> Runtime<(Visual, Language)> {
     v.attach_assets(&Arc::new(ImageCache::new(Arc::new(|| {}))));
     for image in v.capture_images() {
         image.wait().unwrap();
@@ -58,7 +58,7 @@ fn paint(mut v: Visual, language: Language) -> Runtime<(Visual, Language)> {
     rt.frame(0.0);
     rt
 }
-fn named(rt: &Runtime<(Visual, Language)>, key: &str) -> ElementInfo {
+pub(super) fn named(rt: &Runtime<(Visual, Language)>, key: &str) -> ElementInfo {
     rt.elements()
         .into_iter()
         .find(|e| e.key.as_deref() == Some(key))

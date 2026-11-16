@@ -778,7 +778,7 @@ mod tests {
         }
     }
     #[test]
-    fn malformed_arguments_and_unsupported_widgets_fail_before_gpu() {
+    fn malformed_arguments_fail_and_standings_efficiency_prepares_without_gpu() {
         for args in [
             vec![],
             vec!["--layout"],
@@ -794,7 +794,7 @@ mod tests {
         wrong.instances[0].settings = vantare_domain::widget_settings::Settings::Standings(
             vantare_domain::widget_settings::standings::Settings::eficiencia(),
         );
-        assert_eq!(single(&wrong, &snapshot, 1.0).err().unwrap().code, 2);
+        assert!(single(&wrong, &snapshot, 1.0).is_ok());
         assert!(single(&layout(), &snapshot, f32::NAN).is_err());
     }
     #[test]
@@ -1220,7 +1220,7 @@ mod tests {
         assert_eq!(clock, 60.0);
     }
     #[test]
-    fn run_rejects_unsupported_before_demo_and_validates_before_existing_output() {
+    fn run_rejects_unknown_kind_before_demo_and_validates_before_existing_output() {
         let folder = TestDir::new();
         let root = &folder.0.dir;
         let settings = root.join("settings.json");
@@ -1238,7 +1238,7 @@ mod tests {
             ])
         };
         std::fs::write(&settings, r#"{"designSystem":"eficiencia"}"#).unwrap();
-        let unsupported = run(&flags("standings")).unwrap_err();
+        let unsupported = run(&flags("not-a-widget")).unwrap_err();
         assert_eq!(unsupported.code, 2);
         assert_eq!(unsupported.token, "INVALID_INPUT");
         std::fs::write(&settings, "{}").unwrap();

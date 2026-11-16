@@ -97,16 +97,21 @@ pub fn rect(x: f32, y: f32, w: f32, h: f32, ink: Color) -> El {
 pub const PANEL_ANGLE_DEG: f32 = 120.0;
 
 pub fn panel(w: f32, h: f32) -> El {
+    panel_styled(w, h, color(PANEL, 0.87), RADIUS, 0xffffff)
+}
+
+pub fn panel_styled(w: f32, h: f32, fill: Color, radius: f32, white: u32) -> El {
     el().size(w, h)
-        .radius(RADIUS)
-        .fill(color(PANEL, 0.87))
+        .radius(radius)
+        .fill(fill)
         .child(
-            el().pin(Some(0.0), Some(0.0), None, None)
+            el().key("efficiency-panel-highlight")
+                .pin(Some(0.0), Some(0.0), None, None)
                 .size(w, h)
-                .radius(RADIUS)
+                .radius(radius)
                 .linear_gradient(
                     PANEL_ANGLE_DEG.to_radians(),
-                    [(0.0, color(0xffffff, 0.03)), (0.38, color(0xffffff, 0.0))],
+                    [(0.0, color(white, 0.03)), (0.38, color(white, 0.0))],
                 ),
         )
 }
@@ -125,20 +130,26 @@ pub fn top_overlay(base: f32, top: f32) -> f32 {
 /// Marco del panel en dos capas, como GPUI: el anillo completo a `base` y,
 /// encima, una tira de `RADIUS` de alto con el borde a `top` compuesto.
 pub fn outline(w: f32, h: f32, base: f32, top: f32) -> El {
+    outline_styled(w, h, RADIUS, 0xffffff, base, top)
+}
+
+pub fn outline_styled(w: f32, h: f32, radius: f32, white: u32, base: f32, top: f32) -> El {
     let overlay = top_overlay(base, top);
     el().pin(Some(0.0), Some(0.0), None, None)
         .size(w, h)
         .child(
-            el().pin(Some(0.0), Some(0.0), None, None)
+            el().key("efficiency-frame-base")
+                .pin(Some(0.0), Some(0.0), None, None)
                 .size(w, h)
-                .radius(RADIUS)
-                .border(1.0, color(0xffffff, base.clamp(0.0, 1.0))),
+                .radius(radius)
+                .border(1.0, color(white, base.clamp(0.0, 1.0))),
         )
         .child(
-            el().pin(Some(0.0), Some(0.0), None, None)
-                .size(w, RADIUS)
-                .radius(RADIUS)
-                .border_sides([1.0, 0.0, 0.0, 0.0], color(0xffffff, overlay)),
+            el().key("efficiency-frame-top")
+                .pin(Some(0.0), Some(0.0), None, None)
+                .size(w, radius)
+                .corners([radius, radius, 0.0, 0.0])
+                .border_sides([1.0, 0.0, 0.0, 0.0], color(white, overlay)),
         )
 }
 

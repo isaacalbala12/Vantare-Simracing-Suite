@@ -103,13 +103,15 @@ pub(super) fn view(v: &Visual, language: Language) -> El {
         );
     }
     nodes.push(
-        kit::panel(w, h)
+        kit::panel_styled(w, h, color(s.colors.panel.0, s.opacity.panel), s.geometry.radius, s.colors.white.0)
             .key("efficiency-panel")
             .pin(Some(0.0), Some(0.0), None, None),
     );
     if p.brand_band > 0.0 {
         nodes.push(
-            rect(0.0, 0.0, w, s.geometry.brand_band_height).fill(color(s.colors.black.0, 0.10)),
+            rect(0.0, 0.0, w, s.geometry.brand_band_height)
+                .key("brand-band")
+                .fill(color(s.colors.black.0, 0.10)),
         );
         nodes.push(
             rect(0.0, s.geometry.brand_band_height - 1.0, w, 1.0)
@@ -182,7 +184,7 @@ pub(super) fn view(v: &Visual, language: Language) -> El {
         nodes.extend(session_header(v, language, 0.0, top));
     }
     let top_alpha = s.opacity.frame + s.opacity.top_frame * (1.0 - s.opacity.frame);
-    nodes.push(kit::outline(w, h, s.opacity.frame, top_alpha));
+    nodes.push(kit::outline_styled(w, h, s.geometry.radius, s.colors.white.0, s.opacity.frame, top_alpha));
     let size = v.size();
     let mut root = el()
         .size(size.0, size.1)
@@ -363,12 +365,12 @@ fn session_header(v: &Visual, language: Language, left: f32, top: f32) -> Vec<El
         chip = chip.border(1.0, color(s.colors.ink.0, 0.22));
     }
     nodes.push(chip);
-    nodes.push(label(
+    if !class_text.is_empty() { nodes.push(label(
         "session-class",
         &class_text,
         x + 6.0,
         baseline(chip_top + 5.0, class_ink.0.line_height, f.badge_size).round(),
         class_ink,
-    ));
+    )); }
     nodes
 }

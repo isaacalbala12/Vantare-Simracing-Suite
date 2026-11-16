@@ -82,3 +82,24 @@ E2 continúa sin constructor. E3 completa th/filas/celdas/control y lo registra;
 E4 añade separadores, pies, espera y badges. E5/E6 conservan su corte de movimiento
 y efectos. E2+E3 preparados en local superan 1200 líneas de producción formateada;
 no se comprime el port para unirlos.
+
+## Seguimiento de E2 en el primer commit de E3
+
+Panel y marco leen color/alfa/radio/blanco de Style mediante los helpers de
+crate::eficiencia; no se añade una séptima adaptación por constantes compiladas.
+Los tests fijan los vértices Signature 440×50 resolviendo a mano los semiplanos
+de view.rs, y leen dirección/paradas de degradado de las instancias CPU públicas
+de Rune: panel 120° [0,.38], Broadcast 110° [.55,1], chip 145° [0,1].
+Las muestras de sombra son regresión de la copia Rune, no píxeles obtenidos de
+GPUI. Los parámetros sí están copiados literalmente de view::shadow_strip.
+
+Rasterizado: GPUI usa PathBuilder y Rune Shape para los mismos polígonos de la
+cinta. El antialias lo realiza cada motor; la comparación física de píxeles sigue
+pendiente. El logo reducido a 24×24 tiene bytes RGBA idénticos; la banda lo pinta
+a 18×18. El escalado de textura/mips lo realiza Rune, frente a paint_image de
+GPUI: se declara esta diferencia de rasterizador, pendiente de captura comparada.
+La primera rect de la banda tiene key; con clase vacía se conserva la caja del
+chip pero no se emite texto vacío (text::draw de GPUI tampoco pinta glifos).
+paint_unavailable queda explícitamente PENDIENTE de E4: E3 aún solo pinta la
+cabecera en esa rama, sin el rótulo de desconexión/falta de datos de GPUI.
+Todos los colores nuevos pasan por eficiencia::color o rune::color::hex.

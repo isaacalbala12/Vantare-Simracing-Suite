@@ -216,7 +216,8 @@ fn gpui_shadow_uses_only_the_gaussian_tail_in_the_pit_rail() {
     for pixel in pixels.as_chunks::<4>().0 {
         assert_eq!(&pixel[..3], &[0, 0, 0]);
     }
-    // GPUI view::shadow_strip: sigma 12.5, spread -12, dy 14, alpha 0.48.
+    // Regresión de la copia Rune de view::shadow_strip; NO son muestras GPUI.
+    // Parámetros portados: sigma 12.5, spread -12, dy 14, alpha 0.48.
     let alpha = |x: usize, y: usize| pixels[(y * 34 + x) * 4 + 3];
     assert_eq!(
         [
@@ -227,6 +228,128 @@ fn gpui_shadow_uses_only_the_gaussian_tail_in_the_pit_rail() {
             alpha(33, 100)
         ],
         [0, 10, 19, 4, 0]
+    );
+}
+
+#[test]
+fn signature_ribbon_vertices_solve_the_gpui_half_planes_by_hand() {
+    // view.rs:191-243: sin(131°)=.7547095802, -cos(131°)=.6560590290.
+    // L=130*sin+50*(-cos)=130.91519688; centro=(375,25)·dir=299.41756831.
+    // Planos: (282.39859271,304.65417618), (315.12739193,337.38297540).
+    // Resolver x=(d-y*.6560590290)/.7547095802 en y=0/50 y el último y en x=440.
+    let expected: &[&[(f32, f32)]] = &[
+        &[
+            (374.1818, 0.0),
+            (403.67074, 0.0),
+            (360.20641, 50.0),
+            (330.71747, 50.0),
+        ],
+        &[
+            (417.54789, 0.0),
+            (440.0, 0.0),
+            (440.0, 8.09494),
+            (403.57249, 50.0),
+            (374.08355, 50.0),
+        ],
+    ];
+    for ((vertices, _), expected) in render::ribbon_bands(440.0, false).iter().zip(expected) {
+        assert_eq!(vertices.len(), expected.len());
+        for ((x, y), (ex, ey)) in vertices.iter().zip(*expected) {
+            assert!(
+                (x - ex).abs() < 0.001 && (y - ey).abs() < 0.001,
+                "{vertices:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn gradients_retain_gpui_degrees_and_stops_in_the_public_instance_stream() {
+    let mut v = visual();
+    let c = Arc::make_mut(&mut v.config);
+    c.broadcast = true;
+    c.fit(10);
+    v.plan = Arc::new(plan(c, &v.content_plan));
+    let rt = paint(v, Language::Es);
+    for (key, degrees, start, end) in [
+        ("efficiency-panel-highlight", 120.0, 0.0, 0.38),
+        ("flag-ribbon-background", 110.0, 0.55, 1.0),
+        ("class-chip", 145.0, 0.0, 1.0),
+    ] {
+        let bounds = named(&rt, key).rect;
+        let instance = rt
+            .instances
+            .iter()
+            .find(|i| i.rect == bounds && i.uv[0] != 0.0 && i.uv[2] == 0.0 && i.uv[3] == 0.0)
+            .expect(key);
+        near(instance.uv[0].atan2(-instance.uv[1]).to_degrees(), degrees);
+        near(instance.params[0], start);
+        near(instance.params[3], end);
+    }
+}
+
+#[test]
+fn panel_and_outline_read_the_style_instead_of_compiled_constants() {
+    let mut v = visual();
+    let mut style = Style::default();
+    style.colors.panel.0 = 0xff0000;
+    style.colors.white.0 = 0x00ff00;
+    style.geometry.radius = 9.0;
+    style.opacity.panel = 0.4;
+    style.opacity.frame = 0.3;
+    style.opacity.top_frame = 0.2;
+    v.set_style(Arc::new(style));
+    let rt = paint(v, Language::Es);
+    let panel = named(&rt, "efficiency-panel");
+    assert_eq!(panel.fill.hex(), "#ff000066");
+    assert_eq!(panel.radius, 9.0);
+    let frame = named(&rt, "efficiency-frame-base");
+    assert_eq!(frame.radius, 9.0);
+    let base = rt
+        .instances
+        .iter()
+        .find(|i| i.rect == frame.rect && i.params[0] == 1.0 && i.border[3] > 0.0)
+        .unwrap();
+    assert_eq!(
+        base.border,
+        rune::color::hex("#00ff00").unwrap().premul(0.3)
+    );
+    let top = named(&rt, "efficiency-frame-top");
+    assert_eq!(top.rect[3], 9.0);
+    let overlay = rt
+        .instances
+        .iter()
+        .find(|i| i.rect == top.rect && i.border[3] > 0.0)
+        .unwrap();
+    near(overlay.border[3], 0.2);
+    let highlight = named(&rt, "efficiency-panel-highlight");
+    let gradient = rt
+        .instances
+        .iter()
+        .find(|i| i.rect == highlight.rect && i.uv[0] != 0.0 && i.uv[2] == 0.0 && i.uv[3] == 0.0)
+        .unwrap();
+    assert_eq!(
+        gradient.fill,
+        rune::color::hex("#00ff00").unwrap().premul(0.03)
+    );
+}
+
+#[test]
+fn empty_class_keeps_the_chip_box_without_an_empty_text_node() {
+    let mut v = visual();
+    Arc::make_mut(&mut Arc::make_mut(&mut v.content_plan).board)
+        .class_chip
+        .clear();
+    let rt = paint(v, Language::Es);
+    assert!(
+        rt.elements()
+            .iter()
+            .any(|e| e.key.as_deref() == Some("class-chip"))
+    );
+    assert!(
+        !rt.elements()
+            .iter()
+            .any(|e| e.key.as_deref() == Some("session-class"))
     );
 }
 

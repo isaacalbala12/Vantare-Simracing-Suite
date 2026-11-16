@@ -3140,3 +3140,15 @@ CPU completa por cola en curso. Auditoria 428 paquetes y seis tests politica PAS
 El PR recoge head/checks definitivos; captura no acredita paridad GPUI ni medicion.
 Sin graficos en servidor/PC de juego ni merge/release/Plane. Despues: rebasar
 #2359/#2375 conservando los widgets de nightly; luego #2351 con Scene y tools.
+
+
+### #2391 · revisión de captura (Worker B, 16/11/2026)
+
+La preparación consulta size_for con la foto entrante antes de update, como el
+proceso; una foto Paused reserva también la banda de 22 px. Test CPU a tres
+escalas. La consola Windows permanece en debug y el subsistema de ventanas solo
+en Release. Se retira rune_rev escrito a mano del registro; la revisión fijada
+sigue en Cargo.lock y el manifiesto. README declara la carrera entre comprobar
+y escribir PNG y exige rutas distintas. Sin cambios de derechos ni gráficos en
+el servidor. Clippy, suite CPU y subsistema PE pendientes de cola en este cambio;
+resultado final y head en #2391.

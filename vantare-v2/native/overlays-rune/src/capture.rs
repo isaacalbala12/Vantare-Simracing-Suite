@@ -110,9 +110,10 @@ fn prepare(layout: &Layout, snapshot: &Snapshot, scale: f32) -> Result<Capture, 
         0.0,
     )
     .ok_or_else(|| invalid("ajustes incompatibles"))?;
+    // Match the process: size for the incoming photo, then deliver it before the first frame.
+    let size = widget.size_for(Some(snapshot));
     // No pipe, QA directory or source thread: the validated photo reaches the actual widget here.
     let update = widget.update(snapshot, 0.0);
-    let size = widget.size();
     let (w, h) = ((size.width * scale).round(), (size.height * scale).round());
     if ![w, h]
         .into_iter()
@@ -228,7 +229,7 @@ pub fn run(args: &[OsString]) -> Result<(), Error> {
         .open(record)?;
     writeln!(
         record,
-        "engine=rune\nrune_rev=d5338988a7c1b3377adb60853815b6d0843dae7c\nepoch={}\nsequence={}\ncars={}\nupdate_build={}\nupdate_pixels={}\nwidth={}\nheight={}\nscale={}",
+        "engine=rune\nepoch={}\nsequence={}\ncars={}\nupdate_build={}\nupdate_pixels={}\nwidth={}\nheight={}\nscale={}",
         snapshot.epoch,
         snapshot.sequence,
         snapshot.state.cars.len(),
@@ -296,6 +297,34 @@ mod tests {
             for (car, number) in snapshot.state.cars.iter_mut().zip(original) {
                 car.driver.name = number;
             }
+        }
+    }
+    #[test]
+    fn paused_photo_reserves_the_process_pause_band_before_the_first_frame() {
+        let live = vantare_ipc::snapshot_from_saved_json(PHOTO).expect("GPUI photo");
+        let mut paused = live.clone();
+        paused.state.source_state = vantare_domain::SourceState::Paused;
+        for scale in [1.0, 1.25, 1.5] {
+            let live = prepare(&layout(), &live, scale).expect("live CPU preparation");
+            let capture = prepare(&layout(), &paused, scale).expect("paused CPU preparation");
+            let size = capture.runtime.state.size_for(Some(&paused));
+            assert_eq!(capture.width, live.width);
+            assert_eq!(capture.height, (size.height * scale).round() as u32);
+            assert!(capture.height > live.height);
+            let band = capture
+                .runtime
+                .presented("pause-band")
+                .expect("pause band")
+                .0;
+            assert_eq!(band[3], 22.0);
+            assert!(band[1] + band[3] <= capture.height as f32 / scale + 0.5);
+            assert!(
+                capture
+                    .runtime
+                    .elements()
+                    .iter()
+                    .any(|e| e.text.as_deref() == Some("EN PAUSA"))
+            );
         }
     }
     #[test]

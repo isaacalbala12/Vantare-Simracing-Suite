@@ -227,6 +227,10 @@ Solo debug; el guard `VANTARE_SIN_GRAFICOS=1` se evalúa antes de procesar argum
 Offscreen no crea ventana ni toma foco, pero requiere GPU: nunca ejecutarlo en el
 servidor. Compilación/tests CPU por la cola; PNG únicamente en Mac autorizado o
 PC de juego con horario. Admite escalas 1/1.25/1.5 y hasta 4096 px por lado.
-Rechaza salidas previas, RGBA transparente o uniforme. El `.capture.txt` registra
+El ejecutable de depuración conserva la consola de Windows para mostrar errores;
+solo Release usa el subsistema de ventanas. Rechaza salidas previas, RGBA
+transparente o uniforme. La comprobación de archivo previo y la escritura del PNG
+no son atómicas: otra captura con la misma ruta podría crear el archivo entre ambas
+y ser sobrescrita. Usar rutas de salida distintas por ejecución. El `.capture.txt` registra
 epoch/sequence, coches, resultado del update y dimensiones; no sustituye revisar
 el PNG. No admite Eficiencia, Standings, Delta ni multiclase en este modo.

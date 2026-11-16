@@ -67,7 +67,7 @@ impl Scan {
     }
 }
 pub struct Reader {
-    path: PathBuf,
+    pub(super) path: PathBuf,
     opened: bool,
     found: Discovery,
     scanned_revision: Option<String>,
@@ -99,6 +99,28 @@ impl Reader {
         reader.scanned_revision = Some(revision);
         reader.found = found;
         reader
+    }
+    #[cfg(test)]
+    pub(crate) fn with_available_apps(path: PathBuf) -> Self {
+        let Ok(Some((bytes, document))) = open(&path) else {
+            return Self::new(path);
+        };
+        let found = Discovery {
+            apps: document
+                .apps
+                .iter()
+                .map(|app| vantare_launcher::discovery::Detected {
+                    id: app.id.clone(),
+                    executable: None,
+                    availability: vantare_launcher::discovery::Availability {
+                        launchable: true,
+                        ..Default::default()
+                    },
+                })
+                .collect(),
+            ..Default::default()
+        };
+        Self::with_discovery(path, vantare_services::content_hash(&bytes), found)
     }
     #[cfg(test)]
     pub(crate) fn with_completed_discovery(
@@ -195,13 +217,12 @@ impl Reader {
         self.scanned_revision = None;
         Ok(self.view())
     }
-    pub(crate) fn validate_launch(&self, profile: &str, revision: &str) -> Result<(), HostError> {
-        let (bytes, document) = open(&self.path)?.ok_or(HostError::Protected)?;
-        if vantare_services::content_hash(&bytes) != revision {
-            return Err(HostError::LauncherConflict {
-                current: super::read(&self.path),
-            });
-        }
+    pub(super) fn validate_launch(
+        &self,
+        document: &Document,
+        profile: &str,
+        revision: &str,
+    ) -> Result<(), HostError> {
         let found = self.discovered(revision).ok_or(HostError::Busy)?;
         let profile = document
             .profiles

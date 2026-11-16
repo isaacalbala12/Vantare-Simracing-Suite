@@ -629,10 +629,14 @@ las pruebas inyectan monitores y reloj, sin esperas ni adaptador gráfico.
 
 ## Validación del lanzamiento en el anfitrión (#2184)
 
-Antes de enviar `launcher.launch` o `launcher.launchChecked`, el despacho exige
+Los métodos de envío `launcher::launch` y `checked::launch_inner` exigen
 un escaneo terminado para `baseRevision` y que todos los pasos del perfil estén
 disponibles. Una revisión antigua da `LauncherConflict`; un escaneo pendiente o
 de otra revisión da `Busy`; los pasos ausentes o no disponibles dan `Denied`.
 Los rechazos no escriben el documento ni el buzón. La revisión y la autoridad
 se vuelven a validar en los caminos existentes; no hay reenvío automático.
 No cambia el protocolo ni la interfaz.
+
+La validación vive dentro de esos métodos y usa el Reader de la sesión, también
+al disparar el Calendario (`launch_for_instance`). El despacho no la duplica.
+La autoridad precede al documento y la revisión precede al escaneo pendiente.

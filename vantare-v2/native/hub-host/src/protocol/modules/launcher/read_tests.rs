@@ -390,6 +390,7 @@ fn both_launch_methods_require_current_discovery_and_available_steps_without_sid
             "missing",
             "unavailable",
             "stale",
+            "denied",
             "valid",
         ] {
             launch_discovery_case(checked, case);
@@ -428,11 +429,12 @@ fn launch_discovery_case(checked: bool, case: &str) {
         },
         found,
     );
-    if case == "rescanning" {
+    if matches!(case, "rescanning" | "stale" | "denied") {
         session.launcher_reader.rescan();
+        assert!(session.launcher_reader.view().scanning);
     }
     let generation = "a".repeat(64);
-    let base_revision = if case == "stale" {
+    let base_revision = if matches!(case, "stale" | "denied") {
         "f".repeat(64)
     } else {
         revision
@@ -463,10 +465,15 @@ fn launch_discovery_case(checked: bool, case: &str) {
             epoch: 1,
             revision: 1,
             checked_at_ms: vantare_ipc::control::wall_ms().expect("clock"),
-            state: AccessState::Active,
+            state: if case == "denied" {
+                AccessState::NoCredential
+            } else {
+                AccessState::Active
+            },
             ..Default::default()
         },
     });
+    session.current.access.blocked = case == "denied";
     assert_launch_discovery(
         &mut session,
         &before,
@@ -501,7 +508,7 @@ fn assert_launch_discovery(
                 ..
             }
         )),
-        "missing" | "unavailable" => assert!(matches!(
+        "missing" | "unavailable" | "denied" => assert!(matches!(
             reply,
             HostToUi::Failure {
                 error: HostError::Denied,

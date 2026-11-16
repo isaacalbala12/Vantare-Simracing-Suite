@@ -1,16 +1,15 @@
-## VANTA-138 · #2184: escaneo y pasos antes de lanzar (por revisar)
+## VANTA-138 · #2184: escaneo y pasos antes de lanzar (review corregida)
 
-Rama propia `vantareapp/isa-2184-launch-discovery`, base nightly `9ff6f97e2`.
-El despacho de ambos métodos de lanzamiento exige discovery terminado para la
-revisión actual y pasos disponibles. Se conservan los errores existentes y la
-precedencia de autoridad y revisión; no cambia el protocolo ni la UI.
-Tests de despacho con escaneo invalidado, discovery rezagado, pasos ausentes/no
-lanzables, revisión obsoleta y un envío válido seguido de un segundo rechazado.
-Comprueban bytes del documento y buzón; sin aplicaciones ni gráficos.
-Gate local por cola: Clippy -D warnings y 667 tests PASS (1 omisión existente).
-Fmt de los archivos tocados y comprobación de fuentes del host PASS.
-PR y CI se enlazan en #2184; sin merge ni release propios.
-Después: #2028, migrar el lanzamiento ordinario Electron a checked sin fallback.
+PR #2432, rama `vantareapp/isa-2184-launch-discovery`, base nightly `9ff6f97e2`.
+La validación vive en `launcher::launch` y `checked::launch_inner`, con el Reader
+de la sesión; el despacho solo delega. También cubre `launch_for_instance` del
+Calendario. Autoridad → revisión → discovery/perfil → buzón, sin reenvío.
+Tests: escaneo real (`rescan` + `view`), precedencia con revisión y permisos
+inválidos, Calendario al disparar con escaneo pendiente (buzón vacío y ocupado),
+pasos ausentes/no disponibles y un único envío válido. Sin aplicaciones/gráficos.
+Gate local de la revisión: Clippy -D warnings y 668 tests PASS (1 omisión existente);
+formato/arquitectura PASS. La CI anterior era verde; el nuevo head se valida en CI.
+Sin bump, runtime/ipc, merge ni release. Se fusiona antes de #2437 (#2028).
 
 ## VANTA-144 · Reglas de presentación compartidas en domain (16/11/2026)
 

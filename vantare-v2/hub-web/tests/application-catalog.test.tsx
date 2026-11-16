@@ -458,6 +458,11 @@ it.each([
         ([request]) => request.method === "launcher.catalog",
       ).length;
     const before = reads();
+    expect(
+      screen
+        .getByRole("button", { name: text.detect })
+        .getAttribute("aria-describedby"),
+    ).toBeNull();
     fireEvent.click(
       screen.getByRole("button", {
         name: action === "favorito" ? text.favorite("OBS Studio") : text.detect,

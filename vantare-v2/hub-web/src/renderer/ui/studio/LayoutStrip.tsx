@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { studioLimits } from "../../../contract/generated/studio";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
@@ -14,7 +15,17 @@ import {
 
 export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
   const { state, items, selected, blocked } = model;
+  const addHint = useId();
   const view = state.view;
+  const addLabel =
+    view && view.instances.length >= studioLimits.instances
+      ? t.atLimit(studioLimits.instances)
+      : blocked
+        ? view?.plan === "unverified"
+          ? t.verifyWidget
+          : t.protectedAction
+        : t.addHelp;
+  const addDescription = addLabel === t.add ? undefined : addHint;
   return (
     <aside className="v-focus-strip" aria-label={t.layoutLabel}>
       <header className="v-focus-layout-name">
@@ -161,21 +172,13 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
             </p>
           )}
       </section>
-      <Tooltip
-        label={
-          view && view.instances.length >= studioLimits.instances
-            ? t.atLimit(studioLimits.instances)
-            : blocked
-              ? view?.plan === "unverified"
-                ? t.verifyWidget
-                : t.protectedAction
-              : t.addHelp
-        }
-      >
+      <Tooltip id={addDescription} label={addLabel}>
         <Button
           className="v-focus-add"
           data-empty={view?.state === "ready" && !view.instances.length}
           aria-label={t.add}
+          aria-describedby={addDescription}
+          focusableWhenDisabled={!!addDescription}
           data-add-widget
           disabled={
             blocked || (view?.instances.length ?? 0) >= studioLimits.instances

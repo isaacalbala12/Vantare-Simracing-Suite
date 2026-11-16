@@ -1,5 +1,5 @@
 import { Tabs } from "@base-ui/react/tabs";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { OverlayInstance } from "../../../contract/generated/studio";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
@@ -28,6 +28,7 @@ function Steps({
   readOnly: boolean;
 }) {
   const state = useStudio();
+  const hint = useId();
   const hasAppearance = !!item.settings && "designSystem" in item.settings;
   const [step, setStep] = useState(hasAppearance ? "appearance" : "track");
   const track = useRef<HTMLButtonElement>(null);
@@ -50,9 +51,15 @@ function Steps({
     >
       <div className="v-studio-steps-header">
         <Tabs.List aria-label={t.inspectorTabs} activateOnFocus>
-          <Tooltip label={hasAppearance ? t.appearance : t.soonTooltip}>
+          <Tooltip
+            id={hasAppearance ? undefined : `${hint}-appearance`}
+            label={hasAppearance ? t.appearance : t.soonTooltip}
+          >
             <Tabs.Tab
               value="appearance"
+              aria-describedby={
+                hasAppearance ? undefined : `${hint}-appearance`
+              }
               aria-disabled={readOnly || !hasAppearance || undefined}
             >
               <span className="v-step-number" aria-hidden="true">
@@ -71,9 +78,13 @@ function Steps({
             </span>
             {t.track}
           </Tabs.Tab>
-          <Tooltip label={item.settings ? t.content : t.contentSoonHelp}>
+          <Tooltip
+            id={item.settings ? undefined : `${hint}-content`}
+            label={item.settings ? t.content : t.contentSoonHelp}
+          >
             <Tabs.Tab
               value="content"
+              aria-describedby={item.settings ? undefined : `${hint}-content`}
               aria-disabled={readOnly || !item.settings || undefined}
             >
               <span className="v-step-number" aria-hidden="true">

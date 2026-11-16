@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Page } from "playwright-core";
+import { studioLimits } from "../src/contract/generated/studio.ts";
 import { studioText as t } from "../src/renderer/i18n/studio";
 import { checkStudioTrackComposition } from "./check-studio-track-composition";
 import { studioStateScenes } from "./visual-diff/studio-states";
@@ -87,6 +88,61 @@ export async function checkStudioStates(
         `reload focus ${scene}`,
       );
     }
+    await page.goto(`${base}?escena=studio-a-limite`);
+    await page
+      .getByRole("button", { name: /^(Studio|Overlays Studio)$/ })
+      .click();
+    const disabledAdd = page.getByRole("button", { name: t.add, exact: true });
+    await disabledAdd.waitFor();
+    assert.equal(await disabledAdd.getAttribute("disabled"), null);
+    assert.equal(await disabledAdd.getAttribute("aria-disabled"), "true");
+    await page.evaluate(() => {
+      const add =
+        document.querySelector<HTMLButtonElement>("[data-add-widget]");
+      const buttons = [
+        ...document.querySelectorAll<HTMLButtonElement>(
+          ".v-focus-strip button",
+        ),
+      ].filter((button) => !button.disabled && button.tabIndex >= 0);
+      if (!add) throw new Error("Missing Add button");
+      const index = buttons.indexOf(add);
+      if (index <= 0)
+        throw new Error("Missing preceding control for disabled Add Tab test");
+      buttons[index - 1].focus();
+    });
+    await page.keyboard.press("Tab");
+    assert.equal(
+      await disabledAdd.evaluate((node) => node === document.activeElement),
+      true,
+    );
+    const tooltip = page.getByRole("tooltip", {
+      name: t.atLimit(studioLimits.instances),
+    });
+    await tooltip.waitFor();
+    assert.match(
+      await tooltip.evaluate((node) => getComputedStyle(node).backgroundColor),
+      /^rgb\(/,
+      "Tooltip background is opaque",
+    );
+    assert.equal(
+      await disabledAdd.getAttribute("aria-describedby"),
+      await tooltip.getAttribute("id"),
+    );
+    await page.keyboard.press("Escape");
+    await tooltip.waitFor({ state: "hidden" });
+    assert.equal(
+      await disabledAdd.evaluate((node) => node === document.activeElement),
+      true,
+    );
+    await disabledAdd.hover();
+    await tooltip.waitFor();
+    await disabledAdd.click({ force: true });
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Space");
+    assert.equal(
+      await page.getByRole("dialog", { name: t.catalog, exact: true }).count(),
+      0,
+    );
     await checkStudioComposition(parent, base);
     await checkStudioTrackComposition(parent, base);
     await writeFile(
@@ -97,6 +153,8 @@ export async function checkStudioStates(
           reloadFocus: true,
           initialReadRecovery: true,
           composition: true,
+          tooltipRoleAndDescription: true,
+          disabledTooltipKeyboardAndActivation: true,
         },
         null,
         2,

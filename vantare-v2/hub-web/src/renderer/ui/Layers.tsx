@@ -2,27 +2,39 @@ import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { Popover as BasePopover } from "@base-ui/react/popover";
 import { Toast as BaseToast } from "@base-ui/react/toast";
 import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
-import { type HTMLAttributes, isValidElement, type ReactNode } from "react";
+import {
+  type HTMLAttributes,
+  isValidElement,
+  type ReactNode,
+  useId,
+} from "react";
 import { Icon } from "../assets/icons/Icon";
 import {
   WindowAlertDialog as BaseAlertDialog,
   WindowDialog as BaseDialog,
 } from "./WindowDialog";
 export function Tooltip({
+  id,
   label,
   children,
 }: {
+  id?: string;
   label: string;
   children: ReactNode;
 }) {
+  const generatedId = useId();
   return (
     <BaseTooltip.Root>
       <BaseTooltip.Trigger render={<span className="v-tooltip-trigger" />}>
         {children}
       </BaseTooltip.Trigger>
-      <BaseTooltip.Portal>
+      <BaseTooltip.Portal keepMounted={!!id}>
         <BaseTooltip.Positioner className="v-positioner" sideOffset={6}>
-          <BaseTooltip.Popup className="v-tooltip">
+          <BaseTooltip.Popup
+            id={id ?? generatedId}
+            className="v-tooltip"
+            role="tooltip"
+          >
             {label}
             <BaseTooltip.Arrow />
           </BaseTooltip.Popup>

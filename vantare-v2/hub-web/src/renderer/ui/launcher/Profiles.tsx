@@ -143,6 +143,12 @@ export function LauncherProfiles({
         },
     );
   const missing = profile ? apps(profile).filter((app) => !app.available) : [];
+  const launchBlocked =
+    !!control?.busy ||
+    !profile?.launchable ||
+    view.protected ||
+    pending ||
+    accepted;
   return (
     <div className="v-launcher-page">
       <header className="v-launcher-heading">
@@ -204,6 +210,7 @@ export function LauncherProfiles({
             <div className="v-launcher-actions">
               {showCancel && (
                 <Tooltip
+                  id={`${help}-cancel-tooltip`}
                   label={
                     cancelReason
                       ? controlText[cancelReason]
@@ -213,8 +220,14 @@ export function LauncherProfiles({
                   <span>
                     <Button
                       disabled={!control}
+                      focusableWhenDisabled
                       aria-disabled={!!cancelReason}
-                      aria-describedby={control ? `${help}-cancel` : undefined}
+                      aria-describedby={[
+                        control ? `${help}-cancel` : undefined,
+                        `${help}-cancel-tooltip`,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                       onBlur={(event) => {
                         if (
                           event.relatedTarget instanceof HTMLElement &&
@@ -234,18 +247,19 @@ export function LauncherProfiles({
                   </span>
                 </Tooltip>
               )}
-              <Tooltip label={text.launchUnavailable}>
+              <Tooltip
+                id={launchBlocked ? `${help}-launch-${profile.id}` : undefined}
+                label={launchBlocked ? text.launchUnavailable : text.launch}
+              >
                 <span>
                   <Button
                     variant="primary"
                     className="v-launcher-launch"
-                    disabled={
-                      !!control?.busy ||
-                      !profile.launchable ||
-                      view.protected ||
-                      pending ||
-                      accepted
+                    focusableWhenDisabled={launchBlocked}
+                    aria-describedby={
+                      launchBlocked ? `${help}-launch-${profile.id}` : undefined
                     }
+                    disabled={launchBlocked}
                     busy={pending}
                     onClick={() => onLaunch(profile)}
                   >
@@ -270,6 +284,7 @@ export function LauncherProfiles({
               </Button>
               {!showCancel && (
                 <Tooltip
+                  id={`${help}-rehearse-tooltip`}
                   label={
                     rehearseReason
                       ? controlText[rehearseReason]
@@ -280,10 +295,14 @@ export function LauncherProfiles({
                     <Button
                       ref={rehearseButton}
                       disabled={!control}
+                      focusableWhenDisabled
                       aria-disabled={!!rehearseReason || pending}
-                      aria-describedby={
-                        control ? `${help}-rehearse` : undefined
-                      }
+                      aria-describedby={[
+                        control ? `${help}-rehearse` : undefined,
+                        `${help}-rehearse-tooltip`,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                       onClick={() => {
                         if (
                           control &&

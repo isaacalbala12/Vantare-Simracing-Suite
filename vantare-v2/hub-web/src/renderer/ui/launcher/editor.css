@@ -218,7 +218,7 @@
   height: 12px;
   transform: none;
 }
-.v-profile-decorations .v-button:disabled {
+.v-profile-decorations .v-button:is(:disabled, [aria-disabled="true"]) {
   opacity: var(--disabled-opacity);
   color: var(--text-1);
   font-size: 14px;

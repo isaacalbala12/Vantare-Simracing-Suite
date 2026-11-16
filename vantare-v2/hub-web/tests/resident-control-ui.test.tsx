@@ -62,7 +62,13 @@ it("the visible rehearsal button submits its rendered profile and revision only"
   const control = controller(),
     view = structuredClone(fixture) as LauncherView;
   view.revision = "c".repeat(64);
+  view.profiles[0].launchable = true;
   mount(control, view);
+  expect(
+    screen
+      .getByRole("button", { name: /^Lanzar/u })
+      .getAttribute("aria-describedby"),
+  ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Probar sin el juego" }));
   expect(control.rehearse).toHaveBeenCalledExactlyOnceWith({
     ...control.scope,
@@ -88,9 +94,11 @@ it("disabled capability has a keyboard-readable reason and never sends", () => {
   const button = screen.getByRole("button", { name: "Probar sin el juego" });
   expect(button.getAttribute("aria-disabled")).toBe("true");
   expect(
-    document.getElementById(button.getAttribute("aria-describedby") ?? "")
-      ?.textContent,
-  ).toBe(
+    button
+      .getAttribute("aria-describedby")
+      ?.split(" ")
+      .map((id) => document.getElementById(id)?.textContent),
+  ).toContain(
     "El residente actual no admite cancelar ni probar perfiles de forma comprobada.",
   );
   fireEvent.click(button);

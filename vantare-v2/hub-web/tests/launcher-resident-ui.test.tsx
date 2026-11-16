@@ -71,10 +71,11 @@ describe("resident decisions are read-only", () => {
     const action = screen.getByRole("button", {
       name: residentActionLabels.trust,
     });
-    const note = document.getElementById(
-      action.getAttribute("aria-describedby") ?? "",
-    );
-    expect(note?.textContent).toBe(
+    const notes = action
+      .getAttribute("aria-describedby")
+      ?.split(" ")
+      .map((id) => document.getElementById(id)?.textContent);
+    expect(notes).toContain(
       "El residente actual no permite responder desde este Hub.",
     );
     for (const [label, handler] of [
@@ -95,20 +96,17 @@ describe("resident decisions are read-only", () => {
     expect(
       screen.getByRole("dialog", { name: "Decisión de lanzamiento" }),
     ).toBeTruthy();
-    expect(
-      (
-        screen.getByRole("button", {
-          name: residentActionLabels.trust,
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    expect(
-      (
-        screen.getByRole("button", {
-          name: residentActionLabels.cancel,
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+    for (const name of [
+      residentActionLabels.trust,
+      residentActionLabels.cancel,
+    ]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.getAttribute("aria-disabled")).toBe("true");
+      button.focus();
+      expect(document.activeElement).toBe(button);
+      fireEvent.click(button);
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    }
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     mounted.rerender(

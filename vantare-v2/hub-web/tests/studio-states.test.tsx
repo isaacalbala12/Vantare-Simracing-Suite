@@ -156,8 +156,8 @@ describe("Studio A honest states", () => {
       ),
     );
     expect(
-      screen.getByRole("button", { name: t.add }).hasAttribute("disabled"),
-    ).toBe(true);
+      screen.getByRole("button", { name: t.add }).getAttribute("aria-disabled"),
+    ).toBe("true");
   });
   it("focuses the newly committed row after a protected document recovers", async () => {
     mount("studio-a-recargar");
@@ -318,18 +318,19 @@ describe("Studio A honest states", () => {
       mount(scene);
       await screen.findAllByRole("button", { name: /^Standings(?: \d+)?,/ });
       const add = await screen.findByRole("button", { name: t.add });
-      expect(add.hasAttribute("disabled")).toBe(true);
+      expect(add.hasAttribute("disabled")).toBe(false);
+      expect(add.getAttribute("aria-disabled")).toBe("true");
       if (scene === "studio-a-limite") {
         expect(
           screen.getByText(t.overlaysCount(studioLimits.instances)),
         ).toBeTruthy();
         const trigger = add.closest(".v-tooltip-trigger");
         if (!trigger) throw new Error("Missing Add tooltip trigger");
-        await userEvent.hover(trigger);
-        fireEvent.mouseMove(trigger, { clientX: 1, clientY: 1 });
-        const tooltip = await screen.findByText(
-          t.atLimit(studioLimits.instances),
-        );
+        fireEvent.focus(add);
+        const tooltip = await screen.findByRole("tooltip", {
+          name: t.atLimit(studioLimits.instances),
+        });
+        expect(add.getAttribute("aria-describedby")).toBe(tooltip.id);
         expect(tooltip.closest(".v-tooltip")).not.toBeNull();
       } else
         expect(

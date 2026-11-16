@@ -537,3 +537,73 @@ fn missing_stale_and_paused_keep_gpui_waiting_rules_without_a_clock() {
         }
     }
 }
+#[test]
+fn a_row_layer_of_literal_height_does_not_clip_its_children() {
+    let style = Style::compiled();
+    let rt = host(
+        Standings::new(&config("expanded"), Preferences::default()),
+        &photo("Carrera · vuelta 14/38"),
+    );
+    let elements = rt.elements();
+    let rows: Vec<_> = elements
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| {
+            e.key
+                .as_deref()
+                .is_some_and(|key| key.starts_with("standings-row-"))
+        })
+        .collect();
+    assert!(!rows.is_empty(), "hay capas de fila");
+    for (index, row) in rows {
+        assert_eq!(
+            row.rect[3], style.geometry.row_height,
+            "altura literal de la capa de fila"
+        );
+        for child in elements.iter().filter(|child| child.parent == Some(index)) {
+            for axis in 0..4 {
+                assert!(
+                    (child.rect[axis] - child.visible[axis]).abs() < 0.01,
+                    "la capa de fila recorta {:?}: {:?} != {:?}",
+                    child.key,
+                    child.rect,
+                    child.visible
+                );
+            }
+        }
+    }
+}
+#[test]
+fn the_row_flash_uses_the_literal_bleed_and_stays_inside_the_window() {
+    let style = Style::compiled();
+    let base = photo("Carrera · vuelta 14/38");
+    let mut swapped = base.clone();
+    swapped.state.cars[0].position = Quality::Reliable(2);
+    swapped.state.cars[0].class_position = Quality::Reliable(2);
+    swapped.state.cars[1].position = Quality::Reliable(1);
+    swapped.state.cars[1].class_position = Quality::Reliable(1);
+    let mut widget = Standings::new(&config("expanded"), Preferences::default());
+    widget.update(&base, 0.0);
+    widget.update(&swapped, 0.0);
+    let mut rt = paint(widget);
+    assert!(
+        rt.elements()
+            .iter()
+            .any(|e| e.key.as_deref() == Some("row-flash")),
+        "destello activo"
+    );
+    let flash = rt
+        .elements()
+        .into_iter()
+        .find(|e| e.key.as_deref() == Some("row-flash"))
+        .expect("destello");
+    let v = &style.styles.neo;
+    let x0 = v.padding_x - style.geometry.player_bleed;
+    assert!((flash.rect[0] - x0).abs() < 0.01, "bleed literal");
+    assert!(
+        (flash.rect[2] - (900.0 - 2.0 * x0)).abs() < 0.01,
+        "ancho hasta el otro bleed"
+    );
+    assert_eq!(flash.rect[3], style.geometry.row_height);
+    crate::testdata::assert_inside_window(&mut rt, (900.0, 307.0));
+}

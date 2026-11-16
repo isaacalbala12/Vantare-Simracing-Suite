@@ -162,27 +162,24 @@ impl Widget for Standings {
             snapshot
         };
         let session = Session::of(&snapshot.state.session.kind).unwrap_or(self.session);
-        let options = if session != self.session {
+        let settings = self.settings_for(session);
+        let options = Options::from_settings(&settings);
+        if session != self.session || options != self.scene.options {
             self.session = session;
-            let settings = self.settings_for(session);
             self.content = content(&settings);
-            Options::from_settings(&settings)
-        } else {
-            self.scene.options.clone()
-        };
+        }
         let board = standings::project_cached(
             snapshot,
             self.prefs,
             &self.content,
             self.scene.board.as_ref(),
         );
-        if self
+        let same_board = self
             .scene
             .board
             .as_ref()
-            .is_some_and(|old| Arc::ptr_eq(old, &board))
-            && self.scene.options == options
-        {
+            .is_some_and(|old| Arc::ptr_eq(old, &board));
+        if same_board && self.scene.options == options {
             return Update {
                 build: pause_changed,
                 pixels: false,
@@ -199,8 +196,15 @@ impl Widget for Standings {
                 Some((board.groups.get(g)?.rows.get(r)?.id, y))
             })
             .collect::<Vec<_>>();
-        self.motion
-            .update(&targets, &self.style, clock, self.reduced);
+        if same_board {
+            // Solo cambian las opciones: GPUI hace snap y no anima el reordenado.
+            self.motion.snap(&targets, clock);
+        } else {
+            self.motion
+                .observe(&board, &targets, &self.style, clock, self.reduced);
+            self.motion
+                .update(&targets, &self.style, clock, self.reduced);
+        }
         let scene = Scene {
             paused,
             frame: self.motion.sample(clock),

@@ -66,6 +66,10 @@ impl Tween {
     pub fn active(self, now: f64) -> bool {
         self.from != self.to && now < self.start + self.duration
     }
+    /// Momento en que el tween alcanza su destino.
+    pub fn end(self) -> f64 {
+        self.start + self.duration
+    }
     pub fn settle(&mut self) {
         self.from = self.to;
         self.duration = 0.0;

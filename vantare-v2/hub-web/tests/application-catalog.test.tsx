@@ -440,3 +440,40 @@ it.each([false, true])(
     ).toHaveLength(readsBefore + 1);
   },
 );
+
+it.each([
+  { action: "favorito", method: "launcher.app.favorite" },
+  { action: "explorar", method: "launcher.scan" },
+] as const)(
+  "reads the catalog once after the $action response and its Launcher event",
+  async ({ action, method }) => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: text.edit("OBS Studio") });
+    await act(async () => {
+      await Promise.all(requests.mock.results.map((result) => result.value));
+    });
+    const reads = () =>
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.catalog",
+      ).length;
+    const before = reads();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: action === "favorito" ? text.favorite("OBS Studio") : text.detect,
+      }),
+    );
+    const index = await waitFor(() => {
+      const found = requests.mock.calls.findIndex(
+        ([request]) => request.method === method,
+      );
+      expect(found).toBeGreaterThanOrEqual(0);
+      return found;
+    });
+    await requests.mock.results[index].value;
+    await act(async () => {
+      await Promise.all(requests.mock.results.map((result) => result.value));
+    });
+    expect(reads()).toBe(before + 1);
+  },
+);

@@ -242,6 +242,8 @@ mod tests {
             rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
         );
         runtime.poll = Some(|widget, clock, tx| {
+            // Como el anfitrión: un commit de datos no anima entradas ni salidas.
+            tx.instant();
             let update = widget.animate(clock);
             widget.schedule(clock, tx);
             update.build

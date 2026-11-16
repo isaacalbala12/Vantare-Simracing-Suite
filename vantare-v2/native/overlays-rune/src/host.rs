@@ -1205,6 +1205,7 @@ mod tests {
             visible: Default::default(),
             shown: true,
             reduced_motion: false,
+            calendar: Arc::default(),
         });
         state.frames = Some(frames.clone());
         state.seen = 10;
@@ -1409,6 +1410,7 @@ mod tests {
             visible: std::collections::BTreeSet::from(["r".into()]),
             shown: true,
             reduced_motion: true,
+            calendar: Arc::default(),
         };
         let display = Display {
             id: None,

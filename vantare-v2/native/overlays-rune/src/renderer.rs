@@ -163,6 +163,7 @@ impl Painters {
                     }
                     build |= update.build;
                 }
+                entry.painter.calendar(&frames.calendar);
                 order.push(instance.id.clone());
             }
         }

@@ -24,6 +24,10 @@ struct Watched {
     presentation: Presentation,
     appearance_path: Option<PathBuf>,
     appearance: MotionPolicy,
+    /// Layout file the calendar agenda lives next to.
+    layout: PathBuf,
+    /// The agenda error is reported once, never on every poll.
+    calendar_error: bool,
 }
 impl Watched {
     fn poll(&mut self, scene: &mut Scene, now: Instant) -> bool {
@@ -41,6 +45,19 @@ impl Watched {
             Ok(Some(shown)) => changed |= scene.set_shown(shown, now),
             Ok(None) => {}
             Err(error) => eprintln!("overlays-rune: presentación protegida: {error}"),
+        }
+        // Only a design with Avisos de sesión touches the agenda file.
+        if crate::calendar::wanted(self.document.layout()) {
+            let wall = vantare_ipc::control::wall_ms().unwrap_or(0);
+            match crate::calendar::read(&self.layout, wall) {
+                Ok(events) => changed |= scene.set_calendar(events, now),
+                Err(error) => {
+                    if !self.calendar_error {
+                        self.calendar_error = true;
+                        eprintln!("overlays-rune: agenda del calendario: {}", error.message());
+                    }
+                }
+            }
         }
         changed
     }
@@ -76,10 +93,12 @@ impl DataFeed {
         );
         scene.refresh(Instant::now());
         let watched = Watched {
+            layout: path.clone(),
             document,
             presentation,
             appearance_path,
             appearance,
+            calendar_error: false,
         };
         let demand = DemandHandle::new(scene.required());
         // Publicar antes del setup también respeta inicio oculto y EOF temprano.
@@ -213,6 +232,8 @@ mod tests {
             presentation: Presentation::watch(&path).expect("presentation"),
             appearance_path: None,
             appearance: MotionPolicy(false),
+            layout: path.clone(),
+            calendar_error: false,
         };
         let now = Instant::now();
         let mut scene = Scene::new(

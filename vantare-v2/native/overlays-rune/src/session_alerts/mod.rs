@@ -37,9 +37,9 @@ pub(crate) struct SessionAlerts {
     /// Tones already played, so each notice rings once, as the GPUI revisions do.
     sound_revision: u64,
     zero_revision: u64,
-    /// Agenda plug of the next PR: the calendar feed will arrive here, empty for now.
-    #[allow(dead_code)]
+    /// Local calendar agenda read by the host; applied on the next animate with its clock.
     calendar: Vec<model::CalendarInput>,
+    calendar_dirty: bool,
     painter: render::Painter,
     visual: scene::Scene,
 }
@@ -85,6 +85,7 @@ impl SessionAlerts {
             sound_revision: 0,
             zero_revision: 0,
             calendar: Vec::new(),
+            calendar_dirty: false,
             painter,
             visual: initial,
         }
@@ -126,8 +127,19 @@ impl SessionAlerts {
         self.machine.session(input, self.now(clock), &self.options);
         self.animate(clock)
     }
+    pub fn calendar(&mut self, events: &[model::CalendarInput]) {
+        if self.calendar.as_slice() == events {
+            return;
+        }
+        self.calendar = events.to_vec();
+        self.calendar_dirty = true;
+    }
     pub fn animate(&mut self, clock: f64) -> Update {
         let now = self.now(clock);
+        if self.calendar_dirty {
+            self.calendar_dirty = false;
+            self.machine.calendar(&self.calendar, now, &self.options);
+        }
         self.view = self.machine.tick(now, &self.options);
         self.fade(now, clock);
         let opacity = if self.reduced {
@@ -310,6 +322,9 @@ impl crate::widget::Widget for SessionAlerts {
     }
     fn sound(&mut self) -> Vec<(Tone, u8)> {
         SessionAlerts::sound(self)
+    }
+    fn calendar(&mut self, events: &[vantare_domain::session_alerts::CalendarInput]) {
+        SessionAlerts::calendar(self, events);
     }
     fn view(&self) -> El {
         SessionAlerts::view(self)
@@ -757,6 +772,32 @@ mod tests {
             recorder.record(widget.sound());
             assert!(recorder.played.is_empty(), "sin tono: {recorder:?}");
         }
+    }
+
+    #[test]
+    fn the_host_agenda_becomes_a_calendar_notice() {
+        let mut widget = widget();
+        widget.calendar(&[vantare_domain::session_alerts::CalendarInput {
+            id: "race".into(),
+            label: "Spa".into(),
+            starts_at_ms: 300_000,
+        }]);
+        assert!(widget.calendar_dirty, "la agenda llega pendiente");
+        widget.animate(0.0);
+        assert!(!widget.calendar_dirty, "se aplica una vez");
+        let notice = widget.visual.notice.as_ref().expect("aviso de calendario");
+        assert_eq!(notice.band, "Calendario · 5 min");
+        assert_eq!(notice.title, "TU CARRERA EMPIEZA PRONTO");
+        assert_eq!(notice.detail, "Spa");
+        // La misma agenda no vuelve a pedir trabajo.
+        let before = widget.visual.clone();
+        widget.calendar(&[vantare_domain::session_alerts::CalendarInput {
+            id: "race".into(),
+            label: "Spa".into(),
+            starts_at_ms: 300_000,
+        }]);
+        assert!(!widget.calendar_dirty);
+        assert_eq!(widget.visual, before);
     }
 
     #[test]

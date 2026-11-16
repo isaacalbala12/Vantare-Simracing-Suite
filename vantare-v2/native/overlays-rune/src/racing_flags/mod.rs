@@ -212,6 +212,7 @@ mod tests {
     use rune::{Env, Runtime};
     use vantare_domain::{
         Capability, Car, CarId, Class, ClassId, Flag, FlagScope, Player, Quality, SessionKind,
+        SourceKind,
     };
 
     fn session_flag(kind: FlagKind) -> Flag {
@@ -337,6 +338,25 @@ mod tests {
         let live = photo(9, SourceState::Live, vec![session_flag(FlagKind::Green)]);
         assert_eq!(demo_penalty(&live), None);
         assert_eq!(project(&Config::default(), &live, prefs).penalty, None);
+    }
+
+    #[test]
+    fn a_demo_photo_with_another_origin_or_epoch_is_not_the_demo() {
+        let photos = vantare_ipc::snapshots_from_json(include_str!(
+            "../../../ui/fixtures/racing-flags-design-system.sequence.json"
+        ))
+        .expect("secuencia canónica");
+        assert_eq!(
+            demo_penalty(&photos[1]),
+            Some(PenaltyKind::DriveThrough),
+            "la foto 2 sí es la de demo"
+        );
+        let mut live_origin = photos[1].clone();
+        live_origin.origin.source.kind = SourceKind::Live;
+        assert_eq!(demo_penalty(&live_origin), None, "origen vivo");
+        let mut other_epoch = photos[1].clone();
+        other_epoch.epoch += 1;
+        assert_eq!(demo_penalty(&other_epoch), None, "otra época");
     }
 
     #[test]

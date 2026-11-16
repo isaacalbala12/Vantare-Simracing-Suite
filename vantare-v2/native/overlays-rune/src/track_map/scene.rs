@@ -129,7 +129,7 @@ mod tests {
                 |s| s.epoch += 1,
                 |s| s.origin.source.kind = SourceKind::Live,
                 |s| s.origin.source_time = Some(std::time::Duration::from_secs(1)),
-                |s| s.state.session.id += 1,
+                |s| s.state.session.id.0 += 1,
                 |s| s.state.session.track_name = Quality::Reliable("other".into()),
                 |s| s.state.cars[0].pose = Quality::Stale(Default::default()),
                 |s| s.state.cars.swap(0, 1),

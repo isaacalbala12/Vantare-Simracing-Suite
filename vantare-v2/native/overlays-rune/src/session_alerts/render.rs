@@ -1,6 +1,8 @@
 //! Vantare Look for Avisos de sesión: panel, franja, textos y filas de mini.
 //! Every box, face and colour is copied from the GPUI painter.
-use super::scene::{MAIN_HEIGHT, MAIN_WIDTH, MINI_HEIGHT, MINI_STEP, MINI_WIDTH, Notice, Placeholder, Scene};
+use super::scene::{
+    MAIN_HEIGHT, MAIN_WIDTH, MINI_HEIGHT, MINI_STEP, MINI_WIDTH, Notice, Placeholder, Scene,
+};
 use crate::vantare::paint::{Face, font};
 use crate::vantare::{Style, Variant, alpha};
 use rune::{Align, Color, El, Live, LiveText, Spring, el, text};
@@ -215,6 +217,7 @@ fn band(s: &Style, v: &Variant, key: &str, w: f32, fill: Color) -> El {
         .corners([radius, radius, 0.0, 0.0])
         .fill(fill)
 }
+#[allow(clippy::too_many_arguments)] // Una celda de texto con su sombra, como la primitiva del kit.
 fn text_node(
     s: &Style,
     value: &str,
@@ -256,6 +259,7 @@ fn live_node(
         .pin(Some(at.x), Some(top(s, ink.face, at.y)), None, None)
 }
 /// GPUI draws every label twice, one pixel lower, in the transparent style.
+#[allow(clippy::too_many_arguments)] // Envoltorio de la sombra de una celda.
 fn shadowed(
     s: &Style,
     root: El,
@@ -266,21 +270,22 @@ fn shadowed(
     align: Align,
     shadow: bool,
 ) -> El {
-    let root = if shadow {
-        root.child(text_node(
-            s,
-            value,
-            &format!("{key}-shadow"),
-            Rect { y: at.y + 1.0, ..at },
-            ink,
-            align,
-            SHADOW_INK,
-            false,
-        ))
-    } else {
-        root
-    };
-    root
+    if !shadow {
+        return root;
+    }
+    root.child(text_node(
+        s,
+        value,
+        &format!("{key}-shadow"),
+        Rect {
+            y: at.y + 1.0,
+            ..at
+        },
+        ink,
+        align,
+        SHADOW_INK,
+        false,
+    ))
 }
 #[allow(clippy::too_many_arguments)]
 fn fixed(
@@ -564,37 +569,38 @@ fn view(state: &Painter) -> El {
                 MINI_WIDTH * scale,
                 MINI_HEIGHT * scale,
             ))
-            .child(
-                text_node(
-                    s,
-                    ghost,
-                    "ghost",
-                    Rect {
-                        x: 16.0 * scale,
-                        y: 0.0,
-                        w: MINI_WIDTH * scale - 16.0 * scale,
-                        h: MINI_HEIGHT * scale,
-                    },
-                    Ink {
-                        face: Face::Body,
-                        size: 11.0 * scale,
-                        tracking: 0.3,
-                        weight: s.fonts.regular_weight,
-                    },
-                    Align::Start,
-                    s.colors.muted,
-                    false,
-                ),
-            );
+            .child(text_node(
+                s,
+                ghost,
+                "ghost",
+                Rect {
+                    x: 16.0 * scale,
+                    y: 0.0,
+                    w: MINI_WIDTH * scale - 16.0 * scale,
+                    h: MINI_HEIGHT * scale,
+                },
+                Ink {
+                    face: Face::Body,
+                    size: 11.0 * scale,
+                    tracking: 0.3,
+                    weight: s.fonts.regular_weight,
+                },
+                Align::Start,
+                s.colors.muted,
+                false,
+            ));
     }
     for (index, (label, calm)) in state.rows.iter().enumerate() {
         let scale = state.scale;
         let y = index as f32 * MINI_STEP * scale;
         let width = MINI_WIDTH * scale;
         let row = MINI_HEIGHT * scale;
-        root = root.child(
-            panel(s, v, &format!("row-{index}"), width, row).pin(Some(0.0), Some(y), None, None),
-        );
+        root = root.child(panel(s, v, &format!("row-{index}"), width, row).pin(
+            Some(0.0),
+            Some(y),
+            None,
+            None,
+        ));
         root = fixed(
             s,
             root,
@@ -617,7 +623,11 @@ fn view(state: &Painter) -> El {
             false,
             true,
         );
-        let color = if *calm { s.colors.yellow } else { s.colors.loss };
+        let color = if *calm {
+            s.colors.yellow
+        } else {
+            s.colors.loss
+        };
         if let Some(value) = state.row_values.get(index) {
             root = live(
                 s,

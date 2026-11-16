@@ -337,7 +337,13 @@ mod tests {
             companion_for: Some("main".into()),
             ..Settings::default()
         };
-        let scene = sample(&companion, &vantare_domain::session_alerts::View::default(), None, false, 1.0);
+        let scene = sample(
+            &companion,
+            &vantare_domain::session_alerts::View::default(),
+            None,
+            false,
+            1.0,
+        );
         assert_eq!(scene.size, (210.0, 124.0));
         assert_eq!(scene.ghost.as_deref(), Some("Mini cuenta atrás"));
         for (mini_size, expected) in [("s", (178.5, 105.4)), ("l", (262.5, 155.0))] {

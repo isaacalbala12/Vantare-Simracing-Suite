@@ -64,8 +64,7 @@ impl SessionAlerts {
         }
     }
     fn now(&self, clock: f64) -> u64 {
-        self.wall
-            .saturating_add((clock.max(0.0) * 1000.0) as u64)
+        self.wall.saturating_add((clock.max(0.0) * 1000.0) as u64)
     }
     pub fn configured(&self, settings: &Settings, prefs: Preferences) -> bool {
         self.settings == settings.normalized() && self.prefs == prefs
@@ -159,7 +158,11 @@ impl SessionAlerts {
         }
         let now = self.now(clock);
         if let Some(notice) = &self.view.active {
-            let end = notice.ends_at_ms.saturating_sub(now).saturating_sub(150).max(1);
+            let end = notice
+                .ends_at_ms
+                .saturating_sub(now)
+                .saturating_sub(150)
+                .max(1);
             let second = 1000 - now % 1000;
             tx.wake_at(clock + f64::from(second.min(end) as u32) / 1000.0);
             return;

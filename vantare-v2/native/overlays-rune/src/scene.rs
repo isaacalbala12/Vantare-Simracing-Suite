@@ -343,7 +343,10 @@ mod tests {
             for look in Look::ALL {
                 let mut settings = Settings::default_for(*kind);
                 settings.set_look(*look);
-                assert!(crate::renderer::constructor(&settings).is_some(), "{kind:?}/{look:?}");
+                assert!(
+                    crate::renderer::constructor(&settings).is_some(),
+                    "{kind:?}/{look:?}"
+                );
             }
         }
         let now = Instant::now();

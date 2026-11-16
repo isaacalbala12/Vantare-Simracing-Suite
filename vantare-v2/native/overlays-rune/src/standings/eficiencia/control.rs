@@ -54,8 +54,12 @@ impl Eficiencia {
         let mut config = Config::from_settings(&self.settings_for(session));
         config.fit(config.row_count);
         self.visual.config = Arc::new(config);
-        self.visual.content_plan = Arc::new(ContentPlan::unavailable(super::model::Status::Disconnected));
-        self.visual.plan = Arc::new(super::model::plan(&self.visual.config, &self.visual.content_plan));
+        self.visual.content_plan =
+            Arc::new(ContentPlan::unavailable(super::model::Status::Disconnected));
+        self.visual.plan = Arc::new(super::model::plan(
+            &self.visual.config,
+            &self.visual.content_plan,
+        ));
         self.board = None;
     }
 }

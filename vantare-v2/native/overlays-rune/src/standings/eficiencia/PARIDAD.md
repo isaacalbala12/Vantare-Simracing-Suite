@@ -133,3 +133,20 @@ Sin reloj de animación en E3, con o sin movimiento reducido. E5 añadirá Tween
 E4 debe retirar las marcas dead_code puntuales al portar pies/bandas/espera/rail;
 E6 añade flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
 testers hasta completar E4–E6 y la comparación física de píxeles pendiente.
+
+## Revisión E3 en el mismo PR
+
+La pausa usa app.rs:559: texto en x=8 y base alto+16 (size.1−6), 11/600/tracking
+0,02; fondo #101113 a 0,95 y banda [0,alto,ancho+rail,22]. Se corrige la base 15.
+switch_session descarta el contenido anterior por ContentPlan::unavailable,
+recalcula el plan y borra Board, como standings/mod.rs:303–314. La regresión
+reingesta el MISMO Arc de Board en dos pestañas multiclase con columnas distintas:
+6 filas y row_tops [28,58,116,146,204,234], con tres bandas, tras el reinicio.
+content() reutiliza super::content de Vantare: misma derivación de lap/interval,
+formatos, clases y pies que SettingsPresentation::content de GPUI. La conversión
+efectiva de columnas/geometry sigue siendo Config::from_settings de Eficiencia.
+La máscara de paint_column_label solo se aplica en Signature; Broadcast retorna
+antes de with_content_mask en GPUI y se conserva sin esa máscara en Rune.
+El catálogo prueba todos los Kind×Look: ya no queda un Settings válido sin
+constructor que llegue a `_ => None`; el test documenta ese límite y conserva
+la ausencia de adquisición para un layout vacío.

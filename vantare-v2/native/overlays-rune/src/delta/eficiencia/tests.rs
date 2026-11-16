@@ -102,7 +102,10 @@ fn a_record_shows_its_notice_and_expires_without_a_clock() {
         .expect("player car")
         .best_lap_s = Reliable(99.0);
     widget.update(&record, 1.0);
-    assert_eq!(widget.scene.event, Some(vantare_domain::delta::Event::PersonalBest));
+    assert_eq!(
+        widget.scene.event,
+        Some(vantare_domain::delta::Event::PersonalBest)
+    );
     assert!(widget.motion.next_wake_full(1.0).is_some());
     widget.animate(1.0 + 4.18);
     assert_eq!(widget.scene.event, None);
@@ -112,12 +115,8 @@ fn a_record_shows_its_notice_and_expires_without_a_clock() {
 #[test]
 fn reduced_motion_keeps_the_notice_without_frames_and_settles_the_fill() {
     let snapshot = crate::testdata::snapshot();
-    let mut widget = DeltaEficiencia::new(
-        &settings("instrument"),
-        Preferences::default(),
-        true,
-        0.0,
-    );
+    let mut widget =
+        DeltaEficiencia::new(&settings("instrument"), Preferences::default(), true, 0.0);
     widget.update(&snapshot, 0.0);
     assert!(!widget.scene.event.is_some());
     assert_eq!(widget.motion.next_wake_full(0.0), None);

@@ -98,10 +98,7 @@ impl Motion {
         }
         self.last_tone = side(previous.tone).or(self.last_tone);
         if let Some(to) = side(next.tone) {
-            if self
-                .last_tone
-                .is_some_and(|from| from != to)
-            {
+            if self.last_tone.is_some_and(|from| from != to) {
                 self.cross = Some((now, to));
             }
             self.last_tone = Some(to);
@@ -201,7 +198,8 @@ impl Motion {
             }
         }
         if let Some((start, _)) = self.cross {
-            if now - start < CROSS_FADE || (now - start >= CROSS && now - start < CROSS + CROSS_FADE)
+            if now - start < CROSS_FADE
+                || (now - start >= CROSS && now - start < CROSS + CROSS_FADE)
             {
                 return Some(now);
             }
@@ -240,10 +238,7 @@ impl Motion {
             .cross
             .filter(|(start, _)| now - start < CROSS)
             .map(|(start, _)| start + CROSS);
-        event
-            .into_iter()
-            .chain(cross)
-            .min_by(|a, b| a.total_cmp(b))
+        event.into_iter().chain(cross).min_by(|a, b| a.total_cmp(b))
     }
 }
 
@@ -271,7 +266,14 @@ mod tests {
     #[test]
     fn the_bar_slides_with_the_gpui_ease_and_duration() {
         let mut motion = motion();
-        motion.ingest(Some(&board(90.0)), &board(89.9), 0.5, [0.5, 0.2], 0.0, false);
+        motion.ingest(
+            Some(&board(90.0)),
+            &board(89.9),
+            0.5,
+            [0.5, 0.2],
+            0.0,
+            false,
+        );
         assert!(motion.bar.active(0.0));
         for t in [0.25_f32, 0.5] {
             let expected = 0.5 * (1.0 - (1.0 - t).powi(3));
@@ -287,7 +289,14 @@ mod tests {
     #[test]
     fn a_record_lights_the_flash_for_its_whole_life() {
         let mut motion = motion();
-        motion.ingest(Some(&board(90.0)), &board(89.0), 0.0, [0.5, 0.0], 0.0, false);
+        motion.ingest(
+            Some(&board(90.0)),
+            &board(89.0),
+            0.0,
+            [0.5, 0.0],
+            0.0,
+            false,
+        );
         assert_eq!(motion.flash(0.0), Some(1.0));
         assert!((motion.flash(0.700).expect("mitad") - 0.5).abs() < 1e-6);
         assert_eq!(motion.flash(1.400), None);
@@ -297,7 +306,14 @@ mod tests {
     #[test]
     fn a_new_session_reference_or_car_clears_the_flash_but_slides_the_bar() {
         let mut motion = motion();
-        motion.ingest(Some(&board(90.0)), &board(89.0), 0.5, [0.5, 0.0], 0.0, false);
+        motion.ingest(
+            Some(&board(90.0)),
+            &board(89.0),
+            0.5,
+            [0.5, 0.0],
+            0.0,
+            false,
+        );
         assert!(motion.flash(0.01).is_some());
         let mut next = board(89.0);
         next.reference = vantare_domain::delta::Reference::Optimal;

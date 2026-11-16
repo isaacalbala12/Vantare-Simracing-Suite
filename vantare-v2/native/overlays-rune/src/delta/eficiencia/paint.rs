@@ -81,13 +81,16 @@ pub(super) fn view(scene: &Scene) -> El {
     let arrow_style = eficiencia::font(13.0, 700, -0.025);
     let arrow_width = eficiencia::width(arrow, arrow_style);
     root = root
+        .child(text_at(&s.delta_text, left + 20.0, baseline, value_style, color).key("delta-value"))
         .child(
-            text_at(&s.delta_text, left + 20.0, baseline, value_style, color)
-                .key("delta-value"),
-        )
-        .child(
-            text_at(arrow, left + (12.0 - arrow_width) / 2.0, baseline, arrow_style, color)
-                .key("delta-arrow"),
+            text_at(
+                arrow,
+                left + (12.0 - arrow_width) / 2.0,
+                baseline,
+                arrow_style,
+                color,
+            )
+            .key("delta-arrow"),
         );
     root = root.child(
         el().key("delta-track")

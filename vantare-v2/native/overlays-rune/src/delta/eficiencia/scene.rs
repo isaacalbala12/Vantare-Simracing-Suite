@@ -34,7 +34,11 @@ pub fn sample(board: &Board, prefs: Preferences, capsule: bool) -> Scene {
         delta_text: board.delta_text(),
         best_lap_text: board.best_text(),
         last_lap_text: board.last_text(),
-        best_label: if es { "MEJOR PERSONAL" } else { "PERSONAL BEST" },
+        best_label: if es {
+            "MEJOR PERSONAL"
+        } else {
+            "PERSONAL BEST"
+        },
         last_label: if es { "ÚLT. VUELTA" } else { "LAST LAP" },
         status: board.status_text(prefs.language),
         reference_notice: board.reference_notice(prefs.language),

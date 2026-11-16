@@ -37,7 +37,8 @@ impl DeltaEficiencia {
         let style = crate::vantare::Style::compiled();
         let motion = Motion::new(style.delta.ease_ms, style.motion.flash_ms);
         let board = project(&settings, &Snapshot::default(), prefs);
-        let capsule = settings.template_id == vantare_domain::widget_settings::delta::DELTA_TEMPLATE_CAPSULE;
+        let capsule =
+            settings.template_id == vantare_domain::widget_settings::delta::DELTA_TEMPLATE_CAPSULE;
         let base = scene::sample(&board, prefs, capsule);
         let mut initial = base.clone();
         if reduced {

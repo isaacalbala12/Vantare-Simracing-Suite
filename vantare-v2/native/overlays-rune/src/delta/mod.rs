@@ -1,10 +1,10 @@
 //! Delta Vantare: domain projects the board; the scene decides layout and texts
 //! and the painter draws it. La barra se desliza y el récord destella con reloj
 //! finito; al terminar no queda ningún despertar.
+pub(crate) mod eficiencia;
 mod motion;
 mod paint;
 mod scene;
-pub(crate) mod eficiencia;
 #[cfg(test)]
 mod tests;
 

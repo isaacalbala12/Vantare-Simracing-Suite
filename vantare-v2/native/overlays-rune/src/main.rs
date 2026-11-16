@@ -26,12 +26,7 @@ fn main() -> ExitCode {
 }
 
 fn start() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<_> = std::env::args_os().skip(1).collect();
-    if args.first().is_some_and(|a| a == "--capture-scene") {
-        // Same binary, before supervisor, feed, rights, App or window creation.
-        return vantare_overlays_rune::standings::capture::run(&args[1..]);
-    }
-    let options = options::parse(args)?;
+    let options = options::parse(std::env::args_os().skip(1))?;
     // La campaña numérica llega con los pintores; nunca ignorar esa opción.
     if options.benchmark_count.is_some() {
         return Err(std::io::Error::new(

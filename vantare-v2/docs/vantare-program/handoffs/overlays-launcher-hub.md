@@ -3095,3 +3095,14 @@ VisualRow.slot son coordenadas del layout, no indices de filas.
 #2359 se apila sobre este #2351 por sus fuentes y utilidades de captura.
 Delta queda local sobre nightly. Sin graficos, merge, release ni cambios Plane.
 Los resultados historicos no validan estos heads; checks actuales en los PRs.
+
+## VANTA-144 · B, Standings rebasado sin despacho (16/11/2026)
+
+#2359 conserva sus commits propios sobre #2351 rebasado en nightly a63b17bed.
+Renderer y main vuelven exactamente a nightly: Standings no se conecta ni
+despacha --capture-scene antes del trait aprobado. Los pintores, datos y
+aspecto se conservan. Los tests de integracion existentes presuponen la
+conexion retirada; no se ignoran ni se presentan como PASS en este head.
+CI/medicion/paridad siguen pendientes; draft retenido. Tambien queda pendiente
+adaptar las herramientas QA de scripts a tools, como requiere la base de A.
+Sin graficos ni PR nuevo, merge, release o cambios de Plane.

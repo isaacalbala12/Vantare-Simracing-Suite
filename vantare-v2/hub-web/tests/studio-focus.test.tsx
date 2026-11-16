@@ -121,6 +121,10 @@ describe("Studio Foco structure", () => {
       name: "Standings Visible",
     });
     expect(row.getAttribute("aria-label")).toBeNull();
+    expect(
+      document.getElementById(row.getAttribute("aria-labelledby") ?? "")
+        ?.textContent,
+    ).toBe("Standings Visible");
     expect(row.hasAttribute("data-widget")).toBe(true);
   });
   it("selects remembered, then first visible, then first, then none", () => {

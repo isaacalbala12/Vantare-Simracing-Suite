@@ -92,6 +92,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                   data-widget={item.id}
                   aria-pressed={selected?.id === item.id}
                   aria-keyshortcuts="Space Delete Control+D"
+                  aria-labelledby={`${addHint}-name-${index}`}
                   tabIndex={
                     item.id === selected?.id ||
                     (!items.some((value) => value.id === selected?.id) &&
@@ -122,7 +123,10 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                   }}
                 >
                   <WidgetPreview kind={item.kind} small />
-                  <span className="v-focus-row-name">
+                  <span
+                    className="v-focus-row-name"
+                    id={`${addHint}-name-${index}`}
+                  >
                     <strong>{widgetName(item, view)}</strong>{" "}
                     <small>{widgetStatus(item)}</small>
                   </span>

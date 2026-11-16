@@ -67,6 +67,10 @@ Todos los textos de estos estados viven en `i18n/studio.ts`.
 `check-studio-states.ts`, ejecutado por `web-a11y.ts` en Chromium de CI, comprueba
 la tira real a 1280×720 con barra abierta (72 px, etiqueta oculta por CSS, nombre
 accesible y catálogo operable), el retorno de foco y la recuperación de lectura.
+`check-studio-track-composition.ts` exige que la fila Delta conserve su nombre
+accesible a 1440, 1280 y 1024 px, con ambas barras laterales y ambos temas. Las
+filas referencian su propio texto mediante `aria-labelledby`, por lo que siguen
+nombradas cuando el modo compacto oculta visualmente ese texto.
 Los tests de componente cubren conflicto CAS, límite, plan sin verificar y Solo
 lectura, además de las escrituras, reintento y descarte existentes. No se simula
 el compacto cambiando `hidden` en el test.

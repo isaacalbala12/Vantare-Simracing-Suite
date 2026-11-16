@@ -115,7 +115,11 @@ try {
     }
     # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest
     # `-j` son hilos de test; los jobs van en --build-jobs.
-    $jobs = if ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '4' }
+    # VANTARE_BUILD_JOBS lo fija la cola fase 1 (#1993) sin tocar CARGO_BUILD_JOBS,
+    # que forma parte de la clave de sccache. CI y release no lo definen: usan el
+    # comportamiento actual.
+    $jobs = if ($env:VANTARE_BUILD_JOBS) { $env:VANTARE_BUILD_JOBS }
+        elseif ($env:CARGO_BUILD_JOBS) { $env:CARGO_BUILD_JOBS } else { '4' }
     if ($Gate -eq 'lifecycle' -and $IsWindows) {
         # Normal para cierre real; QA sólo para invocar los manejadores de bandeja.
         & (Join-Path $PSScriptRoot 'runtime/tests/lifecycle/build-overlays.ps1') -TargetDirectory $TargetDirectory

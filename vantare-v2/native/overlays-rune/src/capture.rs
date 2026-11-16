@@ -1,4 +1,4 @@
-//! Debug-only scene capture. CPU preparation and explicit data update precede GPU creation.
+//! Deterministic offscreen capture. CPU preparation and explicit data update precede GPU creation.
 use crate::widget::{Update, Widget};
 use rune::{
     Env, Runtime,
@@ -8,6 +8,8 @@ use std::{
     ffi::OsString,
     io::{self, Read, Write},
     path::{Path, PathBuf},
+    sync::{Arc, mpsc},
+    time::{Duration, Instant},
 };
 use vantare_domain::{Snapshot, widget_settings::Kind};
 use vantare_ipc::layout::Layout;
@@ -273,12 +275,96 @@ fn dimensions(size: vantare_domain::geometry::Size, scale: f32) -> Result<(u32, 
     }
     Ok((w, h))
 }
+enum AssetEvent {
+    Published,
+    Stopped,
+}
+struct WorkerExit(mpsc::Sender<AssetEvent>);
+impl Drop for WorkerExit {
+    fn drop(&mut self) {
+        let _ = self.0.send(AssetEvent::Stopped);
+    }
+}
+// One cache, a fresh budget per phase and no extra threads. Rune owns its decoders.
+struct Assets {
+    cache: Option<Arc<rune::ImageCache>>,
+    events: mpsc::Receiver<AssetEvent>,
+    deadline: Instant,
+    stopped: bool,
+}
+impl Assets {
+    fn new() -> Self {
+        let (tx, events) = mpsc::channel();
+        let exit = WorkerExit(tx.clone());
+        let wake = Arc::new(move || {
+            let _keep_until_last_worker = &exit;
+            let _ = tx.send(AssetEvent::Published);
+        });
+        Self {
+            cache: Some(Arc::new(rune::ImageCache::new(wake))),
+            events,
+            deadline: Instant::now() + Duration::from_secs(10),
+            stopped: false,
+        }
+    }
+    fn receive(&self) -> Result<AssetEvent, Failure> {
+        self.events
+            .recv_timeout(self.deadline.saturating_duration_since(Instant::now()))
+            .map_err(|e| Failure::capture(format!("assets/cierre: {e}")))
+    }
+    fn wait(&mut self, images: &[rune::Image]) -> Result<(), Failure> {
+        self.deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let mut published = true;
+            for image in images {
+                if let Some(error) = image.error() {
+                    return Err(Failure::capture(error));
+                }
+                // decoded/is_ready precedes Pixels publication inside Image::finish.
+                published &= image
+                    .size()
+                    .is_some_and(|[w, h]| image.pixels().size() == (w, h));
+            }
+            if published {
+                return Ok(());
+            }
+            if matches!(self.receive()?, AssetEvent::Stopped) {
+                return Err(Failure::capture(
+                    "cache cerrada antes de publicar sus imagenes",
+                ));
+            }
+        }
+    }
+    fn shutdown(&mut self) -> Result<(), Failure> {
+        self.deadline = Instant::now() + Duration::from_secs(10);
+        if self.stopped {
+            return Ok(());
+        }
+        self.stopped = true;
+        drop(self.cache.take());
+        loop {
+            if matches!(self.receive()?, AssetEvent::Stopped) {
+                return Ok(());
+            }
+        }
+    }
+}
+impl Drop for Assets {
+    fn drop(&mut self) {
+        // Error unwinding still closes the cache; normal success checks shutdown explicitly.
+        if let Err(error) = self.shutdown() {
+            eprintln!("{error}");
+        }
+    }
+}
 struct Capture {
     runtime: Runtime<Box<dyn Widget>>,
     width: u32,
     height: u32,
     update: Update,
     images: Vec<rune::Image>,
+    // Declared last: runtime/widget/cache clones and image handles drop first.
+    assets: Assets,
 }
 fn poll(widget: &mut Box<dyn Widget>, clock: f64, tx: &mut rune::Tx) -> bool {
     let update = widget.animate(clock);
@@ -286,22 +372,27 @@ fn poll(widget: &mut Box<dyn Widget>, clock: f64, tx: &mut rune::Tx) -> bool {
     update.build || update.pixels
 }
 impl Capture {
-    fn advance(
-        &mut self,
-        clock: &mut f64,
-        at: f64,
-        steps: &mut usize,
-        hz: u16,
-    ) -> Result<(), Failure> {
+    fn finish(self) -> Result<(), Failure> {
+        let Self {
+            runtime,
+            images,
+            mut assets,
+            ..
+        } = self;
+        drop(runtime);
+        drop(images);
+        assets.shutdown()
+    }
+    fn advance(&mut self, clock: &mut f64, at: f64, steps: &mut usize) -> Result<(), Failure> {
         while *clock < at {
             *steps += 1;
             if *steps > 10_000 {
                 return Err(Failure::input("replay supera 10000 pasos"));
             }
-            let next = self.runtime.wake_deadline().map_or(at, |due| {
-                due.max(*clock + 1.0 / f64::from(if hz == 0 { 30 } else { hz }))
-                    .min(at)
-            });
+            let next = self
+                .runtime
+                .wake_deadline()
+                .map_or(at, |due| due.max(*clock + 1.0 / 60.0).min(at));
             self.runtime.frame(next - *clock);
             *clock = next;
         }
@@ -353,9 +444,14 @@ fn prepare(
         .hz(&instance.id, instance.settings.kind());
     let text = rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter"));
     let _families = rune::text::with_families("Inter", "Inter");
+    let assets = Assets::new();
     let mut widget = new(&instance.settings, layout.preferences, reduced, hz, 0.0)
         .ok_or_else(|| Failure::input("ajustes incompatibles"))?;
+    if let Some(cache) = &assets.cache {
+        widget.attach_assets(cache);
+    }
     widget.set_wall_base(wall);
+    widget.policy(reduced, hz, 0.0);
     let size = widget.size_for(Some(&photos[0].1));
     let (width, height) = dimensions(size, scale)?;
     let mut runtime = Runtime::with_text(
@@ -374,10 +470,11 @@ fn prepare(
         height,
         update: Update::default(),
         images: Vec::new(),
+        assets,
     };
     let (mut clock, mut steps) = (0.0, 0);
     for (ms, snapshot) in photos {
-        capture.advance(&mut clock, *ms as f64 / 1000.0, &mut steps, hz)?;
+        capture.advance(&mut clock, *ms as f64 / 1000.0, &mut steps)?;
         let size = capture.runtime.state.size_for(Some(snapshot));
         (capture.width, capture.height) = dimensions(size, scale)?;
         capture
@@ -387,11 +484,16 @@ fn prepare(
         let update = capture.runtime.state.update(snapshot, clock);
         capture.update.build |= update.build;
         capture.update.pixels |= update.pixels;
+        capture.images = capture.runtime.state.capture_images();
+        capture.assets.wait(&capture.images)?;
         capture.runtime.invalidate();
         capture.runtime.frame(0.0);
-        capture.images = capture.runtime.state.capture_images();
     }
-    capture.advance(&mut clock, at as f64 / 1000.0, &mut steps, hz)?;
+    capture.advance(&mut clock, at as f64 / 1000.0, &mut steps)?;
+    capture.images = capture.runtime.state.capture_images();
+    capture.assets.wait(&capture.images)?;
+    capture.runtime.invalidate();
+    capture.runtime.frame(0.0);
     Ok(capture)
 }
 fn validate_pixels(pixels: &[u8], width: u32, height: u32) -> io::Result<()> {
@@ -462,17 +564,14 @@ fn render(capture: &mut Capture) -> Result<Vec<u8>, Failure> {
     validate_pixels(&pixels, size.0, size.1).map_err(Failure::capture)?;
     Ok(pixels)
 }
-/// Called after the machine graphics guard and only compiled into debug builds.
+/// Called after the machine graphics guard in debug and release; never opens a window.
 pub fn run(args: &[OsString]) -> Result<(), Failure> {
+    std::panic::catch_unwind(|| execute(args))
+        .unwrap_or_else(|_| Err(Failure::capture("panico en captura")))
+}
+fn execute(args: &[OsString]) -> Result<(), Failure> {
     let request = Request::parse(args)?;
-    let record = request.output.with_extension("capture.txt");
-    if request.output.try_exists().map_err(Failure::capture)?
-        || record.try_exists().map_err(Failure::capture)?
-    {
-        return Err(Failure::capture("conservar evidencia anterior"));
-    }
     let layout = request.design()?;
-    // Unsupported comes before NO_DEMO; neither path creates a device.
     let id = request
         .instance
         .as_deref()
@@ -491,36 +590,100 @@ pub fn run(args: &[OsString]) -> Result<(), Failure> {
         request.at,
         id,
     )?;
-    let snapshot = &photos
-        .last()
-        .ok_or_else(|| Failure::input("fotos vacias"))?
-        .1;
-    let pixels = render(&mut capture)?;
-    rune::render::write_png(&request.output, capture.width, capture.height, &pixels)
-        .map_err(Failure::capture)?;
-    let mut record = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(record)
-        .map_err(Failure::capture)?;
-    writeln!(
-        record,
-        "engine=rune\nepoch={}\nsequence={}\ncars={}\nupdate_build={}\nupdate_pixels={}\nwidth={}\nheight={}\nscale={}",
-        snapshot.epoch,
-        snapshot.sequence,
-        snapshot.state.cars.len(),
-        capture.update.build,
-        capture.update.pixels,
-        capture.width,
-        capture.height,
-        request.scale
-    ).map_err(Failure::capture)?;
-    Ok(())
+    // Complete validation precedes even the fast existing-file check.
+    if !std::fs::metadata(output_parent(&request.output))
+        .map_err(Failure::capture)?
+        .is_dir()
+    {
+        return Err(Failure::capture("el padre de salida no es un directorio"));
+    }
+    if request.output.try_exists().map_err(Failure::capture)? {
+        return Err(Failure::capture("conservar evidencia anterior"));
+    }
+    let size = (capture.width, capture.height);
+    let pixels = render(&mut capture);
+    let cleanup = capture.finish();
+    cleanup?;
+    publish_png(&request.output, size, &pixels?)
+}
+fn output_parent(output: &Path) -> &Path {
+    output
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+}
+struct TempPng {
+    dir: PathBuf,
+}
+impl TempPng {
+    fn new(parent: &Path) -> io::Result<Self> {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        for _ in 0..32 {
+            let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let dir = parent.join(format!(".vantare-capture-{}-{id}", std::process::id()));
+            match std::fs::create_dir(&dir) {
+                Ok(()) => return Ok(Self { dir }),
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "temporales ocupados",
+        ))
+    }
+    fn remove(&self) -> io::Result<()> {
+        match std::fs::remove_file(self.dir.join("image.png")) {
+            Ok(()) => {}
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
+        match std::fs::remove_dir(&self.dir) {
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+            result => result,
+        }
+    }
+}
+impl Drop for TempPng {
+    fn drop(&mut self) {
+        let _ = self.remove();
+    }
+}
+fn publish_png(output: &Path, size: (u32, u32), pixels: &[u8]) -> Result<(), Failure> {
+    validate_pixels(pixels, size.0, size.1).map_err(Failure::capture)?;
+    let temp = TempPng::new(output_parent(output)).map_err(Failure::capture)?;
+    let result = (|| {
+        // Rune's writer only accepts a path and truncates it. Encode privately, then
+        // publish through our exclusive handle; no new encoder or dependency.
+        let path = temp.dir.join("image.png");
+        rune::render::write_png(&path, size.0, size.1, pixels).map_err(Failure::capture)?;
+        let png = read(&path, MAX_TOTAL + 1024 * 1024).map_err(Failure::capture)?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(output)
+            .map_err(Failure::capture)?;
+        file.write_all(&png).map_err(Failure::capture)
+    })();
+    let cleanup = temp.remove().map_err(Failure::capture);
+    result.and(cleanup)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct TestDir(TempPng);
+    impl TestDir {
+        fn new() -> Self {
+            Self(TempPng::new(&std::env::temp_dir()).unwrap())
+        }
+    }
+    impl Drop for TestDir {
+        fn drop(&mut self) {
+            // Owned directory came from exclusive creation, never an existing test/user folder.
+            let _ = std::fs::remove_dir_all(&self.0.dir);
+        }
+    }
     const PHOTO: &str = include_str!("../../ui/fixtures/relative.snapshot.json");
     fn single(layout: &Layout, snapshot: &Snapshot, scale: f32) -> Result<Capture, Failure> {
         prepare(
@@ -631,7 +794,7 @@ mod tests {
         wrong.instances[0].settings = vantare_domain::widget_settings::Settings::Standings(
             vantare_domain::widget_settings::standings::Settings::eficiencia(),
         );
-        assert!(single(&wrong, &snapshot, 1.0).is_err());
+        assert_eq!(single(&wrong, &snapshot, 1.0).err().unwrap().code, 2);
         assert!(single(&layout(), &snapshot, f32::NAN).is_err());
     }
     #[test]
@@ -766,10 +929,7 @@ mod tests {
                     kind.name()
                 );
                 checked += 1;
-                assert!(
-                    capture.runtime.state.capture_images().is_empty(),
-                    "no cache attached in A"
-                );
+                assert!(capture.images.iter().all(|i| i.pixels().size() != (0, 0)));
                 // No hidden filtering on unsupported kinds; the registry is the authority.
                 assert_eq!(settings.kind(), Settings::default_for(*kind).kind());
             }
@@ -887,8 +1047,8 @@ mod tests {
     }
     #[test]
     fn disk_inputs_use_ipc_settings_and_reject_missing_demo_without_gpu() {
-        let root = std::env::temp_dir().join(format!("vantare-capture-a-{}", std::process::id()));
-        std::fs::create_dir_all(&root).unwrap();
+        let folder = TestDir::new();
+        let root = &folder.0.dir;
         let settings = root.join("settings.json");
         let photo = root.join("photo.json");
         let seq = root.join("sequence.tsv");
@@ -937,7 +1097,6 @@ mod tests {
             2,
             "total exceeds 64 MiB"
         );
-        std::fs::remove_dir_all(root).unwrap();
     }
     #[test]
     fn virtual_clock_runs_scheduled_alerts_with_the_fixed_wall_hook() {
@@ -970,11 +1129,290 @@ mod tests {
         let mut first = first;
         assert_eq!(
             first
-                .advance(&mut clock, 1.0, &mut exhausted, 15)
+                .advance(&mut clock, 1.0, &mut exhausted)
                 .err()
                 .unwrap()
                 .code,
             2
         );
+    }
+    #[test]
+    fn wall_and_motion_flags_change_real_alert_deadlines_and_paint() {
+        let mut design = layout();
+        design.instances[0].settings =
+            vantare_domain::widget_settings::Settings::default_for(Kind::SessionAlerts);
+        let mut photo = crate::testdata::snapshot();
+        photo.origin.source.simulator = "lmu";
+        photo.state.source_state = vantare_domain::SourceState::Live;
+        photo.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Practice);
+        photo.state.session.elapsed_s = vantare_domain::Quality::Reliable(0.0);
+        photo.state.session.timing.scheduled_end_s = vantare_domain::Quality::Reliable(300.0);
+        let photos = [(0, photo)];
+        let from_flags = |wall, motion, at| {
+            let flags = args(&[
+                "--layout",
+                "scene.json",
+                "--snapshot",
+                "photo.json",
+                "--output",
+                "out.png",
+                "--wall-ms",
+                wall,
+                "--motion",
+                motion,
+                "--at-ms",
+                at,
+            ]);
+            let request = Request::parse(&flags).unwrap();
+            prepare(
+                &design,
+                &photos,
+                request.scale,
+                request.reduced,
+                request.wall,
+                request.at,
+                None,
+            )
+            .unwrap()
+        };
+        let early = from_flags("1234", "false", "0");
+        let late = from_flags("1789", "false", "0");
+        assert!(early.runtime.wake_deadline().is_some());
+        assert_ne!(
+            early.runtime.wake_deadline(),
+            late.runtime.wake_deadline(),
+            "--wall-ms must reach the actual notice clock"
+        );
+        let animated = from_flags("1234", "true", "75");
+        let reduced = from_flags("1234", "false", "75");
+        let paint = |c: &Capture| {
+            c.runtime
+                .instances
+                .iter()
+                .map(|i| (i.rect, i.fill, i.fade))
+                .collect::<Vec<_>>()
+        };
+        assert_ne!(
+            paint(&animated),
+            paint(&reduced),
+            "--motion must reach Widget::policy and change its real fade"
+        );
+    }
+    #[test]
+    fn full_minute_replay_has_a_fixed_sixty_hz_floor() {
+        let mut design = layout();
+        design.performance.widgets.insert("variant".into(), 1000);
+        let snapshot = vantare_ipc::snapshot_from_saved_json(PHOTO).unwrap();
+        let mut capture = prepare(
+            &design,
+            &[(0, snapshot)],
+            1.0,
+            false,
+            WALL_MS,
+            Some(0),
+            None,
+        )
+        .unwrap();
+        let (mut clock, mut steps) = (0.0, 0);
+        capture.advance(&mut clock, 60.0, &mut steps).unwrap();
+        assert!(steps <= 3601);
+        assert_eq!(clock, 60.0);
+    }
+    #[test]
+    fn run_rejects_unsupported_before_demo_and_validates_before_existing_output() {
+        let folder = TestDir::new();
+        let root = &folder.0.dir;
+        let settings = root.join("settings.json");
+        let output = root.join("out.png");
+        std::fs::write(&settings, "{}").unwrap();
+        std::fs::write(&output, b"KEEP EVIDENCE").unwrap();
+        let flags = |kind| {
+            args(&[
+                "--widget",
+                kind,
+                "--settings",
+                settings.to_str().unwrap(),
+                "--output",
+                output.to_str().unwrap(),
+            ])
+        };
+        std::fs::write(&settings, r#"{"designSystem":"eficiencia"}"#).unwrap();
+        let unsupported = run(&flags("standings")).unwrap_err();
+        assert_eq!(unsupported.code, 2);
+        assert_eq!(unsupported.token, "INVALID_INPUT");
+        std::fs::write(&settings, "{}").unwrap();
+        let no_demo = run(&flags("relative")).unwrap_err();
+        assert_eq!(no_demo.code, 3);
+        assert_eq!(no_demo.token, "NO_DEMO");
+        assert_eq!(std::fs::read(&output).unwrap(), b"KEEP EVIDENCE");
+    }
+    #[test]
+    fn assets_wait_for_pixels_and_shutdown_even_with_queued_work_or_decode_failure() {
+        let mut assets = Assets::new();
+        let image = assets
+            .cache
+            .as_ref()
+            .unwrap()
+            .rgba(128, 128, vec![0; 128 * 128 * 4]);
+        assets.deadline = Instant::now() - Duration::from_secs(1);
+        assets.wait(std::slice::from_ref(&image)).unwrap();
+        assert!(assets.deadline > Instant::now());
+        assert_eq!(image.size(), Some([128, 128]));
+        assert_eq!(image.pixels().size(), (128, 128));
+        assets.shutdown().unwrap();
+        assert!(assets.stopped && assets.cache.is_none());
+        let mut queued = Assets::new();
+        let image = queued
+            .cache
+            .as_ref()
+            .unwrap()
+            .rgba(128, 128, vec![0; 128 * 128 * 4]);
+        queued.shutdown().unwrap();
+        assert_eq!(
+            image.pixels().size(),
+            (128, 128),
+            "stop follows publication and last worker exit"
+        );
+        let mut failed = Assets::new();
+        let image = failed.cache.as_ref().unwrap().load(vec![1, 2, 3, 4]);
+        assert_eq!(failed.wait(&[image]).unwrap_err().code, 5);
+        failed.shutdown().unwrap();
+        assert!(failed.stopped);
+    }
+    #[test]
+    fn assets_closed_channel_or_wait_deadline_is_a_capture_failure() {
+        let (tx, events) = mpsc::channel();
+        let mut assets = Assets {
+            cache: None,
+            events,
+            deadline: Instant::now(),
+            stopped: true,
+        };
+        assert_eq!(assets.receive().err().unwrap().code, 5);
+        drop(tx);
+        assets.deadline = Instant::now() + Duration::from_secs(1);
+        assert_eq!(assets.receive().err().unwrap().code, 5);
+    }
+    #[test]
+    fn actual_wheel_pixels_reach_the_capture_atlas_and_workers_close_before_success() {
+        let mut design = layout();
+        design.instances[0].settings =
+            vantare_domain::widget_settings::Settings::default_for(Kind::PedalsTelemetry);
+        let snapshot = crate::testdata::snapshot();
+        let capture = single(&design, &snapshot, 1.0).unwrap();
+        assert_eq!(capture.images.len(), 1);
+        assert_eq!(capture.images[0].pixels().size(), (40, 40));
+        assert!(capture.runtime.find("pedals-telemetry-wheel").is_some());
+        assert!(!capture.runtime.images.pages.is_empty());
+        capture.finish().unwrap();
+    }
+    #[test]
+    fn png_creation_preserves_existing_evidence_and_races_have_one_winner() {
+        let folder = TempPng::new(&std::env::temp_dir()).unwrap();
+        let path = folder.dir.join("image.png");
+        publish_png(&path, (1, 1), &[0, 0, 0, 0]).unwrap();
+        let first = std::fs::read(&path).unwrap();
+        assert!(first.starts_with(b"\x89PNG\r\n\x1a\n"));
+        assert_eq!(
+            publish_png(&path, (1, 1), &[255, 0, 0, 255])
+                .unwrap_err()
+                .code,
+            5
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), first);
+        assert_eq!(
+            std::fs::read_dir(&folder.dir).unwrap().count(),
+            1,
+            "one PNG, no sidecar/temporary left"
+        );
+        let mut assets = Assets::new();
+        let png = assets.cache.as_ref().unwrap().load(first);
+        assets.wait(std::slice::from_ref(&png)).unwrap();
+        assert_eq!(png.size(), Some([1, 1]));
+        assets.shutdown().unwrap();
+        std::fs::remove_file(&path).unwrap();
+        let barrier = std::sync::Barrier::new(2);
+        std::thread::scope(|scope| {
+            let a = scope.spawn(|| {
+                barrier.wait();
+                publish_png(&path, (1, 1), &[255, 0, 0, 255])
+            });
+            let b = scope.spawn(|| {
+                barrier.wait();
+                publish_png(&path, (1, 1), &[0, 255, 0, 255])
+            });
+            let outcomes = [a.join().unwrap(), b.join().unwrap()];
+            assert_eq!(outcomes.iter().filter(|r| r.is_ok()).count(), 1);
+            assert_eq!(outcomes.into_iter().find_map(Result::err).unwrap().code, 5);
+        });
+        assert_eq!(std::fs::read_dir(&folder.dir).unwrap().count(), 1);
+        folder.remove().unwrap();
+    }
+    #[test]
+    fn shutdown_refreshes_an_expired_phase_after_the_worker_stopped() {
+        let (tx, events) = mpsc::channel();
+        tx.send(AssetEvent::Stopped).unwrap();
+        drop(tx);
+        let mut assets = Assets {
+            cache: None,
+            events,
+            deadline: Instant::now() - Duration::from_secs(1),
+            stopped: false,
+        };
+        assets.shutdown().unwrap();
+        assert!(assets.stopped);
+        assert!(
+            assets.deadline > Instant::now(),
+            "shutdown owns a fresh ten-second phase"
+        );
+    }
+    #[test]
+    fn valid_run_preserves_existing_output_and_rejects_bad_parents_before_gpu() {
+        let folder = TestDir::new();
+        let settings = folder.0.dir.join("settings.json");
+        let snapshot = folder.0.dir.join("photo.json");
+        let output = folder.0.dir.join("out.png");
+        std::fs::write(&settings, "{}").unwrap();
+        std::fs::write(&snapshot, PHOTO).unwrap();
+        std::fs::write(&output, b"KEEP VALID INPUT EVIDENCE").unwrap();
+        let invoke = |output: &Path| {
+            run(&args(&[
+                "--widget",
+                "relative",
+                "--settings",
+                settings.to_str().unwrap(),
+                "--snapshot",
+                snapshot.to_str().unwrap(),
+                "--output",
+                output.to_str().unwrap(),
+            ]))
+        };
+        let error = invoke(&output).unwrap_err();
+        assert_eq!(error.code, 5);
+        assert_eq!(
+            std::fs::read(&output).unwrap(),
+            b"KEEP VALID INPUT EVIDENCE"
+        );
+        assert_eq!(
+            invoke(&folder.0.dir.join("missing/out.png"))
+                .unwrap_err()
+                .code,
+            5
+        );
+        assert_eq!(invoke(&settings.join("out.png")).unwrap_err().code, 5);
+        assert_eq!(output_parent(Path::new("out.png")), Path::new("."));
+    }
+    #[test]
+    fn test_directories_are_removed_on_assertion_unwind() {
+        let folder = TestDir::new();
+        let path = folder.0.dir.clone();
+        std::fs::write(path.join("fixture.json"), "{}").unwrap();
+        let failed = std::panic::catch_unwind(move || {
+            let _owned = folder;
+            panic!("simulate a failed test assertion");
+        });
+        assert!(failed.is_err());
+        assert!(!path.exists());
     }
 }

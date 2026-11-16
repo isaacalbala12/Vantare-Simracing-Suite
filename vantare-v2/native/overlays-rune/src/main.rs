@@ -17,7 +17,6 @@ fn main() -> ExitCode {
     }
 
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    #[cfg(debug_assertions)]
     if args.first().is_some_and(|a| a == "--capture-scene") {
         return match vantare_overlays_rune::capture::run(&args[1..]) {
             Ok(()) => {
@@ -91,6 +90,16 @@ fn graphics_disabled(value: Option<&OsStr>) -> bool {
 mod tests {
     use super::*;
     use rune::{Cx, El, Env, Runtime, col, text};
+
+    #[test]
+    fn windows_gui_subsystem_attribute_is_release_only() {
+        assert_eq!(
+            include_str!("main.rs").lines().next(),
+            Some(
+                r##"#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]"##
+            )
+        );
+    }
 
     #[test]
     fn server_guard_rejects_graphics_without_reading_arguments() {

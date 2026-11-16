@@ -23,24 +23,23 @@ pub enum OpenMode {
 }
 
 fn temporary_database(path: &Path) -> io::Result<PathBuf> {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static NEXT: AtomicU64 = AtomicU64::new(0);
     let name = path
         .file_name()
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "falta nombre de grabación"))?;
+    let mut next = 0_u64;
     loop {
         let mut temporary = name.to_os_string();
-        temporary.push(format!(
-            ".creating-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
+        temporary.push(format!(".creating-{}-{next}", std::process::id()));
         let directory = path.with_file_name(temporary);
         // El directorio exclusivo reserva el nombre antes de que DuckDB cree
         // su fichero; no abrir un fichero vacío previamente creado por otro.
         match std::fs::create_dir(&directory) {
             Ok(()) => return Ok(directory.join("recording.duckdb")),
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                next = next.checked_add(1).ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::AlreadyExists, "nombres temporales agotados")
+                })?;
+            }
             Err(error) => return Err(error),
         }
     }

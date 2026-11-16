@@ -16,11 +16,23 @@ fn mutations_are_denied_in_live_or_without_verified_rights_without_touching_file
     for live in [false, true] {
         let mut session = fixture.session();
         session.current.live = live;
+        session.core.available = live;
+        session.current.access.verified = live;
         for request in [
             Request::StudioAdd {
                 kind: crate::studio::WidgetKind::Delta,
                 at: None,
                 base_revision: "0".repeat(64),
+            },
+            Request::StudioInstance {
+                id: "widget-1".into(),
+                base_revision: "0".repeat(64),
+                patch: crate::studio::InstancePatch::Settings(Box::new(
+                    serde_json::from_str(
+                        r#"{"kind":"standings","columns":[{"metric":"lastLap","format":{"display":"compact","decimals":2}}]}"#,
+                    )
+                    .unwrap(),
+                )),
             },
             Request::StudioTrack { show: true },
         ] {

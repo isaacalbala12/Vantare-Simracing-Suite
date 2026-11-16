@@ -1354,3 +1354,151 @@ fn duplicate_session_alerts_reserves_the_implicit_mini_identity() {
         original.instances[1].settings
     );
 }
+
+#[test]
+fn column_format_vectors_write_through_state_and_restore_exact_bytes() {
+    use serde_json::{Value, json};
+    let access = Some(CatalogAccess::Pro);
+    for key in ["columns", "practiceColumns", "qualifyingColumns"] {
+        for metric in ["lastLap", "bestLap"] {
+            for case in crate::studio::widget_settings::column_format_cases()
+                .as_array()
+                .unwrap()
+            {
+                let root = crate::test_support::Root::new();
+                let path = root.path.join("layout.json");
+                let column = json!({"id":"saved","metricId":metric,"format":{
+                    "mode":"surname","maxChars":null,"display":"compact","decimals":1,"future":7}});
+                let before = serde_json::to_vec(&json!({"version":1,"instances":[{
+                    "id":"widget-1","x":10,"y":20,"settings":{"kind":"standings",
+                    "columns":[column.clone()],"practiceColumns":[column.clone()],
+                    "qualifyingColumns":[column]}}]}))
+                .unwrap();
+                std::fs::write(&path, &before).unwrap();
+                let mut state = State::new(path.clone());
+                let view = state.view(access);
+                let update =
+                    json!({"kind":"standings",key:[{"metric":metric,"format":case["format"]}]});
+                let parsed = serde_json::from_value::<crate::studio::WidgetSettingsPatch>(update);
+                let result = parsed.map_err(|_| HostError::Denied).and_then(|p| {
+                    state.edit(
+                        Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(p))),
+                        &view.revision,
+                        access,
+                    )
+                });
+                assert_eq!(
+                    result.is_ok(),
+                    case["accepted"].as_bool().unwrap(),
+                    "{case}"
+                );
+                let saved = std::fs::read(&path).unwrap();
+                if result.is_err() {
+                    assert_eq!(saved, before);
+                    assert!(!state.view(access).can_undo);
+                    continue;
+                }
+                let actual: Value = serde_json::from_slice(&saved).unwrap();
+                let mut expected: Value = serde_json::from_slice(&before).unwrap();
+                for (field, value) in case["format"].as_object().unwrap() {
+                    expected["instances"][0]["settings"][key][0]["format"][field] =
+                        if field == "mode" && value.is_null() {
+                            json!("")
+                        } else {
+                            value.clone()
+                        };
+                }
+                for list in ["columns", "practiceColumns", "qualifyingColumns"] {
+                    assert_eq!(
+                        actual["instances"][0]["settings"][list][0]["format"],
+                        expected["instances"][0]["settings"][list][0]["format"]
+                    );
+                }
+                if saved != before {
+                    let revision = state.view(access).revision;
+                    state.edit(Edit::Undo, &revision, access).unwrap();
+                    assert_eq!(std::fs::read(&path).unwrap(), before);
+                    let revision = state.view(access).revision;
+                    state.edit(Edit::Redo, &revision, access).unwrap();
+                    assert_eq!(std::fs::read(&path).unwrap(), saved);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn column_formats_fail_closed_without_writing_or_history() {
+    use serde_json::json;
+    let (_root, path, before) = fixture();
+    let access = Some(CatalogAccess::Pro);
+    let mut state = State::new(path.clone());
+    let view = state.view(access);
+    let edit = || {
+        Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(
+        serde_json::from_value(json!({"kind":"standings","columns":[{"metric":"lastLap","format":{"display":"compact","decimals":2}}]})).unwrap())))
+    };
+    assert!(matches!(
+        state.edit(edit(), &"0".repeat(64), access),
+        Err(HostError::StudioConflict { .. })
+    ));
+    assert!(matches!(
+        state.edit(edit(), &view.revision, None),
+        Err(HostError::Denied)
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert!(!state.view(access).can_undo);
+    std::fs::write(&path, b"broken").unwrap();
+    assert!(matches!(
+        state.edit(edit(), &vantare_services::content_hash(b"broken"), access),
+        Err(HostError::Protected)
+    ));
+    assert_eq!(std::fs::read(&path).unwrap(), b"broken");
+}
+
+#[test]
+fn time_format_override_detaches_only_the_chosen_session() {
+    use serde_json::{Value, json};
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("layout.json");
+    let bytes = serde_json::to_vec(
+        &json!({"version":1,"instances":[{"id":"widget-1","x":10,"y":20,
+        "settings":{"kind":"standings","columns":[{"id":"saved","metricId":"lastLap",
+        "format":{"mode":"","maxChars":null,"display":"compact","decimals":1,"future":7}}]}}]}),
+    )
+    .unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    let access = Some(CatalogAccess::Pro);
+    let mut state = State::new(path.clone());
+    let initial = state.view(access);
+    assert_eq!(initial.state, StudioState::Ready);
+    let revision = initial.revision;
+    let update = serde_json::from_value(json!({"kind":"standings","practiceColumns":[{
+        "metric":"lastLap","format":{"display":null,"decimals":null,"mode":null}}]}))
+    .unwrap();
+    let after = state
+        .edit(
+            Edit::Instance("widget-1".into(), InstancePatch::Settings(Box::new(update))),
+            &revision,
+            access,
+        )
+        .unwrap();
+    let actual: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    let settings = &actual["instances"][0]["settings"];
+    assert_eq!(settings["columns"][0]["format"]["display"], "compact");
+    assert!(settings["qualifyingColumns"].is_null());
+    let format = &settings["practiceColumns"][0]["format"];
+    let native = vantare_domain::widget_settings::columns::Format::default();
+    assert_eq!(format["mode"], native.mode);
+    assert_eq!(
+        format["display"],
+        serde_json::to_value(native.display).unwrap()
+    );
+    assert_eq!(
+        format["decimals"],
+        serde_json::to_value(native.decimals).unwrap()
+    );
+    assert_eq!(format["future"], 7);
+    state.edit(Edit::Undo, &after.revision, access).unwrap();
+    assert_eq!(std::fs::read(path).unwrap(), bytes);
+}

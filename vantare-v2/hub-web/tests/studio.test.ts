@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { studioDuplicateCases } from "../src/contract/generated/studio";
+import {
+  studioColumnFormatCases,
+  studioDuplicateCases,
+  studioWidgetDefaults,
+  type WidgetSettingsPatch,
+} from "../src/contract/generated/studio";
 import { isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
 import { applyWidgetSettings } from "../src/mock/modules/studio";
@@ -469,5 +474,82 @@ describe("duplicate widget contract", () => {
       }),
     ).toMatchObject({ kind: "failure", error: { kind: "protected" } });
     expect(view(protectedHost)).toEqual(unavailable);
+  });
+});
+
+describe("column format native vectors", () => {
+  it.each(studioColumnFormatCases)("matches the host for %j", (sample) => {
+    const value = {
+      kind: "standings",
+      columns: [{ metric: "lastLap", format: sample.format }],
+    };
+    const request = {
+      kind: "request",
+      id: 1,
+      request: {
+        method: "studio.instance",
+        id: "widget-1",
+        baseRevision: "0".repeat(64),
+        patch: { field: "settings", value },
+      },
+    };
+    expect(isUiMessage(request)).toBe(sample.accepted);
+    if (!sample.accepted) return;
+    const column = {
+      id: "saved",
+      metricId: "lastLap",
+      enabled: true,
+      widthPreset: "auto",
+      format: {
+        mode: "surname",
+        maxChars: null,
+        display: "compact",
+        decimals: 1,
+      },
+      style: { align: null },
+    };
+    const source = {
+      ...structuredClone(studioWidgetDefaults.standings),
+      practiceColumns: [],
+      qualifyingColumns: [],
+      footerSlots: [],
+      columns: [column],
+    };
+    const saved = applyWidgetSettings(source, value as WidgetSettingsPatch);
+    expect(saved?.kind).toBe("standings");
+    if (saved?.kind !== "standings") throw new Error("expected standings");
+    expect(saved.columns?.[0].format).toEqual({
+      ...column.format,
+      ...sample.format,
+      ...("mode" in sample.format && sample.format.mode === null
+        ? { mode: "" }
+        : {}),
+    });
+    expect(source.columns[0]).toEqual(column);
+  });
+  it("keeps time controls unsupported on Relative and other metrics", () => {
+    for (const [kind, metric] of [
+      ["relative", "lastLap"],
+      ["standings", "driverName"],
+    ]) {
+      expect(
+        isUiMessage({
+          kind: "request",
+          id: 1,
+          request: {
+            method: "studio.instance",
+            id: "widget-1",
+            baseRevision: "0".repeat(64),
+            patch: {
+              field: "settings",
+              value: {
+                kind,
+                columns: [{ metric, format: { display: "compact" } }],
+              },
+            },
+          },
+        }),
+      ).toBe(false);
+    }
   });
 });

@@ -110,20 +110,62 @@ impl WidgetSettings {
                     ..Default::default()
                 }),
             ),
-            (WidgetKind::BroadcastTower, Data::BroadcastTower(native::broadcast_tower::Settings::default())),
-            (WidgetKind::CarDamageNumbers, Data::CarDamageNumbers(native::car_damage_numbers::Settings::default())),
-            (WidgetKind::CarDamageVisual, Data::CarDamageVisual(native::car_damage_visual::Settings::default())),
-            (WidgetKind::DeltaTrace, Data::DeltaTrace(native::delta_trace::Settings::default())),
-            (WidgetKind::FastestLap, Data::FastestLap(native::fastest_lap::Settings::default())),
-            (WidgetKind::HeadToHead, Data::HeadToHead(native::head_to_head::Settings::default())),
-            (WidgetKind::InputTelemetry, Data::InputTelemetry(native::input_telemetry::Settings::default())),
-            (WidgetKind::TrackMap, Data::TrackMap(native::track_map::Settings::default())),
-            (WidgetKind::MulticlassRelative, Data::MulticlassRelative(native::multiclass_relative::Settings::default())),
-            (WidgetKind::PedalsTelemetry, Data::PedalsTelemetry(native::pedals_telemetry::Settings::default())),
-            (WidgetKind::Radar, Data::Radar(native::radar::Settings::default())),
-            (WidgetKind::RacingFlags, Data::RacingFlags(native::racing_flags::Settings::default())),
-            (WidgetKind::TrackWeather, Data::TrackWeather(native::track_weather::Settings::default())),
-            (WidgetKind::SessionAlerts, Data::SessionAlerts(native::session_alerts::Settings::default())),
+            (
+                WidgetKind::BroadcastTower,
+                Data::BroadcastTower(native::broadcast_tower::Settings::default()),
+            ),
+            (
+                WidgetKind::CarDamageNumbers,
+                Data::CarDamageNumbers(native::car_damage_numbers::Settings::default()),
+            ),
+            (
+                WidgetKind::CarDamageVisual,
+                Data::CarDamageVisual(native::car_damage_visual::Settings::default()),
+            ),
+            (
+                WidgetKind::DeltaTrace,
+                Data::DeltaTrace(native::delta_trace::Settings::default()),
+            ),
+            (
+                WidgetKind::FastestLap,
+                Data::FastestLap(native::fastest_lap::Settings::default()),
+            ),
+            (
+                WidgetKind::HeadToHead,
+                Data::HeadToHead(native::head_to_head::Settings::default()),
+            ),
+            (
+                WidgetKind::InputTelemetry,
+                Data::InputTelemetry(native::input_telemetry::Settings::default()),
+            ),
+            (
+                WidgetKind::TrackMap,
+                Data::TrackMap(native::track_map::Settings::default()),
+            ),
+            (
+                WidgetKind::MulticlassRelative,
+                Data::MulticlassRelative(native::multiclass_relative::Settings::default()),
+            ),
+            (
+                WidgetKind::PedalsTelemetry,
+                Data::PedalsTelemetry(native::pedals_telemetry::Settings::default()),
+            ),
+            (
+                WidgetKind::Radar,
+                Data::Radar(native::radar::Settings::default()),
+            ),
+            (
+                WidgetKind::RacingFlags,
+                Data::RacingFlags(native::racing_flags::Settings::default()),
+            ),
+            (
+                WidgetKind::TrackWeather,
+                Data::TrackWeather(native::track_weather::Settings::default()),
+            ),
+            (
+                WidgetKind::SessionAlerts,
+                Data::SessionAlerts(native::session_alerts::Settings::default()),
+            ),
         ];
         values
             .into_iter()
@@ -359,6 +401,11 @@ choice!(
     "typeof studioWidgetOptions.columns.names[number]"
 );
 choice!(
+    ColumnTimeDisplay,
+    |v: &str| ["normal", "compact"].contains(&v),
+    "typeof studioWidgetOptions.columns.timeDisplays[number]"
+);
+choice!(
     ColumnAlign,
     |v: &str| native::columns::COLUMN_ALIGNS.contains(&v),
     "typeof studioWidgetOptions.columns.aligns[number]"
@@ -416,7 +463,9 @@ pub use additional::{
 };
 
 patch!(WidgetColumnFormatPatch {
-    mode: ColumnNameMode => "some",
+    mode: Option<ColumnNameMode> => "some",
+    display: Option<ColumnTimeDisplay> => "some",
+    decimals: Option<u8> => "some",
     max_chars: Option<usize> => "some",
 });
 patch!(WidgetColumnStylePatch { align: Option<ColumnAlign> => "some" });
@@ -660,22 +709,23 @@ impl WidgetSettingsPatch {
             let mut seen = std::collections::HashSet::new();
             for item in items {
                 let metric = item.metric.as_str();
+                let choices = match kind {
+                    WidgetKind::Standings => native::standings::STANDINGS_VANTARE_COLUMNS,
+                    WidgetKind::Relative => native::relative::RELATIVE_VANTARE_COLUMNS,
+                    _ => &[],
+                };
                 let accepted = native::columns::LEGACY_TABLE_COLUMNS.contains(&metric)
-                    || match kind {
-                        WidgetKind::Standings => {
-                            native::standings::STANDINGS_VANTARE_COLUMNS.contains(&metric)
-                        }
-                        WidgetKind::Relative => {
-                            native::relative::RELATIVE_VANTARE_COLUMNS.contains(&metric)
-                        }
-                        _ => false,
-                    };
+                    || choices.contains(&metric);
                 if !accepted
                     || !seen.insert(metric)
                     || item.format.as_ref().is_some_and(|v| {
                         v.max_chars
                             .flatten()
                             .is_some_and(|n| n > native::columns::MAX_CHARS_LIMIT)
+                            || v.decimals.flatten().is_some_and(|n| n > 3)
+                            || ((v.display.is_some() || v.decimals.is_some())
+                                && (kind != WidgetKind::Standings
+                                    || !["lastLap", "bestLap"].contains(&metric)))
                     })
                 {
                     return Err(HostError::Denied);
@@ -740,6 +790,27 @@ impl WidgetSettingsPatch {
         }
         Ok(())
     }
+}
+
+#[cfg(any(test, feature = "bindings"))]
+pub(crate) fn column_format_cases() -> serde_json::Value {
+    serde_json::json!([
+        {"format":{"display":"normal"},"accepted":true},
+        {"format":{"display":"compact"},"accepted":true},
+        {"format":{"display":null},"accepted":true},
+        {"format":{"decimals":0},"accepted":true},
+        {"format":{"decimals":1},"accepted":true},
+        {"format":{"decimals":2},"accepted":true},
+        {"format":{"decimals":3},"accepted":true},
+        {"format":{"decimals":null},"accepted":true},
+        {"format":{"mode":null,"display":null,"decimals":null},"accepted":true},
+        {"format":{},"accepted":true},
+        {"format":{"mode":""},"accepted":false},
+        {"format":{"display":"other"},"accepted":false},
+        {"format":{"decimals":4},"accepted":false},
+        {"format":{"decimals":-1},"accepted":false},
+        {"format":{"decimals":1.5},"accepted":false}
+    ])
 }
 
 #[cfg(test)]
@@ -849,5 +920,17 @@ mod tests {
             serde_json::to_value(patch(json!({"kind":"standings","columns":null}))).unwrap();
         assert!(empty.get("columns").is_none());
         assert_eq!(clear["columns"], serde_json::Value::Null);
+    }
+    #[test]
+    fn time_column_edits_require_standings_and_a_time_metric() {
+        for (kind, metric) in [("relative", "lastLap"), ("standings", "driverName")] {
+            for format in [json!({"display":"compact"}), json!({"decimals":null})] {
+                assert!(matches!(
+                    patch(json!({"kind":kind,"columns":[{"metric":metric,"format":format}]}))
+                        .validate(),
+                    Err(HostError::Denied)
+                ));
+            }
+        }
     }
 }

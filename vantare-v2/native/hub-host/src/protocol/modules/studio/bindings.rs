@@ -114,6 +114,11 @@ fn geometry_constants(text: &mut String) {
     );
 }
 fn metadata(text: &mut String) {
+    crate::protocol::bindings::constants!(
+        text,
+        "studioColumnFormatCases",
+        crate::studio::widget_settings::column_format_cases()
+    );
     for (name, value) in [
         (
             "studioStates",
@@ -365,6 +370,7 @@ fn widget_settings_types(text: &mut String) {
     declare::<FooterKey>(text);
     declare::<ColumnWidth>(text);
     declare::<ColumnNameMode>(text);
+    declare::<ColumnTimeDisplay>(text);
     declare::<ColumnAlign>(text);
     declare::<ColumnMetric>(text);
     declare::<FooterMetric>(text);
@@ -406,6 +412,7 @@ fn widget_settings_types(text: &mut String) {
         "delta": { "sizes": native::delta::DELTA_SIZES,
             "references": native::delta::DELTA_REFERENCES, "templates": native::delta::DELTA_TEMPLATES },
         "columns": { "widths": native::columns::COLUMN_WIDTHS,
+            "timeDisplays": ["normal", "compact"], "decimalsMax": 3,
             "names": native::columns::COLUMN_NAME_MODES, "aligns": native::columns::COLUMN_ALIGNS,
             "metrics": metrics, "legacy": native::columns::LEGACY_TABLE_COLUMNS,
             "maxChars": native::columns::MAX_CHARS_LIMIT },
@@ -557,6 +564,8 @@ fn settings_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
         serde_json::json!({"kind":"standings","tablePreset":"compact"}),
         serde_json::json!({"kind":"relative","tablePreset":"expanded"}),
         serde_json::json!({"kind":"standings","rowCount":30}),
+        serde_json::json!({"kind":"standings","columns":[{"metric":"lastLap","format":{"display":"compact","decimals":2}}]}),
+        serde_json::json!({"kind":"standings","practiceColumns":[{"metric":"bestLap","format":{"mode":null,"display":null,"decimals":null}}]}),
         serde_json::json!({"kind":"relative","columns":[{"metric":"driverName","format":{"mode":"full","maxChars":64}}]}),
         serde_json::json!({"kind":"delta","showBar":false}),
         serde_json::json!({"kind":"pedals","gap":12}),

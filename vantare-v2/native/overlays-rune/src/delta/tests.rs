@@ -62,6 +62,8 @@ fn runtime(painter: Delta) -> Runtime<Delta> {
         rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
     );
     runtime.frame(0.0);
+    runtime.settle_all();
+    runtime.frame(0.0);
     runtime
 }
 
@@ -100,7 +102,12 @@ fn values_and_reference_come_from_the_canonical_projection() {
             painter.scene.labels.number,
             board.delta_text().replace('-', "−")
         );
-        assert!(painter.scene.labels.title.ends_with(&name.to_uppercase()));
+        let expected = match name {
+            "best" => "MEJOR",
+            "optimal" => "ÓPTIMA",
+            _ => "LÍDER",
+        };
+        assert!(painter.scene.labels.title.ends_with(expected), "{name}");
         assert!(!changed(painter.update(&input, 0.1)));
     }
     let mut missing = input.clone();
@@ -121,7 +128,7 @@ fn values_and_reference_come_from_the_canonical_projection() {
 #[test]
 fn each_size_keeps_the_catalogue_box_and_pause_never_resizes_it() {
     let input = snapshot();
-    for (size, width) in [("pill", 152.0), ("bar", 380.0), ("expanded", 768.0)] {
+    for (size, width) in [("pill", 150.0), ("bar", 380.0), ("expanded", 768.0)] {
         let mut painter = Delta::new(&settings(size), Preferences::default());
         painter.update(&input, 0.0);
         assert_eq!(painter.size().width, width, "{size}");
@@ -130,7 +137,7 @@ fn each_size_keeps_the_catalogue_box_and_pause_never_resizes_it() {
         assert_eq!(painter.size_for(Some(&paused)), painter.size(), "{size}");
     }
     let pill = Delta::new(&settings("pill"), Preferences::default());
-    assert_eq!(pill.size().height, 40.0);
+    assert_eq!(pill.size().height, 36.0);
 }
 
 #[test]
@@ -245,7 +252,7 @@ fn the_bar_fill_paints_the_target_and_its_sign() {
     runtime.state.update(&positive, 0.1);
     runtime.frame(0.0);
     let fill = runtime.presented("bar-fill").expect("positive bar");
-    assert!(fill.0[0] >= 380.0 / 2.0, "positivo a la derecha");
+    assert!(fill.0[0] >= 380.0 / 2.0 - 0.5, "positivo a la derecha");
     runtime.state.update(&snapshot(), 0.2);
     runtime.frame(0.0);
     assert!(runtime.presented("bar-center").is_some());

@@ -170,6 +170,7 @@ impl Painter {
             root.child(self.panel(width, self.scene.height))
         };
         let x = pad + label_width + 14.0;
+        let offset = text_top(s, face, 0.0);
         root.child(
             text("DELTA")
                 .key("pill-label")
@@ -183,8 +184,8 @@ impl Painter {
                 .key("pill-value")
                 .font(value_font)
                 .color(color)
-                .size(self.scene.width - x, self.scene.height)
-                .pin(Some(x), Some(text_top(s, face, 0.0)), None, None),
+                .size((self.scene.width - x).max(0.0), self.scene.height - offset)
+                .pin(Some(x), Some(offset), None, None),
         )
     }
     fn banner(&self, mut root: El) -> El {

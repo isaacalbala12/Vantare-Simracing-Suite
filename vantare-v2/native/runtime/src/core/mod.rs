@@ -599,6 +599,7 @@ mod tests {
     #[test]
     fn confirmed_pause_adds_no_lap_samples_and_does_not_create_a_gap() {
         let mut core = Core::new(1);
+        let _receiver = core.series_mut().subscribe(2).expect("suscriptor");
         core.observe(lap_photo(ms(0), 1, 100.0, 10.0, 0.1)).unwrap();
         let samples = core.series().active().unwrap().samples.clone();
         for at in (250..=6000).step_by(250) {
@@ -1102,6 +1103,7 @@ mod tests {
     #[test]
     fn reconnecting_the_same_demand_refreshes_photo_without_fabricating_series_samples() {
         let mut core = Core::new(1);
+        let _receiver = core.series_mut().subscribe(2).expect("suscriptor");
         core.observe(lap_photo(ms(0), 1, 100.0, 0.0, 0.0))
             .expect("foto");
         let samples = core.series().active().expect("vuelta").samples.len();
@@ -1123,6 +1125,7 @@ mod tests {
     #[test]
     fn settling_a_frozen_pause_updates_visibility_without_journal_or_series_samples() {
         let mut core = Core::new(1);
+        let _receiver = core.series_mut().subscribe(2).expect("suscriptor");
         core.observe(lap_photo(ms(0), 1, 100.0, 0.0, 0.0))
             .expect("live");
         let mut paused = lap_photo(ms(100), 1, 100.0, 0.0, 0.0);

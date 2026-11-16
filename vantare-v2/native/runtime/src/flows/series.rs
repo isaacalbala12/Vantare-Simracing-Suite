@@ -5,7 +5,8 @@ use super::{LapBlock, LapSample};
 /// Ventana diagnóstica máxima; nunca limita el número de muestras del feed.
 pub const MAX_LAP_SAMPLES: usize = 18_000;
 
-/// Prueba mínima de frontera: un bloque en curso y el último sellado, sin I/O.
+/// Con suscriptor, retiene un bloque en curso y el último sellado, sin I/O.
+/// Antes de subscribe no muestrea ni reserva ventanas diagnósticas.
 #[derive(Default)]
 pub struct Series {
     pub(super) active: Option<LapBlock>,
@@ -36,6 +37,9 @@ impl Series {
     }
 
     pub(crate) fn observe(&mut self, snapshot: &Snapshot) {
+        if self.publication.is_none() {
+            return;
+        }
         let (Some(player), Some(car)) =
             (snapshot.state.player.as_ref(), snapshot.state.player_car())
         else {
@@ -68,11 +72,8 @@ impl Series {
         if self.active.as_ref().is_some_and(|block| block.lap != lap) {
             if let Some(mut block) = self.active.take() {
                 let closed = block.lap.checked_add(1) == Some(lap);
-                if closed {
-                    block.sealed_at = Some(snapshot.sequence);
-                } else {
-                    block.gap = true;
-                }
+                block.sealed_at = closed.then_some(snapshot.sequence);
+                block.gap |= !closed;
                 if let Some(publisher) = &mut self.publication {
                     publisher.publish(&block, self.active_offset);
                     publisher.reset_lap();

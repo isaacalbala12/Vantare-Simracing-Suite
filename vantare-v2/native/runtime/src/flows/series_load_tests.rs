@@ -45,7 +45,14 @@ fn acquire(core: &mut Core) -> Duration {
 fn saturated_delivery_keeps_acquisition_progress_without_the_storage_owner_draining() {
     // Pareja secuencial; tiempos de debug informativos, incluyen generador y
     // Core. Otros workers compilan: no usar ratio como gate de rendimiento.
-    let baseline = acquire(&mut Core::new(1));
+    let mut unsubscribed = Core::new(1);
+    let baseline = acquire(&mut unsubscribed);
+    assert_eq!(unsubscribed.snapshot().sequence, u64::from(FRAMES));
+    assert!(unsubscribed.series().active().is_none());
+    assert!(unsubscribed.series().sealed().is_none());
+    assert!(unsubscribed.series().publication_status().is_none());
+    assert_eq!(unsubscribed.series().active_offset(), 0);
+    assert_eq!(unsubscribed.series().sealed_offset(), 0);
     let mut core = Core::new(1);
     let receiver = core.series_mut().subscribe(CAPACITY).unwrap();
     let (done, progress) = mpsc::channel();

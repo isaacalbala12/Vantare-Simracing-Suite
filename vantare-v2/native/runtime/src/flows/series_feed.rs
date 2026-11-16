@@ -25,7 +25,8 @@ pub(super) struct Publisher {
 }
 
 impl Series {
-    /// Configurar una sola vez, antes de adquirir. Suscribir no activa recording.
+    /// Activa el muestreo desde la próxima foto, sin recuperar fotos anteriores.
+    /// Un único receptor; suscribir no arranca el worker ni escribe disco.
     /// El receptor pertenece al worker; no clonarlo ni drenar en adquisición.
     pub fn subscribe(&mut self, capacity: usize) -> io::Result<Receiver<SeriesChunk>> {
         if !(1..=MAX_QUEUED_CHUNKS).contains(&capacity) {

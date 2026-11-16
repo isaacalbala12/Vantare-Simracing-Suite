@@ -3482,3 +3482,23 @@ PARIDAD documenta primer plano heredado y CPU pendiente del PC. Head/checks en P
 Test del límite con reloj absoluto y pasos binarios, sin suma 31+1 ms.
 Test y PARIDAD fijan ocultar/volver con tecla pulsada: dispara el primer flanco
 de la instancia nueva. Cause::Input no existe; Data y producción quedan intactos.
+
+## VANTA-138 · Instalador Hub P1 (16/11/2026)
+
+Encargo de raíz: P1–P3 aprobados; solo P1 en este PR. Base nightly c58a05690,
+protocolo Hub v46 conservado. Worktree propio D:/VantareServer/worktrees/isa-1995-hub-package-p1,
+rama vantareapp/isa-1995-hub-package-p1-d. El worktree limpio de C: creado por
+T3 se retiró con excepción expresa; sin otros worktrees tocados.
+
+El paquete Electron recibe versión del build y verifica procedencia/contenido,
+fuses/locales, sidecars e inventario completo con tamaños. No cambia IPC,
+contratos de producto, dependencias, workflows ni instalación distribuida.
+Gates/resultados, SHA y PR se registran al cerrar el paso; no se declara aún CI
+verde ni prueba instalada. Sin ventanas/VM en servidor. P2 mide y reduce antes
+de decidir topes; si supera128MiB el cliente antiguo exige Setup nuevo.
+P4+ queda con el orquestador del instalador; E conserva #2057.
+Rollback P1: revertir y reconstruir paquete; no hay mutaciones de producto.
+Tipos (aplicación y scripts) y lint PASS;21 pruebas focales iniciales PASS.
+Suite global local cancelada sin resultado por duración/consumo; no se declara
+verde. Gate focal/build/package por cola y suite global CI pendientes al abrir
+el draft; se actualizan resultados reales en el PR al cerrar P1.

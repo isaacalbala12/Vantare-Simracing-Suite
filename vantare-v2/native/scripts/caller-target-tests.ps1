@@ -6,7 +6,7 @@ $root = Join-Path ([IO.Path]::GetFullPath($EvidenceDirectory)) ('caller-target-'
 foreach ($directory in @('src', 'scripts', '.cargo')) { [IO.Directory]::CreateDirectory((Join-Path $root $directory)) | Out-Null }
 [IO.File]::WriteAllText((Join-Path $root 'Cargo.toml'), "[package]`nname='caller-target-probe'`nversion='0.0.0'`nedition='2024'`n")
 [IO.File]::WriteAllText((Join-Path $root 'rust-toolchain.toml'), "[toolchain]`nchannel='1.99.1'`n")
-[IO.File]::WriteAllText((Join-Path $root 'src/main.rs'), 'fn main() { println!("caller target preserved"); }')
+[IO.File]::WriteAllText((Join-Path $root 'src/main.rs'), 'fn main() { println!("caller target {:?}", std::env::args().skip(1).collect::<Vec<_>>()); }')
 foreach ($name in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination (Join-Path $root "scripts/$name")
 }
@@ -23,6 +23,13 @@ try {
     if ($LASTEXITCODE -or -not (Test-Path -LiteralPath (Join-Path $env:CARGO_TARGET_DIR 'debug/caller-target-probe.exe'))) {
         throw 'Packaging no encuentra su ejecutable en el target del llamador.'
     }
+    # `& script ... -- arg` loses the literal `--` in PowerShell; the target must
+    # stay a Cargo option and reach the binary only the caller's argument.
+    $output = & (Join-Path $root 'scripts/compilar.ps1') cargo run --locked --offline -j 4 -- hello
+    if ($LASTEXITCODE) { throw 'Falló cargo run con argumento del binario.' }
+    $text = $output -join "`n"
+    if ($text -notmatch 'hello') { throw 'El binario no recibió su argumento.' }
+    if ($text -match 'target-dir') { throw 'El wrapper coló --target-dir tras el separador.' }
     $env:CARGO_TARGET_DIR = 'relative-target'
     & pwsh -NoProfile -File scripts/compilar.ps1 cargo build --locked --offline -j 4
     if (-not $LASTEXITCODE) { throw 'Se aceptó un target relativo del llamador.' }

@@ -528,6 +528,21 @@ el workspace completo.
 Si tocas `runtime`, `domain`, `ipc`, `ui` o `storage`, el gate rápido imprime un
 aviso: faltan Clippy y tests de los dependientes y la telemetría (#1498). Antes
 de publicar, ejecuta `comprobar.ps1 <crate> -Full` y la telemetría.
+
+La cola comparte los dos targets persistentes entre checkouts. Antes de cada
+build de slot se calcula la huella de contenido de cada paquete del workspace y
+la de las entradas externas declaradas en `native/scripts/slot-inputs.json`
+(cualquier `include_str!`/`include_bytes!`/`include!` que salga de **su** paquete,
+aunque esté en otro paquete, más `Cargo.toml`, `Cargo.lock`, `clippy.toml`,
+`.cargo/config.toml`, `rust-toolchain` y `vendor`). Solo los paquetes cuya huella
+cambió se limpian con `cargo clean -p` en todos los perfiles presentes; si cambia
+una entrada externa se limpian todos. La limpieza es persistente: un build
+parcial que no compile un paquete limpiado no puede dejar un artefacto obsoleto.
+El sello se escribe tras limpiar y antes de compilar, y tras limpiar se verifica
+que no quedan fingerprints del paquete. Los targets explícitos (mediciones, QA y
+empaquetado) no pasan por este control. `include_inputs.py` recorre los
+`include_*!` y falla si una ruta queda fuera de la lista; no sigue `#[path]` ni
+`fs::read`, y un include dentro de un comentario falla a propósito.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.
@@ -548,9 +563,10 @@ LocalApplicationData/Vantare/sccache. Este servidor tiene VANTARE_TARGET_ROOT=
 La cola admite como máximo dos compilaciones. CARGO_BUILD_JOBS de Machine tiene
 prioridad sobre el del proceso; en este servidor Machine fija 4. Usar `CARGO_BUILD_JOBS=4` en este
 servidor. Cada mutex conserva `D:/VantareServer/targets/slot-0` o `slot-1` entre
-ramas. Al cambiar de checkout se limpian únicamente los paquetes locales para
-evitar ejecutables obsoletos; las dependencias se conservan. No crear targets por rama. Los comandos anidados síncronos reutilizan la
-reserva del ancestro. En local sccache está activo. Si `cargo` o `rustc` terminan con 0xC0000005
+ramas. Antes de compilar se invalidan solo los paquetes cuya huella de contenido
+cambió; los iguales y las dependencias se conservan. No crear targets por rama.
+Los comandos anidados síncronos reutilizan la reserva del ancestro. En local
+sccache está activo. Si `cargo` o `rustc` terminan con 0xC0000005
 (STATUS_ACCESS_VIOLATION), el comando se reintenta una vez con
 `VANTARE_SCCACHE=0`; ambos intentos quedan en el log. `VANTARE_SCCACHE=0` lo
 desactiva a mano.

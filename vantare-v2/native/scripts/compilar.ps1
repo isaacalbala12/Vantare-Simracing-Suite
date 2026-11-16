@@ -6,6 +6,18 @@
 # 0xC0000005 (STATUS_ACCESS_VIOLATION), el comando se reintenta una vez con
 # VANTARE_SCCACHE=0 y se conservan ambos resultados.
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
+# Insert Cargo's target as an option right after the subcommand. Appending it
+# after a trailing argument makes the binary receive `--target-dir` (PowerShell
+# drops the literal `--` when a script is invoked with `&`).
+function Add-VantareTargetArgument {
+    param([object[]]$Arguments, [int]$SubcommandIndex, [string]$Target)
+    if (-not $Target) { throw 'La cola no tiene target para el comando.' }
+    $insert = if ($Arguments[$SubcommandIndex] -ieq 'nextest') { $SubcommandIndex + 2 } else { $SubcommandIndex + 1 }
+    if ($Arguments.Count -le $insert) {
+        return @($Arguments) + @('--target-dir', $Target)
+    }
+    return @($Arguments[0..($insert - 1)]) + @('--target-dir', $Target) + @($Arguments[$insert..($Arguments.Count - 1)])
+}
 # Normalize Cargo's inline spelling before validating or acquiring a target.
 $normalized = @()
 foreach ($argument in $args) {
@@ -19,9 +31,7 @@ if ($env:CARGO_TARGET_DIR -and $args.Count -gt 1 -and
     [IO.Path]::GetFileNameWithoutExtension($args[0]) -ieq 'cargo' -and
     $args[1] -in @('build', 'check', 'clippy', 'test', 'nextest', 'run', 'rustc', 'bench', 'doc', 'install') -and
     '--target-dir' -notin $args) {
-    $separator = [array]::IndexOf($args, '--')
-    if ($separator -lt 0) { $args += @('--target-dir', $env:CARGO_TARGET_DIR) }
-    else { $args = @($args[0..($separator - 1)]) + @('--target-dir', $env:CARGO_TARGET_DIR) + @($args[$separator..($args.Count - 1)]) }
+    $args = Add-VantareTargetArgument -Arguments $args -SubcommandIndex 1 -Target $env:CARGO_TARGET_DIR
 }
 for ($index = 0; $index -lt $args.Count; $index++) {
     if ($args[$index] -in @('--target-dir', '-TargetDirectory')) {
@@ -37,12 +47,7 @@ function Invoke-VantareQueuedCommand {
         if ([IO.Path]::GetFileNameWithoutExtension($CommandName) -ieq 'cargo' -and
             $CommandArguments.Count -and $CommandArguments[0] -in @('build', 'check', 'clippy', 'test', 'nextest', 'run', 'rustc', 'bench', 'doc', 'install')) {
             if (-not ($CommandArguments | Where-Object { $_ -eq '--target-dir' -or $_ -like '--target-dir=*' })) {
-                $separator = [array]::IndexOf($CommandArguments, '--')
-                if ($separator -lt 0) { $CommandArguments += @('--target-dir', $previousTarget) }
-                else {
-                    $CommandArguments = @($CommandArguments[0..($separator - 1)]) +
-                        @('--target-dir', $previousTarget) + @($CommandArguments[$separator..($CommandArguments.Count - 1)])
-                }
+                $CommandArguments = Add-VantareTargetArgument -Arguments $CommandArguments -SubcommandIndex 0 -Target $previousTarget
             }
             # sccache keys CARGO_TARGET_DIR; use the CLI path to share dependencies across slots.
             Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
@@ -86,8 +91,6 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
     }
     if ($leased) {
         if (-not (Test-VantareTargetPath $env:CARGO_TARGET_DIR)) { throw 'Target anidado fuera del volumen configurado.' }
-        . (Join-Path $PSScriptRoot 'slot-workspace.ps1')
-        Set-VantareSlotWorkspace -Target $env:CARGO_TARGET_DIR -NativeRoot (Split-Path $PSScriptRoot)
         $cmd, $rest = $args
         Invoke-VantareQueuedCommand -CommandName $cmd -CommandArguments $rest
         exit $script:commandExitCode

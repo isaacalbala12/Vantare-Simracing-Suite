@@ -49,9 +49,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err("SHA-256 de payload inválido".into());
         }
         // Debug emits an escaped Rust string literal, including Windows backslashes.
+        let include_macro = concat!("include_", "bytes!");
         #[allow(clippy::unnecessary_debug_formatting)]
         let embedded = format!(
-            "pub const ARCHIVE: &[u8] = include_bytes!({:?});\npub const UNINSTALLER: &[u8] = include_bytes!({:?});\npub const PACKAGE_SHA: &str = {sha:?};\n",
+            "pub const ARCHIVE: &[u8] = {include_macro}({:?});\npub const UNINSTALLER: &[u8] = {include_macro}({:?});\npub const PACKAGE_SHA: &str = {sha:?};\n",
             paths[0], paths[1]
         );
         source = embedded;

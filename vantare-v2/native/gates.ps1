@@ -18,8 +18,6 @@ if ($Gate -eq 'distribution') {
     & (Join-Path $PSScriptRoot 'scripts/check-qa-distribution.ps1') -TargetDirectory ([IO.Path]::GetFullPath($TargetDirectory))
     return
 }
-. (Join-Path $PSScriptRoot 'scripts/slot-workspace.ps1')
-Set-VantareSlotWorkspace -Target $TargetDirectory -NativeRoot $PSScriptRoot
 if ($Gate -eq 'prueba' -and -not $BuildConfig) { throw 'Prueba exige -BuildConfig con la configuración pública real.' }
 if ($BuildConfig -and $Gate -ne 'prueba') { throw '-BuildConfig solo se aplica al build prueba.' }
 if ($BuildConfig) { $BuildConfig = (Resolve-Path -LiteralPath $BuildConfig).Path }

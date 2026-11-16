@@ -106,6 +106,8 @@ impl Painter {
         let name = key.into();
         let value = value.into();
         let style = font(&self.style, face, size, height, tracking, weight);
+        let (lo_x, hi_x) = (x, (self.scene.width - (x + width)).max(0.0));
+        let (lo_y, hi_y) = (y, (self.scene.height - (y + height)).max(0.0));
         if !self.scene.options.transparent {
             return text(value)
                 .key(name.clone())
@@ -130,6 +132,9 @@ impl Painter {
         .into_iter()
         .enumerate()
         {
+            // GPUI dibuja fuera del marco; en Rune se recorta al borde de la caja.
+            let dx = dx.clamp(-lo_x.max(0.0), hi_x);
+            let dy = dy.clamp(-lo_y.max(0.0), hi_y);
             node = node.child(
                 text(value.clone())
                     .key(format!("{name}-shadow-{index}"))
@@ -448,13 +453,8 @@ impl Painter {
                     .key("brand-name")
                     .font(name_font)
                     .color(self.variant().header_color)
-                    .size(name + 2.0, h)
-                    .pin(
-                        Some(right - name),
-                        Some(text_top(s, Face::Display, y)),
-                        None,
-                        None,
-                    ),
+                    .size(name, h)
+                    .pin(Some(right - name), Some(text_top(s, Face::Display, y)), None, None),
             );
         (element, name + b.gap + symbol)
     }
@@ -524,14 +524,20 @@ impl Painter {
         let (value, color) = self.number();
         let value_font = font(s, Face::Display, d.big, d.big, 0.5, 600.0);
         let value_width = eficiencia::width(value, value_font);
-        root = root.child(
-            text(value.to_owned())
-                .key("big-number")
-                .font(value_font)
-                .color(color)
-                .size(value_width + 4.0, d.big)
-                .pin(Some(pad), Some(text_top(s, Face::Display, y)), None, None),
-        );
+        root = root.child(self.label(
+            "big-number",
+            value.to_owned(),
+            pad,
+            text_top(s, Face::Display, y),
+            value_width + 4.0,
+            d.big,
+            Face::Display,
+            d.big,
+            0.5,
+            600.0,
+            color,
+            Align::Start,
+        ));
         if self.scene.phase == Phase::Invalid {
             root = root.child(
                 eficiencia::rect(pad, y + d.big / 2.0, value_width, 2.0, color)
@@ -653,7 +659,7 @@ impl Painter {
                 0.0,
                 f.regular_weight,
                 self.ink(c.muted),
-                Align::Start,
+                Align::Center,
             ));
         root
     }

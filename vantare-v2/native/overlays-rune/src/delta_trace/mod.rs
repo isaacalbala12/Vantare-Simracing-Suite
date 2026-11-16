@@ -156,6 +156,32 @@ mod tests {
         assert_eq!(widget.history_version, version);
     }
     #[test]
+    fn a_new_lap_point_updates_the_path_between_temporal_samples() {
+        let mut widget = DeltaTrace::new(&Settings::default(), Preferences::default());
+        let mut s = photo();
+        s.state.player.as_mut().unwrap().delta_best_s = Reliable(-0.1);
+        widget.ingest(&s);
+        let samples = widget.samples.clone();
+        let graph = widget.painter.graph();
+        let version = widget.history_version;
+        s.sequence += 1;
+        // Lap distance advances before Trace's 50 ms sampling interval expires.
+        s.origin.received_at += std::time::Duration::from_millis(10);
+        let id = s.state.player.unwrap().car;
+        s.state
+            .cars
+            .iter_mut()
+            .find(|c| c.id == id)
+            .unwrap()
+            .lap_distance_m = Reliable(200.0);
+        let update = widget.ingest(&s);
+        assert!(update.build && update.pixels);
+        assert_eq!(widget.history_version, version + 1);
+        assert!(Arc::ptr_eq(&samples, &widget.samples));
+        assert!(!Arc::ptr_eq(&graph, &widget.painter.graph()));
+    }
+
+    #[test]
     fn changed_visible_data_repaints_even_without_a_new_sequence() {
         let mut widget = DeltaTrace::new(&Settings::default(), Preferences::default());
         let mut s = photo();

@@ -52,21 +52,35 @@ namespace Vantare141 {
         public CounterSample[] Read(string name) {
             uint format=0x200; // PDH_FMT_DOUBLE, Windows SDK pdh.h
             if(name=="process_cpu" || name=="cpu_performance") format |= 0x8000; // PDH_FMT_NOCAP100
-            uint bytes=0, count;
-            uint status=PdhGetFormattedCounterArrayW(counters[name],format,ref bytes,out count,IntPtr.Zero);
-            if(status != 0x800007D2 && status != 0) Check(status,"Dimensionar " + name);
-            if(bytes==0) return new CounterSample[0];
-            IntPtr memory=Marshal.AllocHGlobal(checked((int)bytes));
-            try {
-                Check(PdhGetFormattedCounterArrayW(counters[name],format,ref bytes,out count,memory),"Leer " + name);
-                var result=new CounterSample[count];
-                int stride=Marshal.SizeOf(typeof(Item));
-                for(int index=0;index<count;index++) {
-                    Item item=(Item)Marshal.PtrToStructure(IntPtr.Add(memory,index*stride),typeof(Item));
-                    result[index]=new CounterSample { Name=Marshal.PtrToStringUni(item.Name), Value=item.Value.Number, Status=item.Value.Status };
-                }
-                return result;
-            } finally { Marshal.FreeHGlobal(memory); }
+            return ReadArray(name, (IntPtr memory, ref uint bytes, out uint count) =>
+                PdhGetFormattedCounterArrayW(counters[name],format,ref bytes,out count,memory));
+        }
+        internal delegate uint ArrayReader(IntPtr memory, ref uint bytes, out uint count);
+        // GPU/process instances may grow between PDH's sizing and read calls.
+        // Bounded retries; every allocated buffer is released, including on retry.
+        internal static CounterSample[] ReadArray(string name, ArrayReader read) {
+            const uint moreData=0x800007D2;
+            for(int attempt=0;attempt<4;attempt++) {
+                uint bytes=0,count;
+                uint status=read(IntPtr.Zero,ref bytes,out count);
+                if(status!=moreData && status!=0) Check(status,"Dimensionar "+name);
+                if(bytes==0)return new CounterSample[0];
+                IntPtr memory=Marshal.AllocHGlobal(checked((int)bytes));
+                try {
+                    status=read(memory,ref bytes,out count);
+                    if(status==moreData)continue;
+                    Check(status,"Leer "+name);
+                    var result=new CounterSample[count];
+                    int stride=Marshal.SizeOf(typeof(Item));
+                    for(int index=0;index<count;index++) {
+                        Item item=(Item)Marshal.PtrToStructure(IntPtr.Add(memory,index*stride),typeof(Item));
+                        result[index]=new CounterSample{Name=Marshal.PtrToStringUni(item.Name),Value=item.Value.Number,Status=item.Value.Status};
+                    }
+                    return result;
+                }finally{Marshal.FreeHGlobal(memory);}
+            }
+            Check(moreData,"Buffer PDH cambia repetidamente: "+name);
+            return new CounterSample[0];
         }
         public void Dispose() { if(query!=IntPtr.Zero) { PdhCloseQuery(query); query=IntPtr.Zero; } }
     }

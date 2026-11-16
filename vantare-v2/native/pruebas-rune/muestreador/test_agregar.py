@@ -34,6 +34,16 @@ class AggregationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 presentmon(text, {42}, 1000, 0, 2000)
 
+    def test_count_only_accepts_real_qpc_columns_and_zero_presents(self):
+        header = 'ProcessID,SwapChainAddress,CPUStartQPC,MsCPUBusy,TimeInQPC\n'
+        self.assertEqual(presentmon(header, {42}, 1000, 1000, 2000, count_only=True), [])
+        rows = presentmon(header + '42,0x1,999,2,9000\n', {42}, 1000, 1000, 2000, count_only=True)
+        self.assertEqual(rows[0]['submit_qpc'], 1001)
+        for text in (header.replace('CPUStartQPC', 'Wrong'), header + '42,0x1,1000,nan,9000\n',
+                     header + '42,0x1,1000,0,9000\n' * 2):
+            with self.assertRaises(ValueError):
+                presentmon(text, {42}, 1000, 1000, 2000, count_only=True)
+
     def samples(self):
         return [{'qpc': clock, 'process_id': pid, 'created_utc': 'fixed-' + str(pid),
                  'cpu_cycles': 1000 + index * rate, 'cpu_time_100ns': index * 1000000,

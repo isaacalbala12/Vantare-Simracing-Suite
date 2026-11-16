@@ -100,8 +100,11 @@ describe("launcher profile list", () => {
   it("shows native profiles and disables launch when applications are missing", () => {
     const { onLaunch, onSelect } = mount();
     expect(
-      screen.getByRole("button", { name: /Lanzar/ }).hasAttribute("disabled"),
-    ).toBe(true);
+      screen
+        .getByRole("button", { name: /Lanzar/ })
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /Lanzar/ }));
     expect(
       screen.getByText(
         text.missing(["Le Mans Ultimate", "OBS Studio", "Spotify"]),

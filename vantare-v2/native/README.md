@@ -543,6 +543,10 @@ que no quedan fingerprints del paquete. Los targets explícitos (mediciones, QA 
 empaquetado) no pasan por este control. `include_inputs.py` recorre los
 `include_*!` y falla si una ruta queda fuera de la lista; no sigue `#[path]` ni
 `fs::read`, y un include dentro de un comentario falla a propósito.
+
+El target `ci` (`VANTARE_CI_TARGET=1`) no usa sello ni invalidación: solo es
+seguro con un `RUNNER_TEMP` nuevo por job (GitHub-hosted). No reutilizar `ci`
+entre checkouts ni entre jobs.
 Cambios de configuración global o rutas nativas desconocidas fuerzan todo el
 workspace, incluidos Hub/Admin; el filtro rápido solo excluye esos productos
 cuando el diff pertenece a crates conocidos.
@@ -570,6 +574,12 @@ sccache está activo. Si `cargo` o `rustc` terminan con 0xC0000005
 (STATUS_ACCESS_VIOLATION), el comando se reintenta una vez con
 `VANTARE_SCCACHE=0`; ambos intentos quedan en el log. `VANTARE_SCCACHE=0` lo
 desactiva a mano.
+
+Los gates `clippy`, `check` (salvo `-PublicTargetsOnly`), `test`, `telemetria`,
+`completa`, `archive` y `lifecycle` añaden `<paquete>/test-support` para cada
+paquete seleccionado que defina la feature: los tests de `ipc` la necesitan y no
+dependen de que otro crate la unifique. `gates.ps1 -ListOnly` imprime los
+argumentos sin compilar.
 Un CARGO_TARGET_DIR ya definido en el entorno se trata como target explícito:
 se valida y reserva con su propio lease, en vez de usar slot-N. Es el caso de packaging.
 

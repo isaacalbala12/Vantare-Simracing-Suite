@@ -2,6 +2,7 @@
 use crate::{
     host::Access,
     pedals::Pedals,
+    pedals_telemetry::PedalsTelemetry,
     relative::Relative,
     scene::{FrameSet, Placement, Viewport},
     stats::{Cause, Meter},
@@ -34,6 +35,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::FuelStrategy(s) if s.design_system == Look::Vantare => {
             Some(<crate::fuel::Fuel as Widget>::new)
         }
+        Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),
         Settings::BroadcastTower(_) => Some(<Tower as Widget>::new),
         _ => None,
     }
@@ -222,5 +224,16 @@ mod tests {
             assert_eq!(painter.size().width, width, "{look:?}");
             assert_eq!(painter.size().height, 160.0);
         }
+    }
+
+    #[test]
+    fn dispatch_constructs_pedals_telemetry_with_its_fixed_size() {
+        let settings = Settings::PedalsTelemetry(Default::default());
+        let prefs = Preferences::default();
+        let painter =
+            constructor(&settings).expect("Pedals telemetry")(&settings, prefs, true, 15, 0.0)
+                .expect("instancia");
+        assert!(painter.configured(&settings, prefs));
+        assert_eq!((painter.size().width, painter.size().height), (380.0, 64.0));
     }
 }

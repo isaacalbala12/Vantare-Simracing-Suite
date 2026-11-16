@@ -241,7 +241,6 @@ impl Scene {
 mod tests {
     use super::*;
     use std::time::Duration;
-    use vantare_domain::widget_settings::Settings;
     fn layout() -> Layout {
         Layout::from_json(br#"{"version":1,"instances":[{"id":"relative","x":-200,"y":20,"settings":{"kind":"relative"}}],"performance":{"widgets":{"relative":5}}}"#).expect("layout")
     }
@@ -335,12 +334,25 @@ mod tests {
         );
     }
     #[test]
-    fn unsupported_widgets_are_not_acquired_and_unchanged_updates_do_not_publish() {
+    fn empty_layout_never_acquires_and_unchanged_updates_do_not_publish() {
+        use vantare_domain::widget_settings::{Kind, Settings, look::Look};
+        // Ya no queda un Settings válido que llegue a `_ => None`: ambos Looks
+        // de TODOS los Kind del catálogo tienen constructor. No inventamos una
+        // variante inválida para la antigua regresión; sin instancias sigue sin haber demanda.
+        for kind in Kind::ALL {
+            for look in Look::ALL {
+                let mut settings = Settings::default_for(*kind);
+                settings.set_look(*look);
+                assert!(
+                    crate::renderer::constructor(&settings).is_some(),
+                    "{kind:?}/{look:?}"
+                );
+            }
+        }
         let now = Instant::now();
         let mut design = layout();
-        // Look aún no migrado.
-        design.instances[0].settings =
-            Settings::Standings(vantare_domain::widget_settings::standings::Settings::eficiencia());
+        // Todos los Looks del catálogo ya tienen constructor; sin instancias no hay demanda.
+        design.instances.clear();
         let mut scene = Scene::new(
             design.clone(),
             Access::LocalPreview,

@@ -1,8 +1,8 @@
 # Standings Eficiencia — port literal GPUI
 
 E1 porta configuración, geometría y defaults compilados; E2 añade panel y cabecera.
-El registro se conecta
-en E3, al entrar filas/celdas; el allow(dead_code) temporal apunta a ese corte.
+E3 conecta th/filas/celdas y el constructor Eficiencia. Se retira el allow(dead_code)
+del módulo; quedan marcas puntuales para campos/helper de E4 aún sin pintor.
 La excepción de la raíz excluye tests del tope de 1200 líneas de producción.
 Se medirá cada corte consecutivo y se unirá si ambos caben completos bajo el tope.
 
@@ -40,8 +40,8 @@ Comparación de píxeles en el PC de juego; verificación de E1 CPU, sin gráfic
 ## Adaptaciones deliberadas de E1
 
 1. Visual::new omite prefs: GPUI lo recibe sin usarlo; los datos ya vienen localizados.
-2. E1 no reexporta Row/SelectedRow, aún sin consumidor. E3 lo reexportará al portar
-   paint_row/paint_cell, con el mismo tipo de domain que usa GPUI.
+2. E1 no reexporta Row/SelectedRow, aún sin consumidor. E3 reexporta SelectedRow
+   como Row para paint_row/paint_cell, con el mismo tipo de domain que usa GPUI.
 3. Config::from_settings vive en model.rs en lugar del SettingsPresentation::config
    de mod.rs; la conversión mantiene las mismas ramas y valores.
 4. Los defaults del JSON están expresados como literales Rust, en lugar del archivo
@@ -82,3 +82,71 @@ E2 continúa sin constructor. E3 completa th/filas/celdas/control y lo registra;
 E4 añade separadores, pies, espera y badges. E5/E6 conservan su corte de movimiento
 y efectos. E2+E3 preparados en local superan 1200 líneas de producción formateada;
 no se comprime el port para unirlos.
+
+## Seguimiento de E2 en el primer commit de E3
+
+Panel y marco leen color/alfa/radio/blanco de Style mediante los helpers de
+crate::eficiencia; no se añade una séptima adaptación por constantes compiladas.
+Los tests fijan los vértices Signature 440×50 resolviendo a mano los semiplanos
+de view.rs, y leen dirección/paradas de degradado de las instancias CPU públicas
+de Rune: panel 120° [0,.38], Broadcast 110° [.55,1], chip 145° [0,1].
+Las muestras de sombra son regresión de la copia Rune, no píxeles obtenidos de
+GPUI. Los parámetros sí están copiados literalmente de view::shadow_strip.
+
+Rasterizado: GPUI usa PathBuilder y Rune Shape para los mismos polígonos de la
+cinta. El antialias lo realiza cada motor; la comparación física de píxeles sigue
+pendiente. El logo reducido a 24×24 tiene bytes RGBA idénticos; la banda lo pinta
+a 18×18. El escalado de textura/mips lo realiza Rune, frente a paint_image de
+GPUI: se declara esta diferencia de rasterizador, pendiente de captura comparada.
+La primera rect de la banda tiene key; con clase vacía se conserva la caja del
+chip pero no se emite texto vacío (text::draw de GPUI tampoco pinta glifos).
+paint_unavailable queda explícitamente PENDIENTE de E4: E3 aún solo pinta la
+cabecera en esa rama, sin el rótulo de desconexión/falta de datos de GPUI.
+Todos los colores nuevos pasan por eficiencia::color o rune::color::hex.
+
+## E3: th, filas, celdas y control
+
+| GPUI | Rune E3 |
+| --- | --- |
+| paint_table (th/filas) | table::paint; bandas/ghosts en E4/E5 |
+| paint_column_label / aligned_x | table.rs; Signature/Broadcast, alineación, máscara y subrayado |
+| paint_row | table::paint_row; jugador, primeras filas de estudio default, filetes y marca roja |
+| paint_cell / split_seconds | table.rs; todas las métricas, nombre/ellipsis y unidad s separada |
+| Widget::{ingest_using,present,switch_session} | control.rs; project_cached y pestañas, sin gate por sequence |
+| app::{project_snapshot,wanted_size} | control.rs; retención de pausa y banda de 22 px |
+| eficiencia::Visual::frame | Visual::view con geometría estática; Motion se conecta en E5 |
+
+Cada fila y celda tiene contenedor con pin y key propia; no hay claves duplicadas
+entre métricas repetidas. size_for anticipa foto/pestaña/bandas/PIT antes del recorte
+del host; size conserva la caja de la proyección retenida durante la pausa.
+La identidad es session:epoch, como GPUI. sequence solo viaja como metadato del
+ContentPlan para E5/E6: no se usa como clave ni para saltarse la proyección o pintar.
+Board por Arc o ContentPlan::same_visible decide si cambia la escena; Lost/Stale
+con el mismo contador repintan; avanzar solo el contador no despierta el widget.
+
+Oráculos de celdas: baselines 43+21/43+19, marca 3/48/2/20, columnas lg
+42/42/200/98/88/88/60/88/66, posición/número centrados en 21/63 y gap en 333;
+texto/nombres ES/EN, elipsis solo donde GPUI, cápsulas Broadcast 145° [0,.65].
+Los colores se comparan con hex sRGB literal. Tras #2496 (c58a05690), el dorsal
+es #a5a5abff, no el #d2d2d6ff que producía el helper anterior: el oráculo no cambia.
+Sin reloj de animación en E3, con o sin movimiento reducido. E5 añadirá Tween.
+E4 debe retirar las marcas dead_code puntuales al portar pies/bandas/espera/rail;
+E6 añade flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
+testers hasta completar E4–E6 y la comparación física de píxeles pendiente.
+
+## Revisión E3 en el mismo PR
+
+La pausa usa app.rs:559: texto en x=8 y base alto+16 (size.1−6), 11/600/tracking
+0,02; fondo #101113 a 0,95 y banda [0,alto,ancho+rail,22]. Se corrige la base 15.
+switch_session descarta el contenido anterior por ContentPlan::unavailable,
+recalcula el plan y borra Board, como standings/mod.rs:303–314. La regresión
+reingesta el MISMO Arc de Board en dos pestañas multiclase con columnas distintas:
+6 filas y row_tops [28,58,116,146,204,234], con tres bandas, tras el reinicio.
+content() reutiliza super::content de Vantare: misma derivación de lap/interval,
+formatos, clases y pies que SettingsPresentation::content de GPUI. La conversión
+efectiva de columnas/geometry sigue siendo Config::from_settings de Eficiencia.
+La máscara de paint_column_label solo se aplica en Signature; Broadcast retorna
+antes de with_content_mask en GPUI y se conserva sin esa máscara en Rune.
+El catálogo prueba todos los Kind×Look: ya no queda un Settings válido sin
+constructor que llegue a `_ => None`; el test documenta ese límite y conserva
+la ausencia de adquisición para un layout vacío.

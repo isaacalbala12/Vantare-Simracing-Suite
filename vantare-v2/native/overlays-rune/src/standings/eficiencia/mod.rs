@@ -1,5 +1,12 @@
 //! Port literal de standings/eficiencia.rs y view.rs, por entregas.
 mod assets;
+mod control;
+mod table;
+#[cfg(test)]
+mod table_tests;
+pub(crate) use control::Eficiencia;
+#[cfg(test)]
+mod control_tests;
 mod model;
 mod options;
 #[cfg(test)]
@@ -56,9 +63,11 @@ impl Visual {
         self.sync_assets();
         changed
     }
+    #[cfg(test)] // Solo Workshop en GPUI; el producto usa el estudio compilado.
     pub fn set_study(&mut self, study: &str) {
         Arc::make_mut(&mut self.config).study = study.into();
     }
+    #[cfg(test)] // Solo Workshop en GPUI; el producto usa el estilo compilado.
     pub fn set_style(&mut self, style: Arc<style::Style>) {
         let config = Arc::make_mut(&mut self.config);
         config.style = style;

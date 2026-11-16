@@ -123,7 +123,7 @@ fn every_painted_layer_is_pinned_inside_each_catalogue_box() {
 #[test]
 fn scene_changes_and_repose_never_depend_on_sequence_or_animation_clock() {
     assert!(crate::renderer::constructor(&Settings::Standings(config("standard"))).is_some());
-    assert!(crate::renderer::constructor(&Settings::Standings(Config::eficiencia())).is_none());
+    assert!(crate::renderer::constructor(&Settings::Standings(Config::eficiencia())).is_some());
     let mut w = Standings::new(&config("standard"), Preferences::default());
     let mut photo = photo("Carrera · vuelta 14/38");
     assert!(w.update(&photo, 0.0).build);

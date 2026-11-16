@@ -28,6 +28,9 @@ pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::Standings(s) if s.design_system == Look::Vantare => {
             Some(<crate::standings::Standings as Widget>::new)
         }
+        Settings::Standings(s) if s.design_system == Look::Eficiencia => {
+            Some(<crate::standings::Eficiencia as Widget>::new)
+        }
         Settings::DeltaTrace(_) => Some(<crate::delta_trace::DeltaTrace as Widget>::new),
         Settings::TrackMap(_) => Some(<crate::track_map::TrackMap as Widget>::new),
         Settings::FastestLap(_) => Some(<crate::fastest_lap::FastestLap as Widget>::new),

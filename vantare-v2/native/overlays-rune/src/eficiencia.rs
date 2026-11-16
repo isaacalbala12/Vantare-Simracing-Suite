@@ -101,19 +101,16 @@ pub fn panel(w: f32, h: f32) -> El {
 }
 
 pub fn panel_styled(w: f32, h: f32, fill: Color, radius: f32, white: u32) -> El {
-    el().size(w, h)
-        .radius(radius)
-        .fill(fill)
-        .child(
-            el().key("efficiency-panel-highlight")
-                .pin(Some(0.0), Some(0.0), None, None)
-                .size(w, h)
-                .radius(radius)
-                .linear_gradient(
-                    PANEL_ANGLE_DEG.to_radians(),
-                    [(0.0, color(white, 0.03)), (0.38, color(white, 0.0))],
-                ),
-        )
+    el().size(w, h).radius(radius).fill(fill).child(
+        el().key("efficiency-panel-highlight")
+            .pin(Some(0.0), Some(0.0), None, None)
+            .size(w, h)
+            .radius(radius)
+            .linear_gradient(
+                PANEL_ANGLE_DEG.to_radians(),
+                [(0.0, color(white, 0.03)), (0.38, color(white, 0.0))],
+            ),
+    )
 }
 
 /// Alfa del refuerzo superior para que, sobre `base`, componga `top`.

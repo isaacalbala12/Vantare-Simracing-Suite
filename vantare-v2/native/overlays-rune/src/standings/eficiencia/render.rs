@@ -9,7 +9,7 @@ use rune::{Color, El, Shape, TextStyle, canvas, el};
 use vantare_domain::{FlagKind, format::Language};
 
 // efficiency::rect: bordes CSS, mitades hacia arriba; toda capa fuera del flujo.
-fn rect(x: f32, y: f32, w: f32, h: f32) -> El {
+pub(super) fn rect(x: f32, y: f32, w: f32, h: f32) -> El {
     let snap = |v: f32| (v + 0.5).floor();
     let (left, top) = (snap(x), snap(y));
     kit::rect(
@@ -20,13 +20,25 @@ fn rect(x: f32, y: f32, w: f32, h: f32) -> El {
         Color::TRANSPARENT,
     )
 }
-fn ink(style: &Style, size: f32, weight: f32, tracking: f32, rgb: u32) -> (TextStyle, Color) {
+pub(super) fn ink(
+    style: &Style,
+    size: f32,
+    weight: f32,
+    tracking: f32,
+    rgb: u32,
+) -> (TextStyle, Color) {
     (
         kit::font(size, weight as u16, tracking * style.fonts.tracking_scale),
         color(rgb, 1.0),
     )
 }
-fn label(key: &'static str, value: &str, x: f32, base: f32, ink: (TextStyle, Color)) -> El {
+pub(super) fn label(
+    key: &'static str,
+    value: &str,
+    x: f32,
+    base: f32,
+    ink: (TextStyle, Color),
+) -> El {
     kit::label(value, x, base, ink.0, ink.1).key(key)
 }
 pub(super) fn flag_rgb(style: &Style, flag: Option<&FlagKind>) -> u32 {
@@ -103,9 +115,15 @@ pub(super) fn view(v: &Visual, language: Language) -> El {
         );
     }
     nodes.push(
-        kit::panel_styled(w, h, color(s.colors.panel.0, s.opacity.panel), s.geometry.radius, s.colors.white.0)
-            .key("efficiency-panel")
-            .pin(Some(0.0), Some(0.0), None, None),
+        kit::panel_styled(
+            w,
+            h,
+            color(s.colors.panel.0, s.opacity.panel),
+            s.geometry.radius,
+            s.colors.white.0,
+        )
+        .key("efficiency-panel")
+        .pin(Some(0.0), Some(0.0), None, None),
     );
     if p.brand_band > 0.0 {
         nodes.push(
@@ -175,7 +193,11 @@ pub(super) fn view(v: &Visual, language: Language) -> El {
         }
     }
     // E3 añade th/filas; E4 añade bandas, pies, espera y badges del rail.
-    if p.has_header {
+    if matches!(v.content_plan.status, Status::Ready | Status::Stale)
+        && !v.content_plan.rows.is_empty()
+    {
+        nodes.extend(super::table::paint(v, language));
+    } else if p.has_header {
         let top = if p.external_header {
             p.brand_band
         } else {
@@ -184,7 +206,14 @@ pub(super) fn view(v: &Visual, language: Language) -> El {
         nodes.extend(session_header(v, language, 0.0, top));
     }
     let top_alpha = s.opacity.frame + s.opacity.top_frame * (1.0 - s.opacity.frame);
-    nodes.push(kit::outline_styled(w, h, s.geometry.radius, s.colors.white.0, s.opacity.frame, top_alpha));
+    nodes.push(kit::outline_styled(
+        w,
+        h,
+        s.geometry.radius,
+        s.colors.white.0,
+        s.opacity.frame,
+        top_alpha,
+    ));
     let size = v.size();
     let mut root = el()
         .size(size.0, size.1)
@@ -196,7 +225,7 @@ pub(super) fn view(v: &Visual, language: Language) -> El {
     root
 }
 
-fn session_header(v: &Visual, language: Language, left: f32, top: f32) -> Vec<El> {
+pub(super) fn session_header(v: &Visual, language: Language, left: f32, top: f32) -> Vec<El> {
     let (c, p, content) = (&v.config, &v.plan, &v.content_plan);
     let s = &c.style;
     let f = &s.fonts;
@@ -365,12 +394,14 @@ fn session_header(v: &Visual, language: Language, left: f32, top: f32) -> Vec<El
         chip = chip.border(1.0, color(s.colors.ink.0, 0.22));
     }
     nodes.push(chip);
-    if !class_text.is_empty() { nodes.push(label(
-        "session-class",
-        &class_text,
-        x + 6.0,
-        baseline(chip_top + 5.0, class_ink.0.line_height, f.badge_size).round(),
-        class_ink,
-    )); }
+    if !class_text.is_empty() {
+        nodes.push(label(
+            "session-class",
+            &class_text,
+            x + 6.0,
+            baseline(chip_top + 5.0, class_ink.0.line_height, f.badge_size).round(),
+            class_ink,
+        ));
+    }
     nodes
 }

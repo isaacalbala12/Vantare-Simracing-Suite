@@ -286,9 +286,13 @@ pub(crate) struct Labels {
     pub best_lap: &'static str,
     pub pit: &'static str,
     pub stale: &'static str,
+    #[allow(dead_code)] // Temporal: E4 porta paint_footer/paint_unavailable.
     pub disconnected: &'static str,
+    #[allow(dead_code)] // Temporal: E4 porta paint_footer/paint_unavailable.
     pub missing: &'static str,
+    #[allow(dead_code)] // Temporal: E4 porta paint_footer/paint_unavailable.
     pub track: &'static str,
+    #[allow(dead_code)] // Temporal: E4 porta paint_footer/paint_unavailable.
     pub estimated_laps: &'static str,
 }
 
@@ -352,6 +356,7 @@ impl Labels {
         }
     }
 
+    #[allow(dead_code)] // Temporal: E4 porta paint_footer.
     pub fn info(&self, metric: InfoMetric) -> &'static str {
         match metric {
             InfoMetric::None => "",
@@ -365,7 +370,7 @@ impl Labels {
 // ViewModel de `domain` -> modelo visual
 // ---------------------------------------------------------------------------
 
-pub(crate) use vantare_domain::standings::{Plan as ContentPlan, Status};
+pub(crate) use vantare_domain::standings::{Plan as ContentPlan, SelectedRow as Row, Status};
 
 // ---------------------------------------------------------------------------
 // Geometría (StandingsFunctional.tsx)
@@ -384,6 +389,7 @@ pub(crate) struct Plan {
     pub brand_visible: bool,
     pub brand_band: f32,
     pub loose_header: f32,
+    #[allow(dead_code)] // Temporal: E4 porta paint_pit_rail/bandas.
     pub table_header: f32,
     pub visible_rows: usize,
     /// Anchos de columna en px; la del piloto ocupa el resto.
@@ -392,6 +398,7 @@ pub(crate) struct Plan {
     /// Alto real de la fila de cabecera (43 con la cabecera integrada, 28 si va suelta).
     pub head_row: f32,
     pub row_tops: Vec<f32>,
+    #[allow(dead_code)] // Temporal: E4 porta paint_pit_rail/bandas.
     pub class_bands: Vec<(f32, String)>,
 }
 

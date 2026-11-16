@@ -60,7 +60,7 @@ impl CarDamageVisual {
     }
     /// TEMPORAL(teclado del host): GPUI toggles the view with F1–F12. When the host
     /// delivers a key event this method flips the view; today only a test uses it.
-    #[allow(dead_code)] // Se conectará al evento del host; hasta entonces solo lo cubre un test.
+    #[allow(dead_code)] // Se conectará al evento del host en #2430; hasta entonces solo lo cubre un test.
     fn toggle_view(&mut self) -> Update {
         self.view = self.view.toggled();
         self.resample()

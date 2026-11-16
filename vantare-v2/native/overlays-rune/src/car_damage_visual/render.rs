@@ -99,6 +99,82 @@ fn body_fill(integrity: Option<f64>) -> Color {
     }
 }
 
+/// One step of an approved outline in viewBox coordinates. `Curve` keeps GPUI's
+/// `curve_to(to, ctrl)` order; `outline` swaps them for Rune's `quad_to(ctrl, to)`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Step {
+    Move(Point),
+    Line(Point),
+    Curve { to: Point, control: Point },
+    Close,
+}
+
+type Point = [f32; 2];
+
+/// Carrocería del SVG aprobado, tal cual la lista GPUI.
+const BODY_OUTLINE: [Step; 13] = [
+    Step::Move([32.0, 34.0]),
+    Step::Curve {
+        to: [48.0, 9.0],
+        control: [30.0, 14.0],
+    },
+    Step::Line([72.0, 9.0]),
+    Step::Curve {
+        to: [88.0, 34.0],
+        control: [90.0, 14.0],
+    },
+    Step::Line([90.0, 58.0]),
+    Step::Curve {
+        to: [90.0, 122.0],
+        control: [85.0, 90.0],
+    },
+    Step::Line([88.0, 148.0]),
+    Step::Curve {
+        to: [76.0, 158.0],
+        control: [86.0, 158.0],
+    },
+    Step::Line([44.0, 158.0]),
+    Step::Curve {
+        to: [32.0, 148.0],
+        control: [34.0, 158.0],
+    },
+    Step::Line([30.0, 122.0]),
+    Step::Curve {
+        to: [30.0, 58.0],
+        control: [35.0, 90.0],
+    },
+    Step::Close,
+];
+
+/// Cabina del SVG aprobado, tal cual la lista GPUI.
+const CABIN_OUTLINE: [Step; 5] = [
+    Step::Move([52.0, 62.0]),
+    Step::Curve {
+        to: [68.0, 62.0],
+        control: [60.0, 50.0],
+    },
+    Step::Line([68.0, 92.0]),
+    Step::Curve {
+        to: [52.0, 92.0],
+        control: [60.0, 98.0],
+    },
+    Step::Close,
+];
+
+fn outline(steps: &[Step], at: impl Fn(Point) -> Point) -> Path {
+    let mut path = Path::new();
+    for step in steps {
+        path = match *step {
+            Step::Move(point) => path.move_to(at(point)),
+            Step::Line(point) => path.line_to(at(point)),
+            // GPUI: `curve_to(to, ctrl)`; Rune: `quad_to(ctrl, to)`.
+            Step::Curve { to, control } => path.quad_to(at(control), at(to)),
+            Step::Close => path.close(),
+        };
+    }
+    path
+}
+
 pub(super) struct Painter {
     style: Arc<Style>,
     scene: Scene,
@@ -303,23 +379,11 @@ impl Painter {
     }
     fn car(&self, mut root: El) -> El {
         let s = &self.style;
-        let pt = |x: f32, y: f32| [47.2 + x * 0.88, 70.0 + y * 0.88];
-        // Approved SVG: viewBox 120 × 180 fitted to the card body.
-        let mut body = Path::new()
-            .move_to(pt(32.0, 34.0))
-            .quad_to(pt(48.0, 9.0), pt(30.0, 14.0))
-            .line_to(pt(72.0, 9.0))
-            .quad_to(pt(88.0, 34.0), pt(90.0, 14.0))
-            .line_to(pt(90.0, 58.0))
-            .quad_to(pt(90.0, 122.0), pt(85.0, 90.0))
-            .line_to(pt(88.0, 148.0))
-            .quad_to(pt(76.0, 158.0), pt(86.0, 158.0))
-            .line_to(pt(44.0, 158.0))
-            .quad_to(pt(32.0, 148.0), pt(34.0, 158.0))
-            .line_to(pt(30.0, 122.0))
-            .quad_to(pt(30.0, 58.0), pt(35.0, 90.0));
+        let pt = |[x, y]: Point| [47.2 + x * 0.88, 70.0 + y * 0.88];
+        // Approved outline: viewBox 120 × 180 fitted to the card body, painted as
+        // Rune paths (same `PathBuilder` approach as GPUI, no SVG parsing).
+        let body = outline(&BODY_OUTLINE, pt);
         let fill = body_fill(self.scene.integrity[1]);
-        body = body.close();
         root = root.child(
             canvas(Shape::new().fill_path(&body, fill).stroke_path(
                 &body,
@@ -340,28 +404,23 @@ impl Painter {
                     .size(8.8, 24.64)
                     .radius(3.0)
                     .fill(TYRE)
-                    .pin(Some(pt(x, y)[0]), Some(pt(x, y)[1]), None, None),
+                    .pin(Some(pt([x, y])[0]), Some(pt([x, y])[1]), None, None),
             );
         }
         let panels = Path::new()
-            .move_to(pt(60.0, 54.0))
-            .line_to(pt(60.0, 124.0))
-            .move_to(pt(30.0, 54.0))
-            .line_to(pt(90.0, 54.0))
-            .move_to(pt(30.0, 124.0))
-            .line_to(pt(90.0, 124.0));
+            .move_to(pt([60.0, 54.0]))
+            .line_to(pt([60.0, 124.0]))
+            .move_to(pt([30.0, 54.0]))
+            .line_to(pt([90.0, 54.0]))
+            .move_to(pt([30.0, 124.0]))
+            .line_to(pt([90.0, 124.0]));
         root = root.child(
             canvas(Shape::new().stroke_path(&panels, 2.0, LineCap::Butt, PANEL_LINE))
                 .key("car-damage-visual-panels")
                 .size(WIDTH, HEIGHT)
                 .pin(Some(0.0), Some(0.0), None, None),
         );
-        let cabin = Path::new()
-            .move_to(pt(52.0, 62.0))
-            .quad_to(pt(68.0, 62.0), pt(60.0, 50.0))
-            .line_to(pt(68.0, 92.0))
-            .quad_to(pt(52.0, 92.0), pt(60.0, 98.0))
-            .close();
+        let cabin = outline(&CABIN_OUTLINE, pt);
         root = root.child(
             canvas(Shape::new().fill_path(&cabin, CABIN).stroke_path(
                 &cabin,
@@ -827,6 +886,109 @@ mod tests {
         assert!(
             measure(aero.text.as_deref().unwrap(), Face::Mono, 10.0, 0.0, 400.0) + 2.0
                 <= aero.rect[2]
+        );
+    }
+
+    #[test]
+    fn the_outline_segments_match_gpui_curve_to_order() {
+        // Literal list of `render.rs` in GPUI: `curve_to(to, ctrl)` and `line_to`.
+        // The first field is the endpoint and the second the control point.
+        assert_eq!(
+            BODY_OUTLINE,
+            [
+                Step::Move([32.0, 34.0]),
+                Step::Curve {
+                    to: [48.0, 9.0],
+                    control: [30.0, 14.0]
+                },
+                Step::Line([72.0, 9.0]),
+                Step::Curve {
+                    to: [88.0, 34.0],
+                    control: [90.0, 14.0]
+                },
+                Step::Line([90.0, 58.0]),
+                Step::Curve {
+                    to: [90.0, 122.0],
+                    control: [85.0, 90.0]
+                },
+                Step::Line([88.0, 148.0]),
+                Step::Curve {
+                    to: [76.0, 158.0],
+                    control: [86.0, 158.0]
+                },
+                Step::Line([44.0, 158.0]),
+                Step::Curve {
+                    to: [32.0, 148.0],
+                    control: [34.0, 158.0]
+                },
+                Step::Line([30.0, 122.0]),
+                Step::Curve {
+                    to: [30.0, 58.0],
+                    control: [35.0, 90.0]
+                },
+                Step::Close,
+            ]
+        );
+        assert_eq!(
+            CABIN_OUTLINE,
+            [
+                Step::Move([52.0, 62.0]),
+                Step::Curve {
+                    to: [68.0, 62.0],
+                    control: [60.0, 50.0]
+                },
+                Step::Line([68.0, 92.0]),
+                Step::Curve {
+                    to: [52.0, 92.0],
+                    control: [60.0, 98.0]
+                },
+                Step::Close,
+            ]
+        );
+        // Rune's `quad_to(ctrl, to)` swaps the pair; the built paths are not empty.
+        let scaled = |[x, y]: Point| [47.2 + x * 0.88, 70.0 + y * 0.88];
+        assert!(
+            !Shape::new()
+                .fill_path(&outline(&BODY_OUTLINE, scaled), WHITE)
+                .is_empty()
+        );
+        assert!(
+            !Shape::new()
+                .fill_path(&outline(&CABIN_OUTLINE, scaled), WHITE)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn the_thresholds_paint_the_band_and_the_limits_of_the_tones() {
+        let language = vantare_domain::format::Language::Es;
+        // The band needs a part strictly below 0.6.
+        let mut view = vm();
+        view.integrity = [Some(0.6), Some(1.0), Some(1.0)];
+        let at_limit = scene::sample(&view, View::Car, true, language);
+        assert!(absent(&elements(&at_limit), "car-damage-visual-band"));
+        view.integrity = [Some(0.59), Some(1.0), Some(1.0)];
+        let below = scene::sample(&view, View::Car, true, language);
+        assert!(!absent(&elements(&below), "car-damage-visual-band"));
+        // Amber below 0.9, green from 0.9; red below 0.6.
+        assert_eq!(tone(Some(0.59)), RED);
+        assert_eq!(tone(Some(0.6)), AMBER);
+        assert_eq!(tone(Some(0.89)), AMBER);
+        assert_eq!(tone(Some(0.9)), GREEN);
+        let mut view = vm();
+        view.integrity = [Some(0.89), Some(0.9), Some(0.5)];
+        let painted = elements(&scene::sample(&view, View::Numbers, true, language));
+        assert_eq!(
+            by_key(&painted, "car-damage-visual-row-value-0").text_color,
+            Some(AMBER)
+        );
+        assert_eq!(
+            by_key(&painted, "car-damage-visual-row-value-1").text_color,
+            Some(GREEN)
+        );
+        assert_eq!(
+            by_key(&painted, "car-damage-visual-row-value-2").text_color,
+            Some(RED)
         );
     }
 }

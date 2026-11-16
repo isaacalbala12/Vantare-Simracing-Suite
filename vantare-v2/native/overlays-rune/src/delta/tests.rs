@@ -241,7 +241,7 @@ fn invalid_and_paused_keep_the_grey_number_and_the_note() {
 fn the_bar_fill_paints_the_target_and_its_sign() {
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
     painter.update(&snapshot(), 0.0);
-    let mut runtime = harness(painter);
+    let runtime = harness(painter);
     let fill = runtime.presented("bar-fill").expect("painted bar");
     let [x, _, w, _] = fill.0;
     assert!(w > 0.0);
@@ -251,14 +251,14 @@ fn the_bar_fill_paints_the_target_and_its_sign() {
     positive.state.player.as_mut().expect("player").delta_best_s = Reliable(0.4);
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
     painter.update(&positive, 0.0);
-    let mut positive_runtime = harness(painter);
+    let positive_runtime = harness(painter);
     let fill = positive_runtime
         .presented("bar-fill")
         .expect("positive bar");
     assert!(fill.0[0] >= 380.0 / 2.0 - 0.5, "positivo a la derecha");
     let mut painter = Delta::new(&settings("bar"), Preferences::default());
     painter.update(&snapshot(), 0.2);
-    let mut center_runtime = harness(painter);
+    let center_runtime = harness(painter);
     assert!(center_runtime.presented("bar-center").is_some());
     assert!(center_runtime.wake_deadline().is_none(), "sin reloj");
 }

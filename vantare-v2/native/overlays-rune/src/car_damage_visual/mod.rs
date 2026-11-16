@@ -1,6 +1,5 @@
 //! Car damage visual: domain projection, the Car/Values views and the retained
-//! Vantare 200 × 272 panel. The view comes from the `view` setting; there is no
-//! keyboard path in the Rune host yet (see PARIDAD of the GPUI widget).
+//! Vantare 200 × 272 panel. The view starts from `view`; host shortcut edges toggle it.
 mod render;
 pub mod scene;
 
@@ -58,9 +57,7 @@ impl CarDamageVisual {
         self.vm = project(snapshot, self.prefs, &self.settings);
         self.resample()
     }
-    /// TEMPORAL(teclado del host): GPUI toggles the view with F1–F12. When the host
-    /// delivers a key event this method flips the view; today only a test uses it.
-    #[allow(dead_code)] // Se conectará al evento del host en #2430; hasta entonces solo lo cubre un test.
+    /// A rising shortcut edge toggles the same local view as GPUI.
     fn toggle_view(&mut self) -> Update {
         self.view = self.view.toggled();
         self.resample()
@@ -95,6 +92,9 @@ fn sample(
 }
 
 impl Widget for CarDamageVisual {
+    fn shortcut(&mut self) -> Update {
+        self.toggle_view()
+    }
     fn new(
         settings: &WidgetSettings,
         prefs: Preferences,

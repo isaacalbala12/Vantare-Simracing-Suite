@@ -60,6 +60,8 @@ pub(crate) fn supports(instance: &Instance) -> bool {
 struct Entry {
     painter: Box<dyn Widget>,
     placement: Placement,
+    shortcut: Option<u8>,
+    key_down: bool,
 }
 #[derive(Default)]
 pub(crate) struct Painters {
@@ -140,8 +142,22 @@ impl Painters {
                     continue;
                 };
                 if let Some(painter) = fresh {
-                    self.entries
-                        .insert(instance.id.clone(), Entry { painter, placement });
+                    self.entries.insert(
+                        instance.id.clone(),
+                        Entry {
+                            painter,
+                            placement,
+                            shortcut: match settings {
+                                Settings::CarDamageVisual(s) => s
+                                    .normalized()
+                                    .toggle_key
+                                    .strip_prefix('f')
+                                    .and_then(|n| n.parse().ok()),
+                                _ => None,
+                            },
+                            key_down: false,
+                        },
+                    );
                     build = true;
                     meter.mark(Cause::Design);
                 }
@@ -172,6 +188,29 @@ impl Painters {
             self.order = order;
             build = true;
             meter.mark(Cause::Design);
+        }
+        build
+    }
+    pub fn shortcut_keys(&self) -> u16 {
+        self.entries
+            .values()
+            .filter_map(|e| e.shortcut)
+            .fold(0, |mask, key| mask | (1 << (key - 1)))
+    }
+    pub fn shortcuts(&mut self, down: u16, meter: &Meter) -> bool {
+        let mut build = false;
+        for entry in self.entries.values_mut() {
+            let pressed = entry
+                .shortcut
+                .is_some_and(|key| down & (1 << (key - 1)) != 0);
+            if pressed && !entry.key_down {
+                let update = entry.painter.shortcut();
+                if update.build || update.pixels {
+                    meter.mark(Cause::Data);
+                }
+                build |= update.build;
+            }
+            entry.key_down = pressed;
         }
         build
     }
@@ -289,6 +328,8 @@ pub(crate) mod tests {
                 Entry {
                     painter: Box::new(painter),
                     placement,
+                    shortcut: None,
+                    key_down: false,
                 },
             );
             painters.order.push(id.into());

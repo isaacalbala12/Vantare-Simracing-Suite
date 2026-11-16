@@ -279,6 +279,7 @@ impl Drop for Rights {
 }
 
 pub struct State {
+    next_shortcut_poll: Option<f64>,
     shared: Arc<Shared>,
     seen: u64,
     cursor: u64,
@@ -311,6 +312,7 @@ impl State {
         };
         Self {
             meter: crate::stats::Meter::new(shared.counts.clone()),
+            next_shortcut_poll: None,
             painters: crate::renderer::Painters::default(),
             shared,
             seen: 0,
@@ -394,6 +396,59 @@ fn setup(state: &mut State, wake: Waker) {
     state.shared.install_waker(wake);
 }
 pub fn poll(state: &mut State, clock: f64, tx: &mut Tx) -> bool {
+    poll_with_keys(state, clock, tx, platform_key_down)
+}
+fn platform_key_down(key: i32) -> bool {
+    #[cfg(windows)]
+    {
+        #[link(name = "user32")]
+        unsafe extern "system" {
+            fn GetAsyncKeyState(key: i32) -> i16;
+        }
+        // SAFETY: constant virtual-key codes; user32 receives no pointers.
+        unsafe { GetAsyncKeyState(key) < 0 }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = key;
+        false
+    }
+}
+fn pressed_keys(keys: u16, mut read: impl FnMut(i32) -> bool) -> u16 {
+    if [0x10, 0x11, 0x12, 0x5b, 0x5c].into_iter().any(&mut read) {
+        return 0;
+    }
+    (0..12)
+        .filter(|n| keys & (1 << n) != 0 && read(0x70 + n))
+        .fold(0, |mask, n| mask | (1 << n))
+}
+impl State {
+    fn poll_shortcuts(&mut self, clock: f64, tx: &mut Tx, read: impl FnMut(i32) -> bool) -> bool {
+        let keys = self.painters.shortcut_keys();
+        if keys == 0 {
+            self.next_shortcut_poll = None;
+            return false;
+        }
+        let mut build = false;
+        if self.next_shortcut_poll.is_none_or(|next| clock >= next) {
+            build = self
+                .painters
+                .shortcuts(pressed_keys(keys, read), &self.meter);
+            self.next_shortcut_poll = Some(clock + 0.032);
+        }
+        tx.wake_at(
+            self.next_shortcut_poll
+                .expect("active shortcuts have a deadline"),
+        );
+        build
+    }
+}
+fn poll_with_keys(
+    state: &mut State,
+    clock: f64,
+    tx: &mut Tx,
+    read: impl FnMut(i32) -> bool,
+) -> bool {
     let (changed, backlog) = {
         let mut pending = state
             .shared
@@ -466,6 +521,9 @@ pub fn poll(state: &mut State, clock: f64, tx: &mut Tx) -> bool {
                 );
             }
         }
+    }
+    if cfg!(windows) || cfg!(test) {
+        build |= state.poll_shortcuts(clock, tx, read);
     }
     build |= state.painters.animate(clock, tx, &state.meter);
     build
@@ -1267,6 +1325,186 @@ mod tests {
     }
     fn design() -> vantare_ipc::layout::Layout {
         vantare_ipc::layout::Layout::from_json(br#"{"version":2,"reducedMotion":true,"instances":[{"id":"r","x":0,"y":0,"settings":{"kind":"relative"}}]}"#).expect("design")
+    }
+    struct KeyboardHarness {
+        state: State,
+        down: u16,
+        modifier: Option<i32>,
+        reads: usize,
+    }
+    fn keyboard_runtime(key: &str) -> (Arc<Shared>, Runtime<KeyboardHarness>) {
+        let bus = Shared::new(true);
+        let mut layout = design();
+        layout.instances[0].settings = vantare_domain::widget_settings::Settings::CarDamageVisual(
+            vantare_domain::widget_settings::car_damage_visual::Settings {
+                toggle_key: key.into(),
+                ..Default::default()
+            },
+        );
+        let mut scene = crate::scene::Scene::new(
+            layout,
+            Access::LocalPreview,
+            true,
+            vantare_domain::motion_policy::MotionPolicy(true),
+        );
+        scene.ingest(
+            vantare_ipc::Photo::full(Arc::new(crate::testdata::snapshot())),
+            std::time::Instant::now(),
+        );
+        bus.publish_frames(Arc::new(scene.frames));
+        let mut rt = Runtime::with_text(
+            KeyboardHarness {
+                state: State::new(bus.clone()),
+                down: 0,
+                modifier: None,
+                reads: 0,
+            },
+            |h, _| h.state.painters.view(),
+            (1280.0, 720.0),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        rt.poll = Some(|h, clock, tx| {
+            poll_with_keys(&mut h.state, clock, tx, |vk| {
+                h.reads += 1;
+                h.modifier == Some(vk)
+                    || ((0x70..0x7c).contains(&vk) && h.down & (1 << (vk - 0x70)) != 0)
+            })
+        });
+        (bus, rt)
+    }
+    fn keyboard_frame(rt: &mut Runtime<KeyboardHarness>, dt: f64) -> bool {
+        let before = rt.instances.clone();
+        rt.frame(dt);
+        let painted = before
+            .iter()
+            .map(paint_payload)
+            .ne(rt.instances.iter().map(paint_payload));
+        if painted {
+            rt.state.state.meter.presented();
+        } else {
+            rt.state.state.meter.unchanged();
+        }
+        painted
+    }
+    #[test]
+    fn shortcuts_limit_reads_to_32_ms_and_toggle_once_per_press() {
+        let (_, mut rt) = keyboard_runtime("F7");
+        assert!(keyboard_frame(&mut rt, 0.0));
+        let initial = rt.instances.clone();
+        let reads = rt.state.reads;
+        let builds = rt.stats.commits;
+        rt.state.down = 1 << 6;
+        assert!(!keyboard_frame(&mut rt, 0.031));
+        assert_eq!(rt.state.reads, reads);
+        assert!(keyboard_frame(&mut rt, 0.001));
+        assert_eq!(rt.stats.commits, builds + 1);
+        assert!(!keyboard_frame(&mut rt, 0.032)); // Held, no second edge.
+        rt.state.down = 0;
+        assert!(!keyboard_frame(&mut rt, 0.032));
+        rt.state.down = 1 << 6;
+        assert!(keyboard_frame(&mut rt, 0.032));
+        assert!(
+            initial
+                .iter()
+                .map(paint_payload)
+                .eq(rt.instances.iter().map(paint_payload))
+        );
+        let presented = rt.state.state.meter.snapshot().frames;
+        for _ in 0..100 {
+            assert!(!keyboard_frame(&mut rt, 0.032));
+        }
+        assert_eq!(rt.state.state.meter.snapshot().frames, presented);
+        assert!(rt.wake_deadline().is_some()); // Input polling, not an animation.
+    }
+    #[test]
+    fn modifiers_block_every_function_key_and_only_declared_keys_are_read() {
+        for modifier in [0x10, 0x11, 0x12, 0x5b, 0x5c] {
+            let mut seen = Vec::new();
+            assert_eq!(
+                pressed_keys(1 << 6, |vk| {
+                    seen.push(vk);
+                    vk == modifier || vk == 0x76
+                }),
+                0
+            );
+            assert!(!seen.contains(&0x76));
+        }
+        for key in 0..12 {
+            let mut seen = Vec::new();
+            assert_eq!(
+                pressed_keys(1 << key, |vk| {
+                    seen.push(vk);
+                    vk == 0x70 + key
+                }),
+                1 << key
+            );
+            assert_eq!(seen, [0x10, 0x11, 0x12, 0x5b, 0x5c, 0x70 + key]);
+        }
+        let (_, mut rt) = keyboard_runtime("f7");
+        keyboard_frame(&mut rt, 0.0);
+        rt.state.down = 1 << 6;
+        rt.state.modifier = Some(0x11);
+        assert!(!keyboard_frame(&mut rt, 0.032));
+        rt.state.modifier = None;
+        assert!(keyboard_frame(&mut rt, 0.032)); // GPUI also sees this rising filtered edge.
+    }
+    #[test]
+    fn two_instances_share_the_key_but_a_new_instance_has_its_own_edge() {
+        let (bus, mut rt) = keyboard_runtime("f7");
+        rt.state.down = 1 << 6; // Already held when the first widget appears.
+        assert!(keyboard_frame(&mut rt, 0.0));
+        let first = rt.instances.len();
+        let mut frames = (**rt.state.state.frames.as_ref().unwrap()).clone();
+        let mut second = frames.layout.instances[0].clone();
+        second.id = "second".into();
+        second.x = 250.0;
+        Arc::make_mut(&mut frames.layout).instances.push(second);
+        frames.visible.insert("second".into());
+        frames
+            .photos
+            .insert("second".into(), frames.photos["r"].clone());
+        bus.publish_frames(Arc::new(frames));
+        assert!(keyboard_frame(&mut rt, 0.032));
+        // Both paint the same toggled Numbers view; a global edge would leave the new one in Car.
+        assert_eq!(rt.instances.len(), 2 * first);
+        let builds = rt.stats.commits;
+        assert!(!keyboard_frame(&mut rt, 0.032));
+        assert_eq!(rt.stats.commits, builds);
+        rt.state.down = 0;
+        keyboard_frame(&mut rt, 0.032);
+        rt.state.down = 1 << 6;
+        assert!(keyboard_frame(&mut rt, 0.032));
+        assert_eq!(rt.stats.commits, builds + 1); // One build for two events.
+    }
+    #[test]
+    fn no_shortcut_or_hidden_removed_denied_or_offscreen_widgets_leave_no_clock_or_reads() {
+        for key in ["", "f0", "f13", "x"] {
+            let (_, mut rt) = keyboard_runtime(key);
+            keyboard_frame(&mut rt, 0.0);
+            keyboard_frame(&mut rt, 1.0);
+            assert_eq!(rt.state.reads, 0);
+            assert!(rt.wake_deadline().is_none());
+        }
+        for action in 0..5 {
+            let (bus, mut rt) = keyboard_runtime("f7");
+            keyboard_frame(&mut rt, 0.0);
+            let reads = rt.state.reads;
+            let mut frames = (**rt.state.state.frames.as_ref().unwrap()).clone();
+            match action {
+                0 => frames.shown = false,
+                1 => frames.visible.clear(),
+                2 => Arc::make_mut(&mut frames.layout).instances.clear(),
+                3 => bus.publish_access(Access::at(&Policy::default(), u64::MAX)),
+                _ => Arc::make_mut(&mut frames.layout).instances[0].x = 2000.0,
+            }
+            bus.publish_frames(Arc::new(frames));
+            keyboard_frame(&mut rt, 0.032);
+            keyboard_frame(&mut rt, 1.0);
+            assert_eq!(rt.state.reads, reads, "action={action}");
+            assert!(rt.state.state.next_shortcut_poll.is_none());
+            assert!(rt.wake_deadline().is_none(), "action={action}");
+        }
     }
     #[test]
     fn unchanged_photos_and_hidden_fields_produce_no_image_for_thirty_seconds() {

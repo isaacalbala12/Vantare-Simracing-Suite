@@ -3230,3 +3230,11 @@ Plan: cita 1 OBLIGATORIA ~15 min de carrera IA multiclase desde parrilla, boxes,
 
 ### Delta revisión Sonnet de #2450
 OBSERVAR reutiliza parser PresentMon del kit en modo solo conteo, con CPUStartQPC + MsCPUBusy y cabecera real conservada sin filas privadas. El modo completo anterior permanece estricto. Guard probado directamente; identidad campo a campo e independiente del orden; Waiting rechaza reloj replay; fechas Windows recortadas explícitamente a microsegundos. Inventario renombra la ventana a frames_5_55s_desde_primer_evento y explica su origen distinto; el operador registra desfase núcleo→primer evento. Host frío por ronda documentado; KeyError de inventario informa campo requerido. Sin PC/GPU ni cambios a #2004.
+
+## VANTA-144 · Atajos del host Rune (#2430)
+
+Tras calendario #2464: Widget::shortcut vacío por defecto; Daños visual alterna
+su vista. Flanco por Entry, lector Win32 y reloj de 32 ms solo con teclas activas.
+Sin teclas/instancias visibles/autorizadas no se sondea ni se programa ese reloj.
+Tests CPU inyectan teclado y tiempo; sonido/calendario y monitores se conservan.
+PARIDAD documenta primer plano heredado y CPU pendiente del PC. Head/checks en PR.

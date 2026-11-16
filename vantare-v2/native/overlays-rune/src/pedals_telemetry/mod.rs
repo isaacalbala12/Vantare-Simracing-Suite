@@ -325,15 +325,18 @@ mod tests {
     #[test]
     fn attached_wheel_draws_the_svg_with_quantized_rotation_and_stale_opacity() {
         let _fonts = rune::text::with_families("Inter", "Inter");
-        let waker: rune::Waker = Arc::new(|| {});
+        let (ready, loaded) = std::sync::mpsc::channel();
+        let waker: rune::Waker = Arc::new(move || {
+            let _ = ready.send(());
+        });
         let cache = Arc::new(rune::ImageCache::new(waker));
-        assert_eq!(
-            cache
-                .svg(wheels::svg("generic"), 40.0, 1.0)
-                .wait()
-                .expect("volante"),
-            [40, 40]
-        );
+        // Keep the handle: the cache holds Weak entries and would reload a dropped image.
+        let wheel_image = cache.svg(wheels::svg("generic"), 40.0, 1.0);
+        assert_eq!(wheel_image.wait().expect("volante"), [40, 40]);
+        // The waker follows Pixels publication; the timeout only bounds a broken worker.
+        loaded
+            .recv_timeout(std::time::Duration::from_secs(10))
+            .expect("píxeles del volante publicados");
 
         let mut snapshot = live_snapshot();
         snapshot
@@ -360,9 +363,10 @@ mod tests {
         let mut runtime = make_runtime(widget);
         runtime.state.next = Some(snapshot.clone());
         assert!(frame(&mut runtime, 0.0), "primera imagen");
+        let with = runtime.instances.len();
         assert!(
-            runtime.instances.len() > without,
-            "la imagen del volante añade píxeles"
+            with > without,
+            "la imagen del volante añade píxeles: con={with}, sin={without}"
         );
         let elements = runtime.elements();
         let wheel = elements

@@ -1,6 +1,6 @@
 //! Relative scene shared by both Looks: domain rows and semantic, sampled motion.
 //! The canonical layout supplies coordinates; no Rune values, colors or window.
-use super::motion::Tween;
+use crate::motion::Tween;
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Arc,

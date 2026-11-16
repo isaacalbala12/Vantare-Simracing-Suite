@@ -1,6 +1,5 @@
 //! Relative projection/controller. Both Looks consume the same sampled scene.
 mod layout;
-mod motion;
 mod render;
 pub mod scene;
 use rune::El;

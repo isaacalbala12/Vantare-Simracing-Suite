@@ -3,9 +3,9 @@ export const canvasText = {
   collapseList: "Contraer lista de widgets",
   view: "Vista",
   openMini: "Abrir el lienzo desde la miniatura",
-  monitorNotDetected: "Monitor no detectado · 1920 × 1080",
-  monitorNotDetectedHelp:
-    "Vantare no ha detectado tu monitor. El lienzo queda en solo lectura hasta que lo detecte.",
+  noCanvasTitle: "No se puede abrir el lienzo ahora",
+  noCanvasHelp:
+    "Puede que Vantare no haya detectado tu monitor o que el diseño no se pueda leer.",
   ultrawide: "Ultrapanorámico",
   widescreen: "Panorámico",
   tools: "Herramientas del lienzo",

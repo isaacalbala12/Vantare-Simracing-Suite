@@ -7,6 +7,9 @@ import type { ReturnTypeOfStudioFocus } from "./StudioFocus";
 export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
   const view = model.state.view;
   const unavailable = !view?.canvas || view.state !== "ready";
+  const noCanvas =
+    view?.monitor === null &&
+    (view.state === "protected" || view.state === "missing");
   return (
     <section
       className="v-focus-stage v-studio-canvas-stage"
@@ -25,13 +28,19 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
         )}
         <div className="v-canvas-empty-message">
           <h2>
-            {unavailable
-              ? view?.state === "protected"
-                ? studioText.protected
-                : t.unavailable
-              : t.emptyTitle}
+            {noCanvas
+              ? t.noCanvasTitle
+              : unavailable
+                ? view?.state === "protected"
+                  ? studioText.protected
+                  : t.unavailable
+                : t.emptyTitle}
           </h2>
-          {!unavailable && <p>{model.blocked ? t.readOnly : t.emptyHelp}</p>}
+          {noCanvas ? (
+            <p>{t.noCanvasHelp}</p>
+          ) : (
+            !unavailable && <p>{model.blocked ? t.readOnly : t.emptyHelp}</p>
+          )}
           <Button
             variant={unavailable ? "neutral" : "primary"}
             disabled={!unavailable && model.blocked}

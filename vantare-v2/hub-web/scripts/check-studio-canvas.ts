@@ -404,31 +404,27 @@ export async function checkStudioCanvas(
       });
       await studioCanvasScenes[scene].prepare(page);
       if (scene.endsWith("-missing")) {
-        const button = page.getByRole("button", {
-          name: t.monitorNotDetected,
-          exact: true,
-        });
-        assert.equal(await button.isDisabled(), true);
-        const description = await button.getAttribute("aria-describedby");
-        assert.ok(description);
+        await page
+          .getByRole("heading", { name: t.noCanvasTitle, exact: true })
+          .waitFor();
         assert.equal(
-          await page.evaluate(
-            (id) => document.getElementById(id)?.textContent,
-            description,
-          ),
-          t.monitorNotDetectedHelp,
+          await page.getByText(t.noCanvasHelp, { exact: true }).count(),
+          1,
         );
         assert.equal(await page.getByRole("radiogroup").count(), 0);
+        assert.equal(
+          await page
+            .getByRole("button", { name: t.resolution, exact: true })
+            .count(),
+          0,
+        );
+        assert.equal(await page.locator(".v-studio-state-feedback").count(), 0);
         assert.equal(
           await page
             .locator(".v-studio-canvas-plane, .v-canvas-empty-plane")
             .count(),
           0,
         );
-        await page
-          .getByRole("tooltip")
-          .filter({ hasText: t.monitorNotDetectedHelp })
-          .waitFor();
       } else {
         const monitor = studioMonitorCases.find(
           (sample) => sample.name === "native",
@@ -442,6 +438,33 @@ export async function checkStudioCanvas(
           ),
         );
         assert.equal(await first.getAttribute("aria-checked"), "true");
+        const rows = page.getByRole("radio");
+        assert.equal(
+          await rows.count(),
+          4,
+          "matching preset is not duplicated",
+        );
+        for (const row of await rows.all()) {
+          const box = await row.boundingBox();
+          assert.ok(
+            box && Math.abs(box.height - 36) <= 1,
+            "compact option is one 36px row",
+          );
+        }
+        const trigger = await page
+          .getByRole("button", { name: t.resolution, exact: true })
+          .boundingBox();
+        const panel = await page.locator(".v-canvas-resolutions").boundingBox();
+        assert.ok(trigger && panel);
+        assert.ok(panel.y + panel.height <= trigger.y, "panel opens upwards");
+        assert.ok(
+          Math.abs(panel.x - trigger.x) <= 1,
+          "panel aligns to its button",
+        );
+        assert.ok(
+          panel.height <= 230,
+          "panel does not cover the canvas centre",
+        );
       }
       assert.equal(
         await page.evaluate(

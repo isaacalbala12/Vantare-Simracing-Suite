@@ -18,13 +18,7 @@ for (const sample of studioMonitorCases) {
       />,
     );
     if (!sample.value.monitor) {
-      const button = screen.getByRole("button", { name: t.monitorNotDetected });
-      expect(button.hasAttribute("disabled")).toBe(true);
-      const description = button.getAttribute("aria-describedby");
-      expect(
-        description && document.getElementById(description)?.textContent,
-      ).toBe(t.monitorNotDetectedHelp);
-      fireEvent.click(button);
+      expect(screen.queryByRole("button")).toBeNull();
       expect(screen.queryByRole("radiogroup")).toBeNull();
       expect(onChange).not.toHaveBeenCalled();
       return;
@@ -68,9 +62,43 @@ it("does not retain an earlier monitor after disconnection", async () => {
       onChange={onChange}
     />,
   );
-  const button = screen.getByRole("button", { name: t.monitorNotDetected });
-  expect(button.hasAttribute("disabled")).toBe(true);
+  expect(screen.queryByRole("button")).toBeNull();
   expect(screen.queryByRole("radiogroup")).toBeNull();
-  fireEvent.click(button);
   expect(onChange).not.toHaveBeenCalled();
+});
+
+it("deduplicates a custom canvas equal to the monitor and returns to monitor once", async () => {
+  const onChange = vi.fn();
+  render(
+    <CanvasResolution
+      canvas={{ width: 2560, height: 1440, source: "custom" }}
+      monitor={{ width: 2560, height: 1440 }}
+      enabled
+      onChange={onChange}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: t.resolution }));
+  const rows = await screen.findAllByRole("radio");
+  expect(rows).toHaveLength(4);
+  expect(
+    rows.filter((row) => row.textContent?.includes("2560 × 1440")),
+  ).toHaveLength(1);
+  expect(rows[0].getAttribute("aria-checked")).toBe("true");
+  fireEvent.click(rows[0]);
+  expect(onChange.mock.calls).toEqual([[{ kind: "monitor" }]]);
+});
+it("keeps a non-preset real monitor first without inventing another preset", async () => {
+  render(
+    <CanvasResolution
+      canvas={{ width: 3000, height: 2000, source: "monitor" }}
+      monitor={{ width: 3000, height: 2000 }}
+      enabled
+      onChange={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: t.resolution }));
+  const rows = await screen.findAllByRole("radio");
+  expect(rows).toHaveLength(5);
+  expect(rows[0].textContent).toBe("Tu monitor · 3000 × 2000");
+  expect(rows[0].getAttribute("aria-checked")).toBe("true");
 });

@@ -24,6 +24,10 @@ export function StudioFocus() {
   const model = useStudioFocus();
   const { state, selected, catalogOpen } = model;
   const view = state.view;
+  const unavailableCanvas =
+    state.canvasMode &&
+    view?.monitor === null &&
+    (view.state === "protected" || view.state === "missing");
   const navigate = useUi((value) => value.navigate);
   const canvasSidebar = useUi((value) => value.canvasSidebar);
   const listCollapsed = useUi((value) => value.studioListCollapsed);
@@ -69,7 +73,7 @@ export function StudioFocus() {
           ) : !state.failure ? (
             <span className="v-skeleton" aria-hidden="true" />
           ) : null}
-          <StudioFeedback model={model} />
+          {!unavailableCanvas && <StudioFeedback model={model} />}
           {state.canvasMode && view ? (
             selected ? (
               <CanvasStage

@@ -1,14 +1,13 @@
 import { Popover } from "@base-ui/react/popover";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { useId, useState } from "react";
+import { useState } from "react";
 import type {
   CanvasChoice,
   StudioView,
 } from "../../../contract/generated/studio";
 import { canvasText as t } from "../../i18n/studio-canvas";
 import { Button } from "../Button";
-import { DisabledHint } from "./DisabledHint";
 import "../performance.css";
 
 export const canvasPresets = [
@@ -29,30 +28,17 @@ export function CanvasResolution({
   onChange: (choice: CanvasChoice) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const description = useId();
-  if (!monitor)
-    return (
-      <>
-        <DisabledHint label={t.monitorNotDetectedHelp}>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled
-            aria-describedby={description}
-          >
-            {t.monitorNotDetected}
-          </Button>
-        </DisabledHint>
-        <span id={description} className="v-canvas-accessible-help">
-          {t.monitorNotDetectedHelp}
-        </span>
-      </>
-    );
+  if (!monitor) return null;
   const size = canvas?.source === "custom" ? canvas : monitor;
+  const sameMonitor =
+    canvas?.width === monitor.width && canvas?.height === monitor.height;
   const value =
-    canvas?.source === "custom"
+    canvas?.source === "custom" && !sameMonitor
       ? `${canvas.width}x${canvas.height}`
       : "monitor";
+  const monitorPreset = canvasPresets.find(
+    ([w, h]) => w === monitor.width && h === monitor.height,
+  );
   return (
     <Popover.Root
       modal={false}
@@ -70,7 +56,12 @@ export function CanvasResolution({
         {`${size.width} × ${size.height} ▾`}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner className="v-positioner" sideOffset={8}>
+        <Popover.Positioner
+          className="v-positioner"
+          side="top"
+          align="start"
+          sideOffset={8}
+        >
           <Popover.Popup
             className="v-popover v-canvas-resolutions"
             aria-label={t.resolution}
@@ -100,21 +91,30 @@ export function CanvasResolution({
                 value="monitor"
                 className="v-performance-level"
                 aria-disabled={!enabled}
+                onClick={() => {
+                  if (enabled && canvas?.source === "custom" && sameMonitor)
+                    onChange({ kind: "monitor" });
+                }}
               >
-                <strong>{t.monitor}</strong>
-                <small>{`${monitor.width} × ${monitor.height}`}</small>
+                <strong>
+                  {monitorPreset
+                    ? `${monitor.width} × ${monitor.height} · ${monitor.width / monitor.height > 2 ? t.ultrawide : t.widescreen}`
+                    : `${t.monitor} · ${monitor.width} × ${monitor.height}`}
+                </strong>
+                {monitorPreset && <small>{t.monitor}</small>}
               </Radio.Root>
-              {canvasPresets.map(([w, h]) => (
-                <Radio.Root
-                  key={w}
-                  value={`${w}x${h}`}
-                  className="v-performance-level"
-                  aria-disabled={!enabled}
-                >
-                  <strong>{`${w} × ${h}`}</strong>
-                  <small>{w / h > 2 ? t.ultrawide : t.widescreen}</small>
-                </Radio.Root>
-              ))}
+              {canvasPresets
+                .filter(([w, h]) => w !== monitor.width || h !== monitor.height)
+                .map(([w, h]) => (
+                  <Radio.Root
+                    key={w}
+                    value={`${w}x${h}`}
+                    className="v-performance-level"
+                    aria-disabled={!enabled}
+                  >
+                    <strong>{`${w} × ${h} · ${w / h > 2 ? t.ultrawide : t.widescreen}`}</strong>
+                  </Radio.Root>
+                ))}
             </RadioGroup>
           </Popover.Popup>
         </Popover.Positioner>

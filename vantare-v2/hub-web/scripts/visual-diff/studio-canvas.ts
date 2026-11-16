@@ -70,18 +70,8 @@ for (const scene of [
         .click();
       await page.getByRole("button", { name: t.open, exact: true }).click();
       if (scene.endsWith("-missing")) {
-        const button = page.getByRole("button", {
-          name: t.monitorNotDetected,
-          exact: true,
-        });
-        await button.waitFor();
         await page
-          .locator(".v-studio-disabled-hint")
-          .filter({ has: button })
-          .hover();
-        await page
-          .getByRole("tooltip")
-          .filter({ hasText: t.monitorNotDetectedHelp })
+          .getByRole("heading", { name: t.noCanvasTitle, exact: true })
           .waitFor();
       } else {
         await page

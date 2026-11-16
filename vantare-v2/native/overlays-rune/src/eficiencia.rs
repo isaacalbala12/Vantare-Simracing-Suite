@@ -155,3 +155,23 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod width_tests {
+    use super::*;
+
+    #[test]
+    fn width_adds_the_tracking_of_every_character_like_gpui() {
+        let _fonts = rune::text::TextSystem::new(FONTS, ("Inter W400", "Inter W400"));
+        let plain = font(14.0, 600, 0.0);
+        let tracked = font(14.0, 600, 0.14);
+        let value = "SIN DATOS";
+        let chars = value.chars().count() as f32;
+        let delta = width(value, tracked) - width(value, plain);
+        let expected = chars * 0.14 * 14.0;
+        assert!(
+            (delta - expected).abs() <= 0.5,
+            "Rune mide {delta} px de tracking; GPUI suma {expected} px ({chars} caracteres)"
+        );
+    }
+}

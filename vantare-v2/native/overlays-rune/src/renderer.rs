@@ -38,7 +38,9 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
             Some(<crate::multiclass_relative::MulticlassRelative as Widget>::new)
         }
         Settings::Pedals(_) => Some(<Pedals as Widget>::new),
-        Settings::FuelStrategy(s) if s.design_system == Look::Vantare => {
+        Settings::FuelStrategy(s)
+            if matches!(s.design_system, Look::Vantare | Look::Eficiencia) =>
+        {
             Some(<crate::fuel::Fuel as Widget>::new)
         }
         Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),

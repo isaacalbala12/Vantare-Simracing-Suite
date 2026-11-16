@@ -728,7 +728,11 @@ it("keeps typed secrets when an existing send blocks another form submission", a
   await act(async () => rejectMode?.(new HostFailure({ kind: "busy" })));
   await screen.findByText(text.busy);
   expect(password.value).toBe(marker);
-  await user.click(screen.getByRole("button", { name: text.submit.enter }));
+  // The busy callout lands before AccountState's recovery read settles, so the
+  // submit button still says "waiting" for a moment: wait for the form (#2480).
+  await user.click(
+    await screen.findByRole("button", { name: text.submit.enter }),
+  );
   await screen.findByText(text.consent);
   expect(password.value).toBe("");
 });

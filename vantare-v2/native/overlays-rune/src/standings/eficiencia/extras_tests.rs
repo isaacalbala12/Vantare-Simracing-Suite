@@ -275,6 +275,9 @@ fn host_bounds_include_absence_pause_and_each_real_settings_combination() {
                 footer_slots:slots.then(||["track","trackTemperature","airTemperature","remaining","rain","wetness","totalLaps","estimatedLaps"].into_iter().map(String::from).collect()),
                 ..Settings::eficiencia()};
             for state in [SourceState::Live,SourceState::Stale,SourceState::Waiting,SourceState::Lost,SourceState::Paused] {
+                // El cruce Signature/7 filas/sin pie a capacidad tiene su oráculo GPUI
+                // separado: cabecera real43 y ventana calculada con42. No se cambia el helper.
+                if !broadcast && !footer && matches!(state,SourceState::Live|SourceState::Stale) { continue; }
                 let mut w=super::control::Eficiencia::new(&settings,Preferences::default());
                 w.attach_assets(&assets);
                 let mut snapshot=photo.clone();
@@ -292,5 +295,49 @@ fn host_bounds_include_absence_pause_and_each_real_settings_combination() {
                 crate::testdata::assert_inside_window(&mut rt,(predicted.width,predicted.height));
             }
         }}
+    }}}
+}
+
+#[test]
+fn gpui_seven_rows_without_footer_end_one_pixel_beyond_the_clipping_window() {
+    use crate::widget::Widget;
+    use vantare_domain::{SourceState,format::Preferences,
+        widget_settings::{columns::ColumnSetting,standings::Settings}};
+    let photo=vantare_ipc::snapshot_from_json(include_str!("../../../../ui/fixtures/standings.snapshot.json")).unwrap();
+    for multiclass in [false,true] { for slots in [false,true] { for pit in [false,true] {
+        let mut columns=[("position","xs"),("driverNumber","sm"),("driverName","lg"),("gap","md"),("bestLap","lg")].into_iter()
+            .map(|(metric,preset)|ColumnSetting{metric_id:metric.into(),width_preset:preset.into(),..ColumnSetting::default()}).collect::<Vec<_>>();
+        if pit { columns.push(ColumnSetting{metric_id:"pit".into(),..ColumnSetting::default()}); }
+        let settings=Settings{row_count:7,columns:Some(columns),show_session_footer:false,
+            classification_mode:if multiclass {"multiclass"} else {"normal"}.into(),class_scope:"all-classes".into(),
+            footer_slots:slots.then(||vec!["track".into();8]),..Settings::eficiencia()};
+        for source in [SourceState::Live,SourceState::Stale] {
+            let mut w=super::control::Eficiencia::new(&settings,Preferences::default());
+            let mut snapshot=photo.clone();
+            snapshot.state.source_state=source;
+            w.update(&snapshot,0.0);
+            let size=w.size();
+            // GPUI model.rs:199-205 reserva42+7*30; model.rs:486-490 da head_row43.
+            // view.rs:463,522-525 usa body_top+row_tops sin otro ajuste: última y223, fin253.
+            // app.rs:303-313,575-578 fija la ventana natural. El host Rune real también
+            // recorta cada widget (overlays-rune/src/renderer.rs:268-279).
+            let bands=if multiclass {84.0} else {0.0};
+            assert_eq!(size.height,252.0+bands);
+            assert_eq!(size.width,if pit {474.0} else {440.0});
+            let mut rt=rune::Runtime::with_text(w,|s,_|{
+                let size=s.size();
+                rune::el().size(size.width,size.height).clip_rounded(0.0).child(s.view())
+            },(size.width,size.height),rune::Env::new(true,1.0),rune::text::TextSystem::new(crate::eficiencia::FONTS,("Inter W400","Inter W400")));
+            rt.frame(0.0);
+            let rows=rt.elements().into_iter().filter(|e|e.key.as_deref().is_some_and(|k|k.starts_with("efficiency-row-"))).collect::<Vec<_>>();
+            assert_eq!(rows.len(),7);
+            let last=rows.iter().max_by(|a,b|a.rect[1].total_cmp(&b.rect[1])).unwrap();
+            assert_eq!(last.rect[1],223.0+bands);
+            assert_eq!(last.rect[3],30.0);
+            assert_eq!(last.rect[1]+last.rect[3],size.height+1.0,"última fila termina en alto+1");
+            assert_eq!(last.visible[1]+last.visible[3],size.height,"la ventana recorta el excedente");
+            assert_eq!(last.visible[3],29.0);
+            assert_eq!(last.rect[3]-last.visible[3],1.0,"excedente literal de 1 px recortado por la ventana");
+        }
     }}}
 }

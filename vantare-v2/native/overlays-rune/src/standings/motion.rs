@@ -240,9 +240,6 @@ impl Motion {
     }
     /// Eventos de la foto nueva: destello/chip/barrido y objetivos por fila.
     pub fn events(&mut self, prev: &Plan, next: &Plan, clock: f64) {
-        if self.reduced {
-            return;
-        }
         let visible: BTreeSet<u32> = next.rows.iter().map(|row| row.id.0).collect();
         for event in derive_events(prev, next, next.board.content.lap_visible) {
             let priority = event.kind.priority();
@@ -264,7 +261,7 @@ impl Motion {
             );
             self.flash.remove(&event.row_id);
             self.chip.remove(&event.row_id);
-            if matches!(event.kind, EventKind::Position) {
+            if matches!(event.kind, EventKind::Position) && !self.reduced {
                 self.flash.insert(
                     event.row_id,
                     tween(0.0, 1.0, clock, 0.500, motion::EASE_OUT),
@@ -307,7 +304,9 @@ impl Motion {
                 None
             };
             if let Some(kind) = kind {
-                self.flash.insert(id, tween(1.0, 0.0, clock, 1.400, EASE));
+                if !self.reduced {
+                    self.flash.insert(id, tween(1.0, 0.0, clock, 1.400, EASE));
+                }
                 self.notices.entry(id).or_insert(Notice {
                     kind: EventKind::Position,
                     start: clock,
@@ -550,7 +549,7 @@ fn retarget(
     curve: [f32; 4],
 ) {
     map.entry(id)
-        .or_insert_with(|| Tween::fixed(value).with_curve(curve))
+        .or_insert_with(|| Tween::fixed(0.0).with_curve(curve))
         .retarget(value, clock, duration);
 }
 

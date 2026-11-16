@@ -66,7 +66,8 @@ fn a_position_change_lights_the_chip_with_the_gpui_150_180_times() {
     assert_eq!(start.rows[&1].flash.map(|(_, a)| a), Some(0.0));
     let half = motion.sample(1.0 + 0.090);
     let chip = half.rows[&1].chip.expect("chip").1;
-    assert!((chip - 0.5).abs() < 1e-3, "180 ms EASE a mitad: {chip}");
+    let expected = rune::Easing::cubic(0.25, 0.1, 0.25, 1.0).eval(0.5);
+    assert!((chip - expected).abs() < 1e-3, "180 ms EASE a mitad: {chip}");
     assert!(half.rows[&1].flash.expect("flash").1 > 0.0);
 }
 
@@ -126,8 +127,8 @@ fn the_sweep_uses_800_ms_and_the_notice_expires_at_1200() {
     let start = motion.sample(1.0);
     assert_eq!(
         start.rows[&1].sweep.map(|(session, _, _)| session),
-        Some(false),
-        "mejor personal"
+        Some(true),
+        "mejor de sesión"
     );
     let middle = motion.sample(1.0 + 0.400);
     assert!(middle.rows[&1].sweep.is_some());
@@ -147,7 +148,11 @@ fn reduced_motion_snaps_effects_and_keeps_only_the_expiry_wake() {
     motion.update(&[(&display_row(1), 0.0)], 0.0);
     motion.events(&before, &after, 1.0);
     let sample = motion.sample(1.0);
-    assert!(sample.rows[&1].chip.is_none(), "sin chip con reducido");
+    assert_eq!(
+        sample.rows[&1].chip.map(|(places, alpha)| (places, alpha)),
+        Some((2, 1.0)),
+        "chip final, sin animar"
+    );
     assert_eq!(motion.next_wake(1.0), Some(1.2), "un solo despertar");
     assert_eq!(motion.next_wake(1.2), None);
 }

@@ -453,6 +453,6 @@ fn read_only_helper_reports_missing_incompatible_and_unreadable_codes() {
         let frame: Value = serde_json::from_slice(output.stdout.trim_ascii()).unwrap();
         assert_eq!(frame[0], "error");
         assert_eq!(frame[1], expected);
-        assert!(!frame[2].as_str().unwrap().is_empty());
+        assert_ne!(frame[2].as_str().unwrap(), "");
     }
 }

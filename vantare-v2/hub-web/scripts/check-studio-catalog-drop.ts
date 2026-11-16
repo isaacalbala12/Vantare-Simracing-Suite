@@ -106,7 +106,7 @@ export async function checkStudioCatalogDrop(
       "catalogue add after release",
     );
     assert.deepEqual((await adds())[0].at, { x: 885, y: 522 });
-    await page.getByRole("button", { name: /^Delta 2, / }).waitFor();
+    await page.getByRole("button", { name: "Delta 2", exact: true }).waitFor();
     assert.equal(
       await page
         .getByRole("complementary", { name: studioText.catalog, exact: true })
@@ -161,7 +161,7 @@ export async function checkStudioCatalogDrop(
       "first catalogue widget",
     );
     assert.ok((await adds())[0].at);
-    await page.getByRole("button", { name: /^Delta, / }).waitFor();
+    await page.getByRole("button", { name: "Delta", exact: true }).waitFor();
     await setup("studio-canvas", true);
     await start();
     await page.mouse.up();

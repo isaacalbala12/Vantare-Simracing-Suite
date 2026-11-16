@@ -49,7 +49,9 @@ export const studioCatalogDropScenes: Record<string, VisualScene> =
           }
           if (state === "added") {
             await page.mouse.up();
-            await page.getByRole("button", { name: /^Delta 2, / }).waitFor();
+            await page
+              .getByRole("button", { name: "Delta 2", exact: true })
+              .waitFor();
           }
         },
       } satisfies VisualScene,

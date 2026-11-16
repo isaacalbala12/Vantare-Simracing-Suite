@@ -776,9 +776,7 @@ it("previews the catalogue silhouette and magnets without writing, then adds onc
       screen.queryByRole("complementary", { name: studioText.catalog }),
     ).toBeNull(),
   );
-  expect(
-    await screen.findByRole("button", { name: /^Delta 2, / }),
-  ).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Delta 2" })).toBeTruthy();
 });
 it.each(["outside", "covered"])(
   "does not add when releasing on an %s point",
@@ -879,5 +877,5 @@ it("can drop the first widget onto an empty canvas", async () => {
   fireEvent.pointerUp(handle, dropPoint());
   await waitFor(() => expect(additions(spy)).toHaveLength(1));
   expect(additions(spy)[0]).toHaveProperty("at");
-  expect(await screen.findByRole("button", { name: /^Delta, / })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Delta" })).toBeTruthy();
 });

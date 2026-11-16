@@ -221,3 +221,10 @@ La entrada de handoff de E5 se entrega en el cuerpo del futuro PR, por orden de 
 ## Erratas numéricas del plan/inventario E5
 
 - Inventario decía FLIP(0,5)≈0,93; GPUI da 0,94859246 con [0,22;0,9;0,3;1] y la bisección de motion.rs:27–53.
+
+Verificación local E5 (Mac, Runtime CPU, dos ranuras como máximo): fmt --check,
+clippy --all-targets -- -D warnings, 585 tests lib + 3 bin y build del ejecutable
+sin ejecutarlo. Política de distribución compilada con debug-assertions=no:
+5 tests PASS. Clasificadores/tokens/licencias: 51 tests Python, generador --check
+y auditoría de dependencias PASS. Comparación física y CI Windows pendientes.
+E5 permanece local hasta la fusión de E4; el target propio se borra al terminar.

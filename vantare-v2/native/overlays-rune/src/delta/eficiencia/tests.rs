@@ -40,11 +40,13 @@ fn both_templates_keep_the_frozen_box_and_rebuild_on_change() {
     for template in ["instrument", "capsule"] {
         let widget = delta(&settings(template));
         assert_eq!((widget.size().width, widget.size().height), (280.0, 96.0));
-        assert!(!widget.configured(
+        assert!(!<DeltaEficiencia as Widget>::configured(
+            &widget,
             &WidgetSettings::Delta(settings("other")),
             Preferences::default()
         ));
-        assert!(widget.configured(
+        assert!(<DeltaEficiencia as Widget>::configured(
+            &widget,
             &WidgetSettings::Delta(settings(template)),
             Preferences::default()
         ));

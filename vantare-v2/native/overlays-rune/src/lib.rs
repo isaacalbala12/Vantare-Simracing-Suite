@@ -11,6 +11,7 @@ mod topologia_windows;
 pub mod feed;
 pub mod scene;
 
+pub mod fastest_lap;
 mod motion;
 mod multiclass_relative;
 mod radar;

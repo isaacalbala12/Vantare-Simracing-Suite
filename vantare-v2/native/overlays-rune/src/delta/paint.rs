@@ -116,7 +116,10 @@ impl Painter {
                 .pin(Some(x), Some(y), None, None);
         }
         // Sobre el juego, GPUI dibuja cuatro sombras y una copia baja.
-        let mut node = el().key(name).size(width, height).pin(Some(x), Some(y), None, None);
+        let mut node = el()
+            .key(name.clone())
+            .size(width, height)
+            .pin(Some(x), Some(y), None, None);
         for (index, (dx, dy, strength)) in [
             (-1.0f32, 0.0f32, 0.35f32),
             (1.0, 0.0, 0.35),

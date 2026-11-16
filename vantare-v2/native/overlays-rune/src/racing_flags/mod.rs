@@ -8,7 +8,7 @@ pub mod scene;
 use crate::widget::{Update, Widget};
 use render::Painter;
 use vantare_domain::{
-    FlagKind, Snapshot, SourceState,
+    FlagKind, PenaltyKind, Snapshot, SourceState,
     format::Preferences,
     geometry::Size,
     racing_flags::{self, ViewModel},
@@ -121,7 +121,7 @@ impl RacingFlags {
 }
 
 fn project(settings: &Config, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-    racing_flags::project_with_config(
+    racing_flags::project_with_penalty(
         snapshot,
         prefs,
         racing_flags::Config {
@@ -130,7 +130,31 @@ fn project(settings: &Config, snapshot: &Snapshot, prefs: Preferences) -> ViewMo
             show_sector_flags: settings.show_sector_flags,
             hide_when_green: settings.hide_when_green,
         },
+        demo_penalty(snapshot),
     )
+}
+
+/// Penaltis de la demo del taller, en el orden de su secuencia (GPUI). El test
+/// los ancla al fixture: si gana o pierde entradas, falla.
+const DEMO_PENALTIES: [Option<PenaltyKind>; 4] = [
+    None,
+    Some(PenaltyKind::DriveThrough),
+    Some(PenaltyKind::StopGo),
+    Some(PenaltyKind::Disqualified),
+];
+
+/// Solo fotos exactas de la demo; nunca aporta sanciones a live.
+fn demo_penalty(snapshot: &Snapshot) -> Option<PenaltyKind> {
+    use std::sync::OnceLock;
+    static PHOTOS: OnceLock<Vec<Snapshot>> = OnceLock::new();
+    let photos = PHOTOS.get_or_init(|| {
+        vantare_ipc::snapshots_from_json(include_str!(
+            "../../../ui/fixtures/racing-flags-design-system.sequence.json"
+        ))
+        .unwrap_or_default()
+    });
+    let index = photos.iter().position(|photo| photo == snapshot)?;
+    DEMO_PENALTIES.get(index).copied().flatten()
 }
 
 impl Widget for RacingFlags {
@@ -264,6 +288,55 @@ mod tests {
             .iter()
             .find(|element| element.key.as_deref() == Some(key))
             .unwrap_or_else(|| panic!("falta el elemento {key}"))
+    }
+
+    #[test]
+    fn the_demo_penalties_const_matches_the_fixture_entry_by_entry() {
+        let text =
+            include_str!("../../../ui/fixtures/racing-flags-design-system.penalties.json").trim();
+        let inner = text
+            .strip_prefix('[')
+            .and_then(|value| value.strip_suffix(']'))
+            .expect("array de penaltis");
+        let entries: Vec<&str> = inner.split(',').map(str::trim).collect();
+        assert_eq!(
+            entries.len(),
+            DEMO_PENALTIES.len(),
+            "el fixture ganó o perdió entradas"
+        );
+        for (entry, penalty) in entries.iter().zip(DEMO_PENALTIES) {
+            let expected = match penalty {
+                None => "null",
+                Some(PenaltyKind::DriveThrough) => "\"drive-through\"",
+                Some(PenaltyKind::StopGo) => "\"stop-go\"",
+                Some(PenaltyKind::Disqualified) => "\"disqualified\"",
+            };
+            assert_eq!(*entry, expected);
+        }
+    }
+
+    #[test]
+    fn demo_photos_get_their_penalty_and_live_photos_never_do() {
+        let photos = vantare_ipc::snapshots_from_json(include_str!(
+            "../../../ui/fixtures/racing-flags-design-system.sequence.json"
+        ))
+        .expect("secuencia canónica");
+        assert_eq!(photos.len(), DEMO_PENALTIES.len());
+        for (photo, penalty) in photos.iter().zip(DEMO_PENALTIES) {
+            assert_eq!(demo_penalty(photo), penalty);
+        }
+        let prefs = Preferences::default();
+        assert_eq!(
+            project(&Config::default(), &photos[1], prefs).penalty,
+            Some(PenaltyKind::DriveThrough)
+        );
+        assert_eq!(
+            project(&Config::default(), &photos[3], prefs).penalty,
+            Some(PenaltyKind::Disqualified)
+        );
+        let live = photo(9, SourceState::Live, vec![session_flag(FlagKind::Green)]);
+        assert_eq!(demo_penalty(&live), None);
+        assert_eq!(project(&Config::default(), &live, prefs).penalty, None);
     }
 
     #[test]

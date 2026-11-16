@@ -117,7 +117,6 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
-  document.documentElement.lang = "es";
   cleanup();
   cache.clear();
   vi.restoreAllMocks();
@@ -184,13 +183,11 @@ function launchCalls(spy: {
 }
 
 it.each([
-  ["es", "Ana María", "AM, cuenta"],
-  ["en", "Jane Doe", "JD, account"],
-  ["es", "", "Cuenta"],
+  ["Ana María", "AM, cuenta"],
+  ["", "Cuenta"],
 ] as const)(
-  "names the account control from the visible user initials in %s",
-  async (language, name, expected) => {
-    document.documentElement.lang = language;
+  "names the account control from the visible initials of %j",
+  async (name, expected) => {
     showAccountIdentity = true;
     await mount();
     fireEvent.keyDown(screen.getByRole("combobox"), { key: "Escape" });

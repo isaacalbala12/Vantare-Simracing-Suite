@@ -425,7 +425,7 @@ mod tests {
                 .any(|instance| (instance.border[3] - FRAME).abs() < 0.01),
             "anillo completo al 12 %"
         );
-        let top = at(&instances, 0.0, 0.0, SIZE.0, RADIUS);
+        let top = at(&instances, 0.0, 0.0, SIZE.0, crate::eficiencia::RADIUS);
         assert!(
             top.iter().any(|instance| {
                 (instance.border[3] - (FRAME_TOP - FRAME) / (1.0 - FRAME)).abs() < 0.01

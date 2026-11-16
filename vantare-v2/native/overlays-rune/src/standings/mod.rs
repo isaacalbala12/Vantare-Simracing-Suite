@@ -33,6 +33,8 @@ pub struct Standings {
     repaint: bool,
     paused: bool,
     live: bool,
+    /// Al menos una foto aplicada: la primera no dispara efectos.
+    primed: bool,
 }
 
 fn identity(snapshot: &Snapshot) -> String {
@@ -70,6 +72,7 @@ impl Standings {
             repaint: false,
             paused: false,
             live: false,
+            primed: false,
         }
     }
 
@@ -189,9 +192,10 @@ impl Standings {
         let display = scene::Display::new(&self.settings, self.prefs, &plan, &layout, paused);
         let next = scene::Scene { display, layout };
         let changed = next != self.scene;
-        if changed && motion::motion_continues(&self.plan, &plan) {
+        if changed && self.primed && !self.reduced && motion::motion_continues(&self.plan, &plan) {
             self.motion.events(&self.plan, &plan, clock);
         }
+        self.primed = true;
         self.board = board;
         self.plan = plan;
         self.scene = next;

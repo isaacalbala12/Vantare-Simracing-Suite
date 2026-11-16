@@ -211,7 +211,7 @@ struct Notice {
     priority: u8,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 struct Pit {
     alpha: Tween,
     dx: Tween,
@@ -428,7 +428,7 @@ impl Motion {
                             EventKind::PersonalBest | EventKind::SessionBest => {
                                 let elapsed = clock - notice.start;
                                 if elapsed < SWEEP_MS {
-                                    let p = ease_out_at(elapsed / SWEEP_MS);
+                                    let p = ease_out_at((elapsed / SWEEP_MS) as f32);
                                     let (opacity, x) = if p < 0.4 {
                                         let k = p / 0.4;
                                         (0.7 * k, -1.0 + k)

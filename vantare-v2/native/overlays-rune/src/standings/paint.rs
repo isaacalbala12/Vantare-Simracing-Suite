@@ -260,7 +260,7 @@ fn row_el(
             motion::Flash::Pit => s.colors.box_fill,
         };
         let v = &s.styles.neo;
-        let bleed = v.player_bleed;
+        let bleed = 6.0;
         item = item.child(
             el().key("row-flash")
                 .pin(Some(bleed), Some((l.row - s.geometry.row_height) / 2.0), None, None)
@@ -293,7 +293,7 @@ fn row_el(
                 .font(font(
                     s,
                     Face::Body,
-                    s.fonts.badge_size,
+                    9.0,
                     l.row,
                     -0.039,
                     s.fonts.bold_weight,
@@ -312,8 +312,8 @@ fn row_el(
     if let Some(column) = driver
         && vis.battle > 0.0
     {
-        let bn = column.x + s.geometry.cell_padding;
-        let bw = column.width - 2.0 * s.geometry.cell_padding;
+        let bn = column.x + 8.0;
+        let bw = column.width - 2.0 * 8.0;
         item = item.child(
             el().key("battle")
                 .pin(Some(bn), Some(l.row - 3.0), None, None)
@@ -369,7 +369,7 @@ fn row_el(
                     .font(font(
                         s,
                         Face::Body,
-                        s.fonts.badge_size * 0.6,
+                        6.0,
                         10.0,
                         0.0,
                         s.fonts.regular_weight,
@@ -570,3 +570,4 @@ fn text_top(style: &Style, face: Face, top: f32) -> f32 {
         Face::Body => 0.0,
     }
 }
+

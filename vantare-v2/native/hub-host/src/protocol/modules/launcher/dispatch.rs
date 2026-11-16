@@ -65,9 +65,21 @@ impl Session {
                     .try_into()
                     .map_err(|_| HostError::Denied)
                     .and_then(|generation| {
+                        let observation = self
+                            .core
+                            .account_observation()
+                            .ok_or(HostError::CoreUnavailable)?;
+                        if observation.generation != generation
+                            || !vantare_ipc::control::wall_ms()
+                                .is_ok_and(|now| observation.policy.permits_launch(now))
+                        {
+                            return Err(HostError::Denied);
+                        }
+                        self.launcher_reader
+                            .validate_launch(profile, base_revision)?;
                         crate::launcher::checked::launch(
                             &self.launcher,
-                            self.core.account_observation().as_ref(),
+                            Some(&observation),
                             &generation,
                             profile,
                             base_revision,
@@ -92,12 +104,25 @@ impl Session {
                 profile,
                 base_revision,
             } => {
-                let message = match crate::launcher::launch(
-                    &self.launcher,
-                    &self.current,
-                    profile,
-                    base_revision,
-                ) {
+                let allowed = self.current.rights == crate::protocol::LinkState::Connected
+                    && self.current.access.verified
+                    && !self.current.access.blocked
+                    && !self.current.live;
+                let result = if allowed {
+                    self.launcher_reader
+                        .validate_launch(profile, base_revision)
+                        .and_then(|()| {
+                            crate::launcher::launch(
+                                &self.launcher,
+                                &self.current,
+                                profile,
+                                base_revision,
+                            )
+                        })
+                } else {
+                    Err(HostError::Denied)
+                };
+                let message = match result {
                     Ok(accepted) => HostToUi::Response {
                         id,
                         result: Reply::LauncherLaunch { accepted },

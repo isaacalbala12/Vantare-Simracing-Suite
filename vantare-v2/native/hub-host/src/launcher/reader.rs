@@ -195,6 +195,24 @@ impl Reader {
         self.scanned_revision = None;
         Ok(self.view())
     }
+    pub(crate) fn validate_launch(&self, profile: &str, revision: &str) -> Result<(), HostError> {
+        let (bytes, document) = open(&self.path)?.ok_or(HostError::Protected)?;
+        if vantare_services::content_hash(&bytes) != revision {
+            return Err(HostError::LauncherConflict {
+                current: super::read(&self.path),
+            });
+        }
+        let found = self.discovered(revision).ok_or(HostError::Busy)?;
+        let profile = document
+            .profiles
+            .iter()
+            .find(|candidate| candidate.id == profile)
+            .ok_or(HostError::Denied)?;
+        if profile.steps.is_empty() || !profile.missing_steps(found).is_empty() {
+            return Err(HostError::Denied);
+        }
+        Ok(())
+    }
     pub fn discovered(&self, revision: &str) -> Option<&Discovery> {
         (self.scan.is_none() && self.scanned_revision.as_deref() == Some(revision))
             .then_some(&self.found)

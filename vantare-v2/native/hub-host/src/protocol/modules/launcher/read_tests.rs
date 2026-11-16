@@ -380,3 +380,216 @@ fn catalog_dispatch_publishes_the_completed_scan_metadata_without_private_diagno
         assert_eq!(session.core.requests, 0);
     }
 }
+
+#[test]
+fn both_launch_methods_require_current_discovery_and_available_steps_without_side_effects() {
+    for checked in [false, true] {
+        for case in [
+            "rescanning",
+            "lagging",
+            "missing",
+            "unavailable",
+            "stale",
+            "valid",
+        ] {
+            launch_discovery_case(checked, case);
+        }
+    }
+}
+fn launch_discovery_case(checked: bool, case: &str) {
+    use vantare_ipc::{
+        account_session::AccountObservation,
+        control::{AccessState, Policy},
+        launcher as mailbox,
+    };
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.rights = crate::protocol::LinkState::Connected;
+    session.current.access.verified = true;
+    session.current.access.blocked = false;
+    let document = vantare_launcher::Document::fresh_install();
+    let before = serde_json::to_vec(&document).expect("document");
+    std::fs::write(&session.launcher, &before).expect("fixture");
+    let revision = vantare_services::content_hash(&before);
+    let mut found = available_for_duplicate(&document);
+    if case == "missing" {
+        found.apps.clear();
+    } else if case == "unavailable" {
+        for app in &mut found.apps {
+            app.availability.launchable = false;
+        }
+    }
+    session.launcher_reader = crate::launcher::Reader::with_discovery(
+        session.launcher.clone(),
+        if case == "lagging" {
+            "f".repeat(64)
+        } else {
+            revision.clone()
+        },
+        found,
+    );
+    if case == "rescanning" {
+        session.launcher_reader.rescan();
+    }
+    let generation = "a".repeat(64);
+    let base_revision = if case == "stale" {
+        "f".repeat(64)
+    } else {
+        revision
+    };
+    let request = if checked {
+        Request::LauncherLaunchChecked {
+            profile: document.profiles[0].id.clone(),
+            base_revision: base_revision.clone(),
+            armed_generation: generation.clone(),
+        }
+    } else {
+        Request::LauncherLaunch {
+            profile: document.profiles[0].id.clone(),
+            base_revision: base_revision.clone(),
+        }
+    };
+    let mailbox_path = mailbox::request_path(&session.launcher);
+    // Busy must also reject an empty mailbox, not merely hit mailbox CAS.
+    let existing_mailbox = matches!(case, "missing" | "unavailable" | "stale");
+    if existing_mailbox {
+        std::fs::write(&mailbox_path, b"existing request").expect("pending request");
+    }
+    publish_launch_resident(&session);
+    session.core.observation = Some(AccountObservation {
+        generation: generation.try_into().expect("generation"),
+        policy: Policy {
+            version: vantare_ipc::control::VERSION,
+            epoch: 1,
+            revision: 1,
+            checked_at_ms: vantare_ipc::control::wall_ms().expect("clock"),
+            state: AccessState::Active,
+            ..Default::default()
+        },
+    });
+    assert_launch_discovery(
+        &mut session,
+        &before,
+        &request,
+        checked,
+        case,
+        existing_mailbox,
+    );
+}
+fn assert_launch_discovery(
+    session: &mut Session,
+    before: &[u8],
+    request: &Request,
+    checked: bool,
+    case: &str,
+    existing_mailbox: bool,
+) {
+    use vantare_ipc::launcher as mailbox;
+    let mailbox_path = mailbox::request_path(&session.launcher);
+    let mut pipe = Pipe::new(Vec::new());
+    session.request(&mut pipe, 71, request).expect("dispatch");
+    pipe.set_position(0);
+    let reply: HostToUi = frame::Reader::default()
+        .next(&mut pipe)
+        .expect("frame")
+        .expect("reply");
+    match case {
+        "rescanning" | "lagging" => assert!(matches!(
+            reply,
+            HostToUi::Failure {
+                error: HostError::Busy,
+                ..
+            }
+        )),
+        "missing" | "unavailable" => assert!(matches!(
+            reply,
+            HostToUi::Failure {
+                error: HostError::Denied,
+                ..
+            }
+        )),
+        "stale" => assert!(matches!(
+            reply,
+            HostToUi::Failure {
+                error: HostError::LauncherConflict { .. },
+                ..
+            }
+        )),
+        "valid" => assert!(matches!(reply, HostToUi::Response { .. })),
+        _ => unreachable!(),
+    }
+    assert_eq!(
+        std::fs::read(&session.launcher).expect("document unchanged"),
+        before
+    );
+    if case == "valid" {
+        let queued_bytes = std::fs::read(&mailbox_path).expect("one send");
+        let queued: mailbox::Request = serde_json::from_slice(&queued_bytes).expect("one request");
+        assert!(matches!(
+            (checked, queued),
+            (true, mailbox::Request::LaunchChecked(_)) | (false, mailbox::Request::Launch { .. })
+        ));
+        session
+            .core
+            .observation
+            .as_mut()
+            .expect("observation")
+            .policy
+            .checked_at_ms = vantare_ipc::control::wall_ms().expect("fresh clock");
+        let mut pipe = Pipe::new(Vec::new());
+        session
+            .request(&mut pipe, 72, request)
+            .expect("no second send");
+        pipe.set_position(0);
+        assert!(matches!(
+            frame::Reader::default()
+                .next::<HostToUi>(&mut pipe)
+                .expect("frame"),
+            Some(HostToUi::Failure {
+                error: HostError::Busy,
+                ..
+            })
+        ));
+        assert_eq!(
+            std::fs::read(&mailbox_path).expect("not overwritten"),
+            queued_bytes
+        );
+        assert_eq!(
+            std::fs::read(&session.launcher).expect("not written"),
+            before
+        );
+    } else if existing_mailbox {
+        assert_eq!(
+            std::fs::read(&mailbox_path).expect("unchanged mailbox"),
+            b"existing request"
+        );
+    } else {
+        assert!(
+            !mailbox_path.exists(),
+            "no send while discovery is unavailable"
+        );
+    }
+}
+
+fn publish_launch_resident(session: &Session) {
+    use vantare_ipc::launcher::{
+        self as mailbox,
+        execution::{Capability, ExecutionStatus},
+    };
+    let mut extension = ExecutionStatus::new("b".repeat(64).try_into().expect("instance"));
+    extension
+        .capabilities
+        .push(Capability::RevisionCheckedLaunch);
+    let status_path = mailbox::status_path(&session.launcher);
+    std::fs::write(
+        &status_path,
+        serde_json::to_vec(&mailbox::Status {
+            version: mailbox::VERSION,
+            updated_ms: mailbox::now_ms(),
+            extension: Some(extension),
+            ..Default::default()
+        })
+        .expect("status"),
+    )
+    .expect("fixture");
+}

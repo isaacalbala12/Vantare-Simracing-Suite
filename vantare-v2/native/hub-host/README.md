@@ -626,3 +626,13 @@ Handoff aprobado para Sol-Hub (#2362), sin implementación de UI en este PR:
 studioMonitorCases incluye los motivos con las mismas dimensiones null. El mock
 los consume mediante studio-monitor-<nombre>. Los eventos usan el sondeo existente;
 las pruebas inyectan monitores y reloj, sin esperas ni adaptador gráfico.
+
+## Validación del lanzamiento en el anfitrión (#2184)
+
+Antes de enviar `launcher.launch` o `launcher.launchChecked`, el despacho exige
+un escaneo terminado para `baseRevision` y que todos los pasos del perfil estén
+disponibles. Una revisión antigua da `LauncherConflict`; un escaneo pendiente o
+de otra revisión da `Busy`; los pasos ausentes o no disponibles dan `Denied`.
+Los rechazos no escriben el documento ni el buzón. La revisión y la autoridad
+se vuelven a validar en los caminos existentes; no hay reenvío automático.
+No cambia el protocolo ni la interfaz.

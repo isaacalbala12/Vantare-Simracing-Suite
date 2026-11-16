@@ -119,6 +119,11 @@ export async function checkStudioStates(
       name: t.atLimit(studioLimits.instances),
     });
     await tooltip.waitFor();
+    assert.match(
+      await tooltip.evaluate((node) => getComputedStyle(node).backgroundColor),
+      /^rgb\(/,
+      "Tooltip background is opaque",
+    );
     assert.equal(
       await disabledAdd.getAttribute("aria-describedby"),
       await tooltip.getAttribute("id"),

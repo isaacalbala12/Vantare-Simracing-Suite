@@ -58,6 +58,11 @@ it("Trust explains the editor requirement and cannot answer, while offered Cance
     attempt: undefined,
   });
   const trust = screen.getByRole("button", { name: "Confiar y lanzar" });
+  expect(
+    screen
+      .getByRole("button", { name: "Cancelar" })
+      .getAttribute("aria-describedby"),
+  ).toBeNull();
   expect(trust.getAttribute("aria-disabled")).toBe("true");
   expect(
     trust

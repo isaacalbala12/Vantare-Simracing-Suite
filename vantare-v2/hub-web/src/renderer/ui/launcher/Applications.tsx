@@ -138,12 +138,17 @@ export function ApplicationCatalog({
           onChange={(event) => onQuery(event.currentTarget.value)}
         />
         <div className="v-launcher-actions">
-          <Tooltip id={scanHint} label={text.detectionBusy}>
+          <Tooltip
+            id={pending || value.scanning ? scanHint : undefined}
+            label={pending || value.scanning ? text.detectionBusy : text.detect}
+          >
             <span>
               <Button
                 disabled={pending || value.scanning}
-                focusableWhenDisabled
-                aria-describedby={scanHint}
+                focusableWhenDisabled={pending || value.scanning}
+                aria-describedby={
+                  pending || value.scanning ? scanHint : undefined
+                }
                 onClick={onScan}
               >
                 {value.scanning ? text.detecting : text.detect}

@@ -143,6 +143,12 @@ export function LauncherProfiles({
         },
     );
   const missing = profile ? apps(profile).filter((app) => !app.available) : [];
+  const launchBlocked =
+    !!control?.busy ||
+    !profile?.launchable ||
+    view.protected ||
+    pending ||
+    accepted;
   return (
     <div className="v-launcher-page">
       <header className="v-launcher-heading">
@@ -242,22 +248,18 @@ export function LauncherProfiles({
                 </Tooltip>
               )}
               <Tooltip
-                id={`${help}-launch-${profile.id}`}
-                label={text.launchUnavailable}
+                id={launchBlocked ? `${help}-launch-${profile.id}` : undefined}
+                label={launchBlocked ? text.launchUnavailable : text.launch}
               >
                 <span>
                   <Button
                     variant="primary"
                     className="v-launcher-launch"
-                    focusableWhenDisabled
-                    aria-describedby={`${help}-launch-${profile.id}`}
-                    disabled={
-                      !!control?.busy ||
-                      !profile.launchable ||
-                      view.protected ||
-                      pending ||
-                      accepted
+                    focusableWhenDisabled={launchBlocked}
+                    aria-describedby={
+                      launchBlocked ? `${help}-launch-${profile.id}` : undefined
                     }
+                    disabled={launchBlocked}
                     busy={pending}
                     onClick={() => onLaunch(profile)}
                   >

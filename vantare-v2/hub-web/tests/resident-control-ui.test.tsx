@@ -62,7 +62,13 @@ it("the visible rehearsal button submits its rendered profile and revision only"
   const control = controller(),
     view = structuredClone(fixture) as LauncherView;
   view.revision = "c".repeat(64);
+  view.profiles[0].launchable = true;
   mount(control, view);
+  expect(
+    screen
+      .getByRole("button", { name: /^Lanzar/u })
+      .getAttribute("aria-describedby"),
+  ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Probar sin el juego" }));
   expect(control.rehearse).toHaveBeenCalledExactlyOnceWith({
     ...control.scope,

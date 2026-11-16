@@ -35,6 +35,7 @@ it("exposes a tooltip and preserves the real button's name and other description
 
 it("keeps a disabled tooltip button focusable and blocks click, Enter and Space centrally", async () => {
   const activate = vi.fn(),
+    double = vi.fn(),
     key = vi.fn();
   render(
     <TooltipProvider delay={0}>
@@ -45,6 +46,7 @@ it("keeps a disabled tooltip button focusable and blocks click, Enter and Space 
           focusableWhenDisabled
           aria-describedby="disabled-help"
           onClick={activate}
+          onDoubleClick={double}
           onKeyDown={key}
           onKeyUp={key}
         >
@@ -67,8 +69,10 @@ it("keeps a disabled tooltip button focusable and blocks click, Enter and Space 
   expect((await screen.findByRole("tooltip")).id).toBe("disabled-help");
   key.mockClear();
   await user.click(blocked);
+  await user.dblClick(blocked);
   await user.keyboard("{Enter} ");
   expect(activate).not.toHaveBeenCalled();
+  expect(double).not.toHaveBeenCalled();
   expect(key).not.toHaveBeenCalled();
   await user.tab();
   expect(document.activeElement).toBe(
@@ -83,13 +87,13 @@ it("keeps a disabled tooltip button focusable and blocks click, Enter and Space 
   expect(activate).toHaveBeenCalledTimes(1);
 });
 
-it("preserves icon button names and creates distinct description targets", async () => {
+it("does not repeat icon names as descriptions or make disabled icons tabbable", async () => {
   render(
     <TooltipProvider delay={0}>
       <IconButton label="First action">
         <span aria-hidden="true">1</span>
       </IconButton>
-      <IconButton label="Second action">
+      <IconButton label="Second action" disabled>
         <span aria-hidden="true">2</span>
       </IconButton>
     </TooltipProvider>,
@@ -99,13 +103,52 @@ it("preserves icon button names and creates distinct description targets", async
   const ids = [first, second].map((button) =>
     button.getAttribute("aria-describedby"),
   );
-  expect(ids[0]).toBeTruthy();
-  expect(ids[1]).toBeTruthy();
-  expect(ids[0]).not.toBe(ids[1]);
-  for (const id of ids)
-    expect(document.getElementById(id ?? "")?.getAttribute("role")).toBe(
-      "tooltip",
-    );
-  await userEvent.setup().hover(second);
-  expect((await screen.findByRole("tooltip")).id).toBe(ids[1]);
+  expect(ids).toEqual([null, null]);
+  expect(second.hasAttribute("disabled")).toBe(true);
+  expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull();
+  await userEvent.setup().hover(first);
+  expect((await screen.findByRole("tooltip")).textContent).toBe("First action");
+});
+
+it("does not submit a form while a described submit button is disabled", async () => {
+  const submit = vi.fn((event) => event.preventDefault());
+  const result = render(
+    <TooltipProvider delay={0}>
+      <form onSubmit={submit}>
+        <Tooltip id="submit-help" label="Wait for validation">
+          <Button
+            type="submit"
+            disabled
+            focusableWhenDisabled
+            aria-describedby="submit-help"
+          >
+            Submit
+          </Button>
+        </Tooltip>
+      </form>
+    </TooltipProvider>,
+  );
+  const button = screen.getByRole("button", { name: "Submit" });
+  const user = userEvent.setup();
+  await user.tab();
+  await screen.findByRole("tooltip");
+  await user.dblClick(button);
+  await user.keyboard("{Enter} ");
+  expect(submit).not.toHaveBeenCalled();
+  result.rerender(
+    <TooltipProvider delay={0}>
+      <form onSubmit={submit}>
+        <Tooltip id="submit-help" label="Wait for validation">
+          <Button type="submit" aria-describedby="submit-help">
+            Submit
+          </Button>
+        </Tooltip>
+      </form>
+    </TooltipProvider>,
+  );
+  expect(document.activeElement).toBe(button);
+  expect(button.getAttribute("aria-disabled")).not.toBe("true");
+  expect(screen.getByRole("tooltip").textContent).toBe("Wait for validation");
+  await user.click(button);
+  expect(submit).toHaveBeenCalledOnce();
 });

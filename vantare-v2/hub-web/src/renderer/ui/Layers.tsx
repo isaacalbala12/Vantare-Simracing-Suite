@@ -28,7 +28,7 @@ export function Tooltip({
       <BaseTooltip.Trigger render={<span className="v-tooltip-trigger" />}>
         {children}
       </BaseTooltip.Trigger>
-      <BaseTooltip.Portal keepMounted>
+      <BaseTooltip.Portal keepMounted={!!id}>
         <BaseTooltip.Positioner className="v-positioner" sideOffset={6}>
           <BaseTooltip.Popup
             id={id ?? generatedId}

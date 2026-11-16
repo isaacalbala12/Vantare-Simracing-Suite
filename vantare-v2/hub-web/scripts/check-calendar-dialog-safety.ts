@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { Locator, Page } from "playwright-core";
+import { calendarAlertsText } from "../src/renderer/i18n/calendarAlerts.ts";
 import { calendarScenes } from "./visual-diff/calendar-scenes.ts";
 import { until } from "./wait-for.ts";
 
@@ -157,6 +158,25 @@ export async function checkCalendarDialogSafety(owner: Page, base: string) {
       const popup = page.locator('[data-window-dialog="screen"]');
       await popup.waitFor();
       assert.equal(await popup.count(), 1);
+      if (name === "calendario-avisos-contraida") {
+        const cdp = await page.context().newCDPSession(page);
+        try {
+          const tree = await cdp.send("Accessibility.getFullAXTree");
+          const test = tree.nodes.find(
+            (node) =>
+              !node.ignored &&
+              node.role?.value === "button" &&
+              node.name?.value === calendarAlertsText.test,
+          );
+          assert.equal(
+            test?.description?.value,
+            calendarAlertsText.testHint,
+            "The calendar test button retains its computed accessible description inside the dialog",
+          );
+        } finally {
+          await cdp.detach();
+        }
+      }
       await boundaryCycle(page, popup);
       await noLaunch(page, popup);
       await page.keyboard.press("Escape");

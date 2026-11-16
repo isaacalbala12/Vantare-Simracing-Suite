@@ -52,12 +52,14 @@ function Steps({
       <div className="v-studio-steps-header">
         <Tabs.List aria-label={t.inspectorTabs} activateOnFocus>
           <Tooltip
-            id={`${hint}-appearance`}
+            id={hasAppearance ? undefined : `${hint}-appearance`}
             label={hasAppearance ? t.appearance : t.soonTooltip}
           >
             <Tabs.Tab
               value="appearance"
-              aria-describedby={`${hint}-appearance`}
+              aria-describedby={
+                hasAppearance ? undefined : `${hint}-appearance`
+              }
               aria-disabled={readOnly || !hasAppearance || undefined}
             >
               <span className="v-step-number" aria-hidden="true">
@@ -77,12 +79,12 @@ function Steps({
             {t.track}
           </Tabs.Tab>
           <Tooltip
-            id={`${hint}-content`}
+            id={item.settings ? undefined : `${hint}-content`}
             label={item.settings ? t.content : t.contentSoonHelp}
           >
             <Tabs.Tab
               value="content"
-              aria-describedby={`${hint}-content`}
+              aria-describedby={item.settings ? undefined : `${hint}-content`}
               aria-disabled={readOnly || !item.settings || undefined}
             >
               <span className="v-step-number" aria-hidden="true">

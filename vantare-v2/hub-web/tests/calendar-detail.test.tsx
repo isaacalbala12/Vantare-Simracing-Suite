@@ -73,8 +73,8 @@ it("routes favorite and safe launch actions; leaves undelivered actions disabled
   fireEvent.click(screen.getByRole("button", { name: text.launch }));
   expect(props.onLaunch).toHaveBeenCalledOnce();
   expect(screen.getByRole("button", { name: text.add })).toHaveProperty(
-    "ariaDisabled",
-    "true",
+    "disabled",
+    true,
   );
   expect(screen.getByRole("button", { name: text.series })).toHaveProperty(
     "disabled",

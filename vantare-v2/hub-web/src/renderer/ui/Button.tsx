@@ -1,5 +1,5 @@
 import { Button as BaseButton } from "@base-ui/react/button";
-import { type ReactNode, useId } from "react";
+import type { ReactNode } from "react";
 import { Tooltip } from "./Layers";
 export type ButtonProps = BaseButton.Props & {
   variant?: "primary" | "neutral" | "ghost" | "danger";
@@ -13,6 +13,7 @@ export function Button({
   disabled,
   focusableWhenDisabled,
   onClick,
+  onDoubleClick,
   onKeyDown,
   onKeyUp,
   children,
@@ -45,6 +46,14 @@ export function Button({
         }
         onClick?.(event);
       }}
+      onDoubleClick={(event) => {
+        if (blocked) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onDoubleClick?.(event);
+      }}
       onKeyDown={(event) => {
         if (blocked && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
@@ -76,19 +85,10 @@ export function IconButton({
   className,
   ...props
 }: Omit<ButtonProps, "aria-label"> & { label: string; children: ReactNode }) {
-  const tooltipId = useId();
   return (
-    <Tooltip id={tooltipId} label={label}>
+    <Tooltip label={label}>
       <span>
-        <Button
-          {...props}
-          className={className}
-          aria-label={label}
-          aria-describedby={[props["aria-describedby"], tooltipId]
-            .filter(Boolean)
-            .join(" ")}
-          focusableWhenDisabled
-        >
+        <Button {...props} className={className} aria-label={label}>
           {children}
         </Button>
       </span>

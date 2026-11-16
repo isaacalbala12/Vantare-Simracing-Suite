@@ -208,9 +208,14 @@ mod tests {
                     .into_iter()
                     .find(|e| e.key.as_deref() == Some(key))
                     .expect("marker");
-                assert!((element.rect[0] - (x - 8.0)).abs() < 0.001);
-                assert!((element.rect[1] - (y - 19.2)).abs() < 0.001);
-                assert_eq!(element.rect[2..], [16.0, 38.4]);
+                // Rune's CPU layout quantizes to 1/64 px; authored GPUI coordinates stay unchanged.
+                assert!(
+                    element
+                        .rect
+                        .into_iter()
+                        .zip([x - 8.0, y - 19.2, 16.0, 38.4])
+                        .all(|(actual, expected)| (actual - expected).abs() <= 1.0 / 64.0)
+                );
                 assert_eq!(rt.presented_pose(key).expect("pose").rotation(), 0.0);
             }
         }

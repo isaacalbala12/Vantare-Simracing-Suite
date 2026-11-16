@@ -500,9 +500,20 @@ mod tests {
                 .find(|e| e.key.as_deref() == Some(key))
                 .unwrap()
         };
-        assert_eq!(find("radar").rect, [0.0, 0.0, 220.0, 220.0]);
-        assert_eq!(find("radar-player").rect, [102.0, 90.8, 16.0, 38.4]);
-        assert_eq!(find("radar-phrase-bar").rect, [1.0, 190.0, 218.0, 29.0]);
+        for (key, expected) in [
+            ("radar", [0.0, 0.0, 220.0, 220.0]),
+            ("radar-player", [102.0, 90.8, 16.0, 38.4]),
+            ("radar-phrase-bar", [1.0, 190.0, 218.0, 29.0]),
+        ] {
+            // Rune's CPU layout quantizes to 1/64 px; authored GPUI coordinates stay unchanged.
+            assert!(
+                find(key)
+                    .rect
+                    .into_iter()
+                    .zip(expected)
+                    .all(|(actual, expected)| (actual - expected).abs() <= 1.0 / 64.0)
+            );
+        }
         assert_eq!(
             find("radar-phrase").text.as_deref(),
             Some("COCHE A LA IZQUIERDA")

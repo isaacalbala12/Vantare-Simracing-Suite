@@ -14,6 +14,9 @@ valores Live sin rebuild, registro, contadores y reposo con movimiento reducido.
 Gates por la cola y CI se registran en el PR. No se ejecuta ningún gráfico.
 Desviaciones visibles conocidas: ninguna comprobada; la comparación visual,
 incluido el rasterizado del degradado, queda pendiente de la tanda del PC (#2365).
+Los tests de Runtime::elements toleran 1/64 px por cuantización del motor (OK del
+sub-orquestador); valores del pintor y límites del recorte puro intactos. Este
+efecto del motor se confirma también en la tanda del PC (#2365).
 Sin merge, promoción ni release.
 
 ## VANTA-138 · D022, formatos de columnas (16/11/2026)

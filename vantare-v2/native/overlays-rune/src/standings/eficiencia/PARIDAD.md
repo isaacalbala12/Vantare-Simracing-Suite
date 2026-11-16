@@ -2,7 +2,7 @@
 
 E1 porta configuración, geometría y defaults compilados; E2 añade panel y cabecera.
 E3 conecta th/filas/celdas y el constructor Eficiencia. Se retira el allow(dead_code)
-del módulo; quedan marcas puntuales para campos/helper de E4 aún sin pintor.
+del módulo. E4 completa bandas, pies, rail PIT y ausencia, y retira las marcas puntuales.
 La excepción de la raíz excluye tests del tope de 1200 líneas de producción.
 Se medirá cada corte consecutivo y se unirá si ambos caben completos bajo el tope.
 
@@ -79,7 +79,7 @@ Stale ES/EN, Focus, paleta completa, bandas Signature/Broadcast y cola gaussiana
 Todas las capas superpuestas llevan pin; assert_inside_window recorre ambas
 geometrías con Ready/Stale/Missing/Disconnected e imágenes adjuntas.
 E2 continúa sin constructor. E3 completa th/filas/celdas/control y lo registra;
-E4 añade separadores, pies, espera y badges. E5/E6 conservan su corte de movimiento
+E4 incorpora separadores, pies, ausencia y badges. E5/E6 conservan su corte de movimiento
 y efectos. E2+E3 preparados en local superan 1200 líneas de producción formateada;
 no se comprime el port para unirlos.
 
@@ -100,15 +100,15 @@ a 18×18. El escalado de textura/mips lo realiza Rune, frente a paint_image de
 GPUI: se declara esta diferencia de rasterizador, pendiente de captura comparada.
 La primera rect de la banda tiene key; con clase vacía se conserva la caja del
 chip pero no se emite texto vacío (text::draw de GPUI tampoco pinta glifos).
-paint_unavailable queda explícitamente PENDIENTE de E4: E3 aún solo pinta la
-cabecera en esa rama, sin el rótulo de desconexión/falta de datos de GPUI.
+E4 porta paint_unavailable: cabecera y rótulo gold de desconexión/falta de datos,
+sin tabla, como GPUI.
 Todos los colores nuevos pasan por eficiencia::color o rune::color::hex.
 
 ## E3: th, filas, celdas y control
 
 | GPUI | Rune E3 |
 | --- | --- |
-| paint_table (th/filas) | table::paint; bandas/ghosts en E4/E5 |
+| paint_table (th/filas) | table::paint; bandas en E4, ghosts en E5 |
 | paint_column_label / aligned_x | table.rs; Signature/Broadcast, alineación, máscara y subrayado |
 | paint_row | table::paint_row; jugador, primeras filas de estudio default, filetes y marca roja |
 | paint_cell / split_seconds | table.rs; todas las métricas, nombre/ellipsis y unidad s separada |
@@ -130,9 +130,9 @@ texto/nombres ES/EN, elipsis solo donde GPUI, cápsulas Broadcast 145° [0,.65].
 Los colores se comparan con hex sRGB literal. Tras #2496 (c58a05690), el dorsal
 es #a5a5abff, no el #d2d2d6ff que producía el helper anterior: el oráculo no cambia.
 Sin reloj de animación en E3, con o sin movimiento reducido. E5 añadirá Tween.
-E4 debe retirar las marcas dead_code puntuales al portar pies/bandas/espera/rail;
+E4 retira las marcas dead_code puntuales al portar pies/bandas/ausencia/rail;
 E6 añade flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
-testers hasta completar E4–E6 y la comparación física de píxeles pendiente.
+testers hasta completar E5/E6 y la comparación física de píxeles pendiente.
 
 ## Revisión E3 en el mismo PR
 
@@ -150,3 +150,41 @@ antes de with_content_mask en GPUI y se conserva sin esa máscara en Rune.
 El catálogo prueba todos los Kind×Look: ya no queda un Settings válido sin
 constructor que llegue a `_ => None`; el test documenta ese límite y conserva
 la ausencia de adquisición para un layout vacío.
+
+## E4: bandas, pies, rail y ausencia
+
+| GPUI | Rune E4 |
+| --- | --- |
+| Config::{fit,footer_height}, eficiencia::Visual::{ingest,size} | Port existente conservado; tests 252/274, +84 y reserva43 |
+| efficiency::footer_rows | Helper existente; 9 celdas AAA/000→2, 6 celdas→1 |
+| paint_table, bandas (view.rs:465–507) | table::paint; color por clase, bandas28, dos filetes, tick y texto9 |
+| paint_footer (view.rs:1433–1533) | render::paint_footer; misma selección slots/clásico y centrado |
+| paint_styled_info_cells (view.rs:1534–1660) | render::paint_styled_info_cells; fuente/colores/reflow/atenuación stale literales |
+| paint_unavailable (view.rs:1662–1694) | render::paint_unavailable; etiquetas ES/EN gold, sin tabla |
+| paint_pit_rail (view.rs:1696–1788) | render::paint_pit_rail; caja34×26, bordes2/2/2/1, radios0/3/3/0, glow4/22% |
+
+Orden conservado: sombra exterior, panel/marca/cinta, tabla o ausencia, pie,
+marco y rail PIT. Las capas tienen pin y claves propias. El preview Rune escala
+el árbol del host: la pintura de producto corresponde a unit=1/layout_width=width.
+E4 pinta el estado final PIT (alfa1, dx0) solo para filas in_pits; E5/E6 conectan
+los canales animados y ghosts. No se añade ningún reloj ni gate por sequence.
+
+La matriz normal conserva assert_inside_window sin modificarlo para
+Signature/Broadcast, multiclase, pie ausente/clásico/slots, PIT, ausencia y pausa.
+El único cruce separado es Signature con 7 filas sin pie a capacidad (Live/Stale):
+GPUI reserva42 pero pinta cabecera43. La última fila va de223 a253 en ventana252;
+el host recorta1 px. Con tres bandas se suman84 a ambos bordes. Un test propio
+mantiene la geometría completa y verifica 30 px de fila, 29 visibles y 1 recortado
+mediante el mismo clip por widget que renderer.rs:268–279. No cambia el helper.
+
+## Erratas numéricas del plan/inventario E4 corregidas contra GPUI
+
+- Plan inicial decía 7 filas sin pie=274; GPUI da252, y274 con pie22, en model.rs:199–205.
+- Inventario decía banda con texto8; GPUI usa badge_size9 en view.rs:501 y styles/standings.json:69.
+- Inventario decía slots #a7a9b0/#e8e8ed; GPUI usa muted #b9b9bd/ink #f5f5f5 en view.rs:1646/1652. Los primeros colores corresponden al pie clásico.
+- Inventario decía badge en table_top+42; GPUI usa ese origen más (30−26)/2=2: primera caja en44, en view.rs:1707/1722. En Broadcast la cabecera declarada es24.
+- Inventario decía línea de slots14; GPUI avanza value_size+4=15 a ancho440/unit1 en view.rs:1639.
+- Inventario decía etiqueta de slots9; GPUI calcula clamp(width·0,02,7,9)=8,8 a ancho440, antes del factor, en view.rs:1558–1562.
+- Plan decía valor clásico sin datos «-»; GPUI pinta «—» en view.rs:1502.
+- La fórmula simplificada sumaba el pie calculado al alto: GPUI fit conserva footer_height del estilo22; con 7 filas/slots de reserva43 el alto sigue274, no295, en model.rs:199–205. footer_height() calcula la reserva aparte.
+- La comprobación global de cajas no contemplaba el recorte1 px sin pie: GPUI da head_row43 en model.rs:486–490 y última fila253 en view.rs:463/522–525, con ventana252 (app.rs:303–313,575–578). Decisión del orquestador: test literal aparte.

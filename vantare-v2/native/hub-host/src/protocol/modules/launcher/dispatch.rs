@@ -66,7 +66,7 @@ impl Session {
                     .map_err(|_| HostError::Denied)
                     .and_then(|generation| {
                         crate::launcher::checked::launch(
-                            &self.launcher,
+                            &self.launcher_reader,
                             self.core.account_observation().as_ref(),
                             &generation,
                             profile,
@@ -93,7 +93,7 @@ impl Session {
                 base_revision,
             } => {
                 let message = match crate::launcher::launch(
-                    &self.launcher,
+                    &self.launcher_reader,
                     &self.current,
                     profile,
                     base_revision,

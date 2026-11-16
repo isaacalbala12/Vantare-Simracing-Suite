@@ -1,3 +1,16 @@
+## VANTA-138 · #2184: escaneo y pasos antes de lanzar (review corregida)
+
+PR #2432, rama `vantareapp/isa-2184-launch-discovery`, base nightly `9ff6f97e2`.
+La validación vive en `launcher::launch` y `checked::launch_inner`, con el Reader
+de la sesión; el despacho solo delega. También cubre `launch_for_instance` del
+Calendario. Autoridad → revisión → discovery/perfil → buzón, sin reenvío.
+Tests: escaneo real (`rescan` + `view`), precedencia con revisión y permisos
+inválidos, Calendario al disparar con escaneo pendiente (buzón vacío y ocupado),
+pasos ausentes/no disponibles y un único envío válido. Sin aplicaciones/gráficos.
+Gate local de la revisión: Clippy -D warnings y 668 tests PASS (1 omisión existente);
+formato/arquitectura PASS. La CI anterior era verde; el nuevo head se valida en CI.
+Sin bump, runtime/ipc, merge ni release. Se fusiona antes de #2437 (#2028).
+
 ## VANTA-144 · Reglas de presentación compartidas en domain (16/11/2026)
 
 Traslado mecánico aprobado por raíz y sub-orquestador: waiting_text pasa a

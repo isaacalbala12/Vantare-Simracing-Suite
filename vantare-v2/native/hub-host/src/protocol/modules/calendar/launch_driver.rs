@@ -184,7 +184,7 @@ pub(super) fn tick(session: &mut Session, pipe: &mut Pipe, now: Clock) -> io::Re
                     .try_into()
                     .map_err(|_| HostError::Denied)?;
                 crate::launcher::checked::launch_for_instance(
-                    &session.launcher,
+                    &session.launcher_reader,
                     session.core.account_observation().as_ref(),
                     &generation,
                     &due.binding.plan.profile,

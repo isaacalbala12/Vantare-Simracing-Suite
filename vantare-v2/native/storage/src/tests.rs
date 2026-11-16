@@ -495,7 +495,13 @@ pub(super) fn creation_step(stage: &str) {
 #[ignore = "fixture de creación: la invoca el test padre con barrera y kill"]
 fn creation_cut_fixture() {
     let path = PathBuf::from(std::env::var_os("VANTARE_STORAGE_TEST_DB").unwrap());
-    create_database(&path).unwrap();
+    serve_mode(
+        &path,
+        OpenMode::Create,
+        &b"[\"status\"]\n"[..],
+        std::io::stdout().lock(),
+    )
+    .unwrap();
 }
 
 fn creation_fixture(path: &Path, stage: &str) -> std::process::Child {
@@ -625,6 +631,11 @@ fn two_publishers_racing_after_initialization_never_replace_the_winner() {
         b.success(),
         "exactamente un creador debe publicar"
     );
+    assert_eq!(
+        std::fs::read_dir(db.0.parent().unwrap()).unwrap().count(),
+        1,
+        "el perdedor debe retirar su temporal propio"
+    );
     let bytes = std::fs::read(&db.0).unwrap();
     assert!(create_database(&db.0).is_err());
     assert_eq!(std::fs::read(&db.0).unwrap(), bytes);
@@ -702,9 +713,109 @@ fn a_destination_or_wal_appearing_at_publication_is_never_overwritten() {
         assert_eq!(std::fs::read(collision).unwrap(), b"another owner arrived");
         assert_eq!(db.0.exists(), !sidecar);
         let files = database_files(db.0.parent().unwrap());
-        assert!(
-            files.keys().any(|p| p.components().count() == 2),
-            "el temporal inicializado se conserva al perder la carrera"
+        assert_eq!(
+            files.len(),
+            1,
+            "solo queda la colisión, sin temporal propio"
         );
     }
+}
+
+#[test]
+fn cleanup_failure_after_publication_still_serves_the_published_database() {
+    let db = Database::new();
+    let mut child = creation_fixture(&db.0, "after-publish");
+    let root = db.0.parent().unwrap();
+    let temporary = database_files(root)
+        .into_keys()
+        .find(|path| path.components().count() == 2)
+        .unwrap();
+    let alias = root.join(temporary);
+    // Fuerza un error real de remove_file sin bloquear la conexión de DuckDB:
+    // el alias queda retenido con otro nombre y su antigua ruta es un directorio.
+    let retained = alias.with_file_name("retained.duckdb");
+    std::fs::rename(&alias, &retained).unwrap();
+    std::fs::create_dir(&alias).unwrap();
+    child
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(b"continue\n")
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "publicar es éxito aunque falle limpiar"
+    );
+    let frames: Vec<Value> = output
+        .stdout
+        .split(|b| *b == b'\n')
+        .filter_map(|line| serde_json::from_slice(line).ok())
+        .collect();
+    assert_eq!(
+        frames,
+        [
+            json!(["ready", 0, false, 0]),
+            json!(["status", 0, false, 0])
+        ]
+    );
+    assert!(retained.is_file());
+    assert!(alias.is_dir());
+    let store = Store::open(&db.0, true).unwrap();
+    assert_eq!(store.watermark, 0);
+}
+
+#[test]
+fn resume_after_publication_crash_uses_the_final_name_and_serves_data() {
+    use std::process::{Command, Stdio};
+    let db = Database::new();
+    let mut child = creation_fixture(&db.0, "after-publish");
+    child.kill().unwrap();
+    child.wait().unwrap();
+    let files = database_files(db.0.parent().unwrap());
+    assert_eq!(
+        files.len(),
+        2,
+        "final y alias cerrado conservados tras kill"
+    );
+    let exe = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
+    let mut resumed = Command::new(exe)
+        .arg(&db.0)
+        .arg("--resume")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let payload: Value = serde_json::from_slice(&chunk(1, 0).to_bytes().unwrap()).unwrap();
+    let mut input = resumed.stdin.take().unwrap();
+    writeln!(input, "{}", json!(["append", payload])).unwrap();
+    writeln!(input, "{}", json!(["page", 0, 16])).unwrap();
+    drop(input);
+    let output = resumed.wait_with_output().unwrap();
+    assert!(output.status.success());
+    let frames: Vec<Value> = output
+        .stdout
+        .split(|b| *b == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_slice(line).unwrap())
+        .collect();
+    assert_eq!(
+        frames,
+        [
+            json!(["ready", 0, false, 0]),
+            json!(["ack", 1]),
+            json!(["page", [payload]])
+        ]
+    );
+    assert_eq!(
+        database_files(db.0.parent().unwrap()).len(),
+        2,
+        "resume no barre alias huérfanos: corresponde a G4a"
+    );
 }

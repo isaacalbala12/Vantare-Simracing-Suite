@@ -482,7 +482,7 @@ fn explicit_creation_collision_and_resume_preserve_the_recorded_prefix() {
         .stdin(Stdio::null())
         .output()
         .unwrap();
-    assert!(!collision.status.success());
+    assert_eq!(collision.status.code(), Some(3));
     assert_eq!(collision.stdout, [] as [u8; 0]);
     assert_eq!(std::fs::read(&db.0).unwrap(), original);
     let mut resumed = Process::start_mode(&db.0, Some("--resume"));
@@ -526,7 +526,7 @@ fn explicit_modes_do_not_create_missing_resume_or_change_an_existing_file() {
         .stdin(Stdio::null())
         .output()
         .unwrap();
-    assert!(!missing.status.success());
+    assert_eq!(missing.status.code(), Some(1));
     assert!(!db.0.exists());
     std::fs::write(&db.0, b"original must survive").unwrap();
     for args in [
@@ -576,9 +576,30 @@ fn competing_create_helpers_publish_exactly_one_database() {
         json!(["ready", 0, false, 0])
     );
     assert_eq!(loser.stdout, [] as [u8; 0]);
+    assert_eq!(loser.status.code(), Some(3));
     assert_ne!(loser.stderr, [] as [u8; 0]);
+    assert_eq!(
+        std::fs::read_dir(db.0.parent().unwrap()).unwrap().count(),
+        1,
+        "el perdedor no deja .creating-*"
+    );
     let mut resumed = Process::start_mode(&db.0, Some("--resume"));
     assert_eq!(resumed.response(), json!(["ready", 0, false, 0]));
     resumed.send(&json!(["stop"]));
     assert!(resumed.child.wait().unwrap().success());
+}
+
+#[test]
+fn create_requires_the_owner_to_create_the_parent_directory() {
+    let db = Database::new();
+    let parent = db.0.parent().unwrap().join("absent");
+    let output = Command::new(env!("CARGO_BIN_EXE_vantare-storage"))
+        .arg(parent.join("recording.duckdb"))
+        .arg("--create")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.stdout, [] as [u8; 0]);
+    assert!(!parent.exists());
 }

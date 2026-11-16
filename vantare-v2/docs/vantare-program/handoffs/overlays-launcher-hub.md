@@ -19,10 +19,13 @@ Raíz y sub-orquestador aprueban reutilizar directamente el ViewModel de domain
 como escena, con el dibujo estático del GPUI vigente: 440 × (77 + 24·filas),
 sin Motion, pulso ni reloj. La carpeta multiclass_relative contiene controlador,
 pintor y tests CPU; lib.rs solo declara el módulo para compilarlo y probarlo.
-No se conecta al host ni al registro: espera el trait Widget de B y el aviso
-del sub-orquestador. Ajustes, filtros, proyección y bytes guardados se conservan.
+No se conecta al host ni al registro: Widget (#2374) ya entró como 5d7dfa61f;
+espera el aviso del sub-orquestador. Ajustes, filtros y bytes guardados idénticos.
 Tests para fixture, huecos, 7/9 filas, fuente, tráfico/FCY, geometría y reposo.
-Formato, tokens y dos tests Python PASS; Clippy y tests Rust por la cola pendientes.
+Por cola: formato, Clippy, 68 CPU, enlace y licencias (428) PASS; tokens y dos
+Python PASS. El test usa tx.instant como host::poll, con la misma aserción de
+imagen idéntica. Rebase sobre 5d7dfa61f: código propio idéntico por range-diff;
+gates de la base actual y CI se registran en el PR.
 PR draft y head se registran en #2333. Desviaciones visibles conocidas: ninguna
 observada; comparación GPUI/Rune pendiente en el PC. Sin gráficos ni Plane.
 

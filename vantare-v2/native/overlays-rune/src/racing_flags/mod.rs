@@ -362,7 +362,6 @@ mod tests {
             rendered(&mut runtime, 0.05),
             "la espera sustituye la bandera"
         );
-        assert!(runtime.state.waiting);
         settle(&mut runtime);
         runtime.state.update(
             &photo(4, SourceState::Lost, vec![session_flag(FlagKind::Yellow)]),

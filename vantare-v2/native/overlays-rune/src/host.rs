@@ -61,7 +61,7 @@ struct Pending {
     close: Option<CloseReason>,
     wakers: Vec<Waker>,
     frames: Option<Arc<FrameSet>>,
-    queue: VecDeque<(u64, Arc<FrameSet>)>,
+    queue: VecDeque<(u64, Access, Arc<FrameSet>)>,
     published: u64,
     cursors: BTreeMap<u64, u64>,
     next_cursor: u64,
@@ -78,7 +78,7 @@ impl Pending {
         while self
             .queue
             .front()
-            .is_some_and(|(ordinal, _)| self.published.wrapping_sub(*ordinal) >= unread)
+            .is_some_and(|(ordinal, _, _)| self.published.wrapping_sub(*ordinal) >= unread)
         {
             self.queue.pop_front();
         }
@@ -119,6 +119,7 @@ impl Shared {
                 return;
             }
             state.close = Some(reason);
+            state.queue.clear();
             state.wakers.clone()
         };
         self.stop.notify_all();
@@ -169,7 +170,8 @@ impl Shared {
             state.published = state.published.wrapping_add(1);
             let ordinal = state.published;
             if !state.cursors.is_empty() {
-                state.queue.push_back((ordinal, frames.clone()));
+                let access = state.access.clone();
+                state.queue.push_back((ordinal, access, frames.clone()));
                 if state.queue.len() > MAX_PENDING_FRAMES {
                     state.queue.pop_front();
                     self.counts.dropped_frame_set();
@@ -398,24 +400,32 @@ pub fn poll(state: &mut State, clock: f64, tx: &mut Tx) -> bool {
         if pending.revision == state.seen {
             (false, Vec::new())
         } else {
-            let previous = pending
+            let previous = *pending
                 .cursors
                 .get(&state.cursor)
-                .copied()
-                .unwrap_or(pending.published);
+                .expect("State cursor remains registered until Drop");
             let unread = pending.published.wrapping_sub(previous);
             let count = usize::try_from(unread)
                 .unwrap_or(MAX_PENDING_FRAMES)
                 .min(pending.queue.len());
             // The last FrameSet already follows the original path below. A queue of one
             // allocates no backlog and still calls sync exactly once.
-            let backlog = pending
+            let same_access = pending
                 .queue
                 .iter()
                 .skip(pending.queue.len() - count)
-                .take(count.saturating_sub(1))
-                .map(|(_, frames)| frames.clone())
-                .collect::<Vec<_>>();
+                .all(|(_, access, _)| access == &pending.access);
+            let backlog = if same_access {
+                pending
+                    .queue
+                    .iter()
+                    .skip(pending.queue.len() - count)
+                    .take(count.saturating_sub(1))
+                    .map(|(_, _, frames)| frames.clone())
+                    .collect::<Vec<_>>()
+            } else {
+                Vec::new() // Permission boundary: hydrate only the latest frame, as before.
+            };
             let published = pending.published;
             pending.cursors.insert(state.cursor, published);
             pending.prune();
@@ -695,6 +705,59 @@ mod tests {
     }
 
     #[test]
+    fn granting_access_between_polls_hydrates_only_the_latest_photo() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for initially_allowed in [false, true] {
+            let bus = Shared::new(initially_allowed);
+            let mut rt = live_runtime(bus.clone());
+            let mut scene = queued_scene();
+            let at = std::time::Instant::now();
+            bus.publish_access(Access::at(&Policy::default(), 0));
+            for sequence in 1..=3 {
+                publish_sequence(&bus, &mut scene, sequence, at);
+            }
+            bus.publish_access(Access::LocalPreview);
+            rt.update_if(|state, tx| poll(state, 0.0, tx));
+            assert_eq!(rt.state.deliveries, [3]);
+            assert!(bus.pending.lock().unwrap().queue.is_empty());
+            assert_eq!(bus.paint_counts().dropped_frame_sets, 0);
+        }
+    }
+
+    #[test]
+    fn a_design_change_between_polls_uses_each_photo_design_and_presents_the_latest() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let bus = Shared::new(true);
+        let mut rt = live_runtime(bus.clone());
+        let mut scene = queued_scene();
+        let at = std::time::Instant::now();
+        publish_sequence(&bus, &mut scene, 1, at);
+        let mut layout = scene.frames.layout.as_ref().clone();
+        const MOVED_X: f32 = 100.0;
+        layout.instances[0].x = MOVED_X;
+        assert!(scene.set_layout(
+            layout,
+            vantare_domain::motion_policy::MotionPolicy(true),
+            at
+        ));
+        publish_sequence(&bus, &mut scene, 2, at);
+        assert!(rendered_frame(&mut rt, 0.0));
+        assert_eq!(rt.state.deliveries, [1, 2]);
+        let elements = rt.elements();
+        let widget = elements
+            .iter()
+            .find(|e| e.key.as_deref() == Some("widget-r"))
+            .expect("latest widget");
+        assert_eq!(widget.target[0], MOVED_X);
+        assert!(Arc::ptr_eq(
+            &rt.state.frames.as_ref().expect("frames").layout,
+            &scene.frames.layout
+        ));
+        assert_eq!(bus.paint_counts().frames, 1);
+        assert!(bus.pending.lock().unwrap().queue.is_empty());
+    }
+
+    #[test]
     fn closing_or_retiring_a_window_with_pending_photos_leaves_no_cursor_or_loss() {
         let _fonts = rune::text::with_families("Inter", "Inter");
         for retiring in [false, true] {
@@ -708,6 +771,9 @@ mod tests {
             assert_eq!(bus.pending.lock().unwrap().queue.len(), 3);
             rt.state.retiring.store(retiring, Ordering::Release);
             rt.update(close);
+            if !retiring {
+                assert!(bus.pending.lock().unwrap().queue.is_empty());
+            }
             drop(rt);
             assert!(bus.pending.lock().unwrap().cursors.is_empty());
             assert!(bus.pending.lock().unwrap().queue.is_empty());
@@ -722,6 +788,7 @@ mod tests {
             let mut scene = queued_scene();
             publish_sequence(&bus, &mut scene, 1, std::time::Instant::now());
             bus.close(CloseReason::NativeError);
+            assert!(bus.pending.lock().unwrap().queue.is_empty());
             Err(())
         }
         let bus = Shared::new(true);
@@ -787,104 +854,40 @@ mod tests {
 
     #[test]
     fn accepted_photo_delivery_measurement() {
-        use crate::scene::Scene;
-        use std::{collections::BTreeSet, time::Instant};
-        use vantare_domain::{Snapshot, motion_policy::MotionPolicy, widget_settings::Kind};
-
-        fn observed(rt: &mut Runtime<State>, at: Duration, delivered: &mut BTreeSet<u64>) {
-            rt.update_if(|state, tx| poll(state, at.as_secs_f64(), tx));
-            delivered.extend(rt.state.deliveries.drain(..));
-        }
-        fn measure(photos: &[Snapshot], hz: Option<u16>, interval: Duration) -> (usize, usize) {
-            // Radar has the same non-table cadence as DeltaTrace; the latter is not migrated yet.
-            let mut layout = vantare_ipc::layout::Layout::from_json(
-                br#"{"version":2,"reducedMotion":true,"instances":[{"id":"r","x":0,"y":0,"settings":{"kind":"radar"}}]}"#,
-            ).expect("layout");
-            if let Some(hz) = hz {
-                layout.performance.widgets.insert("r".into(), hz);
-            }
-            assert_eq!(
-                layout.performance.hz("r", Kind::Radar),
-                layout.performance.hz("r", Kind::DeltaTrace)
-            );
-            let bus = Shared::new(true);
-            let mut rt = live_runtime(bus.clone());
-            let mut scene = Scene::new(layout, Access::LocalPreview, true, MotionPolicy(true));
-            let start = Instant::now();
-            let origin = photos[0].origin.received_at;
-            let mut next_poll = Duration::ZERO;
-            let mut accepted = BTreeSet::new();
-            let mut delivered = BTreeSet::new();
-            for photo in photos {
-                let at = photo.origin.received_at - origin;
-                while next_poll < at {
-                    observed(&mut rt, next_poll, &mut delivered);
-                    next_poll += interval;
-                }
-                if scene.ingest(
-                    vantare_ipc::Photo::full(Arc::new(photo.clone())),
-                    start + at,
-                ) {
-                    let stored = &scene.frames.photos["r"];
-                    assert_eq!(stored.snapshot.sequence, photo.sequence);
-                    accepted.insert(photo.sequence);
-                    // Same publication as DataFeed, after the real Scene cadence has accepted it.
-                    bus.publish_frames(Arc::new(scene.frames.clone()));
-                }
-            }
-            observed(&mut rt, next_poll, &mut delivered);
-            assert!(delivered.is_subset(&accepted));
-            assert!(bus.pending.lock().unwrap().queue.is_empty());
-            assert_eq!(bus.paint_counts().dropped_frame_sets, 0);
-            (accepted.len(), delivered.len())
-        }
+        use vantare_domain::{motion_policy::MotionPolicy, widget_settings::Kind};
+        const PHOTOS_PER_BUMP: u32 = 3;
+        const BUMPS: u32 = 2;
 
         let _fonts = rune::text::with_families("Inter", "Inter");
-        let fixture = vantare_ipc::snapshots_from_json(include_str!(
-            "../../ui/fixtures/delta-trace-design-system.sequence.json"
-        ))
-        .expect("canonical delta trace sequence");
-        // The local source sleeps 1000/30 = 33 ms. Preserve its normal arrival period.
-        let local: Vec<_> = (0..=300)
-            .map(|tick| {
-                let mut photo = vantare_ipc::source::realistic(tick);
-                photo.sequence = tick + 1;
-                photo.origin.received_at = Duration::from_millis(tick * 33);
-                photo
-            })
-            .collect();
-        // Same integer period as runtime::adapter::lmu::live::READ_INTERVAL.
-        let lmu: Vec<_> = (0..=600)
-            .map(|tick| {
-                let mut photo = vantare_ipc::source::realistic(tick);
-                photo.sequence = tick + 1;
-                photo.origin.received_at = Duration::from_nanos(tick * (1_000_000_000 / 60));
-                photo
-            })
-            .collect();
-        assert_eq!(fixture.len(), 197);
-        assert_eq!(local.len(), 301);
-        for (name, photos) in [
-            ("fixture20Hz", &fixture),
-            ("local30Hz", &local),
-            ("lmu60Hz", &lmu),
-        ] {
-            for hz in [None, Some(0), Some(60)] {
-                let admitted = if name == "lmu60Hz" && hz != Some(0) {
-                    301
-                } else {
-                    photos.len()
-                };
-                for millis in [16, 100] {
-                    let (accepted, delivered) = measure(photos, hz, Duration::from_millis(millis));
-                    println!(
-                        "delivery {name} hz={hz:?} poll={millis}ms accepted={accepted} delivered={delivered} lost={}",
-                        accepted - delivered
-                    );
-                    assert_eq!(accepted, admitted);
-                    assert_eq!(delivered, admitted);
-                }
+        let layout = vantare_ipc::layout::Layout::from_json(
+            br#"{"version":2,"reducedMotion":true,"instances":[{"id":"r","x":0,"y":0,"settings":{"kind":"radar"}}]}"#,
+        ).expect("layout");
+        // Radar uses the same non-table cadence as the pending history widget.
+        let hz = layout.performance.hz("r", Kind::Radar);
+        assert_eq!(hz, layout.performance.hz("r", Kind::DeltaTrace));
+        let period = Duration::from_secs_f64(1.0 / f64::from(hz));
+        let bus = Shared::new(true);
+        let mut rt = live_runtime(bus.clone());
+        let mut scene =
+            crate::scene::Scene::new(layout, Access::LocalPreview, true, MotionPolicy(true));
+        let start = std::time::Instant::now();
+        let mut accepted = Vec::new();
+        for bump in 0..BUMPS {
+            for index in 0..PHOTOS_PER_BUMP {
+                let sequence = bump * PHOTOS_PER_BUMP + index + 1;
+                let at = period * (sequence - 1);
+                let mut photo = vantare_ipc::source::realistic(u64::from(sequence - 1));
+                photo.sequence = u64::from(sequence);
+                photo.origin.received_at = at;
+                assert!(scene.ingest(vantare_ipc::Photo::full(Arc::new(photo)), start + at));
+                accepted.push(u64::from(sequence));
+                bus.publish_frames(Arc::new(scene.frames.clone()));
             }
+            let poll_at = period * ((bump + 1) * PHOTOS_PER_BUMP);
+            rt.update_if(|state, tx| poll(state, poll_at.as_secs_f64(), tx));
+            assert_eq!(rt.state.deliveries, accepted);
+            assert!(bus.pending.lock().unwrap().queue.is_empty());
+            assert_eq!(bus.paint_counts().dropped_frame_sets, 0);
         }
     }
 

@@ -106,11 +106,16 @@ class ClassifyPathsTest(unittest.TestCase):
                 "scripts/lmu-capture/capture.py",
                 "tools/plane/plane-estado.py",
                 "tools/quality/vantare_quality.py",
-                ".github/scripts/validate_branch_channels.py",
             ]
         )
         self.assertFalse(scope.native)
         self.assertEqual(scope.native_paths, ())
+
+    def test_github_scripts_require_the_native_gates(self) -> None:
+        # `.github/**` changes how the gates run; they must not skip the native suite.
+        scope = classify_paths([".github/scripts/native_gate_scope.py"])
+        self.assertTrue(scope.native)
+        self.assertEqual(scope.native_paths, (".github/scripts/native_gate_scope.py",))
         self.assertFalse(scope.telemetria)
         self.assertEqual(scope.telemetria_paths, ())
 

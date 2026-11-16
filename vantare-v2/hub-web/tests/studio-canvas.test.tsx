@@ -19,11 +19,16 @@ import {
   type MockInstance,
   vi,
 } from "vitest";
+import {
+  type StudioView,
+  studioLimits,
+} from "../src/contract/generated/studio";
 import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { studioText } from "../src/renderer/i18n/studio";
 import { canvasText as t } from "../src/renderer/i18n/studio-canvas";
+import { studioDropText as dropText } from "../src/renderer/i18n/studio-drop";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
@@ -65,9 +70,20 @@ beforeEach(() => {
     function (this: HTMLElement) {
       return this.classList.contains("v-studio-canvas-viewport")
         ? new DOMRect(0, 0, 640, 360)
-        : rect.call(this);
+        : this.classList.contains("v-studio-canvas-plane")
+          ? new DOMRect(
+              Number.parseFloat(this.style.left),
+              Number.parseFloat(this.style.top),
+              Number.parseFloat(this.style.width),
+              Number.parseFloat(this.style.height),
+            )
+          : rect.call(this);
     },
   );
+  Object.defineProperty(document, "elementFromPoint", {
+    configurable: true,
+    value: vi.fn(() => document.querySelector(".v-studio-canvas-plane")),
+  });
   for (const name of [
     "setPointerCapture",
     "hasPointerCapture",
@@ -103,7 +119,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
-async function mount(scene = "studio-canvas") {
+async function renderStudio(scene = "studio-canvas") {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   cache = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -123,6 +139,10 @@ async function mount(scene = "studio-canvas") {
       </HostProvider>
     </QueryClientProvider>,
   );
+  return ui;
+}
+async function mount(scene = "studio-canvas") {
+  const ui = await renderStudio(scene);
   await screen.findByRole("button", { name: "Standings Visible" });
   await userEvent.setup().click(screen.getByRole("button", { name: t.open }));
   const move = await screen.findByRole("button", { name: t.move("Standings") });
@@ -700,4 +720,455 @@ it("hides row coordinates only in Canvas and keeps Widget status lines", async (
   expect(
     container.querySelectorAll(".v-focus-row-name small").length,
   ).toBeGreaterThan(0);
+});
+
+const additions = (spy: MockInstance<Client["request"]>) =>
+  spy.mock.calls
+    .map(([request]) => request)
+    .filter((request) => request.method === "studio.add");
+
+it.each(["drag", "button"])(
+  "focuses the confirmed new row and announces addition once after %s",
+  async (method) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    await mount();
+    const handle = await openDrop();
+    const announcements = new Set<Element>();
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        const element =
+          record.target instanceof Element
+            ? record.target
+            : record.target.parentElement;
+        const status = element?.closest(
+          '[role="status"], [aria-live="polite"]',
+        );
+        if (status?.textContent?.includes("Delta añadido"))
+          announcements.add(status);
+        for (const region of element?.querySelectorAll(
+          '[role="status"], [aria-live="polite"]',
+        ) ?? []) {
+          if (region.textContent?.includes("Delta añadido"))
+            announcements.add(region);
+        }
+      }
+    });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+    try {
+      if (method === "drag") {
+        beginDrop(handle);
+        fireEvent.pointerUp(handle, dropPoint());
+      } else {
+        await userEvent
+          .setup()
+          .click(screen.getByRole("button", { name: "Añadir Delta" }));
+      }
+      const row = await screen.findByRole("button", {
+        name: "Delta 2",
+      });
+      await waitFor(() => expect(document.activeElement).toBe(row));
+      const reply =
+        await spy.mock.results[
+          spy.mock.calls.findIndex(
+            ([request]) => request.method === "studio.add",
+          )
+        ].value;
+      expect(reply).toMatchObject({
+        method: "studio.add",
+        added: row.dataset.widget,
+      });
+      expect(row.getAttribute("aria-pressed")).toBe("true");
+      expect(additions(spy)).toHaveLength(1);
+      const statuses = screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.includes("Delta añadido"));
+      expect(statuses).toHaveLength(1);
+      expect(statuses[0].textContent).toContain(studioText.addedName("Delta"));
+      await userEvent
+        .setup()
+        .click(screen.getByRole("button", { name: t.close }));
+      await act(async () => {});
+      expect(announcements.size).toBe(1);
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.includes("Delta añadido")),
+      ).toEqual(statuses);
+    } finally {
+      observer.disconnect();
+    }
+  },
+);
+async function openDrop() {
+  await userEvent
+    .setup()
+    .click(screen.getAllByRole("button", { name: studioText.add })[0]);
+  return screen.findByRole("button", {
+    name: dropText.drag("Delta"),
+  });
+}
+function dropPoint() {
+  const rect = document
+    .querySelector(".v-studio-canvas-plane")
+    ?.getBoundingClientRect();
+  if (!rect) throw Error("Visible canvas required");
+  return {
+    clientX: rect.left + rect.width / 2,
+    clientY: rect.top + rect.height / 2,
+    pointerId: 7,
+  };
+}
+function beginDrop(handle: HTMLElement) {
+  fireEvent.pointerDown(handle, {
+    button: 0,
+    isPrimary: true,
+    pointerId: 7,
+    clientX: 620,
+    clientY: 50,
+  });
+  expect(handle.hasPointerCapture(7)).toBe(true);
+  fireEvent.pointerMove(handle, dropPoint());
+  expect(document.querySelector(".v-canvas-drop-ghost")).not.toBeNull();
+}
+it("previews the catalogue silhouette and magnets without writing, then adds once at the snapped point", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const handle = await openDrop();
+  beginDrop(handle);
+  expect(document.querySelector(".v-canvas-drop-ghost")).not.toBeNull();
+  expect(document.querySelectorAll(".v-studio-canvas-guide")).toHaveLength(2);
+  expect(additions(spy)).toHaveLength(0);
+  fireEvent.pointerUp(handle, dropPoint());
+  fireEvent.pointerUp(handle, dropPoint());
+  fireEvent.click(handle, { detail: 1 });
+  await waitFor(() => expect(additions(spy)).toHaveLength(1));
+  expect(additions(spy)[0]).toEqual({
+    method: "studio.add",
+    kind: "delta",
+    baseRevision: "0".repeat(64),
+    at: { x: 885, y: 522 },
+  });
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("complementary", { name: studioText.catalog }),
+    ).toBeNull(),
+  );
+  expect(await screen.findByRole("button", { name: "Delta 2" })).toBeTruthy();
+});
+it.each(["outside", "covered"])(
+  "does not add when releasing on an %s point",
+  async (mode) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    await mount();
+    const handle = await openDrop();
+    beginDrop(handle);
+    if (mode === "covered")
+      Object.defineProperty(document, "elementFromPoint", {
+        configurable: true,
+        value: () => document.querySelector(".v-canvas-catalog"),
+      });
+    const point =
+      mode === "outside"
+        ? { pointerId: 7, clientX: -20, clientY: 20 }
+        : dropPoint();
+    fireEvent.pointerMove(handle, point);
+    fireEvent.pointerUp(handle, point);
+    fireEvent.click(handle, { detail: 1 });
+    await act(async () => {});
+    expect(additions(spy)).toHaveLength(0);
+    expect(document.querySelector(".v-canvas-drop-ghost")).toBeNull();
+  },
+);
+it.each([
+  "Escape",
+  "blur",
+  "handleBlur",
+  "resize",
+  "pointerCancel",
+  "lostPointerCapture",
+])(
+  "cancels a catalogue drag on %s without falling through to click",
+  async (cause) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    await mount();
+    const handle = await openDrop();
+    beginDrop(handle);
+    if (cause === "Escape") fireEvent.keyDown(handle, { key: "Escape" });
+    else if (cause === "blur") fireEvent.blur(window);
+    else if (cause === "handleBlur") fireEvent.blur(handle);
+    else if (cause === "resize") fireEvent.resize(window);
+    else if (cause === "pointerCancel")
+      fireEvent.pointerCancel(handle, { pointerId: 7 });
+    else fireEvent.lostPointerCapture(handle, { pointerId: 7 });
+    fireEvent.pointerUp(handle, dropPoint());
+    fireEvent.click(handle, { detail: 1 });
+    await act(async () => {});
+    expect(additions(spy)).toHaveLength(0);
+    expect(document.querySelector(".v-canvas-drop-ghost")).toBeNull();
+    expect(screen.getByRole("button", { name: t.close })).toBeTruthy();
+  },
+);
+it("cancels a failed catalogue pointer capture but keeps keyboard addition available", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const handle = await openDrop();
+  vi.spyOn(handle, "setPointerCapture").mockImplementationOnce(() => {
+    throw Error("Detached capture");
+  });
+  fireEvent.pointerDown(handle, {
+    button: 0,
+    isPrimary: true,
+    pointerId: 7,
+    clientX: 620,
+    clientY: 50,
+  });
+  expect(handle.setPointerCapture).toHaveBeenCalledExactlyOnceWith(7);
+  fireEvent.pointerUp(handle, dropPoint());
+  fireEvent.click(handle, { detail: 1 });
+  expect(additions(spy)).toHaveLength(0);
+  await userEvent.setup().keyboard("{Enter}");
+  await waitFor(() => expect(additions(spy)).toHaveLength(1));
+  expect(additions(spy)[0]).not.toHaveProperty("at");
+});
+it("keeps the separate Add button usable after cancelling a drag", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  const handle = await openDrop();
+  beginDrop(handle);
+  fireEvent.keyDown(handle, { key: "Escape" });
+  fireEvent.pointerUp(handle, dropPoint());
+  fireEvent.click(screen.getByRole("button", { name: "Añadir Delta" }), {
+    detail: 1,
+  });
+  await waitFor(() => expect(additions(spy)).toHaveLength(1));
+  expect(additions(spy)[0]).not.toHaveProperty("at");
+});
+it("can drop the first widget onto an empty canvas", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await renderStudio("studio-vacio");
+  await userEvent
+    .setup()
+    .click(await screen.findByRole("button", { name: t.open }));
+  const handle = await openDrop();
+  beginDrop(handle);
+  fireEvent.pointerUp(handle, dropPoint());
+  await waitFor(() => expect(additions(spy)).toHaveLength(1));
+  expect(additions(spy)[0]).toHaveProperty("at");
+  expect(await screen.findByRole("button", { name: "Delta" })).toBeTruthy();
+});
+
+it.each(["rejected", "denied", "studioConflict"] as const)(
+  "clears the drop status after %s, reads authority once and never replays add",
+  async (kind) => {
+    const original = Client.prototype.request;
+    let current: StudioView | undefined;
+    const spy = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request, ...rest) {
+        if (request.method === "studio.add") {
+          if (kind === "studioConflict") {
+            if (!current) throw Error("Initial view required");
+            throw new HostFailure({ kind, current: structuredClone(current) });
+          }
+          throw new HostFailure({ kind });
+        }
+        const response = await original.call(this, request, ...rest);
+        if (response.method === "studio.get") current = response.value;
+        return response;
+      });
+    await mount();
+    const handle = await openDrop();
+    beginDrop(handle);
+    const status = document.querySelector(
+      '.v-canvas-accessible-help[role="status"]',
+    );
+    expect(status?.textContent).toContain(dropText.release);
+    fireEvent.pointerUp(handle, dropPoint());
+    await waitFor(() =>
+      expect(
+        spy.mock.calls.filter(([request]) => request.method === "studio.get"),
+      ).toHaveLength(2),
+    );
+    await waitFor(() => expect(status?.textContent).toBe(""));
+    expect(
+      await screen.findByText(
+        kind === "studioConflict" ? studioText.conflict : studioText.failed,
+      ),
+    ).toBeTruthy();
+    expect(additions(spy)).toHaveLength(1);
+    expect(additions(spy)[0]).toHaveProperty("at");
+    expect(screen.queryByRole("button", { name: studioText.retry })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: studioText.discard }));
+    await act(async () => {});
+    expect(additions(spy)).toHaveLength(1);
+  },
+);
+
+it.each(["button", "Enter"] as const)(
+  "reconciles an applied unpositioned %s add after an uncertain result without replaying it",
+  async (trigger) => {
+    const original = Client.prototype.request;
+    let reads = 0;
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const spy = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request, ...rest) {
+        if (request.method === "studio.get" && ++reads === 2) await held;
+        const response = await original.call(this, request, ...rest);
+        if (request.method === "studio.add") {
+          if (trigger === "button") throw Error("Acknowledgement lost");
+          throw new HostFailure({ kind: "coreUnavailable" });
+        }
+        return response;
+      });
+    try {
+      await mount();
+      const handle = await openDrop();
+      if (trigger === "button")
+        fireEvent.click(screen.getByRole("button", { name: "Añadir Delta" }));
+      else {
+        handle.focus();
+        await userEvent.setup().keyboard("{Enter}");
+      }
+      await waitFor(() => expect(reads).toBe(2));
+      expect(additions(spy)).toHaveLength(1);
+      expect(additions(spy)[0]).not.toHaveProperty("at");
+      expect(handle.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(screen.getByRole("button", { name: "Añadir Delta" }));
+      expect(additions(spy)).toHaveLength(1);
+      await act(async () => {
+        release();
+      });
+      expect(
+        await screen.findByRole("button", { name: "Delta 2" }),
+      ).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: studioText.retry }),
+      ).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: studioText.discard }));
+      await act(async () => {});
+      expect(reads).toBe(2);
+      expect(additions(spy)).toHaveLength(1);
+    } finally {
+      release();
+    }
+  },
+);
+
+it.each(["protected", "readOnly", "limit", "pro", "noCanvas"] as const)(
+  "prevents catalogue writes in the %s UI state",
+  async (mode) => {
+    const project = (view: StudioView): StudioView => {
+      const value = structuredClone(view);
+      if (mode === "protected") value.state = "protected";
+      if (mode === "limit")
+        value.instances = Array.from(
+          { length: studioLimits.instances },
+          (_, i) => ({
+            ...structuredClone(value.instances[i === 0 ? 0 : 1]),
+            id: `widget-${i + 1}`,
+          }),
+        );
+      if (mode === "pro") {
+        const radar = value.catalog.find((widget) => widget.kind === "radar");
+        if (!radar) throw Error("Radar catalogue fixture required");
+        radar.allowed = false;
+        value.plan = "free";
+      }
+      if (mode === "noCanvas") value.canvas = null;
+      return value;
+    };
+    // Subscription and get must describe the same authoritative test document.
+    const listen = Client.prototype.listen;
+    vi.spyOn(Client.prototype, "listen").mockImplementation(function (
+      this: Client,
+      callback,
+    ) {
+      return listen.call(this, (message) =>
+        callback(
+          message.kind === "event" && message.event.topic === "studio"
+            ? {
+                ...message,
+                event: {
+                  ...message.event,
+                  value: project(message.event.value),
+                },
+              }
+            : message,
+        ),
+      );
+    });
+    const original = Client.prototype.request;
+    const spy = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(async function (this: Client, request, ...rest) {
+        const response = await original.call(this, request, ...rest);
+        if (response.method !== "studio.get") return response;
+        return { ...response, value: project(response.value) };
+      });
+    await renderStudio(
+      mode === "readOnly" ? "studio-canvas-readonly" : "studio-canvas",
+    );
+    await screen.findAllByRole("button", {
+      name: "Standings Visible",
+    });
+    await userEvent.setup().click(screen.getByRole("button", { name: t.open }));
+    if (mode === "pro") {
+      await openDrop();
+      const handle = screen.getByRole("button", {
+        name: dropText.drag("Radar"),
+      });
+      expect(handle.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.pointerDown(handle, {
+        button: 0,
+        isPrimary: true,
+        pointerId: 7,
+        clientX: 620,
+        clientY: 50,
+      });
+      expect(handle.hasPointerCapture(7)).toBe(false);
+      fireEvent.pointerMove(handle, dropPoint());
+      fireEvent.pointerUp(handle, dropPoint());
+      fireEvent.click(handle);
+      fireEvent.click(screen.getByRole("button", { name: "Añadir Radar" }));
+      handle.focus();
+      await userEvent.setup().keyboard("{Enter}");
+    } else {
+      const add = screen.getByRole("button", {
+        name: studioText.add,
+      });
+      if (mode !== "noCanvas")
+        expect(add.getAttribute("aria-disabled")).toBe("true");
+      fireEvent.click(add);
+      expect(
+        screen.queryByRole("complementary", { name: studioText.catalog }),
+      ).toBeNull();
+      if (mode === "noCanvas")
+        expect(document.querySelector(".v-studio-canvas-plane")).toBeNull();
+    }
+    await act(async () => {});
+    expect(additions(spy)).toHaveLength(0);
+    expect(document.querySelector(".v-canvas-drop-ghost")).toBeNull();
+  },
+);
+
+it("releases catalogue pointer capture on unmount and cannot submit the detached drag", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  const { unmount } = await mount();
+  const handle = await openDrop();
+  beginDrop(handle);
+  const point = dropPoint();
+  unmount();
+  expect(handle.hasPointerCapture(7)).toBe(false);
+  fireEvent.pointerUp(handle, point);
+  fireEvent.click(handle);
+  await act(async () => {});
+  expect(additions(spy)).toHaveLength(0);
 });

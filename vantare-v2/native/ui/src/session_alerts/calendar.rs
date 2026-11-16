@@ -1,6 +1,6 @@
 //! Lectura de la agenda local en el host; sin I/O en la proyección ni el pintor.
 use gpui::{App, Global};
-use std::{io::Read, path::Path};
+use std::path::Path;
 use vantare_domain::session_alerts::CalendarInput;
 use vantare_ipc::session_alerts::Feed;
 
@@ -20,15 +20,9 @@ pub(crate) fn poll(path: &Path, cx: &mut App) {
         cx.refresh_windows();
     }
 }
+/// La lectura vive en `ipc`; aquí solo queda el punto que usan el sondeo y su test.
 fn read(path: &Path, now: u64) -> Vec<CalendarInput> {
-    let Ok(file) = std::fs::File::open(path) else {
-        return vec![];
-    };
-    let mut bytes = Vec::new();
-    if file.take(65537).read_to_end(&mut bytes).is_err() || bytes.len() > 65536 {
-        return vec![];
-    }
-    serde_json::from_slice::<Feed>(&bytes).map_or_else(|_| vec![], |feed| feed.current(now))
+    Feed::read_file(path, now)
 }
 #[cfg(test)]
 mod tests {

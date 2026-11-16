@@ -21,6 +21,9 @@ pub(crate) trait Widget {
     where
         Self: Sized;
     fn attach_assets(&mut self, _assets: &Arc<rune::ImageCache>) {}
+    fn shortcut(&mut self) -> Update {
+        Update::default()
+    }
     fn configured(&self, settings: &Settings, prefs: Preferences) -> bool;
     fn size(&self) -> Size;
     fn size_for(&self, snapshot: Option<&Snapshot>) -> Size;
@@ -28,5 +31,11 @@ pub(crate) trait Widget {
     fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update;
     fn animate(&mut self, clock: f64) -> Update;
     fn schedule(&self, clock: f64, tx: &mut Tx);
+    /// Local calendar agenda read by the host; widgets that ignore it do nothing.
+    fn calendar(&mut self, _events: &[vantare_domain::session_alerts::CalendarInput]) {}
+    /// Tones the widget asks the process to play this frame; silent by default.
+    fn sound(&mut self) -> Vec<(vantare_domain::session_alerts::Tone, u8)> {
+        Vec::new()
+    }
     fn view(&self) -> El;
 }

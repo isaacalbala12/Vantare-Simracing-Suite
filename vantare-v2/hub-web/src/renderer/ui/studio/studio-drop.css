@@ -1,0 +1,141 @@
+.v-canvas-catalog {
+  position: absolute;
+  z-index: 8;
+  top: 12px;
+  right: 12px;
+  bottom: 64px;
+  width: min(336px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-3);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-neo);
+}
+.v-canvas-catalog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.v-canvas-catalog h2 {
+  font: 600 24px var(--font-display);
+}
+.v-canvas-catalog p,
+.v-canvas-catalog small {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.v-canvas-catalog-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+  padding-bottom: 16px;
+  mask-image: linear-gradient(
+    to bottom,
+    var(--text-1) calc(100% - 12px),
+    transparent
+  );
+}
+.v-canvas-catalog-list h3 {
+  font: 500 11px var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 12px 0 8px;
+}
+.v-canvas-catalog-card {
+  display: grid;
+  grid-template-columns: 56px 1fr 28px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--edge);
+}
+.v-canvas-catalog-card > span {
+  width: 56px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+}
+.v-canvas-catalog-card > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.v-canvas-catalog-card strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.v-canvas-catalog-card > .v-button {
+  grid-column: 2;
+  justify-self: start;
+}
+.v-canvas-catalog-grip {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  min-height: 40px;
+  color: var(--text-2);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+}
+.v-canvas-catalog-grip[aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+.v-canvas-catalog-grip:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.v-canvas-drop-follower {
+  position: fixed;
+  z-index: 9;
+  pointer-events: none;
+  display: grid;
+  gap: 4px;
+  max-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-sm);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-account);
+  font-size: 12px;
+}
+.v-canvas-drop-follower > span {
+  display: block;
+  width: 80px;
+  height: 45px;
+}
+.v-canvas-drop-follower[data-valid="true"] {
+  border-color: var(--accent);
+}
+.v-canvas-drop-ghost {
+  position: absolute;
+  pointer-events: none;
+  z-index: 6;
+  border: 2px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  opacity: 0.8;
+}
+.v-canvas-drop-ghost > span {
+  position: absolute;
+  inset: 0;
+}
+.v-canvas-drop-ghost > strong {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-panel);
+  color: var(--text-1);
+  white-space: nowrap;
+  font-size: 12px;
+}

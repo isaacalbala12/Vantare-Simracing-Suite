@@ -24,6 +24,8 @@ struct Watched {
     presentation: Presentation,
     appearance_path: Option<PathBuf>,
     appearance: MotionPolicy,
+    /// Layout file the calendar agenda lives next to.
+    layout: PathBuf,
 }
 impl Watched {
     fn poll(&mut self, scene: &mut Scene, now: Instant) -> bool {
@@ -41,6 +43,11 @@ impl Watched {
             Ok(Some(shown)) => changed |= scene.set_shown(shown, now),
             Ok(None) => {}
             Err(error) => eprintln!("overlays-rune: presentación protegida: {error}"),
+        }
+        // Only a design with Avisos de sesión touches the agenda file.
+        if crate::calendar::wanted(self.document.layout()) {
+            let wall = vantare_ipc::control::wall_ms().unwrap_or(0);
+            changed |= scene.set_calendar(crate::calendar::read(&self.layout, wall), now);
         }
         changed
     }
@@ -76,6 +83,7 @@ impl DataFeed {
         );
         scene.refresh(Instant::now());
         let watched = Watched {
+            layout: path.clone(),
             document,
             presentation,
             appearance_path,
@@ -213,6 +221,7 @@ mod tests {
             presentation: Presentation::watch(&path).expect("presentation"),
             appearance_path: None,
             appearance: MotionPolicy(false),
+            layout: path.clone(),
         };
         let now = Instant::now();
         let mut scene = Scene::new(

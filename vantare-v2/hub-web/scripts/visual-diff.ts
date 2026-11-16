@@ -281,6 +281,14 @@ async function capture(
   let pageClosed: Promise<void> | undefined;
   let cleanupFailed = false;
   let cdpDisconnected = false;
+  type VisibilitySample = {
+    visibilityState: string;
+    hidden: boolean;
+    hasFocus: boolean;
+  };
+  let visibilityAtScene: VisibilitySample | undefined;
+  let visibilityAtEnd: VisibilitySample | undefined;
+  let foregroundAtPrepare: boolean | undefined;
   try {
     await writeFile(
       join(destination, "instance.json"),
@@ -355,6 +363,9 @@ async function capture(
       { windowsHide: true },
     );
     await writeFile(join(destination, "window.json"), preparedWindow);
+    foregroundAtPrepare = (
+      JSON.parse(preparedWindow.toString()) as { foreground?: boolean }
+    ).foreground;
     await until(
       async () =>
         page.evaluate(
@@ -380,6 +391,16 @@ async function capture(
             .click();
       }
     }
+    // Record the page's visibility right before preparing the scene: a hidden
+    // or unfocused window can stop rAF and leave Playwright waiting for a
+    // stable control. Receipt only; capture behaviour is unchanged.
+    visibilityAtScene = await page
+      .evaluate(() => ({
+        visibilityState: document.visibilityState,
+        hidden: document.hidden,
+        hasFocus: document.hasFocus(),
+      }))
+      .catch(() => undefined);
     await adapter.prepare(page);
     await page.evaluate(async () => {
       await document.fonts.ready;
@@ -615,6 +636,14 @@ async function capture(
       );
     }
     const captured = await readFile(join(destination, "current.png"));
+    // Same sample at the end, while the page is still alive.
+    visibilityAtEnd = await page
+      .evaluate(() => ({
+        visibilityState: document.visibilityState,
+        hidden: document.hidden,
+        hasFocus: document.hasFocus(),
+      }))
+      .catch(() => undefined);
     // Scene checks exercise focus and keyboard navigation after the screenshot.
     // Run them before bounded teardown, and propagate failures to the report.
     cleanupFailed = true;
@@ -747,6 +776,9 @@ async function capture(
             qaKillAfterClose,
             cleanupFailed,
             exitCode: child.exitCode,
+            visibilityAtScene,
+            visibilityAtEnd,
+            foregroundAtPrepare,
           },
           null,
           2,

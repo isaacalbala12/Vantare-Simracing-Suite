@@ -48,11 +48,13 @@ export function StudioFocus() {
         ref={model.root}
       >
         <RemoveWidget />
-        <CatalogDialog
-          open={catalogOpen}
-          onOpenChange={model.setCatalogOpen}
-          onPlans={() => navigate("account")}
-        />
+        {!state.canvasMode && (
+          <CatalogDialog
+            open={catalogOpen}
+            onOpenChange={model.setCatalogOpen}
+            onPlans={() => navigate("account")}
+          />
+        )}
         {view?.state !== "missing" && <LayoutStrip model={model} />}
         <div className="v-focus-column">
           {view ? (
@@ -76,11 +78,13 @@ export function StudioFocus() {
           ) : null}
           {!unavailableCanvas && <StudioFeedback model={model} />}
           {state.canvasMode && view ? (
-            selected ? (
+            selected || (view.state === "ready" && view.canvas) ? (
               <CanvasStage
                 view={view}
                 selected={selected}
                 onSelect={model.select}
+                catalogOpen={catalogOpen}
+                onCatalogOpenChange={model.setCatalogOpen}
                 actions={
                   <Button
                     size="sm"
@@ -125,7 +129,7 @@ export function StudioFocus() {
           ) : !state.failure ? (
             <LoadingStudio />
           ) : null}
-          {!state.canvasMode && view?.state === "ready" && <ActionNotice />}
+          {view?.state === "ready" && <ActionNotice />}
           {view && view.state !== "missing" && selected && (
             <div
               className="v-studio-temporary"

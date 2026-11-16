@@ -21,6 +21,8 @@ pub struct FrameSet {
     pub visible: BTreeSet<String>,
     pub shown: bool,
     pub reduced_motion: bool,
+    /// Local calendar agenda, read by the host; widgets never touch the disk.
+    pub calendar: Arc<Vec<vantare_domain::session_alerts::CalendarInput>>,
 }
 impl FrameSet {
     pub fn visible_instances<'a>(
@@ -94,6 +96,7 @@ impl Scene {
                 visible: BTreeSet::new(),
                 shown,
                 reduced_motion,
+                calendar: Arc::new(Vec::new()),
             },
             cadences: BTreeMap::new(),
             last: None,
@@ -171,6 +174,18 @@ impl Scene {
         }
         self.frames.reduced_motion = reduced;
         self.refresh(now);
+        true
+    }
+    /// The host reads the local agenda; publishing it here only counts when it changed.
+    pub fn set_calendar(
+        &mut self,
+        events: Vec<vantare_domain::session_alerts::CalendarInput>,
+        _now: Instant,
+    ) -> bool {
+        if *self.frames.calendar == events {
+            return false;
+        }
+        self.frames.calendar = Arc::new(events);
         true
     }
     pub fn set_shown(&mut self, shown: bool, now: Instant) -> bool {

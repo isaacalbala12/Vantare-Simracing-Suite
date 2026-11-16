@@ -1,3 +1,5 @@
+# Histórico #2213: requiere los binarios Relative del kit congelado, no los hosts actuales.
+# Medición actual por PID para los 17 widgets: tools/qa-overlays/OBSERVAR.ps1.
 # Importación inerte. Solo INICIAR llama a esta función en el PC de juego.
 function Invoke-VantareOverlayObservation {
  param([Parameter(Mandatory)]$Kit,[Parameter(Mandatory)]$Observation,

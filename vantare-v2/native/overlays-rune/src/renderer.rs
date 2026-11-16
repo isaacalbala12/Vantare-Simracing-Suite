@@ -63,6 +63,8 @@ pub(crate) fn supports(instance: &Instance) -> bool {
 struct Entry {
     painter: Box<dyn Widget>,
     placement: Placement,
+    shortcut: Option<u8>,
+    key_down: bool,
 }
 #[derive(Default)]
 pub(crate) struct Painters {
@@ -70,6 +72,8 @@ pub(crate) struct Painters {
     order: Vec<String>,
     assets: Option<Arc<rune::ImageCache>>,
     assets_changed: bool,
+    /// One speaker per process: the widget only decides which tone, the host plays it.
+    sound: crate::session_alerts::sound::Speaker,
 }
 impl Painters {
     pub fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
@@ -141,8 +145,22 @@ impl Painters {
                     continue;
                 };
                 if let Some(painter) = fresh {
-                    self.entries
-                        .insert(instance.id.clone(), Entry { painter, placement });
+                    self.entries.insert(
+                        instance.id.clone(),
+                        Entry {
+                            painter,
+                            placement,
+                            shortcut: match settings {
+                                Settings::CarDamageVisual(s) => s
+                                    .normalized()
+                                    .toggle_key
+                                    .strip_prefix('f')
+                                    .and_then(|n| n.parse().ok()),
+                                _ => None,
+                            },
+                            key_down: false,
+                        },
+                    );
                     build = true;
                     meter.mark(Cause::Design);
                 }
@@ -164,6 +182,7 @@ impl Painters {
                     }
                     build |= update.build;
                 }
+                entry.painter.calendar(&frames.calendar);
                 order.push(instance.id.clone());
             }
         }
@@ -175,6 +194,29 @@ impl Painters {
         }
         build
     }
+    pub fn shortcut_keys(&self) -> u16 {
+        self.entries
+            .values()
+            .filter_map(|e| e.shortcut)
+            .fold(0, |mask, key| mask | (1 << (key - 1)))
+    }
+    pub fn shortcuts(&mut self, down: u16, meter: &Meter) -> bool {
+        let mut build = false;
+        for entry in self.entries.values_mut() {
+            let pressed = entry
+                .shortcut
+                .is_some_and(|key| down & (1 << (key - 1)) != 0);
+            if pressed && !entry.key_down {
+                let update = entry.painter.shortcut();
+                if update.build || update.pixels {
+                    meter.mark(Cause::Data);
+                }
+                build |= update.build;
+            }
+            entry.key_down = pressed;
+        }
+        build
+    }
     pub fn animate(&mut self, clock: f64, tx: &mut Tx, meter: &Meter) -> bool {
         let mut build = std::mem::take(&mut self.assets_changed);
         if build {
@@ -182,6 +224,9 @@ impl Painters {
         }
         for entry in self.entries.values_mut() {
             let update = entry.painter.animate(clock);
+            for (tone, volume) in entry.painter.sound() {
+                self.sound.play(tone, volume);
+            }
             if update.pixels || update.build {
                 meter.mark(Cause::Animation);
             }
@@ -286,6 +331,8 @@ pub(crate) mod tests {
                 Entry {
                     painter: Box::new(painter),
                     placement,
+                    shortcut: None,
+                    key_down: false,
                 },
             );
             painters.order.push(id.into());
@@ -420,5 +467,72 @@ pub(crate) mod tests {
                 painter.size()
             );
         }
+    }
+    /// Reproductor compartido con el test: apunta lo que el bucle pediría reproducir.
+    #[derive(Clone, Default)]
+    struct Sharing(
+        std::rc::Rc<std::cell::RefCell<Vec<(vantare_domain::session_alerts::Tone, u8)>>>,
+    );
+    impl crate::session_alerts::sound::Player for Sharing {
+        fn play(&mut self, tone: vantare_domain::session_alerts::Tone, volume: u8) {
+            self.0.borrow_mut().push((tone, volume));
+        }
+    }
+    fn lmu_photo() -> vantare_domain::Snapshot {
+        let mut snapshot = crate::testdata::snapshot();
+        snapshot.origin.source.simulator = "lmu";
+        snapshot.origin.source.kind = vantare_domain::SourceKind::Live;
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        snapshot.state.session.kind =
+            vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Practice);
+        snapshot.state.session.elapsed_s = vantare_domain::Quality::Reliable(0.0);
+        snapshot.state.session.timing.scheduled_end_s = vantare_domain::Quality::Reliable(300.0);
+        snapshot
+    }
+
+    #[test]
+    fn the_animate_loop_hands_each_requested_tone_to_the_speaker() {
+        let design = vantare_ipc::layout::Layout::from_json(
+            br#"{"version":2,"instances":[{"id":"avisos","x":0,"y":0,"settings":{"kind":"session-alerts"}}]}"#,
+        )
+        .expect("diseño");
+        let frames = crate::scene::FrameSet {
+            layout: Arc::new(design),
+            photos: std::collections::BTreeMap::from([(
+                "avisos".to_owned(),
+                vantare_ipc::Photo::full(Arc::new(lmu_photo())),
+            )]),
+            visible: std::collections::BTreeSet::from(["avisos".to_owned()]),
+            shown: true,
+            reduced_motion: false,
+            calendar: Arc::default(),
+        };
+        let shared = Sharing::default();
+        let mut painters = Painters {
+            sound: crate::session_alerts::sound::Speaker::with(Box::new(shared.clone())),
+            ..Default::default()
+        };
+        let meter = crate::stats::Meter::new(Arc::new(crate::stats::Counts::default()));
+        let viewport = crate::scene::Viewport {
+            origin: (0.0, 0.0),
+            size: vantare_domain::geometry::Size {
+                width: 1920.0,
+                height: 1080.0,
+            },
+        };
+        assert!(painters.sync(
+            Some(&frames),
+            &crate::host::Access::LocalPreview,
+            viewport,
+            0.0,
+            &meter
+        ));
+        let mut tx = rune::Tx::default();
+        painters.animate(0.0, &mut tx, &meter);
+        assert_eq!(
+            shared.0.borrow().as_slice(),
+            [(vantare_domain::session_alerts::Tone::Mild, 70)],
+            "el bucle entrega al reproductor el tono que pide el aviso"
+        );
     }
 }

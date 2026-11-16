@@ -12,6 +12,7 @@ pub mod supervisor;
 #[cfg(windows)]
 mod topologia_windows;
 
+mod calendar;
 pub mod feed;
 pub mod scene;
 

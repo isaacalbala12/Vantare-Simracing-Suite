@@ -192,11 +192,16 @@ describe("Studio Foco interactions", () => {
     ).getByRole("button", { name: "Añadir Standings" });
     fireEvent.click(catalogButton);
     await screen.findByText(t.addedName("Standings"));
+    const addedRow = await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
+    await waitFor(() => expect(document.activeElement).toBe(addedRow));
+    expect(addedRow.dataset.widget).toBeTruthy();
     expect(
-      await screen.findByRole("button", {
-        name: /^Standings (?:Visible|Oculto)/,
-      }),
-    ).toBeTruthy();
+      screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent === t.addedName("Standings")),
+    ).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: t.undo }));
     await screen.findByRole("heading", { name: t.emptyTitle });
     expect(

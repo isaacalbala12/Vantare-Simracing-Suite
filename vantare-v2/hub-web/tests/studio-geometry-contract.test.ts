@@ -57,7 +57,7 @@ it("keeps legacy add compatible, closes optional drop and validates canvas choic
   ])
     expect(isUiMessage(canvas(choice))).toBe(false);
 });
-it("projects fractional geometry while mock-only unsupported orders never pretend success", () => {
+it("projects fractional geometry and acknowledges positioned additions with their persisted point", () => {
   const host = createMockHost("studio-ready");
   const snapshot = host(message({ method: "studio.get" }));
   if (snapshot?.kind !== "response" || snapshot.result.method !== "studio.get")
@@ -70,20 +70,36 @@ it("projects fractional geometry while mock-only unsupported orders never preten
   changed.result.value.instances[0].size.width = 338.5;
   changed.result.value.instances[0].canvasPlacement = "outside";
   expect(isHostMessage(changed)).toBe(true);
-  expect(
-    host(
-      message({
-        method: "studio.add",
-        kind: "delta",
-        at: { x: 10, y: 20 },
-        baseRevision: revision,
-      }),
-    ),
-  ).toMatchObject({
-    kind: "failure",
-    error: { kind: "unsupported" },
+  const added = host(
+    message({
+      method: "studio.add",
+      kind: "delta",
+      at: { x: 10, y: 20 },
+      baseRevision: revision,
+    }),
+  );
+  expect(added).toMatchObject({
+    kind: "response",
+    result: {
+      method: "studio.add",
+      value: {
+        instances: expect.arrayContaining([
+          expect.objectContaining({ kind: "delta", x: 10, y: 20 }),
+        ]),
+      },
+    },
   });
-  expect(host(message({ method: "studio.get" }))).toEqual(snapshot);
+  expect(isHostMessage(added)).toBe(true);
+  const persisted = host(message({ method: "studio.get" }));
+  if (added?.kind !== "response" || added.result.method !== "studio.add")
+    throw Error("Positioned add missing");
+  expect(persisted).toMatchObject({
+    kind: "response",
+    result: { method: "studio.get", value: added.result.value },
+  });
+  expect(added.result.value.instances).toHaveLength(
+    snapshot.result.value.instances.length + 1,
+  );
 });
 
 it("persists fractional geometry in the QA host and rejects a stale gesture", () => {

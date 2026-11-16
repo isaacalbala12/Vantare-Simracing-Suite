@@ -58,6 +58,17 @@ El volcado final del perfil de QA (`DIPS`) que Chromium haría en esos segundos 
 descarta a propósito: el directorio de datos de cada captura es desechable y no
 se reutiliza. El cierre del producto no cambia.
 
+## Visibilidad y primer plano en el recibo
+
+`teardown.json` registra también `visibilityAtScene`, `visibilityAtEnd` y
+`foregroundAtPrepare` para poder confirmar o descartar que una captura falló
+porque la ventana no estaba en primer plano (rAF no dispara y Playwright no ve
+el control estable). `visibilityAtScene` se toma justo antes de preparar la
+escena y `visibilityAtEnd` al terminar, mientras la página sigue viva; ambos
+incluyen `visibilityState`, `hidden` y `hasFocus`. `foregroundAtPrepare` es el
+`foreground` que ya registra `window.json` al preparar la ventana. Solo se
+registra: no cambia plazos, guardas, cierre ni la lógica de la captura.
+
 ## Referencia declarada no válida
 
 Si el orquestador descarta una referencia, `--capture-only --invalid-reference-reason "motivo"` admite una única escena y tema. Conserva `current.png` y un informe `captured/referenceStatus:invalid`, sin copia de referencia, diferencias ni porcentajes. Sigue comprobando los recibos del banco y las dimensiones 1440×900; no convierte la referencia en válida. Requiere el mismo cerrojo global para capturas reales. `--current` permite probar este modo con una imagen ya tomada sin abrir Electron.

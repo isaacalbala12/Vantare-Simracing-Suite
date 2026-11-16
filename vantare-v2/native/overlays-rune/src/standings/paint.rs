@@ -1,5 +1,5 @@
 //! Pintura del Look Vantare: capas posicionadas sobre la geometría del plan.
-use super::Standings;
+use super::{Standings, motion};
 use crate::vantare::{
     self, Style,
     paint::{Face, font},
@@ -183,7 +183,15 @@ fn table(
     }
     // Los fantasmas van debajo: la fila viva siempre se lee por encima.
     for ghost in &state.visual.ghosts {
-        root = root.child(row_el(&ghost.row, l, ghost.top, ghost.alpha, &s, &label));
+        root = root.child(row_el(
+            &ghost.row,
+            l,
+            ghost.top,
+            ghost.alpha,
+            &motion::RowVis::default(),
+            &s,
+            &label,
+        ));
     }
     for (index, row) in state.scene.display.rows.iter().enumerate() {
         let vis = state.visual.rows.get(&row.id).copied().unwrap_or_default();
@@ -192,6 +200,7 @@ fn table(
             l,
             l.rows[index] + vis.dy,
             vis.alpha,
+            &vis,
             &s,
             &label,
         ));
@@ -216,6 +225,7 @@ fn row_el(
     l: &super::layout::Layout,
     y: f32,
     alpha: f32,
+    vis: &motion::RowVis,
     s: &Style,
     label: &impl Fn(&str, &str, f32, f32, f32, f32, Color, Align) -> El,
 ) -> El {
@@ -239,6 +249,163 @@ fn row_el(
                     .size(2.0, l.row - 4.0)
                     .fill(s.accents.red),
             );
+    }
+    // Efectos de GPUI: destello, chip, barrido, batalla, rombo y boxes.
+    if let Some((kind, strength)) = vis.flash {
+        let color = match kind {
+            motion::Flash::Gain | motion::Flash::PersonalBest => s.colors.flash_gain,
+            motion::Flash::Loss => s.colors.flash_loss,
+            motion::Flash::Lead => s.colors.leader,
+            motion::Flash::Best => s.colors.purple,
+            motion::Flash::Pit => s.colors.box_fill,
+        };
+        let v = &s.styles.neo;
+        let bleed = v.player_bleed;
+        item = item.child(
+            el().key("row-flash")
+                .pin(Some(bleed), Some((l.row - s.geometry.row_height) / 2.0), None, None)
+                .size((l.width - 2.0 * bleed).max(0.0), s.geometry.row_height)
+                .radius(v.player_radius)
+                .linear_gradient(
+                    90.0_f32.to_radians(),
+                    [
+                        (
+                            0.0,
+                            vantare::alpha(color, v.player_from * strength),
+                        ),
+                        (
+                            1.0,
+                            vantare::alpha(color, v.player_to * strength),
+                        ),
+                    ],
+                ),
+        );
+    }
+    let driver = l
+        .columns
+        .iter()
+        .find(|c| c.setting.metric_id == "driverName");
+    if let (Some(column), Some((places, chip_alpha))) = (driver, vis.chip) {
+        let sign = if places > 0 { "+" } else { "-" };
+        item = item.child(
+            text(format!("{sign}{}", places.abs()))
+                .key("position-chip")
+                .font(font(
+                    s,
+                    Face::Body,
+                    s.fonts.badge_size,
+                    l.row,
+                    -0.039,
+                    s.fonts.bold_weight,
+                ))
+                .color(vantare::alpha(s.colors.text, chip_alpha))
+                .size(19.0, l.row)
+                .align(Align::End)
+                .pin(
+                    Some(column.x + column.width - 19.0),
+                    Some(text_top(s, Face::Body, 0.0)),
+                    None,
+                    None,
+                ),
+        );
+    }
+    if let Some(column) = driver
+        && vis.battle > 0.0
+    {
+        let bn = column.x + s.geometry.cell_padding;
+        let bw = column.width - 2.0 * s.geometry.cell_padding;
+        item = item.child(
+            el().key("battle")
+                .pin(Some(bn), Some(l.row - 3.0), None, None)
+                .size(bw.max(0.0), 2.0)
+                .linear_gradient(
+                    90.0_f32.to_radians(),
+                    [
+                        (0.0, vantare::alpha(s.colors.leader, 0.55 * vis.battle)),
+                        (0.8, vantare::alpha(s.colors.leader, 0.10 * vis.battle)),
+                    ],
+                ),
+        );
+    }
+    let best = l.columns.iter().find(|c| c.setting.metric_id == "bestLap");
+    if let Some(column) = best {
+        if let Some((session, sweep_alpha, frac)) = vis.sweep {
+            let base = if session {
+                vantare::alpha(s.colors.purple, 0.45)
+            } else {
+                vantare::alpha(s.colors.gain, 0.35)
+            };
+            let x = column.x + frac * column.width;
+            item = item
+                .child(
+                    el().key("sweep-a")
+                        .pin(Some(x), Some(1.0), None, None)
+                        .size(column.width, l.row - 2.0)
+                        .linear_gradient(
+                            100.0_f32.to_radians(),
+                            [
+                                (0.0, vantare::alpha(base, 0.0)),
+                                (0.5, vantare::alpha(base, sweep_alpha)),
+                            ],
+                        ),
+                )
+                .child(
+                    el().key("sweep-b")
+                        .pin(Some(x + column.width / 2.0), Some(1.0), None, None)
+                        .size(column.width / 2.0, l.row - 2.0)
+                        .linear_gradient(
+                            100.0_f32.to_radians(),
+                            [
+                                (0.0, vantare::alpha(base, sweep_alpha)),
+                                (1.0, vantare::alpha(base, 0.0)),
+                            ],
+                        ),
+                );
+        }
+        if vis.best_marker > 0.0 {
+            item = item.child(
+                text("◆")
+                    .key("best-marker")
+                    .font(font(
+                        s,
+                        Face::Body,
+                        s.fonts.badge_size * 0.6,
+                        10.0,
+                        0.0,
+                        s.fonts.regular_weight,
+                    ))
+                    .color(vantare::alpha(s.colors.purple, vis.best_marker))
+                    .size(12.0, 10.0)
+                    .align(Align::End)
+                    .pin(
+                        Some(column.x + column.width - 15.0),
+                        Some(text_top(s, Face::Body, 3.0)),
+                        None,
+                        None,
+                    ),
+            );
+        }
+    }
+    if vis.pit_alpha > 0.001
+        && let Some(column) = l.columns.iter().find(|c| c.setting.metric_id == "pit")
+    {
+        item = item.child(
+            el().key("pit-badge")
+                .pin(
+                    Some(column.x + vis.pit_dx),
+                    Some((l.row - 26.0) / 2.0),
+                    None,
+                    None,
+                )
+                .size(column.width, 26.0)
+                .corners([0.0, s.geometry.chip_radius, s.geometry.chip_radius, 0.0])
+                .fill(vantare::alpha(s.colors.box_fill, vis.pit_alpha))
+                .shadow(
+                    0.0,
+                    8.0,
+                    vantare::alpha(s.colors.box_fill, 0.22 * vis.pit_alpha),
+                ),
+        );
     }
     for (column_index, (cell, column)) in row.cells.iter().zip(&l.columns).enumerate() {
         if let Some(fill) = cell.fill {
@@ -393,5 +560,13 @@ mod truncation_tests {
                 "the actual painter must contain the ellipsis glyph, not a plain clipped line"
             );
         }
+    }
+}
+
+fn text_top(style: &Style, face: Face, top: f32) -> f32 {
+    top + match face {
+        Face::Display => style.fonts.display_baseline,
+        Face::Mono => style.fonts.mono_baseline,
+        Face::Body => 0.0,
     }
 }

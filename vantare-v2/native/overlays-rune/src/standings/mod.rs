@@ -22,6 +22,8 @@ pub struct Standings {
     settings: Settings,
     prefs: Preferences,
     board: Arc<Board>,
+
+    plan: Plan,
     scene: scene::Scene,
     motion: motion::Motion,
     visual: motion::Visual,
@@ -29,6 +31,10 @@ pub struct Standings {
     repaint: bool,
     paused: bool,
     live: bool,
+}
+
+fn identity(snapshot: &Snapshot) -> String {
+    format!("{}:{}", snapshot.epoch, snapshot.state.session.id.0)
 }
 
 impl Standings {
@@ -45,7 +51,7 @@ impl Standings {
             &layout::content(&settings, &columns),
             None,
         );
-        let plan = Plan::new(board.clone(), String::new(), 0);
+        let plan = Plan::new(board.clone(), identity(&Snapshot::default()), 0);
         let layout = layout::Layout::new(&settings, &columns, &plan);
         let display = scene::Display::new(&settings, prefs, &plan, &layout, false);
         let mut motion = motion::Motion::new();
@@ -55,6 +61,7 @@ impl Standings {
             settings,
             prefs,
             board,
+            plan,
             scene: scene::Scene { display, layout },
             motion,
             visual,
@@ -81,14 +88,14 @@ impl Standings {
             return self.size();
         };
         let mut preview = self.clone();
-        preview.apply(snapshot);
+        preview.apply(snapshot, 0.0);
         preview.size()
     }
 
     /// Called only with the instance's photo already accepted by the host Cadence.
     /// The host owns rates, permissions, demand, visibility and source cancellation.
     pub(crate) fn update(&mut self, snapshot: &Snapshot, clock: f64) -> crate::widget::Update {
-        let changed = self.apply(snapshot);
+        let changed = self.apply(snapshot, clock);
         if changed {
             let rows: Vec<(&scene::Row, f32)> = self
                 .scene
@@ -136,7 +143,7 @@ impl Standings {
     }
 
     /// Recompone la escena visible; el movimiento se sincroniza en update.
-    fn apply(&mut self, snapshot: &Snapshot) -> bool {
+    fn apply(&mut self, snapshot: &Snapshot, clock: f64) -> bool {
         let paused = snapshot.state.source_state == SourceState::Paused;
         if paused && self.paused && self.live {
             return false;
@@ -166,8 +173,13 @@ impl Standings {
             &layout::content(&self.settings, &columns),
             Some(&self.board),
         );
-        // La foto y su sequence no deciden: solo la estructura visible.
-        let plan = Plan::new(board.clone(), String::new(), 0);
+        // La foto y su sequence no deciden la escena; la identidad y la secuencia
+        // solo alimentan la continuidad del movimiento, como en GPUI.
+        let plan = Plan::new(
+            board.clone(),
+            identity(snapshot),
+            snapshot.sequence,
+        );
         let mut layout = layout::Layout::new(&self.settings, &columns, &plan);
         if paused {
             layout.height += 22.0;
@@ -175,7 +187,11 @@ impl Standings {
         let display = scene::Display::new(&self.settings, self.prefs, &plan, &layout, paused);
         let next = scene::Scene { display, layout };
         let changed = next != self.scene;
+        if changed {
+            self.motion.events(&self.plan, &plan, clock);
+        }
         self.board = board;
+        self.plan = plan;
         self.scene = next;
         self.paused = paused;
         self.live = vantare_domain::freshness::shows_last_live(snapshot);
@@ -236,3 +252,4 @@ impl crate::widget::Widget for Standings {
         Standings::view(self)
     }
 }
+

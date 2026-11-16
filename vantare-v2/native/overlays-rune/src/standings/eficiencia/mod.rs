@@ -4,6 +4,8 @@ mod options;
 mod style;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod paint_tests;
 use model::{Config, ContentPlan, Plan, Status};
 use std::sync::Arc;
 use vantare_domain::widget_settings::standings::Settings;

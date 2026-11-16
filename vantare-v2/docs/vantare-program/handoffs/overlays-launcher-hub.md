@@ -3038,3 +3038,17 @@ se conservan. Test de despacho positivo y dos negativos; sin captura porque
 No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
 Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
 Sin gráficos, Plane, merge, promoción ni release propios.
+
+
+## VANTA-144 · B, rebase tras #2357 (16/11/2026)
+
+#2357 esta en nightly a63b17bed2456d0e9b626581ebd8bde43d6a470a. #2351
+conserva solo sus cinco commits propios sobre esa base y este registro. Renderer,
+host, main y Relative comun son los de nightly; Eficiencia sigue sin despacho.
+No se cambia el aspecto ni se afirma paridad. La decision de enum queda
+sustituida por el trait Widget solicitado por la raiz: esquema enviado al
+suborquestador, pendiente de ambos OK antes de escribir su PR separado.
+VisualRow.slot son coordenadas del layout, no indices de filas.
+#2359 se apila sobre este #2351 por sus fuentes y utilidades de captura.
+Delta queda local sobre nightly. Sin graficos, merge, release ni cambios Plane.
+Los resultados historicos no validan estos heads; checks actuales en los PRs.

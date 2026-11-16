@@ -451,8 +451,10 @@ describe("Studio Ctrl+D", () => {
     mount();
     const first = await listRow("Standings");
     first.focus();
-    fireEvent.keyDown(first, { key: "d", ctrlKey: true });
-    fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+    act(() => {
+      fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+      fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+    });
     await act(async () => {});
     expect(
       requests.mock.calls.filter(
@@ -518,4 +520,36 @@ describe("Studio Ctrl+D", () => {
       expect(screen.queryByRole("button", { name: t.retry })).toBeNull();
     },
   );
+});
+
+it("keeps the original failure if reading after an uncertain duplicate also fails", async () => {
+  const original = Client.prototype.request;
+  let sent = false;
+  const requests = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(function (this: Client, request) {
+      if (request.method === "studio.duplicate") sent = true;
+      if (
+        sent &&
+        (request.method === "studio.duplicate" ||
+          request.method === "studio.get")
+      )
+        return Promise.reject(new HostFailure({ kind: "coreUnavailable" }));
+      return original.call(this, request);
+    });
+  mount();
+  const first = await listRow("Standings");
+  first.focus();
+  fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+  await screen.findByText(t.offline);
+  expect(screen.getByRole("status", { name: t.notSaved })).toBeTruthy();
+  expect(first.getAttribute("aria-pressed")).toBe("true");
+  expect(
+    requests.mock.calls.filter(
+      ([request]) => request.method === "studio.duplicate",
+    ),
+  ).toHaveLength(1);
+  expect(
+    requests.mock.calls.filter(([request]) => request.method === "studio.get"),
+  ).toHaveLength(2);
 });

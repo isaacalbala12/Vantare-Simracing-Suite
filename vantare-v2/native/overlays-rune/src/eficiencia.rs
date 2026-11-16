@@ -233,7 +233,7 @@ mod parity_tests {
     #[test]
     fn font_keeps_the_css_line_height_and_the_tracking_in_points() {
         let style = font(14.0, 600, 0.14);
-        let normal = (14.0 * 1984.0 / 2048.0).round() + (14.0 * 494.0 / 2048.0).round();
+        let normal = (14.0_f32 * 1984.0 / 2048.0).round() + (14.0_f32 * 494.0 / 2048.0).round();
         assert_eq!(style.line_height, normal, "línea normal CSS");
         assert!(
             (style.tracking - 0.14 * 14.0).abs() < 1e-6,
@@ -244,13 +244,13 @@ mod parity_tests {
 
     #[test]
     fn baseline_matches_the_css_half_leading_of_gpui() {
-        let ascent = (11.0 * 1984.0 / 2048.0).round();
-        let descent = (11.0 * 494.0 / 2048.0).round();
-        let expected = 22.0 + ascent + ((11.0 - ascent - descent) / 2.0).floor();
+        let ascent = (11.0_f32 * 1984.0 / 2048.0).round();
+        let descent = (11.0_f32 * 494.0 / 2048.0).round();
+        let expected = 22.0 + ascent + ((11.0_f32 - ascent - descent) / 2.0).floor();
         assert_eq!(baseline(22.0, 11.0, 11.0), expected);
         assert_eq!(
             baseline(14.0, 14.0, 14.0),
-            14.0 + 14.0 + ((14.0 - 14.0 - 3.0) / 2.0).floor()
+            14.0 + 14.0 + ((14.0_f32 - 14.0 - 3.0) / 2.0).floor()
         );
     }
 

@@ -101,10 +101,10 @@ export const studioCatalogDropScenes: Record<string, VisualScene> =
               '.v-canvas-accessible-help[role="status"]',
             );
             if (state !== "panel") {
-              const handle = page.getByRole("button", {
-                name: studioDropText.drag("Delta"),
-                exact: true,
-              });
+              const handle = page
+                .getByRole("button", { name: "Añadir Delta", exact: true })
+                .locator("..")
+                .locator(".v-canvas-catalog-grip");
               await handle.scrollIntoViewIfNeeded();
               const source = await handle.boundingBox(),
                 plane = await page

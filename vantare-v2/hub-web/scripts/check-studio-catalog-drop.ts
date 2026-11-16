@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "playwright-core";
 import { studioText } from "../src/renderer/i18n/studio.ts";
 import { canvasText } from "../src/renderer/i18n/studio-canvas.ts";
-import { studioDropText } from "../src/renderer/i18n/studio-drop.ts";
 import { until } from "./wait-for";
 
 /** Actual pointer capture, clipping/hit testing and focus; jsdom cannot prove these. */
@@ -74,10 +74,10 @@ export async function checkStudioCatalogDrop(
       await page.evaluate(() => document.fonts.ready);
     };
     const start = async () => {
-      const handle = page.getByRole("button", {
-        name: studioDropText.drag("Delta"),
-        exact: true,
-      });
+      const handle = page
+        .getByRole("button", { name: "Añadir Delta", exact: true })
+        .locator("..")
+        .locator(".v-canvas-catalog-grip");
       await handle.scrollIntoViewIfNeeded();
       const source = await handle.boundingBox();
       const plane = await page.locator(".v-studio-canvas-plane").boundingBox();
@@ -94,6 +94,101 @@ export async function checkStudioCatalogDrop(
       );
       return plane;
     };
+    for (const scheme of ["dark", "light"]) {
+      await setup(`visual-${scheme}:studio-canvas`);
+      const cards = page.locator(".v-canvas-catalog-card");
+      assert.ok((await cards.count()) > 1);
+      await page.getByRole("searchbox", { name: studioText.search }).focus();
+      for (const card of await cards.all()) {
+        const button = card.getByRole("button");
+        assert.equal(await button.count(), 1);
+        await page.keyboard.press("Tab");
+        assert.equal(
+          await button.evaluate((node) => document.activeElement === node),
+          true,
+        );
+        assert.equal(
+          await card
+            .locator(".v-canvas-catalog-grip")
+            .evaluate(
+              (node) =>
+                !node.matches(
+                  "button,input,select,textarea,a[href],[contenteditable]",
+                ) &&
+                !node.hasAttribute("tabindex") &&
+                !node.hasAttribute("role"),
+            ),
+          true,
+        );
+      }
+      // Compare the new pointer surface with the old native button's geometry.
+      const geometry = await cards.first().evaluate((card) => {
+        const grip = card.querySelector<HTMLElement>(".v-canvas-catalog-grip");
+        if (!grip) throw Error("Missing pointer surface");
+        const legacy = document.createElement("button");
+        legacy.className = grip.className;
+        legacy.innerHTML = grip.innerHTML;
+        legacy.style.display = "revert";
+        legacy.style.placeItems = "revert";
+        legacy.style.visibility = "hidden";
+        card.append(legacy);
+        try {
+          const box = (node: Element) => {
+            const r = node.getBoundingClientRect();
+            return [r.x, r.y, r.width, r.height];
+          };
+          const currentSvg = grip.querySelector("svg"),
+            legacySvg = legacy.querySelector("svg");
+          if (!currentSvg || !legacySvg) throw Error("Missing grip drawing");
+          return {
+            current: [...box(grip), ...box(currentSvg)],
+            legacy: [...box(legacy), ...box(legacySvg)],
+          };
+        } finally {
+          legacy.remove();
+        }
+      });
+      geometry.current.forEach((value, index) => {
+        assert.ok(
+          Math.abs(value - geometry.legacy[index]) <= 0.1,
+          `grip geometry ${scheme} ${index}: ${value} != ${geometry.legacy[index]}`,
+        );
+      });
+      assert.deepEqual(
+        (await new AxeBuilder({ page }).include(".v-canvas-catalog").analyze())
+          .violations,
+        [],
+      );
+      const add = page.getByRole("button", {
+        name: "Añadir Delta",
+        exact: true,
+      });
+      await add.focus();
+      await page.keyboard.press("Enter");
+      await until(
+        () =>
+          page
+            .getByRole("button", { name: "Delta 2", exact: true })
+            .evaluate((node) => document.activeElement === node),
+        10000,
+        "keyboard Add focuses new row",
+      );
+      assert.equal((await adds()).length, 1);
+    }
+    await setup("studio-pro-bloqueado");
+    const blocked = page.getByRole("button", {
+      name: "Añadir Radar",
+      exact: true,
+    });
+    assert.equal(await blocked.getAttribute("aria-disabled"), "true");
+    assert.equal(await blocked.isDisabled(), true);
+    assert.equal(
+      await blocked.evaluate((node) => node.hasAttribute("disabled")),
+      false,
+    );
+    await blocked.focus();
+    await page.keyboard.press("Enter");
+    assert.equal((await adds()).length, 0);
     await setup();
     await start();
     assert.equal(await page.locator(".v-canvas-drop-ghost").isVisible(), true);
@@ -126,7 +221,7 @@ export async function checkStudioCatalogDrop(
       0,
     );
 
-    for (const mode of ["outside", "covered", "escape"] as const) {
+    for (const mode of ["outside", "covered", "escape", "blur"] as const) {
       await setup();
       await start();
       if (mode === "outside") await page.mouse.move(10, 100, { steps: 4 });
@@ -136,6 +231,8 @@ export async function checkStudioCatalogDrop(
         await page.mouse.move(panel.x + 20, panel.y + 20, { steps: 4 });
       }
       if (mode === "escape") await page.keyboard.press("Escape");
+      if (mode === "blur")
+        await page.getByRole("searchbox", { name: studioText.search }).focus();
       await page.mouse.up();
       assert.equal((await adds()).length, 0, `${mode} must not add`);
       assert.equal(await page.locator(".v-canvas-drop-ghost").count(), 0);
@@ -204,7 +301,7 @@ export async function checkStudioCatalogDrop(
 
     await setup();
     const handle = page.getByRole("button", {
-      name: studioDropText.drag("Delta"),
+      name: "Añadir Delta",
       exact: true,
     });
     await handle.focus();

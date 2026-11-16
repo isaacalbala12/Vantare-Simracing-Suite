@@ -11,7 +11,7 @@ fn options(name: &str) -> Options {
         ..Settings::default()
     })
 }
-fn photos() -> Vec<vantare_domain::Snapshot> {
+pub(super) fn photos() -> Vec<vantare_domain::Snapshot> {
     // Byte ranges of the unmodified GPUI catalogue snapshots (DTO validation below).
     let source =
         include_str!("../../../ui/fixtures/standings-vantare.scene.json").replace("\r\n", "\n");

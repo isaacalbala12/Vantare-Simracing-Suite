@@ -24,15 +24,6 @@ import "./ui/ui.css";
 const Specimen = lazy(() =>
   import("./app/Specimen").then((module) => ({ default: module.Specimen })),
 );
-declare global {
-  interface Window {
-    vantare?: {
-      platform: string;
-      connect(): Promise<void>;
-      viewport(): { width: number; height: number };
-    };
-  }
-}
 function Content() {
   const host = useHost();
   if (host.issue) return <HostIssue issue={host.issue} />;

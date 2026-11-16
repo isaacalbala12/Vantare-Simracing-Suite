@@ -791,8 +791,9 @@ mod tests {
         }
         let snapshot = vantare_ipc::snapshot_from_saved_json(PHOTO).expect("photo");
         let mut wrong = layout();
-        wrong.instances[0].settings =
-            vantare_domain::widget_settings::Settings::default_for(Kind::Standings);
+        wrong.instances[0].settings = vantare_domain::widget_settings::Settings::Standings(
+            vantare_domain::widget_settings::standings::Settings::eficiencia(),
+        );
         assert_eq!(single(&wrong, &snapshot, 1.0).err().unwrap().code, 2);
         assert!(single(&layout(), &snapshot, f32::NAN).is_err());
     }
@@ -1236,9 +1237,11 @@ mod tests {
                 output.to_str().unwrap(),
             ])
         };
+        std::fs::write(&settings, r#"{"designSystem":"eficiencia"}"#).unwrap();
         let unsupported = run(&flags("standings")).unwrap_err();
         assert_eq!(unsupported.code, 2);
         assert_eq!(unsupported.token, "INVALID_INPUT");
+        std::fs::write(&settings, "{}").unwrap();
         let no_demo = run(&flags("relative")).unwrap_err();
         assert_eq!(no_demo.code, 3);
         assert_eq!(no_demo.token, "NO_DEMO");

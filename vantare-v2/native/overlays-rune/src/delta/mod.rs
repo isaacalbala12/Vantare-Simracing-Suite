@@ -1,6 +1,7 @@
 //! Delta Vantare: domain projects the board; the scene decides layout and texts
 //! and the painter draws it. La barra se desliza y el récord destella con reloj
 //! finito; al terminar no queda ningún despertar.
+pub(crate) mod eficiencia;
 mod motion;
 mod paint;
 mod scene;
@@ -78,8 +79,14 @@ impl Delta {
             board.phase,
             crate::vantare::Style::compiled().delta.range_s,
         );
-        self.motion
-            .ingest(self.last.as_ref(), &board, target, clock, self.reduced);
+        self.motion.ingest(
+            self.last.as_ref(),
+            &board,
+            target,
+            motion::fill_geometry(board.progress),
+            clock,
+            self.reduced,
+        );
         self.base = sample(&board, &self.settings, self.prefs);
         self.last = Some(board);
         self.present(self.frame(clock))

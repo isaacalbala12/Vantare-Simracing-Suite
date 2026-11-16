@@ -1,4 +1,5 @@
 use super::*;
+use crate::widget::Widget;
 use crate::{
     host::{self, Access, Shared},
     scene::Scene as FrameScene,

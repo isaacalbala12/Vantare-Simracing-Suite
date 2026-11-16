@@ -1,4 +1,7 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["scripts/**/*.ts", "src/**/*.d.ts", "src/renderer/main.tsx"]
+  "compilerOptions": {
+    "erasableSyntaxOnly": true
+  },
+  "include": ["scripts/**/*.ts", "src/**/*.d.ts"]
 }

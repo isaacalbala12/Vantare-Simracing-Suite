@@ -25,6 +25,9 @@ type Constructor = fn(&Settings, Preferences, bool, u16, f64) -> Option<Box<dyn 
 
 pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
     match settings {
+        Settings::Standings(s) if s.design_system == Look::Vantare => {
+            Some(<crate::standings::Standings as Widget>::new)
+        }
         Settings::DeltaTrace(_) => Some(<crate::delta_trace::DeltaTrace as Widget>::new),
         Settings::TrackMap(_) => Some(<crate::track_map::TrackMap as Widget>::new),
         Settings::FastestLap(_) => Some(<crate::fastest_lap::FastestLap as Widget>::new),
@@ -39,6 +42,9 @@ pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
         }
         Settings::Delta(s) if s.design_system == Look::Vantare => {
             Some(<crate::delta::Delta as Widget>::new)
+        }
+        Settings::Delta(s) if s.design_system == Look::Eficiencia => {
+            Some(<crate::delta::eficiencia::DeltaEficiencia as Widget>::new)
         }
         Settings::Pedals(_) => Some(<Pedals as Widget>::new),
         Settings::FuelStrategy(s)

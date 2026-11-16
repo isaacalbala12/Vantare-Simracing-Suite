@@ -447,14 +447,30 @@ mod tests {
 
     #[test]
     fn chip_and_mono_texts_stay_out_of_the_fading_layer() {
-        // A media entrada, panel y textos que GPUI funde van en una capa con
-        // opacidad < 1; los chips y el mono se pintan fuera de esa capa.
+        // Contrato estable: el mono y los chips cuelgan del grupo fijo, no del
+        // nodo con `live_opacity`. Sin geometría de glifos.
         let prefs = Preferences::default();
         let mut runtime = runtime(widget(&Config::default(), prefs, false));
         runtime.state.update(&photo(1, 90.0), runtime.clock);
         rendered(&mut runtime, 0.0);
         runtime.state.update(&photo(2, 89.94), runtime.clock);
         assert!(rendered(&mut runtime, 0.11), "fundido a media entrada");
+        let elements = runtime.elements();
+        let path = |key: &str| element(&elements, key).path.clone();
+        for key in ["title", "time", "driver", "improvement", "class-label"] {
+            assert!(
+                path(key).contains("/notice/"),
+                "{key} se funde con el aviso: {}",
+                path(key)
+            );
+        }
+        for key in ["caption", "lap", "sector-label-0"] {
+            assert!(
+                path(key).contains("/steady/") && !path(key).contains("/notice"),
+                "{key} queda fuera de la capa que se funde: {}",
+                path(key)
+            );
+        }
         let instances = runtime.instances.clone();
         let start = instances
             .iter()
@@ -478,18 +494,8 @@ mod tests {
                     && (instance.rect[3] - 16.0).abs() < 0.5
             })
             .expect("chip S1");
-        let caption = instances
-            .iter()
-            .position(|instance| {
-                instance.uv[2] > 0.0
-                    && instance.rect[0] > 380.0
-                    && instance.rect[1] > 34.0
-                    && instance.rect[1] < 50.0
-            })
-            .expect("caption mono");
         assert!(start < end, "la capa se abre antes de cerrarse");
         assert!(chip > end, "los chips van fuera de la capa que se funde");
-        assert!(caption > end, "el mono va fuera de la capa que se funde");
     }
 
     #[test]

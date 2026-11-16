@@ -13,6 +13,10 @@ class RuneScopeTests(unittest.TestCase):
                      ".github/workflows/overlays-rune.yml"):
             self.assertTrue(needs_rune([path]))
 
+    def test_canonical_style_and_font_changes_rebuild_rune(self):
+        for path in ("ui/styles/vantare.json", "ui/assets/fonts/Inter-400.ttf"):
+            self.assertTrue(needs_rune(["vantare-v2/native/"+path]))
+
     def test_unrelated_work_does_not_build_rune(self):
         self.assertFalse(needs_rune(["vantare-v2/hub-web/src/app.tsx", "AGENTS.md",
                                     "vantare-v2/native/ui/src/lib.rs"]))

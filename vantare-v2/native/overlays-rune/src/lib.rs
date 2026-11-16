@@ -10,3 +10,11 @@ mod topologia_windows;
 
 pub mod feed;
 pub mod scene;
+
+pub mod relative;
+mod renderer;
+pub mod stats;
+pub mod vantare;
+
+#[cfg(test)]
+mod testdata;

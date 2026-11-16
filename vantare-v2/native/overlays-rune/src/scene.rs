@@ -7,7 +7,6 @@ use std::{
 };
 use vantare_domain::{
     geometry::Size, motion_policy::MotionPolicy, performance::Cadence, widget_session::Session,
-    widget_settings::Settings,
 };
 use vantare_ipc::{
     Demand, Photo,
@@ -103,7 +102,7 @@ impl Scene {
     }
     /// La primera familia conectada es Relative. No adquirir datos de widgets sin migrar.
     fn supported(instance: &Instance) -> bool {
-        matches!(instance.settings, Settings::Relative(_))
+        crate::renderer::supports(instance)
     }
     pub fn required(&self) -> Demand {
         let mut demand = Demand::default();
@@ -228,6 +227,7 @@ impl Scene {
 mod tests {
     use super::*;
     use std::time::Duration;
+    use vantare_domain::widget_settings::Settings;
     fn layout() -> Layout {
         Layout::from_json(br#"{"version":1,"instances":[{"id":"relative","x":-200,"y":20,"settings":{"kind":"relative"}}],"performance":{"widgets":{"relative":5}}}"#).expect("layout")
     }

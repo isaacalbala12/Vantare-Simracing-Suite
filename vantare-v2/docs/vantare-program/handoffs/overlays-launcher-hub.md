@@ -9,6 +9,95 @@ lint y508 tests web PASS tras rebase sobre #2363 fusionado. Sin mensajes nuevos:
 sin reservar. D hace la UI; CI/revisión pendientes en el PR draft.
 Después D111; preview espera Rune F1. Sin merge, promoción ni release propios.
 
+## VANTA-144 · ajustes de la segunda revisión de #2357 (16/11/2026)
+
+La raíz aprueba lo esencial del head 279e0c37c y pide ajustes acotados, sin
+cambiar el esquema ni el aspecto. Positions usa get antes de mutar y conserva
+el último movimiento válido si faltan coordenadas. Plan/etiquetas se calculan
+solo al cambiar el Arc del board y targets reutiliza ese plan. La estructura
+anterior queda guardada: se construye y compara una sola vez por sync.
+La escena compara el board por identidad y los demás datos por valor.
+Cambiar Hz también llama a animate para reprogramar el pulso. Advance documentado
+antes del muestreo, reduced como método, altura de pausa única y retain con
+conjuntos de IDs. Regresiones de posiciones incompletas/recuperación, caché del
+plan/etiquetas, identidad del board y subida/bajada de Hz. Por cola Windows/Rust
+1.99.1/dos jobs: formato, Clippy, 58 CPU, cinco tests de política, enlace sin
+ejecutar y auditoría de 428 paquetes PASS. Tokens y ocho tests Python PASS.
+CI completa de e62e24650 PASS, incluido Rune. Rebase sobre nightly 129ff215b:
+solo conflictos de este handoff, sin cambiar Rune ni sus dependencias. Se
+conserva al principio el bloque de nightly para no colisionar con nuevos bloques
+que otros workers añadan arriba. El PR recoge head y CI nuevos. Sin gráficos ni Plane.
+
+## VANTA-144 · escena y coordenadas aprobadas de #2357 (16/11/2026)
+
+El nuevo suborquestador recibe a A; la horda la dirige él. #2357 completa la revisión
+de 3ce28f10e, con CI verde. Raíz aprueba a través del suborquestador: mod conserva
+proyección/pausa; scene contiene movimiento y muestreo puro; render pinta y deriva
+build en una sola comparación. VisualRow añade traffic_opacity, independiente del
+destello alert. Motion::update recibe las posiciones del layout canónico y slot
+documenta que es una coordenada interpolada, no un índice. Estos dos ajustes
+conservan las capas superpuestas y el desplazamiento al aparecer/desaparecer
+la banda de GPUI. Por cola Windows/Rust 1.99.1/dos jobs: formato, Clippy,
+56 tests CPU (54 lib + 2 main), 5 de política de distribución, enlace sin ejecutar
+y auditoría de 428 paquetes PASS; tokens y ocho tests Python PASS.
+Rebase sobre nightly fbc516c1e; único conflicto en este handoff, conservados
+ambos bloques completos. El código Rune y sus dependencias conservan exactamente
+el contenido validado en f0c0700ca. Head final y CI se recogen en el PR.
+Comparación visual pendiente en la tanda del PC; servidor sin gráficos.
+La plantilla recoge piezas reutilizables, sin lanzar workers. El test/nits de
+Standings están preparados en la rama de #2344 sobre nightly 6dce4ea10,
+sin validar ni empujar; #2357 tiene prioridad. Plane sin cambios.
+
+## VANTA-144 · revisión de #2357 tras integrar #2349 (15/11/2026)
+
+#2349 fusionado por el orquestador en nightly como 529f1374ba9bff6d6d228c915fa8971626222cba;
+#2344 queda incluido. #2357 rebasado con --onto desde 8a313ac0f: range-diff
+confirma idénticos los ocho commits revisados. Solo se añaden los dos arreglos
+pedidos: apariencia inválida al arrancar registra el error y usa MotionPolicy(false),
+con regresión para JSON corrupto, parcial y mayor de 16 KiB; el handshake del test
+de pipe espera 5 ms entre consultas en vez de hacer yield continuo. Sin nuevas capas,
+dependencias ni cambios de producto adicionales. Por cola Windows/1.99.1/dos jobs:
+formato, Clippy, 52 tests CPU, 5 tests de política de distribución, enlace sin ejecutar
+y auditoría de 428 paquetes PASS. Tokens y 12 tests Python PASS. Sin gráficos ni
+cambios de Plane; el PR recoge el head final y la CI pendiente.
+
+## VANTA-144 · validación final de conexión y Relative con monitores (15/11/2026)
+
+Conexión #2349, head 8a313ac0f97ff526bd42f280990ceb20323fd39d: todos los checks
+GitHub verdes y sin conflictos a la última lectura. Cola local Windows/1.99.1/dos
+jobs: formato, Clippy, 37 tests CPU (35 biblioteca + 2 main), enlace sin ejecutar
+y 428 paquetes permisivos PASS. Incluye monitores de B y su nueva prueba de
+viewport/foto retenida. Base combinada 063b1b213 sobre nightly dfa431062; #2344
+sigue abierto con su head revisado. Retirar esa base al entrar su squash.
+
+Relative #2357, código validado f616489e21139ea2cb6144923d7c4ea7d953ac51:
+formato, Clippy, 51 tests CPU (49 biblioteca + 2 main), enlace sin ejecutar y
+licencias PASS en la misma reserva. Nuevo caso de origen/DPI conserva la foto y
+cuenta diseño; primary solo no cambia el dibujo. Conservados los módulos de B
+sin modificaciones. Siguen pasando reposo 30 s, fin de movimiento y diez widgets
+a 5/15/20 Hz. Rune Windows PASS en GitHub; resto de CI y revisión en el PR.
+
+El kit de medición observa el directorio compartido scripts, reservado a las
+licencias, y rechaza diffs de producto. Las herramientas nuevas de estilos viven
+en overlays-rune/tools y las valida el workflow propio de producto. El workflow
+y el verificador de aislamiento del kit se conservan sin cambios. No se ejecutó
+producto, ventana, dispositivo ni opción gráfica. Sin merge/release ni cambio de
+Plane. La aceptación visual y de consumo espera al PC.
+
+
+## VANTA-144 · Relative y monitores de B conectados (15/11/2026)
+
+#2357 se reapila sobre #2349 8a313ac0f y nightly dfa431062. Conserva intactos
+monitores.rs/topologia_windows.rs de B (#2356). La factoría común host::window
+inyecta fuentes y contadores en cada ventana dinámica. Un cambio geométrico
+invalida la colocación usando la foto retenida y se cuenta como diseño; primary
+solo actualiza metadatos. Los contadores se registran al destruir cada superficie,
+incluidas las retiradas internamente. El observador de B mantiene su política.
+Prueba CPU añadida: cambiar origen/DPI recoloca el widget sin perder FrameSet;
+cambiar solo primary no cambia el dibujo. Revalidación de ambos workspaces en
+una reserva de cola, dos jobs, sin gráficos. Los resultados de 36 CPU anteriores
+siguen documentados abajo; se registra la nueva cifra al terminar esta pasada.
+
 ## VANTA-138 · D031, fecha y avisos de exploración (15/11/2026)
 
 Contrato aprobado por el orquestador: `CatalogView.lastScan` es null o contiene fecha real
@@ -144,6 +233,52 @@ Siguiente: conectar los módulos de #2344 cuando se fusione y preparar Relative
 Eficiencia/captura (PR 7). No se modifica el worktree ajeno preparado para
 datos/cadencias; PR 3 sigue siendo autoridad de esos tipos. Ningún gráfico ni
 ejecución del producto en el servidor; F0 solo en el horario del orquestador.
+## VANTA-144 · PR 6 Relative Vantare Rune para revisión (15/11/2026)
+
+Worker A, PR #2357, código validado ce94f45025263606d38fadc9cd52e87c0275d33e.
+Rama `vantareapp/isa-2333-relative-vantare`, worktree propio D:, apilada sobre
+#2349, head 8a313ac0f97ff526bd42f280990ceb20323fd39d. Base nightly dfa431062,
+incluido el cierre F0 #2348: preview local sigue bloqueado en distribución.
+#2344 conserva su head revisado 5e11dd339; sigue abierto a la última lectura.
+Tras su squash, retirar la base combinada 063b1b213 de #2349 con --onto y después
+reapilar los commits propios de #2357 sobre el nuevo head de la conexión.
+
+Relative Vantare consume la proyección existente de domain y el FrameSet de
+la conexión. Plan de columnas y etiquetas portados del pintor GPUI; tokens
+Rust generados del JSON canónico y fuentes del producto, sin dependencias.
+Neo/Neutro, acentos, tres plantillas, columnas personalizadas, idiomas, boxes,
+tráfico y tira. Pausa con última proyección y franja propia. API común del Look
+en `vantare::{Style,FONTS,paint}`: familias, texto, colores y píldoras.
+Valores Rune Live para celdas de ancho fijo, color, posición y opacidad;
+nombres/detalles, dorsales y cabeceras reajustan sus cajas al cambiar.
+
+Contadores por ventana y proceso desde on_frame_drawn: data/animation/design y
+diagnóstico unattributed; una imagen puede tener varias causas. Consultables
+en Shared::paint_counts y State::meter y registrados al cerrar, sin hilo de
+estadísticas. Transiciones finitas; pulso a la cadencia del widget; movimiento
+reducido sin animación. No se conserva pintor fuera del monitor. CI vigila también
+estilos/fuentes del producto y comprueba los tokens generados.
+
+Validación final por cola Windows/Rust 1.99.1/dos jobs: formato, Clippy -D warnings,
+36 tests CPU (34 biblioteca + 2 main), 5 tests puros de política de distribución
+sin debug_assertions y enlace del ejecutable sin ejecutarlo PASS. Tokens y
+428 paquetes permisivos PASS; 8 tests Python de licencias/generador y los
+clasificadores Rune (4) y nativo (23) PASS. Diff completo revisado.
+
+Los tests comparan todos los campos del flujo CPU de dibujo antes de simular
+on_frame_drawn; Runtime::frame devuelve continuidad de animación y no sirve
+como contador de imágenes. Cero cambios de dibujo en 30 s quietos, con y sin
+movimiento reducido, y sin temporizadores pendientes. Diez widgets: exactamente
+5/15/20 cambios por segundo para esas cadencias con 1.000 fotos de entrada.
+Fin de transiciones, cero frames de animación con movimiento reducido, texto
+retenido, reajuste de nombres, permisos, geometría/DPI, pausa y pipe real PASS.
+
+Sin ejecución del producto Rune, ventanas, dispositivo ni opción gráfica en el
+servidor. La paridad visual, presentación GPU, consumo, foco/clics/OBS/VRR quedan
+para el PC de juego y el horario que asigne el orquestador. B conserva Eficiencia,
+captura y monitores en caliente. CI/revisión y head final en PR/#2333.
+Sin merge/promoción/release ni cambio de Plane propios.
+
 ## VANTA-144 · conexión de diseño/fotos/cadencias Rune (15/11/2026)
 
 Encargo ampliado de A tras #2345: conectar diseño, fuente y cadencias; después

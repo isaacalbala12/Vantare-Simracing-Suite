@@ -62,9 +62,12 @@ impl DataFeed {
         let presentation = Presentation::watch(&path)?;
         let appearance = appearance_path
             .as_ref()
-            .map_or(Ok(MotionPolicy(false)), |p| {
-                vantare_ipc::motion_policy::load(p)
-            })?;
+            .map_or(MotionPolicy(false), |path| {
+                vantare_ipc::motion_policy::load(path).unwrap_or_else(|error| {
+                    eprintln!("overlays-rune: apariencia protegida: {error}");
+                    MotionPolicy(false)
+                })
+            });
         let mut scene = Scene::new(
             document.layout().clone(),
             shared.access(),
@@ -251,6 +254,37 @@ mod tests {
         fs::remove_dir_all(dir).expect("cleanup own fixture");
     }
     #[test]
+    fn invalid_appearance_at_start_uses_default_motion_without_aborting() {
+        for bytes in [
+            br#"{"reducedMotion":"invalid"}"#.to_vec(),
+            br#"{"reducedMotion":true"#.to_vec(),
+            format!(
+                r#"{{"reducedMotion":true,"padding":"{}"}}"#,
+                " ".repeat(16 * 1024)
+            )
+            .into_bytes(),
+        ] {
+            let dir = directory();
+            let appearance = dir.join("appearance.json");
+            fs::write(&appearance, bytes).expect("invalid appearance fixture");
+            let bus = Shared::new(true);
+            let feed = DataFeed::start(
+                Source::Local,
+                dir.join("layout.json"),
+                Some(appearance),
+                false,
+                bus.clone(),
+            )
+            .expect("invalid appearance must not abort startup");
+            let state = crate::host::State::new(bus.clone());
+            let frames = state.frames.as_ref().expect("initial frames");
+            assert!(!frames.reduced_motion);
+            assert_eq!(bus.close_reason(), None);
+            drop(feed);
+            fs::remove_dir_all(dir).expect("cleanup own fixture");
+        }
+    }
+    #[test]
     fn requested_pipe_photos_reach_the_retained_runtime_without_a_window() {
         let dir = directory();
         let path = dir.join("layout.json");
@@ -267,7 +301,8 @@ mod tests {
         let deadline = Instant::now() + Duration::from_secs(3);
         while publisher.demand_source().mask() == 0 {
             assert!(Instant::now() < deadline, "requested handshake");
-            std::thread::yield_now();
+            // DemandSource no ofrece evento de cambio; sondeo del handshake a 5 ms en este test.
+            std::thread::sleep(Duration::from_millis(5));
         }
         publisher
             .publish(Arc::new(vantare_ipc::source::fixed()))

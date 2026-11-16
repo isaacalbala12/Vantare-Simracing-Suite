@@ -20,7 +20,7 @@ negativo), tamaño y DPI de cada monitor;
 las claves no dependen del nombre del monitor. Usa click-through, siempre encima,
 sin foco/activación, ni entrada en Alt-Tab/barra de tareas en Windows. Los ajustes
 nativos se aplican sobre el handle prestado de Rune; un error cierra el proceso.
-`--start-hidden` crea las ventanas ocultas. No hay widgets ni capturas todavía.
+`--start-hidden` crea las ventanas ocultas. Relative Vantare está conectado; el modo captura corresponde al PR 7.
 El arreglo de conectar/desconectar monitores está en
 [#2346](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2346)
 (padre #2333); su comprobación física sigue siendo obligatoria antes de F2.
@@ -99,10 +99,47 @@ otra vez al enumerar instancias para no dibujar tras una revocación.
 La precedencia es diseño v2, después apariencia legada. La geometría del monitor
 convierte origen/tamaño físicos a lógicos igual que el backend Windows GPUI.
 
-La ruta de datos prepara Relative, primera familia de la migración. No adquiere
-datos de los widgets sin migrar. Los pintores Vantare/Eficiencia llegan en PR 6/7;
-este cambio conserva el contenedor visual vacío. Las campañas numéricas siguen
-rechazadas explícitamente hasta disponer de esos pintores. No se anuncia paridad.
+Relative Vantare es el primer pintor conectado. Conserva proyección de domain,
+plantillas y orden de columnas personalizado, tonos Neo/Neutro, acentos, idiomas,
+banners, tráfico, boxes y tira de pista. Solo adquiere datos de Looks migrados;
+Relative Eficiencia corresponde al PR 7. Las campañas numéricas siguen rechazadas
+hasta el modo captura del Worker B; un diseño normal puede tener diez Relative.
+La paridad visual y el consumo real esperan a la comparación en el PC de juego.
+
+`src/vantare` usa las fuentes del producto y los tokens del JSON canónico de UI.
+`python tools/generar_vantare.py --check` verifica los tokens Rust generados;
+regenerar sin `--check` al cambiar el JSON. No hay segundo parser ni librería nueva.
+La CI se activa también al cambiar esas fuentes o estilos.
+
+Textos, tintas, posición y opacidad se conservan en valores Rune `Live`. Solo los cambios de estructura o de texto que alteran el ancho intrínseco
+(nombre/detalle/dorsal/cabecera) recomponen la vista; las celdas de ancho fijo
+se actualizan sin reconstruirla. Los movimientos de filas, aparición y
+flash tienen fin; una actualización de texto no reinicia su duración. El pulso de
+tráfico es la excepción al reposo: mientras haya tráfico rápido mantiene un reloj
+a la cadencia del widget (0 Hz usa 30 Hz). Reducir movimiento apaga ese pulso y
+lleva las transiciones a su destino. Sin tráfico ni transiciones no hay reloj.
+
+`relative::scene` es el contrato común de Vantare y Eficiencia: filas de domain,
+posición interpolada, opacidad y aviso semántico con intensidad independiente.
+`slot` es una coordenada del layout canónico, no un índice. Ese layout entrega
+las posiciones objetivo a `Motion::update`, incluida la banda superior. El
+muestreo es puro; no contiene colores ni valores Rune Live. El Look
+traduce esa escena a sus medidas/colores y conserva sus valores Live. El pulso
+(`traffic_opacity`) y el destello (`alert`) tienen intensidades independientes
+y se superponen como en GPUI.
+Tras `update` o `policy`, llamar a `advance` con los mismos datos e instante
+antes de `visual_rows`/`sample`; el muestreo no avanza el estado.
+La reconstrucción se decide en un solo punto al comparar la estructura anterior
+y la nueva; las actualizaciones de valores de ancho fijo no reconstruyen.
+La [plantilla de encargo](PLANTILLA.md) fija qué reutilizar para los otros widgets.
+
+Al cerrar se imprimen contadores por ventana y del proceso: `frames`, `data`,
+`animation`, `design` y `unattributed`. Se incrementan exclusivamente en
+`on_frame_drawn`, después de presentar. Una imagen puede tener varias causas:
+no se suman para calcular `frames`. Las solicitudes y vistas descartadas no
+cuentan como imágenes. Los tests CPU comparan todos los campos del flujo de dibujo antes de simular
+el aviso; el booleano de Runtime::frame solo indica animación en curso. No miden presentaciones
+GPU ni sustituyen la campaña del PC de juego.
 
 ## Servidor y CI sin gráficos
 
@@ -157,7 +194,7 @@ datos reales. La prueba comprueba:
 3. Siempre encima, sin entrada en Alt-Tab o barra de tareas; OBS y VRR pendientes de prueba real.
 4. Inicio oculto sin flash. Las nuevas solicitudes de presentación del Hub muestran/ocultan sin activar.
 5. Cerrar el supervisor termina todas las ventanas y el proceso; repetir con el padre vivo y cierre local.
-6. Registrar fallos nativos y consumo/frames de reposo. Los contadores de presentación y los widgets llegan en PR 6/7.
+6. Registrar fallos nativos y consumo; con Relative Vantare quieto, cero frames nuevos en 30 segundos tras asentarse. Con diez Relative, comprobar cadencia y contadores por causa; sin transiciones, no superar el widget visible más rápido.
 7. Conectar/desconectar monitores, reordenarlos y cambiar resolución/DPI en marcha:
    queda una ventana por monitor, sin activar el Hub ni robar el foco. Comprobar
    que una retirada interna no termina el proceso y que reconectar vuelve a crear
@@ -168,6 +205,7 @@ datos reales. La prueba comprueba:
    sigue vivo con el controlador sin ventanas y las superficies vuelven.
 10. Cambiar resolución o DPI justo después de conectar un monitor: comprobar
     que no se pierde la petición `place` anterior a la creación de la ventana.
+
 
 Los tests CPU prueban la descripción de las ventanas, el EOF/cancelación con
 pipes anónimos reales, los derechos con reloj inyectado y 30 s virtuales del

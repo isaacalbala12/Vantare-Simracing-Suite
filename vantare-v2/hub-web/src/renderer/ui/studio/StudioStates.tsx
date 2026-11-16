@@ -19,7 +19,9 @@ export function StudioSaveStatus({
       : state.failure
         ? state.failure.request.method === "studio.get"
           ? t.readFailed
-          : t.notSaved
+          : state.failure.request.method === "studio.duplicate"
+            ? t.duplicateUnconfirmed
+            : t.notSaved
         : saving
           ? t.saving
           : view?.state === "ready"

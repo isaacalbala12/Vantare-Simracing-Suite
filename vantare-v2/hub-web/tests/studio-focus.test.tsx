@@ -394,7 +394,9 @@ describe("Studio Ctrl+D", () => {
             ?.getAttribute("aria-pressed"),
         ).toBe("true"),
       );
-      expect(document.activeElement).toBe(first);
+      expect((document.activeElement as HTMLElement)?.dataset.widget).toBe(
+        reply.added,
+      );
       expect(
         requests.mock.calls.filter(
           ([request]) => request.method === "studio.duplicate",
@@ -503,8 +505,8 @@ describe("Studio Ctrl+D", () => {
       const message =
         kind === "studioConflict"
           ? t.conflict
-          : kind === "coreUnavailable"
-            ? t.offline
+          : kind === "coreUnavailable" || kind === "io"
+            ? t.duplicateUncertain
             : kind === "busy"
               ? t.busy
               : t.failed;
@@ -552,8 +554,10 @@ it("keeps the original failure if reading after an uncertain duplicate also fail
   const first = await listRow("Standings");
   first.focus();
   fireEvent.keyDown(first, { key: "d", ctrlKey: true });
-  await screen.findByText(t.offline);
-  expect(screen.getByRole("status", { name: t.notSaved })).toBeTruthy();
+  await screen.findByText(t.duplicateUncertain);
+  expect(
+    screen.getByRole("status", { name: t.duplicateUnconfirmed }),
+  ).toBeTruthy();
   expect(first.getAttribute("aria-pressed")).toBe("true");
   expect(
     requests.mock.calls.filter(

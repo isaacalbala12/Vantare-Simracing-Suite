@@ -50,7 +50,6 @@ macro_rules! delta_widget {
         }
     };
 }
-pub(crate) use delta_widget;
 
 pub(crate) mod eficiencia;
 mod motion;

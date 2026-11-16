@@ -116,6 +116,9 @@ impl Painter {
             Tone::Neutro => &self.style.styles.neutro,
         }
     }
+    fn band_top(&self) -> f32 {
+        text_top(&self.style, Face::Display, 0.0)
+    }
     fn accent_color(&self) -> Color {
         match self.accent {
             Accent::Red => self.style.accents.red,
@@ -256,7 +259,7 @@ impl Painter {
                     .color(c.yellow_text)
                     .size(room, height)
                     .align(Align::Center)
-                    .pin(Some(scene::PAD_X), Some(0.0), None, None),
+                    .pin(Some(scene::PAD_X), Some(self.band_top()), None, None),
             );
         (root, height)
     }
@@ -273,13 +276,18 @@ impl Painter {
             .color(self.style.colors.text)
             .size(TEXT_BOX, VANTARE_VALUE_H)
             .align(Align::Center)
-            .pin(Some(mid - TEXT_BOX / 2.0), Some(top), None, None)
+            .pin(
+                Some(mid - TEXT_BOX / 2.0),
+                Some(text_top(&self.style, Face::Mono, top)),
+                None,
+                None,
+            )
     }
     /// Lifts the text off the game, as GPUI's `label_shadow` does.
     fn shadowed(&self, value: &str, mid: f32, top: f32) -> El {
         let mut node = el().size(TEXT_BOX, VANTARE_VALUE_H).pin(
             Some(mid - TEXT_BOX / 2.0),
-            Some(top),
+            Some(text_top(&self.style, Face::Mono, top)),
             None,
             None,
         );
@@ -385,7 +393,12 @@ impl Painter {
                     .color(alpha(hex("#b9b9bd"), 0.78))
                     .size(TEXT_BOX, EFICIENCIA_LABEL_H)
                     .align(Align::Center)
-                    .pin(Some(mid - TEXT_BOX / 2.0), Some(label_top), None, None),
+                    .pin(
+                        Some(mid - TEXT_BOX / 2.0),
+                        Some(text_top(&self.style, Face::Body, label_top)),
+                        None,
+                        None,
+                    ),
             );
             root = root.child(
                 text(pedal.text.clone())
@@ -400,7 +413,12 @@ impl Painter {
                     .color(value_ink)
                     .size(TEXT_BOX, EFICIENCIA_VALUE_H)
                     .align(Align::Center)
-                    .pin(Some(mid - TEXT_BOX / 2.0), Some(value_top), None, None),
+                    .pin(
+                        Some(mid - TEXT_BOX / 2.0),
+                        Some(text_top(&self.style, Face::Body, value_top)),
+                        None,
+                        None,
+                    ),
             );
         }
         if !self.transparent {
@@ -453,7 +471,16 @@ impl Painter {
                     .font(font(&self.style, Face::Body, size, 18.0, 0.0, 700.0))
                     .color(ink)
                     .size(room, 18.0)
-                    .pin(Some(12.0), Some(10.0 + index as f32 * 18.0), None, None),
+                    .pin(
+                        Some(12.0),
+                        Some(text_top(
+                            &self.style,
+                            Face::Body,
+                            10.0 + index as f32 * 18.0,
+                        )),
+                        None,
+                        None,
+                    ),
             );
         }
         (root, 20.0 + lines.len() as f32 * 18.0)
@@ -462,4 +489,48 @@ impl Painter {
 
 fn hex(value: &str) -> Color {
     rune::color::hex(value).expect("canonical Eficiencia color")
+}
+
+/// GPUI's `baseline` adds the face offset; Rune's layout needs it in the y.
+fn text_top(style: &Style, face: Face, top: f32) -> f32 {
+    top + match face {
+        Face::Display => style.fonts.display_baseline,
+        Face::Mono => style.fonts.mono_baseline,
+        Face::Body => 0.0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vantare_domain::{Snapshot, format::Preferences, widget_settings::look::Look};
+
+    #[test]
+    fn every_face_adds_its_gpui_baseline_to_the_text_top() {
+        let style = Style::compiled();
+        assert_eq!(
+            text_top(&style, Face::Display, 7.0),
+            7.0 + style.fonts.display_baseline
+        );
+        assert_eq!(
+            text_top(&style, Face::Mono, 7.0),
+            7.0 + style.fonts.mono_baseline
+        );
+        assert_eq!(text_top(&style, Face::Body, 7.0), 7.0);
+        assert_eq!(style.fonts.display_baseline, 1.0);
+    }
+
+    #[test]
+    fn the_warning_band_text_starts_at_the_display_baseline() {
+        let settings = Settings::for_look(Look::Vantare);
+        let prefs = Preferences::default();
+        let snapshot = Snapshot::default();
+        let vm = vantare_domain::pedals::project(&snapshot, prefs);
+        let mut state = scene::State::default();
+        state.update(&snapshot, &vm);
+        let scene = scene::sample(&vm, &state);
+        assert!(scene.status.is_some(), "aviso de fuente ausente");
+        let painter = Painter::new(&settings, prefs, &scene);
+        assert_eq!(painter.band_top(), 1.0);
+    }
 }

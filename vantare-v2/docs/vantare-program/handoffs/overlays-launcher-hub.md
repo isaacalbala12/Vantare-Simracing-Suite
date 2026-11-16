@@ -3106,3 +3106,15 @@ conexion retirada; no se ignoran ni se presentan como PASS en este head.
 CI/medicion/paridad siguen pendientes; draft retenido. Tambien queda pendiente
 adaptar las herramientas QA de scripts a tools, como requiere la base de A.
 Sin graficos ni PR nuevo, merge, release o cambios de Plane.
+
+
+## VANTA-144 · B, Standings con Widget (16/11/2026)
+
+Base nightly 5d7dfa61f, con el trait de A. Standings implementa Widget en su
+carpeta y se conecta por un brazo en constructor. No se modifica el pintado,
+proyeccion ni movimiento. Policy/animate/schedule no hacen trabajo porque el
+pintor preparado es estatico; se mantienen las desviaciones documentadas.
+CPU por la cola en espera; CI nueva pendiente, sin afirmar resultado anterior.
+QA en scripts requiere traslado a tools: consultado por texto antes de mover.
+#2351 requiere adaptar RowPaint a Scene/coordenadas: consultado antes de tocar.
+Capturas y PC sin hora; no se ejecuta producto ni graficos. Sin merge/release.

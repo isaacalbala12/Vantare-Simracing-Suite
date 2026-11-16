@@ -123,5 +123,52 @@ impl Standings {
     }
 }
 
+impl crate::widget::Widget for Standings {
+    fn new(
+        settings: &vantare_domain::widget_settings::Settings,
+        prefs: Preferences,
+        _reduced: bool,
+        _hz: u16,
+        _clock: f64,
+    ) -> Option<Box<dyn crate::widget::Widget>> {
+        let vantare_domain::widget_settings::Settings::Standings(settings) = settings else {
+            return None;
+        };
+        Some(Box::new(Standings::new(settings, prefs)))
+    }
+    fn configured(
+        &self,
+        settings: &vantare_domain::widget_settings::Settings,
+        prefs: Preferences,
+    ) -> bool {
+        let vantare_domain::widget_settings::Settings::Standings(settings) = settings else {
+            return false;
+        };
+        Standings::configured(self, settings, prefs)
+    }
+    fn size(&self) -> Size {
+        Standings::size(self)
+    }
+    fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
+        Standings::size_for(self, snapshot)
+    }
+    fn policy(&mut self, _reduced: bool, _hz: u16, _clock: f64) -> crate::widget::Update {
+        Default::default()
+    }
+    fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> crate::widget::Update {
+        crate::widget::Update {
+            build: Standings::update(self, snapshot),
+            pixels: false,
+        }
+    }
+    fn animate(&mut self, _clock: f64) -> crate::widget::Update {
+        Default::default()
+    }
+    fn schedule(&self, _clock: f64, _tx: &mut rune::Tx) {}
+    fn view(&self) -> El {
+        Standings::view(self)
+    }
+}
+
 #[cfg(test)]
 mod tests;

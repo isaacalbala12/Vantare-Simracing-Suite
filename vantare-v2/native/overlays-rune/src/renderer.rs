@@ -26,6 +26,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::MulticlassRelative(_) => {
             Some(<crate::multiclass_relative::MulticlassRelative as Widget>::new)
         }
+        Settings::Standings(_) => Some(<crate::standings::Standings as Widget>::new),
         _ => None,
     }
 }

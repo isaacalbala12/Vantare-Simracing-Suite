@@ -23,6 +23,7 @@ pub mod racing_flags;
 mod radar;
 pub mod relative;
 mod renderer;
+mod session_alerts;
 pub mod stats;
 mod tower;
 mod track_map;

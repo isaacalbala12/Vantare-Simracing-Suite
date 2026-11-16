@@ -645,7 +645,12 @@ impl Painter {
         };
         root = root.child(
             el().key("bar-center")
-                .pin(Some(mid - 1.0), Some(y + (d.bar - d.tick) / 2.0), None, None)
+                .pin(
+                    Some(mid - 1.0),
+                    Some(y + (d.bar - d.tick) / 2.0),
+                    None,
+                    None,
+                )
                 .size(2.0, d.tick)
                 .radius(1.0)
                 .fill(center),

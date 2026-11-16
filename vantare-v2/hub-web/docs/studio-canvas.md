@@ -86,11 +86,24 @@ pero no añaden ocho paradas al recorrido secuencial.
 
 La resolución se elige en presets fijos con tarjetas como Rendimiento; no hay
 entrada libre. `studio.canvas` usa CAS. Tu monitor envía `{kind:monitor}`;
-solo un preset envía `{kind:custom,width,height}`. Con source=monitor se muestra
-su resolución detectada. Si el documento ya arrancó personalizado, el contrato
-no publica por separado el monitor: la opción sigue permitiendo volver a él,
-pero no se inventa su tamaño antes de la respuesta. Una resolución detectada
-en esta sesión se conserva para la etiqueta al elegir luego un preset.
+solo un preset envía `{kind:custom,width,height}`. La primera opción muestra
+`StudioView.monitor`, en unidades lógicas del monitor fijado por Rust, incluso
+si el lienzo usa un preset distinto. Está seleccionada solo con source=monitor.
+El panel conserva su ancho, presenta filas de una línea de 36 px y abre hacia
+arriba alineado al botón. El preset coincidente con el monitor se muestra una
+sola vez y primero, marcado «Tu monitor»; si no coincide con ninguno, aparece
+una fila propia. Un canvas custom del mismo tamaño también selecciona esa fila;
+pulsarla usa la orden monitor existente.
+
+En Lienzo, monitorUnavailable muestra «Vantare no detecta el monitor de este
+lienzo» y «Conéctalo y pulsa Volver a cargar.». Protected/Missing con monitor:null
+muestra «No se puede abrir este diseño» y «Vuelve a cargar. Si sigue igual, el
+archivo puede estar dañado o no ser compatible.». Ambos conservan solo el botón
+«Volver a cargar», sin selector ni panel. monitorUnavailable muestra el estado
+«Solo lectura», nunca «Cargando». La causa procede del contrato v45; no se crea
+tablero ni se escribe al host. Los Protected que
+conservan monitor mantienen su presentación. El monitor no se infiere del
+lienzo, viewport ni una lectura anterior.
 
 La miniatura y el enlace de la tira abren la misma vista. La lista y el plano
 comparten selección; ocultos permanecen visibles en gris al 35 %, y fuera de

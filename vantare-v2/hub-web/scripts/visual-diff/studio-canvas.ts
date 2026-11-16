@@ -57,3 +57,34 @@ studioCanvasScenes["studio-canvas-info"] = {
     await page.getByRole("tooltip").filter({ hasText: t.note }).waitFor();
   },
 };
+
+for (const scene of [
+  "studio-canvas-monitor",
+  "studio-canvas-monitor-missing",
+  "studio-canvas-monitor-unreadable",
+]) {
+  studioCanvasScenes[scene] = {
+    mock: scene,
+    async prepare(page) {
+      await page
+        .getByRole("button", { name: /^(Studio|Overlays Studio)$/ })
+        .click();
+      await page.getByRole("button", { name: t.open, exact: true }).click();
+      if (scene !== "studio-canvas-monitor") {
+        await page
+          .getByRole("heading", {
+            name: scene.endsWith("-missing")
+              ? t.monitorUnavailableTitle
+              : t.noCanvasTitle,
+            exact: true,
+          })
+          .waitFor();
+      } else {
+        await page
+          .getByRole("button", { name: t.resolution, exact: true })
+          .click();
+        await page.getByRole("radio", { name: /Tu monitor/ }).waitFor();
+      }
+    },
+  };
+}

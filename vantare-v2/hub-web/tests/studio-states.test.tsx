@@ -26,6 +26,7 @@ import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { studioText as t } from "../src/renderer/i18n/studio";
+import { canvasText } from "../src/renderer/i18n/studio-canvas";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
@@ -502,4 +503,81 @@ describe("Studio A honest states", () => {
       spy.mock.calls.filter(([r]) => r.method !== "studio.get"),
     ).toHaveLength(0);
   });
+});
+
+it.each([
+  "studio-canvas-monitor-missing",
+  "studio-canvas-monitor-unreadable",
+  "studio-missing",
+])(
+  "uses one no-canvas explanation without changing documents: %s",
+  async (scene) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    const monitorUnavailable = scene === "studio-canvas-monitor-missing";
+    mount(scene);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: canvasText.open }));
+    expect(
+      await screen.findByRole("heading", {
+        name: monitorUnavailable
+          ? canvasText.monitorUnavailableTitle
+          : canvasText.noCanvasTitle,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        monitorUnavailable
+          ? canvasText.monitorUnavailableHelp
+          : canvasText.noCanvasHelp,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        monitorUnavailable
+          ? canvasText.noCanvasHelp
+          : canvasText.monitorUnavailableHelp,
+      ),
+    ).toBeNull();
+    expect(document.querySelector(".v-studio-canvas-position")).toBeNull();
+    if (monitorUnavailable) {
+      expect(screen.getByRole("status", { name: t.readOnly })).toBeTruthy();
+      expect(screen.queryByRole("status", { name: t.loading })).toBeNull();
+    }
+    expect(screen.queryByText(t.protected)).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: canvasText.resolution }),
+    ).toBeNull();
+    const reload = screen.getAllByRole("button", { name: t.reload });
+    expect(reload).toHaveLength(1);
+    const reads = spy.mock.calls.filter(
+      ([r]) => r.method === "studio.get",
+    ).length;
+    await userEvent.setup().click(reload[0]);
+    await waitFor(() =>
+      expect(
+        spy.mock.calls.filter(([r]) => r.method === "studio.get").length,
+      ).toBeGreaterThan(reads),
+    );
+    expect(
+      spy.mock.calls.filter(
+        ([r]) => r.method.startsWith("studio.") && r.method !== "studio.get",
+      ),
+    ).toHaveLength(0);
+  },
+);
+it("keeps the protected warning when a monitor is preserved", async () => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  mount("studio-a-protegido");
+  await userEvent
+    .setup()
+    .click(await screen.findByRole("button", { name: canvasText.open }));
+  expect(screen.getByText(t.protected)).toBeTruthy();
+  expect(screen.queryByText(canvasText.noCanvasTitle)).toBeNull();
 });

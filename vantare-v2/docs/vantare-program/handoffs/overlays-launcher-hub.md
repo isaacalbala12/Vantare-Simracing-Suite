@@ -3112,21 +3112,6 @@ plazo cumplido antes/después del compromiso y publicación fallida de la pregun
 la limpieza de directorios en Drop no provoca otro panic. Sin cambios de contrato
 v33 ni del plazo exportado para D. Gates del ajuste y head vigentes en #2281.
 
-## VANTA-144 · contrato Widget de Rune (16/11/2026)
-
-Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa
-Painters, Entry con Box<dyn Widget> y un único match sobre Settings para seleccionar
-constructor. La consulta de soporte usa ese selector sin crear instancias.
-Solo Relative Vantare está migrado; Eficiencia y otros Kind siguen fuera.
-Update se traslada tal cual y Relative lo reexporta; los métodos y tests actuales
-se conservan. Test de despacho positivo y dos negativos; sin captura porque
---capture-scene no existe en la base. PR draft, head y gates en #2333 y el PR.
-No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
-Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
-Sin gráficos, Plane, merge, promoción ni release propios.
-
-
-
 ## VANTA-144 · captura Relative Vantare sin ventana (Worker B, 16/11/2026)
 
 PR separado desde nightly a3f2c3c9a: capture.rs reutiliza constructor/Widget,
@@ -3166,6 +3151,37 @@ reviews publicados en el PR leídos; los tres ajustes conocidos ya estaban en
 7414d2c26. Nueva verificación completa por cola, sin gráficos; head/checks
 definitivos en el PR. Mac offline: no se repite captura GPU en este rebase.
 
+### #2391 · actualización por merge de nightly (Worker B, 16/11/2026)
+
+Fusionado origin/nightly 83cb9b2e4 en la rama de captura; conflicto solo en este
+handoff resuelto conservando ambas entregas. Registro, Widget y módulos nuevos
+se conservan como nightly, salvo la visibilidad crate de constructor necesaria
+para captura. Se revalidan fmt, Clippy y tests CPU por cola, sin GPU en servidor.
+La ampliación única para captura/preview (todos los widgets, secuencias, assets
+y release) queda para otro PR, tras esquema y OK de raíz; no entra aquí.
+
+### #2391 · sincronización final (Worker B, 16/11/2026)
+
+Merge de nightly 83232d84b; se conservan tokens Eficiencia y la corrección de
+domain/session_alerts. Notas de captura reubicadas aquí, con su contenido
+histórico íntegro, para no competir con las entregas al final del handoff.
+Validación nueva por cola y resultados en el PR; ampliación de captura aún
+sin código, pendiente de esquema y aprobación.
+
+## VANTA-144 · contrato Widget de Rune (16/11/2026)
+
+Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa
+Painters, Entry con Box<dyn Widget> y un único match sobre Settings para seleccionar
+constructor. La consulta de soporte usa ese selector sin crear instancias.
+Solo Relative Vantare está migrado; Eficiencia y otros Kind siguen fuera.
+Update se traslada tal cual y Relative lo reexporta; los métodos y tests actuales
+se conservan. Test de despacho positivo y dos negativos; sin captura porque
+--capture-scene no existe en la base. PR draft, head y gates en #2333 y el PR.
+No cambia scene, host, feed, monitores, domain/ipc, dependencias ni aspecto.
+Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aquí.
+Sin gráficos, Plane, merge, promoción ni release propios.
+
+
 ## VANTA-144 · Historial de delta en Rune (16/11/2026)
 
 Pintor aprobado: domain conserva Trace/LapHistory/LapPoint/Details/ViewModel;
@@ -3184,13 +3200,12 @@ una comparación del gráfico y textos conservados cuando no cambian. Mismo dibu
 Tests CPU de los tramos inválidos, recorte ±2 y orden línea/relleno del Shape real.
 Gates/head en el PR; sin domain/ipc/host nuevos ni gráficos. #2430 espera sus bases.
 
+### VANTA-144 · fuente única Eficiencia (Worker B, 16/11/2026)
 
-
-### #2391 · actualización por merge de nightly (Worker B, 16/11/2026)
-
-Fusionado origin/nightly 83cb9b2e4 en la rama de captura; conflicto solo en este
-handoff resuelto conservando ambas entregas. Registro, Widget y módulos nuevos
-se conservan como nightly, salvo la visibilidad crate de constructor necesaria
-para captura. Se revalidan fmt, Clippy y tests CPU por cola, sin GPU en servidor.
-La ampliación única para captura/preview (todos los widgets, secuencias, assets
-y release) queda para otro PR, tras esquema y OK de raíz; no entra aquí.
+Extracción independiente de src/eficiencia.rs desde #2351: producción idéntica,
+Inter por include_bytes desde ui/assets, sin copiar fuentes ni tokens. Publicado
+como módulo para Fuel, Relative y Standings; ningún widget nuevo ni despacho.
+Tests CPU fijan familias/pesos de font y elipsis Unicode con límites medidos por
+la fuente cargada, sin anchuras esperadas por plataforma. Sin dependencias,
+gráficos, derechos ni cambios de movimiento. Head y gates definitivos en el PR
+y #2333; no se fusiona ni publica release desde el worker.

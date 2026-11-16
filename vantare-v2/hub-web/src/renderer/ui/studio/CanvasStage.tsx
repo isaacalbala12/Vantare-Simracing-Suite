@@ -213,7 +213,17 @@ export function CanvasStage({
               </Button>
             }
           />
-          <footer>{actions}</footer>
+          <footer>
+            <div className="v-canvas-resolution-slot">
+              <CanvasResolution
+                canvas={view.canvas}
+                monitor={view.monitor}
+                enabled={false}
+                onChange={() => {}}
+              />
+            </div>
+            {actions}
+          </footer>
         </>
       ) : (
         <>
@@ -456,6 +466,7 @@ export function CanvasStage({
             <div className="v-canvas-resolution-slot">
               <CanvasResolution
                 canvas={view.canvas}
+                monitor={view.monitor}
                 enabled={model.enabled && !studio.pending && !model.pending}
                 onChange={(resolution) => {
                   input.cancel();

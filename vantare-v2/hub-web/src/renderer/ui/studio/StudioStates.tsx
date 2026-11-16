@@ -11,7 +11,10 @@ export function StudioSaveStatus({
 }) {
   const { state } = model;
   const view = state.view;
-  const readOnly = view?.state === "protected" || model.canvasReadOnly;
+  const readOnly =
+    view?.state === "protected" ||
+    view?.state === "monitorUnavailable" ||
+    model.canvasReadOnly;
   const saving = !readOnly && view?.state === "ready" && state.pending;
   const loading = !view && !state.failure;
   const label = readOnly

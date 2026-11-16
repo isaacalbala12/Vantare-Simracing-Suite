@@ -14,6 +14,7 @@ pub mod scene;
 pub mod fastest_lap;
 mod motion;
 mod multiclass_relative;
+pub mod pedals;
 mod radar;
 pub mod relative;
 mod renderer;

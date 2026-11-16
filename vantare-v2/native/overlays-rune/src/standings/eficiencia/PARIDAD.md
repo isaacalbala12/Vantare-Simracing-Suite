@@ -35,3 +35,21 @@ fija: config.fit usa footer_height del estilo; model::plan descuenta el pie calc
 No se modifica ese comportamiento. Sin globals de estado: Style::compiled devuelve
 un Arc local con los defaults; fuentes, panel y marco se reutilizan de crate::eficiencia.
 Comparación de píxeles en el PC de juego; verificación de E1 CPU, sin gráficos.
+
+## Adaptaciones deliberadas de E1
+
+1. Visual::new omite prefs: GPUI lo recibe sin usarlo; los datos ya vienen localizados.
+2. E1 no reexporta Row/SelectedRow, aún sin consumidor. E3 lo reexportará al portar
+   paint_row/paint_cell, con el mismo tipo de domain que usa GPUI.
+3. Config::from_settings vive en model.rs en lugar del SettingsPresentation::config
+   de mod.rs; la conversión mantiene las mismas ramas y valores.
+4. Los defaults del JSON están expresados como literales Rust, en lugar del archivo
+   de OUT_DIR y la edición/serialización serde de Workshop. Un test fija TODOS los
+   campos con literales copiados de ui/styles/standings.json, sin otra dependencia.
+5. Style::compiled devuelve un Arc local en lugar del OnceLock de GPUI; así el
+   widget no introduce un caché global. Los valores compilados son los mismos.
+6. Visual en E1 solo mantiene geometría y contenido: los canales Motion llegan en E5.
+   No se copian las ramas de instrumentación paint-stats/parity-capture de GPUI.
+
+Revisión E1: PIT mediante columnas reales (474 y reparto estrecho [156,82]);
+seis slots y pie 15+filas·14, helper antes de tests y etiquetas restantes ES/EN.

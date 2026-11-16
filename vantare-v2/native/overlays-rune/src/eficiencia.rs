@@ -138,6 +138,17 @@ pub fn outline(w: f32, h: f32, base: f32, top: f32) -> El {
         )
 }
 
+// Estimación literal de efficiency/mod.rs para pies de Standings.
+pub fn footer_rows(cells: &[vantare_domain::standings::InfoCell], inner_width: f32) -> usize {
+    let total = cells
+        .iter()
+        .map(|cell| {
+            cell.label.chars().count() as f32 * 5.5 + cell.value.chars().count() as f32 * 7.5 + 26.0
+        })
+        .sum::<f32>();
+    (total / inner_width.max(80.0)).ceil() as usize
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -273,15 +284,4 @@ mod parity_tests {
         assert_eq!(ink.a, 0.5);
         assert_eq!(color(0x000000, 0.0).r, 0.0);
     }
-}
-
-// Estimación literal de efficiency/mod.rs para pies de Standings.
-pub fn footer_rows(cells: &[vantare_domain::standings::InfoCell], inner_width: f32) -> usize {
-    let total = cells
-        .iter()
-        .map(|cell| {
-            cell.label.chars().count() as f32 * 5.5 + cell.value.chars().count() as f32 * 7.5 + 26.0
-        })
-        .sum::<f32>();
-    (total / inner_width.max(80.0)).ceil() as usize
 }

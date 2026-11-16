@@ -273,3 +273,301 @@ fn gpui_spanish_and_english_labels_are_not_rephrased() {
         assert_eq!(l.info(InfoMetric::Track), track);
     }
 }
+
+#[test]
+fn gpui_style_default_matches_every_field_of_the_standings_json() {
+    // Literales de ui/styles/standings.json; el crate no depende de serde_json.
+    let style = Style::default();
+    assert_eq!(style.colors.ink.0, 0xf5f5f5, "colors.ink");
+    assert_eq!(style.colors.muted.0, 0xb9b9bd, "colors.muted");
+    assert_eq!(style.colors.panel.0, 0x101113, "colors.panel");
+    assert_eq!(style.colors.loss.0, 0xd95360, "colors.loss");
+    assert_eq!(style.colors.white.0, 0xffffff, "colors.white");
+    assert_eq!(style.colors.black.0, 0x000000, "colors.black");
+    assert_eq!(style.colors.flag_unknown.0, 0xb1b4bc, "colors.flag_unknown");
+    assert_eq!(style.colors.flag_green.0, 0x29c36f, "colors.flag_green");
+    assert_eq!(style.colors.flag_yellow.0, 0xffd03d, "colors.flag_yellow");
+    assert_eq!(style.colors.flag_blue.0, 0x4391ff, "colors.flag_blue");
+    assert_eq!(style.colors.flag_red.0, 0xef303e, "colors.flag_red");
+    assert_eq!(style.colors.flag_black.0, 0x0c0c0e, "colors.flag_black");
+    assert_eq!(
+        style.colors.flag_checkered.0, 0xd1d1d6,
+        "colors.flag_checkered"
+    );
+    assert_eq!(
+        style.colors.broadcast_accent.0, 0xc1121f,
+        "colors.broadcast_accent"
+    );
+    assert_eq!(style.colors.hypercar.0, 0xe63946, "colors.hypercar");
+    assert_eq!(style.colors.lmp.0, 0x5b8bd6, "colors.lmp");
+    assert_eq!(style.colors.gold.0, 0xe2c568, "colors.gold");
+    assert_eq!(style.colors.session.0, 0xb8bac0, "colors.session");
+    assert_eq!(style.colors.class_start.0, 0xe32530, "colors.class_start");
+    assert_eq!(style.colors.class_end.0, 0xba0f1b, "colors.class_end");
+    assert_eq!(style.colors.column_label.0, 0xbdbfc4, "colors.column_label");
+    assert_eq!(style.colors.player.0, 0xbfc2ca, "colors.player");
+    assert_eq!(style.colors.gain.0, 0x7fb686, "colors.gain");
+    assert_eq!(
+        style.colors.player_marker.0, 0xed2431,
+        "colors.player_marker"
+    );
+    assert_eq!(style.colors.position.0, 0xb9bbc1, "colors.position");
+    assert_eq!(style.colors.number.0, 0xa5a5ab, "colors.number");
+    assert_eq!(style.colors.pace_gap.0, 0xbdbdc2, "colors.pace_gap");
+    assert_eq!(style.colors.unit.0, 0xaaa9af, "colors.unit");
+    assert_eq!(style.colors.lap.0, 0xe6e5e9, "colors.lap");
+    assert_eq!(style.colors.best_lap.0, 0xc9b1e9, "colors.best_lap");
+    assert_eq!(style.colors.best_sweep.0, 0xb990e8, "colors.best_sweep");
+    assert_eq!(style.colors.best_marker.0, 0xbd9be8, "colors.best_marker");
+    assert_eq!(style.colors.footer_label.0, 0xa7a9b0, "colors.footer_label");
+    assert_eq!(style.colors.footer_value.0, 0xe8e8ed, "colors.footer_value");
+    assert_eq!(style.colors.pit_ink.0, 0x151517, "colors.pit_ink");
+    assert_eq!(style.geometry.row_height, 30.0, "geometry.row_height");
+    assert_eq!(
+        style.geometry.session_header_height, 42.0,
+        "geometry.session_header_height"
+    );
+    assert_eq!(
+        style.geometry.column_header_height, 28.0,
+        "geometry.column_header_height"
+    );
+    assert_eq!(style.geometry.footer_height, 22.0, "geometry.footer_height");
+    assert_eq!(
+        style.geometry.brand_band_height, 22.0,
+        "geometry.brand_band_height"
+    );
+    assert_eq!(
+        style.geometry.pit_rail_width, 34.0,
+        "geometry.pit_rail_width"
+    );
+    assert_eq!(
+        style.geometry.broadcast_header_height, 46.0,
+        "geometry.broadcast_header_height"
+    );
+    assert_eq!(
+        style.geometry.broadcast_column_height, 24.0,
+        "geometry.broadcast_column_height"
+    );
+    assert_eq!(
+        style.geometry.class_band_height, 28.0,
+        "geometry.class_band_height"
+    );
+    assert_eq!(style.geometry.radius, 6.0, "geometry.radius");
+    assert_eq!(style.geometry.chip_radius, 4.0, "geometry.chip_radius");
+    assert_eq!(
+        style.geometry.chip_cut_radius, 1.0,
+        "geometry.chip_cut_radius"
+    );
+    assert_eq!(style.geometry.pit_radius, 3.0, "geometry.pit_radius");
+    assert_eq!(style.geometry.cell_padding, 8.0, "geometry.cell_padding");
+    assert_eq!(
+        style.geometry.broadcast_name_padding, 24.0,
+        "geometry.broadcast_name_padding"
+    );
+    assert_eq!(
+        style.geometry.position_padding, 4.0,
+        "geometry.position_padding"
+    );
+    assert_eq!(
+        style.geometry.footer_pair_gap, 5.0,
+        "geometry.footer_pair_gap"
+    );
+    assert_eq!(style.geometry.footer_gap, 16.0, "geometry.footer_gap");
+    assert_eq!(style.geometry.logo_size, 24.0, "geometry.logo_size");
+    assert_eq!(
+        style.geometry.brand_logo_size, 18.0,
+        "geometry.brand_logo_size"
+    );
+    assert_eq!(
+        style.geometry.player_marker_width, 2.0,
+        "geometry.player_marker_width"
+    );
+    assert_eq!(
+        style.geometry.player_marker_height, 20.0,
+        "geometry.player_marker_height"
+    );
+    assert_eq!(
+        style.geometry.pit_badge_height, 26.0,
+        "geometry.pit_badge_height"
+    );
+    assert_eq!(style.geometry.pit_glow_blur, 4.0, "geometry.pit_glow_blur");
+    assert_eq!(style.fonts.marker_size, 6.0, "fonts.marker_size");
+    assert_eq!(
+        style.fonts.session_label_size, 7.0,
+        "fonts.session_label_size"
+    );
+    assert_eq!(
+        style.fonts.column_label_size, 8.0,
+        "fonts.column_label_size"
+    );
+    assert_eq!(style.fonts.badge_size, 9.0, "fonts.badge_size");
+    assert_eq!(
+        style.fonts.footer_value_size, 10.0,
+        "fonts.footer_value_size"
+    );
+    assert_eq!(style.fonts.number_size, 11.0, "fonts.number_size");
+    assert_eq!(style.fonts.brand_size, 12.0, "fonts.brand_size");
+    assert_eq!(style.fonts.body_size, 14.0, "fonts.body_size");
+    assert_eq!(style.fonts.clock_size, 15.0, "fonts.clock_size");
+    assert_eq!(style.fonts.plain_clock_size, 17.0, "fonts.plain_clock_size");
+    assert_eq!(style.fonts.regular_weight, 400.0, "fonts.regular_weight");
+    assert_eq!(style.fonts.medium_weight, 500.0, "fonts.medium_weight");
+    assert_eq!(style.fonts.semibold_weight, 600.0, "fonts.semibold_weight");
+    assert_eq!(style.fonts.metric_weight, 650.0, "fonts.metric_weight");
+    assert_eq!(style.fonts.bold_weight, 700.0, "fonts.bold_weight");
+    assert_eq!(style.fonts.heavy_weight, 800.0, "fonts.heavy_weight");
+    assert_eq!(style.fonts.tracking_scale, 1.0, "fonts.tracking_scale");
+    assert_eq!(style.fonts.family, None, "fonts.family");
+    assert_eq!(style.shadow.sigma, 12.5, "shadow.sigma");
+    assert_eq!(style.shadow.spread, -12.0, "shadow.spread");
+    assert_eq!(style.shadow.offset_y, 14.0, "shadow.offset_y");
+    assert_eq!(style.shadow.alpha, 0.48, "shadow.alpha");
+    assert_eq!(style.opacity.panel, 0.87, "opacity.panel");
+    assert_eq!(style.opacity.frame, 0.12, "opacity.frame");
+    assert_eq!(style.opacity.top_frame, 0.136, "opacity.top_frame");
+    assert_eq!(style.opacity.player, 0.17, "opacity.player");
+    assert_eq!(
+        style.opacity.broadcast_player, 0.23,
+        "opacity.broadcast_player"
+    );
+    assert_eq!(style.opacity.footer, 0.15, "opacity.footer");
+    assert_eq!(style.opacity.pit_glow, 0.22, "opacity.pit_glow");
+}
+
+#[test]
+fn gpui_real_settings_enable_pit_and_keep_the_narrow_driver_remainder() {
+    let columns = [
+        ("position", "xs"),
+        ("driverNumber", "sm"),
+        ("driverName", "lg"),
+        ("gap", "md"),
+        ("bestLap", "lg"),
+        ("pit", "auto"),
+    ]
+    .into_iter()
+    .map(|(id, width)| ColumnSetting {
+        metric_id: id.into(),
+        width_preset: width.into(),
+        ..ColumnSetting::default()
+    })
+    .collect();
+    let settings = Settings {
+        row_count: 10,
+        columns: Some(columns),
+        ..Settings::eficiencia()
+    };
+    let mut visual = Visual::new(&settings);
+    visual.ingest(Arc::new(content()));
+    assert_eq!(visual.size(), (474.0, 364.0));
+    assert_eq!(visual.plan.widths, [30.0, 30.0, 200.0, 92.0, 88.0]);
+    let settings = Settings {
+        row_count: 10,
+        columns: Some(vec![
+            ColumnSetting {
+                metric_id: "driverName".into(),
+                width_preset: "sm".into(),
+                format: vantare_domain::widget_settings::columns::Format {
+                    mode: "initial".into(),
+                    ..Default::default()
+                },
+                ..ColumnSetting::default()
+            },
+            ColumnSetting {
+                metric_id: "lastLap".into(),
+                width_preset: "md".into(),
+                ..ColumnSetting::default()
+            },
+            ColumnSetting {
+                metric_id: "pit".into(),
+                ..ColumnSetting::default()
+            },
+        ]),
+        ..Settings::eficiencia()
+    };
+    let mut config = Config::from_settings(&settings);
+    config.fit(10);
+    let p = plan(&config, &content());
+    assert!(p.pit_enabled);
+    assert_eq!(config.width, 238.0);
+    assert_eq!(p.widths, [156.0, 82.0]);
+    let mut visual = Visual::new(&settings);
+    visual.ingest(Arc::new(content()));
+    assert_eq!(visual.size(), (272.0, 392.0));
+}
+#[test]
+fn gpui_six_footer_slots_use_fifteen_plus_fourteen_per_estimated_row() {
+    let settings = Settings {
+        row_count: 10,
+        footer_slots: Some(
+            ["track", "position", "gap", "interval", "lastLap", "bestLap"]
+                .into_iter()
+                .map(String::from)
+                .collect(),
+        ),
+        ..Settings::eficiencia()
+    };
+    let mut visual = Visual::new(&settings);
+    assert_eq!(visual.config.footer_slots.len(), 6);
+    let mut next = content();
+    let cells = ["track", "gap"]
+        .into_iter()
+        .map(|id| standings::InfoCell {
+            id: id.into(),
+            label: "Á".repeat(40),
+            value: "0".repeat(20),
+            stale: false,
+        })
+        .collect::<Vec<_>>();
+    // 2*(40*5,5+20*7,5+26)=792; ancho interior 440-24=416 -> 2 filas.
+    assert_eq!(crate::eficiencia::footer_rows(&cells, 416.0), 2);
+    Arc::make_mut(&mut next.board).footer_cells = cells;
+    visual.ingest(Arc::new(next));
+    assert_eq!(visual.config.footer_rows, 2);
+    assert_eq!(visual.config.footer_height(), 43.0);
+    assert_eq!(visual.size(), (440.0, 364.0));
+    assert_eq!(visual.plan.visible_rows, 9);
+}
+#[test]
+fn gpui_remaining_labels_keep_the_literal_pace_and_source_status_texts() {
+    use vantare_domain::format::Language;
+    for (language, expected) in [
+        (
+            Language::Es,
+            [
+                "AL MEJOR",
+                "INTERVALO",
+                "ÚLT. VUELTA",
+                "DATOS ANTIGUOS",
+                "DESCONECTADO",
+                "SIN DATOS",
+            ],
+        ),
+        (
+            Language::En,
+            [
+                "TO BEST",
+                "INTERVAL",
+                "LAST LAP",
+                "DATA OUT OF DATE",
+                "DISCONNECTED",
+                "NO DATA",
+            ],
+        ),
+    ] {
+        let l = labels(language);
+        assert_eq!(
+            [
+                l.pace_gap,
+                l.interval,
+                l.last_lap,
+                l.stale,
+                l.disconnected,
+                l.missing
+            ],
+            expected
+        );
+        assert_eq!(l.metric(Metric::Gap, true), expected[0]);
+        assert_eq!(l.metric(Metric::Interval, false), expected[1]);
+        assert_eq!(l.metric(Metric::LastLap, false), expected[2]);
+    }
+}

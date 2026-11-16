@@ -1,6 +1,7 @@
 //! One retained painter per visible instance; monitor windows coalesce their work.
 use crate::{
     car_damage_numbers::CarDamageNumbers,
+    car_damage_visual::CarDamageVisual,
     host::Access,
     input_telemetry::InputTelemetry,
     pedals::Pedals,
@@ -41,6 +42,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),
         Settings::TrackWeather(_) => Some(<TrackWeather as Widget>::new),
         Settings::CarDamageNumbers(_) => Some(<CarDamageNumbers as Widget>::new),
+        Settings::CarDamageVisual(_) => Some(<CarDamageVisual as Widget>::new),
         Settings::BroadcastTower(_) => Some(<Tower as Widget>::new),
         Settings::InputTelemetry(_) => Some(<InputTelemetry as Widget>::new),
         Settings::RacingFlags(_) => Some(<crate::racing_flags::RacingFlags as Widget>::new),
@@ -383,6 +385,32 @@ pub(crate) mod tests {
                 (size.width, size.height),
                 (164.0, height),
                 "show_tyres {show_tyres}"
+            );
+        }
+    }
+
+    #[test]
+    fn dispatch_constructs_car_damage_visual_with_its_single_box() {
+        let prefs = Preferences::default();
+        for view in ["car", "numbers"] {
+            let settings = Settings::CarDamageVisual(
+                vantare_domain::widget_settings::car_damage_visual::Settings {
+                    view: view.into(),
+                    ..Default::default()
+                },
+            );
+            let painter =
+                constructor(&settings).expect("Car damage visual")(&settings, prefs, true, 15, 0.0)
+                    .expect("instancia");
+            assert!(painter.configured(&settings, prefs));
+            assert_eq!(
+                (painter.size().width, painter.size().height),
+                (200.0, 272.0),
+                "{view}"
+            );
+            assert_eq!(
+                painter.size_for(Some(&crate::testdata::snapshot())),
+                painter.size()
             );
         }
     }

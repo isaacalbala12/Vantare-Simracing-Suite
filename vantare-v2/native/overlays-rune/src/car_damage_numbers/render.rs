@@ -302,14 +302,15 @@ mod tests {
             )
             .0
         };
-        for (tyres, status) in [
-            (true, None),
-            (false, None),
-            (true, Some("DATOS ANTIGUOS")),
-            (true, Some("DATA OUT OF DATE")),
-            (true, Some("DESCONECTADO")),
+        for (tyres, status, spanish) in [
+            (true, None, true),
+            (false, None, true),
+            (true, Some("DATOS ANTIGUOS"), true),
+            (true, Some("DESCONECTADO"), true),
+            (true, Some("DATA OUT OF DATE"), false),
+            (true, Some("DISCONNECTED"), false),
+            (true, Some("NO DATA"), false),
         ] {
-            let spanish = !matches!(status, Some("DATA OUT OF DATE"));
             let scene = scene::sample(&vm(tyres, status, spanish));
             let elements = elements(&scene);
             for index in 0..scene.rows.len() {

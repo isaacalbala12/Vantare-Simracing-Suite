@@ -410,7 +410,7 @@ mod tests {
         let style = crate::vantare::Style::compiled();
         let class = Some(Class {
             id: ClassId(1),
-            name: "SUPER LONG CLASS NAME GT3".into(),
+            name: "ULTRA LONG CLASS NAME FOR THE METRIC TEST WITH A GT3 SUFFIX".into(),
         });
         let mut runtime = runtime(widget(&Config::default(), prefs, false));
         let mut base = photo(1, 90.0);
@@ -433,7 +433,9 @@ mod tests {
         );
         let fallback = style.classes.last().expect("clase de reserva").dot;
         assert_ne!(
-            style.class("SUPER LONG CLASS NAME GT3").dot,
+            style
+                .class("ULTRA LONG CLASS NAME FOR THE METRIC TEST WITH A GT3 SUFFIX")
+                .dot,
             fallback,
             "el nombre completo sí coincide con GT"
         );
@@ -444,19 +446,50 @@ mod tests {
     }
 
     #[test]
-    fn chip_and_mono_texts_do_not_fade_with_the_scene() {
+    fn chip_and_mono_texts_stay_out_of_the_fading_layer() {
+        // A media entrada, panel y textos que GPUI funde van en una capa con
+        // opacidad < 1; los chips y el mono se pintan fuera de esa capa.
         let prefs = Preferences::default();
         let mut runtime = runtime(widget(&Config::default(), prefs, false));
         runtime.state.update(&photo(1, 90.0), runtime.clock);
         rendered(&mut runtime, 0.0);
         runtime.state.update(&photo(2, 89.94), runtime.clock);
         assert!(rendered(&mut runtime, 0.11), "fundido a media entrada");
-        let elements = runtime.elements();
-        let opacity = |key: &str| element(&elements, key).opacity;
-        assert!(opacity("title") < 1.0, "el panel y el título entran");
-        assert_eq!(opacity("caption"), 1.0, "el mono no se funde");
-        assert_eq!(opacity("lap"), 1.0, "la vuelta no se funde");
-        assert_eq!(opacity("sector-0"), 1.0, "los chips no se funden");
+        let instances = runtime.instances.clone();
+        let start = instances
+            .iter()
+            .position(|instance| instance.params[1] == rune::render::KIND_LAYER)
+            .expect("capa del fundido");
+        let end = instances
+            .iter()
+            .position(|instance| instance.params[1] == rune::render::KIND_LAYER_END)
+            .expect("fin de la capa");
+        let opacity = instances[start].fill[3];
+        assert!(
+            opacity > 0.0 && opacity < 1.0,
+            "la capa se funde: {opacity}"
+        );
+        let chip = instances
+            .iter()
+            .position(|instance| {
+                (instance.rect[0] - 371.0).abs() < 0.5
+                    && (instance.rect[1] - 55.0).abs() < 0.5
+                    && (instance.rect[2] - 30.0).abs() < 0.5
+                    && (instance.rect[3] - 16.0).abs() < 0.5
+            })
+            .expect("chip S1");
+        let caption = instances
+            .iter()
+            .position(|instance| {
+                instance.uv[2] > 0.0
+                    && instance.rect[0] > 380.0
+                    && instance.rect[1] > 34.0
+                    && instance.rect[1] < 50.0
+            })
+            .expect("caption mono");
+        assert!(start < end, "la capa se abre antes de cerrarse");
+        assert!(chip > end, "los chips van fuera de la capa que se funde");
+        assert!(caption > end, "el mono va fuera de la capa que se funde");
     }
 
     #[test]
@@ -474,7 +507,7 @@ mod tests {
         assert!(!rendered(&mut runtime, 0.5), "reposo con el nombre corto");
         // El vehículo no forma parte del Timing: el aviso se conserva y solo
         // se recompone el subtítulo, una vez.
-        let long = "A VERY LONG VEHICLE NAME THAT DOES NOT FIT THE SUBTITLE BOX";
+        let long = "A VERY LONG VEHICLE NAME THAT DOES NOT FIT THE SUBTITLE BOX EVEN WITH NARROWER WINDOWS FONT METRICS";
         let mut improved = photo(3, 89.94);
         improved.state.cars[0].vehicle = long.into();
         runtime.state.update(&improved, runtime.clock);

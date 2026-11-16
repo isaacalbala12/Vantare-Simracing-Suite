@@ -529,7 +529,10 @@ mod tests {
         let mut motion = armed(&photo(2, 89.94), prefs);
         let photo = photo(2, 89.94);
         let vm = projected(&photo, prefs);
-        assert!(motion.update(&photo, &vm, prefs, true, true, 2.0));
+        assert!(
+            !motion.update(&photo, &vm, prefs, true, true, 2.0),
+            "misma proyección y sin etiquetas nuevas: nada que rehacer"
+        );
         assert!(!motion.update(&photo, &vm, prefs, true, true, 2.5));
         assert!(!motion.update(&photo, &vm, prefs, true, true, 3.0));
     }
@@ -602,7 +605,10 @@ mod tests {
             Quality::Reliable(31.0),
         ];
         let vm = projected(&third, prefs);
-        assert!(motion.update(&third, &vm, prefs, false, false, 2.0));
+        assert!(
+            !motion.update(&third, &vm, prefs, false, false, 2.0),
+            "la señal no pide repintar; el detalle nuevo se ve al muestrear"
+        );
         let scene = sample(&motion, prefs, 2.3).expect("aviso retenido");
         assert_eq!(&*scene.time, "1:29.940");
         assert_eq!(scene.driver.as_deref(), Some("Player"));

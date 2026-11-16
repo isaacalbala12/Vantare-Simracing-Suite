@@ -52,7 +52,7 @@ fn changed(update: Update) -> bool {
     update.build || update.pixels
 }
 
-fn runtime(painter: Delta) -> Runtime<Delta> {
+fn harness(painter: Delta) -> Runtime<Delta> {
     let size = painter.size();
     let mut runtime = Runtime::with_text(
         painter,

@@ -27,36 +27,46 @@ function Get-VantareQueueDecision {
 
     switch ($Class) {
         'heavy' {
-            # Los pesados entran solos (las dos ranuras) y bloquean a los demás
-            # mientras corren. Su reserva es HeavyGB y el suelo libre, FreeFloor.
-            $enter = ($ActiveSlots -eq 0) -and ($FreeSlots -ge $Slots) -and
-                ($FreeGB -ge $floor) -and (($CommitGB + $heavyGb) -le $ceiling)
-            $reason = if (-not $enter) {
-                if ($ActiveSlots -gt 0) { "pesado: hay $ActiveSlots build(s) activo(s); espera a que terminen" }
-                elseif ($FreeSlots -lt $Slots) { "pesado: faltan ranuras ($FreeSlots/$Slots libres)" }
-                elseif ($FreeGB -lt $floor) { "pesado: libre $([math]::Round($FreeGB, 1)) GB < suelo $floor GB" }
-                else { "pesado: commit $([math]::Round($CommitGB, 1)) + $heavyGb > techo $ceiling GB" }
-            } else { "pesado: entra solo con $heavyJobs jobs" }
+            # Un pesado solo (sin otros builds) entra siempre con sus dos
+            # ranuras, aunque falte RAM: mejor tirar de disco que esperar sin
+            # límite (igual que `direct`). Mientras espera, compilar.ps1 retiene
+            # cada ranura libre; los ligeros solo usan la que queda.
+            $solo = ($ActiveSlots -eq 0) -and ($FreeSlots -ge $Slots)
+            $reason = if ($solo) {
+                "pesado: solo con $heavyJobs jobs; entra aunque falte RAM"
+            } elseif ($ActiveSlots -gt 0) {
+                "pesado: $ActiveSlots build(s) activo(s); reserva $FreeSlots/$Slots ranura(s) y espera"
+            } elseif ($FreeSlots -lt $Slots) {
+                "pesado: reserva $FreeSlots/$Slots ranura(s); espera la otra"
+            } else {
+                'pesado: espera'
+            }
             return [pscustomobject]@{
-                Enter = $enter
+                Enter = $solo
                 Jobs = $heavyJobs
-                HoldSlots = if ($enter) { $Slots } else { 0 }
-                NeedGB = $floor
+                HoldSlots = if ($solo) { $Slots } else { 0 }
+                NeedGB = $heavyGb
                 Reason = $reason
             }
         }
         'light' {
-            # Los ligeros comparten las dos ranuras con 2 jobs cada uno. El
-            # segundo necesita el suelo más la reserva del primero.
+            # Un ligero solo también entra siempre, aunque falte RAM. El
+            # segundo ligero sí respeta el suelo, la reserva y el techo.
             $need = $floor + ($ActiveSlots * $lightGb)
-            $enter = ($FreeSlots -ge 1) -and ($ActiveSlots -lt $Slots) -and
+            $solo = ($ActiveSlots -eq 0) -and ($FreeSlots -ge 1)
+            $memory = ($FreeSlots -ge 1) -and ($ActiveSlots -lt $Slots) -and
                 ($FreeGB -ge $need) -and (($CommitGB + $lightGb) -le $ceiling)
-            $reason = if (-not $enter) {
+            $enter = $solo -or $memory
+            $reason = if ($solo) {
+                "ligero: solo con $lightJobs jobs; entra aunque falte RAM"
+            } elseif (-not $enter) {
                 if ($FreeSlots -lt 1) { 'ligero: no hay ranura libre' }
                 elseif ($ActiveSlots -ge $Slots) { "ligero: $ActiveSlots/$Slots ranuras ocupadas" }
                 elseif ($FreeGB -lt $need) { "ligero: libre $([math]::Round($FreeGB, 1)) GB < $need GB" }
                 else { "ligero: commit $([math]::Round($CommitGB, 1)) + $lightGb > techo $ceiling GB" }
-            } else { "ligero: entra con $lightJobs jobs" }
+            } else {
+                "ligero: entra con $lightJobs jobs (comparte ranura)"
+            }
             return [pscustomobject]@{
                 Enter = $enter
                 Jobs = $lightJobs

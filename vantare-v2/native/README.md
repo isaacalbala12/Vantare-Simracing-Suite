@@ -564,13 +564,21 @@ Nextest usa `--build-jobs`; `-j` controla hilos de test.
 **ligeros**. La cola:
 
 - **Pesados**: entran solos, con las dos ranuras y **4 jobs**; mientras corren no
-  entra otro worker. Es su modo actual y no se alarga.
+  entra otro worker. Mientras esperan, **reservan cada ranura libre y la
+  retienen** hasta tener las dos; los ligeros solo usan la que queda. Un mutex
+  `Global\VantareCargoHeavyWait` serializa a los pesados para que dos no se
+  bloqueen entre sí.
 - **Ligeros**: comparten las dos ranuras con **2 jobs** cada uno.
+- **Un worker solo entra siempre**, aunque falte RAM o el commit supere el
+  techo: se registra el motivo y el sistema tirará de disco, como en `direct`.
+  El techo y el suelo solo frenan al **segundo** ligero.
 - Decisión: techo de commit **20 GB**, suelo libre **3 GB**, reserva **4 GB**
   (pesado) / **2,5 GB** (ligero). Los jobs se pasan a cargo como `-j`/
   `--build-jobs` mediante `VANTARE_BUILD_JOBS`; **nunca** se cambia
   `CARGO_BUILD_JOBS`, que forma parte de la clave de sccache. CI y release no
   definen la variable y conservan el comportamiento anterior.
+- Los comandos directos (incluidos los de `overlays-rune`) siguen en `direct`;
+  no se clasifican por heurísticas de argumentos.
 - Medido con 4 jobs en este servidor: commit 1,2-3,7 GB por gate; 69 esperas
   reales con mediana 97 s, p90 509 s y máximo 1445 s; un gate ligero a 2 jobs
   tarda 0,99-1,03× lo que a 4. La tabla y el esquema están en

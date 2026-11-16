@@ -127,7 +127,6 @@ if (-not $queueMode) { $queueMode = 'fase1' }
 $queueClass = 'direct'
 if ($queueMode -eq 'fase1') {
     if ($env:VANTARE_QUEUE_CLASS -in @('heavy', 'light')) { $queueClass = $env:VANTARE_QUEUE_CLASS }
-    elseif (($args -join ' ') -match 'overlays-rune') { $queueClass = 'light' }
 }
 function Get-VantareQueueSetting {
     param([string]$Name, [string]$Default)
@@ -154,7 +153,15 @@ $commitUmbral = 0.0
 $commitFuente = ''
 $efectivos = 0
 $held = $null
+$reserved = @()
+$heavyWait = $null
 $waited = [Diagnostics.Stopwatch]::StartNew()
+if ($queueClass -eq 'heavy') {
+    # Un solo pesado reserva a la vez; el segundo espera aquí, no en las
+    # ranuras, para que dos pesados no se bloqueen entre sí (P1.1).
+    $heavyWait = [Threading.Mutex]::new($false, 'Global\VantareCargoHeavyWait')
+    try { $null = $heavyWait.WaitOne() } catch [Threading.AbandonedMutexException] { }
+}
 while (-not $held) {
     # Mínimo de RAM libre, leído en cada vuelta: Machine manda (cambio sin reiniciar T3), luego el
     # proceso y, si no hay nada, 5 GB.
@@ -175,10 +182,38 @@ while (-not $held) {
     $commitGb = ($os.TotalVirtualMemorySize - $os.FreeVirtualMemory) / 1MB
     $busy = 0
     $mine = @()
+    $reservedIndexes = @($reserved | ForEach-Object { $slotNumbers[$_] })
     for ($i = 0; $i -lt $slots; $i++) {
+        if ($i -in $reservedIndexes) { continue }
         $m = [Threading.Mutex]::new($false, "Global\VantareCargoSlot$i")
         try { if ($m.WaitOne(0)) { $mine += $m; $slotNumbers[$m] = $i } else { $busy++; $m.Dispose() } }
         catch [Threading.AbandonedMutexException] { $mine += $m; $slotNumbers[$m] = $i }
+    }
+    if ($queueClass -eq 'heavy') {
+        # Reserva cada ranura libre y la retiene hasta tenerlas todas (P1.1):
+        # los ligeros solo pueden usar la ranura que el pesado no tiene.
+        $reserved += $mine
+        $total = $reserved.Count
+        $minGb = [double]$limits.FreeFloor
+        $fuente = 'fase1'
+        $commitUmbral = [double]$limits.CommitCeiling
+        $commitFuente = 'fase1'
+        $decision = Get-VantareQueueDecision -Class 'heavy' -FreeSlots $total -ActiveSlots $busy `
+            -Slots $slots -FreeGB $freeGb -CommitGB $commitGb -Limits $limits
+        $needGb = [double]$decision.NeedGB
+        $motivo = "fase1 heavy: commit {0:N1}/{1:N1} GB, libre {2:N1} GB, otras {3}" -f $commitGb, $commitUmbral, $freeGb, $busy
+        if ($decision.Enter) {
+            $held = @($reserved)
+            $buildJobs = [int]$decision.Jobs
+            Write-Host ("[cola] fase1 heavy: {0} job(s), {1} ranura(s) ({2})" -f $buildJobs, $held.Count, $decision.Reason)
+            if ($freeGb -lt $limits.FreeFloor -or ($commitGb + $limits.HeavyGB) -gt $limits.CommitCeiling) {
+                Write-Host ("[cola] pesado solo: entro igual con libre {0:N1} GB y commit {1:N1} GB; el sistema tirará de disco" -f $freeGb, $commitGb)
+            }
+        } else {
+            Write-Host ("[cola] espero: {0} ({1})" -f $decision.Reason, $motivo)
+            Start-Sleep -Seconds 5
+        }
+        continue
     }
     if ($queueClass -eq 'direct') {
         # Slots efectivos por memoria: 2 bajo el umbral, 1 a partir de él; nunca 0 ni por encima
@@ -290,5 +325,6 @@ try {
     if ($ciLease) { $ciLease.ReleaseMutex(); $ciLease.Dispose() }
     Remove-Item Env:VANTARE_CARGO_QUEUE_OWNER -ErrorAction SilentlyContinue
     foreach ($m in $held) { $m.ReleaseMutex(); $m.Dispose() }
+    if ($heavyWait) { $heavyWait.ReleaseMutex(); $heavyWait.Dispose() }
 }
 exit $code

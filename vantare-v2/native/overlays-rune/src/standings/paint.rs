@@ -650,6 +650,8 @@ mod truncation_tests {
                 Env::new(true, scale),
                 rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
             );
+            // A CPU atlas path makes the ellipsis observable without a GPU outline store.
+            runtime.set_font_smoothing(rune::text::FontSmoothing::Off);
             runtime.frame(0.0);
             runtime.settle_all();
             runtime.frame(0.0);
@@ -671,17 +673,33 @@ mod truncation_tests {
                         .as_deref(),
                     Some(LONG)
                 );
+                let rect = runtime.presented(key).expect("label box").0;
                 let mut ellipsis = Vec::new();
-                runtime
-                    .text
-                    .glyphs("…", style, scale, [0.0; 2], &mut ellipsis);
+                // Rune's atlas distinguishes 60 horizontal and four vertical mask phases.
+                for x in 0..60 {
+                    for y in 0..4 {
+                        runtime.text.glyphs(
+                            "…",
+                            style,
+                            scale,
+                            [x as f32 / 60.0, y as f32 / 4.0],
+                            &mut ellipsis,
+                        );
+                    }
+                }
+
                 assert!(!ellipsis.is_empty());
                 assert!(
-                    ellipsis.iter().any(|g| runtime
-                        .instances
+                    ellipsis
                         .iter()
-                        .any(|i| i.params[1] == rune::render::KIND_GLYPH
-                            && i.uv[..2] == g.atlas_uv())),
+                        .any(|g| runtime.instances.iter().any(|i| i.params[1]
+                            == rune::render::KIND_GLYPH
+                            && i.uv[..2] == g.atlas_uv()
+                            && i.params[2] == g.atlas_page() as f32
+                            && (rect[0] * scale..=(rect[0] + rect[2]) * scale)
+                                .contains(&(i.rect[0] + i.rect[2] / 2.0))
+                            && (rect[1] * scale..=(rect[1] + rect[3]) * scale)
+                                .contains(&(i.rect[1] + i.rect[3] / 2.0)))),
                     "the actual painter must contain the ellipsis glyph for {key}, not a plain clipped line"
                 );
             }

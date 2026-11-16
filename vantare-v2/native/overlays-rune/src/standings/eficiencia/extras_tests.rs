@@ -502,3 +502,21 @@ fn gpui_seven_rows_without_footer_end_one_pixel_beyond_the_clipping_window() {
         }
     }
 }
+
+#[test]
+fn class_band_rules_have_keys_and_an_empty_class_emits_no_label() {
+    let rt = paint(classes(&["   "]), Language::Es);
+    assert_eq!(
+        named(&rt, "class-band-top-rule-0").rect,
+        [0.0, 43.0, 440.0, 1.0]
+    );
+    assert_eq!(
+        named(&rt, "class-band-bottom-rule-0").rect,
+        [0.0, 70.0, 440.0, 1.0]
+    );
+    assert!(
+        !rt.elements()
+            .iter()
+            .any(|e| e.key.as_deref() == Some("class-band-label-0"))
+    );
+}

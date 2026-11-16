@@ -97,9 +97,14 @@ pub(super) fn paint(v: &Visual, language: Language) -> Vec<El> {
                     [(0.0, color(rgb, alpha)), (1.0, color(rgb, 0.0))],
                 ),
         );
-        nodes.push(rect(0.0, y, c.width, 1.0).fill(color(s.colors.ink.0, 0.10)));
+        nodes.push(
+            rect(0.0, y, c.width, 1.0)
+                .key(format!("class-band-top-rule-{index}"))
+                .fill(color(s.colors.ink.0, 0.10)),
+        );
         nodes.push(
             rect(0.0, y + s.geometry.class_band_height - 1.0, c.width, 1.0)
+                .key(format!("class-band-bottom-rule-{index}"))
                 .fill(color(s.colors.ink.0, 0.10)),
         );
         nodes.push(
@@ -107,13 +112,15 @@ pub(super) fn paint(v: &Visual, language: Language) -> Vec<El> {
                 .key(format!("class-band-tick-{index}"))
                 .fill(color(rgb, 1.0)),
         );
-        nodes.push(label(
-            &format!("class-band-label-{index}"),
-            &id,
-            20.0,
-            y + 18.0,
-            ink(s, s.fonts.badge_size, s.fonts.bold_weight, 0.14, rgb),
-        ));
+        if !id.is_empty() {
+            nodes.push(label(
+                &format!("class-band-label-{index}"),
+                &id,
+                20.0,
+                y + 18.0,
+                ink(s, s.fonts.badge_size, s.fonts.bold_weight, 0.14, rgb),
+            ));
+        }
     }
     for (i, row) in v.content_plan.rows.iter().take(p.visible_rows).enumerate() {
         let top = body_top + p.row_tops[i];

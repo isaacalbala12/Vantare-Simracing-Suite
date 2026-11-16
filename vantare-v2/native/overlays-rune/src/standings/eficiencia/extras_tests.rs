@@ -90,8 +90,12 @@ fn gpui_class_bands_keep_the_palette_geometry_and_nine_pixel_badge_font() {
             named(&rt, "class-band-tick-0").rect,
             [10.0, 50.0, 2.0, 14.0]
         );
-        for y in [43.0,70.0] {
-            assert!(rt.elements().iter().any(|e|e.rect==[0.0,y,440.0,1.0] && e.fill.hex()=="#f5f5f51a"));
+        for y in [43.0, 70.0] {
+            assert!(
+                rt.elements()
+                    .iter()
+                    .any(|e| e.rect == [0.0, y, 440.0, 1.0] && e.fill.hex() == "#f5f5f51a")
+            );
         }
         let gradient = rt
             .instances
@@ -188,10 +192,12 @@ fn gpui_pit_rail_uses_the_declared_header_plus_the_two_pixel_badge_inset() {
             .iter()
             .any(|i| i.rect == badge.rect && i.radii == [0.0, 3.0, 3.0, 0.0])
     );
-    assert!(rt.instances.iter().any(|i| i.rect==badge.rect && i.uv==[2.0,2.0,2.0,1.0]
-        && i.border==rune::color::hex("#151517").unwrap().premul(1.0)));
-    assert!(rt.instances.iter().any(|i|i.params[1]==1.0 && i.params[2]==2.0
-        && i.fill==rune::color::hex("#e2c568").unwrap().premul(0.22))); // blur4 -> sigma2 en Rune.
+    assert!(rt.instances.iter().any(|i| i.rect == badge.rect
+        && i.uv == [2.0, 2.0, 2.0, 1.0]
+        && i.border == rune::color::hex("#151517").unwrap().premul(1.0)));
+    assert!(rt.instances.iter().any(|i| i.params[1] == 1.0
+        && i.params[2] == 2.0
+        && i.fill == rune::color::hex("#e2c568").unwrap().premul(0.22))); // blur4 -> sigma2 en Rune.
     crate::testdata::assert_inside_window(&mut rt, size);
 }
 #[test]
@@ -212,7 +218,7 @@ fn gpui_missing_and_disconnected_paint_gold_notice_in_both_languages_without_row
             assert_eq!(text.text.as_deref(), Some(title));
             assert_eq!(&text.rect[..2], &[12.0, 94.0]); // table_top42 + loose42 +10.
             assert_eq!(text.text_color.unwrap().hex(), "#e2c568ff");
-            assert_eq!(named(&rt,"footer-value-0").text.as_deref(),Some("—"));
+            assert_eq!(named(&rt, "footer-value-0").text.as_deref(), Some("—"));
             assert!(!rt.elements().iter().any(|e| {
                 e.key
                     .as_deref()
@@ -260,84 +266,239 @@ fn every_e4_layer_stays_inside_the_gpui_box_for_each_footer_band_and_rail_combin
 #[test]
 fn host_bounds_include_absence_pause_and_each_real_settings_combination() {
     use crate::widget::Widget;
-    use vantare_domain::{Quality,SourceState,format::Preferences,
-        widget_settings::{columns::ColumnSetting,standings::Settings}};
-    let photo=vantare_ipc::snapshot_from_json(include_str!("../../../../ui/fixtures/standings.snapshot.json")).unwrap();
-    let assets=Arc::new(rune::ImageCache::new(Arc::new(||{})));
-    for broadcast in [false,true] { for multiclass in [false,true] { for footer in [false,true] {
-        for slots in [false,true] { for pit in [false,true] {
-            let mut columns=[("position","xs"),("driverNumber","sm"),("driverName","lg"),("gap","md"),("bestLap","lg")].into_iter()
-                .map(|(metric,preset)|ColumnSetting{metric_id:metric.into(),width_preset:preset.into(),..ColumnSetting::default()}).collect::<Vec<_>>();
-            if pit { columns.push(ColumnSetting{metric_id:"pit".into(),..ColumnSetting::default()}); }
-            let settings=Settings{row_count:7,columns:Some(columns),show_session_footer:footer,
-                template_id:if broadcast {"broadcast"} else {"signature"}.into(),
-                classification_mode:if multiclass {"multiclass"} else {"normal"}.into(),class_scope:"all-classes".into(),
-                footer_slots:slots.then(||["track","trackTemperature","airTemperature","remaining","rain","wetness","totalLaps","estimatedLaps"].into_iter().map(String::from).collect()),
-                ..Settings::eficiencia()};
-            for state in [SourceState::Live,SourceState::Stale,SourceState::Waiting,SourceState::Lost,SourceState::Paused] {
-                // El cruce Signature/7 filas/sin pie a capacidad tiene su oráculo GPUI
-                // separado: cabecera real43 y ventana calculada con42. No se cambia el helper.
-                if !broadcast && !footer && matches!(state,SourceState::Live|SourceState::Stale) { continue; }
-                let mut w=super::control::Eficiencia::new(&settings,Preferences::default());
-                w.attach_assets(&assets);
-                let mut snapshot=photo.clone();
-                snapshot.state.cars[0].in_pits=Quality::Reliable(true);
-                if state==SourceState::Paused { w.update(&snapshot,0.0); }
-                snapshot.state.source_state=state;
-                let predicted=w.size_for(Some(&snapshot));
-                w.update(&snapshot,0.1);
-                assert_eq!(w.size(),predicted);
-                for image in w.capture_images() { image.wait().unwrap(); }
-                let mut rt=rune::Runtime::with_text(w,|s,_|s.view(),(predicted.width,predicted.height),rune::Env::new(true,1.0),rune::text::TextSystem::new(crate::eficiencia::FONTS,("Inter W400","Inter W400")));
-                rt.frame(0.0);
-                assert_eq!(rt.elements().iter().any(|e|e.key.as_deref()==Some("footer-rule")),footer);
-                assert_eq!(rt.elements().iter().any(|e|e.key.as_deref()==Some("pause-band")),state==SourceState::Paused);
-                crate::testdata::assert_inside_window(&mut rt,(predicted.width,predicted.height));
+    use vantare_domain::{
+        Quality, SourceState,
+        format::Preferences,
+        widget_settings::{columns::ColumnSetting, standings::Settings},
+    };
+    let photo = vantare_ipc::snapshot_from_json(include_str!(
+        "../../../../ui/fixtures/standings.snapshot.json"
+    ))
+    .unwrap();
+    let assets = Arc::new(rune::ImageCache::new(Arc::new(|| {})));
+    for broadcast in [false, true] {
+        for multiclass in [false, true] {
+            for footer in [false, true] {
+                for slots in [false, true] {
+                    for pit in [false, true] {
+                        let mut columns = [
+                            ("position", "xs"),
+                            ("driverNumber", "sm"),
+                            ("driverName", "lg"),
+                            ("gap", "md"),
+                            ("bestLap", "lg"),
+                        ]
+                        .into_iter()
+                        .map(|(metric, preset)| ColumnSetting {
+                            metric_id: metric.into(),
+                            width_preset: preset.into(),
+                            ..ColumnSetting::default()
+                        })
+                        .collect::<Vec<_>>();
+                        if pit {
+                            columns.push(ColumnSetting {
+                                metric_id: "pit".into(),
+                                ..ColumnSetting::default()
+                            });
+                        }
+                        let settings = Settings {
+                            row_count: 7,
+                            columns: Some(columns),
+                            show_session_footer: footer,
+                            template_id: if broadcast { "broadcast" } else { "signature" }.into(),
+                            classification_mode: if multiclass { "multiclass" } else { "normal" }
+                                .into(),
+                            class_scope: "all-classes".into(),
+                            footer_slots: slots.then(|| {
+                                [
+                                    "track",
+                                    "trackTemperature",
+                                    "airTemperature",
+                                    "remaining",
+                                    "rain",
+                                    "wetness",
+                                    "totalLaps",
+                                    "estimatedLaps",
+                                ]
+                                .into_iter()
+                                .map(String::from)
+                                .collect()
+                            }),
+                            ..Settings::eficiencia()
+                        };
+                        for state in [
+                            SourceState::Live,
+                            SourceState::Stale,
+                            SourceState::Waiting,
+                            SourceState::Lost,
+                            SourceState::Paused,
+                        ] {
+                            // El cruce Signature/7 filas/sin pie a capacidad tiene su oráculo GPUI
+                            // separado: cabecera real43 y ventana calculada con42. No se cambia el helper.
+                            if !broadcast
+                                && !footer
+                                && matches!(state, SourceState::Live | SourceState::Stale)
+                            {
+                                continue;
+                            }
+                            let mut w =
+                                super::control::Eficiencia::new(&settings, Preferences::default());
+                            w.attach_assets(&assets);
+                            let mut snapshot = photo.clone();
+                            snapshot.state.cars[0].in_pits = Quality::Reliable(true);
+                            if state == SourceState::Paused {
+                                w.update(&snapshot, 0.0);
+                            }
+                            snapshot.state.source_state = state;
+                            let predicted = w.size_for(Some(&snapshot));
+                            w.update(&snapshot, 0.1);
+                            assert_eq!(w.size(), predicted);
+                            for image in w.capture_images() {
+                                image.wait().unwrap();
+                            }
+                            let mut rt = rune::Runtime::with_text(
+                                w,
+                                |s, _| s.view(),
+                                (predicted.width, predicted.height),
+                                rune::Env::new(true, 1.0),
+                                rune::text::TextSystem::new(
+                                    crate::eficiencia::FONTS,
+                                    ("Inter W400", "Inter W400"),
+                                ),
+                            );
+                            rt.frame(0.0);
+                            assert_eq!(
+                                rt.elements()
+                                    .iter()
+                                    .any(|e| e.key.as_deref() == Some("footer-rule")),
+                                footer
+                            );
+                            assert_eq!(
+                                rt.elements()
+                                    .iter()
+                                    .any(|e| e.key.as_deref() == Some("pause-band")),
+                                state == SourceState::Paused
+                            );
+                            crate::testdata::assert_inside_window(
+                                &mut rt,
+                                (predicted.width, predicted.height),
+                            );
+                        }
+                    }
+                }
             }
-        }}
-    }}}
+        }
+    }
 }
 
 #[test]
 fn gpui_seven_rows_without_footer_end_one_pixel_beyond_the_clipping_window() {
     use crate::widget::Widget;
-    use vantare_domain::{SourceState,format::Preferences,
-        widget_settings::{columns::ColumnSetting,standings::Settings}};
-    let photo=vantare_ipc::snapshot_from_json(include_str!("../../../../ui/fixtures/standings.snapshot.json")).unwrap();
-    for multiclass in [false,true] { for slots in [false,true] { for pit in [false,true] {
-        let mut columns=[("position","xs"),("driverNumber","sm"),("driverName","lg"),("gap","md"),("bestLap","lg")].into_iter()
-            .map(|(metric,preset)|ColumnSetting{metric_id:metric.into(),width_preset:preset.into(),..ColumnSetting::default()}).collect::<Vec<_>>();
-        if pit { columns.push(ColumnSetting{metric_id:"pit".into(),..ColumnSetting::default()}); }
-        let settings=Settings{row_count:7,columns:Some(columns),show_session_footer:false,
-            classification_mode:if multiclass {"multiclass"} else {"normal"}.into(),class_scope:"all-classes".into(),
-            footer_slots:slots.then(||vec!["track".into();8]),..Settings::eficiencia()};
-        for source in [SourceState::Live,SourceState::Stale] {
-            let mut w=super::control::Eficiencia::new(&settings,Preferences::default());
-            let mut snapshot=photo.clone();
-            snapshot.state.source_state=source;
-            w.update(&snapshot,0.0);
-            let size=w.size();
-            // GPUI model.rs:199-205 reserva42+7*30; model.rs:486-490 da head_row43.
-            // view.rs:463,522-525 usa body_top+row_tops sin otro ajuste: última y223, fin253.
-            // app.rs:303-313,575-578 fija la ventana natural. El host Rune real también
-            // recorta cada widget (overlays-rune/src/renderer.rs:268-279).
-            let bands=if multiclass {84.0} else {0.0};
-            assert_eq!(size.height,252.0+bands);
-            assert_eq!(size.width,if pit {474.0} else {440.0});
-            let mut rt=rune::Runtime::with_text(w,|s,_|{
-                let size=s.size();
-                rune::el().size(size.width,size.height).clip_rounded(0.0).child(s.view())
-            },(size.width,size.height),rune::Env::new(true,1.0),rune::text::TextSystem::new(crate::eficiencia::FONTS,("Inter W400","Inter W400")));
-            rt.frame(0.0);
-            let rows=rt.elements().into_iter().filter(|e|e.key.as_deref().is_some_and(|k|k.starts_with("efficiency-row-"))).collect::<Vec<_>>();
-            assert_eq!(rows.len(),7);
-            let last=rows.iter().max_by(|a,b|a.rect[1].total_cmp(&b.rect[1])).unwrap();
-            assert_eq!(last.rect[1],223.0+bands);
-            assert_eq!(last.rect[3],30.0);
-            assert_eq!(last.rect[1]+last.rect[3],size.height+1.0,"última fila termina en alto+1");
-            assert_eq!(last.visible[1]+last.visible[3],size.height,"la ventana recorta el excedente");
-            assert_eq!(last.visible[3],29.0);
-            assert_eq!(last.rect[3]-last.visible[3],1.0,"excedente literal de 1 px recortado por la ventana");
+    use vantare_domain::{
+        SourceState,
+        format::Preferences,
+        widget_settings::{columns::ColumnSetting, standings::Settings},
+    };
+    let photo = vantare_ipc::snapshot_from_json(include_str!(
+        "../../../../ui/fixtures/standings.snapshot.json"
+    ))
+    .unwrap();
+    for multiclass in [false, true] {
+        for slots in [false, true] {
+            for pit in [false, true] {
+                let mut columns = [
+                    ("position", "xs"),
+                    ("driverNumber", "sm"),
+                    ("driverName", "lg"),
+                    ("gap", "md"),
+                    ("bestLap", "lg"),
+                ]
+                .into_iter()
+                .map(|(metric, preset)| ColumnSetting {
+                    metric_id: metric.into(),
+                    width_preset: preset.into(),
+                    ..ColumnSetting::default()
+                })
+                .collect::<Vec<_>>();
+                if pit {
+                    columns.push(ColumnSetting {
+                        metric_id: "pit".into(),
+                        ..ColumnSetting::default()
+                    });
+                }
+                let settings = Settings {
+                    row_count: 7,
+                    columns: Some(columns),
+                    show_session_footer: false,
+                    classification_mode: if multiclass { "multiclass" } else { "normal" }.into(),
+                    class_scope: "all-classes".into(),
+                    footer_slots: slots.then(|| vec!["track".into(); 8]),
+                    ..Settings::eficiencia()
+                };
+                for source in [SourceState::Live, SourceState::Stale] {
+                    let mut w = super::control::Eficiencia::new(&settings, Preferences::default());
+                    let mut snapshot = photo.clone();
+                    snapshot.state.source_state = source;
+                    w.update(&snapshot, 0.0);
+                    let size = w.size();
+                    // GPUI model.rs:199-205 reserva42+7*30; model.rs:486-490 da head_row43.
+                    // view.rs:463,522-525 usa body_top+row_tops sin otro ajuste: última y223, fin253.
+                    // app.rs:303-313,575-578 fija la ventana natural. El host Rune real también
+                    // recorta cada widget (overlays-rune/src/renderer.rs:268-279).
+                    let bands = if multiclass { 84.0 } else { 0.0 };
+                    assert_eq!(size.height, 252.0 + bands);
+                    assert_eq!(size.width, if pit { 474.0 } else { 440.0 });
+                    let mut rt = rune::Runtime::with_text(
+                        w,
+                        |s, _| {
+                            let size = s.size();
+                            rune::el()
+                                .size(size.width, size.height)
+                                .clip_rounded(0.0)
+                                .child(s.view())
+                        },
+                        (size.width, size.height),
+                        rune::Env::new(true, 1.0),
+                        rune::text::TextSystem::new(
+                            crate::eficiencia::FONTS,
+                            ("Inter W400", "Inter W400"),
+                        ),
+                    );
+                    rt.frame(0.0);
+                    let rows = rt
+                        .elements()
+                        .into_iter()
+                        .filter(|e| {
+                            e.key
+                                .as_deref()
+                                .is_some_and(|k| k.starts_with("efficiency-row-"))
+                        })
+                        .collect::<Vec<_>>();
+                    assert_eq!(rows.len(), 7);
+                    let last = rows
+                        .iter()
+                        .max_by(|a, b| a.rect[1].total_cmp(&b.rect[1]))
+                        .unwrap();
+                    assert_eq!(last.rect[1], 223.0 + bands);
+                    assert_eq!(last.rect[3], 30.0);
+                    assert_eq!(
+                        last.rect[1] + last.rect[3],
+                        size.height + 1.0,
+                        "última fila termina en alto+1"
+                    );
+                    assert_eq!(
+                        last.visible[1] + last.visible[3],
+                        size.height,
+                        "la ventana recorta el excedente"
+                    );
+                    assert_eq!(last.visible[3], 29.0);
+                    assert_eq!(
+                        last.rect[3] - last.visible[3],
+                        1.0,
+                        "excedente literal de 1 px recortado por la ventana"
+                    );
+                }
+            }
         }
-    }}}
+    }
 }

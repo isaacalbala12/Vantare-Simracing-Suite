@@ -18,6 +18,33 @@ const BLACK: Color = Color {
     a: 1.0,
 };
 
+/// Colores del destello de récord: plano 0,3 o degradado 0,32→0,06 (GPUI).
+pub(super) fn flash_colors(
+    variant: &crate::vantare::Variant,
+    purple: Color,
+    alpha: f32,
+) -> (Option<Color>, [(f32, Color); 2]) {
+    if variant.player_white > 0.0 {
+        return (
+            Some(crate::vantare::alpha(purple, 0.3 * alpha)),
+            [(0.0, purple), (1.0, purple)],
+        );
+    }
+    (
+        None,
+        [
+            (
+                0.0,
+                crate::vantare::alpha(purple, variant.player_from * alpha),
+            ),
+            (
+                1.0,
+                crate::vantare::alpha(purple, variant.player_to * alpha),
+            ),
+        ],
+    )
+}
+
 pub(super) struct Painter {
     style: std::sync::Arc<Style>,
     prefs: vantare_domain::format::Preferences,
@@ -523,6 +550,26 @@ impl Painter {
         let c = &s.colors;
         let pad = self.variant().padding_x;
         let width = self.scene.width;
+        if let Some(alpha) = self.scene.flash {
+            let g = &s.geometry;
+            let v = self.variant();
+            let x0 = v.padding_x - g.player_bleed;
+            let flash_y = y + (d.big - g.row_height) / 2.0;
+            let mut flash = el()
+                .key("big-flash")
+                .pin(Some(x0), Some(flash_y), None, None)
+                .size(width - 2.0 * x0, g.row_height)
+                .radius(v.player_radius);
+            let (flat, stops) = flash_colors(v, c.purple, alpha);
+            flash = match flat {
+                Some(color) => flash.fill(color),
+                None => flash.linear_gradient(
+                    (if v.player_vertical { 180.0f32 } else { 90.0 }).to_radians(),
+                    stops,
+                ),
+            };
+            root = root.child(flash);
+        }
         let (value, color) = self.number();
         let value_font = font(s, Face::Display, d.big, d.big, 0.5, 600.0);
         let value_width = eficiencia::width(value, value_font);

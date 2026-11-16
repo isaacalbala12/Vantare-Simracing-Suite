@@ -339,6 +339,9 @@ mod tests {
         Fuel::new(&settings(size), Preferences::default(), reduced, 4, 0.0)
     }
     fn runtime(fuel: Fuel) -> rune::Runtime<Fuel> {
+        runtime_in(fuel, (460.0, 440.0))
+    }
+    fn runtime_in(fuel: Fuel, window: (f32, f32)) -> rune::Runtime<Fuel> {
         fn view(fuel: &Fuel, _: &mut rune::Cx<Fuel>) -> El {
             fuel.view()
         }
@@ -350,7 +353,7 @@ mod tests {
         let mut runtime = rune::Runtime::with_text(
             fuel,
             view,
-            (460.0, 440.0),
+            window,
             rune::Env::new(true, 1.0),
             rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
         );
@@ -730,7 +733,7 @@ mod layout_bounds {
                 0.0,
             );
             fuel.update(&photo(11.3, 25), 0.0);
-            let mut runtime = runtime(fuel);
+            let mut runtime = runtime_in(fuel, (width, height));
             runtime.frame(0.0);
             crate::testdata::assert_inside_window(&mut runtime, (width, height));
         }

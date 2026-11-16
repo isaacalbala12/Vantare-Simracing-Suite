@@ -192,7 +192,7 @@ impl Standings {
         let display = scene::Display::new(&self.settings, self.prefs, &plan, &layout, paused);
         let next = scene::Scene { display, layout };
         let changed = next != self.scene;
-        if changed && self.primed && !self.reduced && motion::motion_continues(&self.plan, &plan) {
+        if changed && self.primed && !self.motion.reduced() && motion::motion_continues(&self.plan, &plan) {
             self.motion.events(&self.plan, &plan, clock);
         }
         self.primed = true;

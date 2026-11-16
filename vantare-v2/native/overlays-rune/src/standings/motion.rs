@@ -228,6 +228,9 @@ impl Motion {
     pub fn new() -> Self {
         Self::default()
     }
+    pub fn reduced(&self) -> bool {
+        self.reduced
+    }
     pub fn policy(&mut self, reduced: bool) -> bool {
         if self.reduced == reduced {
             return false;

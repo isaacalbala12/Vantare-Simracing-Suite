@@ -81,7 +81,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                   type="button"
                   data-widget={item.id}
                   aria-pressed={selected?.id === item.id}
-                  aria-keyshortcuts="Space Delete"
+                  aria-keyshortcuts="Space Delete Control+D"
                   aria-label={`${widgetName(item, view)}, ${widgetStatus(item)}`}
                   tabIndex={
                     item.id === selected?.id ||

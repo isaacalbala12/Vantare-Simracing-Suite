@@ -119,6 +119,27 @@ export function useStudioFocus() {
         return;
       if (event.ctrlKey === event.metaKey) return;
       const key = event.key.toLowerCase();
+      if (key === "d" && event.ctrlKey && !event.shiftKey) {
+        const target =
+          event.target instanceof HTMLButtonElement ? event.target : null;
+        if (
+          selected &&
+          !selected.locked &&
+          target &&
+          target.dataset.widget === selected.id &&
+          root.current?.contains(target) &&
+          !target.closest("[inert]") &&
+          !document.querySelector("[role=menu]")
+        ) {
+          event.preventDefault();
+          void state.execute({
+            method: "studio.duplicate",
+            id: selected.id,
+            baseRevision: view.revision,
+          });
+        }
+        return;
+      }
       const redo =
         (key === hubKeys.redo && !event.shiftKey) ||
         (key === hubKeys.undo && event.shiftKey);
@@ -132,7 +153,7 @@ export function useStudioFocus() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [view, state.execute, blocked, state.pending]);
+  }, [view, selected, state.execute, blocked, state.pending]);
   const toggle = (id: string) => {
     const item = view?.instances.find((item) => item.id === id);
     if (!view || !item || item.locked || blocked || state.pending) return;

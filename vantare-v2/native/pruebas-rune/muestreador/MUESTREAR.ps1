@@ -8,10 +8,12 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$NoiseExclusionsFile,
     [ValidateRange(10,20000)][int]$Seconds = 90,
-    [switch]$Aguante
+    [switch]$Aguante,
+    [switch]$ProcessOnly
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if ($ProcessOnly -and $Aguante) { throw 'ProcessOnly requiere PresentMon; no combinar con Aguante.' }
 if (-not $IsWindows -or [IntPtr]::Size -ne 8) { throw 'Usar PowerShell 7 x64 en Windows.' }
 if ([Environment]::MachineName -ieq 'SAPPHIREOS') { throw 'Parada grafica del servidor: ejecutar solo en el PC de juego.' }
 . (Join-Path $PSScriptRoot 'FAMILIA.ps1')
@@ -55,9 +57,9 @@ try {
     # Subscribe before the UI exists; short-lived Electron children still belong to
     # the family used to identify its first Present. Never record command lines.
     $subscription=Register-CimIndicationEvent -Query 'SELECT * FROM Win32_ProcessStartTrace' -SourceIdentifier $sourceId
-    $counter=[Vantare141.Counters]::new(); $counter.Collect()
-    $thermals=[Vantare141.GpuThermals]::new()
-    $environment.gpu_thermal_initialization_status=$thermals.InitializationStatus
+    if (-not $ProcessOnly) { $counter=[Vantare141.Counters]::new(); $counter.Collect() }
+    if (-not $ProcessOnly) { $thermals=[Vantare141.GpuThermals]::new() }
+    $environment.gpu_thermal_initialization_status=if($thermals){$thermals.InitializationStatus}else{"not_requested_process_only"}
     if (-not $Aguante) {
         if (-not $pm.Start()) { throw 'No se pudo iniciar PresentMon.' }
         $pmStarted=$true
@@ -145,15 +147,17 @@ try {
                 $rows.Add([pscustomobject]@{qpc=$clock;process_id=$id;created_utc=$identity;name=$process.Name;cpu_cycles=$cycles;cpu_time_100ns=$measured.TotalProcessorTime.Ticks;private_bytes=$measured.PrivateMemorySize64;working_set_bytes=$measured.WorkingSet64})
             } finally { if($measured){$measured.Dispose()} }
         }
-        $counter.Collect()
-        $names=if($Aguante){@('gpu_engine','system_cpu','cpu_frequency','cpu_active_time','cpu_performance','cpu_limit','cpu_limit_flags')}else{@('gpu_engine','gpu_memory','system_cpu','cpu_frequency','cpu_active_time','cpu_performance','cpu_limit','cpu_limit_flags','process_cpu','process_id')}
-        foreach ($name in $names) {
-            foreach ($value in $counter.Read($name)) {
-                $rawCounters.Add([pscustomobject]@{qpc=$clock;counter=$name;instance=$value.Name;value=$value.Value.ToString('R',[Globalization.CultureInfo]::InvariantCulture);status=$value.Status})
+        if (-not $ProcessOnly) {
+            $counter.Collect()
+            $names=if($Aguante){@('gpu_engine','system_cpu','cpu_frequency','cpu_active_time','cpu_performance','cpu_limit','cpu_limit_flags')}else{@('gpu_engine','gpu_memory','system_cpu','cpu_frequency','cpu_active_time','cpu_performance','cpu_limit','cpu_limit_flags','process_cpu','process_id')}
+            foreach ($name in $names) {
+                foreach ($value in $counter.Read($name)) {
+                    $rawCounters.Add([pscustomobject]@{qpc=$clock;counter=$name;instance=$value.Name;value=$value.Value.ToString('R',[Globalization.CultureInfo]::InvariantCulture);status=$value.Status})
+                }
             }
-        }
-        foreach ($thermal in $thermals.Read()) {
-            $thermalRows.Add([pscustomobject]@{qpc=$clock;adapter=$thermal.AdapterLuid;status=$thermal.Status;caps_status=$thermal.CapsStatus;temperature_c=if($null -eq $thermal.TemperatureC){$null}else{$thermal.TemperatureC.ToString('R',[Globalization.CultureInfo]::InvariantCulture)};warning_c=if($null -eq $thermal.WarningC){$null}else{$thermal.WarningC.ToString('R',[Globalization.CultureInfo]::InvariantCulture)};fan_rpm=$thermal.FanRpm;power_tenths_percent=$thermal.PowerTenthsPercent;memory_frequency_hz=$thermal.MemoryFrequencyHz})
+            foreach ($thermal in $thermals.Read()) {
+                $thermalRows.Add([pscustomobject]@{qpc=$clock;adapter=$thermal.AdapterLuid;status=$thermal.Status;caps_status=$thermal.CapsStatus;temperature_c=if($null -eq $thermal.TemperatureC){$null}else{$thermal.TemperatureC.ToString('R',[Globalization.CultureInfo]::InvariantCulture)};warning_c=if($null -eq $thermal.WarningC){$null}else{$thermal.WarningC.ToString('R',[Globalization.CultureInfo]::InvariantCulture)};fan_rpm=$thermal.FanRpm;power_tenths_percent=$thermal.PowerTenthsPercent;memory_frequency_hz=$thermal.MemoryFrequencyHz})
+            }
         }
         if ($pmStarted) {
             $state=[Vantare141.CaptureSession]::Query($sessionName)

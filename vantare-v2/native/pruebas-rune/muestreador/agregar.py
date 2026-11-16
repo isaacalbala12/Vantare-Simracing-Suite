@@ -37,12 +37,13 @@ def percentile(values, fraction):
     return values[low] + (values[high] - values[low]) * (position - low)
 
 
-def presentmon(text, process_ids, frequency, start_qpc, end_qpc):
+def presentmon(text, process_ids, frequency, start_qpc, end_qpc, *, count_only=False):
     if frequency <= 0 or start_qpc >= end_qpc or not process_ids:
         raise ValueError("Reloj, ventana o procesos invalidos")
     reader = csv.DictReader(io.StringIO(text.lstrip("\ufeff")))
-    required = {"ProcessID", "SwapChainAddress", "CPUStartQPC", "MsCPUBusy",
-                "DisplayLatency", "DisplayedTime", "MsBetweenPresents"}
+    required = {"ProcessID", "SwapChainAddress", "CPUStartQPC", "MsCPUBusy"}
+    if not count_only:
+        required.update({"DisplayLatency", "DisplayedTime", "MsBetweenPresents"})
     if not required.issubset(reader.fieldnames or []):
         raise ValueError("Faltan las columnas PresentMon 2.6 en QPC; no inferir otro reloj")
     result, seen = [], set()
@@ -62,6 +63,9 @@ def presentmon(text, process_ids, frequency, start_qpc, end_qpc):
         if identity in seen:
             raise ValueError("Present duplicado")
         seen.add(identity)
+        if count_only:
+            result.append({"process_id": process_id, "chain": chain, "submit_qpc": submit})
+            continue
         dropped = row["DisplayedTime"].strip() == "NA"
         display = None
         if not dropped:
@@ -72,7 +76,7 @@ def presentmon(text, process_ids, frequency, start_qpc, end_qpc):
         result.append({"process_id": process_id, "chain": chain, "submit_qpc": submit,
                        "display_qpc": display, "dropped": dropped,
                        "frame_ms": finite(row["MsBetweenPresents"], "MsBetweenPresents")})
-    if not result:
+    if not result and not count_only:
         raise ValueError("No hay fotogramas del proceso declarado")
     return sorted(result, key=lambda row: (row["submit_qpc"], row["process_id"], row["chain"]))
 

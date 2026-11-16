@@ -32,8 +32,9 @@ impl Adapter for LapReplay {
 }
 
 #[test]
-fn production_core_without_a_series_subscriber_still_retains_diagnostic_samples() {
+fn subscribed_core_retains_the_active_and_last_sealed_diagnostic_windows() {
     let mut core = Core::new(7);
+    let _receiver = core.series_mut().subscribe(2).unwrap();
     for index in 1_u32..=4 {
         core.observe(lap_photo(
             u64::from(index),
@@ -44,13 +45,65 @@ fn production_core_without_a_series_subscriber_still_retains_diagnostic_samples(
         .unwrap();
     }
     core.observe(lap_photo(5, 1, 0.0, 0.0)).unwrap();
-    assert!(core.series().publication_status().is_none());
+    assert!(core.series().publication_status().is_some());
     let sealed = core.series().sealed().unwrap();
     let active = core.series().active().unwrap();
     // Coste lógico actual, sin afirmar memoria RSS ni presupuesto físico.
     assert_eq!(sealed.samples.len(), 4);
     assert_eq!(active.samples.len(), 1);
     assert_eq!(sealed.sealed_at, Some(5));
+}
+
+#[test]
+fn late_subscription_starts_clean_and_emits_only_new_samples_with_v1_bytes() {
+    let mut core = Core::new(7);
+    for index in 1_u32..=128 {
+        core.observe(lap_photo(
+            u64::from(index),
+            0,
+            f64::from(index),
+            f64::from(index),
+        ))
+        .unwrap();
+    }
+    // Ni retrocesos ni cambios de identidad previos contaminan el feed.
+    let mut previous = lap_photo(129, 0, 0.0, 0.0);
+    previous.state.session.id = SessionId(8);
+    core.observe(previous).unwrap();
+    core.series_mut().flush();
+    assert!(core.series().active().is_none());
+    assert!(core.series().sealed().is_none());
+    assert!(core.series().publication_status().is_none());
+    assert!(core.series_mut().subscribe(0).is_err());
+    assert!(core.series().publication_status().is_none());
+
+    let receiver = core.series_mut().subscribe(2).unwrap();
+    core.series_mut().flush();
+    assert!(receiver.try_recv().is_err(), "sin entrega retroactiva");
+    core.observe(lap_photo(130, 0, 0.0, 0.0)).unwrap();
+    core.observe(lap_photo(131, 0, 100.0, 2.0)).unwrap();
+    core.observe(lap_photo(132, 1, 0.0, 0.0)).unwrap();
+    let chunk = receiver.try_recv().unwrap();
+    let golden = concat!(
+        "[\"vantare.series-chunk.v1\",1,0,0,",
+        "[\"vantare.player-lap.v1\",7,0,7,0,132,false,[",
+        "[130,[1,0.0],[1,0.0],[1,50.0],[1,0.75],[1,0.25]],",
+        "[131,[1,100.0],[1,2.0],[1,50.0],[1,0.75],[1,0.25]]]]]"
+    );
+    assert_eq!(chunk.to_bytes().unwrap(), golden.as_bytes());
+    assert_eq!(core.series().sealed().unwrap(), &chunk.block);
+    core.series_mut().flush();
+    let next = receiver.try_recv().unwrap();
+    assert_eq!((next.index, next.offset, next.lost_before), (2, 0, 0));
+    assert_eq!(next.block.lap, 1);
+    assert_eq!(next.block.samples.len(), 1);
+    assert_eq!(next.block.samples[0].sequence, 132);
+    assert!(!next.block.gap);
+    let status = core.series().publication_status().unwrap();
+    assert_eq!(
+        (status.attempted, status.delivered, status.dropped),
+        (2, 2, 0)
+    );
 }
 
 #[test]
@@ -65,6 +118,7 @@ fn a_real_lmu_fixture_contributes_a_sample_without_inventing_a_closed_lap() {
         }],
     );
     let mut core = Core::new(8);
+    let _receiver = core.series_mut().subscribe(2).unwrap();
     core.step(&mut adapter, Duration::ZERO).unwrap();
     let block = core.series().active().unwrap();
     assert_eq!(block.samples.len(), 1, "no pasa en vacío");
@@ -91,6 +145,7 @@ fn the_same_replay_seals_identical_bytes_with_a_frozen_v1_schema() {
     };
     let run = || {
         let mut core = Core::new(7);
+        let _receiver = core.series_mut().subscribe(2).unwrap();
         let mut adapter = replay();
         for index in 1..=3 {
             core.step(&mut adapter, Duration::from_millis(index * 10))
@@ -130,6 +185,7 @@ fn the_same_replay_seals_identical_bytes_with_a_frozen_v1_schema() {
 #[test]
 fn sealed_block_keeps_its_bytes_while_the_next_lap_grows() {
     let mut core = Core::new(1);
+    let _receiver = core.series_mut().subscribe(2).unwrap();
     core.observe(lap_photo(1, 0, 0.0, 0.0)).unwrap();
     core.observe(lap_photo(2, 1, 0.0, 0.0)).unwrap();
     let sealed = core.series().sealed().unwrap().to_bytes().unwrap();
@@ -141,6 +197,7 @@ fn sealed_block_keeps_its_bytes_while_the_next_lap_grows() {
 #[test]
 fn quality_is_preserved_without_fabricating_zero_for_missing_signals() {
     let mut core = Core::new(1);
+    let _receiver = core.series_mut().subscribe(2).unwrap();
     let mut observation = lap_photo(1, 0, 0.0, 0.0);
     let telemetry = &mut observation.state.player.as_mut().unwrap().telemetry;
     telemetry.speed_mps = Quality::Unavailable;
@@ -157,6 +214,7 @@ fn quality_is_preserved_without_fabricating_zero_for_missing_signals() {
 #[test]
 fn missing_progress_and_stale_photos_mark_a_gap_without_sampling() {
     let mut core = Core::new(1);
+    let _receiver = core.series_mut().subscribe(2).unwrap();
     core.observe(lap_photo(1, 0, 0.0, 0.0)).unwrap();
     let mut missing = lap_photo(2, 0, 100.0, 2.0);
     missing.state.cars[0].lap_distance_m = Quality::Unavailable;
@@ -174,6 +232,7 @@ fn missing_progress_and_stale_photos_mark_a_gap_without_sampling() {
 #[test]
 fn counter_jumps_session_changes_and_rejections_never_invent_a_closed_lap() {
     let mut core = Core::new(1);
+    let _receiver = core.series_mut().subscribe(2).unwrap();
     core.observe(lap_photo(1, 0, 0.0, 0.0)).unwrap();
     core.observe(lap_photo(2, 2, 0.0, 0.0)).unwrap();
     assert!(core.series().sealed().is_none(), "salto de contador");
@@ -226,6 +285,7 @@ fn small_distance_reversal_recovers_samples_with_a_growing_lap_clock() {
 #[test]
 fn delayed_lap_counter_never_assigns_next_lap_samples_to_the_previous_one() {
     let mut core = Core::new(1);
+    let _receiver = core.series_mut().subscribe(2).unwrap();
     core.observe(lap_photo(1, 0, 100.0, 2.0)).unwrap();
     core.observe(lap_photo(2, 0, 0.0, 0.0)).unwrap();
     core.observe(lap_photo(3, 0, 150.0, 3.0)).unwrap();
@@ -240,6 +300,7 @@ fn delayed_lap_counter_never_assigns_next_lap_samples_to_the_previous_one() {
 #[test]
 fn diagnostic_windows_are_bounded_and_report_the_discarded_prefix() {
     let mut series = Series::default();
+    let _receiver = series.subscribe(2).unwrap();
     let mut snapshot = vantare_domain::Snapshot {
         epoch: 1,
         state: lap_photo(1, 0, 0.0, 0.0).state,

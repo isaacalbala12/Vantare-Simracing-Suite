@@ -215,16 +215,13 @@ fn disconnection_is_visible_without_stopping_the_core() {
 }
 
 #[test]
-fn invalid_configuration_cannot_replace_the_single_owner_or_replay_a_partial_lap() {
+fn invalid_configuration_cannot_replace_the_single_owner() {
     let mut core = Core::new(1);
     assert!(core.series_mut().subscribe(0).is_err());
     assert!(core.series_mut().subscribe(MAX_QUEUED_CHUNKS + 1).is_err());
     let receiver = core.series_mut().subscribe(1).unwrap();
     assert!(core.series_mut().subscribe(1).is_err());
     drop(receiver);
-    let mut started = Core::new(1);
-    started.observe(photo(0, 0)).unwrap();
-    assert!(started.series_mut().subscribe(1).is_err());
     assert!(Core::new(1).series().publication_status().is_none());
 }
 

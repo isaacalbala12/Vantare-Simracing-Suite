@@ -59,6 +59,7 @@ mod tests {
         ] {
             let mut core = Core::new(3);
             core.set_measurement_mode(mode).unwrap();
+            let _receiver = core.series_mut().subscribe(2).unwrap();
             let mut obs = observation(ms(0), ms(0), 0.25);
             obs.state.cars[1].laps = Quality::Reliable(1);
             obs.state.session.remaining_s = Quality::Reliable(f64::INFINITY);

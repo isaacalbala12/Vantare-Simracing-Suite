@@ -1,3 +1,10 @@
+## VANTA-144 · Standings literal A2 (16/11/2026)
+
+A2 conecta cabecera, filas y celdas GPUI con el constructor Look Vantare;
+retira dead_code de A1 (#2472). Tests de pintura, pines, ES/EN, sectores
+numéricos, recorte de nombres, Lost sin cambiar sequence y reposo sin reloj.
+Verificación por cola en curso; A3 completará banners/separadores/pies/espera.
+
 ## VANTA-144 · Revisión Sonnet de Standings A1 (16/11/2026)
 
 Se restaura lib.rs desde nightly y se añade solo mod standings. Documentación

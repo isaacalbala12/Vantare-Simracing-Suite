@@ -24,8 +24,8 @@ fn host(mut widget: Standings, photo: &Snapshot) -> Runtime<Standings> {
         Env::new(true, 1.0),
         TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
     );
-    runtime.on_frame(|s, tx| {
-        s.schedule(0.0, tx);
+    runtime.poll = Some(|s, clock, tx| {
+        s.schedule(clock, tx);
         false
     });
     runtime.frame(0.0);
@@ -112,6 +112,8 @@ fn every_painted_layer_is_pinned_inside_each_catalogue_box() {
 }
 #[test]
 fn scene_changes_and_repose_never_depend_on_sequence_or_animation_clock() {
+    assert!(crate::renderer::constructor(&Settings::Standings(config("standard"))).is_some());
+    assert!(crate::renderer::constructor(&Settings::Standings(Config::eficiencia())).is_none());
     let mut w = Standings::new(&config("standard"), Preferences::default());
     let mut photo = super::tests::photos().remove(0);
     assert!(w.update(&photo, 0.0).build);
@@ -142,14 +144,24 @@ fn long_driver_name_has_ellipsis_only_where_gpui_fits_it() {
 
 #[test]
 fn numeric_sectors_and_qualifying_opacity_match_gpui() {
-    let mut settings=config("expanded");
-    for column in settings.columns.as_mut().unwrap() {if matches!(column.metric_id.as_str(),"lastLap"|"positionsGained") {column.enabled=false;}}
-    let mut photo=super::tests::photos().remove(0);
-    photo.state.session.kind=Quality::Reliable(vantare_domain::SessionKind::Qualifying);
-    photo.state.cars[1].best_lap_s=Quality::Unavailable;
-    let mut rt=host(Standings::new(&settings,Preferences::default()),&photo);
-    let actual=texts(&rt);
-    for expected in ["S1","S2","S3","1:10.200","1:08.000","1:09.000","Pole"] {assert!(actual.iter().any(|t|t==expected),"{actual:?}");}
-    assert!(rt.elements().iter().any(|e|e.text.as_deref()==Some("2")&&(e.opacity-0.45).abs()<0.001));
-    crate::testdata::assert_inside_window(&mut rt,(900.0,307.0));
+    let mut settings = config("expanded");
+    for column in settings.columns.as_mut().unwrap() {
+        if matches!(column.metric_id.as_str(), "lastLap" | "positionsGained") {
+            column.enabled = false;
+        }
+    }
+    let mut photo = super::tests::photos().remove(0);
+    photo.state.session.kind = Quality::Reliable(vantare_domain::SessionKind::Qualifying);
+    photo.state.cars[1].best_lap_s = Quality::Unavailable;
+    let mut rt = host(Standings::new(&settings, Preferences::default()), &photo);
+    let actual = texts(&rt);
+    for expected in ["S1", "S2", "S3", "1:10.200", "1:08.000", "1:09.000", "Pole"] {
+        assert!(actual.iter().any(|t| t == expected), "{actual:?}");
+    }
+    assert!(
+        rt.elements()
+            .iter()
+            .any(|e| e.text.as_deref() == Some("2") && (e.opacity - 0.45).abs() < 0.001)
+    );
+    crate::testdata::assert_inside_window(&mut rt, (900.0, 307.0));
 }

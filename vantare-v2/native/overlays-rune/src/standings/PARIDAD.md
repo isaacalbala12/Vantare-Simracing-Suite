@@ -24,3 +24,13 @@ A2 conectará cabecera, filas, celdas y constructor; retirará el permiso tempor
 `dead_code`. A3 pintará banners, separadores, pies y espera con esqueletos.
 Motion (#2465) queda congelado; la animación no forma parte de estos tres PR.
 La comparación de píxeles queda para la tanda del PC de juego (#2365).
+
+## A2 — cabecera, filas y celdas
+
+`render.rs` porta `header`, `columns`, `row` (pose final sin Motion), `gained`,
+`number`, `name`, `compound`, `pit`, `sectors` y `paint_gap_text` de GPUI.
+Primitivas equivalentes a `Kit`: panel, marca, highlight, punto, chip, píldora,
+fuentes y baselines. Nombres y lista de clases usan el mismo ajuste con «…».
+Registro solo para Look Vantare; Scene compara estructura tras project_cached,
+sin claves por sequence. Política estática, sin reloj. Se retira dead_code.
+A3 completa la pintura de los elementos contextuales ya colocados por A1.

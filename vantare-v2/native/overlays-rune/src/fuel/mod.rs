@@ -686,3 +686,53 @@ mod extra_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod layout_bounds {
+    use super::*;
+
+    fn runtime(fuel: Fuel) -> rune::Runtime<Fuel> {
+        fn view(fuel: &Fuel, _: &mut rune::Cx<Fuel>) -> El {
+            fuel.view()
+        }
+        fn poll(fuel: &mut Fuel, clock: f64, tx: &mut rune::Tx) -> bool {
+            let update = fuel.animate(clock);
+            fuel.schedule(clock, tx);
+            update.build
+        }
+        let mut runtime = rune::Runtime::with_text(
+            fuel,
+            view,
+            (460.0, 440.0),
+            rune::Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        runtime.poll = Some(poll);
+        runtime
+    }
+
+    #[test]
+    fn no_layer_falls_outside_the_vantare_window() {
+        for (size, width, height) in [
+            ("compact", 230.0, 137.0),
+            ("standard", 300.0, 204.0),
+            ("expanded", 460.0, 440.0),
+        ] {
+            let mut fuel = Fuel::new(
+                &Settings {
+                    design_system: Look::Vantare,
+                    size: size.into(),
+                    ..Settings::default()
+                },
+                Preferences::default(),
+                true,
+                4,
+                0.0,
+            );
+            fuel.update(&photo(11.3, 25), 0.0);
+            let mut runtime = runtime(fuel);
+            runtime.frame(0.0);
+            crate::testdata::assert_inside_window(&mut runtime, (width, height));
+        }
+    }
+}

@@ -363,6 +363,7 @@ fn view(state: &Painter) -> El {
                 .size(width, content)
                 .radius(v.radius)
                 .border(1.0, border)
+                .pin(Some(0.0), Some(0.0), None, None)
                 .linear_gradient(std::f32::consts::PI, [(0.0, v.top), (1.0, v.bottom)])
                 .shadow(
                     v.shadow_y,
@@ -381,6 +382,7 @@ fn view(state: &Painter) -> El {
                 .size(width, content)
                 .radius(v.radius)
                 .border(1.0, CLEAR)
+                .pin(Some(0.0), Some(0.0), None, None)
                 .live_border(&state.border),
         );
     let mut pill = 0;
@@ -726,6 +728,7 @@ fn gauge(state: &Painter, index: usize, y: f32, line: &Line, slot: Option<usize>
                 .size(width, g.pill_height)
                 .radius(g.chip_radius)
                 .fill(alpha(accent, 0.2))
+                .pin(Some(0.0), Some(0.0), None, None)
                 .live_rect(rect)
                 .child(cell(
                     s,

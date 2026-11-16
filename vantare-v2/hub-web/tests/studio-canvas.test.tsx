@@ -28,6 +28,7 @@ import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { studioText } from "../src/renderer/i18n/studio";
 import { canvasText as t } from "../src/renderer/i18n/studio-canvas";
+import { studioCatalogText } from "../src/renderer/i18n/studio-catalog";
 import { studioDropText as dropText } from "../src/renderer/i18n/studio-drop";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
@@ -807,9 +808,12 @@ async function openDrop() {
   await userEvent
     .setup()
     .click(screen.getAllByRole("button", { name: studioText.add })[0]);
-  return screen.findByRole("button", {
-    name: dropText.drag("Delta"),
-  });
+  const button = await screen.findByRole("button", { name: "Añadir Delta" });
+  const grip = button
+    .closest("article")
+    ?.querySelector<HTMLElement>(".v-canvas-catalog-grip");
+  if (!grip) throw Error("Delta pointer grip required");
+  return grip;
 }
 function dropPoint() {
   const rect = document
@@ -831,6 +835,9 @@ function beginDrop(handle: HTMLElement) {
     clientY: 50,
   });
   expect(handle.hasPointerCapture(7)).toBe(true);
+  expect(document.activeElement).toBe(
+    handle.closest("article")?.querySelector(".v-button"),
+  );
   fireEvent.pointerMove(handle, dropPoint());
   expect(document.querySelector(".v-canvas-drop-ghost")).not.toBeNull();
 }
@@ -899,7 +906,8 @@ it.each([
     beginDrop(handle);
     if (cause === "Escape") fireEvent.keyDown(handle, { key: "Escape" });
     else if (cause === "blur") fireEvent.blur(window);
-    else if (cause === "handleBlur") fireEvent.blur(handle);
+    else if (cause === "handleBlur")
+      fireEvent.blur(screen.getByRole("button", { name: "Añadir Delta" }));
     else if (cause === "resize") fireEvent.resize(window);
     else if (cause === "pointerCancel")
       fireEvent.pointerCancel(handle, { pointerId: 7 });
@@ -1034,7 +1042,7 @@ it.each(["button", "Enter"] as const)(
       if (trigger === "button")
         fireEvent.click(screen.getByRole("button", { name: "Añadir Delta" }));
       else {
-        handle.focus();
+        screen.getByRole("button", { name: "Añadir Delta" }).focus();
         await userEvent.setup().keyboard("{Enter}");
       }
       await waitFor(() => expect(reads).toBe(2));
@@ -1122,9 +1130,11 @@ it.each(["protected", "readOnly", "limit", "pro", "noCanvas"] as const)(
     await userEvent.setup().click(screen.getByRole("button", { name: t.open }));
     if (mode === "pro") {
       await openDrop();
-      const handle = screen.getByRole("button", {
-        name: dropText.drag("Radar"),
-      });
+      const handle = screen
+        .getByRole("button", { name: "Añadir Radar" })
+        .closest("article")
+        ?.querySelector<HTMLElement>(".v-canvas-catalog-grip");
+      if (!handle) throw Error("Radar pointer grip required");
       expect(handle.getAttribute("aria-disabled")).toBe("true");
       fireEvent.pointerDown(handle, {
         button: 0,
@@ -1138,7 +1148,7 @@ it.each(["protected", "readOnly", "limit", "pro", "noCanvas"] as const)(
       fireEvent.pointerUp(handle, dropPoint());
       fireEvent.click(handle);
       fireEvent.click(screen.getByRole("button", { name: "Añadir Radar" }));
-      handle.focus();
+      screen.getByRole("button", { name: "Añadir Radar" }).focus();
       await userEvent.setup().keyboard("{Enter}");
     } else {
       const add = screen.getByRole("button", {
@@ -1170,5 +1180,80 @@ it("releases catalogue pointer capture on unmount and cannot submit the detached
   fireEvent.pointerUp(handle, point);
   fireEvent.click(handle);
   await act(async () => {});
+  expect(additions(spy)).toHaveLength(0);
+});
+
+it("has one named Add tab stop per card and no focusable pointer grips", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount();
+  await openDrop();
+  const cards = document.querySelectorAll(".v-canvas-catalog-card");
+  expect(cards.length).toBeGreaterThan(1);
+  const user = userEvent.setup();
+  for (const card of cards) {
+    const buttons = card.querySelectorAll<HTMLButtonElement>("button");
+    expect(buttons).toHaveLength(1);
+    const button = buttons[0];
+    await user.tab();
+    expect(document.activeElement).toBe(button);
+    const labels = button
+      .getAttribute("aria-labelledby")
+      ?.split(" ")
+      .map((id) => document.getElementById(id)?.textContent);
+    expect(labels).toEqual([
+      studioText.addShort,
+      card.querySelector("strong")?.textContent,
+    ]);
+    const grip = card.querySelector<HTMLElement>(".v-canvas-catalog-grip");
+    expect(grip).not.toBeNull();
+    expect(
+      grip?.matches("button,input,select,textarea,a[href],[contenteditable] "),
+    ).toBe(false);
+    expect(grip?.hasAttribute("tabindex")).toBe(false);
+    expect(grip?.hasAttribute("role")).toBe(false);
+    expect(grip?.tabIndex).toBe(-1);
+    grip?.focus();
+    expect(document.activeElement).toBe(button);
+    if (grip) fireEvent.keyDown(grip, { key: "Enter" });
+  }
+  expect(additions(spy)).toHaveLength(0);
+});
+
+it.each(["add", "grip", "Enter"])(
+  "adds exactly once via %s",
+  async (target) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    await mount();
+    const grip = await openDrop();
+    const add = screen.getByRole("button", { name: "Añadir Delta" });
+    const user = userEvent.setup();
+    if (target === "Enter") {
+      add.focus();
+      await user.keyboard("{Enter}");
+    } else await user.click(target === "grip" ? grip : add);
+    await screen.findByRole("button", { name: "Delta 2" });
+    expect(additions(spy)).toHaveLength(1);
+    expect(additions(spy)[0]).not.toHaveProperty("at");
+  },
+);
+
+it("keeps blocked Pro Add focusable, described and unable to send", async () => {
+  const spy = vi.spyOn(Client.prototype, "request");
+  await mount("studio-pro-bloqueado");
+  await openDrop();
+  const button = screen.getByRole("button", { name: "Añadir Radar" });
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  expect(button.hasAttribute("disabled")).toBe(false);
+  const description = button
+    .getAttribute("aria-describedby")
+    ?.split(" ")
+    .map((id) => document.getElementById(id));
+  expect(description).toHaveLength(2);
+  expect(description?.every((node) => node && !node.hidden)).toBe(true);
+  expect(description?.[1]?.textContent).toBe(studioCatalogText.catalogPro);
+  button.focus();
+  expect(document.activeElement).toBe(button);
+  await userEvent.setup().keyboard("{Enter}");
+  await userEvent.setup().click(button);
   expect(additions(spy)).toHaveLength(0);
 });

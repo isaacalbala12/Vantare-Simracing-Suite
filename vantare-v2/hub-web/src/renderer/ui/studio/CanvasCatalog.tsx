@@ -118,8 +118,12 @@ export function CanvasCatalog({
                         <WidgetThumb kind={widget.kind} />
                       </span>
                       <div>
-                        <strong>{widget.name}</strong>
-                        <small>{widget.about}</small>
+                        <strong id={`${id}-name-${widget.kind}`}>
+                          {widget.name}
+                        </strong>
+                        <small id={`${id}-about-${widget.kind}`}>
+                          {widget.about}
+                        </small>
                         {reason && (
                           <small id={`${id}-${widget.kind}`}>{reason}</small>
                         )}
@@ -127,36 +131,42 @@ export function CanvasCatalog({
                       <Button
                         size="sm"
                         variant="neutral"
-                        aria-label={`${t.addShort} ${widget.name}`}
+                        onBlur={input.cancel}
+                        aria-labelledby={`${id}-add-${widget.kind} ${id}-name-${widget.kind}`}
                         aria-disabled={!!reason}
-                        aria-describedby={
-                          reason ? `${id}-${widget.kind}` : undefined
-                        }
+                        aria-describedby={`${id}-about-${widget.kind}${reason ? ` ${id}-${widget.kind}` : ""}`}
                         onClick={(event) => {
                           if (!reason) input.click(event, widget.kind);
                         }}
                       >
-                        {t.addShort}
+                        <span id={`${id}-add-${widget.kind}`}>
+                          {t.addShort}
+                        </span>
                       </Button>
-                      <button
-                        type="button"
+                      <span
+                        aria-hidden="true"
                         className="v-canvas-catalog-grip"
-                        aria-label={drop.drag(widget.name)}
                         aria-disabled={!!reason}
-                        aria-describedby={
-                          reason ? `${id}-${widget.kind}` : `${id}-keys`
-                        }
                         onClick={(event) => {
                           if (!reason) input.click(event, widget.kind);
                         }}
                         onPointerDown={(event) => {
-                          if (!reason) input.pointerDown(event, widget.kind);
+                          if (
+                            !reason &&
+                            event.button === 0 &&
+                            event.isPrimary
+                          ) {
+                            event.preventDefault();
+                            event.currentTarget.parentElement
+                              ?.querySelector<HTMLButtonElement>(".v-button")
+                              ?.focus({ preventScroll: true });
+                            input.pointerDown(event, widget.kind);
+                          }
                         }}
                         onPointerMove={input.pointerMove}
                         onPointerUp={input.pointerUp}
                         onPointerCancel={input.pointerLost}
                         onLostPointerCapture={input.pointerLost}
-                        onBlur={input.cancel}
                       >
                         <svg
                           aria-hidden="true"
@@ -172,7 +182,7 @@ export function CanvasCatalog({
                           <circle cx="7" cy="15" r="1.5" />
                           <circle cx="13" cy="15" r="1.5" />
                         </svg>
-                      </button>
+                      </span>
                     </article>
                   );
                 })}

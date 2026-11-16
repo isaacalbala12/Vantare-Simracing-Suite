@@ -1,5 +1,7 @@
 mod layout;
 #[cfg(test)]
+mod motion_tests;
+#[cfg(test)]
 mod painting_tests;
 mod render;
 #[cfg(test)]

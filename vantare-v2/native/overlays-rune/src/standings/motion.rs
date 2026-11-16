@@ -82,10 +82,16 @@ impl Motion {
     }
     pub fn next_wake(&self, clock: f64, hz: u16) -> Option<f64> {
         // El último frame cae en el final del canal, sin un wake después del fade/FLIP.
-        self.rows.values().flat_map(|row| [
-            row.flip.active(clock).then_some(row.flip_end),
-            row.fade.active(clock).then_some(row.fade_end),
-        ]).flatten().map(|end| end.min(clock + 1.0 / f64::from(hz)))
+        self.rows
+            .values()
+            .flat_map(|row| {
+                [
+                    row.flip.active(clock).then_some(row.flip_end),
+                    row.fade.active(clock).then_some(row.fade_end),
+                ]
+            })
+            .flatten()
+            .map(|end| end.min(clock + 1.0 / f64::from(hz)))
             .min_by(f64::total_cmp)
     }
     pub fn settle(&mut self) {

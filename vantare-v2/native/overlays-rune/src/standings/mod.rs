@@ -226,8 +226,10 @@ impl Widget for Standings {
         }
     }
     fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
-        if !self.scene.paused && !self.reduced
-            && let Some(due) = self.motion.next_wake(clock, self.hz) {
+        if !self.scene.paused
+            && !self.reduced
+            && let Some(due) = self.motion.next_wake(clock, self.hz)
+        {
             tx.wake_at(due);
         }
     }

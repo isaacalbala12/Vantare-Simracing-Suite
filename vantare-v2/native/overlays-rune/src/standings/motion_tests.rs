@@ -161,6 +161,10 @@ fn reduced_motion_jumps_and_stopping_an_active_transition_removes_its_clock() {
         rt.frame(0.0);
         near(row(&rt, id).rect[1], target(&rt, id));
         near(row(&rt, id).opacity, 1.0);
+        if !already_reduced {
+            // Consume el wake anterior que ya estaba en la cola; no se programa otro.
+            assert!(!rt.frame(0.020)); // Supera el tick de 60 Hz y su redondeo a nanosegundos.
+        }
         assert!(rt.wake_deadline().is_none());
         assert!(!rt.frame(5.0));
         bounds(&mut rt);

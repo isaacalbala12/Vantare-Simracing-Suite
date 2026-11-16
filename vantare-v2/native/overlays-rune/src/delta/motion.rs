@@ -361,7 +361,8 @@ mod tests {
         assert!((motion.notice_alpha(1.090) - 0.875).abs() < 1e-6);
         assert_eq!(motion.notice_alpha(2.0), 1.0);
         assert_eq!(motion.event(1.0), Some(Event::PersonalBest));
-        assert_eq!(motion.event(5.1), None, "4000 ms de vida");
+        assert_eq!(motion.event(5.1), Some(Event::PersonalBest), "en su fundido");
+        assert_eq!(motion.event(5.181), None, "4000 ms + 180 de fundido");
         assert_eq!(motion.flash(1.0), Some(1.0));
     }
 

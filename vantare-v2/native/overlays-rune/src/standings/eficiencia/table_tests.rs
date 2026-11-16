@@ -6,7 +6,7 @@ use super::{
 use std::sync::Arc;
 use vantare_domain::format::Language;
 
-fn row_case(broadcast: bool) -> Visual {
+pub(super) fn row_case(broadcast: bool) -> Visual {
     let mut v = visual();
     let content = Arc::make_mut(&mut v.content_plan);
     content.rows.truncate(1);

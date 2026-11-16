@@ -1,4 +1,7 @@
 //! Registro y retención de pausa del host GPUI; movimiento en E5.
+#[cfg(test)]
+#[path = "review_e3_tests.rs"]
+mod review_e3_tests;
 use super::{
     Visual,
     model::{Config, ContentPlan},

@@ -1,6 +1,7 @@
 //! One retained painter per visible instance; monitor windows coalesce their work.
 use crate::{
     host::Access,
+    pedals::Pedals,
     relative::Relative,
     scene::{FrameSet, Placement, Viewport},
     stats::{Cause, Meter},
@@ -26,6 +27,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::MulticlassRelative(_) => {
             Some(<crate::multiclass_relative::MulticlassRelative as Widget>::new)
         }
+        Settings::Pedals(_) => Some(<Pedals as Widget>::new),
         _ => None,
     }
 }
@@ -194,8 +196,24 @@ mod tests {
         let efficiency = Settings::Relative(relative);
         let pedals = Settings::Pedals(Default::default());
         assert!(constructor(&efficiency).is_none());
-        assert!(constructor(&pedals).is_none());
+        assert!(constructor(&pedals).is_some());
         assert!(!painter.configured(&efficiency, prefs));
         assert!(!painter.configured(&pedals, prefs));
+    }
+
+    #[test]
+    fn dispatch_constructs_both_pedals_looks_with_their_width() {
+        let prefs = Preferences::default();
+        for (look, width) in [(Look::Vantare, 96.0), (Look::Eficiencia, 108.0)] {
+            let settings = Settings::Pedals(vantare_domain::widget_settings::pedals::Settings {
+                design_system: look,
+                ..Default::default()
+            });
+            let painter = constructor(&settings).expect("Pedals")(&settings, prefs, true, 40, 0.0)
+                .expect("instancia");
+            assert!(painter.configured(&settings, prefs));
+            assert_eq!(painter.size().width, width, "{look:?}");
+            assert_eq!(painter.size().height, 160.0);
+        }
     }
 }

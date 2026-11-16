@@ -1,5 +1,6 @@
 ## VANTA-144 · Standings Eficiencia E4 (17/11/2026)
 
+PR #2506 a nightly, no draft; CI Windows y Sonnet pendientes.
 Base nightly 5f7cc4486, ya con E3 #2501 fusionado; rebase --onto desde fc009c6d6.
 Tests primero (d3971cc39); después pintor literal de bandas de clase, pie clásico,
 slots con reflow, rail PIT y ausencia. Se retiran las siete marcas dead_code de E4.
@@ -13,7 +14,7 @@ mantiene ventana252 y última fila253; host recorta1 px (30 de caja,29 visibles)
 Test reproduce el clip por widget de renderer.rs:268–279, no cambia el pintor.
 Erratas de plan/inventario enumeradas con archivo:línea en PARIDAD.md; GPUI manda.
 Código verificado 512bff178: Mac fmt y clippy -D warnings PASS; 574 biblioteca +
-3 binario PASS. Producción347 líneas cambiadas (<1200), tests504; excepción de tests
+3 binario PASS. Producción 347 líneas cambiadas (<1200), tests 504; excepción de tests
 fuera del tope. Sin cambios de testdata, domain/ipc/Cargo ni helper de límites.
 Handoff/tabla GPUI↔Rune actualizados; captura física de píxeles aún pendiente.
 No se han abierto los planes E5/E6 durante E4. Sin promoción a testers.

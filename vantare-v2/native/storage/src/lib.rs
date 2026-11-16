@@ -104,8 +104,12 @@ struct Store {
 
 impl Store {
     fn open(path: &Path, read_only: bool) -> Result<Self> {
+        Self::open_with_creation(path, read_only, true)
+    }
+
+    fn open_with_creation(path: &Path, read_only: bool, create_if_missing: bool) -> Result<Self> {
         let exists = path.exists();
-        if read_only && !exists {
+        if !exists && (read_only || !create_if_missing) {
             return Err(io::Error::new(io::ErrorKind::NotFound, "DB histórica inexistente").into());
         }
         // Inspección sin permiso de escribir antes de abrir DB existentes RW:
@@ -306,22 +310,8 @@ pub fn serve_mode(
         create_database(path)?;
         require_missing(&wal_path(path))?;
     }
-    // En Windows este handle impide borrar/sustituir el archivo entre la
-    // inspección y la apertura de DuckDB, y durante toda la sesión explícita.
-    let _existing = if matches!(mode, OpenMode::Create | OpenMode::Resume) {
-        let mut options = std::fs::OpenOptions::new();
-        options.read(true);
-        #[cfg(windows)]
-        {
-            use std::os::windows::fs::OpenOptionsExt as _;
-            options.share_mode(0x1 | 0x2); // FILE_SHARE_READ | FILE_SHARE_WRITE, no DELETE.
-        }
-        Some(options.open(path)?)
-    } else {
-        None
-    };
     let read_only = mode == OpenMode::ReadOnly;
-    let mut store = match Store::open(path, read_only) {
+    let mut store = match Store::open_with_creation(path, read_only, mode == OpenMode::Legacy) {
         Ok(store) => store,
         Err(error) => {
             if read_only {

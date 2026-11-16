@@ -582,7 +582,11 @@ fn interrupted_creation_preserves_its_artifacts_without_automatic_repair() {
         assert!(!original.is_empty(), "el corte debe dejar un temporal real");
         let mut output = Vec::new();
         let result = serve_mode(&db.0, OpenMode::Create, &b""[..], &mut output);
-        assert_eq!(result.is_ok(), stage != "after-publish");
+        assert_eq!(
+            result.is_ok(),
+            stage != "after-publish",
+            "{stage}: {result:?}"
+        );
         let after = database_files(root);
         for (name, bytes) in original {
             assert_eq!(

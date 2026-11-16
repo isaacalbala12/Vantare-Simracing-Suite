@@ -483,7 +483,7 @@ fn explicit_creation_collision_and_resume_preserve_the_recorded_prefix() {
         .output()
         .unwrap();
     assert!(!collision.status.success());
-    assert!(collision.stdout.is_empty());
+    assert_eq!(collision.stdout, [] as [u8; 0]);
     assert_eq!(std::fs::read(&db.0).unwrap(), original);
     let mut resumed = Process::start_mode(&db.0, Some("--resume"));
     assert_eq!(resumed.response(), json!(["ready", 1, false, 0]));
@@ -542,7 +542,7 @@ fn explicit_modes_do_not_create_missing_resume_or_change_an_existing_file() {
             .output()
             .unwrap();
         assert!(!result.status.success());
-        assert!(result.stdout.is_empty());
+        assert_eq!(result.stdout, [] as [u8; 0]);
         assert_eq!(std::fs::read(&db.0).unwrap(), b"original must survive");
     }
     assert_eq!(
@@ -575,8 +575,8 @@ fn competing_create_helpers_publish_exactly_one_database() {
         serde_json::from_slice::<Value>(winner.stdout.trim_ascii()).unwrap(),
         json!(["ready", 0, false, 0])
     );
-    assert!(loser.stdout.is_empty());
-    assert!(!loser.stderr.is_empty());
+    assert_eq!(loser.stdout, [] as [u8; 0]);
+    assert_ne!(loser.stderr, [] as [u8; 0]);
     let mut resumed = Process::start_mode(&db.0, Some("--resume"));
     assert_eq!(resumed.response(), json!(["ready", 0, false, 0]));
     resumed.send(&json!(["stop"]));

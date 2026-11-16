@@ -18,8 +18,6 @@ Crate y proceso bajo demanda:
   fichero cerrado: no abrir el temporal ni usarlo como otra grabación.
 - `--resume`: exige un fichero existente y el prefijo válido del formato
   propio. No sustituye ni inicializa archivos ausentes/ajenos/incompletos.
-  En Windows mantiene un handle sin permiso de compartir DELETE mientras
-  inspecciona/abre/usa DuckDB, evitando la sustitución entre esas operaciones.
 - Sin modo se conserva el comportamiento histórico crear/reabrir; el Hub
   GPUI congelado y `--read-only` mantienen CLI y protocolo sin cambios.
 
@@ -28,7 +26,7 @@ del nombre ante pérdida eléctrica. Los temporales no son grabaciones del
 catálogo. No reanudar automáticamente tras una caída ni borrar un temporal
 que pueda pertenecer a otro proceso. El directorio de datos es local y de
 confianza; no habilita importar DB externas ni protege frente a otro editor
-deliberado del directorio en plataformas sin la guarda DELETE de Windows.
+deliberado que borre/sustituya archivos o sus WAL durante una apertura.
 
 Ningún paquete vivo depende de storage/DuckDB. El workspace tiene 14
 miembros y ocho default-members; storage se excluye del build por defecto para

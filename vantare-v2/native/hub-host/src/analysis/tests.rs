@@ -68,12 +68,27 @@ mod real {
             .unwrap()
     }
     fn fixture(db: &Path, car: u32, chunks: u64, gap: bool) {
+        fixture_ids(
+            db,
+            &vec![(1, 3, car); usize::try_from(chunks).unwrap()],
+            gap,
+        );
+    }
+    fn fixture_ids(db: &Path, ids: &[(u64, u64, u32)], gap: bool) {
+        let chunks = u64::try_from(ids.len()).unwrap();
+        let mut previous = None;
+        let mut offset = 0;
         let mut child = writer(db);
         let mut out = BufReader::new(child.stdout.take().unwrap());
         let mut line = String::new();
         out.read_line(&mut line).unwrap();
         assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
         for index in 1..=chunks {
+            let (epoch, session, car) = ids[usize::try_from(index - 1).unwrap()];
+            if previous != Some((epoch, session, car)) {
+                offset = 0;
+            }
+            previous = Some((epoch, session, car));
             let sample = json!([
                 index,
                 [1, f64::from(u32::try_from(index - 1).unwrap())],
@@ -86,8 +101,17 @@ mod real {
                 "vantare.series-chunk.v1",
                 index,
                 0,
-                index - 1,
-                ["vantare.player-lap.v1", 1, 3, car, 5, null, gap, [sample]]
+                offset,
+                [
+                    "vantare.player-lap.v1",
+                    epoch,
+                    session,
+                    car,
+                    5,
+                    null,
+                    gap,
+                    [sample]
+                ]
             ]);
             writeln!(
                 child.stdin.as_mut().unwrap(),
@@ -95,6 +119,7 @@ mod real {
                 json!(["append", chunk])
             )
             .unwrap();
+            offset += 1;
             line.clear();
             out.read_line(&mut line).unwrap();
             assert_eq!(
@@ -147,6 +172,21 @@ mod real {
         assert_eq!(counts, vec![16, 16, 1]);
         drop(reader);
         assert_eq!(fs::read(dir.db()).unwrap(), original);
+    }
+    #[test]
+    fn different_sessions_and_cars_are_valid_in_distinct_laps() {
+        let dir = Directory::new();
+        fixture_ids(&dir.db(), &[(1, 3, 7), (1, 4, 8)], false);
+        let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+        let summary = reader.summaries().unwrap();
+        assert_eq!(summary.laps.len(), 2);
+        assert_eq!((summary.laps[0].session, summary.laps[0].car), (3, 7));
+        assert_eq!((summary.laps[1].session, summary.laps[1].car), (4, 8));
+        for lap in &summary.laps {
+            let mut cursor = reader.cursor(lap).unwrap();
+            assert_eq!(reader.page(&mut cursor, 16).unwrap().chunks, 1);
+            assert!(cursor.done());
+        }
     }
     #[test]
     fn gaps_are_explicit_and_cancel_reaps_helper_releasing_writer_lock() {

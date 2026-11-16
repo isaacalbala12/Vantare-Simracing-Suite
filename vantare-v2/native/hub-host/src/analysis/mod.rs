@@ -43,11 +43,8 @@ fn error(code: ErrorCode, diagnostic: impl Into<String>) -> Error {
         diagnostic: diagnostic.into(),
     }
 }
-fn io_error(e: io::Error) -> Error {
-    error(ErrorCode::Io, e.to_string())
-}
-fn invalid(e: impl ToString) -> Error {
-    error(ErrorCode::Unreadable, e.to_string())
+fn invalid(e: impl Into<String>) -> Error {
+    error(ErrorCode::Unreadable, e)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -72,8 +69,12 @@ fn stamp(path: &Path) -> Result<Stamp> {
     }
     Ok(Stamp {
         len: m.len(),
-        created: m.created().map_err(io_error)?,
-        modified: m.modified().map_err(io_error)?,
+        created: m
+            .created()
+            .map_err(|e| error(ErrorCode::Io, e.to_string()))?,
+        modified: m
+            .modified()
+            .map_err(|e| error(ErrorCode::Io, e.to_string()))?,
     })
 }
 fn reparse(m: &fs::Metadata) -> bool {
@@ -150,7 +151,9 @@ impl Reader {
             use std::os::windows::process::CommandExt;
             command.creation_flags(0x0800_0000);
         }
-        let mut child = command.spawn().map_err(io_error)?;
+        let mut child = command
+            .spawn()
+            .map_err(|e| error(ErrorCode::Io, e.to_string()))?;
         // Piped handles are guaranteed by Command. No fallible work before ownership.
         let input = child.stdin.take().expect("piped stdin");
         let output = child.stdout.take().expect("piped stdout");
@@ -166,7 +169,7 @@ impl Reader {
                         .read_until(b'\n', &mut bytes)
                     {
                         Ok(n) if n > 0 && n <= MAX_FRAME && bytes.last() == Some(&b'\n') => {
-                            serde_json::from_slice(&bytes).map_err(invalid)
+                            serde_json::from_slice(&bytes).map_err(|e| invalid(e.to_string()))
                         }
                         _ => Err(invalid("Respuesta truncada o fuera de límites")),
                     };
@@ -180,7 +183,7 @@ impl Reader {
             .map_err(|e| {
                 let _ = child.kill();
                 let _ = child.wait();
-                io_error(e)
+                error(ErrorCode::Io, e.to_string())
             })?;
         let mut reader = Self {
             child,
@@ -250,11 +253,11 @@ impl Reader {
         if self.closed {
             return Err(error(ErrorCode::Cancelled, "Lector cerrado"));
         }
-        serde_json::to_writer(&mut self.input, command).map_err(invalid)?;
+        serde_json::to_writer(&mut self.input, command).map_err(|e| invalid(e.to_string()))?;
         self.input
             .write_all(b"\n")
             .and_then(|()| self.input.flush())
-            .map_err(io_error)?;
+            .map_err(|e| error(ErrorCode::Io, e.to_string()))?;
         self.receive()
     }
     fn unchanged(&mut self) -> Result<()> {
@@ -281,7 +284,8 @@ impl Reader {
                 return Err(error(ErrorCode::Incompatible, "Versión de resúmenes"));
             }
             let total = frame[2].as_u64().ok_or_else(|| invalid("Total inválido"))?;
-            let laps: Vec<Lap> = serde_json::from_value(frame[3].clone()).map_err(invalid)?;
+            let laps: Vec<Lap> =
+                serde_json::from_value(frame[3].clone()).map_err(|e| invalid(e.to_string()))?;
             if laps.len() > 256 {
                 return Err(error(ErrorCode::Limit, "Más de 256 resúmenes"));
             }
@@ -328,7 +332,8 @@ impl Reader {
         if frame[0] != "plot-page" || frame[1] != "series-plot.v1" {
             return Err(error(ErrorCode::Incompatible, "Versión de muestras"));
         }
-        let chunks: Vec<Chunk> = serde_json::from_value(frame[2].clone()).map_err(invalid)?;
+        let chunks: Vec<Chunk> =
+            serde_json::from_value(frame[2].clone()).map_err(|e| invalid(e.to_string()))?;
         if chunks.len() > limit || (chunks.is_empty() && cursor.after < self.summary.watermark) {
             return Err(invalid("Página truncada/fuera de límites"));
         }
@@ -422,15 +427,16 @@ pub fn recordings(root: &Path) -> Result<Vec<PathBuf>> {
     let metadata = match fs::symlink_metadata(root) {
         Ok(m) => m,
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(vec![]),
-        Err(e) => return Err(io_error(e)),
+        Err(e) => return Err(error(ErrorCode::Io, e.to_string())),
     };
     if reparse(&metadata) || !metadata.is_dir() {
         return Err(invalid("Directorio no regular"));
     }
     let mut paths = vec![];
-    for entry in fs::read_dir(root).map_err(io_error)? {
-        let entry = entry.map_err(io_error)?;
-        let m = fs::symlink_metadata(entry.path()).map_err(io_error)?;
+    for entry in fs::read_dir(root).map_err(|e| error(ErrorCode::Io, e.to_string()))? {
+        let entry = entry.map_err(|e| error(ErrorCode::Io, e.to_string()))?;
+        let m =
+            fs::symlink_metadata(entry.path()).map_err(|e| error(ErrorCode::Io, e.to_string()))?;
         if m.is_file()
             && !reparse(&m)
             && entry

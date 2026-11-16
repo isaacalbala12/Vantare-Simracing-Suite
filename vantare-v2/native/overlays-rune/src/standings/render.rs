@@ -1,5 +1,5 @@
 //! Pintor literal GPUI; sin movimiento hasta el seguimiento Motion.
-use super::layout::*;
+use super::{PAUSE_HEIGHT, layout::*};
 use crate::vantare::{
     Style, Variant, alpha,
     generated::ClassesItem as ClassColors,
@@ -19,6 +19,7 @@ pub(super) fn view(
     plan: &Plan,
     style: &Style,
     language: Language,
+    paused: bool,
 ) -> El {
     let v = options.variant(style);
     let mut p = Painter {
@@ -92,11 +93,34 @@ pub(super) fn view(
         );
     }
     let mut root = el()
-        .size(plan.width, plan.height)
+        .size(
+            plan.width,
+            plan.height + if paused { PAUSE_HEIGHT } else { 0.0 },
+        )
         .motion(rune::Spring::NONE)
         .child(panel);
     for node in p.nodes {
         root = root.child(node);
+    }
+    if paused {
+        let title = if language == Language::Es {
+            "EN PAUSA"
+        } else {
+            "PAUSED"
+        };
+        root = root.child(
+            el().key("pause-band")
+                .size(plan.width, PAUSE_HEIGHT)
+                .fill(rune::color::hex("#101113f2").expect("pause color"))
+                .pin(Some(0.0), Some(plan.height), None, None)
+                .child(
+                    text(title)
+                        .font(font(style, Face::Body, 11.0, PAUSE_HEIGHT, 0.22, 600.0))
+                        .color(WHITE)
+                        .h(PAUSE_HEIGHT)
+                        .pin(Some(8.0), Some(0.0), None, None),
+                ),
+        );
     }
     root
 }

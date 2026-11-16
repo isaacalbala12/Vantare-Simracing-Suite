@@ -401,7 +401,9 @@ mod tests {
             assert_eq!(track.target[0], 462.0 + 12.0 * index as f32);
             let bar = find(&format!("bar-{index}"));
             assert_eq!(bar.rect[0], 462.0 + 12.0 * index as f32);
-            assert_eq!(bar.rect[3], 64.0 * 50.0 / 100.0, "freno al 50 %");
+            // Embrague 25 %, freno 50 %, acelerador 80 % (último dato de `dense`).
+            let percent = [25.0, 50.0, 80.0][index];
+            assert_eq!(bar.rect[3], 64.0 * percent / 100.0, "barra {index}");
         }
         let gear = find("gear");
         assert_eq!(

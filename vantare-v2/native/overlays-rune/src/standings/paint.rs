@@ -482,6 +482,14 @@ fn footer(
     root
 }
 
+fn text_top(style: &Style, face: Face, top: f32) -> f32 {
+    top + match face {
+        Face::Display => style.fonts.display_baseline,
+        Face::Mono => style.fonts.mono_baseline,
+        Face::Body => 0.0,
+    }
+}
+
 #[cfg(test)]
 mod truncation_tests {
     use super::*;
@@ -563,11 +571,4 @@ mod truncation_tests {
     }
 }
 
-fn text_top(style: &Style, face: Face, top: f32) -> f32 {
-    top + match face {
-        Face::Display => style.fonts.display_baseline,
-        Face::Mono => style.fonts.mono_baseline,
-        Face::Body => 0.0,
-    }
-}
 

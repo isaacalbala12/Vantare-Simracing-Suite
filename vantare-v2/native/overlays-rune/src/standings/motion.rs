@@ -28,15 +28,13 @@ enum EventKind {
     PersonalBest,
     Position,
     SessionBest,
-    Lead,
-    Pit,
 }
 
 impl EventKind {
     fn priority(self) -> u8 {
         match self {
             Self::SessionBest => 3,
-            Self::Position | Self::Lead | Self::Pit => 2,
+            Self::Position => 2,
             Self::PersonalBest => 1,
         }
     }
@@ -227,6 +225,7 @@ pub(super) struct Motion {
     reduced: bool,
     notices: BTreeMap<u32, Notice>,
     flash: BTreeMap<u32, Tween>,
+    flash_kind: BTreeMap<u32, Flash>,
     chip: BTreeMap<u32, Tween>,
     battle: BTreeMap<u32, Tween>,
     battle_pick: Option<Battle>,
@@ -280,6 +279,46 @@ impl Motion {
                     tween(0.0, 1.0, clock, 0.500, motion::EASE_OUT),
                 );
                 self.chip.insert(event.row_id, tween(0.0, 1.0, clock, 0.180, EASE));
+            }
+        }
+        // Destellos por transición de fila (liderato, boxes, vuelta rápida),
+        // además del aviso de posición. GPUI los enciende en la pose de la fila.
+        let rows_before: BTreeMap<u32, (i64, bool, bool, Option<f64>)> = prev
+            .rows
+            .iter()
+            .map(|row| (row.id.0, (row.position, row.in_pits, row.is_leader, row.best_lap_s)))
+            .collect();
+        for row in &next.rows {
+            let id = row.id.0;
+            if self.flash.contains_key(&id) {
+                continue;
+            }
+            let Some((old_position, old_pit, old_leader, old_best)) = rows_before.get(&id) else {
+                continue;
+            };
+            let session_best = next.session_best.is_some_and(|(car, _)| car == row.id);
+            let kind = if row.in_pits && !old_pit {
+                Some(Flash::Pit)
+            } else if row.is_leader && !old_leader {
+                Some(Flash::Lead)
+            } else if session_best && valid_lap(*old_best) != valid_lap(row.best_lap_s) {
+                Some(Flash::Best)
+            } else if row.position < *old_position {
+                Some(Flash::Gain)
+            } else if row.position > *old_position {
+                Some(Flash::Loss)
+            } else {
+                None
+            };
+            if let Some(kind) = kind {
+                self.flash.insert(id, tween(1.0, 0.0, clock, 1.400, EASE));
+                self.notices.entry(id).or_insert(Notice {
+                    kind: EventKind::Position,
+                    start: clock,
+                    places: 0,
+                    priority: 0,
+                });
+                self.flash_kind.insert(id, kind);
             }
         }
         self.battle_pick = select_battle(next, self.battle_pick);
@@ -405,25 +444,32 @@ impl Motion {
                         vis.pit_alpha = pit.alpha.value(clock);
                         vis.pit_dx = pit.dx.value(clock);
                     }
+                    if notice.is_none()
+                        && let (Some(kind), Some(strength)) =
+                            (self.flash_kind.get(id), self.flash.get(id))
+                    {
+                        vis.flash = Some((*kind, strength.value(clock)));
+                    }
                     if let Some(notice) = notice {
                         match notice.kind {
                             EventKind::Position | EventKind::Lead => {
-                                vis.flash = Some((
+                                let kind = self.flash_kind.get(id).copied().unwrap_or(
                                     if notice.places > 0 {
                                         Flash::Gain
                                     } else {
                                         Flash::Loss
                                     },
+                                );
+                                vis.flash = Some((
+                                    kind,
                                     self.flash.get(id).map_or(1.0, |t| t.value(clock)),
                                 ));
-                                vis.chip = Some((
-                                    notice.places,
-                                    self.chip.get(id).map_or(1.0, |t| t.value(clock)),
-                                ));
-                            }
-                            EventKind::Pit => {
-                                vis.pit_alpha = 1.0;
-                                vis.pit_dx = 0.0;
+                                if notice.places != 0 {
+                                    vis.chip = Some((
+                                        notice.places,
+                                        self.chip.get(id).map_or(1.0, |t| t.value(clock)),
+                                    ));
+                                }
                             }
                             EventKind::PersonalBest | EventKind::SessionBest => {
                                 let elapsed = clock - notice.start;
@@ -503,6 +549,7 @@ impl Motion {
         self.exits.clear();
         self.notices.clear();
         self.flash.clear();
+        self.flash_kind.clear();
         self.chip.clear();
         self.battle.clear();
         self.best.clear();

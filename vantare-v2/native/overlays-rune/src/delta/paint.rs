@@ -106,8 +106,6 @@ impl Painter {
         let name = key.into();
         let value = value.into();
         let style = font(&self.style, face, size, height, tracking, weight);
-        let (lo_x, hi_x) = (x, (self.scene.width - (x + width)).max(0.0));
-        let (lo_y, hi_y) = (y, (self.scene.height - (y + height)).max(0.0));
         if !self.scene.options.transparent {
             return text(value)
                 .key(name.clone())
@@ -132,9 +130,6 @@ impl Painter {
         .into_iter()
         .enumerate()
         {
-            // GPUI dibuja fuera del marco; en Rune se recorta al borde de la caja.
-            let dx = dx.clamp(-lo_x.max(0.0), hi_x);
-            let dy = dy.clamp(-lo_y.max(0.0), hi_y);
             node = node.child(
                 text(value.clone())
                     .key(format!("{name}-shadow-{index}"))
@@ -240,13 +235,15 @@ impl Painter {
         };
         let x = pad + label_width + 14.0;
         let offset = text_top(s, face, 0.0);
+        // Una caja con 1 px de margen arriba y abajo deja dentro las sombras ±1/2
+        // sin mover el centro del texto.
         root.child(self.label(
             "pill-label",
             "DELTA",
             pad,
-            0.0,
+            1.0,
             label_width + 2.0,
-            content,
+            content - 2.0,
             Face::Body,
             d.pill_label,
             0.3,
@@ -258,9 +255,9 @@ impl Painter {
             "pill-value",
             value.to_owned(),
             x,
-            offset,
+            offset + 1.0,
             (self.scene.width - x).max(0.0),
-            content - offset,
+            content - offset - 2.0,
             face,
             size,
             0.0,
@@ -641,9 +638,9 @@ impl Painter {
             .child(self.label(
                 "message-title",
                 title,
-                0.0,
+                1.0,
                 text_top(s, Face::Display, y + 4.0),
-                self.scene.width,
+                self.scene.width - 2.0,
                 f.wait_title,
                 Face::Display,
                 f.wait_title,
@@ -655,9 +652,9 @@ impl Painter {
             .child(self.label(
                 "message-hint",
                 hint,
-                0.0,
+                1.0,
                 y + 20.0,
-                self.scene.width,
+                self.scene.width - 2.0,
                 18.0,
                 Face::Body,
                 f.small,

@@ -356,21 +356,16 @@ fn configured_rebuilds_for_every_visible_setting_and_language() {
 
 #[test]
 fn the_pill_uses_the_thirty_four_pixel_content_box() {
-    use super::paint::text_top;
-    use crate::vantare::paint::Face;
+    // Constantes de GPUI: alto de contenido 34, rótulo 11 y baseline Display 1.
     let mut painter = Delta::new(&settings("pill"), Preferences::default());
     painter.update(&snapshot(), 0.0);
     let runtime = harness(painter);
-    let style = crate::vantare::Style::compiled();
     let panel = runtime.presented("panel").expect("panel de la píldora");
     assert_eq!(panel.0[3], 34.0, "el panel mide el contenido, no la caja");
     let label = runtime.presented("pill-label").expect("rótulo");
-    assert_eq!(label.0[1], 0.0);
-    assert_eq!(label.0[3], 34.0);
+    assert_eq!([label.0[1], label.0[3]], [1.0, 32.0]);
     let value = runtime.presented("pill-value").expect("valor");
-    let offset = text_top(&style, Face::Display, 0.0);
-    assert_eq!(value.0[1], offset, "centrado como el rótulo");
-    assert_eq!(value.0[3], 34.0 - offset);
+    assert_eq!([value.0[1], value.0[3]], [2.0, 31.0]);
 }
 
 #[test]
@@ -378,12 +373,12 @@ fn sector_values_share_the_title_line() {
     let mut painter = Delta::new(&settings("expanded"), Preferences::default());
     painter.update(&snapshot(), 0.0);
     let runtime = harness(painter);
+    // GPUI: 10 de padding + 18 de cabecera + 4 de hueco + 44 de número
+    // + 10 de barra + 16 de rótulos = 102; luego 6 + 3 + 3 hasta el texto.
     let title = runtime.presented("sector-title-0").expect("título");
     let value = runtime.presented("sector-value-0").expect("valor");
-    assert_eq!(
-        value.0[1], title.0[1],
-        "GPUI pinta ambos en la misma línea de base"
-    );
+    assert_eq!(title.0[1], 114.0);
+    assert_eq!(value.0[1], 114.0);
 }
 
 #[test]
@@ -455,6 +450,7 @@ fn transparent_brand_banner_and_every_state_stay_inside_the_window() {
             for case in 0..7 {
                 let mut input = snapshot();
                 match case {
+                    0 => {}
                     1 => {
                         if let Some(player) = input.state.player.as_mut() {
                             let car_id = player.car;
@@ -491,7 +487,57 @@ fn transparent_brand_banner_and_every_state_stay_inside_the_window() {
 }
 
 #[test]
-fn the_host_applies_five_fifteen_and_twenty_hz_before_paint_and_revocation_removes_delta() {
+fn the_five_game_shadows_keep_gpui_offsets_and_alpha() {
+    let expected = [
+        (-1.0f32, 0.0f32, 0.35f32),
+        (1.0, 0.0, 0.35),
+        (0.0, -1.0, 0.35),
+        (0.0, 2.0, 0.35),
+        (0.0, 1.0, 0.9),
+    ];
+    let mut live = Delta::new(
+        &Settings {
+            transparent_background: true,
+            ..settings("bar")
+        },
+        Preferences::default(),
+    );
+    live.update(&snapshot(), 0.0);
+    check_shadows(&harness(live), "big-number", &expected);
+    let mut waiting = Delta::new(
+        &Settings {
+            transparent_background: true,
+            ..settings("bar")
+        },
+        Preferences::default(),
+    );
+    waiting.update(&Snapshot::default(), 0.0);
+    check_shadows(&harness(waiting), "message-title", &expected);
+}
+
+fn check_shadows(runtime: &Runtime<Delta>, key: &str, expected: &[(f32, f32, f32); 5]) {
+    let elements = runtime.elements();
+    let main = by_key(&elements, key).rect;
+    for (index, (dx, dy, strength)) in expected.iter().enumerate() {
+        let shadow = by_key(&elements, &format!("{key}-shadow-{index}"));
+        assert_eq!(shadow.rect, [main[0] + dx, main[1] + dy, main[2], main[3]], "{key} {index}");
+        assert_eq!(
+            shadow.text_color,
+            Some(crate::vantare::alpha(
+                crate::eficiencia::color(0x000000, 1.0),
+                *strength
+            )),
+            "{key} {index} alpha"
+        );
+    }
+}
+
+fn by_key<'a>(elements: &'a [rune::ElementInfo], key: &str) -> &'a rune::ElementInfo {
+    elements
+        .iter()
+        .find(|element| element.key.as_deref() == Some(key))
+        .unwrap_or_else(|| panic!("falta {key}"))
+}
     for hz in [5, 15, 20] {
         let start = Instant::now();
         let mut layout = Layout::from_json(

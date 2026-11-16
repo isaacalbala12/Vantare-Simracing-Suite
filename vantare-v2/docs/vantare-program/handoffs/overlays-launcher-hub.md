@@ -1,4 +1,4 @@
-## VANTA-138 · #2028: Electron usa lanzamiento checked (en curso)
+## VANTA-138 · #2028: Electron usa lanzamiento checked (por revisar)
 
 Rama `vantareapp/isa-2028-electron-checked`, desde nightly `9ff6f97e2`.
 Inicio, Launcher, rail, paleta y favorito pasan al método checked existente.
@@ -7,7 +7,9 @@ no envía, ni cae a v1 ante Unsupported o incertidumbre. Los avisos de solicitad
 y los resultados del residente se conservan; no hay texto ni estado visual nuevo.
 Contratos y consumidores nativos legacy intactos, sin bump ni cambios del núcleo.
 Tests del guard, generación capturada y no reenvío, más las integraciones existentes.
-Gates web en curso; PR/CI pendientes. Se publica después de #2184.
+Typecheck, lint, build y 3.016 tests web PASS (229 archivos).
+El fallo previo de Onboarding se reproduce en la base y queda en #2434; el
+barrido final completo pasa. PR/CI se enlazan en #2028, después de #2432 (#2184).
 Sin gráficos, merge, release o despliegue propios. Preview espera a #2391.
 
 ## VANTA-138 · #2184: escaneo y pasos antes de lanzar (review corregida)

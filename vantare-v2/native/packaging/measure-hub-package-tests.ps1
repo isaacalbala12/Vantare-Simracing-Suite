@@ -1,4 +1,4 @@
-# Measurement regression: inert package data, no Electron process.
+﻿# Measurement regression: inert package data, no Electron process.
 #requires -Version 7.0
 param([Parameter(Mandatory)][string]$QaRoot)
 $ErrorActionPreference='Stop'
@@ -34,9 +34,9 @@ if($result.beforeBytes -le $result.afterBytes){throw 'Expanded byte counts wrong
 $zip=[IO.Compression.ZipFile]::OpenRead((Join-Path $output 'reduced.zip'))
 try{
     if((($zip.Entries.FullName|Sort-Object) -join '|') -cne 'locales/en-US.pak|locales/es.pak|resources/app.asar|vantare-hub-ui.exe'){throw 'Kept package members wrong'}
-    $entry=$zip.GetEntry('resources/app.asar');$input=$entry.Open();$memory=[IO.MemoryStream]::new()
-    try{$input.CopyTo($memory);if([Convert]::ToBase64String($memory.ToArray()) -cne [Convert]::ToBase64String($asar)){throw 'ASAR bytes changed'}}
-    finally{$input.Dispose();$memory.Dispose()}
+    $entry=$zip.GetEntry('resources/app.asar');$readStream=$entry.Open();$memory=[IO.MemoryStream]::new()
+    try{$readStream.CopyTo($memory);if([Convert]::ToBase64String($memory.ToArray()) -cne [Convert]::ToBase64String($asar)){throw 'ASAR bytes changed'}}
+    finally{$readStream.Dispose();$memory.Dispose()}
 }finally{$zip.Dispose()}
 $after=@(Get-ChildItem -LiteralPath $source -File -Recurse | Sort-Object FullName | ForEach-Object {Get-NativeHash $_.FullName})
 if(($before -join '|') -cne ($after -join '|')){throw 'Measurement modified the source'}

@@ -1,4 +1,4 @@
-# Repository-only measurement. Never installs or launches the package.
+﻿# Repository-only measurement. Never installs or launches the package.
 #requires -Version 7.0
 param(
     [Parameter(Mandatory)][string]$PackageDirectory,
@@ -36,14 +36,14 @@ foreach($required in @('vantare-hub-ui.exe','resources/app.asar','locales/es.pak
 }
 # ASAR is a Pickle header + raw members. Gzip is not an accepted ASAR header.
 $asar=Join-Path $source 'resources/app.asar'
-$input=[IO.File]::OpenRead($asar);$reader=[IO.BinaryReader]::new($input)
+$readStream=[IO.File]::OpenRead($asar);$reader=[IO.BinaryReader]::new($readStream)
 try{
     if($reader.ReadUInt32() -ne 4){throw 'Unsupported ASAR header'}
     $headerSize=$reader.ReadUInt32();$null=$reader.ReadUInt32();$jsonSize=$reader.ReadUInt32()
-    if($jsonSize -gt 1MB -or $headerSize -lt 8 -or $jsonSize -gt $headerSize-8 -or 16+$jsonSize -gt $input.Length){throw 'Invalid ASAR header size'}
+    if($jsonSize -gt 1MB -or $headerSize -lt 8 -or $jsonSize -gt $headerSize-8 -or 16+$jsonSize -gt $readStream.Length){throw 'Invalid ASAR header size'}
     $header=[Text.Encoding]::UTF8.GetString($reader.ReadBytes($jsonSize))|ConvertFrom-Json
     if(-not $header.PSObject.Properties['files']){throw 'ASAR files missing'}
-}finally{$reader.Dispose();$input.Dispose()}
+}finally{$reader.Dispose();$readStream.Dispose()}
 function Get-AsarMapCount($Node){
     $count=0
     $members=$Node.PSObject.Properties['files']
@@ -68,14 +68,14 @@ if($kept.Count -ne $files.Count){
 $reduced=Join-Path $output 'reduced.zip'
 New-BuildZip $stage $reduced -CompressionLevel 'SmallestSize'
 $gzipPath=Join-Path $output 'app.asar.gz'
-$input=[IO.File]::OpenRead($asar);$destination=[IO.File]::Open($gzipPath,[IO.FileMode]::CreateNew)
+$readStream=[IO.File]::OpenRead($asar);$destination=[IO.File]::Open($gzipPath,[IO.FileMode]::CreateNew)
 $gzip=[IO.Compression.GZipStream]::new($destination,$level)
-try{$input.CopyTo($gzip)}finally{$gzip.Dispose();$destination.Dispose();$input.Dispose()}
-$input=[IO.File]::OpenRead($gzipPath);$reader=[IO.BinaryReader]::new($input)
-try{$gzipHeaderValid=$reader.ReadUInt32() -eq 4}finally{$reader.Dispose();$input.Dispose()}
-$input=[IO.File]::OpenRead($gzipPath);$gzip=[IO.Compression.GZipStream]::new($input,[IO.Compression.CompressionMode]::Decompress);$sha=[Security.Cryptography.SHA256]::Create()
+try{$readStream.CopyTo($gzip)}finally{$gzip.Dispose();$destination.Dispose();$readStream.Dispose()}
+$readStream=[IO.File]::OpenRead($gzipPath);$reader=[IO.BinaryReader]::new($readStream)
+try{$gzipHeaderValid=$reader.ReadUInt32() -eq 4}finally{$reader.Dispose();$readStream.Dispose()}
+$readStream=[IO.File]::OpenRead($gzipPath);$gzip=[IO.Compression.GZipStream]::new($readStream,[IO.Compression.CompressionMode]::Decompress);$sha=[Security.Cryptography.SHA256]::Create()
 try{$roundTrip=[BitConverter]::ToString($sha.ComputeHash($gzip)).Replace('-','').ToLowerInvariant() -ceq ($files|Where-Object {$_.path -ceq 'resources/app.asar'}).sha256}
-finally{$sha.Dispose();$gzip.Dispose();$input.Dispose()}
+finally{$sha.Dispose();$gzip.Dispose();$readStream.Dispose()}
 $after=@(Get-PackageFiles $source)
 if(($files|ConvertTo-Json -Depth 4 -Compress) -cne ($after|ConvertTo-Json -Depth 4 -Compress)){throw 'Source changed during measurement'}
 $result=[ordered]@{

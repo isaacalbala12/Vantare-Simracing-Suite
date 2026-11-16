@@ -1,4 +1,4 @@
-# ZIP transport regression; fixtures only, never a product installation.
+﻿# ZIP transport regression; fixtures only, never a product installation.
 #requires -Version 5.1
 param([Parameter(Mandatory)][string]$QaRoot)
 $ErrorActionPreference='Stop'
@@ -31,18 +31,18 @@ foreach($level in $levels){
         if($zip.Entries.Count -ne $expected.Count){throw 'ZIP member count changed'}
         foreach($entry in $zip.Entries){
             if(-not $expected.ContainsKey($entry.FullName) -or $entry.FullName.EndsWith('/')){throw 'ZIP member changed or directory entry emitted'}
-            $input=$entry.Open();$memory=[IO.MemoryStream]::new()
-            try{$input.CopyTo($memory);$actual=$memory.ToArray()}
-            finally{$input.Dispose();$memory.Dispose()}
+            $readStream=$entry.Open();$memory=[IO.MemoryStream]::new()
+            try{$readStream.CopyTo($memory);$actual=$memory.ToArray()}
+            finally{$readStream.Dispose();$memory.Dispose()}
             if([Convert]::ToBase64String($actual) -cne [Convert]::ToBase64String($expected[$entry.FullName])){throw 'ZIP bytes changed'}
         }
     }finally{$zip.Dispose()}
     # Compression method remains Deflate, supported by the existing Rust extractor.
-    $input=[IO.File]::OpenRead($archive);$reader=[IO.BinaryReader]::new($input)
+    $readStream=[IO.File]::OpenRead($archive);$reader=[IO.BinaryReader]::new($readStream)
     try{
         if($reader.ReadUInt32() -ne 0x04034b50){throw 'ZIP local header missing'}
-        $input.Position=8
+        $readStream.Position=8
         if($reader.ReadUInt16() -ne 8){throw 'ZIP no longer uses Deflate'}
-    }finally{$reader.Dispose();$input.Dispose()}
+    }finally{$reader.Dispose();$readStream.Dispose()}
 }
 'PASS ZIP: invalid/unavailable requests create no archive; available levels preserve members and bytes, without directory records.'

@@ -1,4 +1,4 @@
-# Repository-only packaging helpers. Never copied into an installed generation.
+﻿# Repository-only packaging helpers. Never copied into an installed generation.
 #requires -Version 5.1
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'

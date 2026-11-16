@@ -1,4 +1,4 @@
-# Runs entirely under an injected QA root; no release is published.
+﻿# Runs entirely under an injected QA root; no release is published.
 #requires -Version 5.1
 param([Parameter(Mandatory)][string]$QaRoot,[string]$Verifier,[string]$ServicesExecutable,[string]$PackageVerifier)
 $ErrorActionPreference='Stop'

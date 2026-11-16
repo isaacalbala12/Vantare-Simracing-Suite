@@ -48,8 +48,11 @@ pub(super) fn view(
                 let mut layer = el()
                     .key(format!("standings-row-{}", row.id.0))
                     .size(plan.width, style.geometry.row_height)
-                    .opacity(pose.alpha * if missing { 0.45 } else { 1.0 })
                     .pin(Some(0.0), Some(y + pose.offset), None, None);
+                let alpha = pose.alpha * if missing { 0.45 } else { 1.0 };
+                if alpha != 1.0 {
+                    layer = layer.opacity(alpha);
+                }
                 for node in p.nodes.drain(first..) {
                     layer = layer.child(node);
                 }

@@ -66,6 +66,25 @@ impl Motion {
             self.settle();
         }
     }
+    /// Coloca las filas en su sitio sin FLIP, como `Motion::snap` de GPUI cuando
+    /// solo cambian las opciones sobre el mismo tablero.
+    pub fn snap(&mut self, targets: &[(CarId, f32)], clock: f64) {
+        self.seeded = true;
+        let visible: HashSet<_> = targets.iter().map(|(id, _)| *id).collect();
+        self.rows.retain(|id, _| visible.contains(id));
+        for &(id, top) in targets {
+            let row = self.rows.entry(id).or_insert_with(|| Channels {
+                top,
+                flip: Tween::fixed(0.0),
+                fade: Tween::fixed(1.0),
+                flip_end: clock,
+                fade_end: clock,
+            });
+            row.top = top;
+            row.flip = Tween::fixed(0.0);
+            row.flip_end = clock;
+        }
+    }
     pub fn sample(&self, clock: f64) -> Frame {
         self.rows
             .iter()
@@ -98,6 +117,8 @@ impl Motion {
         for row in self.rows.values_mut() {
             row.flip = Tween::fixed(0.0);
             row.fade = Tween::fixed(1.0);
+            row.flip_end = 0.0;
+            row.fade_end = 0.0;
         }
     }
 }

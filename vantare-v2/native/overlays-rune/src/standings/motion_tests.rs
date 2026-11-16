@@ -1,7 +1,11 @@
 use super::painting_tests::{config, paint};
 use super::*;
 use rune::Runtime;
-use vantare_domain::{CarId, Quality::Reliable, widget_settings::look::Tone};
+use vantare_domain::{
+    CarId,
+    Quality::Reliable,
+    widget_settings::look::{Accent, Tone},
+};
 
 fn photo() -> Snapshot {
     super::tests::named_photos()
@@ -216,5 +220,95 @@ fn scene_changes_without_a_sequence_change_animate_but_metadata_does_not_restart
             .iter()
             .any(|e| e.text.as_deref() == Some("ESPERANDO AL SIMULADOR"))
     );
+    bounds(&mut rt);
+}
+#[test]
+fn changing_only_options_snaps_without_animating_a_flip() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let mut input = photo();
+    swap(&mut input);
+    let id = input.state.cars[0].id;
+    assert!(rt.update_if(|s, _| s.update(&input, 0.0).build));
+    rt.frame(0.080);
+    assert!(
+        rt.wake_deadline().is_some(),
+        "el FLIP necesita reloj a 80 ms"
+    );
+    assert!(rt.update_if(|s, _| {
+        s.settings.accent = Accent::Amber;
+        s.update(&input, 0.080).build
+    }));
+    rt.frame(0.020);
+    near(row(&rt, id).rect[1], target(&rt, id));
+    assert!(
+        rt.wake_deadline().is_none(),
+        "solo cambian las opciones: snap sin reloj"
+    );
+    bounds(&mut rt);
+}
+#[test]
+fn a_row_leaving_mid_flip_releases_the_clock() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let mut input = photo();
+    swap(&mut input);
+    assert!(rt.update_if(|s, _| s.update(&input, 0.0).build));
+    rt.frame(0.080);
+    assert!(rt.wake_deadline().is_some());
+    input.state.source_state = SourceState::Lost;
+    assert!(rt.update_if(|s, _| s.update(&input, 0.080).build));
+    rt.frame(0.020);
+    assert!(
+        rt.wake_deadline().is_none(),
+        "la fila saliente no deja reloj"
+    );
+    bounds(&mut rt);
+}
+#[test]
+fn a_row_that_leaves_and_returns_fades_in_again() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let input = photo();
+    let id = input.state.cars[0].id;
+    let mut gone = input.clone();
+    gone.state.source_state = SourceState::Lost;
+    assert!(rt.update_if(|s, _| s.update(&gone, 0.010).build));
+    assert!(rt.update_if(|s, _| s.update(&input, 0.020).build));
+    rt.frame(0.020);
+    near(row(&rt, id).opacity, 0.0);
+    rt.frame(0.110);
+    near(row(&rt, id).opacity, 0.5);
+    rt.frame(0.111);
+    near(row(&rt, id).opacity, 1.0);
+    assert!(rt.wake_deadline().is_none());
+    bounds(&mut rt);
+}
+#[test]
+fn an_entry_and_a_reorder_animate_together() {
+    let mut rt = runtime("expanded", Tone::Neo);
+    let mut input = photo();
+    let id = input.state.cars[0].id;
+    swap(&mut input);
+    let mut added = input.state.cars[0].clone();
+    added.id = CarId(999);
+    added.position = Reliable(8);
+    added.class_position = Reliable(8);
+    added.driver.name = "Piloto nuevo".into();
+    input.state.cars.push(added);
+    assert!(rt.update_if(|s, _| s.update(&input, 0.0).build));
+    rt.frame(0.055);
+    near(row(&rt, CarId(999)).opacity, 0.25);
+    let top = target(&rt, id);
+    assert!(
+        (row(&rt, id).rect[1] - top).abs() > 1.0,
+        "la reordenación sigue viva a 55 ms"
+    );
+    rt.frame(0.165);
+    near(row(&rt, CarId(999)).opacity, 1.0);
+    assert!(
+        rt.wake_deadline().is_some(),
+        "el FLIP continúa tras el fundido"
+    );
+    rt.frame(0.101);
+    near(row(&rt, id).rect[1], top);
+    assert!(rt.wake_deadline().is_none());
     bounds(&mut rt);
 }

@@ -41,13 +41,13 @@ pub(crate) struct SessionAlerts {
 }
 impl SessionAlerts {
     pub fn new(settings: &Settings, prefs: Preferences, clock: f64) -> Self {
+        let wall = wall_base(clock, vantare_ipc::control::wall_ms().unwrap_or(0));
+        Self::with_wall(settings, prefs, wall)
+    }
+    /// Deterministic constructor: the tests hand the wall base instead of reading a clock.
+    fn with_wall(settings: &Settings, prefs: Preferences, wall: u64) -> Self {
         let settings = settings.normalized();
         let options = options(&settings);
-        // Wall milliseconds are what a calendar compares; the runtime clock already ran,
-        // so its offset is subtracted here and added back in `now`.
-        let wall = vantare_ipc::control::wall_ms()
-            .unwrap_or(0)
-            .saturating_sub((clock.max(0.0) * 1000.0) as u64);
         let view = View::default();
         let initial = scene::sample(&settings, &view, None, false, 1.0);
         let painter = render::Painter::new(&initial, &settings.style);
@@ -195,6 +195,13 @@ impl SessionAlerts {
     }
 }
 
+/// Wall milliseconds are what a calendar compares. The runtime clock already ran when the
+/// widget is built, so its offset is discounted here and added back in `now`; the host
+/// brings the wall reading in production and the tests inject their own.
+fn wall_base(clock: f64, wall_ms: u64) -> u64 {
+    wall_ms.saturating_sub((clock.max(0.0) * 1000.0) as u64)
+}
+
 fn options(settings: &Settings) -> Options {
     Options {
         thresholds: settings.thresholds.clone(),
@@ -281,8 +288,9 @@ mod tests {
     fn settings() -> Stored {
         Stored::default()
     }
+    /// No real clock: the wall base is zero, so `now` is exactly the runtime clock.
     fn widget() -> SessionAlerts {
-        SessionAlerts::new(&settings(), Preferences::default(), 0.0)
+        SessionAlerts::with_wall(&settings(), Preferences::default(), 0)
     }
     fn companion() -> Stored {
         Stored {
@@ -393,13 +401,20 @@ mod tests {
             .collect()
     }
 
+    /// Deterministic: no test here reads the real clock, so the second boundary of the
+    /// machine never depends on when the suite happens to run.
     #[test]
-    fn the_wall_base_discounts_the_runtime_clock() {
-        let widget = SessionAlerts::new(&settings(), Preferences::default(), 5.0);
-        let now = widget.now(5.0);
-        let wall = vantare_ipc::control::wall_ms().unwrap_or(0);
-        assert!(now <= wall, "la hora de pared no se adelanta");
-        assert!(wall - now <= 2_000, "ni se queda atrás: {}", wall - now);
+    fn the_wall_base_discounts_the_runtime_clock_and_now_adds_it_back() {
+        let widget = SessionAlerts::with_wall(&settings(), Preferences::default(), 1_000);
+        assert_eq!(
+            widget.now(0.0),
+            1_000,
+            "el reloj del runtime suma a la base"
+        );
+        assert_eq!(widget.now(2.5), 3_500);
+        assert_eq!(wall_base(5.0, 10_000), 5_000, "la base descuenta el reloj");
+        assert_eq!(wall_base(0.0, 10_000), 10_000);
+        assert_eq!(wall_base(20.0, 1_000), 0, "nunca por debajo de cero");
     }
 
     #[test]
@@ -432,10 +447,26 @@ mod tests {
         let mut runtime = opened();
         assert!(runtime.wake_deadline().is_some(), "hay reloj con aviso");
         for second in 1..=2 {
+            let before = runtime
+                .state
+                .visual
+                .notice
+                .as_ref()
+                .map(|n| n.value.clone());
             push(photo(f64::from(second)));
             assert!(
                 rendered_frame(&mut runtime, 1.0),
-                "la cuenta atrás cambia en el segundo {second}"
+                "una imagen en el segundo {second}"
+            );
+            let after = runtime
+                .state
+                .visual
+                .notice
+                .as_ref()
+                .map(|n| n.value.clone());
+            assert_ne!(
+                before, after,
+                "la cuenta atrás avanza: {before:?} -> {after:?}"
             );
             // Tras un dato nuevo el widget puede asentarse; después se queda quieto.
             rendered_frame(&mut runtime, 0.1);
@@ -579,7 +610,11 @@ mod tests {
         let _fonts = rune::text::with_families("Inter", "Inter");
         for settings in [settings(), companion()] {
             let size = scene::size(&settings);
-            let mut runtime = host(SessionAlerts::new(&settings, Preferences::default(), 0.0));
+            let mut runtime = host(SessionAlerts::with_wall(
+                &settings,
+                Preferences::default(),
+                0,
+            ));
             runtime.frame(0.0);
             push(photo(0.0));
             rendered_frame(&mut runtime, 0.0);

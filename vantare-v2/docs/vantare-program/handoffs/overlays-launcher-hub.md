@@ -1,3 +1,16 @@
+## VANTA-144 · Baseline y marca Neutro del Relative (16/11/2026)
+
+Corrección visible aprobada por raíz y sub-orquestador: solo «VANTARE» y el
+título del banner bajan 1 px, como Kit::brand/Kit::band → Kit::label de GPUI.
+La marca usa el desplazamiento sin alterar el flujo flex; el banner, su pin.
+Título/rango de cabecera (Body), limitador (Mono), Posición y símbolo intactos.
+El color de la marca Neutro pasa de #8e8587 a variant.header_color (#8c8c8c);
+Neo ya coincide. Helper local condicional por Face, sin cambiar label global.
+La plantilla recuerda que cada texto Display aplica display_baseline.
+Test CPU de la vista completa en ambos tonos: rect/pin reales, vecinos y color.
+Gates y CI en el PR draft; comparación visual pendiente en el PC (#2365).
+Sin gráficos en el servidor, cambios de arquitectura, release ni estado de Plane.
+
 ## VANTA-144 · Cola de fotos aceptadas del host Rune (16/11/2026)
 
 Esquema y condiciones aprobados por raíz y sub-orquestador, tras #2392:

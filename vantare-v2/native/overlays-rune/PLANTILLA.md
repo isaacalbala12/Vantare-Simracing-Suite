@@ -21,6 +21,9 @@ reconstrucción (`build`) de cambio de píxeles (`pixels`).
 Copiar: `Painters`, `Meter`, test `rendered_frame`, primitivas `vantare::paint`,
 `Tween` finito y política de movimiento reducido.
 
+Todo texto Display suma `display_baseline`; el helper `label()` no lo hace solo.
+Conservar la cara que usa GPUI: Body y Mono no reciben ese desplazamiento.
+
 No copiar: struct monolítico, `build` calculado a mano ni reloj permanente.
 Comparar la estructura anterior y la nueva en un único sitio; mantener los
 valores de tamaño fijo en Live. Un pulso de tráfico es una animación explícita,

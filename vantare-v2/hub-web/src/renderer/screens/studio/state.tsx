@@ -93,6 +93,14 @@ function useStateValue() {
               revision: (response.value as StudioView).revision,
             });
           }
+          if (response.method === "studio.duplicate") {
+            setSelected(response.added);
+            setAdded({
+              id: response.added,
+              name: "",
+              revision: response.value.revision,
+            });
+          }
           if (response.method === "studio.add") {
             const item = response.value.instances.find(
               (item) => item.id === response.added,
@@ -136,7 +144,28 @@ function useStateValue() {
               break;
           }
         }
-        setFailure({ message, request });
+        if (
+          request.method === "studio.duplicate" &&
+          (!(error instanceof HostFailure) ||
+            error.detail.kind === "studioConflict" ||
+            error.detail.kind === "coreUnavailable" ||
+            error.detail.kind === "io")
+        ) {
+          // Read the current document after an uncertain write. Never replay it.
+          if (
+            !(error instanceof HostFailure) ||
+            error.detail.kind !== "studioConflict"
+          )
+            message = t.duplicateUncertain;
+          try {
+            const fresh = await client.request({ method: "studio.get" });
+            if (alive.current && fresh.method === "studio.get")
+              update(fresh.value);
+          } catch {
+            // Keep the original failure; reading did not confirm duplication.
+          }
+        }
+        if (alive.current) setFailure({ message, request });
       } finally {
         busy.current = false;
         if (alive.current) setPending(false);

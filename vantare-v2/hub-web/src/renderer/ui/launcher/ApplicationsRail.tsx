@@ -1,5 +1,6 @@
 import { useId } from "react";
 import type {
+  CatalogView,
   LauncherView,
   ProfileOption,
 } from "../../../contract/generated/contract";
@@ -13,6 +14,7 @@ import { oneOf } from "../../../contract/validation-common";
 import { Icon } from "../../assets/icons/Icon";
 import { launcherText as text } from "../../i18n/launcher";
 import { actionText } from "../../i18n/launcher-actions";
+import { appText } from "../../i18n/launcher-apps";
 import { Button } from "../Button";
 import { Select, Switch } from "../Forms";
 import { AppMark } from "./Profiles";
@@ -58,12 +60,14 @@ export function LauncherApplicationsRail({
   onApplications,
   onOption,
   pending = false,
+  lastScan,
 }: {
   view: LauncherView;
   selected?: string;
   onApplications?: (create?: boolean) => void;
   onOption?: (id: string, value: ProfileOption) => void;
   pending?: boolean;
+  lastScan?: CatalogView["lastScan"];
 }) {
   const reasonId = useId();
   const headingId = useId();
@@ -110,6 +114,11 @@ export function LauncherApplicationsRail({
           </button>
         </div>
       </section>
+      {lastScan && lastScan.warningCount > 0 && (
+        <div role="status" className="v-launcher-scan-warning">
+          {appText.scanWarnings(lastScan.warningCount)}
+        </div>
+      )}
       {options && (
         <section aria-labelledby={headingId}>
           <header>

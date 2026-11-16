@@ -90,6 +90,9 @@ export function ApplicationCatalog({
   onRetry: () => void;
   onDiscard: () => void;
 }) {
+  const completedAt = value.lastScan
+    ? new Date(value.lastScan.completedAtMs)
+    : null;
   const normalized = query.trim().toLowerCase();
   const apps = value.apps
     .filter((app) =>
@@ -153,10 +156,31 @@ export function ApplicationCatalog({
       >
         <header>
           <h2>{text.title}</h2>
-          <span>
-            {value.apps.some((app) => app.found)
-              ? text.detectedCount(value.apps.filter((app) => app.found).length)
-              : text.catalogCount(value.apps.length)}
+          <span className="v-launcher-scan-meta">
+            <span>
+              {text.lastScan}{" "}
+              {completedAt ? (
+                <time dateTime={completedAt.toISOString()}>
+                  {completedAt.toLocaleString("es-ES", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hourCycle: "h23",
+                  })}
+                </time>
+              ) : (
+                text.lastScanUnknown
+              )}
+            </span>
+            <span>
+              {value.apps.some((app) => app.found)
+                ? text.detectedCount(
+                    value.apps.filter((app) => app.found).length,
+                  )
+                : text.catalogCount(value.apps.length)}
+            </span>
           </span>
         </header>
         <div className="v-launcher-catalog-body">

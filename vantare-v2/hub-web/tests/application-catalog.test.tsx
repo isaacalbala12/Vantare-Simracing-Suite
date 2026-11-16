@@ -10,7 +10,17 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import type { CatalogView } from "../src/contract/generated/contract";
 import { HostProvider } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { appText as text } from "../src/renderer/i18n/launcher-apps";
@@ -48,6 +58,10 @@ vi.mock("../src/mock/host", async (original) => {
     },
   };
 });
+// Load the asynchronous local fixture before timing component interactions.
+beforeAll(async () => {
+  await import("../src/mock/host");
+});
 beforeEach(() =>
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -65,6 +79,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
+function CatalogScreen() {
+  const [catalog, setCatalog] = useState<CatalogView>();
+  return <Applications catalog={catalog} setCatalog={setCatalog} />;
+}
 function mount(scene = "launcher-aplicaciones") {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   const cache = new QueryClient({
@@ -79,7 +97,7 @@ function mount(scene = "launcher-aplicaciones") {
             <TooltipProvider>
               <WindowDialogProvider>
                 <ProfileEditorProvider>
-                  <Applications />
+                  <CatalogScreen />
                 </ProfileEditorProvider>
               </WindowDialogProvider>
               <ToastViewport closeLabel={text.cancel} />
@@ -360,3 +378,65 @@ describe("application catalog", () => {
     );
   });
 });
+
+it.each([false, true])(
+  "reloads metadata on an unchanged Launcher event, failure=%s",
+  async (failure) => {
+    const { launcherKey } = await import(
+      "../src/renderer/screens/launcher/state"
+    );
+    const fixture = (await import("../fixtures/launcher-apps.json")).default;
+    const listeners = vi.spyOn(Client.prototype, "listen");
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: text.edit("OBS Studio") });
+    // Finish bootstrap RPCs before injecting a later event through the listener.
+    await act(async () => {
+      await Promise.all(requests.mock.results.map((result) => result.value));
+    });
+    const current =
+      caches[0].getQueryData<
+        import("../src/contract/generated/contract").LauncherView
+      >(launcherKey);
+    if (!current) throw Error("Launcher initial snapshot");
+    const readsBefore = requests.mock.calls.filter(
+      ([request]) => request.method === "launcher.catalog",
+    ).length;
+    if (failure)
+      requests.mockRejectedValueOnce(new HostFailure({ kind: "io" }));
+    else
+      requests.mockResolvedValueOnce({
+        method: "launcher.catalog",
+        value: {
+          ...fixture,
+          apps: fixture.apps.map((app) =>
+            app.id === "obs" ? { ...app, name: "OBS actualizado" } : app,
+          ),
+          lastScan: { completedAtMs: 1700000000222, warningCount: 2 },
+        },
+      });
+    await act(async () => {
+      for (const [receive] of listeners.mock.calls)
+        receive({
+          kind: "event",
+          event: { topic: "launcher", value: current },
+        });
+    });
+    if (failure) {
+      expect(await screen.findByText(text.failed)).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: text.edit("OBS Studio") }),
+      ).toBeTruthy();
+    } else
+      expect(
+        await screen.findByRole("button", {
+          name: text.edit("OBS actualizado"),
+        }),
+      ).toBeTruthy();
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "launcher.catalog",
+      ),
+    ).toHaveLength(readsBefore + 1);
+  },
+);

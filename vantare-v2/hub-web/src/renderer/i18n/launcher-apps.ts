@@ -1,4 +1,8 @@
 export const appText = {
+  lastScan: "Última búsqueda:",
+  lastScanUnknown: "desconocida",
+  scanWarnings: (count: number) =>
+    `${count} ${count === 1 ? "aviso" : "avisos"} en la última búsqueda; revisa las rutas en Aplicaciones`,
   argumentResetTitle: "Descartar argumentos de la aplicación",
   argumentResetMessage: (profiles: number) =>
     `Al cambiar el programa se eliminarán las opciones personalizadas de esta aplicación y de ${profiles} ${profiles === 1 ? "perfil" : "perfiles"}. Puedes cancelar y conservarlas.`,

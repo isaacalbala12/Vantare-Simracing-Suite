@@ -28,6 +28,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::FastestLap(_) => Some(<crate::fastest_lap::FastestLap as Widget>::new),
         Settings::Radar(_) => Some(<crate::radar::Radar as Widget>::new),
         Settings::HeadToHead(_) => Some(<crate::head_to_head::HeadToHead as Widget>::new),
+        Settings::SessionAlerts(_) => Some(<crate::session_alerts::SessionAlerts as Widget>::new),
         Settings::Relative(s) if s.design_system == Look::Vantare => {
             Some(<Relative as Widget>::new)
         }

@@ -4,8 +4,10 @@
 Devuelve dos decisiones cerradas sobre el mismo conjunto de rutas cambiadas:
 
 - ``native``: *todos* los cambios caen en zonas sin efecto sobre el producto
-  nativo (documentación, app web retirada, Supabase y tooling) ⇒ no hacen falta
-  los gates nativos. Cualquier ruta desconocida, vacía o ambigua ⇒ ``true``.
+  nativo (documentación, app web retirada, Supabase y tooling ajeno al pipeline)
+  ⇒ no hacen falta los gates nativos. Cualquier ruta desconocida, vacía o
+  ambigua ⇒ ``true``. El tooling del pipeline (``.github/scripts/``) no se
+  ignora: cambia cómo se compila y prueba.
 - ``telemetria``: *algún* cambio toca ``native/runtime/``, ``native/domain/``,
   ``native/ipc/`` o ``testdata/``, que son las zonas que obligan a repetir el
   corpus de grabaciones reales (AGENTS.md, #1498). Sin rutas o con cualquier
@@ -35,8 +37,8 @@ from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 # Zonas sin efecto sobre el producto nativo (Rust). El orden no importa.
+# `.github/scripts/` no está aquí: cambia cómo se compila y prueba (CI).
 IGNORED_PREFIXES = (
-    ".github/scripts/",
     "apps/",
     "docs/",
     "mockups/",

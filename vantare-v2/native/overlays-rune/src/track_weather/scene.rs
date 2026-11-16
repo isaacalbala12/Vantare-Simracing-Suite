@@ -31,13 +31,11 @@ impl Layout {
 pub struct Scene {
     pub layout: Layout,
     pub status: Status,
-    /// Aviso de la fuente ya en el idioma del usuario (`""` cuando no hay).
-    pub status_text: &'static str,
     /// Etiqueta y valor ya formateados por domain, en el orden del productivo.
     pub metrics: Vec<Metric>,
     /// Etiqueta de sesión ya formateada por domain (mayúsculas incluidas).
     pub session: String,
-    /// Rumbo del viento en radianes (0 = norte, sentido horario).
+    /// Rumbo del viento en radianes (0 = norte, sentido horario); solo en la tarjeta.
     pub wind_heading: Option<f32>,
     /// Humedad de pista 0–100 desde `ViewModel::wet_percent`; `None` sin dato.
     pub wet: Option<f32>,
@@ -54,6 +52,12 @@ pub fn sample(
     session: &str,
     wind_heading: Option<f32>,
 ) -> Scene {
+    // La columna no pinta la flecha: sin rumbo no hay repintado por giro.
+    let wind_heading = if layout == Layout::Wide {
+        wind_heading
+    } else {
+        None
+    };
     let wet = vm.wet_percent.map(f32::from);
     let banner = if vm.status != Status::Ready {
         vm.status_text
@@ -71,7 +75,6 @@ pub fn sample(
     Scene {
         layout,
         status: vm.status,
-        status_text: vm.status_text,
         metrics: vm.metrics.clone(),
         session: session.to_owned(),
         wind_heading,
@@ -130,7 +133,7 @@ mod tests {
         let scene = sample(&vm(), Layout::Wide, Language::Es, "CARRERA", Some(0.5));
         assert_eq!(scene.layout, Layout::Wide);
         assert_eq!(scene.status, Status::Ready);
-        assert_eq!(scene.status_text, "");
+        assert_eq!(scene.banner, "PISTA MOJADA");
         assert_eq!(scene.session, "CARRERA");
         assert_eq!(scene.wind_heading, Some(0.5));
         assert_eq!(scene.wet, Some(25.0));
@@ -149,9 +152,16 @@ mod tests {
         missing.wet_percent = None;
         let scene = sample(&missing, Layout::Vertical, Language::Es, "", None);
         assert_eq!(scene.status, Status::Missing);
-        assert_eq!(scene.status_text, "SIN DATOS");
+        assert_eq!(scene.banner, "SIN DATOS");
         assert_eq!(scene.wet, None);
         assert!(scene.metrics.is_empty());
+    }
+
+    #[test]
+    fn the_column_drops_the_heading_so_it_never_repaints_for_the_arrow() {
+        let scene = sample(&vm(), Layout::Vertical, Language::Es, "", Some(0.5));
+        assert_eq!(scene.wind_heading, None);
+        assert_eq!(scene.layout, Layout::Vertical);
     }
 
     #[test]

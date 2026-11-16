@@ -68,6 +68,9 @@ export const studioText = {
   scenesSoon: "Escenas de prueba: disponible cuando las vistas sean en vivo",
   hiddenStage: "Oculto: no se dibuja en pista",
   showNow: "Mostrar",
+  duplicateUnconfirmed: "Duplicación no confirmada",
+  duplicateUncertain:
+    "No se ha podido confirmar la duplicación. Revisa el diseño antes de volver a duplicar.",
   notSaved: "No se ha guardado",
   readOnly: "Solo lectura",
   emptyList: "Aún no hay overlays en este layout.",

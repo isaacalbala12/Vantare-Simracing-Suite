@@ -25,6 +25,22 @@ function png(width = 2, height = 2) {
   return image;
 }
 describe("visual comparison", () => {
+  it("declares the QA close margin before the capture loop starts", () => {
+    const source = readFileSync(
+      new URL("../scripts/visual-diff.ts", import.meta.url),
+      "utf8",
+    );
+    const declaration = source.indexOf("const QA_CLOSE_MARGIN_MS");
+    const loop = source.indexOf("for (const scheme of schemes)");
+    const firstCapture = source.indexOf("capture(adapter");
+    expect(declaration).toBeGreaterThan(-1);
+    expect(loop).toBeGreaterThan(-1);
+    expect(firstCapture).toBeGreaterThan(-1);
+    // The top-level loop calls capture() before this module finishes
+    // initializing: a later const would be in its temporal dead zone.
+    expect(declaration).toBeLessThan(loop);
+    expect(declaration).toBeLessThan(firstCapture);
+  });
   it("accepts a live two-theme sweep and a supplied invalid single-theme capture", () => {
     expect(
       captureOnlyMode({

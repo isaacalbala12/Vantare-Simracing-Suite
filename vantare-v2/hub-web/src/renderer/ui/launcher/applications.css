@@ -57,6 +57,19 @@
 .v-launcher-catalog-body {
   padding: 21px;
 }
+.v-launcher-scan-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.v-launcher-scan-warning {
+  padding: 14px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  color: var(--text-2);
+  font-size: 12.5px;
+}
 .v-launcher-app-rows {
   display: flex;
   flex-direction: column;

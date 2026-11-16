@@ -139,16 +139,7 @@ export function canResetColumns(
   session: ColumnSession,
 ) {
   const columns = contentColumns(settings, session);
-  return (
-    columns !== null &&
-    identities(columns, false) !== null &&
-    !columns.some(
-      (column) =>
-        column.format.display !== null ||
-        column.format.decimals !== null ||
-        (column.format.mode !== "" && column.format.mode !== "full"),
-    )
-  );
+  return columns !== null && identities(columns, false) !== null;
 }
 export function canEditColumns(
   settings: TableSettings,
@@ -170,5 +161,20 @@ export function resetColumns(
         ? defaults.practiceColumns
         : defaults.qualifyingColumns;
   const columns = identities(recipe, true);
-  return columns ? tablePatch(settings, session, columns) : null;
+  return columns
+    ? tablePatch(
+        settings,
+        session,
+        columns.map((column) => ({
+          ...column,
+          format: {
+            ...column.format,
+            mode: null,
+            ...(["lastLap", "bestLap"].includes(column.metric)
+              ? { display: null, decimals: null }
+              : {}),
+          },
+        })),
+      )
+    : null;
 }

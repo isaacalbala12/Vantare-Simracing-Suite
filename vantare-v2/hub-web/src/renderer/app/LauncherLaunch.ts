@@ -42,6 +42,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
     toast.add({ title, type: "warn" });
   };
   async function launch(profile?: string, baseRevision?: string) {
+    const favoriteRequest = profile === undefined;
     const current = cache.getQueryData<LauncherView>(["launcher"]) ?? snapshot;
     const status = cache.getQueryData<CoreStatus>(coreKey) ?? core;
     const selected = current?.profiles.find((item) => item.id === profile);
@@ -79,34 +80,43 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
       warn(reason ?? text.failed);
       return;
     }
+    if (favoriteRequest) {
+      if (!current) {
+        warn(text.loading);
+        return;
+      }
+      const favorite = current.profiles.find((item) => item.favorite);
+      if (!favorite) {
+        navigate("launcher");
+        toast.add({ title: t("shell.profileNeeded") });
+        return;
+      }
+      profile = favorite.id;
+      baseRevision = current.revision;
+    }
+    if (!profile || !baseRevision) {
+      warn(text.failed);
+      return;
+    }
     pending.current = true;
     setWaiting(true);
     try {
-      const reply = await launchRequest.request(
-        profile !== undefined && baseRevision !== undefined
-          ? { method: "launcher.launch", profile, baseRevision }
-          : { method: "launcher.favorite" },
-      );
+      const reply = await launchRequest.request({
+        method: "launcher.launchChecked",
+        profile,
+        baseRevision,
+      });
       if (!alive.current) return;
-      if (
-        reply.method !== "launcher.launch" &&
-        reply.method !== "launcher.favorite"
-      ) {
+      if (reply.method !== "launcher.launchChecked") {
         warn(text.failed);
         return;
       }
-      if (profile && reply.accepted)
+      if (!favoriteRequest)
         cache.setQueryData(["launcher", "selection"], profile);
       navigate("launcher");
-      if (profile) {
-        if (reply.accepted) toast.add({ title: text.sent });
-        else warn(text.failed);
-      } else
-        toast.add({
-          title: reply.accepted
-            ? t("shell.favoriteSent")
-            : t("shell.profileNeeded"),
-        });
+      toast.add({
+        title: favoriteRequest ? t("shell.favoriteSent") : text.sent,
+      });
     } catch (failure) {
       if (!alive.current) return;
       if (
@@ -115,7 +125,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
       ) {
         cache.setQueryData(["launcher"], failure.detail.current);
         warn(text.changed);
-      } else warn(profile ? text.failed : t("shell.favoriteFailed"));
+      } else warn(favoriteRequest ? t("shell.favoriteFailed") : text.failed);
     } finally {
       pending.current = false;
       if (alive.current) setWaiting(false);

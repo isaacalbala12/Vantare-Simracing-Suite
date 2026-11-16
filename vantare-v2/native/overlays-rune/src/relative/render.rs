@@ -818,6 +818,14 @@ fn car_row(state: &Painter, live: &RowLive) -> El {
     }
     root
 }
+fn display_top(style: &Style, face: Face, top: f32) -> f32 {
+    top + if matches!(face, Face::Display) {
+        style.fonts.display_baseline
+    } else {
+        0.0
+    }
+}
+
 fn header(state: &Painter, y: f32) -> El {
     let s = &state.style;
     let v = state.options.variant(s);
@@ -893,8 +901,9 @@ fn header(state: &Painter, y: f32) -> El {
                             s.brand.tracking,
                             600.0,
                         ))
-                        .color(s.colors.muted)
-                        .h(h),
+                        .color(v.header_color)
+                        .h(h)
+                        .offset(0.0, display_top(s, Face::Display, 0.0)),
                 ),
         );
     }
@@ -945,7 +954,12 @@ fn banner(state: &Painter) -> El {
                 s.fonts.banner_tracking,
                 600.0,
             ))
-            .pin(Some(pad), Some(0.0), None, None),
+            .pin(
+                Some(pad),
+                Some(display_top(s, Face::Display, 0.0)),
+                None,
+                None,
+            ),
         )
         .child(
             label(
@@ -1186,7 +1200,8 @@ fn footer(state: &Painter, y: f32, kind: Footer) -> El {
             s,
             &state.header[4],
             "footer-left",
-            width - 2.0 * pad,
+            // Sin mover el texto: la caja acaba en el borde interior derecho.
+            width - pad - left,
             g.footer_height,
             Face::Body,
             s.fonts.header,
@@ -1211,4 +1226,106 @@ fn footer(state: &Painter, y: f32, kind: Footer) -> El {
         )
         .pin(Some(pad), Some(top), None, None),
     )
+}
+
+#[cfg(test)]
+mod baseline_tests {
+    use super::*;
+    use rune::{Env, Runtime};
+    use vantare_domain::{
+        Quality,
+        widget_settings::{
+            look::{Look, Tone},
+            relative::Settings,
+        },
+    };
+
+    fn runtime(tone: Tone) -> Runtime<Painter> {
+        let settings = Settings {
+            design_system: Look::Vantare,
+            style: tone,
+            brand_visible: Some(true),
+            ..Default::default()
+        };
+        let mut snapshot = crate::testdata::snapshot();
+        let player = snapshot.state.player.expect("player").car;
+        snapshot
+            .state
+            .cars
+            .iter_mut()
+            .find(|car| car.id == player)
+            .expect("player car")
+            .in_pits = Quality::Reliable(true);
+        snapshot
+            .state
+            .player
+            .as_mut()
+            .expect("player")
+            .pit_limiter_active = Quality::Reliable(true);
+        let mut relative =
+            crate::relative::Relative::new(&settings, Preferences::default(), true, 0, 0.0);
+        relative.update(&snapshot, 0.0);
+        assert_eq!(relative.board.banner, Some(Banner::InPits));
+        assert!(relative.board.pit_limiter);
+        let painter = relative.painter;
+        let size = painter.size();
+        let mut rt = Runtime::with_text(
+            painter,
+            |painter, _| painter.view(),
+            (size.width, size.height),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        rt.frame(0.0);
+        rt
+    }
+
+    fn keyed<'a>(elements: &'a [rune::ElementInfo], key: &str) -> &'a rune::ElementInfo {
+        elements
+            .iter()
+            .find(|element| element.key.as_deref() == Some(key))
+            .expect("view element")
+    }
+
+    #[test]
+    fn brand_and_banner_have_gpui_baselines_and_variant_ink_in_the_actual_view() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        for tone in [Tone::Neo, Tone::Neutro] {
+            let rt = runtime(tone);
+            let elements = rt.elements();
+            let style = &rt.state.style;
+            let variant = rt.state.options.variant(style);
+            let header_y = rt
+                .state
+                .plan
+                .items
+                .iter()
+                .find_map(|(y, item)| matches!(item, Item::Header).then_some(*y))
+                .expect("header");
+            let brand = elements
+                .iter()
+                .find(|e| e.text.as_deref() == Some("VANTARE"))
+                .expect("brand");
+            assert_eq!(style.fonts.display_baseline, 1.0);
+            assert_eq!(brand.rect[1], header_y + 1.0);
+            assert_eq!(keyed(&elements, "banner-left").target[1], 1.0);
+            assert_eq!(keyed(&elements, "banner-left").rect[1], 1.0);
+            assert!(!variant.header_display);
+            for key in ["header-title", "header-range"] {
+                assert_eq!(keyed(&elements, key).rect[1], header_y, "Body stays put");
+            }
+            let header_h =
+                variant.header_height - if variant.header_rule > 0.0 { 6.0 } else { 0.0 };
+            assert_eq!(
+                keyed(&elements, "brand-symbol").rect[1],
+                header_y + (header_h - style.brand.symbol_height) / 2.0
+            );
+            assert_eq!(
+                keyed(&elements, "pit-limiter").target[1],
+                0.0,
+                "Mono stays put"
+            );
+            assert_eq!(brand.text_color, Some(variant.header_color));
+        }
+    }
 }

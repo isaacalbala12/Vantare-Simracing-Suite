@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import type {
   AppDraft,
   AppEditor,
@@ -90,6 +90,10 @@ export function ApplicationCatalog({
   onRetry: () => void;
   onDiscard: () => void;
 }) {
+  const scanHint = useId();
+  const completedAt = value.lastScan
+    ? new Date(value.lastScan.completedAtMs)
+    : null;
   const normalized = query.trim().toLowerCase();
   const apps = value.apps
     .filter((app) =>
@@ -134,9 +138,19 @@ export function ApplicationCatalog({
           onChange={(event) => onQuery(event.currentTarget.value)}
         />
         <div className="v-launcher-actions">
-          <Tooltip label={text.detectionBusy}>
+          <Tooltip
+            id={pending || value.scanning ? scanHint : undefined}
+            label={pending || value.scanning ? text.detectionBusy : text.detect}
+          >
             <span>
-              <Button disabled={pending || value.scanning} onClick={onScan}>
+              <Button
+                disabled={pending || value.scanning}
+                focusableWhenDisabled={pending || value.scanning}
+                aria-describedby={
+                  pending || value.scanning ? scanHint : undefined
+                }
+                onClick={onScan}
+              >
                 {value.scanning ? text.detecting : text.detect}
               </Button>
             </span>
@@ -153,10 +167,31 @@ export function ApplicationCatalog({
       >
         <header>
           <h2>{text.title}</h2>
-          <span>
-            {value.apps.some((app) => app.found)
-              ? text.detectedCount(value.apps.filter((app) => app.found).length)
-              : text.catalogCount(value.apps.length)}
+          <span className="v-launcher-scan-meta">
+            <span>
+              {text.lastScan}{" "}
+              {completedAt ? (
+                <time dateTime={completedAt.toISOString()}>
+                  {completedAt.toLocaleString("es-ES", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hourCycle: "h23",
+                  })}
+                </time>
+              ) : (
+                text.lastScanUnknown
+              )}
+            </span>
+            <span>
+              {value.apps.some((app) => app.found)
+                ? text.detectedCount(
+                    value.apps.filter((app) => app.found).length,
+                  )
+                : text.catalogCount(value.apps.length)}
+            </span>
           </span>
         </header>
         <div className="v-launcher-catalog-body">

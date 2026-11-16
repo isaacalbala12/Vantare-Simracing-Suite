@@ -7,6 +7,7 @@ use crate::vantare::{
 };
 use gpui::{App, PathBuilder, point, px};
 use std::sync::Arc;
+pub use vantare_domain::delta_trace::Details;
 use vantare_domain::{
     Snapshot,
     delta_trace::{Sample, Trace, ViewModel},
@@ -210,12 +211,6 @@ fn paint(
 
 pub use vantare_domain::widget_settings::delta_trace::Settings;
 
-
-
-
-
-
-
 fn paint_trace(samples: &[Sample], invalid: bool, window: &mut Window) {
     let (ox, oy) = text::origin();
     let mut connected = false;
@@ -349,67 +344,6 @@ fn paint_lap(history: &lap::History, invalid: bool, window: &mut Window) {
     }
 }
 
-#[derive(Clone, Default, PartialEq)]
-struct Details {
-    invalid: bool,
-    header: String,
-    position: String,
-    sectors: [Option<f64>; 3],
-    sector_text: [String; 3],
-}
-impl Details {
-    fn from(snapshot: &Snapshot, prefs: Preferences, board: &vantare_domain::delta::Board) -> Self {
-        let es = prefs.language == vantare_domain::format::Language::Es;
-        let car = snapshot.state.player_car();
-        let best = vantare_domain::format::lap_time(board.reference_lap_s);
-        let reference = match (board.reference, es) {
-            (vantare_domain::delta::Reference::Optimal, true) => "ÓPTIMA",
-            (vantare_domain::delta::Reference::Optimal, false) => "OPTIMAL",
-            (vantare_domain::delta::Reference::Leader, true) => "LÍDER DE CLASE",
-            (vantare_domain::delta::Reference::Leader, false) => "CLASS LEADER",
-            (_, true) => "TU MEJOR",
-            (_, false) => "YOUR BEST",
-        };
-        let progress = car
-            .and_then(|c| c.lap_distance_m.current())
-            .zip(snapshot.state.session.track_length_m.current())
-            .filter(|(d, l)| d.is_finite() && l.is_finite() && **l > 0.0 && **d >= 0.0 && d <= l)
-            .map(|(d, l)| d / l * 100.0);
-        let sectors = std::array::from_fn(|i| {
-            car.filter(|_| board.reference != vantare_domain::delta::Reference::Leader)
-                .and_then(|c| c.current_sectors_s.get(i).zip(c.best_sectors_s.get(i)))
-                .and_then(|(a, b)| a.current().zip(b.current()))
-                .filter(|(a, b)| a.is_finite() && b.is_finite() && **a > 0.0 && **b > 0.0)
-                .map(|(a, b)| a - b)
-                .filter(|v| v.is_finite())
-        });
-        Self {
-            invalid: snapshot
-                .state
-                .player
-                .is_some_and(|p| p.lap_invalid.current() == Some(&true)),
-            header: if es {
-                format!("HISTORIAL DE DELTA · VS {reference} {best}")
-            } else {
-                format!("DELTA HISTORY · VS {reference} {best}")
-            },
-            position: car
-                .and_then(|c| c.laps.current())
-                .zip(progress)
-                .map_or_else(String::new, |(lap, p)| {
-                    format!(
-                        "{} {} · {p:.0} %",
-                        if es { "VUELTA" } else { "LAP" },
-                        lap + 1
-                    )
-                }),
-            sectors,
-            sector_text: sectors
-                .map(|delta| delta.map_or_else(|| "—".into(), |v| format!("{v:+.3}"))),
-        }
-    }
-}
-
 pub(crate) struct Widget {
     settings: Settings,
     vm: ViewModel,
@@ -442,17 +376,8 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let reference = match self.settings.reference.as_str() {
-            "optimal" => vantare_domain::delta::Reference::Optimal,
-            "leader" => vantare_domain::delta::Reference::Leader,
-            _ => vantare_domain::delta::Reference::PersonalBest,
-        };
-        let mut board = vantare_domain::delta::project_reference(snapshot, prefs, reference);
-        if reference != vantare_domain::delta::Reference::PersonalBest
-            && board.reference_lap_s.is_none()
-        {
-            board.delta = vantare_domain::Quality::Unavailable;
-        }
+        let board =
+            vantare_domain::delta_trace::project_board(snapshot, prefs, &self.settings.reference);
         let details_changed = replace_if_changed(
             Arc::make_mut(&mut self.details),
             Details::from(snapshot, prefs, &board),
@@ -504,8 +429,6 @@ impl Widget {
 mod performance_tests;
 #[cfg(test)]
 mod render_tests;
-
-
 
 #[cfg(test)]
 mod tests {

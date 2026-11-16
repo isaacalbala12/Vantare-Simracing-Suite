@@ -1,3 +1,137 @@
+## VANTA-138 · #2028: Electron usa lanzamiento checked (retoques de review)
+
+PR #2437, rama `vantareapp/isa-2028-electron-checked`, rebasada sobre nightly
+`4fdcee334` tras fusionarse #2432. Lógica intacta; conflicto solo del handoff,
+conservando ambos textos. No cambia contrato ni versión.
+Inicio, Launcher, rail, paleta y favorito usan checked con cuenta capturada.
+El favorito es el primero marcado en el orden de la vista; la UI no copia el
+orden de Rust. Se eliminan ramas imposibles del único resultado Queued.
+`check-command-palette.ts` está activo desde web-a11y y espera launchChecked
+con armedGeneration. Las integraciones afirman globalmente que no se envía
+launcher.launch ni launcher.favorite, usando el observador existente del Client.
+Últimos gates: tipos de producto/scripts, lint, build y 165 tests dirigidos PASS.
+El barrido completo anterior dio 3.016 PASS; CI del nuevo head pendiente.
+No hay texto/estado visual nuevo, gráficos, merge, release ni preview propios.
+
+## VANTA-138 · #2184: escaneo y pasos antes de lanzar (fusionado en nightly)
+
+PR #2432 fusionado en nightly `4fdcee334d17e14894c6f07741e6dbca7330ae5d`.
+#2184 cerrada por encargo del orquestador; sin merge propio.
+La validación vive en `launcher::launch` y `checked::launch_inner`, con el Reader
+de la sesión; el despacho solo delega. También cubre `launch_for_instance` del
+Calendario. Autoridad → revisión → discovery/perfil → buzón, sin reenvío.
+Tests: escaneo real (`rescan` + `view`), precedencia con revisión y permisos
+inválidos, Calendario al disparar con escaneo pendiente (buzón vacío y ocupado),
+pasos ausentes/no disponibles y un único envío válido. Sin aplicaciones/gráficos.
+Gate local de la revisión: Clippy -D warnings y 668 tests PASS (1 omisión existente);
+formato/arquitectura PASS. CI validada para la fusión por el orquestador.
+Sin bump, cambios de runtime/ipc ni release. #2437 (#2028) continúa después.
+
+## VANTA-144 · Reglas de presentación compartidas en domain (16/11/2026)
+
+Traslado mecánico aprobado por raíz y sub-orquestador: waiting_text pasa a
+format.rs de domain, con reexport en vantare de GPUI. Los dos traits existentes
+SettingsPresentation y sus impls pasan a input_telemetry.rs y pedals_telemetry.rs
+de domain, ahora públicos; GPUI los importa sin cambiar llamadas ni tests.
+Entrada conserva show_clutch = ajuste && hay dato, y borra pedals[0] si el
+ajuste está apagado. Pedales conserva show_clutch = ajuste, sin esa condición;
+su selector sigue usando el único WHEELS y el mismo fallback generic.
+Track_weather recibe session_label y wind_heading del controlador GPUI, sin
+cambiar la flecha ni su geometría. Su ViewModel expone wet_percent: humedad de
+la pista, redondeada desde track_wetness numérico validado, sin parsear textos.
+Regresión nueva en Workshop compara con el parseo anterior las tres fuentes
+de fixtures, idiomas/unidades, empates de porcentaje, calidades y ausencias;
+los tests existentes se conservan. Los pintores GPUI consumen ese campo.
+Sin tocar normalización, tablas, memoria, animación, Rune ni dependencias.
+El Full de domain incluye toda la selección Full de ui; también telemetría,
+por la cola del servidor. Gates y CI completa en el PR draft. Los widgets Rune
+consumirán estas reglas en PRs posteriores coordinados por el orquestador.
+Sin cambios visuales, gráficos en el servidor, merge, release ni estado de Plane.
+
+## VANTA-138 · #2380, motivo de lienzo no disponible (16/11/2026)
+
+Esquema aprobado por raíz: StudioState.monitorUnavailable, fallo privado cerrado
+en el adaptador y mutaciones todavía Protected. Sin métodos, módulos, hilos,
+estado persistente, ipc/domain ni dependencias nuevos. Contrato v45, bump separado
+sobre nightly verificada en v44. Núcleo y contrato solamente; Sol-Hub hará UI/textos
+en #2362. Implementado en vantareapp/isa-2380-studio-monitor-state, draft enlazado
+por #2380. Formato/exportador, Clippy y666 tests host correctos (1 omitido), por la
+cola del servidor; ambos tipos/lint y525 tests web correctos. CI/revisión pendientes;
+sin merge, release ni gráficos.
+
+Textos aprobados para el consumidor:
+- monitorUnavailable: «Vantare no detecta el monitor de este lienzo» + «Conéctalo y
+  pulsa Volver a cargar.»; selector de resolución oculto (canvas/monitor null).
+- resto de Protected/Missing: «No se puede abrir este diseño» + «Vuelve a cargar.
+  Si sigue igual, el archivo puede estar dañado o no ser compatible.».
+
+Se conserva el primer error confirmado y no se infiere la causa desde null.
+Protected sigue cubriendo otros límites de proyección; no afirma corrupción.
+
+## VANTA-144 · Caché de imágenes propiedad del host Rune (16/11/2026)
+
+Variante attach_assets aprobada por raíz y sub-orquestador: método del trait
+con implementación vacía por defecto, sin cambiar new ni los seis widgets.
+Cada State crea un Arc<ImageCache> en setup con su waker; Painters lo conecta
+a instancias nuevas y a las que ya existían. El alta tardía pide una sola
+reconstrucción para incorporar imágenes. State declara la caché después del
+registro: primero se sueltan widgets/Painters y después el Arc del host.
+Tests sin ventana: dos widgets anteriores a setup reciben el mismo Arc
+(ptr_eq), una reconstrucción y reposo; al cerrar, una petición RGBA 1×1 termina
+y el Drop del último waker avisa por canal, con timeout de 5 s para detectar
+workers retenidos. Sin sleeps ni recuentos globales de hilos. La plantilla
+reserva attach_assets a widgets con imágenes/SVG; guardan el Arc del host,
+sin cachés propias ni OnceLock global. Gates y CI completa en el PR draft;
+revisión Sonnet de la raíz antes de fusionar. Sin cambios visuales conocidos,
+gráficos en el servidor, nuevas dependencias, release ni estado de Plane.
+
+## VANTA-144 · Baseline y marca Neutro del Relative (16/11/2026)
+
+Corrección visible aprobada por raíz y sub-orquestador: solo «VANTARE» y el
+título del banner bajan 1 px, como Kit::brand/Kit::band → Kit::label de GPUI.
+La marca usa el desplazamiento sin alterar el flujo flex; el banner, su pin.
+Título/rango de cabecera (Body), limitador (Mono), Posición y símbolo intactos.
+El color de la marca Neutro pasa de #8e8587 a variant.header_color (#8c8c8c);
+Neo ya coincide. Helper local condicional por Face, sin cambiar label global.
+La plantilla recuerda que cada texto Display aplica display_baseline.
+Test CPU de la vista completa en ambos tonos: rect/pin reales, vecinos y color.
+Gates y CI en el PR draft; comparación visual pendiente en el PC (#2365).
+Sin gráficos en el servidor, cambios de arquitectura, release ni estado de Plane.
+
+## VANTA-144 · Cola de fotos aceptadas del host Rune (16/11/2026)
+
+Esquema y condiciones aprobados por raíz y sub-orquestador, tras #2392:
+host conserva hasta 256 FrameSets por ordinal de publicación, independiente
+de la revisión de derechos. Cada publicación conserva su acceso; si difiere
+del acceso vigente al consumir el tramo, solo se entrega la última foto.
+Cada State registra su cursor en new y lo retira
+siempre en Drop; se poda hasta el cursor mínimo, también al cerrar, retirar
+una ventana o salir por error. Sin consumidores, no se retiene historia.
+El contador global dropped_frame_sets de paint-stats cuenta solo expulsiones
+por el límite de datos aún pendientes; dos ventanas afectadas cuentan una vez.
+Cada poll entrega el tramo ordenado al registro existente y acumula build;
+anima y presenta una vez. Con una foto, conserva una única llamada a sync y
+no asigna vector de pendientes. Tests CPU fijan builds/presentaciones previos,
+orden para dos ventanas, límite, derechos, cierre/retirada/error y medición
+permanente de baches a la cadencia compartida de Radar/Historial de delta.
+Shared::close vacía la cola sin contar descartes; un cursor ausente es un bug.
+Solo host.rs, el contador en stats.rs y este handoff; renderer/Widget/scene/feed,
+monitores y domain/ipc intactos. Gates y CI completa en el PR draft; revisión
+Sonnet de la raíz antes de fusionar. Sin gráficos, release ni cambio de Plane.
+
+## VANTA-144 · Datos del Historial de delta a domain (16/11/2026)
+
+Traslado mecánico aprobado por raíz y sub-orquestador: LapHistory, LapPoint,
+Details y la preparación común del Board pasan al archivo delta_trace.rs de
+domain. GPUI reexporta los tipos y conserva sus tests de historial, dibujo y
+memoria. Solo cambian nombres, rutas y visibilidad; push queda público para
+que los tests GPUI existentes sigan llamándolo desde el crate consumidor.
+Sin cambios de geometría, comportamiento, archivos de código o dependencias.
+Gates Full de domain/ui y telemetría por cola; resultados y CI en el PR draft.
+Después se mide la pérdida de fotos entre polls con tests CPU independientes;
+el pintor Rune y cualquier cola esperan un esquema y aprobación posteriores.
+Sin gráficos, merge, promoción, release ni movimiento de Plane.
+
 ## VANTA-144 · Fuente única de la demo del Mapa (16/11/2026)
 
 Traslado mecánico aprobado por raíz y sub-orquestador: los 621 pares de Le Mans
@@ -141,57 +275,6 @@ dependencias ni cambios de producto adicionales. Por cola Windows/1.99.1/dos job
 formato, Clippy, 52 tests CPU, 5 tests de política de distribución, enlace sin ejecutar
 y auditoría de 428 paquetes PASS. Tokens y 12 tests Python PASS. Sin gráficos ni
 cambios de Plane; el PR recoge el head final y la CI pendiente.
-
-## VANTA-144 / Worker B: bloqueo de paridad y consulta de arquitectura
-
-Reglas nuevas de Isaac aplicadas a Eficiencia, Standings y Delta: identidad
-visible con GPUI; cualquier diferencia se consulta con captura antes de seguir.
-Toda decisión nueva de arquitectura requiere OK previo. Implementación visual
-y cambios de arquitectura detenidos. No se aceptan aproximaciones o mejoras.
-
-Las descripciones de #2351 y #2359 enumeran las desviaciones conocidas por
-código, sin presentarlas como diferencias medidas. En #2351 falta conexión
-de Eficiencia/movimiento al proceso. En #2359 faltan animaciones y PIT lateral;
-cabeceras, tipografía, marca, resaltados y chips son simplificados. Delta local
-tiene cápsula vertical en vez de horizontal, barra plana sin escala/degradado,
-cabecera/sectores/marca simplificados, sin avisos ni Eficiencia; pausa provisional.
-Lista concreta en src/delta/README.md. No hay capturas comparativas Windows.
-
-Esquema propuesto PARA OK, antes de implementar la integración pendiente:
-FrameSet/Cadence/permisos de A -> renderer::Painter (enum concreto para Relative,
-Standings y Delta) -> pintor existente desde domain -> Runtime -> ventana de
-pista o Offscreen existente. Se conservaría el Tween actual para la barra Delta,
-con el reloj de Runtime y fin a 150 ms. No se proponen tipos de datos de negocio,
-contratos, hilos, canales, dependencias o módulos genéricos nuevos.
-
-Para obtener las capturas pendientes se propone ampliar SOLO el despacho de
-la CLI --capture-scene existente a las vistas actuales de Eficiencia y Delta,
-sin cambiar su aspecto ni crear otro camino de dibujo. Falta OK de este esquema
-y horario del PC de juego. Las diferencias se consultarán con las capturas;
-no se corrigen visuales antes. Rebase de #2351/#2359 espera aviso de #2357.
-
-Delta mantiene locales y sin publicar los arreglos de tests: fuente simulada
-con líder de clase/tiempo disponibles y expectativa de rectángulo ajustada por
-bordes a la rejilla 1/64 px de Rune. El código de producto no cambia por esos
-arreglos. Clippy previo PASS; aquella suite tuvo 53 PASS / 2 FAIL, no se oculta.
-Repetición ya encolada antes de la parada; resultado todavía pendiente.
-
-## VANTA-144 / Worker B: Delta local mientras A termina su pila
-
-Encargo vigente: Delta en local sobre la cabeza de #2357; no abrir PR hasta que
-la pila de A este en nightly. Rama isa-2333-delta-rune, base exacta 59f2d099d.
-Solo primer pintor Vantare, datos simulados en CPU y repintado a demanda.
-Reutiliza domain::delta, tokens/fuentes y Tween existente; sin capa nueva de
-movimiento, transporte ni opciones. Cambio de renderer limitado al despacho.
-Sin Eficiencia/avisos/capturas aun; ver src/delta/README.md. Formato y auditoria
-de 428 paquetes PASS. Primer Clippy detecto un mut innecesario en el constructor;
-retirado sin excepciones. Repeticion Clippy/tests encolada; aun sin resultado.
-No se ejecutan producto ni graficos. Sin PR, push, merge/release ni Plane.
-
-#2349 con #2344 ya fusionado por el orquestador en 529f1374b. #2351 y #2359
-necesitan tambien el kit de #2357: se reapilan cuando entre este, preservando
-solo los commits propios de B. #2359 sigue draft, retenido hasta la medicion
-corta de Relative y la posterior paridad Windows. No se toca la pila de A.
 
 ## VANTA-144 · validación final de conexión y Relative con monitores (15/11/2026)
 
@@ -3029,6 +3112,62 @@ plazo cumplido antes/después del compromiso y publicación fallida de la pregun
 la limpieza de directorios en Drop no provoca otro panic. Sin cambios de contrato
 v33 ni del plazo exportado para D. Gates del ajuste y head vigentes en #2281.
 
+## VANTA-144 · captura Relative Vantare sin ventana (Worker B, 16/11/2026)
+
+PR separado desde nightly a3f2c3c9a: capture.rs reutiliza constructor/Widget,
+inyecta snapshot IPC con update antes del frame CPU y dibuja con Rune Offscreen.
+Solo debug y Relative Vantare; guard del servidor antes de argumentos. No se
+inician feed, supervisor, App, ventanas ni cuentas. Sin nuevas dependencias o Looks.
+Mac: build y tres tests CPU de captura PASS; PNG asymmetric validado visualmente,
+420x193, 1454 colores, Giovinazzi/Tu/Jensen con posiciones y gaps. Registro:
+epoch 3, sequence 2, 20 coches, update_build/update_pixels true. Evidencia en
+D:/VantareServer/evidence/overlays-rune/capture-pr/. Clippy Windows PASS y suite
+CPU completa por cola en curso. Auditoria 428 paquetes y seis tests politica PASS.
+El PR recoge head/checks definitivos; captura no acredita paridad GPUI ni medicion.
+Sin graficos en servidor/PC de juego ni merge/release/Plane. Despues: rebasar
+#2359/#2375 conservando los widgets de nightly; luego #2351 con Scene y tools.
+
+
+### #2391 · revisión de captura (Worker B, 16/11/2026)
+
+La preparación consulta size_for con la foto entrante antes de update, como el
+proceso; una foto Paused reserva también la banda de 22 px. Test CPU a tres
+escalas. La consola Windows permanece en debug y el subsistema de ventanas solo
+en Release. Se retira rune_rev escrito a mano del registro; la revisión fijada
+sigue en Cargo.lock y el manifiesto. README declara la carrera entre comprobar
+y escribir PNG y exige rutas distintas. Sin cambios de derechos ni gráficos en
+el servidor. Clippy, suite CPU y subsistema PE pendientes de cola en este cambio;
+resultado final y head en #2391.
+
+
+### #2391 · rebase para preview Studio (Worker B, 16/11/2026)
+
+Rebasado sobre nightly e8a0591b9, conservando todos los widgets y attach_assets
+del trait Widget. Captura sigue limitada a Relative Vantare, cuyo hook de assets
+es el default sin recursos; no se amplía despacho ni permisos. Se conservan
+size_for(Some(snapshot)) antes de update, test Paused, consola solo debug y
+registro sin rune_rev manual; carrera de salida documentada. Comentarios y
+reviews publicados en el PR leídos; los tres ajustes conocidos ya estaban en
+7414d2c26. Nueva verificación completa por cola, sin gráficos; head/checks
+definitivos en el PR. Mac offline: no se repite captura GPU en este rebase.
+
+### #2391 · actualización por merge de nightly (Worker B, 16/11/2026)
+
+Fusionado origin/nightly 83cb9b2e4 en la rama de captura; conflicto solo en este
+handoff resuelto conservando ambas entregas. Registro, Widget y módulos nuevos
+se conservan como nightly, salvo la visibilidad crate de constructor necesaria
+para captura. Se revalidan fmt, Clippy y tests CPU por cola, sin GPU en servidor.
+La ampliación única para captura/preview (todos los widgets, secuencias, assets
+y release) queda para otro PR, tras esquema y OK de raíz; no entra aquí.
+
+### #2391 · sincronización final (Worker B, 16/11/2026)
+
+Merge de nightly 83232d84b; se conservan tokens Eficiencia y la corrección de
+domain/session_alerts. Notas de captura reubicadas aquí, con su contenido
+histórico íntegro, para no competir con las entregas al final del handoff.
+Validación nueva por cola y resultados en el PR; ampliación de captura aún
+sin código, pendiente de esquema y aprobación.
+
 ## VANTA-144 · contrato Widget de Rune (16/11/2026)
 
 Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa
@@ -3043,26 +3182,30 @@ Multiclase #2372 sigue guardado y pendiente de su test CPU; no se incorpora aqu�
 Sin gráficos, Plane, merge, promoción ni release propios.
 
 
-## VANTA-144 · B, Delta local rebasado sin despacho (16/11/2026)
+## VANTA-144 · Historial de delta en Rune (16/11/2026)
 
-Delta conserva solo los tres commits propios sobre nightly a63b17bed; el
-renderer vuelve al de nightly, sin enum ni despacho Delta hasta el trait.
-No cambia el aspecto. Se conservan sin commit los arreglos previos de tests
-y su stash de seguridad. Los tests de host necesitan la futura conexion;
-no se ignoran ni se afirma suite verde. La decision del enum queda sustituida
-por el trait Widget; propuesta enviada, pendiente de ambos OK. Sin push/PR
-de Delta, graficos, merge, release ni cambios de Plane.
+Pintor aprobado: domain conserva Trace/LapHistory/LapPoint/Details/ViewModel;
+el widget mantiene su caché Arc de muestras y compara la escena visible para
+repintar, sin usar sequence como invalidación. Canvas de segmentos rectos en
+orden GPUI línea/relleno, cursores, textos y sectores; tamaño fijo 760×192.
+Sin reloj ni Tween; movimiento reducido mantiene el dibujo. Capas con pin,
+tests CPU de límites reales de ventana, orden de segmentos y fotos repetidas.
+Gates y CI en el PR; rasterizado pendiente de captura del PC. Sin gráficos
+en el servidor, dependencias nuevas ni cambios de domain/ipc/host.
 
+## VANTA-144 · Seguimiento de Historial de delta (16/11/2026)
 
-## VANTA-144 · B, Delta con Widget (16/11/2026)
+Tras #2439: invalidación por versión local de LapHistory, vectores prestados,
+una comparación del gráfico y textos conservados cuando no cambian. Mismo dibujo.
+Tests CPU de los tramos inválidos, recorte ±2 y orden línea/relleno del Shape real.
+Gates/head en el PR; sin domain/ipc/host nuevos ni gráficos. #2430 espera sus bases.
 
-Rebase sobre nightly 5d7dfa61f. Delta implementa Widget en su carpeta y agrega
-un brazo en constructor para Vantare; se conserva el pintor y el Tween comun.
-Se incluyen los arreglos CPU previos de la fuente con lider disponible y snap
-por bordes de 1/64 px, conservados hasta ahora sin commit. No se ocultan los
-fallos historicos ni se afirma suite nueva verde. CI pendiente. Un solo widget
-en el PR draft; sin Eficiencia. Las desviaciones visibles siguen en README:
-capsula vertical, barra plana sin escala/degradado, cabecera/sectores/marca
-simplificados y ausencia de avisos. No se cambia el aspecto en esta conexion.
-Escenas/comandos QA preparados fuera del repo; PC de juego sin hora. Sin
-graficos en servidor, dependencias, merge, release ni cambios de Plane.
+### VANTA-144 · fuente única Eficiencia (Worker B, 16/11/2026)
+
+Extracción independiente de src/eficiencia.rs desde #2351: producción idéntica,
+Inter por include_bytes desde ui/assets, sin copiar fuentes ni tokens. Publicado
+como módulo para Fuel, Relative y Standings; ningún widget nuevo ni despacho.
+Tests CPU fijan familias/pesos de font y elipsis Unicode con límites medidos por
+la fuente cargada, sin anchuras esperadas por plataforma. Sin dependencias,
+gráficos, derechos ni cambios de movimiento. Head y gates definitivos en el PR
+y #2333; no se fusiona ni publica release desde el worker.

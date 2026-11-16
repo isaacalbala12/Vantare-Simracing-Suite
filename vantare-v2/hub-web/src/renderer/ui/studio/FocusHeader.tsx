@@ -5,6 +5,7 @@ import type {
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button } from "../Button";
+import { CanvasViewSwitch } from "./CanvasViewSwitch";
 import { DisabledHint } from "./DisabledHint";
 import { MoreMenu } from "./MoreMenu";
 import { WidgetThumb, widgetName } from "./Widgets";
@@ -15,12 +16,14 @@ export function FocusHeader({
   pending,
   onTrack,
   onRemove,
+  readOnly = false,
 }: {
   item?: OverlayInstance;
   view: StudioView;
   pending: boolean;
   onTrack: () => void;
   onRemove: () => void;
+  readOnly?: boolean;
 }) {
   const info = view.catalog.find((value) => value.kind === item?.kind);
   const unavailable =
@@ -57,12 +60,14 @@ export function FocusHeader({
         )}
       </div>
       <div className="v-focus-actions">
+        <CanvasViewSwitch />
         {item && (
           <MoreMenu
             item={item}
             view={view}
             pending={pending}
             onRemove={onRemove}
+            readOnly={readOnly}
           />
         )}
         <DisabledHint
@@ -78,7 +83,9 @@ export function FocusHeader({
           }
         >
           <Button
-            variant={view.instances.length ? "primary" : "neutral"}
+            variant={
+              !view.showing && view.instances.length ? "primary" : "neutral"
+            }
             disabled={unavailable}
             aria-disabled={pending}
             onClick={() => {

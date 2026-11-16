@@ -48,3 +48,48 @@ describe("detected session monitor", () => {
     expect(isStudio(reply.result.value)).toBe(true);
   });
 });
+
+describe("explicit monitor availability", () => {
+  it.each(studioMonitorCases)("mock uses Rust signal: $name", (sample) => {
+    const host = createMockHost(`studio-monitor-${sample.name}`);
+    const reply = host({
+      kind: "request",
+      id: 1,
+      request: { method: "studio.get" },
+    });
+    if (reply?.kind !== "response" || reply.result.method !== "studio.get")
+      throw new Error("studio");
+    const value = reply.result.value;
+    expect({
+      state: value.state,
+      canvas: value.canvas,
+      monitor: value.monitor,
+    }).toEqual({
+      state: sample.value.state,
+      canvas: sample.value.canvas,
+      monitor: sample.value.monitor,
+    });
+    expect(isStudio(value)).toBe(true);
+  });
+  it("requires explicit monitor failure and keeps its resolution selector unavailable", () => {
+    const sample = studioMonitorCases.find((c) => c.name === "disconnected");
+    expect(sample?.value.state).toBe("monitorUnavailable");
+    expect(sample?.value.canvas).toBeNull();
+    expect(sample?.value.monitor).toBeNull();
+    expect(isStudio({ ...sample?.value, state: "unknownCause" })).toBe(false);
+    expect(
+      isStudio({
+        ...sample?.value,
+        canvas: studioMonitorCases[0].value.canvas,
+      }),
+    ).toBe(false);
+    expect(
+      isStudio({
+        ...sample?.value,
+        monitor: studioMonitorCases[0].value.monitor,
+      }),
+    ).toBe(false);
+    for (const state of ["missing", "protected"])
+      expect(isStudio({ ...sample?.value, state })).toBe(true);
+  });
+});

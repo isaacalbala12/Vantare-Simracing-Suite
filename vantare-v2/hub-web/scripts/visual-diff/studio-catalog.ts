@@ -7,7 +7,7 @@ async function studioDelta(page: Page, expanded: boolean) {
   await page
     .getByRole("button", { name: /^(Studio|Overlays Studio)$/, exact: true })
     .click();
-  await page.getByRole("button", { name: /^Delta,/ }).click();
+  await page.getByRole("button", { name: /^Delta (?:Visible|Oculto)/ }).click();
   await page.getByRole("heading", { name: "Delta", exact: true }).waitFor();
   const sidebar = page.locator(".v-sidebar");
   if (

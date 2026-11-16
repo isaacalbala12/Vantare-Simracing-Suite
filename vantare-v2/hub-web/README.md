@@ -16,9 +16,25 @@ bun install --frozen-lockfile
 bun run typecheck
 bun run lint
 bun run test
+bun scripts/renderer-production.ts
 bun run build
 bun run package
 ```
+
+`bun scripts/renderer-production.ts` comprueba sobre un build real que el
+renderer de producción no incluye mocks ni fixtures congeladas. Es un paso
+aparte del test unitario porque en este servidor un build en frío tarda
+decenas de segundos y no cabe en un plazo de test.
+
+`bun run test` usa el pool `threads`. En este servidor, un worker `forks` en
+frío podía agotar el plazo interno de 60 s de Vitest antes de ejecutar ningún
+test (#2442): el arranque pagaba la transformación e importación del grafo del
+test y el montaje de jsdom. Medido con el archivo jsdom más pesado en frío:
+**16,9 s con `threads` frente a 26,2 s con `forks`** (un worker; 589 MB y 572 MB
+de RSS). `maxWorkers` se calcula con la CPU y la RAM del equipo (2 en el
+servidor de 16 GB) para no arrancar siete workers a la vez; en CI se mantiene el
+valor por defecto de Vitest. Revertir el pool es una línea: cambiar
+`pool: "threads"` por `pool: "forks"` en `vitest.config.ts`.
 
 `release/package/vantare-hub-ui-win32-x64/vantare-hub-ui.exe` es una carpeta
 sin instalador, firma ni despliegue. El puente y la preparación del anfitrión
@@ -197,3 +213,13 @@ Se espera NoCredential y ningún derecho concedido. Un núcleo sin raíz públic
 queda Unconfigured: Probe conecta, pero no admite consultas ordinarias de perfil.
 
 La preparación de miniaturas GPUI y sus requisitos de ejecución están en [la receta aplazada](docs/widget-thumbnails.md).
+
+### Lanzamientos manuales con revisión (#2028)
+
+Inicio, Launcher, rail, paleta y Ctrl+L usan `launcher.launchChecked`, sin caída
+a v1. El guard compartido captura la generación de cuenta observada al pedir
+el lanzamiento; no la sustituye si cambia mientras espera la respuesta.
+`Queued` conserva los avisos existentes de lanzamiento solicitado: no prueba
+que las aplicaciones estén listas. El resultado sigue viniendo del residente.
+Sin generación no se envía nada; Unsupported o una respuesta incierta no se
+reenvían. Los consumidores nativos legacy y el protocolo del Hub no cambian.

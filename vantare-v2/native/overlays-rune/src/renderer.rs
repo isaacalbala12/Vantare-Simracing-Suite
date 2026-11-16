@@ -1,13 +1,20 @@
 //! One retained painter per visible instance; monitor windows coalesce their work.
 use crate::{
+    car_damage_numbers::CarDamageNumbers,
+    car_damage_visual::CarDamageVisual,
     host::Access,
+    input_telemetry::InputTelemetry,
+    pedals::Pedals,
+    pedals_telemetry::PedalsTelemetry,
     relative::Relative,
     scene::{FrameSet, Placement, Viewport},
     stats::{Cause, Meter},
+    tower::Tower,
+    track_weather::TrackWeather,
     widget::Widget,
 };
 use rune::{El, Tx, el};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 use vantare_domain::{
     format::Preferences,
     widget_settings::{Settings, look::Look},
@@ -16,10 +23,14 @@ use vantare_ipc::layout::Instance;
 
 type Constructor = fn(&Settings, Preferences, bool, u16, f64) -> Option<Box<dyn Widget>>;
 
-fn constructor(settings: &Settings) -> Option<Constructor> {
+pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
     match settings {
+        Settings::DeltaTrace(_) => Some(<crate::delta_trace::DeltaTrace as Widget>::new),
         Settings::TrackMap(_) => Some(<crate::track_map::TrackMap as Widget>::new),
+        Settings::FastestLap(_) => Some(<crate::fastest_lap::FastestLap as Widget>::new),
         Settings::Radar(_) => Some(<crate::radar::Radar as Widget>::new),
+        Settings::HeadToHead(_) => Some(<crate::head_to_head::HeadToHead as Widget>::new),
+        Settings::SessionAlerts(_) => Some(<crate::session_alerts::SessionAlerts as Widget>::new),
         Settings::Relative(s) if s.design_system == Look::Vantare => {
             Some(<Relative as Widget>::new)
         }
@@ -29,6 +40,19 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::Delta(s) if s.design_system == Look::Vantare => {
             Some(<crate::delta::Delta as Widget>::new)
         }
+        Settings::Pedals(_) => Some(<Pedals as Widget>::new),
+        Settings::FuelStrategy(s)
+            if matches!(s.design_system, Look::Vantare | Look::Eficiencia) =>
+        {
+            Some(<crate::fuel::Fuel as Widget>::new)
+        }
+        Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),
+        Settings::TrackWeather(_) => Some(<TrackWeather as Widget>::new),
+        Settings::CarDamageNumbers(_) => Some(<CarDamageNumbers as Widget>::new),
+        Settings::CarDamageVisual(_) => Some(<CarDamageVisual as Widget>::new),
+        Settings::BroadcastTower(_) => Some(<Tower as Widget>::new),
+        Settings::InputTelemetry(_) => Some(<InputTelemetry as Widget>::new),
+        Settings::RacingFlags(_) => Some(<crate::racing_flags::RacingFlags as Widget>::new),
         _ => None,
     }
 }
@@ -44,8 +68,25 @@ struct Entry {
 pub(crate) struct Painters {
     entries: BTreeMap<String, Entry>,
     order: Vec<String>,
+    assets: Option<Arc<rune::ImageCache>>,
+    assets_changed: bool,
 }
 impl Painters {
+    pub fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
+        if self
+            .assets
+            .as_ref()
+            .is_some_and(|old| Arc::ptr_eq(old, assets))
+        {
+            return;
+        }
+        self.assets = Some(assets.clone());
+        for entry in self.entries.values_mut() {
+            entry.painter.attach_assets(assets);
+        }
+        // Setup can follow the first view: rebuild once to include its images.
+        self.assets_changed |= !self.entries.is_empty();
+    }
     pub fn sync(
         &mut self,
         frames: Option<&FrameSet>,
@@ -79,7 +120,7 @@ impl Painters {
                         .painter
                         .size_for(frames.photos.get(&instance.id).map(|p| p.snapshot.as_ref()))
                 } else {
-                    let Some(painter) = new(
+                    let Some(mut painter) = new(
                         settings,
                         frames.layout.preferences,
                         frames.reduced_motion,
@@ -88,6 +129,9 @@ impl Painters {
                     ) else {
                         continue;
                     };
+                    if let Some(assets) = &self.assets {
+                        painter.attach_assets(assets);
+                    }
                     let size = painter
                         .size_for(frames.photos.get(&instance.id).map(|p| p.snapshot.as_ref()));
                     fresh = Some(painter);
@@ -132,7 +176,10 @@ impl Painters {
         build
     }
     pub fn animate(&mut self, clock: f64, tx: &mut Tx, meter: &Meter) -> bool {
-        let mut build = false;
+        let mut build = std::mem::take(&mut self.assets_changed);
+        if build {
+            meter.mark(Cause::Design);
+        }
         for entry in self.entries.values_mut() {
             let update = entry.painter.animate(clock);
             if update.pixels || update.build {
@@ -174,8 +221,77 @@ impl Painters {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+    use std::sync::Mutex;
+    use vantare_domain::{Snapshot, geometry::Size};
+
+    pub(crate) type AttachedAssets = Arc<Mutex<Vec<Arc<rune::ImageCache>>>>;
+
+    struct ImageWidget {
+        attached: AttachedAssets,
+        assets: Option<Arc<rune::ImageCache>>,
+    }
+    impl Widget for ImageWidget {
+        fn new(_: &Settings, _: Preferences, _: bool, _: u16, _: f64) -> Option<Box<dyn Widget>> {
+            None // The fixture installs these widgets before setup, outside the product registry.
+        }
+        fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
+            self.assets = Some(assets.clone());
+            self.attached.lock().unwrap().push(assets.clone());
+        }
+        fn configured(&self, _: &Settings, _: Preferences) -> bool {
+            true
+        }
+        fn size(&self) -> Size {
+            Size {
+                width: 1.0,
+                height: 1.0,
+            }
+        }
+        fn size_for(&self, _: Option<&Snapshot>) -> Size {
+            self.size()
+        }
+        fn policy(&mut self, _: bool, _: u16, _: f64) -> crate::widget::Update {
+            Default::default()
+        }
+        fn update(&mut self, _: &Snapshot, _: f64) -> crate::widget::Update {
+            Default::default()
+        }
+        fn animate(&mut self, _: f64) -> crate::widget::Update {
+            Default::default()
+        }
+        fn schedule(&self, _: f64, _: &mut Tx) {}
+        fn view(&self) -> El {
+            el()
+        }
+    }
+
+    pub(crate) fn image_widgets() -> (Painters, AttachedAssets) {
+        let attached = AttachedAssets::default();
+        let mut painters = Painters::default();
+        for id in ["first", "second"] {
+            let painter = ImageWidget {
+                attached: attached.clone(),
+                assets: None,
+            };
+            let placement = Placement {
+                x: 0.0,
+                y: 0.0,
+                size: painter.size(),
+                opacity: 1.0,
+            };
+            painters.entries.insert(
+                id.into(),
+                Entry {
+                    painter: Box::new(painter),
+                    placement,
+                },
+            );
+            painters.order.push(id.into());
+        }
+        (painters, attached)
+    }
 
     #[test]
     fn dispatch_constructs_vantare_relative_and_rejects_unmigrated_looks_and_kinds() {
@@ -197,8 +313,112 @@ mod tests {
         let efficiency = Settings::Relative(relative);
         let pedals = Settings::Pedals(Default::default());
         assert!(constructor(&efficiency).is_none());
-        assert!(constructor(&pedals).is_none());
+        assert!(constructor(&pedals).is_some());
         assert!(!painter.configured(&efficiency, prefs));
         assert!(!painter.configured(&pedals, prefs));
+    }
+
+    #[test]
+    fn dispatch_constructs_both_pedals_looks_with_their_width() {
+        let prefs = Preferences::default();
+        for (look, width) in [(Look::Vantare, 96.0), (Look::Eficiencia, 108.0)] {
+            let settings = Settings::Pedals(vantare_domain::widget_settings::pedals::Settings {
+                design_system: look,
+                ..Default::default()
+            });
+            let painter = constructor(&settings).expect("Pedals")(&settings, prefs, true, 40, 0.0)
+                .expect("instancia");
+            assert!(painter.configured(&settings, prefs));
+            assert_eq!(painter.size().width, width, "{look:?}");
+            assert_eq!(painter.size().height, 160.0);
+        }
+    }
+
+    #[test]
+    fn dispatch_constructs_pedals_telemetry_with_its_fixed_size() {
+        let settings = Settings::PedalsTelemetry(Default::default());
+        let prefs = Preferences::default();
+        let painter =
+            constructor(&settings).expect("Pedals telemetry")(&settings, prefs, true, 15, 0.0)
+                .expect("instancia");
+        assert!(painter.configured(&settings, prefs));
+        assert_eq!((painter.size().width, painter.size().height), (380.0, 64.0));
+    }
+
+    #[test]
+    fn dispatch_constructs_track_weather_in_both_layouts() {
+        let prefs = Preferences::default();
+        for (vertical, size) in [(false, (280.0, 210.0)), (true, (132.0, 440.0))] {
+            let settings =
+                Settings::TrackWeather(vantare_domain::widget_settings::track_weather::Settings {
+                    vertical,
+                    ..Default::default()
+                });
+            let painter =
+                constructor(&settings).expect("Track weather")(&settings, prefs, true, 15, 0.0)
+                    .expect("instancia");
+            assert!(painter.configured(&settings, prefs));
+            assert_eq!(
+                (painter.size().width, painter.size().height),
+                size,
+                "vertical {vertical}"
+            );
+        }
+    }
+
+    #[test]
+    fn dispatch_constructs_car_damage_numbers_with_its_catalogue_size() {
+        let prefs = Preferences::default();
+        let mut photo = crate::testdata::snapshot();
+        photo.state.capabilities.damage = vantare_domain::Capability::Fresh;
+        photo.state.player.as_mut().expect("player").damage = vantare_domain::Damage {
+            aero: vantare_domain::Quality::Reliable(0.0),
+            ..Default::default()
+        };
+        for (show_tyres, height) in [(true, 132.0), (false, 103.0)] {
+            let settings = Settings::CarDamageNumbers(
+                vantare_domain::widget_settings::car_damage_numbers::Settings {
+                    show_tyres,
+                    ..Default::default()
+                },
+            );
+            let painter = constructor(&settings).expect("Car damage numbers")(
+                &settings, prefs, true, 15, 0.0,
+            )
+            .expect("instancia");
+            assert!(painter.configured(&settings, prefs));
+            let size = painter.size_for(Some(&photo));
+            assert_eq!(
+                (size.width, size.height),
+                (164.0, height),
+                "show_tyres {show_tyres}"
+            );
+        }
+    }
+
+    #[test]
+    fn dispatch_constructs_car_damage_visual_with_its_single_box() {
+        let prefs = Preferences::default();
+        for view in ["car", "numbers"] {
+            let settings = Settings::CarDamageVisual(
+                vantare_domain::widget_settings::car_damage_visual::Settings {
+                    view: view.into(),
+                    ..Default::default()
+                },
+            );
+            let painter =
+                constructor(&settings).expect("Car damage visual")(&settings, prefs, true, 15, 0.0)
+                    .expect("instancia");
+            assert!(painter.configured(&settings, prefs));
+            assert_eq!(
+                (painter.size().width, painter.size().height),
+                (200.0, 272.0),
+                "{view}"
+            );
+            assert_eq!(
+                painter.size_for(Some(&crate::testdata::snapshot())),
+                painter.size()
+            );
+        }
     }
 }

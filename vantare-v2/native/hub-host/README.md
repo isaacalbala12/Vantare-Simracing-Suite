@@ -605,3 +605,38 @@ de tiempos (el pintor los declara no soportados). `studioColumnFormatCases` sirv
 como vector compartido del host y los tests web. No se añaden métodos ni cambios
 en ipc/domain. La raíz asignó v44 antes de fusionar, con el bump en un commit
 separado del cambio funcional.
+
+## Monitor no disponible (#2380)
+
+StudioView.state distingue monitorUnavailable de Missing/Protected. El primero
+solo indica que no se puede usar el monitor fijado o detectar uno utilizable;
+no afirma desconexión física. canvas y monitor son null, sin elegir otro monitor
+ni modificar el documento. Los demás errores conservan su clasificación y el
+primer fallo confirmado: un documento ilegible no se diagnostica como monitor
+ausente. Las mutaciones siguen devolviendo Protected para este bloqueo; ocultar
+sigue disponible. No se añaden métodos, hilos, estado persistente ni cambios en
+ipc/domain. Contrato v45, con bump separado sobre nightly v44.
+
+Handoff aprobado para Sol-Hub (#2362), sin implementación de UI en este PR:
+- monitorUnavailable: «Vantare no detecta el monitor de este lienzo» y
+  «Conéctalo y pulsa Volver a cargar.»; selector de resolución oculto.
+- Protected/Missing: «No se puede abrir este diseño» y «Vuelve a cargar. Si sigue
+  igual, el archivo puede estar dañado o no ser compatible.».
+
+studioMonitorCases incluye los motivos con las mismas dimensiones null. El mock
+los consume mediante studio-monitor-<nombre>. Los eventos usan el sondeo existente;
+las pruebas inyectan monitores y reloj, sin esperas ni adaptador gráfico.
+
+## Validación del lanzamiento en el anfitrión (#2184)
+
+Los métodos de envío `launcher::launch` y `checked::launch_inner` exigen
+un escaneo terminado para `baseRevision` y que todos los pasos del perfil estén
+disponibles. Una revisión antigua da `LauncherConflict`; un escaneo pendiente o
+de otra revisión da `Busy`; los pasos ausentes o no disponibles dan `Denied`.
+Los rechazos no escriben el documento ni el buzón. La revisión y la autoridad
+se vuelven a validar en los caminos existentes; no hay reenvío automático.
+No cambia el protocolo ni la interfaz.
+
+La validación vive dentro de esos métodos y usa el Reader de la sesión, también
+al disparar el Calendario (`launch_for_instance`). El despacho no la duplica.
+La autoridad precede al documento y la revisión precede al escaneo pendiente.

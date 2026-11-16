@@ -12,6 +12,9 @@ $native = Split-Path $PSScriptRoot
 Push-Location $native
 try {
     if ($Crate -notlike 'vantare-*') { $Crate = "vantare-$Crate" }
+    # Cola fase 1 (#1993): runtime y hub-host entran solos con 4 jobs; el resto
+    # comparte las dos ranuras con 2 jobs. compilar.ps1 lee esta clase.
+    $env:VANTARE_QUEUE_CLASS = if ($Crate -in @('vantare-runtime', 'vantare-hub-host')) { 'heavy' } else { 'light' }
     $sensitive = @('vantare-runtime', 'vantare-domain', 'vantare-ipc', 'vantare-ui', 'vantare-storage')
     if (-not $Full -and $Crate -in $sensitive) {
         Write-Warning 'gate rápido: faltan Clippy y tests de dependientes y telemetría (#1498); usa -Full y la telemetría antes de publicar'

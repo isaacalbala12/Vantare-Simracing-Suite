@@ -1,6 +1,8 @@
 //! Opt-in checked launch; no legacy fallback. The caller supplies the armed scope.
+use super::Reader;
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
 use std::path::Path;
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
@@ -17,18 +19,25 @@ pub enum LaunchQueued {
 }
 
 pub fn launch(
-    path: &Path,
+    reader: &Reader,
     observation: Option<&AccountObservation>,
     armed_generation: &AccountGeneration,
     profile: &str,
     revision: &str,
 ) -> Result<LaunchQueued, HostError> {
-    launch_inner(path, observation, armed_generation, profile, revision, None)
+    launch_inner(
+        reader,
+        observation,
+        armed_generation,
+        profile,
+        revision,
+        None,
+    )
 }
 
 /// Pins a scheduled launch to the resident observed when it was armed.
 pub fn launch_for_instance(
-    path: &Path,
+    reader: &Reader,
     observation: Option<&AccountObservation>,
     armed_generation: &AccountGeneration,
     profile: &str,
@@ -36,7 +45,7 @@ pub fn launch_for_instance(
     instance: &str,
 ) -> Result<LaunchQueued, HostError> {
     launch_inner(
-        path,
+        reader,
         observation,
         armed_generation,
         profile,
@@ -45,7 +54,7 @@ pub fn launch_for_instance(
     )
 }
 fn launch_inner(
-    path: &Path,
+    reader: &Reader,
     observation: Option<&AccountObservation>,
     armed_generation: &AccountGeneration,
     profile: &str,
@@ -61,19 +70,14 @@ fn launch_inner(
     if profile.is_empty() || profile.len() > super::ID_LIMIT || profile.contains('\0') {
         return Err(HostError::Denied);
     }
+    let path = &reader.path;
     let (bytes, document) = super::open(path)?.ok_or(HostError::Protected)?;
     if vantare_services::content_hash(&bytes) != revision {
         return Err(HostError::LauncherConflict {
             current: super::read(path),
         });
     }
-    if !document
-        .profiles
-        .iter()
-        .any(|p| p.id == profile && !p.steps.is_empty())
-    {
-        return Err(HostError::Denied);
-    }
+    reader.validate_launch(&document, profile, revision)?;
     let status = mailbox::read_status(path).ok_or(HostError::CoreUnavailable)?;
     let extension = status.extension.ok_or(HostError::Unsupported)?;
     if instance.is_some_and(|armed| String::from(extension.instance.clone()) != armed) {
@@ -149,25 +153,43 @@ mod tests {
         let armed = observation().generation;
         let path = Path::new("missing-checked-launcher.json");
         assert_eq!(
-            launch(path, None, &armed, "qa", ""),
+            launch(&super::Reader::new(path.into()), None, &armed, "qa", ""),
             Err(HostError::CoreUnavailable)
         );
         let mut current = observation();
         current.generation = "b".repeat(64).try_into().unwrap();
         assert_eq!(
-            launch(path, Some(&current), &armed, "qa", ""),
+            launch(
+                &super::Reader::new(path.into()),
+                Some(&current),
+                &armed,
+                "qa",
+                ""
+            ),
             Err(HostError::Denied)
         );
         current.generation = armed.clone();
         current.policy.live = true;
         assert_eq!(
-            launch(path, Some(&current), &armed, "qa", ""),
+            launch(
+                &super::Reader::new(path.into()),
+                Some(&current),
+                &armed,
+                "qa",
+                ""
+            ),
             Err(HostError::Denied)
         );
         current.policy.live = false;
         current.policy.state = AccessState::NoCredential;
         assert_eq!(
-            launch(path, Some(&current), &armed, "qa", ""),
+            launch(
+                &super::Reader::new(path.into()),
+                Some(&current),
+                &armed,
+                "qa",
+                ""
+            ),
             Err(HostError::Denied)
         );
     }
@@ -183,6 +205,7 @@ mod tests {
         let bytes = serde_json::to_vec(&document).unwrap();
         std::fs::write(&path, &bytes).unwrap();
         let revision = vantare_services::content_hash(&bytes);
+        let reader = super::Reader::with_available_apps(path.clone());
         let armed = observation().generation;
         let profile = &document.profiles[0].id;
         let mut status = mailbox::Status {
@@ -199,13 +222,13 @@ mod tests {
         };
         save(&status);
         assert_eq!(
-            launch(&path, Some(&observation()), &armed, profile, &revision),
+            launch(&reader, Some(&observation()), &armed, profile, &revision),
             Err(HostError::Unsupported)
         );
         status.extension = Some(ExecutionStatus::new("b".repeat(64).try_into().unwrap()));
         save(&status);
         assert_eq!(
-            launch(&path, Some(&observation()), &armed, profile, &revision),
+            launch(&reader, Some(&observation()), &armed, profile, &revision),
             Err(HostError::Unsupported)
         );
         status
@@ -217,21 +240,21 @@ mod tests {
         status.updated_ms = 0;
         save(&status);
         assert_eq!(
-            launch(&path, Some(&observation()), &armed, profile, &revision),
+            launch(&reader, Some(&observation()), &armed, profile, &revision),
             Err(HostError::CoreUnavailable)
         );
         status.updated_ms = mailbox::now_ms();
         status.running = true;
         save(&status);
         assert_eq!(
-            launch(&path, Some(&observation()), &armed, profile, &revision),
+            launch(&reader, Some(&observation()), &armed, profile, &revision),
             Err(HostError::Busy)
         );
         assert!(!mailbox::request_path(&path).exists());
         status.running = false;
         save(&status);
         let LaunchQueued::Queued { request } =
-            launch(&path, Some(&observation()), &armed, profile, &revision).unwrap();
+            launch(&reader, Some(&observation()), &armed, profile, &revision).unwrap();
         assert_eq!(request.len(), 32);
         let wire: mailbox::Request =
             serde_json::from_slice(&std::fs::read(mailbox::request_path(&path)).unwrap()).unwrap();
@@ -244,7 +267,7 @@ mod tests {
         assert_eq!(payload.revision, revision);
         assert_eq!(payload.instance, status.extension.unwrap().instance);
         assert_eq!(
-            launch(&path, Some(&observation()), &armed, profile, &revision),
+            launch(&reader, Some(&observation()), &armed, profile, &revision),
             Err(HostError::Busy)
         );
         std::fs::remove_dir_all(root).unwrap();
@@ -282,13 +305,25 @@ mod tests {
         changed.push(b'\n');
         std::fs::write(&path, &changed).unwrap();
         assert!(matches!(
-            launch(&path, Some(&observation()), &armed, "creator", &revision),
+            launch(
+                &super::Reader::with_available_apps(path.clone()),
+                Some(&observation()),
+                &armed,
+                "creator",
+                &revision
+            ),
             Err(HostError::LauncherConflict { .. })
         ));
         assert!(!mailbox::request_path(&path).exists());
         std::fs::write(&path, &original).unwrap();
         assert_eq!(
-            launch(&path, Some(&observation()), &armed, "missing", &revision),
+            launch(
+                &super::Reader::with_available_apps(path.clone()),
+                Some(&observation()),
+                &armed,
+                "missing",
+                &revision
+            ),
             Err(HostError::Denied)
         );
         document.profiles[0].steps.clear();
@@ -296,7 +331,7 @@ mod tests {
         std::fs::write(&path, &empty).unwrap();
         assert_eq!(
             launch(
-                &path,
+                &super::Reader::with_available_apps(path.clone()),
                 Some(&observation()),
                 &armed,
                 "creator",
@@ -308,7 +343,7 @@ mod tests {
             std::fs::write(&path, protected).unwrap();
             assert_eq!(
                 launch(
-                    &path,
+                    &super::Reader::with_available_apps(path.clone()),
                     Some(&observation()),
                     &armed,
                     "creator",

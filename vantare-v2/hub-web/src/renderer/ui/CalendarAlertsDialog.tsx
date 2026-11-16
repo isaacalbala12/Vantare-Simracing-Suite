@@ -63,6 +63,7 @@ type Props = {
 };
 export function CalendarAlertsDialog(p: Props) {
   const testHint = useId();
+  const autoHint = useId();
   const [editing, setEditing] = useState<string>();
   const name = (id: string) =>
     p.schedule?.series.find((s) => s.id === id)?.name ?? text.missing(id);
@@ -168,6 +169,7 @@ export function CalendarAlertsDialog(p: Props) {
                   ))}
                   <Caption>{text.when}</Caption>
                   <Tooltip
+                    id={autoHint}
                     label={
                       p.launchControl?.reason ?? calendarLaunchText.onlyOpen
                     }
@@ -175,6 +177,7 @@ export function CalendarAlertsDialog(p: Props) {
                     <div className="v-calendar-alerts-auto">
                       <Switch
                         hideLabel
+                        aria-describedby={autoHint}
                         label={text.auto(p.profile ?? text.defaultProfile)}
                         checked={
                           p.launchControl
@@ -365,11 +368,11 @@ export function CalendarAlertsDialog(p: Props) {
             )}
           </div>
           <footer>
-            <Tooltip label={p.windowsDisabledReason ?? text.testHint}>
+            <Tooltip
+              id={testHint}
+              label={p.windowsDisabledReason ?? text.testHint}
+            >
               <span>
-                <span id={testHint} className="v-sr-only">
-                  {p.windowsDisabledReason ?? text.testHint}
-                </span>
                 <Button
                   disabled={!p.onTest || !ready || !!p.windowsDisabledReason}
                   focusableWhenDisabled

@@ -566,7 +566,8 @@
   border-color: var(--line-2);
   border-radius: 8px;
 }
-:is(.v-calendar, .v-calendar-rail) .v-button--neutral:hover:not(:disabled) {
+:is(.v-calendar, .v-calendar-rail)
+  .v-button--neutral:hover:not(:disabled):not([aria-disabled="true"]) {
   background: var(--surface-3);
 }
 

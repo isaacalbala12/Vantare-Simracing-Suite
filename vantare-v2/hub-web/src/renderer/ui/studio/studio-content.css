@@ -56,3 +56,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.v-studio-content-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.v-studio-content-heading > h3 {
+  margin: 0;
+}

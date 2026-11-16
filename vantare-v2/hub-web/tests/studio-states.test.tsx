@@ -26,6 +26,7 @@ import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { studioText as t } from "../src/renderer/i18n/studio";
+import { canvasText } from "../src/renderer/i18n/studio-canvas";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
@@ -87,7 +88,9 @@ function mount(scene = "studio-base") {
   );
 }
 const listRow = (name: string) =>
-  screen.findByRole("button", { name: new RegExp(`^${name}, `) });
+  screen.findByRole("button", {
+    name: new RegExp(`^${name} (?:Visible|Oculto)`),
+  });
 describe("Studio A honest states", () => {
   it("guides an empty layout, explains track availability and adds with the existing CAS", async () => {
     const spy = vi.spyOn(Client.prototype, "request");
@@ -156,17 +159,19 @@ describe("Studio A honest states", () => {
       ),
     );
     expect(
-      screen.getByRole("button", { name: t.add }).hasAttribute("disabled"),
-    ).toBe(true);
+      screen.getByRole("button", { name: t.add }).getAttribute("aria-disabled"),
+    ).toBe("true");
   });
   it("focuses the newly committed row after a protected document recovers", async () => {
     mount("studio-a-recargar");
     await screen.findByRole("alert");
-    expect(screen.queryByRole("button", { name: /^Standings, / })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
+    ).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: t.reload }));
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: /^Standings, / }),
+        screen.getByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
       ),
     );
     expect((document.activeElement as HTMLElement).dataset.widget).toBe(
@@ -183,7 +188,9 @@ describe("Studio A honest states", () => {
     ).toBeNull();
     expect(screen.queryByRole("button", { name: t.discard })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: t.reload }));
-    await screen.findByRole("button", { name: /^Standings, / });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     expect(
       requests.mock.calls.filter(([r]) => r.method === "studio.get"),
     ).toHaveLength(2);
@@ -292,17 +299,15 @@ describe("Studio A honest states", () => {
     fireEvent.keyDown(await listRow("Standings"), { key: " " });
     await screen.findByRole("alert");
     expect(
-      screen
-        .getByRole("button", { name: /^Standings, / })
-        .getAttribute("aria-label"),
-    ).toContain("90 %");
+      screen.getByRole("button", { name: /^Standings .*90 %/ }),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: t.retry }));
     await waitFor(() =>
       expect(
-        screen
-          .getByRole("button", { name: /^Standings, / })
-          .getAttribute("aria-label"),
-      ).toContain(t.hidden),
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBeTruthy(),
     );
     const writes = requests.mock.calls.filter(
       ([r]) => r.method === "studio.visibility",
@@ -316,20 +321,23 @@ describe("Studio A honest states", () => {
     async (scene) => {
       const requests = vi.spyOn(Client.prototype, "request");
       mount(scene);
-      await screen.findAllByRole("button", { name: /^Standings(?: \d+)?,/ });
+      await screen.findAllByRole("button", {
+        name: /^Standings(?: \d+)? (?:Visible|Oculto)/,
+      });
       const add = await screen.findByRole("button", { name: t.add });
-      expect(add.hasAttribute("disabled")).toBe(true);
+      expect(add.hasAttribute("disabled")).toBe(false);
+      expect(add.getAttribute("aria-disabled")).toBe("true");
       if (scene === "studio-a-limite") {
         expect(
           screen.getByText(t.overlaysCount(studioLimits.instances)),
         ).toBeTruthy();
         const trigger = add.closest(".v-tooltip-trigger");
         if (!trigger) throw new Error("Missing Add tooltip trigger");
-        await userEvent.hover(trigger);
-        fireEvent.mouseMove(trigger, { clientX: 1, clientY: 1 });
-        const tooltip = await screen.findByText(
-          t.atLimit(studioLimits.instances),
-        );
+        fireEvent.focus(add);
+        const tooltip = await screen.findByRole("tooltip", {
+          name: t.atLimit(studioLimits.instances),
+        });
+        expect(add.getAttribute("aria-describedby")).toBe(tooltip.id);
         expect(tooltip.closest(".v-tooltip")).not.toBeNull();
       } else
         expect(
@@ -368,7 +376,9 @@ describe("Studio A honest states", () => {
           ).queryByText(t.empty),
         ).toBeNull();
         expect(
-          screen.queryAllByRole("button", { name: /^Standings, / }),
+          screen.queryAllByRole("button", {
+            name: /^Standings (?:Visible|Oculto)/,
+          }),
         ).toHaveLength(0);
       }
       expect(
@@ -421,12 +431,20 @@ describe("Studio A honest states", () => {
     fireEvent.keyDown(row, { key: " " });
     await screen.findByRole("alert");
     expect(screen.getByRole("status", { name: t.notSaved })).toBeTruthy();
-    expect(row.getAttribute("aria-label")).toContain(t.visible);
+    expect(
+      screen.getByRole("button", {
+        name: new RegExp(`^Standings ${t.visible}`),
+      }),
+    ).toBe(row);
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: t.retry }));
     await waitFor(() =>
-      expect(row.getAttribute("aria-label")).toContain(t.hidden),
+      expect(
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBe(row),
     );
     const writes = spy.mock.calls.filter(
       ([r]) => r.method === "studio.visibility",
@@ -444,7 +462,11 @@ describe("Studio A honest states", () => {
       .setup()
       .click(screen.getByRole("button", { name: t.discard }));
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(row.getAttribute("aria-label")).toContain(t.visible);
+    expect(
+      screen.getByRole("button", {
+        name: new RegExp(`^Standings ${t.visible}`),
+      }),
+    ).toBe(row);
     expect(
       spy.mock.calls.filter(([r]) => r.method === "studio.visibility"),
     ).toHaveLength(1);
@@ -481,4 +503,81 @@ describe("Studio A honest states", () => {
       spy.mock.calls.filter(([r]) => r.method !== "studio.get"),
     ).toHaveLength(0);
   });
+});
+
+it.each([
+  "studio-canvas-monitor-missing",
+  "studio-canvas-monitor-unreadable",
+  "studio-missing",
+])(
+  "uses one no-canvas explanation without changing documents: %s",
+  async (scene) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    const monitorUnavailable = scene === "studio-canvas-monitor-missing";
+    mount(scene);
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: canvasText.open }));
+    expect(
+      await screen.findByRole("heading", {
+        name: monitorUnavailable
+          ? canvasText.monitorUnavailableTitle
+          : canvasText.noCanvasTitle,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        monitorUnavailable
+          ? canvasText.monitorUnavailableHelp
+          : canvasText.noCanvasHelp,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        monitorUnavailable
+          ? canvasText.noCanvasHelp
+          : canvasText.monitorUnavailableHelp,
+      ),
+    ).toBeNull();
+    expect(document.querySelector(".v-studio-canvas-position")).toBeNull();
+    if (monitorUnavailable) {
+      expect(screen.getByRole("status", { name: t.readOnly })).toBeTruthy();
+      expect(screen.queryByRole("status", { name: t.loading })).toBeNull();
+    }
+    expect(screen.queryByText(t.protected)).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: canvasText.resolution }),
+    ).toBeNull();
+    const reload = screen.getAllByRole("button", { name: t.reload });
+    expect(reload).toHaveLength(1);
+    const reads = spy.mock.calls.filter(
+      ([r]) => r.method === "studio.get",
+    ).length;
+    await userEvent.setup().click(reload[0]);
+    await waitFor(() =>
+      expect(
+        spy.mock.calls.filter(([r]) => r.method === "studio.get").length,
+      ).toBeGreaterThan(reads),
+    );
+    expect(
+      spy.mock.calls.filter(
+        ([r]) => r.method.startsWith("studio.") && r.method !== "studio.get",
+      ),
+    ).toHaveLength(0);
+  },
+);
+it("keeps the protected warning when a monitor is preserved", async () => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  mount("studio-a-protegido");
+  await userEvent
+    .setup()
+    .click(await screen.findByRole("button", { name: canvasText.open }));
+  expect(screen.getByText(t.protected)).toBeTruthy();
+  expect(screen.queryByText(canvasText.noCanvasTitle)).toBeNull();
 });

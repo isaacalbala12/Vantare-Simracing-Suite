@@ -36,6 +36,28 @@ atribuye un porcentaje ni se reutiliza una referencia contraída como si lo fuer
 Este flag no admite `--current`, porque necesita una instancia real. Como en el
 resto de capturas, adquirir antes el cerrojo global y no compilar simultáneamente.
 
+## Cierre de la ventana de captura
+
+El cierre se hace con el botón real de la ventana. El helper espera la respuesta
+de la guarda (`HUB_QA_CLOSE_ALLOWED`), el cierre de la página y la desconexión
+del cliente CDP. En las 60 ventanas medidas para #2308 la guarda respondió en
+13–40 ms, la página se cerró 19–25 ms después y el CDP se desconectó 9–12 ms más
+tarde. A partir de ahí Chromium puede tardar 2–5 s en apagar sus propios procesos
+hijos, algo que la captura QA no necesita.
+
+Por eso, cuando la ventana está cerrada, el CDP desconectado y `cleanupFailed` es
+0, el helper concede un margen de 250 ms (`QA_CLOSE_MARGIN_MS`) y, si el proceso
+sigue vivo, mata solo su propio árbol con `taskkill /T /F`. Ese cierre se registra
+como `qaKillAfterClose: true` en `teardown.json` y como evento
+`qa-kill-after-close` en `lifecycle.json`; no es un cierre normal ni un
+`forcedKill`. Un cuelgue real (la ventana no se cierra, el CDP sigue conectado o
+`cleanupFailed` es mayor que 0) no entra en esa rama y sigue terminando por el
+plazo existente con `forcedKill: true`.
+
+El volcado final del perfil de QA (`DIPS`) que Chromium haría en esos segundos se
+descarta a propósito: el directorio de datos de cada captura es desechable y no
+se reutiliza. El cierre del producto no cambia.
+
 ## Referencia declarada no válida
 
 Si el orquestador descarta una referencia, `--capture-only --invalid-reference-reason "motivo"` admite una única escena y tema. Conserva `current.png` y un informe `captured/referenceStatus:invalid`, sin copia de referencia, diferencias ni porcentajes. Sigue comprobando los recibos del banco y las dimensiones 1440×900; no convierte la referencia en válida. Requiere el mismo cerrojo global para capturas reales. `--current` permite probar este modo con una imagen ya tomada sin abrir Electron.

@@ -19,6 +19,7 @@
     "vantare-v2/native/strategy/testdata",
     "vantare-v2/native/ui/assets",
     "vantare-v2/native/ui/fixtures",
+    "vantare-v2/native/ui/src/pedals_telemetry",
     "vantare-v2/native/ui/styles",
     "vantare-v2/native/vendor",
     "supabase/tests/fixtures",

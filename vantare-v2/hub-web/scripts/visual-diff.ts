@@ -84,6 +84,14 @@ await writeFile(
   JSON.stringify(await auditFontSources(), null, 2),
 );
 const report: Record<string, unknown>[] = [];
+// #2317: on 60 QA windows (#2308), the guarded close answered in 13-40 ms, the
+// window closed 19-25 ms later and the CDP client disconnected 9-12 ms after
+// that. Chromium can then spend 2-5 s tearing down its own child processes,
+// which a QA capture does not need. This margin covers the guarded close with
+// slack and still leaves a real hang (seconds, no page-close) as forcedKill.
+// Declared before the capture loop: capture() reads it during teardown, and a
+// declaration after the first call would hit the temporal dead zone.
+const QA_CLOSE_MARGIN_MS = 250;
 for (const scheme of schemes) {
   assert.ok(scheme === "dark" || scheme === "light");
   const directory = join(reference, scheme);
@@ -272,6 +280,7 @@ async function capture(
   let cleanupPage: Page | undefined;
   let pageClosed: Promise<void> | undefined;
   let cleanupFailed = false;
+  let cdpDisconnected = false;
   try {
     await writeFile(
       join(destination, "instance.json"),
@@ -318,9 +327,10 @@ async function capture(
     page.once("close", () =>
       lifecycle.push({ event: "page-close", at: Date.now() }),
     );
-    browser.once("disconnected", () =>
-      lifecycle.push({ event: "disconnected", at: Date.now() }),
-    );
+    browser.once("disconnected", () => {
+      cdpDisconnected = true;
+      lifecycle.push({ event: "disconnected", at: Date.now() });
+    });
     cleanupPage = page;
     await page
       .getByRole("button", { name: windowText.close, exact: true })
@@ -437,6 +447,35 @@ async function capture(
         ],
         { windowsHide: true },
       );
+    if (await page.locator(".v-studio-canvas-plane").count()) {
+      const canvasLayout = await page.evaluate(() => {
+        const plane = document.querySelector<HTMLElement>(
+          ".v-studio-canvas-plane",
+        );
+        const viewport = document.querySelector<HTMLElement>(
+          ".v-studio-canvas-viewport",
+        );
+        if (!plane || !viewport) return null;
+        const bounds = plane.getBoundingClientRect();
+        return {
+          viewport: viewport.getBoundingClientRect().toJSON(),
+          plane: bounds.toJSON(),
+          fitPercent: (bounds.width / Number(plane.dataset.canvasWidth)) * 100,
+          zoomLabel: document.querySelector(".v-studio-canvas-zoom output")
+            ?.textContent,
+          sidebarCollapsed: document
+            .querySelector(".v-sidebar")
+            ?.classList.contains("v-sidebar--collapsed"),
+          listCollapsed: document
+            .querySelector(".v-studio-focus-layout")
+            ?.getAttribute("data-list-collapsed"),
+        };
+      });
+      await writeFile(
+        join(destination, "canvas-layout.json"),
+        JSON.stringify(canvasLayout, null, 2),
+      );
+    }
     saveWindow("current.png");
     if (
       args.includes("--capture-sidebar-matrix") ||
@@ -603,29 +642,31 @@ async function capture(
     // A dirty native close guard can veto Browser.close. Bound QA teardown and
     // kill only this spawned process tree if scene cleanup cannot release it.
     let forcedKill = false;
+    let qaKillAfterClose = false;
     const stopTree = () => {
-      if (child.pid && child.exitCode === null) {
-        lifecycle.push({
-          event: "stop-tree",
-          at: Date.now(),
-          detail: execFileSync(
-            "tasklist",
-            ["/FI", `PID eq ${child.pid}`, "/FO", "CSV", "/NH"],
-            { windowsHide: true, encoding: "utf8" },
-          ).trim(),
+      if (!child.pid || child.exitCode !== null) return false;
+      lifecycle.push({
+        event: "stop-tree",
+        at: Date.now(),
+        detail: execFileSync(
+          "tasklist",
+          ["/FI", `PID eq ${child.pid}`, "/FO", "CSV", "/NH"],
+          { windowsHide: true, encoding: "utf8" },
+        ).trim(),
+      });
+      try {
+        execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+          windowsHide: true,
+          stdio: "ignore",
         });
-        try {
-          execFileSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
-            windowsHide: true,
-            stdio: "ignore",
-          });
-          forcedKill = true;
-        } catch {
-          forcedKill = child.kill() || forcedKill;
-        }
+        return true;
+      } catch {
+        return child.kill() || false;
       }
     };
-    const deadline = setTimeout(stopTree, 5000);
+    const deadline = setTimeout(() => {
+      if (stopTree()) forcedKill = true;
+    }, 10000);
     lifecycle.push({ event: "teardown-start", at: Date.now() });
     try {
       const close = cleanupPage?.getByRole("button", {
@@ -654,6 +695,31 @@ async function capture(
         clearTimeout(timer);
         browser = undefined;
       }
+      // #2317: the guarded window is closed and CDP is gone, so the capture's
+      // own close is complete. Chromium can still spend seconds shutting down
+      // its children; stop only our tree after a short margin and record it as
+      // a distinct QA kill. A real hang (window open, CDP alive, cleanup failed)
+      // never reaches this branch and stays forcedKill.
+      if (
+        !forcedKill &&
+        child.exitCode === null &&
+        !cleanupFailed &&
+        cdpDisconnected &&
+        cleanupPage?.isClosed()
+      ) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+          exited,
+          new Promise<void>((accept) => {
+            timer = setTimeout(accept, QA_CLOSE_MARGIN_MS);
+          }),
+        ]);
+        clearTimeout(timer);
+        if (child.exitCode === null && stopTree()) {
+          qaKillAfterClose = true;
+          lifecycle.push({ event: "qa-kill-after-close", at: Date.now() });
+        }
+      }
       if (child.exitCode === null) await exited;
       // CDP can already be disconnected after the process exits. Keep a
       // bounded, referenced timer rather than leaving an unsettled close await.
@@ -670,13 +736,18 @@ async function capture(
     } finally {
       clearTimeout(deadline);
       if (child.exitCode === null) {
-        stopTree();
+        if (stopTree()) forcedKill = true;
         await exited;
       }
       await writeFile(
         join(destination, "teardown.json"),
         JSON.stringify(
-          { forcedKill, cleanupFailed, exitCode: child.exitCode },
+          {
+            forcedKill,
+            qaKillAfterClose,
+            cleanupFailed,
+            exitCode: child.exitCode,
+          },
           null,
           2,
         ),

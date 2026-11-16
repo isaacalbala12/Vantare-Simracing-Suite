@@ -99,7 +99,9 @@ async function tabTo(
   expect(document.activeElement).toBe(element);
 }
 const listRow = (name: string) =>
-  screen.findByRole("button", { name: new RegExp(`^${name}, `) });
+  screen.findByRole("button", {
+    name: new RegExp(`^${name} (?:Visible|Oculto)`),
+  });
 
 async function openTrack() {
   await listRow("Standings");

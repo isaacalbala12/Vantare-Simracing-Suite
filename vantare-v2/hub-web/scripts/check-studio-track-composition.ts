@@ -50,6 +50,13 @@ export async function checkStudioTrackComposition(parent: Page, base: string) {
               5000,
               "Studio sidebar settled",
             );
+            assert.equal(
+              await page
+                .getByRole("button", { name: /^Delta (?:Visible|Oculto)/ })
+                .count(),
+              1,
+              `${width}px/${scheme}/${expanded ? "expanded" : "collapsed"}: Delta retains its accessible name`,
+            );
             const pixelScale = await nav.evaluate(
               (node) =>
                 node.getBoundingClientRect().width /

@@ -2,7 +2,14 @@
 
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import {
@@ -14,9 +21,11 @@ import {
   it,
   vi,
 } from "vitest";
+import type { Reply, StudioView } from "../src/contract/generated/contract";
+import { studioDuplicateCases } from "../src/contract/generated/studio";
 import { HostProvider } from "../src/renderer/app/Host";
 import { UiProvider } from "../src/renderer/app/UiState";
-import { Client } from "../src/renderer/bridge/client";
+import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { studioText as t } from "../src/renderer/i18n/studio";
 import { initialStudioSelection } from "../src/renderer/screens/studio/selection";
 import {
@@ -102,8 +111,22 @@ async function tabTo(
   expect(document.activeElement).toBe(element);
 }
 const listRow = (name: string) =>
-  screen.findByRole("button", { name: new RegExp(`^${name}, `) });
+  screen.findByRole("button", {
+    name: new RegExp(`^${name} (?:Visible|Oculto)`),
+  });
 describe("Studio Foco structure", () => {
+  it("takes the row name from its existing visible name and status", async () => {
+    mount();
+    const row = await screen.findByRole("button", {
+      name: "Standings Visible",
+    });
+    expect(row.getAttribute("aria-label")).toBeNull();
+    expect(
+      document.getElementById(row.getAttribute("aria-labelledby") ?? "")
+        ?.textContent,
+    ).toBe("Standings Visible");
+    expect(row.hasAttribute("data-widget")).toBe(true);
+  });
   it("selects remembered, then first visible, then first, then none", () => {
     const view = {
       instances: [
@@ -134,6 +157,19 @@ describe("Studio Foco structure", () => {
     expect(small.width / small.height).toBeCloseTo(
       natural.width / natural.height,
     );
+  });
+  it("keeps heading levels in order from the overlay title to its groups", async () => {
+    mount();
+    await screen.findByRole("heading", { name: new RegExp(t.widgetLook) });
+    const levels = Array.from(
+      document.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"),
+    ).map((heading) => Number(heading.tagName.slice(1)));
+    expect(levels[0]).toBe(1);
+    for (let index = 1; index < levels.length; index++)
+      expect(
+        levels[index],
+        `heading ${index + 1} skips a level`,
+      ).toBeLessThanOrEqual(levels[index - 1] + 1);
   });
   it("uses real Tab, arrows, Home/End and Enter without moving focus on a click", async () => {
     mount();
@@ -177,7 +213,11 @@ describe("Studio Foco structure", () => {
       ).toBe(true),
     );
     await waitFor(() =>
-      expect(first.getAttribute("aria-label")).toContain(t.hidden),
+      expect(
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBe(first),
     );
     expect(document.activeElement).toBe(first);
   });
@@ -325,4 +365,237 @@ describe("Studio Foco structure", () => {
     await screen.findByText(t.conflict);
     expect(screen.queryByText(t.presetApplied(t.formatCompact))).toBeNull();
   });
+});
+
+describe("Studio Ctrl+D", () => {
+  it.each(studioDuplicateCases)(
+    "consumes added and the native $name vector without moving focus",
+    async (vector) => {
+      const requests = vi.spyOn(Client.prototype, "request");
+      mount(`studio-duplicate-${vector.name}`);
+      const first = await listRow("Standings");
+      const initialIndex = requests.mock.calls.findIndex(
+        ([request]) => request.method === "studio.get",
+      );
+      const initial = (await requests.mock.results[initialIndex]
+        .value) as Reply;
+      if (initial.method !== "studio.get")
+        throw Error("Initial Studio snapshot");
+      const sourceId = first.dataset.widget;
+      const user = userEvent.setup();
+      await user.click(first);
+      await user.keyboard("{Control>}d{/Control}");
+      await waitFor(() =>
+        expect(
+          requests.mock.calls.some(
+            ([request]) => request.method === "studio.duplicate",
+          ),
+        ).toBe(true),
+      );
+      const index = requests.mock.calls.findIndex(
+        ([request]) => request.method === "studio.duplicate",
+      );
+      expect(requests.mock.calls[index][0]).toEqual({
+        method: "studio.duplicate",
+        id: sourceId,
+        baseRevision: initial.value.revision,
+      });
+      const reply = (await requests.mock.results[index].value) as Reply;
+      if (reply.method !== "studio.duplicate")
+        throw Error("Duplicate confirmation");
+      const copy = reply.value.instances.find(
+        (item) => item.id === reply.added,
+      );
+      expect(copy).toBeTruthy();
+      expect(copy?.id).not.toBe(sourceId);
+      expect(copy?.x).toBeCloseTo(vector.expected[0], 7);
+      expect(copy?.y).toBeCloseTo(vector.expected[1], 7);
+      expect(copy?.frequency.overrideHz).toBe(
+        initial.value.instances[0].frequency.overrideHz,
+      );
+      expect(copy?.settings).toEqual(
+        reply.value.instances.find((item) => item.id === sourceId)?.settings,
+      );
+      await waitFor(() =>
+        expect(
+          Array.from(
+            document.querySelectorAll<HTMLButtonElement>("[data-widget]"),
+          )
+            .find((item) => item.dataset.widget === reply.added)
+            ?.getAttribute("aria-pressed"),
+        ).toBe("true"),
+      );
+      expect((document.activeElement as HTMLElement)?.dataset.widget).toBe(
+        reply.added,
+      );
+      expect(
+        requests.mock.calls.filter(
+          ([request]) => request.method === "studio.duplicate",
+        ),
+      ).toHaveLength(1);
+      expect(screen.queryByText(t.addedName("Standings"))).toBeNull();
+    },
+  );
+  it("does not duplicate from a field, a menu, an inert row or an open dialog", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const first = await listRow("Standings");
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: t.content }));
+    await user.click(screen.getAllByRole("textbox")[0]);
+    await user.keyboard("{Control>}d{/Control}");
+    for (const role of ["menu", "dialog"]) {
+      const overlay = document.createElement("div");
+      overlay.setAttribute("role", role);
+      document.body.append(overlay);
+      first.focus();
+      fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+      overlay.remove();
+    }
+    first.setAttribute("inert", "");
+    fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+    first.removeAttribute("inert");
+    for (const modifiers of [
+      { repeat: true },
+      { isComposing: true },
+      { shiftKey: true },
+      { altKey: true },
+      { metaKey: true },
+    ])
+      fireEvent.keyDown(first, { key: "d", ctrlKey: true, ...modifiers });
+    await act(async () => {});
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "studio.duplicate",
+      ),
+    ).toHaveLength(0);
+    first.focus();
+    fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+    await waitFor(() =>
+      expect(
+        requests.mock.calls.filter(
+          ([request]) => request.method === "studio.duplicate",
+        ),
+      ).toHaveLength(1),
+    );
+  });
+  it("uses the existing write latch for two keyboard events before a render", async () => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    const first = await listRow("Standings");
+    first.focus();
+    act(() => {
+      fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+      fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+    });
+    await act(async () => {});
+    expect(
+      requests.mock.calls.filter(
+        ([request]) => request.method === "studio.duplicate",
+      ),
+    ).toHaveLength(1);
+  });
+  it.each([
+    "rejected",
+    "busy",
+    "coreUnavailable",
+    "studioConflict",
+    "io",
+  ] as const)(
+    "preserves the existing %s feedback, rereads only uncertain/conflicted results and never replays",
+    async (kind) => {
+      const original = Client.prototype.request;
+      let current: StudioView | undefined;
+      const requests = vi
+        .spyOn(Client.prototype, "request")
+        .mockImplementation(function (this: Client, request) {
+          if (request.method === "studio.duplicate") {
+            if (!current) throw Error("Initial Studio snapshot");
+            return Promise.reject(
+              new HostFailure(
+                kind === "studioConflict" ? { kind, current } : { kind },
+              ),
+            );
+          }
+          return original.call(this, request);
+        });
+      mount();
+      const first = await listRow("Standings");
+      const initialIndex = requests.mock.calls.findIndex(
+        ([request]) => request.method === "studio.get",
+      );
+      const initial = (await requests.mock.results[initialIndex]
+        .value) as Reply;
+      if (initial.method !== "studio.get") throw Error("Initial snapshot");
+      current = initial.value;
+      const reads = requests.mock.calls.filter(
+        ([request]) => request.method === "studio.get",
+      ).length;
+      await userEvent.setup().click(first);
+      fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+      const message =
+        kind === "studioConflict"
+          ? t.conflict
+          : kind === "coreUnavailable" || kind === "io"
+            ? t.duplicateUncertain
+            : kind === "busy"
+              ? t.busy
+              : t.failed;
+      await screen.findByText(message);
+      expect(
+        requests.mock.calls.filter(
+          ([request]) => request.method === "studio.duplicate",
+        ),
+      ).toHaveLength(1);
+      expect(
+        requests.mock.calls.filter(
+          ([request]) => request.method === "studio.get",
+        ),
+      ).toHaveLength(
+        reads +
+          Number(
+            kind === "coreUnavailable" ||
+              kind === "studioConflict" ||
+              kind === "io",
+          ),
+      );
+      expect(first.getAttribute("aria-pressed")).toBe("true");
+      expect(document.activeElement).toBe(first);
+      expect(screen.queryByRole("button", { name: t.retry })).toBeNull();
+    },
+  );
+});
+
+it("keeps the original failure if reading after an uncertain duplicate also fails", async () => {
+  const original = Client.prototype.request;
+  let sent = false;
+  const requests = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(function (this: Client, request) {
+      if (request.method === "studio.duplicate") sent = true;
+      if (
+        sent &&
+        (request.method === "studio.duplicate" ||
+          request.method === "studio.get")
+      )
+        return Promise.reject(new HostFailure({ kind: "coreUnavailable" }));
+      return original.call(this, request);
+    });
+  mount();
+  const first = await listRow("Standings");
+  first.focus();
+  fireEvent.keyDown(first, { key: "d", ctrlKey: true });
+  await screen.findByText(t.duplicateUncertain);
+  expect(
+    screen.getByRole("status", { name: t.duplicateUnconfirmed }),
+  ).toBeTruthy();
+  expect(first.getAttribute("aria-pressed")).toBe("true");
+  expect(
+    requests.mock.calls.filter(
+      ([request]) => request.method === "studio.duplicate",
+    ),
+  ).toHaveLength(1);
+  expect(
+    requests.mock.calls.filter(([request]) => request.method === "studio.get"),
+  ).toHaveLength(2);
 });

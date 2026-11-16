@@ -193,12 +193,12 @@ export function Launcher({
     setError(undefined);
     try {
       const reply = await launchRequest.request({
-        method: "launcher.launch",
+        method: "launcher.launchChecked",
         profile: profile.id,
         baseRevision: view.revision,
       });
-      if (alive.current && reply.method === "launcher.launch") {
-        setAccepted(reply.accepted);
+      if (alive.current && reply.method === "launcher.launchChecked") {
+        setAccepted(true);
       }
     } catch (failure) {
       if (!alive.current) return;

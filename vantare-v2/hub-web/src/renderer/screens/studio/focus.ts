@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { coreKey, offline } from "../../app/Host";
 import { useUi } from "../../app/UiState";
 import { hubKeys } from "../../ui/hub-shortcuts";
 import { initialStudioSelection } from "./selection";
@@ -34,10 +36,26 @@ export function useStudioFocus() {
   const focusOptions = () =>
     root.current
       ?.querySelector<HTMLElement>(
-        '.v-studio-temporary [role="tab"][aria-selected="true"]',
+        state.canvasMode
+          ? '[data-canvas-selected="true"] [data-canvas-move]'
+          : '.v-studio-temporary [role="tab"][aria-selected="true"]',
       )
       ?.focus();
-  const blocked = view?.state !== "ready" || view.plan === "unverified";
+  const core =
+    useQuery({
+      queryKey: coreKey,
+      queryFn: async () => offline,
+      enabled: false,
+      subscribed: state.canvasMode,
+    }).data ?? offline;
+  const canvasReadOnly =
+    state.canvasMode &&
+    (core.live ||
+      core.rights !== "connected" ||
+      !core.access.verified ||
+      state.needsRead);
+  const blocked =
+    view?.state !== "ready" || view.plan === "unverified" || canvasReadOnly;
   const reload = async () => {
     if (state.pending) return;
     const value = await state.execute({ method: "studio.get" });
@@ -119,6 +137,27 @@ export function useStudioFocus() {
         return;
       if (event.ctrlKey === event.metaKey) return;
       const key = event.key.toLowerCase();
+      if (key === hubKeys.duplicate && event.ctrlKey && !event.shiftKey) {
+        const target =
+          event.target instanceof HTMLButtonElement ? event.target : null;
+        if (
+          selected &&
+          !selected.locked &&
+          target &&
+          target.dataset.widget === selected.id &&
+          root.current?.contains(target) &&
+          !target.closest("[inert]") &&
+          !document.querySelector("[role=menu]")
+        ) {
+          event.preventDefault();
+          void state.execute({
+            method: "studio.duplicate",
+            id: selected.id,
+            baseRevision: view.revision,
+          });
+        }
+        return;
+      }
       const redo =
         (key === hubKeys.redo && !event.shiftKey) ||
         (key === hubKeys.undo && event.shiftKey);
@@ -132,7 +171,7 @@ export function useStudioFocus() {
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [view, state.execute, blocked, state.pending]);
+  }, [view, selected, state.execute, blocked, state.pending]);
   const toggle = (id: string) => {
     const item = view?.instances.find((item) => item.id === id);
     if (!view || !item || item.locked || blocked || state.pending) return;
@@ -182,6 +221,7 @@ export function useStudioFocus() {
     catalogOpen,
     setCatalogOpen,
     blocked,
+    canvasReadOnly,
     reload,
   };
 }

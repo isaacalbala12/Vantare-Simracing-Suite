@@ -143,18 +143,29 @@ export function ResidentInbox({
                 return (
                   <Tooltip
                     key={action.id}
+                    id={
+                      enabled
+                        ? undefined
+                        : `${explanation}-${action.id}-tooltip`
+                    }
                     label={enabled ? action.label : reason}
                   >
                     <span>
                       <Button
                         disabled={!answer}
+                        focusableWhenDisabled={!enabled}
                         aria-disabled={!enabled}
                         aria-describedby={
-                          !answer || enabled
-                            ? explanation
-                            : phase && action.id !== "trust"
-                              ? `${explanation}-status`
-                              : `${explanation}-${action.id}`
+                          enabled
+                            ? undefined
+                            : [
+                                !answer
+                                  ? explanation
+                                  : phase && action.id !== "trust"
+                                    ? `${explanation}-status`
+                                    : `${explanation}-${action.id}`,
+                                `${explanation}-${action.id}-tooltip`,
+                              ].join(" ")
                         }
                         onClick={() => {
                           if (enabled && rendered)

@@ -11,41 +11,38 @@ export function StudioSaveStatus({
 }) {
   const { state } = model;
   const view = state.view;
-  const saving = view?.state === "ready" && state.pending;
+  const readOnly =
+    view?.state === "protected" ||
+    view?.state === "monitorUnavailable" ||
+    model.canvasReadOnly;
+  const saving = !readOnly && view?.state === "ready" && state.pending;
   const loading = !view && !state.failure;
-  const label =
-    view?.state === "protected"
-      ? t.readOnly
-      : state.failure
-        ? state.failure.request.method === "studio.get"
-          ? t.readFailed
+  const label = readOnly
+    ? t.readOnly
+    : state.failure
+      ? state.failure.request.method === "studio.get"
+        ? t.readFailed
+        : state.failure.request.method === "studio.duplicate"
+          ? t.duplicateUnconfirmed
           : t.notSaved
-        : saving
-          ? t.saving
-          : view?.state === "ready"
-            ? t.saved
-            : t.loading;
+      : saving
+        ? t.saving
+        : view?.state === "ready"
+          ? t.saved
+          : t.loading;
   return (
     <div
       className="v-focus-save"
       role="status"
       aria-label={label}
-      data-failed={!!state.failure && view?.state !== "protected"}
+      data-failed={!!state.failure && !readOnly}
       data-saving={saving}
-      data-readonly={view?.state === "protected"}
+      data-readonly={readOnly}
     >
       {saving || loading ? (
         <span className="v-spinner" aria-hidden="true" />
       ) : (
-        <Icon
-          name={
-            view?.state === "protected"
-              ? "lock"
-              : state.failure
-                ? "alert"
-                : "check"
-          }
-        />
+        <Icon name={readOnly ? "lock" : state.failure ? "alert" : "check"} />
       )}
       <span>{label}</span>
     </div>
@@ -127,18 +124,19 @@ export function StudioFeedback({ model }: { model: ReturnTypeOfStudioFocus }) {
                 {t.retry}
               </Button>
             )}
-            {(!readingFailure || (!!state.view && !protectedView)) && (
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-disabled={state.pending}
-                onClick={() => {
-                  if (!state.pending) state.discard();
-                }}
-              >
-                {t.discard}
-              </Button>
-            )}
+            {!state.needsRead &&
+              (!readingFailure || (!!state.view && !protectedView)) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-disabled={state.pending}
+                  onClick={() => {
+                    if (!state.pending) state.discard();
+                  }}
+                >
+                  {t.discard}
+                </Button>
+              )}
           </div>
         </section>
       )}

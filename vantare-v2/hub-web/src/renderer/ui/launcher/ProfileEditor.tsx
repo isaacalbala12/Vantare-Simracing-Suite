@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type {
   LauncherApp,
   ProfileDraft,
@@ -53,6 +54,7 @@ export function ProfileEditorFields({
   focusName?: boolean;
   onDiscard: () => void;
 }) {
+  const decorationHint = useId();
   function delay(index: number, value: number) {
     if (!Number.isInteger(value) || value < 0 || value > profileLimits.delay)
       return;
@@ -121,17 +123,29 @@ export function ProfileEditorFields({
         <div className="v-profile-decorations">
           <div>
             <span>{text.color}</span>
-            <Tooltip label={text.colorSoon}>
+            <Tooltip id={`${decorationHint}-color`} label={text.colorSoon}>
               <span>
-                <Button disabled>{text.soon}</Button>
+                <Button
+                  disabled
+                  focusableWhenDisabled
+                  aria-describedby={`${decorationHint}-color`}
+                >
+                  {text.soon}
+                </Button>
               </span>
             </Tooltip>
           </div>
           <div>
             <span>{text.circuit}</span>
-            <Tooltip label={text.circuitSoon}>
+            <Tooltip id={`${decorationHint}-circuit`} label={text.circuitSoon}>
               <span>
-                <Button disabled>{text.soon}</Button>
+                <Button
+                  disabled
+                  focusableWhenDisabled
+                  aria-describedby={`${decorationHint}-circuit`}
+                >
+                  {text.soon}
+                </Button>
               </span>
             </Tooltip>
           </div>

@@ -10,6 +10,7 @@ export const hubKeys = {
   zoomReset: "0",
   undo: "z",
   redo: "y",
+  duplicate: "d",
 } as const;
 export const zoomKeys: readonly string[] = [
   ...hubKeys.zoomIn,
@@ -81,7 +82,14 @@ export function isZoomAction(action: Action | undefined) {
   return action === "zoomIn" || action === "zoomOut" || action === "zoomReset";
 }
 // Chromium's print/reload/save/undo must not act on the document behind a dialog.
-const browserKeys = ["p", "r", "s", hubKeys.undo, hubKeys.redo];
+const browserKeys = [
+  "p",
+  "r",
+  "s",
+  hubKeys.undo,
+  hubKeys.redo,
+  hubKeys.duplicate,
+];
 const keys = new Set<string>([
   ...hubBindings.map((binding) => binding.key),
   ...browserKeys,

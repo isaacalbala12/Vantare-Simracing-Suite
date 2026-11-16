@@ -1,4 +1,7 @@
+import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
+import { useId } from "react";
 import { studioLimits } from "../../../contract/generated/studio";
+import { useUi } from "../../app/UiState";
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button, IconButton } from "../Button";
@@ -14,16 +17,65 @@ import {
 
 export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
   const { state, items, selected, blocked } = model;
+  const addHint = useId();
   const view = state.view;
+  const addLabel =
+    view && view.instances.length >= studioLimits.instances
+      ? t.atLimit(studioLimits.instances)
+      : model.canvasReadOnly
+        ? canvasText.readOnly
+        : blocked
+          ? view?.plan === "unverified"
+            ? t.verifyWidget
+            : t.protectedAction
+          : t.addHelp;
+  const collapsed = useUi((value) => value.studioListCollapsed);
+  const toggleList = useUi((value) => value.toggleStudioList);
   return (
     <aside className="v-focus-strip" aria-label={t.layoutLabel}>
       <header className="v-focus-layout-name">
+        {state.canvasMode && (
+          <IconButton
+            label={collapsed ? canvasText.expandList : canvasText.collapseList}
+            aria-expanded={!collapsed}
+            onClick={toggleList}
+            size="sm"
+            variant="ghost"
+          >
+            <Icon name="v-side" />
+          </IconButton>
+        )}
         <span className="v-focus-layout-icon" aria-hidden="true">
           <Icon name="v-studio" />
         </span>
         <div>
           <small>{t.layoutLabel}</small>
-          <strong>{t.local}</strong>
+          {state.canvasMode ? (
+            <BaseTooltip.Root
+              onOpenChange={(open, details) => {
+                const title = details.trigger;
+                if (open && (!title || title.scrollWidth <= title.clientWidth))
+                  details.cancel();
+              }}
+            >
+              <BaseTooltip.Trigger render={<strong />}>
+                {t.local}
+              </BaseTooltip.Trigger>
+              <BaseTooltip.Portal>
+                <BaseTooltip.Positioner className="v-positioner" sideOffset={6}>
+                  <BaseTooltip.Popup
+                    className="v-tooltip"
+                    role="tooltip"
+                    aria-hidden="true"
+                  >
+                    {t.local}
+                  </BaseTooltip.Popup>
+                </BaseTooltip.Positioner>
+              </BaseTooltip.Portal>
+            </BaseTooltip.Root>
+          ) : (
+            <strong>{t.local}</strong>
+          )}
         </div>
         <IconButton label={t.localHelp} size="sm" variant="ghost">
           <Icon name="info" />
@@ -81,8 +133,8 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                   type="button"
                   data-widget={item.id}
                   aria-pressed={selected?.id === item.id}
-                  aria-keyshortcuts="Space Delete"
-                  aria-label={`${widgetName(item, view)}, ${widgetStatus(item)}`}
+                  aria-keyshortcuts="Space Delete Control+D"
+                  aria-labelledby={`${addHint}-name-${index}`}
                   tabIndex={
                     item.id === selected?.id ||
                     (!items.some((value) => value.id === selected?.id) &&
@@ -113,9 +165,12 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                   }}
                 >
                   <WidgetPreview kind={item.kind} small />
-                  <span className="v-focus-row-name">
-                    <strong>{widgetName(item, view)}</strong>
-                    <small>{widgetStatus(item)}</small>
+                  <span
+                    className="v-focus-row-name"
+                    id={`${addHint}-name-${index}`}
+                  >
+                    <strong>{widgetName(item, view)}</strong>{" "}
+                    {!state.canvasMode && <small>{widgetStatus(item)}</small>}
                   </span>
                 </button>
                 <IconButton
@@ -161,21 +216,13 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
             </p>
           )}
       </section>
-      <Tooltip
-        label={
-          view && view.instances.length >= studioLimits.instances
-            ? t.atLimit(studioLimits.instances)
-            : blocked
-              ? view?.plan === "unverified"
-                ? t.verifyWidget
-                : t.protectedAction
-              : t.addHelp
-        }
-      >
+      <Tooltip id={addHint} label={addLabel}>
         <Button
           className="v-focus-add"
           data-empty={view?.state === "ready" && !view.instances.length}
           aria-label={t.add}
+          aria-describedby={addHint}
+          focusableWhenDisabled
           data-add-widget
           disabled={
             blocked || (view?.instances.length ?? 0) >= studioLimits.instances
@@ -191,8 +238,17 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
       </Tooltip>
       <footer>
         <Icon name="v-studio" />
-        <span>{t.placementHint}</span>
+        <span>
+          {state.canvasMode ? canvasText.placementHint : t.placementHint}
+        </span>
+        {!state.canvasMode && (
+          <button type="button" onClick={() => state.setCanvasMode(true)}>
+            {canvasText.openLink}
+          </button>
+        )}
       </footer>
     </aside>
   );
 }
+
+import { canvasText } from "../../i18n/studio-canvas";

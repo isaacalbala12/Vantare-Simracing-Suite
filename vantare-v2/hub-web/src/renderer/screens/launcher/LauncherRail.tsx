@@ -1,4 +1,7 @@
-import type { ResidentView } from "../../../contract/generated/contract";
+import type {
+  CatalogView,
+  ResidentView,
+} from "../../../contract/generated/contract";
 import { residentText } from "../../i18n/launcher-resident";
 import { LauncherApplicationsRail } from "../../ui/launcher/ApplicationsRail";
 import { ProfileActionFeedback } from "../../ui/launcher/ProfileActions";
@@ -8,8 +11,10 @@ import { useProfileAction } from "./profile-actions";
 import { useLauncherSnapshot } from "./state";
 export function LauncherRail({
   residentStatus,
+  lastScan,
 }: {
   residentStatus?: ResidentView;
+  lastScan?: CatalogView["lastScan"];
 }) {
   const { view, selected } = useLauncherSnapshot();
   const editor = useProfileEditorState();
@@ -53,6 +58,7 @@ export function LauncherRail({
       )}
       <LauncherApplicationsRail
         view={view}
+        lastScan={lastScan}
         selected={selected}
         pending={action.pending}
         onOption={(id, patch) =>

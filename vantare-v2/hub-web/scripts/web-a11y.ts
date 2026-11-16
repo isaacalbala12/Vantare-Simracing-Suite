@@ -26,6 +26,7 @@ import { checkResidentAnswer } from "./check-resident-answer.ts";
 import { checkResidentControls } from "./check-resident-control.ts";
 import { checkResidentRemoval } from "./check-resident-removal.ts";
 import { checkResidentResults } from "./check-resident-results.ts";
+import { checkStudioCanvas } from "./check-studio-canvas.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
 import { until } from "./wait-for";
@@ -201,6 +202,31 @@ try {
       mode,
     );
   await checkStudioStates(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  const studioResults = [];
+  for (const scheme of ["light", "dark"]) {
+    await page.goto(
+      `${server.resolvedUrls?.local[0] ?? ""}?escena=visual-${scheme}:studio-base`,
+    );
+    await page
+      .getByRole("button", { name: /^(Studio|Overlays Studio)$/ })
+      .click();
+    await page.getByRole("heading", { name: "Look", exact: false }).waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    // heading-order is a best-practice rule, outside the specimen's WCAG tags.
+    const report = await new AxeBuilder({ page }).analyze();
+    studioResults.push({ scheme, violations: report.violations });
+    await writeFile(
+      resolve(evidence, "axe-studio.json"),
+      JSON.stringify(studioResults, null, 2),
+    );
+    await page.screenshot({ path: resolve(evidence, `studio-${scheme}.png`) });
+    assert.deepEqual(
+      report.violations,
+      [],
+      `Studio/${scheme}: accessibility violations`,
+    );
+  }
+  await checkStudioCanvas(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await writeFile(
     resolve(evidence, "interactions.json"),
     JSON.stringify({

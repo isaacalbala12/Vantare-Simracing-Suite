@@ -558,6 +558,39 @@ Los tests de procesos de Runtime preparan también el ejecutable Services.
 El corpus de telemetría y lifecycle conservan sus gates cuando corresponden.
 Nextest usa `--build-jobs`; `-j` controla hilos de test.
 
+### Cola fase 1: pesados y ligeros (#1993)
+
+`comprobar.ps1` marca el gate: `runtime` y `hub-host` son **pesados**; el resto,
+**ligeros**. La cola:
+
+- **Pesados**: entran solos, con las dos ranuras y **4 jobs**; mientras corren no
+  entra otro worker. Mientras esperan, **reservan cada ranura libre y la
+  retienen** hasta tener las dos; los ligeros solo usan la que queda. Un mutex
+  `Global\VantareCargoHeavyWait` serializa a los pesados para que dos no se
+  bloqueen entre sí.
+- **Ligeros**: comparten las dos ranuras con **2 jobs** cada uno.
+- **Un worker solo entra siempre**, aunque falte RAM o el commit supere el
+  techo: se registra el motivo y el sistema tirará de disco, como en `direct`.
+  El techo y el suelo solo frenan al **segundo** ligero.
+- Decisión: techo de commit **20 GB**, suelo libre **3 GB**, reserva **4 GB**
+  (pesado) / **2,5 GB** (ligero). Los jobs se pasan a cargo como `-j`/
+  `--build-jobs` mediante `VANTARE_BUILD_JOBS`; **nunca** se cambia
+  `CARGO_BUILD_JOBS`, que forma parte de la clave de sccache. CI y release no
+  definen la variable y conservan el comportamiento anterior.
+- Los comandos directos (incluidos los de `overlays-rune`) siguen en `direct`;
+  no se clasifican por heurísticas de argumentos.
+- Medido con 4 jobs en este servidor: commit 1,2-3,7 GB por gate; 69 esperas
+  reales con mediana 97 s, p90 509 s y máximo 1445 s; un gate ligero a 2 jobs
+  tarda 0,99-1,03× lo que a 4. La tabla y el esquema están en
+  `D:\VantareServer\evidence\compilacion\cola\`.
+- Rollback: `VANTARE_CARGO_QUEUE_MODE=actual` en Machine devuelve la decisión
+  anterior (2 ranuras, reserva 7 GB, umbral 14 GB). Ajustes de la fase 1:
+  `VANTARE_CARGO_COMMIT_CEILING` (20), `VANTARE_CARGO_FREE_FLOOR` (3),
+  `VANTARE_CARGO_HEAVY_GB` (4), `VANTARE_CARGO_LIGHT_GB` (2,5),
+  `VANTARE_CARGO_HEAVY_JOBS` (4), `VANTARE_CARGO_LIGHT_JOBS` (2).
+- La decisión pura está en `scripts/queue-decision.ps1` y su tabla de estados en
+  `scripts/queue-decision-tests.ps1`, que corre el job `native_lint`.
+
 `VANTARE_TARGET_ROOT` configura la raíz de slots (proceso o Machine en Windows).
 Sin ella se usa `LocalApplicationData/Vantare/targets`; GitHub usa RUNNER_TEMP.
 Se respeta SCCACHE_DIR ya definido; sin él se consulta Machine y después

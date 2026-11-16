@@ -22,8 +22,6 @@ impl Tween {
         }
     }
     /// Same tween with another cubic-bezier `[x1, y1, x2, y2]`; kept by `retarget`.
-    /// Unused until Torre lands; it will be the first caller.
-    #[allow(dead_code)]
     pub fn with_curve(self, curve: [f32; 4]) -> Self {
         Self { curve, ..self }
     }

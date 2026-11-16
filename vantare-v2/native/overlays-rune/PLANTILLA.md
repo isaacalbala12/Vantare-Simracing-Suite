@@ -18,8 +18,14 @@ que corresponda. Soporte y creación usan ese mismo registro; `new` solo se llam
 al necesitar una instancia, no al consultar soporte. `Update` distingue
 reconstrucción (`build`) de cambio de píxeles (`pixels`).
 
+Implementar `attach_assets` solo si el widget pinta imágenes o SVG: guardar el
+`Arc<ImageCache>` recibido del host. No crear una caché propia ni un OnceLock global.
+
 Copiar: `Painters`, `Meter`, test `rendered_frame`, primitivas `vantare::paint`,
 `Tween` finito y política de movimiento reducido.
+
+Todo texto Display suma `display_baseline`; el helper `label()` no lo hace solo.
+Conservar la cara que usa GPUI: Body y Mono no reciben ese desplazamiento.
 
 No copiar: struct monolítico, `build` calculado a mano ni reloj permanente.
 Comparar la estructura anterior y la nueva en un único sitio; mantener los
@@ -33,3 +39,5 @@ cadencia y contadores por causa. Contar cambios reales del flujo CPU como hace
 Formato, Clippy, tests y enlace por la cola; ninguna ejecución gráfica en el
 servidor. Paridad visual y consumo solo en la tanda del PC de juego acordada por
 el orquestador. Sin dependencias nuevas ni cambios de Hub, Admin o releases.
+
+Toda capa superpuesta (canvas, punto, insignia, barra) lleva `.pin(...)` explícito: sin pin entra en el flujo en fila y solo se ve la primera.

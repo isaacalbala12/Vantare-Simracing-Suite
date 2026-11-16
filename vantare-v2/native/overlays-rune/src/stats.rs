@@ -16,6 +16,7 @@ pub struct Counts {
     animation: AtomicU64,
     design: AtomicU64,
     unattributed: AtomicU64,
+    dropped_frame_sets: AtomicU64,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Snapshot {
@@ -24,8 +25,13 @@ pub struct Snapshot {
     pub animation: u64,
     pub design: u64,
     pub unattributed: u64,
+    /// Global queue expulsions by its limit; consumed frames and window removal are excluded.
+    pub dropped_frame_sets: u64,
 }
 impl Counts {
+    pub(crate) fn dropped_frame_set(&self) {
+        self.dropped_frame_sets.fetch_add(1, Relaxed);
+    }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
             frames: self.frames.load(Relaxed),
@@ -33,6 +39,7 @@ impl Counts {
             animation: self.animation.load(Relaxed),
             design: self.design.load(Relaxed),
             unattributed: self.unattributed.load(Relaxed),
+            dropped_frame_sets: self.dropped_frame_sets.load(Relaxed),
         }
     }
 }
@@ -103,7 +110,8 @@ mod tests {
                 data: 1,
                 animation: 1,
                 design: 1,
-                unattributed: 0
+                unattributed: 0,
+                dropped_frame_sets: 0
             }
         );
     }

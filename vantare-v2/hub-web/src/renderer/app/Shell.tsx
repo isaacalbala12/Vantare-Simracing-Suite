@@ -564,7 +564,10 @@ function ShellContent() {
                 <Button
                   variant="ghost"
                   className="v-account-link"
-                  aria-label={accountText.title}
+                  aria-label={accountText.navigationLabel(
+                    profileName.trim() ? initials(profileName) : "",
+                    document.documentElement.lang,
+                  )}
                   aria-current={ui.section === "account" ? "page" : undefined}
                   onClick={() => navigate("account")}
                 >

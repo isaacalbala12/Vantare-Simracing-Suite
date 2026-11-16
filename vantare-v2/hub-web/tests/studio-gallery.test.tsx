@@ -89,7 +89,9 @@ async function openRemove(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("menuitem", { name: /^Eliminar / }));
 }
 async function openTrack() {
-  await screen.findByRole("button", { name: /^Standings(?: 1)?,/ });
+  await screen.findByRole("button", {
+    name: /^Standings(?: 1)? (?:Visible|Oculto)/,
+  });
   fireEvent.click(screen.getByRole("tab", { name: t.track }));
 }
 async function tabTo(
@@ -121,7 +123,9 @@ describe("Studio Foco interactions", () => {
   });
   it("moves vertically by the catalog's actual columns after resizing", async () => {
     mount();
-    await screen.findByRole("button", { name: /^Standings,/ });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: t.add }));
     const grid = Array.from(
@@ -147,7 +151,7 @@ describe("Studio Foco interactions", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     const card = await screen.findByRole("button", {
-      name: /^Standings,/,
+      name: /^Standings (?:Visible|Oculto)/,
     });
     const article = card.closest<HTMLElement>(".v-focus-row");
     if (!article) throw new Error("Missing card");
@@ -189,7 +193,9 @@ describe("Studio Foco interactions", () => {
     fireEvent.click(catalogButton);
     await screen.findByText(t.addedName("Standings"));
     expect(
-      await screen.findByRole("button", { name: /^Standings,/ }),
+      await screen.findByRole("button", {
+        name: /^Standings (?:Visible|Oculto)/,
+      }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: t.undo }));
     await screen.findByRole("heading", { name: t.emptyTitle });
@@ -203,12 +209,16 @@ describe("Studio Foco interactions", () => {
     expect(
       screen.getByRole("button", { name: t.show }).hasAttribute("disabled"),
     ).toBe(true);
-    expect(screen.queryByRole("button", { name: /^Standings,/ })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
+    ).toBeNull();
   });
   it("searches descriptions without accents and blocks locked choices", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-pro-bloqueado");
-    await screen.findByRole("button", { name: /^Standings,/ });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     fireEvent.click(screen.getByRole("button", { name: t.add }));
     const search = await screen.findByRole("searchbox", { name: t.search });
     fireEvent.change(search, { target: { value: "clasificacion" } });
@@ -231,7 +241,7 @@ describe("Studio Foco interactions", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     const card = await screen.findByRole("button", {
-      name: /^Standings,/,
+      name: /^Standings (?:Visible|Oculto)/,
     });
     card.focus();
     fireEvent.keyDown(card, { key: " " });
@@ -257,8 +267,12 @@ describe("Studio Foco interactions", () => {
   });
   it("moves between rows with arrows, keeps focus on click and does not open the catalogue with Escape", async () => {
     mount();
-    const first = await screen.findByRole("button", { name: /^Standings,/ });
-    const next = screen.getByRole("button", { name: /^Delta,/ });
+    const first = await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
+    const next = screen.getByRole("button", {
+      name: /^Delta (?:Visible|Oculto)/,
+    });
     first.focus();
     fireEvent.keyDown(first, { key: "ArrowDown" });
     expect(document.activeElement).toBe(next);
@@ -283,7 +297,9 @@ describe("Studio Foco interactions", () => {
   it("requires confirmation again after a removal conflict", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-error");
-    await screen.findByRole("button", { name: /^Standings,/ });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     fireEvent.click(screen.getByRole("tab", { name: t.track }));
     await openRemove(userEvent.setup());
     const dialog = await screen.findByRole("dialog", { name: t.removeTitle });
@@ -294,12 +310,16 @@ describe("Studio Foco interactions", () => {
     expect(
       requests.mock.calls.filter(([r]) => r.method === "studio.remove"),
     ).toHaveLength(1);
-    expect(screen.getByRole("button", { name: /^Standings,/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
+    ).toBeTruthy();
   });
   it("saves session and off-track choices as closed patches", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
-    await screen.findByRole("button", { name: /^Standings,/ });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     fireEvent.click(screen.getByRole("tab", { name: t.track }));
     fireEvent.click(
       await screen.findByRole("button", { name: t.practiceShort }),
@@ -347,7 +367,9 @@ describe("Studio Foco interactions", () => {
   it("commits opacity with the native bounds after keyboard adjustment", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
-    await screen.findByRole("button", { name: /^Standings,/ });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     await openTrack();
     const slider = await screen.findByRole("slider", { name: t.opacity });
     expect(slider.getAttribute("min")).toBe("20");
@@ -369,7 +391,7 @@ describe("Studio Foco interactions", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     const card = await screen.findByRole("button", {
-      name: /^Standings,/,
+      name: /^Standings (?:Visible|Oculto)/,
     });
     fireEvent.keyDown(card, { key: "Delete" });
     const dialog = await screen.findByRole("dialog");
@@ -379,12 +401,16 @@ describe("Studio Foco interactions", () => {
     ).toBe(false);
     fireEvent.click(within(dialog).getByRole("button", { name: t.cancel }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("button", { name: /^Standings,/ })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
+    ).toBeTruthy();
   });
   it("adds a suggested kind once and keeps its name and owned count in the catalog", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-pocos");
-    await screen.findByRole("button", { name: /^Standings,/ });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     fireEvent.click(screen.getByRole("button", { name: t.add }));
     const suggestion = within(
       await screen.findByRole("group", { name: t.kit }),
@@ -394,7 +420,9 @@ describe("Studio Foco interactions", () => {
       ?.slice(t.addShort.length + 1);
     if (!name) throw new Error("Missing suggestion name");
     fireEvent.click(suggestion);
-    await screen.findByRole("button", { name: new RegExp(`^${name},`) });
+    await screen.findByRole("button", {
+      name: new RegExp(`^${name} (?:Visible|Oculto)`),
+    });
     fireEvent.click(screen.getByRole("button", { name: t.add }));
     await screen.findByText(t.addedName(name));
     const catalog = screen.getByRole("button", {
@@ -408,14 +436,20 @@ describe("Studio Foco interactions", () => {
   it("filters thirty overlays without writing the document", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("studio-muchos");
-    await screen.findByRole("button", { name: /^Standings 1,/ });
+    await screen.findByRole("button", {
+      name: /^Standings 1 (?:Visible|Oculto)/,
+    });
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: t.filters.hidden }));
     expect(await screen.findByText(t.noHidden)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^Standings 1,/ })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Standings 1 (?:Visible|Oculto)/ }),
+    ).toBeNull();
     await user.click(screen.getByRole("button", { name: t.filters.all }));
     expect(
-      await screen.findByRole("button", { name: /^Standings 1,/ }),
+      await screen.findByRole("button", {
+        name: /^Standings 1 (?:Visible|Oculto)/,
+      }),
     ).toBeTruthy();
     expect(requests.mock.calls.every(([r]) => r.method === "studio.get")).toBe(
       true,
@@ -423,7 +457,9 @@ describe("Studio Foco interactions", () => {
   });
   it("opens the catalogue without changing the collapsed rail", async () => {
     mount();
-    await screen.findByRole("button", { name: /^Standings,/ });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     fireEvent.click(screen.getByRole("button", { name: "QA toggle rail" }));
     fireEvent.click(
       screen.getByRole("button", { name: new RegExp(`^${t.add}`) }),
@@ -438,7 +474,9 @@ describe("Studio Foco interactions", () => {
   });
   it("keeps focus in the filtered gallery after a card leaves it", async () => {
     mount("studio-muchos");
-    const first = await screen.findByRole("button", { name: /^Standings 1,/ });
+    const first = await screen.findByRole("button", {
+      name: /^Standings 1 (?:Visible|Oculto)/,
+    });
     fireEvent.keyDown(first, { key: " " });
     await waitFor(() =>
       expect(
@@ -475,7 +513,9 @@ describe("Studio Foco interactions", () => {
   it("removes the selected widget, focuses its neighbor and offers Undo", async () => {
     mount();
     const user = userEvent.setup();
-    await screen.findByRole("button", { name: /^Standings,/ });
+    await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     await user.click(screen.getByRole("tab", { name: t.track }));
     await openRemove(user);
     await user.click(
@@ -484,41 +524,54 @@ describe("Studio Foco interactions", () => {
       }),
     );
     await screen.findByText(t.removedName("Standings"));
-    expect(screen.queryByRole("button", { name: /^Standings,/ })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
+    ).toBeNull();
     expect(screen.queryByRole("searchbox", { name: t.search })).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: /^Delta,/ }),
+        screen.getByRole("button", { name: /^Delta (?:Visible|Oculto)/ }),
       ),
     );
     await user.click(screen.getByRole("button", { name: t.undo }));
     expect(
-      await screen.findByRole("button", { name: /^Standings,/ }),
+      await screen.findByRole("button", {
+        name: /^Standings (?:Visible|Oculto)/,
+      }),
     ).toBeTruthy();
     expect(screen.queryByText(t.removedName("Standings"))).toBeNull();
   });
   it("removes an unselected card without losing the current inspector", async () => {
     mount();
     const user = userEvent.setup();
-    const first = await screen.findByRole("button", { name: /^Standings,/ });
-    await tabTo(user, first);
-    fireEvent.keyDown(screen.getByRole("button", { name: /^Delta,/ }), {
-      key: "Delete",
+    const first = await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
     });
+    await tabTo(user, first);
+    fireEvent.keyDown(
+      screen.getByRole("button", { name: /^Delta (?:Visible|Oculto)/ }),
+      {
+        key: "Delete",
+      },
+    );
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(t.removeNamed("Delta"))).toBeTruthy();
     await user.click(within(dialog).getByRole("button", { name: t.remove }));
     await screen.findByText(t.removedName("Delta"));
-    expect(screen.queryByRole("button", { name: /^Delta,/ })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Delta (?:Visible|Oculto)/ }),
+    ).toBeNull();
     expect(screen.getByRole("heading", { name: "Standings" })).toBeTruthy();
     expect(screen.queryByRole("searchbox", { name: t.search })).toBeNull();
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: /^Relative,/ }),
+        screen.getByRole("button", { name: /^Relative (?:Visible|Oculto)/ }),
       ),
     );
     await user.click(screen.getByRole("button", { name: t.undo }));
-    expect(await screen.findByRole("button", { name: /^Delta,/ })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: /^Delta (?:Visible|Oculto)/ }),
+    ).toBeTruthy();
   });
   it.each(["card", "menu"])(
     "returns focus to the %s when deletion is cancelled",
@@ -526,7 +579,9 @@ describe("Studio Foco interactions", () => {
       const requests = vi.spyOn(Client.prototype, "request");
       mount();
       const user = userEvent.setup();
-      const card = await screen.findByRole("button", { name: /^Standings,/ });
+      const card = await screen.findByRole("button", {
+        name: /^Standings (?:Visible|Oculto)/,
+      });
       const source =
         origin === "card"
           ? card
@@ -543,7 +598,9 @@ describe("Studio Foco interactions", () => {
       await user.click(within(dialog).getByRole("button", { name: t.cancel }));
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       await waitFor(() => expect(document.activeElement).toBe(source));
-      expect(screen.getByRole("button", { name: /^Standings,/ })).toBe(card);
+      expect(
+        screen.getByRole("button", { name: /^Standings (?:Visible|Oculto)/ }),
+      ).toBe(card);
       expect(
         requests.mock.calls.some(
           ([request]) => request.method === "studio.remove",
@@ -554,11 +611,15 @@ describe("Studio Foco interactions", () => {
   it("focuses Add after removing the final widget", async () => {
     mount("studio-pocos");
     const user = userEvent.setup();
-    const first = await screen.findByRole("button", { name: /^Standings,/ });
+    const first = await screen.findByRole("button", {
+      name: /^Standings (?:Visible|Oculto)/,
+    });
     await tabTo(user, first);
     for (const name of ["Standings", "Delta"]) {
       expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: new RegExp(`^${name},`) }),
+        screen.getByRole("button", {
+          name: new RegExp(`^${name} (?:Visible|Oculto)`),
+        }),
       );
       await user.keyboard("{Delete}");
       await user.click(
@@ -594,14 +655,18 @@ describe("Studio Foco interactions", () => {
     await user.click(screen.getByRole("button", { name: t.undo }));
     await waitFor(() =>
       expect(
-        screen.queryByRole("button", { name: new RegExp(`^${name},`) }),
+        screen.queryByRole("button", {
+          name: new RegExp(`^${name} (?:Visible|Oculto)`),
+        }),
       ).toBeNull(),
     );
   });
   it("resets the filter to All when the count drops below nine", async () => {
     mount("studio-nueve");
     const user = userEvent.setup();
-    await screen.findByRole("button", { name: /^Standings 1,/ });
+    await screen.findByRole("button", {
+      name: /^Standings 1 (?:Visible|Oculto)/,
+    });
     await user.click(screen.getByRole("button", { name: t.filters.visible }));
     await user.click(screen.getByRole("tab", { name: t.track }));
     await openRemove(user);
@@ -769,7 +834,9 @@ describe("Studio Foco interactions", () => {
     await openTrack();
     await screen.findByRole("slider", { name: t.opacity });
     await user.click(screen.getByRole("tab", { name: t.appearance }));
-    await user.click(screen.getByRole("button", { name: /^Delta,/ }));
+    await user.click(
+      screen.getByRole("button", { name: /^Delta (?:Visible|Oculto)/ }),
+    );
     expect(
       screen
         .getByRole("tab", { name: t.appearance })
@@ -803,7 +870,9 @@ describe("Studio Foco interactions", () => {
     await user.click(
       await screen.findByRole("button", { name: /^Añadir .*Radar/i }),
     );
-    await user.click(await screen.findByRole("button", { name: /^Radar,/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /^Radar (?:Visible|Oculto)/ }),
+    );
     await waitFor(() =>
       expect(
         screen

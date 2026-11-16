@@ -81,7 +81,7 @@ export async function checkStudioStates(
       const target =
         scene === "studio-a-ilegible"
           ? page.locator(".v-studio-list")
-          : page.getByRole("button", { name: /^Standings, / });
+          : page.getByRole("button", { name: /^Standings (?:Visible|Oculto)/ });
       await until(
         () => target.evaluate((node) => node === document.activeElement),
         5000,

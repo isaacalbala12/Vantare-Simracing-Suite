@@ -218,6 +218,7 @@ try {
       resolve(evidence, "axe-studio.json"),
       JSON.stringify(studioResults, null, 2),
     );
+    await page.screenshot({ path: resolve(evidence, `studio-${scheme}.png`) });
     assert.deepEqual(
       report.violations,
       [],

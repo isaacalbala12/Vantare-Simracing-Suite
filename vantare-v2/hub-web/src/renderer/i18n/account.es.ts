@@ -1,5 +1,13 @@
 export const accountText = {
   title: "Cuenta",
+  navigationLabel: (letters: string, language: string) =>
+    language.toLowerCase().startsWith("en")
+      ? letters
+        ? `${letters}, account`
+        : "Account"
+      : letters
+        ? `${letters}, cuenta`
+        : "Cuenta",
   connected: "Cuenta conectada",
   signedOut: "Sin sesión",
   privateEmail: "Correo oculto por privacidad",

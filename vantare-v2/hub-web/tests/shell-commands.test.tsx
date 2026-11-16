@@ -117,6 +117,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  document.documentElement.lang = "es";
   cleanup();
   cache.clear();
   vi.restoreAllMocks();
@@ -181,6 +182,26 @@ function launchCalls(spy: {
     ([request]) => request.method === "launcher.launch",
   );
 }
+
+it.each([
+  ["es", "Ana María", "AM, cuenta"],
+  ["en", "Jane Doe", "JD, account"],
+  ["es", "", "Cuenta"],
+] as const)(
+  "names the account control from the visible user initials in %s",
+  async (language, name, expected) => {
+    document.documentElement.lang = language;
+    showAccountIdentity = true;
+    await mount();
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("combobox")).toBeNull());
+    act(() => publishAccount({ name, photo: null }));
+    const button = await screen.findByRole("button", {
+      name: expected,
+    });
+    expect(button.classList.contains("v-account-link")).toBe(true);
+  },
+);
 
 it("the frame never replaces B's published identity with an initial GET from A", async () => {
   showAccountIdentity = true;

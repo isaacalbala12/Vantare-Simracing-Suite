@@ -392,10 +392,14 @@ studioScenes["studio-a-estructura"] = {
   mock: "studio-base",
   async prepare(page) {
     await studioScenes["studio-base"].prepare(page);
-    await page.getByRole("button", { name: /^Relative, / }).click();
+    await page
+      .getByRole("button", { name: /^Relative (?:Visible|Oculto)/ })
+      .click();
     await page.getByRole("switch", { name: "Visible", exact: true }).click();
-    await page.getByRole("button", { name: /^Relative, Oculto/ }).waitFor();
-    await page.getByRole("button", { name: /^Fuel y stint, / }).click();
+    await page.getByRole("button", { name: /^Relative Oculto/ }).waitFor();
+    await page
+      .getByRole("button", { name: /^Fuel y stint (?:Visible|Oculto)/ })
+      .click();
     for (const name of ["Mostrar en práctica", "Mostrar en qualy"]) {
       const toggle = page.getByRole("switch", { name, exact: true });
       await toggle.click();
@@ -404,14 +408,16 @@ studioScenes["studio-a-estructura"] = {
         .waitFor();
       assert.equal(await toggle.getAttribute("aria-checked"), "false");
     }
-    await page.getByRole("button", { name: /^Delta, / }).click();
+    await page
+      .getByRole("button", { name: /^Delta (?:Visible|Oculto)/ })
+      .click();
     const opacity = page.getByRole("slider", { name: "Opacidad", exact: true });
     await opacity.focus();
     for (let value = 99; value >= 85; value--) {
       await page.keyboard.press("ArrowLeft");
       await page
         .getByRole("button", {
-          name: new RegExp(`^Delta, Visible · ${value} %`),
+          name: new RegExp(`^Delta Visible · ${value} %`),
         })
         .waitFor();
     }
@@ -429,13 +435,17 @@ studioScenes["studio-a-apariencia"] = {
   mock: "studio-base",
   async prepare(page) {
     await studioScenes["studio-base"].prepare(page);
-    await page.getByRole("button", { name: /^Relative, / }).click();
+    await page
+      .getByRole("button", { name: /^Relative (?:Visible|Oculto)/ })
+      .click();
     await page.getByRole("tab", { name: "En pista", exact: true }).click();
     await page
       .getByRole("switch", { name: "Visible en pista", exact: true })
       .click();
-    await page.getByRole("button", { name: /^Relative, Oculto/ }).waitFor();
-    await page.getByRole("button", { name: /^Fuel y stint, / }).click();
+    await page.getByRole("button", { name: /^Relative Oculto/ }).waitFor();
+    await page
+      .getByRole("button", { name: /^Fuel y stint (?:Visible|Oculto)/ })
+      .click();
     await page.getByRole("tab", { name: "En pista", exact: true }).click();
     for (const name of ["Práctica", "Qualy"]) {
       await page.getByRole("button", { name, exact: true }).click();
@@ -443,14 +453,16 @@ studioScenes["studio-a-apariencia"] = {
         .getByRole("button", { name, exact: true, pressed: false })
         .waitFor();
     }
-    await page.getByRole("button", { name: /^Delta, / }).click();
+    await page
+      .getByRole("button", { name: /^Delta (?:Visible|Oculto)/ })
+      .click();
     await page.getByRole("tab", { name: "En pista", exact: true }).click();
     await page.getByRole("slider", { name: "Opacidad", exact: true }).focus();
     for (let value = 99; value >= 85; value--) {
       await page.keyboard.press("ArrowLeft");
       await page
         .getByRole("button", {
-          name: new RegExp(`^Delta, Visible · ${value} %`),
+          name: new RegExp(`^Delta Visible · ${value} %`),
         })
         .waitFor();
     }
@@ -472,7 +484,9 @@ for (const [scene, widget, look] of [
     async prepare(page) {
       await studioScenes["studio-a-apariencia"].prepare(page);
       await page
-        .getByRole("button", { name: new RegExp(`^${widget}, `) })
+        .getByRole("button", {
+          name: new RegExp(`^${widget} (?:Visible|Oculto)`),
+        })
         .click();
       await page.getByRole("radio", { name: look, exact: true }).click();
       await page

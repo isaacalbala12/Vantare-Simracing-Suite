@@ -111,8 +111,18 @@ async function tabTo(
   expect(document.activeElement).toBe(element);
 }
 const listRow = (name: string) =>
-  screen.findByRole("button", { name: new RegExp(`^${name}, `) });
+  screen.findByRole("button", {
+    name: new RegExp(`^${name} (?:Visible|Oculto)`),
+  });
 describe("Studio Foco structure", () => {
+  it("takes the row name from its existing visible name and status", async () => {
+    mount();
+    const row = await screen.findByRole("button", {
+      name: "Standings Visible",
+    });
+    expect(row.getAttribute("aria-label")).toBeNull();
+    expect(row.hasAttribute("data-widget")).toBe(true);
+  });
   it("selects remembered, then first visible, then first, then none", () => {
     const view = {
       instances: [

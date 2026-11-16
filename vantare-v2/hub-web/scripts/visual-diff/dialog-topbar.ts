@@ -277,7 +277,9 @@ scenes["dialog-topbar-studio-remove"] = {
 scenes["dialog-topbar-account-reset"] = {
   mock: "cuenta-sesion",
   async prepare(page) {
-    await page.getByRole("button", { name: "Cuenta", exact: true }).click();
+    await page
+      .getByRole("button", { name: /^(?:.+, )?cuenta$/iu, exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Restablecer dispositivo", exact: true })
       .click();

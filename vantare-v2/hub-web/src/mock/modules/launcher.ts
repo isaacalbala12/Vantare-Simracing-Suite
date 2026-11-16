@@ -176,7 +176,21 @@ export function create(context: MockContext): MockHandler {
   let subscribed = false;
   return (value: UiToHost): HostToUi | null | undefined => {
     const application = appReply(value);
-    if (application !== undefined) return application;
+    if (application !== undefined) {
+      if (
+        subscribed &&
+        application.kind === "response" &&
+        (application.result.method === "launcher.app.save" ||
+          application.result.method === "launcher.app.remove" ||
+          application.result.method === "launcher.app.favorite" ||
+          application.result.method === "launcher.scan")
+      )
+        context.emit?.({
+          kind: "event",
+          event: { topic: "launcher", value: structuredClone(launcher) },
+        });
+      return application;
+    }
     if (value.kind === "unsubscribe" && value.topic === "launcher") {
       subscribed = false;
       return null;

@@ -1,324 +1,106 @@
-//! Delta Vantare: domain projects facts; the painter retains only visible values.
+//! Delta Vantare: domain projects the board; the scene decides layout and texts
+//! and the painter draws it. No clock and no motion in this part.
 mod paint;
+pub mod scene;
 #[cfg(test)]
 mod tests;
-use crate::{
-    motion::Tween,
-    relative::Update,
-    vantare::{Style, waiting},
-};
-use rune::{Color, El, Live, LiveText, Tx};
+
+use crate::widget::{Update, Widget};
+use paint::Painter;
+use rune::El;
 use vantare_domain::{
-    Snapshot, SourceState,
-    delta::{self, Board, Phase, Reference, Sector},
-    format::{Language, Preferences, lap_time},
+    Snapshot,
+    delta::{self, Reference},
+    format::Preferences,
     geometry::Size,
-    widget_settings::{delta::Settings, look::Tone},
+    widget_settings::{Settings as WidgetSettings, delta::Settings, look::Look},
 };
 
 pub(crate) struct Delta {
     settings: Settings,
     prefs: Preferences,
-    board: Board,
-    labels: [LiveText; 6],
-    ink: Live<Color>,
-    bar: Live<[f32; 4]>,
-    fill: Live<Color>,
-    motion: Tween,
-    reduced: bool,
-    projected: bool,
-    paused: bool,
+    scene: scene::Scene,
+    painter: Painter,
 }
+
 impl Delta {
-    pub fn new(settings: &Settings, prefs: Preferences, reduced: bool) -> Self {
+    pub fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
-        let board = delta::project_reference(&Snapshot::default(), prefs, reference(&settings));
-        let value = Self {
+        let board = project(&settings, &Snapshot::default(), prefs);
+        let scene = sample(&board, &settings, prefs);
+        let painter = Painter::new(prefs, &scene);
+        Self {
             settings,
             prefs,
-            board,
-            labels: std::array::from_fn(|_| LiveText::new("")),
-            ink: Live::new(Style::compiled().colors.text),
-            fill: Live::new(Style::compiled().colors.gain),
-            bar: Live::new([0.0; 4]),
-            motion: Tween::fixed(0.0),
-            reduced,
-            projected: false,
-            paused: false,
-        };
-        value.publish();
-        value
+            scene,
+            painter,
+        }
     }
     pub fn configured(&self, settings: &Settings, prefs: Preferences) -> bool {
         self.settings == settings.normalized() && self.prefs == prefs
     }
     pub fn size(&self) -> Size {
-        let style = Style::compiled();
-        let d = &style.delta;
-        let v = self.variant(&style);
-        let (width, height) = match self.settings.size.as_str() {
-            "pill" => (d.pill_width, d.pill_height),
-            size => (
-                if size == "expanded" {
-                    d.width_expanded
-                } else {
-                    d.width_bar
-                },
-                2.0 * v.padding_y
-                    + v.header_height
-                    + v.header_gap
-                    + d.message_height.max(d.big_height)
-                    + 27.0
-                    + if self.settings.show_bar {
-                        d.bar + d.tick_labels
-                    } else {
-                        0.0
-                    }
-                    + if size == "expanded" && self.settings.show_sectors {
-                        d.sector_height
-                    } else {
-                        0.0
-                    },
-            ),
-        };
         Size {
-            width,
-            height: height + if self.paused { 22.0 } else { 0.0 },
+            width: self.scene.width,
+            height: self.scene.height,
         }
     }
-    pub fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
-        let paused = snapshot.map_or(self.paused, |s| s.state.source_state == SourceState::Paused);
-        Size {
-            height: self.size().height + if paused { 22.0 } else { 0.0 }
-                - if self.paused { 22.0 } else { 0.0 },
-            ..self.size()
-        }
+    /// La caja solo depende de los ajustes: la pausa es un estado de la escena.
+    pub fn size_for(&self, _snapshot: Option<&Snapshot>) -> Size {
+        self.size()
     }
-    fn variant<'a>(&self, style: &'a Style) -> &'a crate::vantare::Variant {
-        if self.settings.style == Tone::Neo {
-            &style.styles.neo
-        } else {
-            &style.styles.neutro
-        }
-    }
-    fn message(&self) -> bool {
-        waiting(Some((self.board.source_state, self.board.player_present)))
-            || self.board.phase == Phase::NoReference
-    }
-    fn grey(&self) -> bool {
-        matches!(self.board.phase, Phase::Invalid | Phase::Paused(_))
-    }
-    fn bar_visible(&self) -> bool {
-        self.settings.size != "pill" && self.settings.show_bar && !self.message()
-    }
-    fn sectors(&self) -> &[Sector] {
-        if self.settings.size == "expanded"
-            && self.settings.show_sectors
-            && !self.message()
-            && !self.grey()
-        {
-            &self.board.sectors
-        } else {
-            &[]
-        }
-    }
-    fn target(&self) -> f32 {
-        if self.board.phase != Phase::Live {
-            return 0.0;
-        }
-        self.board.delta_s.map_or(0.0, |d| {
-            (d as f32 / Style::compiled().delta.range_s.max(0.01)).clamp(-1.0, 1.0)
-        })
-    }
-    /// The host already applied the instance Cadence before publishing this snapshot.
-    pub fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
-        let paused = snapshot.state.source_state == SourceState::Paused;
-        if paused && self.projected {
-            let changed = self.paused != paused;
-            self.paused = paused;
-            return Update {
-                build: changed,
-                pixels: false,
-            };
-        }
-        let was_paused = self.paused;
-        self.paused = paused;
-        let retained;
-        let snapshot = if paused {
-            retained = {
-                let mut s = snapshot.clone();
-                s.state.source_state = SourceState::Live;
-                s
-            };
-            &retained
-        } else {
-            snapshot
-        };
-        let next = delta::project_reference(snapshot, self.prefs, reference(&self.settings));
-        if next == self.board && was_paused == paused {
+    pub fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> Update {
+        let scene = sample(
+            &project(&self.settings, snapshot, self.prefs),
+            &self.settings,
+            self.prefs,
+        );
+        if scene == self.scene {
             return Update::default();
         }
-        let build = was_paused != paused
-            || self.message() != message(&next)
-            || self.board.banner != next.banner
-            || !self
-                .sectors()
-                .iter()
-                .map(paint::sector_parts)
-                .eq(shown_sectors(&next, &self.settings)
-                    .iter()
-                    .map(paint::sector_parts));
-        let snap = !self.projected
-            || next.identity != self.board.identity
-            || self.reduced
-            || message(&next);
-        self.board = next;
-        let target = self.target();
-        if snap || !self.bar_visible() {
-            self.motion = Tween::fixed(target);
-        } else {
-            self.motion.retarget(
-                target,
-                clock,
-                f64::from(Style::compiled().delta.ease_ms) / 1000.0,
-            );
-        }
-        self.projected = true;
-        let pixels = self.publish() | self.animate(clock).pixels;
-        Update { build, pixels }
-    }
-    fn publish(&self) -> bool {
-        let s = Style::compiled();
-        let es = self.prefs.language == Language::Es;
-        let ref_name = match (self.board.reference, es) {
-            (Reference::PersonalBest, true) => "Mejor",
-            (Reference::PersonalBest, false) => "Best",
-            (Reference::Optimal, true) => "Óptima",
-            (Reference::Optimal, false) => "Optimal",
-            (Reference::Leader, true) => "Líder",
-            (Reference::Leader, false) => "Leader",
-            _ => "—",
-        };
-        let number = if self.message() {
-            "-.---".into()
-        } else if matches!(self.board.phase, Phase::Paused(_)) {
-            "—.———".into()
-        } else {
-            self.board.delta_text().replace('-', "−")
-        };
-        let status = if self.message() {
-            if es {
-                "Esperando referencia"
-            } else {
-                "Waiting for reference"
-            }
-        } else {
-            self.board
-                .status_text(self.prefs.language)
-                .unwrap_or_default()
-        };
-        let values = [
-            format!("DELTA · VS {}", ref_name.to_uppercase()),
-            number,
-            format!("{ref_name} {}", lap_time(self.board.reference_lap_s)),
-            format!(
-                "{} {}",
-                if es { "Predicha" } else { "Predicted" },
-                lap_time(self.board.predicted_s)
-            ),
-            self.board.lap.map_or_else(String::new, |lap| {
-                format!("{} {lap}", if es { "Vuelta" } else { "Lap" })
-            }),
-            status.into(),
-        ];
-        let mut changed = false;
-        for (index, (live, value)) in self.labels.iter().zip(values).enumerate() {
-            let set = live.set(value);
-            changed |= set && (self.settings.size != "pill" || matches!(index, 1 | 2));
-        }
-        let color = if self.grey() || self.message() || self.board.status != delta::Status::Ready {
-            s.delta.grey
-        } else {
-            match self.board.delta_s {
-                Some(d) if d < 0.0 => s.delta.fill_gain,
-                Some(d) if d > 0.0 => s.delta.fill_loss,
-                _ => s.colors.text,
-            }
-        };
-        changed |= self.ink.set(color);
-        let fill = self.fill.set(color);
-        changed |= fill && self.bar_visible();
-        changed
-    }
-    pub fn policy(&mut self, reduced: bool, clock: f64) -> Update {
-        if self.reduced == reduced {
-            return Update::default();
-        }
-        self.reduced = reduced;
-        if reduced {
-            self.motion.settle();
-        }
-        self.animate(clock)
-    }
-    pub fn animate(&self, clock: f64) -> Update {
-        if !self.bar_visible() {
-            return Update::default();
-        }
-        let s = Style::compiled();
-        let v = self.variant(&s);
-        let size = self.size();
-        let value = self.motion.value(clock);
-        let half = (size.width - 2.0 * v.padding_x) / 2.0;
-        let y = v.padding_y
-            + v.header_height
-            + v.header_gap
-            + s.delta.message_height.max(s.delta.big_height)
-            + if self.board.banner.is_some() {
-                27.0
-            } else {
-                0.0
-            };
-        Update {
-            build: false,
-            pixels: self.bar.set([
-                size.width / 2.0 + value.min(0.0) * half,
-                y,
-                value.abs() * half,
-                s.delta.bar,
-            ]),
-        }
-    }
-    pub fn schedule(&self, clock: f64, tx: &mut Tx) {
-        if !self.reduced && self.bar_visible() && self.motion.active(clock) {
-            tx.wake_after(std::time::Duration::ZERO);
-        }
+        let update = self.painter.sync(&scene, self.prefs);
+        self.scene = scene;
+        update
     }
     pub fn view(&self) -> El {
-        paint::view(self)
+        self.painter.view()
     }
 }
-impl crate::widget::Widget for Delta {
+
+pub(crate) fn project(
+    settings: &Settings,
+    snapshot: &Snapshot,
+    prefs: Preferences,
+) -> delta::Board {
+    delta::project_reference(snapshot, prefs, reference(settings))
+}
+
+pub(crate) fn reference(settings: &Settings) -> Reference {
+    scene::reference(settings)
+}
+
+fn sample(board: &delta::Board, settings: &Settings, prefs: Preferences) -> scene::Scene {
+    scene::sample(board, settings, prefs, &crate::vantare::Style::compiled())
+}
+
+impl Widget for Delta {
     fn new(
-        settings: &vantare_domain::widget_settings::Settings,
+        settings: &WidgetSettings,
         prefs: Preferences,
-        reduced: bool,
+        _reduced: bool,
         _hz: u16,
         _clock: f64,
-    ) -> Option<Box<dyn crate::widget::Widget>> {
-        let vantare_domain::widget_settings::Settings::Delta(settings) = settings else {
+    ) -> Option<Box<dyn Widget>> {
+        let WidgetSettings::Delta(settings) = settings else {
             return None;
         };
-        if settings.design_system != vantare_domain::widget_settings::look::Look::Vantare {
+        if settings.design_system != Look::Vantare {
             return None;
         }
-        Some(Box::new(Delta::new(settings, prefs, reduced)))
+        Some(Box::new(Delta::new(settings, prefs)))
     }
-    fn configured(
-        &self,
-        settings: &vantare_domain::widget_settings::Settings,
-        prefs: Preferences,
-    ) -> bool {
-        let vantare_domain::widget_settings::Settings::Delta(settings) = settings else {
+    fn configured(&self, settings: &WidgetSettings, prefs: Preferences) -> bool {
+        let WidgetSettings::Delta(settings) = settings else {
             return false;
         };
         Delta::configured(self, settings, prefs)
@@ -329,41 +111,17 @@ impl crate::widget::Widget for Delta {
     fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
         Delta::size_for(self, snapshot)
     }
-    fn policy(&mut self, reduced: bool, _hz: u16, clock: f64) -> Update {
-        Delta::policy(self, reduced, clock)
+    fn policy(&mut self, _reduced: bool, _hz: u16, _clock: f64) -> Update {
+        Update::default()
     }
     fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
         Delta::update(self, snapshot, clock)
     }
-    fn animate(&mut self, clock: f64) -> Update {
-        Delta::animate(self, clock)
+    fn animate(&mut self, _clock: f64) -> Update {
+        Update::default()
     }
-    fn schedule(&self, clock: f64, tx: &mut Tx) {
-        Delta::schedule(self, clock, tx);
-    }
+    fn schedule(&self, _clock: f64, _tx: &mut rune::Tx) {}
     fn view(&self) -> El {
         Delta::view(self)
-    }
-}
-
-fn reference(settings: &Settings) -> Reference {
-    match settings.reference.as_str() {
-        "optimal" => Reference::Optimal,
-        "leader" => Reference::Leader,
-        _ => Reference::PersonalBest,
-    }
-}
-fn message(board: &Board) -> bool {
-    waiting(Some((board.source_state, board.player_present))) || board.phase == Phase::NoReference
-}
-fn shown_sectors<'a>(board: &'a Board, settings: &Settings) -> &'a [Sector] {
-    if settings.size == "expanded"
-        && settings.show_sectors
-        && !message(board)
-        && !matches!(board.phase, Phase::Invalid | Phase::Paused(_))
-    {
-        &board.sectors
-    } else {
-        &[]
     }
 }

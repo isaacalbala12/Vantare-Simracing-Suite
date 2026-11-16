@@ -27,6 +27,17 @@ repartir el trabajo entre suscripciones para equilibrar su uso.
 
 La seguridad se asigna a DeepSeek porque Codex rechaza esas revisiones como «posible riesgo de ciberseguridad».
 
+### Reparto por modelo
+
+Decisión de Isaac del 17-nov-2026 («Reglas de velocidad»): los planes los hacen
+los orquestadores, no los Sol.
+
+- **Sol**: solo código con plan cerrado y un paso concreto.
+- **DeepSeek**: bugs, tests, seguimientos pequeños e inventarios; nunca widgets
+  grandes desde cero ni contratos.
+- **Opus**: diseño, siempre con una captura revisada antes de enseñarlo.
+- **Sonnet**: revisa PR grandes y contratos.
+
 ### Nivel de razonamiento por modelo
 
 | Modelo | Razonamiento |

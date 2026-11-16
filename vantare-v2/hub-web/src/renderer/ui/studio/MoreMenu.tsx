@@ -16,16 +16,19 @@ export function MoreMenu({
   view,
   pending,
   onRemove,
+  readOnly = false,
 }: {
   item: OverlayInstance;
   view: StudioView;
   pending: boolean;
   onRemove: () => void;
+  readOnly?: boolean;
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
-  const reason =
-    view.state !== "ready"
+  const reason = readOnly
+    ? t.readOnly
+    : view.state !== "ready"
       ? text.catalogProtected
       : view.plan === "unverified"
         ? t.verifyWidget

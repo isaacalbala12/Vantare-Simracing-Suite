@@ -17,6 +17,10 @@ interface UiState {
   rememberStudio: (id: string) => void;
   sidebarCollapsed: boolean;
   sidebarAutomatic: boolean;
+  canvasSidebarPrevious: { collapsed: boolean; automatic: boolean } | null;
+  canvasSidebar: (active: boolean) => void;
+  studioListCollapsed: boolean;
+  toggleStudioList: () => void;
   railCollapsed: boolean;
   commandsOpen: boolean;
   noticesOpen: boolean;
@@ -36,6 +40,31 @@ function createUi() {
     rememberStudio: (studioLastSelected) => set({ studioLastSelected }),
     sidebarCollapsed: window.innerWidth < 1500,
     sidebarAutomatic: true,
+    canvasSidebarPrevious: null,
+    studioListCollapsed: false,
+    toggleStudioList: () =>
+      set((s) => ({ studioListCollapsed: !s.studioListCollapsed })),
+    canvasSidebar: (active) =>
+      set((s) =>
+        active
+          ? s.canvasSidebarPrevious
+            ? s
+            : {
+                canvasSidebarPrevious: {
+                  collapsed: s.sidebarCollapsed,
+                  automatic: s.sidebarAutomatic,
+                },
+                sidebarCollapsed: true,
+                sidebarAutomatic: false,
+              }
+          : s.canvasSidebarPrevious
+            ? {
+                sidebarCollapsed: s.canvasSidebarPrevious.collapsed,
+                sidebarAutomatic: s.canvasSidebarPrevious.automatic,
+                canvasSidebarPrevious: null,
+              }
+            : s,
+      ),
     railCollapsed: false,
     commandsOpen: false,
     noticesOpen: false,

@@ -437,6 +437,35 @@ async function capture(
         ],
         { windowsHide: true },
       );
+    if (await page.locator(".v-studio-canvas-plane").count()) {
+      const canvasLayout = await page.evaluate(() => {
+        const plane = document.querySelector<HTMLElement>(
+          ".v-studio-canvas-plane",
+        );
+        const viewport = document.querySelector<HTMLElement>(
+          ".v-studio-canvas-viewport",
+        );
+        if (!plane || !viewport) return null;
+        const bounds = plane.getBoundingClientRect();
+        return {
+          viewport: viewport.getBoundingClientRect().toJSON(),
+          plane: bounds.toJSON(),
+          fitPercent: (bounds.width / Number(plane.dataset.canvasWidth)) * 100,
+          zoomLabel: document.querySelector(".v-studio-canvas-zoom output")
+            ?.textContent,
+          sidebarCollapsed: document
+            .querySelector(".v-sidebar")
+            ?.classList.contains("v-sidebar--collapsed"),
+          listCollapsed: document
+            .querySelector(".v-studio-focus-layout")
+            ?.getAttribute("data-list-collapsed"),
+        };
+      });
+      await writeFile(
+        join(destination, "canvas-layout.json"),
+        JSON.stringify(canvasLayout, null, 2),
+      );
+    }
     saveWindow("current.png");
     if (
       args.includes("--capture-sidebar-matrix") ||

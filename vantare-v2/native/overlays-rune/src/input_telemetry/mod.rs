@@ -403,7 +403,12 @@ mod tests {
             assert_eq!(bar.rect[0], 462.0 + 12.0 * index as f32);
             // Embrague 25 %, freno 50 %, acelerador 80 % (último dato de `dense`).
             let percent = [25.0, 50.0, 80.0][index];
-            assert_eq!(bar.rect[3], 64.0 * percent / 100.0, "barra {index}");
+            // El acelerador aún se asienta (suavizado de la foto): holgura de 0,1 px.
+            assert!(
+                (bar.rect[3] - 64.0 * percent / 100.0).abs() < 0.1,
+                "barra {index}: {}",
+                bar.rect[3]
+            );
         }
         let gear = find("gear");
         assert_eq!(

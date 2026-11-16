@@ -832,27 +832,62 @@ mod layout_bounds {
             fuel.schedule(clock, tx);
             update.build
         }
-        let mut fuel = Fuel::new(
-            &Settings {
-                design_system: Look::Eficiencia,
-                ..Settings::default()
-            },
-            Preferences::default(),
-            true,
-            4,
-            0.0,
-        );
-        fuel.update(&photo(11.3, 25), 0.0);
-        let mut runtime = rune::Runtime::with_text(
-            fuel,
-            view,
-            (523.0, 272.0),
-            rune::Env::new(true, 1.0),
-            rune::text::TextSystem::new(crate::eficiencia::FONTS, ("Inter W400", "Inter W400")),
-        );
-        runtime.poll = Some(poll);
-        runtime.frame(0.0);
-        crate::testdata::assert_inside_window(&mut runtime, (523.0, 272.0));
+        for (settings, photo) in efficiency_photos() {
+            let mut fuel = Fuel::new(&settings, Preferences::default(), true, 4, 0.0);
+            fuel.update(&photo, 0.0);
+            let mut runtime = rune::Runtime::with_text(
+                fuel,
+                view,
+                (523.0, 272.0),
+                rune::Env::new(true, 1.0),
+                rune::text::TextSystem::new(crate::eficiencia::FONTS, ("Inter W400", "Inter W400")),
+            );
+            runtime.poll = Some(poll);
+            runtime.frame(0.0);
+            crate::testdata::assert_inside_window(&mut runtime, (523.0, 272.0));
+        }
+    }
+
+    /// Las cuatro formas del catálogo: datos, ocho vueltas, sin proyección y espera.
+    fn efficiency_photos() -> Vec<(Settings, Snapshot)> {
+        use vantare_domain::Quality::Reliable;
+        let base = || Settings {
+            design_system: Look::Eficiencia,
+            ..Settings::default()
+        };
+        let mut eight = photo(11.3, 25);
+        let player = eight.state.player.as_mut().expect("player");
+        for (slot, lap) in (14..22).enumerate() {
+            player.fuel.history[slot] = Some((lap, 2.1));
+        }
+        let mut waiting = photo(11.3, 25);
+        waiting.state.source_state = SourceState::Waiting;
+        let mut thirsty = photo(11.3, 25);
+        thirsty
+            .state
+            .player
+            .as_mut()
+            .expect("player")
+            .fuel
+            .level_l = Reliable(42.0);
+        vec![
+            (base(), thirsty.clone()),
+            (
+                Settings {
+                    history_rows: 8,
+                    ..base()
+                },
+                eight,
+            ),
+            (
+                Settings {
+                    show_projection: false,
+                    ..base()
+                },
+                thirsty,
+            ),
+            (base(), waiting),
+        ]
     }
 }
 
@@ -899,7 +934,7 @@ mod efficiency_tests {
         changed.state.player.as_mut().expect("player").fuel.level_l =
             vantare_domain::Quality::Reliable(30.0);
         assert!(fuel.update(&changed, 0.2).build, "el dato nuevo compone");
-        assert!(!fuel.animate(0.2).pixels, "y no queda animaci├│n detr├ís");
+        assert!(!fuel.animate(0.2).pixels, "y no queda animación detrás");
     }
 
     #[test]
@@ -911,7 +946,7 @@ mod efficiency_tests {
             vantare_domain::Quality::Reliable(vantare_domain::SessionKind::Practice);
         assert!(
             !fuel.update(&photo, 0.1).build,
-            "la sesi├│n no cambia los textos de este Look"
+            "la sesión no cambia los textos de este Look"
         );
     }
 }

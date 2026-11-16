@@ -15,6 +15,9 @@ pub(super) const SIZE: (f32, f32) = (523.0, 272.0);
 const ROW: f32 = 23.0;
 const HISTORY_TOP: f32 = 173.0;
 const AMBER: u32 = 0xe2c568;
+/// Marco del panel: lados al 12 % y borde superior compuesto al 24 %.
+const FRAME: f32 = 0.12;
+const FRAME_TOP: f32 = 0.24;
 
 pub(super) struct Painter {
     prefs: Preferences,
@@ -62,10 +65,9 @@ impl Painter {
         view(self)
     }
     pub(super) fn sync(&mut self, scene: &Scene) -> Update {
-        let build = self
-            .last
-            .as_ref()
-            .is_none_or(|(board, prefs)| !Arc::ptr_eq(board, &scene.board) || *prefs != self.prefs);
+        let build = self.last.as_ref().is_none_or(|(board, prefs)| {
+            !Arc::ptr_eq(board, &scene.board) || *prefs != self.prefs
+        });
         if build {
             self.board = scene.board.clone();
             self.refresh();
@@ -101,15 +103,13 @@ fn view(state: &Painter) -> El {
         let style = eficiencia::font(14.0, 600, 0.14);
         let x = (SIZE.0 - eficiencia::width(status, style)) / 2.0;
         let base = eficiencia::baseline((SIZE.1 - 14.0) / 2.0, 14.0, 14.0);
-        return root
-            .child(eficiencia::label(
-                status,
-                x,
-                base,
-                style,
-                eficiencia::color(MUTED, 1.0),
-            ))
-            .child(frame());
+        return frame(root.child(eficiencia::label(
+            status,
+            x,
+            base,
+            style,
+            eficiencia::color(MUTED, 1.0),
+        )));
     }
     let ink = eficiencia::color(INK, 1.0);
     let muted = eficiencia::color(MUTED, 1.0);
@@ -124,16 +124,7 @@ fn view(state: &Painter) -> El {
         600,
         muted,
     );
-    root = right(
-        root,
-        &state.labels.fuel,
-        SIZE.0 - 7.0,
-        14.0,
-        28.0,
-        28.0,
-        700,
-        ink,
-    );
+    root = right(root, &state.labels.fuel, SIZE.0 - 7.0, 14.0, 28.0, 28.0, 700, ink);
     root = left(root, "MIN", 104.0, 58.0, ROW, 11.0, 600, muted);
     root = fitted(
         root,
@@ -258,20 +249,29 @@ fn view(state: &Painter) -> El {
             );
         }
     }
-    root.child(frame())
+    frame(root)
 }
 
-/// Marco del panel: 1 px al 12 % y refuerzo superior hasta el 24 %.
-fn frame() -> El {
-    el().key("efi-frame")
-        .size(SIZE.0, SIZE.1)
-        .radius(RADIUS)
-        .border(1.0, eficiencia::color(0xffffff, 0.12))
-        .border_sides(
-            [1.0, 0.0, 0.0, 0.0],
-            eficiencia::color(0xffffff, (0.24 - 0.12) / (1.0 - 0.12)),
-        )
-        .pin(Some(0.0), Some(0.0), None, None)
+/// Marco del panel, en dos capas como GPUI: el anillo completo al 12 % y,
+/// encima, la tira superior con el borde al 24 % compuesto.
+fn frame(root: El) -> El {
+    root.child(
+        el().key("efi-frame")
+            .size(SIZE.0, SIZE.1)
+            .radius(RADIUS)
+            .border(1.0, eficiencia::color(0xffffff, FRAME))
+            .pin(Some(0.0), Some(0.0), None, None),
+    )
+    .child(
+        el().key("efi-frame-top")
+            .size(SIZE.0, RADIUS)
+            .radius(RADIUS)
+            .border_sides(
+                [1.0, 0.0, 0.0, 0.0],
+                eficiencia::color(0xffffff, (FRAME_TOP - FRAME) / (1.0 - FRAME)),
+            )
+            .pin(Some(0.0), Some(0.0), None, None),
+    )
 }
 
 /// Fondo del panel con su brillo: mismo degradado que GPUI (120°).
@@ -369,6 +369,7 @@ fn fitted(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rune::render::Instance;
     use vantare_domain::{Quality::Reliable, format::Language};
 
     fn scene(level: f64, laps: &[(u32, f64)], status: bool) -> Scene {
@@ -392,6 +393,37 @@ mod tests {
         }
     }
 
+    fn draw(painter: Painter) -> Vec<Instance> {
+        fn view(painter: &Painter, _: &mut rune::Cx<Painter>) -> El {
+            painter.view()
+        }
+        fn poll(_: &mut Painter, _: f64, _: &mut rune::Tx) -> bool {
+            true
+        }
+        let mut runtime = rune::Runtime::with_text(
+            painter,
+            view,
+            (523.0, 272.0),
+            rune::Env::new(true, 1.0),
+            rune::text::TextSystem::new(eficiencia::FONTS, ("Inter W400", "Inter W400")),
+        );
+        runtime.poll = Some(poll);
+        runtime.frame(0.0);
+        runtime.instances.clone()
+    }
+
+    fn at(instances: &[Instance], x: f32, y: f32, width: f32, height: f32) -> Vec<&Instance> {
+        instances
+            .iter()
+            .filter(|instance| {
+                (instance.rect[0] - x).abs() < 0.02
+                    && (instance.rect[1] - y).abs() < 0.02
+                    && (instance.rect[2] - width).abs() < 0.02
+                    && (instance.rect[3] - height).abs() < 0.02
+            })
+            .collect()
+    }
+
     #[test]
     fn size_is_fixed_at_the_catalogue_frame() {
         let painter = Painter::new(Preferences::default(), &scene(42.0, &[], false));
@@ -399,6 +431,31 @@ mod tests {
         assert_eq!(painter.size().height, 272.0);
         assert!(painter.targets().is_empty(), "Eficiencia no anima");
         assert!(!painter.pulses());
+    }
+
+    #[test]
+    fn panel_and_frame_keep_the_two_gpui_layers() {
+        let instances = draw(Painter::new(Preferences::default(), &scene(42.0, &[], false)));
+        let panel = at(&instances, 0.0, 0.0, SIZE.0, SIZE.1);
+        assert!(
+            panel
+                .iter()
+                .any(|instance| (instance.fill[3] - 0.87).abs() < 0.01),
+            "fondo del panel al 87 %"
+        );
+        assert!(
+            panel
+                .iter()
+                .any(|instance| (instance.border[3] - FRAME).abs() < 0.01),
+            "anillo completo al 12 %"
+        );
+        let top = at(&instances, 0.0, 0.0, SIZE.0, RADIUS);
+        assert!(
+            top.iter().any(|instance| {
+                (instance.border[3] - (FRAME_TOP - FRAME) / (1.0 - FRAME)).abs() < 0.01
+            }),
+            "tira superior con el borde al 24 % compuesto"
+        );
     }
 
     #[test]
@@ -467,14 +524,33 @@ mod tests {
     fn a_status_hides_the_data_and_still_builds() {
         let painter = Painter::new(Preferences::default(), &scene(42.0, &[], true));
         assert_eq!(painter.labels.status, Some("SIN DATOS"));
-        let _ = painter.view();
+        assert_eq!(painter.labels.fuel, "—", "con aviso no se pintan litros");
+        assert_eq!(painter.labels.average, "—");
+        assert!(painter.history.is_empty(), "sin aviso no hay historial");
+        let instances = draw(painter);
+        assert!(
+            at(&instances, 0.0, 0.0, SIZE.0, SIZE.1)
+                .iter()
+                .any(|instance| (instance.fill[3] - 0.87).abs() < 0.01),
+            "el panel sigue"
+        );
     }
 
     #[test]
     fn without_projection_only_the_average_row_survives() {
         let mut photo = crate::fuel::photo(11.3, 25);
-        photo.state.player.as_mut().expect("player").fuel.level_l = Reliable(42.0);
-        let board = crate::fuel::board_of(&photo);
+        let player = photo.state.player.as_mut().expect("player");
+        player.fuel.level_l = Reliable(42.0);
+        player.fuel.per_lap_l = Reliable(2.14);
+        player.fuel.laps_left = vantare_domain::Quality::Unavailable;
+        let board = fuel_strategy::project_with_config(
+            &photo,
+            Preferences::default(),
+            fuel_strategy::Config {
+                show_projection: false,
+                ..fuel_strategy::Config::default()
+            },
+        );
         let painter = Painter::new(
             Preferences::default(),
             &Scene {
@@ -483,6 +559,11 @@ mod tests {
                 border: 0.0,
             },
         );
-        let _ = painter.view();
+        assert!(!painter.labels.show_projection);
+        assert_eq!(painter.labels.average, "2.14 L", "MED. se queda");
+        assert_eq!(painter.labels.laps, "—", "VUELTAS se apaga");
+        assert_eq!(painter.labels.required, "—", "NEC. se apaga");
+        assert_eq!(painter.labels.finish, "—", "EST. META se apaga");
+        let _ = draw(painter);
     }
 }

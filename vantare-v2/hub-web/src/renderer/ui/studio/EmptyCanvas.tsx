@@ -1,11 +1,16 @@
 import { studioText } from "../../i18n/studio";
 import { canvasText as t } from "../../i18n/studio-canvas";
 import { Button } from "../Button";
+import { CanvasResolution } from "./CanvasResolution";
 import type { ReturnTypeOfStudioFocus } from "./StudioFocus";
 
 export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
   const view = model.state.view;
   const unavailable = !view?.canvas || view.state !== "ready";
+  const noCanvas =
+    view?.state === "monitorUnavailable" ||
+    (view?.monitor === null &&
+      (view.state === "protected" || view.state === "missing"));
   return (
     <section
       className="v-focus-stage v-studio-canvas-stage"
@@ -24,13 +29,25 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
         )}
         <div className="v-canvas-empty-message">
           <h2>
-            {unavailable
-              ? view?.state === "protected"
-                ? studioText.protected
-                : t.unavailable
-              : t.emptyTitle}
+            {view?.state === "monitorUnavailable"
+              ? t.monitorUnavailableTitle
+              : noCanvas
+                ? t.noCanvasTitle
+                : unavailable
+                  ? view?.state === "protected"
+                    ? studioText.protected
+                    : t.unavailable
+                  : t.emptyTitle}
           </h2>
-          {!unavailable && <p>{model.blocked ? t.readOnly : t.emptyHelp}</p>}
+          {noCanvas ? (
+            <p>
+              {view?.state === "monitorUnavailable"
+                ? t.monitorUnavailableHelp
+                : t.noCanvasHelp}
+            </p>
+          ) : (
+            !unavailable && <p>{model.blocked ? t.readOnly : t.emptyHelp}</p>
+          )}
           <Button
             variant={unavailable ? "neutral" : "primary"}
             disabled={!unavailable && model.blocked}
@@ -45,8 +62,17 @@ export function EmptyCanvas({ model }: { model: ReturnTypeOfStudioFocus }) {
         </div>
       </div>
       <footer>
-        <span className="v-studio-canvas-position">{"—"}</span>
         <span className="v-canvas-grow" />
+        {view && (
+          <div className="v-canvas-resolution-slot">
+            <CanvasResolution
+              canvas={view.canvas}
+              monitor={view.monitor}
+              enabled={false}
+              onChange={() => {}}
+            />
+          </div>
+        )}
         <Button
           size="sm"
           variant="neutral"

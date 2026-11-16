@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { Page } from "playwright-core";
+import { studioMonitorCases } from "../src/contract/generated/studio.ts";
 import { studioText } from "../src/renderer/i18n/studio.ts";
 import { canvasText as t } from "../src/renderer/i18n/studio-canvas.ts";
 import { studioCanvasScenes } from "./visual-diff/studio-canvas.ts";
@@ -376,6 +377,116 @@ export async function checkStudioCanvas(
         .getByRole("button", { name: t.expandList, exact: true })
         .click();
     }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    for (const scene of [
+      "studio-canvas-monitor",
+      "studio-canvas-monitor-missing",
+      "studio-canvas-monitor-unreadable",
+    ]) {
+      await page.goto(`${base}?escena=${scene}`);
+      await page.evaluate(() => {
+        Reflect.set(window, "canvasRequests", []);
+        const send = MessagePort.prototype.postMessage;
+        MessagePort.prototype.postMessage = function (message, options) {
+          if (
+            message?.kind === "request" &&
+            message.request?.method?.startsWith("studio.") &&
+            message.request.method !== "studio.get"
+          )
+            (Reflect.get(window, "canvasRequests") as unknown[]).push(
+              message.request,
+            );
+          send.call(
+            this,
+            message,
+            Array.isArray(options) ? { transfer: options } : options,
+          );
+        };
+      });
+      await studioCanvasScenes[scene].prepare(page);
+      if (scene !== "studio-canvas-monitor") {
+        await page
+          .getByRole("heading", {
+            name: scene.endsWith("-missing")
+              ? t.monitorUnavailableTitle
+              : t.noCanvasTitle,
+            exact: true,
+          })
+          .waitFor();
+        assert.equal(
+          await page
+            .getByText(
+              scene.endsWith("-missing")
+                ? t.monitorUnavailableHelp
+                : t.noCanvasHelp,
+              { exact: true },
+            )
+            .count(),
+          1,
+        );
+        assert.equal(await page.getByRole("radiogroup").count(), 0);
+        assert.equal(
+          await page
+            .getByRole("button", { name: t.resolution, exact: true })
+            .count(),
+          0,
+        );
+        assert.equal(await page.locator(".v-studio-state-feedback").count(), 0);
+        assert.equal(
+          await page
+            .locator(".v-studio-canvas-plane, .v-canvas-empty-plane")
+            .count(),
+          0,
+        );
+      } else {
+        const monitor = studioMonitorCases.find(
+          (sample) => sample.name === "native",
+        )?.value.monitor;
+        assert.ok(monitor);
+        const first = page.getByRole("radio").first();
+        assert.match((await first.textContent()) ?? "", /Tu monitor/);
+        assert.ok(
+          (await first.textContent())?.includes(
+            `${monitor.width} × ${monitor.height}`,
+          ),
+        );
+        assert.equal(await first.getAttribute("aria-checked"), "true");
+        const rows = page.getByRole("radio");
+        assert.equal(
+          await rows.count(),
+          4,
+          "matching preset is not duplicated",
+        );
+        for (const row of await rows.all()) {
+          const box = await row.boundingBox();
+          assert.ok(
+            box && Math.abs(box.height - 36) <= 1,
+            "compact option is one 36px row",
+          );
+        }
+        const trigger = await page
+          .getByRole("button", { name: t.resolution, exact: true })
+          .boundingBox();
+        const panel = await page.locator(".v-canvas-resolutions").boundingBox();
+        assert.ok(trigger && panel);
+        assert.ok(panel.y + panel.height <= trigger.y, "panel opens upwards");
+        assert.ok(
+          Math.abs(panel.x - trigger.x) <= 1,
+          "panel aligns to its button",
+        );
+        assert.ok(
+          panel.height <= 230,
+          "panel does not cover the canvas centre",
+        );
+      }
+      assert.equal(
+        await page.evaluate(
+          () => (Reflect.get(window, "canvasRequests") as unknown[]).length,
+        ),
+        0,
+        "opening or explaining the selector never writes",
+      );
+    }
     await writeFile(
       resolve(evidence, "studio-canvas.json"),
       JSON.stringify(
@@ -389,6 +500,9 @@ export async function checkStudioCanvas(
           readonly: true,
           conflictNotRetried: true,
           responsiveLayout: true,
+          monitorSelector: true,
+          missingMonitorReadonly: true,
+          selectorDoesNotWrite: true,
           layout: measuredLayout,
         },
         null,

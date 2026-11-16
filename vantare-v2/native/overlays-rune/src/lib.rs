@@ -19,6 +19,7 @@ mod radar;
 pub mod relative;
 mod renderer;
 pub mod stats;
+mod tower;
 mod track_map;
 pub mod vantare;
 mod widget;

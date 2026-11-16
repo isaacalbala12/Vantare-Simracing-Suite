@@ -5,6 +5,7 @@ use crate::{
     relative::Relative,
     scene::{FrameSet, Placement, Viewport},
     stats::{Cause, Meter},
+    tower::Tower,
     widget::Widget,
 };
 use rune::{El, Tx, el};
@@ -29,6 +30,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
             Some(<crate::multiclass_relative::MulticlassRelative as Widget>::new)
         }
         Settings::Pedals(_) => Some(<Pedals as Widget>::new),
+        Settings::BroadcastTower(_) => Some(<Tower as Widget>::new),
         _ => None,
     }
 }

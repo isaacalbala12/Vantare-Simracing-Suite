@@ -5,16 +5,18 @@ retira dead_code de A1 (#2472). Tests de pintura, pines, ES/EN, sectores
 numéricos, recorte de nombres, Lost sin cambiar sequence y reposo sin reloj.
 A1 fusionado por squash en nightly (9fa8b4abb); A2 #2475 rebasado con --onto
 sobre esa base y dirigido a nightly. Captura prueba el Look Eficiencia como caso
-sin migrar: Vantare ya está registrado. Mac: fmt, Clippy -D warnings y 439 + 2
-tests PASS, sin gráficos. CI Rune Windows y revisión pendientes.
-A3 #2476 espera la fusión de A2; para su siguiente --onto el padre antiguo es
-22c36765297d1d8baa7151abfad014c374107ef2 (no el nuevo head de A2).
+sin migrar: Vantare ya está registrado. Mac: fmt, Clippy -D warnings y 446 + 2
+tests PASS, sin gráficos. CI Rune Windows y segunda revisión pendientes.
+A3 #2476 se rebasa sobre este A2 antes de publicarse de nuevo; su base pública
+sigue siendo A2 hasta la fusión y posterior rebase --onto/retarget a nightly.
 
 Revisión A2: flags derivados como GPUI, contrato/proyección comprobados; la
 cabecera Vantare sigue literal (no consulta esos flags). El registro de A2 se
 acepta antes de A3, con A3 inmediatamente detrás y ANTES de promover a testers.
 Excepción puntual de raíz: tests P2 en commit aparte, fuera del tope de 1200;
-el código de producción conserva ese tope. Verificación de revisión en curso.
+el código de producción conserva ese tope: +991/-3 (994 líneas, incluyendo
+las declaraciones cfg(test)); los archivos/tests cfg(test) se cuentan aparte.
+Pruebas de contrato/proyección, posición, colores, fit real y alfa cero PASS.
 
 ## VANTA-144 · Revisión Sonnet de Standings A1 (16/11/2026)
 

@@ -3,7 +3,7 @@
 A1 prepara geometría; A2 registra Vantare y porta cabecera, filas y celdas.
 A3 debe entrar inmediatamente detrás, antes de cualquier promoción a testers.
 Origen: `native/ui/src/standings/vantare.rs` de nightly `178611306`.
-No se usa `domain::standings::Plan`. El Board y las plantillas compartidas
+La pintura no usa `domain::standings::Plan`. El Board y las plantillas compartidas
 siguen siendo los de domain. No cambia GPUI, domain, IPC ni Cargo.
 
 | GPUI | Rune A1 |
@@ -21,8 +21,8 @@ checkouts CRLF. Cambiar la fixture obliga a revisar estos rangos y los oráculos
 Se comprueban ambos idiomas y los tres modos/tamaños, posiciones de columnas,
 alturas fijas, filas seleccionadas y estados contextuales.
 
-A2 conectará cabecera, filas, celdas y constructor; retirará el permiso temporal
-`dead_code`. A3 pintará banners, separadores, pies y espera con esqueletos.
+A2 conecta cabecera, filas, celdas y constructor; retira el permiso temporal
+`dead_code`. A3 pinta banners, separadores, pies y espera con esqueletos.
 Motion (#2465) queda congelado; la animación no forma parte de estos tres PR.
 La comparación de píxeles queda para la tanda del PC de juego (#2365).
 

@@ -68,6 +68,10 @@ pub struct Motion {
     notice: Option<Notice>,
     lifetime: f64,
     reduced: bool,
+    /// Foto exacta de la demo del taller: pinta el récord fijo, sin aviso.
+    preview: bool,
+    show_class: bool,
+    show_personal: bool,
 }
 
 impl Motion {
@@ -88,6 +92,9 @@ impl Motion {
             notice: None,
             lifetime: lifetime.clamp(MIN_LIFETIME, MAX_LIFETIME),
             reduced,
+            preview: false,
+            show_class: true,
+            show_personal: true,
         }
     }
 
@@ -103,11 +110,15 @@ impl Motion {
         show_personal: bool,
         clock: f64,
     ) -> bool {
+        let preview = is_demo(snapshot);
         // Misma proyección y mismos ajustes: nada que rehacer.
-        if self.prefs == prefs && Arc::ptr_eq(&self.vm, vm) {
+        if self.prefs == prefs && Arc::ptr_eq(&self.vm, vm) && self.preview == preview {
             return false;
         }
         self.prefs = prefs;
+        self.preview = preview;
+        self.show_class = show_class;
+        self.show_personal = show_personal;
         let next = Arc::clone(vm);
         let before = (self.class_improvement, self.personal_improvement);
         if self.vm.scope != next.scope {
@@ -170,13 +181,17 @@ impl Motion {
                 true
             }
         };
-        // Los textos solo hacen falta mientras hay aviso.
-        if self.notice.is_some() {
+        // La demo no anuncia un récord: lo enseña fijo, como GPUI.
+        if self.preview {
+            self.notice = None;
+        }
+        // Los textos solo hacen falta mientras hay aviso o preview.
+        if self.notice.is_some() || self.preview {
             self.details = details(snapshot, self.vm.as_ref(), prefs);
         } else {
             self.details.clear();
         }
-        changed
+        changed || self.preview
     }
 
     /// Caducidad del aviso; se llama antes de muestrear, como en Relative.
@@ -222,8 +237,11 @@ impl Motion {
     }
 }
 
-/// Muestreo puro: sin aviso no hay nada que pintar.
+/// Muestreo puro: sin aviso no hay nada que pintar; la demo pinta su récord.
 pub fn sample(motion: &Motion, prefs: Preferences, clock: f64) -> Option<Scene> {
+    if motion.preview {
+        return preview(motion, prefs);
+    }
     let notice = motion.notice.as_ref()?;
     let age = clock - notice.started;
     if age >= motion.lifetime {
@@ -238,34 +256,101 @@ pub fn sample(motion: &Motion, prefs: Preferences, clock: f64) -> Option<Scene> 
     } else {
         fade(age, motion.lifetime)
     };
-    let es = prefs.language == Language::Es;
-    let time = detail.map_or_else(
-        || Arc::clone(&notice.time),
-        |detail| Arc::clone(&detail.time),
-    );
-    let driver = motion.vm.show_driver.then(|| {
-        detail.map_or_else(
-            || Arc::clone(&notice.driver),
-            |detail| Arc::clone(&detail.subtitle),
-        )
-    });
-    let lap = detail.map_or_else(|| Arc::clone(&notice.lap), |detail| Arc::clone(&detail.lap));
-    Some(Scene {
-        kind: notice.kind,
+    Some(reveal(
+        motion,
+        notice.kind,
+        detail,
         opacity,
-        title: title(notice.kind, detail.and_then(|detail| detail.session), es),
+        prefs.language == Language::Es,
+        Arc::clone(&notice.time),
+        Arc::clone(&notice.driver),
+        Arc::clone(&notice.lap),
+    ))
+}
+
+/// Vista previa fija de la demo: el récord proyectado, sin transición ni aviso.
+fn preview(motion: &Motion, prefs: Preferences) -> Option<Scene> {
+    let vm = motion.vm.as_ref();
+    if !vm.ready {
+        return None;
+    }
+    let timing = vm
+        .candidate
+        .as_ref()
+        .filter(|_| motion.show_class)
+        .or_else(|| vm.personal.as_ref().filter(|_| motion.show_personal))
+        .filter(|timing| timing.best_ms.is_some())?;
+    let kind = if motion.show_class && vm.candidate.is_some() {
+        Kind::Class
+    } else {
+        Kind::Personal
+    };
+    let detail = motion
+        .details
+        .iter()
+        .find(|detail| detail.timing == *timing);
+    let es = prefs.language == Language::Es;
+    Some(reveal(
+        motion,
+        kind,
+        detail,
+        1.0,
+        es,
+        Arc::from(timing.text()),
+        Arc::from(timing.driver.as_str()),
+        Arc::from(lap_text(timing.laps, es)),
+    ))
+}
+
+#[allow(clippy::too_many_arguments)] // Una sola composición para aviso y demo.
+fn reveal(
+    motion: &Motion,
+    kind: Kind,
+    detail: Option<&Detail>,
+    opacity: f32,
+    es: bool,
+    time: Arc<str>,
+    driver: Arc<str>,
+    lap: Arc<str>,
+) -> Scene {
+    let time = detail.map_or(time, |detail| Arc::clone(&detail.time));
+    let driver = motion
+        .vm
+        .show_driver
+        .then(|| detail.map_or(driver, |detail| Arc::clone(&detail.subtitle)));
+    let lap = detail.map_or(lap, |detail| Arc::clone(&detail.lap));
+    Scene {
+        kind,
+        opacity,
+        title: title(kind, detail.and_then(|detail| detail.session), es),
         class: motion.class_chip.clone(),
         time,
         driver,
         caption: if es { "vs anterior" } else { "vs previous" },
-        improvement: if notice.kind == Kind::Personal {
+        improvement: if kind == Kind::Personal {
             Arc::clone(&motion.personal_label)
         } else {
             Arc::clone(&motion.class_label)
         },
         lap,
         sectors: detail.map_or([None; 3], |detail| detail.sectors),
-    })
+    }
+}
+
+/// La foto exacta (no la secuencia) de la demo del taller, como GPUI.
+fn is_demo(snapshot: &Snapshot) -> bool {
+    use std::sync::OnceLock;
+    static PHOTO: OnceLock<Option<Snapshot>> = OnceLock::new();
+    PHOTO
+        .get_or_init(|| {
+            vantare_ipc::snapshots_from_json(include_str!(
+                "../../../ui/fixtures/fastest-lap-design-system.sequence.json"
+            ))
+            .ok()
+            .and_then(|photos| photos.into_iter().last())
+        })
+        .as_ref()
+        == Some(snapshot)
 }
 
 fn label(value: Option<f64>) -> Arc<str> {

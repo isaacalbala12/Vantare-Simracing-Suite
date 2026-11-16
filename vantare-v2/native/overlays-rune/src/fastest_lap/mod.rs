@@ -184,7 +184,7 @@ mod tests {
     use super::*;
     use rune::{Env, Runtime};
     use vantare_domain::{
-        Capability, Car, CarId, Class, ClassId, Driver, Player, Quality, SourceState,
+        Capability, Car, CarId, Class, ClassId, Driver, Player, Quality, SourceKind, SourceState,
         format::Preferences,
     };
 
@@ -363,6 +363,50 @@ mod tests {
         assert!(update.build && update.pixels, "se retira de golpe");
         assert!(widget.visual.is_none(), "sin aviso en pausa");
         assert_eq!(widget.motion.next_wake(1.35), None, "sin reloj");
+    }
+
+    #[test]
+    fn the_workshop_demo_previews_its_record_without_notice_or_clock() {
+        let prefs = Preferences::default();
+        let demo = demo_photo();
+        let mut widget = widget(&Config::default(), prefs, false);
+        assert!(
+            widget.update(&demo, 0.0).pixels,
+            "la demo entra como imagen"
+        );
+        assert!(widget.animate(0.0).build, "una imagen");
+        let scene = widget.visual.as_ref().expect("récord fijo");
+        assert_eq!(scene.opacity, 1.0);
+        assert_ne!(scene.time.as_ref(), "—");
+        assert_eq!(widget.motion.next_wake(0.0), None, "sin reloj");
+        assert!(!widget.update(&demo, 0.1).pixels, "la misma foto reposa");
+    }
+
+    #[test]
+    fn a_live_photo_or_another_sequence_is_never_a_preview() {
+        let prefs = Preferences::default();
+        // El origen forma parte de la igualdad exacta de GPUI: una foto viva no
+        // coincide con la de la demo aunque su estado sea idéntico.
+        let mut live = demo_photo();
+        live.origin.source.kind = SourceKind::Live;
+        let mut widget = widget(&Config::default(), prefs, false);
+        widget.update(&live, 0.0);
+        widget.animate(0.0);
+        assert!(widget.visual.is_none(), "sin aviso no hay vista previa");
+        let mut other = demo_photo();
+        other.sequence += 1;
+        widget.update(&other, 0.1);
+        widget.animate(0.1);
+        assert!(widget.visual.is_none(), "solo la foto exacta de la demo");
+    }
+
+    fn demo_photo() -> Snapshot {
+        vantare_ipc::snapshots_from_json(include_str!(
+            "../../../ui/fixtures/fastest-lap-design-system.sequence.json"
+        ))
+        .expect("secuencia canónica")
+        .pop()
+        .expect("foto final")
     }
 
     fn element<'a>(elements: &'a [rune::ElementInfo], key: &str) -> &'a rune::ElementInfo {

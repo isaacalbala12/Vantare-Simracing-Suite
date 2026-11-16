@@ -1,3 +1,5 @@
+import { useState } from "react";
+import type { CatalogView } from "../../../contract/generated/contract";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { launcherText as text } from "../../i18n/launcher";
 import { ResidentControlNotice } from "../../ui/launcher/ResidentControlNotice";
@@ -19,6 +21,7 @@ export default function LauncherEntry() {
 }
 function LauncherContent() {
   const editor = useProfileEditorState();
+  const [catalog, setCatalog] = useState<CatalogView>();
   const resident = useResident();
   const removal = useResidentRemoval(resident);
   const answer = useResidentAnswer(resident);
@@ -41,7 +44,14 @@ function LauncherContent() {
         onTabChange={(id) => {
           if (id === "profiles" || id === "applications") editor.navigate(id);
         }}
-        rail={<LauncherRail residentStatus={resident} />}
+        rail={
+          <LauncherRail
+            residentStatus={resident}
+            lastScan={
+              activeTab === "applications" ? catalog?.lastScan : undefined
+            }
+          />
+        }
       />
       <SectionPanel activeTab={activeTab}>
         <ResidentControlNotice
@@ -53,7 +63,7 @@ function LauncherContent() {
           }
         />
         {editor.tab === "applications" && !editor.value ? (
-          <Applications />
+          <Applications catalog={catalog} setCatalog={setCatalog} />
         ) : (
           <Launcher control={control} removal={removal} />
         )}

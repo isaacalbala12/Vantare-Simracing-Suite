@@ -10,6 +10,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { useState } from "react";
 import {
   afterEach,
   beforeAll,
@@ -19,6 +20,7 @@ import {
   it,
   vi,
 } from "vitest";
+import type { CatalogView } from "../src/contract/generated/contract";
 import { HostProvider } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { appText as text } from "../src/renderer/i18n/launcher-apps";
@@ -77,6 +79,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
+function CatalogScreen() {
+  const [catalog, setCatalog] = useState<CatalogView>();
+  return <Applications catalog={catalog} setCatalog={setCatalog} />;
+}
 function mount(scene = "launcher-aplicaciones") {
   window.history.replaceState(null, "", `/?escena=${scene}`);
   const cache = new QueryClient({
@@ -91,7 +97,7 @@ function mount(scene = "launcher-aplicaciones") {
             <TooltipProvider>
               <WindowDialogProvider>
                 <ProfileEditorProvider>
-                  <Applications />
+                  <CatalogScreen />
                 </ProfileEditorProvider>
               </WindowDialogProvider>
               <ToastViewport closeLabel={text.cancel} />

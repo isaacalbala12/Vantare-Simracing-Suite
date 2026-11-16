@@ -90,6 +90,9 @@ export function ApplicationCatalog({
   onRetry: () => void;
   onDiscard: () => void;
 }) {
+  const completedAt = value.lastScan
+    ? new Date(value.lastScan.completedAtMs)
+    : null;
   const normalized = query.trim().toLowerCase();
   const apps = value.apps
     .filter((app) =>
@@ -146,6 +149,23 @@ export function ApplicationCatalog({
           </Button>
         </div>
       </div>
+      <p className="v-muted">
+        {text.lastScan}{" "}
+        {completedAt ? (
+          <time dateTime={completedAt.toISOString()}>
+            {completedAt.toLocaleString("es-ES", {
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+              hourCycle: "h23",
+            })}
+          </time>
+        ) : (
+          text.lastScanUnknown
+        )}
+      </p>
       <section
         className="v-launcher-catalog"
         aria-label={text.title}

@@ -33,13 +33,18 @@ type Mutation = Extract<
       | "launcher.app.favorite";
   }
 >;
-export function Applications() {
+export function Applications({
+  catalog,
+  setCatalog,
+}: {
+  catalog: CatalogView | undefined;
+  setCatalog: (value: CatalogView) => void;
+}) {
   const { client } = useHost();
   const navigation = useProfileEditorState();
   const cache = useQueryClient();
   const toast = useToastManager();
   const original = useRef<string | undefined>(undefined);
-  const [catalog, setCatalog] = useState<CatalogView>();
   const [query, setQuery] = useState("");
   const [editor, setEditor] = useState<AppEditor>();
   const [selected, setSelected] = useState<PickedApp | null>(null);
@@ -67,7 +72,7 @@ export function Applications() {
     const result = await client.request({ method: "launcher.catalog" });
     if (alive.current && result.method === "launcher.catalog")
       setCatalog(result.value);
-  }, [client]);
+  }, [client, setCatalog]);
   useEffect(() => {
     if (!client) return;
     const off = client.listen((message) => {

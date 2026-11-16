@@ -6,6 +6,7 @@ param(
     [string]$BuildConfig,
     [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
     [string[]]$Packages = @(),
+    [string[]]$ExcludePackages = @(),
     [switch]$NoTestsPass,
     [switch]$PublicTargetsOnly,
     [switch]$ListOnly
@@ -13,6 +14,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if ($PublicTargetsOnly -and $Gate -ne 'check') { throw 'PublicTargetsOnly solo se aplica a check.' }
+if ($Packages.Count -and $ExcludePackages.Count) { throw 'Packages y ExcludePackages son excluyentes.' }
 . (Join-Path $PSScriptRoot 'scripts/target-slot.ps1')
 if (-not (Test-VantareTargetPath $TargetDirectory)) { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en el volumen configurado).' }
 if ($Gate -eq 'distribution') {
@@ -69,7 +71,9 @@ try {
         $Packages += 'vantare-services'
     }
     # /default conserva también los defaults de crates futuros, aunque estén vacíos.
-    $defaultMembers = if ($Packages.Count) { @($members | Where-Object { $_.name -cin $Packages }) } else { $members }
+    $defaultMembers = if ($Packages.Count) { @($members | Where-Object { $_.name -cin $Packages }) }
+        elseif ($ExcludePackages.Count) { @($members | Where-Object { $_.name -cnotin $ExcludePackages }) }
+        else { $members }
     $defaults = @($defaultMembers | Where-Object { $_.name -cne 'vantare-storage' -and
         ($Gate -ne 'prueba' -or $_.name -cne 'vantare-admin') -and $null -ne $_.features.PSObject.Properties['default'] } |
         ForEach-Object { "$($_.name)/default" })
@@ -105,6 +109,8 @@ try {
     if ($Packages.Count) {
         $arguments = @($arguments | Where-Object { $_ -ne '--workspace' })
         foreach ($package in $Packages) { $arguments += @('-p', $package) }
+    } elseif ($ExcludePackages.Count) {
+        foreach ($package in $ExcludePackages) { $arguments += @('--exclude', $package) }
     }
     # Analysis launches storage as a real process. Include that package in the same
     # test build to preserve the executable prerequisite without a second feature graph.
@@ -140,8 +146,7 @@ try {
         $artifacts = @($decoded | Where-Object {
             $_.reason -eq 'compiler-artifact' -and $_.target.name -eq 'lifecycle' -and $_.executable
         })
-        $expected = @($members | Where-Object {
-            (-not $Packages.Count -or $_.name -cin $Packages) -and
+        $expected = @($defaultMembers | Where-Object {
             @($_.targets | Where-Object name -CEQ 'lifecycle').Count
         })
         if ($artifacts.Count -ne $expected.Count) { throw 'Falta algún ejecutable lifecycle de la selección.' }

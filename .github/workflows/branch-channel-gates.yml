@@ -295,6 +295,7 @@ jobs:
       VANTARE_CI_TARGET: '1'
       CARGO_INCREMENTAL: '0'
       CARGO_BUILD_JOBS: '4'
+      VANTARE_FORCE_FAST_SCOPE: '1'
     defaults:
       run:
         shell: pwsh
@@ -375,15 +376,20 @@ jobs:
         run: python native/retirement/verify.py
 
   native_build:
-    name: Build native validation archive
+    name: Build native validation archive ${{ matrix.group }}
     timeout-minutes: 45
     if: needs.policy.outputs.native != 'false'
     needs: policy
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [a, b]
     env:
       VANTARE_CI_TARGET: '1'
       CARGO_INCREMENTAL: '0'
       CARGO_BUILD_JOBS: '4'
+      VANTARE_FORCE_FAST_SCOPE: '1'
     defaults:
       run:
         shell: pwsh
@@ -413,13 +419,13 @@ jobs:
           }
           $telemetry = @()
           if ($env:TELEMETRIA_SCOPE -ne 'false') { $telemetry = @('-Telemetry') }
-          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry -ArchiveOnly
+          pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry -ArchiveOnly -ArchiveGroup '${{ matrix.group }}'
           if ($LASTEXITCODE) { throw 'Native test archive failed' }
 
       - name: Share one compiled test archive
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: native-tests-${{ github.sha }}
+          name: native-tests-${{ github.sha }}-${{ matrix.group }}
           overwrite: true
           path: |
             ${{ runner.temp }}/vantare-targets/ci/nextest-tests.tar.zst
@@ -476,8 +482,12 @@ jobs:
           fallback: none
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-tests-${{ github.sha }}
-          path: ${{ runner.temp }}/vantare-test-archive
+          name: native-tests-${{ github.sha }}-a
+          path: ${{ runner.temp }}/vantare-test-archive/a
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: native-tests-${{ github.sha }}-b
+          path: ${{ runner.temp }}/vantare-test-archive/b
       - name: Run compiled tests without rebuilding
         run: pwsh -NoProfile -File native/scripts/ci-reuse-tests.ps1 -Suite '${{ matrix.suite }}' -Partition '${{ matrix.partition }}'
 
@@ -541,12 +551,16 @@ jobs:
           fallback: none
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: native-tests-${{ github.sha }}
-          path: ${{ runner.temp }}/vantare-test-archive
+          name: native-tests-${{ github.sha }}-a
+          path: ${{ runner.temp }}/vantare-test-archive/a
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: native-tests-${{ github.sha }}-b
+          path: ${{ runner.temp }}/vantare-test-archive/b
       - name: Read archived lifecycle scope
         id: scope
         run: |
-          $scope = Get-Content (Join-Path $env:RUNNER_TEMP 'vantare-test-archive/ci-scope.json') -Raw | ConvertFrom-Json
+          $scope = Get-Content (Join-Path $env:RUNNER_TEMP 'vantare-test-archive/a/ci-scope.json') -Raw | ConvertFrom-Json
           "overlays=$($scope.overlays.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         if: steps.scope.outputs.overlays != 'false'

@@ -3217,3 +3217,16 @@ concurrentes; con Image retenido y señal del waker por canal, 0/2000.
 La señal confirma publicación de Pixels, no solo decoded. Sin sleeps/reintentos
 ni cambios de producto/Rune. Mac: fmt/clippy y suite 375+2 verdes; head/CI en PR.
 Logs: D:/VantareServer/evidence/overlays-rune/test-volante-2445. #2430 sigue en espera.
+## VANTA-144 / Refs #2365 · F: OBSERVAR e inventario LMU (16/11/2026)
+
+Implementación en tools/qa-overlays: observación por PID/inicio/SHA con MUESTREAR de #2213, sin --medicion-relative ni entradas QA de hosts. V1 autorizada: replay crudo real a velocidad 1, 5 s previos y 50 s centrales (5–55) del corpus de 60 s; Waiting con la misma ventana. CPU, memoria y Presents solamente; orden GPUI/Rune alternado entre los 17 widgets. Sampler ProcessOnly y corrección PDH ya ensayada, sin duplicar sampler ni cambiar producto/identidad/licencia. Consumers.readers de 4625463bc ya admite Rune (#2345).
+
+Validación local: doce regresiones CSV nuevas, orquestación y PDH falsos, guard servidor; 62 tests Python del kit y 41 guiones validados. Sin GPU/ETW/PresentMon real ni acceso al PC. Ejemplo native/runtime/examples/qa_inventario.rs compilado y ejecutado en Mac, slot/target compartido, Rust 1.99.1: build Release, Clippy -D warnings y test CPU PASS. Telemetría golden bloqueada por launcher Unix previo (#2004), sin cambiarlo. Sin workspace/lock/dependencias nuevos.
+
+Inventario: 24 localizaciones, 19 interpretaciones SHA+build. Corpus LMU47: 3201 fotos centrales, jugador siempre en boxes, Relative de una fila, cero banderas/avisos nuevos. Doce criterios con datos a menudo parciales y cinco sin datos: COMPARACIÓN ACOTADA, no validación de los 17. Informe/matriz/procedencia en D:/VantareServer/evidence/overlays-rune/inventario-lmu-20261116. Daños estructurales Unavailable: análisis aparte #2453, común GPUI/Rune; sin cambio de adaptador.
+
+Plan: cita 1 OBLIGATORIA ~15 min de carrera IA multiclase desde parrilla, boxes, contacto/daño, banderas; lluvia y mejora de vuelta si es posible. Cita 2 usa grabación nueva, tramo de 60 s íntegro en los primeros cinco minutos; 5 s previos y 50 centrales. Sin seek: conservar historia y contabilizar 34 prefijos (t0=120 s añade 68 min). Comando del grabador y checklist en plan-tanda-pc.md. Paridad visual sigue con B. Sin merge, promoción ni release; ninguna ejecución en el PC de juego.
+
+
+### Delta revisión Sonnet de #2450
+OBSERVAR reutiliza parser PresentMon del kit en modo solo conteo, con CPUStartQPC + MsCPUBusy y cabecera real conservada sin filas privadas. El modo completo anterior permanece estricto. Guard probado directamente; identidad campo a campo e independiente del orden; Waiting rechaza reloj replay; fechas Windows recortadas explícitamente a microsegundos. Inventario renombra la ventana a frames_5_55s_desde_primer_evento y explica su origen distinto; el operador registra desfase núcleo→primer evento. Host frío por ronda documentado; KeyError de inventario informa campo requerido. Sin PC/GPU ni cambios a #2004.

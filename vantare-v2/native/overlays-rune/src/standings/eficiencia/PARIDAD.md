@@ -1,8 +1,8 @@
 # Standings Eficiencia — port literal GPUI
 
 E1 porta configuración, geometría y defaults compilados; E2 añade panel y cabecera.
-El registro se conecta
-en E3, al entrar filas/celdas; el allow(dead_code) temporal apunta a ese corte.
+E3 conecta th/filas/celdas y el constructor Eficiencia. Se retira el allow(dead_code)
+del módulo; quedan marcas puntuales para campos/helper de E4 aún sin pintor.
 La excepción de la raíz excluye tests del tope de 1200 líneas de producción.
 Se medirá cada corte consecutivo y se unirá si ambos caben completos bajo el tope.
 
@@ -40,8 +40,8 @@ Comparación de píxeles en el PC de juego; verificación de E1 CPU, sin gráfic
 ## Adaptaciones deliberadas de E1
 
 1. Visual::new omite prefs: GPUI lo recibe sin usarlo; los datos ya vienen localizados.
-2. E1 no reexporta Row/SelectedRow, aún sin consumidor. E3 lo reexportará al portar
-   paint_row/paint_cell, con el mismo tipo de domain que usa GPUI.
+2. E1 no reexporta Row/SelectedRow, aún sin consumidor. E3 reexporta SelectedRow
+   como Row para paint_row/paint_cell, con el mismo tipo de domain que usa GPUI.
 3. Config::from_settings vive en model.rs en lugar del SettingsPresentation::config
    de mod.rs; la conversión mantiene las mismas ramas y valores.
 4. Los defaults del JSON están expresados como literales Rust, en lugar del archivo
@@ -103,3 +103,33 @@ chip pero no se emite texto vacío (text::draw de GPUI tampoco pinta glifos).
 paint_unavailable queda explícitamente PENDIENTE de E4: E3 aún solo pinta la
 cabecera en esa rama, sin el rótulo de desconexión/falta de datos de GPUI.
 Todos los colores nuevos pasan por eficiencia::color o rune::color::hex.
+
+## E3: th, filas, celdas y control
+
+| GPUI | Rune E3 |
+| --- | --- |
+| paint_table (th/filas) | table::paint; bandas/ghosts en E4/E5 |
+| paint_column_label / aligned_x | table.rs; Signature/Broadcast, alineación, máscara y subrayado |
+| paint_row | table::paint_row; jugador, primeras filas de estudio default, filetes y marca roja |
+| paint_cell / split_seconds | table.rs; todas las métricas, nombre/ellipsis y unidad s separada |
+| Widget::{ingest_using,present,switch_session} | control.rs; project_cached y pestañas, sin gate por sequence |
+| app::{project_snapshot,wanted_size} | control.rs; retención de pausa y banda de 22 px |
+| eficiencia::Visual::frame | Visual::view con geometría estática; Motion se conecta en E5 |
+
+Cada fila y celda tiene contenedor con pin y key propia; no hay claves duplicadas
+entre métricas repetidas. size_for anticipa foto/pestaña/bandas/PIT antes del recorte
+del host; size conserva la caja de la proyección retenida durante la pausa.
+La identidad es session:epoch, como GPUI. sequence solo viaja como metadato del
+ContentPlan para E5/E6: no se usa como clave ni para saltarse la proyección o pintar.
+Board por Arc o ContentPlan::same_visible decide si cambia la escena; Lost/Stale
+con el mismo contador repintan; avanzar solo el contador no despierta el widget.
+
+Oráculos de celdas: baselines 43+21/43+19, marca 3/48/2/20, columnas lg
+42/42/200/98/88/88/60/88/66, posición/número centrados en 21/63 y gap en 333;
+texto/nombres ES/EN, elipsis solo donde GPUI, cápsulas Broadcast 145° [0,.65].
+Los colores se comparan con hex sRGB literal. Tras #2496 (c58a05690), el dorsal
+es #a5a5abff, no el #d2d2d6ff que producía el helper anterior: el oráculo no cambia.
+Sin reloj de animación en E3, con o sin movimiento reducido. E5 añadirá Tween.
+E4 debe retirar las marcas dead_code puntuales al portar pies/bandas/espera/rail;
+E6 añade flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
+testers hasta completar E4–E6 y la comparación física de píxeles pendiente.

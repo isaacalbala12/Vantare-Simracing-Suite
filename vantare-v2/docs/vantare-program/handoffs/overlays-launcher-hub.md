@@ -1,3 +1,25 @@
+## VANTA-144 · Standings Eficiencia E3 (16/11/2026)
+
+E3 porta th/filas/celdas de view.rs y conecta el constructor Eficiencia; lectura
+literal de todas las métricas, nombres, unidades, alineación, fondo/filetes del
+jugador y marca roja. Wrapper de fila/celda con pin/key, sin colisiones de claves.
+Primer commit separado: seguimientos E2 (panel/outline leen Style, vértices de
+cinta calculados a mano, ángulos/paradas CPU, clase vacía, key y documentación).
+Segundo commit: oráculos antes del pintor; tercero: implementación. Tabla de
+funciones GPUI↔Rune y adaptaciones en src/standings/eficiencia/PARIDAD.md.
+Control: pausa retiene datos y suma 22 solo al estar pausado; size_for anticipa
+pestaña/multiclase/PIT antes de pintar. Scene/Arc decide el repintado, nunca sequence.
+Identidad session:epoch y metadato de continuidad copiados de GPUI para E5/E6.
+Base nightly c58a05690, con #2496 color lineal: dorsal #a5a5abff confirmado por
+Color.hex(); no se cambia el oráculo GPUI para acomodar el helper anterior.
+Mac: fmt y clippy -D warnings PASS; 559 tests de biblioteca + 3 de binario PASS.
+Código verificado 34591eebd (mismo árbol de fuentes que la suite en Mac).
+Producción 793 líneas cambiadas, tests 527; fuera del tope por excepción de raíz.
+Se retira allow(dead_code) del módulo; marcas puntuales de E4 en Labels/Plan/info.
+E4 pendiente: paint_unavailable, bandas de clase, pies/slots y badges PIT. E5/E6:
+movimiento/efectos; E3 no solicita reloj de animación. Registro previo a E4,
+pero E4–E6 y captura física entran antes de promover a testers. Sin domain/ipc/Cargo.
+
 ## VANTA-144 · Standings Eficiencia E2 (16/11/2026)
 
 PR #2495 a nightly, no draft; código verificado fcf26af67; revisión Sonnet pendiente.

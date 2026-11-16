@@ -6,6 +6,7 @@
 # 0xC0000005 (STATUS_ACCESS_VIOLATION), el comando se reintenta una vez con
 # VANTARE_SCCACHE=0 y se conservan ambos resultados.
 . (Join-Path $PSScriptRoot 'target-slot.ps1')
+. (Join-Path $PSScriptRoot 'queue-decision.ps1')
 # Insert Cargo's target as an option right after the subcommand. Appending it
 # after a trailing argument makes the binary receive `--target-dir` (PowerShell
 # drops the literal `--` when a script is invoked with `&`).
@@ -116,6 +117,33 @@ $jobGb = [double]($env:VANTARE_CARGO_JOB_GB ?? 1.5)
 $reserveGb = [double]($env:VANTARE_CARGO_RESERVE_GB ?? 1)
 # Un worker más exige jobs × jobGb, más lo que ya gastan WSL, navegadores y agentes.
 $workerGb = $jobs * $jobGb + $reserveGb
+# Fase 1 (#1993): los gates de worker se reparten por clase. `heavy` (runtime y
+# hub-host) entra solo con 4 jobs y las dos ranuras; `light` comparte las dos
+# ranuras con 2 jobs. `direct` conserva la decisión actual (CI, release y
+# cualquier comando que no venga de comprobar.ps1).
+$queueMode = [Environment]::GetEnvironmentVariable('VANTARE_CARGO_QUEUE_MODE', 'Machine')
+if (-not $queueMode) { $queueMode = $env:VANTARE_CARGO_QUEUE_MODE }
+if (-not $queueMode) { $queueMode = 'fase1' }
+$queueClass = 'direct'
+if ($queueMode -eq 'fase1') {
+    if ($env:VANTARE_QUEUE_CLASS -in @('heavy', 'light')) { $queueClass = $env:VANTARE_QUEUE_CLASS }
+}
+function Get-VantareQueueSetting {
+    param([string]$Name, [string]$Default)
+    $value = [Environment]::GetEnvironmentVariable($Name, 'Machine')
+    if (-not $value) { $value = [Environment]::GetEnvironmentVariable($Name, 'Process') }
+    if ($value) { return $value }
+    return $Default
+}
+$limits = @{
+    CommitCeiling = [double](Get-VantareQueueSetting 'VANTARE_CARGO_COMMIT_CEILING' '20')
+    FreeFloor = [double](Get-VantareQueueSetting 'VANTARE_CARGO_FREE_FLOOR' '3')
+    HeavyGB = [double](Get-VantareQueueSetting 'VANTARE_CARGO_HEAVY_GB' '4')
+    LightGB = [double](Get-VantareQueueSetting 'VANTARE_CARGO_LIGHT_GB' '2.5')
+    HeavyJobs = [int](Get-VantareQueueSetting 'VANTARE_CARGO_HEAVY_JOBS' '4')
+    LightJobs = [int](Get-VantareQueueSetting 'VANTARE_CARGO_LIGHT_JOBS' '2')
+}
+$buildJobs = $jobs
 $freeGb = 0.0
 $commitGb = 0.0
 $busy = 0
@@ -125,7 +153,15 @@ $commitUmbral = 0.0
 $commitFuente = ''
 $efectivos = 0
 $held = $null
+$reserved = @()
+$heavyWait = $null
 $waited = [Diagnostics.Stopwatch]::StartNew()
+if ($queueClass -eq 'heavy') {
+    # Un solo pesado reserva a la vez; el segundo espera aquí, no en las
+    # ranuras, para que dos pesados no se bloqueen entre sí (P1.1).
+    $heavyWait = [Threading.Mutex]::new($false, 'Global\VantareCargoHeavyWait')
+    try { $null = $heavyWait.WaitOne() } catch [Threading.AbandonedMutexException] { }
+}
 while (-not $held) {
     # Mínimo de RAM libre, leído en cada vuelta: Machine manda (cambio sin reiniciar T3), luego el
     # proceso y, si no hay nada, 5 GB.
@@ -144,40 +180,92 @@ while (-not $held) {
     $freeGb = $os.FreePhysicalMemory / 1MB
     # Comprometido = límite de commit (RAM + pagefile) menos lo libre de ese límite.
     $commitGb = ($os.TotalVirtualMemorySize - $os.FreeVirtualMemory) / 1MB
-    # Slots efectivos por memoria: 2 bajo el umbral, 1 a partir de él; nunca 0 ni por encima
-    # del tope de VANTARE_CARGO_SLOTS.
-    $porMemoria = if ($commitGb -lt $commitUmbral) { 2 } else { 1 }
-    $efectivos = [math]::Max(1, [math]::Min($porMemoria, $slots))
     $busy = 0
     $mine = @()
+    $reservedIndexes = @($reserved | ForEach-Object { $slotNumbers[$_] })
     for ($i = 0; $i -lt $slots; $i++) {
+        if ($i -in $reservedIndexes) { continue }
         $m = [Threading.Mutex]::new($false, "Global\VantareCargoSlot$i")
         try { if ($m.WaitOne(0)) { $mine += $m; $slotNumbers[$m] = $i } else { $busy++; $m.Dispose() } }
         catch [Threading.AbandonedMutexException] { $mine += $m; $slotNumbers[$m] = $i }
     }
-    $needGb = $minGb + $busy * $workerGb
-    $regla = if ($commitGb -lt $commitUmbral) { 'comprometido bajo el umbral' } else { 'comprometido igual o por encima del umbral' }
-    $motivo = "{0}: {1:N1} GB comprometidos, umbral {2:N1} GB ({3})" -f $regla, $commitGb, $commitUmbral, $commitFuente
-    # Entra si hay un hueco dentro de los slots efectivos y no los supera; con ningún otro
-    # worker compilando, entra aunque falte RAM (mejor tirar de disco que esperar una hora).
-    $solo = ($busy -eq 0 -and $mine.Count -gt 0)
-    if ($mine.Count -gt 0 -and $busy -lt $efectivos -and ($freeGb -ge $needGb -or $solo)) {
-        $held = $mine[0]
-        for ($k = 1; $k -lt $mine.Count; $k++) { $mine[$k].ReleaseMutex(); $mine[$k].Dispose() }
-        Write-Host ("[cola] {0} slot(s) efectivo(s) de {1} ({2}); RAM libre {3:N1} GB" -f $efectivos, $slots, $motivo, $freeGb)
-        if ($solo -and $freeGb -lt $needGb) {
-            Write-Host ("[cola] nadie más compilaba y solo hay {0:N1} GB libres (mínimo {1:N1} GB de {2}): entro igual; el sistema tirará de disco" -f $freeGb, $minGb, $fuente)
+    if ($queueClass -eq 'heavy') {
+        # Reserva cada ranura libre y la retiene hasta tenerlas todas (P1.1):
+        # los ligeros solo pueden usar la ranura que el pesado no tiene.
+        $reserved += $mine
+        $total = $reserved.Count
+        $minGb = [double]$limits.FreeFloor
+        $fuente = 'fase1'
+        $commitUmbral = [double]$limits.CommitCeiling
+        $commitFuente = 'fase1'
+        $decision = Get-VantareQueueDecision -Class 'heavy' -FreeSlots $total -ActiveSlots $busy `
+            -Slots $slots -FreeGB $freeGb -CommitGB $commitGb -Limits $limits
+        $needGb = [double]$decision.NeedGB
+        $motivo = "fase1 heavy: commit {0:N1}/{1:N1} GB, libre {2:N1} GB, otras {3}" -f $commitGb, $commitUmbral, $freeGb, $busy
+        if ($decision.Enter) {
+            $held = @($reserved)
+            $buildJobs = [int]$decision.Jobs
+            Write-Host ("[cola] fase1 heavy: {0} job(s), {1} ranura(s) ({2})" -f $buildJobs, $held.Count, $decision.Reason)
+            if ($freeGb -lt $limits.FreeFloor -or ($commitGb + $limits.HeavyGB) -gt $limits.CommitCeiling) {
+                Write-Host ("[cola] pesado solo: entro igual con libre {0:N1} GB y commit {1:N1} GB; el sistema tirará de disco" -f $freeGb, $commitGb)
+            }
+        } else {
+            Write-Host ("[cola] espero: {0} ({1})" -f $decision.Reason, $motivo)
+            Start-Sleep -Seconds 5
+        }
+        continue
+    }
+    if ($queueClass -eq 'direct') {
+        # Slots efectivos por memoria: 2 bajo el umbral, 1 a partir de él; nunca 0 ni por encima
+        # del tope de VANTARE_CARGO_SLOTS.
+        $porMemoria = if ($commitGb -lt $commitUmbral) { 2 } else { 1 }
+        $efectivos = [math]::Max(1, [math]::Min($porMemoria, $slots))
+        $needGb = $minGb + $busy * $workerGb
+        $regla = if ($commitGb -lt $commitUmbral) { 'comprometido bajo el umbral' } else { 'comprometido igual o por encima del umbral' }
+        $motivo = "{0}: {1:N1} GB comprometidos, umbral {2:N1} GB ({3})" -f $regla, $commitGb, $commitUmbral, $commitFuente
+        # Entra si hay un hueco dentro de los slots efectivos y no los supera; con ningún otro
+        # worker compilando, entra aunque falte RAM (mejor tirar de disco que esperar una hora).
+        $solo = ($busy -eq 0 -and $mine.Count -gt 0)
+        if ($mine.Count -gt 0 -and $busy -lt $efectivos -and ($freeGb -ge $needGb -or $solo)) {
+            $held = @($mine[0])
+            for ($k = 1; $k -lt $mine.Count; $k++) { $mine[$k].ReleaseMutex(); $mine[$k].Dispose() }
+            $buildJobs = $jobs
+            Write-Host ("[cola] {0} slot(s) efectivo(s) de {1} ({2}); RAM libre {3:N1} GB" -f $efectivos, $slots, $motivo, $freeGb)
+            if ($solo -and $freeGb -lt $needGb) {
+                Write-Host ("[cola] nadie más compilaba y solo hay {0:N1} GB libres (mínimo {1:N1} GB de {2}): entro igual; el sistema tirará de disco" -f $freeGb, $minGb, $fuente)
+            }
+        } else {
+            foreach ($m in $mine) { $m.ReleaseMutex(); $m.Dispose() }
+            if ($busy -ge $efectivos) {
+                Write-Host ("[cola] espero: {0} slot(s) efectivo(s) de {1} ya ocupados ({2}); RAM libre {3:N1} GB" -f $efectivos, $slots, $motivo, $freeGb)
+            } elseif ($mine.Count -eq 0) {
+                Write-Host ("[cola] espero: {0} huecos ocupados (límite {1}) y RAM libre {2:N1} GB" -f $busy, $slots, $freeGb)
+            } else {
+                Write-Host ("[cola] espero: RAM libre {0:N1} GB < {1:N1} GB pedidos ({2} huecos ocupados; mínimo {3:N1} GB de {4})" -f $freeGb, $needGb, $busy, $minGb, $fuente)
+            }
+            Start-Sleep -Seconds 5
         }
     } else {
-        foreach ($m in $mine) { $m.ReleaseMutex(); $m.Dispose() }
-        if ($busy -ge $efectivos) {
-            Write-Host ("[cola] espero: {0} slot(s) efectivo(s) de {1} ya ocupados ({2}); RAM libre {3:N1} GB" -f $efectivos, $slots, $motivo, $freeGb)
-        } elseif ($mine.Count -eq 0) {
-            Write-Host ("[cola] espero: {0} huecos ocupados (límite {1}) y RAM libre {2:N1} GB" -f $busy, $slots, $freeGb)
+        # Fase 1: pesados exclusivos con 4 jobs; ligeros 2 jobs en las dos ranuras.
+        $minGb = [double]$limits.FreeFloor
+        $fuente = 'fase1'
+        $commitUmbral = [double]$limits.CommitCeiling
+        $commitFuente = 'fase1'
+        $decision = Get-VantareQueueDecision -Class $queueClass -FreeSlots $mine.Count -ActiveSlots $busy `
+            -Slots $slots -FreeGB $freeGb -CommitGB $commitGb -Limits $limits
+        $needGb = [double]$decision.NeedGB
+        $motivo = "fase1 {0}: commit {1:N1}/{2:N1} GB, libre {3:N1} GB, otras {4}" -f $queueClass, $commitGb, $commitUmbral, $freeGb, $busy
+        $hold = [int]$decision.HoldSlots
+        if ($decision.Enter -and $mine.Count -ge $hold) {
+            $held = @($mine[0..($hold - 1)])
+            for ($k = $hold; $k -lt $mine.Count; $k++) { $mine[$k].ReleaseMutex(); $mine[$k].Dispose() }
+            $buildJobs = [int]$decision.Jobs
+            Write-Host ("[cola] fase1 {0}: {1} job(s), {2} ranura(s) ({3})" -f $queueClass, $buildJobs, $hold, $decision.Reason)
         } else {
-            Write-Host ("[cola] espero: RAM libre {0:N1} GB < {1:N1} GB pedidos ({2} huecos ocupados; mínimo {3:N1} GB de {4})" -f $freeGb, $needGb, $busy, $minGb, $fuente)
+            foreach ($m in $mine) { $m.ReleaseMutex(); $m.Dispose() }
+            Write-Host ("[cola] espero: {0} ({1})" -f $decision.Reason, $motivo)
+            Start-Sleep -Seconds 5
         }
-        Start-Sleep -Seconds 5
     }
 }
 $espera = [math]::Round($waited.Elapsed.TotalSeconds)
@@ -196,13 +284,16 @@ try {
         try { $null = $ciLease.WaitOne() } catch [Threading.AbandonedMutexException] { }
     }
     . (Join-Path $PSScriptRoot 'target-slot.ps1')
-    $slotTarget = Initialize-VantareSlotTarget -Slot $slotNumbers[$held] -Root $targetRoot -Ci:($env:VANTARE_CI_TARGET -eq '1')
+    $slotTarget = Initialize-VantareSlotTarget -Slot $slotNumbers[$held[0]] -Root $targetRoot -Ci:($env:VANTARE_CI_TARGET -eq '1')
     $env:VANTARE_CARGO_QUEUE_OWNER = [string]$PID
     $env:VANTARE_SLOT_TARGET = $slotTarget
     $env:CARGO_TARGET_DIR = $slotTarget
     $env:TMP = Join-Path $slotTarget 'tmp'
     $env:TEMP = $env:TMP
     [IO.Directory]::CreateDirectory($env:TMP) | Out-Null
+    # gates.ps1 lee VANTARE_BUILD_JOBS para -j/--build-jobs; no toca CARGO_BUILD_JOBS,
+    # que forma parte de la clave de sccache. `direct` no lo define (comportamiento actual).
+    if ($queueClass -ne 'direct') { $env:VANTARE_BUILD_JOBS = [string]$buildJobs }
     $cmd, $rest = $args
     # Explicit targets for measurements/distribution stay on the configured volume.
     for ($index = 0; $index -lt $rest.Count; $index++) {
@@ -233,6 +324,7 @@ try {
     if ($targetLease) { $targetLease.ReleaseMutex(); $targetLease.Dispose() }
     if ($ciLease) { $ciLease.ReleaseMutex(); $ciLease.Dispose() }
     Remove-Item Env:VANTARE_CARGO_QUEUE_OWNER -ErrorAction SilentlyContinue
-    $held.ReleaseMutex(); $held.Dispose()
+    foreach ($m in $held) { $m.ReleaseMutex(); $m.Dispose() }
+    if ($heavyWait) { $heavyWait.ReleaseMutex(); $heavyWait.Dispose() }
 }
 exit $code

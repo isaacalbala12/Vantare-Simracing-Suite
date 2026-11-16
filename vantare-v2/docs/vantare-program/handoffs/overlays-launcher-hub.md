@@ -1,5 +1,6 @@
 ## VANTA-144 · Standings Eficiencia E2 (16/11/2026)
 
+PR #2495 a nightly, no draft; código verificado fcf26af67; revisión Sonnet pendiente.
 Port literal de panel/marco, banda de marca, franja de bandera y cabecera de sesión
 (Signature/Broadcast, Stale ES/EN y Focus) de ui/standings/view.rs. Constructor
 pendiente de E3, junto con th/filas/celdas/control; E4 añade bandas, pies, espera

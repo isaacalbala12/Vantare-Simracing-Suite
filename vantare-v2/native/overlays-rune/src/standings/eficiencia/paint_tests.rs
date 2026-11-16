@@ -101,6 +101,7 @@ fn gpui_stale_plain_brand_band_and_focus_header_branches() {
     ] {
         let rt = paint(v.clone_for_test(), language);
         let kind = named(&rt, "session-kind");
+        assert!(!kind.text.as_ref().unwrap().is_empty());
         assert!(title.starts_with(kind.text.unwrap().trim_end_matches('…')));
         assert_eq!(kind.text_color, Some(color(0xe2c568, 1.0)));
         assert_eq!(
@@ -227,4 +228,21 @@ fn gpui_shadow_uses_only_the_gaussian_tail_in_the_pit_rail() {
         ],
         [0, 10, 19, 4, 0]
     );
+}
+
+#[test]
+fn gpui_logo_area_reduction_keeps_the_original_rgba_edges() {
+    assert_eq!(assets::LOGO.len(), 24 * 24 * 4);
+    // Oráculo: logo_24 original de GPUI, ejecutado sin modificar su bucle f32.
+    for (x, y, rgba) in [
+        (0, 0, [0, 0, 0, 0]),
+        (11, 2, [233, 81, 81, 167]),
+        (12, 3, [246, 76, 76, 252]),
+        (4, 19, [214, 0, 0, 255]),
+        (12, 12, [225, 7, 7, 182]),
+        (23, 23, [127, 0, 0, 0]),
+    ] {
+        let offset = (y * 24 + x) * 4;
+        assert_eq!(&assets::LOGO[offset..offset + 4], &rgba);
+    }
 }

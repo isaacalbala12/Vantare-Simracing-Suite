@@ -1,6 +1,7 @@
 # Standings Eficiencia — port literal GPUI
 
-E1 porta configuración, geometría y defaults compilados. El registro se conecta
+E1 porta configuración, geometría y defaults compilados; E2 añade panel y cabecera.
+El registro se conecta
 en E3, al entrar filas/celdas; el allow(dead_code) temporal apunta a ese corte.
 La excepción de la raíz excluye tests del tope de 1200 líneas de producción.
 Se medirá cada corte consecutivo y se unirá si ambos caben completos bajo el tope.
@@ -53,3 +54,31 @@ Comparación de píxeles en el PC de juego; verificación de E1 CPU, sin gráfic
 
 Revisión E1: PIT mediante columnas reales (474 y reparto estrecho [156,82]);
 seis slots y pie 15+filas·14, helper antes de tests y etiquetas restantes ES/EN.
+
+## E2: panel y cabecera
+
+| GPUI view.rs | Rune E2 |
+| --- | --- |
+| col / efficiency::rect | crate::eficiencia::color y render::rect; bordes CSS half-up |
+| flag_rgb / clip_half_plane / paint_polygon / paint_flag_ribbon | render.rs; mismas bandas 131°, Signature/Broadcast y opacidades |
+| paint (panel, brand_band, marco) | crate::eficiencia::panel/outline y render::view; grados convertidos a radianes |
+| paint_session_header | render::session_header; marca, contexto, Stale, Focus y chip literales |
+| shadow_strip / paint_shadow_strip | assets.rs; misma cola gaussiana de 34 px, caché local del widget |
+| logo_24 / paint_logo_size | tools/standings_logo.py, logo-24.rgba y Assets; imagen por widget |
+| efficiency/text::{ink,width,fit,baseline,draw} | crate::eficiencia; Inter estática, tnum/kern y tracking tras el último carácter |
+
+El logo se reduce por área premultiplicada antes de entregarlo a Rune. Se verificó
+contra el bucle f32 original de GPUI: los 2304 bytes RGBA coinciden exactamente.
+El generador solo necesita Pillow para decodificar el PNG fuente; --check detecta
+un recurso desactualizado. No hay dependencia PNG nueva ni generación por frame.
+Assets se refresca al adjuntar imágenes/cambiar geometría o estilo, no en view.
+capture_images conserva solo logo/sombra usados por la vista, para la captura real.
+
+Tests de cabecera: baselines, tamaños/posiciones, colores, marca oculta/banda,
+Stale ES/EN, Focus, paleta completa, bandas Signature/Broadcast y cola gaussiana.
+Todas las capas superpuestas llevan pin; assert_inside_window recorre ambas
+geometrías con Ready/Stale/Missing/Disconnected e imágenes adjuntas.
+E2 continúa sin constructor. E3 completa th/filas/celdas/control y lo registra;
+E4 añade separadores, pies, espera y badges. E5/E6 conservan su corte de movimiento
+y efectos. E2+E3 preparados en local superan 1200 líneas de producción formateada;
+no se comprime el port para unirlos.

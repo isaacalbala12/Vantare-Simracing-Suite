@@ -106,6 +106,8 @@ pub(super) struct Scene {
     pub bar: f32,
     /// Delta negativo: verde en el número y en el sector en curso.
     pub gain: bool,
+    /// Destello de récord bajo el número: 1 al marcar y baja a 0.
+    pub flash: Option<f32>,
     /// Board con número que mostrar (ni espera ni espectador).
     pub live: bool,
     pub message: bool,
@@ -203,6 +205,7 @@ pub fn sample(board: &Board, settings: &Settings, prefs: Preferences, style: &St
             phase: board.phase,
             bar: 0.0,
             gain: board.delta_s.is_some_and(|delta| delta < 0.0),
+            flash: None,
             live: !message,
             message,
             grey,
@@ -237,6 +240,7 @@ pub fn sample(board: &Board, settings: &Settings, prefs: Preferences, style: &St
         phase: board.phase,
         bar: bar_target(board.delta_s, board.phase, d.range_s),
         gain: board.delta_s.is_some_and(|delta| delta < 0.0),
+        flash: None,
         live: !message,
         message,
         grey,

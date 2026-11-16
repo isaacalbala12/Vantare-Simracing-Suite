@@ -48,6 +48,10 @@ fn settings(size: &str) -> Settings {
     }
 }
 
+fn delta(settings: &Settings, prefs: Preferences) -> Delta {
+    <Delta>::new(settings, prefs, false, 0.0)
+}
+
 fn changed(update: Update) -> bool {
     update.build || update.pixels
 }
@@ -94,7 +98,7 @@ fn values_and_reference_come_from_the_canonical_projection() {
             reference: name.into(),
             ..settings("bar")
         };
-        let mut painter = Delta::new(&settings, Preferences::default());
+        let mut painter = delta(&settings, Preferences::default());
         assert!(changed(painter.update(&input, 0.0)), "{name}");
         let board = project(&settings, &input, Preferences::default());
         assert_eq!(board.phase, Phase::Live, "simulated {name} is available");
@@ -114,7 +118,7 @@ fn values_and_reference_come_from_the_canonical_projection() {
     }
     let mut missing = input.clone();
     missing.state.cars[0].best_lap_s = Unavailable;
-    let mut painter = Delta::new(
+    let mut painter = delta(
         &Settings {
             reference: "leader".into(),
             ..settings("bar")
@@ -131,14 +135,14 @@ fn values_and_reference_come_from_the_canonical_projection() {
 fn each_size_keeps_the_catalogue_box_and_pause_never_resizes_it() {
     let input = snapshot();
     for (size, width) in [("pill", 150.0), ("bar", 380.0), ("expanded", 768.0)] {
-        let mut painter = Delta::new(&settings(size), Preferences::default());
+        let mut painter = delta(&settings(size), Preferences::default());
         painter.update(&input, 0.0);
         assert_eq!(painter.size().width, width, "{size}");
         let mut paused = input.clone();
         paused.state.source_state = SourceState::Paused;
         assert_eq!(painter.size_for(Some(&paused)), painter.size(), "{size}");
     }
-    let pill = Delta::new(&settings("pill"), Preferences::default());
+    let pill = delta(&settings("pill"), Preferences::default());
     assert_eq!(pill.size().height, 36.0);
 }
 
@@ -241,7 +245,7 @@ fn invalid_and_paused_keep_the_grey_number_and_the_note() {
 
 #[test]
 fn the_bar_fill_paints_the_target_and_its_sign() {
-    let mut painter = Delta::new(&settings("bar"), Preferences::default());
+    let mut painter = delta(&settings("bar"), Preferences::default());
     painter.update(&snapshot(), 0.0);
     let runtime = harness(painter);
     let fill = runtime.presented("bar-fill").expect("painted bar");
@@ -250,14 +254,14 @@ fn the_bar_fill_paints_the_target_and_its_sign() {
     assert!(x < 380.0 / 2.0, "negativo a la izquierda");
     let mut positive = snapshot();
     positive.state.player.as_mut().expect("player").delta_best_s = Reliable(0.4);
-    let mut painter = Delta::new(&settings("bar"), Preferences::default());
+    let mut painter = delta(&settings("bar"), Preferences::default());
     painter.update(&positive, 0.0);
     let positive_runtime = harness(painter);
     let fill = positive_runtime
         .presented("bar-fill")
         .expect("positive bar");
     assert!(fill.0[0] >= 380.0 / 2.0 - 0.5, "positivo a la derecha");
-    let mut painter = Delta::new(&settings("bar"), Preferences::default());
+    let mut painter = delta(&settings("bar"), Preferences::default());
     painter.update(&snapshot(), 0.2);
     let center_runtime = harness(painter);
     assert!(center_runtime.presented("bar-center").is_some());
@@ -268,7 +272,7 @@ fn the_bar_fill_paints_the_target_and_its_sign() {
 fn thirty_seconds_of_sequences_and_hidden_lap_times_leave_actual_cpu_pixels_unchanged() {
     for size in ["pill", "bar", "expanded"] {
         let mut input = snapshot();
-        let mut painter = Delta::new(&settings(size), Preferences::default());
+        let mut painter = delta(&settings(size), Preferences::default());
         painter.update(&input, 0.0);
         let mut runtime = harness(painter);
         if size == "pill" {
@@ -303,7 +307,7 @@ fn every_state_keeps_every_layer_inside_the_window() {
         ] {
             let mut input = snapshot();
             input.state.source_state = state;
-            let mut painter = Delta::new(&settings(size), Preferences::default());
+            let mut painter = delta(&settings(size), Preferences::default());
             painter.update(&input, 0.0);
             let (width, height) = (painter.size().width, painter.size().height);
             let mut runtime = harness(painter);
@@ -315,7 +319,7 @@ fn every_state_keeps_every_layer_inside_the_window() {
 #[test]
 fn configured_rebuilds_for_every_visible_setting_and_language() {
     let prefs = Preferences::default();
-    let painter = Delta::new(&settings("bar"), prefs);
+    let painter = delta(&settings("bar"), prefs);
     let same = WidgetSettings::Delta(settings("bar"));
     assert!(<Delta as Widget>::configured(&painter, &same, prefs));
     for changed_settings in [
@@ -357,7 +361,7 @@ fn configured_rebuilds_for_every_visible_setting_and_language() {
 #[test]
 fn the_pill_uses_the_thirty_four_pixel_content_box() {
     // Constantes de GPUI: alto de contenido 34, rótulo 11 y baseline Display 1.
-    let mut painter = Delta::new(&settings("pill"), Preferences::default());
+    let mut painter = delta(&settings("pill"), Preferences::default());
     painter.update(&snapshot(), 0.0);
     let runtime = harness(painter);
     let panel = runtime.presented("panel").expect("panel de la píldora");
@@ -370,7 +374,7 @@ fn the_pill_uses_the_thirty_four_pixel_content_box() {
 
 #[test]
 fn sector_values_share_the_title_line() {
-    let mut painter = Delta::new(&settings("expanded"), Preferences::default());
+    let mut painter = delta(&settings("expanded"), Preferences::default());
     painter.update(&snapshot(), 0.0);
     let runtime = harness(painter);
     // GPUI: 10 de padding + 18 de cabecera + 4 de hueco + 44 de número
@@ -383,7 +387,7 @@ fn sector_values_share_the_title_line() {
 
 #[test]
 fn the_brand_ends_at_the_header_edge() {
-    let mut painter = Delta::new(
+    let mut painter = delta(
         &Settings {
             brand_visible: Some(true),
             ..settings("bar")
@@ -409,7 +413,7 @@ fn the_brand_ends_at_the_header_edge() {
 
 #[test]
 fn transparent_labels_carry_the_game_shadow() {
-    let mut painter = Delta::new(
+    let mut painter = delta(
         &Settings {
             brand_visible: Some(true),
             ..settings("bar")
@@ -423,7 +427,7 @@ fn transparent_labels_carry_the_game_shadow() {
         "sin sombra sobre el panel"
     );
     assert!(runtime.presented("brand-name-shadow-0").is_none());
-    let mut painter = Delta::new(
+    let mut painter = delta(
         &Settings {
             transparent_background: true,
             brand_visible: Some(true),
@@ -476,7 +480,7 @@ fn transparent_brand_banner_and_every_state_stay_inside_the_window() {
                     reference: "leader".into(),
                     ..Default::default()
                 };
-                let mut painter = Delta::new(&settings, Preferences::default());
+                let mut painter = delta(&settings, Preferences::default());
                 painter.update(&input, 0.0);
                 let (width, height) = (painter.size().width, painter.size().height);
                 let mut runtime = harness(painter);
@@ -495,7 +499,7 @@ fn the_five_game_shadows_keep_gpui_offsets_and_alpha() {
         (0.0, 2.0, 0.35),
         (0.0, 1.0, 0.9),
     ];
-    let mut live = Delta::new(
+    let mut live = delta(
         &Settings {
             transparent_background: true,
             ..settings("bar")
@@ -504,7 +508,7 @@ fn the_five_game_shadows_keep_gpui_offsets_and_alpha() {
     );
     live.update(&snapshot(), 0.0);
     check_shadows(&harness(live), "big-number", &expected);
-    let mut waiting = Delta::new(
+    let mut waiting = delta(
         &Settings {
             transparent_background: true,
             ..settings("bar")
@@ -541,6 +545,73 @@ fn by_key<'a>(elements: &'a [rune::ElementInfo], key: &str) -> &'a rune::Element
         .iter()
         .find(|element| element.key.as_deref() == Some(key))
         .unwrap_or_else(|| panic!("falta {key}"))
+}
+
+#[test]
+fn a_record_paints_the_purple_flash_with_gpui_geometry_then_expires() {
+    // Neo: bleed 6, fila 24, radio 6; número grande de 34 en y 32.
+    let mut painter = delta(&settings("bar"), Preferences::default());
+    painter.update(&snapshot(), 0.0);
+    let mut record = snapshot();
+    let car_id = record.state.player.expect("player").car;
+    record
+        .state
+        .cars
+        .iter_mut()
+        .find(|car| car.id == car_id)
+        .expect("player car")
+        .best_lap_s = Reliable(99.0);
+    painter.update(&record, 0.1);
+    assert_eq!(painter.scene.flash, Some(1.0));
+    let mut runtime = harness(painter);
+    let (width, height) = (runtime.state.size().width, runtime.state.size().height);
+    crate::testdata::assert_inside_window(&mut runtime, (width, height));
+    let flash = runtime.presented("big-flash").expect("destello");
+    assert_eq!(flash.0, [6.0, 37.0, 368.0, 24.0]);
+
+    let mut painter = delta(&settings("bar"), Preferences::default());
+    painter.update(&snapshot(), 0.0);
+    painter.update(&record, 0.1);
+    let style = crate::vantare::Style::compiled();
+    let end = 0.1 + f64::from(style.motion.flash_ms) / 1000.0;
+    assert!(painter.motion.next_wake(0.1).is_some());
+    painter.animate(end);
+    assert_eq!(painter.scene.flash, None);
+    assert_eq!(painter.motion.next_wake(end), None, "cero despertares");
+    let runtime = harness(painter);
+    assert!(runtime.presented("big-flash").is_none());
+}
+
+#[test]
+fn reduced_motion_never_lights_the_flash_or_asks_for_a_clock() {
+    let mut painter = Delta::new(&settings("bar"), Preferences::default(), true, 0.0);
+    painter.update(&snapshot(), 0.0);
+    let mut record = snapshot();
+    let car_id = record.state.player.expect("player").car;
+    record
+        .state
+        .cars
+        .iter_mut()
+        .find(|car| car.id == car_id)
+        .expect("player car")
+        .best_lap_s = Reliable(99.0);
+    painter.update(&record, 0.1);
+    assert_eq!(painter.scene.flash, None);
+    assert_eq!(painter.motion.next_wake(0.1), None);
+}
+
+#[test]
+fn the_bar_slides_while_the_delta_changes_and_rests_after_its_ease() {
+    let mut painter = delta(&settings("bar"), Preferences::default());
+    painter.update(&snapshot(), 0.0);
+    let mut moved = snapshot();
+    moved.state.player.as_mut().expect("player").delta_best_s = Reliable(0.4);
+    painter.update(&moved, 1.0);
+    let eased = crate::vantare::Style::compiled().delta.ease_ms / 1000.0;
+    assert!(painter.motion.next_wake(1.0).is_some(), "la barra se mueve");
+    assert!(painter.scene.bar > 0.0);
+    painter.animate(1.0 + f64::from(eased));
+    assert_eq!(painter.motion.next_wake(1.0 + f64::from(eased)), None);
 }
 
 #[test]

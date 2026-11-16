@@ -523,6 +523,39 @@ impl Painter {
         let c = &s.colors;
         let pad = self.variant().padding_x;
         let width = self.scene.width;
+        if let Some(alpha) = self.scene.flash {
+            let g = &s.geometry;
+            let v = self.variant();
+            let x0 = v.padding_x - g.player_bleed;
+            let flash_y = y + (d.big - g.row_height) / 2.0;
+            let background = if v.player_white > 0.0 {
+                el().fill(crate::vantare::alpha(
+                    c.purple,
+                    if v.player_white > 0.0 { 0.3 } else { v.player_white } * alpha,
+                ))
+            } else {
+                el().linear_gradient(
+                    if v.player_vertical { 180.0 } else { 90.0 }.to_radians(),
+                    [
+                        (
+                            0.0,
+                            crate::vantare::alpha(c.purple, v.player_from * alpha),
+                        ),
+                        (
+                            1.0,
+                            crate::vantare::alpha(c.purple, v.player_to * alpha),
+                        ),
+                    ],
+                )
+            };
+            root = root.child(
+                el().key("big-flash")
+                    .pin(Some(x0), Some(flash_y), None, None)
+                    .size(width - 2.0 * x0, g.row_height)
+                    .radius(v.player_radius)
+                    .child(background.size(width - 2.0 * x0, g.row_height)),
+            );
+        }
         let (value, color) = self.number();
         let value_font = font(s, Face::Display, d.big, d.big, 0.5, 600.0);
         let value_width = eficiencia::width(value, value_font);

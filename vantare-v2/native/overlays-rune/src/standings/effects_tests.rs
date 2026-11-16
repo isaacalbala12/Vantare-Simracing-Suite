@@ -135,8 +135,8 @@ fn the_sweep_uses_800_ms_and_the_notice_expires_at_1200() {
     let ended = motion.sample(1.0 + 0.801);
     assert!(ended.rows[&1].sweep.is_none(), "800 ms de barrido");
     assert_eq!(motion.next_wake(1.0), Some(1.0), "mientras barre, frame");
-    assert_eq!(motion.next_wake(1.1), Some(1.2), "solo caduca el aviso");
-    assert_eq!(motion.next_wake(1.3), None, "cero despertares");
+    assert_eq!(motion.next_wake(1.1), Some(2.2), "solo caduca el aviso");
+    assert_eq!(motion.next_wake(2.3), None, "cero despertares");
 }
 
 #[test]
@@ -149,12 +149,12 @@ fn reduced_motion_snaps_effects_and_keeps_only_the_expiry_wake() {
     motion.events(&before, &after, 1.0);
     let sample = motion.sample(1.0);
     assert_eq!(
-        sample.rows[&1].chip.map(|(places, alpha)| (places, alpha)),
+        sample.rows[&1].chip,
         Some((2, 1.0)),
         "chip final, sin animar"
     );
-    assert_eq!(motion.next_wake(1.0), Some(1.2), "un solo despertar");
-    assert_eq!(motion.next_wake(1.2), None);
+    assert_eq!(motion.next_wake(1.0), Some(2.2), "un solo despertar");
+    assert_eq!(motion.next_wake(2.2), None);
 }
 
 /// Fila de pintura mínima para el aprendizaje de posiciones del Motion.

@@ -189,7 +189,7 @@ impl Standings {
         let display = scene::Display::new(&self.settings, self.prefs, &plan, &layout, paused);
         let next = scene::Scene { display, layout };
         let changed = next != self.scene;
-        if changed {
+        if changed && motion::motion_continues(&self.plan, &plan) {
             self.motion.events(&self.plan, &plan, clock);
         }
         self.board = board;

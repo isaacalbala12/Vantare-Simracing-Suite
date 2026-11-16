@@ -12,6 +12,9 @@ mod control_tests;
 mod model;
 mod options;
 #[cfg(test)]
+#[path = "motion_tests.rs"]
+mod motion_tests;
+#[cfg(test)]
 mod paint_tests;
 mod render;
 mod style;

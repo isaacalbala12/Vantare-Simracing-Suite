@@ -11,162 +11,156 @@ use vantare_domain::fastest_lap::Kind;
 pub(super) const WIDTH: f32 = 480.0;
 pub(super) const HEIGHT: f32 = 104.0;
 
-/// Lo que decide recomponer la vista: presencia y textos, sin la opacidad.
-#[derive(PartialEq)]
-struct Structure {
-    kind: Kind,
-    title: &'static str,
-    class: Option<Arc<str>>,
-    time: Arc<str>,
-    driver: Option<Arc<str>>,
-    caption: &'static str,
-    improvement: Arc<str>,
-    lap: Arc<str>,
-    sectors: [Option<bool>; 3],
-}
-
-impl Structure {
-    fn of(scene: &Scene) -> Self {
-        Self {
-            kind: scene.kind,
-            title: scene.title,
-            class: scene.class.clone(),
-            time: scene.time.clone(),
-            driver: scene.driver.clone(),
-            caption: scene.caption,
-            improvement: scene.improvement.clone(),
-            lap: scene.lap.clone(),
-            sectors: scene.sectors,
-        }
-    }
-}
-
 pub(super) struct Painter {
     style: Arc<Style>,
     opacity: Live<f32>,
     visual: Option<Scene>,
-    structure: Option<Structure>,
+    view: El,
 }
 
 impl Painter {
     pub fn new(visual: Option<&Scene>) -> Self {
+        let style = Style::compiled();
+        let opacity = Live::new(visual.map_or(0.0, |scene| scene.opacity));
         Self {
-            style: Style::compiled(),
-            opacity: Live::new(visual.map_or(0.0, |scene| scene.opacity)),
+            view: build_view(&style, visual, &opacity),
+            opacity,
             visual: visual.cloned(),
-            structure: visual.map(Structure::of),
+            style,
         }
     }
 
-    /// Un solo punto de decisión: la vista se recompone al cambiar estructura o
-    /// textos; la opacidad entra por Live sin recomponer.
+    /// Un solo punto de decisión: la escena cambia (sin contar la opacidad) y
+    /// se recompone; la opacidad entra por Live sin rehacer la vista.
     pub fn sync(&mut self, visual: Option<&Scene>) -> crate::widget::Update {
         let pixels = self.opacity.set(visual.map_or(0.0, |scene| scene.opacity));
-        let structure = visual.map(Structure::of);
-        let build = structure != self.structure;
+        let build = changed(visual, self.visual.as_ref());
         if build {
             self.visual = visual.cloned();
-            self.structure = structure;
+            self.view = build_view(&self.style, self.visual.as_ref(), &self.opacity);
         }
         crate::widget::Update { build, pixels }
     }
 
     pub fn view(&self) -> El {
-        let root = el()
-            .key("fastest-lap")
-            .size(WIDTH, HEIGHT)
-            .motion(rune::Spring::NONE);
-        let Some(scene) = &self.visual else {
-            return root;
-        };
-        let style = self.style.as_ref();
-        let color = match scene.kind {
-            Kind::Personal => style.colors.best_personal,
-            Kind::Class => style.colors.purple,
-        };
-        let title_ink = font(style, Face::Display, 12.0, 16.0, 1.6, 600.0);
-        let title_width = rune::text::measure(scene.title, &[], title_ink, None).0;
-        let mut fading = el()
-            .key("notice")
-            .size(WIDTH, HEIGHT)
-            .pin(Some(0.0), Some(0.0), None, None)
-            .live_opacity(&self.opacity)
-            .child(panel(style))
-            .child(band(color))
-            .child(
-                text(scene.title.to_owned())
-                    .key("title")
-                    .font(title_ink)
-                    .color(color)
-                    .size(title_width, 16.0)
-                    .pin(Some(16.0), Some(12.0), None, None),
-            );
-        if let Some(class) = &scene.class {
-            fading = fading.child(class_chip(style, class, 16.0 + title_width + 8.0));
-        }
-        fading = fading
-            .child(
-                text(scene.time.to_string())
-                    .key("time")
-                    .font(font(style, Face::Display, 40.0, 40.0, 0.5, 600.0))
-                    .color(time_ink())
-                    .size(300.0, 40.0)
-                    .pin(Some(16.0), Some(30.0), None, None),
-            )
-            .child(
-                text(scene.improvement.to_string())
-                    .key("improvement")
-                    .font(font(style, Face::Display, 22.0, 22.0, 0.0, 600.0))
-                    .color(color)
-                    .size(464.0, 22.0)
-                    .align(Align::End)
-                    .pin(Some(0.0), Some(12.0), None, None),
-            );
-        if let Some(driver) = &scene.driver {
-            fading = fading.child(
-                text(driver.to_string())
-                    .key("driver")
-                    .font(font(
-                        style,
-                        Face::Body,
-                        style.fonts.small,
-                        16.0,
-                        0.0,
-                        style.fonts.regular_weight,
-                    ))
-                    .color(style.colors.header_em)
-                    .size(320.0, 16.0)
-                    .truncate()
-                    .pin(Some(16.0), Some(74.0), None, None),
-            );
-        }
-        let mut steady = el()
-            .key("steady")
-            .size(WIDTH, HEIGHT)
-            .pin(Some(0.0), Some(0.0), None, None)
-            .child(
-                text(scene.caption.to_owned())
-                    .key("caption")
-                    .font(font(style, Face::Mono, 10.0, 14.0, 0.0, 400.0))
-                    .color(style.colors.muted)
-                    .size(464.0, 14.0)
-                    .align(Align::End)
-                    .pin(Some(0.0), Some(32.0), None, None),
-            )
-            .child(
-                text(scene.lap.to_string())
-                    .key("lap")
-                    .font(font(style, Face::Mono, 10.0, 14.0, 0.0, 400.0))
-                    .color(style.colors.muted)
-                    .size(464.0, 14.0)
-                    .align(Align::End)
-                    .pin(Some(0.0), Some(76.0), None, None),
-            );
-        for (index, state) in scene.sectors.iter().enumerate() {
-            steady = steady.child(sector(style, index, *state));
-        }
-        root.child(fading).child(steady)
+        self.view.clone()
     }
+}
+
+/// Compara escenas ignorando la opacidad; sin tipo espejo de la escena.
+fn changed(new: Option<&Scene>, old: Option<&Scene>) -> bool {
+    match (new, old) {
+        (None, None) => false,
+        (Some(new), Some(old)) => {
+            new.kind != old.kind
+                || new.title != old.title
+                || new.class != old.class
+                || new.time != old.time
+                || new.driver != old.driver
+                || new.caption != old.caption
+                || new.improvement != old.improvement
+                || new.lap != old.lap
+                || new.sectors != old.sectors
+        }
+        _ => true,
+    }
+}
+
+fn build_view(style: &Style, scene: Option<&Scene>, opacity: &Live<f32>) -> El {
+    let root = el()
+        .key("fastest-lap")
+        .size(WIDTH, HEIGHT)
+        .motion(rune::Spring::NONE);
+    let Some(scene) = scene else {
+        return root;
+    };
+    let baseline = style.fonts.display_baseline;
+    let color = match scene.kind {
+        Kind::Personal => style.colors.best_personal,
+        Kind::Class => style.colors.purple,
+    };
+    let title_ink = font(style, Face::Display, 12.0, 16.0, 1.6, 600.0);
+    let title_width = rune::text::measure(scene.title, &[], title_ink, None).0;
+    let mut fading = el()
+        .key("notice")
+        .size(WIDTH, HEIGHT)
+        .pin(Some(0.0), Some(0.0), None, None)
+        .live_opacity(opacity)
+        .child(panel(style))
+        .child(band(color))
+        .child(
+            text(scene.title.to_owned())
+                .key("title")
+                .font(title_ink)
+                .color(color)
+                .size(title_width, 16.0)
+                .pin(Some(16.0), Some(12.0 + baseline), None, None),
+        );
+    if let Some(class) = &scene.class {
+        fading = fading.child(class_chip(style, class, 16.0 + title_width + 8.0, baseline));
+    }
+    fading = fading
+        .child(
+            text(scene.time.to_string())
+                .key("time")
+                .font(font(style, Face::Display, 40.0, 40.0, 0.5, 600.0))
+                .color(time_ink())
+                .size(300.0, 40.0)
+                .pin(Some(16.0), Some(30.0 + baseline), None, None),
+        )
+        .child(
+            text(scene.improvement.to_string())
+                .key("improvement")
+                .font(font(style, Face::Display, 22.0, 22.0, 0.0, 600.0))
+                .color(color)
+                .size(464.0, 22.0)
+                .align(Align::End)
+                .pin(Some(0.0), Some(12.0 + baseline), None, None),
+        );
+    if let Some(driver) = &scene.driver {
+        fading = fading.child(
+            text(driver.to_string())
+                .key("driver")
+                .font(font(
+                    style,
+                    Face::Body,
+                    style.fonts.small,
+                    16.0,
+                    0.0,
+                    style.fonts.regular_weight,
+                ))
+                .color(style.colors.header_em)
+                .size(320.0, 16.0)
+                .truncate()
+                .pin(Some(16.0), Some(74.0), None, None),
+        );
+    }
+    let mut steady = el()
+        .key("steady")
+        .size(WIDTH, HEIGHT)
+        .pin(Some(0.0), Some(0.0), None, None)
+        .child(
+            text(scene.caption.to_owned())
+                .key("caption")
+                .font(font(style, Face::Mono, 10.0, 14.0, 0.0, 400.0))
+                .color(style.colors.muted)
+                .size(464.0, 14.0)
+                .align(Align::End)
+                .pin(Some(0.0), Some(32.0), None, None),
+        )
+        .child(
+            text(scene.lap.to_string())
+                .key("lap")
+                .font(font(style, Face::Mono, 10.0, 14.0, 0.0, 400.0))
+                .color(style.colors.muted)
+                .size(464.0, 14.0)
+                .align(Align::End)
+                .pin(Some(0.0), Some(76.0), None, None),
+        );
+    for (index, state) in scene.sectors.iter().enumerate() {
+        steady = steady.child(sector(style, index, *state, baseline));
+    }
+    root.child(fading).child(steady)
 }
 
 fn panel(style: &Style) -> El {
@@ -205,24 +199,26 @@ fn band(color: Color) -> El {
         )
 }
 
-fn class_chip(style: &Style, name: &str, x: f32) -> El {
+fn class_chip(style: &Style, name: &str, x: f32, baseline: f32) -> El {
     let (label, text_width) = fitted(style, name);
     let width = text_width + 12.0;
     el().key("class")
         .size(width, 14.0)
         .radius(3.0)
-        .fill(style.class(name).dot)
+        // Como GPUI: el color se busca con el nombre ya recortado.
+        .fill(style.class(&label).dot)
         .pin(Some(x), Some(12.0), None, None)
         .child(
             text(label)
+                .key("class-label")
                 .font(font(style, Face::Display, 10.0, 14.0, 0.0, 600.0))
                 .color(WHITE)
                 .size(width - 12.0, 14.0)
-                .pin(Some(6.0), Some(0.0), None, None),
+                .pin(Some(6.0), Some(baseline), None, None),
         )
 }
 
-fn sector(style: &Style, index: usize, state: Option<bool>) -> El {
+fn sector(style: &Style, index: usize, state: Option<bool>, baseline: f32) -> El {
     let fill = match state {
         Some(true) => style.colors.purple,
         Some(false) => style.colors.green,
@@ -236,10 +232,11 @@ fn sector(style: &Style, index: usize, state: Option<bool>) -> El {
         .pin(Some(x), Some(55.0), None, None)
         .child(
             text(["S1", "S2", "S3"][index])
+                .key(format!("sector-label-{index}"))
                 .font(font(style, Face::Display, 10.0, 16.0, 1.0, 600.0))
                 .color(style.colors.text)
                 .size(22.0, 16.0)
-                .pin(Some(8.0), Some(0.0), None, None),
+                .pin(Some(8.0), Some(baseline), None, None),
         )
 }
 

@@ -1,4 +1,6 @@
 //! Vuelta rápida: proyección, aviso y pintura Vantare (480 × 104).
+//! Demo/parity-capture (récord fijo del taller): paridad en demo pendiente,
+//! va en el PR de seguimiento de demos.
 mod render;
 pub mod scene;
 
@@ -17,7 +19,7 @@ pub(crate) struct FastestLap {
     prefs: Preferences,
     motion: scene::Motion,
     painter: Painter,
-    projected: Option<Arc<fastest_lap::ViewModel>>,
+    projected: Arc<fastest_lap::ViewModel>,
     projection_key: Option<(u64, u64, u64, Preferences)>,
     visual: Option<scene::Scene>,
 }
@@ -26,6 +28,8 @@ impl FastestLap {
     pub fn new(settings: &Config, prefs: Preferences, reduced: bool, _hz: u16, clock: f64) -> Self {
         let settings = settings.normalized();
         let motion = scene::Motion::new(f64::from(settings.duration_seconds), reduced);
+        let mut vm = fastest_lap::project(&Snapshot::default(), prefs);
+        vm.show_driver = settings.show_driver;
         let visual = scene::sample(&motion, prefs, clock);
         let painter = Painter::new(visual.as_ref());
         Self {
@@ -33,7 +37,7 @@ impl FastestLap {
             prefs,
             motion,
             painter,
-            projected: None,
+            projected: Arc::new(vm),
             projection_key: None,
             visual,
         }
@@ -119,13 +123,10 @@ impl FastestLap {
         if self.projection_key != Some(key) {
             let mut vm = fastest_lap::project(snapshot, self.prefs);
             vm.show_driver = self.settings.show_driver;
-            self.projected = Some(Arc::new(vm));
+            self.projected = Arc::new(vm);
             self.projection_key = Some(key);
         }
-        self.projected
-            .as_ref()
-            .map(Arc::clone)
-            .expect("proyección vigente")
+        Arc::clone(&self.projected)
     }
 }
 
@@ -362,5 +363,149 @@ mod tests {
         assert!(update.build && update.pixels, "se retira de golpe");
         assert!(widget.visual.is_none(), "sin aviso en pausa");
         assert_eq!(widget.motion.next_wake(1.35), None, "sin reloj");
+    }
+
+    fn element<'a>(elements: &'a [rune::ElementInfo], key: &str) -> &'a rune::ElementInfo {
+        elements
+            .iter()
+            .find(|element| element.key.as_deref() == Some(key))
+            .unwrap_or_else(|| panic!("falta el elemento {key}"))
+    }
+
+    /// Aviso visible listo para inspeccionar, en reposo.
+    fn notice_runtime(prefs: Preferences) -> Runtime<FastestLap> {
+        let mut runtime = runtime(widget(&Config::default(), prefs, false));
+        runtime.state.update(&photo(1, 90.0), runtime.clock);
+        rendered(&mut runtime, 0.0);
+        runtime.state.update(&photo(2, 89.94), runtime.clock);
+        rendered(&mut runtime, 0.2);
+        runtime
+    }
+
+    #[test]
+    fn display_texts_sit_one_display_baseline_lower() {
+        let prefs = Preferences::default();
+        let runtime = notice_runtime(prefs);
+        let baseline = crate::vantare::Style::compiled().fonts.display_baseline;
+        assert!(baseline > 0.0, "el estilo canónico desplaza la Display");
+        let elements = runtime.elements();
+        assert_eq!(element(&elements, "title").rect[1], 12.0 + baseline);
+        assert_eq!(element(&elements, "class-label").rect[1], 12.0 + baseline);
+        assert_eq!(element(&elements, "time").rect[1], 30.0 + baseline);
+        assert_eq!(element(&elements, "improvement").rect[1], 12.0 + baseline);
+        assert_eq!(
+            element(&elements, "sector-label-0").rect[1],
+            55.0 + baseline
+        );
+        assert_eq!(
+            element(&elements, "driver").rect[1],
+            74.0,
+            "Body sin desplazamiento"
+        );
+    }
+
+    #[test]
+    fn class_chip_uses_the_truncated_name_and_cuts_at_92_px() {
+        let prefs = Preferences::default();
+        let style = crate::vantare::Style::compiled();
+        let class = Some(Class {
+            id: ClassId(1),
+            name: "SUPER LONG CLASS NAME GT3".into(),
+        });
+        let mut runtime = runtime(widget(&Config::default(), prefs, false));
+        let mut base = photo(1, 90.0);
+        base.state.cars[0].class = class.clone();
+        runtime.state.update(&base, runtime.clock);
+        rendered(&mut runtime, 0.0);
+        let mut improved = photo(2, 89.94);
+        improved.state.cars[0].class = class;
+        runtime.state.update(&improved, runtime.clock);
+        assert!(rendered(&mut runtime, 0.2));
+        let elements = runtime.elements();
+        let chip = element(&elements, "class");
+        let label = element(&elements, "class-label");
+        let text = label.text.clone().expect("etiqueta del chip");
+        assert!(text.ends_with('…'), "el chip se corta con puntos: {text:?}");
+        assert!(
+            chip.rect[2] <= 92.0 + 12.0,
+            "el chip no pasa de 92 px de texto: {}",
+            chip.rect[2]
+        );
+        let fallback = style.classes.last().expect("clase de reserva").dot;
+        assert_ne!(
+            style.class("SUPER LONG CLASS NAME GT3").dot,
+            fallback,
+            "el nombre completo sí coincide con GT"
+        );
+        assert_eq!(
+            chip.fill, fallback,
+            "el color se busca con el nombre ya recortado"
+        );
+    }
+
+    #[test]
+    fn chip_and_mono_texts_do_not_fade_with_the_scene() {
+        let prefs = Preferences::default();
+        let mut runtime = runtime(widget(&Config::default(), prefs, false));
+        runtime.state.update(&photo(1, 90.0), runtime.clock);
+        rendered(&mut runtime, 0.0);
+        runtime.state.update(&photo(2, 89.94), runtime.clock);
+        assert!(rendered(&mut runtime, 0.11), "fundido a media entrada");
+        let elements = runtime.elements();
+        let opacity = |key: &str| element(&elements, key).opacity;
+        assert!(opacity("title") < 1.0, "el panel y el título entran");
+        assert_eq!(opacity("caption"), 1.0, "el mono no se funde");
+        assert_eq!(opacity("lap"), 1.0, "la vuelta no se funde");
+        assert_eq!(opacity("sector-0"), 1.0, "los chips no se funden");
+    }
+
+    #[test]
+    fn long_subtitle_truncates_with_ellipsis_and_recomposes_once() {
+        let prefs = Preferences::default();
+        let style = crate::vantare::Style::compiled();
+        let mut runtime = runtime(widget(&Config::default(), prefs, false));
+        runtime.state.update(&photo(1, 90.0), runtime.clock);
+        rendered(&mut runtime, 0.0);
+        runtime.state.update(&photo(2, 89.94), runtime.clock);
+        rendered(&mut runtime, 0.2);
+        for _ in 0..3 {
+            rendered(&mut runtime, 0.5);
+        }
+        assert!(!rendered(&mut runtime, 0.5), "reposo con el nombre corto");
+        // El vehículo no forma parte del Timing: el aviso se conserva y solo
+        // se recompone el subtítulo, una vez.
+        let long = "A VERY LONG VEHICLE NAME THAT DOES NOT FIT THE SUBTITLE BOX";
+        let mut improved = photo(3, 89.94);
+        improved.state.cars[0].vehicle = long.into();
+        runtime.state.update(&improved, runtime.clock);
+        assert!(
+            rendered(&mut runtime, 0.11),
+            "recompone con el nombre largo"
+        );
+        for _ in 0..3 {
+            rendered(&mut runtime, 0.5);
+        }
+        assert!(!rendered(&mut runtime, 0.5), "vuelve al reposo");
+        assert!(!rendered(&mut runtime, 1.0), "sigue en reposo");
+        let elements = runtime.elements();
+        let driver = element(&elements, "driver");
+        let text = driver.text.clone().expect("subtítulo");
+        assert!(
+            text.contains(long),
+            "el texto fuente sigue completo: {text:?}"
+        );
+        assert_eq!(driver.rect[2], 320.0, "la caja corta a 320 px");
+        let ink = crate::vantare::paint::font(
+            style.as_ref(),
+            crate::vantare::paint::Face::Body,
+            style.fonts.small,
+            16.0,
+            0.0,
+            style.fonts.regular_weight,
+        );
+        assert!(
+            rune::text::measure(&text, &[], ink, None).0 > 320.0,
+            "no cabe en 320: Rune lo corta con «…»"
+        );
     }
 }

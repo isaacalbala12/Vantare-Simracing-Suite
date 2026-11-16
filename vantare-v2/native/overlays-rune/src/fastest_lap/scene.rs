@@ -45,6 +45,10 @@ struct Notice {
     kind: Kind,
     timing: Timing,
     started: f64,
+    /// Textos de reserva cuando el detalle del aviso ya no coincide.
+    time: Arc<str>,
+    driver: Arc<str>,
+    lap: Arc<str>,
 }
 
 /// Estado del aviso y de la mejora observada, muestreado en un instante dado.
@@ -59,6 +63,8 @@ pub struct Motion {
     personal_improvement: Option<f64>,
     class_label: Arc<str>,
     personal_label: Arc<str>,
+    /// Chip de clase preparado para el muestreo; se renueva al cambiar de clase.
+    class_chip: Option<Arc<str>>,
     notice: Option<Notice>,
     lifetime: f64,
     reduced: bool,
@@ -78,6 +84,7 @@ impl Motion {
             personal_improvement: None,
             class_label: Arc::from("—"),
             personal_label: Arc::from("—"),
+            class_chip: None,
             notice: None,
             lifetime: lifetime.clamp(MIN_LIFETIME, MAX_LIFETIME),
             reduced,
@@ -101,7 +108,6 @@ impl Motion {
             return false;
         }
         self.prefs = prefs;
-        let same_vm = Arc::ptr_eq(&self.vm, vm);
         let next = Arc::clone(vm);
         let before = (self.class_improvement, self.personal_improvement);
         if self.vm.scope != next.scope {
@@ -134,21 +140,32 @@ impl Motion {
         if before.1 != self.personal_improvement {
             self.personal_label = label(self.personal_improvement);
         }
-        let labels_changed = self.vm.class_label != next.class_label
-            || self.vm.personal_label != next.personal_label
-            || self.vm.active_class != next.active_class;
+        let class_changed = self.vm.active_class != next.active_class;
+        if class_changed {
+            self.class_chip = next.active_class.as_deref().map(Arc::from);
+        }
+        let labels_changed = class_changed
+            || self.vm.class_label != next.class_label
+            || self.vm.personal_label != next.personal_label;
         let update = self
             .records
             .accept_visible(next.as_ref().clone(), show_class, show_personal);
         self.vm = next;
         let changed = match update {
-            Update::Unchanged => self.notice.is_some() && (!same_vm || labels_changed),
+            Update::Unchanged => self.notice.is_some() && labels_changed,
             Update::Clear => self.notice.take().is_some(),
             Update::Notice(kind, timing) => {
+                let es = prefs.language == Language::Es;
+                let time = Arc::from(timing.text());
+                let driver = Arc::from(timing.driver.as_str());
+                let lap = Arc::from(lap_text(timing.laps, es));
                 self.notice = Some(Notice {
                     kind,
                     timing,
                     started: clock,
+                    time,
+                    driver,
+                    lap,
                 });
                 true
             }
@@ -223,24 +240,21 @@ pub fn sample(motion: &Motion, prefs: Preferences, clock: f64) -> Option<Scene> 
     };
     let es = prefs.language == Language::Es;
     let time = detail.map_or_else(
-        || Arc::from(notice.timing.text()),
+        || Arc::clone(&notice.time),
         |detail| Arc::clone(&detail.time),
     );
     let driver = motion.vm.show_driver.then(|| {
         detail.map_or_else(
-            || Arc::from(notice.timing.driver.as_str()),
+            || Arc::clone(&notice.driver),
             |detail| Arc::clone(&detail.subtitle),
         )
     });
-    let lap = detail.map_or_else(
-        || Arc::from(lap_text(notice.timing.laps, es)),
-        |detail| Arc::clone(&detail.lap),
-    );
+    let lap = detail.map_or_else(|| Arc::clone(&notice.lap), |detail| Arc::clone(&detail.lap));
     Some(Scene {
         kind: notice.kind,
         opacity,
         title: title(notice.kind, detail.and_then(|detail| detail.session), es),
-        class: motion.vm.active_class.as_deref().map(Arc::from),
+        class: motion.class_chip.clone(),
         time,
         driver,
         caption: if es { "vs anterior" } else { "vs previous" },

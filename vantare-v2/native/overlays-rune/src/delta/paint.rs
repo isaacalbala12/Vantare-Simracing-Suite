@@ -25,13 +25,22 @@ pub(super) fn flash_colors(
     alpha: f32,
 ) -> (Option<Color>, [(f32, Color); 2]) {
     if variant.player_white > 0.0 {
-        return (Some(crate::vantare::alpha(purple, 0.3 * alpha)), [(0.0, purple), (1.0, purple)]);
+        return (
+            Some(crate::vantare::alpha(purple, 0.3 * alpha)),
+            [(0.0, purple), (1.0, purple)],
+        );
     }
     (
         None,
         [
-            (0.0, crate::vantare::alpha(purple, variant.player_from * alpha)),
-            (1.0, crate::vantare::alpha(purple, variant.player_to * alpha)),
+            (
+                0.0,
+                crate::vantare::alpha(purple, variant.player_from * alpha),
+            ),
+            (
+                1.0,
+                crate::vantare::alpha(purple, variant.player_to * alpha),
+            ),
         ],
     )
 }
@@ -546,7 +555,8 @@ impl Painter {
             let v = self.variant();
             let x0 = v.padding_x - g.player_bleed;
             let flash_y = y + (d.big - g.row_height) / 2.0;
-            let mut flash = el().key("big-flash")
+            let mut flash = el()
+                .key("big-flash")
                 .pin(Some(x0), Some(flash_y), None, None)
                 .size(width - 2.0 * x0, g.row_height)
                 .radius(v.player_radius);

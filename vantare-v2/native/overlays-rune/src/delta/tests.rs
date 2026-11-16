@@ -575,7 +575,11 @@ fn a_record_paints_the_purple_flash_with_gpui_geometry_then_expires() {
     assert!(painter.motion.next_wake(0.1).is_some());
     painter.animate(0.1 + 1.4);
     assert_eq!(painter.scene.flash, None);
-    assert_eq!(painter.motion.next_wake(0.1 + 1.4), None, "cero despertares");
+    assert_eq!(
+        painter.motion.next_wake(0.1 + 1.4),
+        None,
+        "cero despertares"
+    );
     let runtime = harness(painter);
     assert!(runtime.presented("big-flash").is_none());
 }

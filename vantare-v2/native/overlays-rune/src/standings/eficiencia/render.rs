@@ -355,7 +355,7 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
                 .map(|(i, row)| (row, origin + p.row_tops[i], v.frame.row_for(row))),
         );
     for (index, (_row, top, pose)) in rows.enumerate() {
-        let alpha = pose.pit_alpha*pose.alpha;
+        let alpha = pose.pit_alpha * pose.alpha;
         if alpha <= 0.001 {
             continue;
         }
@@ -372,7 +372,7 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
         )
         .round();
         nodes.push(
-            rect(c.width+pose.pit_dx, y, w, h)
+            rect(c.width + pose.pit_dx, y, w, h)
                 .key(format!("pit-badge-{index}"))
                 .opacity(alpha)
                 .corners([0.0, s.geometry.pit_radius, s.geometry.pit_radius, 0.0])

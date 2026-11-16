@@ -73,16 +73,16 @@ fn seed_missing_stale_and_new_identity_do_not_arm_a_clock() {
     let mut m = Motion::default();
     m.update(&p, 3, true, 0.0);
     assert!(m.seeded);
-    assert_eq!(m.frame_shared(0.0).row(id).offset,0.0);
-    assert_eq!(m.frame_shared(0.0).row(id).alpha,1.0);
+    assert_eq!(m.frame_shared(0.0).row(id).offset, 0.0);
+    assert_eq!(m.frame_shared(0.0).row(id).alpha, 1.0);
     assert_eq!(m.wake(0.0), Wake::Idle);
     p.rows.swap(0, 1);
     m.update(&p, 3, true, 0.1);
     assert_eq!(m.wake(0.1), Wake::Frame);
     p.identity = "otra sesión".into();
     m.update(&p, 3, true, 0.11);
-    assert_eq!(m.frame_shared(0.11).row(id).offset,0.0);
-    assert_eq!(m.frame_shared(0.11).row(id).alpha,1.0);
+    assert_eq!(m.frame_shared(0.11).row(id).offset, 0.0);
+    assert_eq!(m.frame_shared(0.11).row(id).alpha, 1.0);
     assert_eq!(m.wake(0.11), Wake::Idle);
     for status in [Status::Missing, Status::Disconnected, Status::Stale] {
         p.status = status;
@@ -338,8 +338,14 @@ fn real_controller_finishes_flip_at_313_ms_and_only_waits_for_notice_expiry() {
     rt.frame(0.1);
     assert!(rt.wake_deadline().is_some());
     rt.frame(0.113);
-    assert!(rt.state.motion.flips.is_empty(),"FLIP finalizado en 313 ms");
-    assert!(matches!(rt.state.motion.wake(0.313),Wake::At(_)),"E6 conserva el aviso quieto hasta 1200 ms");
+    assert!(
+        rt.state.motion.flips.is_empty(),
+        "FLIP finalizado en 313 ms"
+    );
+    assert!(
+        matches!(rt.state.motion.wake(0.313), Wake::At(_)),
+        "E6 conserva el aviso quieto hasta 1200 ms"
+    );
     rt.frame(0.887);
     assert!(rt.wake_deadline().is_none());
     let size = rt.state.size();

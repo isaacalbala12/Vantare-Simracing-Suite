@@ -7,6 +7,22 @@ use crate::format::Language;
 use crate::format::{self, Preferences};
 use crate::{Quality, Snapshot, SourceState};
 
+pub trait SettingsPresentation {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel;
+}
+impl SettingsPresentation for crate::widget_settings::pedals_telemetry::Settings {
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
+        let mut vm = crate::pedals_telemetry::project(snapshot, prefs);
+        vm.steering_wheel = crate::pedals_telemetry::WHEELS
+            .iter()
+            .copied()
+            .find(|id| *id == self.steering_wheel)
+            .unwrap_or("generic");
+        vm.show_clutch = self.show_clutch;
+        vm
+    }
+}
+
 pub const WHEELS: &[&str] = &[
     "generic",
     "alpine-a424",

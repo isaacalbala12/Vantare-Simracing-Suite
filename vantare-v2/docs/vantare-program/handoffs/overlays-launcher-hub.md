@@ -1,3 +1,24 @@
+## VANTA-144 · Reglas de presentación compartidas en domain (16/11/2026)
+
+Traslado mecánico aprobado por raíz y sub-orquestador: waiting_text pasa a
+format.rs de domain, con reexport en vantare de GPUI. Los dos traits existentes
+SettingsPresentation y sus impls pasan a input_telemetry.rs y pedals_telemetry.rs
+de domain, ahora públicos; GPUI los importa sin cambiar llamadas ni tests.
+Entrada conserva show_clutch = ajuste && hay dato, y borra pedals[0] si el
+ajuste está apagado. Pedales conserva show_clutch = ajuste, sin esa condición;
+su selector sigue usando el único WHEELS y el mismo fallback generic.
+Track_weather recibe session_label y wind_heading del controlador GPUI, sin
+cambiar la flecha ni su geometría. Su ViewModel expone wet_percent: humedad de
+la pista, redondeada desde track_wetness numérico validado, sin parsear textos.
+Regresión nueva en Workshop compara con el parseo anterior las tres fuentes
+de fixtures, idiomas/unidades, empates de porcentaje, calidades y ausencias;
+los tests existentes se conservan. Los pintores GPUI consumen ese campo.
+Sin tocar normalización, tablas, memoria, animación, Rune ni dependencias.
+El Full de domain incluye toda la selección Full de ui; también telemetría,
+por la cola del servidor. Gates y CI completa en el PR draft. Los widgets Rune
+consumirán estas reglas en PRs posteriores coordinados por el orquestador.
+Sin cambios visuales, gráficos en el servidor, merge, release ni estado de Plane.
+
 ## VANTA-138 · #2380, motivo de lienzo no disponible (16/11/2026)
 
 Esquema aprobado por raíz: StudioState.monitorUnavailable, fallo privado cerrado

@@ -1214,6 +1214,95 @@ mod tests {
     use super::*;
 
     #[test]
+    fn numeric_track_wetness_matches_gpui_in_all_weather_fixtures_and_rounding_cases() {
+        use vantare_domain::{
+            Capability, Quality, SourceState, Weather,
+            format::{Language, Units},
+        };
+
+        let check = |snapshot: &Snapshot, prefs: Preferences| {
+            let vm = vantare_domain::track_weather::project(snapshot, prefs);
+            let parsed = vm
+                .metrics
+                .get(4)
+                .and_then(|metric| metric.value.split_whitespace().next())
+                .and_then(|value| value.parse::<f32>().ok());
+            assert_eq!(
+                vm.wet_percent.map(f32::from),
+                parsed,
+                "wetness {:?}, source {:?}, capability {:?}, prefs {prefs:?}",
+                snapshot.state.session.weather.track_wetness,
+                snapshot.state.source_state,
+                snapshot.state.capabilities.weather
+            );
+        };
+        for fixture in [
+            "track-weather.snapshot.json",
+            "track-weather-default.scene.json",
+            "track-weather-design-system.sequence.json",
+        ] {
+            let scene = Scene::new(&Path::new(FIXTURES).join(fixture)).expect("weather fixture");
+            for snapshot in scene.snapshots {
+                for language in [Language::Es, Language::En] {
+                    for units in [Units::Metric, Units::Imperial] {
+                        let prefs = Preferences { language, units };
+                        let mut snapshot = snapshot.clone();
+                        check(&snapshot, prefs);
+                        for wetness in [
+                            Quality::Unavailable,
+                            Quality::Stale(0.125),
+                            Quality::Estimated(0.125),
+                            Quality::Reliable(-0.1),
+                            Quality::Reliable(1.1),
+                            Quality::Reliable(f64::NAN),
+                            Quality::Reliable(f64::INFINITY),
+                            Quality::Reliable(f64::NEG_INFINITY),
+                            Quality::Reliable(-0.0),
+                            Quality::Reliable(0.0),
+                            Quality::Reliable(0.125),
+                            Quality::Reliable(0.875),
+                            Quality::Reliable(1.0),
+                        ] {
+                            snapshot.state.session.weather.track_wetness = wetness;
+                            check(&snapshot, prefs);
+                        }
+                        for percent in 0..100 {
+                            let midpoint = (f64::from(percent) + 0.5) / 100.0;
+                            for value in
+                                [midpoint - f64::EPSILON, midpoint, midpoint + f64::EPSILON]
+                            {
+                                snapshot.state.session.weather.track_wetness =
+                                    Quality::Reliable(value);
+                                check(&snapshot, prefs);
+                            }
+                        }
+                        for source in [
+                            SourceState::Waiting,
+                            SourceState::Live,
+                            SourceState::Paused,
+                            SourceState::Stale,
+                            SourceState::Lost,
+                        ] {
+                            for capability in [
+                                Capability::Unsupported,
+                                Capability::Fresh,
+                                Capability::WithData,
+                            ] {
+                                let mut sample = snapshot.clone();
+                                sample.state.source_state = source;
+                                sample.state.capabilities.weather = capability;
+                                check(&sample, prefs);
+                                sample.state.session.weather = Weather::default();
+                                check(&sample, prefs);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn workshop_relative_uses_react_columns_and_compact_height() {
         let settings = system_defaults(Kind::Relative, crate::look::Look::Eficiencia);
         let Settings::Relative(relative) = &settings else {

@@ -47,31 +47,9 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        let label = snapshot
-            .state
-            .session
-            .kind
-            .current()
-            .map_or_else(String::new, |kind| {
-                let name = vantare_domain::format::session_kind(kind, prefs);
-                if kind.ranks_by_best_lap() {
-                    let clock = vantare_domain::format::clock(
-                        snapshot.state.session.remaining_s.current().copied(),
-                    );
-                    format!("{name} · {clock}")
-                } else {
-                    name
-                }
-            });
+        let label = track_weather::session_label(snapshot, prefs);
         let changed = replace_if_changed(std::sync::Arc::make_mut(&mut self.session), label);
-        let heading = snapshot
-            .state
-            .session
-            .weather
-            .wind_direction_rad
-            .current()
-            .filter(|value| value.is_finite())
-            .map(|value| *value as f32);
+        let heading = track_weather::wind_heading(snapshot);
         let wind_changed = replace_if_changed(&mut self.wind_heading, heading) && !self.vertical;
         replace_if_changed(&mut self.vm, track_weather::project(snapshot, prefs))
             || changed
@@ -172,10 +150,7 @@ fn paint_wide(
         return;
     }
     let metric = |i: usize| vm.metrics.get(i).map_or("—", |m| m.value.as_str());
-    let wet = metric(4)
-        .split_whitespace()
-        .next()
-        .and_then(|s| s.parse::<f32>().ok());
+    let wet = vm.wet_percent.map(f32::from);
     let is_wet = wet.is_some_and(|v| v > 0.0);
     let banner = if vm.status != Status::Ready {
         vm.status_text
@@ -232,7 +207,7 @@ fn paint_wide(
     kit.label(
         window,
         cx,
-        &session.to_uppercase(),
+        session,
         0.0,
         Some(266.0),
         38.0,
@@ -472,10 +447,7 @@ fn paint(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut App) 
     };
     kit.panel(window, SIZE.1);
     let metric = |i: usize| vm.metrics.get(i).map_or("—", |m| m.value.as_str());
-    let wet = metric(4)
-        .split_whitespace()
-        .next()
-        .and_then(|s| s.parse::<f32>().ok());
+    let wet = vm.wet_percent.map(f32::from);
     let banner = if vm.status != Status::Ready {
         vm.status_text
     } else if wet.is_some_and(|v| v > 0.0) {

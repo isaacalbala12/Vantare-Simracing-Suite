@@ -3118,3 +3118,19 @@ CPU por la cola en espera; CI nueva pendiente, sin afirmar resultado anterior.
 QA en scripts requiere traslado a tools: consultado por texto antes de mover.
 #2351 requiere adaptar RowPaint a Scene/coordenadas: consultado antes de tocar.
 Capturas y PC sin hora; no se ejecuta producto ni graficos. Sin merge/release.
+
+
+## VANTA-144 · B, recorte nativo con puntos suspensivos (16/11/2026)
+
+Norma nueva de raiz: textos que GPUI ajusta con … usan Rune truncate, sin fade/clip.
+Standings cambia sus dos primitivas de celda acotada a truncate y prueba nombres
+largos en ambos Looks/escalas verificando el glifo … en el stream CPU, ademas del
+texto completo para accesibilidad. Eficiencia hace lo mismo en pista/celdas,
+conservando las medidas usadas para posicionar; test largo pendiente de validar.
+GPUI Delta Vantare no recorta etiquetas con fit; los avisos a 75px con … pertenecen
+a Delta Eficiencia, todavia no implementado. Se registra como pendiente en #2375.
+Rebase a3f2c3c9a validado previamente: Standings Clippy/110 CPU y Delta Clippy/99 CPU
+PASS mas cinco de politica por rama. Los tests de recorte nuevos esperan cola/CI.
+Intento CPU en Mac detenido por disco a 11.93 GiB, sin llegar a tests; eliminado
+solo el target propio. Captura #2391 conserva CI completa verde y PNG con datos.
+No se ejecutan graficos ni se cambia arquitectura del controlador por esta norma.

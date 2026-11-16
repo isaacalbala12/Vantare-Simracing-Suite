@@ -380,7 +380,7 @@ fn vlabel(
         .size(w.max(0.0), h)
         .color(ink)
         .font(font(s, face, size, h, 0.0, s.fonts.regular_weight))
-        .truncate_fade_width(0.0)
+        .truncate()
 }
 
 fn eficiencia_view(state: &Standings) -> El {
@@ -451,7 +451,7 @@ fn eflabel(key: &str, value: &str, x: f32, y: f32, w: f32, h: f32, ink: Color, a
         .color(ink)
         .align(align)
         .font(ef::font(14.0, 650, -0.025))
-        .truncate_fade_width(0.0)
+        .truncate()
 }
 
 fn table(
@@ -607,4 +607,84 @@ fn footer(
         root = root.child(label("paused", text, 0.0, l.height - 22.0, l.width, 22.0));
     }
     root
+}
+
+#[cfg(test)]
+mod truncation_tests {
+    use super::*;
+    use rune::{Env, Runtime};
+    #[test]
+    fn long_driver_labels_paint_an_ellipsis_in_both_looks_and_keep_the_full_accessible_name() {
+        const LONG: &str = "Alexander von Longname International Motorsport Racing Team";
+        fn view(_: &(), _: &mut rune::Cx<()>) -> El {
+            let s = Style::compiled();
+            el().size(160.0, 30.0)
+                .child(vlabel(
+                    &s,
+                    "v",
+                    LONG,
+                    0.0,
+                    0.0,
+                    64.0,
+                    24.0,
+                    Face::Body,
+                    14.0,
+                    s.colors.text,
+                ))
+                .child(eflabel(
+                    "e",
+                    LONG,
+                    80.0,
+                    0.0,
+                    64.0,
+                    24.0,
+                    s.colors.text,
+                    Align::Start,
+                ))
+        }
+        for scale in [1.0, 1.25, 1.5] {
+            let mut runtime = Runtime::with_text(
+                (),
+                view,
+                (160.0, 30.0),
+                Env::new(true, scale),
+                rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+            );
+            runtime.frame(0.0);
+            runtime.settle_all();
+            runtime.frame(0.0);
+            let s = Style::compiled();
+            for (key, style) in [
+                (
+                    "v",
+                    font(&s, Face::Body, 14.0, 24.0, 0.0, s.fonts.regular_weight),
+                ),
+                ("e", ef::font(14.0, 650, -0.025)),
+            ] {
+                assert_eq!(
+                    runtime
+                        .elements()
+                        .iter()
+                        .find(|e| e.key.as_deref() == Some(key))
+                        .expect("label")
+                        .text
+                        .as_deref(),
+                    Some(LONG)
+                );
+                let mut ellipsis = Vec::new();
+                runtime
+                    .text
+                    .glyphs("…", style, scale, [0.0; 2], &mut ellipsis);
+                assert!(!ellipsis.is_empty());
+                assert!(
+                    ellipsis.iter().any(|g| runtime
+                        .instances
+                        .iter()
+                        .any(|i| i.params[1] == rune::render::KIND_GLYPH
+                            && i.uv[..2] == g.atlas_uv())),
+                    "the actual painter must contain the ellipsis glyph for {key}, not a plain clipped line"
+                );
+            }
+        }
+    }
 }

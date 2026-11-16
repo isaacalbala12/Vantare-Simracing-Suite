@@ -76,6 +76,7 @@ try{$gzipHeaderValid=$reader.ReadUInt32() -eq 4}finally{$reader.Dispose();$readS
 $readStream=[IO.File]::OpenRead($gzipPath);$gzip=[IO.Compression.GZipStream]::new($readStream,[IO.Compression.CompressionMode]::Decompress);$sha=[Security.Cryptography.SHA256]::Create()
 try{$roundTrip=[BitConverter]::ToString($sha.ComputeHash($gzip)).Replace('-','').ToLowerInvariant() -ceq ($files|Where-Object {$_.path -ceq 'resources/app.asar'}).sha256}
 finally{$sha.Dispose();$gzip.Dispose();$readStream.Dispose()}
+if(-not $roundTrip){throw 'Gzip trial lost ASAR bytes'}
 $after=@(Get-PackageFiles $source)
 if(($files|ConvertTo-Json -Depth 4 -Compress) -cne ($after|ConvertTo-Json -Depth 4 -Compress)){throw 'Source changed during measurement'}
 $result=[ordered]@{

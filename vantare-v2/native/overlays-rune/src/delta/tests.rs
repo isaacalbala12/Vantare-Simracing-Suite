@@ -572,12 +572,10 @@ fn a_record_paints_the_purple_flash_with_gpui_geometry_then_expires() {
     let mut painter = delta(&settings("bar"), Preferences::default());
     painter.update(&snapshot(), 0.0);
     painter.update(&record, 0.1);
-    let style = crate::vantare::Style::compiled();
-    let end = 0.1 + f64::from(style.motion.flash_ms) / 1000.0;
     assert!(painter.motion.next_wake(0.1).is_some());
-    painter.animate(end);
+    painter.animate(0.1 + 1.4);
     assert_eq!(painter.scene.flash, None);
-    assert_eq!(painter.motion.next_wake(end), None, "cero despertares");
+    assert_eq!(painter.motion.next_wake(0.1 + 1.4), None, "cero despertares");
     let runtime = harness(painter);
     assert!(runtime.presented("big-flash").is_none());
 }
@@ -607,15 +605,34 @@ fn the_bar_slides_while_the_delta_changes_and_rests_after_its_ease() {
     let mut moved = snapshot();
     moved.state.player.as_mut().expect("player").delta_best_s = Reliable(0.4);
     painter.update(&moved, 1.0);
-    let eased = crate::vantare::Style::compiled().delta.ease_ms / 1000.0;
-    assert!(painter.motion.next_wake(1.0).is_some(), "la barra se mueve");
-    painter.animate(1.0 + f64::from(eased));
-    assert!(
-        (painter.scene.bar - 0.4).abs() < 1e-6,
-        "{}",
-        painter.scene.bar
-    );
-    assert_eq!(painter.motion.next_wake(1.0 + f64::from(eased)), None);
+    let from = -0.214_f32;
+    for t in [0.25_f64, 0.5] {
+        painter.animate(1.0 + t * 0.150);
+        let expected = from + (0.4 - from) * (1.0 - (1.0 - t as f32).powi(3));
+        assert!(
+            (painter.scene.bar - expected).abs() < 1e-3,
+            "t = {t}: {} vs {expected}",
+            painter.scene.bar
+        );
+    }
+    painter.animate(1.0 + 0.150);
+    assert!((painter.scene.bar - 0.4).abs() < 1e-6);
+    assert_eq!(painter.motion.next_wake(1.0 + 0.150), None);
+}
+
+#[test]
+fn the_flash_uses_the_gpui_gradient_and_the_flat_white_variant() {
+    use super::paint::flash_colors;
+    let style = crate::vantare::Style::compiled();
+    let purple = style.colors.purple;
+    let (flat, stops) = flash_colors(&style.styles.neo, purple, 1.0);
+    assert!(flat.is_none());
+    assert!((stops[0].1.a - 0.32).abs() < 1e-6);
+    assert!((stops[1].1.a - 0.06).abs() < 1e-6);
+    let mut white = style.styles.neo.clone();
+    white.player_white = 1.0;
+    let (flat, _) = flash_colors(&white, purple, 1.0);
+    assert!((flat.expect("plano").a - 0.3).abs() < 1e-6);
 }
 
 #[test]

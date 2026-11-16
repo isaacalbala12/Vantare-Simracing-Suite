@@ -41,14 +41,15 @@ impl Motion {
             self.bar = Tween::fixed(target);
             return;
         };
-        if reset(prev, next) {
+        if reduced {
             self.bar = Tween::fixed(target);
             self.record = None;
             return;
         }
-        if reduced {
-            self.bar = Tween::fixed(target);
+        if reset(prev, next) {
+            // GPUI solo limpia los avisos; la barra se desliza con retarget.
             self.record = None;
+            self.bar.retarget(target, now, self.ease_ms);
             return;
         }
         if delta::event(prev, next) == Some(Event::PersonalBest) {
@@ -86,7 +87,7 @@ impl Motion {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{motion::Tween, vantare::Style};
+    use crate::vantare::Style;
 
     fn board(best: f64) -> Board {
         let mut board = delta::project_reference(
@@ -106,43 +107,45 @@ mod tests {
 
     #[test]
     fn the_bar_slides_with_the_gpui_ease_and_duration() {
-        let style = Style::compiled();
         let mut motion = motion();
         motion.ingest(Some(&board(90.0)), &board(89.9), 0.5, 0.0, false);
         assert!(motion.bar.active(0.0));
-        let expected = Tween::fixed(0.0).value(0.0) + 0.5 * (1.0 - (1.0 - 0.5_f32).powi(3));
-        assert!(
-            (motion.bar(0.075) - expected).abs() < 0.02,
-            "{} vs {}",
-            motion.bar(0.075),
-            expected
-        );
-        assert!(!motion.bar.active(f64::from(style.delta.ease_ms) / 1000.0));
+        for t in [0.25_f32, 0.5] {
+            let expected = 0.5 * (1.0 - (1.0 - t).powi(3));
+            assert!(
+                (motion.bar(f64::from(t) * 0.150) - expected).abs() < 1e-3,
+                "t = {t}"
+            );
+        }
+        assert!(!motion.bar.active(0.150));
         assert_eq!(motion.bar(1.0), 0.5);
     }
 
     #[test]
     fn a_record_lights_the_flash_for_its_whole_life() {
-        let style = Style::compiled();
-        let life = f64::from(style.motion.flash_ms) / 1000.0;
         let mut motion = motion();
         motion.ingest(Some(&board(90.0)), &board(89.0), 0.0, 0.0, false);
         assert_eq!(motion.flash(0.0), Some(1.0));
-        assert!((motion.flash(life / 2.0).expect("mitad") - 0.5).abs() < 1e-6);
-        assert_eq!(motion.flash(life), None);
-        assert_eq!(motion.next_wake(life), None);
+        assert!((motion.flash(0.700).expect("mitad") - 0.5).abs() < 1e-6);
+        assert_eq!(motion.flash(1.400), None);
+        assert_eq!(motion.next_wake(1.400), None);
     }
 
     #[test]
-    fn a_new_session_reference_or_car_drops_the_flash_and_the_bar() {
+    fn a_new_session_reference_or_car_clears_the_flash_but_slides_the_bar() {
         let mut motion = motion();
         motion.ingest(Some(&board(90.0)), &board(89.0), 0.5, 0.0, false);
         assert!(motion.flash(0.01).is_some());
         let mut next = board(89.0);
         next.reference = vantare_domain::delta::Reference::Optimal;
-        motion.ingest(Some(&board(89.0)), &next, 0.5, 0.02, false);
-        assert_eq!(motion.flash(0.02), None);
-        assert!(!motion.bar.active(0.02));
+        motion.ingest(Some(&board(89.0)), &next, 0.8, 0.02, false);
+        assert_eq!(motion.flash(0.02), None, "los avisos se limpian");
+        assert!(motion.bar.active(0.02), "la barra se desliza, no salta");
+        assert_eq!(
+            motion.bar(f64::from(150.0_f32) / 1000.0 + 0.02),
+            0.8,
+            "llega al objetivo con el ease"
+        );
     }
 
     #[test]

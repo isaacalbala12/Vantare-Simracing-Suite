@@ -22,6 +22,8 @@ use vantare_domain::{
 pub(crate) struct Delta {
     settings: Settings,
     prefs: Preferences,
+    /// Escena base de la foto; solo cambian `bar` y `flash` por frame.
+    base: scene::Scene,
     scene: scene::Scene,
     painter: Painter,
     motion: Motion,
@@ -35,12 +37,18 @@ impl Delta {
         let style = crate::vantare::Style::compiled();
         let motion = Motion::new(style.delta.ease_ms, style.motion.flash_ms);
         let board = project(&settings, &Snapshot::default(), prefs);
-        let scene = animate(&motion, &board, &settings, prefs, reduced, clock);
-        let painter = Painter::new(prefs, &scene);
+        let base = sample(&board, &settings, prefs);
+        let mut initial = base.clone();
+        if !reduced && initial.live {
+            initial.bar = motion.bar(clock);
+            initial.flash = motion.flash(clock);
+        }
+        let painter = Painter::new(prefs, &initial);
         Self {
             settings,
             prefs,
-            scene,
+            base,
+            scene: initial,
             painter,
             motion,
             last: None,
@@ -72,16 +80,9 @@ impl Delta {
         );
         self.motion
             .ingest(self.last.as_ref(), &board, target, clock, self.reduced);
-        self.last = Some(board.clone());
-        let scene = animate(
-            &self.motion,
-            &board,
-            &self.settings,
-            self.prefs,
-            self.reduced,
-            clock,
-        );
-        self.present(scene)
+        self.base = sample(&board, &self.settings, self.prefs);
+        self.last = Some(board);
+        self.present(self.frame(clock))
     }
     pub fn policy(&mut self, reduced: bool, clock: f64) -> Update {
         if self.reduced == reduced {
@@ -91,44 +92,24 @@ impl Delta {
         if reduced {
             self.motion.settle();
         }
-        let Some(board) = self.last.clone() else {
-            return Update::default();
-        };
-        let scene = animate(
-            &self.motion,
-            &board,
-            &self.settings,
-            self.prefs,
-            self.reduced,
-            clock,
-        );
-        self.present(scene)
+        self.present(self.frame(clock))
     }
     pub fn animate(&mut self, clock: f64) -> Update {
-        let Some(board) = self.last.clone() else {
-            return Update::default();
-        };
-        let scene = animate(
-            &self.motion,
-            &board,
-            &self.settings,
-            self.prefs,
-            self.reduced,
-            clock,
-        );
-        self.present(scene)
+        self.present(self.frame(clock))
     }
     pub fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
-        if self.reduced {
-            return;
+        if !self.reduced && self.motion.next_wake(clock).is_some() {
+            tx.wake_after(std::time::Duration::ZERO);
         }
-        if let Some(due) = self.motion.next_wake(clock) {
-            if due <= clock {
-                tx.wake_after(std::time::Duration::ZERO);
-            } else {
-                tx.wake_at(due);
-            }
+    }
+    /// Escena base con la barra y el destello del instante `clock`.
+    fn frame(&self, clock: f64) -> scene::Scene {
+        let mut scene = self.base.clone();
+        if !self.reduced && scene.live {
+            scene.bar = self.motion.bar(clock);
+            scene.flash = self.motion.flash(clock);
         }
+        scene
     }
     fn present(&mut self, scene: scene::Scene) -> Update {
         if scene == self.scene {
@@ -157,23 +138,6 @@ pub(crate) fn reference(settings: &Settings) -> Reference {
 
 fn sample(board: &Board, settings: &Settings, prefs: Preferences) -> scene::Scene {
     scene::sample(board, settings, prefs, &crate::vantare::Style::compiled())
-}
-
-/// Escena con la barra y el destello del instante `clock`; sin reloj si no corre.
-fn animate(
-    motion: &Motion,
-    board: &Board,
-    settings: &Settings,
-    prefs: Preferences,
-    reduced: bool,
-    clock: f64,
-) -> scene::Scene {
-    let mut scene = sample(board, settings, prefs);
-    if !reduced && scene.live {
-        scene.bar = motion.bar(clock);
-        scene.flash = motion.flash(clock);
-    }
-    scene
 }
 
 impl Widget for Delta {

@@ -131,7 +131,7 @@ it("updates the bell count with read state and tester visibility", async () => {
       container.querySelector(".v-notification-bell-count")?.textContent,
     ).toBe("3"),
   );
-  expect(screen.getByRole("button", { name: "Notificaciones" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: /^Notificaciones/ })).toBeTruthy();
   act(() =>
     query.setQueryData(host.coreKey, {
       ...host.offline,

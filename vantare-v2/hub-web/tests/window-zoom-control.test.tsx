@@ -56,7 +56,7 @@ it("displays the effective ceiling while preserving a larger saved request", () 
   size(1440, 900);
   const change = mount(125);
   expect(
-    screen.getByRole("button", { name: "Restablecer" }).textContent,
+    screen.getByRole("button", { name: /Restablecer/ }).textContent,
   ).toContain("112.5%");
   expect(
     (screen.getByRole("button", { name: "Más" }) as HTMLButtonElement).disabled,
@@ -66,7 +66,7 @@ it("displays the effective ceiling while preserving a larger saved request", () 
     fireEvent(window, new Event("resize"));
   });
   expect(
-    screen.getByRole("button", { name: "Restablecer" }).textContent,
+    screen.getByRole("button", { name: /Restablecer/ }).textContent,
   ).toContain("125%");
   expect(change).not.toHaveBeenCalled();
 });
@@ -76,7 +76,7 @@ it("ignores the invisible Windows frame and Chromium's page zoom when deriving t
   vi.stubGlobal("outerHeight", 908);
   vi.stubGlobal("vantare", { viewport: () => ({ width: 1440, height: 900 }) });
   mount(125);
-  expect(screen.getByRole("button", { name: "Restablecer" }).textContent).toBe(
+  expect(screen.getByRole("button", { name: /Restablecer/ }).textContent).toBe(
     "112.5%",
   );
 });

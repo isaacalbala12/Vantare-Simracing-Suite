@@ -3502,3 +3502,5 @@ Tipos (aplicación y scripts) y lint PASS;21 pruebas focales iniciales PASS.
 Suite global local cancelada sin resultado por duración/consumo; no se declara
 verde. Gate focal/build/package por cola y suite global CI pendientes al abrir
 el draft; se actualizan resultados reales en el PR al cerrar P1.
+PR draft #2502: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2502.
+Base rebasada 5a1f31357; pruebas globales CI y build/package local pendientes.

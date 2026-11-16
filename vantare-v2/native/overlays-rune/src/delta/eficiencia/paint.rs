@@ -45,7 +45,7 @@ fn text_at(value: &str, x: f32, base: f32, style: TextStyle, ink: Color) -> El {
 }
 
 /// Esquinas del relleno de la cápsula: solo el extremo de salida (GPUI [5,0,0,5]).
-fn capsule_corners(gaining: bool) -> [f32; 4] {
+pub(super) fn capsule_corners(gaining: bool) -> [f32; 4] {
     if gaining {
         [5.0, 0.0, 0.0, 5.0]
     } else {
@@ -232,6 +232,7 @@ fn notices(mut root: El, s: &Scene, capsule: bool) -> El {
     )
 }
 
+#[allow(clippy::too_many_arguments)] // Aviso: etiqueta, valor, lado, color y plantilla.
 fn notice(
     root: El,
     key: &str,

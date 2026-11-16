@@ -1,8 +1,9 @@
-//! Standings: one canonical projection/selection, two painters, no I/O or timer.
-pub mod capture;
+//! Standings: one canonical projection/selection, one painter, no I/O or timer.
 mod layout;
 mod paint;
-pub mod tokens;
+mod scene;
+#[cfg(test)]
+mod tests;
 
 use rune::El;
 use std::sync::Arc;
@@ -11,7 +12,7 @@ use vantare_domain::{
     format::Preferences,
     geometry::Size,
     standings::{self, Board, Plan},
-    widget_settings::standings::Settings,
+    widget_settings::{Settings as AnySettings, look::Look, standings::Settings},
 };
 
 /// Retained visible output. A sequence or a hidden field is not a paint cause.
@@ -21,7 +22,7 @@ pub struct Standings {
     prefs: Preferences,
     board: Arc<Board>,
     layout: layout::Layout,
-    display: paint::Display,
+    display: scene::Display,
     paused: bool,
     live: bool,
 }
@@ -38,7 +39,7 @@ impl Standings {
         );
         let plan = Plan::new(board.clone(), String::new(), 0);
         let layout = layout::Layout::new(&settings, &columns, &plan);
-        let display = paint::Display::new(&settings, prefs, &plan, &layout, false);
+        let display = scene::Display::new(&settings, prefs, &plan, &layout, false);
         Self {
             settings,
             prefs,
@@ -108,7 +109,7 @@ impl Standings {
         if paused {
             layout.height += 22.0;
         }
-        let display = paint::Display::new(&self.settings, self.prefs, &plan, &layout, paused);
+        let display = scene::Display::new(&self.settings, self.prefs, &plan, &layout, paused);
         let changed = display != self.display || layout != self.layout;
         self.board = board;
         self.layout = layout;
@@ -123,28 +124,32 @@ impl Standings {
     }
 }
 
+/// Looks migrados del widget; el brazo del `match` de `constructor()` decide.
+fn supported(look: Look) -> bool {
+    look == Look::Vantare
+}
+
 impl crate::widget::Widget for Standings {
     fn new(
-        settings: &vantare_domain::widget_settings::Settings,
+        settings: &AnySettings,
         prefs: Preferences,
         _reduced: bool,
         _hz: u16,
         _clock: f64,
     ) -> Option<Box<dyn crate::widget::Widget>> {
-        let vantare_domain::widget_settings::Settings::Standings(settings) = settings else {
+        let AnySettings::Standings(settings) = settings else {
             return None;
         };
+        if !supported(settings.design_system) {
+            return None;
+        }
         Some(Box::new(Standings::new(settings, prefs)))
     }
-    fn configured(
-        &self,
-        settings: &vantare_domain::widget_settings::Settings,
-        prefs: Preferences,
-    ) -> bool {
-        let vantare_domain::widget_settings::Settings::Standings(settings) = settings else {
+    fn configured(&self, settings: &AnySettings, prefs: Preferences) -> bool {
+        let AnySettings::Standings(settings) = settings else {
             return false;
         };
-        Standings::configured(self, settings, prefs)
+        supported(settings.design_system) && Standings::configured(self, settings, prefs)
     }
     fn size(&self) -> Size {
         Standings::size(self)
@@ -169,6 +174,3 @@ impl crate::widget::Widget for Standings {
         Standings::view(self)
     }
 }
-
-#[cfg(test)]
-mod tests;

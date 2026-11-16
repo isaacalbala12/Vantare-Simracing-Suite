@@ -44,6 +44,9 @@ pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
             Some(<crate::fuel::Fuel as Widget>::new)
         }
         Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),
+        Settings::Standings(s) if s.design_system == Look::Vantare => {
+            Some(<crate::standings::Standings as Widget>::new)
+        }
         Settings::TrackWeather(_) => Some(<TrackWeather as Widget>::new),
         Settings::CarDamageNumbers(_) => Some(<CarDamageNumbers as Widget>::new),
         Settings::CarDamageVisual(_) => Some(<CarDamageVisual as Widget>::new),

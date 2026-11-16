@@ -6,9 +6,11 @@ Copia opacos y Hz; +20/+20 ajustado al borde con geometría existente. SessionAl
 reserva también id-mini; solo copia el padre, la mini sigue en el normalizador
 canónico al leer. No se toca ipc/domain ni se normaliza el documento en el host.
 Sin módulos, hilos, estado ni dependencias nuevos. Tests en archivos existentes;
-versión asignada al fusionar, sin reservar. Formato/exportador y Clippy -D warnings
+v43 asignada por la raíz para #2370. Test de dispatch añadido para value/added;
+el mock ya contrasta los cinco vectores Rust. Formato/exportador y Clippy -D warnings
 verificados; 656 tests host correctos y uno omitido por la cola. Tipos, lint y
-vectores web verificados. PR draft en preparación; sin merge, promoción, release
+vectores web verificados en el head anterior; gate del ajuste y CI pendientes.
+PR draft #2370; sin merge, promoción, release
 ni ejecución gráfica.
 
 ## VANTA-138 · D048, bandas existentes sin horario (16/11/2026)

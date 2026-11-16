@@ -1,6 +1,8 @@
 import { Tooltip } from "@base-ui/react/tooltip";
 import {
   type ReactNode,
+  useCallback,
+  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -13,8 +15,10 @@ import type {
 import { Icon } from "../../assets/icons/Icon";
 import { studioText } from "../../i18n/studio";
 import { canvasText as t } from "../../i18n/studio-canvas";
+import { studioDropText } from "../../i18n/studio-drop";
 import { useCanvas } from "../../screens/studio/canvas";
 import { useCanvasInputs } from "../../screens/studio/canvas-inputs";
+import { useCatalogInputs } from "../../screens/studio/catalog-inputs";
 import {
   fitCanvas,
   type Pair,
@@ -25,8 +29,10 @@ import { useStudio } from "../../screens/studio/state";
 import { Button, IconButton } from "../Button";
 import { Callout, Keycap } from "../Data";
 import { WidgetThumb } from "../widgets/WidgetThumb";
+import { CanvasCatalog } from "./CanvasCatalog";
 import { CanvasResolution } from "./CanvasResolution";
 import { CanvasTools } from "./CanvasTools";
+import { CatalogGhost } from "./CatalogGhost";
 import { widgetName } from "./Widgets";
 import "./studio-canvas.css";
 
@@ -47,15 +53,20 @@ export function CanvasStage({
   selected,
   onSelect,
   actions,
+  catalogOpen = false,
+  onCatalogOpenChange = () => {},
 }: {
   view: StudioView;
-  selected: OverlayInstance;
+  selected?: OverlayInstance;
   onSelect: (id: string) => void;
   actions: ReactNode;
+  catalogOpen?: boolean;
+  onCatalogOpenChange?: (open: boolean) => void;
 }) {
   const studio = useStudio(),
     model = useCanvas(view);
   const viewport = useRef<HTMLDivElement>(null);
+  const plane = useRef<HTMLDivElement>(null);
   const [area, setArea] = useState<Pair>([1, 1]),
     [zoom, setZoom] = useState(0),
     [guides, setGuides] = useState<readonly [number | null, number | null]>([
@@ -69,7 +80,21 @@ export function CanvasStage({
   const scale =
     percent === null ? (fitCanvas(area, canvas) ?? 1) : percent / 100;
   const input = useCanvasInputs(model, viewport, scale, onSelect, setGuides);
-  const cancel = input.cancel;
+  const drop = useCatalogInputs(
+    view,
+    model.enabled && !model.pending && !model.snapshot.gesture,
+    plane,
+    viewport,
+    () => onCatalogOpenChange(false),
+  );
+  const cancel = useCallback(() => {
+    input.cancel();
+    drop.cancel();
+  }, [input.cancel, drop.cancel]);
+  useEffect(() => {
+    if (!catalogOpen) drop.cancel();
+  }, [catalogOpen, drop.cancel]);
+  const displayedGuides = drop.visual?.preview?.guides ?? guides;
   const help = useId();
   const noteId = useId();
   const measured = useRef<Pair>([0, 0]);
@@ -116,17 +141,19 @@ export function CanvasStage({
     origin[1] - minY * scale,
   ];
   const idleShift = useRef<Pair>(proposedShift);
-  const gesturing = !!model.snapshot.gesture;
+  const gesturing = !!model.snapshot.gesture || !!drop.visual;
   // The coordinate frame belongs to the gesture, not to its moving draft.
   // Otherwise crossing zero moves the plane underneath a captured pointer.
   const shift = gesturing ? idleShift.current : proposedShift;
   useLayoutEffect(() => {
     if (!gesturing) idleShift.current = proposedShift;
   }, [gesturing, proposedShift[0], proposedShift[1]]);
-  const box = model.box(selected.id) ?? boxOf(selected);
+  const box = selected
+    ? (model.box(selected.id) ?? boxOf(selected))
+    : undefined;
   useLayoutEffect(() => {
     const node = viewport.current;
-    if (!node || gesturing) return;
+    if (!node || gesturing || !box) return;
     // Keep an out-of-canvas selection reachable without inventing its coordinates.
     const x = shift[0] + box.x * scale,
       y = shift[1] + box.y * scale;
@@ -146,16 +173,7 @@ export function CanvasStage({
         0,
         y + (box.size.height * scale - node.clientHeight) / 2,
       );
-  }, [
-    gesturing,
-    scale,
-    shift[0],
-    shift[1],
-    box.x,
-    box.y,
-    box.size.width,
-    box.size.height,
-  ]);
+  }, [gesturing, scale, shift[0], shift[1], box]);
   useLayoutEffect(() => {
     viewport.current
       ?.querySelector<HTMLButtonElement>(
@@ -175,6 +193,9 @@ export function CanvasStage({
       aria-busy={model.pending}
     >
       <div className="v-studio-canvas-feedback">
+        <span className="v-canvas-accessible-help" role="status">
+          {drop.message}
+        </span>
         <p
           role="alert"
           className="v-studio-canvas-status"
@@ -241,7 +262,11 @@ export function CanvasStage({
               )}
             </div>
           )}
-          <div ref={viewport} className="v-studio-canvas-viewport">
+          <div
+            ref={viewport}
+            className="v-studio-canvas-viewport"
+            tabIndex={-1}
+          >
             <div
               className="v-studio-canvas-space"
               style={{
@@ -250,6 +275,7 @@ export function CanvasStage({
               }}
             >
               <div
+                ref={plane}
                 className="v-studio-canvas-plane"
                 data-canvas-width={canvas[0]}
                 data-canvas-height={canvas[1]}
@@ -263,7 +289,7 @@ export function CanvasStage({
                 <span>{`${canvas[0]} × ${canvas[1]} · ${view.canvas.source === "monitor" ? t.monitorSource : t.customSource}`}</span>
               </div>
               {rendered.map(({ item, box }) => {
-                const active = item.id === selected.id,
+                const active = item.id === selected?.id,
                   name = widgetName(item, view);
                 const outside =
                   box.x < 0 ||
@@ -371,41 +397,60 @@ export function CanvasStage({
                   </div>
                 );
               })}
-              {guides[0] !== null && (
+              {drop.visual?.preview && (
+                <div
+                  className="v-canvas-drop-ghost"
+                  aria-hidden="true"
+                  style={{
+                    left: shift[0] + drop.visual.preview.at[0] * scale,
+                    top: shift[1] + drop.visual.preview.at[1] * scale,
+                    width: drop.visual.preview.size[0] * scale,
+                    height: drop.visual.preview.size[1] * scale,
+                  }}
+                >
+                  <span>
+                    <WidgetThumb kind={drop.visual.kind} fit="fill" />
+                  </span>
+                  <strong>
+                    {`${view.catalog.find((widget) => widget.kind === drop.visual?.kind)?.name ?? ""} · ${studioDropText.release}`}
+                  </strong>
+                </div>
+              )}
+              {displayedGuides[0] !== null && (
                 <span
                   className="v-studio-canvas-guide"
                   data-axis="x"
                   style={{
-                    left: shift[0] + guides[0] * scale,
+                    left: shift[0] + displayedGuides[0] * scale,
                     top: shift[1],
                     height: canvas[1] * scale,
                   }}
                 >
                   <em>
-                    {guides[0] === canvas[0] / 2
+                    {displayedGuides[0] === canvas[0] / 2
                       ? t.center
-                      : `x ${Math.round(guides[0])}`}
+                      : `x ${Math.round(displayedGuides[0])}`}
                   </em>
                 </span>
               )}
-              {guides[1] !== null && (
+              {displayedGuides[1] !== null && (
                 <span
                   className="v-studio-canvas-guide"
                   data-axis="y"
                   style={{
-                    top: shift[1] + guides[1] * scale,
+                    top: shift[1] + displayedGuides[1] * scale,
                     left: shift[0],
                     width: canvas[0] * scale,
                   }}
                 >
                   <em>
-                    {guides[1] === canvas[1] / 2
+                    {displayedGuides[1] === canvas[1] / 2
                       ? t.center
-                      : `y ${Math.round(guides[1])}`}
+                      : `y ${Math.round(displayedGuides[1])}`}
                   </em>
                 </span>
               )}
-              {model.snapshot.gesture && (
+              {model.snapshot.gesture && box && (
                 <>
                   <div
                     className="v-canvas-origin-ghost"
@@ -435,41 +480,82 @@ export function CanvasStage({
               </span>
             )}
           </div>
-          <footer role="toolbar" aria-label={t.tools}>
-            <output
-              className="v-studio-canvas-position"
-              aria-live="off"
-              data-outside={selected.canvasPlacement === "outside"}
-            >
-              {t.position(box.x, box.y, box.size.width, box.size.height)}
-              {selected.canvasPlacement === "outside" ? ` · ${t.outside}` : ""}
-            </output>
-            <CanvasTools
-              box={box}
-              canvas={canvas}
-              enabled={
-                model.enabled &&
-                !selected.locked &&
-                !studio.pending &&
-                !model.pending
+          {view.instances.length === 0 && !catalogOpen && (
+            <div className="v-canvas-empty-message">
+              <h2>{t.emptyTitle}</h2>
+              <p>{model.enabled ? t.emptyHelp : t.readOnly}</p>
+              <Button
+                variant="neutral"
+                disabled={!model.enabled}
+                onClick={() => onCatalogOpenChange(true)}
+              >
+                {studioText.add}
+              </Button>
+            </div>
+          )}
+          {catalogOpen && (
+            <CanvasCatalog
+              view={view}
+              enabled={model.enabled}
+              pending={
+                studio.pending || model.pending || !!model.snapshot.gesture
               }
-              write={(change, target) => {
-                if (model.current.current.pending) return;
-                model.dispatch({
-                  type: "write",
-                  id: selected.id,
-                  change,
-                  target,
-                });
-              }}
+              input={drop}
+              close={() => onCatalogOpenChange(false)}
             />
+          )}
+          {drop.visual && (
+            <CatalogGhost
+              visual={drop.visual}
+              name={
+                view.catalog.find((widget) => widget.kind === drop.visual?.kind)
+                  ?.name ?? ""
+              }
+            />
+          )}
+          <footer role="toolbar" aria-label={t.tools}>
+            {selected && box ? (
+              <>
+                <output
+                  className="v-studio-canvas-position"
+                  aria-live="off"
+                  data-outside={selected.canvasPlacement === "outside"}
+                >
+                  {t.position(box.x, box.y, box.size.width, box.size.height)}
+                  {selected.canvasPlacement === "outside"
+                    ? ` · ${t.outside}`
+                    : ""}
+                </output>
+                <CanvasTools
+                  box={box}
+                  canvas={canvas}
+                  enabled={
+                    model.enabled &&
+                    !selected.locked &&
+                    !studio.pending &&
+                    !model.pending
+                  }
+                  write={(change, target) => {
+                    if (model.current.current.pending) return;
+                    model.dispatch({
+                      type: "write",
+                      id: selected.id,
+                      change,
+                      target,
+                    });
+                  }}
+                />
+              </>
+            ) : (
+              <span className="v-studio-canvas-position">{t.emptyTitle}</span>
+            )}
             <div className="v-canvas-resolution-slot">
               <CanvasResolution
                 canvas={view.canvas}
                 monitor={view.monitor}
                 enabled={model.enabled && !studio.pending && !model.pending}
                 onChange={(resolution) => {
-                  input.cancel();
+                  cancel();
                   void studio.execute({
                     method: "studio.canvas",
                     resolution,

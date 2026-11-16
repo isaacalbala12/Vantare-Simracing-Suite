@@ -27,6 +27,7 @@ import { studioScenes } from "./studio.ts";
 import { studioAlertFieldScenes } from "./studio-alert-fields.ts";
 import { studioCanvasScenes } from "./studio-canvas.ts";
 import { studioCatalogScenes } from "./studio-catalog.ts";
+import { studioCatalogDropScenes } from "./studio-catalog-drop.ts";
 import { studioContentScenes } from "./studio-content.ts";
 import { studioFrequencyScenes } from "./studio-frequency.ts";
 import { studioStateScenes } from "./studio-states.ts";
@@ -80,6 +81,7 @@ export const visualScenes: Record<string, VisualScene> = {
   ...launcherScenes,
   ...studioScenes,
   ...studioCanvasScenes,
+  ...studioCatalogDropScenes,
   ...studioStateScenes,
   ...studioCatalogScenes,
   ...sweepScenes,

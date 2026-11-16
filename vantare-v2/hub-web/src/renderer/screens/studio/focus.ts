@@ -14,6 +14,9 @@ export function useStudioFocus() {
   const remembered = useUi((value) => value.studioLastSelected);
   const remember = useUi((value) => value.rememberStudio);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  useEffect(() => {
+    if (!state.canvasMode) setCatalogOpen(false);
+  }, [state.canvasMode]);
   const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
   const [focusReload, setFocusReload] = useState(false);
   const activeFilter = (view?.instances.length ?? 0) >= 9 ? filter : "all";

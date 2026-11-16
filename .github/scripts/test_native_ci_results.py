@@ -7,7 +7,7 @@ class ResultTests(unittest.TestCase):
     def setUp(self):
         self.needs = {'policy': {'result': 'success', 'outputs': {'native': 'true', 'installation': 'true'}}}
         self.needs.update({job: {'result': 'success'} for job in
-                          ('native_lint', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation')})
+                          ('native_lint', 'native_build', 'native_tests', 'native_telemetry', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation')})
 
     def test_every_applicable_job_must_succeed(self):
         validate(self.needs)
@@ -20,9 +20,17 @@ class ResultTests(unittest.TestCase):
 
     def test_web_only_can_skip_native_jobs(self):
         self.needs['policy']['outputs']['native'] = 'false'
-        for job in ('native_lint', 'native_build', 'native_tests', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
+        for job in ('native_lint', 'native_build', 'native_tests', 'native_telemetry', 'native_lifecycle_build', 'native_lifecycle', 'native_distribution', 'native_installation'):
             self.needs[job]['result'] = 'skipped'
         validate(self.needs)
+
+    def test_telemetry_scope_can_skip_telemetry_job(self):
+        self.needs['policy']['outputs']['telemetria'] = 'false'
+        self.needs['native_telemetry']['result'] = 'skipped'
+        validate(self.needs)
+        self.needs['native_telemetry']['result'] = 'failure'
+        with self.assertRaises(ValueError):
+            validate(self.needs)
 
     def test_affected_crates_can_skip_installation_but_not_tests(self):
         self.needs['policy']['outputs']['installation'] = 'false'

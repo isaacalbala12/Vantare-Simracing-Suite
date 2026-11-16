@@ -238,3 +238,172 @@ impl crate::widget::Widget for SessionAlerts {
         SessionAlerts::view(self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rune::{Env, Runtime};
+    use vantare_domain::{
+        Quality::Reliable,
+        SessionKind, SourceKind, SourceState,
+        widget_settings::{self, session_alerts::Settings as Stored},
+    };
+
+    /// A live LMU practice session ending in five minutes, so the first threshold fires.
+    fn snapshot() -> Snapshot {
+        let mut snapshot = crate::testdata::snapshot();
+        snapshot.origin.source.simulator = "lmu".into();
+        snapshot.origin.source.kind = SourceKind::Live;
+        snapshot.state.source_state = SourceState::Live;
+        snapshot.state.session.kind = Reliable(SessionKind::Practice);
+        snapshot.state.session.elapsed_s = Reliable(0.0);
+        snapshot.state.session.timing.scheduled_end_s = Reliable(300.0);
+        snapshot
+    }
+    fn widget() -> SessionAlerts {
+        SessionAlerts::new(&Stored::default(), Preferences::default())
+    }
+    fn paint_payload(instance: &rune::render::Instance) -> [[u32; 4]; 8] {
+        [
+            instance.rect.map(f32::to_bits),
+            instance.radii.map(f32::to_bits),
+            instance.fill.map(f32::to_bits),
+            instance.border.map(f32::to_bits),
+            instance.params.map(f32::to_bits),
+            instance.uv.map(f32::to_bits),
+            instance.clip.map(f32::to_bits),
+            instance.fade,
+        ]
+    }
+    /// Compare every field of the CPU painter stream: `Runtime::frame` only reports
+    /// whether an animation is still running, not whether the image changed.
+    fn rendered_frame(runtime: &mut Runtime<SessionAlerts>, dt: f64) -> bool {
+        let before = runtime.instances.clone();
+        runtime.frame(dt);
+        before.len() != runtime.instances.len()
+            || before
+                .iter()
+                .map(paint_payload)
+                .ne(runtime.instances.iter().map(paint_payload))
+    }
+    fn paint(widget: &SessionAlerts, _: &mut rune::Cx<SessionAlerts>) -> El {
+        widget.view()
+    }
+    thread_local! {
+        /// Photo the next poll syncs, as the host's pending revision does.
+        static NEXT: std::cell::RefCell<Option<Snapshot>> = const { std::cell::RefCell::new(None) };
+    }
+    fn push(snapshot: Snapshot) {
+        NEXT.with(|next| *next.borrow_mut() = Some(snapshot));
+    }
+    fn poll(widget: &mut SessionAlerts, clock: f64, tx: &mut rune::Tx) -> bool {
+        let photo = NEXT.with(|next| next.borrow_mut().take());
+        let build = photo.is_some_and(|photo| SessionAlerts::update(widget, &photo, clock).build);
+        SessionAlerts::schedule(widget, clock, tx);
+        build
+    }
+    fn host(widget: SessionAlerts) -> Runtime<SessionAlerts> {
+        let (width, height) = scene::size(&widget.settings);
+        let mut runtime = Runtime::with_text(
+            widget,
+            paint,
+            (width, height),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        runtime.poll = Some(poll);
+        runtime
+    }
+
+    #[test]
+    fn one_image_per_second_and_nothing_in_between() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        push(snapshot());
+        let mut runtime = host(widget());
+        assert!(rendered_frame(&mut runtime, 0.0), "el aviso aparece");
+        assert!(runtime.wake_deadline().is_some(), "hay reloj con aviso");
+        for second in 1..=3 {
+            assert!(
+                rendered_frame(&mut runtime, 0.2),
+                "la cuenta atrás cambia en el segundo {second}"
+            );
+            assert!(!rendered_frame(&mut runtime, 0.2), "y no pinta de más");
+        }
+        assert!(runtime.wake_deadline().is_some(), "sigue habiendo aviso");
+    }
+
+    #[test]
+    fn the_notice_leaves_after_its_duration_and_the_clock_stops() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        push(snapshot());
+        let mut runtime = host(widget());
+        assert!(rendered_frame(&mut runtime, 0.0), "el aviso aparece");
+        let mut painted = 0;
+        for _ in 0..20 {
+            painted += u8::from(rendered_frame(&mut runtime, 0.5));
+        }
+        assert!(painted >= 1, "el aviso se marcha");
+        assert!(rendered_frame(&mut runtime, 0.5), "el panel desaparece");
+        assert!(
+            runtime.wake_deadline().is_none(),
+            "sin aviso no queda reloj"
+        );
+    }
+
+    #[test]
+    fn reduced_motion_settles_the_fade_and_leaves_no_clock() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        push(snapshot());
+        let mut runtime = host(widget());
+        assert!(rendered_frame(&mut runtime, 0.0), "el aviso aparece");
+        runtime.state.policy(true, 5, 1.0);
+        assert!(
+            rendered_frame(&mut runtime, 0.0),
+            "la transición se asienta"
+        );
+        assert!(
+            runtime.wake_deadline().is_none(),
+            "con reducir movimiento no hay reloj"
+        );
+        assert_eq!(runtime.state.visual.opacity, 1.0);
+    }
+
+    #[test]
+    fn the_constructor_takes_its_settings_and_rejects_other_kinds() {
+        let stored = widget_settings::Settings::SessionAlerts(Stored::default());
+        let prefs = Preferences::default();
+        let painter = <SessionAlerts as crate::widget::Widget>::new(&stored, prefs, false, 5, 0.0)
+            .expect("avisos");
+        assert!(painter.configured(&stored, prefs));
+        assert_eq!(
+            painter.size(),
+            Size {
+                width: 480.0,
+                height: 88.0
+            }
+        );
+        let companion = widget_settings::Settings::SessionAlerts(Stored {
+            companion_for: Some("main".into()),
+            ..Stored::default()
+        });
+        assert_eq!(
+            <SessionAlerts as crate::widget::Widget>::new(&companion, prefs, false, 5, 0.0)
+                .expect("mini")
+                .size(),
+            Size {
+                width: 210.0,
+                height: 124.0
+            }
+        );
+        assert!(
+            <SessionAlerts as crate::widget::Widget>::new(
+                &widget_settings::Settings::Pedals(Default::default()),
+                prefs,
+                false,
+                5,
+                0.0
+            )
+            .is_none()
+        );
+    }
+}

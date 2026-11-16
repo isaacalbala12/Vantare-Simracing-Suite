@@ -14,6 +14,19 @@ Tipos, lint y 64 tests web dirigidos PASS; Clippy y 669 tests de hub-host PASS
 #2474 ya está en nightly: preview es la siguiente
 entrega, utilizable tras el PR B de captura; sin gráficos, merge ni release propios.
 
+## VANTA-144 · Standings literal A3 (16/11/2026)
+
+A1 #2472 prepara geometría; A2 #2475 fusionado por squash 19ac26786;
+A3 #2476 completa banners, separadores, pies Frozen/Pits/Spectator/Session
+y espera. Rebase --onto nightly desde el último A2 a61d588d4, sin conflictos;
+range-diff confirma los mismos tres parches. Base pública cambiada a nightly.
+Producción +340/-1 (341 líneas cambiadas), tests +99/-0; documentación aparte.
+Tabla de funciones y decisiones en `standings/PARIDAD.md`.
+Mac sobre nightly: fmt y Clippy -D warnings PASS; 468 + 2 tests PASS.
+CI Rune Windows y revisión Sonnet del head rebasado pendientes.
+Sin gráficos en servidor. Motion #2465 congelado y capturas PC pendientes.
+Registro A2 aceptado con A3 inmediatamente detrás, antes de promover a testers.
+
 ## VANTA-144 · Standings literal A2 (16/11/2026)
 
 A2 conecta cabecera, filas y celdas GPUI con el constructor Look Vantare;

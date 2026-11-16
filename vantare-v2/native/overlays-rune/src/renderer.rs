@@ -1,6 +1,7 @@
 //! One retained painter per visible instance; monitor windows coalesce their work.
 use crate::{
     host::Access,
+    input_telemetry::InputTelemetry,
     pedals::Pedals,
     pedals_telemetry::PedalsTelemetry,
     relative::Relative,
@@ -37,6 +38,7 @@ fn constructor(settings: &Settings) -> Option<Constructor> {
         }
         Settings::PedalsTelemetry(_) => Some(<PedalsTelemetry as Widget>::new),
         Settings::BroadcastTower(_) => Some(<Tower as Widget>::new),
+        Settings::InputTelemetry(_) => Some(<InputTelemetry as Widget>::new),
         Settings::RacingFlags(_) => Some(<crate::racing_flags::RacingFlags as Widget>::new),
         _ => None,
     }

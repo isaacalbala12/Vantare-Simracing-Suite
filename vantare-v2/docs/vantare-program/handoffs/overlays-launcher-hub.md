@@ -1,3 +1,18 @@
+## VANTA-138 · D111, duplicación seleccionada (16/11/2026)
+
+Esquema y mini aprobados por la raíz vía sub-orquestador Hub. Una orden tipada
+studio.duplicate{id,baseRevision} devuelve value/added tras CAS y un undo.
+Copia opacos y Hz; +20/+20 ajustado al borde con geometría existente. SessionAlerts
+reserva también id-mini; solo copia el padre, la mini sigue en el normalizador
+canónico al leer. No se toca ipc/domain ni se normaliza el documento en el host.
+Sin módulos, hilos, estado ni dependencias nuevos. Tests en archivos existentes;
+v43 asignada por la raíz para #2370. Test de dispatch añadido para value/added;
+el mock ya contrasta los cinco vectores Rust. Formato/exportador y Clippy -D warnings
+verificados; 656 tests host correctos y uno omitido por la cola. Tipos, lint y
+vectores web verificados en el head anterior; gate del ajuste y CI pendientes.
+PR draft #2370; sin merge, promoción, release
+ni ejecución gráfica.
+
 ## VANTA-138 · D048, bandas existentes sin horario (16/11/2026)
 
 E permite editar una banda guardada por su seriesId sin exigir horario vigente;

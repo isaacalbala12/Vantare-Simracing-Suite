@@ -103,6 +103,7 @@ pub(crate) fn typescript() -> String {
         + "\n"
 }
 fn geometry_constants(text: &mut String) {
+    crate::protocol::bindings::constants!(text, "studioDuplicateCases", duplicate_vectors());
     crate::protocol::bindings::constants!(text, "studioGeometryCases", geometry::cases::vectors());
     crate::protocol::bindings::constants!(
         text,
@@ -204,6 +205,10 @@ pub(crate) fn corpus() -> serde_json::Value {
             value: value.clone(),
             added: "widget-1".into(),
         },
+        Reply::StudioDuplicate {
+            value: value.clone(),
+            added: "widget-2".into(),
+        },
         Reply::StudioRemove {
             value: value.clone(),
         },
@@ -248,7 +253,48 @@ pub(crate) fn corpus() -> serde_json::Value {
     serde_json::json!({"host":host,"ui":ui,"invalidSettings":invalid_settings(),"invalidFrequencies":invalid_frequencies()})
 }
 
+fn duplicate_vectors() -> serde_json::Value {
+    let cases = [
+        ("offset", (48.5, 62.0), (1920.0, 1080.0)),
+        ("fraction", (84.3, 126.7), (1920.0, 1080.0)),
+        ("edge", (1900.0, 1060.0), (1920.0, 1080.0)),
+        ("outside", (-60.0, -50.0), (1920.0, 1080.0)),
+        ("custom", (700.0, 500.0), (800.0, 600.0)),
+    ];
+    serde_json::Value::Array(
+        cases
+            .into_iter()
+            .map(|(name, position, canvas)| {
+                let size = (338.0, 304.0);
+                let expected = geometry::snap(
+                    (
+                        position.0 + 20.0 + size.0 / 2.0,
+                        position.1 + 20.0 + size.1 / 2.0,
+                    ),
+                    size,
+                    canvas,
+                    &[],
+                    0.0,
+                )
+                .expect("valid geometry vector")
+                .position;
+                serde_json::json!({
+                    "name": name,
+                    "position": position,
+                    "size": size,
+                    "canvas": canvas,
+                    "expected": expected
+                })
+            })
+            .collect(),
+    )
+}
+
 fn geometry_requests(requests: &mut Vec<Request>) {
+    requests.push(Request::StudioDuplicate {
+        id: "widget-1".into(),
+        base_revision: "0".repeat(64),
+    });
     requests.push(Request::StudioCanvas {
         resolution: CanvasChoice::Monitor,
         base_revision: "0".repeat(64),

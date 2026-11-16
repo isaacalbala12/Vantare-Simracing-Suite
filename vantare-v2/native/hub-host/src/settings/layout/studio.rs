@@ -396,7 +396,7 @@ pub(crate) fn edit_result(
     let frequency_only = matches!(&edit, Edit::Instance(_, InstancePatch::Frequency(_)));
     let geometry_edit = matches!(
         &edit,
-        Edit::Geometry(..) | Edit::Canvas(..) | Edit::AddAt(..)
+        Edit::Geometry(..) | Edit::Canvas(..) | Edit::AddAt(..) | Edit::Duplicate(..)
     );
     if (settings_edit || geometry_edit) && !opened.fits_frame(access) {
         return Err(HostError::Protected);
@@ -416,7 +416,7 @@ pub(crate) fn edit_result(
     if (settings_edit || geometry_edit || frequency_only) && after == before {
         return Ok((view(state, access), None));
     }
-    let adding = matches!(edit, Edit::Add(_) | Edit::AddAt(..));
+    let adding = matches!(edit, Edit::Add(_) | Edit::AddAt(..) | Edit::Duplicate(..));
     // Undo/redo may cross a plan change: restoring a removed Pro instance is an addition.
     let root: Fields = serde_json::from_slice(&after).map_err(|_| HostError::Protected)?;
     if matches!(edit, Edit::Undo | Edit::Redo) {
@@ -554,6 +554,7 @@ fn apply(
             }
             opened.bytes()?
         }
+        Edit::Duplicate(id) => duplicate(opened, id, access)?,
         Edit::Add(kind) => add(opened, *kind, None, access)?,
         Edit::AddAt(kind, at) => add(opened, *kind, Some(*at), access)?,
         Edit::Geometry(id, change) => {
@@ -709,6 +710,62 @@ fn add(
     put(&mut fields, "opacity", &1.0)?;
     fields.0.insert("settings".into(), defaults.settings);
     opened.instances.push(fields);
+    opened.bytes()
+}
+
+fn duplicate(
+    opened: &mut Open,
+    source: &str,
+    access: Option<CatalogAccess>,
+) -> Result<Vec<u8>, HostError> {
+    if opened.instances.len() >= INSTANCE_LIMIT {
+        return Err(HostError::Denied);
+    }
+    let mut copy = Fields(opened.find(source)?.0.clone());
+    let item = instance(&copy, access)?;
+    if item.locked {
+        return Err(HostError::Denied);
+    }
+    let performance: Fields = optional(&opened.document.fields, "performance", Fields::default())?;
+    let rates = ordered::rates(&performance)?;
+    // Orphan rate keys must not become overrides for the new widget.
+    let used: HashSet<_> = opened
+        .projected
+        .iter()
+        .map(|item| item.id.as_str())
+        .chain(rates.keys().map(String::as_str))
+        .collect();
+    let id = (1..=used.len() + 1)
+        .map(|n| format!("widget-{n}"))
+        .find(|id| {
+            !used.contains(id.as_str())
+                && (item.kind != WidgetKind::SessionAlerts
+                    || !used.contains(format!("{id}-mini").as_str()))
+        })
+        .ok_or(HostError::Denied)?;
+    let size = (f64::from(item.size.width), f64::from(item.size.height));
+    // A zero threshold reuses the geometry bounds without applying magnets.
+    let at = crate::studio::geometry::snap(
+        (
+            f64::from(item.x) - opened.monitor.origin.0 + 20.0 + size.0 / 2.0,
+            f64::from(item.y) - opened.monitor.origin.1 + 20.0 + size.1 / 2.0,
+        ),
+        size,
+        opened.canvas.size(),
+        &[],
+        0.0,
+    )
+    .ok_or(HostError::Protected)?
+    .position;
+    let x = at.0 + opened.monitor.origin.0;
+    let y = at.1 + opened.monitor.origin.1;
+    coordinate(x)?;
+    coordinate(y)?;
+    put(&mut copy, "id", &id)?;
+    put(&mut copy, "x", &x)?;
+    put(&mut copy, "y", &y)?;
+    ordered::set_rate(&mut opened.document.fields, &id, rates.get(source).copied())?;
+    opened.instances.push(copy);
     opened.bytes()
 }
 

@@ -146,3 +146,36 @@ fn geometry_canvas_and_drop_require_current_rights_and_not_live() {
         assert_eq!(session.studio.undo.len(), 1);
     }
 }
+
+#[cfg(windows)]
+#[test]
+fn duplicate_dispatch_returns_the_new_id_and_updated_view() {
+    let fixture = Fixture::new();
+    let path = fixture.0.join("layout.json");
+    let bytes = br#"{"version":1,"instances":[{"id":"widget-1","x":48,"y":62,"settings":{"kind":"delta"}}]}"#;
+    std::fs::write(&path, bytes).expect("fixture");
+    let mut session = fixture.session();
+    session.core.available = true;
+    session.current.access.verified = true;
+    let reply = response(
+        &mut session,
+        &Request::StudioDuplicate {
+            id: "widget-1".into(),
+            base_revision: vantare_services::content_hash(bytes),
+        },
+    );
+    let HostToUi::Response {
+        result: Reply::StudioDuplicate { value, added },
+        ..
+    } = reply
+    else {
+        panic!("expected duplicate response");
+    };
+    assert_eq!(added, "widget-2");
+    assert_eq!(value.instances.len(), 2);
+    assert_eq!(value.instances[1].id, added);
+    assert_eq!(
+        value.revision,
+        vantare_services::content_hash(&std::fs::read(path).expect("saved"))
+    );
+}

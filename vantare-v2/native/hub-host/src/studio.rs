@@ -125,6 +125,7 @@ pub enum Edit {
     Visibility(String, bool),
     Add(WidgetKind),
     AddAt(WidgetKind, Point),
+    Duplicate(String),
     Geometry(String, GeometryChange),
     Canvas(CanvasChoice),
     Remove(String),
@@ -224,6 +225,28 @@ impl State {
         #[cfg(not(windows))]
         {
             let _ = (kind, at, revision, access);
+            Err(crate::protocol::HostError::Protected)
+        }
+    }
+    pub fn duplicate(
+        &mut self,
+        id: &str,
+        revision: &str,
+        access: Option<vantare_ipc::control::CatalogAccess>,
+    ) -> Result<(StudioView, String), crate::protocol::HostError> {
+        #[cfg(windows)]
+        {
+            let (value, added) = crate::settings::studio::edit_result(
+                self,
+                Edit::Duplicate(id.into()),
+                revision,
+                access,
+            )?;
+            Ok((value, added.ok_or(crate::protocol::HostError::Io)?))
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (id, revision, access);
             Err(crate::protocol::HostError::Protected)
         }
     }

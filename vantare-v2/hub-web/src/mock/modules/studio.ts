@@ -9,6 +9,7 @@ import {
   studioAdditionalOptions as a,
   studioAddAvailable,
   studioCatalog,
+  studioDuplicateCases,
   studioFreeKinds,
   studioFrequencyOptions,
   studioLimits,
@@ -103,6 +104,28 @@ export function create(context: MockContext): MockHandler {
   if (context.settingsData && sceneName.startsWith("studio-")) {
     context.settingsData.track.exists = view.state !== "missing";
     context.settingsData.track.protected = view.state === "protected";
+  }
+  const duplicateCase = studioDuplicateCases.find(
+    (sample) => sceneName === `studio-duplicate-${sample.name}`,
+  );
+  if (duplicateCase) {
+    view.instances.splice(1);
+    const item = view.instances[0];
+    [item.x, item.y] = duplicateCase.position;
+    item.size = { width: duplicateCase.size[0], height: duplicateCase.size[1] };
+    item.sizeMode = "explicit";
+    view.canvas = {
+      width: duplicateCase.canvas[0],
+      height: duplicateCase.canvas[1],
+      source: "custom",
+    };
+    item.canvasPlacement =
+      item.x < 0 ||
+      item.y < 0 ||
+      item.x + item.size.width > view.canvas.width ||
+      item.y + item.size.height > view.canvas.height
+        ? "outside"
+        : "inside";
   }
   if (sceneName === "studio-oculto") view.instances[0].visible = false;
   if (view.state !== "ready") view.instances = [];
@@ -252,6 +275,66 @@ export function create(context: MockContext): MockHandler {
         });
         break;
       }
+      case "studio.duplicate": {
+        if (
+          context.core.live ||
+          !context.core.access.verified ||
+          context.core.access.blocked
+        )
+          return fail("denied");
+        const source = view.instances.find((item) => item.id === request.id);
+        if (
+          !source ||
+          source.locked ||
+          view.instances.length >= studioLimits.instances
+        )
+          return fail("denied");
+        if (!view.canvas) return fail("protected");
+        if (
+          source.frequency.overrideHz !== null &&
+          otherOverrides +
+            view.instances.filter((item) => item.frequency.overrideHz !== null)
+              .length >=
+            studioFrequencyOptions.maxOverrides
+        )
+          return fail("denied");
+        let n = 1;
+        while (
+          view.instances.some(
+            (item) =>
+              item.id === `widget-${n}` ||
+              (source.kind === "session-alerts" &&
+                item.id === `widget-${n}-mini`),
+          )
+        )
+          n++;
+        added = `widget-${n}`;
+        const item = structuredClone(source);
+        item.id = added;
+        const centerX = source.x + 20 + source.size.width / 2;
+        const centerY = source.y + 20 + source.size.height / 2;
+        item.x = Math.max(
+          0,
+          Math.min(
+            centerX - source.size.width / 2,
+            Math.max(0, view.canvas.width - source.size.width),
+          ),
+        );
+        item.y = Math.max(
+          0,
+          Math.min(
+            centerY - source.size.height / 2,
+            Math.max(0, view.canvas.height - source.size.height),
+          ),
+        );
+        item.canvasPlacement =
+          item.x + item.size.width > view.canvas.width ||
+          item.y + item.size.height > view.canvas.height
+            ? "outside"
+            : "inside";
+        view.instances.push(item);
+        break;
+      }
       case "studio.remove":
         view.instances = view.instances.filter((w) => w.id !== request.id);
         break;
@@ -363,12 +446,15 @@ export function create(context: MockContext): MockHandler {
           context.onboarding.settingsRevision = context.settingsData.revision;
       }
     }
-    if (request.method === "studio.add") {
+    if (
+      request.method === "studio.add" ||
+      request.method === "studio.duplicate"
+    ) {
       if (!added) return fail("denied");
       return {
         kind: "response",
         id,
-        result: { method: "studio.add", value: structuredClone(view), added },
+        result: { method: request.method, value: structuredClone(view), added },
       };
     }
     return {

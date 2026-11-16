@@ -50,6 +50,11 @@ pub(super) fn dispatch(
                 added = Some(id);
                 value
             }
+            Request::StudioDuplicate { id, base_revision } => {
+                let (value, id) = session.studio.duplicate(id, base_revision, catalog)?;
+                added = Some(id);
+                value
+            }
             Request::StudioRemove { id, base_revision } => {
                 session
                     .studio
@@ -92,6 +97,10 @@ pub(super) fn dispatch(
             Request::StudioGet {} => Reply::StudioGet { value },
             Request::StudioVisibility { .. } => Reply::StudioVisibility { value },
             Request::StudioAdd { .. } => Reply::StudioAdd {
+                value,
+                added: added.ok_or(HostError::Io)?,
+            },
+            Request::StudioDuplicate { .. } => Reply::StudioDuplicate {
                 value,
                 added: added.ok_or(HostError::Io)?,
             },

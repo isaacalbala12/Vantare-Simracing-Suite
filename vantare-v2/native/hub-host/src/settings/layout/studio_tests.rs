@@ -1092,3 +1092,265 @@ fn design_system_patch_matches_native_set_look_for_all_families_and_legacy() {
         assert_eq!(actual, document, "other layout members: {}", case["name"]);
     }
 }
+
+#[test]
+fn duplicate_preserves_opaque_fields_and_native_rates_with_one_undo() {
+    use serde_json::{Value, json};
+    for hz in [None, Some(0_u16), Some(40), Some(60)] {
+        let (_root, path, bytes) = fixture();
+        let source_rate = hz.map_or_else(String::new, |hz| format!("\"widget-1\":{hz},"));
+        let text = String::from_utf8(bytes).expect("fixture").replace(
+            "\"futureRoot\"", &format!("\"performance\":{{\"level\":\"balanced\",\"widgets\":{{{source_rate}\"widget-2\":15}}}},\"futureRoot\""),
+        );
+        let before = text.into_bytes();
+        std::fs::write(&path, &before).expect("fixture with orphan rate");
+        let mut state = State::new(path.clone());
+        let access = Some(CatalogAccess::Pro);
+        let view = state.view(access);
+        assert_eq!(view.state, StudioState::Ready, "supported layout fixture");
+        let (changed, added) = state
+            .duplicate("widget-1", &view.revision, access)
+            .expect("duplicate");
+        assert_eq!(added, "widget-3", "do not inherit an orphan override");
+        assert_eq!(changed.instances.len(), 2);
+        let copy = changed
+            .instances
+            .iter()
+            .find(|item| item.id == added)
+            .expect("added widget");
+        assert_eq!((f64::from(copy.x), f64::from(copy.y)), (68.5, 82.0));
+        assert_eq!(copy.frequency.override_hz, hz);
+        let saved = std::fs::read(&path).expect("saved copy");
+        let actual: Value = serde_json::from_slice(&saved).expect("layout");
+        let mut expected = actual["instances"][0].clone();
+        expected["id"] = json!(added);
+        expected["x"] = json!(68.5);
+        expected["y"] = json!(82.0);
+        assert_eq!(actual["instances"][1], expected);
+        assert_eq!(actual["performance"]["widgets"]["widget-2"], 15);
+        let text = std::str::from_utf8(&saved).expect("utf8");
+        assert_eq!(text.matches(r#"{"a":  1.00}"#).count(), 2);
+        assert!(text.contains(r#"{"x":  2.50}"#));
+        assert!(
+            !serde_json::to_string(&changed)
+                .expect("closed view")
+                .contains("Users")
+        );
+        assert_eq!(state.undo.len(), 1);
+        assert!(matches!(
+            state.duplicate("widget-1", &view.revision, access),
+            Err(HostError::StudioConflict { .. })
+        ));
+        assert_eq!(std::fs::read(&path).expect("no retry"), saved);
+        assert_eq!(state.undo.len(), 1);
+        let undone = state
+            .edit(Edit::Undo, &changed.revision, access)
+            .expect("undo");
+        assert_eq!(std::fs::read(&path).expect("original bytes"), before);
+        state
+            .edit(Edit::Redo, &undone.revision, access)
+            .expect("redo");
+        assert_eq!(std::fs::read(&path).expect("same copy bytes"), saved);
+    }
+}
+
+#[test]
+fn duplicate_uses_existing_bounds_for_offsets_at_the_edge_and_custom_canvases() {
+    use serde_json::{Value, json};
+    for (position, canvas, expected) in [
+        ((1900.0, 1060.0), (1920.0, 1080.0), (1582.0, 776.0)),
+        ((-60.0, -50.0), (1920.0, 1080.0), (0.0, 0.0)),
+        ((700.0, 500.0), (800.0, 600.0), (462.0, 296.0)),
+    ] {
+        let (_root, path, bytes) = fixture();
+        let mut document: Value = serde_json::from_slice(&bytes).expect("layout");
+        document["instances"][0]["x"] = json!(position.0);
+        document["instances"][0]["y"] = json!(position.1);
+        document["canvasResolution"] = json!({"width":canvas.0,"height":canvas.1});
+        std::fs::write(&path, serde_json::to_vec(&document).expect("fixture")).expect("write");
+        let mut state = State::new(path);
+        let access = Some(CatalogAccess::Pro);
+        let before = state.view(access);
+        let (after, added) = state
+            .duplicate("widget-1", &before.revision, access)
+            .expect("clamped duplicate");
+        let copy = after
+            .instances
+            .iter()
+            .find(|item| item.id == added)
+            .expect("copy");
+        assert_eq!((f64::from(copy.x), f64::from(copy.y)), expected);
+        assert_eq!(
+            copy.canvas_placement,
+            crate::studio::CanvasPlacement::Inside
+        );
+        assert_eq!(state.undo.len(), 1);
+    }
+}
+
+#[test]
+fn duplicate_rejects_missing_or_locked_sources_and_instance_limit() {
+    use serde_json::{Value, json};
+    let (_root, path, bytes) = fixture();
+    let mut document: Value = serde_json::from_slice(&bytes).expect("layout");
+    document["instances"][0]["settings"] = serde_json::from_str(
+        crate::widget_defaults::get("radar")
+            .expect("native defaults")
+            .settings
+            .get(),
+    )
+    .expect("settings");
+    let before = serde_json::to_vec(&document).expect("fixture");
+    std::fs::write(&path, &before).expect("write");
+    let mut state = State::new(path.clone());
+    let view = state.view(Some(CatalogAccess::Free));
+    assert!(view.instances[0].locked);
+    for (source, access) in [
+        ("widget-1", Some(CatalogAccess::Free)),
+        ("widget-1", None),
+        ("absent", Some(CatalogAccess::Pro)),
+    ] {
+        assert_eq!(
+            state.duplicate(source, &view.revision, access),
+            Err(HostError::Denied)
+        );
+        assert_eq!(std::fs::read(&path).expect("unchanged"), before);
+        assert_eq!(state.undo, Vec::<Vec<u8>>::new());
+    }
+    let original = document["instances"][0].clone();
+    document["instances"] = Value::Array(
+        (1..=INSTANCE_LIMIT)
+            .map(|n| {
+                let mut item = original.clone();
+                item["id"] = json!(format!("widget-{n}"));
+                item
+            })
+            .collect(),
+    );
+    std::fs::write(&path, serde_json::to_vec(&document).expect("limit fixture")).expect("write");
+    let mut opened =
+        Open::read(&path, crate::studio::monitor::snapshot, None).expect("read bounded layout");
+    assert_eq!(
+        duplicate(&mut opened, "widget-1", Some(CatalogAccess::Pro)),
+        Err(HostError::Denied)
+    );
+}
+
+#[test]
+fn duplicate_session_alerts_remains_two_to_four_through_the_canonical_reader() {
+    use serde_json::{Value, json};
+    use vantare_ipc::layout::Layout;
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("layout.json");
+    let settings: Value = serde_json::from_str(
+        crate::widget_defaults::get("session-alerts")
+            .expect("defaults")
+            .settings
+            .get(),
+    )
+    .expect("settings");
+    let seed = serde_json::to_vec(
+        &json!({"version":1,"instances":[{"id":"widget-1","x":48.5,"y":62.0,"settings":settings}]}),
+    )
+    .expect("seed");
+    let mut original = Layout::from_json(&seed).expect("canonical parent and mini");
+    assert_eq!(original.instances.len(), 2);
+    original.instances[1].x = 1400.0;
+    original.instances[1].y = 100.0;
+    let before = serde_json::to_vec(&original).expect("original layout");
+    std::fs::write(&path, &before).expect("write");
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let view = state.view(access);
+    let (after, added) = state
+        .duplicate("widget-1", &view.revision, access)
+        .expect("copy parent only");
+    assert_eq!(after.instances.len(), 2, "only selectable instances");
+    let saved = std::fs::read(&path).expect("saved");
+    let raw: Value = serde_json::from_slice(&saved).expect("raw document");
+    assert_eq!(
+        raw["instances"].as_array().expect("instances").len(),
+        3,
+        "host does not normalize"
+    );
+    let effective = Layout::from_json(&saved).expect("existing normalizer creates mini");
+    assert_eq!(effective.instances.len(), 4);
+    let mini = effective
+        .instances
+        .iter()
+        .find(|item| item.id == format!("{added}-mini"))
+        .expect("new mini");
+    assert_eq!((mini.x, mini.y), (1694.0, 92.0));
+    let serialized = serde_json::to_value(&mini.settings).expect("settings");
+    assert_eq!(serialized["companionFor"], added);
+    assert_eq!(
+        (effective.instances[1].x, effective.instances[1].y),
+        (1400.0, 100.0)
+    );
+    state
+        .edit(Edit::Undo, &after.revision, access)
+        .expect("one undo");
+    assert_eq!(std::fs::read(&path).expect("original bytes"), before);
+}
+
+#[test]
+fn duplicate_session_alerts_reserves_the_implicit_mini_identity() {
+    use serde_json::{Value, json};
+    use vantare_ipc::layout::Layout;
+    let root = crate::test_support::Root::new();
+    let path = root.path.join("layout.json");
+    let settings: Value = serde_json::from_str(
+        crate::widget_defaults::get("session-alerts")
+            .expect("defaults")
+            .settings
+            .get(),
+    )
+    .expect("settings");
+    let other: Value = serde_json::from_str(
+        crate::widget_defaults::get("radar")
+            .expect("defaults")
+            .settings
+            .get(),
+    )
+    .expect("settings");
+    let seed = serde_json::to_vec(&json!({"version":1,"instances":[
+        {"id":"widget-1","x":48.5,"y":62.0,"settings":settings},
+        {"id":"widget-2-mini","x":100,"y":200,"settings":other}
+    ]}))
+    .expect("seed");
+    let original = Layout::from_json(&seed).expect("canonical layout");
+    std::fs::write(&path, serde_json::to_vec(&original).expect("layout")).expect("write");
+    let mut state = State::new(path.clone());
+    let access = Some(CatalogAccess::Pro);
+    let view = state.view(access);
+    let (_, added) = state
+        .duplicate("widget-1", &view.revision, access)
+        .expect("unused parent and mini pair");
+    assert_eq!(added, "widget-3");
+    let effective =
+        Layout::from_json(&std::fs::read(&path).expect("saved")).expect("effective layout");
+    assert_eq!(effective.instances.len(), 5);
+    assert!(
+        effective
+            .instances
+            .iter()
+            .any(|item| item.id == "widget-3-mini")
+    );
+    assert_eq!(
+        effective
+            .instances
+            .iter()
+            .filter(|item| item.id == "widget-2-mini")
+            .count(),
+        1
+    );
+    assert_eq!(
+        effective
+            .instances
+            .iter()
+            .find(|item| item.id == "widget-2-mini")
+            .expect("untouched")
+            .settings,
+        original.instances[1].settings
+    );
+}

@@ -89,11 +89,18 @@ entrada libre. `studio.canvas` usa CAS. Tu monitor envía `{kind:monitor}`;
 solo un preset envía `{kind:custom,width,height}`. La primera opción muestra
 `StudioView.monitor`, en unidades lógicas del monitor fijado por Rust, incluso
 si el lienzo usa un preset distinto. Está seleccionada solo con source=monitor.
-Si monitor es null, el selector queda cerrado y deshabilitado con «Monitor no
-detectado · 1920 × 1080», el tooltip y la descripción accesible aprobados. Es una
-presentación de lectura: no se crea un tablero ni se cambia canvas:null, tampoco
-se escribe al host. No se infiere el monitor del lienzo, del viewport ni de una
-lectura anterior.
+El panel conserva su ancho, presenta filas de una línea de 36 px y abre hacia
+arriba alineado al botón. El preset coincidente con el monitor se muestra una
+sola vez y primero, marcado «Tu monitor»; si no coincide con ninguno, aparece
+una fila propia. Un canvas custom del mismo tamaño también selecciona esa fila;
+pulsarla usa la orden monitor existente.
+
+En Lienzo, Protected/Missing con monitor:null no muestra selector ni panel:
+solo el mensaje centrado «No se puede abrir el lienzo ahora», su explicación
+aprobada y «Volver a cargar». No se atribuye el fallo a una causa que el contrato
+no distingue. No se crea tablero ni se escribe al host. Los Protected que
+conservan monitor mantienen su presentación. El monitor no se infiere del
+lienzo, viewport ni una lectura anterior.
 
 La miniatura y el enlace de la tira abren la misma vista. La lista y el plano
 comparten selección; ocultos permanecen visibles en gris al 35 %, y fuera de

@@ -1,4 +1,4 @@
-//! Arranque y política del proceso de overlays; sin crear dispositivos gráficos.
+//! Arranque y polÃ­tica del proceso de overlays; sin crear dispositivos grÃ¡ficos.
 #[cfg(debug_assertions)]
 pub mod capture;
 pub mod eficiencia;
@@ -29,6 +29,7 @@ pub mod pedals_telemetry;
 pub mod racing_flags;
 mod radar;
 pub mod relative;
+pub mod relative_eficiencia;
 mod renderer;
 mod session_alerts;
 pub mod stats;

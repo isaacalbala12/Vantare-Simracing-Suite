@@ -34,6 +34,9 @@ pub(crate) fn constructor(settings: &Settings) -> Option<Constructor> {
         Settings::Relative(s) if s.design_system == Look::Vantare => {
             Some(<Relative as Widget>::new)
         }
+        Settings::Relative(s) if s.design_system == Look::Eficiencia => {
+            Some(<Relative as Widget>::new)
+        }
         Settings::MulticlassRelative(_) => {
             Some(<crate::multiclass_relative::MulticlassRelative as Widget>::new)
         }
@@ -297,7 +300,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn dispatch_constructs_vantare_relative_and_rejects_unmigrated_looks_and_kinds() {
+    fn dispatch_constructs_both_relative_looks_without_changing_vantare() {
         let mut relative = vantare_domain::widget_settings::relative::Settings {
             design_system: Look::Vantare,
             ..Default::default()
@@ -315,7 +318,12 @@ pub(crate) mod tests {
         relative.design_system = Look::Eficiencia;
         let efficiency = Settings::Relative(relative);
         let pedals = Settings::Pedals(Default::default());
-        assert!(constructor(&efficiency).is_none());
+        let efficient = constructor(&efficiency).expect("Eficiencia constructor")(
+            &efficiency, prefs, true, 15, 0.0,
+        ).expect("Eficiencia instance");
+        assert!(efficient.configured(&efficiency, prefs));
+        assert_eq!(efficient.size().width, crate::relative_eficiencia::WIDTH);
+        assert!(!efficient.configured(&settings, prefs));
         assert!(constructor(&pedals).is_some());
         assert!(!painter.configured(&efficiency, prefs));
         assert!(!painter.configured(&pedals, prefs));
@@ -424,7 +432,7 @@ pub(crate) mod tests {
             );
         }
     }
-    /// Reproductor compartido con el test: apunta lo que el bucle pediría reproducir.
+    /// Reproductor compartido con el test: apunta lo que el bucle pedirÃ­a reproducir.
     #[derive(Clone, Default)]
     struct Sharing(
         std::rc::Rc<std::cell::RefCell<Vec<(vantare_domain::session_alerts::Tone, u8)>>>,
@@ -451,7 +459,7 @@ pub(crate) mod tests {
         let design = vantare_ipc::layout::Layout::from_json(
             br#"{"version":2,"instances":[{"id":"avisos","x":0,"y":0,"settings":{"kind":"session-alerts"}}]}"#,
         )
-        .expect("diseño");
+        .expect("diseÃ±o");
         let frames = crate::scene::FrameSet {
             layout: Arc::new(design),
             photos: std::collections::BTreeMap::from([(

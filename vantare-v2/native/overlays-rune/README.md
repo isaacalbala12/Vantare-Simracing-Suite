@@ -141,6 +141,57 @@ cuentan como imágenes. Los tests CPU comparan todos los campos del flujo de dib
 el aviso; el booleano de Runtime::frame solo indica animación en curso. No miden presentaciones
 GPU ni sustituyen la campaña del PC de juego.
 
+## Relative Eficiencia y captura: preparación del PR 7
+
+`relative_eficiencia` recibe el `Board` y los ajustes de domain. No calcula
+gaps, clasificaciones, derechos ni cadencias. Conserva las medidas del Look
+GPUI (470 px, cabecera 36, filas 29, pie 38), columnas configuradas, calidad
+por celda, nombres formateados por domain y badges de vueltas ES/EN.
+`eficiencia` aporta panel, borde, tipografía y elipsis; incluye las mismas
+instancias Inter del recurso existente, sin copiar fuentes ni enlazar UI.
+El anfitrión debe registrar `eficiencia::FONTS` antes de colocar el widget.
+
+`view_rows` acepta las muestras de posición/opacidad/aviso resueltas por el
+movimiento común. `view` pinta esas mismas filas asentadas para una escena fija.
+No hay un bucle de animación ni un reloj propio del Look. Worker A conecta el
+host, fuente y cadencias y aporta el Relative común en PR 6. Worker B no toca
+esa conexión. El contrato común es VisualRow con Row, slot interpolado, opacity
+y Alert opcional (kind semántico y opacity interpolada, independiente de la fila),
+además de cabecera. Cada Look solo elige el color y pinta. La fachada actual
+del pintor se adaptará al módulo de A cuando lo exponga, sin otro movimiento.
+El ejecutable todavía no ofrece Relative ni una CLI de escenas.
+
+`offscreen` usa las API públicas `Runtime`, `Gpu`, `Renderer` y `Offscreen` de
+Rune: no llama a `--snap`, no crea App, event loop ni ventana (tampoco oculta).
+La colocación y la comprobación de tamaño son CPU. El destino está limitado a
+4096 × 4096 píxeles; comprueba longitud RGBA y convierte alfa premultiplicada
+a recta en el espacio de composición antes de codificar el PNG. Los tests
+sustituyen solo la función de pintar; nunca crean dispositivos.
+
+Esta preparación no es todavía una entrega completa del PR 7: quedan el
+lector de las mismas escenas guardadas de GPUI sobre los módulos trasladados
+de #2344, la CLI y las capturas F1 en Windows. No se habilita una fuente local
+en release ni una preview pública. La preview con canal privado/clave de un
+arranque pertenece al PR 25. `Offscreen::read` de Rune es bloqueante: el futuro
+llamante de preview debe limitar la vida del proceso hijo como fija ADR 0109.
+Sin capturas del PC de juego no se afirma paridad ni se solicita fusionar el
+widget. El cinturón del ejecutable sigue siendo su primera instrucción.
+
+Preparar el lote es CPU y no ejecuta ninguno de los motores:
+
+```powershell
+python native/overlays-rune/tools/preparar_escenas.py --salida D:/VantareServer/evidence/overlays-rune/pr7/plan-<commit> --look eficiencia --look vantare
+```
+
+Lee los siete casos originales de `ui/src/relative/scenes.json`, conserva los
+diseños y las fotos, y añade solo el Look solicitado a sus ajustes. Produce
+42 comparaciones pendientes (dos Looks y 100/125/150), entradas con hash y
+claves que distinguen motor, commit, copia de Rune, datos y escala. El índice
+rotula explícitamente que no hay capturas. Rechaza rutas fuera del corpus,
+otros widgets, escenas repetidas o pasos desconocidos; no sobrescribe pruebas
+anteriores. La CLI que consume el plan y genera los PNG sigue pendiente de
+la conexión de PR 3/6. El plan no abre ventanas ni solicita dispositivos.
+
 ## Servidor y CI sin gráficos
 
 En el servidor, el entorno Machine debe tener `VANTARE_SIN_GRAFICOS=1` y los

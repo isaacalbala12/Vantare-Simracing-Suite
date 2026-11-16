@@ -3168,6 +3168,100 @@ histórico íntegro, para no competir con las entregas al final del handoff.
 Validación nueva por cola y resultados en el PR; ampliación de captura aún
 sin código, pendiente de esquema y aprobación.
 
+
+## VANTA-144 · PR 7 en preparación: Eficiencia y destino de captura (15/11/2026)
+
+Worker B, #2333; rama `vantareapp/isa-2333-relative-eficiencia`, rebasada con
+--onto nightly 8ea2e9741 tras el squash 99bbee4b4 de #2348 (head anterior
+64a445de3). Solo overlays-rune y este handoff.
+Draft [#2351](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/2351),
+código inicial fd86187ee; todavía no es entrega final ni candidato a merge.
+Preparado el dibujo de Relative Eficiencia a partir del Board canónico, sus
+columnas/formatos, pie, calidad por celda y muestras del movimiento compartido.
+Kit de panel/texto con las fuentes existentes, sin copia ni dependencia de UI.
+Destino de captura con API pública de Rune, sin App/ventana ni herramientas
+--snap; alfa recta, tamaño acotado y pintor falso para las pruebas CPU.
+
+Todavía no conectado al ejecutable: #2344 sigue abierto y el PR 6 aporta el
+movimiento/contadores comunes. Worker A es dueño de conectar diseño, fotos y
+cadencias: B no toca esa conexión. B conserva Eficiencia y captura/CLI de escenas,
+y consume el Relative común cuando A lo exponga. Queda F1
+del PC de juego en el horario del orquestador. No se afirma paridad ni preview
+lista; distribución mantiene bloqueado --fuente local. Sin dependencias/locks
+nuevos. Windows por cola (dos jobs, target compartido): Clippy PASS y 23 tests
+CPU PASS; también 5 tests reales de política sin debug_assertions PASS.
+Formato/diff y auditoría 425 paquetes PASS. No se ejecuta producto ni gráfica.
+El fixture guardado original de Relative se decodifica por IPC y se proyecta
+por domain en tests CPU; la vista y la captura con pintor falso comparan los
+mismos textos y cajas en tres escalas. Se retiró solo el pequeño target Mac
+de tests de política ya terminados; 13,25 GiB libres, sin nueva compilación Mac.
+Preparador CPU del lote: lee los siete scenes GPUI originales, conserva fotos
+y diseño salvo el Look solicitado, genera 42 pares pendientes con hashes y
+claves motor/commit/Rune/escala. No genera PNG ni ejecuta motores. Dos tests
+del preparador PASS; ocho Python en total. Primeras pasadas locales de Clippy
+detectaron llamadas bg en lugar de fill y un lint de chunks; corregidos sin
+excepciones. Un test esperaba Sebring, pero domain entrega SEBRING: corregida
+la expectativa, conservada la comprobación del texto y pasada completa PASS.
+Plan CPU, todavía SIN PNG:
+`D:/VantareServer/evidence/overlays-rune/pr7/plan-4e4a2c80a/INDEX.md`.
+Dependencia comprobada a las 20:02 UTC: origin/nightly 80f105ba9 todavía no
+contiene ipc::layout de #2344. No se integran ni duplican los módulos antes de
+su merge. #2348 ya fusionado por el orquestador como 99bbee4b4.
+
+Contrato acordado a través del orquestador: A expone un módulo Relative común
+(por ejemplo relative::scene) con VisualRow { row: domain Row, slot: f32,
+opacity: f32, alert: Option<Alert> }, además de cabecera. Alert contiene kind
+semántico y opacity ya interpolada, independiente de la opacidad de la fila.
+Los dos Looks solo eligen colores y pintan; no recalculan movimiento. No se
+crea en B otro módulo de movimiento ni se tocan fuente/diseño/cadencias.
+El arreglo de topología #2346 va en su rama propia isa-2346-monitores-rune;
+A conserva sus hooks windowless, retirada interna, waker y geometría actual.
+
+
+## VANTA-144 · B, rebase tras #2357 (16/11/2026)
+
+#2357 esta en nightly a63b17bed2456d0e9b626581ebd8bde43d6a470a. #2351
+conserva solo sus cinco commits propios sobre esa base y este registro. Renderer,
+host, main y Relative comun son los de nightly; Eficiencia sigue sin despacho.
+No se cambia el aspecto ni se afirma paridad. La decision de enum queda
+sustituida por el trait Widget solicitado por la raiz: esquema enviado al
+suborquestador, pendiente de ambos OK antes de escribir su PR separado.
+VisualRow.slot son coordenadas del layout, no indices de filas.
+#2359 se apila sobre este #2351 por sus fuentes y utilidades de captura.
+Delta queda local sobre nightly. Sin graficos, merge, release ni cambios Plane.
+Los resultados historicos no validan estos heads; checks actuales en los PRs.
+
+
+## VANTA-144 · B, textos largos de Eficiencia (16/11/2026)
+
+Pista y celdas conservan sus anchos/posiciones preparados segun GPUI; el texto
+completo llega ahora a Rune truncate y la medida historica solo posiciona la
+caja. No se usa recorte por clip ni se pierde el nombre completo para herramientas.
+Test de pista/nombre largos a 100/125/150 comprueba el glifo … en el stream CPU.
+QA en tools, dependencias sin mover; sin activar el kit. Los tests de recorte
+nuevos estan pendientes de cola/CI: intento CPU Mac abortado al bajar de 12GiB;
+solo se borro el target propio. La adaptacion Scene/controlador sigue aparte.
+
+
+### VANTA-144 · B, conexión local Eficiencia validada (16/11/2026)
+
+#2351: rebase local sobre nightly 4e8a4f987; base local 30fbba19a. Cambios
+sin publicar en Relative, su pintor Eficiencia y constructor. Consume Scene y
+VisualRow.slot en coordenadas de layout, con proyección/pausa/controlador únicos.
+El bloque de tests Relative previo se conserva literalmente. Cola Windows:
+Clippy -D warnings, 125 tests CPU (123 lib + 2 main) y política de distribución
+PASS, Rust 1.99.1/--locked/dos jobs. No acredita el head publicado del PR ni
+paridad visual. Sin gráficos, merge, release o cambios de derechos.
+Pendiente del sub-orquestador: política Eficiencia en el Motion/Tween común
+para copiar las curvas y tiempos GPUI (220–300 ms, fundido 120 ms, aviso 480 ms).
+No se modifica scene.rs antes de su OK ni se presenta esta conexión como lista.
+
+El sub-orquestador confirma el OK de raíz a los parámetros GPUI Eficiencia.
+Timing actual solo expone duraciones fijas: no permite elegir curvas ni el
+deslizamiento por distancia. Se envía esquema previo para ampliar ese Timing
+existente; scene.rs y crate::motion permanecen sin cambios hasta su aprobación.
+#2391 sigue en 7414d2c26, CI completa verde y revisión del delta pendiente.
+
 ## VANTA-144 · contrato Widget de Rune (16/11/2026)
 
 Esquema aprobado por raíz y sub-orquestador: solo las operaciones que ya usa

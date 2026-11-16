@@ -10,7 +10,7 @@ use vantare_domain::{
     format::Preferences,
     geometry::Size,
     relative::{self, Board},
-    widget_settings::relative::Settings,
+    widget_settings::{look::Look, relative::Settings},
 };
 
 const PAUSE_HEIGHT: f32 = 22.0;
@@ -83,16 +83,36 @@ impl Relative {
         self.settings == settings.normalized() && self.prefs == prefs
     }
     pub fn size(&self) -> Size {
-        self.painter.size()
+        if self.settings.design_system == Look::Eficiencia {
+            self.size_for(None)
+        } else {
+            self.painter.size()
+        }
     }
     pub fn size_for(&self, snapshot: Option<&Snapshot>) -> Size {
         let paused = snapshot.map_or(self.paused, |s| {
             s.state.source_state == vantare_domain::SourceState::Paused
         });
-        self.painter.size_for(paused)
+        if self.settings.design_system == Look::Eficiencia {
+            let (width, height) = crate::relative_eficiencia::natural_size(&self.settings);
+            Size {
+                width,
+                height: height + if paused { PAUSE_HEIGHT } else { 0.0 },
+            }
+        } else {
+            self.painter.size_for(paused)
+        }
     }
     pub fn view(&self) -> El {
-        self.painter.view()
+        if self.settings.design_system == Look::Eficiencia {
+            crate::relative_eficiencia::view_scene(
+                &self.visual,
+                &self.settings,
+                self.prefs.language,
+            )
+        } else {
+            self.painter.view()
+        }
     }
     pub fn policy(&mut self, reduced: bool, hz: u16, clock: f64) -> Update {
         if self.motion.policy(reduced, hz) {
@@ -129,8 +149,12 @@ impl Relative {
                     || self.boundary != boundary
                     || scene::waiting(&self.board)
                     || scene::waiting(&board);
-                self.motion
-                    .update(&board, &self.painter.targets(&board), snap, clock);
+                let targets = if self.settings.design_system == Look::Eficiencia {
+                    crate::relative_eficiencia::targets(&board, &self.settings)
+                } else {
+                    self.painter.targets(&board)
+                };
+                self.motion.update(&board, &targets, snap, clock);
                 self.board = board;
                 self.boundary = boundary;
             }
@@ -140,7 +164,14 @@ impl Relative {
     }
     pub fn animate(&mut self, clock: f64) -> Update {
         self.motion.advance(&self.board, clock);
-        let visual = scene::sample(self.board.clone(), &self.motion, self.paused, clock);
+        let mut visual = scene::sample(self.board.clone(), &self.motion, self.paused, clock);
+        if self.settings.design_system == Look::Eficiencia {
+            visual.strip.clear();
+            for row in &mut visual.rows {
+                row.traffic_opacity = 0.0;
+                row.alert = row.alert.filter(|a| a.kind != scene::AlertKind::Pits);
+            }
+        }
         if Arc::ptr_eq(&self.visual.board, &visual.board)
             && self.visual.rows == visual.rows
             && self.visual.strip == visual.strip
@@ -148,12 +179,24 @@ impl Relative {
         {
             return Update::default();
         }
-        let update = self.painter.sync(&visual);
+        let update = if self.settings.design_system == Look::Eficiencia {
+            Update {
+                build: true,
+                pixels: true,
+            }
+        } else {
+            self.painter.sync(&visual)
+        };
         self.visual = visual;
         update
     }
     pub fn schedule(&self, clock: f64, tx: &mut rune::Tx) {
-        if let Some(due) = self.motion.next_wake(clock, self.painter.has_strip()) {
+        let efficiency = self.settings.design_system == Look::Eficiencia;
+        if let Some(due) = self
+            .motion
+            .next_wake(clock, !efficiency && self.painter.has_strip())
+            && (!efficiency || due <= clock)
+        {
             tx.wake_at(due);
         }
     }
@@ -534,5 +577,108 @@ mod tests {
         assert!(!opened.motion.rows.is_empty());
         assert!(painter.update(&live, 3.0).build);
         assert_eq!(painter.size().height, height);
+    }
+}
+
+#[cfg(test)]
+mod eficiencia_tests {
+    use super::*;
+    use rune::{Env, Runtime};
+    use vantare_domain::widget_settings::look::Look;
+
+    #[test]
+    fn efficiency_uses_the_common_projection_layout_coordinates_and_retained_pause() {
+        let settings = Settings::eficiencia();
+        let mut relative = Relative::new(&settings, Preferences::default(), true, 5, 0.0);
+        let mut snapshot = crate::testdata::snapshot();
+        assert!(relative.update(&snapshot, 0.0).build);
+        assert_eq!(relative.settings.design_system, Look::Eficiencia);
+        let targets = crate::relative_eficiencia::targets(&relative.board, &settings);
+        for row in &relative.visual.rows {
+            let index = relative
+                .board
+                .slots
+                .iter()
+                .position(|r| r.as_ref().is_some_and(|r| r.id == row.row.id))
+                .expect("canonical slot");
+            assert_eq!(row.slot, targets[index]);
+        }
+        let board = relative.board.clone();
+        let height = relative.size().height;
+        snapshot.state.source_state = vantare_domain::SourceState::Paused;
+        snapshot.state.cars[2].driver.name = "MUST NOT REPLACE THE RETAINED PHOTO".into();
+        assert!(relative.update(&snapshot, 1.0).build);
+        assert!(Arc::ptr_eq(&board, &relative.board));
+        assert_eq!(
+            relative.size_for(Some(&snapshot)).height,
+            height + PAUSE_HEIGHT
+        );
+        let size = relative.size();
+        let mut rt = Runtime::with_text(
+            relative,
+            |r, _| r.view(),
+            (size.width, size.height),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        rt.frame(0.0);
+        rt.settle_all();
+        rt.frame(0.0);
+        assert!(rt.find("relative-eficiencia").is_some());
+        assert!(rt.find("pause-band").is_some());
+        assert!(
+            !rt.elements()
+                .iter()
+                .any(|e| e.text.as_deref().is_some_and(|t| t.contains("MUST NOT")))
+        );
+        assert!(!rt.state.update(&snapshot, 2.0).build);
+    }
+
+    #[test]
+    fn efficiency_has_no_traffic_pulse_clock_and_reduced_motion_finishes_in_the_shared_controller()
+    {
+        let settings = Settings {
+            class_scope: "all".into(),
+            ..Settings::eficiencia()
+        };
+        let mut relative = Relative::new(&settings, Preferences::default(), false, 5, 0.0);
+        let mut snapshot = crate::testdata::snapshot();
+        snapshot.state.cars[4].class = Some(vantare_domain::Class {
+            id: vantare_domain::ClassId(2),
+            name: "Hypercar".into(),
+        });
+        snapshot.state.cars[4].best_lap_s = vantare_domain::Quality::Reliable(90.0);
+        relative.update(&snapshot, 0.0);
+        assert!(relative.board.traffic.is_some());
+        assert!(
+            relative
+                .visual
+                .rows
+                .iter()
+                .all(|r| r.traffic_opacity == 0.0)
+        );
+        let size = relative.size();
+        let mut rt = Runtime::new(
+            relative,
+            |_, _| rune::el(),
+            (size.width, size.height),
+            Env::new(true, 1.0),
+        );
+        rt.poll = Some(|r, clock, tx| {
+            r.animate(clock);
+            r.schedule(clock, tx);
+            false
+        });
+        rt.frame(0.0);
+        assert_eq!(rt.wake_deadline(), None);
+        for _ in 0..30 {
+            assert!(!rt.frame(1.0));
+        }
+        snapshot.state.cars[2].relative_s = vantare_domain::Quality::Reliable(-0.5);
+        rt.state.update(&snapshot, 31.0);
+        rt.state.policy(true, 5, 31.0);
+        rt.frame(0.0);
+        assert_eq!(rt.wake_deadline(), None);
+        assert!(!rt.state.animate(32.0).build);
     }
 }

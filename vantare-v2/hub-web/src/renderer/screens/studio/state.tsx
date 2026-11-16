@@ -142,7 +142,8 @@ function useStateValue() {
           request.method === "studio.duplicate" &&
           (!(error instanceof HostFailure) ||
             error.detail.kind === "studioConflict" ||
-            error.detail.kind === "coreUnavailable")
+            error.detail.kind === "coreUnavailable" ||
+            error.detail.kind === "io")
         ) {
           // Read the current document after an uncertain write. Never replay it.
           try {

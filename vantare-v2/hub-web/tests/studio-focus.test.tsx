@@ -462,7 +462,13 @@ describe("Studio Ctrl+D", () => {
       ),
     ).toHaveLength(1);
   });
-  it.each(["rejected", "busy", "coreUnavailable", "studioConflict"] as const)(
+  it.each([
+    "rejected",
+    "busy",
+    "coreUnavailable",
+    "studioConflict",
+    "io",
+  ] as const)(
     "preserves the existing %s feedback, rereads only uncertain/conflicted results and never replays",
     async (kind) => {
       const original = Client.prototype.request;
@@ -513,7 +519,12 @@ describe("Studio Ctrl+D", () => {
           ([request]) => request.method === "studio.get",
         ),
       ).toHaveLength(
-        reads + Number(kind === "coreUnavailable" || kind === "studioConflict"),
+        reads +
+          Number(
+            kind === "coreUnavailable" ||
+              kind === "studioConflict" ||
+              kind === "io",
+          ),
       );
       expect(first.getAttribute("aria-pressed")).toBe("true");
       expect(document.activeElement).toBe(first);

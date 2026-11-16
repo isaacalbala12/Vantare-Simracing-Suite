@@ -17,6 +17,7 @@ use std::{
 mod types;
 pub use types::{Chunk, Lap, Sample, Signal};
 
+const MAX_RECORDINGS: usize = 256;
 const MAX_FRAME: usize = 2 * 1024 * 1024;
 pub type Cancel = Arc<AtomicBool>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -131,10 +132,13 @@ pub struct Reader {
     closed: bool,
 }
 impl Reader {
+    /// Solo acepta rutas devueltas por recordings(); no detecta enlaces/reparse
+    /// en los directorios padre de la ruta.
     pub fn open(exe: &Path, db: &Path, cancel: Cancel) -> Result<Self> {
         Self::open_with_timeout(exe, db, cancel, Duration::from_secs(30))
     }
     fn open_with_timeout(exe: &Path, db: &Path, cancel: Cancel, timeout: Duration) -> Result<Self> {
+        let deadline = Instant::now() + timeout;
         let original = stamp(db)?;
         if cancel.load(Ordering::Acquire) {
             return Err(error(ErrorCode::Cancelled, "Lectura cancelada"));
@@ -163,16 +167,7 @@ impl Reader {
             .spawn(move || {
                 let mut reader = BufReader::new(output);
                 loop {
-                    let mut bytes = Vec::new();
-                    let frame = match (&mut reader)
-                        .take((MAX_FRAME + 1) as u64)
-                        .read_until(b'\n', &mut bytes)
-                    {
-                        Ok(n) if n > 0 && n <= MAX_FRAME && bytes.last() == Some(&b'\n') => {
-                            serde_json::from_slice(&bytes).map_err(|e| invalid(e.to_string()))
-                        }
-                        _ => Err(invalid("Respuesta truncada o fuera de límites")),
-                    };
+                    let frame = read_response(&mut reader);
                     let failed = frame.is_err();
                     // Never block shutdown on an unsolicited stream of frames.
                     if sender.try_send(frame).is_err() || failed {
@@ -205,7 +200,7 @@ impl Reader {
             },
         };
         let result = (|| {
-            let ready = reader.receive()?;
+            let ready = reader.receive(deadline)?;
             let (watermark, finished, attempted) = state(&ready, "ready")?;
             reader.summary.watermark = watermark;
             reader.summary.finished = finished;
@@ -215,8 +210,7 @@ impl Reader {
         reader.finish_result(result)?;
         Ok(reader)
     }
-    fn receive(&self) -> Result<Value> {
-        let deadline = Instant::now() + self.timeout;
+    fn receive(&self, deadline: Instant) -> Result<Value> {
         loop {
             if self.cancel.load(Ordering::Acquire) {
                 return Err(error(ErrorCode::Cancelled, "Lectura cancelada"));
@@ -249,22 +243,25 @@ impl Reader {
             }
         }
     }
-    fn request(&mut self, command: &Value) -> Result<Value> {
+    fn request(&mut self, command: &Value, deadline: Instant) -> Result<Value> {
         if self.closed {
             return Err(error(ErrorCode::Cancelled, "Lector cerrado"));
+        }
+        if Instant::now() >= deadline {
+            return Err(error(ErrorCode::Deadline, "Plazo de storage agotado"));
         }
         serde_json::to_writer(&mut self.input, command).map_err(|e| invalid(e.to_string()))?;
         self.input
             .write_all(b"\n")
             .and_then(|()| self.input.flush())
             .map_err(|e| error(ErrorCode::Io, e.to_string()))?;
-        self.receive()
+        self.receive(deadline)
     }
-    fn unchanged(&mut self) -> Result<()> {
+    fn unchanged(&mut self, deadline: Instant) -> Result<()> {
         if stamp(&self.path)? != self.stamp {
             return Err(error(ErrorCode::Changed, "Archivo sustituido"));
         }
-        let value = self.request(&json!(["status"]))?;
+        let value = self.request(&json!(["status"]), deadline)?;
         if state(&value, "status")?
             != (
                 self.summary.watermark,
@@ -277,19 +274,20 @@ impl Reader {
         Ok(())
     }
     pub fn summaries(&mut self) -> Result<Summary> {
+        let deadline = Instant::now() + self.timeout;
         let result = (|| {
-            self.unchanged()?;
-            let frame = self.request(&json!(["summaries"]))?;
+            self.unchanged(deadline)?;
+            let frame = self.request(&json!(["summaries"]), deadline)?;
             if frame[0] != "summaries" || frame[1] != vantare_ipc::series::ANALYSIS_VERSION {
                 return Err(error(ErrorCode::Incompatible, "Versión de resúmenes"));
             }
             let total = frame[2].as_u64().ok_or_else(|| invalid("Total inválido"))?;
             let laps: Vec<Lap> =
                 serde_json::from_value(frame[3].clone()).map_err(|e| invalid(e.to_string()))?;
-            if laps.len() > 256 {
+            if laps.len() > MAX_RECORDINGS {
                 return Err(error(ErrorCode::Limit, "Más de 256 resúmenes"));
             }
-            self.unchanged()?;
+            self.unchanged(deadline)?;
             self.summary.total = total;
             self.summary.laps = laps;
             Ok(self.summary.clone())
@@ -297,7 +295,10 @@ impl Reader {
         self.finish_result(result)
     }
     pub fn cursor(&self, lap: &Lap) -> Result<Cursor> {
-        if !self.summary.laps.contains(lap) || lap.first_chunk == 0 {
+        if lap.first_chunk == 0 {
+            return Err(invalid("Primer chunk inválido: índice cero"));
+        }
+        if !self.summary.laps.contains(lap) {
             return Err(error(ErrorCode::Changed, "Resumen de otra apertura"));
         }
         Ok(Cursor {
@@ -309,10 +310,11 @@ impl Reader {
         })
     }
     pub fn page(&mut self, cursor: &mut Cursor, limit: usize) -> Result<Page> {
-        let result = self.read_page(cursor, limit);
+        let deadline = Instant::now() + self.timeout;
+        let result = self.read_page(cursor, limit, deadline);
         self.finish_result(result)
     }
-    fn read_page(&mut self, cursor: &mut Cursor, limit: usize) -> Result<Page> {
+    fn read_page(&mut self, cursor: &mut Cursor, limit: usize, deadline: Instant) -> Result<Page> {
         if !(1..=16).contains(&limit) {
             return Err(error(ErrorCode::Limit, "Página: 1..16 chunks"));
         }
@@ -320,7 +322,7 @@ impl Reader {
         {
             return Err(error(ErrorCode::Changed, "Identidad cambiada"));
         }
-        self.unchanged()?;
+        self.unchanged(deadline)?;
         let mut page = Page {
             chunks: 0,
             samples: vec![],
@@ -328,7 +330,7 @@ impl Reader {
         if cursor.done {
             return Ok(page);
         }
-        let frame = self.request(&json!(["plot-page", cursor.after, limit]))?;
+        let frame = self.request(&json!(["plot-page", cursor.after, limit]), deadline)?;
         if frame[0] != "plot-page" || frame[1] != "series-plot.v1" {
             return Err(error(ErrorCode::Incompatible, "Versión de muestras"));
         }
@@ -379,7 +381,7 @@ impl Reader {
             }
         }
         cursor.done |= cursor.after >= self.summary.watermark;
-        self.unchanged()?;
+        self.unchanged(deadline)?;
         Ok(page)
     }
     fn finish_result<T>(&mut self, result: Result<T>) -> Result<T> {
@@ -404,6 +406,18 @@ impl Reader {
 impl Drop for Reader {
     fn drop(&mut self) {
         self.close();
+    }
+}
+fn read_response(reader: &mut dyn BufRead) -> Result<Value> {
+    let mut bytes = Vec::new();
+    match reader
+        .take((MAX_FRAME + 1) as u64)
+        .read_until(b'\n', &mut bytes)
+    {
+        Ok(n) if n > 0 && n <= MAX_FRAME && bytes.last() == Some(&b'\n') => {
+            serde_json::from_slice(&bytes).map_err(|e| invalid(e.to_string()))
+        }
+        _ => Err(invalid("Respuesta truncada o fuera de límites")),
     }
 }
 fn state(value: &Value, tag: &str) -> Result<(u64, bool, u64)> {
@@ -445,7 +459,7 @@ pub fn recordings(root: &Path) -> Result<Vec<PathBuf>> {
                 .is_some_and(|e| e.eq_ignore_ascii_case("duckdb"))
         {
             paths.push(entry.path());
-            if paths.len() > 256 {
+            if paths.len() > MAX_RECORDINGS {
                 return Err(error(ErrorCode::Limit, "Más de 256 grabaciones"));
             }
         }

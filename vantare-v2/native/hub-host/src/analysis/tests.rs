@@ -45,6 +45,8 @@ fn catalog_boundaries_and_absent_directory() {
 #[cfg(windows)]
 mod real {
     use super::*;
+    use std::os::windows::fs::OpenOptionsExt;
+    use windows_sys::Win32::Storage::FileSystem::FILE_WRITE_ATTRIBUTES;
     fn exe() -> PathBuf {
         let path = std::env::current_exe()
             .unwrap()
@@ -294,8 +296,173 @@ mod real {
             sender
                 .send(Ok(json!(["error", code, "being used by another process"])))
                 .unwrap();
-            assert_eq!(reader.receive().unwrap_err().code, expected);
+            assert_eq!(
+                reader
+                    .receive(Instant::now() + reader.timeout)
+                    .unwrap_err()
+                    .code,
+                expected
+            );
         }
+    }
+    fn status(reader: &Reader) -> Value {
+        json!([
+            "status",
+            reader.summary.watermark,
+            reader.summary.finished,
+            reader.summary.attempted
+        ])
+    }
+    fn plot_chunk(index: u64, offset: usize) -> Value {
+        json!({"index":index,"offset":offset,"epoch":1,"session":3,"car":7,"lap":5,"gap":false,"samples":[{"speed":50.0}]})
+    }
+    fn inject(reader: &mut Reader, frames: Vec<Result<Value>>) {
+        let (sender, receiver) = mpsc::channel();
+        for frame in frames {
+            sender.send(frame).unwrap();
+        }
+        reader.output = receiver;
+    }
+    #[test]
+    fn summaries_and_pages_share_one_deadline_and_reap_the_helper() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 1, false);
+        for page in [false, true] {
+            let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+            let summary = reader.summaries().unwrap();
+            let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+            let timeout = Duration::from_secs(2);
+            reader.timeout = timeout;
+            let reply = if page {
+                json!(["plot-page", "series-plot.v1", [plot_chunk(1, 0)]])
+            } else {
+                reader
+                    .request(&json!(["summaries"]), Instant::now() + reader.timeout)
+                    .unwrap()
+            };
+            let frames = [status(&reader), reply, status(&reader)];
+            let (sender, receiver) = mpsc::channel();
+            reader.output = receiver;
+            // Esperas deliberadas: simulan tres respuestas lentas, tras el ready real.
+            // Cada una cabe en el plazo, pero juntas exceden el presupuesto único.
+            let pump = std::thread::spawn(move || {
+                for frame in frames {
+                    std::thread::sleep(timeout * 2 / 5);
+                    if sender.send(Ok(frame)).is_err() {
+                        break;
+                    }
+                }
+            });
+            let start = Instant::now();
+            let failure = if page {
+                reader.page(&mut cursor, 16).err().unwrap()
+            } else {
+                reader.summaries().err().unwrap()
+            };
+            let elapsed = start.elapsed();
+            assert_eq!(failure.code, ErrorCode::Deadline);
+            assert!(elapsed >= timeout && elapsed < timeout * 2, "{elapsed:?}");
+            assert!(reader.child.try_wait().unwrap().is_some());
+            assert!(reader.pump.is_none());
+            pump.join().unwrap();
+        }
+    }
+    #[test]
+    fn oversized_frame_is_rejected_and_reaps_the_helper() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 1, false);
+        let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+        let bytes = format!("[\"{}\"]\n", "x".repeat(MAX_FRAME));
+        let frame = read_response(&mut BufReader::new(bytes.as_bytes()));
+        inject(&mut reader, vec![frame]);
+        assert_eq!(reader.summaries().unwrap_err().code, ErrorCode::Unreadable);
+        assert!(reader.child.try_wait().unwrap().is_some());
+    }
+    #[test]
+    fn invalid_limits_and_chunk_order_are_rejected() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 2, false);
+        for limit in [0, 17] {
+            let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+            let summary = reader.summaries().unwrap();
+            let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+            assert_eq!(
+                reader.page(&mut cursor, limit).err().unwrap().code,
+                ErrorCode::Limit
+            );
+            assert!(reader.child.try_wait().unwrap().is_some());
+        }
+        for chunks in [
+            vec![plot_chunk(2, 1), plot_chunk(1, 0)],
+            vec![plot_chunk(1, 0), plot_chunk(1, 1)],
+            vec![plot_chunk(1, usize::MAX)],
+        ] {
+            let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+            let summary = reader.summaries().unwrap();
+            let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+            let frames = vec![
+                Ok(status(&reader)),
+                Ok(json!(["plot-page", "series-plot.v1", chunks])),
+            ];
+            inject(&mut reader, frames);
+            assert_eq!(
+                reader.page(&mut cursor, 16).err().unwrap().code,
+                ErrorCode::Unreadable
+            );
+            assert!(reader.child.try_wait().unwrap().is_some());
+        }
+    }
+    #[test]
+    fn offset_jump_is_an_explicit_gap_and_zero_first_chunk_is_invalid() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 2, false);
+        let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+        let summary = reader.summaries().unwrap();
+        let mut lap = summary.laps[0].clone();
+        lap.first_chunk = 0;
+        assert_eq!(
+            reader.cursor(&lap).err().unwrap().code,
+            ErrorCode::Unreadable
+        );
+        let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+        let frames = vec![
+            Ok(status(&reader)),
+            Ok(json!([
+                "plot-page",
+                "series-plot.v1",
+                [plot_chunk(1, 4), plot_chunk(2, 5)]
+            ])),
+            Ok(status(&reader)),
+        ];
+        inject(&mut reader, frames);
+        let page = reader.page(&mut cursor, 16).unwrap();
+        assert_eq!(page.samples.len(), 3);
+        assert!(page.samples[0].is_none());
+        assert_eq!(page.samples[1].unwrap().speed, Some(50.0));
+        assert_eq!(page.samples[2].unwrap().speed, Some(50.0));
+    }
+    #[test]
+    fn changed_file_stamp_with_open_reader_rejects_samples_and_reaps_helper() {
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 1, false);
+        let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+        let summary = reader.summaries().unwrap();
+        let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
+        // Cambia metadata real sin escribir datos ni interferir con el lock DuckDB.
+        fs::OpenOptions::new()
+            .access_mode(FILE_WRITE_ATTRIBUTES)
+            .open(dir.db())
+            .unwrap()
+            .set_times(
+                fs::FileTimes::new().set_modified(reader.stamp.modified + Duration::from_secs(1)),
+            )
+            .unwrap();
+        assert_ne!(stamp(&dir.db()).unwrap(), reader.stamp);
+        assert_eq!(
+            reader.page(&mut cursor, 16).err().unwrap().code,
+            ErrorCode::Changed
+        );
+        assert!(reader.child.try_wait().unwrap().is_some());
     }
     #[test]
     fn deadline_on_real_helper_cleans_up_open() {

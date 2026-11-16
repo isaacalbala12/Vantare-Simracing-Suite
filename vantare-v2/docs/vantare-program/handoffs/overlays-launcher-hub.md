@@ -13,6 +13,19 @@ vectores web verificados en el head anterior; gate del ajuste y CI pendientes.
 PR draft #2370; sin merge, promoción, release
 ni ejecución gráfica.
 
+## VANTA-144 · Relative multiclase en Rune, pintor aislado (16/11/2026)
+
+Raíz y sub-orquestador aprueban reutilizar directamente el ViewModel de domain
+como escena, con el dibujo estático del GPUI vigente: 440 × (77 + 24·filas),
+sin Motion, pulso ni reloj. La carpeta multiclass_relative contiene controlador,
+pintor y tests CPU; lib.rs solo declara el módulo para compilarlo y probarlo.
+No se conecta al host ni al registro: espera el trait Widget de B y el aviso
+del sub-orquestador. Ajustes, filtros, proyección y bytes guardados se conservan.
+Tests para fixture, huecos, 7/9 filas, fuente, tráfico/FCY, geometría y reposo.
+Formato, tokens y dos tests Python PASS; Clippy y tests Rust por la cola pendientes.
+PR draft y head se registran en #2333. Desviaciones visibles conocidas: ninguna
+observada; comparación GPUI/Rune pendiente en el PC. Sin gráficos ni Plane.
+
 ## VANTA-138 · D048, bandas existentes sin horario (16/11/2026)
 
 E permite editar una banda guardada por su seriesId sin exigir horario vigente;

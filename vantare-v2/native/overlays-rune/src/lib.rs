@@ -11,6 +11,7 @@ mod topologia_windows;
 pub mod feed;
 pub mod scene;
 
+mod motion;
 pub mod relative;
 mod renderer;
 pub mod stats;

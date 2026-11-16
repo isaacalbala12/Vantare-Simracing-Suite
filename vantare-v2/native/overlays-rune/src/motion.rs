@@ -1,4 +1,4 @@
-//! Finite Rune row/strip motion, stepped on the Runtime clock.
+//! Finite Rune motion shared by every widget, stepped on the Runtime clock.
 #[derive(Clone, Copy)]
 pub struct Tween {
     pub from: f32,

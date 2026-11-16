@@ -27,7 +27,7 @@ try {
         # Exercise the product's exact pinned Cargo on every runner.
         [IO.File]::WriteAllText((Join-Path $native 'rust-toolchain.toml'), "[toolchain]`nchannel = '1.99.1'`n")
         [IO.File]::WriteAllText((Join-Path $native 'src/main.rs'), "fn main() { println!(`"$branch`"); }`n")
-        foreach ($file in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1')) {
+        foreach ($file in @('compilar.ps1', 'target-slot.ps1', 'slot-workspace.ps1', 'queue-decision.ps1')) {
             Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $native "scripts/$file")
         }
         [IO.File]::WriteAllText((Join-Path $native 'scripts/slot-inputs.json'), (@'
@@ -65,3 +65,4 @@ try {
     if ($null -ne $previousRoot) { $env:VANTARE_TARGET_ROOT = $previousRoot }
     else { Remove-Item Env:VANTARE_TARGET_ROOT -ErrorAction SilentlyContinue }
 }
+

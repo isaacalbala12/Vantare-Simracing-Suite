@@ -236,7 +236,7 @@ describe("profile editor", () => {
       value,
     ) {
       const result = request.call(this, value);
-      if (value.method === "launcher.launch") {
+      if (value.method === "launcher.launchChecked") {
         response = result;
         notifySent();
       }

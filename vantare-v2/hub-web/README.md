@@ -197,3 +197,13 @@ Se espera NoCredential y ningún derecho concedido. Un núcleo sin raíz públic
 queda Unconfigured: Probe conecta, pero no admite consultas ordinarias de perfil.
 
 La preparación de miniaturas GPUI y sus requisitos de ejecución están en [la receta aplazada](docs/widget-thumbnails.md).
+
+### Lanzamientos manuales con revisión (#2028)
+
+Inicio, Launcher, rail, paleta y Ctrl+L usan `launcher.launchChecked`, sin caída
+a v1. El guard compartido captura la generación de cuenta observada al pedir
+el lanzamiento; no la sustituye si cambia mientras espera la respuesta.
+`Queued` conserva los avisos existentes de lanzamiento solicitado: no prueba
+que las aplicaciones estén listas. El resultado sigue viniendo del residente.
+Sin generación no se envía nada; Unsupported o una respuesta incierta no se
+reenvían. Los consumidores nativos legacy y el protocolo del Hub no cambian.

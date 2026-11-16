@@ -1,3 +1,15 @@
+## VANTA-138 · #2028: Electron usa lanzamiento checked (en curso)
+
+Rama `vantareapp/isa-2028-electron-checked`, desde nightly `9ff6f97e2`.
+Inicio, Launcher, rail, paleta y favorito pasan al método checked existente.
+El guard compartido captura la generación de cuenta al solicitar; sin ella
+no envía, ni cae a v1 ante Unsupported o incertidumbre. Los avisos de solicitado
+y los resultados del residente se conservan; no hay texto ni estado visual nuevo.
+Contratos y consumidores nativos legacy intactos, sin bump ni cambios del núcleo.
+Tests del guard, generación capturada y no reenvío, más las integraciones existentes.
+Gates web en curso; PR/CI pendientes. Se publica después de #2184.
+Sin gráficos, merge, release o despliegue propios. Preview espera a #2391.
+
 ## VANTA-138 · #2184: escaneo y pasos antes de lanzar (review corregida)
 
 PR #2432, rama `vantareapp/isa-2184-launch-discovery`, base nightly `9ff6f97e2`.

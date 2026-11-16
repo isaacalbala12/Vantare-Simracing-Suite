@@ -6,6 +6,7 @@ import type {
   LauncherView,
 } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
+import { useLauncherRequest } from "../../app/LauncherRequest";
 import { lock } from "../../app/navigation";
 import { SectionChrome } from "../../app/SectionChrome";
 import { useUi } from "../../app/UiState";
@@ -19,6 +20,7 @@ import { favoriteApps } from "./favorite-apps";
 export default function Home() {
   const { client, hello } = useHost();
   const query = useQueryClient();
+  const launchRequest = useLauncherRequest();
   const { data: core = offline } = useQuery<CoreStatus>({
     queryKey: coreKey,
     queryFn: skipToken,
@@ -136,19 +138,22 @@ export default function Home() {
     selected,
   );
   async function launch(favorite: boolean) {
-    if (!client || launching.current || !view) return;
+    if (!client || launching.current || launchRequest.busy() || !view) return;
     const profile = favorite ? view.favorite : choice;
     if (!profile) return;
     launching.current = true;
     setPending(true);
     setError(undefined);
     try {
-      const result = await client.request({
-        method: "launcher.launch",
+      const result = await launchRequest.request({
+        method: "launcher.launchChecked",
         profile,
         baseRevision: view.revision,
       });
-      if (result.method === "launcher.launch" && !result.accepted)
+      if (
+        result.method !== "launcher.launchChecked" ||
+        result.value.kind !== "queued"
+      )
         setError(t.failed);
     } catch {
       setError(t.failed);

@@ -20,6 +20,7 @@ export function create(context: MockContext): MockHandler {
   if (sceneName.startsWith("launcher-")) {
     core.rights = "connected";
     core.access.verified = true;
+    core.accountGeneration = "a".repeat(64);
   }
   const launcher = structuredClone(
     launcherFixture,
@@ -60,6 +61,7 @@ export function create(context: MockContext): MockHandler {
     });
   }
   if (sceneName === "inicio-base") {
+    core.accountGeneration = "a".repeat(64);
     const options = structuredClone(launcher.profiles[0].options);
     launcher.apps.forEach((app) => {
       app.available = true;
@@ -409,7 +411,22 @@ export function create(context: MockContext): MockHandler {
           id,
           result: { method: request.method, value: structuredClone(launcher) },
         };
-      case "launcher.launch": {
+      case "launcher.launch":
+      case "launcher.launchChecked": {
+        if (
+          request.method === "launcher.launchChecked" &&
+          !core.accountGeneration
+        )
+          return { kind: "failure", id, error: { kind: "coreUnavailable" } };
+        if (
+          request.method === "launcher.launchChecked" &&
+          (request.armedGeneration !== core.accountGeneration ||
+            core.rights !== "connected" ||
+            !core.access.verified ||
+            core.access.blocked ||
+            core.live)
+        )
+          return { kind: "failure", id, error: { kind: "denied" } };
         if (request.baseRevision !== launcher.revision)
           return {
             kind: "failure",
@@ -427,6 +444,16 @@ export function create(context: MockContext): MockHandler {
           !launcher.profiles.some((profile) => profile.id === request.profile)
         )
           return { kind: "failure", id, error: { kind: "denied" } };
+        if (request.method === "launcher.launchChecked") {
+          if (launcher.scanning)
+            return { kind: "failure", id, error: { kind: "busy" } };
+          if (
+            !launcher.profiles.some(
+              (profile) => profile.id === request.profile && profile.launchable,
+            )
+          )
+            return { kind: "failure", id, error: { kind: "denied" } };
+        }
         launcher.running = true;
         launcher.profiles.forEach((profile) => {
           profile.launchable = false;
@@ -435,7 +462,16 @@ export function create(context: MockContext): MockHandler {
         return {
           kind: "response",
           id,
-          result: { method: request.method, accepted: true },
+          result:
+            request.method === "launcher.launchChecked"
+              ? {
+                  method: request.method,
+                  value: {
+                    kind: "queued",
+                    request: id.toString(16).padStart(32, "0"),
+                  },
+                }
+              : { method: request.method, accepted: true },
         };
       }
 

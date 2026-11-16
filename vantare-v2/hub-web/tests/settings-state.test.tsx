@@ -141,9 +141,7 @@ function deferred() {
   });
   return { promise, release };
 }
-function hold(
-  method: "settings.update" | "launcher.favorite" | "launcher.launch",
-) {
+function hold(method: "settings.update" | "launcher.launchChecked") {
   const gate = deferred();
   const request = Client.prototype.request;
   const spy = vi
@@ -221,7 +219,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
           .mock.calls.some(
             ([request]) =>
               request.method === "launcher.favorite" ||
-              request.method === "launcher.launch",
+              request.method === "launcher.launchChecked",
           ),
       ).toBe(false);
     } finally {
@@ -299,7 +297,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     });
     expect(
       request.mock.calls.filter(
-        ([value]) => value.method === "launcher.launch",
+        ([value]) => value.method === "launcher.launchChecked",
       ),
     ).toHaveLength(0);
     await waitFor(() =>
@@ -327,7 +325,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     const request = vi
       .spyOn(Client.prototype, "request")
       .mockImplementation(async function (this: Client, value) {
-        if (value.method === "launcher.launch")
+        if (value.method === "launcher.launchChecked")
           throw new HostFailure({ kind: "launcherConflict", current });
         if (value.method === "launcher.get")
           return { method: "launcher.get", value: current };
@@ -341,13 +339,13 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     );
     expect(
       request.mock.calls.filter(
-        ([value]) => value.method === "launcher.launch",
+        ([value]) => value.method === "launcher.launchChecked",
       ),
     ).toHaveLength(1);
     expect(document.querySelector(".v-toast")).toBeTruthy();
   });
   it("launches a sidebar profile with its read revision, with one pending guard shared by Ctrl L", async () => {
-    const pending = hold("launcher.launch");
+    const pending = hold("launcher.launchChecked");
     const request = vi.spyOn(Client.prototype, "request");
     const hook = mount("launcher-ready", <Shell />);
     await loaded(hook);
@@ -372,10 +370,11 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     ).toHaveLength(0);
     expect(
       request.mock.calls.find(
-        ([value]) => value.method === "launcher.launch",
+        ([value]) => value.method === "launcher.launchChecked",
       )?.[0],
     ).toEqual({
-      method: "launcher.launch",
+      method: "launcher.launchChecked",
+      armedGeneration: "a".repeat(64),
       profile: view.profiles[0].id,
       baseRevision: view.revision,
     });
@@ -416,7 +415,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
         });
         expect(
           request.mock.calls.filter(
-            ([value]) => value.method === "launcher.launch",
+            ([value]) => value.method === "launcher.launchChecked",
           ),
         ).toHaveLength(0);
         await waitFor(() =>
@@ -505,7 +504,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     });
     expect(
       request.mock.calls.filter(
-        ([value]) => value.method === "launcher.launch",
+        ([value]) => value.method === "launcher.launchChecked",
       ),
     ).toHaveLength(0);
     const labels = {
@@ -529,8 +528,8 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
       this: Client,
       value,
     ) {
-      if (value.method === "launcher.launch")
-        return Promise.resolve({ method: "launcher.launch", accepted: false });
+      if (value.method === "launcher.launchChecked")
+        return Promise.reject(new HostFailure({ kind: "rejected" }));
       return original.call(this, value);
     });
     const hook = mount("launcher-ready", <Shell />);
@@ -557,7 +556,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
   it.each(["rail", "screen"])(
     "shares a pending launch lease when %s is clicked first",
     async (first) => {
-      const gate = hold("launcher.launch");
+      const gate = hold("launcher.launchChecked");
       const hook = mount("launcher-ready", <Shell />);
       await loaded(hook);
       await screen.findAllByRole("button", { name: /^Lanzar perfil/ });
@@ -591,7 +590,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
       this: Client,
       value,
     ) {
-      if (value.method === "launcher.favorite")
+      if (value.method === "launcher.launchChecked")
         return Promise.reject(new HostFailure({ kind: "io" }));
       return original.call(this, value);
     });
@@ -709,7 +708,7 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     await waitFor(() => expect(hook.result.current.error).toBeUndefined());
   });
   it("does not relaunch a favorite on repeated keydown or while pending", async () => {
-    const pending = hold("launcher.favorite");
+    const pending = hold("launcher.launchChecked");
     const hook = mount("launcher-ready", <Shell />);
     await loaded(hook);
     fireEvent.keyDown(window, { key: "l", ctrlKey: true, repeat: true });
@@ -720,14 +719,14 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
     await act(async () => pending.release());
   });
   it("does not dispatch the favorite shortcut without verified access", async () => {
-    const pending = hold("launcher.favorite");
+    const pending = hold("launcher.launchChecked");
     const hook = mount("ajustes-base", <Shell />);
     await loaded(hook);
     fireEvent.keyDown(window, { key: "l", ctrlKey: true });
     expect(pending.calls()).toBe(0);
   });
   it("never launches with extended modifiers or AltGr, with a positive Ctrl L control", async () => {
-    const pending = hold("launcher.favorite");
+    const pending = hold("launcher.launchChecked");
     const hook = mount("launcher-ready", <Shell />);
     await loaded(hook);
     fireEvent.keyDown(window, { key: "l", ctrlKey: true, altKey: true });
@@ -868,7 +867,7 @@ describe("Appearance context preview", () => {
     expect(
       request.mock.calls.some(([value]) =>
         [
-          "launcher.launch",
+          "launcher.launchChecked",
           "launcher.favorite",
           "profile.save",
           "settings.update",

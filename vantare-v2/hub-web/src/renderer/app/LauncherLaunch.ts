@@ -42,6 +42,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
     toast.add({ title, type: "warn" });
   };
   async function launch(profile?: string, baseRevision?: string) {
+    const favoriteRequest = profile === undefined;
     const current = cache.getQueryData<LauncherView>(["launcher"]) ?? snapshot;
     const status = cache.getQueryData<CoreStatus>(coreKey) ?? core;
     const selected = current?.profiles.find((item) => item.id === profile);
@@ -79,33 +80,61 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
       warn(reason ?? text.failed);
       return;
     }
+    if (favoriteRequest) {
+      if (!current) {
+        warn(text.loading);
+        return;
+      }
+      const favorite = current.profiles
+        .filter((item) => item.favorite)
+        .sort((a, b) => {
+          // Match Rust String::cmp, including names outside the BMP (UTF-16 differs).
+          const left = [...a.name],
+            right = [...b.name];
+          for (let i = 0; i < Math.min(left.length, right.length); i++) {
+            const order =
+              (left[i]?.codePointAt(0) ?? 0) - (right[i]?.codePointAt(0) ?? 0);
+            if (order) return order;
+          }
+          return left.length - right.length;
+        })[0];
+      if (!favorite) {
+        navigate("launcher");
+        toast.add({ title: t("shell.profileNeeded") });
+        return;
+      }
+      profile = favorite.id;
+      baseRevision = current.revision;
+    }
+    if (!profile || !baseRevision) {
+      warn(text.failed);
+      return;
+    }
     pending.current = true;
     setWaiting(true);
     try {
-      const reply = await launchRequest.request(
-        profile !== undefined && baseRevision !== undefined
-          ? { method: "launcher.launch", profile, baseRevision }
-          : { method: "launcher.favorite" },
-      );
+      const reply = await launchRequest.request({
+        method: "launcher.launchChecked",
+        profile,
+        baseRevision,
+      });
       if (!alive.current) return;
-      if (
-        reply.method !== "launcher.launch" &&
-        reply.method !== "launcher.favorite"
-      ) {
+      if (reply.method !== "launcher.launchChecked") {
         warn(text.failed);
         return;
       }
-      if (profile && reply.accepted)
+      if (!favoriteRequest && reply.value.kind === "queued")
         cache.setQueryData(["launcher", "selection"], profile);
       navigate("launcher");
-      if (profile) {
-        if (reply.accepted) toast.add({ title: text.sent });
+      if (!favoriteRequest) {
+        if (reply.value.kind === "queued") toast.add({ title: text.sent });
         else warn(text.failed);
       } else
         toast.add({
-          title: reply.accepted
-            ? t("shell.favoriteSent")
-            : t("shell.profileNeeded"),
+          title:
+            reply.value.kind === "queued"
+              ? t("shell.favoriteSent")
+              : t("shell.profileNeeded"),
         });
     } catch (failure) {
       if (!alive.current) return;
@@ -115,7 +144,7 @@ export function useLauncherLaunch(core: CoreStatus, snapshot?: LauncherView) {
       ) {
         cache.setQueryData(["launcher"], failure.detail.current);
         warn(text.changed);
-      } else warn(profile ? text.failed : t("shell.favoriteFailed"));
+      } else warn(favoriteRequest ? t("shell.favoriteFailed") : text.failed);
     } finally {
       pending.current = false;
       if (alive.current) setWaiting(false);

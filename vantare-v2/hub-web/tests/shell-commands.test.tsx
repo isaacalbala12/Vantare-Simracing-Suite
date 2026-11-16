@@ -178,7 +178,7 @@ function launchCalls(spy: {
   mock: { calls: [{ method: string }, ...unknown[]][] };
 }) {
   return spy.mock.calls.filter(
-    ([request]) => request.method === "launcher.launch",
+    ([request]) => request.method === "launcher.launchChecked",
   );
 }
 
@@ -358,7 +358,7 @@ it("updates the cache on a host conflict and announces it", async () => {
   const spy = vi
     .spyOn(Client.prototype, "request")
     .mockImplementation(async function (this: Client, request) {
-      if (request.method === "launcher.launch")
+      if (request.method === "launcher.launchChecked")
         throw new HostFailure({ kind: "launcherConflict", current });
       if (request.method === "launcher.get")
         return { method: "launcher.get", value: current };
@@ -383,9 +383,12 @@ it.each(["Enter", "click"])(
     const held = vi
       .spyOn(Client.prototype, "request")
       .mockImplementation(async function (this: Client, request) {
-        if (request.method === "launcher.launch") {
+        if (request.method === "launcher.launchChecked") {
           await hold;
-          return { method: "launcher.launch", accepted: true };
+          return {
+            method: "launcher.launchChecked",
+            value: { kind: "queued", request: "a".repeat(32) },
+          };
         }
         return send.call(this, request);
       });
@@ -416,13 +419,13 @@ it("blocks Ctrl L on a non-editable palette row, with a positive normal-screen c
   fireEvent.keyDown(row, { key: "l", ctrlKey: true });
   const calls = () =>
     spy.mock.calls.filter(([request]) =>
-      ["launcher.launch", "launcher.favorite"].includes(request.method),
+      ["launcher.launchChecked", "launcher.favorite"].includes(request.method),
     );
   expect(calls()).toHaveLength(0);
   await userEvent.setup().keyboard("{Escape}");
   fireEvent.keyDown(document.body, { key: "l", ctrlKey: true });
   await waitFor(() => expect(calls()).toHaveLength(1));
-  expect(calls()[0][0].method).toBe("launcher.favorite");
+  expect(calls()[0][0].method).toBe("launcher.launchChecked");
 });
 
 it.each(["strategy", "engineer"])(
@@ -654,4 +657,29 @@ it("announces unavailable zoom in the palette and reevaluates it on resize witho
   expect(
     request.mock.calls.filter(([value]) => value.method === "settings.update"),
   ).toHaveLength(0);
+});
+
+it("Ctrl L preserves native favorite name order and does not replace the selected profile", async () => {
+  await mount();
+  await userEvent.setup().keyboard("{Escape}");
+  const view = snapshot();
+  view.profiles[0].name = "\u{10000}";
+  view.profiles[1].name = "\uE000";
+  for (const profile of view.profiles) profile.favorite = true;
+  act(() => {
+    cache.setQueryData(["launcher"], view);
+    cache.setQueryData(["launcher", "selection"], view.profiles[0].id);
+  });
+  const send = vi.spyOn(Client.prototype, "request");
+  fireEvent.keyDown(document.body, { key: "l", ctrlKey: true });
+  await waitFor(() => expect(launchCalls(send)).toHaveLength(1));
+  expect(launchCalls(send)[0][0]).toEqual({
+    method: "launcher.launchChecked",
+    profile: view.profiles[1].id,
+    baseRevision: view.revision,
+    armedGeneration: "a".repeat(64),
+  });
+  expect(cache.getQueryData(["launcher", "selection"])).toBe(
+    view.profiles[0].id,
+  );
 });

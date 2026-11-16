@@ -19,7 +19,7 @@ import corpus from "../src/contract/generated/corpus/home.json";
 import * as host from "../src/renderer/app/Host";
 import { SectionChromeProvider } from "../src/renderer/app/SectionChrome";
 import { UiProvider, useUi } from "../src/renderer/app/UiState";
-import type { Client } from "../src/renderer/bridge/client";
+import { type Client, HostFailure } from "../src/renderer/bridge/client";
 import Home from "../src/renderer/screens/home/entry";
 import { NotificationsProvider } from "./notifications-provider";
 
@@ -74,7 +74,12 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
       ? { method: r.method, value: structuredClone(value) }
       : r.method === "pilot.load"
         ? { method: r.method, value: { fields: { publicName: "Isaac" } } }
-        : { method: r.method, accepted },
+        : accepted
+          ? {
+              method: r.method,
+              value: { kind: "queued", request: "a".repeat(32) },
+            }
+          : Promise.reject(new HostFailure({ kind: "rejected" })),
   );
   const client = {
     request,
@@ -93,6 +98,7 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   const query = new QueryClient();
   query.setQueryData(host.coreKey, {
     ...host.offline,
+    accountGeneration: "a".repeat(64),
     access: { ...host.offline.access, verified: true, blocked: false },
   });
   const ui = render(
@@ -111,7 +117,8 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
     await screen.findByRole("button", { name: "Lanzar perfil seleccionado" }),
   );
   expect(request).toHaveBeenCalledWith({
-    method: "launcher.launch",
+    method: "launcher.launchChecked",
+    armedGeneration: "a".repeat(64),
     profile: "profile-a",
     baseRevision: "a".repeat(64),
   });
@@ -128,7 +135,8 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   );
   expect(request).toHaveBeenCalledWith({ method: "home.get" });
   expect(request).toHaveBeenCalledWith({
-    method: "launcher.launch",
+    method: "launcher.launchChecked",
+    armedGeneration: "a".repeat(64),
     profile: "profile-a",
     baseRevision: "b".repeat(64),
   });
@@ -147,6 +155,7 @@ it("uses the exact read launcher revision and cancels the Home subscription on e
   await act(async () => {
     query.setQueryData(host.coreKey, {
       ...host.offline,
+      accountGeneration: "a".repeat(64),
       access: { ...host.offline.access, verified: false, blocked: false },
     });
   });
@@ -174,6 +183,7 @@ function harness(request: ReturnType<typeof vi.fn>, query = new QueryClient()) {
   vi.spyOn(host, "useHost").mockReturnValue({ client });
   query.setQueryData(host.coreKey, {
     ...host.offline,
+    accountGeneration: "a".repeat(64),
     access: { ...host.offline.access, verified: true, blocked: false },
   });
   render(
@@ -200,7 +210,7 @@ it("serializes two launch clicks while the first reply is pending", async () => 
   const request = vi.fn((r: Request) =>
     r.method === "home.get"
       ? Promise.resolve({ method: r.method, value })
-      : r.method === "launcher.launch"
+      : r.method === "launcher.launchChecked"
         ? new Promise((resolve) => {
             finish = resolve;
           })
@@ -217,10 +227,17 @@ it("serializes two launch clicks while the first reply is pending", async () => 
     fireEvent.click(button);
     fireEvent.click(button);
   });
-  expect(
-    request.mock.calls.filter(([r]) => r.method === "launcher.launch"),
-  ).toHaveLength(1);
-  await act(async () => finish({ method: "launcher.launch", accepted: true }));
+  await waitFor(() =>
+    expect(
+      request.mock.calls.filter(([r]) => r.method === "launcher.launchChecked"),
+    ).toHaveLength(1),
+  );
+  await act(async () =>
+    finish({
+      method: "launcher.launchChecked",
+      value: { kind: "queued", request: "a".repeat(32) },
+    }),
+  );
 });
 for (const scenario of ["previous", "during", "protected"] as const) {
   it(`preserves a ${scenario} profile draft when creating the first profile`, async () => {

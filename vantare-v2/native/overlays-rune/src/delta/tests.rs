@@ -520,7 +520,11 @@ fn check_shadows(runtime: &Runtime<Delta>, key: &str, expected: &[(f32, f32, f32
     let main = by_key(&elements, key).rect;
     for (index, (dx, dy, strength)) in expected.iter().enumerate() {
         let shadow = by_key(&elements, &format!("{key}-shadow-{index}"));
-        assert_eq!(shadow.rect, [main[0] + dx, main[1] + dy, main[2], main[3]], "{key} {index}");
+        assert_eq!(
+            shadow.rect,
+            [main[0] + dx, main[1] + dy, main[2], main[3]],
+            "{key} {index}"
+        );
         assert_eq!(
             shadow.text_color,
             Some(crate::vantare::alpha(

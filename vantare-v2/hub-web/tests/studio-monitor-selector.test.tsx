@@ -31,6 +31,7 @@ for (const sample of studioMonitorCases) {
     }
     fireEvent.click(screen.getByRole("button", { name: t.resolution }));
     const monitor = await screen.findByRole("radio", { name: /Tu monitor/ });
+    expect(screen.getAllByRole("radio")[0]).toBe(monitor);
     expect(monitor.textContent).toContain(
       `${sample.value.monitor.width} × ${sample.value.monitor.height}`,
     );

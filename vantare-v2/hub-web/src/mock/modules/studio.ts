@@ -144,6 +144,21 @@ export function create(context: MockContext): MockHandler {
       ? { ...monitorCase.value.monitor }
       : null;
   }
+  if (
+    sceneName === "studio-canvas-monitor" ||
+    sceneName === "studio-canvas-monitor-missing"
+  ) {
+    const sample = studioMonitorCases.find(
+      (item) =>
+        item.name ===
+        (sceneName.endsWith("-missing") ? "disconnected" : "native"),
+    );
+    if (sample) {
+      view.canvas = sample.value.canvas ? { ...sample.value.canvas } : null;
+      view.monitor = sample.value.monitor ? { ...sample.value.monitor } : null;
+      view.state = sample.value.state;
+    }
+  }
   if (context.settingsData && sceneName.startsWith("studio-")) {
     context.settingsData.track.exists = view.state !== "missing";
     context.settingsData.track.protected = view.state === "protected";

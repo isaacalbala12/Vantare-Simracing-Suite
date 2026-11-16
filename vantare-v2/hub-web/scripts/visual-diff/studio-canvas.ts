@@ -57,3 +57,38 @@ studioCanvasScenes["studio-canvas-info"] = {
     await page.getByRole("tooltip").filter({ hasText: t.note }).waitFor();
   },
 };
+
+for (const scene of [
+  "studio-canvas-monitor",
+  "studio-canvas-monitor-missing",
+]) {
+  studioCanvasScenes[scene] = {
+    mock: scene,
+    async prepare(page) {
+      await page
+        .getByRole("button", { name: /^(Studio|Overlays Studio)$/ })
+        .click();
+      await page.getByRole("button", { name: t.open, exact: true }).click();
+      if (scene.endsWith("-missing")) {
+        const button = page.getByRole("button", {
+          name: t.monitorNotDetected,
+          exact: true,
+        });
+        await button.waitFor();
+        await page
+          .locator(".v-studio-disabled-hint")
+          .filter({ has: button })
+          .hover();
+        await page
+          .getByRole("tooltip")
+          .filter({ hasText: t.monitorNotDetectedHelp })
+          .waitFor();
+      } else {
+        await page
+          .getByRole("button", { name: t.resolution, exact: true })
+          .click();
+        await page.getByRole("radio", { name: /Tu monitor/ }).waitFor();
+      }
+    },
+  };
+}

@@ -1,4 +1,5 @@
 name: Branch channel gates
+# Medicion temporal #1993: comentario inerte para forzar ambito global.
 
 on:
   push:

@@ -12,13 +12,26 @@ fn options(name: &str) -> Options {
     })
 }
 pub(super) fn photos() -> Vec<vantare_domain::Snapshot> {
+    named_photos().into_iter().map(|(_, photo)| photo).collect()
+}
+pub(super) fn named_photos() -> Vec<(String, vantare_domain::Snapshot)> {
     // Byte ranges of the unmodified GPUI catalogue snapshots (DTO validation below).
     let source =
         include_str!("../../../ui/fixtures/standings-vantare.scene.json").replace("\r\n", "\n");
     RANGES
         .iter()
         .map(|&(a, b)| {
-            vantare_ipc::snapshot_from_json(&source[a..b]).expect("fixture GPUI DTO v11")
+            let name = source[..a]
+                .rsplit_once("\"caption\": \"")
+                .expect("caption GPUI")
+                .1
+                .split('"')
+                .next()
+                .expect("nombre GPUI")
+                .to_owned();
+            let photo =
+                vantare_ipc::snapshot_from_json(&source[a..b]).expect("fixture GPUI DTO v11");
+            (name, photo)
         })
         .collect()
 }

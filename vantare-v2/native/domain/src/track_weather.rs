@@ -17,6 +17,38 @@ pub struct ViewModel {
     pub status: Status,
     pub status_text: &'static str,
     pub metrics: Vec<Metric>,
+    /// Humedad de la PISTA (`track_wetness`), en porcentaje entero visible; no del aire.
+    pub wet_percent: Option<u8>,
+}
+
+pub fn session_label(snapshot: &Snapshot, prefs: Preferences) -> String {
+    snapshot
+        .state
+        .session
+        .kind
+        .current()
+        .map_or_else(String::new, |kind| {
+            let name = format::session_kind(kind, prefs);
+            if kind.ranks_by_best_lap() {
+                let clock = format::clock(snapshot.state.session.remaining_s.current().copied());
+                format!("{name} · {clock}")
+            } else {
+                name
+            }
+        })
+        .to_uppercase()
+}
+
+#[allow(clippy::cast_possible_truncation)] // Mismo ángulo f32 que usa la flecha GPUI.
+pub fn wind_heading(snapshot: &Snapshot) -> Option<f32> {
+    snapshot
+        .state
+        .session
+        .weather
+        .wind_direction_rad
+        .current()
+        .filter(|value| value.is_finite())
+        .map(|value| *value as f32)
 }
 
 fn valid(value: f64, minimum: f64, maximum: f64) -> bool {
@@ -53,6 +85,13 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         },
     );
     let status_text = status.text(prefs.language).unwrap_or_default();
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    // current[5] está validado en 0..=1: porcentaje 0..=100.
+    let wet_percent = if status == Status::Ready {
+        current[5].map(|v| (v * 100.0).round() as u8)
+    } else {
+        None
+    };
     let mut metrics = Vec::new();
     if status == Status::Ready {
         let labels = match prefs.language {
@@ -105,6 +144,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         status,
         status_text,
         metrics,
+        wet_percent,
     }
 }
 

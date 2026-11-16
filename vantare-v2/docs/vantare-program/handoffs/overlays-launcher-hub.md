@@ -7,6 +7,12 @@ de domain, ahora públicos; GPUI los importa sin cambiar llamadas ni tests.
 Entrada conserva show_clutch = ajuste && hay dato, y borra pedals[0] si el
 ajuste está apagado. Pedales conserva show_clutch = ajuste, sin esa condición;
 su selector sigue usando el único WHEELS y el mismo fallback generic.
+Track_weather recibe session_label y wind_heading del controlador GPUI, sin
+cambiar la flecha ni su geometría. Su ViewModel expone wet_percent: humedad de
+la pista, redondeada desde track_wetness numérico validado, sin parsear textos.
+Regresión nueva en Workshop compara con el parseo anterior las tres fuentes
+de fixtures, idiomas/unidades, empates de porcentaje, calidades y ausencias;
+los tests existentes se conservan. Los pintores GPUI consumen ese campo.
 Sin tocar normalización, tablas, memoria, animación, Rune ni dependencias.
 El Full de domain incluye toda la selección Full de ui; también telemetría,
 por la cola del servidor. Gates y CI completa en el PR draft. Los widgets Rune

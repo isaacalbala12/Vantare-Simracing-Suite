@@ -316,10 +316,10 @@ function Group({
       aria-label={title}
       data-active={active}
     >
-      <h3>
+      <h2>
         {title}
         {help && <small>{help}</small>}
-      </h3>
+      </h2>
       {children}
     </section>
   );

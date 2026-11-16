@@ -384,8 +384,6 @@ jobs:
       VANTARE_CI_TARGET: '1'
       CARGO_INCREMENTAL: '0'
       CARGO_BUILD_JOBS: '4'
-      SCCACHE_LOG: 'debug'
-      SCCACHE_ERROR_LOG: ${{ runner.temp }}/sccache-server.log
     defaults:
       run:
         shell: pwsh
@@ -396,6 +394,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.sha }}
+      - name: Configure sccache debug log
+        shell: pwsh
+        run: |
+          "SCCACHE_LOG=debug" >> $env:GITHUB_ENV
+          "SCCACHE_ERROR_LOG=$($env:RUNNER_TEMP)\sccache-server.log" >> $env:GITHUB_ENV
       - uses: ./.github/actions/native-build-setup
       # Solo compila tests: fmt/clippy/legacy/captura corren en `native_lint`.
       - name: Native test archive for the changed scope

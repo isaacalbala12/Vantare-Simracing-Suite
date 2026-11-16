@@ -81,6 +81,18 @@ fn percent(value: Option<f64>) -> String {
     format::percent(value.map(|v| (v * 100.0).round() / 100.0))
 }
 
+/// Líneas del aviso de estado, tal como las pinta GPUI: los dos avisos largos
+/// ocupan dos líneas y el resto una; sin aviso, ninguna.
+#[must_use]
+pub fn status_lines(status_text: Option<&'static str>) -> Vec<&'static str> {
+    match status_text {
+        Some("DATOS ANTIGUOS") => vec!["DATOS", "ANTIGUOS"],
+        Some("DATA OUT OF DATE") => vec!["DATA OUT OF", "DATE"],
+        Some(status) => vec![status],
+        None => Vec::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,5 +246,62 @@ mod tests {
             true,
         );
         assert_eq!(vm.status_text, Some("DATA OUT OF DATE"));
+    }
+}
+
+#[cfg(test)]
+mod status_lines_tests {
+    use super::status_lines;
+    use crate::format::Language;
+    use crate::freshness::Status;
+
+    /// Copia literal de la partición que vivía en GPUI, para comparar.
+    fn legacy(status_text: Option<&'static str>) -> Vec<&'static str> {
+        match status_text {
+            Some("DATOS ANTIGUOS") => vec!["DATOS", "ANTIGUOS"],
+            Some("DATA OUT OF DATE") => vec!["DATA OUT OF", "DATE"],
+            Some(status) => vec![status],
+            None => vec![],
+        }
+    }
+
+    #[test]
+    fn keeps_the_two_line_partitions_in_both_languages() {
+        assert_eq!(status_lines(Some("DATOS ANTIGUOS")), ["DATOS", "ANTIGUOS"]);
+        assert_eq!(
+            status_lines(Some("DATA OUT OF DATE")),
+            ["DATA OUT OF", "DATE"]
+        );
+    }
+
+    #[test]
+    fn keeps_single_line_statuses_and_the_empty_case() {
+        for text in [
+            "SIN DATOS",
+            "NO DATA",
+            "DESCONECTADO",
+            "DISCONNECTED",
+            "ENERGÍA VIRTUAL NO DISPONIBLE EN LA SEÑAL EN VIVO",
+            "VIRTUAL ENERGY SIGNAL UNAVAILABLE",
+        ] {
+            assert_eq!(status_lines(Some(text)), [text]);
+        }
+        assert_eq!(status_lines(None), [] as [&str; 0]);
+    }
+
+    #[test]
+    fn matches_the_old_gpui_split_for_every_status_and_language() {
+        for status in [
+            Status::Ready,
+            Status::Missing,
+            Status::Stale,
+            Status::Disconnected,
+            Status::VirtualUnavailable,
+        ] {
+            for language in [Language::Es, Language::En] {
+                let text = status.text(language);
+                assert_eq!(status_lines(text), legacy(text), "{status:?} {language:?}");
+            }
+        }
     }
 }

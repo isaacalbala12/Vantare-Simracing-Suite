@@ -16,13 +16,9 @@ use vantare_domain::{
 
 pub const SIZE: (f32, f32) = (164.0, 132.0);
 
+/// Líneas del aviso: la partición vive en domain para que GPUI y Rune coincidan.
 fn status_lines(vm: &ViewModel) -> Vec<&'static str> {
-    match vm.status_text {
-        Some("DATOS ANTIGUOS") => vec!["DATOS", "ANTIGUOS"],
-        Some("DATA OUT OF DATE") => vec!["DATA OUT OF", "DATE"],
-        Some(status) => vec![status],
-        None => vec![],
-    }
+    car_damage_numbers::status_lines(vm.status_text)
 }
 
 fn height(vm: &ViewModel) -> f32 {

@@ -492,7 +492,7 @@ pub fn run(shared: Arc<Shared>, hidden: bool) -> Result<(), String> {
                 windows(displays, bus, hidden)
                     .into_iter()
                     .map(rune::AnyWindowSpec::from)
-                    .collect()
+                    .collect::<Vec<_>>()
             }
         },
     );

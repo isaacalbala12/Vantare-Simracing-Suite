@@ -65,9 +65,10 @@ impl Painter {
         view(self)
     }
     pub(super) fn sync(&mut self, scene: &Scene) -> Update {
-        let build = self.last.as_ref().is_none_or(|(board, prefs)| {
-            !Arc::ptr_eq(board, &scene.board) || *prefs != self.prefs
-        });
+        let build = self
+            .last
+            .as_ref()
+            .is_none_or(|(board, prefs)| !Arc::ptr_eq(board, &scene.board) || *prefs != self.prefs);
         if build {
             self.board = scene.board.clone();
             self.refresh();
@@ -124,7 +125,16 @@ fn view(state: &Painter) -> El {
         600,
         muted,
     );
-    root = right(root, &state.labels.fuel, SIZE.0 - 7.0, 14.0, 28.0, 28.0, 700, ink);
+    root = right(
+        root,
+        &state.labels.fuel,
+        SIZE.0 - 7.0,
+        14.0,
+        28.0,
+        28.0,
+        700,
+        ink,
+    );
     root = left(root, "MIN", 104.0, 58.0, ROW, 11.0, 600, muted);
     root = fitted(
         root,
@@ -435,7 +445,10 @@ mod tests {
 
     #[test]
     fn panel_and_frame_keep_the_two_gpui_layers() {
-        let instances = draw(Painter::new(Preferences::default(), &scene(42.0, &[], false)));
+        let instances = draw(Painter::new(
+            Preferences::default(),
+            &scene(42.0, &[], false),
+        ));
         let panel = at(&instances, 0.0, 0.0, SIZE.0, SIZE.1);
         assert!(
             panel

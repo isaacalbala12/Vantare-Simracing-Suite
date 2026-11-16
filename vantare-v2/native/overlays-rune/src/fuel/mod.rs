@@ -863,13 +863,7 @@ mod layout_bounds {
         let mut waiting = photo(11.3, 25);
         waiting.state.source_state = SourceState::Waiting;
         let mut thirsty = photo(11.3, 25);
-        thirsty
-            .state
-            .player
-            .as_mut()
-            .expect("player")
-            .fuel
-            .level_l = Reliable(42.0);
+        thirsty.state.player.as_mut().expect("player").fuel.level_l = Reliable(42.0);
         vec![
             (base(), thirsty.clone()),
             (

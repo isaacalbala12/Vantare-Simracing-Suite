@@ -416,6 +416,15 @@ jobs:
           pwsh -NoProfile -File scripts/compilar.ps1 pwsh -NoProfile -File scripts/ci-gates.ps1 @base @telemetry -ArchiveOnly
           if ($LASTEXITCODE) { throw 'Native test archive failed' }
 
+      - name: Upload cargo timings
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cargo-timings-${{ github.sha }}
+          path: ${{ runner.temp }}/vantare-targets/ci/cargo-timings/**
+          if-no-files-found: warn
+          retention-days: 1
+
       - name: Share one compiled test archive
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

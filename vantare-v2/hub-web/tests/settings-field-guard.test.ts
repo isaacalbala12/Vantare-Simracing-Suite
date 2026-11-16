@@ -5,7 +5,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
-it("rejects both missing fields and fields outside the contract at compile time", () => {
+// The TypeScript 7 compiler is a native child process. Spawning it inside the
+// test spent its 20 s budget on a cold process under load (#2486), so compile
+// once while this file loads and assert the result.
+function compileFixtures() {
   const generated = readFileSync(
     new URL("../src/contract/generated/settings.ts", import.meta.url),
     "utf8",
@@ -42,23 +45,32 @@ it("rejects both missing fields and fields outside the contract at compile time"
       ],
       { cwd: root, encoding: "utf8" },
     );
-    expect(result.error).toBeUndefined();
-    expect(result.status, result.stdout + result.stderr).not.toBe(0);
-    const errors = result.stdout
-      .split("\n")
-      .filter((line) => line.includes("error TS"));
-    expect(errors).toHaveLength(2);
-    expect(
-      errors.some(
-        (line) => line.includes("missing.ts") && line.includes("TS2322"),
-      ),
-    ).toBe(true);
-    expect(
-      errors.some(
-        (line) => line.includes("extra.ts") && line.includes("TS2322"),
-      ),
-    ).toBe(true);
+    return {
+      error: result.error,
+      status: result.status,
+      output: `${result.stdout}${result.stderr}`,
+      errors: (result.stdout ?? "")
+        .split("\n")
+        .filter((line) => line.includes("error TS")),
+    };
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+}
+const compiled = compileFixtures();
+
+it("rejects both missing fields and fields outside the contract at compile time", () => {
+  expect(compiled.error).toBeUndefined();
+  expect(compiled.status, compiled.output).not.toBe(0);
+  expect(compiled.errors).toHaveLength(2);
+  expect(
+    compiled.errors.some(
+      (line) => line.includes("missing.ts") && line.includes("TS2322"),
+    ),
+  ).toBe(true);
+  expect(
+    compiled.errors.some(
+      (line) => line.includes("extra.ts") && line.includes("TS2322"),
+    ),
+  ).toBe(true);
 }, 20000);

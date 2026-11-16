@@ -1,6 +1,8 @@
 //! Port literal de standings/eficiencia.rs y view.rs, por entregas.
 mod assets;
 mod control;
+#[cfg(test)]
+mod extras_tests;
 mod table;
 #[cfg(test)]
 mod table_tests;

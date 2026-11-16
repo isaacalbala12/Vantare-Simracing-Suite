@@ -603,4 +603,5 @@ null restablece. También `mode: null` restablece el modo nativo: el cable recha
 la cadena vacía. Relative conserva los valores guardados sin habilitar su edición
 de tiempos (el pintor los declara no soportados). `studioColumnFormatCases` sirve
 como vector compartido del host y los tests web. No se añaden métodos ni cambios
-en ipc/domain; la versión de protocolo la asigna el orquestador al fusionar.
+en ipc/domain. La raíz asignó v44 antes de fusionar, con el bump en un commit
+separado del cambio funcional.

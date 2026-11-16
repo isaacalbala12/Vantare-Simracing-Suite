@@ -4,8 +4,8 @@ Esquema aprobado por raíz: ampliar el patch existente con display/decimals para
 Standings lastLap/bestLap, en las tres sesiones. Una única forma de restablecer:
 null, incluido mode; el cable no acepta mode vacío. Relative no gana UI de tiempo.
 Se reutilizan studio.instance, revisión, CAS, merge de opacos y undo. Sin módulos,
-estado, dependencias ni cambios en ipc/domain. Versión pendiente de asignación al
-fusionar. Implementado en vantareapp/isa-1995-column-formats; draft enlazado en #1995.
+estado, dependencias ni cambios en ipc/domain. La raíz asignó v44 antes de fusionar;
+el bump va en un commit separado, sobre nightly v43. Implementado en vantareapp/isa-1995-column-formats; draft enlazado en #1995.
 Formato/exportador y Clippy verificados antes del rebase; producción D022 idéntica.
 Tras integrar D111, ambos tipos/lint y531 tests web correctos.
 El último Nextest local quedó pendiente tras20min sin RAM, con autorización del

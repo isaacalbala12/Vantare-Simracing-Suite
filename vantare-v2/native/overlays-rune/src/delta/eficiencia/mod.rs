@@ -68,6 +68,9 @@ impl DeltaEficiencia {
             height: HEIGHT,
         }
     }
+    pub fn size_for(&self, _snapshot: Option<&Snapshot>) -> Size {
+        self.size()
+    }
     pub fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update {
         let board = project(&self.settings, snapshot, self.prefs);
         if self.last.as_ref() == Some(&board) {

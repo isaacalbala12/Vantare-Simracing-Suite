@@ -1,7 +1,6 @@
 //! Fuel: projection, retención en pausa y los dos Looks. Un solo módulo de
 //! escena pura; cada Look añade su pintura y sus textos.
 mod eficiencia;
-mod eficiencia_tokens;
 mod layout;
 mod render;
 pub mod scene;
@@ -774,7 +773,6 @@ mod extra_tests {
     }
 }
 
-
 #[cfg(test)]
 mod layout_bounds {
     use super::*;
@@ -822,6 +820,39 @@ mod layout_bounds {
             runtime.frame(0.0);
             crate::testdata::assert_inside_window(&mut runtime, (width, height));
         }
+    }
+
+    #[test]
+    fn no_layer_falls_outside_the_efficiency_window() {
+        fn view(fuel: &Fuel, _: &mut rune::Cx<Fuel>) -> El {
+            fuel.view()
+        }
+        fn poll(fuel: &mut Fuel, clock: f64, tx: &mut rune::Tx) -> bool {
+            let update = fuel.animate(clock);
+            fuel.schedule(clock, tx);
+            update.build
+        }
+        let mut fuel = Fuel::new(
+            &Settings {
+                design_system: Look::Eficiencia,
+                ..Settings::default()
+            },
+            Preferences::default(),
+            true,
+            4,
+            0.0,
+        );
+        fuel.update(&photo(11.3, 25), 0.0);
+        let mut runtime = rune::Runtime::with_text(
+            fuel,
+            view,
+            (523.0, 272.0),
+            rune::Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::eficiencia::FONTS, ("Inter W400", "Inter W400")),
+        );
+        runtime.poll = Some(poll);
+        runtime.frame(0.0);
+        crate::testdata::assert_inside_window(&mut runtime, (523.0, 272.0));
     }
 }
 

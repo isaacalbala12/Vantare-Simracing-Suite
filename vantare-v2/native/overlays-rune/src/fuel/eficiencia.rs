@@ -1,9 +1,9 @@
-//! Look Eficiencia de Fuel: 523×272, sin animación. Copia la geometría de GPUI;
-//! los textos salen de `domain` para no duplicarlos.
-use super::eficiencia_tokens::{self as tokens, color, fit, font};
+//! Look Eficiencia de Fuel: 523×272, sin animación. Geometría de GPUI; los
+//! textos salen de `domain` y los tokens y medidas del módulo común Eficiencia.
 use super::scene::{Bar, Scene};
+use crate::eficiencia::{self, INK, MUTED, PANEL, RADIUS};
 use crate::widget::Update;
-use rune::{Align, Color, El, el, text};
+use rune::{Color, El, el};
 use std::sync::Arc;
 use vantare_domain::{
     format::Preferences,
@@ -96,120 +96,90 @@ fn view(state: &Painter) -> El {
         .key("fuel-efi-view")
         .size(SIZE.0, SIZE.1)
         .motion(rune::Spring::NONE)
-        .child(
-            el().key("efi-panel")
-                .size(SIZE.0, SIZE.1)
-                .radius(tokens::RADIUS)
-                .fill(color(tokens::PANEL, 0.87))
-                .pin(Some(0.0), Some(0.0), None, None),
-        )
-        .child(
-            el().key("efi-shine")
-                .size(SIZE.0, SIZE.1)
-                .radius(tokens::RADIUS)
-                .pin(Some(0.0), Some(0.0), None, None)
-                .linear_gradient(
-                    std::f32::consts::PI * 120.0 / 180.0,
-                    [(0.0, color(0xffffff, 0.03)), (1.0, color(0xffffff, 0.0))],
-                ),
-        );
+        .child(panel());
     if let Some(status) = state.labels.status {
+        let style = eficiencia::font(14.0, 600, 0.14);
+        let x = (SIZE.0 - eficiencia::width(status, style)) / 2.0;
+        let base = eficiencia::baseline((SIZE.1 - 14.0) / 2.0, 14.0, 14.0);
         return root
-            .child(cell(
+            .child(eficiencia::label(
                 status,
-                "status",
-                [0.0, (SIZE.1 - 14.0) / 2.0, SIZE.0, 14.0],
-                14.0,
-                600.0,
-                color(tokens::MUTED, 1.0),
-                Align::Center,
-                None,
+                x,
+                base,
+                style,
+                eficiencia::color(MUTED, 1.0),
             ))
             .child(frame());
     }
-    root = root
-        .child(cell(
-            state.labels.labels[0],
-            "title",
-            [7.0, 22.0, SIZE.0 - 14.0, 11.0],
-            11.0,
-            600.0,
-            color(tokens::MUTED, 1.0),
-            Align::Start,
-            None,
-        ))
-        .child(cell(
-            &state.labels.fuel,
-            "fuel",
-            [0.0, 14.0, SIZE.0 - 7.0, 28.0],
-            28.0,
-            700.0,
-            color(tokens::INK, 1.0),
-            Align::End,
-            None,
-        ))
-        .child(cell(
-            "MIN",
-            "min-caption",
-            [104.0, 58.0, 30.0, ROW],
-            11.0,
-            600.0,
-            color(tokens::MUTED, 1.0),
-            Align::Start,
-            None,
-        ))
-        .child(cell(
-            &state.labels.minimum,
-            "min-value",
-            [134.0, 58.0, 87.0, ROW],
-            14.0,
-            650.0,
-            color(tokens::INK, 1.0),
-            Align::Start,
-            Some(87.0),
-        ))
-        .child(cell(
-            "MAX",
-            "max-caption",
-            [250.0, 58.0, 30.0, ROW],
-            11.0,
-            600.0,
-            color(tokens::MUTED, 1.0),
-            Align::Start,
-            None,
-        ))
-        .child(cell(
-            &state.labels.maximum,
-            "max-value",
-            [280.0, 58.0, 87.0, ROW],
-            14.0,
-            650.0,
-            color(tokens::INK, 1.0),
-            Align::Start,
-            Some(87.0),
-        ));
+    let ink = eficiencia::color(INK, 1.0);
+    let muted = eficiencia::color(MUTED, 1.0);
+    let amber = eficiencia::color(AMBER, 1.0);
+    root = left(
+        root,
+        state.labels.labels[0],
+        7.0,
+        22.0,
+        11.0,
+        11.0,
+        600,
+        muted,
+    );
+    root = right(
+        root,
+        &state.labels.fuel,
+        SIZE.0 - 7.0,
+        14.0,
+        28.0,
+        28.0,
+        700,
+        ink,
+    );
+    root = left(root, "MIN", 104.0, 58.0, ROW, 11.0, 600, muted);
+    root = fitted(
+        root,
+        &state.labels.minimum,
+        134.0,
+        58.0,
+        ROW,
+        14.0,
+        650,
+        ink,
+        87.0,
+    );
+    root = left(root, "MAX", 250.0, 58.0, ROW, 11.0, 600, muted);
+    root = fitted(
+        root,
+        &state.labels.maximum,
+        280.0,
+        58.0,
+        ROW,
+        14.0,
+        650,
+        ink,
+        87.0,
+    );
     if state.labels.show_projection {
-        root = root
-            .child(cell(
-                state.labels.stops_label,
-                "stops-caption",
-                [164.0, 127.0, 60.0, ROW],
-                11.0,
-                600.0,
-                color(tokens::MUTED, 1.0),
-                Align::Start,
-                None,
-            ))
-            .child(cell(
-                &state.labels.stops,
-                "stops-value",
-                [240.0, 127.0, 90.0, ROW],
-                14.0,
-                650.0,
-                color(AMBER, 1.0),
-                Align::Start,
-                Some(90.0),
-            ));
+        root = left(
+            root,
+            state.labels.stops_label,
+            164.0,
+            127.0,
+            ROW,
+            11.0,
+            600,
+            muted,
+        );
+        root = fitted(
+            root,
+            &state.labels.stops,
+            240.0,
+            127.0,
+            ROW,
+            14.0,
+            650,
+            amber,
+            90.0,
+        );
     }
     let values = [
         &state.labels.average,
@@ -223,77 +193,69 @@ fn view(state: &Painter) -> El {
         }
         let top = 58.0 + index as f32 * ROW;
         root = root
-            .child(
-                el().key(format!("rule-{index}"))
-                    .size(SIZE.0 - 14.0, 1.0)
-                    .fill(color(tokens::INK, 0.08))
-                    .pin(Some(7.0), Some(top), None, None),
-            )
-            .child(cell(
-                state.labels.labels[index + 1],
-                format!("label-{index}"),
-                [7.0, top, 200.0, ROW],
-                11.0,
-                600.0,
-                color(tokens::MUTED, 1.0),
-                Align::Start,
-                None,
+            .child(eficiencia::rect(
+                7.0,
+                top,
+                SIZE.0 - 14.0,
+                1.0,
+                eficiencia::color(INK, 0.08),
             ))
-            .child(cell(
-                value,
-                format!("value-{index}"),
-                [0.0, top, SIZE.0 - 7.0, ROW],
-                14.0,
-                650.0,
-                if index >= 2 {
-                    color(AMBER, 1.0)
-                } else {
-                    color(tokens::INK, 1.0)
-                },
-                Align::End,
-                None,
+            .child(eficiencia::label(
+                state.labels.labels[index + 1],
+                7.0,
+                eficiencia::baseline(top, ROW, 11.0),
+                eficiencia::font(11.0, 600, 0.0),
+                muted,
             ));
+        root = right(
+            root,
+            value,
+            SIZE.0 - 7.0,
+            top,
+            ROW,
+            14.0,
+            650,
+            if index >= 2 { amber } else { ink },
+        );
     }
     if !state.history.is_empty() {
-        root = root.child(cell(
+        root = left(
+            root,
             state.labels.history_label,
-            "history-title",
-            [7.0, HISTORY_TOP - ROW, SIZE.0 - 14.0, ROW],
+            7.0,
+            HISTORY_TOP - ROW,
+            ROW,
             11.0,
-            600.0,
-            color(tokens::MUTED, 1.0),
-            Align::Start,
-            None,
-        ));
+            600,
+            muted,
+        );
         for (index, (lap, consumed)) in state.history.iter().enumerate() {
-            let [left, top, width, _] = history_cell(index, state.history.len());
+            let [left_edge, top, width, _] = history_cell(index, state.history.len());
             root = root
-                .child(
-                    el().key(format!("history-{index}"))
-                        .size(width, ROW - 1.0)
-                        .fill(color(tokens::INK, 0.03))
-                        .pin(Some(left), Some(top), None, None),
-                )
-                .child(cell(
-                    lap,
-                    format!("history-lap-{index}"),
-                    [left + 6.0, top, width - 12.0, ROW],
-                    11.0,
-                    600.0,
-                    color(tokens::MUTED, 1.0),
-                    Align::Start,
-                    None,
+                .child(eficiencia::rect(
+                    left_edge,
+                    top,
+                    width,
+                    ROW - 1.0,
+                    eficiencia::color(INK, 0.03),
                 ))
-                .child(cell(
-                    consumed,
-                    format!("history-value-{index}"),
-                    [0.0, top, left + width - 6.0, ROW],
-                    14.0,
-                    700.0,
-                    color(tokens::INK, 1.0),
-                    Align::End,
-                    None,
+                .child(eficiencia::label(
+                    lap,
+                    left_edge + 6.0,
+                    eficiencia::baseline(top, ROW, 11.0),
+                    eficiencia::font(11.0, 600, 0.0),
+                    muted,
                 ));
+            root = right(
+                root,
+                consumed,
+                left_edge + width - 6.0,
+                top,
+                ROW,
+                14.0,
+                700,
+                ink,
+            );
         }
     }
     root.child(frame())
@@ -303,13 +265,35 @@ fn view(state: &Painter) -> El {
 fn frame() -> El {
     el().key("efi-frame")
         .size(SIZE.0, SIZE.1)
-        .radius(tokens::RADIUS)
-        .border(1.0, color(0xffffff, 0.12))
+        .radius(RADIUS)
+        .border(1.0, eficiencia::color(0xffffff, 0.12))
         .border_sides(
             [1.0, 0.0, 0.0, 0.0],
-            color(0xffffff, (0.24 - 0.12) / (1.0 - 0.12)),
+            eficiencia::color(0xffffff, (0.24 - 0.12) / (1.0 - 0.12)),
         )
         .pin(Some(0.0), Some(0.0), None, None)
+}
+
+/// Fondo del panel con su brillo: mismo degradado que GPUI (120°).
+fn panel() -> El {
+    el().key("efi-panel")
+        .size(SIZE.0, SIZE.1)
+        .radius(RADIUS)
+        .fill(eficiencia::color(PANEL, 0.87))
+        .pin(Some(0.0), Some(0.0), None, None)
+        .child(
+            el().key("efi-shine")
+                .absolute(0.0, 0.0)
+                .size(SIZE.0, SIZE.1)
+                .radius(RADIUS)
+                .linear_gradient(
+                    std::f32::consts::PI * 120.0 / 180.0,
+                    [
+                        (0.0, eficiencia::color(0xffffff, 0.03)),
+                        (0.38, eficiencia::color(0xffffff, 0.0)),
+                    ],
+                ),
+        )
 }
 
 /// Caja de una vuelta del historial: dos columnas de cuatro como máximo.
@@ -324,26 +308,62 @@ fn history_cell(index: usize, count: usize) -> [f32; 4] {
     ]
 }
 
-#[allow(clippy::too_many_arguments)] // Texto: sitio, tamaño, tinta y recorte.
-fn cell(
+fn style(size: f32, weight: u16) -> rune::TextStyle {
+    eficiencia::font(size, weight, 0.0)
+}
+
+/// Texto alineado a la izquierda, con la línea base CSS de GPUI.
+#[allow(clippy::too_many_arguments)] // Un texto: sitio, línea, fuente y tinta.
+fn left(
+    root: El,
     value: &str,
-    key: impl Into<String>,
-    area: [f32; 4],
+    x: f32,
+    top: f32,
+    line_height: f32,
     size: f32,
-    weight: f32,
+    weight: u16,
     ink: Color,
-    align: Align,
-    fit_to: Option<f32>,
 ) -> El {
-    let [x, y, width, height] = area;
-    let value = fit_to.map_or_else(|| value.to_string(), |max| fit(value, max, size, weight));
-    text(&value)
-        .key(key)
-        .font(font(size, weight))
-        .color(ink)
-        .size(width, height)
-        .align(align)
-        .pin(Some(x), Some(y), None, None)
+    root.child(eficiencia::label(
+        value,
+        x,
+        eficiencia::baseline(top, line_height, size),
+        style(size, weight),
+        ink,
+    ))
+}
+
+/// Texto alineado a la derecha por su borde derecho, como `right − ancho`.
+#[allow(clippy::too_many_arguments)] // Un texto: sitio, línea, fuente y tinta.
+fn right(
+    root: El,
+    value: &str,
+    edge: f32,
+    top: f32,
+    line_height: f32,
+    size: f32,
+    weight: u16,
+    ink: Color,
+) -> El {
+    let x = edge - eficiencia::width(value, style(size, weight));
+    left(root, value, x, top, line_height, size, weight, ink)
+}
+
+/// Valor recortado con puntos suspensivos al ancho que fija GPUI.
+#[allow(clippy::too_many_arguments)] // Un texto: sitio, línea, fuente y tinta.
+fn fitted(
+    root: El,
+    value: &str,
+    x: f32,
+    top: f32,
+    line_height: f32,
+    size: f32,
+    weight: u16,
+    ink: Color,
+    max: f32,
+) -> El {
+    let text = eficiencia::fit(value, style(size, weight), max);
+    left(root, &text, x, top, line_height, size, weight, ink)
 }
 
 #[cfg(test)]
@@ -455,14 +475,14 @@ mod tests {
         let mut photo = crate::fuel::photo(11.3, 25);
         photo.state.player.as_mut().expect("player").fuel.level_l = Reliable(42.0);
         let board = crate::fuel::board_of(&photo);
-        let labels = fuel_strategy::labels(&board, Preferences::default());
-        assert!(labels.show_projection);
-        let scene = Scene {
-            board: Arc::new(board),
-            bars: Vec::new(),
-            border: 0.0,
-        };
-        let painter = Painter::new(Preferences::default(), &scene);
+        let painter = Painter::new(
+            Preferences::default(),
+            &Scene {
+                board: Arc::new(board),
+                bars: Vec::new(),
+                border: 0.0,
+            },
+        );
         let _ = painter.view();
     }
 }

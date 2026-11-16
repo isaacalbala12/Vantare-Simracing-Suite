@@ -298,17 +298,15 @@ describe("Studio A honest states", () => {
     fireEvent.keyDown(await listRow("Standings"), { key: " " });
     await screen.findByRole("alert");
     expect(
-      screen
-        .getByRole("button", { name: /^Standings (?:Visible|Oculto)/ })
-        .getAttribute("aria-label"),
-    ).toContain("90 %");
+      screen.getByRole("button", { name: /^Standings .*90 %/ }),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: t.retry }));
     await waitFor(() =>
       expect(
-        screen
-          .getByRole("button", { name: /^Standings (?:Visible|Oculto)/ })
-          .getAttribute("aria-label"),
-      ).toContain(t.hidden),
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBeTruthy(),
     );
     const writes = requests.mock.calls.filter(
       ([r]) => r.method === "studio.visibility",
@@ -432,12 +430,20 @@ describe("Studio A honest states", () => {
     fireEvent.keyDown(row, { key: " " });
     await screen.findByRole("alert");
     expect(screen.getByRole("status", { name: t.notSaved })).toBeTruthy();
-    expect(row.getAttribute("aria-label")).toContain(t.visible);
+    expect(
+      screen.getByRole("button", {
+        name: new RegExp(`^Standings ${t.visible}`),
+      }),
+    ).toBe(row);
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: t.retry }));
     await waitFor(() =>
-      expect(row.getAttribute("aria-label")).toContain(t.hidden),
+      expect(
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBe(row),
     );
     const writes = spy.mock.calls.filter(
       ([r]) => r.method === "studio.visibility",
@@ -455,7 +461,11 @@ describe("Studio A honest states", () => {
       .setup()
       .click(screen.getByRole("button", { name: t.discard }));
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(row.getAttribute("aria-label")).toContain(t.visible);
+    expect(
+      screen.getByRole("button", {
+        name: new RegExp(`^Standings ${t.visible}`),
+      }),
+    ).toBe(row);
     expect(
       spy.mock.calls.filter(([r]) => r.method === "studio.visibility"),
     ).toHaveLength(1);

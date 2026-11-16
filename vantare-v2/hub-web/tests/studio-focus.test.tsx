@@ -209,7 +209,11 @@ describe("Studio Foco structure", () => {
       ).toBe(true),
     );
     await waitFor(() =>
-      expect(first.getAttribute("aria-label")).toContain(t.hidden),
+      expect(
+        screen.getByRole("button", {
+          name: new RegExp(`^Standings ${t.hidden}`),
+        }),
+      ).toBe(first),
     );
     expect(document.activeElement).toBe(first);
   });

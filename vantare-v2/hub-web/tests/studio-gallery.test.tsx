@@ -495,7 +495,9 @@ describe("Studio Foco interactions", () => {
   it("puts a filtered card in the real Tab order when selection is outside the filter", async () => {
     mount("studio-muchos");
     const user = userEvent.setup();
-    const delta = await screen.findByRole("button", { name: /^Delta 1,/ });
+    const delta = await screen.findByRole("button", {
+      name: /^Delta 1 (?:Visible|Oculto)/,
+    });
     const article = delta.closest<HTMLElement>(".v-focus-row");
     if (!article) throw new Error("Missing card");
     await user.click(
@@ -507,7 +509,7 @@ describe("Studio Foco interactions", () => {
     await user.click(screen.getByRole("button", { name: t.filters.hidden }));
     await user.tab();
     expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: /^Delta 1,/ }),
+      screen.getByRole("button", { name: /^Delta 1 (?:Visible|Oculto)/ }),
     );
   });
   it("removes the selected widget, focuses its neighbor and offers Undo", async () => {

@@ -1,7 +1,7 @@
 //! Look Eficiencia de Fuel: 523×272, sin animación. Geometría de GPUI; los
 //! textos salen de `domain` y los tokens y medidas del módulo común Eficiencia.
 use super::scene::{Bar, Scene};
-use crate::eficiencia::{self, INK, MUTED, PANEL, RADIUS};
+use crate::eficiencia::{self, INK, MUTED};
 use crate::widget::Update;
 use rune::{Color, El, el};
 use std::sync::Arc;

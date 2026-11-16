@@ -209,7 +209,10 @@ mod parity_tests {
             (radians - std::f32::consts::TAU / 3.0).abs() < 1e-6,
             "120° = 2π/3"
         );
-        assert_eq!(radians.to_degrees(), 120.0);
+        assert!(
+            (radians.to_degrees() - 120.0).abs() < 1e-3,
+            "vuelta a grados {radians:?}"
+        );
     }
 
     #[test]

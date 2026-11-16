@@ -25,10 +25,10 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
       : model.canvasReadOnly
         ? canvasText.readOnly
         : blocked
-        ? view?.plan === "unverified"
-          ? t.verifyWidget
-          : t.protectedAction
-        : t.addHelp;
+          ? view?.plan === "unverified"
+            ? t.verifyWidget
+            : t.protectedAction
+          : t.addHelp;
   const collapsed = useUi((value) => value.studioListCollapsed);
   const toggleList = useUi((value) => value.toggleStudioList);
   return (
@@ -169,7 +169,7 @@ export function LayoutStrip({ model }: { model: ReturnTypeOfStudioFocus }) {
                     className="v-focus-row-name"
                     id={`${addHint}-name-${index}`}
                   >
-                    <strong>{widgetName(item, view)}</strong>
+                    <strong>{widgetName(item, view)}</strong>{" "}
                     {!state.canvasMode && <small>{widgetStatus(item)}</small>}
                   </span>
                 </button>

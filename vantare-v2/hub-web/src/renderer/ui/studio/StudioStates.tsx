@@ -14,20 +14,19 @@ export function StudioSaveStatus({
   const readOnly = view?.state === "protected" || model.canvasReadOnly;
   const saving = !readOnly && view?.state === "ready" && state.pending;
   const loading = !view && !state.failure;
-  const label =
-    readOnly
-      ? t.readOnly
-      : state.failure
-        ? state.failure.request.method === "studio.get"
-          ? t.readFailed
-          : state.failure.request.method === "studio.duplicate"
-            ? t.duplicateUnconfirmed
-            : t.notSaved
-        : saving
-          ? t.saving
-          : view?.state === "ready"
-            ? t.saved
-            : t.loading;
+  const label = readOnly
+    ? t.readOnly
+    : state.failure
+      ? state.failure.request.method === "studio.get"
+        ? t.readFailed
+        : state.failure.request.method === "studio.duplicate"
+          ? t.duplicateUnconfirmed
+          : t.notSaved
+      : saving
+        ? t.saving
+        : view?.state === "ready"
+          ? t.saved
+          : t.loading;
   return (
     <div
       className="v-focus-save"

@@ -705,6 +705,7 @@
 .v-studio-focus-layout[data-view="canvas"]
   .v-focus-layout-name
   > .v-tooltip-trigger:last-child {
+  display: inline-flex;
   grid-row: 1;
   grid-column: 3;
 }

@@ -123,7 +123,7 @@ async function mount(scene = "studio-canvas") {
       </HostProvider>
     </QueryClientProvider>,
   );
-  await screen.findByRole("button", { name: /^Standings, / });
+  await screen.findByRole("button", { name: "Standings Visible" });
   await userEvent.setup().click(screen.getByRole("button", { name: t.open }));
   const move = await screen.findByRole("button", { name: t.move("Standings") });
   await waitFor(() =>
@@ -653,7 +653,7 @@ it("blocks sidebar, anchors and removal in the readonly canvas without writes", 
   ).toBe("true");
   await user.click(anchor);
   expect(screen.queryByRole("toolbar", { name: t.anchors })).toBeNull();
-  const row = screen.getByRole("button", { name: /^Standings, / });
+  const row = screen.getByRole("button", { name: "Standings" });
   await user.click(row);
   await user.keyboard(" {Delete}");
   await user.click(screen.getByRole("button", { name: /Más/ }));

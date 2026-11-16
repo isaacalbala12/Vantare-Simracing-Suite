@@ -395,6 +395,11 @@ impl LapHistory {
         self.push_with_board(snapshot, &board)
     }
 
+    #[allow(
+        clippy::too_many_lines,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )] // Traslado literal desde GPUI: conserva los casts y los cortes observados.
     pub fn push_with_board(&mut self, snapshot: &Snapshot, board: &crate::delta::Board) -> bool {
         let mut changed = false;
         let reference = board.reference_lap_s.map(f64::to_bits);

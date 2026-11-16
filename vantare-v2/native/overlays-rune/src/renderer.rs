@@ -65,6 +65,8 @@ pub(crate) struct Painters {
     order: Vec<String>,
     assets: Option<Arc<rune::ImageCache>>,
     assets_changed: bool,
+    /// One speaker per process: the widget only decides which tone, the host plays it.
+    sound: crate::session_alerts::sound::Speaker,
 }
 impl Painters {
     pub fn attach_assets(&mut self, assets: &Arc<rune::ImageCache>) {
@@ -177,6 +179,9 @@ impl Painters {
         }
         for entry in self.entries.values_mut() {
             let update = entry.painter.animate(clock);
+            for (tone, volume) in entry.painter.sound() {
+                self.sound.play(tone, volume);
+            }
             if update.pixels || update.build {
                 meter.mark(Cause::Animation);
             }

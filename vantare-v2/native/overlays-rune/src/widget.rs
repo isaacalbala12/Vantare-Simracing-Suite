@@ -28,5 +28,9 @@ pub(crate) trait Widget {
     fn update(&mut self, snapshot: &Snapshot, clock: f64) -> Update;
     fn animate(&mut self, clock: f64) -> Update;
     fn schedule(&self, clock: f64, tx: &mut Tx);
+    /// Tones the widget asks the process to play this frame; silent by default.
+    fn sound(&mut self) -> Vec<(vantare_domain::session_alerts::Tone, u8)> {
+        Vec::new()
+    }
     fn view(&self) -> El;
 }

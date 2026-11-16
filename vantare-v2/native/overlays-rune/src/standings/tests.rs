@@ -221,8 +221,13 @@ fn gpui_qualifying_labels_and_clock_formats() {
 fn gpui_driver_box_reserves_the_class_dot_only_without_number() {
     let style = Style::compiled();
     let mut o = options("compact");
-    let driver = |o: &Options| o.layout(&style, o.driver_max(&style)).0.into_iter()
-        .find(|c| c.kind == Kind::Driver).unwrap();
+    let driver = |o: &Options| {
+        o.layout(&style, o.driver_max(&style))
+            .0
+            .into_iter()
+            .find(|c| c.kind == Kind::Driver)
+            .unwrap()
+    };
     let with_number = driver(&o);
     assert_eq!((with_number.x, with_number.width), (101.0, 155.0));
     o.cols.order.retain(|k| *k != Kind::Number);
@@ -248,17 +253,23 @@ fn gpui_driver_max_keeps_each_preset_width() {
 fn gpui_rows_keep_the_player_tail_and_small_limit_rules_in_each_mode() {
     let mut board = vantare_domain::standings::project(&photos()[0], Preferences::default());
     for group in &mut board.groups {
-        for row in &mut group.rows { std::sync::Arc::make_mut(row).is_player = false; }
+        for row in &mut group.rows {
+            std::sync::Arc::make_mut(row).is_player = false;
+        }
     }
     let mut o = options("standard");
     o.mode = Mode::PlayerClass;
     o.rows = 4;
     std::sync::Arc::make_mut(&mut board.groups[0].rows[5]).is_player = true;
-    assert_eq!(rows(&board, &o), [(0,0),(0,4),(0,5),(0,6)]);
+    assert_eq!(rows(&board, &o), [(0, 0), (0, 4), (0, 5), (0, 6)]);
     std::sync::Arc::make_mut(&mut board.groups[0].rows[5]).is_player = false;
     std::sync::Arc::make_mut(&mut board.groups[0].rows[6]).is_player = true;
-    assert_eq!(rows(&board, &o), [(0,0),(0,4),(0,5),(0,6)]);
-    for (limit, expected) in [(1, vec![(0,0)]),(2, vec![(0,0),(0,1)]),(3, vec![(0,0),(0,1),(0,2)])] {
+    assert_eq!(rows(&board, &o), [(0, 0), (0, 4), (0, 5), (0, 6)]);
+    for (limit, expected) in [
+        (1, vec![(0, 0)]),
+        (2, vec![(0, 0), (0, 1)]),
+        (3, vec![(0, 0), (0, 1), (0, 2)]),
+    ] {
         o.rows = limit;
         assert_eq!(rows(&board, &o), expected);
         o.mode = Mode::Multiclass;
@@ -269,10 +280,34 @@ fn gpui_rows_keep_the_player_tail_and_small_limit_rules_in_each_mode() {
     std::sync::Arc::make_mut(&mut board.groups[2].rows[3]).is_player = true;
     o.mode = Mode::Multiclass;
     o.rows = 8;
-    assert_eq!(rows(&board, &o), [(0,0),(0,1),(0,2),(0,3),(0,4),(2,2),(2,3),(2,4)]);
+    assert_eq!(
+        rows(&board, &o),
+        [
+            (0, 0),
+            (0, 1),
+            (0, 2),
+            (0, 3),
+            (0, 4),
+            (2, 2),
+            (2, 3),
+            (2, 4)
+        ]
+    );
     std::sync::Arc::make_mut(&mut board.groups[2].rows[3]).is_player = false;
     std::sync::Arc::make_mut(&mut board.groups[2].rows[4]).is_player = true;
-    assert_eq!(rows(&board, &o), [(0,0),(0,1),(0,2),(0,3),(0,4),(2,2),(2,3),(2,4)]);
+    assert_eq!(
+        rows(&board, &o),
+        [
+            (0, 0),
+            (0, 1),
+            (0, 2),
+            (0, 3),
+            (0, 4),
+            (2, 2),
+            (2, 3),
+            (2, 4)
+        ]
+    );
 }
 #[test]
 fn gpui_vehicle_detail_covers_short_presets_empty_and_disabled_vehicle() {

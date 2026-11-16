@@ -17,6 +17,7 @@ pub(crate) struct DeltaTrace {
     prefs: Preferences,
     trace: Trace,
     history: LapHistory,
+    history_version: u64,
     vm: ViewModel,
     details: Details,
     samples: Arc<Vec<Sample>>,
@@ -37,6 +38,7 @@ impl DeltaTrace {
             prefs,
             trace: Trace::default(),
             history,
+            history_version: 0,
             vm,
             details,
             samples,
@@ -46,7 +48,9 @@ impl DeltaTrace {
     fn ingest(&mut self, snapshot: &Snapshot) -> Update {
         let board = delta_trace::project_board(snapshot, self.prefs, &self.settings.reference);
         self.details = Details::from(snapshot, self.prefs, &board);
-        self.history.push_with_board(snapshot, &board);
+        if self.history.push_with_board(snapshot, &board) {
+            self.history_version = self.history_version.wrapping_add(1);
+        }
         if self.trace.push_with_board(
             snapshot,
             std::time::Duration::from_secs_f64(self.settings.window_seconds),
@@ -55,8 +59,13 @@ impl DeltaTrace {
             self.samples = Arc::new(self.trace.samples().iter().copied().collect());
         }
         self.vm = self.trace.project_with_board(snapshot, self.prefs, &board);
-        self.painter
-            .sync(&self.vm, &self.samples, &self.history, &self.details)
+        self.painter.sync(
+            &self.vm,
+            &self.samples,
+            &self.history,
+            self.history_version,
+            &self.details,
+        )
     }
 }
 impl Widget for DeltaTrace {
@@ -134,6 +143,7 @@ mod tests {
         let mut widget = DeltaTrace::new(&Settings::default(), Preferences::default());
         let mut s = photo();
         widget.ingest(&s);
+        let version = widget.history_version;
         let samples = widget.samples.clone();
         let graph = widget.painter.graph();
         let u = widget.ingest(&s);
@@ -143,7 +153,34 @@ mod tests {
         assert!(!u.build && !u.pixels);
         assert!(Arc::ptr_eq(&samples, &widget.samples));
         assert!(Arc::ptr_eq(&graph, &widget.painter.graph()));
+        assert_eq!(widget.history_version, version);
     }
+    #[test]
+    fn a_new_lap_point_updates_the_path_between_temporal_samples() {
+        let mut widget = DeltaTrace::new(&Settings::default(), Preferences::default());
+        let mut s = photo();
+        s.state.player.as_mut().unwrap().delta_best_s = Reliable(-0.1);
+        widget.ingest(&s);
+        let samples = widget.samples.clone();
+        let graph = widget.painter.graph();
+        let version = widget.history_version;
+        s.sequence += 1;
+        // Lap distance advances before Trace's 50 ms sampling interval expires.
+        s.origin.received_at += std::time::Duration::from_millis(10);
+        let id = s.state.player.unwrap().car;
+        s.state
+            .cars
+            .iter_mut()
+            .find(|c| c.id == id)
+            .unwrap()
+            .lap_distance_m = Reliable(200.0);
+        let update = widget.ingest(&s);
+        assert!(update.build && update.pixels);
+        assert_eq!(widget.history_version, version + 1);
+        assert!(Arc::ptr_eq(&samples, &widget.samples));
+        assert!(!Arc::ptr_eq(&graph, &widget.painter.graph()));
+    }
+
     #[test]
     fn changed_visible_data_repaints_even_without_a_new_sequence() {
         let mut widget = DeltaTrace::new(&Settings::default(), Preferences::default());

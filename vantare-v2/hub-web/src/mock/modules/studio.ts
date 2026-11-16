@@ -243,6 +243,7 @@ export function create(context: MockContext): MockHandler {
     view.canUndo = undo.length > 0;
     view.canRedo = redo.length > 0;
   };
+  context.studioData = view;
   return (message) => {
     const level = context.settingsData?.track.level ?? performanceLevel;
     if (level !== performanceLevel) {

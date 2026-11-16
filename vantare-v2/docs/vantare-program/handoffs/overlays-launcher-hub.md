@@ -1,3 +1,29 @@
+## VANTA-138 · #2481: preview.render sobre la CLI Rune de B
+
+Esquema aprobado por raíz: solo núcleo y contrato; no UI, caché ni canal
+interactivo. Rama `vantareapp/isa-2481-rune-preview`, base nightly `9fa8b4abb`.
+`preview.render` recibe instancia/revisión o tipo del catálogo, escena demo y
+escala cerrada; devuelve una imagen PNG base64 o fallo final, sin acuse intermedio.
+El hijo es exclusivamente el ejecutable Rune hermano del host, con Job existente.
+Tope 512 KiB, dimensiones 1..4096, mensaje completo <=1 MiB y plazo 15 s.
+Tick existente, sin hilos/canales/timers nuevos. Cuenta/permisos/Live/cierre/Drop
+retiran el hijo y su salida. Se reutiliza el lector del layout y sus conflictos.
+Mock con PNG transparente fijo; contrato/corpus/validación TS propios, sin textos.
+base64 0.22.1 ya en el lock, MIT OR Apache-2.0; ningún paquete/versión añadido.
+
+#2474 está fusionado. PR B aún pendiente para assets/cierre/PNG create_new/release.
+La CLI actual no incorpora demos: sin snapshot/sequence da NoDemo en todos los
+widgets; se conserva, sin foto genérica. F prepara las entradas canónicas.
+No se considera esto un canal de edición: #2025 sigue aparcada.
+Pruebas CPU con hijo falso del test, sin ejecutar Rune ni GPU. Primera suite:
+679 host PASS (2 omitidos: uno anterior y el helper invocado por otros tests),
+tipos/lint y 56 web puros PASS; jsdom no arrancó, no se declara PASS.
+Se añade prueba de argumentos/escala/entorno antes del gate final. Bump v45→v46
+en commit separado y CI pendientes. Script de medición preparado, solo parseado;
+PNG grandes a escala1.5, latencia/CPU/RAM y píxeles/GPU esperan PC autorizado.
+No se cambia el límite sin consultar los resultados con la raíz.
+Sin merge, promoción, release ni cambios del paquete distribuido propios.
+
 ## VANTA-144 · Standings Eficiencia E1 (16/11/2026)
 
 E1 porta Config/plan/opciones/etiquetas y defaults de Style, función por función

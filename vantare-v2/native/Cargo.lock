@@ -6597,6 +6597,7 @@ dependencies = [
 name = "vantare-hub-host"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "serde",
  "serde_json",

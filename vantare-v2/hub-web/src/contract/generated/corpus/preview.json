@@ -1,0 +1,109 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "preview.render",
+        "value": {
+          "height": 1,
+          "pngBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAaW2hJ0AAAAASUVORK5CYII=",
+          "width": 1
+        }
+      }
+    },
+    {
+      "error": {
+        "kind": "previewFailed",
+        "reason": "invalidInput"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "previewFailed",
+        "reason": "noDemo"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "previewFailed",
+        "reason": "gpuUnavailable"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "previewFailed",
+        "reason": "captureFailed"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "previewFailed",
+        "reason": "graphicsDisabled"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "previewFailed",
+        "reason": "timeout"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "previewFailed",
+        "reason": "tooLarge"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "previewFailed",
+        "reason": "unavailable"
+      },
+      "id": 1,
+      "kind": "failure"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "preview.render",
+        "scale": "1",
+        "scene": "demo",
+        "target": {
+          "kind": "catalog",
+          "widget": "relative"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "preview.render",
+        "scale": "1.5",
+        "scene": "demo",
+        "target": {
+          "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+          "id": "widget-1",
+          "kind": "instance"
+        }
+      }
+    }
+  ]
+}

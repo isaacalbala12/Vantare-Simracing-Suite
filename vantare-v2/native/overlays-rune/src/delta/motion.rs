@@ -46,14 +46,15 @@ impl Motion {
             self.record = None;
             return;
         }
+        if reduced {
+            self.bar = Tween::fixed(target);
+            self.record = None;
+            return;
+        }
         if delta::event(prev, next) == Some(Event::PersonalBest) {
             self.record = Some(now);
         }
-        if reduced {
-            self.bar = Tween::fixed(target);
-        } else {
-            self.bar.retarget(target, now, self.ease_ms);
-        }
+        self.bar.retarget(target, now, self.ease_ms);
     }
     pub fn bar(&self, now: f64) -> f32 {
         self.bar.value(now)

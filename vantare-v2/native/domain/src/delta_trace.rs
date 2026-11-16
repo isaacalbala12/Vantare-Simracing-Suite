@@ -349,6 +349,220 @@ fn delta_text(seconds: Option<f64>) -> String {
     format!("{}{rounded:.3}", if seconds < 0.0 { "-" } else { "+" })
 }
 
+/// Prepara la misma referencia para la traza, la vuelta y sus detalles.
+pub fn project_board(snapshot: &Snapshot, prefs: Preferences, reference: &str) -> Board {
+    let reference = match reference {
+        "optimal" => crate::delta::Reference::Optimal,
+        "leader" => crate::delta::Reference::Leader,
+        _ => crate::delta::Reference::PersonalBest,
+    };
+    let mut board = crate::delta::project_reference(snapshot, prefs, reference);
+    if reference != crate::delta::Reference::PersonalBest && board.reference_lap_s.is_none() {
+        board.delta = crate::Quality::Unavailable;
+    }
+    board
+}
+
+/// Historia de vuelta observada, indexada por distancia; nunca rellena huecos.
+#[derive(Clone, Copy, Debug)]
+pub struct LapPoint {
+    pub progress: f32,
+    pub delta: f32,
+    pub cut: bool,
+}
+type LapIdentity = (
+    u64,
+    SessionId,
+    CarId,
+    crate::delta::Reference,
+    Option<u64>,
+    Option<u64>,
+);
+
+#[derive(Clone, Default)]
+pub struct LapHistory {
+    pub points: Vec<LapPoint>,
+    pub previous: Vec<LapPoint>,
+    identity: Option<LapIdentity>,
+    lap: Option<u32>,
+    last_sequence: Option<u64>,
+    cut: bool,
+    last_at: Option<std::time::Duration>,
+}
+impl LapHistory {
+    pub fn push(&mut self, snapshot: &Snapshot) -> bool {
+        let board = crate::delta::project(snapshot, crate::format::Preferences::default());
+        self.push_with_board(snapshot, &board)
+    }
+
+    pub fn push_with_board(&mut self, snapshot: &Snapshot, board: &crate::delta::Board) -> bool {
+        let mut changed = false;
+        let reference = board.reference_lap_s.map(f64::to_bits);
+        let length = snapshot
+            .state
+            .session
+            .track_length_m
+            .current()
+            .filter(|v| v.is_finite() && **v > 0.0)
+            .map(|v| v.to_bits());
+        let identity = snapshot.state.player.map(|p| {
+            (
+                snapshot.epoch,
+                snapshot.state.session.id,
+                p.car,
+                board.reference,
+                reference,
+                length,
+            )
+        });
+        if identity != self.identity
+            || matches!(
+                snapshot.state.source_state,
+                SourceState::Waiting | SourceState::Lost
+            )
+        {
+            changed = !self.points.is_empty() || !self.previous.is_empty();
+            *self = Self {
+                identity,
+                ..Self::default()
+            };
+            if snapshot.state.source_state != SourceState::Live {
+                return changed;
+            }
+        }
+        let lap = snapshot
+            .state
+            .player_car()
+            .and_then(|c| c.laps.current().copied());
+        if lap != self.lap {
+            self.previous = if self.lap.and_then(|n| n.checked_add(1)) == lap {
+                std::mem::take(&mut self.points)
+            } else {
+                self.points.clear();
+                Vec::new()
+            };
+            self.lap = lap;
+            self.last_sequence = None;
+            self.cut = true;
+        }
+        let Some(_player) = snapshot.state.player else {
+            return changed;
+        };
+        let car = snapshot.state.player_car();
+        let progress = car
+            .and_then(|c| c.lap_distance_m.current())
+            .zip(snapshot.state.session.track_length_m.current())
+            .and_then(|(d, l)| {
+                (d.is_finite() && l.is_finite() && *l > 0.0 && *d >= 0.0 && d <= l)
+                    .then_some((d / l) as f32)
+            });
+        let delta = match board.delta {
+            Quality::Reliable(v) | Quality::Estimated(v) if v.is_finite() => Some(v as f32),
+            _ => None,
+        };
+        if snapshot.state.source_state != SourceState::Live || progress.is_none() || delta.is_none()
+        {
+            self.cut = true;
+            return changed;
+        }
+        if self.last_sequence.is_some_and(|n| snapshot.sequence <= n) {
+            return changed;
+        }
+        self.cut |= self
+            .last_sequence
+            .is_none_or(|n| n.checked_add(1) != Some(snapshot.sequence));
+        let at = snapshot.origin.received_at;
+        self.cut |= self.last_at.is_some_and(|last| {
+            at < last || at.saturating_sub(last) > std::time::Duration::from_millis(500)
+        });
+        self.last_at = Some(at);
+        self.last_sequence = Some(snapshot.sequence);
+        let (Some(progress), Some(delta)) = (progress, delta) else {
+            return changed;
+        };
+        if self.points.last().is_some_and(|p| progress < p.progress) {
+            self.points.clear();
+            self.cut = true;
+        }
+        // Un punto por milésima de vuelta limita memoria y coste a 1001 puntos.
+        if self
+            .points
+            .last()
+            .is_some_and(|p| (p.progress * 1000.0) as u32 == (progress * 1000.0) as u32)
+        {
+            return changed;
+        }
+        self.points.push(LapPoint {
+            progress,
+            delta,
+            cut: self.cut,
+        });
+        self.cut = false;
+        true
+    }
+}
+
+#[derive(Clone, Default, PartialEq)]
+pub struct Details {
+    pub invalid: bool,
+    pub header: String,
+    pub position: String,
+    pub sectors: [Option<f64>; 3],
+    pub sector_text: [String; 3],
+}
+impl Details {
+    pub fn from(snapshot: &Snapshot, prefs: Preferences, board: &crate::delta::Board) -> Self {
+        let es = prefs.language == crate::format::Language::Es;
+        let car = snapshot.state.player_car();
+        let best = crate::format::lap_time(board.reference_lap_s);
+        let reference = match (board.reference, es) {
+            (crate::delta::Reference::Optimal, true) => "ÓPTIMA",
+            (crate::delta::Reference::Optimal, false) => "OPTIMAL",
+            (crate::delta::Reference::Leader, true) => "LÍDER DE CLASE",
+            (crate::delta::Reference::Leader, false) => "CLASS LEADER",
+            (_, true) => "TU MEJOR",
+            (_, false) => "YOUR BEST",
+        };
+        let progress = car
+            .and_then(|c| c.lap_distance_m.current())
+            .zip(snapshot.state.session.track_length_m.current())
+            .filter(|(d, l)| d.is_finite() && l.is_finite() && **l > 0.0 && **d >= 0.0 && d <= l)
+            .map(|(d, l)| d / l * 100.0);
+        let sectors = std::array::from_fn(|i| {
+            car.filter(|_| board.reference != crate::delta::Reference::Leader)
+                .and_then(|c| c.current_sectors_s.get(i).zip(c.best_sectors_s.get(i)))
+                .and_then(|(a, b)| a.current().zip(b.current()))
+                .filter(|(a, b)| a.is_finite() && b.is_finite() && **a > 0.0 && **b > 0.0)
+                .map(|(a, b)| a - b)
+                .filter(|v| v.is_finite())
+        });
+        Self {
+            invalid: snapshot
+                .state
+                .player
+                .is_some_and(|p| p.lap_invalid.current() == Some(&true)),
+            header: if es {
+                format!("HISTORIAL DE DELTA · VS {reference} {best}")
+            } else {
+                format!("DELTA HISTORY · VS {reference} {best}")
+            },
+            position: car
+                .and_then(|c| c.laps.current())
+                .zip(progress)
+                .map_or_else(String::new, |(lap, p)| {
+                    format!(
+                        "{} {} · {p:.0} %",
+                        if es { "VUELTA" } else { "LAP" },
+                        lap + 1
+                    )
+                }),
+            sectors,
+            sector_text: sectors
+                .map(|delta| delta.map_or_else(|| "—".into(), |v| format!("{v:+.3}"))),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

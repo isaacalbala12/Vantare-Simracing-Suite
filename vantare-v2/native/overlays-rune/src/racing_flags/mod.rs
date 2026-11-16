@@ -1,13 +1,12 @@
 //! Banderas: proyección live y pintura Vantare (340 × 88).
 //! Sin reloj: GPUI calculaba un pulso de 920 ms que `paint_content` no usaba
-//! (`_pulse`), así que no cambia ningún píxel. Placas de sanción de la demo
-//! fuera por ahora: paridad en demo pendiente (ver README del PR).
+//! (`_pulse`), así que no cambia ningún píxel. La descalificación (negra)
+//! manda sobre la bandera. Placas DT/SG de la demo: fuera; paridad pendiente.
 mod render;
 pub mod scene;
 
 use crate::widget::{Update, Widget};
 use render::Painter;
-use std::sync::Arc;
 use vantare_domain::{
     FlagKind, Snapshot, SourceState,
     format::Preferences,
@@ -21,10 +20,6 @@ pub(crate) struct RacingFlags {
     settings: Config,
     prefs: Preferences,
     painter: Painter,
-    vm: Arc<ViewModel>,
-    projection_key: Option<(u64, u64, u64, SourceState, Preferences)>,
-    waiting: bool,
-    session: scene::SessionInfo,
     visual: Option<scene::Scene>,
 }
 
@@ -37,20 +32,18 @@ impl RacingFlags {
         _clock: f64,
     ) -> Self {
         let settings = settings.normalized();
-        let vm = Arc::new(project(&settings, &Snapshot::default(), prefs));
         // Como GPUI: sin foto todavía se ve la tarjeta de espera.
-        let waiting = true;
-        let session = scene::SessionInfo::default();
-        let visual = scene::sample(&vm, waiting, &session, prefs);
+        let visual = scene::sample(
+            &project(&settings, &Snapshot::default(), prefs),
+            true,
+            &scene::SessionInfo::default(),
+            prefs,
+        );
         let painter = Painter::new(visual.as_ref());
         Self {
             settings,
             prefs,
             painter,
-            vm,
-            projection_key: None,
-            waiting,
-            session,
             visual,
         }
     }
@@ -79,19 +72,9 @@ impl RacingFlags {
     }
 
     /// Proyección y estado del aviso; el muestreo de la tarjeta es de `animate`.
+    /// Se proyecta en cada foto (sin llave por secuencia) y manda la escena.
     pub fn update(&mut self, snapshot: &Snapshot, _clock: f64) -> Update {
-        let key = (
-            snapshot.epoch,
-            snapshot.sequence,
-            snapshot.state.session.id.0,
-            snapshot.state.source_state,
-            self.prefs,
-        );
-        let fresh = self.projection_key != Some(key);
-        if fresh {
-            self.vm = Arc::new(project(&self.settings, snapshot, self.prefs));
-            self.projection_key = Some(key);
-        }
+        let vm = project(&self.settings, snapshot, self.prefs);
         let waiting = matches!(
             snapshot.state.source_state,
             SourceState::Waiting | SourceState::Lost
@@ -99,8 +82,8 @@ impl RacingFlags {
         let kind = Session::of(&snapshot.state.session.kind);
         let finish = if !waiting
             && kind == Some(Session::Race)
-            && self.vm.flag.as_ref() == Some(&FlagKind::Checkered)
-            && self.vm.penalty.is_none()
+            && vm.flag.as_ref() == Some(&FlagKind::Checkered)
+            && vm.penalty.is_none()
         {
             snapshot.state.player_car().and_then(|car| {
                 car.class_position
@@ -114,13 +97,7 @@ impl RacingFlags {
             None
         };
         let session = scene::SessionInfo { kind, finish };
-        let same = !fresh && self.waiting == waiting && self.session == session;
-        self.waiting = waiting;
-        self.session = session;
-        if same {
-            return Update::default();
-        }
-        let visual = scene::sample(&self.vm, waiting, &self.session, self.prefs);
+        let visual = scene::sample(&vm, waiting, &session, self.prefs);
         if visual == self.visual {
             return Update::default();
         }
@@ -460,5 +437,192 @@ mod tests {
             &*widget.visual.as_ref().expect("tarjeta").message,
             "Fin de la carrera · P3 en GT3"
         );
+    }
+
+    fn find<'a>(elements: &'a [rune::ElementInfo], key: &str) -> Option<&'a rune::ElementInfo> {
+        elements
+            .iter()
+            .find(|element| element.key.as_deref() == Some(key))
+    }
+
+    fn color(value: &str) -> rune::Color {
+        rune::color::hex(value).expect("color de prueba")
+    }
+
+    /// Tarjeta ya pintada y asentada para inspeccionar sus piezas.
+    fn shown(flags: Vec<Flag>, source: SourceState) -> Runtime<RacingFlags> {
+        let prefs = Preferences::default();
+        let mut runtime = runtime(RacingFlags::new(&Config::default(), prefs, false, 15, 0.0));
+        if matches!(source, SourceState::Waiting | SourceState::Lost) {
+            assert!(rendered(&mut runtime, 0.05), "la espera se pinta");
+        } else {
+            runtime
+                .state
+                .update(&photo(2, source, flags), runtime.clock);
+            assert!(rendered(&mut runtime, 0.05), "la tarjeta se pinta");
+        }
+        settle(&mut runtime);
+        runtime
+    }
+
+    fn shown_photo(snapshot: Snapshot) -> Runtime<RacingFlags> {
+        let prefs = Preferences::default();
+        let mut runtime = runtime(RacingFlags::new(&Config::default(), prefs, false, 15, 0.0));
+        runtime.state.update(&snapshot, runtime.clock);
+        assert!(rendered(&mut runtime, 0.05), "la tarjeta se pinta");
+        settle(&mut runtime);
+        runtime
+    }
+
+    #[test]
+    fn waiting_and_quiet_cards_paint_their_pieces() {
+        let waiting = shown(vec![], SourceState::Waiting);
+        let elements = waiting.elements();
+        assert_eq!(element(&elements, "panel").rect, [0.0, 0.0, 340.0, 88.0]);
+        assert_eq!(element(&elements, "swatch").rect, [14.0, 27.0, 48.0, 34.0]);
+        assert!(find(&elements, "quiet-inner").is_some());
+        assert!(find(&elements, "waiting-dot").is_some(), "punto de espera");
+        assert!(
+            find(&elements, "band").is_none(),
+            "la espera no tiene banda"
+        );
+        let quiet = shown(vec![], SourceState::Live);
+        let elements = quiet.elements();
+        assert!(find(&elements, "quiet-inner").is_some());
+        assert!(find(&elements, "waiting-dot").is_none());
+        assert!(find(&elements, "band").is_none());
+        assert!(
+            find(&elements, "sector-0").is_none(),
+            "sin sectores no hay chips"
+        );
+    }
+
+    #[test]
+    fn each_flag_paints_its_swatch_decoration_and_band() {
+        for (flag, expected) in [
+            (FlagKind::Green, "#22c55e"),
+            (FlagKind::Yellow, "#f5c518"),
+            (FlagKind::Red, "#e14a54"),
+            (FlagKind::White, "#f2eeee"),
+            (FlagKind::Black, "#0b0b0b"),
+        ] {
+            let runtime = shown(vec![session_flag(flag.clone())], SourceState::Live);
+            let elements = runtime.elements();
+            assert_eq!(
+                element(&elements, "swatch").fill,
+                color(expected),
+                "{flag:?}"
+            );
+            assert!(find(&elements, "band").is_some(), "{flag:?}");
+            assert!(find(&elements, "blue-stripe").is_none(), "{flag:?}");
+        }
+        let blue = shown(vec![session_flag(FlagKind::Blue)], SourceState::Live);
+        let elements = blue.elements();
+        assert!(find(&elements, "blue-stripe").is_some(), "franja azul");
+        assert_eq!(element(&elements, "swatch").fill, color("#4f8ef7"));
+        let checkered = shown(vec![session_flag(FlagKind::Checkered)], SourceState::Live);
+        let elements = checkered.elements();
+        let cells = elements
+            .iter()
+            .filter(|element| {
+                element
+                    .key
+                    .as_deref()
+                    .is_some_and(|key| key.starts_with("checkered-"))
+            })
+            .count();
+        assert_eq!(cells, 30, "rejilla 5x6");
+        assert_eq!(element(&elements, "swatch").fill, color("#f2eeee"));
+    }
+
+    #[test]
+    fn sectors_paint_three_chips_with_their_active_color() {
+        let runtime = shown(
+            vec![
+                session_flag(FlagKind::Yellow),
+                Flag {
+                    kind: FlagKind::Yellow,
+                    scope: FlagScope::Sector(0),
+                },
+            ],
+            SourceState::Live,
+        );
+        let elements = runtime.elements();
+        assert_eq!(element(&elements, "sector-0").fill, color("#f5c518"));
+        let inactive = element(&elements, "sector-1").fill;
+        assert!(
+            inactive.a > 0.0 && inactive.a < 0.1,
+            "inactivo translúcido: {inactive:?}"
+        );
+        assert!(find(&elements, "sector-2").is_some());
+        assert_eq!(element(&elements, "sector-label-0").rect[2], 24.0);
+    }
+
+    #[test]
+    fn title_and_message_use_the_250_box_and_cut_with_ellipsis() {
+        let long = "A VERY LONG CLASS NAME THAT DOES NOT FIT THE MESSAGE BOX EVEN WITH NARROWER WINDOWS FONT METRICS";
+        let mut finish = photo(
+            2,
+            SourceState::Live,
+            vec![session_flag(FlagKind::Checkered)],
+        );
+        finish.state.player = Some(Player {
+            car: CarId(1),
+            ..Player::default()
+        });
+        finish.state.cars = vec![Car {
+            id: CarId(1),
+            class: Some(Class {
+                id: ClassId(1),
+                name: long.into(),
+            }),
+            class_position: Quality::Reliable(3),
+            ..Car::default()
+        }];
+        let runtime = shown_photo(finish);
+        let elements = runtime.elements();
+        assert_eq!(element(&elements, "title").rect[2], 250.0);
+        assert_eq!(element(&elements, "message").rect[2], 250.0);
+        let message = element(&elements, "message").text.clone().expect("mensaje");
+        assert!(message.ends_with('…'), "recorte con puntos: {message:?}");
+    }
+
+    #[test]
+    fn every_painted_element_stays_inside_the_window() {
+        let states: Vec<(Vec<Flag>, SourceState)> = vec![
+            (vec![], SourceState::Waiting),
+            (vec![], SourceState::Live),
+            (vec![session_flag(FlagKind::Green)], SourceState::Live),
+            (
+                vec![
+                    session_flag(FlagKind::Yellow),
+                    Flag {
+                        kind: FlagKind::Yellow,
+                        scope: FlagScope::Sector(0),
+                    },
+                ],
+                SourceState::Live,
+            ),
+            (vec![session_flag(FlagKind::Red)], SourceState::Live),
+            (vec![session_flag(FlagKind::Blue)], SourceState::Live),
+            (vec![session_flag(FlagKind::White)], SourceState::Live),
+            (vec![session_flag(FlagKind::Black)], SourceState::Live),
+            (vec![session_flag(FlagKind::Checkered)], SourceState::Live),
+        ];
+        for (flags, source) in states {
+            let runtime = shown(flags, source);
+            let elements = runtime.elements();
+            assert!(!elements.is_empty(), "sin elementos: {source:?}");
+            for element in &elements {
+                let [x, y, w, h] = element.rect;
+                assert!(
+                    x >= -0.5 && y >= -0.5,
+                    "{:?} empieza en {x},{y}",
+                    element.key
+                );
+                assert!(x + w <= 340.5, "{:?} acaba en x={}", element.key, x + w);
+                assert!(y + h <= 88.5, "{:?} acaba en y={}", element.key, y + h);
+            }
+        }
     }
 }

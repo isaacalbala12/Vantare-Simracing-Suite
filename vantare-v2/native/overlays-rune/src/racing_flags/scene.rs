@@ -1,7 +1,7 @@
 //! Escena pura de banderas: textos visibles, semántica de sectores y ocultado.
 use std::sync::Arc;
 use vantare_domain::{
-    FlagKind,
+    FlagKind, PenaltyKind,
     format::{Language, Preferences},
     racing_flags::ViewModel,
     widget_session::Session,
@@ -20,6 +20,8 @@ pub struct SessionInfo {
 pub struct Scene {
     pub waiting: bool,
     pub quiet: bool,
+    /// Sanción de descalificación; manda sobre la bandera.
+    pub disqualified: bool,
     pub flag: Option<FlagKind>,
     pub title: Arc<str>,
     pub message: Arc<str>,
@@ -40,6 +42,7 @@ pub fn sample(
     }
     let es = prefs.language == Language::Es;
     let penalized = vm.penalty.is_some();
+    let disqualified = vm.penalty == Some(PenaltyKind::Disqualified);
     let quiet = waiting || (vm.flag.is_none() && !penalized);
     let sectors_visible = !quiet && !penalized && !vm.sectors.is_empty();
     let mut sectors = [false; 3];
@@ -49,22 +52,33 @@ pub fn sample(
     Some(Scene {
         waiting,
         quiet,
+        disqualified,
         flag: vm.flag.clone(),
-        title: Arc::from(title(vm, waiting, sectors_visible, session, es)),
-        message: Arc::from(message(vm, waiting, session, es)),
+        title: Arc::from(title(
+            vm,
+            waiting,
+            sectors_visible,
+            disqualified,
+            session,
+            es,
+        )),
+        message: Arc::from(message(vm, waiting, disqualified, session, es)),
         text_color: vm.text_color,
         sectors_visible,
         sectors,
     })
 }
 
-fn base_title(vm: &ViewModel, waiting: bool, es: bool) -> &'static str {
+fn base_title(vm: &ViewModel, waiting: bool, disqualified: bool, es: bool) -> &'static str {
     if waiting {
         return if es {
             "ESPERANDO A LMU"
         } else {
             "WAITING FOR LMU"
         };
+    }
+    if disqualified {
+        return if es { "BANDERA NEGRA" } else { "BLACK FLAG" };
     }
     match vm.flag.as_ref() {
         Some(FlagKind::Yellow) => {
@@ -126,12 +140,19 @@ fn base_title(vm: &ViewModel, waiting: bool, es: bool) -> &'static str {
     }
 }
 
-fn base_message(vm: &ViewModel, waiting: bool, es: bool) -> &'static str {
+fn base_message(vm: &ViewModel, waiting: bool, disqualified: bool, es: bool) -> &'static str {
     if waiting {
         return if es {
             "Las banderas aparecen al entrar en pista"
         } else {
             "Flags appear when you enter the track"
+        };
+    }
+    if disqualified {
+        return if es {
+            "Descalificado · vuelve a boxes"
+        } else {
+            "Disqualified · return to pits"
         };
     }
     match vm.flag.as_ref() {
@@ -198,10 +219,11 @@ fn title(
     vm: &ViewModel,
     waiting: bool,
     sectors_visible: bool,
+    disqualified: bool,
     session: &SessionInfo,
     es: bool,
 ) -> String {
-    let mut title = base_title(vm, waiting, es).to_owned();
+    let mut title = base_title(vm, waiting, disqualified, es).to_owned();
     if !waiting && session.kind == Some(Session::Qualifying) && vm.penalty.is_none() {
         title = match vm.flag.as_ref() {
             Some(FlagKind::Red) => {
@@ -233,7 +255,13 @@ fn title(
     title
 }
 
-fn message(vm: &ViewModel, waiting: bool, session: &SessionInfo, es: bool) -> String {
+fn message(
+    vm: &ViewModel,
+    waiting: bool,
+    disqualified: bool,
+    session: &SessionInfo,
+    es: bool,
+) -> String {
     if vm.flag.as_ref() == Some(&FlagKind::Checkered) && vm.penalty.is_none() && !waiting {
         if session.kind == Some(Session::Qualifying) {
             return if es {
@@ -250,7 +278,7 @@ fn message(vm: &ViewModel, waiting: bool, session: &SessionInfo, es: bool) -> St
             };
         }
     }
-    base_message(vm, waiting, es).to_owned()
+    base_message(vm, waiting, disqualified, es).to_owned()
 }
 
 #[cfg(test)]
@@ -437,5 +465,27 @@ mod tests {
         };
         let finished = scene(vec![session(FlagKind::Checkered)], false, &race).expect("cuadros");
         assert_eq!(&*finished.message, "Fin de la carrera · P3 en GT3");
+    }
+
+    #[test]
+    fn a_disqualification_rules_over_a_non_black_flag() {
+        use vantare_domain::PenaltyKind;
+        let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = vantare_domain::SourceState::Live;
+        snapshot.state.flags = Quality::Reliable(vec![session(FlagKind::Green)]);
+        let vm = racing_flags::project_with_penalty(
+            &snapshot,
+            Preferences::default(),
+            racing_flags::Config::default(),
+            Some(PenaltyKind::Disqualified),
+        );
+        let card =
+            sample(&vm, false, &SessionInfo::default(), Preferences::default()).expect("tarjeta");
+        assert!(card.disqualified);
+        assert_eq!(card.flag, Some(FlagKind::Green));
+        assert!(!card.quiet, "la sanción nunca es tarjeta quieta");
+        assert_eq!(&*card.title, "BANDERA NEGRA");
+        assert_eq!(&*card.message, "Descalificado · vuelve a boxes");
+        assert!(!card.sectors_visible);
     }
 }

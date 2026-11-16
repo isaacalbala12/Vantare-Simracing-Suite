@@ -628,8 +628,9 @@ mod tests {
         }
         let snapshot = vantare_ipc::snapshot_from_saved_json(PHOTO).expect("photo");
         let mut wrong = layout();
-        wrong.instances[0].settings =
-            vantare_domain::widget_settings::Settings::default_for(Kind::Standings);
+        wrong.instances[0].settings = vantare_domain::widget_settings::Settings::Standings(
+            vantare_domain::widget_settings::standings::Settings::eficiencia(),
+        );
         assert!(single(&wrong, &snapshot, 1.0).is_err());
         assert!(single(&layout(), &snapshot, f32::NAN).is_err());
     }

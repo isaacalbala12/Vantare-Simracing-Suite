@@ -75,7 +75,7 @@
 }
 .v-canvas-catalog-grip {
   display: grid;
-  place-items: center;
+  place-items: center start;
   grid-column: 3;
   grid-row: 1 / span 2;
   min-height: 40px;

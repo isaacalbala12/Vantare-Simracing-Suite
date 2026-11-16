@@ -932,7 +932,7 @@ it.each(["rejected", "denied", "studioConflict"] as const)(
 );
 
 it.each(["button", "Enter"] as const)(
-  "reconciles an applied unpositioned %s add after timeout without replaying it",
+  "reconciles an applied unpositioned %s add after an uncertain result without replaying it",
   async (trigger) => {
     const original = Client.prototype.request;
     let reads = 0;
@@ -945,8 +945,10 @@ it.each(["button", "Enter"] as const)(
       .mockImplementation(async function (this: Client, request, ...rest) {
         if (request.method === "studio.get" && ++reads === 2) await held;
         const response = await original.call(this, request, ...rest);
-        if (request.method === "studio.add")
+        if (request.method === "studio.add") {
+          if (trigger === "button") throw Error("Acknowledgement lost");
           throw new HostFailure({ kind: "coreUnavailable" });
+        }
         return response;
       });
     try {
@@ -986,30 +988,53 @@ it.each(["button", "Enter"] as const)(
 it.each(["protected", "readOnly", "limit", "pro", "noCanvas"] as const)(
   "prevents catalogue writes in the %s UI state",
   async (mode) => {
+    const project = (view: StudioView): StudioView => {
+      const value = structuredClone(view);
+      if (mode === "protected") value.state = "protected";
+      if (mode === "limit")
+        value.instances = Array.from(
+          { length: studioLimits.instances },
+          (_, i) => ({
+            ...structuredClone(value.instances[i === 0 ? 0 : 1]),
+            id: `widget-${i + 1}`,
+          }),
+        );
+      if (mode === "pro") {
+        const radar = value.catalog.find((widget) => widget.kind === "radar");
+        if (!radar) throw Error("Radar catalogue fixture required");
+        radar.allowed = false;
+        value.plan = "free";
+      }
+      if (mode === "noCanvas") value.canvas = null;
+      return value;
+    };
+    // Subscription and get must describe the same authoritative test document.
+    const listen = Client.prototype.listen;
+    vi.spyOn(Client.prototype, "listen").mockImplementation(function (
+      this: Client,
+      callback,
+    ) {
+      return listen.call(this, (message) =>
+        callback(
+          message.kind === "event" && message.event.topic === "studio"
+            ? {
+                ...message,
+                event: {
+                  ...message.event,
+                  value: project(message.event.value),
+                },
+              }
+            : message,
+        ),
+      );
+    });
     const original = Client.prototype.request;
     const spy = vi
       .spyOn(Client.prototype, "request")
       .mockImplementation(async function (this: Client, request, ...rest) {
         const response = await original.call(this, request, ...rest);
         if (response.method !== "studio.get") return response;
-        const value = structuredClone(response.value);
-        if (mode === "protected") value.state = "protected";
-        if (mode === "limit")
-          value.instances = Array.from(
-            { length: studioLimits.instances },
-            (_, i) => ({
-              ...structuredClone(value.instances[0]),
-              id: `widget-${i + 1}`,
-            }),
-          );
-        if (mode === "pro") {
-          const radar = value.catalog.find((widget) => widget.kind === "radar");
-          if (!radar) throw Error("Radar catalogue fixture required");
-          radar.allowed = false;
-          value.plan = "free";
-        }
-        if (mode === "noCanvas") value.canvas = null;
-        return { ...response, value };
+        return { ...response, value: project(response.value) };
       });
     await renderStudio(
       mode === "readOnly" ? "studio-canvas-readonly" : "studio-canvas",

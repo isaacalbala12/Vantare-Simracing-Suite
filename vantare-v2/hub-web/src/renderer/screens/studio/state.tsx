@@ -191,7 +191,7 @@ function useStateValue() {
         if (
           request.method === "studio.geometry" ||
           request.method === "studio.canvas" ||
-          (request.method === "studio.add" && request.at !== undefined)
+          request.method === "studio.add"
         ) {
           // An uncertain result may already be on disk. Fence all Studio writes
           // until a fresh read, including if Canvas is closed in the meantime.

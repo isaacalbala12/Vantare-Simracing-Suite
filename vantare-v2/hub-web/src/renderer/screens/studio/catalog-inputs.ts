@@ -185,7 +185,7 @@ export function useCatalogInputs(
           ),
         );
         latest.current.close();
-      }
+      } else if (alive.current) setMessage("");
     } finally {
       sending.current = false;
     }

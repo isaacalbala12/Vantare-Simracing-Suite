@@ -36,6 +36,7 @@ pub const GEOMETRY_MAX: (f64, f64) = (3840.0, 2160.0);
 pub enum StudioState {
     Missing,
     Protected,
+    MonitorUnavailable,
     Ready,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

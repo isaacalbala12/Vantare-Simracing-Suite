@@ -106,7 +106,19 @@ export async function checkStudioCatalogDrop(
       "catalogue add after release",
     );
     assert.deepEqual((await adds())[0].at, { x: 885, y: 522 });
-    await page.getByRole("button", { name: "Delta 2", exact: true }).waitFor();
+    const addedRow = page.getByRole("button", { name: "Delta 2", exact: true });
+    await until(
+      () => addedRow.evaluate((row) => document.activeElement === row),
+      10000,
+      "focus on confirmed dropped widget row",
+    );
+    assert.equal(
+      await page
+        .getByRole("status")
+        .filter({ hasText: studioText.addedName("Delta") })
+        .count(),
+      1,
+    );
     assert.equal(
       await page
         .getByRole("complementary", { name: studioText.catalog, exact: true })
@@ -139,6 +151,24 @@ export async function checkStudioCatalogDrop(
         assert.equal(await page.locator(".v-canvas-catalog").count(), 0);
       }
     }
+    await setup();
+    await page
+      .getByRole("button", { name: "Añadir Delta", exact: true })
+      .click();
+    await until(
+      () => addedRow.evaluate((row) => document.activeElement === row),
+      10000,
+      "focus on confirmed button-added widget row",
+    );
+    assert.equal((await adds()).length, 1);
+    assert.equal((await adds())[0].at, undefined);
+    assert.equal(
+      await page
+        .getByRole("status")
+        .filter({ hasText: studioText.addedName("Delta") })
+        .count(),
+      1,
+    );
     await setup();
     const edgePlane = await start();
     await page.mouse.move(edgePlane.x + 1, edgePlane.y + edgePlane.height / 2, {

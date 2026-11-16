@@ -726,6 +726,83 @@ const additions = (spy: MockInstance<Client["request"]>) =>
   spy.mock.calls
     .map(([request]) => request)
     .filter((request) => request.method === "studio.add");
+
+it.each(["drag", "button"])(
+  "focuses the confirmed new row and announces addition once after %s",
+  async (method) => {
+    const spy = vi.spyOn(Client.prototype, "request");
+    await mount();
+    const handle = await openDrop();
+    const announcements = new Set<Element>();
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        const element =
+          record.target instanceof Element
+            ? record.target
+            : record.target.parentElement;
+        const status = element?.closest(
+          '[role="status"], [aria-live="polite"]',
+        );
+        if (status?.textContent?.includes("Delta añadido"))
+          announcements.add(status);
+        for (const region of element?.querySelectorAll(
+          '[role="status"], [aria-live="polite"]',
+        ) ?? []) {
+          if (region.textContent?.includes("Delta añadido"))
+            announcements.add(region);
+        }
+      }
+    });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+    try {
+      if (method === "drag") {
+        beginDrop(handle);
+        fireEvent.pointerUp(handle, dropPoint());
+      } else {
+        await userEvent
+          .setup()
+          .click(screen.getByRole("button", { name: "Añadir Delta" }));
+      }
+      const row = await screen.findByRole("button", {
+        name: "Delta 2",
+      });
+      await waitFor(() => expect(document.activeElement).toBe(row));
+      const reply =
+        await spy.mock.results[
+          spy.mock.calls.findIndex(
+            ([request]) => request.method === "studio.add",
+          )
+        ].value;
+      expect(reply).toMatchObject({
+        method: "studio.add",
+        added: row.dataset.widget,
+      });
+      expect(row.getAttribute("aria-pressed")).toBe("true");
+      expect(additions(spy)).toHaveLength(1);
+      const statuses = screen
+        .getAllByRole("status")
+        .filter((node) => node.textContent?.includes("Delta añadido"));
+      expect(statuses).toHaveLength(1);
+      expect(statuses[0].textContent).toContain(studioText.addedName("Delta"));
+      await userEvent
+        .setup()
+        .click(screen.getByRole("button", { name: t.close }));
+      await act(async () => {});
+      expect(announcements.size).toBe(1);
+      expect(
+        screen
+          .getAllByRole("status")
+          .filter((node) => node.textContent?.includes("Delta añadido")),
+      ).toEqual(statuses);
+    } finally {
+      observer.disconnect();
+    }
+  },
+);
 async function openDrop() {
   await userEvent
     .setup()

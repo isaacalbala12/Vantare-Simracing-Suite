@@ -178,12 +178,7 @@ export function useCatalogInputs(
     try {
       const value = await latest.current.studio.execute(request);
       if (value && alive.current) {
-        setMessage(
-          t.added(
-            value.catalog.find((w) => w.kind === request.kind)?.name ??
-              request.kind,
-          ),
-        );
+        setMessage("");
         latest.current.close();
       } else if (alive.current) setMessage("");
     } finally {

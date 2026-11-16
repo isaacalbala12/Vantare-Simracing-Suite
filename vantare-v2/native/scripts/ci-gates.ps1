@@ -18,6 +18,10 @@ try {
         $legacy = & python (Join-Path $PSScriptRoot 'affected-crates.py') --base $DiffBase --legacy-check
         if ($LASTEXITCODE) { throw 'No se pudieron seleccionar consumidores legacy.' }
         if ($legacy) { $legacyChecks = $legacy.Split(',') }
+        # TEMP measurement: frozen Hub/Admin out of the PR test archive and lint.
+        if ($packages.Count) {
+            $packages = @($packages | Where-Object { $_ -notin @('vantare-hub', 'vantare-admin') })
+        }
     }
     Write-Host "Scope: $(if ($packages.Count) { $packages -join ', ' } else { 'workspace completo' })"
     if (-not $ArchiveOnly) {

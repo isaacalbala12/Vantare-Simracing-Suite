@@ -610,7 +610,11 @@ fn the_bar_slides_while_the_delta_changes_and_rests_after_its_ease() {
     let eased = crate::vantare::Style::compiled().delta.ease_ms / 1000.0;
     assert!(painter.motion.next_wake(1.0).is_some(), "la barra se mueve");
     painter.animate(1.0 + f64::from(eased));
-    assert!((painter.scene.bar - 0.4).abs() < 1e-6, "{}", painter.scene.bar);
+    assert!(
+        (painter.scene.bar - 0.4).abs() < 1e-6,
+        "{}",
+        painter.scene.bar
+    );
     assert_eq!(painter.motion.next_wake(1.0 + f64::from(eased)), None);
 }
 

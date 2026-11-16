@@ -12,6 +12,32 @@ use vantare_domain::{
     multiclass_relative::{Row, ViewModel},
 };
 
+// Canonical GPUI sRGB colours expressed in Rune's linear sRGB.
+const GT3_INK: Color = Color {
+    r: 0.00182116,
+    g: 0.01520851,
+    b: 0.0047769533,
+    a: 1.0,
+}; // #06210f
+const NUMBER_INK: Color = Color {
+    r: 0.43415365,
+    g: 0.38642943,
+    b: 0.39675522,
+    a: 1.0,
+}; // #b0a7a9
+const TRAFFIC_INK: Color = Color {
+    r: 1.0,
+    g: 0.2541521,
+    b: 0.2541521,
+    a: 1.0,
+}; // #ff8a8a
+const NEARBY_FILL: Color = Color {
+    r: 0.8879231,
+    g: 0.10224173,
+    b: 0.10224173,
+    a: 1.0,
+}; // #f25a5a
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Auxiliary {
     None,
@@ -100,7 +126,10 @@ impl Painter {
                 Auxiliary::None => String::new(),
                 Auxiliary::Near => if es { "▲ encima" } else { "▲ near" }.into(),
                 Auxiliary::Closing => if es { "▲ cerca" } else { "▲ closing" }.into(),
-                Auxiliary::Trend(_) => r.trend.as_ref().expect("trend selected").0.clone(),
+                Auxiliary::Trend(_) => r
+                    .trend
+                    .as_ref()
+                    .map_or_else(String::new, |trend| trend.0.clone()),
             };
             for (cell, value) in cells.iter().zip([
                 r.place.clone(),
@@ -257,7 +286,7 @@ impl Painter {
         }
         root = root.child(rect(13.0, 4.0, 38.0, 16.0, 3.0, class.dot));
         let class_ink = if r.class_label == "GT3" {
-            rune::color::hex("#06210f").expect("GPUI class ink")
+            GT3_INK
         } else {
             WHITE
         };
@@ -275,16 +304,12 @@ impl Painter {
         );
         root = root
             .child(rect(93.0, 4.0, 34.0, 16.0, 3.0, alpha(WHITE, 0.06)))
-            .child(
-                self.label(
-                    &c[1],
-                    Face::Mono,
-                    11.0,
-                    16.0,
-                    rune::color::hex("#b0a7a9").expect("GPUI number ink"),
-                )
-                .pin(Some(97.0), Some(4.0 + s.fonts.mono_baseline), None, None),
-            );
+            .child(self.label(&c[1], Face::Mono, 11.0, 16.0, NUMBER_INK).pin(
+                Some(97.0),
+                Some(4.0 + s.fonts.mono_baseline),
+                None,
+                None,
+            ));
         let gap_ink = if fcy {
             s.colors.frozen
         } else if r.is_player {
@@ -327,11 +352,7 @@ impl Painter {
                         Face::Mono,
                         11.0,
                         24.0,
-                        if near {
-                            WHITE
-                        } else {
-                            rune::color::hex("#ff8a8a").expect("GPUI traffic ink")
-                        },
+                        if near { WHITE } else { TRAFFIC_INK },
                     )
                     .key(format!("multiclass-traffic-{}", r.id.0));
                 // Same right edge and name budget as GPUI's measured edge -= width + 20.
@@ -344,7 +365,7 @@ impl Painter {
                             .radius(3.0)
                             .fill(Color {
                                 a: 0.75,
-                                ..rune::color::hex("#f25a5a").expect("GPUI nearby fill")
+                                ..NEARBY_FILL
                             })
                             .child(label.offset(0.0, s.fonts.mono_baseline - 4.0))
                             .offset(0.0, 4.0),
@@ -435,6 +456,18 @@ fn footer(scene: &ViewModel, es: bool) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gpui_colours_are_the_canonical_constants() {
+        for (color, hex) in [
+            (GT3_INK, "#06210fff"),
+            (NUMBER_INK, "#b0a7a9ff"),
+            (TRAFFIC_INK, "#ff8a8aff"),
+            (NEARBY_FILL, "#f25a5aff"),
+        ] {
+            assert_eq!(color.hex(), hex);
+        }
+    }
 
     fn scene() -> ViewModel {
         ViewModel {

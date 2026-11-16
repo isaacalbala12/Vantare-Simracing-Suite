@@ -13,6 +13,44 @@ use vantare_domain::{
     radar::{Car, ViewModel},
 };
 
+// Canonical GPUI sRGB colours expressed in Rune's linear sRGB.
+const TRAFFIC: Color = Color {
+    r: 1.0,
+    g: 0.2541521,
+    b: 0.2541521,
+    a: 1.0,
+}; // #ff8a8a
+const NEARBY: Color = Color {
+    r: 0.8879231,
+    g: 0.10224173,
+    b: 0.10224173,
+    a: 1.0,
+}; // #f25a5a
+const SHADOW: Color = Color {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 1.0,
+}; // #000000
+const PLAYER: Color = Color {
+    r: 0.8879231,
+    g: 0.8549926,
+    b: 0.8549926,
+    a: 1.0,
+}; // #f2eeee
+const ACCENT: Color = Color {
+    r: 0.7529422,
+    g: 0.06847817,
+    b: 0.08865559,
+    a: 1.0,
+}; // #e14a54
+const BAR: Color = Color {
+    r: 0.0056053917,
+    g: 0.0047769533,
+    b: 0.0051815165,
+    a: 1.0,
+}; // #110f10
+
 struct CarLive {
     position: Live<[f32; 2]>,
     fill: Live<Color>,
@@ -110,7 +148,7 @@ impl Painter {
         pixels |= self
             .phrase_ink
             .set(if scene.overlap_left || scene.overlap_right {
-                ink("#ff8a8a")
+                TRAFFIC
             } else {
                 self.style.colors.muted
             });
@@ -162,10 +200,7 @@ impl Painter {
                     .radial_gradient(
                         center,
                         [54.0, 121.0],
-                        [
-                            (0.0, alpha(ink("#f25a5a"), 0.55)),
-                            (1.0, alpha(ink("#f25a5a"), 0.0)),
-                        ],
+                        [(0.0, alpha(NEARBY, 0.55)), (1.0, alpha(NEARBY, 0.0))],
                     )
                     .live_opacity(&self.glow[index])
                     .pin(Some(0.0), Some(0.0), None, None),
@@ -206,23 +241,16 @@ impl Painter {
                         .child(
                             rect(0.0, 0.0, 16.0, 38.4, 4.0, live.fill.get()).live_fill(&live.fill),
                         )
-                        .child(rect(3.0, 5.0, 10.0, 6.0, 2.0, alpha(ink("#000000"), 0.35))),
+                        .child(rect(3.0, 5.0, 10.0, 6.0, 2.0, alpha(SHADOW, 0.35))),
                 );
             }
             root = root
                 .child(
-                    rect(102.0, 90.8, 16.0, 38.4, 4.0, ink("#f2eeee"))
+                    rect(102.0, 90.8, 16.0, 38.4, 4.0, PLAYER)
                         .key("radar-player")
-                        .border(2.5, ink("#e14a54")),
+                        .border(2.5, ACCENT),
                 )
-                .child(rect(
-                    105.0,
-                    95.8,
-                    10.0,
-                    6.0,
-                    2.0,
-                    alpha(ink("#000000"), 0.35),
-                ));
+                .child(rect(105.0, 95.8, 10.0, 6.0, 2.0, alpha(SHADOW, 0.35)));
         } else {
             root = root.child(
                 rect(102.0, 90.8, 16.0, 38.4, 4.0, alpha(WHITE, 0.0))
@@ -232,10 +260,7 @@ impl Painter {
         }
         if let Some(phrase) = &structure.phrase {
             root = root
-                .child(
-                    rect(1.0, 190.0, 218.0, 29.0, 0.0, alpha(ink("#110f10"), 0.92))
-                        .key("radar-phrase-bar"),
-                )
+                .child(rect(1.0, 190.0, 218.0, 29.0, 0.0, alpha(BAR, 0.92)).key("radar-phrase-bar"))
                 .child(
                     text(phrase)
                         .key("radar-phrase")
@@ -261,10 +286,6 @@ fn rect(x: f32, y: f32, w: f32, h: f32, radius: f32, fill: Color) -> El {
         .radius(radius)
         .fill(fill)
         .pin(Some(x), Some(y), None, None)
-}
-
-fn ink(hex: &str) -> Color {
-    rune::color::hex(hex).expect("canonical GPUI colour")
 }
 
 fn phrase(vm: &ViewModel, es: bool) -> String {
@@ -518,7 +539,7 @@ mod tests {
             find("radar-phrase").text.as_deref(),
             Some("COCHE A LA IZQUIERDA")
         );
-        assert_eq!(find("radar-phrase").text_color, Some(ink("#ff8a8a")));
+        assert_eq!(find("radar-phrase").text_color, Some(TRAFFIC));
         assert_eq!(find("radar-glow-0").opacity, 1.0);
         assert_eq!(find("radar-glow-1").opacity, 0.0);
         assert_eq!(find("radar-glow-0").radius, 8.0);
@@ -532,5 +553,122 @@ mod tests {
         assert!(index("radar-car-2") < index("radar-player"));
         assert!(index("radar-player") < index("radar-phrase-bar"));
         assert!(rt.wake_deadline().is_none());
+    }
+    /// Degradado de los dos resplandores: caja 220×220, radio 8 y paradas del SVG.
+    #[test]
+    fn glow_radials_use_the_gpui_stops_centres_and_box() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut vm = scene();
+        vm.overlap_left = true;
+        vm.overlap_right = true;
+        let painter = Painter::new(false, Preferences::default(), &vm);
+        let mut rt = Runtime::with_text(
+            painter,
+            |p: &Painter, _| p.view(),
+            (220.0, 220.0),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        rt.frame(0.0);
+        let elements = rt.elements();
+        for key in ["radar-glow-0", "radar-glow-1"] {
+            let glow = elements
+                .iter()
+                .find(|e| e.key.as_deref() == Some(key))
+                .expect("resplandor");
+            assert_eq!(
+                [glow.rect[2], glow.rect[3]],
+                [220.0, 220.0],
+                "{key}: caja del SVG"
+            );
+            assert_eq!(glow.radius, 8.0, "{key}: esquinas redondeadas");
+        }
+        let inner = alpha(NEARBY, 0.55);
+        let radials: Vec<_> = rt
+            .instances
+            .iter()
+            .filter(|i| i.params[1] == rune::render::KIND_RADIAL)
+            .collect();
+        assert!(!radials.is_empty(), "el resplandor es un radial nativo");
+        assert!(
+            radials.iter().all(|i| (i.rect[2] - 220.0).abs() < 1e-3),
+            "todos los segmentos caen en la caja de 220"
+        );
+        // Rune premultiplica el color de la parada: rgb · 0,55 con alfa 0,55.
+        let inner = [inner.r * 0.55, inner.g * 0.55, inner.b * 0.55, 0.55];
+        let stops: Vec<_> = radials
+            .iter()
+            .filter(|i| (i.fill[3] - inner[3]).abs() < 1e-5)
+            .collect();
+        assert_eq!(stops.len(), 2, "una parada interior por resplandor");
+        assert!(
+            stops.iter().all(|i| (i.fill[0] - inner[0]).abs() < 1e-5
+                && (i.fill[1] - inner[1]).abs() < 1e-5
+                && (i.fill[2] - inner[2]).abs() < 1e-5),
+            "color #f25a5a premultiplicado al 55 %"
+        );
+        let mut centres: Vec<f32> = stops.iter().map(|i| i.uv[0]).collect();
+        centres.sort_by(f32::total_cmp);
+        assert_eq!(centres, [0.0, 220.0], "centros opuestos [0,5] y [1,5]");
+        for stop in &stops {
+            assert_eq!([stop.uv[1], stop.uv[2], stop.uv[3]], [110.0, 54.0, 121.0]);
+        }
+        assert!(
+            radials
+                .iter()
+                .any(|i| (i.fill[3] - 0.0).abs() < 1e-6 || (i.border[3] - 0.0).abs() < 1e-6),
+            "parada exterior transparente"
+        );
+    }
+
+    /// Anillos, ejes y marcas de escala en la caja fija de GPUI.
+    #[test]
+    fn rings_axes_and_scale_marks_keep_the_gpui_fixed_box() {
+        let _fonts = rune::text::with_families("Inter", "Inter");
+        let mut vm = scene();
+        vm.available = false;
+        let painter = Painter::new(false, Preferences::default(), &vm);
+        let mut rt = Runtime::with_text(
+            painter,
+            |p: &Painter, _| p.view(),
+            (220.0, 220.0),
+            Env::new(true, 1.0),
+            rune::text::TextSystem::new(crate::vantare::FONTS, ("Inter", "Inter")),
+        );
+        rt.frame(0.0);
+        let elements = rt.elements();
+        let exact = |a: f32, b: f32| (a - b).abs() < 1e-3;
+        let ring = |size: f32| {
+            elements
+                .iter()
+                .find(|e| {
+                    exact(e.rect[2], size)
+                        && exact(e.rect[3], size)
+                        && exact(e.radius, size / 2.0)
+                        && exact(e.rect[0], 110.0 - size / 2.0)
+                })
+                .unwrap_or_else(|| panic!("anillo de {size}"))
+        };
+        assert!(exact(ring(160.0).rect[1], 30.0));
+        assert!(exact(ring(80.0).rect[1], 70.0));
+        let vertical = elements
+            .iter()
+            .find(|e| exact(e.rect[2], 1.0) && exact(e.rect[3], 204.0))
+            .expect("eje vertical");
+        assert!(exact(vertical.rect[0], 109.5));
+        assert!(exact(vertical.rect[1], 8.0));
+        let horizontal = elements
+            .iter()
+            .find(|e| exact(e.rect[2], 204.0) && exact(e.rect[3], 1.0))
+            .expect("eje horizontal");
+        assert!(exact(horizontal.rect[0], 8.0));
+        assert!(exact(horizontal.rect[1], 109.5));
+        let marks: Vec<_> = elements
+            .iter()
+            .filter(|e| matches!(e.text.as_deref(), Some("5" | "10 m")))
+            .collect();
+        assert_eq!(marks.len(), 2, "las dos marcas de escala");
+        assert!(marks.iter().any(|e| exact(e.rect[0], 153.0)));
+        assert!(marks.iter().any(|e| exact(e.rect[0], 193.0)));
     }
 }

@@ -238,7 +238,13 @@ impl Painter {
     pub fn view(&self) -> El {
         let s = &self.style;
         let v = &s.styles.neo;
-        let structure = self.structure.as_ref().expect("initial scene");
+        // `new` fija la escena; sin ella no hay nada que pintar y no se abre un pánico.
+        let Some(structure) = self.structure.as_ref() else {
+            return el()
+                .key("track-map")
+                .size(320.0, 248.0)
+                .motion(rune::Spring::NONE);
+        };
         let mut root = el()
             .key("track-map")
             .size(320.0, 248.0)
@@ -406,6 +412,9 @@ mod tests {
         track_map::{self, Geometry},
     };
 
+    /// Cuantización del layout CPU de Rune (1/64 px).
+    const QUANT: f32 = 1.0 / 64.0;
+
     fn scene() -> ViewModel {
         let mut photo = Snapshot::default();
         photo.state.source_state = SourceState::Live;
@@ -484,9 +493,16 @@ mod tests {
             [CarId(1), CarId(2)]
         );
         let origin = point(Point { x: 0.0, y: 0.0 });
+        assert!(
+            (origin[0] - 23.272_727).abs() < QUANT,
+            "origen absoluto en x"
+        );
+        assert!((origin[1] - 32.0).abs() < QUANT, "origen absoluto en y");
         let x = point(Point { x: 100.0, y: 0.0 });
         let y = point(Point { x: 0.0, y: 100.0 });
-        assert!(((x[0] - origin[0]) - (y[1] - origin[1])).abs() < 0.0001);
+        let scale = 100.0 * SCALE;
+        assert!((x[0] - (origin[0] + scale)).abs() < QUANT, "x absoluta");
+        assert!((y[1] - (origin[1] + scale)).abs() < QUANT, "y absoluta");
         let p = Painter::new(
             false,
             &vm,
@@ -504,10 +520,22 @@ mod tests {
                 .unwrap()
                 .rect;
             let [x, y] = point(marker.point);
-            // Rune's CPU layout quantizes to 1/64 px; the authored coordinates remain unchanged.
+            // El centro absoluto del marcador, con la cuantización del layout CPU.
+            let projected = [rect[0] + 10.0, rect[1] + 10.0];
             assert!(
-                (rect[0] + 10.0 - x).abs() <= 1.0 / 64.0
-                    && (rect[1] + 10.0 - y).abs() <= 1.0 / 64.0
+                (projected[0] - x).abs() <= QUANT && (projected[1] - y).abs() <= QUANT,
+                "{key}: centro {projected:?} != {x}, {y}"
+            );
+        }
+        for color in [RED, UNKNOWN, ROAD, DARK] {
+            assert!(
+                rt.instances
+                    .iter()
+                    .any(|i| (i.fill[0] - color.r).abs() < 1e-6
+                        && (i.fill[1] - color.g).abs() < 1e-6
+                        && (i.fill[2] - color.b).abs() < 1e-6),
+                "la paleta pintada lleva {:?}",
+                color.hex()
             );
         }
         let widths: Vec<_> = rt
@@ -585,8 +613,8 @@ mod tests {
             );
             let name = e("map-track-name-5").rect;
             let session = e("map-session-5").rect;
-            assert!(name[0] + name[2] + 8.0 <= session[0] + 1.0 / 64.0);
-            assert!((session[0] + session[2] - 308.0).abs() <= 1.0 / 64.0);
+            assert!(name[0] + name[2] + 8.0 <= session[0] + QUANT);
+            assert!((session[0] + session[2] - 308.0).abs() <= QUANT);
             assert_eq!(e("map-footer").rect[1], 222.0);
             for n in 0..5 {
                 assert!(rt.find(&format!("map-footer-shadow-{n}")).is_some());

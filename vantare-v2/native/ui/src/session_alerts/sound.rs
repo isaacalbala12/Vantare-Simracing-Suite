@@ -1,5 +1,7 @@
 //! Pitido corto Windows, memoria retenida hasta terminar o destruir el widget.
 use vantare_domain::session_alerts::Tone;
+#[cfg(any(windows, test))]
+use vantare_domain::session_alerts::wave;
 
 #[derive(Default)]
 pub(super) struct Sound {
@@ -42,42 +44,7 @@ impl Drop for Sound {
         }
     }
 }
-#[cfg(any(windows, test))]
-fn wave(tone: Tone, volume: u8) -> Vec<u8> {
-    let rate = 22050u32;
-    let count = rate / 8;
-    let length = count * 2;
-    let mut out = Vec::with_capacity(length as usize + 44);
-    out.extend(b"RIFF");
-    out.extend((length + 36).to_le_bytes());
-    out.extend(b"WAVEfmt ");
-    out.extend(16u32.to_le_bytes());
-    out.extend(1u16.to_le_bytes());
-    out.extend(1u16.to_le_bytes());
-    out.extend(rate.to_le_bytes());
-    out.extend((rate * 2).to_le_bytes());
-    out.extend(2u16.to_le_bytes());
-    out.extend(16u16.to_le_bytes());
-    out.extend(b"data");
-    out.extend(length.to_le_bytes());
-    let hz = match tone {
-        Tone::Mild => 660.0,
-        Tone::Final => 880.0,
-        Tone::Finished => 520.0,
-    };
-    for i in 0..count {
-        let envelope = ((count - i) as f32 / count as f32)
-            .min(i as f32 / 220.0)
-            .clamp(0.0, 1.0);
-        let sample = ((i as f32 * hz * std::f32::consts::TAU / rate as f32).sin()
-            * envelope
-            * f32::from(volume.min(100))
-            / 100.0
-            * 12000.0) as i16;
-        out.extend(sample.to_le_bytes());
-    }
-    out
-}
+
 #[cfg(test)]
 mod tests {
     use super::*;

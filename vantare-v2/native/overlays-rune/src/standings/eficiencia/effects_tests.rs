@@ -354,6 +354,16 @@ fn painted_effects_copy_gpui_hex_geometry_glyph_and_layer_order() {
             .find(|i| i.rect == rect && i.params[3] == stop && i.uv[0] != 0.0)
             .unwrap();
         assert_eq!(grad.params[0], 0.0);
+        // Rune shader.wgsl:437–459: +2 marca una frontera interior abierta.
+        // La última parada es cerrada; el shader prolonga el último color.
+        assert!(
+            grad.params[1] > 10.5,
+            "segmento de degradado angular de Rune"
+        );
+        assert!(
+            grad.params[3] < 1.5,
+            "última parada cerrada, sin corte después de 0,8/0,5"
+        );
         assert_eq!(
             grad.border,
             rune::color::hex(hex).unwrap().premul(end_alpha)
@@ -490,4 +500,22 @@ fn row_fade_multiplies_each_gpui_primitive_without_an_opacity_group() {
             .any(|i| i.rect == [0.0, 43.0, 440.0, 30.0]
                 && i.fill == rune::color::hex("#ffffff").unwrap().premul(0.03 * 0.5))
     );
+}
+
+#[test]
+fn first_pit_frame_keeps_zero_alpha_when_the_pose_equals_default() {
+    let mut p = plan(vec![row(1, 1)]);
+    p.session_best = None; // Sin otro canal que haga que Pose difiera de su valor por defecto.
+    let mut m = Motion::default();
+    update(&mut m, &p, 0.0);
+    Arc::make_mut(&mut p.rows[0].row).in_pits = true;
+    update(&mut m, &p, 1.0);
+    let frame = m.frame_shared(1.0);
+    let pose = frame.row_for(&p.rows[0]);
+    assert_eq!(
+        pose.pit_alpha, 0.0,
+        "GPUI inserta RowVis incluso con alfa PIT cero"
+    );
+    assert_eq!(pose.pit_dx, -5.0);
+    assert_eq!(m.frame_shared(1.2).row_for(&p.rows[0]).pit_alpha, 1.0);
 }

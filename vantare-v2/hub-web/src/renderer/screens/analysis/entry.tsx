@@ -74,7 +74,7 @@ export default function Analysis({
         }}
         rail={
           state.compareView ? (
-            <ComparisonRail state={state} />
+            <ComparisonRail state={state} controller={state.controller} />
           ) : (
             <>
               <AnalysisRail

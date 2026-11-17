@@ -7,10 +7,20 @@ import { chromium, type Page } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as at } from "../src/renderer/i18n/analysis.es.ts";
 import { comparisonText as t } from "../src/renderer/i18n/comparison.es.ts";
+import { t as shellText } from "../src/renderer/i18n/es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { webQaPreview } from "./web-qa.ts";
 
 const scenes = [
+  "rail",
+  "cursor",
+  "keyboard",
+  "table",
+  "gaps-table",
+  "gaps-cursor",
+  "zoom",
+  "zoom-time",
+  "zoom-loading",
   "selection",
   "normal",
   "time",
@@ -31,6 +41,7 @@ export async function checkAnalysisComparison(
   base: string,
   output: string,
   references?: Page,
+  includeCase?: (name: string) => boolean,
 ) {
   await mkdir(output, { recursive: true });
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -41,12 +52,27 @@ export async function checkAnalysisComparison(
     for (const theme of ["dark", "light"])
       for (const scene of scenes) {
         const name = `${scene}-${theme}-${width}`;
+        if (includeCase && !includeCase(name)) continue;
         console.log(`Comparar: ${name}`);
         await page.setViewportSize({
           width,
-          height: scene === "selection" ? (width === 1280 ? 1212 : 1355) : 980,
+          height: scene.endsWith("table")
+            ? 1400
+            : scene === "selection"
+              ? width === 1280
+                ? 1212
+                : 1355
+              : 980,
         });
         const fixture = [
+          "rail",
+          "cursor",
+          "keyboard",
+          "table",
+          "gaps-table",
+          "gaps-cursor",
+          "zoom",
+          "zoom-time",
           "selection",
           "normal",
           "time",
@@ -55,7 +81,7 @@ export async function checkAnalysisComparison(
           "gaps-b",
         ].includes(scene)
           ? "compare"
-          : `compare-${scene}`;
+          : `compare-${scene === "zoom-loading" ? "loading" : scene}`;
         await page.goto(`${base}?escena=analysis-qa-${fixture}`);
         await page
           .getByRole("tab", { name: at.recordings, exact: true })
@@ -80,19 +106,29 @@ export async function checkAnalysisComparison(
           .getByRole("button", {
             name: t.select(
               t.a,
-              scene.startsWith("gaps") && scene !== "gaps-b" ? 5 : 9,
+              scene === "rail"
+                ? 7
+                : scene.startsWith("gaps") && scene !== "gaps-b"
+                  ? 5
+                  : 9,
             ),
             exact: true,
           })
           .click();
         await page
           .getByRole("button", {
-            name: t.select(t.b, scene === "gaps-b" ? 5 : 7),
+            name: t.select(
+              t.b,
+              scene === "rail" ? 9 : scene === "gaps-b" ? 5 : 7,
+            ),
             exact: true,
           })
           .click();
         const selectedB = page.getByRole("button", {
-          name: t.select(t.b, scene === "gaps-b" ? 5 : 7),
+          name: t.select(
+            t.b,
+            scene === "rail" ? 9 : scene === "gaps-b" ? 5 : 7,
+          ),
           exact: true,
         });
         const hovered = await selectedB.evaluate(
@@ -105,7 +141,10 @@ export async function checkAnalysisComparison(
               !!cell &&
               node.getBoundingClientRect().right <=
                 cell.getBoundingClientRect().right -
-                  Number.parseFloat(getComputedStyle(cell).paddingRight) +
+                  Number.parseFloat(getComputedStyle(cell).paddingRight) *
+                    Number.parseFloat(
+                      getComputedStyle(document.documentElement).zoom,
+                    ) +
                   0.5
             );
           }),
@@ -126,6 +165,15 @@ export async function checkAnalysisComparison(
             .click();
           if (
             [
+              "rail",
+              "cursor",
+              "keyboard",
+              "table",
+              "gaps-table",
+              "gaps-cursor",
+              "zoom",
+              "zoom-time",
+              "zoom-loading",
               "normal",
               "time",
               "gaps-time",
@@ -138,11 +186,70 @@ export async function checkAnalysisComparison(
             await page
               .getByRole("img", { name: t.speed, exact: true })
               .waitFor();
-            if (scene === "time" || scene === "gaps-time")
+            if (scene === "time" || scene.endsWith("-time"))
               await page
                 .getByRole("button", { name: t.time, exact: true })
                 .click();
-            if (scene === "loading") {
+            const railToggle = page.locator(".v-titlebar").getByRole("button", {
+              name: shellText("shell.railToggle"),
+              exact: true,
+            });
+            if (scene === "rail" || scene.startsWith("zoom")) {
+              if ((await railToggle.getAttribute("aria-expanded")) === "false")
+                await railToggle.click();
+              await page.locator(".v-an-change").first().waitFor();
+            }
+            if (scene.startsWith("zoom")) {
+              assert.equal(await page.locator(".v-an-change").count(), 3);
+              await page.locator(".v-an-change").first().focus();
+              await page.keyboard.press("Enter");
+              const slider = page.getByRole("slider", { name: t.cursor });
+              assert.equal(
+                (await slider.evaluate(
+                  (el) =>
+                    Number(el.getAttribute("max")) -
+                    Number(el.getAttribute("min")),
+                )) > 0,
+                true,
+              );
+              await page.getByRole("button", { name: t.whole }).waitFor();
+              if (scene !== "zoom-time")
+                assert.equal(
+                  await slider.evaluate(
+                    (el) =>
+                      Number(el.getAttribute("max")) -
+                      Number(el.getAttribute("min")),
+                  ),
+                  250,
+                );
+            }
+            if (scene.startsWith("zoom") && width === 900) {
+              await railToggle.click();
+              await page.waitForFunction(
+                () => !document.querySelector(".v-an-change"),
+              );
+            }
+            if (scene.startsWith("zoom") && scene !== "zoom-time") {
+              assert.deepEqual(
+                await page
+                  .getByRole("img", { name: t.delta, exact: true })
+                  .locator(":scope > text[text-anchor=middle]")
+                  .allTextContents(),
+                ["0 m", "250 m"],
+              );
+            }
+            const priorPaths = await page
+              .locator(".v-an-trace-line")
+              .evaluateAll((nodes) =>
+                nodes.map((node) => node.getAttribute("d")),
+              );
+            const priorBounds = await page
+              .getByRole("slider", { name: t.cursor })
+              .evaluate((el) => [
+                el.getAttribute("min"),
+                el.getAttribute("max"),
+              ]);
+            if (scene === "loading" || scene === "zoom-loading") {
               await page
                 .getByRole("button", { name: t.swap, exact: true })
                 .click();
@@ -154,6 +261,23 @@ export async function checkAnalysisComparison(
                   .locator(".v-an-traces")
                   .evaluate((el) => getComputedStyle(el).opacity),
                 "0.5",
+              );
+              assert.deepEqual(
+                await page
+                  .locator(".v-an-trace-line")
+                  .evaluateAll((nodes) =>
+                    nodes.map((node) => node.getAttribute("d")),
+                  ),
+                priorPaths,
+              );
+              assert.deepEqual(
+                await page
+                  .getByRole("slider", { name: t.cursor })
+                  .evaluate((el) => [
+                    el.getAttribute("min"),
+                    el.getAttribute("max"),
+                  ]),
+                priorBounds,
               );
             }
             const speed = page.getByRole("img", { name: t.speed, exact: true });
@@ -225,16 +349,255 @@ export async function checkAnalysisComparison(
           width - 1,
           (page.viewportSize()?.height ?? 980) - 1,
         );
+        if (scene === "table" || scene === "gaps-table") {
+          const summary = page.locator(".v-an-values-table summary");
+          await page.getByRole("slider", { name: t.cursor }).focus();
+          await page.keyboard.press("Tab");
+          assert.equal(
+            await summary.evaluate((el) => document.activeElement === el),
+            true,
+          );
+          await summary.press("Enter");
+          await page.keyboard.press("Tab");
+          const region = page.getByRole("region", { name: t.table });
+          assert.equal(
+            await region.evaluate((el) => document.activeElement === el),
+            true,
+          );
+          const table = page.getByRole("table", { name: t.table });
+          assert.equal(await table.getByRole("columnheader").count(), 8);
+          assert.equal(await table.getByRole("rowheader").count(), 6);
+          assert.equal(
+            await table
+              .getByRole("columnheader")
+              .evaluateAll((cells) =>
+                cells.every((el) => el.getAttribute("scope") === "col"),
+              ),
+            true,
+          );
+          assert.equal(
+            await table
+              .getByRole("rowheader")
+              .evaluateAll((cells) =>
+                cells.every((el) => el.getAttribute("scope") === "row"),
+              ),
+            true,
+          );
+          if (scene === "gaps-table") {
+            assert.ok(
+              await table
+                .getByRole("cell", { name: t.noData, exact: true })
+                .count(),
+            );
+            assert.ok(await region.getAttribute("aria-describedby"));
+          }
+          assert.equal(
+            await table.evaluate((el) =>
+              el.parentElement
+                ? el.getBoundingClientRect().width <=
+                  el.parentElement.getBoundingClientRect().width + 1
+                : false,
+            ),
+            true,
+            "Values table must fit its scroll container",
+          );
+        }
+        if (scene === "cursor" || scene === "gaps-cursor") {
+          const box = await page
+            .getByRole("slider", { name: t.cursor })
+            .boundingBox();
+          assert.ok(box);
+          await page.mouse.move(
+            box.x +
+              (box.width *
+                (112 + 640 * (scene === "gaps-cursor" ? 0.485 : 0.3))) /
+                800,
+            box.y + 30,
+          );
+          assert.equal(await page.locator(".v-an-cursor-values dd").count(), 7);
+          assert.equal(
+            await page.locator(".v-an-trace-cursor").evaluateAll(
+              (lines, fraction) =>
+                lines.every((node) => {
+                  if (!(node instanceof SVGElement) || !node.ownerSVGElement)
+                    return false;
+                  const box = node.ownerSVGElement.getBoundingClientRect();
+                  return (
+                    Math.abs(
+                      node.getBoundingClientRect().x -
+                        (box.x + (box.width * (112 + 640 * fraction)) / 800),
+                    ) <= 1
+                  );
+                }),
+              scene === "gaps-cursor" ? 0.485 : 0.3,
+            ),
+            true,
+            "The shared cursor must keep the same position in every SVG",
+          );
+          if (scene === "gaps-cursor")
+            assert.ok(
+              (
+                await page
+                  .getByRole("slider", { name: t.cursor })
+                  .getAttribute("aria-valuetext")
+              )?.includes(t.noData),
+            );
+        }
+        if (scene === "keyboard") {
+          const slider = page.getByRole("slider", { name: t.cursor });
+          await slider.focus();
+          await slider.press("ArrowRight");
+          assert.equal(await slider.inputValue(), "1");
+          assert.ok(
+            (await slider.getAttribute("aria-valuetext"))?.includes("Freno B"),
+          );
+          assert.equal(
+            await page
+              .locator(".v-an-traces")
+              .evaluate((el) => getComputedStyle(el).outlineStyle),
+            "solid",
+          );
+        }
+        if (scene === "rail") {
+          const viewport = page.viewportSize();
+          assert.ok(viewport);
+          await page.setViewportSize({
+            ...viewport,
+            height: viewport.height + 1,
+          });
+          await page.evaluate(
+            () =>
+              new Promise<void>((done) =>
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => done()),
+                ),
+              ),
+          );
+          await page.setViewportSize(viewport);
+          await page.evaluate(
+            () =>
+              new Promise<void>((done) =>
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => done()),
+                ),
+              ),
+          );
+          assert.equal(
+            await page
+              .locator(".v-titlebar")
+              .getByRole("button", {
+                name: shellText("shell.railToggle"),
+                exact: true,
+              })
+              .getAttribute("aria-expanded"),
+            "true",
+            "Content resizing must preserve manual rail expansion",
+          );
+          assert.equal(await page.locator(".v-an-change").count(), 3);
+          const rows = page.locator(".v-an-change");
+          assert.equal(
+            await rows.evaluateAll((nodes) => {
+              const root = getComputedStyle(document.documentElement);
+              const height =
+                Number.parseFloat(root.getPropertyValue("--pill-h")) *
+                Number.parseFloat(root.zoom);
+              return nodes.every(
+                (node, i) =>
+                  node.getBoundingClientRect().height >= 24 &&
+                  node.getBoundingClientRect().height <= height + 1 &&
+                  (i === 0 ||
+                    node.getBoundingClientRect().top -
+                      nodes[i - 1].getBoundingClientRect().top <=
+                      height + 1),
+              );
+            }),
+            true,
+            "Change rows must be compact and retain a 24 px minimum target",
+          );
+          assert.match((await rows.first().textContent()) ?? "", /−0\.01 s/);
+          assert.equal(await rows.locator(".v-an-compare-gain").count(), 3);
+          assert.equal(
+            await rows
+              .locator(".v-an-compare-gain")
+              .first()
+              .evaluate((node) => {
+                const probe = document.createElement("span");
+                probe.style.color = "var(--analysis-gain)";
+                node.append(probe);
+                const expected = getComputedStyle(probe).color;
+                probe.remove();
+                return getComputedStyle(node).color === expected;
+              }),
+            true,
+            "A gain must use the Hub blue token",
+          );
+          const normal = await rows
+            .first()
+            .evaluate((node) => getComputedStyle(node).backgroundColor);
+          await rows.first().hover();
+          assert.notEqual(
+            await rows
+              .first()
+              .evaluate((node) => getComputedStyle(node).backgroundColor),
+            normal,
+            "Hover must visibly identify the change row",
+          );
+          await rows.first().focus();
+          await page.keyboard.press("Tab");
+          assert.equal(
+            await rows.nth(1).evaluate((node) => {
+              const css = getComputedStyle(node);
+              const scale =
+                Number.parseFloat(
+                  getComputedStyle(document.documentElement).zoom,
+                ) * devicePixelRatio;
+              // Like the Studio QA, account for Chromium rounding the Hub's
+              // 2 px outline to whole device pixels at CSS zoom.
+              const paintedWidth = Math.floor(2 * scale) / scale;
+              return (
+                document.activeElement === node &&
+                node.matches(":focus-visible") &&
+                css.outlineStyle !== "none" &&
+                Number.parseFloat(css.outlineWidth) >= paintedWidth - 0.02
+              );
+            }),
+            true,
+            "Change rows need visible keyboard focus",
+          );
+          await rows.first().hover();
+        }
+        if (scene.startsWith("gaps")) {
+          const side = scene === "gaps-b" ? "B" : "A";
+          const note = page.locator(".v-an-gap-notes");
+          assert.ok(
+            (await note.textContent())?.includes(
+              `Sin datos entre 2 323 m y 2 520 m en ${side}`,
+            ),
+          );
+          assert.equal(await note.evaluate((el) => !el.closest("svg")), true);
+        }
         if (scene !== "selection")
           assert.equal(
             await page
               .getByRole("combobox", { name: t.a, exact: true })
               .evaluate((node) => {
                 const value = node.firstElementChild;
+                const icon = node.lastElementChild;
+                const style = getComputedStyle(node);
+                const zoom = Number.parseFloat(
+                  getComputedStyle(document.documentElement).zoom,
+                );
+                const available =
+                  node.clientWidth -
+                  Number.parseFloat(style.paddingLeft) -
+                  Number.parseFloat(style.paddingRight) -
+                  (Number.parseFloat(style.columnGap) || 0) -
+                  (icon && icon !== value
+                    ? icon.getBoundingClientRect().width / zoom
+                    : 0);
                 return (
                   !!value &&
-                  value.getBoundingClientRect().width >
-                    node.getBoundingClientRect().width * 0.7 &&
+                  value.getBoundingClientRect().width / zoom >= available - 1 &&
                   getComputedStyle(value).textAlign === "center"
                 );
               }),
@@ -250,6 +613,7 @@ export async function checkAnalysisComparison(
           JSON.stringify(report, null, 2),
         );
         await page.screenshot({ path: resolve(output, `${name}.png`) });
+        assert.deepEqual(report.violations, [], `${name}: axe violations`);
         const ref =
           scene === "selection"
             ? "02-grabacion"
@@ -274,7 +638,7 @@ export async function checkAnalysisComparison(
               .screenshot({ path: resolve(output, refName) });
           }
           figures.push(
-            `<section><h2>${name}</h2><p>P1e-1: datos sintéticos del host, nombres sin identificar, tiempos aproximados. La ficha, la tabla de valores y «Dónde cambia más» se entregan en P1e-2, según el corte aprobado. El error y la carga reutilizan los moldes aprobados; la maqueta es la referencia de su marco.</p><div><figure><figcaption>Maqueta aprobada ${ref}</figcaption><img alt="Referencia" src="${refName}"></figure><figure><figcaption>Hub ${theme}</figcaption><img alt="Implementación" src="${name}.png"></figure></div></section>`,
+            `<section><h2>${name}</h2><p>P1e-2: datos sintéticos del host, nombres sin identificar, tiempos aproximados. Ficha con todos los valores, tabla cada 1 000 m y tres tramos de 250 m; durante la carga se conserva el encuadre. El error y la carga reutilizan los moldes aprobados; la maqueta es la referencia de su marco.</p><div><figure><figcaption>Maqueta aprobada ${ref}</figcaption><img alt="Referencia" src="${refName}"></figure><figure><figcaption>Hub ${theme}</figcaption><img alt="Implementación" src="${name}.png"></figure></div></section>`,
           );
         }
       }
@@ -285,7 +649,7 @@ export async function checkAnalysisComparison(
   if (references)
     await writeAnalysisSheet(
       output,
-      `<!doctype html><html lang="es"><meta charset="utf-8"><title>VANTA-133 · P1e-1</title><style>body{font:16px system-ui;margin:24px}section>div{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}img{width:100%}section{margin-block:40px}</style><h1>P1e-1 frente a las maquetas 03 y 03b</h1>${figures.join("")}</html>`,
+      `<!doctype html><html lang="es"><meta charset="utf-8"><title>VANTA-133 · P1e-2</title><style>body{font:16px system-ui;margin:24px}section>div{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}img{width:100%}section{margin-block:40px}</style><h1>P1e-2 frente a las maquetas 03 y 03b</h1>${figures.join("")}</html>`,
     );
   await page.emulateMedia({ reducedMotion: null });
   assert.ok(
@@ -313,7 +677,7 @@ if (import.meta.main) {
       page,
       base,
       process.env.VANTARE_ANALYSIS_EVIDENCE ??
-        "D:/VantareServer/evidence/analisis/p1/p1e/one",
+        "D:/VantareServer/evidence/analisis/p1/p1e2/one",
       references,
     );
   } finally {

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { setImmediate as nextTurn } from "node:timers/promises";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
@@ -9,6 +10,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { CSSProperties } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type {
   AnalysisReply,
@@ -25,6 +27,7 @@ import {
 import * as host from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
+  SectionRailSlot,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
 import * as settings from "../src/renderer/app/SettingsState";
@@ -39,6 +42,7 @@ import {
 import { ComparisonRail } from "../src/renderer/ui/analysis/ComparisonRail";
 import { CompareAction } from "../src/renderer/ui/analysis/LapChoices";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
+import { controlledAnalysisHost } from "./analysis-controlled-host";
 
 function bridge(scene = "compare") {
   let id = 0;
@@ -67,7 +71,7 @@ function bridge(scene = "compare") {
       }),
   );
 }
-function mount(request = bridge()) {
+function mount(request = bridge(), withRail = false) {
   vi.spyOn(host, "useHost").mockReturnValue({
     client: { request } as unknown as Client,
   });
@@ -92,6 +96,7 @@ function mount(request = bridge()) {
         <TooltipProvider>
           <SectionChromeProvider>
             <SectionTabsSlot />
+            {withRail && <SectionRailSlot fallback={null} />}
             <Analysis clock={() => analysisQaNow} timeZone="UTC" />
           </SectionChromeProvider>
         </TooltipProvider>
@@ -163,7 +168,9 @@ it("selects exclusive A/B, swaps them, allows sealed gaps, and describes inert i
   expect(paths[0].classList.contains("v-an-series-a")).toBe(true);
   expect(paths[1].classList.contains("v-an-series-b")).toBe(true);
   expect(paths[0].getAttribute("d")?.match(/M/g)).toHaveLength(2);
-  expect(screen.queryByText("Ver valores en tabla (cada 1 000 m)")).toBeNull();
+  expect(
+    document.querySelector(".v-an-values-table")?.hasAttribute("open"),
+  ).toBe(false);
 });
 it("compares and exchanges selectors using native keyboard controls and individual elapsed axes", async () => {
   const request = bridge();
@@ -372,6 +379,7 @@ it("never bridges segments or missing elapsed; subtracts overlapping gaps withou
   if (!data) throw Error("missing comparison");
   const axis = {
     time: false,
+    gaps: [],
     range: [0, 30] as [number, number],
     distance: [0, 30] as [number, number],
   };
@@ -425,7 +433,7 @@ it("shows the known pair while initially loading and never labels a failed new p
   );
   expect(screen.getByText(t.line(t.a, 9))).toBeTruthy();
   expect(screen.getByText(t.line(t.b, 7))).toBeTruthy();
-  expect(screen.getByText(t.loading)).toBeTruthy();
+  expect(screen.getAllByText(t.loading)).toHaveLength(2);
   c.compare();
   await waitFor(() => expect(c.snapshot().comparison).toBeTruthy());
   rail.rerender(
@@ -441,7 +449,7 @@ it("shows the known pair while initially loading and never labels a failed new p
   expect(screen.getByText(t.line(t.a, 7))).toBeTruthy();
   expect(screen.getByText(t.line(t.b, 9))).toBeTruthy();
   expect(screen.queryByText(t.line(t.a, 13))).toBeNull();
-  expect(screen.getByText(t.noDelta)).toBeTruthy();
+  expect(screen.getAllByText(t.noDelta)).toHaveLength(2);
   c.dispose();
 });
 it("waits for both the abandoned reader and cancel acknowledgement before reopening, ignoring a late result", async () => {
@@ -487,4 +495,348 @@ it("waits for both the abandoned reader and cancel acknowledgement before reopen
     .map((r) => r.session);
   expect(sessions[2]).not.toBe(sessions[1]);
   c.dispose();
+});
+
+it("exposes every trace value to keyboard and table, centers a 250 m window and resets the whole lap", async () => {
+  mount(bridge(), true);
+  await open();
+  await compare();
+  const slider = await screen.findByRole("slider", { name: t.cursor });
+  expect(slider.getAttribute("aria-valuetext")).toContain("Velocidad A");
+  expect(slider.getAttribute("aria-valuetext")).toContain("Freno B");
+  slider.focus();
+  await userEvent.keyboard("{ArrowRight}");
+  expect(
+    slider.getAttribute("aria-valuenow") ?? slider.getAttribute("value"),
+  ).toBe("1");
+  await userEvent.keyboard("{ArrowLeft}");
+  expect((slider as HTMLInputElement).value).toBe("0");
+  expect(document.activeElement).toBe(slider);
+  await userEvent.keyboard("{Escape}");
+  expect(slider.parentElement?.hasAttribute("data-cursor-dismissed")).toBe(
+    true,
+  );
+  await userEvent.keyboard("{ArrowRight}");
+  expect(slider.parentElement?.hasAttribute("data-cursor-dismissed")).toBe(
+    false,
+  );
+  const choices = screen.getAllByRole("button", { name: /km.*s$/ });
+  expect(choices).toHaveLength(3);
+  await userEvent.click(choices[0]);
+  const from = Number(slider.getAttribute("min"));
+  expect(Number(slider.getAttribute("max")) - from).toBe(250);
+  await userEvent.click(
+    document.querySelector(".v-an-values-table summary") as HTMLElement,
+  );
+  const table = screen.getByRole("table", { name: t.table });
+  expect(within(table).getAllByRole("columnheader")).toHaveLength(8);
+  expect(
+    within(table)
+      .getAllByRole("rowheader")
+      .map((cell) => cell.textContent),
+  ).toEqual(["0 m", "1 000 m", "2 000 m", "3 000 m", "4 000 m", "5 000 m"]);
+  await userEvent.click(screen.getByRole("button", { name: t.whole }));
+  expect(slider.getAttribute("min")).toBe("0");
+  expect(slider.getAttribute("max")).toBe("5000");
+});
+it.each([
+  [0, 5000, true],
+  [1000, 5000, false],
+] as const)(
+  "retains zoom only when contained in the new result %s–%s",
+  async (from, to, kept) => {
+    const real = bridge();
+    let release: ((r: Reply) => void) | undefined;
+    let result: Reply | undefined;
+    let count = 0;
+    const request = vi.fn(async (r: AnalysisRequest): Promise<Reply> => {
+      const reply = await real(r);
+      if (
+        r.method === "analysis.compare" &&
+        ++count === 2 &&
+        reply.method === "analysis.compare"
+      ) {
+        result = { ...reply, distanceRange: [from, to] };
+        return new Promise((done) => {
+          release = done;
+        });
+      }
+      return reply;
+    });
+    const c = new AnalysisController({ request });
+    c.load();
+    await waitFor(() => expect(c.snapshot().loading).toBe(false));
+    c.open(c.snapshot().rows[1]);
+    await waitFor(() => expect(c.snapshot().opened).toBeTruthy());
+    c.compare();
+    await waitFor(() => expect(c.snapshot().comparison).toBeTruthy());
+    c.zoom([250, 500]);
+    const old = c.snapshot().comparison;
+    c.select("a", 8);
+    await waitFor(() => expect(release).toBeDefined());
+    expect(c.snapshot().comparison).toBe(old);
+    expect(c.snapshot().zoom).toEqual([250, 500]);
+    expect(c.snapshot().comparing).toBe(true);
+    if (!release || !result) throw Error("missing pending result");
+    release(result);
+    await waitFor(() => expect(c.snapshot().comparing).toBe(false));
+    expect(c.snapshot().zoom).toEqual(kept ? [250, 500] : undefined);
+    expect(c.snapshot().comparison?.distanceRange).toEqual([from, to]);
+    c.dispose();
+  },
+);
+
+it("exposes gap coordinates and dash meanings outside SVG, with native keyboard table order", async () => {
+  mount();
+  await open();
+  await userEvent.click(screen.getByRole("button", { name: t.select(t.a, 5) }));
+  await compare();
+  const slider = await screen.findByRole("slider", { name: t.cursor });
+  expect(
+    await screen.findByText("Sin datos entre 2 323 m y 2 520 m en A"),
+  ).toBeTruthy();
+  slider.focus();
+  await userEvent.tab();
+  const summary = document.querySelector(".v-an-values-table summary");
+  expect(document.activeElement).toBe(summary);
+  await userEvent.click(summary as HTMLElement);
+  await userEvent.tab();
+  const region = screen.getByRole("region", { name: t.table });
+  expect(document.activeElement).toBe(region);
+  const description = document.getElementById(
+    region.getAttribute("aria-describedby") ?? "",
+  );
+  expect(description?.textContent).toContain(
+    "Sin datos entre 2 323 m y 2 520 m en A",
+  );
+  const table = screen.getByRole("table", { name: t.table });
+  expect(
+    within(table)
+      .getAllByRole("columnheader")
+      .every((cell) => cell.getAttribute("scope") === "col"),
+  ).toBe(true);
+  expect(
+    within(table)
+      .getAllByRole("rowheader")
+      .every((cell) => cell.getAttribute("scope") === "row"),
+  ).toBe(true);
+  const unavailable = within(table).getAllByRole("cell", { name: t.noData });
+  expect(unavailable.length).toBeGreaterThan(0);
+  expect(unavailable.every((cell) => cell.textContent === "—")).toBe(true);
+});
+it("does not traverse trace points when the shared cursor moves; data and zoom still rebuild the paths", async () => {
+  const c = new AnalysisController({ request: bridge() });
+  c.load();
+  await waitFor(() => expect(c.snapshot().loading).toBe(false));
+  c.open(c.snapshot().rows[1]);
+  await waitFor(() => expect(c.snapshot().opened).toBeTruthy());
+  c.compare();
+  await waitFor(() => expect(c.snapshot().comparison).toBeTruthy());
+  const original = c.snapshot().comparison;
+  if (!original) throw Error("Missing comparison");
+  let reads = 0;
+  const watched = original.speed.a.map((p) => ({
+    ...p,
+    get distance() {
+      reads++;
+      return p.distance;
+    },
+  }));
+  const data = { ...original, speed: { ...original.speed, a: watched } };
+  const axis = {
+    time: false,
+    gaps: [],
+    distance: data.distanceRange,
+    range: data.distanceRange,
+  };
+  const plot = render(
+    <div style={{ "--cursor-position": "30%" } as CSSProperties}>
+      <ComparisonPlot data={data} signal="speed" axis={axis} />
+    </div>,
+  );
+  const before = reads;
+  expect(before).toBeGreaterThan(0);
+  const path = plot.container
+    .querySelector(".v-an-series-a")
+    ?.getAttribute("d");
+  plot.rerender(
+    <div style={{ "--cursor-position": "40%" } as CSSProperties}>
+      <ComparisonPlot data={data} signal="speed" axis={axis} />
+    </div>,
+  );
+  expect(reads).toBe(before);
+  const zoom = {
+    ...axis,
+    range: [0, 250] as [number, number],
+    distance: [0, 250] as [number, number],
+  };
+  plot.rerender(
+    <div>
+      <ComparisonPlot data={data} signal="speed" axis={zoom} />
+    </div>,
+  );
+  expect(reads).toBeGreaterThan(before);
+  expect(
+    plot.container.querySelector(".v-an-series-a")?.getAttribute("d"),
+  ).not.toBe(path);
+  const zoomPath = plot.container
+    .querySelector(".v-an-series-a")
+    ?.getAttribute("d");
+  plot.rerender(
+    <div>
+      <ComparisonPlot
+        data={{
+          ...data,
+          speed: {
+            ...data.speed,
+            a: watched.map((p) => ({ ...p, value: p.value + 20 })),
+          },
+        }}
+        signal="speed"
+        axis={zoom}
+      />
+    </div>,
+  );
+  expect(
+    plot.container.querySelector(".v-an-series-a")?.getAttribute("d"),
+  ).not.toBe(zoomPath);
+  c.dispose();
+});
+it.each(["unmount", "cancel"])(
+  "closes the correct valid session after %s with compare delivery still in flight",
+  async (action) => {
+    const h = controlledAnalysisHost();
+    const ui = mount(h.request);
+    await open();
+    await compare();
+    await waitFor(() => expect(h.pending()).toBe(true));
+    const session = h.sessions[0];
+    expect(session).toBeTruthy();
+    if (action === "unmount") ui.unmount();
+    else
+      await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    h.finish();
+    // All fixture replies are microtasks: the next event-loop turn drains the reader lane and cancel acknowledgement.
+    await nextTurn();
+    expect(h.closes()).toEqual([session]);
+    expect(h.outstanding.size).toBe(0);
+    if (action === "cancel") {
+      ui.unmount();
+      await nextTurn();
+      expect(h.closes()).toEqual([session]);
+      expect(h.outstanding.size).toBe(0);
+    }
+  },
+);
+it.each(["unmount", "cancel"])(
+  "does not close a token invalidated by host cancellation on %s",
+  async (action) => {
+    const h = controlledAnalysisHost(true);
+    const ui = mount(h.request);
+    await open();
+    await compare();
+    await waitFor(() => expect(h.pending()).toBe(true));
+    if (action === "unmount") ui.unmount();
+    else
+      await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    await nextTurn();
+    expect(h.pending()).toBe(false);
+    expect(h.closes()).toEqual([]);
+    expect(h.outstanding.size).toBe(0);
+    if (action === "cancel") {
+      ui.unmount();
+      await nextTurn();
+      expect(h.closes()).toEqual([]);
+      expect(h.outstanding.size).toBe(0);
+    }
+  },
+);
+it.each(["analysisCancelled", "analysisTimeout"] as const)(
+  "reopens after %s without resending its invalid token",
+  async (kind) => {
+    const h = controlledAnalysisHost();
+    mount(h.request);
+    await open();
+    await compare();
+    await waitFor(() => expect(h.pending()).toBe(true));
+    const old = h.sessions[0];
+    act(() => h.fail(kind));
+    await screen.findByRole("heading", {
+      name: kind === "analysisTimeout" ? t.timeout : t.cancelled,
+    });
+    await userEvent.click(screen.getByRole("button", { name: t.reopen }));
+    await waitFor(() => expect(h.sessions).toHaveLength(2));
+    expect(h.sessions[1]).not.toBe(old);
+    expect(h.closes()).not.toContain(old);
+    act(() => h.finish());
+    await screen.findByRole("img", { name: t.speed });
+    cleanup();
+    await nextTurn();
+    expect(h.closes()).toEqual([h.sessions[1]]);
+    expect(h.outstanding.size).toBe(0);
+  },
+);
+it("never retries close after the host reports an already closed session", async () => {
+  const h = controlledAnalysisHost();
+  const c = new AnalysisController({ request: h.request });
+  c.load();
+  await waitFor(() => expect(c.snapshot().loading).toBe(false));
+  c.open(c.snapshot().rows[1]);
+  await waitFor(() => expect(c.snapshot().opened).toBeTruthy());
+  c.compare();
+  await waitFor(() => expect(h.pending()).toBe(true));
+  const session = h.sessions[0];
+  h.closeExternally(session);
+  c.dispose();
+  h.finish();
+  await nextTurn();
+  c.dispose();
+  await nextTurn();
+  expect(h.closes()).toEqual([session]);
+  expect(h.outstanding.size).toBe(0);
+});
+it("an obsolete timeout cannot send a new cancel after another pair was selected", async () => {
+  const h = controlledAnalysisHost();
+  const c = new AnalysisController({ request: h.request });
+  c.load();
+  await waitFor(() => expect(c.snapshot().loading).toBe(false));
+  c.open(c.snapshot().rows[1]);
+  await waitFor(() => expect(c.snapshot().opened).toBeTruthy());
+  c.compare();
+  await waitFor(() => expect(h.pending()).toBe(true));
+  const before = h.cancels();
+  h.fail("analysisTimeout");
+  // The raw request has classified its rejection; the outer cleanup is the following microtask.
+  await Promise.resolve();
+  c.select("a", 8);
+  await nextTurn();
+  expect(h.cancels()).toBe(before + 1);
+  expect(h.sessions).toHaveLength(2);
+  expect(h.pending()).toBe(true);
+  h.finish();
+  await nextTurn();
+  expect(c.snapshot().comparison?.a).toBe(8);
+  c.dispose();
+  await nextTurn();
+  expect(h.outstanding.size).toBe(0);
+});
+
+it("forgets a session the host no longer recognizes before returning to the list", async () => {
+  const h = controlledAnalysisHost();
+  const c = new AnalysisController({ request: h.request });
+  c.load();
+  await waitFor(() => expect(c.snapshot().loading).toBe(false));
+  c.open(c.snapshot().rows[1]);
+  await waitFor(() => expect(c.snapshot().opened).toBeTruthy());
+  c.compare();
+  await waitFor(() => expect(h.pending()).toBe(true));
+  h.fail("analysisNotFound");
+  await nextTurn();
+  expect(c.snapshot().compareError).toBe("analysisNotFound");
+  c.load();
+  await waitFor(() => expect(c.snapshot().loading).toBe(false));
+  expect(h.closes()).toEqual([]);
+  c.dispose();
+  await nextTurn();
+  expect(h.outstanding.size).toBe(0);
 });

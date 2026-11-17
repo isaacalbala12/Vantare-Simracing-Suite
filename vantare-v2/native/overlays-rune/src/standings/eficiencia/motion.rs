@@ -445,7 +445,7 @@ impl Motion {
                     }
                 }
             }
-            if pose != Pose::default() {
+            if pose != Pose::default() || row.in_pits {
                 frame.vis.insert(row.id, pose);
             }
         }

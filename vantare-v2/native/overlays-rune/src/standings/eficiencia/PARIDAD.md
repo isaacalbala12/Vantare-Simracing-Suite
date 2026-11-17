@@ -166,7 +166,7 @@ la ausencia de adquisición para un layout vacío.
 Orden conservado: sombra exterior, panel/marca/cinta, tabla o ausencia, pie,
 marco y rail PIT. Las capas tienen pin y claves propias. El preview Rune escala
 el árbol del host: la pintura de producto corresponde a unit=1/layout_width=width.
-E4 pinta el estado final PIT (alfa1, dx0) solo para filas in_pits; E5/E6 conectan
+E4 pinta el estado final PIT (alfa 1, dx0) solo para filas in_pits; E5/E6 conectan
 los canales animados y ghosts. No se añade ningún reloj ni gate por sequence.
 
 La matriz normal conserva assert_inside_window sin modificarlo para
@@ -298,3 +298,21 @@ Build del ejecutable y cinco tests de política de distribución con
 debug-assertions=no PASS en el mismo target del Mac. Delta frente a nightly
 5aa79a733: producción +555/−32=587 líneas; tests +697/−28=725.
 El target propio se borra al terminar esta verificación local.
+
+## Revisión E6 en el mismo PR
+
+La primera entrada en PIT conserva una entrada explícita de Pose aunque todos
+sus canales coincidan con Default: pit_alpha=0 y pit_dx=−5 en t0. Así row_for
+no toma el fallback in_pits de alfa 1, igual que GPUI siempre inserta RowVis
+(motion.rs:736–750). Regresión por row_for con session_best=None para evitar
+que otro canal enmascare ese primer frame.
+animate(from,to) usa Tween::retarget compartido: si from==to no crea transición.
+Una fila que reentra desde alfa 1 tiene por tanto un fundido 1→1 sin reloj extra;
+GPUI Tween::animate fija 200 ms y running sigue despertando durante ese plazo,
+aunque la opacidad no cambie (motion.rs:116–135,559–571). Es una diferencia de
+actividad sin diferencia visible, adicional a la de active frente a running.
+Los oráculos comparan con GPUI batalla 90° (paradas 0/0,8 y gold 0,55/0,10) y
+barrido 100° (paradas 0/0,5 y 0/1). Rune expone dirección, colores y el cierre del
+último segmento en Instance; shader.wgsl:437–459 prolonga el último color con
+clamp. La API CPU no ofrece muestras de color rasterizado: comprobar que el
+tramo 0,8–1,0 mantiene gold al 10% queda pendiente de captura en el PC.

@@ -5,7 +5,10 @@ import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { chromium } from "playwright-core";
 import { shellText } from "../src/renderer/i18n/shell.es.ts";
-import { assertRendererIsolation } from "./preload-surface.ts";
+import {
+  assertRendererIsolation,
+  assertWindowFitsScreen,
+} from "./preload-surface.ts";
 import { until } from "./wait-for.ts";
 
 const evidence = process.env.VANTARE_HUB_EVIDENCE ?? resolve("test-results");
@@ -191,13 +194,20 @@ try {
   const result = await window.evaluate(() => ({
     node: typeof (globalThis as Record<string, unknown>).require,
     devicePixelRatio: globalThis.devicePixelRatio,
-    viewport: { width: innerWidth, height: innerHeight },
+    // CSS pixels grow when page zoom drops below 100 % on a small window.
+    content: { width: innerWidth, height: innerHeight },
+    // Client area in the unit the window is sized in (preload contract).
+    viewport: globalThis.window.vantare?.viewport(),
     available: { width: screen.availWidth, height: screen.availHeight },
     bridge: Object.keys(globalThis.window.vantare ?? {}),
   }));
-  assert.ok(result.viewport.width <= result.available.width);
-  assert.ok(result.viewport.height <= result.available.height);
   assertRendererIsolation(result);
+  if (!result.viewport)
+    throw new Error("Preload did not report the client area");
+  console.log(
+    `window ${JSON.stringify(result.viewport)}, content ${JSON.stringify(result.content)} at ${result.devicePixelRatio}x, screen ${JSON.stringify(result.available)}`,
+  );
+  assertWindowFitsScreen(result.viewport, result.available);
   await window.screenshot({
     path: resolve(evidence, "esqueleto.png"),
     fullPage: true,

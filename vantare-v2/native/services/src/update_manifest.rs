@@ -52,7 +52,7 @@ pub fn verify(json: &[u8]) -> Result<Vec<u8>> {
 }
 
 /// Hub feed uses the production authority unless the isolated QA build is selected.
-/// Legacy verify() never accepts the QA authority, even in that build.
+/// Legacy `verify()` never accepts the QA authority, even in that build.
 pub fn verify_hub_update(json: &[u8]) -> Result<Vec<u8>> {
     #[cfg(feature = "hub-update-qa")]
     {
@@ -200,7 +200,7 @@ mod hub_authority_tests {
             br#"{"schema":2,"product":"vantare-hub"}"#,
             &SigningKey::from_bytes(&[42; 32]),
         )
-        .unwrap();
+        .expect("sign test Hub offer");
         assert!(verify(&signed).is_err());
         assert_eq!(
             verify_hub_update(&signed).is_ok(),

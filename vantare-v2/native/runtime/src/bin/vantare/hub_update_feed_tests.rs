@@ -20,24 +20,27 @@ fn offer() -> Offer {
     }
 }
 fn signed(value: &Offer) -> Vec<u8> {
-    let bytes = serde_json::to_vec(value).unwrap();
+    let bytes = serde_json::to_vec(value).expect("valid test fixture");
     let key = SigningKey::from_bytes(&[42; 32]); // Existing public matrix TEST seed, never production.
-    serde_json::to_vec(&serde_json::json!({"payload":STANDARD.encode(&bytes),"signature":STANDARD.encode(key.sign(&bytes).to_bytes())})).unwrap()
+    serde_json::to_vec(&serde_json::json!({"payload":STANDARD.encode(&bytes),"signature":STANDARD.encode(key.sign(&bytes).to_bytes())})).expect("valid test fixture")
 }
 fn qa_root() -> std::path::PathBuf {
     let base = if std::env::var("CI").as_deref() == Ok("true") {
-        std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").unwrap())
+        std::path::PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("valid test fixture"))
     } else {
         std::path::PathBuf::from("D:/VantareServer/qa/isa-1995")
     };
-    let root = base.join(format!("hub-feed-{}", disk::id().unwrap()));
-    vantare_installer::engine::context::qa_path(&root).unwrap();
+    let root = base.join(format!(
+        "hub-feed-{}",
+        disk::id().expect("valid test fixture")
+    ));
+    vantare_installer::engine::context::qa_path(&root).expect("valid test fixture");
     root
 }
 #[test]
 fn signed_bounds_accept_exact_and_reject_one_more_or_zero_without_large_payloads() {
     let valid = offer();
-    valid.validate().unwrap();
+    valid.validate().expect("valid test fixture");
     for (compressed, expanded) in [
         (ZIP_LIMIT + 1, EXPANDED_LIMIT),
         (ZIP_LIMIT, EXPANDED_LIMIT + 1),
@@ -52,7 +55,7 @@ fn signed_bounds_accept_exact_and_reject_one_more_or_zero_without_large_payloads
 }
 #[test]
 fn schema_product_namespace_and_fields_are_closed() {
-    let value = serde_json::to_value(offer()).unwrap();
+    let value = serde_json::to_value(offer()).expect("valid test fixture");
     for (field, bad) in [
         ("schema", serde_json::json!(1)),
         ("product", serde_json::json!("vantare-native")),
@@ -66,7 +69,7 @@ fn schema_product_namespace_and_fields_are_closed() {
         changed[field] = bad;
         assert!(
             serde_json::from_value::<Offer>(changed)
-                .unwrap()
+                .expect("valid test fixture")
                 .validate()
                 .is_err()
         );
@@ -75,7 +78,7 @@ fn schema_product_namespace_and_fields_are_closed() {
     legacy["url"] = serde_json::json!(offer().url.replace("hub-beta-v", "native-beta-v"));
     assert!(
         serde_json::from_value::<Offer>(legacy)
-            .unwrap()
+            .expect("valid test fixture")
             .validate()
             .is_err()
     );
@@ -142,10 +145,10 @@ fn authenticated_preflight_makes_zero_zip_requests_and_no_staging_when_oversized
             },
         );
         assert!(result.is_err());
-        assert_eq!(downloads.get(), if want_download { 1 } else { 0 });
+        assert_eq!(downloads.get(), usize::from(want_download));
         assert_eq!(root.exists(), want_download);
         if root.exists() {
-            fs::remove_dir_all(root).unwrap();
+            fs::remove_dir_all(root).expect("valid test fixture");
         }
     }
 }
@@ -154,20 +157,25 @@ fn authenticated_preflight_makes_zero_zip_requests_and_no_staging_when_oversized
 fn isolated_authority_accepts_qa_signature_and_rejects_modified_payload() {
     let valid = signed(&offer());
     assert!(vantare_services::update_manifest::verify(&valid).is_err());
-    Offer::verify(&valid).unwrap();
-    let mut changed: serde_json::Value = serde_json::from_slice(&valid).unwrap();
+    Offer::verify(&valid).expect("valid test fixture");
+    let mut changed: serde_json::Value =
+        serde_json::from_slice(&valid).expect("valid test fixture");
     let mut other = offer();
     other.notes = "changed".into();
-    changed["payload"] = serde_json::json!(STANDARD.encode(serde_json::to_vec(&other).unwrap()));
-    assert!(Offer::verify(&serde_json::to_vec(&changed).unwrap()).is_err());
+    changed["payload"] =
+        serde_json::json!(STANDARD.encode(serde_json::to_vec(&other).expect("valid test fixture")));
+    assert!(Offer::verify(&serde_json::to_vec(&changed).expect("valid test fixture")).is_err());
 }
 #[test]
 fn download_requires_exact_signed_length_and_hash() {
     use std::{net::TcpListener, time::Instant};
     for (length, wrong_hash) in [(4, false), (5, false), (6, false), (5, true)] {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        listener.set_nonblocking(true).unwrap();
-        let url = format!("http://{}", listener.local_addr().unwrap());
+        let listener = TcpListener::bind("127.0.0.1:0").expect("valid test fixture");
+        listener.set_nonblocking(true).expect("valid test fixture");
+        let url = format!(
+            "http://{}",
+            listener.local_addr().expect("valid test fixture")
+        );
         let server = std::thread::spawn(move || {
             // Bounded test watchdog: the fixture also exits if the client never connects.
             let until = Instant::now() + Duration::from_secs(5);
@@ -176,7 +184,7 @@ fn download_requires_exact_signed_length_and_hash() {
                     Ok((mut stream, _)) => {
                         stream
                             .set_read_timeout(Some(Duration::from_secs(3)))
-                            .unwrap();
+                            .expect("valid test fixture");
                         let mut request = [0; 1024];
                         let _ = stream.read(&mut request);
                         let _=stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\nConnection: close\r\n\r\nhello");
@@ -191,7 +199,7 @@ fn download_requires_exact_signed_length_and_hash() {
             }
         });
         let root = qa_root();
-        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&root).expect("valid test fixture");
         let target = root.join("package.download");
         let mut expected = offer();
         expected.url = url;
@@ -206,29 +214,33 @@ fn download_requires_exact_signed_length_and_hash() {
             &target,
             &AtomicBool::new(false),
         );
-        server.join().unwrap();
+        server.join().expect("valid test fixture");
         assert_eq!(result.is_ok(), length == 5 && !wrong_hash);
-        fs::remove_dir_all(root).unwrap();
+        fs::remove_dir_all(root).expect("valid test fixture");
     }
 }
 
 #[test]
 fn extracted_total_and_compressed_length_must_match_the_signed_sizes() {
     let root = qa_root();
-    fs::create_dir_all(&root).unwrap();
-    let raw=serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","version":"0.0.990","channel":"beta","data_schema":"opaque-v1","source_sha":"a".repeat(40),"source_dirty":false,"build_profile":"Debug","engine":2,"files":[{"path":"assets/test.txt","size":5,"sha256":"a".repeat(64)}]})).unwrap();
-    let manifest = Manifest::decode(&raw).unwrap();
-    fs::write(root.join("manifest.json"), &raw).unwrap();
+    fs::create_dir_all(&root).expect("valid test fixture");
+    let raw=serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","version":"0.0.990","channel":"beta","data_schema":"opaque-v1","source_sha":"a".repeat(40),"source_dirty":false,"build_profile":"Debug","engine":2,"files":[{"path":"assets/test.txt","size":5,"sha256":"a".repeat(64)}]})).expect("valid test fixture");
+    fs::write(root.join("manifest.json"), &raw).expect("write test manifest");
+    let manifest = Manifest::read(&root.join("manifest.json")).expect("read test manifest");
     let mut expected = offer();
-    expected.expanded_bytes = u64::try_from(raw.len()).unwrap() + 5;
-    expected.verify_expanded(&root, &manifest).unwrap();
+    expected.expanded_bytes = u64::try_from(raw.len()).expect("valid test fixture") + 5;
+    expected
+        .verify_expanded(&root, &manifest)
+        .expect("valid test fixture");
     expected.expanded_bytes += 1;
     assert!(expected.verify_expanded(&root, &manifest).is_err());
     let archive = root.join("archive.zip");
-    fs::write(&archive, b"small").unwrap();
+    fs::write(&archive, b"small").expect("valid test fixture");
     expected.compressed_bytes = 5;
-    expected.verify_archive_length(&archive).unwrap();
+    expected
+        .verify_archive_length(&archive)
+        .expect("valid test fixture");
     expected.compressed_bytes = 6;
     assert!(expected.verify_archive_length(&archive).is_err());
-    fs::remove_dir_all(root).unwrap();
+    fs::remove_dir_all(root).expect("valid test fixture");
 }

@@ -287,7 +287,7 @@ it.each(["unmount", "account", "live", "disconnect"] as const)(
             ? { ...old, accountGeneration: "b".repeat(64) }
             : reason === "live"
               ? { ...old, live: true }
-              : { ...old, rights: "disconnected", services: "disconnected" };
+              : { ...old, rights: "unavailable", services: "unavailable" };
         }),
       );
     await act(async () =>
@@ -523,3 +523,4 @@ it("reactivates regeneration after another failure without retrying by itself", 
     stage().getByText("La foto ha tardado demasiado", { exact: true }),
   ).toBeTruthy();
 });
+

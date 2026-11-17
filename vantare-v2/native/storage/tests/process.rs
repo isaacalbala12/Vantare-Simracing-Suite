@@ -431,3 +431,28 @@ fn engine_database_without_series_schema_is_preserved_and_cannot_resume() {
         assert_eq!(std::fs::read(&db.0).unwrap(), original);
     }
 }
+
+#[test]
+fn read_only_helper_reports_missing_incompatible_and_unreadable_codes() {
+    let db = Database::new();
+    let exe = env!("CARGO_BIN_EXE_vantare-storage");
+    for expected in ["missing", "incompatible", "unreadable"] {
+        if expected == "incompatible" {
+            let connection = duckdb::Connection::open(&db.0).unwrap();
+            connection.execute_batch("CREATE TABLE series_meta (singleton BOOLEAN, schema_version VARCHAR, watermark UBIGINT, finished BOOLEAN, attempted UBIGINT); INSERT INTO series_meta VALUES (true, 'unknown-v2', 0, false, 0)").unwrap();
+        } else if expected == "unreadable" {
+            std::fs::remove_file(&db.0).unwrap();
+            std::fs::write(&db.0, b"not a database").unwrap();
+        }
+        let output = Command::new(exe)
+            .arg(&db.0)
+            .arg("--read-only")
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        let frame: Value = serde_json::from_slice(output.stdout.trim_ascii()).unwrap();
+        assert_eq!(frame[0], "error");
+        assert_eq!(frame[1], expected);
+        assert_ne!(frame[2].as_str().unwrap(), "");
+    }
+}

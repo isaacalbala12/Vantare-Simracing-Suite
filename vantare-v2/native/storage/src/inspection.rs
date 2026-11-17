@@ -4,11 +4,16 @@ use vantare_runtime::flows::{ANALYSIS_VERSION, LapSummary, SignalSummary};
 
 use super::{MAX_PAGE_CHUNKS, Result, SeriesAnalysis, Store};
 
-pub(super) fn open_error(error: &(dyn std::error::Error + Send + Sync)) -> Value {
+pub(super) fn open_error(error: &(dyn std::error::Error + Send + Sync + 'static)) -> Value {
     // DuckDB no expone un código específico de lock; conserva su diagnóstico.
     let detail = error.to_string();
     let lower = detail.to_lowercase();
-    let code = if lower.contains("could not set lock")
+    let code = if error
+        .downcast_ref::<std::io::Error>()
+        .is_some_and(|e| e.kind() == std::io::ErrorKind::NotFound)
+    {
+        "missing"
+    } else if lower.contains("could not set lock")
         || lower.contains("conflicting lock")
         || lower.contains("file is already open in")
         || lower.contains("being used by another process")

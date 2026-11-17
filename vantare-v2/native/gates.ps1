@@ -110,7 +110,7 @@ try {
     # test build to preserve the executable prerequisite without a second feature graph.
     if ($Gate -in @('test', 'completa', 'archive') -and $Packages.Count -and
         'vantare-storage' -cnotin $Packages -and
-        ('vantare-hub' -cin $Packages)) {
+        ('vantare-hub' -cin $Packages -or 'vantare-hub-host' -cin $Packages)) {
         $arguments += @('-p', 'vantare-storage')
     }
     # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest

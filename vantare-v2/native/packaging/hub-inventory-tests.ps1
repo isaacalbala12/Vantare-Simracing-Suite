@@ -22,6 +22,7 @@ foreach($case in @(
     @{key='vantare-hub.exe';value='D:\vantare.exe'},
     @{key='vantare-hub.exe';value='x.exe'},
     @{key='vantare-hub.exe';value='Vantare.exe'},
+    @{key='vantare-hub.exe';value="vantare.exe`n"},
     @{key='../vantare.exe';value='vantare.exe'},
     @{key='vantare-unknown.exe';value='vantare.exe'}
 )){

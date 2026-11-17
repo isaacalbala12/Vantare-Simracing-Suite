@@ -450,7 +450,9 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
         ([message]) => message.kind === kind && message.topic === "launcher",
       ).length;
     expect(count("subscribe")).toBe(1);
-    fireEvent.click(screen.getByRole("button", { name: "Launcher" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }),
+    );
     await screen.findAllByRole("button", { name: /Nuevo perfil/ });
     fireEvent.click(screen.getByRole("button", { name: "Ajustes" }));
     await screen.findByRole("heading", { name: "General" });
@@ -574,7 +576,9 @@ describe("SettingsState through createMockHost and a real MessageChannel", () =>
       const hook = mount("launcher-ready", <Shell />);
       await loaded(hook);
       await screen.findAllByRole("button", { name: /^Lanzar perfil/ });
-      fireEvent.click(screen.getByRole("button", { name: "Launcher" }));
+      fireEvent.click(
+        screen.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }),
+      );
       await waitFor(() =>
         expect(document.querySelector(".v-launcher-launch")).toBeTruthy(),
       );

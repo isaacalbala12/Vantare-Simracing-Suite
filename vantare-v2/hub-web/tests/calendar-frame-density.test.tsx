@@ -20,7 +20,9 @@ it("keeps full accessible action names when compact captions are hidden", () => 
       <div>Contenido</div>
     </CalendarFrame>,
   );
-  const alert = screen.getByRole("button", { name: text.alerts });
+  const alert = screen.getByRole("button", {
+    name: new RegExp(`^${text.alerts}`),
+  });
   expect(
     document.getElementById(alert.getAttribute("aria-describedby") ?? "")
       ?.textContent,
@@ -43,7 +45,9 @@ it("preserves unavailable action guards", () => {
     </CalendarFrame>,
   );
   expect(
-    screen.getByRole("button", { name: text.alerts }).hasAttribute("disabled"),
+    screen
+      .getByRole("button", { name: new RegExp(`^${text.alerts}`) })
+      .hasAttribute("disabled"),
   ).toBe(true);
   expect(
     screen.getByRole("button", { name: text.export }).hasAttribute("disabled"),

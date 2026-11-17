@@ -16,7 +16,7 @@ import { until } from "./wait-for.ts";
 export async function prepareResidentResults(page: Page, state: string) {
   await observeResidentControls(page);
   if (state === "timeout") await page.clock.install();
-  await page.getByRole("button", { name: "Launcher", exact: true }).click();
+  await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
   await page
     .getByRole("heading", { name: "Creador de Contenido", exact: true })
     .waitFor();

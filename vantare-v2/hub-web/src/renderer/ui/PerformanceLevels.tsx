@@ -92,11 +92,13 @@ export function PerformanceLevels({
           type="button"
           className="v-performance-level v-performance-custom"
           disabled={Boolean(studioLock)}
-          aria-label={text.customAction}
           aria-description={studioLock}
           onClick={onStudio}
         >
-          <strong>{t("track.custom")}</strong>
+          <strong>
+            {t("track.custom")}
+            <span className="v-a11y-separator">{","}</span>
+          </strong>{" "}
           <small>{text.customHelp}</small>
         </button>
       )}

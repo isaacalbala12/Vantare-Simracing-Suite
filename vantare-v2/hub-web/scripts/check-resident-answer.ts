@@ -29,7 +29,7 @@ export async function observeResidentAnswers(page: Page) {
 }
 
 export async function checkResidentAnswerInert(page: Page) {
-  await page.getByRole("button", { name: "Launcher", exact: true }).click();
+  await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
   const drawer = page.locator(".v-launcher-resident-drawer");
   await drawer.waitFor();
   // Use the real confirmation layer. The profile editor itself is an inline tab.
@@ -100,7 +100,7 @@ export async function checkResidentAnswer(owner: Page, base: string) {
     ] as const) {
       if (state === "unknown") await page.clock.install();
       await page.goto(`${base}?escena=visual-dark:launcher-answer-${state}`);
-      await page.getByRole("button", { name: "Launcher", exact: true }).click();
+      await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
       const popup = page.getByRole("dialog", { name: text.title, exact: true });
       await popup.waitFor();
       const reuse = popup.getByRole("button", {

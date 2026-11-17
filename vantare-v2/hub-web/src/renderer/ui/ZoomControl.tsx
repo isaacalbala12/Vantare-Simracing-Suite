@@ -29,6 +29,7 @@ export function ZoomControl({
   const limit = useWindowZoomLimit();
   const lessValue = zoomStep(value, -1, limit);
   const moreValue = zoomStep(value, 1, limit);
+  const shown = `${Number(Math.min(value, limit).toFixed(1))}%`;
   return (
     <fieldset
       className="v-zoom"
@@ -49,13 +50,13 @@ export function ZoomControl({
       <Button
         variant="ghost"
         className="v-zoom-reset"
-        aria-label={reset}
+        aria-label={`${shown} · ${reset}`}
         disabled={disabled || defaultZoom > limit}
         onClick={() => {
           if (!pending) onChange(defaultZoom);
         }}
       >
-        {`${Number(Math.min(value, limit).toFixed(1))}%`}
+        {shown}
       </Button>
       <IconButton
         label={more}

@@ -72,9 +72,7 @@ it("opens Studio from the entire custom card and respects its access lock", asyn
 
   await userEvent
     .setup()
-    .click(
-      screen.getByRole("button", { name: "Personalizado · Abrir Studio" }),
-    );
+    .click(screen.getByRole("button", { name: /^Personalizado/ }));
 
   expect(onStudio).toHaveBeenCalledTimes(1);
 
@@ -86,9 +84,7 @@ it("opens Studio from the entire custom card and respects its access lock", asyn
 
   await userEvent
     .setup()
-    .click(
-      screen.getByRole("button", { name: "Personalizado · Abrir Studio" }),
-    );
+    .click(screen.getByRole("button", { name: /^Personalizado/ }));
 
   expect(onStudio).toHaveBeenCalledTimes(1);
 });

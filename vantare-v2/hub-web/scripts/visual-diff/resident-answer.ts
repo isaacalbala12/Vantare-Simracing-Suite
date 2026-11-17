@@ -24,7 +24,7 @@ for (const state of [
     async prepare(page) {
       await observeResidentAnswers(page);
       if (state === "unknown") await page.clock.install();
-      await page.getByRole("button", { name: "Launcher", exact: true }).click();
+      await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
       await page
         .getByRole("heading", { name: text.title, exact: true })
         .waitFor();

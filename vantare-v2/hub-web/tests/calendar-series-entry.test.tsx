@@ -377,7 +377,7 @@ it("keeps unrelated UTC errors outside Avisos and explains its own conflict with
       <CalendarEntry />
     </TooltipProvider>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
   const dialog = screen.getByRole("dialog");
   expect(within(dialog).queryByRole("alert")).toBeNull();
   model.preferenceFailure = "calendarConflict";
@@ -423,28 +423,28 @@ it("blocks background switches until the active calendar dialog is closed", () =
       <CalendarEntry />
     </TooltipProvider>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
-  expect(screen.getByRole("dialog", { name: "Avisos" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
+  expect(screen.getByRole("dialog", { name: /^Avisos\b/ })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
   expect(
     screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
   ).toBeNull();
-  fireEvent.keyDown(screen.getByRole("dialog", { name: "Avisos" }), {
+  fireEvent.keyDown(screen.getByRole("dialog", { name: /^Avisos\b/ }), {
     key: "Escape",
   });
   fireEvent.click(screen.getByRole("button", { name: "Exportar ICS" }));
-  expect(screen.queryByRole("dialog", { name: "Avisos" })).toBeNull();
+  expect(screen.queryByRole("dialog", { name: /^Avisos\b/ })).toBeNull();
   expect(
     screen.getByRole("dialog", { name: "Añadir a mi calendario" }),
   ).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
-  expect(screen.queryByRole("dialog", { name: "Avisos" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
+  expect(screen.queryByRole("dialog", { name: /^Avisos\b/ })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-  fireEvent.click(screen.getByRole("button", { name: "Avisos" }));
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
   expect(
     screen.queryByRole("dialog", { name: "Añadir a mi calendario" }),
   ).toBeNull();
-  expect(screen.getByRole("dialog", { name: "Avisos" })).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: /^Avisos\b/ })).toBeTruthy();
 });
 
 it("keeps ICS open during export then closes it with a visible saved notice", async () => {

@@ -6,9 +6,9 @@ export const launcherScenes: Record<string, VisualScene> = {
   "launcher-base": {
     mock: "launcher-base",
     async prepare(page) {
-      await page.getByRole("button", { name: "Launcher", exact: true }).click();
+      await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
       await page
-        .getByRole("heading", { name: "Creador de Contenido", exact: true })
+        .getByRole("heading", { name: /Creador de Contenido/ })
         .waitFor();
       const toggle = page
         .getByRole("button", {
@@ -120,7 +120,7 @@ launcherScenes["launcher-aplicaciones"] = {
       .first()
       .waitFor();
     await page
-      .getByRole("button", { name: "Editar Vantare Overlay", exact: true })
+      .getByRole("button", { name: /^Editar Vantare Overlay/ })
       .waitFor();
     const catalog = await page.locator(".v-launcher-catalog").boundingBox();
     const footer = await page.locator(".v-shell-main").evaluate((node) => {
@@ -155,7 +155,7 @@ launcherScenes["launcher-decision"] = {
       .first();
     if ((await toggle.getAttribute("aria-expanded")) === "true")
       await toggle.click();
-    await page.getByRole("button", { name: "Launcher", exact: true }).click();
+    await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
     await page
       .getByRole("dialog")
       .filter({ hasText: "Decisión de lanzamiento" })
@@ -247,7 +247,8 @@ launcherScenes["launcher-perfil-duplicado"] = {
   async prepare(page) {
     await launcherScenes["launcher-base"].prepare(page);
     await page
-      .getByRole("button", { name: "Creador de Contenido", exact: true })
+      .locator(".v-launcher-profile-grid")
+      .getByRole("button", { name: /Creador de Contenido/ })
       .click({ button: "right" });
     await page.getByRole("menuitem", { name: "Duplicar", exact: true }).click();
     const name = page.getByRole("textbox", { name: "Nombre", exact: true });

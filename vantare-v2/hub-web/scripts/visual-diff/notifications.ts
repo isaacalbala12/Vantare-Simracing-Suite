@@ -7,9 +7,7 @@ export const notificationScenes: Record<string, VisualScene> = {
       const target = new URL(page.url());
       target.searchParams.set("escena", "notificaciones-cinco");
       await page.goto(target.href);
-      await page
-        .getByRole("button", { name: "Notificaciones", exact: true })
-        .click();
+      await page.getByRole("button", { name: /^Notificaciones/ }).click();
       await page
         .getByRole("button", {
           name: "Ver todas las notificaciones",
@@ -73,9 +71,7 @@ export const notificationScenes: Record<string, VisualScene> = {
           exact: true,
         })
         .click();
-      await page
-        .getByRole("button", { name: "Notificaciones", exact: true })
-        .click();
+      await page.getByRole("button", { name: /^Notificaciones/ }).click();
       await page
         .getByRole("button", {
           name: "Ver todas las notificaciones",
@@ -98,9 +94,7 @@ export const notificationScenes: Record<string, VisualScene> = {
     mock: "notificaciones-base",
     async prepare(page) {
       await page.getByRole("button", { name: "Inicio", exact: true }).click();
-      await page
-        .getByRole("button", { name: "Notificaciones", exact: true })
-        .click();
+      await page.getByRole("button", { name: /^Notificaciones/ }).click();
       await page.getByText("Todo al día", { exact: true }).waitFor();
     },
   },

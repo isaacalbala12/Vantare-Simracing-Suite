@@ -57,7 +57,7 @@ export function NotificationPopover({
         }}
       >
         <Popover.Trigger
-          aria-label={label}
+          aria-label={unread > 0 ? `${label} ${unread}` : label}
           className="v-button v-button--ghost v-notification-bell"
         >
           <Icon name="i-campana" />

@@ -396,7 +396,6 @@ export function LauncherProfiles({
                   <button
                     type="button"
                     className="v-launcher-profile"
-                    aria-label={item.name}
                     aria-pressed={item.id === profile.id}
                     disabled={pending || view.running}
                     onClick={() => onSelect(item.id)}
@@ -426,7 +425,10 @@ export function LauncherProfiles({
                         ))}
                       </div>
                     </div>
-                    <strong>{item.name}</strong>
+                    <strong>
+                      {item.name}
+                      <span className="v-a11y-separator">{","}</span>
+                    </strong>{" "}
                     <small>
                       {text.appCount(item.apps.length, item.favorite)}
                     </small>

@@ -205,10 +205,13 @@ export function ApplicationCatalog({
                   type="button"
                   className="v-launcher-app-name"
                   disabled={pending}
-                  aria-label={text.edit(app.name)}
+                  aria-label={`${text.edit(app.name)}, ${text.method(app.category, app.steam)}`}
                   onClick={() => onEdit(app.id)}
                 >
-                  <strong>{app.name}</strong>
+                  <strong>
+                    {app.name}
+                    <span className="v-a11y-separator">{","}</span>
+                  </strong>{" "}
                   <small>{text.method(app.category, app.steam)}</small>
                 </button>
                 <span className="v-launcher-app-status" data-found={app.found}>

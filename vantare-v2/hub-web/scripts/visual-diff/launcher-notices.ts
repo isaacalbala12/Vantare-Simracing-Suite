@@ -5,7 +5,7 @@ export const launcherNoticeScenes: Record<string, VisualScene> = {
   "launcher-notice-completed": {
     mock: "launcher-notice-completed",
     async prepare(page) {
-      await page.getByRole("button", { name: "Launcher", exact: true }).click();
+      await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
       await page
         .getByRole("heading", { name: "Creador de Contenido", exact: true })
         .waitFor();
@@ -13,9 +13,7 @@ export const launcherNoticeScenes: Record<string, VisualScene> = {
         .getByRole("button", { name: new RegExp(`^${launcherText.launch}`) })
         .first()
         .click();
-      await page
-        .getByRole("button", { name: "Notificaciones", exact: true })
-        .click();
+      await page.getByRole("button", { name: /^Notificaciones/ }).click();
       await page.getByText("Aplicaciones listas", { exact: true }).waitFor();
       await page
         .getByRole("button", {

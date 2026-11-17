@@ -58,7 +58,7 @@ export async function assertControlCaption(page: Page) {
 }
 export async function checkResidentControlInert(page: Page) {
   await observeResidentControls(page);
-  await page.getByRole("button", { name: "Launcher", exact: true }).click();
+  await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
   const confirmation = await openProfileRemovalWithKeyboard(page);
   const rehearsal = page.getByRole("button", {
     name: "Probar sin el juego",
@@ -115,7 +115,7 @@ export async function checkResidentControls(owner: Page, base: string) {
       if (state === "unknown") await page.clock.install();
       await page.goto(`${base}?escena=visual-dark:launcher-control-${state}`);
       await observeResidentControls(page);
-      await page.getByRole("button", { name: "Launcher", exact: true }).click();
+      await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
       await page
         .getByRole("button", { name: "Probar sin el juego", exact: true })
         .click();

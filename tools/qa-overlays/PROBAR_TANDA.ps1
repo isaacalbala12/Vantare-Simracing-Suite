@@ -179,4 +179,30 @@ $null=New-Item -ItemType Directory -Path $script:DestinoServidor
 $rejected=$false
 try {Invoke-TandaServer $root} catch {$rejected=$true}
 if(-not $rejected -or $script:transfer.Contains('verified-ack') -or $script:transfer.Contains('interactive-finish')){throw 'Copia alterada permitió apagado'}
+# La tanda parcial pasa sin Machine y solo registra el trabajador limitado.
+$script:SoloVisual=$true
+$manifest.scope='visual-lifecycle'
+$manifest.production_rights_configured=$false
+Write-TandaJson $manifest (Join-Path $root 'manifiesto.json')
+$rejected=$false
+try {$null=Assert-TandaInputs $root} catch {$rejected=$_.Exception.Message -like '*no admite rondas*'}
+if(-not $rejected){throw 'Modo visual admite medición en el manifiesto'}
+$manifest.measurements=@()
+Write-TandaJson $manifest (Join-Path $root 'manifiesto.json')
+function Assert-TandaMachineRegistry {throw 'BLOCKED_LICENSE_CONFIG'}
+$script:events.Clear()
+Invoke-TandaWorker $root (Join-Path $sandbox 'visual-worker')
+$visualState=Read-TandaJson (Join-Path $sandbox 'visual-worker/estado.json')
+if($visualState.status -ne 'complete' -or $visualState.captures.Count -ne 3 -or $visualState.measurements.Count -ne 0 -or $visualState.lifecycle -ne '4 passed; 0 failed'){throw 'El trabajador visual no completó exclusivamente captura/lifecycle'}
+$script:transfer.Clear()
+$script:tamper=$false
+$script:DestinoServidor=Join-Path $sandbox 'visual-copy'
+$null=New-Item -ItemType Directory -Path $script:DestinoServidor
+Invoke-TandaServer $root
+if(($script:transfer -join ',') -ne 'upload,register-worker,download,verified-ack,interactive-finish,unregister'){throw 'La tanda visual registró un sampler o no conservó el protocolo de apagado'}
+$script:SoloVisual=$false
+$script:transfer.Clear()
+$rejected=$false
+try {Invoke-TandaServer $root} catch {$rejected=$_.Exception.Message -eq 'BLOCKED_LICENSE_CONFIG'}
+if(-not $rejected -or $script:transfer.Count){throw 'La tanda completa perdió el bloqueo Machine'}
 "PASS: hashes/traversal, guard temprano, capturas y medidas falsas, ausencia GPU, ACK antes de apagado y actividad; sandbox=$sandbox"

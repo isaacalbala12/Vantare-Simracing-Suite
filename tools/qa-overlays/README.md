@@ -274,6 +274,24 @@ catálogo conservan sus ajustes y sus omisiones originales documentadas.
 
 ### Revisión de seguridad de #2525
 
+Para una cita limitada a paridad visual y ciclo de vida, preparar con
+`COMPILAR_VISUAL.ps1 -Source <worktree-limpio> -Sha <sha-completo> -Output <build-nuevo>`
+y después `preparar_tanda.py --repo <worktree-limpio> --visual-sha <sha-completo>
+--binary-directory <build-nuevo>/bin --output <kit-nuevo>`. Esta variante lleva
+los dos overlays, el launcher real y los dos arneses del SHA indicado.
+Ejecutar `TANDA.ps1 -SoloVisual` en los modos Validar, Ensayo y Servidor. El
+manifiesto declara `visual-lifecycle` y cero rondas. El coordinador transmite
+ese alcance al trabajador limitado y conserva la verificación de evidencia y
+las condiciones de apagado. El modo completo mantiene la comprobación Machine.
+
+Rune despacha `--capture-scene` antes de entrar en el host; GPUI despacha
+`--capture-batch` antes de abrir el feed de derechos. Ambos leen entradas
+guardadas. Los cuatro tests de ciclo de vida arrancan un launcher real con
+`--overlays-bin` y un núcleo sintético propio de los tests. El ensayo de
+servidor comprueba el guard Rune (6), enumera los cuatro tests y simula la
+tanda parcial sin registrar el sampler ni consultar Machine. GPU, capturas
+reales y ciclo de vida interactivo se verifican en la cita.
+
 TANDA exige -PythonExe con ruta absoluta al Python del PC; cada invocación
 lleva -I, también análisis/diff y ensayos. No se busca ni ejecuta python por
 PATH. Para el ensayo servidor usar C:/Program Files/Python313/python.exe.

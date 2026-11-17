@@ -12,6 +12,7 @@ param(
  [string]$LimiteUtc='',
  [string]$Salida='',
  [string]$DestinoServidor='D:/VantareServer/evidence/overlays-rune',
+ [switch]$SoloVisual,
  [switch]$SoloFunciones
 )
 $ErrorActionPreference='Stop'
@@ -37,7 +38,10 @@ function Resolve-TandaPath([string]$Root,[string]$Relative){
 function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
  $manifest=Read-TandaJson (Join-Path $Root 'manifiesto.json')
  if($manifest.schema -ne 1 -or $manifest.source_sha -notmatch '^[0-9a-f]{40}$'){throw 'Manifiesto sin schema/SHA válido'}
- if(-not $manifest.production_rights_configured -and -not ($DryValidation -and $env:VANTARE_SIN_GRAFICOS -eq '1')){throw 'BLOCKED_LICENSE_CONFIG: núcleo compilado sin registro público de licencia; no medir overlays ocultos'}
+ $visualManifest=$manifest.ContainsKey('scope') -and $manifest.scope -ceq 'visual-lifecycle'
+ if([bool]$SoloVisual -ne $visualManifest){throw 'Modo y alcance del manifiesto no coinciden'}
+ if($SoloVisual -and $manifest.measurements.Count -ne 0){throw 'El modo visual no admite rondas de medición'}
+ if(-not $SoloVisual -and -not $manifest.production_rights_configured -and -not ($DryValidation -and $env:VANTARE_SIN_GRAFICOS -eq '1')){throw 'BLOCKED_LICENSE_CONFIG: núcleo compilado sin registro público de licencia; no medir overlays ocultos'}
  $seen=@{}
  foreach($file in $manifest.files){
   $path=Resolve-TandaPath $Root $file.path
@@ -45,17 +49,19 @@ function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
   if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw "Falta input: $($file.path)"}
   if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ine $file.sha256){throw "Hash incorrecto: $($file.path)"}
  }
- foreach($required in @('bin/vantare-overlays-rune.exe','bin/vantare-overlays.exe','bin/vantare-core.exe','bin/vantare-services.exe','bin/vantare.exe','bin/lifecycle-harness.exe','bin/lifecycle-rune-tests.exe','bin/PresentMon-2.6.0-x64.exe')){
+ $requiredFiles=@('bin/vantare-overlays-rune.exe','bin/vantare-overlays.exe','bin/vantare.exe','bin/lifecycle-harness.exe','bin/lifecycle-rune-tests.exe')
+ if(-not $SoloVisual){$requiredFiles+=@('bin/vantare-core.exe','bin/vantare-services.exe','bin/PresentMon-2.6.0-x64.exe')}
+ foreach($required in $requiredFiles){
   $path=Resolve-TandaPath $Root $required
   if(-not $seen.ContainsKey($path)){throw "Binario sin hash: $required"}
  }
- if($manifest.presentmon.version -ne '2.6.0' -or $manifest.presentmon.repository -ne 'GameTechDev/PresentMon'){throw 'PresentMon sin procedencia oficial fijada'}
+ if(-not $SoloVisual -and ($manifest.presentmon.version -ne '2.6.0' -or $manifest.presentmon.repository -ne 'GameTechDev/PresentMon')){throw 'PresentMon sin procedencia oficial fijada'}
  foreach($case in $manifest.measurements){
   if($case.id -notmatch '^[a-z0-9][a-z0-9-]+$' -or $case.motor -notin @('gpui','rune') -or $case.state -notin @('waiting','replay')){throw 'Caso de medición inválido'}
   $layout=Resolve-TandaPath $Root $case.layout
   if(-not $seen.ContainsKey($layout)){throw 'Layout de medición sin hash'}
  }
- if($manifest.captures.Count -eq 0 -or $manifest.measurements.Count -eq 0){throw 'Tanda sin casos'}
+ if($manifest.captures.Count -eq 0 -or (-not $SoloVisual -and $manifest.measurements.Count -eq 0)){throw 'Tanda sin casos'}
  $outputs=@{}
  foreach($case in $manifest.captures){
   if($case.id -notmatch '^[a-z0-9][a-z0-9-]+$' -or $outputs.ContainsKey($case.id)){throw 'ID de captura inválido/repetido'}
@@ -482,9 +488,11 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
     if($pair.code -ne 0){throw 'No se pudo guardar la pareja/revisión separada de texto'}
    }
   }
+  Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
   Invoke-TandaLifecycle $Root $Output
   $state.lifecycle='4 passed; 0 failed'
-  foreach($case in $manifest.measurements){
+  $measurementCases=if(-not $SoloVisual){$manifest.measurements}
+  foreach($case in $measurementCases){
    Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
    try {Invoke-TandaMeasurement $Root $Output $case;$state.measurements+=@{id=$case.id;status='complete'}}
    catch {$state.measurements+=@{id=$case.id;status='invalid';error=$_.Exception.Message};throw}
@@ -508,7 +516,7 @@ function Invoke-TandaSsh([string]$Target,[string]$Code){
 }
 function Invoke-TandaServer([string]$Root){
  Assert-TandaWindow $NoAntesUtc $LimiteUtc
- Assert-TandaMachineRegistry
+ if(-not $SoloVisual){Assert-TandaMachineRegistry}
  Assert-TandaPython $PythonExe -SyntaxOnly
  $manifest=Assert-TandaInputs $Root
  if($Pc -notmatch '^isaac@100\.83\.142\.118$' -or $Usuario -ne 'isaac'){throw 'Destino/usuario fuera de autorización'}
@@ -525,9 +533,11 @@ function Invoke-TandaServer([string]$Root){
  $task="Vantare-tanda-$stamp"
  $start=$NoAntesUtc;$end=$LimiteUtc
  $action="-NoProfile -WindowStyle Hidden -File $remote/kit/TANDA.ps1 -Modo Trabajador -Kit $remote/kit -Salida $remote/evidence -Sesion $Sesion -Usuario isaac -NoAntesUtc $start -LimiteUtc $end -SamplerTaskPrefix $task -PythonExe `"$PythonExe`""
+ if($SoloVisual){$action+=' -SoloVisual'}
  $registered=@()
  try {
-  foreach($definition in @(Get-TandaSamplerDefinitions ($remote+'/kit') ($remote+'/evidence') $task $manifest.measurements)){
+  $samplerDefinitions=if(-not $SoloVisual){Get-TandaSamplerDefinitions ($remote+'/kit') ($remote+'/evidence') $task $manifest.measurements}
+  foreach($definition in $samplerDefinitions){
    $null=Invoke-TandaSsh $Pc "`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$($definition.arguments)';`$p=New-ScheduledTaskPrincipal -UserId 'isaac' -LogonType Interactive -RunLevel Highest;Register-ScheduledTask -TaskName '$($definition.name)' -Action `$a -Principal `$p|Out-Null"
    $registered+= $definition.name
   }
@@ -595,7 +605,7 @@ function Invoke-TandaShutdown([string]$Root,[string]$Output){
 }
 if($SoloFunciones){return}
 switch($Modo){
- 'Validar' {Assert-TandaMachineRegistry;$null=Assert-TandaInputs $Kit; 'PASS: entradas/rutas/hashes/TSV'}
+ 'Validar' {if(-not $SoloVisual){Assert-TandaMachineRegistry};$null=Assert-TandaInputs $Kit; 'PASS: entradas/rutas/hashes/TSV'}
  'Ensayo' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaDryRun $Kit $Salida}
  'Trabajador' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaWorker $Kit $Salida}
  'Servidor' {Invoke-TandaServer $Kit}

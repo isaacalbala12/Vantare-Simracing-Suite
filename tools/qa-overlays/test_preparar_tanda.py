@@ -9,6 +9,36 @@ from preparar_tanda import SCENES, photos, prefixes, looks, specifications
 
 
 class InputsTests(unittest.TestCase):
+    def test_visual_package_only_needs_binaries_from_the_frozen_source(self):
+        repo = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binaries = root / "bin"
+            binaries.mkdir()
+            sha = "a" * 40
+            def record(name, image):
+                image.write_bytes(name.encode())
+                return {"name": name, "source_sha": sha, "sha256": packaging.digest(image)}
+
+            builds = [record(name, binaries / (name + ".exe")) for name in
+                      ("vantare-overlays-rune", "vantare-overlays", "vantare")]
+            tests = [record(name, binaries / name) for name in
+                     ("lifecycle-harness.exe", "lifecycle-rune-tests.exe")]
+            packaging.write_json(root / "binarios.json", builds)
+            packaging.write_json(root / "lifecycle-binarios.json", {"binaries": tests})
+            # One real fixture suffices to exercise the visual packaging branch.
+            fixture = next(packaging.specifications(repo))
+            with patch.object(packaging.subprocess, "check_output", return_value=sha + "\n"), \
+                 patch.object(packaging, "specifications", return_value=[fixture]):
+                manifest = packaging.prepare(repo, root / "output", binaries, visual_sha=sha)
+            self.assertEqual(manifest["scope"], "visual-lifecycle")
+            self.assertEqual(manifest["source_sha"], sha)
+            self.assertTrue(manifest["captures"])
+            self.assertEqual(manifest["measurements"], [])
+            self.assertFalse(manifest["production_rights_configured"])
+            self.assertNotIn("presentmon", manifest)
+            self.assertEqual(len(list((root / "output" / "bin").glob("*.exe"))), 5)
+
     def test_all_nineteen_canonical_sources_exist_and_fit_cli_limits(self):
         fixtures = Path(__file__).resolve().parents[2] / "vantare-v2/native/ui/fixtures"
         self.assertEqual(len(SCENES), 19)

@@ -70,3 +70,11 @@ foreach($marker in @('VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','HUB_QA_DRIVER')
     Reject {Assert-NativeDistributionArchive $archive}
 }
 'PASS public inventory: declared extra EXE/sidecar, sealed UI, tampering and QA ASAR'
+
+$project=Join-Path $root 'notices'
+Put (Join-Path $project 'package.json') '{}'
+Put (Join-Path $project 'bun.lock') '{}'
+Put (Join-Path $project 'node_modules/example/LICENSE-MIT') 'inert transitive MIT license'
+$notices=Join-Path $root 'notices.txt'
+Write-HubNotices $project $notices
+if(-not ([IO.File]::ReadAllText($notices)).Contains('inert transitive MIT license')){throw 'npm license text omitted'}

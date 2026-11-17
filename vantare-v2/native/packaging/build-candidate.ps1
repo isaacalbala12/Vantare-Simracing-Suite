@@ -88,24 +88,28 @@ try{
         $metadata=& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc|ConvertFrom-Json
         if($LASTEXITCODE){throw 'No se pudo leer cargo metadata'}
         Assert-NativeDistributionFeatures @($metadata.resolve.nodes|ForEach-Object {$_.features})
-        # Rune is isolated: validate the pin before allowing its one online fetch.
-        $runeLock=Join-Path $native 'overlays-rune/Cargo.lock'
-        $runeHash=Assert-RuneLock $runeLock
-        $oldOffline=$env:CARGO_NET_OFFLINE
-        try{
-            $env:CARGO_NET_OFFLINE='false'
-            & pwsh -NoProfile -File scripts/compilar.ps1 cargo fetch --locked --manifest-path overlays-rune/Cargo.toml
-            if($LASTEXITCODE){throw 'Falló el fetch bloqueado de Rune'}
-        }finally{$env:CARGO_NET_OFFLINE=$oldOffline}
-        $null=Assert-RuneLock $runeLock $runeHash
-        $runeArgs=@('build','--manifest-path','overlays-rune/Cargo.toml','--target','x86_64-pc-windows-msvc','--offline','--locked')
-        if($BuildProfile -ceq 'Release'){$runeArgs+='--release'}
-        & pwsh -NoProfile -File scripts/compilar.ps1 cargo @runeArgs
-        if($LASTEXITCODE){throw 'Falló la compilación offline de Rune'}
-        $null=Assert-RuneLock $runeLock $runeHash
-        $runeMetadata=& cargo metadata --manifest-path overlays-rune/Cargo.toml --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc|ConvertFrom-Json
-        if($LASTEXITCODE){throw 'No se pudo leer cargo metadata de Rune'}
-        Assert-NativeDistributionFeatures @($runeMetadata.resolve.nodes|ForEach-Object {$_.features})
+        $runeMetadata=Invoke-RuneCargoHome 'D:/VantareServer/cargo-home-rune' {
+            # Validate the pin before the only online fetch, within a private home.
+            $runeLock=Join-Path $native 'overlays-rune/Cargo.lock'
+            $runeHash=Assert-RuneLock $runeLock
+            $oldOffline=$env:CARGO_NET_OFFLINE
+            try{
+                $env:CARGO_NET_OFFLINE='false'
+                & pwsh -NoProfile -File scripts/compilar.ps1 cargo fetch --locked --manifest-path overlays-rune/Cargo.toml | Out-Host
+                if($LASTEXITCODE){throw 'Falló el fetch bloqueado de Rune'}
+            }finally{$env:CARGO_NET_OFFLINE=$oldOffline}
+            $null=Assert-RuneLock $runeLock $runeHash
+            Assert-RuneNoSubmodules $env:CARGO_HOME
+            $runeArgs=@('build','--manifest-path','overlays-rune/Cargo.toml','--target','x86_64-pc-windows-msvc','--offline','--locked')
+            if($BuildProfile -ceq 'Release'){$runeArgs+='--release'}
+            & pwsh -NoProfile -File scripts/compilar.ps1 cargo @runeArgs | Out-Host
+            if($LASTEXITCODE){throw 'Falló la compilación offline de Rune'}
+            $null=Assert-RuneLock $runeLock $runeHash
+            $resolved=& cargo metadata --manifest-path overlays-rune/Cargo.toml --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc|ConvertFrom-Json
+            if($LASTEXITCODE){throw 'No se pudo leer cargo metadata de Rune'}
+            Assert-NativeDistributionFeatures @($resolved.resolve.nodes|ForEach-Object {$_.features})
+            $resolved
+        }
     }finally{Pop-Location}
     $inventory=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'public-inventory.json') -Raw|ConvertFrom-Json
     $bins=@($inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)}|Sort-Object -Unique)
@@ -122,8 +126,12 @@ try{
         $source=Join-Path $target $artifact
         Assert-NativeDistributionBinary $source
         Assert-NativeStaticCrt $source $dumpbin
-        $embedded=Invoke-BuildProcess $source @('--version') $null
-        if($embedded.Trim() -cne "Vantare Native $Version ($Channel)"){throw "Versión del binario incompatible: $bin"}
+        if($bin -ceq 'vantare-overlays-rune' -and $BuildProfile -ceq 'Release'){
+            & (Join-Path $PSScriptRoot 'rune-release-version-tests.ps1') -Executable $source -Version $Version -Channel $Channel
+        }else{
+            $embedded=Invoke-BuildProcess $source @('--version') $null
+            if($embedded.Trim() -cne "Vantare Native $Version ($Channel)"){throw "Versión del binario incompatible: $bin"}
+        }
         $dest=Join-Path $binDirectory "$bin.exe"
         Copy-Item -LiteralPath $source -Destination $dest
         [IO.File]::WriteAllText("$dest.sha256","$(Get-NativeHash $dest)  $bin.exe`n",[Text.UTF8Encoding]::new($false))

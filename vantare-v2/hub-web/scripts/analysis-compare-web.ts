@@ -52,7 +52,13 @@ export async function checkAnalysisComparison(
         console.log(`Comparar: ${name}`);
         await page.setViewportSize({
           width,
-          height: scene === "selection" ? (width === 1280 ? 1212 : 1355) : 980,
+          height: scene.endsWith("table")
+            ? 1400
+            : scene === "selection"
+              ? width === 1280
+                ? 1212
+                : 1355
+              : 980,
         });
         const fixture = [
           "cursor",

@@ -39,6 +39,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         Reply::AnalysisCatalog {
             recordings: vec![AnalysisRow {
                 id: "a".repeat(64),
+                recording: false,
                 started_at_ms: 1_700_000_000_000,
                 size_bytes: 9_007_199_254_740_991,
             }],

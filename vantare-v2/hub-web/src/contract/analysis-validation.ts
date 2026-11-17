@@ -17,10 +17,11 @@ const nullable = (v: unknown) =>
 export function row(v: unknown): boolean {
   return (
     record(v) &&
-    exact(v, ["id", "startedAtMs", "sizeBytes"]) &&
+    exact(v, ["id", "startedAtMs", "sizeBytes", "recording"]) &&
     token(v.id) &&
     safe(v.startedAtMs) &&
-    safe(v.sizeBytes)
+    safe(v.sizeBytes) &&
+    typeof v.recording === "boolean"
   );
 }
 function signal(v: unknown): boolean {

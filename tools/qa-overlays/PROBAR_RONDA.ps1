@@ -21,7 +21,7 @@ $script:events=[Collections.Generic.List[string]]::new();$script:deny=$false;$sc
 function Assert-TandaUnattended {}
 function Start-TandaOwned {param($Image,$Arguments,$Log,$Environment=@{})
  $name=Split-Path $Log -Leaf;$script:events.Add('start:'+ $name)
- if($name -eq 'overlay'){foreach($key in @('VANTARE_NATIVE_DATA_ROOT','LOCALAPPDATA','APPDATA')){if(-not $Environment[$key]){throw 'Host no aislado'}}}
+ if($name -in @('overlay','core')){foreach($key in @('VANTARE_NATIVE_DATA_ROOT','LOCALAPPDATA','APPDATA')){if(-not $Environment[$key]){throw 'Host no aislado'}}}
  if($name -eq 'sampler'){
   $i=[array]::IndexOf($Arguments,'-OutputDirectory');$dir=$Arguments[$i+1]
   $null=New-Item -ItemType Directory -Path $dir

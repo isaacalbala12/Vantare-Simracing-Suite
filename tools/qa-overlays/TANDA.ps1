@@ -332,6 +332,9 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
  $profileBefore=@(Get-TandaProfileSnapshot $profileRoots)
  Write-TandaJson $profileBefore (Join-Path $round 'perfil-antes.json')
  $hostEnvironment=New-TandaQaEnvironment (Join-Path $round 'qa-host')
+ $coreEnvironment=New-TandaQaEnvironment (Join-Path $round 'qa-core')
+ $coreEnvironment['VANTARE_PROFILE_PHASES']='1'
+ $coreEnvironment['VANTARE_MEASUREMENT_TRACE']='1'
  try {
   # Preparar ETW/Add-Type ANTES del replay, sin consumir sus cinco segundos.
   $rootInfo=Join-Path $round 'root-info.json'
@@ -348,7 +351,7 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
   }
   $argsCore=if($Case.state -eq 'replay'){@('--replay',(Join-Path $Root 'inputs/lmu47-high-rate-60s.tar.gz'),'--velocidad','1','--pipe',$pipe)}else{@('--live','--simulator','lmu','--pipe',$pipe)}
   $launchQpc=[Diagnostics.Stopwatch]::GetTimestamp()
-  $core=Start-TandaOwned (Join-Path $Root 'bin/vantare-core.exe') $argsCore (Join-Path $round 'core') @{VANTARE_PROFILE_PHASES='1';VANTARE_MEASUREMENT_TRACE='1'}
+  $core=Start-TandaOwned (Join-Path $Root 'bin/vantare-core.exe') $argsCore (Join-Path $round 'core') $coreEnvironment
   $observed=if($Case.state -eq 'replay'){Get-TandaLiveClock $core}else{0}
   if(-not $core.stderr){$core.stderr=$core.process.StandardError.ReadToEndAsync()}
   $null=Read-TandaPolicy $Root $pipe (Join-Path $round 'rights-before.json')

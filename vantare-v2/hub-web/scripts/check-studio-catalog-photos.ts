@@ -220,7 +220,21 @@ export async function checkStudioCatalogPhotos(
           await dialog.locator(".v-studio-catalog-photo-legend").isVisible(),
         );
         if (mode === "scrolled") {
-          await body.evaluate((node) => (node.scrollTop = node.scrollHeight));
+          assert(
+            await body.evaluate(
+              (node) => node.scrollHeight > node.clientHeight,
+            ),
+            "positive scroll control",
+          );
+          await body.evaluate(
+            (node) =>
+              new Promise<void>((done) => {
+                node.addEventListener("scrollend", () => done(), {
+                  once: true,
+                });
+                node.scrollTop = node.scrollHeight;
+              }),
+          );
           await until(
             () =>
               body.evaluate(

@@ -19,13 +19,13 @@ Require (@(Find-TandaGameActivity @(@{Name='steam';CommandLine='steam.exe -silen
 $definitions=@(Get-TandaSamplerDefinitions 'C:/VantareQA/kit' 'C:/VantareQA/evidence' 'Vantare-tanda-20261117T220000Z' @(@{id='one';state='replay'},@{id='two';state='waiting'}))
 Require ($definitions.Count -eq 2 -and @($definitions|Where-Object run_level -ne 'Highest').Count -eq 0) 'Sampler elevation missing'
 Require (@($definitions|Where-Object {$_.arguments -notlike '*SAMPLER_TANDA.ps1*' -or $_.arguments -match 'capture-scene|lifecycle|python'}).Count -eq 0) 'Elevated task can launch UI/Python'
-$profile=Join-Path $base 'profile';$null=New-Item -ItemType Directory -Path (Join-Path $profile 'logs') -Force
-Set-Content (Join-Path $profile 'settings.json') '{"value":1}'
-$before=@(Get-TandaProfileSnapshot @($profile))
-Set-Content (Join-Path $profile 'logs/run.txt') 'log only'
-Assert-TandaProfileUnchanged $before @(Get-TandaProfileSnapshot @($profile))
-Set-Content (Join-Path $profile 'settings.json') '{"value":2}'
-$rejected=$false;try {Assert-TandaProfileUnchanged $before @(Get-TandaProfileSnapshot @($profile))} catch {$rejected=$true}
+$profileDir=Join-Path $base 'profile';$null=New-Item -ItemType Directory -Path (Join-Path $profileDir 'logs') -Force
+Set-Content (Join-Path $profileDir 'settings.json') '{"value":1}'
+$before=@(Get-TandaProfileSnapshot @($profileDir))
+Set-Content (Join-Path $profileDir 'logs/run.txt') 'log only'
+Assert-TandaProfileUnchanged $before @(Get-TandaProfileSnapshot @($profileDir))
+Set-Content (Join-Path $profileDir 'settings.json') '{"value":2}'
+$rejected=$false;try {Assert-TandaProfileUnchanged $before @(Get-TandaProfileSnapshot @($profileDir))} catch {$rejected=$true}
 Require $rejected 'Real profile change ignored'
 $policy=Convert-TandaPolicyEvidence @{state=@{kind='active';account_id='SECRET-ID'};catalog='founders';subject='SECRET-ID';credential='SECRET-TOKEN'}
 $text=ConvertTo-Json -InputObject $policy -Depth 10

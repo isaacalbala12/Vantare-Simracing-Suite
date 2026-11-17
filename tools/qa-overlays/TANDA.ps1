@@ -395,16 +395,19 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
  } finally {
   # Retirar ventanas inmediatamente si aparece actividad; no dejarlas visibles
   # mientras PresentMon completa su cierre temporizado y StopOwned.
+  $cleanupErrors=[Collections.Generic.List[string]]::new()
   try {
-   Close-TandaOwned $hostRun
-   Close-TandaOwned $core
-   # El sampler elevado termina su finally/StopOwned incluso tras aborto del host.
-   Close-TandaSampler $sampler
+   foreach($owned in @($hostRun,$core)){
+    try {Close-TandaOwned $owned} catch {$cleanupErrors.Add($_.Exception.Message)}
+   }
+   # No omitir el cierre del sampler porque haya fallado el cierre de un host.
+   try {Close-TandaSampler $sampler} catch {$cleanupErrors.Add($_.Exception.Message)}
   } finally {
    $profileAfter=@(Get-TandaProfileSnapshot $profileRoots)
    Write-TandaJson $profileAfter (Join-Path $round 'perfil-despues.json')
    Assert-TandaProfileUnchanged $profileBefore $profileAfter
   }
+  if($cleanupErrors.Count){throw ('ROUND_CLOSE_FAILED: '+($cleanupErrors -join '; '))}
  }
   $analysis=Invoke-TandaPython @((Join-Path $Root 'tools/qa-overlays/medidas.py'),(Join-Path $round 'muestreo'),(Join-Path $round 'identidad.json'),(Join-Path $round 'resultado.json'),[string]$anchor) (Join-Path $round 'analisis') 30
   if($analysis.code -ne 0){throw 'Ventana QPC/CSV inválida; no fabricar números'}

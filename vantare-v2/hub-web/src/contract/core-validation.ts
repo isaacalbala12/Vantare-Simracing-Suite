@@ -33,6 +33,7 @@ export function isCore(value: unknown): boolean {
       "calendar",
       "engineer",
       "strategy",
+      "analysis",
     ]) &&
     Object.values(value.access).every((item) => typeof item === "boolean")
   );

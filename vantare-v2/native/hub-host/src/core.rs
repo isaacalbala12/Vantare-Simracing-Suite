@@ -352,6 +352,7 @@ fn access_view(policy: &control::Policy, now: u64) -> AccessView {
         calendar: policy.calendar,
         engineer: policy.engineer,
         strategy: policy.strategy,
+        analysis: policy.analysis,
     }
 }
 
@@ -468,6 +469,7 @@ mod tests {
             calendar: true,
             engineer: true,
             strategy: true,
+            analysis: true,
             ..control::Policy::default()
         }
     }
@@ -534,6 +536,7 @@ mod tests {
         let active = policy(control::AccessState::Active);
         assert!(access_view(&active, 1000).verified);
         assert!(access_view(&active, 1000).tester);
+        assert!(access_view(&active, 1000).analysis);
         assert_eq!(access_view(&active, 3000), AccessView::default());
         let expired = control::Policy {
             signed_until_ms: Some(999),

@@ -35,5 +35,3 @@ pub mod widget_defaults;
 
 #[cfg(all(test, windows))]
 mod writer_bytes;
-
-pub mod analysis;

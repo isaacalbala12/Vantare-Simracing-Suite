@@ -19,6 +19,7 @@ export const notificationCore: CoreStatus = {
     calendar: true,
     engineer: false,
     strategy: false,
+    analysis: false,
   },
   live: false,
 };

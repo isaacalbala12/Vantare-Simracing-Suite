@@ -469,3 +469,6 @@ pub fn recordings(root: &Path) -> Result<Vec<PathBuf>> {
 }
 #[cfg(test)]
 mod tests;
+
+#[path = "../protocol/modules/analysis/state.rs"]
+pub mod catalog;

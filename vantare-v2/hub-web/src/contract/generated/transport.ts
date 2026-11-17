@@ -3,12 +3,12 @@ import type { Event, ExecutableSelection, HostError, Palette, Reply, Request, Sc
 export type ThemeBoot = { palette: Palette, scheme: Scheme, window: string, sidebar: string, text1: string, };
 export type WindowBoot = { zoom: number, width: number, height: number, minimized: boolean, };
 export type LinkState = "connected" | "incompatible" | "unavailable";
-export type AccessView = { verified: boolean, blocked: boolean, tester: boolean, calendar: boolean, engineer: boolean, strategy: boolean, };
+export type AccessView = { verified: boolean, blocked: boolean, tester: boolean, calendar: boolean, engineer: boolean, strategy: boolean, analysis: boolean, };
 export type CoreStatus = { accountGeneration: string | null, photos: LinkState, rights: LinkState, services: LinkState, access: AccessView, live: boolean, };
 export type CloseReason = "restart" | "window" | "live" | "controlEof";
 export type HostToUi = { "kind": "hello", version: number, theme: ThemeBoot, window: WindowBoot, demo: boolean, demoName: string | null, } | { "kind": "response", id: number, result: Reply, } | { "kind": "failure", id: number, error: HostError, } | { "kind": "event", event: Event, } | { "kind": "closeRequested", reason: CloseReason, };
 export type UiToHost = { "kind": "pickedExecutable" } & ExecutableSelection | { "kind": "hello", version: number, } | { "kind": "request", id: number, request: Request, } | { "kind": "subscribe", topic: Topic, } | { "kind": "unsubscribe", topic: Topic, } | { "kind": "ready", } | { "kind": "closeAnswer", allow: boolean, };
-export const HOST_PROTOCOL_VERSION = 46 as const;
+export const HOST_PROTOCOL_VERSION = 47 as const;
 export const requestTimeoutMs = 45000 as const;
 export const demoNameMax = 128 as const;
 export type TransportRequest = { "method": "core.get", } | { "method": "window.close", };

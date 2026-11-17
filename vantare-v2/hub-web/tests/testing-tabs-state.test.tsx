@@ -12,6 +12,7 @@ const tester: AccessView = {
   calendar: true,
   engineer: false,
   strategy: false,
+  analysis: false,
 };
 it("starts testers on summary and verified contributors on reports", () => {
   const hook = renderHook(({ access }) => useTestingTabs(access), {

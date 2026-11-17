@@ -74,6 +74,18 @@ export async function checkStudioPreview(
                 );
               }
               if (
+                mode === "protected" &&
+                message?.kind === "event" &&
+                message.event?.topic === "studio"
+              )
+                message = {
+                  ...message,
+                  event: {
+                    ...message.event,
+                    value: { ...message.event.value, state: "protected" },
+                  },
+                };
+              if (
                 message?.kind === "response" &&
                 message.result?.method === "studio.get"
               ) {
@@ -112,13 +124,17 @@ export async function checkStudioPreview(
                     error:
                       mode === "studioConflict"
                         ? { kind: "studioConflict", current: view }
-                        : mode === "busy"
-                          ? { kind: "busy" }
-                          : {
-                              kind: "previewFailed",
-                              reason:
-                                mode === "generating" ? "captureFailed" : mode,
-                            },
+                        : mode === "protected"
+                          ? { kind: "protected" }
+                          : mode === "busy"
+                            ? { kind: "busy" }
+                            : {
+                                kind: "previewFailed",
+                                reason:
+                                  mode === "generating"
+                                    ? "captureFailed"
+                                    : mode,
+                              },
                   };
               }
               send.call(
@@ -187,13 +203,17 @@ export async function checkStudioPreview(
                 const actions = document
                   .querySelector(".v-studio-stage-actions")
                   ?.getBoundingClientRect();
+                const reason =
+                  document.querySelector<HTMLElement>(".v-preview-reason");
                 return (
                   !!header &&
                   !!map &&
                   !!actions &&
                   box.width > 0 &&
                   box.bottom <= map.top &&
-                  box.right <= actions.left
+                  box.right <= actions.left &&
+                  !!reason &&
+                  reason.scrollWidth <= reason.clientWidth
                 );
               }),
             5000,

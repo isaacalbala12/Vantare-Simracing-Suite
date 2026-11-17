@@ -1423,7 +1423,6 @@ textarea.v-input:read-only {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  max-width: calc(100% - 260px);
 }
 .v-preview-seal {
   display: inline-flex;
@@ -1614,9 +1613,6 @@ textarea.v-input:read-only {
   display: inline;
 }
 
-.v-preview-stage > .v-focus-drawing {
-  min-height: 300px;
-}
 .v-preview-stage > header {
   z-index: 3;
 }

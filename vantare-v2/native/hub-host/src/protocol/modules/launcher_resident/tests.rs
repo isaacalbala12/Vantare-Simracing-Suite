@@ -351,7 +351,7 @@ fn trusted_review_wire_messages_are_closed_and_directional() {
     let ticket = "a".repeat(32);
     for mut input in [
         serde_json::json!({"kind":"reviewContentRequest","ticket":ticket}),
-        serde_json::json!({"kind":"reviewDecision","ticket":ticket,"decision":"trust"}),
+        serde_json::json!({"kind":"reviewDecision","ticket":ticket,"decision":"trust","issuedMs":1000}),
     ] {
         assert!(serde_json::from_value::<UiToHost>(input.clone()).is_ok());
         assert!(serde_json::from_value::<HostToUi>(input.clone()).is_err());

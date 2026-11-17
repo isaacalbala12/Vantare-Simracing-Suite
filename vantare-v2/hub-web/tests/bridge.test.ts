@@ -205,13 +205,27 @@ describe("trusted launcher review messages", () => {
     const ticket = "a".repeat(32);
     for (const message of [
       { kind: "reviewContentRequest", ticket },
-      { kind: "reviewDecision", ticket, decision: "trust" },
+      { kind: "reviewDecision", ticket, decision: "trust", issuedMs: 1000 },
     ]) {
       expect(isUiMessage(message)).toBe(true);
       expect(isRendererMessage(message)).toBe(false);
       expect(isHostMessage(message)).toBe(false);
       expect(isUiMessage({ ...message, text: "extra" })).toBe(false);
     }
+    expect(
+      isUiMessage({ kind: "reviewDecision", ticket, decision: "trust" }),
+    ).toBe(false);
+    expect(
+      isUiMessage({ kind: "reviewDecision", ticket, decision: "cancel" }),
+    ).toBe(true);
+    expect(
+      isUiMessage({
+        kind: "reviewDecision",
+        ticket,
+        decision: "cancel",
+        issuedMs: 1000,
+      }),
+    ).toBe(false);
   });
 
   it("drops private host review content before writing the renderer port", () => {

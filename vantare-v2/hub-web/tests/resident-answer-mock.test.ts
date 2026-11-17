@@ -139,7 +139,12 @@ it("serves review text only through the trusted mock entry point", () => {
   expect(send(request)).toBeNull();
   expect(send.trusted(request)).toMatchObject({ kind: "reviewContent" });
   expect(
-    send.trusted({ kind: "reviewDecision", ticket, decision: "trust" }),
+    send.trusted({
+      kind: "reviewDecision",
+      ticket,
+      decision: "trust",
+      issuedMs: Date.now(),
+    }),
   ).toBeNull();
   expect(send.trusted(request)).toEqual({
     kind: "reviewFailure",

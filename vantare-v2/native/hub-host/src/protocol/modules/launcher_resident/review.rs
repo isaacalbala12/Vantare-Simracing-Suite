@@ -75,6 +75,13 @@ pub enum ReviewChoice {
 pub struct ReviewDecision {
     pub ticket: String,
     pub decision: ReviewChoice,
+    // Timestamp supplied by the trusted main process at the user's confirmation.
+    #[serde(rename = "issuedMs", default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        any(test, feature = "bindings"),
+        ts(optional, type = "number", rename = "issuedMs")
+    )]
+    pub issued_ms: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -176,7 +183,7 @@ impl Review {
         account: Option<&AccountObservation>,
         input: &ReviewDecision,
         now: Instant,
-        issued_ms: Option<u64>,
+        now_ms: Option<u64>,
     ) -> Result<(), ReviewFailure> {
         if self
             .ticket
@@ -193,13 +200,17 @@ impl Review {
         }
         .and_then(|checked| {
             let queued = match input.decision {
-                ReviewChoice::Trust => answer::answer_reviewed(
-                    path,
-                    account,
-                    checked,
-                    ticket.digest,
-                    issued_ms.ok_or(ReviewFailure::Unavailable)?,
-                ),
+                ReviewChoice::Trust => {
+                    let issued_ms = input.issued_ms.ok_or(ReviewFailure::Unavailable)?;
+                    let now_ms = now_ms.ok_or(ReviewFailure::Unavailable)?;
+                    if !native::review::authorization_current(issued_ms, now_ms) {
+                        return Err(ReviewFailure::Expired);
+                    }
+                    answer::answer_reviewed(path, account, checked, ticket.digest, issued_ms)
+                }
+                ReviewChoice::Cancel if input.issued_ms.is_some() => {
+                    return Err(ReviewFailure::Unavailable);
+                }
                 ReviewChoice::Cancel => answer::answer(
                     path,
                     account,

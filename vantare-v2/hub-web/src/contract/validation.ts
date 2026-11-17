@@ -16,9 +16,14 @@ export function isUiMessage(value: unknown): value is UiToHost {
       return exact(value, ["kind", "ticket"]) && isReviewTicket(value.ticket);
     case "reviewDecision":
       return (
-        exact(value, ["kind", "ticket", "decision"]) &&
         isReviewTicket(value.ticket) &&
-        oneOf(value.decision, ["trust", "cancel"])
+        (value.decision === "trust"
+          ? exact(value, ["kind", "ticket", "decision", "issuedMs"]) &&
+            typeof value.issuedMs === "number" &&
+            Number.isSafeInteger(value.issuedMs) &&
+            value.issuedMs >= 0
+          : value.decision === "cancel" &&
+            exact(value, ["kind", "ticket", "decision"]))
       );
     case "pickedExecutable":
       return isPickedExecutable(value);

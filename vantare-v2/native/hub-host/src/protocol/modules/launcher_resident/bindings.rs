@@ -211,6 +211,7 @@ fn review_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
         UiToHost::ReviewDecision(ReviewDecision {
             ticket: ticket.clone(),
             decision: ReviewChoice::Trust,
+            issued_ms: Some(1_000),
         }),
     ]);
     host.extend([

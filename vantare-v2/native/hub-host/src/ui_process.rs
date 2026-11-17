@@ -323,7 +323,7 @@ impl Session {
         pipe: &mut Pipe,
         decision: &crate::launcher_resident::ReviewDecision,
     ) -> io::Result<()> {
-        let issued_ms = vantare_ipc::control::wall_ms().ok();
+        let now_ms = vantare_ipc::control::wall_ms().ok();
         let result = if self.current.live {
             Err(crate::launcher_resident::ReviewFailure::Unavailable)
         } else {
@@ -332,7 +332,7 @@ impl Session {
                 self.core.account_observation().as_ref(),
                 decision,
                 Instant::now(),
-                issued_ms,
+                now_ms,
             )
         };
         if let Err(reason) = result {

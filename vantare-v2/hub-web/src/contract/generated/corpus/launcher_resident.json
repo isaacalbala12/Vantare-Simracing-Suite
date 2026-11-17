@@ -757,6 +757,7 @@
     },
     {
       "decision": "trust",
+      "issuedMs": 1000,
       "kind": "reviewDecision",
       "ticket": "ffffffffffffffffffffffffffffffff"
     },

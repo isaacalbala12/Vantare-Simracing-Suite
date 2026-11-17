@@ -352,6 +352,7 @@ fn scoped_ticket_is_private_and_one_use_and_trust_carries_the_exact_digest() {
     let submit = ReviewDecision {
         ticket,
         decision: ReviewChoice::Trust,
+        issued_ms: Some(1_000),
     };
     review
         .decide(&f.path, Some(&allowed), &submit, now, Some(1_000))
@@ -467,6 +468,7 @@ fn changed_and_expired_tickets_are_consumed_without_creating_orders() {
         let decision = ReviewDecision {
             ticket,
             decision: ReviewChoice::Trust,
+            issued_ms: Some(1_000),
         };
         assert_eq!(
             review.content(&f.path, Some(&allowed), &decision.ticket, at),
@@ -531,6 +533,7 @@ fn opening_checks_the_exact_scope_and_cancel_queues_without_proof() {
             &ReviewDecision {
                 ticket,
                 decision: ReviewChoice::Cancel,
+                issued_ms: None,
             },
             now,
             None,
@@ -592,4 +595,30 @@ fn a_too_long_question_cannot_issue_a_ticket() {
             .open(&f.path, Some(&allowed), &target)
             .is_err()
     );
+}
+
+#[test]
+fn an_expired_confirmation_is_rejected_while_the_dialog_ticket_is_still_valid() {
+    use super::super::{ReviewChoice, ReviewDecision, ReviewFailure, review::Review};
+    use std::time::Instant;
+    let (f, allowed, target) = review_fixture();
+    let mut review = Review::default();
+    let now = Instant::now();
+    let ticket = review
+        .open(&f.path, Some(&allowed), &target)
+        .unwrap()
+        .ticket;
+    review
+        .content(&f.path, Some(&allowed), &ticket, now)
+        .unwrap();
+    let input = ReviewDecision {
+        ticket,
+        decision: ReviewChoice::Trust,
+        issued_ms: Some(1_000),
+    };
+    assert_eq!(
+        review.decide(&f.path, Some(&allowed), &input, now, Some(11_001)),
+        Err(ReviewFailure::Expired)
+    );
+    assert!(!native::request_path(&f.path).exists());
 }

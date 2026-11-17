@@ -196,8 +196,14 @@ export function create(
       pending = undefined;
       if (deadline === undefined)
         return { kind: "reviewFailure", reason: "unavailable" };
-      const state =
+      const age = Date.now() - (message.issuedMs ?? 0);
+      const failure =
         reason ??
+        (message.decision === "trust" && (age < 0 || age > 10_000)
+          ? "expired"
+          : undefined);
+      const state =
+        failure ??
         (message.decision === "trust"
           ? context.core.access.verified && !context.core.access.blocked
             ? "trusted"
@@ -213,7 +219,7 @@ export function create(
           view.reviewOutcome = null;
           context.emit?.(event());
         }, 0);
-      return reason ? { kind: "reviewFailure", reason } : null;
+      return failure ? { kind: "reviewFailure", reason: failure } : null;
     }
     const removed = removal(message);
     if (removed) return removed;

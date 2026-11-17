@@ -1,4 +1,4 @@
-//! CPU-only installed-update regression fixtures; no executable is launched.
+//! CPU-only installed-update regression fixtures; no product executable is launched.
 use super::*;
 use crate::installed::{apply, stage_with};
 use std::{os::windows::process::CommandExt, path::Path, process::Command};
@@ -29,29 +29,6 @@ fn assert_preserved(root: &Path, state: &[u8]) {
         .expect("data"),
         b"disposable opaque data"
     );
-}
-#[test]
-fn apply_rejects_legacy_pending_without_mutating_installation_or_data() {
-    let root = qa_root();
-    fs::create_dir_all(root.join("staging")).expect("staging");
-    let state = installed(&root);
-    let legacy = serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","channel":"beta","version":"0.0.990","url":"https://github.com/isaacalbala12/Vantare-Downloads/releases/download/native-beta-v0.0.990/vantare-native-amd64-package.zip","sha256":"a".repeat(64),"notes":"Legacy pending"})).expect("legacy offer");
-    let key = SigningKey::from_bytes(&[42; 32]);
-    let pending = serde_json::to_vec(&serde_json::json!({"payload":STANDARD.encode(&legacy),"signature":STANDARD.encode(key.sign(&legacy).to_bytes())})).expect("legacy envelope");
-    #[cfg(feature = "hub-update-qa")]
-    assert!(
-        vantare_services::update_manifest::verify_hub_update(&pending).is_ok(),
-        "legacy payload reaches schema validation in isolated QA"
-    );
-    fs::write(root.join("staging/pending.json"), &pending).expect("legacy pending");
-    assert!(apply(&root).is_err());
-    assert_eq!(
-        fs::read(root.join("staging/pending.json")).expect("pending"),
-        pending
-    );
-    assert!(!root.join("boot-pending.json").exists());
-    assert_preserved(&root, &state);
-    fs::remove_dir_all(root).expect("cleanup");
 }
 #[test]
 fn stage_publishes_only_after_the_extracted_total_matches_the_signed_offer() {

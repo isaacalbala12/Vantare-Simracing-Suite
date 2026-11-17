@@ -25,18 +25,20 @@ $log=Join-Path $Output 'lifecycle-cargo.jsonl'
 if(Test-Path -LiteralPath $log){throw 'No sobrescribir compilación anterior'}
 Push-Location (Join-Path $Source 'vantare-v2')
 try {
- & cargo test --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --test lifecycle --test lifecycle_rune --no-run --message-format=json-render-diagnostics -j 1 | Set-Content -LiteralPath $log -Encoding utf8
+ & cargo test --manifest-path native/Cargo.toml --locked --release -p vantare-runtime --test lifecycle --no-run --message-format=json-render-diagnostics -j 1 | Set-Content -LiteralPath $log -Encoding utf8
  if($LASTEXITCODE){throw 'No se pudieron compilar los tests lifecycle'}
 } finally {Pop-Location}
-$rows=@()
+$ci=Get-Content -LiteralPath (Join-Path $Output 'lifecycle-ci.json') -Raw|ConvertFrom-Json -AsHashtable
+if($ci.name -ne 'lifecycle-rune-tests.exe' -or $ci.source_sha -ne '8358fdae1a03dda5ac7c47bc8721c5c0c0e1fd0c' -or (Get-FileHash -LiteralPath (Join-Path $Output 'bin/lifecycle-rune-tests.exe')).Hash -ine $ci.sha256){throw 'Libtest CI sin procedencia/hash'}
+$rows=@($ci)
 foreach($line in Get-Content -LiteralPath $log){
  $artifact=$line|ConvertFrom-Json -AsHashtable
- if($artifact.reason -ne 'compiler-artifact' -or -not $artifact.executable -or $artifact.target.name -notin @('lifecycle','lifecycle_rune')){continue}
- $name=if($artifact.target.name -eq 'lifecycle'){'lifecycle-harness.exe'}else{'lifecycle-rune-tests.exe'}
+ if($artifact.reason -ne 'compiler-artifact' -or -not $artifact.executable -or $artifact.target.name -ne 'lifecycle'){continue}
+ $name='lifecycle-harness.exe'
  $destination=Join-Path $Output "bin/$name"
  if(Test-Path -LiteralPath $destination){throw 'No sobrescribir arnés existente'}
  Copy-Item -LiteralPath $artifact.executable -Destination $destination
- $rows+=@{name=$name;sha256=(Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()}
+ $rows+=@{name=$name;source_sha=$sha;profile='release opt=3 debug=0 lto=false codegen-units=16';origin='server queue';sha256=(Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()}
 }
 if($rows.Count -ne 2){throw 'Cargo no produjo exactamente dos ejecutables lifecycle'}
 ConvertTo-Json -InputObject @{source_sha=$sha;upstream_m2='8358fdae1a03dda5ac7c47bc8721c5c0c0e1fd0c';profile='release opt=3 debug=0 lto=false codegen-units=16';binaries=$rows;executed=$false} -Depth 10|Set-Content -LiteralPath (Join-Path $Output 'lifecycle-binarios.json') -Encoding utf8

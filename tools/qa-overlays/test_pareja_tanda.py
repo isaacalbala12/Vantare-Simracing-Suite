@@ -20,6 +20,9 @@ class PairTests(unittest.TestCase):
                 self.assertEqual(image.getpixel((0, 24)), (255, 0, 0, 255))
                 self.assertEqual(image.getpixel((12, 24)), (0, 255, 0, 255))
             self.assertEqual(originals, (a.read_bytes(), b.read_bytes()))
+            with Image.open(output.with_suffix(".overlay.png")) as image:
+                self.assertEqual(image.size, (6, 5))
+                self.assertEqual(image.getpixel((0, 0)), (127, 127, 0, 255))
             self.assertIn("PENDIENTE", review.read_text(encoding="utf-8"))
             previous = output.read_bytes()
             with self.assertRaises(FileExistsError):

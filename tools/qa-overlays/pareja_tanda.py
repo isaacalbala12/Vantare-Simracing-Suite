@@ -15,9 +15,20 @@ def pair(gpui, rune, output, review):
         draw.text((left.width + 10, 2), "Rune", fill="white")
         with Path(output).open("xb") as stream:
             canvas.save(stream, format="PNG")
+        # Same origin and original pixels: no resize, including unequal boxes.
+        extent = (max(left.width, right.width), max(left.height, right.height))
+        first, second = (Image.new("RGBA", extent) for _ in range(2))
+        first.alpha_composite(left)
+        second.alpha_composite(right)
+        with Path(output).with_suffix(".overlay.png").open("xb") as stream:
+            Image.blend(first, second, 0.5).save(stream, format="PNG")
+        alpha_boxes = (left.getchannel("A").getbbox(), right.getchannel("A").getbbox())
     with Path(review).open("x", encoding="utf-8") as stream:
         stream.write("PENDIENTE: contenido, nombres/cifras, elipsis, baseline, tracking, sombra y recorte al 100 %.\n")
         stream.write("Imágenes originales conservadas, sin reescalar. El porcentaje global no aprueba el texto.\n")
+        stream.write(f"Superposición 50 %: {Path(output).with_suffix('.overlay.png').name}. Cajas alfa GPUI/Rune: {alpha_boxes}.\n")
+        if None in alpha_boxes:
+            stream.write("ATENCIÓN: salida transparente; comprobar ocultación esperada en esta escena. Un diff cero no acredita contenido.\n")
 
 
 if __name__ == "__main__":

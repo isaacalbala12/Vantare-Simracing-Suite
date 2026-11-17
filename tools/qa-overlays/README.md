@@ -105,7 +105,7 @@ El parser completo del kit conserva su comportamiento y sus columnas requeridas.
 ## Kit autónomo de la tanda (17-nov)
 
 Fuentes de binarios congeladas en fb2e2e520be96b59066e2a69c3899cf9842a0752
-(19 tipos y dos Looks, incluido Standings Eficiencia E6 y sRGB #2496).
+(19 tipos; cinco con Vantare/Eficiencia, incluido Standings Eficiencia E6 y sRGB #2496).
 El worktree de compilación permanece limpio; estos scripts tienen SHA propio.
 No editar el handoff vivo: estado/evidencia van en el cuerpo del PR.
 
@@ -219,3 +219,21 @@ Se entrega atómicamente la identidad del host recién creado. ETW dura 65 s,
 pero solo se analizan [5,55) desde el primer observe real del núcleo. La ronda
 falsa PROBAR_RONDA comprueba este orden, la identidad y el cierre por denegación;
 no se desplaza la ventana si el host llega demasiado tarde.
+
+La matriz se obtiene de los campos REALES de settings: Vantare/Eficiencia para
+Relative, Standings, Fuel, Pedales y Delta; los otros catorce son funcionales
+sin designSystem. No se etiquetan dos veces como Looks diferentes. Se conservan
+los 13 escenarios nombrados del catálogo y todos los respaldos/variantes del
+plan: orientación, tamaños, pausa, miniavisos y ausencia de datos. Neo/Neutro y
+brandVisible se explicitan donde existen. Se generarán 223 parejas visuales y
+96 rondas de rendimiento; duración orientativa 2 h 45 min más copia/verificación.
+La paridad DPI 125/150 queda fuera: GPUI capture exige 96 DPI; no se cambia DPI.
+
+Los auxiliares se han reutilizado de CI para no consumir RAM del servidor:
+launcher y libtest del run 44006217558 (8358fdae1); arnés portátil del run
+44012118423, merge 704fac60688752d588279db52f6bf6f1adb8359c de #2525
+(fuente de tests idéntica a 5d61507ba). El diff de domain/ipc/session/restart
+respecto a fb2e2e520 está vacío. Los tres son debug y quedan fuera de CPU/memoria.
+La cola local pendiente se canceló sin hijos Rust; no se interrumpió compilación.
+El PATH solo del hijo lifecycle incluye bin/ para encontrar el CRT empaquetado,
+y se restaura en finally; no se cambia ninguna variable Machine/User.

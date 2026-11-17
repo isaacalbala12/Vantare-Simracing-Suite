@@ -256,12 +256,17 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
     shutil.copytree(repo / "vantare-v2/native/pruebas-rune/muestreador", output / "vantare-v2/native/pruebas-rune/muestreador", ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copyfile(scripts / "TANDA.ps1", output / "TANDA.ps1")
     shutil.copyfile(repo / "vantare-v2/native/ui/diff.py", output / "diff.py")
+    (output / "vantare-v2/native/ui").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(repo / "vantare-v2/native/ui/diff.py", output / "vantare-v2/native/ui/diff.py")
     provenance = output / "procedencia"
     provenance.mkdir()
     for relative, name in (("native/Cargo.lock", "native.Cargo.lock"),
                            ("native/overlays-rune/Cargo.lock", "rune.Cargo.lock"),
                            ("native/rust-toolchain.toml", "rust-toolchain.toml")):
         shutil.copyfile(repo / "vantare-v2" / relative, provenance / name)
+        original = output / "vantare-v2" / relative
+        original.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(repo / "vantare-v2" / relative, original)
     for file in sorted(output.rglob("*")):
         if file.is_file():
             manifest["files"].append({"path": file.relative_to(output).as_posix(), "sha256": digest(file)})

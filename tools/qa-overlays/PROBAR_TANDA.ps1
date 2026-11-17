@@ -95,7 +95,7 @@ $single=Read-TandaJson (Join-Path $root 'inputs/case/scene.json')
 if($single -isnot [array] -or $single.Count -ne 1){throw 'JSON de una foto perdió el array'}
 # Fallo de lifecycle: conservar evidencia, restaurar entorno y no medir después.
 $script:fakeProcess=${function:Invoke-TandaProcess}
-$beforeTemp=$env:TEMP
+$beforeTemp=$env:TEMP;$beforePath=$env:PATH
 function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession)
  if($Image -like '*lifecycle-rune-tests.exe'){return @{code=1;stderr='scenario failed';stdout='3 passed; 1 failed'}}
  & $script:fakeProcess @PSBoundParameters
@@ -103,7 +103,7 @@ function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]
 $outputLifecycle=Join-Path $sandbox 'lifecycle-failed'
 Invoke-TandaWorker $root $outputLifecycle
 $state=Read-TandaJson (Join-Path $outputLifecycle 'estado.json')
-if($state.status -ne 'aborted' -or $state.measurements.Count -ne 0 -or $env:TEMP -cne $beforeTemp){throw 'Lifecycle fallido no abortó/restauró entorno'}
+if($state.status -ne 'aborted' -or $state.measurements.Count -ne 0 -or $env:TEMP -cne $beforeTemp -or $env:PATH -cne $beforePath){throw 'Lifecycle fallido no abortó/restauró entorno'}
 if(-not(Test-Path (Join-Path $outputLifecycle 'lifecycle/resultado.json'))){throw 'Falta evidencia de lifecycle fallido'}
 # La GPU ausente debe abortar sin pasar a GPUI/mediciones.
 function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession) if($Image -like '*rune.exe'){@{code=4;stderr='GPU_UNAVAILABLE detalle';stdout=''}}else{@{code=0;stderr='';stdout=''}}}

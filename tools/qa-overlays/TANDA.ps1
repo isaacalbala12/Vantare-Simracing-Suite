@@ -383,7 +383,7 @@ function Invoke-TandaLifecycle([string]$Root,[string]$Output){
  Assert-TandaUnattended
  $directory=Join-Path $Output 'lifecycle'
  $null=New-Item -ItemType Directory -Path (Join-Path $directory 'tmp') -Force
- $names=@('VANTARE_RUNE_OVERLAYS_EXE','VANTARE_LIFECYCLE_HARNESS','VANTARE_LIFECYCLE_LAUNCHER_EXE','VANTARE_LIFECYCLE_KEEP_ARTIFACTS','TEMP','TMP')
+ $names=@('VANTARE_RUNE_OVERLAYS_EXE','VANTARE_LIFECYCLE_HARNESS','VANTARE_LIFECYCLE_LAUNCHER_EXE','VANTARE_LIFECYCLE_KEEP_ARTIFACTS','TEMP','TMP','PATH')
  $prior=@{}
  foreach($name in $names){$prior[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
  try {
@@ -391,6 +391,7 @@ function Invoke-TandaLifecycle([string]$Root,[string]$Output){
   $env:VANTARE_LIFECYCLE_HARNESS=Join-Path $Root 'bin/lifecycle-harness.exe'
   $env:VANTARE_LIFECYCLE_LAUNCHER_EXE=Join-Path $Root 'bin/vantare.exe'
   $env:VANTARE_LIFECYCLE_KEEP_ARTIFACTS='1'
+  $env:PATH=(Join-Path $Root 'bin')+[IO.Path]::PathSeparator+$env:PATH
   $env:TEMP=Join-Path $directory 'tmp';$env:TMP=$env:TEMP
   $result=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--ignored','--test-threads=1','--nocapture') (Join-Path $directory 'tests') 600 -WatchSession
   Write-TandaJson @{code=$result.code;stdout=$result.stdout;stderr=$result.stderr;selector='--overlays-bin';measurement=$false;scenario_core='synthetic lifecycle fixture, not LMU performance'} (Join-Path $directory 'resultado.json')

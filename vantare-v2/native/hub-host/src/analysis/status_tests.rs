@@ -13,7 +13,9 @@ fn core() -> Value {
 }
 #[test]
 fn core_format_and_broken_files() {
-    let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+    let root = fs::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(vantare_services::random_id().unwrap());
     std::fs::create_dir(&root).unwrap();
     let paths =
         std::collections::BTreeMap::from([("a".repeat(64), root.join("series-123-456.duckdb"))]);
@@ -64,7 +66,9 @@ fn core_format_and_broken_files() {
 }
 #[test]
 fn invalid_fields_reject_the_whole_file_and_fifty_items_fit() {
-    let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+    let root = fs::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(vantare_services::random_id().unwrap());
     std::fs::create_dir(&root).unwrap();
     let path = root.join("recording-status.json");
     let paths = BTreeMap::default();
@@ -185,4 +189,151 @@ fn maps_core_text_once_and_rejects_unsafe_fields() {
             );
         }
     }
+}
+
+struct Directory(PathBuf);
+impl Directory {
+    fn new() -> Self {
+        let root = fs::canonicalize(std::env::temp_dir())
+            .unwrap()
+            .join(format!(
+                "host-status-{}",
+                vantare_services::random_id().unwrap()
+            ));
+        fs::create_dir(&root).unwrap();
+        Self(root)
+    }
+}
+impl Drop for Directory {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+fn directory_link(target: &Path, link: &Path) {
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(target, link).unwrap();
+    #[cfg(windows)]
+    {
+        let output = std::process::Command::new("cmd.exe")
+            .args(["/d", "/c", "mklink", "/J"])
+            .arg(link)
+            .arg(target)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "junction sin privilegios: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+fn file_link(target: &Path, link: &Path) -> bool {
+    #[cfg(unix)]
+    let result = std::os::unix::fs::symlink(target, link);
+    #[cfg(windows)]
+    let result = std::os::windows::fs::symlink_file(target, link);
+    match result {
+        Ok(()) => true,
+        #[cfg(windows)]
+        Err(error) if error.raw_os_error() == Some(1314) => {
+            eprintln!(
+                "OMITIDO: symlink de fichero requiere privilegios o Developer Mode ({error}); junction y metadatos de handle se prueban aparte"
+            );
+            false
+        }
+        Err(error) => panic!("crear symlink: {error}"),
+    }
+}
+fn write_recording(root: &Path) {
+    fs::create_dir_all(root).unwrap();
+    fs::write(
+        root.join("recording-status.json"),
+        serde_json::to_vec(&core()).unwrap(),
+    )
+    .unwrap();
+    fs::write(root.join("series-123-456.duckdb"), []).unwrap();
+}
+fn rejects_recording_directory(root: &Path) {
+    assert!(read(root, &BTreeMap::new()).is_none());
+    assert_eq!(
+        super::super::recordings(root).unwrap_err().code,
+        super::super::ErrorCode::Unreadable
+    );
+    let error = super::super::Reader::open(
+        &root.join("must-not-start.exe"),
+        &root.join("series-123-456.duckdb"),
+        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    )
+    .err()
+    .expect("reader rejects before spawning");
+    assert_eq!(error.code, super::super::ErrorCode::Unreadable);
+}
+#[test]
+fn data_dir_inside_a_relocated_profile_keeps_status_catalog_and_stamps_working() {
+    let owned = Directory::new();
+    let profile = owned.0.join("physical-profile");
+    let root = profile.join("AppData/Vantare/native/recordings");
+    write_recording(&root);
+    let link = owned.0.join("relocated-profile");
+    directory_link(&profile, &link);
+    assert!(super::super::reparse(&fs::symlink_metadata(&link).unwrap()));
+    let aliased = link.join("AppData/Vantare/native/recordings");
+    assert!(read(&aliased, &BTreeMap::new()).is_some());
+    let paths = super::super::recordings(&aliased).unwrap();
+    assert_eq!(paths, vec![aliased.join("series-123-456.duckdb")]);
+    assert!(super::super::stamp(&paths[0]).is_ok());
+    let mut catalog = super::super::catalog::State::new(aliased);
+    assert_eq!(catalog.catalog().unwrap().len(), 1);
+    assert!(catalog.status().is_some());
+}
+#[test]
+fn rejects_a_link_at_recordings_or_between_data_dir_and_recordings() {
+    let owned = Directory::new();
+    let data = owned.0.join("data");
+    let physical = owned.0.join("physical");
+    write_recording(&physical.join("recordings"));
+    fs::create_dir(&data).unwrap();
+    let recordings_link = data.join("recordings");
+    directory_link(&physical.join("recordings"), &recordings_link);
+    rejects_recording_directory(&recordings_link);
+    let intermediate = data.join("intermediate");
+    directory_link(&physical, &intermediate);
+    rejects_recording_directory(&intermediate.join("recordings"));
+}
+#[test]
+fn rejects_file_links_including_a_swap_at_open_without_reading_the_target() {
+    let owned = Directory::new();
+    let target = owned.0.join("target.json");
+    let path = owned.0.join("recording-status.json");
+    fs::write(&target, serde_json::to_vec(&core()).unwrap()).unwrap();
+    if !file_link(&target, &path) {
+        return;
+    }
+    assert!(read(&owned.0, &BTreeMap::new()).is_none());
+    fs::remove_file(&path).unwrap();
+    fs::write(&path, serde_json::to_vec(&core()).unwrap()).unwrap();
+    // Deterministic replacement exactly between path validation and opening.
+    assert!(
+        read_with(&owned.0, &BTreeMap::new(), |path| {
+            fs::remove_file(path).unwrap();
+            assert!(file_link(&target, path));
+            open_status(path)
+        })
+        .is_none()
+    );
+}
+#[test]
+fn opened_handle_remains_authoritative_after_atomic_path_replacement() {
+    let owned = Directory::new();
+    let path = owned.0.join("recording-status.json");
+    fs::write(&path, serde_json::to_vec(&core()).unwrap()).unwrap();
+    let status = read_with(&owned.0, &BTreeMap::new(), |path| {
+        let file = open_status(path)?;
+        fs::rename(path, owned.0.join("previous.json")).unwrap();
+        fs::write(path, vec![b' '; usize::try_from(LIMIT + 1).unwrap()]).unwrap();
+        Ok(file)
+    })
+    .expect("read metadata and bytes from the original handle, not its replaced path");
+    assert_eq!(status.started_at_ms, 42);
+    assert!(read(&owned.0, &BTreeMap::new()).is_none());
 }

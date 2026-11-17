@@ -54,7 +54,40 @@ struct Stamp {
     created: SystemTime,
     modified: SystemTime,
 }
+fn regular_directory(root: &Path) -> Result<()> {
+    // The catalog root is args.data.join("recordings") (analysis/init.inc).
+    // Its parent is the already-resolved Vantare data directory, not AppData.
+    // Check recordings itself and parents only through that boundary; a user may
+    // relocate their profile/AppData with a junction above it.
+    let data_dir = root
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or(root);
+    let parents = root
+        .ancestors()
+        .skip(1)
+        .take_while(|path| path.starts_with(data_dir));
+    for component in std::iter::once(root).chain(parents) {
+        let metadata = fs::symlink_metadata(component).map_err(|error| {
+            self::error(
+                if error.kind() == io::ErrorKind::NotFound {
+                    ErrorCode::Missing
+                } else {
+                    ErrorCode::Io
+                },
+                error.to_string(),
+            )
+        })?;
+        if !metadata.is_dir() || reparse(&metadata) {
+            return Err(invalid("Directorio no regular"));
+        }
+    }
+    Ok(())
+}
 fn stamp(path: &Path) -> Result<Stamp> {
+    if let Some(parent) = path.parent() {
+        regular_directory(parent)?;
+    }
     let m = fs::symlink_metadata(path).map_err(|e| {
         error(
             if e.kind() == io::ErrorKind::NotFound {
@@ -132,8 +165,7 @@ pub struct Reader {
     closed: bool,
 }
 impl Reader {
-    /// Solo acepta rutas devueltas por `recordings()`; no detecta enlaces/reparse
-    /// en los directorios padre de la ruta.
+    /// Solo acepta rutas devueltas por `recordings()` y comprueba sus padres.
     pub fn open(exe: &Path, db: &Path, cancel: Cancel) -> Result<Self> {
         Self::open_with_timeout(exe, db, cancel, Duration::from_secs(30))
     }
@@ -438,13 +470,10 @@ fn state(value: &Value, tag: &str) -> Result<(u64, bool, u64)> {
 }
 /// Catálogo plano; nunca crea la raíz ni sigue enlaces/reparse points.
 pub fn recordings(root: &Path) -> Result<Vec<PathBuf>> {
-    let metadata = match fs::symlink_metadata(root) {
-        Ok(m) => m,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(vec![]),
-        Err(e) => return Err(error(ErrorCode::Io, e.to_string())),
-    };
-    if reparse(&metadata) || !metadata.is_dir() {
-        return Err(invalid("Directorio no regular"));
+    match regular_directory(root) {
+        Ok(()) => {}
+        Err(error) if error.code == ErrorCode::Missing => return Ok(vec![]),
+        Err(error) => return Err(error),
     }
     let mut paths = vec![];
     for entry in fs::read_dir(root).map_err(|e| error(ErrorCode::Io, e.to_string()))? {

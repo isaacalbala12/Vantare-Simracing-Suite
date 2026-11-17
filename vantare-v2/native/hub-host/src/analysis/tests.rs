@@ -5,11 +5,13 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Directory(PathBuf);
 impl Directory {
     fn new() -> Self {
-        let p = std::env::temp_dir().join(format!(
-            "host-analysis-{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
+        let p = fs::canonicalize(std::env::temp_dir())
+            .unwrap()
+            .join(format!(
+                "host-analysis-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
         fs::create_dir(&p).unwrap();
         Self(p)
     }

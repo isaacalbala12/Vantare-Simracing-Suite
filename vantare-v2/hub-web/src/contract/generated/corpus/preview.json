@@ -86,6 +86,21 @@
         "scale": "1",
         "scene": "demo",
         "target": {
+          "frame": 0,
+          "kind": "scene",
+          "sceneId": "standings-default",
+          "widget": "standings"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "preview.render",
+        "scale": "1",
+        "scene": "demo",
+        "target": {
           "kind": "catalog",
           "widget": "relative"
         }

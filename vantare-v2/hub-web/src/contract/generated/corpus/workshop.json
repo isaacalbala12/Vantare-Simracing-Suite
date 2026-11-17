@@ -1,0 +1,635 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "workshop.catalog",
+        "widgets": [
+          {
+            "kind": "standings",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "standings",
+                "label": "Standings",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "standings-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": 1700,
+                "frames": 4,
+                "id": "standings-functional-battle",
+                "label": "Batalla cercana · conducción",
+                "watchFor": "Lotterer y Giovinazzi son consecutivos de su clase. El acento ámbar entra al acercarse, se mantiene estable y se retira al separarse; no cambia el tamaño del texto ni pulsa continuamente."
+              },
+              {
+                "frameMs": 1600,
+                "frames": 12,
+                "id": "standings-functional-combined",
+                "label": "Secuencia combinada · conducción",
+                "watchFor": "Activa Mejor vuelta y Estado en boxes; usa al menos 10 pilotos y Alrededor de 4. Revisa mejoras de vuelta, posiciones, PIT, batalla cercana y entrada/salida de la ventana, en ese orden. Los avisos son breves y las cifras estables; el cambio de ventana no simula adelantamientos."
+              },
+              {
+                "frameMs": 1700,
+                "frames": 3,
+                "id": "standings-functional-personal-best",
+                "label": "Mejor vuelta personal",
+                "watchFor": "Activa Mejor vuelta. Un barrido verde destaca la mejora de Antonio Giovinazzi; las cifras conservan su posición y tamaño."
+              },
+              {
+                "frameMs": 1600,
+                "frames": 4,
+                "id": "standings-functional-pit",
+                "label": "Entrada y salida de boxes",
+                "watchFor": "La etiqueta PIT aparece junto a André Lotterer al entrar en boxes y desaparece al salir. Activa Estado en boxes: la etiqueta entra y sale suavemente, ligada a su piloto."
+              },
+              {
+                "frameMs": 1600,
+                "frames": 3,
+                "id": "standings-functional-position",
+                "label": "Cambio de posición · por piloto",
+                "watchFor": "Ben Hanley y Filipe Albuquerque intercambian posición. Cada fila se desliza, recibe un acento verde o rojo y muestra temporalmente los puestos ganados o perdidos. Pulsa Reproducir para verlo."
+              },
+              {
+                "frameMs": 1700,
+                "frames": 4,
+                "id": "standings-functional-session-best",
+                "label": "Mejor vuelta de sesión",
+                "watchFor": "Activa Mejor vuelta. El acento morado y el distintivo pasan al nuevo piloto más rápido, sin ampliar ni desplazar los tiempos."
+              },
+              {
+                "frameMs": 1600,
+                "frames": 4,
+                "id": "standings-functional-window",
+                "label": "Entrada y salida de ventana",
+                "watchFor": "La revisión cambia el piloto de referencia entre P1, P7 y P9. Usa al menos 10 pilotos y Alrededor de 4: aparecen y se retiran filas/PIT mientras las demás se recolocan. Todas las posiciones reales permanecen iguales: no aparecen avisos de adelantamiento."
+              },
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "standings-legacy",
+                "label": "Standings",
+                "watchFor": null
+              },
+              {
+                "frameMs": 2400,
+                "frames": 7,
+                "id": "standings-vantare",
+                "label": "Vantare · catálogo r10b",
+                "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b (15 coches, 3 clases). No es telemetría real."
+              },
+              {
+                "frameMs": 2600,
+                "frames": 5,
+                "id": "standings-vantare-carrera",
+                "label": "Vantare · secuencia de carrera",
+                "watchFor": "Animaciones: deslizamiento al cambiar de posición, destello verde/rojo, morado en la vuelta rápida y ámbar al entrar en boxes. Datos del catálogo r10b, no telemetría real."
+              }
+            ]
+          },
+          {
+            "kind": "radar",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "radar",
+                "label": "Radar",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "radar-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": 1000,
+                "frames": 10,
+                "id": "radar-nearby-traffic",
+                "label": "Tráfico cercano · ciclo completo",
+                "watchFor": "Los coches entran y salen del radio de 30 m: azul normal, ámbar a 10 m, naranja al solaparse por cada lado. El doblado pasa de azul oscuro a borde ámbar, luego a naranja al solaparse y vuelve a azul oscuro. Posiciones y vueltas de ejemplo; el radar real recibe LMU a 10 Hz."
+              }
+            ]
+          },
+          {
+            "kind": "pedals",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "pedals",
+                "label": "Pedales",
+                "watchFor": null
+              },
+              {
+                "frameMs": 800,
+                "frames": 4,
+                "id": "pedals-clutch",
+                "label": "Salida con embrague",
+                "watchFor": "El carril del embrague se llena y se suelta; los tres carriles pueden estar activos a la vez sin pisarse."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "pedals-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": 700,
+                "frames": 7,
+                "id": "pedals-lap",
+                "label": "Frenada y aceleración",
+                "watchFor": "Los carriles siguen a cada pedal, la etiqueta pasa de gris a blanco al dejar el reposo, y el carril se ilumina al llegar al 100%."
+              }
+            ]
+          },
+          {
+            "kind": "delta",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "delta",
+                "label": "Delta",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1300,
+                "frames": 5,
+                "id": "delta-cross-zero",
+                "label": "Cruce del cero",
+                "watchFor": "El ancla del centro late en el sentido tomado —verde al pasar a ganar, rojo al pasar a perder— y el relleno crece hacia el lado nuevo."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "delta-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": 1500,
+                "frames": 3,
+                "id": "delta-new-best",
+                "label": "Nueva vuelta de referencia",
+                "watchFor": "La nueva mejor vuelta dispara un aviso personal a la izquierda y mantiene la última vuelta a la derecha."
+              },
+              {
+                "frameMs": 2600,
+                "frames": 8,
+                "id": "delta-vantare",
+                "label": "Vantare · catálogo r10b",
+                "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b. No es telemetría real."
+              },
+              {
+                "frameMs": 1600,
+                "frames": 7,
+                "id": "delta-vantare-carrera",
+                "label": "Vantare · secuencia de vuelta",
+                "watchFor": "Animaciones: la barra se desliza con el delta, los sectores se rellenan y cambian de color, y la vuelta récord personal destella en morado. Datos del catálogo r10b, no telemetría real."
+              }
+            ]
+          },
+          {
+            "kind": "car-damage-visual",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "car-damage-visual",
+                "label": "Daños del coche",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "car-damage-visual-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "input-telemetry",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "input-telemetry",
+                "label": "Telemetría de entrada",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "input-telemetry-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "multiclass-relative",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "multiclass-relative",
+                "label": "Relative multiclase",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "multiclass-relative-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "broadcast-tower",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "broadcast-tower",
+                "label": "Torre de posiciones",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 2,
+                "id": "broadcast-tower-crossing",
+                "label": "Cruce de posiciones",
+                "watchFor": "Albuquerque y Hanley intercambian posiciones con un desplazamiento suave y una señal de puesto tenue; sus cifras permanecen quietas."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "broadcast-tower-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 3,
+                "id": "broadcast-tower-exit-reentry",
+                "label": "Salida y reentrada",
+                "watchFor": "Kévin Estre sale de la franja y vuelve a P3 con un fundido breve; las demás tarjetas se recolocan suavemente."
+              },
+              {
+                "frameMs": 180,
+                "frames": 3,
+                "id": "broadcast-tower-fast-inversion",
+                "label": "Inversión rápida",
+                "watchFor": "Al reproducir, las tarjetas se invierten y vuelven rápidamente; la posición permanece legible y los números no se animan."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 7,
+                "id": "broadcast-tower-overtake-sequence",
+                "label": "Secuencia completa",
+                "watchFor": "Las tarjetas de Albuquerque y Hanley cruzan, vuelven a su orden inicial y después Estre sale y reentra. Los cambios de gap no desplazan las tarjetas."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 3,
+                "id": "broadcast-tower-stable-values",
+                "label": "Cifras sin reordenar",
+                "watchFor": "Cambia el gap de Ben Hanley mientras conserva P2. La vuelta y la temperatura de cabecera siguen visibles, sin mover las tarjetas."
+              }
+            ]
+          },
+          {
+            "kind": "delta-trace",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "delta-trace",
+                "label": "Historial de delta",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "delta-trace-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "track-map",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "track-map",
+                "label": "Mapa del circuito",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "track-map-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "track-weather",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "track-weather",
+                "label": "Tiempo en pista",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "track-weather-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "car-damage-numbers",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "car-damage-numbers",
+                "label": "Daños detallados",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "car-damage-numbers-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "head-to-head",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "head-to-head",
+                "label": "Cara a cara",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "head-to-head-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "head-to-head-player-p2",
+                "label": "Cara a cara",
+                "watchFor": null
+              }
+            ]
+          },
+          {
+            "kind": "fuel-strategy",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "fuel-strategy",
+                "label": "Fuel y stint",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "fuel-strategy-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": 2600,
+                "frames": 8,
+                "id": "fuel-vantare",
+                "label": "Vantare · catálogo r10b",
+                "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b. No es telemetría real."
+              },
+              {
+                "frameMs": 2600,
+                "frames": 8,
+                "id": "fuel-vantare-carrera",
+                "label": "Vantare · secuencia de carrera",
+                "watchFor": "Animaciones: las barras y la gráfica se deslizan al cambiar de vuelta, la ventana de parada avanza y el borde late con combustible bajo. Datos del catálogo r10b, no telemetría real."
+              }
+            ]
+          },
+          {
+            "kind": "pedals-telemetry",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "pedals-telemetry",
+                "label": "Telemetría de pedales",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "pedals-telemetry-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "relative",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "relative",
+                "label": "Relative",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "relative-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 4,
+                "id": "relative-functional-cross-ahead",
+                "label": "Cruce detrás → delante",
+                "watchFor": "Sigue al mismo rival y deja fijo al jugador: la fila cruza de detrás a delante cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 4,
+                "id": "relative-functional-cross-behind",
+                "label": "Cruce delante → detrás",
+                "watchFor": "Sigue al mismo rival y deja fijo al jugador: la fila cruza de delante a detrás cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas."
+              },
+              {
+                "frameMs": 180,
+                "frames": 4,
+                "id": "relative-functional-fast-reversal",
+                "label": "Inversión rápida · 180 ms",
+                "watchFor": "Escena de estrés: el mismo rival cambia de lado cada 180 ms (<300 ms). Comprueba que no se pierde la fila ni el jugador y que el acento tenue solo aparece en cada cruce real."
+              },
+              {
+                "frameMs": 1400,
+                "frames": 2,
+                "id": "relative-functional-lap-difference",
+                "label": "Diferencia de vueltas",
+                "watchFor": "Escena solo de carrera. Compara la vuelta del rival con la tuya: el signo marca más o menos vueltas, sin afirmar el lado físico del coche. El jugador conserva su fila; cero y datos ausentes no llevan etiqueta."
+              },
+              {
+                "frameMs": 900,
+                "frames": 9,
+                "id": "relative-functional-sequence",
+                "label": "Secuencia completa",
+                "watchFor": "Usa Reproducir o el deslizador: cruce en ambos sentidos, entrada y salida de Mikkel Jensen y distancias que cambian sin mover filas. En carrera, Antonio Giovinazzi P4 aparece delante con −1 V respecto al jugador."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 3,
+                "id": "relative-functional-stable-values",
+                "label": "Datos cambian, filas quietas",
+                "watchFor": "Las distancias cambian sin cruzar al jugador ni alterar el orden visible. Revisa que los números se actualicen sin mover las filas ni reiniciar transiciones."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 7,
+                "id": "relative-functional-window-cycle",
+                "label": "Entrada, salida y reentrada",
+                "watchFor": "Mikkel Jensen sale y reentra con la misma identidad mientras la fila del jugador conserva su ID y posición. Revisa entrada y salida por opacidad, alrededor de 120 ms, y confirma que las cifras no pulsan."
+              },
+              {
+                "frameMs": 2600,
+                "frames": 5,
+                "id": "relative-vantare",
+                "label": "Vantare · catálogo r10b",
+                "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b. No es telemetría real."
+              },
+              {
+                "frameMs": 2600,
+                "frames": 7,
+                "id": "relative-vantare-carrera",
+                "label": "Vantare · secuencia de carrera",
+                "watchFor": "Animaciones: filas que se deslizan al adelantar o ser adelantado (verde/rojo), tráfico más rápido que pulsa y puntos de la tira en movimiento. Datos del catálogo r10b, no telemetría real."
+              }
+            ]
+          },
+          {
+            "kind": "racing-flags",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "racing-flags",
+                "label": "Banderas",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "racing-flags-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              },
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "racing-flags-stale",
+                "label": "Banderas",
+                "watchFor": null
+              }
+            ]
+          },
+          {
+            "kind": "fastest-lap",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "fastest-lap",
+                "label": "Vuelta rápida",
+                "watchFor": null
+              },
+              {
+                "frameMs": 8000,
+                "frames": 4,
+                "id": "fastest-lap-alert",
+                "label": "Aviso de vuelta rápida",
+                "watchFor": "Reproducir muestra mejor personal, récord de tu clase y una vuelta que consigue ambos (un solo aviso de clase). Cada aviso entra y sale en seis segundos. Ver diseño mantiene el panel visible para ajustar su tamaño."
+              },
+              {
+                "frameMs": 1200,
+                "frames": 1,
+                "id": "fastest-lap-default",
+                "label": "Sin animación",
+                "watchFor": "Datos de demostración del Workshop React."
+              }
+            ]
+          },
+          {
+            "kind": "session-alerts",
+            "scenes": [
+              {
+                "frameMs": null,
+                "frames": 1,
+                "id": "session-alerts",
+                "label": "Avisos de sesión",
+                "watchFor": null
+              },
+              {
+                "frameMs": 1200,
+                "frames": 5,
+                "id": "session-alerts-default",
+                "label": "Avisos de sesión · r4 v2",
+                "watchFor": "Contrato v11 sintético: fin programado y fin confirmado de prueba. LMU no demuestra inicio/fin/fases/próxima sesión."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "workshop.catalog"
+      }
+    }
+  ]
+}

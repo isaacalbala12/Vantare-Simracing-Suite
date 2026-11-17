@@ -22,6 +22,7 @@ fn start(
     state.start_with(
         7,
         &(WidgetKind::Relative, b"{}".to_vec()),
+        None,
         "a".repeat(64),
         now,
         |root| {
@@ -214,7 +215,7 @@ fn cli_uses_the_sibling_and_fixed_private_files_with_each_closed_scale() {
         (PreviewScale::Quarter, "1.25"),
         (PreviewScale::Half, "1.5"),
     ] {
-        let command = capture_command(&executable, &scratch, WidgetKind::Relative, scale);
+        let command = capture_command(&executable, &scratch, WidgetKind::Relative, scale, false);
         assert_eq!(command.get_program(), executable.as_os_str());
         assert_eq!(command.get_current_dir(), executable.parent());
         let expected = vec![
@@ -424,3 +425,6 @@ fn acl_sddl(path: &Path) -> String {
         .trim()
         .into()
 }
+
+#[path = "scene_process_tests.rs"]
+mod scene_tests;

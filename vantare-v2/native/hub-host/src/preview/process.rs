@@ -61,6 +61,7 @@ impl State {
         &mut self,
         id: u32,
         settings: &(WidgetKind, Vec<u8>),
+        snapshot: Option<Vec<u8>>,
         scale: PreviewScale,
         generation: String,
         now: Instant,
@@ -71,14 +72,16 @@ impl State {
         let host = std::env::current_exe().map_err(|_| PreviewError::Unavailable)?;
         let executable = sibling(&host)?;
         let kind = settings.0;
-        self.start_with(id, settings, generation, now, |root| {
-            capture_command(&executable, root, kind, scale)
+        let has_snapshot = snapshot.is_some();
+        self.start_with(id, settings, snapshot, generation, now, |root| {
+            capture_command(&executable, root, kind, scale, has_snapshot)
         })
     }
     fn start_with(
         &mut self,
         id: u32,
         settings: &(WidgetKind, Vec<u8>),
+        snapshot: Option<Vec<u8>>,
         generation: String,
         now: Instant,
         command: impl FnOnce(&Path) -> Command,
@@ -108,6 +111,14 @@ impl State {
             .open(&input)
             .and_then(|mut file| file.write_all(&settings.1))
             .map_err(|_| HostError::Io)?;
+        if let Some(bytes) = snapshot {
+            OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(scratch.0.join("snapshot.json"))
+                .and_then(|mut file| file.write_all(&bytes))
+                .map_err(|_| HostError::Io)?;
+        }
         let stderr = OpenOptions::new()
             .create_new(true)
             .write(true)
@@ -196,6 +207,7 @@ fn capture_command(
     root: &Path,
     kind: WidgetKind,
     scale: PreviewScale,
+    has_snapshot: bool,
 ) -> Command {
     let mut command = Command::new(executable);
     environment(&mut command);
@@ -207,6 +219,9 @@ fn capture_command(
         .arg(scale.argument())
         .arg("--output")
         .arg(root.join("image.png"));
+    if has_snapshot {
+        command.arg("--snapshot").arg(root.join("snapshot.json"));
+    }
     command
 }
 fn sibling(host: &Path) -> Result<PathBuf, PreviewError> {

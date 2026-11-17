@@ -5,15 +5,27 @@ import {
 } from "../generated/preview";
 import {
   studioAddKinds,
+  studioKinds,
   studioLimits,
   studioRevisionPattern,
 } from "../generated/studio";
+import { workshopFrameLimit } from "../generated/workshop";
 import { exact, integer, oneOf, record } from "../validation-common";
+import { isSceneId } from "./workshop";
 
 export { previewMethods as methods } from "../generated/preview";
 
 function target(value: unknown) {
   if (!record(value)) return false;
+  if (value.kind === "scene")
+    return (
+      exact(value, ["kind", "widget", "sceneId", "frame"]) &&
+      oneOf(value.widget, studioKinds) &&
+      isSceneId(value.sceneId) &&
+      integer(value.frame) &&
+      value.frame >= 0 &&
+      value.frame < workshopFrameLimit
+    );
   if (value.kind === "catalog")
     return (
       exact(value, ["kind", "widget"]) && oneOf(value.widget, studioAddKinds)

@@ -1,6 +1,12 @@
 #![allow(clippy::unwrap_used)]
 use super::*;
 
+#[derive(Deserialize)]
+struct Source<'a> {
+    #[serde(borrow)]
+    frames: Vec<Frame<'a>>,
+}
+
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../ui/fixtures")
 }
@@ -29,11 +35,6 @@ fn real_fixtures_are_grouped_and_resolved_without_exposing_paths() {
         .unwrap();
     assert_eq!((scene.frames, scene.frame_ms), (1, Some(1200)));
     let original = fs::read_to_string(fixtures().join("standings-default.scene.json")).unwrap();
-    #[derive(Deserialize)]
-    struct Source<'a> {
-        #[serde(borrow)]
-        frames: Vec<Frame<'a>>,
-    }
     let source: Source<'_> = serde_json::from_str(&original).unwrap();
     assert_eq!(
         scenes
@@ -70,16 +71,26 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
     fs::copy(&real, root.join("unknown.snapshot.json")).unwrap();
     fs::copy(&real, root.join("standings.sequence.json")).unwrap();
     fs::write(root.join("standings-invalid.snapshot.json"), "{}").unwrap();
-    fs::File::create(root.join("standings-oversized.snapshot.json"))
-        .unwrap()
-        .set_len(BYTE_LIMIT + 1)
-        .unwrap();
+    let mut oversized = fs::read(&real).unwrap();
+    oversized.resize(usize::try_from(BYTE_LIMIT + 1).unwrap(), b' ');
+    fs::write(root.join("standings-oversized.snapshot.json"), oversized).unwrap();
     fs::write(root.join("oversize.scene.json"), serde_json::to_vec(&serde_json::json!({
         "widget":"standings", "label":"a", "frameMs":1, "watchFor":null,
         "frames":vec![serde_json::json!({"snapshot":serde_json::from_slice::<serde_json::Value>(&fs::read(&real).unwrap()).unwrap()}); FRAME_LIMIT+1],
     })).unwrap()).unwrap();
     #[cfg(unix)]
     std::os::unix::fs::symlink(&real, root.join("standings-link.snapshot.json")).unwrap();
+    #[cfg(windows)]
+    if let Err(error) =
+        std::os::windows::fs::symlink_file(&real, root.join("standings-link.snapshot.json"))
+    {
+        assert_eq!(
+            error.raw_os_error(),
+            Some(1314),
+            "create fixture symlink: {error}"
+        );
+        eprintln!("fixture symlink case omitted: Windows requires symlink privilege (1314)");
+    }
     let scenes = Scenes::load(Some(root.clone()));
     assert_eq!(
         scenes.widgets()[0]
@@ -90,6 +101,12 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
         ["standings"]
     );
     fs::write(root.join("standings.snapshot.json"), "invalid after scan").unwrap();
+    fs::copy(&real, root.join("standings-added.snapshot.json")).unwrap();
+    assert_eq!(scenes.widgets()[0].scenes.len(), 1);
+    assert_eq!(
+        scenes.snapshot(WidgetKind::Standings, "standings-added", 0),
+        Err(PreviewError::InvalidInput)
+    );
     assert_eq!(
         scenes.snapshot(WidgetKind::Standings, "standings", 0),
         Err(PreviewError::InvalidInput)
@@ -114,7 +131,7 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
         missing.snapshot(WidgetKind::Standings, "standings", 0),
         Err(PreviewError::NoDemo)
     );
-    for id in ["", ".", "../a", "a/b", r"a\b", "Upper", &"a".repeat(97)] {
-        assert!(!valid_scene_id(id));
+    for (id, valid) in id_cases() {
+        assert_eq!(valid_scene_id(&id), valid, "{id:?}");
     }
 }

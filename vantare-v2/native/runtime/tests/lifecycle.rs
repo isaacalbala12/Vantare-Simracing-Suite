@@ -41,9 +41,10 @@ mod characterization;
 
 /// Portable QA runs use a separately hashed launcher from the frozen product SHA.
 fn launcher_exe() -> PathBuf {
-    env::var_os("VANTARE_LIFECYCLE_LAUNCHER_EXE")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_vantare")))
+    env::var_os("VANTARE_LIFECYCLE_LAUNCHER_EXE").map_or_else(
+        || PathBuf::from(env!("CARGO_BIN_EXE_vantare")),
+        PathBuf::from,
+    )
 }
 
 fn main() -> ExitCode {

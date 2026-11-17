@@ -3,7 +3,7 @@ use super::*;
 fn catalog_limits_opacity_and_rotation() {
     let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
     let mut state = State::new(root.clone());
-    assert!(state.catalog().unwrap().is_empty());
+    assert_eq!(state.catalog().unwrap(), Vec::<AnalysisRow>::new());
     assert!(!root.exists());
     std::fs::create_dir(&root).unwrap();
     for n in 0..257 {

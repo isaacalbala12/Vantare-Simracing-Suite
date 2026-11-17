@@ -12,24 +12,24 @@
   border-color: var(--edge);
   box-shadow: var(--shadow-account);
 }
-.v-studio-catalog-dialog > header {
+.v-studio-catalog-dialog > .v-studio-catalog-head {
   display: flex;
   align-items: flex-start;
   gap: 16px;
   padding: 22px 24px 0;
 }
-.v-studio-catalog-dialog > header h2 {
+.v-studio-catalog-dialog > .v-studio-catalog-head h2 {
   font-family: var(--font-display);
   font-size: 28px;
   font-weight: 700;
   line-height: 1;
 }
-.v-studio-catalog-dialog > header p {
+.v-studio-catalog-dialog > .v-studio-catalog-head p {
   color: var(--text-caption);
   font-size: 13px;
   margin-top: 6px;
 }
-.v-studio-catalog-dialog > header > button {
+.v-studio-catalog-head > button {
   margin-left: auto;
   width: 34px;
   height: 34px;

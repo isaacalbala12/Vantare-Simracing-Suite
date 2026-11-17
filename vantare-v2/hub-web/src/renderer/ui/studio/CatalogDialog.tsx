@@ -74,7 +74,7 @@ export function CatalogDialog({
             );
           }}
         >
-          <header>
+          <div className="v-studio-catalog-head">
             <div>
               <Dialog.Title>{t.catalog}</Dialog.Title>
               <Dialog.Description>{text.catalogHelp}</Dialog.Description>
@@ -85,7 +85,7 @@ export function CatalogDialog({
             >
               <Icon name="x" />
             </Dialog.Close>
-          </header>
+          </div>
           <div className="v-studio-catalog-tools">
             <div className="v-studio-catalog-search">
               <Icon name="search" />

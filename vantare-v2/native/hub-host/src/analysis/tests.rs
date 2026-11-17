@@ -598,6 +598,14 @@ mod real {
             ("2", "2", "1")
         );
         assert_eq!(
+            sessions,
+            Vec::<crate::analysis::catalog::AnalysisSessionSummary>::new()
+        );
+        assert_eq!(
+            (laps[0].session, laps[0].lap_time_ms, &laps[0].sectors_ms),
+            (None, None, &None)
+        );
+        assert_eq!(
             (laps[0].index, laps[0].car, laps[0].lap_time_approx_ms),
             (0, 7, None)
         );

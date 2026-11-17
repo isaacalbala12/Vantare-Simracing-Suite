@@ -119,7 +119,7 @@ fn recording_status_is_host_only_and_blocks_open_and_inspect() {
     std::fs::remove_dir_all(root).unwrap();
 }
 #[test]
-fn largest_catalog_and_open_frames_have_at_least_half_a_mib_to_spare() {
+fn full_catalog_and_open_with_256_sessions_and_laps_fit_the_frame() {
     use crate::protocol::HostToUi;
     let row = AnalysisRow {
         id: "f".repeat(64),
@@ -144,10 +144,33 @@ fn largest_catalog_and_open_frames_have_at_least_half_a_mib_to_spare() {
         gap: false,
         samples: u32::MAX,
         lap_time_approx_ms: Some(u32::MAX),
+        session: Some(255),
+        lap_time_ms: Some(u32::MAX),
+        sectors_ms: Some(vec![u32::MAX; 16]),
         speed: signal.clone(),
         throttle: signal.clone(),
         brake: signal,
     };
+    // Backslashes double their byte length on the JSON wire.
+    let text = "\\".repeat(256);
+    let sessions: Vec<_> = (0..256)
+        .map(|index| AnalysisSessionSummary {
+            index,
+            kind: AnalysisSessionKind::Qualifying,
+            kind_text: Some(text.clone()),
+            track_name: Some(text.clone()),
+            vehicle: Some(text.clone()),
+            class_name: Some(text.clone()),
+            started_at_ms: (1 << 53) - 1,
+            ended_at_ms: Some((1 << 53) - 1),
+            sealed: true,
+            end_reason: Some(AnalysisSessionEndReason::SessionChanged),
+            position_at_close: Some(u32::MAX),
+            class_position_at_close: Some(u32::MAX),
+            laps_completed: Some(u32::MAX),
+            best_lap_ms: Some(u32::MAX),
+        })
+        .collect();
     for result in [
         Reply::AnalysisCatalog {
             recordings: vec![row; 256],
@@ -160,6 +183,7 @@ fn largest_catalog_and_open_frames_have_at_least_half_a_mib_to_spare() {
             total: u64::MAX.to_string(),
             finished: true,
             laps: vec![lap; 256],
+            sessions,
         },
     ] {
         assert!(
@@ -169,7 +193,7 @@ fn largest_catalog_and_open_frames_have_at_least_half_a_mib_to_spare() {
             })
             .unwrap()
             .len()
-                < 512 * 1024
+                < crate::frame::LIMIT
         );
     }
 }
@@ -208,6 +232,7 @@ fn full_channel_is_busy_and_late_results_cannot_resurrect_tokens() {
             total: "0".into(),
             finished: false,
             laps: vec![],
+            sessions: vec![],
         }),
     })
     .unwrap();

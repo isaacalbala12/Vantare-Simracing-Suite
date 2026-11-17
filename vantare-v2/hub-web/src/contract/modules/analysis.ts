@@ -4,11 +4,14 @@ import {
   lap,
   recordingStatus,
   row,
+  sessions,
   token,
 } from "../analysis-validation";
 import {
   analysisErrors,
+  analysisInspectKeys,
   analysisMax,
+  analysisOpenKeys,
   analysisStates,
 } from "../generated/analysis";
 import { exact, integer, oneOf } from "../validation-common";
@@ -54,33 +57,29 @@ export function isReply(v: Record<string, unknown>): boolean {
         exact(
           v,
           Object.hasOwn(v, "bestLapApproxMs")
-            ? ["method", "state", "laps", "bestLapApproxMs"]
-            : ["method", "state", "laps"],
+            ? [...analysisInspectKeys]
+            : analysisInspectKeys.filter((key) => key !== "bestLapApproxMs"),
         ) &&
         oneOf(v.state, analysisStates) &&
         integer(v.laps) &&
-        (v.bestLapApproxMs === undefined ||
+        sessions(v.sessions) &&
+        (!Object.hasOwn(v, "bestLapApproxMs") ||
           v.bestLapApproxMs === null ||
           integer(v.bestLapApproxMs))
       );
-    case "analysis.open":
+    case "analysis.open": {
+      const rows = v.sessions;
       return (
-        exact(v, [
-          "method",
-          "session",
-          "watermark",
-          "finished",
-          "attempted",
-          "total",
-          "laps",
-        ]) &&
+        exact(v, [...analysisOpenKeys]) &&
         token(v.session) &&
         [v.watermark, v.attempted, v.total].every(decimal) &&
         typeof v.finished === "boolean" &&
         Array.isArray(v.laps) &&
         v.laps.length <= analysisMax &&
-        v.laps.every(lap)
+        sessions(rows) &&
+        v.laps.every((value) => lap(value, rows.length))
       );
+    }
     case "analysis.compare":
       return comparison(v);
     case "analysis.close":

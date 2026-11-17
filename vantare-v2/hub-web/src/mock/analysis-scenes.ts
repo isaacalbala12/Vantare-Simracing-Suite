@@ -124,6 +124,7 @@ export function analysisScene(context: MockContext, clock = Date.now) {
             ] as const
           )[index % 10],
           laps: 14,
+          sessions: [],
           bestLapApproxMs: [1, 2, 3, 5, 7, 9].includes(index) ? 111600 : null,
         },
       };

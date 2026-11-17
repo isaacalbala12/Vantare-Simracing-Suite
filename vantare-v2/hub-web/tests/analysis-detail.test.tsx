@@ -325,6 +325,7 @@ it("closes a late open token after unmount", async () => {
     total: "0",
     finished: true,
     laps: [],
+    sessions: [],
   });
   await waitFor(() =>
     expect(request).toHaveBeenCalledWith({

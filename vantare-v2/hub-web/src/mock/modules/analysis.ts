@@ -1,6 +1,7 @@
 import {
   type AnalysisLap,
   type AnalysisRow,
+  type AnalysisSessionSummary,
   analysisMax,
 } from "../../contract/generated/analysis";
 import { methods } from "../../contract/modules/analysis";
@@ -26,6 +27,40 @@ const rows: AnalysisRow[] = [
     recording: false,
   },
 ];
+const sessionRows: AnalysisSessionSummary[] = [
+  {
+    index: 0,
+    kind: "race",
+    kindText: null,
+    trackName: "Spa",
+    vehicle: "Porsche 911 GT3 R",
+    className: "GT3",
+    startedAtMs: 1700000100000,
+    endedAtMs: null,
+    sealed: false,
+    endReason: null,
+    positionAtClose: null,
+    classPositionAtClose: null,
+    lapsCompleted: null,
+    bestLapMs: null,
+  },
+  {
+    index: 1,
+    kind: "qualifying",
+    kindText: null,
+    trackName: "Spa",
+    vehicle: "Porsche 911 GT3 R",
+    className: "GT3",
+    startedAtMs: 1700000000000,
+    endedAtMs: 1700000090000,
+    sealed: true,
+    endReason: "sessionChanged",
+    positionAtClose: 3,
+    classPositionAtClose: 2,
+    lapsCompleted: 3,
+    bestLapMs: 111625,
+  },
+];
 const quality = { reliable: 7200, estimated: 0, stale: 0, unavailable: 0 };
 const lapTimes = [112400, 111600, 111900, 112200];
 const laps: AnalysisLap[] = lapTimes.map((lapTimeApproxMs, index) => ({
@@ -36,12 +71,16 @@ const laps: AnalysisLap[] = lapTimes.map((lapTimeApproxMs, index) => ({
   gap: index === 2,
   samples: 7200,
   lapTimeApproxMs: index === 2 ? null : lapTimeApproxMs,
+  session: index === 3 ? 0 : 1,
+  lapTimeMs: index === 2 ? null : lapTimeApproxMs + 25,
+  sectorsMs: index === 2 ? null : [35000, 40000, lapTimeApproxMs + 25 - 75000],
   speed: { ...quality, min: 35, mean: 51, max: 75 },
   throttle: { ...quality, min: 0, mean: 0.7, max: 1 },
   brake: { ...quality, min: 0, mean: 0.2, max: 1 },
 }));
 export function create({ core, sceneName }: MockContext): MockHandler {
   let session: string | undefined;
+  const legacy = sceneName === "analysis-v1";
   let catalogued = false;
   let generation = 0;
   return (message) => {
@@ -147,11 +186,17 @@ export function create({ core, sceneName }: MockContext): MockHandler {
             id,
             result:
               row.id === rows[2]?.id
-                ? { method: request.method, state: "locked", laps: 0 }
+                ? {
+                    method: request.method,
+                    state: "locked",
+                    laps: 0,
+                    sessions: [],
+                  }
                 : {
                     method: request.method,
                     state: "complete",
                     laps: laps.length,
+                    sessions: legacy ? [] : structuredClone(sessionRows),
                     bestLapApproxMs: 111600,
                   },
           };
@@ -166,7 +211,15 @@ export function create({ core, sceneName }: MockContext): MockHandler {
             finished: true,
             attempted: "28800",
             total: "4",
-            laps: structuredClone(laps),
+            sessions: legacy ? [] : structuredClone(sessionRows),
+            laps: legacy
+              ? laps.map((lap) => ({
+                  ...lap,
+                  session: null,
+                  lapTimeMs: null,
+                  sectorsMs: null,
+                }))
+              : structuredClone(laps),
           },
         };
       }

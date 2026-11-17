@@ -425,15 +425,15 @@ fn unfinished_recordings_are_not_cached_and_cancelled_index_does_not_start_work(
     let rows = index.refresh(&exe(), &dir.0, cancel()).unwrap();
     assert!(rows[0].readable);
     assert!(!rows[0].sessions[0].sealed);
-    let ready = dir.0.join("finished.duckdb");
+    let ready = dir.0.join("z-finished.duckdb");
     metadata_fixture(&ready);
     index.refresh(&exe(), &dir.0, cancel()).unwrap();
     let refreshed = index
         .refresh(&dir.0.join("missing.exe"), &dir.0, cancel())
         .unwrap();
-    assert!(refreshed[0].readable);
-    assert!(!refreshed[1].readable);
-    assert!(!refreshed[1].locked);
+    assert!(!refreshed[0].readable);
+    assert!(!refreshed[0].locked);
+    assert!(refreshed[1].readable);
     let token = cancel();
     token.store(true, Ordering::Release);
     assert_eq!(

@@ -41,13 +41,19 @@ impl Reader {
     pub fn sessions(&mut self) -> Result<Vec<SessionSummary>> {
         self.sessions_until(Instant::now() + self.timeout)
     }
-    pub(super) fn sessions_until(&mut self, deadline: Instant) -> Result<Vec<SessionSummary>> {
+    pub(crate) fn sessions_until(&mut self, deadline: Instant) -> Result<Vec<SessionSummary>> {
         let result = (|| {
             self.unchanged(deadline)?;
             let frame = self.request(&json!(["session-summaries"]), deadline)?;
-            let rows =
-                metadata_page::<SessionSummary>(frame, "session-summaries", "series-session.v1")?
-                    .map_or_else(Vec::new, |(_, rows)| rows);
+            let rows = match metadata_page::<SessionSummary>(
+                frame,
+                "session-summaries",
+                "series-session.v1",
+            )? {
+                Some((total, rows)) if rows.len() as u64 == total => rows,
+                Some(_) => return Err(error(ErrorCode::Limit, "Resumen de sesiones truncado")),
+                None => Vec::new(),
+            };
             if rows
                 .windows(2)
                 .any(|rows| (rows[0].epoch, rows[0].session) <= (rows[1].epoch, rows[1].session))
@@ -60,7 +66,14 @@ impl Reader {
         self.finish_result(result)
     }
     pub fn lap_times(&mut self, epoch: u64, session: u64) -> Result<Vec<LapTime>> {
-        let deadline = Instant::now() + self.timeout;
+        self.lap_times_until(epoch, session, Instant::now() + self.timeout)
+    }
+    pub(crate) fn lap_times_until(
+        &mut self,
+        epoch: u64,
+        session: u64,
+        deadline: Instant,
+    ) -> Result<Vec<LapTime>> {
         let result = (|| {
             self.unchanged(deadline)?;
             let mut laps = Vec::new();

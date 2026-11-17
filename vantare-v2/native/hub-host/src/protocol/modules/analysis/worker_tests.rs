@@ -9,7 +9,7 @@ fn fixture(
     count: u32,
     gap: bool,
 ) -> (PathBuf, Option<(Reader, Cancel)>) {
-    fixture_with_metadata(ids, chunks, count, gap, &[])
+    fixture_with_metadata(ids, chunks, count, gap, &[], false)
 }
 
 fn fixture_with_metadata(
@@ -18,6 +18,7 @@ fn fixture_with_metadata(
     count: u32,
     gap: bool,
     commands: &[serde_json::Value],
+    legacy: bool,
 ) -> (PathBuf, Option<(Reader, Cancel)>) {
     let helper = std::env::current_exe()
         .unwrap()
@@ -29,9 +30,19 @@ fn fixture_with_metadata(
     let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
     std::fs::create_dir(&root).unwrap();
     let db = root.join("recording.duckdb");
+    let mode = if legacy {
+        std::fs::write(
+            &db,
+            include_bytes!("../../../analysis/fixtures/session-v1.duckdb"),
+        )
+        .unwrap();
+        "--resume"
+    } else {
+        "--create"
+    };
     let mut writer = Command::new(&helper)
         .arg(&db)
-        .arg("--create")
+        .arg(mode)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -215,7 +226,12 @@ fn inspect_and_open_join_real_metadata_by_full_key() {
             "vehicle":"Porsche","className":"GT3","startedAtMs":epoch * 1000
         }]));
     }
-    for (epoch, car, lap, ms) in [(1, 7, 0, 90_125), (2, 7, 1, 91_250), (2, 99, 2, 92_000)] {
+    for (epoch, car, lap, ms) in [
+        (1, 7, 0, 90_125),
+        (2, 7, 1, 91_250),
+        (2, 99, 2, 92_000),
+        (1, 8, 2, 92_500),
+    ] {
         commands.push(
             json!(["lap", {"epoch":epoch,"session":3,"car":car,"lap":lap,
             "officialMs":ms,"sectorMs":[31_000,30_000,29_125]}]),
@@ -226,10 +242,14 @@ fn inspect_and_open_join_real_metadata_by_full_key() {
         "simElapsedS":90.125,"finalPosition":3,"finalClassPosition":2,
         "lapsCompleted":1,"bestLapMs":90_125,"endReason":"sessionChanged"}]),
     );
-    let (root, reader) =
-        fixture_with_metadata(&[(1, 3, 7), (2, 3, 7), (2, 3, 8)], 1, 2, false, &commands);
-    let helper = reader.as_ref().unwrap().0.child.id();
-    assert_ne!(helper, 0);
+    let (root, reader) = fixture_with_metadata(
+        &[(1, 3, 7), (2, 3, 7), (2, 3, 8)],
+        1,
+        2,
+        false,
+        &commands,
+        false,
+    );
     drop(reader);
     let exe = std::env::current_exe()
         .unwrap()
@@ -302,6 +322,98 @@ fn inspect_and_open_join_real_metadata_by_full_key() {
         Some([31_000, 30_000, 29_125].as_slice())
     );
     assert_eq!(laps[2].sectors_ms, None);
+    drop(current);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn official_lap_failure_reaps_the_helper_and_preserves_comparison() {
+    use serde_json::json;
+    let (root, mut opened) = fixture_with_metadata(
+        &[(1, 3, 7)],
+        1,
+        2,
+        false,
+        &[
+            json!(["session-open", {"epoch":1,"session":3,"kind":"race","kindText":"",
+            "trackName":"Spa","vehicle":"Porsche","className":"GT3","startedAtMs":1000}]),
+        ],
+        false,
+    );
+    let (reader, _) = opened.as_mut().unwrap();
+    let sessions = reader.sessions().unwrap();
+    let laps = reader.summary.laps.clone();
+    let old_id = reader.child.id();
+    let (send, receive) = mpsc::channel();
+    let original = std::mem::replace(&mut reader.output, receive);
+    let pump = reader.pump.take().unwrap();
+    reader.pump = Some(std::thread::spawn(move || {
+        send.send(original.recv().unwrap()).unwrap(); // status
+        original.recv().unwrap().unwrap(); // real lap-times response
+        send.send(Ok(json!(["lap-times", "series-laps.v1", 4097, []])))
+            .unwrap();
+        while original.recv().is_ok() {}
+        pump.join().unwrap();
+    }));
+    let exe = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("vantare-storage.exe");
+    let clocks = metadata::official_times(&exe, reader, &laps, &sessions, &job(0, 0)).unwrap();
+    assert_eq!(clocks, BTreeMap::new());
+    assert_ne!(reader.child.id(), old_id);
+    assert_eq!(reader.summary.laps, laps);
+    assert!(compare(&mut opened, &job(0, 0), 0, 0, &Instant::now).is_ok());
+    drop(opened);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn real_v1_bridge_has_empty_sessions_in_inspect_and_open() {
+    let (root, reader) = fixture_with_metadata(&[(1, 3, 7)], 1, 2, false, &[], true);
+    drop(reader);
+    let path = root.join("recording.duckdb");
+    let exe = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("vantare-storage.exe");
+    let created = stamp(&path).unwrap().created;
+    let mut current = None;
+    let mut cache = BTreeMap::new();
+    let mut request = job(0, 0);
+    request.operation = Operation::Inspect {
+        id: "id".into(),
+        path: path.clone(),
+        created,
+    };
+    assert!(
+        matches!(execute(&exe,&request,&mut current,&mut cache).unwrap(),
+        Reply::AnalysisInspect {sessions, ..} if sessions.is_empty())
+    );
+    request.operation = Operation::Open {
+        path,
+        created,
+        token: "token".into(),
+    };
+    let Reply::AnalysisOpen { sessions, laps, .. } =
+        execute(&exe, &request, &mut current, &mut cache).unwrap()
+    else {
+        panic!("open")
+    };
+    assert!(sessions.is_empty());
+    assert_eq!(laps.len(), 1);
+    let lap = &laps[0];
+    assert!(lap.lap_time_approx_ms.is_some());
+    assert_eq!(
+        (lap.session, lap.lap_time_ms, lap.sectors_ms.as_ref()),
+        (None, None, None)
+    );
     drop(current);
     std::fs::remove_dir_all(root).unwrap();
 }

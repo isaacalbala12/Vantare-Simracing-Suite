@@ -34,6 +34,7 @@ mod engine_tests;
 mod installed;
 #[cfg(all(windows, feature = "qa-e2e"))]
 mod qa_e2e;
+mod recording;
 #[cfg(windows)]
 mod restart;
 mod session;
@@ -553,6 +554,11 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             .as_ref()
             .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
             .transpose()?;
+        config.core.args = recording::startup_args(
+            config.core.args,
+            vantare_ipc::paths::Root::from_env()
+                .map(|root| recording::hub_data(&root, config.installation.is_some())),
+        );
         let hub_image = config.core.path.with_file_name("vantare-hub.exe");
         let mut core = Service::new("núcleo", config.core, config.restarts)
             .with_policy(session::Policy::core(config.restarts));

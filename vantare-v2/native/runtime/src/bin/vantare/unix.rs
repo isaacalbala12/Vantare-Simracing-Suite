@@ -298,6 +298,10 @@ pub fn run(mut config: Config) -> io::Result<ExitCode> {
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
     configure(&mut config)?;
+    config.core.args = super::recording::startup_args(
+        config.core.args,
+        vantare_ipc::paths::Root::from_env().map(|root| super::recording::hub_data(&root, false)),
+    );
     let photo = configured_pipe(&mut config)?;
     let rights = config
         .engineer

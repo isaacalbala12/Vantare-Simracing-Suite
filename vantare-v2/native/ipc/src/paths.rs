@@ -6,6 +6,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Shared filename for the Hub settings document.
+pub const HUB_SETTINGS_FILE: &str = "hub-settings.json";
+/// Shared directory name for recorded series under the Hub data directory.
+pub const RECORDINGS_DIR: &str = "recordings";
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     MissingBase,

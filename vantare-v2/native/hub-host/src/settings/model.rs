@@ -135,7 +135,13 @@ pub struct Preferences {
     // Existing documents without this field retain the former disabled default.
     #[serde(default)]
     pub toasts: bool,
+    #[serde(default = "default_grabacion")]
+    pub grabacion: bool,
 }
+const fn default_grabacion() -> bool {
+    true
+}
+
 impl Default for Preferences {
     fn default() -> Self {
         Self {
@@ -147,6 +153,7 @@ impl Default for Preferences {
             updates: true,
             launcher: true,
             toasts: DEFAULT_WINDOWS_NOTIFICATIONS,
+            grabacion: default_grabacion(),
         }
     }
 }

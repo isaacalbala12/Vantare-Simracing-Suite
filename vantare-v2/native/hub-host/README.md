@@ -20,7 +20,7 @@ servidor exclusivo y comprobación de PID e imagen del hijo. La autenticación
 usa un valor aleatorio de un solo arranque que Electron elimina del entorno
 antes de crear el renderer. No se registra el valor.
 
-El protocolo actual del puente es v48 (analysis).
+El protocolo actual del puente es v49 (ajuste grabacion).
 El formato es JSON precedido por longitud u32 little endian, máximo 1 MiB.
 Cada pantalla aporta su contrato en `src/protocol/modules/<id>/`.
 `build.rs` descubre los módulos y ensambla enums, modelos, estado y tabla de

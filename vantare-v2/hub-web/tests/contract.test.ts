@@ -29,6 +29,46 @@ describe("host contract boundaries", () => {
       isUiMessage({ kind: "request", id: 1, request: { method: "core.get" } }),
     ).toBe(true);
   });
+  it("validates both recording choices and rejects invalid wire values", () => {
+    for (const value of [false, true]) {
+      expect(
+        isSettings({
+          ...settings,
+          general: { ...settings.general, grabacion: value },
+        }),
+      ).toBe(true);
+      expect(
+        isUiMessage({
+          kind: "request",
+          id: 1,
+          request: {
+            method: "settings.update",
+            baseRevision: "0".repeat(64),
+            patch: { field: "grabacion", value },
+          },
+        }),
+      ).toBe(true);
+    }
+    for (const value of [null, "false", 0]) {
+      expect(
+        isSettings({
+          ...settings,
+          general: { ...settings.general, grabacion: value },
+        }),
+      ).toBe(false);
+      expect(
+        isUiMessage({
+          kind: "request",
+          id: 1,
+          request: {
+            method: "settings.update",
+            baseRevision: "0".repeat(64),
+            patch: { field: "grabacion", value },
+          },
+        }),
+      ).toBe(false);
+    }
+  });
   it("rejects unknown commands, extra fields, invalid ids and bootstrap secrets", () => {
     for (const value of [
       { kind: "ready", extra: true },

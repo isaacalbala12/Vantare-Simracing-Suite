@@ -300,7 +300,7 @@ fn reliable_time(value: &Quality<f64>) -> Option<f64> {
 fn milliseconds(seconds: f64) -> Option<u32> {
     let ms = (seconds * 1000.0).round();
     (seconds >= 0.0 && ms.is_finite() && (0.0..=f64::from(u32::MAX)).contains(&ms))
-        .then(|| ms as u32)
+        .then_some(ms as u32)
 }
 
 fn sectors(car: &Car) -> Option<Vec<u32>> {

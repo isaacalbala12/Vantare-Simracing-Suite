@@ -158,7 +158,8 @@ fn old_control_response_bytes_decode_and_reserialize_identically() {
 }
 #[test]
 fn old_services_responses_are_unchanged_for_every_session_state() {
-    assert_eq!(services::VERSION, 20);
+    // Account payload bytes stay frozen at v20; draft CAS separately bumps the envelope.
+    assert_eq!(services::VERSION, 21);
     for session in [
         services::Session::SignedOut,
         services::Session::SignedIn,

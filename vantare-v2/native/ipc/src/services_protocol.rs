@@ -6,7 +6,8 @@ use std::io::{self, Read, Write};
 // v18 removed TransferRights. Admission observes the core without disk replay.
 // Mixed generations are transient failures;
 // no protocol error can invalidate the signed core policy.
-pub const VERSION: u32 = 20;
+// v21 adds draft revision CAS and the closed DraftConflict response.
+pub const VERSION: u32 = 21;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]

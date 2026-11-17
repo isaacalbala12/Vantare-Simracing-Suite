@@ -7,10 +7,12 @@ import { chromium, type Page } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as at } from "../src/renderer/i18n/analysis.es.ts";
 import { comparisonText as t } from "../src/renderer/i18n/comparison.es.ts";
+import { t as shellText } from "../src/renderer/i18n/es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { webQaPreview } from "./web-qa.ts";
 
 const scenes = [
+  "rail",
   "cursor",
   "keyboard",
   "table",
@@ -39,6 +41,7 @@ export async function checkAnalysisComparison(
   base: string,
   output: string,
   references?: Page,
+  includeCase?: (name: string) => boolean,
 ) {
   await mkdir(output, { recursive: true });
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -49,6 +52,7 @@ export async function checkAnalysisComparison(
     for (const theme of ["dark", "light"])
       for (const scene of scenes) {
         const name = `${scene}-${theme}-${width}`;
+        if (includeCase && !includeCase(name)) continue;
         console.log(`Comparar: ${name}`);
         await page.setViewportSize({
           width,
@@ -61,6 +65,7 @@ export async function checkAnalysisComparison(
               : 980,
         });
         const fixture = [
+          "rail",
           "cursor",
           "keyboard",
           "table",
@@ -147,6 +152,7 @@ export async function checkAnalysisComparison(
             .click();
           if (
             [
+              "rail",
               "cursor",
               "keyboard",
               "table",
@@ -171,9 +177,21 @@ export async function checkAnalysisComparison(
               await page
                 .getByRole("button", { name: t.time, exact: true })
                 .click();
+            const railToggle = page
+              .locator(".v-titlebar")
+              .getByRole("button", {
+                name: shellText("shell.railToggle"),
+                exact: true,
+              });
+            if (scene === "rail" || scene.startsWith("zoom")) {
+              if ((await railToggle.getAttribute("aria-expanded")) === "false")
+                await railToggle.click();
+              await page.locator(".v-an-change").first().waitFor();
+            }
             if (scene.startsWith("zoom")) {
               assert.equal(await page.locator(".v-an-change").count(), 3);
-              await page.locator(".v-an-change").first().click();
+              await page.locator(".v-an-change").first().focus();
+              await page.keyboard.press("Enter");
               const slider = page.getByRole("slider", { name: t.cursor });
               assert.equal(
                 (await slider.evaluate(
@@ -193,6 +211,12 @@ export async function checkAnalysisComparison(
                   ),
                   250,
                 );
+            }
+            if (scene.startsWith("zoom") && width === 900) {
+              await railToggle.click();
+              await page.waitForFunction(
+                () => !document.querySelector(".v-an-change"),
+              );
             }
             if (scene.startsWith("zoom") && scene !== "zoom-time") {
               assert.deepEqual(

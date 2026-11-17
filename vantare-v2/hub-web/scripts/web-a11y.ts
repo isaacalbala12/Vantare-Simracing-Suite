@@ -31,6 +31,7 @@ import { checkStudioCanvas } from "./check-studio-canvas.ts";
 import { checkStudioCatalogDrop } from "./check-studio-catalog-drop.ts";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
+import { collectPageFailures, pageFailuresReport } from "./page-failures";
 import { until } from "./wait-for";
 
 async function focused(locator: Locator) {
@@ -50,11 +51,13 @@ const evidence = resolve(
 await mkdir(evidence, { recursive: true });
 const server = await webQaPreview();
 const browser = await chromium.launch();
+let failures: string[] = [];
 try {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
   });
   const page = await context.newPage();
+  failures = collectPageFailures(page);
   page.setDefaultTimeout(20000);
   await page.goto(`${server.resolvedUrls?.local[0]}?escena=specimen`);
   await page.getByRole("heading", { name: "Componentes Vantare" }).waitFor();
@@ -249,6 +252,10 @@ try {
       onboarding: true,
     }),
   );
+} catch (error) {
+  // Playwright only reports the wait that expired; the page's own errors say why.
+  console.error(pageFailuresReport(failures));
+  throw error;
 } finally {
   await browser.close();
   await new Promise<void>((done, reject) =>

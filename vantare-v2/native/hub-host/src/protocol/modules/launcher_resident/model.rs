@@ -215,13 +215,21 @@ impl State {
         &mut self,
         account: Option<&vantare_ipc::account_session::AccountObservation>,
     ) -> ResidentView {
-        self.view_with_clock(account, || {
+        self.view_at(Instant::now(), account)
+    }
+    fn view_at(
+        &mut self,
+        monotonic_now: Instant,
+        account: Option<&vantare_ipc::account_session::AccountObservation>,
+    ) -> ResidentView {
+        self.view_with_clock(account, monotonic_now, || {
             vantare_ipc::control::wall_ms().unwrap_or_default()
         })
     }
     fn view_with_clock(
         &mut self,
         account: Option<&vantare_ipc::account_session::AccountObservation>,
+        monotonic_now: Instant,
         now: impl FnOnce() -> u64,
     ) -> ResidentView {
         if self.path.is_absolute() && !vantare_launcher::is_local_path(&self.path) {
@@ -279,9 +287,7 @@ impl State {
                 _ => ResidentReview::Unavailable,
             };
         }
-        view.review_outcome = self
-            .review
-            .outcome(status.as_ref(), account, Instant::now());
+        view.review_outcome = self.review.outcome(status.as_ref(), account, monotonic_now);
         // Evaluate account TTL after document I/O; cached legacy policy cannot renew it.
         view.ownership = Box::new(ownership::project(
             status.as_ref().and_then(|s| s.extension.as_ref()),
@@ -312,7 +318,7 @@ impl State {
         now: Instant,
         account: Option<&vantare_ipc::account_session::AccountObservation>,
     ) -> ResidentView {
-        let view = self.view_for_account(account);
+        let view = self.view_at(now, account);
         self.last = Some(now);
         self.observed = Some(view.clone());
         view
@@ -337,7 +343,7 @@ impl State {
             return None;
         }
         self.last = Some(now);
-        let view = self.view_for_account(account);
+        let view = self.view_at(now, account);
         if self.observed.as_ref() == Some(&view) {
             return None;
         }

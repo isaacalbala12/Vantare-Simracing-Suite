@@ -52,3 +52,46 @@ fn frame_separates_page_boundaries_and_authorization_has_an_exact_deadline() {
     assert!(!authorization_current(1_000, 11_001));
     assert!(!authorization_current(1_000, 999));
 }
+
+#[test]
+fn discloses_invisible_unicode_in_every_requested_group() {
+    let examples: serde_json::Value =
+        serde_json::from_str(include_str!("launcher_review_opus.json")).unwrap();
+    let groups: &[(&str, &[(u32, u32)])] = &[
+        (
+            "Unicode spaces",
+            &[
+                (0xa0, 0xa0),
+                (0x2000, 0x200a),
+                (0x202f, 0x202f),
+                (0x205f, 0x205f),
+                (0x3000, 0x3000),
+            ],
+        ),
+        ("blank Braille", &[(0x2800, 0x2800)]),
+        (
+            "Hangul fillers",
+            &[(0x3164, 0x3164), (0x115f, 0x1160), (0xffa0, 0xffa0)],
+        ),
+        ("combining grapheme joiner", &[(0x34f, 0x34f)]),
+        ("variation selectors", &[(0xfe00, 0xfe0f), (0x180b, 0x180d)]),
+        ("tags", &[(0xe0000, 0xe007f)]),
+        ("interlinear annotations", &[(0xfff9, 0xfffb)]),
+    ];
+    let mut input = examples["corto"]["input"].clone();
+    for (group, ranges) in groups {
+        for &(first, last) in *ranges {
+            for code in first..=last {
+                let invisible = char::from_u32(code).unwrap();
+                input["steps"][0]["args"] = serde_json::json!([format!("x{invisible}y")]);
+                let pages = review_pages(&input.to_string()).unwrap().join("\n");
+                assert!(pages.contains("Atención:"), "{group}: U+{code:04X}");
+                assert!(
+                    pages.contains(&format!("x[U+{code:04X}]y")),
+                    "{group}: U+{code:04X}"
+                );
+                assert!(!pages.contains(invisible), "{group}: U+{code:04X}");
+            }
+        }
+    }
+}

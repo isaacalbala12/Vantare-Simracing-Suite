@@ -549,27 +549,39 @@ fn opening_checks_the_exact_scope_and_cancel_queues_without_proof() {
 
 #[test]
 fn review_without_a_decision_expires_without_an_order() {
-    use super::super::{ResidentReviewState, ReviewFailure, review::Review};
+    use super::super::{ResidentReviewState, ReviewFailure, State};
     use std::time::{Duration, Instant};
     let (mut f, allowed, target) = review_fixture();
-    let mut review = Review::default();
+    let mut state = State::new(f.path.clone());
     let now = Instant::now();
-    let ticket = review
+    let ticket = state
+        .review
         .open(&f.path, Some(&allowed), &target)
         .unwrap()
         .ticket;
     let dialog_opened = now + Duration::from_secs(45);
-    review
+    state
+        .review
         .content(&f.path, Some(&allowed), &ticket, dialog_opened)
         .unwrap();
-    let expired = dialog_opened + Duration::from_secs(180);
+    let before_deadline = dialog_opened + Duration::from_secs(179);
+    let deadline = dialog_opened + Duration::from_secs(180);
     f.save();
-    let outcome = review
-        .outcome(Some(&f.status), Some(&allowed), expired)
-        .unwrap();
-    assert_eq!(outcome.state, ResidentReviewState::Expired);
+    assert!(
+        state
+            .observed_for_account(before_deadline, Some(&allowed))
+            .review_outcome
+            .is_none()
+    );
+    let view = state.changed_for_account(deadline, Some(&allowed)).unwrap();
     assert_eq!(
-        review.content(&f.path, Some(&allowed), &ticket, expired),
+        view.review_outcome.unwrap().state,
+        ResidentReviewState::Expired
+    );
+    assert_eq!(
+        state
+            .review
+            .content(&f.path, Some(&allowed), &ticket, deadline),
         Err(ReviewFailure::Unavailable)
     );
     assert!(!native::request_path(&f.path).exists());

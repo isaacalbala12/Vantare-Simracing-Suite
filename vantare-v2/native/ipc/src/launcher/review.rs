@@ -35,8 +35,15 @@ struct Step {
 }
 
 fn invisible(c: char) -> bool {
-    matches!(c, '\u{0}'..='\u{1f}' | '\u{7f}'..='\u{9f}' | '\u{ad}' | '\u{61c}' | '\u{180e}'
-        | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2060}'..='\u{2069}' | '\u{feff}')
+    matches!(
+        c,
+        '\u{0}'..='\u{1f}' | '\u{7f}'..='\u{9f}' | '\u{ad}' | '\u{61c}' | '\u{180e}'
+            | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2060}'..='\u{2069}' | '\u{feff}'
+            | '\u{a0}' | '\u{2000}'..='\u{200a}' | '\u{202f}' | '\u{205f}' | '\u{3000}'
+            | '\u{2800}' | '\u{3164}' | '\u{115f}'..='\u{1160}' | '\u{ffa0}' | '\u{34f}'
+            | '\u{fe00}'..='\u{fe0f}' | '\u{180b}'..='\u{180d}' | '\u{e0000}'..='\u{e007f}'
+            | '\u{fff9}'..='\u{fffb}'
+    )
 }
 
 fn visible(text: &str) -> String {
@@ -125,8 +132,7 @@ impl Profile {
         if [&self.name, &self.hotkey]
             .into_iter()
             .chain(
-                profile
-                    .steps
+                self.steps
                     .iter()
                     .flat_map(|step| [&step.app, &step.path].into_iter().chain(&step.args)),
             )

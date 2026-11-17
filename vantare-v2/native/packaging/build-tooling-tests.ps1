@@ -23,16 +23,16 @@ $clock=[Diagnostics.Stopwatch]::StartNew()
 $rejected=$false;try{Invoke-BuildProcess $shell @('-NoProfile','-File',$slow) $null 500|Out-Null}catch{$rejected=$true}
 if(-not $rejected -or $clock.Elapsed.TotalSeconds -gt 5){throw 'Plazo de --version no corta el proceso'}
 $inventory=Get-Content (Join-Path $PSScriptRoot 'public-inventory.json') -Raw|ConvertFrom-Json
-$bins=@($inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)})
+$bins=@($inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension((Get-PublicArtifact $_ $inventory))})
 Assert-PublicBins $bins $inventory
 $qaProbe='root-launch-probe'
 $hubManifest=Get-Content -LiteralPath (Join-Path $PSScriptRoot '../hub/Cargo.toml') -Raw
 if($hubManifest -notmatch '(?s)\[\[bin\]\]\s*name\s*=\s*"root-launch-probe"\s*path\s*=\s*"tests/support/root_launch_probe.rs"\s*required-features\s*=\s*\["installer-qa"\]'){throw 'Probe sin feature QA obligatoria'}
 Assert-PublicBins ($bins+@($qaProbe)) $inventory
-# ADR 0107: the replacement host remains internal until its packaging step.
-Assert-PublicBins ($bins+@('vantare-hub-host')) $inventory
-$rejected=$false;try{Assert-PublicBins (@($bins|Where-Object {$_ -cne 'vantare-hub'})+@('vantare-hub-host')) $inventory}catch{$rejected=$true}
-if(-not $rejected){throw 'El auxiliar sustituyó al Hub público antes de integrar el empaquetado'}
+# Cargo metadata still lists GPUI, but only the replacement host is required.
+Assert-PublicBins ($bins+@('vantare-hub')) $inventory
+$rejected=$false;try{Assert-PublicBins (@($bins|Where-Object {$_ -cne 'vantare-hub-host'})+@('vantare-hub')) $inventory}catch{$rejected=$true}
+if(-not $rejected){throw 'El Hub GPUI sustituyó al anfitrión Electron'}
 $rejected=$false;try{Assert-PublicBins ($bins+@($qaProbe,'surprise')) $inventory}catch{$rejected=$true}
 if(-not $rejected){throw 'Binario desconocido aceptado'}
 $payload=Join-Path $root 'payload'
@@ -43,7 +43,7 @@ foreach($name in @('README.md','licenses/OFL-Inter.txt','dependencies.json','lic
 }
 foreach($name in $inventory.executables){
     $file=Join-Path $payload ('bin/'+$name)
-    [IO.File]::WriteAllText("$file.sha256","$(Get-NativeHash $file)  $name``n".Replace('``','`'))
+    [IO.File]::WriteAllText("$file.sha256","$(Get-NativeHash $file)  $name`n")
 }
 Assert-PublicInventory $payload $inventory
 foreach($extra in @('bin/root-launch-probe.exe','bin/vantare-hub-host.exe','bin/unknown.exe','bin/fixtures/telemetry-real/unwanted.json')){

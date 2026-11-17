@@ -431,6 +431,19 @@ fn pending_obsolete(version: &str, active: [u16; 3], boot_pending: bool) -> io::
         || vantare_installer::engine::validation::version(version).map_err(io_error)? <= active)
 }
 pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
+    stage_with(root, cancelled, super::hub_update_feed::check)
+}
+// Only the feed I/O is injected; extraction, validation and publication stay real.
+pub(super) fn stage_with(
+    root: &Path,
+    cancelled: &AtomicBool,
+    check_feed: impl FnOnce(
+        &str,
+        &Path,
+        &AtomicBool,
+        Option<&str>,
+    ) -> io::Result<Option<super::hub_update_feed::Downloaded>>,
+) -> io::Result<()> {
     let (view, _) = active(root)?;
     let current = view.manifest.as_ref().expect("active manifest");
     if current.channel != "beta" {
@@ -447,8 +460,7 @@ pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
     let rejected = disk::read_optional(&root.join("update-status.json"), Some(65536))
         .map_err(io_error)?
         .and_then(|status| status["rejectedVersion"].as_str().map(str::to_owned));
-    let found =
-        super::hub_update_feed::check(&current.version, &staging, cancelled, rejected.as_deref())?;
+    let found = check_feed(&current.version, &staging, cancelled, rejected.as_deref())?;
     if cancelled.load(Ordering::Acquire) {
         return Ok(());
     }

@@ -1,4 +1,8 @@
 //! Hub-only signed feed. Legacy `update_feed.rs` and installed clients are unchanged.
+//!
+//! Offers have no expiry or sequence number. A previously signed offer newer than
+//! the installed version can be replayed; version ordering and `rejectedVersion`
+//! only reject installed/older or locally rejected versions, not stale publication.
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::{
@@ -13,7 +17,8 @@ const REPO: &str = "isaacalbala12/Vantare-Downloads";
 const ZIP_LIMIT: u64 = 256 * 1024 * 1024;
 const EXPANDED_LIMIT: u64 = 768 * 1024 * 1024;
 const QUERY_TIMEOUT: Duration = Duration::from_secs(30);
-const PACKAGE_TIMEOUT: Duration = Duration::from_mins(5);
+// Two hours allow 256 MiB at about 37 KiB/s without a new timing mechanism.
+const PACKAGE_TIMEOUT: Duration = Duration::from_hours(2);
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Offer {
@@ -41,11 +46,14 @@ fn failure(message: impl std::fmt::Display) -> io::Error {
 }
 impl Offer {
     pub fn verify(signed: &[u8]) -> io::Result<Self> {
-        let payload =
-            vantare_services::update_manifest::verify_hub_update(signed).map_err(failure)?;
-        let value: Self = serde_json::from_slice(&payload).map_err(failure)?;
+        let value = Self::decode(signed)?;
         value.validate()?;
         Ok(value)
+    }
+    fn decode(signed: &[u8]) -> io::Result<Self> {
+        let payload =
+            vantare_services::update_manifest::verify_hub_update(signed).map_err(failure)?;
+        serde_json::from_slice(&payload).map_err(failure)
     }
     fn validate(&self) -> io::Result<()> {
         let expected = format!(
@@ -95,6 +103,7 @@ impl Offer {
 fn agent(timeout: Duration) -> ureq::Agent {
     ureq::Agent::config_builder()
         .timeout_global(Some(timeout))
+        .https_only(true)
         .max_redirects(3)
         .build()
         .into()
@@ -166,12 +175,16 @@ fn check_with(
         let Ok(signed) = query(&url, 65536) else {
             continue;
         };
-        let offer = match Offer::verify(&signed) {
-            Ok(value) => value,
-            Err(error) if error.kind() == io::ErrorKind::FileTooLarge => return Err(error),
-            Err(_) => continue,
+        let Ok(offer) = Offer::decode(&signed) else {
+            continue;
         };
         if !tag_matches(&release.tag_name, &offer) {
+            continue;
+        }
+        if let Err(error) = offer.validate() {
+            if error.kind() == io::ErrorKind::FileTooLarge {
+                return Err(error);
+            }
             continue;
         }
         // All authenticated preflight checks precede directory creation and ZIP GET.

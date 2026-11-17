@@ -220,7 +220,12 @@ fn download_requires_exact_signed_length_and_hash() {
             expected.sha256 = "0".repeat(64);
         }
         let result = download(
-            &agent(Duration::from_secs(3)),
+            // Cleartext is limited to this loopback fixture in cfg(test).
+            &ureq::Agent::config_builder()
+                .timeout_global(Some(Duration::from_secs(3)))
+                .https_only(false)
+                .build()
+                .into(),
             &expected,
             &target,
             &AtomicBool::new(false),
@@ -259,3 +264,57 @@ fn extracted_total_and_compressed_length_must_match_the_signed_sizes() {
     assert!(expected.verify_archive_length(&archive).is_err());
     fs::remove_dir_all(root).expect("valid test fixture");
 }
+
+#[test]
+fn production_transport_rejects_cleartext_without_a_connection() {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("listener");
+    listener.set_nonblocking(true).expect("nonblocking probe");
+    let url = format!("http://{}", listener.local_addr().expect("address"));
+    assert!(agent(QUERY_TIMEOUT).get(&url).call().is_err());
+    assert_eq!(
+        listener
+            .accept()
+            .expect_err("no cleartext connection")
+            .kind(),
+        io::ErrorKind::WouldBlock
+    );
+}
+
+#[test]
+fn package_budget_allows_256_mib_at_64_kib_per_second() {
+    let transfer_seconds = ZIP_LIMIT / (64 * 1024);
+    assert!(PACKAGE_TIMEOUT >= Duration::from_secs(transfer_seconds));
+    assert!(QUERY_TIMEOUT <= Duration::from_secs(30));
+}
+
+#[cfg(feature = "hub-update-qa")]
+#[test]
+fn oversized_offer_from_another_tag_does_not_block_the_next_valid_release() {
+    let mut unrelated = offer();
+    unrelated.version = "0.0.995".into();
+    unrelated.url = unrelated.url.replace("0.0.990", "0.0.995");
+    unrelated.compressed_bytes = ZIP_LIMIT + 1;
+    let mut valid = offer();
+    valid.compressed_bytes = 5;
+    valid.sha256 = format!("{:x}", sha2::Sha256::digest(b"hello"));
+    let root = qa_root();
+    let downloads = Cell::new(0);
+    let result = check_with("0.0.989", &root, &AtomicBool::new(false), None,
+        |url, _| {
+            if url.contains("api.github.com") {
+                Ok(br#"[{"draft":false,"tag_name":"hub-beta-v0.0.991"},{"draft":false,"tag_name":"hub-beta-v0.0.990"}]"#.to_vec())
+            } else if url.contains("hub-beta-v0.0.991") { Ok(signed(&unrelated)) }
+            else { Ok(signed(&valid)) }
+        },
+        |candidate, target, _| {
+            assert_eq!(candidate.version, "0.0.990");
+            downloads.set(downloads.get() + 1);
+            fs::write(target, b"hello")
+        }).expect("unrelated oversized offer must be skipped").expect("valid release");
+    assert_eq!(result.offer.version, "0.0.990");
+    assert_eq!(downloads.get(), 1);
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[path = "installed_update_tests.rs"]
+mod installed_updates;

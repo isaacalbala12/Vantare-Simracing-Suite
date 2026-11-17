@@ -121,6 +121,7 @@ impl Session {
         if !close_can_advance(self.closing.map(|(reason, _)| reason), reason) {
             return Ok(());
         }
+        super::analysis::closing(self, pipe)?;
         self.cancel_deferred(pipe)?;
         self.closing = Some((reason, now));
         super::calendar::launch_closing(self, pipe)?;

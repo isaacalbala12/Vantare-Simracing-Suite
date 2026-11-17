@@ -548,4 +548,187 @@ mod real {
         drop(child.stdin.take());
         assert!(child.wait().unwrap().success());
     }
+
+    #[test]
+    fn bridge_worker_uses_real_helper_and_replaces_sessions() {
+        use crate::analysis::catalog::{AnalysisState, State};
+        use crate::protocol::{HostError, Reply, Request};
+        fn complete(state: &mut State, request: Request) -> Result<Reply, HostError> {
+            let now = Instant::now();
+            if let Some(reply) = state.start(3, &request, now)? {
+                return Ok(reply);
+            }
+            // Explicit completion synchronization; the production poll itself never waits.
+            state.wait_for_test();
+            state.poll(now, true, false).unwrap().1
+        }
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 2, false);
+        let mut state = State::new(dir.0.clone());
+        state.helper_for_test(exe());
+        let id = state.catalog().unwrap()[0].id.clone();
+        assert!(matches!(
+            complete(&mut state, Request::AnalysisInspect { id: id.clone() }).unwrap(),
+            Reply::AnalysisInspect {
+                state: AnalysisState::Complete,
+                laps: 1,
+                ..
+            }
+        ));
+        let first = complete(&mut state, Request::AnalysisOpen { id: id.clone() }).unwrap();
+        let Reply::AnalysisOpen {
+            session: old,
+            watermark,
+            attempted,
+            total,
+            laps,
+            ..
+        } = first
+        else {
+            panic!("open");
+        };
+        assert_eq!(
+            (watermark.as_str(), attempted.as_str(), total.as_str()),
+            ("2", "2", "1")
+        );
+        assert_eq!(
+            (laps[0].index, laps[0].car, laps[0].lap_time_approx_ms),
+            (0, 7, None)
+        );
+        let Reply::AnalysisOpen { session, .. } =
+            complete(&mut state, Request::AnalysisOpen { id }).unwrap()
+        else {
+            panic!("open");
+        };
+        assert_ne!(session, old);
+        assert_eq!(
+            complete(&mut state, Request::AnalysisClose { session: old }),
+            Err(HostError::AnalysisNotFound)
+        );
+        assert_eq!(
+            complete(&mut state, Request::AnalysisClose { session }),
+            Ok(Reply::AnalysisClose {})
+        );
+        drop(state);
+        let mut child = writer(&dir.db());
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        drop(child.stdin.take());
+        assert!(child.wait().unwrap().success());
+    }
+    #[test]
+    fn bridge_inspect_reports_unconfirmed_locked_and_unreadable_as_states() {
+        use crate::analysis::catalog::{AnalysisState, State};
+        use crate::protocol::{Reply, Request};
+        let dir = Directory::new();
+        let mut child = writer(&dir.db());
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        let mut state = State::new(dir.0.clone());
+        state.helper_for_test(exe());
+        let id = state.catalog().unwrap()[0].id.clone();
+        state
+            .start(
+                1,
+                &Request::AnalysisInspect { id: id.clone() },
+                Instant::now(),
+            )
+            .unwrap();
+        state.wait_for_test();
+        assert!(matches!(
+            state.poll(Instant::now(), true, false).unwrap().1,
+            Ok(Reply::AnalysisInspect {
+                state: AnalysisState::Locked,
+                ..
+            })
+        ));
+        drop(child.stdin.take());
+        assert!(child.wait().unwrap().success());
+        state
+            .start(2, &Request::AnalysisInspect { id }, Instant::now())
+            .unwrap();
+        state.wait_for_test();
+        assert!(matches!(
+            state.poll(Instant::now(), true, false).unwrap().1,
+            Ok(Reply::AnalysisInspect {
+                state: AnalysisState::Unconfirmed,
+                ..
+            })
+        ));
+        fs::write(dir.0.join("bad.duckdb"), b"bad database").unwrap();
+        let rows = state.catalog().unwrap();
+        let id = rows
+            .iter()
+            .find(|row| row.size_bytes == 12)
+            .unwrap()
+            .id
+            .clone();
+        state
+            .start(3, &Request::AnalysisInspect { id }, Instant::now())
+            .unwrap();
+        state.wait_for_test();
+        assert!(matches!(
+            state.poll(Instant::now(), true, false).unwrap().1,
+            Ok(Reply::AnalysisInspect {
+                state: AnalysisState::Unreadable,
+                ..
+            })
+        ));
+    }
+    #[test]
+    fn bridge_inspect_recognizes_a_real_duckdb_without_the_series_schema() {
+        use crate::analysis::catalog::{AnalysisState, State};
+        use crate::protocol::{Reply, Request};
+        let dir = Directory::new();
+        // Empty DB generated using the official DuckDB 1.5.5 duckdb_open/close API.
+        fs::write(dir.db(), include_bytes!("fixtures/no-series.duckdb")).unwrap();
+        let mut state = State::new(dir.0.clone());
+        state.helper_for_test(exe());
+        let id = state.catalog().unwrap()[0].id.clone();
+        state
+            .start(1, &Request::AnalysisInspect { id }, Instant::now())
+            .unwrap();
+        state.wait_for_test();
+        assert!(matches!(
+            state.poll(Instant::now(), true, false).unwrap().1,
+            Ok(Reply::AnalysisInspect {
+                state: AnalysisState::Incompatible,
+                ..
+            })
+        ));
+    }
+    #[test]
+    fn bridge_cancel_reaps_an_opening_helper_and_frees_the_writer_lock() {
+        use crate::analysis::catalog::State;
+        use crate::protocol::{HostError, Request};
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 2, false);
+        let mut state = State::new(dir.0.clone());
+        state.helper_for_test(exe());
+        let id = state.catalog().unwrap()[0].id.clone();
+        let now = Instant::now();
+        state.start(1, &Request::AnalysisOpen { id }, now).unwrap();
+        assert!(state.cancel());
+        assert_eq!(
+            state.poll(now, true, false),
+            Some((1, Err(HostError::AnalysisCancelled)))
+        );
+        state.wait_for_test();
+        assert!(state.poll(now, true, false).is_none());
+        drop(state);
+        let mut child = writer(&dir.db());
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        drop(child.stdin.take());
+        assert!(child.wait().unwrap().success());
+    }
 }

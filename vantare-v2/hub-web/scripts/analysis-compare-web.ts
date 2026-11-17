@@ -141,7 +141,10 @@ export async function checkAnalysisComparison(
               !!cell &&
               node.getBoundingClientRect().right <=
                 cell.getBoundingClientRect().right -
-                  Number.parseFloat(getComputedStyle(cell).paddingRight) +
+                  Number.parseFloat(getComputedStyle(cell).paddingRight) *
+                    Number.parseFloat(
+                      getComputedStyle(document.documentElement).zoom,
+                    ) +
                   0.5
             );
           }),
@@ -581,17 +584,20 @@ export async function checkAnalysisComparison(
                 const value = node.firstElementChild;
                 const icon = node.lastElementChild;
                 const style = getComputedStyle(node);
+                const zoom = Number.parseFloat(
+                  getComputedStyle(document.documentElement).zoom,
+                );
                 const available =
                   node.clientWidth -
                   Number.parseFloat(style.paddingLeft) -
                   Number.parseFloat(style.paddingRight) -
                   (Number.parseFloat(style.columnGap) || 0) -
                   (icon && icon !== value
-                    ? icon.getBoundingClientRect().width
+                    ? icon.getBoundingClientRect().width / zoom
                     : 0);
                 return (
                   !!value &&
-                  value.getBoundingClientRect().width >= available - 1 &&
+                  value.getBoundingClientRect().width / zoom >= available - 1 &&
                   getComputedStyle(value).textAlign === "center"
                 );
               }),

@@ -720,3 +720,7 @@ ambas formas de bloqueo. Esto no a√±ade campos ni modifica la versi√≥n del wire.
 `cancelled: false`. Cancelar o agotar el plazo de un inspect cancela su lector
 temporal y conserva el Reader de la sesi√≥n; cancelar un open cierra esa apertura.
 La p√©rdida de derecho/feed y el cierre del host siguen invalidando todo.
+
+Cancelar o agotar el plazo de `analysis.compare` invalida la sesiÛn abierta y
+cierra su Reader. El Hub debe volver a abrir la grabaciÛn con `analysis.open`
+antes de intentar otra comparaciÛn; el token anterior devuelve `analysisNotFound`.

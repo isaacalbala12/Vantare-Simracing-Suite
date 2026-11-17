@@ -143,35 +143,53 @@ fn thin(points: &[Point]) -> Result<Vec<AnalysisPoint>, HostError> {
         })
         .collect()
 }
-// A missing entry covers the distances bracketing it; unknown leading/trailing
-// coverage is represented only up to the observed domain, never extrapolated.
+// Only None entries describe recording gaps (including isolated gap chunks).
+// Some without finite distance breaks channel segments, but is not a recording gap.
+// Unknown leading/trailing coverage is bounded to the observed domain.
 fn gaps(samples: &[Option<Sample>]) -> Result<Vec<AnalysisRange>, HostError> {
     let mut ranges = Vec::new();
     let mut previous = None;
     let mut broken = false;
     for sample in samples {
-        if let Some(d) = sample.and_then(|s| s.distance).filter(|d| d.is_finite()) {
-            if broken {
-                let from = previous.unwrap_or(d);
-                ranges.push(AnalysisRange {
-                    from: number(f64::min(from, d))?,
-                    to: number(f64::max(from, d))?,
-                });
-            }
-            broken = false;
-            previous = Some(d);
-        } else {
+        let Some(sample) = sample else {
             broken = true;
+            continue;
+        };
+        let Some(d) = sample.distance.filter(|d| d.is_finite()) else {
+            continue;
+        };
+        if broken {
+            let from = previous.unwrap_or(d);
+            ranges.push((f64::min(from, d), f64::max(from, d)));
         }
+        broken = false;
+        previous = Some(d);
     }
     if broken && let Some(d) = previous {
-        ranges.push(AnalysisRange {
-            from: number(d)?,
-            to: number(d)?,
-        });
+        ranges.push((d, d));
     }
-    Ok(ranges)
+    ranges.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let mut merged: Vec<(f64, f64)> = Vec::new();
+    for (from, to) in ranges {
+        if let Some(last) = merged.last_mut()
+            && from <= last.1
+        {
+            last.1 = last.1.max(to);
+        } else {
+            merged.push((from, to));
+        }
+    }
+    merged
+        .into_iter()
+        .map(|(from, to)| {
+            Ok(AnalysisRange {
+                from: number(from)?,
+                to: number(to)?,
+            })
+        })
+        .collect()
 }
+
 pub fn project(
     a: &Lap,
     b: &Lap,

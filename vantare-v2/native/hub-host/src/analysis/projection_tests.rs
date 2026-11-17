@@ -144,3 +144,29 @@ fn unreliable_elapsed_is_null_and_never_interpolated_across() {
     assert_eq!(c.delta_unavailable, Some(DeltaUnavailable::NoCommonRange));
     assert!(c.delta.is_none());
 }
+
+#[test]
+fn contiguous_gap_ranges_merge_and_missing_distance_is_not_a_recording_gap() {
+    let s = [
+        sample(0.0, 0.0),
+        None,
+        sample(10.0, 1.0),
+        None,
+        sample(20.0, 2.0),
+        None,
+    ];
+    let ranges = gaps(&s).unwrap();
+    assert_eq!(ranges.len(), 1);
+    assert_eq!(ranges[0].from.as_f64(), Some(0.0));
+    assert_eq!(ranges[0].to.as_f64(), Some(20.0));
+    for distance in [None, Some(f64::NAN), Some(f64::INFINITY)] {
+        let mut a = [sample(0.0, 0.0), sample(50.0, 5.0), sample(100.0, 10.0)];
+        a[1].as_mut().unwrap().distance = distance;
+        let b = [sample(0.0, 0.0), sample(50.0, 5.0), sample(100.0, 10.0)];
+        let c = project(&lap(), &lap(), &a, &b).unwrap();
+        assert_eq!(c.gaps.a, [] as [AnalysisRange; 0]);
+        assert_eq!(c.delta_unavailable, None);
+        assert!(c.delta.is_some());
+        assert_ne!(c.speed.a[0].segment, c.speed.a[1].segment);
+    }
+}

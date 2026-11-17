@@ -11,6 +11,7 @@ pub enum Request {
     AnalysisInspect { id: String },
     #[serde(rename = "analysis.open")]
     AnalysisOpen { id: String },
+    // Cancelling or timing out Compare invalidates the session; reopen before retrying.
     #[serde(rename = "analysis.compare")]
     AnalysisCompare { session: String, a: u32, b: u32 },
     #[serde(rename = "analysis.close")]

@@ -173,7 +173,7 @@ fn execute(
     cache: &mut BTreeMap<String, (Stamp, Reply)>,
 ) -> Result<Reply, HostError> {
     match &job.operation {
-        Operation::Compare { a, b } => compare(reader, job, *a, *b),
+        Operation::Compare { a, b } => compare(reader, job, *a, *b, &Instant::now),
         Operation::Close => {
             *reader = None;
             Ok(Reply::AnalysisClose {})
@@ -323,10 +323,10 @@ fn signal(value: &crate::analysis::Signal) -> AnalysisSignal {
     }
 }
 
-fn check_job(job: &Job) -> Result<(), HostError> {
+fn check_job(job: &Job, now: Instant) -> Result<(), HostError> {
     if job.cancel.load(Ordering::Acquire) {
         Err(HostError::AnalysisCancelled)
-    } else if Instant::now() >= job.deadline {
+    } else if now >= job.deadline {
         Err(HostError::AnalysisTimeout)
     } else {
         Ok(())
@@ -336,15 +336,16 @@ fn samples(
     reader: &mut Reader,
     lap: &crate::analysis::Lap,
     job: &Job,
+    now: &impl Fn() -> Instant,
 ) -> Result<Vec<Option<crate::analysis::Sample>>, HostError> {
     let mut cursor = reader.cursor(lap).map_err(|e| map_error(e.code))?;
     let mut result = Vec::new();
     while !cursor.done() {
-        check_job(job)?;
+        check_job(job, now())?;
         let page = reader.read_page(
             &mut cursor,
             16,
-            job.deadline.min(Instant::now() + Duration::from_secs(30)),
+            job.deadline.min(now() + Duration::from_secs(30)),
         );
         let page = reader.finish_result(page).map_err(|e| map_error(e.code))?;
         if result.len() + page.samples.len() > crate::analysis::projection::MAX_SAMPLES {
@@ -352,7 +353,7 @@ fn samples(
         }
         result.extend(page.samples);
     }
-    check_job(job)?;
+    check_job(job, now())?;
     Ok(result)
 }
 
@@ -361,6 +362,7 @@ fn compare(
     job: &Job,
     a: u32,
     b: u32,
+    now: &impl Fn() -> Instant,
 ) -> Result<Reply, HostError> {
     let (opened, session_cancel) = reader.as_mut().ok_or(HostError::AnalysisNotFound)?;
     let la = opened
@@ -385,14 +387,14 @@ fn compare(
     }
     opened.cancel = job.cancel.clone();
     let result = (|| {
-        let sa = samples(opened, &la, job)?;
+        let sa = samples(opened, &la, job, now)?;
         let sb = if a == b {
             None
         } else {
-            Some(samples(opened, &lb, job)?)
+            Some(samples(opened, &lb, job, now)?)
         };
         let p = crate::analysis::projection::project(&la, &lb, &sa, sb.as_deref().unwrap_or(&sa))?;
-        check_job(job)?;
+        check_job(job, now())?;
         Ok(Reply::AnalysisCompare {
             distance_range: p.distance_range,
             speed: p.speed,
@@ -414,3 +416,7 @@ fn compare(
     }
     result
 }
+
+#[cfg(all(test, windows))]
+#[path = "worker_tests.rs"]
+mod tests;

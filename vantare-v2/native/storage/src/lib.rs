@@ -366,7 +366,10 @@ pub fn serve_mode(
             }
             [Value::String(name)] if name == "session-summaries" => metadata::sessions(&store)?,
             [Value::String(name), epoch, session] if name == "lap-times" => {
-                metadata::laps(&store, epoch, session)?
+                metadata::laps(&store, epoch, session, &Value::Null, &json!(256))?
+            }
+            [Value::String(name), epoch, session, after, limit] if name == "lap-times" => {
+                metadata::laps(&store, epoch, session, after, limit)?
             }
             [Value::String(name)] if name == "status" => store.state("status"),
             [Value::String(name)] if name == "summaries" && read_only => {

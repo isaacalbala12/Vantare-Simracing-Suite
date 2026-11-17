@@ -122,7 +122,7 @@ pub(super) fn write(store: &mut Store, name: &str, event: &Value) -> Result<Valu
         return Err("metadatos no escribibles; reabrir antes de continuar".into());
     }
     if !valid(name, event) {
-        return Err("evento de metadatos inválido o fuera de límites".into());
+        return Ok(json!(["rejected", "invalid"]));
     }
     // Un comando completo (comparación incluida), una transacción. Incluso un
     // reintento idéntico solo recibe ACK después de confirmar el COMMIT.
@@ -223,29 +223,71 @@ pub(super) fn sessions(store: &Store) -> Result<Value> {
     let rows = statement
         .query_map([], session_row)?
         .collect::<duckdb::Result<Vec<_>>>()?;
-    Ok(json!(["session-summaries", total, rows]))
+    Ok(json!([
+        "session-summaries",
+        "series-session.v1",
+        total,
+        rows
+    ]))
 }
 
-pub(super) fn laps(store: &Store, epoch: &Value, session: &Value) -> Result<Value> {
+pub(super) fn laps(
+    store: &Store,
+    epoch: &Value,
+    session: &Value,
+    after: &Value,
+    limit: &Value,
+) -> Result<Value> {
     if !store.metadata {
         return Ok(json!(["unsupported", "meta"]));
     }
     let epoch = epoch.as_u64().ok_or("época inválida")?;
     let session = session.as_u64().ok_or("sesión inválida")?;
+    let limit = limit
+        .as_u64()
+        .filter(|value| (1..=256).contains(value))
+        .ok_or("límite inválido")?;
+    let cursor = match after {
+        Value::Null => None,
+        Value::Array(fields)
+            if fields.len() == 2
+                && fields
+                    .iter()
+                    .all(|value| integer(value, u64::from(u32::MAX))) =>
+        {
+            Some((
+                fields[0].as_u64().ok_or("cursor inválido")?,
+                fields[1].as_u64().ok_or("cursor inválido")?,
+            ))
+        }
+        _ => return Err("cursor inválido".into()),
+    };
+    let (after_car, after_lap) = cursor.unwrap_or((0, 0));
     let total: u64 = store.connection.query_row(
         "SELECT count(*) FROM lap_times WHERE epoch=? AND session=?",
         params![epoch, session],
         |row| row.get(0),
     )?;
-    let mut statement = store.connection.prepare(&format!("SELECT car, lap, official_ms, sector_ms FROM lap_times WHERE epoch=? AND session=? ORDER BY car, lap LIMIT {MAX_ROWS}"))?;
-    let rows = statement.query_map(params![epoch, session], |row| {
-        Ok((
-            row.get::<_, u32>(0)?,
-            row.get::<_, u32>(1)?,
-            row.get::<_, Option<u32>>(2)?,
-            row.get::<_, Option<String>>(3)?,
-        ))
-    })?;
+    let mut statement = store.connection.prepare("SELECT car, lap, official_ms, sector_ms FROM lap_times WHERE epoch=? AND session=? AND (? OR car > ? OR (car = ? AND lap > ?)) ORDER BY car, lap LIMIT ?")?;
+    let rows = statement.query_map(
+        params![
+            epoch,
+            session,
+            cursor.is_none(),
+            after_car,
+            after_car,
+            after_lap,
+            limit
+        ],
+        |row| {
+            Ok((
+                row.get::<_, u32>(0)?,
+                row.get::<_, u32>(1)?,
+                row.get::<_, Option<u32>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ))
+        },
+    )?;
     let mut values = Vec::new();
     for row in rows {
         let (car, lap, official, sectors) = row?;
@@ -254,7 +296,7 @@ pub(super) fn laps(store: &Store, epoch: &Value, session: &Value) -> Result<Valu
             .transpose()?;
         values.push(json!({"epoch":epoch, "session":session, "car":car, "lap":lap, "officialMs":official, "sectorMs":sectors}));
     }
-    Ok(json!(["lap-times", total, values]))
+    Ok(json!(["lap-times", "series-laps.v1", total, values]))
 }
 
 #[cfg(test)]

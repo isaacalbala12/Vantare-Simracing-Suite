@@ -51,7 +51,9 @@ el proceso desactiva autoinstall/autoload, acceso externo y usa dos threads,
 256 MB de límite DuckDB (no equivale a RSS máximo del proceso).
 
 Una conexión y un bucle secuencial poseen SQL. DB nueva por grabación, versión
-`vantare.series-db.v1`, tablas `series_meta` y `series_chunks`. No interpreta,
+`vantare.series-db.v2`, tablas `series_meta`, `series_chunks`,
+`session_summaries` y `lap_times`. Abre también v1 sin migrarla ni crear
+las tablas nuevas. No interpreta,
 importa ni migra DB Go/LMU; una DB ajena o versión desconocida falla sin SQL
 de modificación. Payload BLOB = codec v1 original, calidad/ausencia intactas.
 El índice pertenece a esta grabación; no reutilizar ruta con otro productor.
@@ -91,7 +93,8 @@ Protocolo local UTF-8, array JSON por línea, entrada acotada a 32 KiB+128:
   EOF/caída deja finished=false: el total de intentos final es desconocido.
 
 Sin SQL arbitrario. Índice ya guardado con bytes iguales es idempotente;
-contenido distinto, orden/progreso inválido o entrada corrupta falla sin ACK.
+contenido distinto, orden/progreso inválido o entrada corrupta de chunks falla sin ACK.
+Los eventos de metadatos inválidos tienen el rechazo no fatal descrito debajo.
 Chunk y watermark se escriben en una transacción. Fallo de SQL/COMMIT obliga
 a reabrir antes de continuar, sin reintento ciego de un resultado incierto.
 Al abrir para escribir se verifica watermark y se reconstruye el analizador
@@ -144,3 +147,79 @@ ejecutable y `SeriesWorker::start_new` (`--create`). La creación y los
 reintentos ocurren fuera de adquisición; ninguna DB se reanuda automáticamente.
 Tras colisión se elige otro nombre opaco. EOF de stdin termina el helper y
 cierra la conexión, incluso si el Core desaparece sin ejecutar Drop.
+
+
+## Metadatos de sesión y vueltas — D8a-1 / #1974
+
+Las DB nuevas (`--create` y creación histórica sin modo) usan v2. Las DB v1
+siguen sirviendo `append`, `page`, `summaries`, `plot-page`, `finish` y `--resume`
+sin cambios. Los comandos nuevos sobre v1 responden `["unsupported","meta"]`
+y el proceso sigue vivo: no disponer de tablas de resumen no implica corrupción.
+El codec de muestras `vantare.player-lap.v1` no cambia. D8a-2 conectará estos
+eventos en Core; este paso solo implementa el helper.
+
+`session_summaries` tiene clave `(epoch, session)` y columnas `kind`,
+`kind_text`, `track_name`, `vehicle`, `class_name`, `started_at_ms`,
+`ended_at_ms`, `sim_elapsed_s`, `final_position`, `final_class_position`,
+`laps_completed`, `best_lap_ms`, `end_reason`, `sealed`.
+`lap_times` tiene clave `(epoch, session, car, lap)`, `official_ms` y
+`sector_ms` (JSON de enteros en milisegundos, o NULL). Época, sesión y relojes
+son u64; coche, vuelta, posiciones y tiempos en ms son u32.
+
+Los objetos de evento son cerrados: todos los campos indicados son obligatorios;
+los campos opcionales se envían como `null`. Los textos admiten hasta 256 bytes
+UTF-8; `sectorMs` admite null o un array de hasta 16 enteros u32 (JSON de hasta
+177 bytes). `simElapsedS` admite null o un número finito no negativo.
+
+- `["session-open", {epoch, session, kind, kindText, trackName, vehicle, className, startedAtMs}]`
+  responde `["ack-session","open",epoch,session]`.
+  `kind`: `practice|qualifying|race|other|unknown`; `kindText` conserva el texto
+  adicional del simulador (puede ser vacío). Repetir exactamente la identidad
+  es idempotente, incluso sellada; cambiarla devuelve `["rejected","conflict"]`.
+- `["lap", {epoch, session, car, lap, officialMs, sectorMs}]` responde
+  `["ack-lap",epoch,session,car,lap]`. Requiere sesión existente; repetir una
+  vuelta idéntica es idempotente. Cambiarla devuelve `["rejected","conflict"]`.
+  Con la sesión sellada solo se admite repetir una vuelta ya existente idéntica;
+  cualquier otra escritura devuelve `["rejected","sealed"]`.
+- `["session-close", {epoch, session, endedAtMs, simElapsedS, finalPosition, finalClassPosition, lapsCompleted, bestLapMs, endReason}]`
+  responde `["ack-session","close",epoch,session]` tras sellar una sola vez.
+  `endReason`: `sessionChanged|coreStopped`. Repetir el mismo cierre es seguro;
+  modificar un cierre ya sellado devuelve `["rejected","sealed"]`.
+- Vuelta/cierre sin sesión devuelve `["rejected","missing"]`. Un objeto mal
+  formado o fuera de los límites anteriores devuelve `["rejected","invalid"]`,
+  sin tocar la DB ni detener el proceso; un evento válido posterior funciona.
+  Estos rechazos no son ACK. Los errores reales de SQL, COMMIT o I/O terminan
+  el proceso sin ACK. El límite de transporte (32 KiB+128 por línea) sigue siendo
+  estricto: frame truncado, sobredimensionado o JSON ilegible termina la conexión.
+
+Cada evento se valida antes de escribir y usa una transacción que incluye la
+comparación con lo guardado. Se confirma el COMMIT antes del ACK. Si el helper
+muere tras el COMMIT y antes del ACK, repetir el mismo evento al reabrir es seguro.
+Una caída antes del cierre deja `sealed=false`, con identidad y vueltas ya
+confirmadas; no se inventa un cierre al abrir. `finished` sigue describiendo
+el productor de chunks y es independiente del sellado de cada sesión.
+
+Lecturas disponibles tanto en read-only como al reanudar:
+
+- `["session-summaries"]` → `["session-summaries","series-session.v1",total,filas]`.
+  Devuelve hasta 256 sesiones por `(epoch,session)` descendente; `total` hace
+  visible la retención. Cada fila usa nombres camelCase del evento, campos de
+  apertura/cierre y `sealed`; la ausencia se conserva como null.
+- `["lap-times",epoch,session,after,limit]` →
+  `["lap-times","series-laps.v1",total,filas]`. `after=null` empieza por la
+  primera vuelta; luego se usa `[car,lap]` de la última fila recibida. El cursor
+  es exclusivo, en orden `(car,lap)` ascendente, y `limit` está entre 1 y 256.
+  `total` cuenta todas las vueltas de esa sesión, no solo las posteriores al
+  cursor. Cada fila contiene `epoch`, `session`, `car`, `lap`, `officialMs`,
+  `sectorMs`. Una página vacía indica que no hay más filas. Así se pueden leer
+  sesiones de más de 256 vueltas sin duplicados ni truncamiento.
+- La forma corta `["lap-times",epoch,session]` equivale a `after=null, limit=256`;
+  para obtener todas las vueltas hay que continuar con el cursor explícito.
+
+Las versiones de respuesta `series-session.v1` / `series-laps.v1` son
+independientes del formato DB v2 y del codec de muestras v1. El lector debe
+validarlas. No se admite SQL, filtros o nombres de columna arbitrarios.
+
+**Tiempo oficial pendiente de verificar con LMU real.** Los tests con fixtures,
+helper real y kill/WAL no demuestran que los tiempos coincidan con el cronómetro
+del juego. La posición guardada al cerrar tampoco acredita el resultado oficial.

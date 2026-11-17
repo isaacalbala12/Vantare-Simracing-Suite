@@ -117,3 +117,53 @@ fn stage_publishes_only_after_the_extracted_total_matches_the_signed_offer() {
         fs::remove_dir_all(root).expect("cleanup");
     }
 }
+
+#[test]
+fn apply_rejects_legacy_pending_without_mutating_installation_or_data() {
+    let root = qa_root();
+    fs::create_dir_all(root.join("staging")).expect("staging");
+    let state = installed(&root);
+    let mut legacy = serde_json::to_value(offer()).expect("legacy fixture");
+    legacy["schema"] = 1.into();
+    legacy["product"] = "vantare-native".into();
+    legacy["url"] = serde_json::json!(offer().url.replace("hub-beta-v", "native-beta-v"));
+    let object = legacy.as_object_mut().expect("legacy object");
+    object.remove("compressed_bytes");
+    object.remove("expanded_bytes");
+    let payload = serde_json::to_vec(&legacy).expect("legacy payload");
+    let signature = SigningKey::from_bytes(&[42; 32]).sign(&payload);
+    let pending = serde_json::to_vec(&serde_json::json!({"payload": STANDARD.encode(&payload), "signature": STANDARD.encode(signature.to_bytes())})).expect("legacy envelope");
+    #[cfg(feature = "hub-update-qa")]
+    assert_eq!(
+        vantare_services::update_manifest::verify_hub_update(&pending)
+            .expect("valid isolated TEST signature"),
+        payload
+    );
+    fs::write(root.join("staging/pending.json"), &pending).expect("pending");
+    let archive = root.join("staging").join(format!("{}.zip", offer().sha256));
+    fs::write(&archive, b"preserve staged archive").expect("archive");
+    assert!(apply(&root).is_err());
+    assert_eq!(
+        fs::read(root.join("staging/pending.json")).expect("preserved pending"),
+        pending
+    );
+    assert_eq!(
+        fs::read(root.join("state.json")).expect("preserved state"),
+        state
+    );
+    assert_eq!(
+        fs::read(
+            root.join("generations")
+                .join("a".repeat(32))
+                .join("data/opaque.bin")
+        )
+        .expect("preserved data"),
+        b"disposable opaque data"
+    );
+    assert_eq!(
+        fs::read(&archive).expect("preserved archive"),
+        b"preserve staged archive"
+    );
+    assert!(!root.join("update-status.json").exists());
+    fs::remove_dir_all(root).expect("cleanup");
+}

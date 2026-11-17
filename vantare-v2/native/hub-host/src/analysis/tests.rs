@@ -317,11 +317,27 @@ mod real {
         json!({"index":index,"offset":offset,"epoch":1,"session":3,"car":7,"lap":5,"gap":false,"samples":[{"speed":50.0}]})
     }
     fn inject(reader: &mut Reader, frames: Vec<Result<Value>>) {
+        inject_with_delay(reader, frames, Duration::ZERO);
+    }
+    fn inject_with_delay(reader: &mut Reader, frames: Vec<Result<Value>>, delay: Duration) {
         let (sender, receiver) = mpsc::channel();
-        for frame in frames {
-            sender.send(frame).unwrap();
-        }
-        reader.output = receiver;
+        let original = std::mem::replace(&mut reader.output, receiver);
+        let pump = reader.pump.take().unwrap();
+        // Consumir también las respuestas reales: cerrar su pipe provocaría
+        // BrokenPipe en el helper antes de poder comprobar el deadline inyectado.
+        reader.pump = Some(std::thread::spawn(move || {
+            for frame in frames {
+                if original.recv().is_err() {
+                    break;
+                }
+                std::thread::sleep(delay);
+                if sender.send(frame).is_err() {
+                    break;
+                }
+            }
+            while original.recv().is_ok() {}
+            pump.join().unwrap();
+        }));
     }
     #[test]
     fn summaries_and_pages_share_one_deadline_and_reap_the_helper() {
@@ -341,18 +357,13 @@ mod real {
                     .unwrap()
             };
             let frames = [status(&reader), reply, status(&reader)];
-            let (sender, receiver) = mpsc::channel();
-            reader.output = receiver;
-            // Esperas deliberadas: simulan tres respuestas lentas, tras el ready real.
+            // Esperas deliberadas: tres respuestas válidas lentas tras el ready real.
             // Cada una cabe en el plazo, pero juntas exceden el presupuesto único.
-            let pump = std::thread::spawn(move || {
-                for frame in frames {
-                    std::thread::sleep(timeout * 2 / 5);
-                    if sender.send(Ok(frame)).is_err() {
-                        break;
-                    }
-                }
-            });
+            inject_with_delay(
+                &mut reader,
+                frames.into_iter().map(Ok).collect(),
+                timeout * 2 / 5,
+            );
             let start = Instant::now();
             let failure = if page {
                 reader.page(&mut cursor, 16).err().unwrap()
@@ -364,7 +375,6 @@ mod real {
             assert!(elapsed >= timeout && elapsed < timeout * 2, "{elapsed:?}");
             assert!(reader.child.try_wait().unwrap().is_some());
             assert!(reader.pump.is_none());
-            pump.join().unwrap();
         }
     }
     #[test]

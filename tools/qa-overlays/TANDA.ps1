@@ -579,7 +579,8 @@ function Invoke-TandaShutdown([string]$Root,[string]$Output){
    if($LASTEXITCODE){throw 'No se pudo cancelar shutdown'}
   } {
    Assert-TandaUnattended
-   Assert-TandaNoGames
+   # No slow CIM query may delay the input watcher near the shutdown deadline.
+   Assert-TandaNoGames -NamesOnly
   } {param($Milliseconds) Start-Sleep -Milliseconds $Milliseconds} {
    [Diagnostics.Stopwatch]::GetTimestamp()/[double][Diagnostics.Stopwatch]::Frequency
   }

@@ -10,12 +10,12 @@ if(-not(Get-Variable TandaGameProcesses -Scope Script -ErrorAction SilentlyConti
 function Find-TandaGameActivity($Processes){
  foreach($process in $Processes){
   if($process.Name -in $script:TandaGameProcesses -or
-   ($process.Name -in @('steam','steamwebhelper') -and $process.CommandLine -match '(?i)(?:^|\s)-(?:gamepadui|bigpicture|tenfoot)(?:\s|$)')){$process.Name}
+   ($process.Name -in @('steam','steamwebhelper') -and $process.CommandLine -match '(?i)(?:^|\s)--?(?:gamepadui|bigpicture|tenfoot)(?:\s|$)')){$process.Name}
  }
 }
-function Assert-TandaNoGames {
+function Assert-TandaNoGames([switch]$NamesOnly){
  $processes=@(Get-Process|ForEach-Object {@{Name=$_.ProcessName;CommandLine=''}})
- if(@($processes|Where-Object Name -in @('steam','steamwebhelper')).Count){
+ if(-not $NamesOnly -and @($processes|Where-Object Name -in @('steam','steamwebhelper')).Count){
   $processes+=@(Get-CimInstance Win32_Process -Filter "Name='steam.exe' OR Name='steamwebhelper.exe'"|ForEach-Object {@{Name=[IO.Path]::GetFileNameWithoutExtension($_.Name);CommandLine=$_.CommandLine}})
  }
  if(@(Find-TandaGameActivity $processes).Count){throw 'Juego/SimHub/Steam Big Picture en uso; no cerrar procesos de Isaac'}

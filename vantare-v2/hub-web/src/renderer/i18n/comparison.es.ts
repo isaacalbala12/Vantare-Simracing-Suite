@@ -10,8 +10,7 @@ export const comparisonText = {
   swap: "Intercambiar A y B",
   swapSymbol: "⇅",
   select: (side: string, lap: number) => `Seleccionar ${side}: vuelta ${lap}`,
-  unavailable:
-    "Esta vuelta no está sellada o no tiene tiempo ni huecos comparables",
+  unavailable: "Esta vuelta está incompleta o sin cerrar",
   quick: "Mi mejor contra la segunda mejor",
   quickInfo:
     "A es la vuelta que quieres mejorar; B, la referencia. Lo normal es poner tu mejor vuelta como B.",

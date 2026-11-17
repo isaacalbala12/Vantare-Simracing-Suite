@@ -67,12 +67,17 @@ export function Applications({
       alive.current = false;
     };
   }, []);
-  const load = useCallback(async () => {
-    if (!client) return;
-    const result = await client.request({ method: "launcher.catalog" });
-    if (alive.current && result.method === "launcher.catalog")
-      setCatalog(result.value);
-  }, [client, setCatalog]);
+  const load = useCallback(
+    async (clearReadError = false) => {
+      if (!client) return;
+      const result = await client.request({ method: "launcher.catalog" });
+      if (alive.current && result.method === "launcher.catalog") {
+        setCatalog(result.value);
+        if (clearReadError) setError(undefined);
+      }
+    },
+    [client, setCatalog],
+  );
   useEffect(() => {
     if (!client) return;
     const off = client.listen((message) => {
@@ -316,7 +321,7 @@ export function Applications({
     if (editor) void retryEditor();
     else if (value)
       void mutate({ ...value.request, baseRevision: value.revision });
-    else void load().catch(() => setError(text.failed));
+    else void load(true).catch(() => setError(text.failed));
   };
   const closeEditor = () => {
     if (pending) return;
@@ -332,7 +337,7 @@ export function Applications({
         title={error}
         actions={
           <Button
-            onClick={() => void load().catch(() => setError(text.failed))}
+            onClick={() => void load(true).catch(() => setError(text.failed))}
           >
             {text.reload}
           </Button>
@@ -385,7 +390,7 @@ export function Applications({
         onQuery={setQuery}
         pending={pending}
         error={editor ? undefined : error}
-        onReload={() => void load().catch(() => setError(text.failed))}
+        onReload={() => void load(true).catch(() => setError(text.failed))}
         onScan={() => void scan()}
         onEdit={(id) => void open(id)}
         onFavorite={(app) =>

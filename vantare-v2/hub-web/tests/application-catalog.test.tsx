@@ -522,10 +522,13 @@ it("keeps an editor save error when an automatic catalog read succeeds", async (
   await act(async () => {
     await Promise.all(requests.mock.results.map((result) => result.value));
   });
-  const { launcherKey } = await import("../src/renderer/screens/launcher/state");
-  const current = caches[0].getQueryData<
-    import("../src/contract/generated/contract").LauncherView
-  >(launcherKey);
+  const { launcherKey } = await import(
+    "../src/renderer/screens/launcher/state"
+  );
+  const current =
+    caches[0].getQueryData<
+      import("../src/contract/generated/contract").LauncherView
+    >(launcherKey);
   if (!current) throw Error("Launcher initial snapshot");
   fireEvent.click(screen.getByRole("button", { name: /^Editar OBS Studio/ }));
   const dialog = await screen.findByRole("dialog", { name: text.editor });
@@ -540,7 +543,9 @@ it("keeps an editor save error when an automatic catalog read succeeds", async (
       receive({ kind: "event", event: { topic: "launcher", value: current } });
   });
   await act(async () => {
-    await Promise.allSettled(requests.mock.results.map((result) => result.value));
+    await Promise.allSettled(
+      requests.mock.results.map((result) => result.value),
+    );
   });
   expect(within(dialog).getByText(text.failed)).toBeTruthy();
 });

@@ -1,5 +1,6 @@
 """Empaqueta entradas guardadas; no interpreta LMU ni ejecuta motores/GPU."""
 import argparse
+import copy
 import hashlib
 import json
 import shutil
@@ -32,6 +33,68 @@ SCENES = {
     "standings": ("standings-functional-combined.scene.json", None),
     "delta": ("delta-vantare.scene.json", (150, 36)),
 }
+
+# Only these five persisted settings expose designSystem/Tone/brandVisible.
+# Do not invent a second Look for the fourteen functional widgets.
+LOOK_WIDGETS = {"relative", "standings", "fuel-strategy", "pedals", "delta"}
+SCENE_ENTRIES = {
+    "relative": ("relative", ("asymmetric", "initial-name")),
+    "multiclass-relative": ("multiclass_relative", ("same-7-dividers", "other-3-dividers", "all-7-plain")),
+    "broadcast-tower": ("broadcast_tower", ("ten-no-weather", "three", "carousel")),
+    "head-to-head": ("head_to_head", ("behind",)),
+    "standings": ("standings", ("broadcast", "multiclass", "columns-pit", "many-slots")),
+}
+EXTRA_SCENES = [
+    ("delta-trace", "respaldo", "delta-trace.sequence.json", {}, None),
+    ("car-damage-visual", "numbers", "car-damage-visual-design-system.sequence.json", {"view": "numbers"}, [1]),
+    ("car-damage-visual", "default", "car-damage-visual-default.scene.json", {}, [1]),
+    ("track-map", "sebring", "track-map.snapshot.json", {}, [1]),
+    ("radar", "nearby", "radar-nearby-traffic.scene.json", {}, [10]),
+    ("fuel-strategy", "default", "fuel-strategy-default.scene.json", {}, [1]),
+    ("fuel-strategy", "compact", "fuel-vantare.scene.json", {"size": "compact"}, None),
+    ("fuel-strategy", "expanded", "fuel-vantare.scene.json", {"size": "expanded"}, None),
+    ("pedals", "default", "pedals-default.scene.json", {}, [1]),
+    ("pedals", "clutch", "pedals-clutch.scene.json", {}, None),
+    ("fastest-lap", "design", "fastest-lap-design-system.sequence.json", {}, None),
+    ("pedals-telemetry", "default", "pedals-telemetry-default.scene.json", {}, [1]),
+    ("input-telemetry", "default", "input-telemetry-default.scene.json", {}, [1]),
+    ("track-weather", "default", "track-weather-default.scene.json", {}, [1]),
+    ("track-weather", "vertical", "track-weather-design-system.sequence.json", {"vertical": True}, None),
+    ("racing-flags", "stale", "racing-flags-stale.snapshot.json", {}, [1]),
+    ("session-alerts", "mini-one", "session-alerts-default.scene.json", {"companionFor": "session-alerts-r4", "miniSize": "m", "miniLimit": 1}, [1, 2, 3, 4, 5]),
+    ("session-alerts", "mini-three", "session-alerts-default.scene.json", {"companionFor": "session-alerts-r4", "miniSize": "m", "miniLimit": 3}, [1, 2, 3, 4, 5]),
+    ("car-damage-numbers", "sin-datos", "car-damage-numbers-default.scene.json", {"showTyres": True}, [1]),
+    ("delta", "cross-zero", "delta-cross-zero.scene.json", {}, None),
+    ("head-to-head", "paused", "head-to-head.snapshot.json", {}, [1]),
+]
+
+
+def looks(kind):
+    return ("vantare", "eficiencia") if kind in LOOK_WIDGETS else ("funcional",)
+
+
+def specifications(repo):
+    fixtures = repo / "vantare-v2/native/ui/fixtures"
+    for kind, (filename, size) in SCENES.items():
+        yield {"kind": kind, "name": "base", "source": fixtures / filename,
+               "settings": {}, "counts": "prefixes", "size_hint": size, "measure": True}
+    for kind, name, filename, settings, counts in EXTRA_SCENES:
+        yield {"kind": kind, "name": name, "source": fixtures / filename,
+               "settings": settings, "counts": counts, "paused": name == "paused"}
+    for kind, (directory, names) in SCENE_ENTRIES.items():
+        catalog = repo / "vantare-v2/native/ui/src" / directory / "scenes.json"
+        entries = json.loads(catalog.read_text(encoding="utf-8"))
+        by_name = {entry["name"]: entry for entry in entries}
+        for name in names:
+            entry = by_name[name]
+            layout = entry["layout"]
+            if len(layout["instances"]) != 1:
+                raise ValueError("Escena canónica ya no tiene una sola instancia")
+            yield {"kind": kind, "name": "catalog-" + name,
+                   "source": (catalog.parent / entry["snapshot"]).resolve(),
+                   "settings": copy.deepcopy(layout["instances"][0]["settings"]),
+                   "counts": None, "catalog": catalog, "catalog_entry": name,
+                   "preferences": layout.get("preferences", {})}
 
 
 def digest(path):
@@ -123,45 +186,69 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
         raise ValueError("Corpus distinto del inventariado")
     shutil.copyfile(corpus, output / "inputs/lmu47-high-rate-60s.tar.gz")
     shutil.copyfile(inventory, output / "inputs/INVENTARIO-LMU47-HISTORICO.md")
-    fixtures = repo / "vantare-v2/native/ui/fixtures"
-    for number, (kind, (filename, size)) in enumerate(SCENES.items()):
-        source = fixtures / filename
+    for spec in specifications(repo):
+        kind = spec["kind"]
+        source = spec["source"]
         raw = source.read_bytes()
         canonical = output / source.relative_to(repo)
         canonical.parent.mkdir(parents=True, exist_ok=True)
         if not canonical.exists():
             canonical.write_bytes(raw)
+        if "catalog" in spec:
+            target = output / spec["catalog"].relative_to(repo)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.exists():
+                shutil.copyfile(spec["catalog"], target)
         values = photos(json.loads(raw))
-        case_root = output / "inputs" / kind
+        if spec.get("paused"):
+            values = copy.deepcopy(values)
+            for value in values:
+                value["state"]["source_state"] = "paused"
+        counts = prefixes(len(values)) if spec["counts"] == "prefixes" else spec["counts"] or [len(values)]
+        if any(count < 1 or count > len(values) for count in counts):
+            raise ValueError("Prefijo del plan fuera de la fixture")
+        if spec.get("preferences"):
+            raise ValueError("Escena con preferencias no trasladables al batch GPUI: revisar contrato antes de capturar")
+        directory = f"inputs/{kind}-{spec['name']}"
+        case_root = output / directory
         case_root.mkdir()
-        write_json(case_root / "scene.json", values)
         for index, value in enumerate(values):
             write_json(case_root / f"photo-{index:03}.json", value)
-        # GPUI ingest entrega todas las fotos sin reloj inyectado y luego asienta.
-        # Los empates de Rune preservan exactamente el mismo orden de updates.
-        (case_root / "photos.tsv").write_text("".join(f"0\tphoto-{i:03}.json\n" for i in range(len(values))), encoding="utf-8")
-        for count in prefixes(len(values)):
+        for count in counts:
             write_json(case_root / f"scene-p{count}.json", values[:count])
             (case_root / f"photos-p{count}.tsv").write_text("".join(f"0\tphoto-{i:03}.json\n" for i in range(count)), encoding="utf-8")
-        for look in ("vantare", "eficiencia"):
-            settings = {"kind": kind, "designSystem": look}
-            write_json(case_root / f"{look}.settings.json", settings)
-            layout = {"version": 1, "instances": [{"id": "qa", "x": 0, "y": 0, "settings": settings}]}
-            write_json(case_root / f"{look}.layout.json", layout)
-            prefix = f"inputs/{kind}"
-            for count in prefixes(len(values)):
-                manifest["captures"].append({"id": f"{kind}-{look}-p{count}", "kind": kind, "look": look,
-                    "settings": f"{prefix}/{look}.settings.json", "layout": f"{prefix}/{look}.layout.json",
-                    "scene": f"{prefix}/scene-p{count}.json", "sequence": f"{prefix}/photos-p{count}.tsv", "scale": 1,
-                    "at_ms": 0, "motion": False, "wall_ms": 1767225600000,
-                    "expected_size_hint": size, "size_contract": "natural size_for(snapshot); compare actual PNG dimensions",
-                    "source_fixture": str(source.relative_to(repo)).replace("\\", "/"), "source_sha256": hashlib.sha256(raw).hexdigest(),
-                    "photo_count": count, "source_order_preserved": True})
-            motors = ("gpui", "rune") if number % 2 == 0 else ("rune", "gpui")
-            for state in ("replay", "waiting"):
-                for motor in motors:
-                    manifest["measurements"].append({"id": f"{kind}-{look}-{state}-{motor}", "kind": kind,
-                        "look": look, "state": state, "motor": motor, "layout": f"{prefix}/{look}.layout.json"})
+        for look in looks(kind):
+            tones = ("neo", "neutro") if look == "vantare" else ("original",)
+            for tone in tones:
+                settings = {"kind": kind, **spec["settings"]}
+                if kind in LOOK_WIDGETS:
+                    settings.update(designSystem=look, style="neo" if tone == "original" else tone, brandVisible=True)
+                tag = f"{look}-{tone}"
+                settings_name = f"{directory}/{tag}.settings.json"
+                layout_name = f"{directory}/{tag}.layout.json"
+                write_json(output / settings_name, settings)
+                write_json(output / layout_name, {"version": 1, "instances": [{"id": "qa", "x": 0, "y": 0, "settings": settings}]})
+                for count in counts:
+                    manifest["captures"].append({"id": f"{kind}-{spec['name']}-{tag}-p{count}", "kind": kind,
+                        "look": look, "tone": tone, "settings": settings_name, "layout": layout_name,
+                        "scene": f"{directory}/scene-p{count}.json", "sequence": f"{directory}/photos-p{count}.tsv", "scale": 1,
+                        "at_ms": 0, "motion": False, "wall_ms": values[0]["epoch"] if kind == "session-alerts" else 1767225600000,
+                        "expected_size_hint": spec.get("size_hint"), "size_contract": "natural size_for(snapshot); compare actual PNG dimensions",
+                        "source_fixture": str(source.relative_to(repo)).replace("\\", "/"), "source_sha256": hashlib.sha256(raw).hexdigest(),
+                        "source_catalog": str(spec["catalog"].relative_to(repo)).replace("\\", "/") if "catalog" in spec else None,
+                        "source_catalog_entry": spec.get("catalog_entry"), "transform": "state.source_state=paused" if spec.get("paused") else None,
+                        "photo_count": count, "source_order_preserved": True})
+                if spec.get("measure") and tone != "neutro":
+                    number = list(SCENES).index(kind)
+                    motors = ("gpui", "rune") if number % 2 == 0 else ("rune", "gpui")
+                    for state in ("replay", "waiting"):
+                        for motor in motors:
+                            manifest["measurements"].append({"id": f"{kind}-{look}-{state}-{motor}", "kind": kind,
+                                "look": look, "state": state, "motor": motor, "layout": layout_name})
+    # Native constructors recognize these exact photos; retain the selector too.
+    penalty = repo / "vantare-v2/native/ui/fixtures/racing-flags-design-system.penalties.json"
+    shutil.copyfile(penalty, output / penalty.relative_to(repo))
+    manifest["look_support"] = {kind: list(looks(kind)) for kind in SCENES}
     # Keep the original sampler tree: imports and guards are shared, not forked.
     scripts = Path(__file__).resolve().parent
     manifest["tools_sha"] = subprocess.check_output(["git", "-C", str(scripts), "rev-parse", "HEAD"], text=True).strip()

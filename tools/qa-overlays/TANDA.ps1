@@ -57,7 +57,7 @@ function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
  foreach($case in $manifest.captures){
   if($case.id -notmatch '^[a-z0-9][a-z0-9-]+$' -or $outputs.ContainsKey($case.id)){throw 'ID de captura inválido/repetido'}
   $outputs[$case.id]=$true
-  foreach($relative in @($case.settings,$case.scene,$case.sequence)){
+  foreach($relative in @($case.settings,$case.layout,$case.scene,$case.sequence)){
    $path=Resolve-TandaPath $Root $relative
    if(-not $seen.ContainsKey($path)){throw "Input sin hash: $relative"}
   }
@@ -414,7 +414,7 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
   foreach($case in $manifest.captures){
    Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
    $id=$case.id
-   $rune=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays-rune.exe') @('--capture-scene','--widget',$case.kind,'--settings',(Resolve-TandaPath $Root $case.settings),'--sequence',(Resolve-TandaPath $Root $case.sequence),'--at-ms',[string]$case.at_ms,'--motion',([string]$case.motion).ToLowerInvariant(),'--wall-ms',[string]$case.wall_ms,'--scale',[string]$case.scale,'--output',(Join-Path $Output "rune/$id.png")) (Join-Path $Output "logs/$id-rune") -WatchSession
+   $rune=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays-rune.exe') @('--capture-scene','--layout',(Resolve-TandaPath $Root $case.layout),'--sequence',(Resolve-TandaPath $Root $case.sequence),'--at-ms',[string]$case.at_ms,'--motion',([string]$case.motion).ToLowerInvariant(),'--wall-ms',[string]$case.wall_ms,'--scale',[string]$case.scale,'--output',(Join-Path $Output "rune/$id.png")) (Join-Path $Output "logs/$id-rune") -WatchSession
    $tokens=@{0='OK';2='INVALID_INPUT';3='NO_DEMO';4='GPU_UNAVAILABLE';5='CAPTURE_FAILED';6='GRAPHICS_DISABLED'}
    $token=if($tokens.ContainsKey([int]$rune.code)){$tokens[[int]$rune.code]}else{'UNEXPECTED_EXIT'}
    $state.captures+=@{id=$id;motor='rune';code=$rune.code;expected_token=$token;stderr=$rune.stderr}

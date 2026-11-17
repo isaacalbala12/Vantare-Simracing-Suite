@@ -73,7 +73,7 @@ try {
         });
         if (width === 900)
           await page.locator(".v-context--collapsed").waitFor();
-        if (["catalog", "recording", "disabled"].includes(scene))
+        if (["catalog", "recording", "disabled", "loading"].includes(scene))
           await checkAnalysisDensity(page);
         const name = `${scene}-${theme}-${width}`;
         const audit = await new AxeBuilder({ page })

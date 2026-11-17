@@ -66,6 +66,8 @@
   background: var(--hover);
 }
 .v-an-table .v-an-day th {
+  position: static;
+  background: transparent;
   color: var(--accent-bright);
   font-size: var(--text-micro);
   font-weight: 500;
@@ -139,4 +141,9 @@
   margin-inline: auto;
   inline-size: var(--space-10);
   block-size: var(--space-10);
+}
+
+.v-an-table .v-skeleton {
+  min-width: 0;
+  inline-size: 100%;
 }

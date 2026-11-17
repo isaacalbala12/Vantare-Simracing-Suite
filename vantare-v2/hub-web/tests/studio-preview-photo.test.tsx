@@ -180,6 +180,13 @@ async function photoReady() {
     ).toBeTruthy(),
   );
 }
+function photoElement() {
+  const image = document.querySelector<HTMLImageElement>(
+    ".v-preview-stage .v-preview-photo",
+  );
+  if (!image) throw Error("Missing real preview image");
+  return image;
+}
 
 it("requests one fixed-scale instance photo with the current revision and no Studio writes", async () => {
   await mount();
@@ -259,6 +266,19 @@ it("keeps only the last selection while a photo is pending and discards the old 
   select(second.id);
   select(last.id);
   expect(photos()).toHaveLength(1);
+  const queuedRevision = view().revision;
+  await act(async () => {
+    await studio.execute({
+      method: "studio.instance",
+      id: first.id,
+      baseRevision: view().revision,
+      patch: {
+        field: "settings",
+        value: { kind: "standings", accent: "green" },
+      },
+    });
+  });
+  expect(view().revision).not.toBe(queuedRevision);
   intercept = undefined;
   await act(async () =>
     gate.resolve({
@@ -326,6 +346,8 @@ it("regenerates once for confirmed settings of the selected widget, not for anot
   const first = view().instances.find((i) => i.id === studio.selected);
   if (!first) throw Error("Missing selected widget");
   expect(first.kind).toBe("standings");
+  const gate = deferred();
+  intercept = () => gate.promise;
   await act(async () => {
     await studio.execute({
       method: "studio.instance",
@@ -338,12 +360,38 @@ it("regenerates once for confirmed settings of the selected widget, not for anot
     });
   });
   await waitFor(() => expect(photos()).toHaveLength(2));
-  await photoReady();
+  expect(
+    stage().queryByRole("img", { name: /Vista previa real de/ }),
+  ).toBeNull();
+  expect(
+    stage().getByText("Preparando vista previa real…", { exact: true }),
+  ).toBeTruthy();
   expect(photos()[1].target).toEqual({
     kind: "instance",
     id: first.id,
     baseRevision: view().revision,
   });
+  await act(async () =>
+    gate.resolve({
+      method: "preview.render",
+      value: { width: 1, height: 1, pngBase64: previewTransparentPng },
+    }),
+  );
+  await photoReady();
+  const image = photoElement();
+  const src = image.src;
+  const stageNode = image.closest(".v-preview-stage");
+  if (!stageNode) throw Error("Missing photo Stage");
+  const transitions: MutationRecord[] = [];
+  const observer = new MutationObserver((records) =>
+    transitions.push(...records),
+  );
+  observer.observe(stageNode, {
+    attributes: true,
+    attributeFilter: ["data-photo"],
+    attributeOldValue: true,
+  });
+  const beforeOther = view().revision;
   const other = view().instances.find((i) => i.kind === "delta");
   if (!other) throw Error("Missing Delta fixture");
   await act(async () => {
@@ -354,7 +402,19 @@ it("regenerates once for confirmed settings of the selected widget, not for anot
       patch: { field: "settings", value: { kind: "delta", accent: "green" } },
     });
   });
+  expect(view().revision).not.toBe(beforeOther);
   expect(photos()).toHaveLength(2);
+  expect(photoElement()).toBe(image);
+  expect(image.src).toBe(src);
+  expect(stageNode.getAttribute("data-photo")).toBe("true");
+  transitions.push(...observer.takeRecords());
+  observer.disconnect();
+  expect(transitions.every((record) => record.oldValue === "true")).toBe(true);
+  expect(
+    stage().queryByText("· este widget aún no tiene foto real", {
+      exact: true,
+    }),
+  ).toBeNull();
 });
 it("keeps a transparent PNG as a real photo with one accessible image and one announcement", async () => {
   await mount();
@@ -634,4 +694,96 @@ it("describes a photo reduced to 68 percent without upscaling or another request
     }),
   ).toBeTruthy();
   expect(photos()).toHaveLength(1);
+});
+
+it("keeps the same photo after moving its own instance without rendering again", async () => {
+  await mount();
+  await photoReady();
+  const id = studio.selected;
+  if (!id) throw Error("Missing selection");
+  const image = photoElement(),
+    src = image.src;
+  const before = view().revision;
+  await act(async () => {
+    await studio.execute({
+      method: "studio.geometry",
+      id,
+      baseRevision: before,
+      change: { kind: "move", x: 200, y: 100 },
+    });
+  });
+  expect(view().revision).not.toBe(before);
+  expect(view().instances.find((item) => item.id === id)?.x).toBe(200);
+  expect(photoElement()).toBe(image);
+  expect(image.src).toBe(src);
+  expect(image.closest(".v-preview-stage")?.getAttribute("data-photo")).toBe(
+    "true",
+  );
+  expect(
+    stage().queryByText("· este widget aún no tiene foto real", {
+      exact: true,
+    }),
+  ).toBeNull();
+  expect(photos()).toHaveLength(1);
+});
+it("accepts an in-flight photo after another widget changes the global revision", async () => {
+  const gate = deferred();
+  intercept = () => gate.promise;
+  await mount();
+  await waitFor(() => expect(photos()).toHaveLength(1));
+  const before = view().revision;
+  const other = view().instances.find((item) => item.kind === "delta");
+  if (!other) throw Error("Missing Delta");
+  await act(async () => {
+    await studio.execute({
+      method: "studio.instance",
+      id: other.id,
+      baseRevision: before,
+      patch: { field: "settings", value: { kind: "delta", accent: "green" } },
+    });
+  });
+  expect(view().revision).not.toBe(before);
+  await act(async () =>
+    gate.resolve({
+      method: "preview.render",
+      value: { width: 1, height: 1, pngBase64: previewTransparentPng },
+    }),
+  );
+  await photoReady();
+  expect(photoElement().src).toBe(
+    `data:image/png;base64,${previewTransparentPng}`,
+  );
+  expect(decode).toHaveBeenCalledTimes(1);
+  expect(photos()).toHaveLength(1);
+});
+it("regenerates explicitly with the latest global revision after an unrelated edit", async () => {
+  await mount("preview-timeout");
+  const retry = await screen.findByRole("button", {
+    name: "Volver a generar la vista previa real",
+  });
+  const other = view().instances.find((item) => item.kind === "delta");
+  if (!other) throw Error("Missing Delta");
+  const before = view().revision;
+  await act(async () => {
+    await studio.execute({
+      method: "studio.instance",
+      id: other.id,
+      baseRevision: before,
+      patch: { field: "settings", value: { kind: "delta", accent: "green" } },
+    });
+  });
+  expect(view().revision).not.toBe(before);
+  expect(
+    stage().getByRole("button", {
+      name: "Volver a generar la vista previa real",
+    }),
+  ).toBe(retry);
+  intercept = undefined;
+  await userEvent.setup().click(retry);
+  await waitFor(() => expect(photos()).toHaveLength(2));
+  expect(photos()[1].target).toEqual({
+    kind: "instance",
+    id: studio.selected,
+    baseRevision: view().revision,
+  });
 });

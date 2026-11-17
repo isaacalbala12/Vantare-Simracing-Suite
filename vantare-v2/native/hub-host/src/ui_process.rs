@@ -258,42 +258,8 @@ impl Session {
             UiToHost::PickedExecutable(selection) => {
                 crate::launcher::apps::picked_executable(&mut self.app_picker, pipe, selection)?;
             }
-            UiToHost::ReviewContentRequest(request) => {
-                let result = if self.current.live {
-                    Err(crate::launcher_resident::ReviewFailure::Unavailable)
-                } else {
-                    self.launcher_resident_state.review.content(
-                        &self.launcher,
-                        self.core.account_observation().as_ref(),
-                        &request.ticket,
-                        Instant::now(),
-                    )
-                };
-                frame::write(
-                    pipe,
-                    &match result {
-                        Ok(content) => HostToUi::ReviewContent(content),
-                        Err(reason) => HostToUi::ReviewFailure { reason },
-                    },
-                )?;
-            }
-            UiToHost::ReviewDecision(decision) => {
-                let issued_ms = vantare_ipc::control::wall_ms().ok();
-                let result = if self.current.live {
-                    Err(crate::launcher_resident::ReviewFailure::Unavailable)
-                } else {
-                    self.launcher_resident_state.review.decide(
-                        &self.launcher,
-                        self.core.account_observation().as_ref(),
-                        decision,
-                        Instant::now(),
-                        issued_ms,
-                    )
-                };
-                if let Err(reason) = result {
-                    frame::write(pipe, &HostToUi::ReviewFailure { reason })?;
-                }
-            }
+            UiToHost::ReviewContentRequest(request) => self.review_content(pipe, request)?,
+            UiToHost::ReviewDecision(decision) => self.review_decision(pipe, decision)?,
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe { topic } => {
                 self.subscriptions.insert(*topic);
@@ -327,6 +293,52 @@ impl Session {
             UiToHost::CloseAnswer { .. } => {}
         }
         Ok(true)
+    }
+    fn review_content(
+        &mut self,
+        pipe: &mut Pipe,
+        request: &crate::launcher_resident::ReviewContentRequest,
+    ) -> io::Result<()> {
+        let result = if self.current.live {
+            Err(crate::launcher_resident::ReviewFailure::Unavailable)
+        } else {
+            self.launcher_resident_state.review.content(
+                &self.launcher,
+                self.core.account_observation().as_ref(),
+                &request.ticket,
+                Instant::now(),
+            )
+        };
+        frame::write(
+            pipe,
+            &match result {
+                Ok(content) => HostToUi::ReviewContent(content),
+                Err(reason) => HostToUi::ReviewFailure { reason },
+            },
+        )
+    }
+
+    fn review_decision(
+        &mut self,
+        pipe: &mut Pipe,
+        decision: &crate::launcher_resident::ReviewDecision,
+    ) -> io::Result<()> {
+        let issued_ms = vantare_ipc::control::wall_ms().ok();
+        let result = if self.current.live {
+            Err(crate::launcher_resident::ReviewFailure::Unavailable)
+        } else {
+            self.launcher_resident_state.review.decide(
+                &self.launcher,
+                self.core.account_observation().as_ref(),
+                decision,
+                Instant::now(),
+                issued_ms,
+            )
+        };
+        if let Err(reason) = result {
+            frame::write(pipe, &HostToUi::ReviewFailure { reason })?;
+        }
+        Ok(())
     }
 }
 pub fn run(args: &Args) -> io::Result<u8> {

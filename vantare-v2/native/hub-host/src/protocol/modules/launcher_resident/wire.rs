@@ -64,7 +64,7 @@ pub enum Reply {
 
     #[serde(rename = "launcher.resident.get")]
     LauncherResidentGet {
-        value: crate::launcher_resident::ResidentView,
+        value: Box<crate::launcher_resident::ResidentView>,
     },
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

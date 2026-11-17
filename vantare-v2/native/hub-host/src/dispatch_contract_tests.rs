@@ -299,7 +299,7 @@ fn resident_subscription_and_live_gates_do_not_read_or_emit_implicitly() {
         HostToUi::Response {
             id: 41,
             result: Reply::LauncherResidentGet {
-                value: crate::launcher_resident::ResidentView::default()
+                value: Box::default()
             }
         }
     );

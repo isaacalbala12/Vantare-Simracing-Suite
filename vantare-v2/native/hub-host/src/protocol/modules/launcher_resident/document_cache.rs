@@ -82,7 +82,9 @@ fn fits_frame(profiles: &[ProfileShortcut]) -> bool {
     };
     let envelope = crate::protocol::HostToUi::Response {
         id: u32::MAX,
-        result: crate::protocol::Reply::LauncherResidentGet { value },
+        result: crate::protocol::Reply::LauncherResidentGet {
+            value: Box::new(value),
+        },
     };
     serde_json::to_vec(&envelope)
         .is_ok_and(|bytes| bytes.len() <= crate::frame::LIMIT.saturating_sub(16 * 1024))

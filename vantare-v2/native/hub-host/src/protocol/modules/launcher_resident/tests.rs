@@ -169,7 +169,9 @@ fn oversized_projection_is_protected_and_never_exceeds_the_frame() {
     assert!(value.protected && value.registrations.is_empty());
     let envelope = crate::protocol::HostToUi::Response {
         id: u32::MAX,
-        result: crate::protocol::Reply::LauncherResidentGet { value },
+        result: crate::protocol::Reply::LauncherResidentGet {
+            value: Box::new(value),
+        },
     };
     assert!(serde_json::to_vec(&envelope).unwrap().len() < crate::frame::LIMIT);
     assert_eq!(std::fs::read(&path).unwrap(), bytes);

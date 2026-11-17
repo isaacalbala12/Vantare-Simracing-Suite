@@ -194,7 +194,11 @@ mod tests {
         assert_eq!(topics, string_union::<Topic>());
         assert_eq!(topics, TOPICS.iter().map(|value| (*value).into()).collect());
         assert_eq!(
-            values(host.iter().map(|item| &item["reason"])),
+            values(
+                host.iter()
+                    .filter(|item| item["kind"] == "closeRequested")
+                    .map(|item| &item["reason"])
+            ),
             string_union::<CloseReason>()
         );
         assert_eq!(

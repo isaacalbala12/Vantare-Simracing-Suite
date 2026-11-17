@@ -7,25 +7,7 @@ pub(super) fn dispatch(
 ) -> io::Result<()> {
     match request {
         Request::LauncherResidentReviewOpen { target } => {
-            let result = if session.current.live {
-                Err(crate::protocol::HostError::Denied)
-            } else {
-                session.launcher_resident_state.review.open(
-                    &session.launcher,
-                    session.core.account_observation().as_ref(),
-                    target,
-                )
-            };
-            return frame::write(
-                pipe,
-                &match result {
-                    Ok(value) => HostToUi::Response {
-                        id,
-                        result: Reply::LauncherResidentReviewOpen { value },
-                    },
-                    Err(error) => HostToUi::Failure { id, error },
-                },
-            );
+            return review_open(session, pipe, id, target);
         }
         Request::LauncherProfileRemoveChecked { target } => {
             let result = crate::launcher_resident::ownership::remove(
@@ -114,13 +96,13 @@ pub(super) fn dispatch(
         &HostToUi::Response {
             id,
             result: Reply::LauncherResidentGet {
-                value: if session.current.live {
+                value: Box::new(if session.current.live {
                     crate::launcher_resident::ResidentView::default()
                 } else {
                     session
                         .launcher_resident_state
                         .view_for_account(session.core.account_observation().as_ref())
-                },
+                }),
             },
         },
     )
@@ -138,6 +120,33 @@ pub(super) fn subscribe(session: &mut Session, pipe: &mut Pipe, _topic: Topic) -
         pipe,
         &HostToUi::Event {
             event: Event::LauncherResident { value },
+        },
+    )
+}
+
+fn review_open(
+    session: &mut Session,
+    pipe: &mut Pipe,
+    id: u32,
+    target: &crate::launcher_resident::ResidentReviewTarget,
+) -> io::Result<()> {
+    let result = if session.current.live {
+        Err(crate::protocol::HostError::Denied)
+    } else {
+        session.launcher_resident_state.review.open(
+            &session.launcher,
+            session.core.account_observation().as_ref(),
+            target,
+        )
+    };
+    frame::write(
+        pipe,
+        &match result {
+            Ok(value) => HostToUi::Response {
+                id,
+                result: Reply::LauncherResidentReviewOpen { value },
+            },
+            Err(error) => HostToUi::Failure { id, error },
         },
     )
 }

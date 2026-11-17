@@ -4,8 +4,8 @@ use crate::launcher_resident::{
 use crate::protocol::bindings::{constants, declare};
 use crate::protocol::{Event, HostToUi, Reply, Request, Topic, UiToHost};
 pub(crate) fn typescript() -> String {
-    let mut text = String::new();
     use crate::launcher_resident::*;
+    let mut text = String::new();
     declare::<ResidentReview>(&mut text);
     declare::<ResidentReviewState>(&mut text);
     declare::<ResidentReviewOutcome>(&mut text);
@@ -151,7 +151,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         HostToUi::Response {
             id: 1,
             result: Reply::LauncherResidentGet {
-                value: value.clone(),
+                value: Box::new(value.clone()),
             },
         },
         HostToUi::Event {

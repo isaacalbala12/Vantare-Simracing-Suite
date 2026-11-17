@@ -258,7 +258,7 @@ fn projects_review_only_when_the_private_message_and_scope_are_valid() {
         HostToUi::Response {
             id: 1,
             result: Reply::LauncherResidentGet {
-                value: view.clone(),
+                value: Box::new(view.clone()),
             },
         },
         HostToUi::Event {

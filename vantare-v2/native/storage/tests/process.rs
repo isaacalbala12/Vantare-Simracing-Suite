@@ -748,7 +748,7 @@ mod core_recording_process {
     use super::*;
     use vantare_ipc::Subscriber;
 
-    fn powershell(script: &str) -> String {
+    pub(super) fn powershell(script: &str) -> String {
         use std::os::windows::process::CommandExt;
         let output = Command::new("pwsh")
             .args(["-NoProfile", "-Command", script])
@@ -834,7 +834,7 @@ mod core_recording_process {
         (running, subscriber, pid)
     }
 
-    fn exited(pid: u32) {
+    pub(super) fn exited(pid: u32) {
         powershell(&format!(
             "$p = Get-Process -Id {pid} -ErrorAction SilentlyContinue; if ($p) {{ if (-not $p.WaitForExit(10000)) {{ Stop-Process -Id {pid} -Force; exit 1 }} }}; exit 0"
         ));
@@ -1388,3 +1388,6 @@ fn read_only_metadata_write_is_rejected_without_changing_the_file() {
     assert!(!reader.child.wait().unwrap().success());
     assert_eq!(std::fs::read(&db.0).unwrap(), original);
 }
+
+#[path = "process/session_capture.rs"]
+mod session_capture;

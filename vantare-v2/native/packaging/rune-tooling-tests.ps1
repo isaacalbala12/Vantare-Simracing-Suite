@@ -68,3 +68,5 @@ Assert-NativeDistributionTree (Join-Path $root 'tree')
 [IO.File]::WriteAllText($image,'VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916')
 Reject-Rune {Assert-NativeDistributionTree (Join-Path $root 'tree')}
 'PASS Rune inventory, lock sources/hash and distribution byte gate'
+
+& (Join-Path $PSScriptRoot 'rune-cargo-home-tests.ps1') -QaRoot $root

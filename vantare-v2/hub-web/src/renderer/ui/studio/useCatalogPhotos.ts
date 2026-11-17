@@ -55,6 +55,7 @@ export function useCatalogPhotos(
 
   useEffect(() => {
     const account = core.accountGeneration;
+    session.current?.photos.clear();
     setPhotos(new Map());
     setPending(undefined);
     if (!open) invalidated.current = false;
@@ -163,7 +164,8 @@ export function useCatalogPhotos(
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) visible.add(entry.target);
+          if (entry.isIntersecting && entry.intersectionRatio > 0)
+            visible.add(entry.target);
           else visible.delete(entry.target);
         }
         settle();

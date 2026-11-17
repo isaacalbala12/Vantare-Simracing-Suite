@@ -145,14 +145,10 @@ export function useCatalogPhotos(
         .filter((card) => visible.has(card))
         .map((card) => card.dataset.kind as WidgetKind);
       const last = cards.findLastIndex((card) => visible.has(card));
-      if (last >= 0) {
-        const next = cards
-          .slice(last + 1)
-          .find(
-            (card) => !state.requested.has(card.dataset.kind as WidgetKind),
-          );
-        if (next) state.candidates.push(next.dataset.kind as WidgetKind);
-      }
+      // The cap is always visible+1: never walk past the card after the last
+      // visible one, even when it was already requested.
+      if (last >= 0 && cards[last + 1])
+        state.candidates.push(cards[last + 1].dataset.kind as WidgetKind);
       for (const kind of state.photos.keys())
         if (!state.candidates.includes(kind)) state.photos.delete(kind);
       setPhotos(new Map(state.photos));

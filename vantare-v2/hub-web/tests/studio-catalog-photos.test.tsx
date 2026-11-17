@@ -229,6 +229,27 @@ it.each([
   await visible(0);
   await count(4);
 });
+it("keeps the visible+1 photo when a settle repeats without new cards", async () => {
+  cards = cards.slice(0, 4);
+  mount();
+  await visible(0);
+  await count(2);
+  await waitFor(() => expect(document.querySelectorAll("img")).toHaveLength(2));
+  // A second delivery and a scrollend without new cards must not walk past +1.
+  await visible(0);
+  fireEvent(screen.getByTestId("body"), new Event("scrollend"));
+  expect(kinds()).toEqual([cards[0].kind, cards[1].kind]);
+  expect(
+    document.querySelector(`[data-kind="${cards[1].kind}"] img`),
+  ).not.toBeNull();
+  // Reaching +1 paints its retained photo instead of asking again.
+  await visible(1);
+  await count(3);
+  expect(kinds()).toEqual([cards[0].kind, cards[1].kind, cards[2].kind]);
+  expect(
+    document.querySelector(`[data-kind="${cards[1].kind}"] img`),
+  ).not.toBeNull();
+});
 it("does not request passing cards during scroll, then settles on scrollend", async () => {
   mount();
   const body = screen.getByTestId("body");

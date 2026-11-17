@@ -221,6 +221,26 @@ export async function checkAnalysisComparison(
           document.documentElement.style.zoom = "1";
           await document.fonts.ready;
         });
+        await page.mouse.move(
+          width - 1,
+          (page.viewportSize()?.height ?? 980) - 1,
+        );
+        if (scene !== "selection")
+          assert.equal(
+            await page
+              .getByRole("combobox", { name: t.a, exact: true })
+              .evaluate((node) => {
+                const value = node.firstElementChild;
+                return (
+                  !!value &&
+                  value.getBoundingClientRect().width >
+                    node.getBoundingClientRect().width * 0.7 &&
+                  getComputedStyle(value).textAlign === "center"
+                );
+              }),
+            true,
+            "A/B captions must occupy and center in the selector",
+          );
         const report = await new AxeBuilder({ page })
           .include(".v-shell")
           .analyze();

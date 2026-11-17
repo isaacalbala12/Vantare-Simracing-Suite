@@ -84,6 +84,18 @@
   background: transparent;
   box-shadow: none;
 }
+.v-an-selector .v-select-trigger > span:first-child {
+  flex: 1;
+  text-align: center;
+  font-size: var(--text-small);
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.v-an-selector .v-select-trigger > span:first-child::first-line {
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--text-1);
+}
 .v-an-swap {
   position: absolute;
   inset-inline-start: calc(100% + var(--space-7));

@@ -225,14 +225,35 @@ export async function checkStudioCatalogPhotos(
           .evaluateAll((nodes) =>
             nodes.map((node) => ({
               kind: (node as HTMLElement).dataset.kind,
-              label: node.getAttribute("aria-label"),
+              label: node.getAttribute("aria-label") ?? "",
               name: node
                 .querySelector("strong")
                 ?.firstChild?.textContent?.trim(),
+              about: node.querySelector("small")?.textContent?.trim(),
+              owned: node
+                .querySelector(".v-studio-owned")
+                ?.getAttribute("data-label"),
             })),
           );
-        for (const card of labels)
-          assert.equal(card.label, `Añadir ${card.name}`);
+        for (const card of labels) {
+          // Label in Name: the action comes first and the visible text follows.
+          assert.equal(
+            card.label.startsWith(`${studioText.addShort} ${card.name}`),
+            true,
+            `${card.kind} name starts with the action`,
+          );
+          assert.equal(
+            card.label.includes(card.about ?? ""),
+            true,
+            `${card.kind} name repeats its visible description`,
+          );
+          if (card.owned)
+            assert.equal(
+              card.label.includes(card.owned),
+              true,
+              `${card.kind} name repeats its owned badge`,
+            );
+        }
         assert(
           await dialog.locator(".v-studio-catalog-photo-legend").isVisible(),
         );

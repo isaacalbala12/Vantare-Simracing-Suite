@@ -114,9 +114,12 @@ export function CatalogDialog({
             </fieldset>
           </div>
           <p className="v-studio-catalog-photo-legend">
-            <span className="v-studio-catalog-photo-mark" aria-hidden="true">
+            <span
+              className="v-studio-catalog-photo-mark"
+              aria-hidden="true"
+              data-label={text.photo}
+            >
               <Icon name="v-camera" />
-              {text.photo}
             </span>
             <span>
               <span className="v-a11y-separator">{text.photoLegendLead}</span>
@@ -171,13 +174,34 @@ export function CatalogDialog({
                                       : block === "unavailable"
                                         ? text.catalogUnavailable
                                         : undefined;
+                          const owned = view.instances.filter(
+                            (item) => item.kind === widget.kind,
+                          ).length;
+                          const notice = !widget.allowed
+                            ? view.plan === "unverified"
+                              ? t.unverified
+                              : text.catalogPro
+                            : undefined;
+                          // Label in Name: the name starts with the action and
+                          // then repeats the visible text of the card in order.
+                          // The owned pill is painted by CSS, so it can only be
+                          // appended: a scrolled card clips it away from the
+                          // visible run and the name must survive both states.
+                          const label = [
+                            `${t.addShort} ${widget.name}`,
+                            widget.about,
+                            notice,
+                            owned > 0 ? t.owned(owned) : undefined,
+                          ]
+                            .filter((part): part is string => Boolean(part))
+                            .join(", ");
                           return (
                             <button
                               key={widget.kind}
                               type="button"
                               className="v-studio-catalog-widget"
                               data-kind={widget.kind}
-                              aria-label={`${t.addShort} ${widget.name}`}
+                              aria-label={label}
                               aria-disabled={!!block}
                               aria-describedby={
                                 block
@@ -255,9 +279,12 @@ export function CatalogDialog({
                                         photos.photos.get(widget.kind)?.height
                                       }
                                     />
-                                    <span className="v-studio-catalog-photo-mark">
+                                    <span
+                                      className="v-studio-catalog-photo-mark"
+                                      aria-hidden="true"
+                                      data-label={text.photo}
+                                    >
                                       <Icon name="v-camera" />
-                                      {text.photo}
                                     </span>
                                   </span>
                                 )}
@@ -272,25 +299,18 @@ export function CatalogDialog({
                               </span>
                               <strong>
                                 {widget.name}
-                                {view.instances.some(
-                                  (item) => item.kind === widget.kind,
-                                ) && (
-                                  <span className="v-studio-owned">
-                                    {t.owned(
-                                      view.instances.filter(
-                                        (item) => item.kind === widget.kind,
-                                      ).length,
-                                    )}
-                                  </span>
+                                {owned > 0 && (
+                                  <span
+                                    className="v-studio-owned"
+                                    data-label={t.owned(owned)}
+                                  />
                                 )}
-                              </strong>
-                              <small>{widget.about}</small>
+                              </strong>{" "}
+                              <small>{widget.about}</small>{" "}
                               {!widget.allowed ? (
                                 <span className="v-studio-catalog-badge">
                                   <Icon name="lock" />
-                                  {view.plan === "unverified"
-                                    ? t.unverified
-                                    : text.catalogPro}
+                                  {notice}
                                 </span>
                               ) : (
                                 <span

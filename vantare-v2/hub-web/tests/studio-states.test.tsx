@@ -605,10 +605,10 @@ it("explains conserved widgets once, keeps their settings and never offers to ad
   fireEvent.click(screen.getByRole("button", { name: t.add }));
   const dialog = await screen.findByRole("dialog", { name: t.catalog });
   expect(
-    within(dialog).getByRole("button", { name: "Añadir Standings" }),
+    within(dialog).getByRole("button", { name: /^Añadir Standings/ }),
   ).toBeTruthy();
   expect(
-    within(dialog).queryByRole("button", { name: "Añadir Daños detallados" }),
+    within(dialog).queryByRole("button", { name: /^Añadir Daños detallados/ }),
   ).toBeNull();
   expect(
     requests.mock.calls.filter(([request]) => request.method === "studio.add"),

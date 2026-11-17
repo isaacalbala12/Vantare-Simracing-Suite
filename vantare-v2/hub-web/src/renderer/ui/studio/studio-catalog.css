@@ -168,6 +168,14 @@
   border-radius: var(--radius-pill);
   background: var(--surface-elevated);
 }
+/*
+ * The pill sits at the card top, so scrolling can clip it out of the visible
+ * text while the name stays. Paint the word here and keep it at the end of the
+ * accessible name: the visible run stays contiguous in every scroll state.
+ */
+.v-studio-catalog-dialog .v-studio-owned::after {
+  content: attr(data-label);
+}
 .v-studio-catalog-widget[aria-disabled="true"] .v-studio-owned {
   position: static;
 }
@@ -223,6 +231,15 @@
 .v-studio-catalog-photo-mark > svg {
   width: 12px;
   height: 12px;
+}
+/*
+ * The chip marks that the card shows a rendered photo; it is decorative
+ * (aria-hidden) and not part of the button label. axe counts aria-hidden text
+ * as visible text, so painting the word here keeps the accessible name stable
+ * (it cannot appear only once the photo arrives) and starting with the action.
+ */
+.v-studio-catalog-photo-mark::after {
+  content: attr(data-label);
 }
 .v-studio-catalog-photo-legend {
   display: flex;

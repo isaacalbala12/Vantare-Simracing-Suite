@@ -189,7 +189,7 @@ describe("Studio Foco interactions", () => {
     fireEvent.click(screen.getAllByRole("button", { name: t.add })[0]);
     const catalogButton = within(
       await screen.findByRole("dialog", { name: t.catalog }),
-    ).getByRole("button", { name: "Añadir Standings" });
+    ).getByRole("button", { name: /^Añadir Standings/ });
     fireEvent.click(catalogButton);
     await screen.findByText(t.addedName("Standings"));
     const addedRow = await screen.findByRole("button", {
@@ -228,11 +228,11 @@ describe("Studio Foco interactions", () => {
     const search = await screen.findByRole("searchbox", { name: t.search });
     fireEvent.change(search, { target: { value: "clasificacion" } });
     expect(
-      screen.getByRole("button", { name: "Añadir Standings" }),
+      screen.getByRole("button", { name: /^Añadir Standings/ }),
     ).toBeTruthy();
     fireEvent.change(search, { target: { value: "telemetria de entrada" } });
     const widget = screen.getByRole("button", {
-      name: "Añadir Telemetría de entrada",
+      name: /^Añadir Telemetría de entrada/,
     });
     expect(widget.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(widget);
@@ -431,9 +431,11 @@ describe("Studio Foco interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: t.add }));
     await screen.findByText(t.addedName(name));
     const catalog = screen.getByRole("button", {
-      name: `${t.addShort} ${name}`,
+      name: new RegExp(`^${t.addShort} ${name}`),
     });
-    expect(within(catalog).getByText(t.owned(1))).toBeTruthy();
+    expect(
+      catalog.querySelector(".v-studio-owned")?.getAttribute("data-label"),
+    ).toBe(t.owned(1));
     expect(
       requests.mock.calls.filter(([r]) => r.method === "studio.add"),
     ).toHaveLength(1);

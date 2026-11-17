@@ -290,7 +290,7 @@
 }
 .v-an-changes .v-an-change {
   inline-size: 100%;
-  min-block-size: var(--chip-h);
+  min-block-size: var(--pill-h);
   padding-inline: 0;
   border-radius: var(--radius-xs);
 }

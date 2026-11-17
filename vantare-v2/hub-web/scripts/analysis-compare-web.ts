@@ -494,11 +494,10 @@ export async function checkAnalysisComparison(
           const rows = page.locator(".v-an-change");
           assert.equal(
             await rows.evaluateAll((nodes) => {
-              const height = Number.parseFloat(
-                getComputedStyle(document.documentElement).getPropertyValue(
-                  "--chip-h",
-                ),
-              );
+              const root = getComputedStyle(document.documentElement);
+              const height =
+                Number.parseFloat(root.getPropertyValue("--pill-h")) *
+                Number.parseFloat(root.zoom);
               return nodes.every(
                 (node, i) =>
                   node.getBoundingClientRect().height >= 24 &&

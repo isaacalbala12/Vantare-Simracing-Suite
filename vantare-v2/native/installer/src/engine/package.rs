@@ -212,3 +212,19 @@ mod central_tests {
         );
     }
 }
+
+#[cfg(all(test, windows, feature = "write-engine"))]
+mod capacity_tests {
+    #[test]
+    fn compressed_limit_accepts_256_mib_and_rejects_one_more_byte() {
+        assert!(super::compressed_capacity(256 * 1024 * 1024).is_ok());
+        assert!(super::compressed_capacity(256 * 1024 * 1024 + 1).is_err());
+    }
+
+    #[test]
+    fn expanded_limit_accepts_768_mib_and_rejects_one_more_byte() {
+        assert!(super::expanded_capacity(256 * 1024 * 1024, 768 * 1024 * 1024).is_ok());
+        assert!(super::expanded_capacity(1, 768 * 1024 * 1024 + 1).is_err());
+        assert!(super::expanded_capacity(256 * 1024 * 1024 + 1, 768 * 1024 * 1024).is_err());
+    }
+}

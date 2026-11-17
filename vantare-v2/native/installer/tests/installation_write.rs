@@ -1036,7 +1036,7 @@ fn zip_links_duplicates_traversal_and_uncompressed_limits_are_rejected_before_ac
                 .copy_from_slice(&(256_u32 * 1024 * 1024 + 1).to_le_bytes()),
             "total-limit" => {
                 let mut offset = directory;
-                for _ in 0..3 {
+                for _ in 0..4 {
                     bytes[offset + 24..offset + 28]
                         .copy_from_slice(&(250_u32 * 1024 * 1024).to_le_bytes());
                     let length: usize = [28, 30, 32]

@@ -157,7 +157,7 @@ LicenseStatus/Read local antes/después de cada ronda: política vigente Pro o
 Founders, nunca renovación/login ni transferencia de credenciales. El nonce de
 ese enlace efímero vive solo en memoria y no se registra. Unconfigured,
 NoCredential, caducidad o versión incompatible invalidan la ronda. Esto impide
-medir en silencio una capa vacía por derechos. El núcleo necesita además el binding con la credencial legítima: la clave pública verifica, no concede Owner. El host y Services quedan en QA. El fallback del núcleo conserva una foto de los directorios Vantare/VantareNative reales (solo nombres y hashes) antes/después: cualquier cambio fuera de logs aborta ANTES del análisis y sin apagar. El núcleo normal persiste authority fuera de logs; ese límite NO se ignora ni se revierte su reloj. El ensayo de denegación usa un almacén QA vacío aislado.
+medir en silencio una capa vacía por derechos. El núcleo necesita además el binding con la credencial legítima: la clave pública verifica, no concede Owner. Núcleo, host y Services quedan en QA; no se vuelve automáticamente al perfil real. Como defensa adicional se conserva una foto de los directorios Vantare/VantareNative reales (solo nombres y hashes) antes/después: cualquier cambio fuera de logs aborta ANTES del análisis y sin apagar. El núcleo normal persiste authority fuera de logs; no se usa como fallback ni se revierte su reloj. El ensayo de denegación usa un almacén QA vacío aislado.
 
 Capturas: todas usan fotos explícitas; NO_DEMO no tiene fallback. GPUI recibe
 exactamente el mismo prefijo que Rune. Para el modo asentado, el TSV entrega
@@ -265,8 +265,9 @@ TANDA -Modo Ensayo contra la nueva carpeta de binarios; no editar el manifiesto
 para cambiar production_rights_configured a mano.
 
 Capturas y lifecycle aíslan VANTARE_NATIVE_DATA_ROOT, LOCALAPPDATA y APPDATA
-en carpetas QA nuevas de la evidencia. Se restauran antes del rendimiento,
-que usa exclusivamente la autoridad Owner legítima del núcleo. Las bases de
+en carpetas QA nuevas de la evidencia. La medición también aísla núcleo y
+host en raíces QA separadas: sin Owner legítimo allí se rechaza la ronda;
+no se usa silenciosamente el perfil real. Las bases de
 Relative/Standings/Fuel/Delta fijan contentVersion=1 para medir el producto
 actual y no activar por omisión el Eficiencia heredado; los escenarios del
 catálogo conservan sus ajustes y sus omisiones originales documentadas.

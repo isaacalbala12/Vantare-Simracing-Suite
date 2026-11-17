@@ -815,12 +815,27 @@ mod core_recording_process {
         } else {
             0
         };
+        if let Some(directory) = dir {
+            // Publicación del nombre final = esquema inicial confirmado y cerrado.
+            // Esta barrera solo pertenece al test, nunca a adquisición.
+            let deadline = Instant::now() + Duration::from_secs(10);
+            while !std::fs::read_dir(directory).unwrap().any(|entry| {
+                entry
+                    .unwrap()
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == "duckdb")
+            }) {
+                assert!(Instant::now() < deadline, "helper no creó la DB");
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
         (running, subscriber, pid)
     }
 
     fn exited(pid: u32) {
         powershell(&format!(
-            "$p = Get-Process -Id {pid} -ErrorAction SilentlyContinue; if ($p) {{ if (-not $p.WaitForExit(10000)) {{ Stop-Process -Id {pid} -Force; exit 1 }} }}"
+            "$p = Get-Process -Id {pid} -ErrorAction SilentlyContinue; if ($p) {{ if (-not $p.WaitForExit(10000)) {{ Stop-Process -Id {pid} -Force; exit 1 }} }}; exit 0"
         ));
     }
 

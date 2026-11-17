@@ -47,6 +47,11 @@ function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
   if(-not $seen.ContainsKey($path)){throw "Binario sin hash: $required"}
  }
  if($manifest.presentmon.version -ne '2.6.0' -or $manifest.presentmon.repository -ne 'GameTechDev/PresentMon'){throw 'PresentMon sin procedencia oficial fijada'}
+ foreach($case in $manifest.measurements){
+  if($case.id -notmatch '^[a-z0-9][a-z0-9-]+$' -or $case.motor -notin @('gpui','rune') -or $case.state -notin @('waiting','replay')){throw 'Caso de medición inválido'}
+  $layout=Resolve-TandaPath $Root $case.layout
+  if(-not $seen.ContainsKey($layout)){throw 'Layout de medición sin hash'}
+ }
  if($manifest.captures.Count -eq 0 -or $manifest.measurements.Count -eq 0){throw 'Tanda sin casos'}
  $outputs=@{}
  foreach($case in $manifest.captures){
@@ -162,6 +167,8 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  $env:VANTARE_SIN_GRAFICOS='1'
  $guard=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays-rune.exe') @('--capture-scene') (Join-Path $Output 'guard') 20
  if($guard.code -ne 6 -or $guard.stderr -notmatch '^GRAPHICS_DISABLED\b'){throw 'El binario no cumple el guard gráfico'}
+ $list=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--list','--ignored') (Join-Path $Output 'lifecycle-list') 20
+ if($list.code -ne 0 -or @($list.stdout -split "`n"|Where-Object {$_ -match '^rune_[a-z_]+: test\s*$'}).Count -ne 4){throw 'No se enumeraron exactamente cuatro tests lifecycle, sin ejecutarlos'}
  $fake=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_TANDA.ps1')) (Join-Path $Output 'controlador-falso') 90
  if($fake.code -ne 0){throw 'El ensayo del controlador falso falló'}
  $csv=Invoke-TandaProcess 'python' @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_medidas.py') (Join-Path $Output 'csv-falsos') 60
@@ -395,11 +402,13 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
    $state.captures+=@{id=$id;motor='rune';code=$rune.code;expected_token=$token;stderr=$rune.stderr}
    if($token -eq 'UNEXPECTED_EXIT' -or $rune.stderr -notmatch ('(?m)^'+[regex]::Escape($token)+'\b')){throw 'Código/token de Rune no cumple contrato'}
    if($rune.code -in @(4,6)){throw "${token}: abortar sin apagado"}
+   if($rune.code -ne 0){throw "${token}: captura Rune fallida, abortar sin apagado"}
    if($rune.code -eq 0){$state.captures[-1].actual_png_size=Read-TandaPngSize (Join-Path $Output "rune/$id.png")}
    $batch=Join-Path $Output "logs/$id-batch.json"
    Write-TandaJson @(@{scene=(Resolve-TandaPath $Root $case.scene);output=(Join-Path $Output "gpui/$id.png");widget=$case.kind;settings=(Read-TandaJson (Resolve-TandaPath $Root $case.settings));parameters=@{language='es'}}) $batch
    $gpui=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays.exe') @('--capture-batch',$batch) (Join-Path $Output "logs/$id-gpui") -WatchSession
    $state.captures+=@{id=$id;motor='gpui';code=$gpui.code;stderr=$gpui.stderr}
+   if($gpui.code -ne 0){throw 'CAPTURE_FAILED: GPUI no produjo la captura, abortar sin apagado'}
    if($gpui.code -eq 0){$state.captures[-1].actual_png_size=Read-TandaPngSize (Join-Path $Output "gpui/$id.png")}
    if($rune.code -eq 0 -and $gpui.code -eq 0){
     $diff=Invoke-TandaProcess 'python' @((Join-Path $Root 'diff.py'),(Join-Path $Output "rune/$id.png"),(Join-Path $Output "gpui/$id.png"),'--threshold','8','--max-percent','4.9999','--json','--out',(Join-Path $Output "diff/$id.png")) (Join-Path $Output "diff/$id") 90

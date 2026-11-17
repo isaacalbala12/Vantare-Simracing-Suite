@@ -20,7 +20,7 @@ Write-TandaJson @(@{version=11;state=@{}}) (Join-Path $root 'inputs/case/scene.j
 Set-Content (Join-Path $root 'inputs/case/photos.tsv') "0`tphoto.json" -Encoding utf8
 $files=@(Get-ChildItem $root -File -Recurse|ForEach-Object {@{path=[IO.Path]::GetRelativePath($root,$_.FullName);sha256=(Get-FileHash $_.FullName).Hash}})
 $case=@{id='relative-vantare';kind='relative';settings='inputs/case/settings.json';scene='inputs/case/scene.json';sequence='inputs/case/photos.tsv';at_ms=0;scale=1;motion=$false;wall_ms=1767225600000}
-$manifest=@{schema=1;source_sha=('a'*40);production_rights_configured=$true;presentmon=@{version='2.6.0';repository='GameTechDev/PresentMon'};captures=@($case);measurements=@(@{id='relative-replay-gpui';motor='gpui';state='replay'}) ;files=$files}
+$manifest=@{schema=1;source_sha=('a'*40);production_rights_configured=$true;presentmon=@{version='2.6.0';repository='GameTechDev/PresentMon'};captures=@($case);measurements=@(@{id='relative-replay-gpui';motor='gpui';state='replay';layout='inputs/case/settings.json'}) ;files=$files}
 Write-TandaJson $manifest (Join-Path $root 'manifiesto.json')
 $null=Assert-TandaInputs $root
 $png=Join-Path $sandbox 'header.png'

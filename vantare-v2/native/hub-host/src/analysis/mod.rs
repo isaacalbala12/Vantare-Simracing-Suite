@@ -132,7 +132,7 @@ pub struct Reader {
     closed: bool,
 }
 impl Reader {
-    /// Solo acepta rutas devueltas por recordings(); no detecta enlaces/reparse
+    /// Solo acepta rutas devueltas por `recordings()`; no detecta enlaces/reparse
     /// en los directorios padre de la ruta.
     pub fn open(exe: &Path, db: &Path, cancel: Cancel) -> Result<Self> {
         Self::open_with_timeout(exe, db, cancel, Duration::from_secs(30))

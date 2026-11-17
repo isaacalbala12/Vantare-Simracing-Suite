@@ -15,6 +15,7 @@ export function isRequest(v: Record<string, unknown>): boolean {
     case "analysis.inspect":
     case "analysis.open":
       return exact(v, ["method", "id"]) && token(v.id);
+    // Cancel/timeout invalidates this session: reopen the recording before retrying.
     case "analysis.compare":
       return (
         exact(v, ["method", "session", "a", "b"]) &&

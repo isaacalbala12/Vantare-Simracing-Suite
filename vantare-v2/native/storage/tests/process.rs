@@ -1021,6 +1021,7 @@ fn session_events_are_idempotent_and_sealing_prevents_every_new_write() {
     let mut owner = Process::start_mode(&db.0, Some("--create"));
     assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
     exchange(&mut owner, &lap_time(), json!(["rejected", "missing"]));
+    exchange(&mut owner, &session_close(), json!(["rejected", "missing"]));
     for _ in 0..2 {
         exchange(
             &mut owner,
@@ -1035,6 +1036,13 @@ fn session_events_are_idempotent_and_sealing_prevents_every_new_write() {
     let mut lap_conflict = lap_time();
     lap_conflict[1]["officialMs"] = Value::Null;
     exchange(&mut owner, &lap_conflict, json!(["rejected", "conflict"]));
+    let mut sector_conflict = lap_time();
+    sector_conflict[1]["sectorMs"] = json!([1, 2, 3]);
+    exchange(
+        &mut owner,
+        &sector_conflict,
+        json!(["rejected", "conflict"]),
+    );
     for _ in 0..2 {
         exchange(
             &mut owner,
@@ -1191,6 +1199,23 @@ fn v1_metadata_is_unsupported_without_stopping_or_migrating_the_helper() {
         &json!(["page", 0, 16]),
         json!(["page", [payload()]]),
     );
+    process.send(&json!(["finish", 1]));
+    assert_eq!(process.response(), json!(["finished", 1, true, 1]));
+    process.send(&json!(["stop"]));
+    assert!(process.child.wait().unwrap().success());
+    let mut reader = Process::start_mode(&db.0, Some("--read-only"));
+    assert_eq!(reader.response(), json!(["ready", 1, true, 1]));
+    reader.send(&json!(["summaries"]));
+    let summaries = reader.response();
+    assert_eq!(summaries[0], "summaries");
+    assert_eq!(summaries[1], "series-summary.v1");
+    assert_eq!(summaries[2], 1);
+    reader.send(&json!(["plot-page", 0, 16]));
+    let plotted = reader.response();
+    assert_eq!(plotted[0], "plot-page");
+    assert_eq!(plotted[1], "series-plot.v1");
+    assert_eq!(plotted[2].as_array().unwrap().len(), 1);
+    assert_eq!(plotted[2][0]["index"], 1);
 }
 
 #[test]

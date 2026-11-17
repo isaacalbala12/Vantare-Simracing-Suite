@@ -204,3 +204,16 @@ Los tests measurement_modes_* se mantienen en la suite normal de tests y se
 repiten junto a la admisión del modo en el build bench. Los goldens y lifecycle
 de producto se ejecutan sin la feature bench.
 No se añaden dependencias ni cambia el DTO o la política de capacidades.
+
+## Grabación de series (G3 / #1975)
+
+`vantare-core --live --series-dir <DIR>` (también con `--replay`) crea el
+directorio y una DB nueva `series-<epoch>-<pid>.duckdb` por arranque. El helper
+`vantare-storage` debe estar junto al Core; usa exclusivamente `--create`,
+con tres reintentos de nombre si devuelve 3. Sin el flag no hay suscripción.
+La cola de 32 chunks nunca espera ready, ACK ni SQL al adquirir; saturación
+pierde chunks y deja huecos visibles. Fallos desactivan esa grabación con un
+diagnóstico, sin reiniciarla ni parar fotos. Al salir del bucle, incluso con
+error, hace flush y finish con un plazo de 1 s manteniendo Core vivo. Timeout
+recoge el hijo; solo el prefijo ACK es conocido durable. EOF al morir Core
+cierra stdin del helper y su conexión. No modifica el journal `--recording`.

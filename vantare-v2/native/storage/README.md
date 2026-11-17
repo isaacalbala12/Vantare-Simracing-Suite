@@ -138,3 +138,9 @@ recupera DB propias; no repara archivos desconocidos/corruptos ni borra filas.
 
 Tests con DB temporales reales; no DB de usuario ni telemetría física.
 Evidencia de compilación, gates y límites en el microplan de fase 4.
+
+G3 conecta el Core mediante `--series-dir <DIR>`, con helper junto a su
+ejecutable y `SeriesWorker::start_new` (`--create`). La creación y los
+reintentos ocurren fuera de adquisición; ninguna DB se reanuda automáticamente.
+Tras colisión se elige otro nombre opaco. EOF de stdin termina el helper y
+cierra la conexión, incluso si el Core desaparece sin ejecutar Drop.

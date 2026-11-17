@@ -10,6 +10,12 @@ use vantare_domain::{Adapter, Snapshot};
 use vantare_ipc::{Error, Publisher};
 
 use crate::core::Core;
+mod series;
+pub use series::{SeriesRecording, drive_core_recorded};
+
+/// Helper instalado junto al ejecutable del Core.
+#[cfg(windows)]
+const STORAGE_IMAGE: &str = "vantare-storage.exe";
 
 /// Espera cuando una vuelta no ha producido nada nuevo.
 const IDLE: Duration = Duration::from_millis(2);
@@ -58,6 +64,7 @@ pub fn run_with_events(
         stop,
         Options {
             recording,
+            series_dir: None,
             engineer_image,
             rights_nonce: None,
         },
@@ -67,6 +74,7 @@ pub fn run_with_events(
 #[cfg(windows)]
 pub struct Options<'a> {
     pub recording: Option<&'a std::path::Path>,
+    pub series_dir: Option<&'a std::path::Path>,
     pub engineer_image: std::path::PathBuf,
     pub rights_nonce: Option<String>,
 }
@@ -114,12 +122,26 @@ pub fn run_controlled(
     }
     let mut publisher = Publisher::new(pipe, |_| true)?;
     let demand = publisher.demand_source();
-    drive_core_demanded(&mut core, adapter, speed, stop, Some(&demand), |core| {
-        let snapshot = core.snapshot();
-        rights.publish(Arc::clone(&snapshot));
-        events.publish(Arc::clone(&snapshot), core.events());
-        publisher.publish(snapshot)
-    })
+    let recording = SeriesRecording::start(
+        &mut core,
+        options.series_dir,
+        epoch,
+        &std::env::current_exe()?.with_file_name(STORAGE_IMAGE),
+    );
+    drive_core_recorded(
+        &mut core,
+        adapter,
+        speed,
+        stop,
+        Some(&demand),
+        recording,
+        |core| {
+            let snapshot = core.snapshot();
+            rights.publish(Arc::clone(&snapshot));
+            events.publish(Arc::clone(&snapshot), core.events());
+            publisher.publish(snapshot)
+        },
+    )
 }
 
 /// El bucle sin transporte: hasta que `stop` se levante, hace avanzar `core`

@@ -342,9 +342,16 @@ fn real_controller_finishes_flip_at_313_ms_flash_at_500_and_notice_at_1200() {
         rt.state.motion.flips.is_empty(),
         "FLIP finalizado en 313 ms"
     );
-    assert_eq!(rt.state.motion.wake(0.313),Wake::Frame,"el flash crece durante 500 ms");
+    assert_eq!(
+        rt.state.motion.wake(0.313),
+        Wake::Frame,
+        "el flash crece durante 500 ms"
+    );
     rt.frame(0.187);
-    assert!(matches!(rt.state.motion.wake(0.5),Wake::At(_)),"solo queda el aviso quieto hasta 1200 ms");
+    assert!(
+        matches!(rt.state.motion.wake(0.5), Wake::At(_)),
+        "solo queda el aviso quieto hasta 1200 ms"
+    );
     rt.frame(0.7);
     assert!(rt.wake_deadline().is_none());
     let size = rt.state.size();

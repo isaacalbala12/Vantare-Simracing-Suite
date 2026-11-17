@@ -147,7 +147,9 @@ fn row_layer(v: &Visual, row: &Row, top: f32, pose: super::motion::Pose, last: b
         layer = layer.child(node);
     }
     // GPUI with_opacity multiplica cada primitiva, sin componer un grupo.
-    if pose.alpha < 0.999 {layer=layer.dim(pose.alpha.max(0.0));}
+    if pose.alpha < 0.999 {
+        layer = layer.dim(pose.alpha.max(0.0));
+    }
     layer
 }
 fn column_label(v: &Visual, language: Language, column: Column, x: f32, w: f32) -> El {

@@ -45,7 +45,7 @@ pub(super) fn visual() -> Visual {
     Visual::from_parts_for_test(config, content)
 }
 pub(super) fn paint(mut v: Visual, language: Language) -> Runtime<(Visual, Language)> {
-    let _fonts=rune::text::with_families("Inter W400","Inter W400");
+    let _fonts = rune::text::with_families("Inter W400", "Inter W400");
     v.attach_assets(&Arc::new(ImageCache::new(Arc::new(|| {}))));
     for image in v.capture_images() {
         image.wait().unwrap();

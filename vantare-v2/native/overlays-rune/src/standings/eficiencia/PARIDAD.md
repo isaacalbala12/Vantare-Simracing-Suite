@@ -281,3 +281,20 @@ editar el handoff vivo. E6 sigue solo local hasta la fusión de E5 #2511.
 - Inventario indicaba glifo «?»; GPUI dibuja «◆» en view.rs:1357–1362.
 - La cantera usa límites de batalla 2,5/1 s (y+0,5 retenido); GPUI usa 0,8 nuevo/1,2 retenido, con class_position consecutiva y diferencia de gaps, en motion.rs:321–386. Se copia GPUI completo.
 - Inventario llama a la batalla subrayado del gap y al chip texto junto a posición; GPUI pinta ambos dentro de DriverName, en view.rs:1222–1246.
+
+El alfa de presencia/PIT se aplica con El::dim después de añadir sus hijos,
+para multiplicar las primitivas como with_opacity de GPUI. El::opacity aislaría
+el subárbol y cambiaría la mezcla de sus capas; un test exige el brillo PIT
+0,22·0,5=0,11 y el fondo top3 0,03·0,5=0,015 en las instancias pintadas.
+Los tests de Eficiencia aíslan sus fuentes con with_families: TextSystem::new
+sin ese guard cambia el medidor global de Rune y podía alterar el oráculo Mono
+de Vantare en paralelo. No se cambia ningún oráculo ni test de Vantare.
+Verificación local E6: fmt --check, clippy --all-targets -- -D warnings,
+598 tests lib + 3 bin PASS en Mac; 51 tests Python de clasificadores/tokens/
+dependencias, generador --check y auditoría de licencias PASS. Runtime CPU,
+sin abrir ventana. Comparación física de píxeles y CI Windows pendientes.
+
+Build del ejecutable y cinco tests de política de distribución con
+debug-assertions=no PASS en el mismo target del Mac. Delta frente a E5
+d2406c5ce: producción +552/−32=584 líneas; tests +543/−28=571.
+El target propio se borra al terminar esta verificación local.

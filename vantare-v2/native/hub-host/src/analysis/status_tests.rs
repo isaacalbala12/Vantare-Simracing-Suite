@@ -242,10 +242,17 @@ fn rejects_a_link_in_any_recordings_ancestor() {
     assert_eq!(super::super::recordings(&root).unwrap(), vec![db]);
     let link = owned.0.join("link");
     directory_link(&target, &link);
+    assert!(super::super::reparse(&fs::symlink_metadata(&link).unwrap()));
     let aliased = link.join("nested/recordings");
     assert!(read(&aliased, &BTreeMap::new()).is_none());
     assert_eq!(super::super::recordings(&aliased).unwrap_err().code,
         super::super::ErrorCode::Unreadable);
+    let error = super::super::Reader::open(
+        &owned.0.join("must-not-start.exe"),
+        &aliased.join("series-123-456.duckdb"),
+        std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    ).err().expect("reader rejects the linked ancestor before spawning");
+    assert_eq!(error.code, super::super::ErrorCode::Unreadable);
 }
 #[test]
 fn rejects_file_links_including_a_swap_at_open_without_reading_the_target() {

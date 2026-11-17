@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-use super::real::{exe, fixture, inject, inject_with_delay, status};
+use super::real::{exe, inject, inject_with_delay, status};
 use super::*;
 
 struct Writer {
@@ -116,6 +116,12 @@ fn real_v2_sessions_keep_unsigned_keys_nulls_and_unsealed_laps() {
 fn real_v1_is_supported_without_summaries_or_lap_times() {
     let dir = Directory::new();
     fs::write(dir.db(), include_bytes!("fixtures/session-v1.duckdb")).unwrap();
+    let mut probe = Writer::open(&dir.db(), "--resume");
+    assert_eq!(
+        probe.request(json!(["session-summaries"])),
+        json!(["unsupported", "meta"])
+    );
+    probe.stop(false);
     let original = fs::read(dir.db()).unwrap();
     let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
     assert!(reader.sessions().unwrap().is_empty());

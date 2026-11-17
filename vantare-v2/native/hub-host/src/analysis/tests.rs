@@ -119,7 +119,7 @@ mod real {
             .spawn()
             .unwrap()
     }
-    pub(super) fn fixture(db: &Path, car: u32, chunks: u64, gap: bool) {
+    fn fixture(db: &Path, car: u32, chunks: u64, gap: bool) {
         fixture_ids(
             db,
             &vec![(1, 3, car); usize::try_from(chunks).unwrap()],

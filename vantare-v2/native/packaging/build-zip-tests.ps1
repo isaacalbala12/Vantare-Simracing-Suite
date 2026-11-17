@@ -47,4 +47,6 @@ foreach($level in $levels){
         if($reader.ReadUInt16() -ne 8){throw 'ZIP no longer uses Deflate'}
     }finally{$reader.Dispose();$readStream.Dispose()}
 }
+$default=if($levels -contains 'SmallestSize'){'SmallestSize'}else{'Optimal'}
+if((Get-NativeHash (Join-Path $root 'Default.zip')) -cne (Get-NativeHash (Join-Path $root ($default+'.zip')))){throw 'Default does not match the best available level'}
 'PASS ZIP: invalid/unavailable requests create no archive; available levels preserve members and bytes, without directory records.'

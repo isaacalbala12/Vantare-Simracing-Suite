@@ -21,6 +21,10 @@ if(-not $DentroDelSlot){
  exit $LASTEXITCODE
 }
 if(-not $env:CARGO_TARGET_DIR -or -not ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)).StartsWith('D:\VantareServer\targets\',[StringComparison]::OrdinalIgnoreCase)){throw 'Target fuera de los slots en D:'}
+# The repo override is below the working directory used by the queue.
+$toolchain=Select-String -LiteralPath 'native/rust-toolchain.toml' -Pattern '^channel\s*=\s*"([^"]+)"\s*$'
+if($toolchain.Count -ne 1){throw 'No se pudo fijar la versión de Rust de native'}
+$env:RUSTUP_TOOLCHAIN=$toolchain.Matches[0].Groups[1].Value
 $env:CARGO_BUILD_JOBS='1'
 $env:CARGO_PROFILE_RELEASE_DEBUG='0'
 $env:CARGO_PROFILE_RELEASE_OPT_LEVEL='3'

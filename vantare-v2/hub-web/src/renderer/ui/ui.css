@@ -1411,6 +1411,16 @@ textarea.v-input:read-only {
 }
 
 /* Preview Rune: approved Stage origin label, photo and illustration fallback. */
+.v-preview-illustration {
+  height: 100%;
+}
+.v-studio-state-feedback.v-preview-conflict {
+  background: var(--surface-2);
+  border-color: var(--edge);
+}
+.v-studio-state-feedback.v-preview-conflict > svg {
+  color: var(--text-2);
+}
 .v-preview-stage.v-focus-stage {
   min-height: 300px;
   flex: 1 0 300px;

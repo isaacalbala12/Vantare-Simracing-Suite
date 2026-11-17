@@ -7,7 +7,6 @@ import type {
 import { Icon } from "../../assets/icons/Icon";
 import { studioText as t } from "../../i18n/studio";
 import { Button } from "../Button";
-import { Callout } from "../Data";
 import { DisabledHint } from "./DisabledHint";
 import { usePreviewPhoto } from "./usePreviewPhoto";
 import { VisibilityIcon, WidgetPreview } from "./Widgets";
@@ -120,7 +119,16 @@ export function Stage({
   return (
     <>
       {photo.status === "studioConflict" && (
-        <Callout title={p.conflictTitle}>{p.conflictBody}</Callout>
+        <section
+          className="v-studio-state-feedback v-preview-conflict"
+          role="status"
+        >
+          <Icon name="refresh" />
+          <div>
+            <strong>{p.conflictTitle}</strong>
+            <p>{p.conflictBody}</p>
+          </div>
+        </section>
       )}
       <section
         ref={root}
@@ -262,7 +270,7 @@ export function Stage({
               />
             </div>
           ) : (
-            <div aria-hidden="true">
+            <div className="v-preview-illustration" aria-hidden="true">
               <WidgetPreview
                 kind={item.kind}
                 opacity={item.opacity}

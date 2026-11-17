@@ -156,6 +156,19 @@ export async function checkStudioPreview(
             .click();
         const stage = page.locator(".v-preview-stage");
         await stage.getByText(title, { exact: true }).waitFor();
+        if (mode === "noDemo")
+          await until(
+            () =>
+              stage
+                .locator(".v-widget-preview[data-stage='true']")
+                .evaluate(
+                  (node) =>
+                    node.clientHeight ===
+                    node.closest(".v-focus-drawing")?.clientHeight,
+                ),
+            5000,
+            "illustration retains the full Stage height",
+          );
         if (mode === "photo") await stage.locator(".v-preview-photo").waitFor();
         if (mode === "studioConflict")
           await page.getByText(text.conflictTitle, { exact: true }).waitFor();

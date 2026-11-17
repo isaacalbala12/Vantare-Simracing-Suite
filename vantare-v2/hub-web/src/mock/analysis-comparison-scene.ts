@@ -95,6 +95,7 @@ export function comparisonScene(
       for (const side of ["a", "b"] as const)
         result[signal][side] = result[signal][side].map((p) => ({
           ...p,
+          value: signal === "throttle" && p.distance === 5000 ? 100 : p.value,
           elapsed:
             ((p.distance / 5000) * (times[request[side]] ?? 112000)) / 1000,
         }));

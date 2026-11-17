@@ -165,6 +165,28 @@ export async function checkAnalysisComparison(
                 ),
               );
             assert.deepEqual(series, ["a", "b"], "B must be painted after A");
+            assert.equal(
+              await page.locator(".v-an-trace").evaluateAll((plots) =>
+                plots.every(
+                  (plot) =>
+                    plot instanceof SVGSVGElement &&
+                    [
+                      ...plot.querySelectorAll(
+                        "text.v-an-series-a, text.v-an-series-b",
+                      ),
+                    ].every((label) => {
+                      if (!(label instanceof SVGGraphicsElement)) return false;
+                      const box = label.getBBox();
+                      return (
+                        box.y >= 0 &&
+                        box.y + box.height <= plot.viewBox.baseVal.height
+                      );
+                    }),
+                ),
+              ),
+              true,
+              "End labels must remain visible at signal limits",
+            );
             if (scene.startsWith("gaps")) {
               assert.ok(
                 (

@@ -252,7 +252,10 @@ export function ComparisonPlot({
                 plotLeft + plotWidth - 16,
                 x(plotCoordinate(last, axis.time) ?? 0) + 8,
               )}
-              y={y(last.value) + (side === "a" ? -8 : 12)}
+              y={Math.max(
+                side === "a" ? 14 : 28,
+                Math.min(height - 16, y(last.value) + (side === "a" ? -8 : 12)),
+              )}
               className={`v-an-series-${side}`}
             >
               {side === "a" ? t.a : t.b}

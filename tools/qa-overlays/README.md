@@ -249,3 +249,18 @@ En Waiting el muestreador se inicia DESPUÉS del host, modo directo de 60 s:
 CAPTURA-LISTA vuelve a ser su origen y conserva cinco segundos completos de
 calentamiento del host. Nunca se pasa ReplayStartQpc en Waiting. PROBAR_RONDA
 ejecuta y comprueba ambas órdenes con procesos falsos y el rechazo de derechos.
+
+Tras configurar Machine, reconstruir SOLO el núcleo por la cola, conservando
+los otros binarios y auxiliares con sus hashes (salida siempre nueva):
+
+```powershell
+pwsh -NoProfile -File tools/qa-overlays/COMPILAR_TANDA.ps1 -SoloNucleo `
+  -Source D:/VantareServer/worktrees/isa-2365-tanda-fb2e2e520 `
+  -BaseArtifacts D:/VantareServer/evidence/overlays-rune/kit-tanda-fb2e2e520 `
+  -Output D:/VantareServer/evidence/overlays-rune/kit-tanda-fb2e2e520/licenciado-UTC
+```
+
+Sin Machine aborta ANTES de entrar en cola/crear salida; probado con el token
+BLOCKED_LICENSE_CONFIG. Después hay que repetir dumpbin, preparar_tanda y
+TANDA -Modo Ensayo contra la nueva carpeta de binarios; no editar el manifiesto
+para cambiar production_rights_configured a mano.

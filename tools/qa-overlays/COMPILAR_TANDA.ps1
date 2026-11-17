@@ -1,6 +1,6 @@
 # Compilación reproducible por UN slot de la cola; jamás ejecuta overlays.
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Output,[switch]$DentroDelSlot)
+param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Output,[switch]$DentroDelSlot,[switch]$SoloNucleo,[string]$BaseArtifacts='')
 $ErrorActionPreference='Stop'
 $sha='fb2e2e520be96b59066e2a69c3899cf9842a0752'
 if(Test-Path D:/VantareServer/qa/captura.lock){throw 'BLOCKED_CAPTURE_LOCK: no lanzar Rust'}
@@ -8,12 +8,24 @@ if((Get-PSDrive D).Free -lt 40GB -or (Get-PSDrive C).Free -lt 8GB){throw 'BLOCKE
 if((git -C $Source rev-parse HEAD) -ne $sha){throw 'SHA de fuentes distinto del congelado'}
 $dirty=git -C $Source status --porcelain --untracked-files=normal
 if($LASTEXITCODE -or $dirty){throw 'Worktree de binarios no está limpio; separar herramientas y fuentes congeladas'}
+if($SoloNucleo -and -not [Environment]::GetEnvironmentVariable('VANTARE_LICENSE_PUBLIC_KEYS','Machine')){throw 'BLOCKED_LICENSE_CONFIG: falta registro Machine; no entrar en cola ni crear salida'}
 if(-not $DentroDelSlot){
  if(Test-Path -LiteralPath $Output){throw 'Salida de compilación debe ser nueva'}
+ if($SoloNucleo -and -not(Test-Path -LiteralPath (Join-Path $BaseArtifacts 'binarios.json'))){throw 'SoloNucleo necesita BaseArtifacts de la construcción anterior'}
  $null=New-Item -ItemType Directory -Path $Output
+ if($SoloNucleo){
+  $null=New-Item -ItemType Directory -Path (Join-Path $Output 'bin')
+  Get-ChildItem -LiteralPath (Join-Path $BaseArtifacts 'bin') -File|Where-Object Name -ne 'vantare-core.exe'|Copy-Item -Destination (Join-Path $Output 'bin')
+  $previous=@(Get-Content -LiteralPath (Join-Path $BaseArtifacts 'binarios.json') -Raw|ConvertFrom-Json -AsHashtable)|Where-Object name -ne 'vantare-core'
+  ConvertTo-Json -InputObject @($previous) -Depth 10|Set-Content -LiteralPath (Join-Path $Output 'binarios.json') -Encoding utf8
+  foreach($name in @('lifecycle-binarios.json','lifecycle-ci.json','presentmon-procedencia.json','presentmon-verificado.json')){
+   Copy-Item -LiteralPath (Join-Path $BaseArtifacts $name) -Destination (Join-Path $Output $name)
+  }
+ }
  Push-Location (Join-Path $Source 'vantare-v2')
  try {
-  & pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File $PSCommandPath -Source $Source -Output $Output -DentroDelSlot
+  $extra=if($SoloNucleo){@('-SoloNucleo','-BaseArtifacts',$BaseArtifacts)}else{@()}
+  & pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File $PSCommandPath -Source $Source -Output $Output -DentroDelSlot @extra
   if($LASTEXITCODE){throw "Cola/compilación falló: $LASTEXITCODE"}
  } finally {Pop-Location}
  return
@@ -23,7 +35,7 @@ $env:RUSTUP_TOOLCHAIN='1.99.1';$env:CARGO_BUILD_JOBS='1'
 $env:CARGO_PROFILE_RELEASE_DEBUG='0';$env:CARGO_PROFILE_RELEASE_OPT_LEVEL='3'
 $env:CARGO_PROFILE_RELEASE_LTO='false';$env:CARGO_PROFILE_RELEASE_CODEGEN_UNITS='16'
 $env:VANTARE_BUILD_CHANNEL='nightly'
-$null=New-Item -ItemType Directory -Path (Join-Path $Output 'bin')
+$null=New-Item -ItemType Directory -Path (Join-Path $Output 'bin') -Force
 $steps=@(
  @{manifest='native/overlays-rune/Cargo.toml';package='vantare-overlays-rune';binary='vantare-overlays-rune';features=''},
  @{manifest='native/Cargo.toml';package='vantare-ui';binary='vantare-overlays';features='parity-capture'},
@@ -32,6 +44,8 @@ $steps=@(
  @{manifest='native/Cargo.toml';package='vantare-runtime';binary='vantare';features=''}
 )
 $rows=@()
+if($SoloNucleo){$rows=@(Get-Content -LiteralPath (Join-Path $Output 'binarios.json') -Raw|ConvertFrom-Json -AsHashtable)}
+if($SoloNucleo){$steps=@($steps|Where-Object binary -eq 'vantare-core')}
 foreach($step in $steps){
  if(Test-Path D:/VantareServer/qa/captura.lock){throw 'BLOCKED_CAPTURE_LOCK: no arrancar otro cargo'}
  if((Get-PSDrive D).Free -lt 40GB){throw 'BLOCKED_DISK: detener antes de otro cargo'}

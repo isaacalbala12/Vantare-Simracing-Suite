@@ -171,7 +171,7 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  if($list.code -ne 0 -or @($list.stdout -split "`n"|Where-Object {$_ -match '^rune_[a-z_]+: test\s*$'}).Count -ne 4){throw 'No se enumeraron exactamente cuatro tests lifecycle, sin ejecutarlos'}
  $fake=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_TANDA.ps1')) (Join-Path $Output 'controlador-falso') 90
  if($fake.code -ne 0){throw 'El ensayo del controlador falso falló'}
- $csv=Invoke-TandaProcess 'python' @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_medidas.py') (Join-Path $Output 'csv-falsos') 60
+ $csv=Invoke-TandaProcess 'python' @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_*.py') (Join-Path $Output 'csv-falsos') 60
  if($csv.code -ne 0){throw 'Las regresiones de CSV falsos fallaron'}
  Write-TandaJson @{source_sha=$manifest.source_sha;production_rights_configured=$manifest.production_rights_configured;guard_code=6;guard_token='GRAPHICS_DISABLED';input_hashes='PASS';captures=$manifest.captures.Count;measurements=$manifest.measurements.Count;gpu_executed=$false;shutdown_executed=$false;utc=[DateTime]::UtcNow.ToString('o')} (Join-Path $Output 'ensayo.json')
 }

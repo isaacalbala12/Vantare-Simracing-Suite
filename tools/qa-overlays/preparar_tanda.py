@@ -120,6 +120,10 @@ def prepare(repo, output, binary_directory, presentmon, corpus):
     for number, (kind, (filename, size)) in enumerate(SCENES.items()):
         source = fixtures / filename
         raw = source.read_bytes()
+        canonical = output / source.relative_to(repo)
+        canonical.parent.mkdir(parents=True, exist_ok=True)
+        if not canonical.exists():
+            canonical.write_bytes(raw)
         values = photos(json.loads(raw))
         case_root = output / "inputs" / kind
         case_root.mkdir()

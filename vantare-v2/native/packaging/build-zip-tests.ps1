@@ -15,7 +15,7 @@ $bad=Join-Path $root 'invalid.zip'
 $rejected=$false
 try{New-BuildZip $source $bad -CompressionLevel 'invalid'}catch{$rejected=$true}
 if(-not $rejected -or (Test-Path -LiteralPath $bad)){throw 'An invalid compression request produced an archive'}
-$levels=@('Optimal')
+$levels=@('Optimal','Default')
 if([Enum]::GetNames([IO.Compression.CompressionLevel]) -contains 'SmallestSize'){$levels+='SmallestSize'}
 else{
     $unavailable=Join-Path $root 'unavailable.zip'
@@ -25,7 +25,9 @@ else{
 }
 foreach($level in $levels){
     $archive=Join-Path $root ($level+'.zip')
-    New-BuildZip $source $archive -CompressionLevel $level
+    $options=@{}
+    if($level -cne 'Default'){$options.CompressionLevel=$level}
+    New-BuildZip $source $archive @options
     $zip=[IO.Compression.ZipFile]::OpenRead($archive)
     try{
         if($zip.Entries.Count -ne $expected.Count){throw 'ZIP member count changed'}

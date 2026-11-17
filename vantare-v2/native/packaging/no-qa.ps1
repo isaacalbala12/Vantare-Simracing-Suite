@@ -116,7 +116,7 @@ function Assert-NativeDistributionArchive([string]$Path, [string]$Registry) {
     $zip=[IO.Compression.ZipFile]::OpenRead($Path)
     try {
         foreach($entry in $zip.Entries) {
-            if(-not ($entry.FullName.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase) -or $entry.FullName.StartsWith('hub-ui/',[StringComparison]::OrdinalIgnoreCase))){continue}
+            if(-not ($entry.FullName.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase) -or $entry.FullName -match '(^|/)hub-ui/')){continue}
             $name=[IO.Path]::GetFileName($entry.FullName)
             $stream=$entry.Open()
             try {

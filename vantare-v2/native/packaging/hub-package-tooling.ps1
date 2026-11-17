@@ -42,7 +42,7 @@ function Write-HubNotices([string]$Project,[string]$Destination) {
         $writer.WriteLine([IO.File]::ReadAllText((Join-Path $Project 'package.json')))
         $writer.WriteLine([IO.File]::ReadAllText((Join-Path $Project 'bun.lock')))
         $count=0
-        foreach($file in Get-ChildItem -LiteralPath $modules -File -Recurse -Force|Where-Object {$_.Name -match '^(LICENSE|LICENCE|COPYING|NOTICE)(\..*)?$'}|Sort-Object FullName){
+        foreach($file in Get-ChildItem -LiteralPath $modules -File -Recurse -Force|Where-Object {$_.Name -match '^(LICENSE|LICENCE|COPYING|NOTICE)([._-].*)?$'}|Sort-Object FullName){
             if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'License link rejected'}
             $writer.WriteLine("`n--- $($file.FullName.Substring($modules.Length+1).Replace('\','/')) ---")
             $writer.WriteLine([IO.File]::ReadAllText($file.FullName));$count++

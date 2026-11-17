@@ -140,6 +140,8 @@ try{
     $generation=Join-Path $portableTree ('generations/'+$id)
     [IO.Directory]::CreateDirectory($generation)|Out-Null
     Copy-Item -Path (Join-Path $payload '*') -Destination $generation -Recurse
+    $manifestPath=Join-Path $payload 'manifest.json'
+    Assert-SealedFiles $generation ($files+@(@{path='manifest.json';size=(Get-Item -LiteralPath $manifestPath).Length;sha256=(Get-NativeHash $manifestPath)}))
     [IO.Directory]::CreateDirectory((Join-Path $generation 'data'))|Out-Null
     # The portable ZIP omits directory records; keep its initial data/ on extraction.
     [IO.File]::WriteAllBytes((Join-Path $generation 'data/.vantare-directory'),[byte[]]::new(0))

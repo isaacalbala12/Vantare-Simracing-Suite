@@ -66,7 +66,14 @@ if($kept.Count -ne $files.Count){
     }
 }
 $reduced=Join-Path $output 'reduced.zip'
+# Compare the same pruned input; only ZIP creation/validation is timed.
+$optimal=Join-Path $output 'optimal.zip'
+$clock=[Diagnostics.Stopwatch]::StartNew()
+New-BuildZip $stage $optimal -CompressionLevel 'Optimal'
+$clock.Stop();$optimalSeconds=$clock.Elapsed.TotalSeconds
+$clock.Restart()
 New-BuildZip $stage $reduced -CompressionLevel 'SmallestSize'
+$clock.Stop();$smallestSeconds=$clock.Elapsed.TotalSeconds
 $gzipPath=Join-Path $output 'app.asar.gz'
 $readStream=[IO.File]::OpenRead($asar);$destination=[IO.File]::Open($gzipPath,[IO.FileMode]::CreateNew)
 $gzip=[IO.Compression.GZipStream]::new($destination,$level)
@@ -81,6 +88,10 @@ $after=@(Get-PackageFiles $source)
 if(($files|ConvertTo-Json -Depth 4 -Compress) -cne ($after|ConvertTo-Json -Depth 4 -Compress)){throw 'Source changed during measurement'}
 $result=[ordered]@{
     package='electron-only';compression='SmallestSize';sourceUnchanged=$true
+    zipLimitBytes=$script:BuildPackageZipLimitBytes;expandedLimitBytes=$script:BuildPackageExpandedLimitBytes
+    optimalZipSeconds=$optimalSeconds;smallestZipSeconds=$smallestSeconds
+    optimalZipBytes=(Get-Item -LiteralPath $optimal).Length;optimalZipSha256=(Get-NativeHash $optimal)
+    recommendedCompression=(Get-BuildCompressionChoice $optimalSeconds $smallestSeconds)
     beforeBytes=[long](($files|Measure-Object size -Sum).Sum);afterBytes=[long](($kept|Measure-Object size -Sum).Sum)
     beforeZipBytes=(Get-Item -LiteralPath $baseline).Length;afterZipBytes=(Get-Item -LiteralPath $reduced).Length
     beforeZipSha256=$BaselineSha256.ToLowerInvariant();afterZipSha256=(Get-NativeHash $reduced)

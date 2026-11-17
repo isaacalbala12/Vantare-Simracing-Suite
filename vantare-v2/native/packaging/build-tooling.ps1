@@ -25,6 +25,25 @@ function Get-NativeHash([string]$Path) {
 function Write-BuildJson([string]$Path,$Value) {
     [IO.File]::WriteAllText($Path,($Value|ConvertTo-Json -Depth 100),[Text.UTF8Encoding]::new($false))
 }
+# New-generation tooling limits. Installed clients and their limits are unchanged.
+$script:BuildPackageZipLimitBytes = 256MB
+$script:BuildPackageExpandedLimitBytes = 768MB
+function Assert-BuildPackageCapacity([string]$Archive) {
+    $path=Assert-BuildPath $Archive
+    if((Get-Item -LiteralPath $path).Length -gt $script:BuildPackageZipLimitBytes){throw 'PACKAGE_ZIP_LIMIT'}
+    $zip=[IO.Compression.ZipFile]::OpenRead($path)
+    try{
+        [long]$expanded=0
+        foreach($entry in $zip.Entries){
+            if($entry.Length -gt ($script:BuildPackageExpandedLimitBytes - $expanded)){throw 'PACKAGE_EXPANDED_LIMIT'}
+            $expanded+=$entry.Length
+        }
+    }finally{$zip.Dispose()}
+}
+function Get-BuildCompressionChoice([double]$OptimalSeconds,[double]$SmallestSizeSeconds) {
+    if($SmallestSizeSeconds - $OptimalSeconds -lt 120){'SmallestSize'}else{'Optimal'}
+}
+
 function New-BuildZip([string]$Directory,[string]$Destination,[ValidateSet('Optimal','SmallestSize')][string]$CompressionLevel='Optimal') {
     $directory=Assert-BuildPath $Directory;$destination=Assert-BuildPath $Destination
     # Resolve before creating the archive: PS 5.1 has no SmallestSize.
@@ -37,6 +56,7 @@ function New-BuildZip([string]$Directory,[string]$Destination,[ValidateSet('Opti
             if(-not $item.PSIsContainer){$null=[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,$item.FullName,$name,$level)}
         }
     }finally{$zip.Dispose()}
+    Assert-BuildPackageCapacity $destination
 }
 function Test-BuildPackage([string]$Archive,[string]$Version,[string]$Channel,[string]$Verifier) {
     $archive=Assert-BuildPath $Archive

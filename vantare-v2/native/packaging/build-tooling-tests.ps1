@@ -9,6 +9,7 @@ if(-not ($qa.StartsWith('D:\VantareServer\qa\',[StringComparison]::OrdinalIgnore
 $root=Join-Path $qa ('build-tooling-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root)|Out-Null
 & (Join-Path $PSScriptRoot 'build-zip-tests.ps1') -QaRoot $root
+& (Join-Path $PSScriptRoot 'build-package-capacity-tests.ps1') -QaRoot $root
 if($PSVersionTable.PSVersion.Major -ge 7 -and [Enum]::GetNames([IO.Compression.CompressionLevel]) -contains 'SmallestSize'){& (Join-Path $PSScriptRoot 'measure-hub-package-tests.ps1') -QaRoot $root}
 $probe=Join-Path $root 'stdin-probe.ps1'
 [IO.File]::WriteAllText($probe,'$s=[Console]::OpenStandardInput();$b=New-Object byte[] 3;$n=$s.Read($b,0,3);[Console]::Write([BitConverter]::ToString($b,0,$n))',[Text.UTF8Encoding]::new($false))

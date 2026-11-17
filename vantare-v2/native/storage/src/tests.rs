@@ -895,13 +895,13 @@ fn v2_tables_keep_sql_types_and_bounded_metadata_readers_report_retention() {
         .map(|line| serde_json::from_slice(line).unwrap())
         .collect();
     for frame in &frames[1..] {
-        assert_eq!(frame[1], 257);
-        assert_eq!(frame[2].as_array().unwrap().len(), 256);
+        assert_eq!(frame[2], 257);
+        assert_eq!(frame[3].as_array().unwrap().len(), 256);
     }
-    assert_eq!(frames[1][2][0]["session"], 256);
-    assert_eq!(frames[1][2][255]["session"], 1);
-    assert_eq!(frames[2][2][0]["lap"], 0);
-    assert_eq!(frames[2][2][255]["lap"], 255);
+    assert_eq!(frames[1][3][0]["session"], 256);
+    assert_eq!(frames[1][3][255]["session"], 1);
+    assert_eq!(frames[2][3][0]["lap"], 0);
+    assert_eq!(frames[2][3][255]["lap"], 255);
 }
 
 #[test]
@@ -917,10 +917,88 @@ fn metadata_lost_ack_preserves_committed_identity_and_safe_retry() {
     assert!(serve_mode(&db.0, OpenMode::Create, input.as_bytes(), &mut output).is_err());
     assert_eq!(output.bytes, b"[\"ready\",0,false,0]\n");
     let mut recovered = Store::open(&db.0, false).unwrap();
-    assert_eq!(metadata::sessions(&recovered).unwrap()[1], 1);
+    assert_eq!(metadata::sessions(&recovered).unwrap()[2], 1);
     assert_eq!(
         metadata::write(&mut recovered, "session-open", &event).unwrap(),
         json!(["ack-session", "open", 1, 3])
     );
-    assert_eq!(metadata::sessions(&recovered).unwrap()[1], 1);
+    assert_eq!(metadata::sessions(&recovered).unwrap()[2], 1);
+}
+
+#[test]
+fn lap_pages_recover_all_600_rows_across_car_boundaries_without_duplicates() {
+    let db = Database::new();
+    {
+        let store = Store::open(&db.0, false).unwrap();
+        store.connection.execute_batch("INSERT INTO lap_times SELECT 1, 3, (i//300)::UINTEGER, (i%300)::UINTEGER, i::UINTEGER, NULL FROM range(600) t(i);").unwrap();
+    }
+    let mut output = Vec::new();
+    serve_mode(&db.0, OpenMode::ReadOnly,
+        &b"[\"lap-times\",1,3,null,256]\n[\"lap-times\",1,3,[0,255],256]\n[\"lap-times\",1,3,[1,211],256]\n[\"lap-times\",1,3,[1,299],256]\n"[..],
+        &mut output).unwrap();
+    let frames: Vec<Value> = output
+        .split(|b| *b == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_slice(line).unwrap())
+        .collect();
+    assert_eq!(frames.len(), 5);
+    let mut keys = Vec::new();
+    for (frame, count) in frames[1..].iter().zip([256, 256, 88, 0]) {
+        assert_eq!(frame[0], "lap-times");
+        assert_eq!(frame[1], "series-laps.v1");
+        assert_eq!(frame[2], 600);
+        let rows = frame[3].as_array().unwrap();
+        assert_eq!(rows.len(), count);
+        for row in rows {
+            keys.push((row["car"].as_u64().unwrap(), row["lap"].as_u64().unwrap()));
+        }
+    }
+    let expected: Vec<_> = (0..600).map(|i| (i / 300, i % 300)).collect();
+    assert_eq!(keys, expected);
+}
+
+#[test]
+fn metadata_invalid_event_does_not_write_or_poison_the_store() {
+    let db = Database::new();
+    let mut store = Store::open(&db.0, false).unwrap();
+    for (name, event) in [
+        ("session-open", json!(null)),
+        ("lap", json!({})),
+        ("session-close", json!([])),
+    ] {
+        assert_eq!(
+            metadata::write(&mut store, name, &event).unwrap(),
+            json!(["rejected", "invalid"])
+        );
+        assert!(!store.failed);
+    }
+    assert_eq!(
+        metadata::sessions(&store).unwrap(),
+        json!(["session-summaries", "series-session.v1", 0, []])
+    );
+    assert_eq!(store.append(&chunk(1, 0)).unwrap(), 1);
+}
+
+#[test]
+fn lap_page_limits_and_cursor_shape_are_closed_and_bounded() {
+    let db = Database::new();
+    let store = Store::open(&db.0, false).unwrap();
+    for (after, limit) in [
+        (json!(null), json!(0)),
+        (json!(null), json!(257)),
+        (json!(null), json!(1.5)),
+        (json!([0]), json!(1)),
+        (json!([-1, 0]), json!(1)),
+        (json!([u64::MAX, 0]), json!(1)),
+        (json!([0, 0, 0]), json!(1)),
+        (json!("0"), json!(1)),
+    ] {
+        assert!(metadata::laps(&store, &json!(1), &json!(3), &after, &limit).is_err());
+    }
+    for limit in [1, 256] {
+        assert_eq!(
+            metadata::laps(&store, &json!(1), &json!(3), &Value::Null, &json!(limit)).unwrap(),
+            json!(["lap-times", "series-laps.v1", 0, []])
+        );
+    }
 }

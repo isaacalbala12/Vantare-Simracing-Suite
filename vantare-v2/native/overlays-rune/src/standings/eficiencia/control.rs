@@ -225,6 +225,8 @@ impl Widget for Eficiencia {
                 .as_ref()
                 .is_some_and(|last| Arc::ptr_eq(last, &board))
         {
+            // GPUI vuelve a muestrear Visual::frame al salir de pausa aunque Board sea el mismo.
+            if pause_changed { self.sample(clock); }
             return Update {
                 build: pause_changed,
                 pixels: false,

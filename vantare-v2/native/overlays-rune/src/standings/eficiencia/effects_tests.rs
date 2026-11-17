@@ -322,7 +322,19 @@ fn painted_effects_copy_gpui_hex_geometry_glyph_and_layer_order() {
     assert_eq!(named("position-chip").text.as_deref(), Some("+2"));
     assert_eq!(named("best-marker").text.as_deref(), Some("◆"));
     assert_eq!(named("best-marker").text_color.unwrap().hex(), "#bd9be8ff");
-    assert_eq!(named("battle-underline").rect[3], 2.0);
+    // view.rs:1222–1246 y1349–1362: valores Signature calculados a mano.
+    near(named("position-chip").rect[0]+named("position-chip").rect[2],252.0);
+    near(named("position-chip").rect[1],53.0);
+    near(named("best-marker").rect[0]+named("best-marker").rect[2],437.0);
+    near(named("best-marker").rect[1],46.0);
+    assert_eq!(named("battle-underline").rect,[68.0,70.0,184.0,2.0]);
+    assert_eq!(named("best-sweep").rect,[352.0,44.0,88.0,28.0]);
+    for (rect,angle,hex,alpha) in [([68.0,70.0,184.0,2.0],90.0,"#e2c568",0.55),
+        ([352.0,44.0,88.0,28.0],100.0,"#b990e8",0.0)] {
+        let grad=rt.instances.iter().find(|i|i.rect==rect&&i.params[3]==1.0&&i.uv[0]!=0.0).unwrap();
+        near(grad.uv[0].atan2(-grad.uv[1]).to_degrees().rem_euclid(360.0),angle);
+        assert_eq!(grad.fill,rune::color::hex(hex).unwrap().premul(alpha));
+    }
     assert!(es.iter().any(|e| e.key.as_deref() == Some("best-sweep")));
     let flash = es
         .iter()
@@ -333,4 +345,48 @@ fn painted_effects_copy_gpui_hex_geometry_glyph_and_layer_order() {
         .position(|e| e.key.as_deref() == Some("position-chip"))
         .unwrap();
     assert!(flash < chip);
+}
+
+#[test]
+fn battle_prefers_the_player_over_a_smaller_gap_and_rejects_invalid_candidates() {
+    let mut p=plan((1..=4).map(|id|row(id,i64::from(id))).collect());
+    for (r,gap) in p.rows.iter_mut().zip([0.0,0.1,1.0,1.7]) {Arc::make_mut(&mut r.row).battle_gap_seconds=Some(gap);}
+    Arc::make_mut(&mut p.rows[3].row).is_player=true;
+    let ids=p.rows.iter().map(|r|r.id).collect();
+    let b=select_battle(&p,&ids,None).unwrap();assert_eq!((b.ahead,b.behind),(CarId(3),CarId(4)));
+    Arc::make_mut(&mut p.rows[3].row).class="LMP2".into();
+    assert_eq!(select_battle(&p,&ids,None).unwrap().behind,CarId(2));
+    p.race=false;assert!(select_battle(&p,&ids,None).is_none());p.race=true;
+    Arc::make_mut(&mut p.rows[0].row).battle_gap_seconds=Some(f64::NAN);
+    Arc::make_mut(&mut p.rows[2].row).battle_gap_seconds=Some(-1.0);
+    assert!(select_battle(&p,&ids,None).is_none());
+}
+#[test]
+fn loss_chip_and_pit_offset_glow_are_painted_in_the_literal_box() {
+    let mut v=paint_tests::visual(); let mut p=(*v.content_plan).clone();p.rows.truncate(1);p.status=Status::Ready;
+    Arc::make_mut(&mut p.rows[0].row).in_pits=true;v.ingest(Arc::new(p.clone()));
+    let mut frame=Frame::default();frame.vis.insert(p.rows[0].id,Pose{flash:1.0,flash_up:false,chip:Some((-1,1.0)),
+        pit_alpha:0.5,pit_dx:-2.5,..Pose::default()});v.frame=Arc::new(frame);
+    let size=v.size();let mut rt=paint_tests::paint(v,Language::En);crate::testdata::assert_inside_window(&mut rt,size);
+    let es=rt.elements();let named=|key:&str|es.iter().find(|e|e.key.as_deref()==Some(key)).unwrap();
+    assert_eq!(named("position-flash").fill.hex(),"#d953601f");assert_eq!(named("position-chip").text.as_deref(),Some("−1"));
+    assert_eq!(named("pit-badge-0").rect,[438.0,44.0,34.0,26.0]);near(named("pit-badge-0").opacity,0.5);
+    assert!(rt.instances.iter().any(|i|i.params[1]==1.0&&i.params[2]==2.0&&i.fill==rune::color::hex("#e2c568").unwrap().premul(0.11)));
+}
+
+#[test]
+fn resume_samples_expired_channels_even_when_the_board_arc_is_unchanged() {
+    let settings=Settings {class_scope:"all-classes".into(),row_count:10,..Settings::eficiencia()};
+    let mut w=Eficiencia::new(&settings,Preferences::default());
+    let mut photo=vantare_ipc::snapshot_from_json(include_str!("../../../../ui/fixtures/standings.snapshot.json")).unwrap();
+    w.update(&photo,0.0);
+    photo.state.cars[0].position=vantare_domain::Quality::Reliable(2);
+    photo.state.cars[1].position=vantare_domain::Quality::Reliable(1);w.update(&photo,1.0);w.animate(1.1);
+    let frozen=w.visual.frame.clone();let board=w.visual.content_plan.board.clone();
+    photo.state.source_state=vantare_domain::SourceState::Paused;w.update(&photo,1.1);
+    assert!(!w.animate(3.0).build);assert!(Arc::ptr_eq(&frozen,&w.visual.frame));
+    photo.state.source_state=vantare_domain::SourceState::Live;assert!(w.update(&photo,3.0).build);
+    assert!(Arc::ptr_eq(&board,&w.visual.content_plan.board));
+    assert_ne!(*frozen,*w.visual.frame);near(w.visual.frame.row(photo.state.cars[0].id).offset,0.0);
+    assert!(w.motion.next_wake(3.0,60).is_none());
 }

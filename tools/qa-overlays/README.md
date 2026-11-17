@@ -192,7 +192,13 @@ sin ejecutar binarios. Todo resultado de ensayo va en logs externos al repo.
 ### Ciclo de vida Rune (#2522), solo en la cita autorizada
 
 El producto se mantiene en fb2e2e520, anterior a M1/M2. Se transporta también
-vantare.exe de esa base y se usa --overlays-bin, sin recongelar producto.
+vantare.exe y se usa --overlays-bin, sin recongelar producto. Por excepción
+expresa de la raíz, el launcher auxiliar se reutiliza del run oficial
+44006217558, SHA 8358fdae1 (descendiente de fb2e2e520), perfil debug de CI;
+sus hashes y los del archivo original constan en builds. No entra en las
+mediciones CPU/memoria. El arnés CI fija con env! una ruta D:/a/... del runner
+que no existe en la carpeta QA: por eso se compila solo su adaptación portátil
+por la cola; no se crean rutas/junctions fuera de C:/VantareQA.
 Los cuatro tests ignorados de #2522 se precompilan aparte desde su fuente
 registrada en lifecycle-binarios.json; no se ejecuta Cargo en el PC. Se invoca
 lifecycle-rune-tests.exe --ignored --test-threads=1 --nocapture, con las rutas

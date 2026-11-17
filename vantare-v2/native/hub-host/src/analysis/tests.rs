@@ -553,9 +553,9 @@ mod real {
     fn bridge_worker_uses_real_helper_and_replaces_sessions() {
         use crate::analysis::catalog::{AnalysisState, State};
         use crate::protocol::{HostError, Reply, Request};
-        fn complete(state: &mut State, request: Request) -> Result<Reply, HostError> {
+        fn complete(state: &mut State, request: &Request) -> std::result::Result<Reply, HostError> {
             let now = Instant::now();
-            if let Some(reply) = state.start(3, &request, now)? {
+            if let Some(reply) = state.start(3, request, now)? {
                 return Ok(reply);
             }
             // Explicit completion synchronization; the production poll itself never waits.
@@ -568,14 +568,14 @@ mod real {
         state.helper_for_test(exe());
         let id = state.catalog().unwrap()[0].id.clone();
         assert!(matches!(
-            complete(&mut state, Request::AnalysisInspect { id: id.clone() }).unwrap(),
+            complete(&mut state, &Request::AnalysisInspect { id: id.clone() }).unwrap(),
             Reply::AnalysisInspect {
                 state: AnalysisState::Complete,
                 laps: 1,
                 ..
             }
         ));
-        let first = complete(&mut state, Request::AnalysisOpen { id: id.clone() }).unwrap();
+        let first = complete(&mut state, &Request::AnalysisOpen { id: id.clone() }).unwrap();
         let Reply::AnalysisOpen {
             session: old,
             watermark,
@@ -596,17 +596,17 @@ mod real {
             (0, 7, None)
         );
         let Reply::AnalysisOpen { session, .. } =
-            complete(&mut state, Request::AnalysisOpen { id }).unwrap()
+            complete(&mut state, &Request::AnalysisOpen { id }).unwrap()
         else {
             panic!("open");
         };
         assert_ne!(session, old);
         assert_eq!(
-            complete(&mut state, Request::AnalysisClose { session: old }),
+            complete(&mut state, &Request::AnalysisClose { session: old }),
             Err(HostError::AnalysisNotFound)
         );
         assert_eq!(
-            complete(&mut state, Request::AnalysisClose { session }),
+            complete(&mut state, &Request::AnalysisClose { session }),
             Ok(Reply::AnalysisClose {})
         );
         drop(state);

@@ -294,11 +294,14 @@ impl State {
         let buffered = self.test_result.take();
         #[cfg(not(test))]
         let buffered: Option<worker::Completion> = None;
-        let completion = match buffered.map(Ok).unwrap_or_else(|| {
-            self.worker
-                .as_ref()
-                .map_or(Err(mpsc::TryRecvError::Empty), |w| w.results.try_recv())
-        }) {
+        let completion = match buffered.map_or_else(
+            || {
+                self.worker
+                    .as_ref()
+                    .map_or(Err(mpsc::TryRecvError::Empty), |w| w.results.try_recv())
+            },
+            Ok,
+        ) {
             Ok(completion) => completion,
             Err(mpsc::TryRecvError::Empty) => return None,
             Err(mpsc::TryRecvError::Disconnected) => {

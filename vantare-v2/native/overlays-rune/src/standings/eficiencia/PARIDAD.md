@@ -272,7 +272,7 @@ El reposo vuelve a compartir Arc; sequence no decide la proyección ni repintado
 Al salir de pausa se muestrea el frame final incluso con el mismo Board, como
 Visual::frame del host GPUI; pausa y reducido siguen sin frames de animación.
 Handoff y evidencia final de E6 se entregan en el cuerpo del futuro PR, sin
-editar el handoff vivo. E6 sigue solo local hasta la fusión de E5 #2511.
+editar el handoff vivo. E6 se publica contra nightly con E5 #2511 fusionado como 5aa79a733.
 
 ## Erratas del plan/inventario E6 contrastadas con GPUI
 
@@ -290,11 +290,11 @@ Los tests de Eficiencia aíslan sus fuentes con with_families: TextSystem::new
 sin ese guard cambia el medidor global de Rune y podía alterar el oráculo Mono
 de Vantare en paralelo. No se cambia ningún oráculo ni test de Vantare.
 Verificación local E6: fmt --check, clippy --all-targets -- -D warnings,
-598 tests lib + 3 bin PASS en Mac; 51 tests Python de clasificadores/tokens/
+601 tests lib + 3 bin PASS en Mac; 51 tests Python de clasificadores/tokens/
 dependencias, generador --check y auditoría de licencias PASS. Runtime CPU,
 sin abrir ventana. Comparación física de píxeles y CI Windows pendientes.
 
 Build del ejecutable y cinco tests de política de distribución con
-debug-assertions=no PASS en el mismo target del Mac. Delta frente a E5
-d2406c5ce: producción +552/−32=584 líneas; tests +543/−28=571.
+debug-assertions=no PASS en el mismo target del Mac. Delta frente a nightly
+5aa79a733: producción +555/−32=587 líneas; tests +697/−28=725.
 El target propio se borra al terminar esta verificación local.

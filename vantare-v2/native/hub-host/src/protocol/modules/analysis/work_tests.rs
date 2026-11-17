@@ -413,3 +413,296 @@ fn worker_reports_too_many_if_catalog_grows_after_dispatch() {
     drop(state);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn compare_uses_existing_busy_deadline_cancel_and_token_rules() {
+    let now = Instant::now();
+    for cancel in [false, true] {
+        let (mut s, _held, _done) = held();
+        s.session = Some("b".repeat(64));
+        let old = Request::AnalysisCompare {
+            session: "a".repeat(64),
+            a: 0,
+            b: 0,
+        };
+        assert_eq!(s.start(1, &old, now), Err(HostError::AnalysisNotFound));
+        let req = Request::AnalysisCompare {
+            session: "b".repeat(64),
+            a: 0,
+            b: 0,
+        };
+        assert_eq!(s.start(1, &req, now), Ok(None));
+        assert_eq!(s.start(2, &req, now), Err(HostError::Busy));
+        let (at, error) = if cancel {
+            assert!(s.cancel());
+            (now, HostError::AnalysisCancelled)
+        } else {
+            (now + Duration::from_secs(40), HostError::AnalysisTimeout)
+        };
+        assert_eq!(s.poll(at, true, false), Some((1, Err(error))));
+        assert!(s.session.is_none());
+    }
+}
+
+#[cfg(windows)]
+mod compare_real {
+    use super::*;
+    use std::{
+        io::{BufRead, BufReader, Write},
+        process::{Command, Stdio},
+    };
+    fn helper() -> PathBuf {
+        std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("vantare-storage.exe")
+    }
+    fn fixture(gap: bool) -> (PathBuf, State, String) {
+        let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+        std::fs::create_dir(&root).unwrap();
+        let mut writer = Command::new(helper())
+            .arg(root.join("recording.duckdb"))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut output = BufReader::new(writer.stdout.take().unwrap());
+        let mut line = String::new();
+        output.read_line(&mut line).unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&line).unwrap()[0],
+            "ready"
+        );
+        for lap in 0..2 {
+            for i in 0..34 {
+                let index = lap * 34 + i + 1;
+                let d = f64::from(i) * 100.0;
+                let elapsed = f64::from(i) * if lap == 0 { 1.2 } else { 1.0 };
+                let seq = lap * 34 + i + 1;
+                let chunk = serde_json::json!([
+                    "vantare.series-chunk.v1",
+                    index,
+                    0,
+                    i,
+                    [
+                        "vantare.player-lap.v1",
+                        1,
+                        3,
+                        7,
+                        lap,
+                        null,
+                        gap && lap == 0 && i == 16,
+                        [[seq, [1, d], [1, elapsed], [1, 50.0], [1, 0.5], [1, 0.25]]]
+                    ]
+                ]);
+                writeln!(
+                    writer.stdin.as_mut().unwrap(),
+                    "{}",
+                    serde_json::json!(["append", chunk])
+                )
+                .unwrap();
+                line.clear();
+                output.read_line(&mut line).unwrap();
+                assert_eq!(
+                    serde_json::from_str::<serde_json::Value>(&line).unwrap()[0],
+                    "ack",
+                    "{line}"
+                );
+            }
+        }
+        writeln!(
+            writer.stdin.as_mut().unwrap(),
+            "{}",
+            serde_json::json!(["finish", 68])
+        )
+        .unwrap();
+        line.clear();
+        output.read_line(&mut line).unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&line).unwrap()[0],
+            "finished"
+        );
+        drop(writer.stdin.take());
+        assert!(writer.wait().unwrap().success());
+        let mut state = State::new(root.clone());
+        state.helper_for_test(helper());
+        let id = state.catalog().unwrap()[0].id.clone();
+        state
+            .start(1, &Request::AnalysisOpen { id }, Instant::now())
+            .unwrap();
+        state.wait_for_test();
+        let Some((1, Ok(Reply::AnalysisOpen { session, laps, .. }))) =
+            state.poll(Instant::now(), true, false)
+        else {
+            panic!("open")
+        };
+        assert_eq!(laps.len(), 2);
+        (root, state, session)
+    }
+    #[test]
+    fn cancelling_real_compare_reaps_reader_and_invalidates_session() {
+        let (root, mut state, session) = fixture(false);
+        let (ready, resume) = state.pause_next_read_for_test();
+        let request = Request::AnalysisCompare {
+            session: session.clone(),
+            a: 0,
+            b: 1,
+        };
+        let now = Instant::now();
+        state.start(9, &request, now).unwrap();
+        let _pid = ready.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert!(state.cancel());
+        assert_eq!(
+            state.poll(now, true, false),
+            Some((9, Err(HostError::AnalysisCancelled)))
+        );
+        resume.send(()).unwrap();
+        state.wait_for_test();
+        assert!(state.poll(now, true, false).is_none());
+        assert_eq!(
+            state.start(10, &request, now),
+            Err(HostError::AnalysisNotFound)
+        );
+        // A new writer requires that the cancelled read-only helper released its lock.
+        let mut writer = Command::new(helper())
+            .arg(root.join("recording.duckdb"))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let mut line = String::new();
+        BufReader::new(writer.stdout.take().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&line).unwrap()[0],
+            "ready"
+        );
+        drop(writer.stdin.take());
+        assert!(writer.wait().unwrap().success());
+        drop(state);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn compare_real_pages_cross_boundaries_and_leave_database_intact() {
+        for gap in [false, true] {
+            let (root, mut state, session) = fixture(gap);
+            let original = std::fs::read(root.join("recording.duckdb")).unwrap();
+            for (a, b) in [(0, 1), (1, 0), (1, 1)] {
+                state
+                    .start(
+                        2,
+                        &Request::AnalysisCompare {
+                            session: session.clone(),
+                            a,
+                            b,
+                        },
+                        Instant::now(),
+                    )
+                    .unwrap();
+                state.wait_for_test();
+                let Some((2, Ok(reply))) = state.poll(Instant::now(), true, false) else {
+                    panic!("compare")
+                };
+                assert_comparison(reply, gap, a, b);
+            }
+            state
+                .start(
+                    3,
+                    &Request::AnalysisCompare {
+                        session: session.clone(),
+                        a: 2,
+                        b: 0,
+                    },
+                    Instant::now(),
+                )
+                .unwrap();
+            state.wait_for_test();
+            assert_eq!(
+                state.poll(Instant::now(), true, false),
+                Some((3, Err(HostError::AnalysisNotFound)))
+            );
+            state
+                .start(
+                    4,
+                    &Request::AnalysisClose {
+                        session: session.clone(),
+                    },
+                    Instant::now(),
+                )
+                .unwrap();
+            state.wait_for_test();
+            assert_eq!(
+                state.poll(Instant::now(), true, false),
+                Some((4, Ok(Reply::AnalysisClose {})))
+            );
+            assert_eq!(
+                state.start(
+                    5,
+                    &Request::AnalysisCompare {
+                        session,
+                        a: 0,
+                        b: 1
+                    },
+                    Instant::now()
+                ),
+                Err(HostError::AnalysisNotFound)
+            );
+            drop(state);
+            assert_eq!(
+                std::fs::read(root.join("recording.duckdb")).unwrap(),
+                original
+            );
+            std::fs::remove_dir_all(root).unwrap();
+        }
+    }
+
+    fn assert_comparison(reply: Reply, gap: bool, a: u32, b: u32) {
+        let Reply::AnalysisCompare {
+            speed,
+            throttle,
+            brake,
+            delta,
+            delta_unavailable,
+            gaps,
+            ..
+        } = reply
+        else {
+            panic!("compare")
+        };
+        assert_eq!(speed.a.len(), 34);
+        assert_eq!(speed.b.len(), 34);
+        assert_eq!(speed.a[0].value.as_f64(), Some(180.0));
+        assert_eq!(throttle.a[0].value.as_f64(), Some(50.0));
+        assert_eq!(brake.b[0].value.as_f64(), Some(25.0));
+        if gap && a != b {
+            assert_eq!(
+                delta_unavailable,
+                Some(if a == 0 {
+                    crate::analysis::projection::DeltaUnavailable::GapInA
+                } else {
+                    crate::analysis::projection::DeltaUnavailable::GapInB
+                })
+            );
+            assert!(delta.is_none());
+            assert!(!gaps.a.is_empty() || !gaps.b.is_empty());
+            let points = if a == 0 { speed.a } else { speed.b };
+            assert_ne!(points[15].segment, points[16].segment);
+            assert_ne!(points[16].segment, points[17].segment);
+        } else {
+            let delta = delta.unwrap();
+            assert_eq!(delta.len(), 34);
+            let expected = if a == b {
+                0.0
+            } else if a == 0 {
+                6.6
+            } else {
+                -6.6
+            };
+            assert!((delta.last().unwrap().value.as_f64().unwrap() - expected).abs() < 1e-10);
+        }
+    }
+}

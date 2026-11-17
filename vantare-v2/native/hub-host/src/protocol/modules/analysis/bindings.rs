@@ -1,4 +1,7 @@
 use crate::analysis::catalog::{AnalysisLap, AnalysisRow, AnalysisSignal, AnalysisState};
+use crate::analysis::projection::{
+    AnalysisGaps, AnalysisPoint, AnalysisRange, AnalysisSeries, DeltaUnavailable,
+};
 use crate::protocol::bindings::{constants, declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
@@ -7,6 +10,41 @@ pub(crate) fn typescript() -> String {
     declare::<AnalysisState>(&mut text);
     declare::<AnalysisSignal>(&mut text);
     declare::<AnalysisLap>(&mut text);
+    declare::<AnalysisPoint>(&mut text);
+    declare::<AnalysisSeries>(&mut text);
+    declare::<AnalysisRange>(&mut text);
+    declare::<AnalysisGaps>(&mut text);
+    declare::<DeltaUnavailable>(&mut text);
+    constants!(
+        &mut text,
+        "analysisPointsMax",
+        crate::analysis::projection::MAX_POINTS
+    );
+    constants!(
+        &mut text,
+        "analysisDeltaUnavailable",
+        [
+            DeltaUnavailable::GapInA,
+            DeltaUnavailable::GapInB,
+            DeltaUnavailable::NoCommonRange
+        ]
+    );
+    constants!(
+        &mut text,
+        "analysisErrors",
+        [
+            HostError::AnalysisIncomparable,
+            HostError::AnalysisNotFound,
+            HostError::AnalysisLocked,
+            HostError::AnalysisIncompatible,
+            HostError::AnalysisUnreadable,
+            HostError::AnalysisChanged,
+            HostError::AnalysisTooMany,
+            HostError::AnalysisTooLarge,
+            HostError::AnalysisCancelled,
+            HostError::AnalysisTimeout
+        ]
+    );
     constants!(
         &mut text,
         "analysisMax",
@@ -97,6 +135,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         best_lap_approx_ms: None,
     }));
     for error in [
+        HostError::AnalysisIncomparable,
         HostError::AnalysisNotFound,
         HostError::AnalysisLocked,
         HostError::AnalysisIncompatible,
@@ -109,17 +148,57 @@ pub(crate) fn corpus() -> serde_json::Value {
     ] {
         host.push(HostToUi::Failure { id: 1, error });
     }
-    let ui: Vec<_> = [
+    compare_corpus(&mut host);
+    serde_json::json!({"host": host, "ui": requests()})
+}
+
+fn requests() -> Vec<UiToHost> {
+    [
         Request::AnalysisCatalog {},
         Request::AnalysisInspect { id: "a".repeat(64) },
         Request::AnalysisOpen { id: "a".repeat(64) },
         Request::AnalysisClose {
             session: "b".repeat(64),
         },
+        Request::AnalysisCompare {
+            session: "b".repeat(64),
+            a: 0,
+            b: 1,
+        },
         Request::AnalysisCancel {},
     ]
     .into_iter()
     .map(|request| UiToHost::Request { id: 1, request })
-    .collect();
-    serde_json::json!({"host": host, "ui": ui})
+    .collect()
+}
+
+fn compare_corpus(host: &mut Vec<HostToUi>) {
+    let series = AnalysisSeries {
+        a: vec![AnalysisPoint {
+            distance: 0.into(),
+            elapsed: Some(0.into()),
+            value: 180.into(),
+            segment: 0,
+        }],
+        b: vec![],
+    };
+    for reason in [
+        None,
+        Some(DeltaUnavailable::GapInA),
+        Some(DeltaUnavailable::GapInB),
+        Some(DeltaUnavailable::NoCommonRange),
+    ] {
+        host.push(sample_response(Reply::AnalysisCompare {
+            distance_range: [0.into(), 100.into()],
+            speed: series.clone(),
+            throttle: series.clone(),
+            brake: series.clone(),
+            delta: reason.is_none().then(|| series.a.clone()),
+            delta_unavailable: reason,
+            gaps: AnalysisGaps {
+                a: vec![],
+                b: vec![],
+            },
+        }));
+    }
 }

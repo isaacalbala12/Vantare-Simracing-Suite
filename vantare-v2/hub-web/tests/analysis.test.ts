@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import offline from "../fixtures/core-offline.json";
 import { decimal } from "../src/contract/analysis-validation";
-import { analysisMethods } from "../src/contract/generated/analysis";
+import {
+  analysisErrors,
+  analysisMethods,
+} from "../src/contract/generated/analysis";
 import corpus from "../src/contract/generated/corpus/analysis.json";
 import { isError, isReply, isRequest } from "../src/contract/modules/analysis";
 import { isHostMessage } from "../src/contract/validation";
@@ -21,17 +24,17 @@ describe("analysis contract", () => {
         expect(isReply(v.result)).toBe(true);
       if (v.kind === "failure" && v.error) expect(isError(v.error)).toBe(true);
     }
-    const generated = readFileSync(
-      new URL("../src/contract/generated/analysis.ts", import.meta.url),
-      "utf8",
-    );
     const validator = readFileSync(
       new URL("../src/contract/modules/analysis.ts", import.meta.url),
       "utf8",
     );
-    const kinds = (text: string) =>
-      new Set(text.match(/"analysis[A-Z][a-zA-Z]+"/g));
-    expect(kinds(validator)).toEqual(kinds(generated));
+    expect(
+      new Set(
+        corpus.host
+          .filter((v) => v.kind === "failure")
+          .map((v) => v.error?.kind),
+      ),
+    ).toEqual(new Set(analysisErrors.map((v) => v.kind)));
     const methods = new Set(validator.match(/"analysis\.[a-z]+"/g));
     expect(methods).toEqual(
       new Set(analysisMethods.map((method) => JSON.stringify(method))),
@@ -151,6 +154,18 @@ describe("analysis contract", () => {
       kind: "response",
       result: { cancelled: false },
     });
+    const compared = send({ method: "analysis.compare", session, a: 0, b: 1 });
+    expect(compared).toMatchObject({
+      kind: "response",
+      result: { method: "analysis.compare", distanceRange: [0, 5000] },
+    });
+    expect(compared && isHostMessage(compared)).toBe(true);
+    expect(send({ method: "analysis.compare", session, a: 0, b: 1 })).toEqual(
+      compared,
+    );
+    expect(
+      send({ method: "analysis.compare", session, a: 99, b: 0 }),
+    ).toMatchObject({ kind: "failure", error: { kind: "analysisNotFound" } });
     expect(send({ method: "analysis.close", session })).toMatchObject({
       kind: "response",
     });
@@ -174,4 +189,52 @@ describe("analysis contract", () => {
       send({ method: "analysis.close", session: reopened.result.session }),
     ).toMatchObject({ kind: "failure", error: { kind: "analysisNotFound" } });
   });
+});
+
+it("strictly validates projection points, ranges, bounds and unavailable reasons", () => {
+  const base = {
+    method: "analysis.compare",
+    distanceRange: [0, 100],
+    speed: { a: [], b: [] },
+    throttle: { a: [], b: [] },
+    brake: { a: [], b: [] },
+    delta: [],
+    gaps: { a: [], b: [] },
+  };
+  const point = { distance: 0, elapsed: 0, value: 180, segment: 0 };
+  expect(isReply(base)).toBe(true);
+  for (const bad of [
+    { ...base, delta: null },
+    { ...base, deltaUnavailable: "gapInA" },
+    { ...base, delta: null, deltaUnavailable: "unknown" },
+    { ...base, distanceRange: [100, 0] },
+    { ...base, delta: [{ ...point, segment: 0.1 }] },
+    { ...base, delta: [{ ...point, elapsed: Infinity }] },
+    { ...base, speed: { a: Array(1025).fill(point), b: [] } },
+    { ...base, gaps: { a: [{ from: 20, to: 10 }], b: [] } },
+    { ...base, delta: [{ ...point, secret: 1 }] },
+    { ...base, delta: [{ ...point, distance: 101 }] },
+  ])
+    expect(isReply(bad)).toBe(false);
+  expect(isReply({ ...base, delta: null, deltaUnavailable: "gapInB" })).toBe(
+    true,
+  );
+});
+
+it("rejects compare request paths and non-index numbers", () => {
+  const base = {
+    method: "analysis.compare",
+    session: "a".repeat(64),
+    a: 0,
+    b: 0,
+  };
+  expect(isRequest(base)).toBe(true);
+  for (const bad of [
+    { ...base, a: -1 },
+    { ...base, b: 0.5 },
+    { ...base, a: 2 ** 32 },
+    { ...base, session: "C:/recording.duckdb" },
+    { ...base, raw: [] },
+  ])
+    expect(isRequest(bad)).toBe(false);
 });

@@ -119,6 +119,51 @@ export function create({ core }: MockContext): MockHandler {
           },
         };
       }
+      case "analysis.compare": {
+        if (session !== request.session || !laps[request.a] || !laps[request.b])
+          return fail("analysisNotFound");
+        const points = (
+          lap: number,
+          signal: "speed" | "throttle" | "brake" | "delta",
+        ) =>
+          Array.from({ length: 128 }, (_, i) => {
+            const f = i / 127,
+              wave = (1 + Math.sin(f * 10 * Math.PI)) / 2;
+            return {
+              distance: f * 5000,
+              elapsed: (f * (laps[lap]?.lapTimeApproxMs ?? 0)) / 1000,
+              segment: 0,
+              value:
+                signal === "speed"
+                  ? 125 + wave * 130
+                  : signal === "throttle"
+                    ? 100 - wave * 65
+                    : signal === "brake"
+                      ? wave * 40
+                      : (f *
+                          ((laps[request.a]?.lapTimeApproxMs ?? 0) -
+                            (laps[request.b]?.lapTimeApproxMs ?? 0))) /
+                        1000,
+            };
+          });
+        const series = (signal: "speed" | "throttle" | "brake") => ({
+          a: points(request.a, signal),
+          b: points(request.b, signal),
+        });
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            distanceRange: [0, 5000],
+            speed: series("speed"),
+            throttle: series("throttle"),
+            brake: series("brake"),
+            delta: points(request.a, "delta"),
+            gaps: { a: [], b: [] },
+          },
+        };
+      }
       case "analysis.close":
         if (session !== request.session) return fail("analysisNotFound");
         session = undefined;

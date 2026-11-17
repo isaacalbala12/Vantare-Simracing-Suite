@@ -1,5 +1,9 @@
-import { decimal, lap, row, token } from "../analysis-validation";
-import { analysisMax, analysisStates } from "../generated/analysis";
+import { comparison, decimal, lap, row, token } from "../analysis-validation";
+import {
+  analysisErrors,
+  analysisMax,
+  analysisStates,
+} from "../generated/analysis";
 import { exact, integer, oneOf } from "../validation-common";
 
 export { analysisMethods as methods } from "../generated/analysis";
@@ -11,6 +15,13 @@ export function isRequest(v: Record<string, unknown>): boolean {
     case "analysis.inspect":
     case "analysis.open":
       return exact(v, ["method", "id"]) && token(v.id);
+    case "analysis.compare":
+      return (
+        exact(v, ["method", "session", "a", "b"]) &&
+        token(v.session) &&
+        integer(v.a) &&
+        integer(v.b)
+      );
     case "analysis.close":
       return exact(v, ["method", "session"]) && token(v.session);
     default:
@@ -59,6 +70,8 @@ export function isReply(v: Record<string, unknown>): boolean {
         v.laps.length <= analysisMax &&
         v.laps.every(lap)
       );
+    case "analysis.compare":
+      return comparison(v);
     case "analysis.close":
       return exact(v, ["method"]);
     case "analysis.cancel":
@@ -72,17 +85,10 @@ export function isReply(v: Record<string, unknown>): boolean {
 export function isError(v: Record<string, unknown>): boolean {
   return (
     exact(v, ["kind"]) &&
-    oneOf(v.kind, [
-      "analysisNotFound",
-      "analysisLocked",
-      "analysisIncompatible",
-      "analysisUnreadable",
-      "analysisChanged",
-      "analysisTooMany",
-      "analysisTooLarge",
-      "analysisCancelled",
-      "analysisTimeout",
-    ])
+    oneOf(
+      v.kind,
+      analysisErrors.map((error) => error.kind),
+    )
   );
 }
 export function isEvent(_v: Record<string, unknown>): boolean {

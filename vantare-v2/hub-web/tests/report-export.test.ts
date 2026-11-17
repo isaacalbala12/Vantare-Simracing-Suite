@@ -94,7 +94,13 @@ describe("local report export stays in main", () => {
       "binaries",
       "uninstrumentedSections",
     ]);
-    expect(payload.diagnostic.binaries).toHaveLength(9);
+    expect(payload.diagnostic.binaries).toHaveLength(10);
+    expect(payload.diagnostic.binaries).toContainEqual(
+      expect.objectContaining({ name: "vantare-overlays.exe" }),
+    );
+    expect(payload.diagnostic.binaries).toContainEqual(
+      expect.objectContaining({ name: "vantare-overlays-rune.exe" }),
+    );
     expect(reply.result.value.preparedHash).toBe(
       digest(reply.result.value.report),
     );

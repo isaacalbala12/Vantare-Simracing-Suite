@@ -20,7 +20,15 @@ fn installed(root: &Path) -> Vec<u8> {
 }
 fn assert_preserved(root: &Path, state: &[u8]) {
     assert_eq!(fs::read(root.join("state.json")).expect("state"), state);
-    assert_eq!(fs::read(root.join("generations").join("a".repeat(32)).join("data/opaque.bin")).expect("data"), b"disposable opaque data");
+    assert_eq!(
+        fs::read(
+            root.join("generations")
+                .join("a".repeat(32))
+                .join("data/opaque.bin")
+        )
+        .expect("data"),
+        b"disposable opaque data"
+    );
 }
 #[test]
 fn apply_rejects_legacy_pending_without_mutating_installation_or_data() {
@@ -28,13 +36,19 @@ fn apply_rejects_legacy_pending_without_mutating_installation_or_data() {
     fs::create_dir_all(root.join("staging")).expect("staging");
     let state = installed(&root);
     let legacy = serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","channel":"beta","version":"0.0.990","url":"https://github.com/isaacalbala12/Vantare-Downloads/releases/download/native-beta-v0.0.990/vantare-native-amd64-package.zip","sha256":"a".repeat(64),"notes":"Legacy pending"})).expect("legacy offer");
-    let key = SigningKey::from_bytes(&[42;32]);
+    let key = SigningKey::from_bytes(&[42; 32]);
     let pending = serde_json::to_vec(&serde_json::json!({"payload":STANDARD.encode(&legacy),"signature":STANDARD.encode(key.sign(&legacy).to_bytes())})).expect("legacy envelope");
     #[cfg(feature = "hub-update-qa")]
-    assert!(vantare_services::update_manifest::verify_hub_update(&pending).is_ok(), "legacy payload reaches schema validation in isolated QA");
+    assert!(
+        vantare_services::update_manifest::verify_hub_update(&pending).is_ok(),
+        "legacy payload reaches schema validation in isolated QA"
+    );
     fs::write(root.join("staging/pending.json"), &pending).expect("legacy pending");
     assert!(apply(&root).is_err());
-    assert_eq!(fs::read(root.join("staging/pending.json")).expect("pending"), pending);
+    assert_eq!(
+        fs::read(root.join("staging/pending.json")).expect("pending"),
+        pending
+    );
     assert!(!root.join("boot-pending.json").exists());
     assert_preserved(&root, &state);
     fs::remove_dir_all(root).expect("cleanup");
@@ -67,19 +81,39 @@ fn stage_publishes_only_after_the_extracted_total_matches_the_signed_offer() {
             assert_eq!(current, "0.0.989");
             fs::create_dir_all(staging)?;
             fs::copy(&archive, staging.join(format!("{}.zip", candidate.sha256)))?;
-            Ok(Some(Downloaded {signed: pending.clone(), offer: candidate.clone()}))
+            Ok(Some(Downloaded {
+                signed: pending.clone(),
+                offer: candidate.clone(),
+            }))
         });
-        assert_eq!(result.is_ok(), extra == 0, "extra={extra}, result={result:?}");
+        assert_eq!(
+            result.is_ok(),
+            extra == 0,
+            "extra={extra}, result={result:?}"
+        );
         assert_preserved(&root, &state);
         if extra == 0 {
-            assert_eq!(fs::read(root.join("staging/pending.json")).expect("pending"), pending);
-            let status: serde_json::Value = serde_json::from_slice(&fs::read(root.join("update-status.json")).expect("status")).expect("status JSON");
+            assert_eq!(
+                fs::read(root.join("staging/pending.json")).expect("pending"),
+                pending
+            );
+            let status: serde_json::Value =
+                serde_json::from_slice(&fs::read(root.join("update-status.json")).expect("status"))
+                    .expect("status JSON");
             assert_eq!(status["state"], "ready");
         } else {
             assert!(!root.join("staging/pending.json").exists());
             assert!(!root.join("update-status.json").exists());
         }
-        assert!(!fs::read_dir(root.join("staging")).expect("staging").any(|item| item.expect("entry").file_name().to_string_lossy().starts_with("check-")));
+        assert!(
+            !fs::read_dir(root.join("staging"))
+                .expect("staging")
+                .any(|item| item
+                    .expect("entry")
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("check-"))
+        );
         fs::remove_dir_all(root).expect("cleanup");
     }
 }

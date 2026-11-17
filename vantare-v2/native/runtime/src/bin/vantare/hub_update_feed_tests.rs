@@ -220,7 +220,12 @@ fn download_requires_exact_signed_length_and_hash() {
             expected.sha256 = "0".repeat(64);
         }
         let result = download(
-            &agent(Duration::from_secs(3)),
+            // Cleartext is limited to this loopback fixture in cfg(test).
+            &ureq::Agent::config_builder()
+                .timeout_global(Some(Duration::from_secs(3)))
+                .https_only(false)
+                .build()
+                .into(),
             &expected,
             &target,
             &AtomicBool::new(false),
@@ -266,7 +271,13 @@ fn production_transport_rejects_cleartext_without_a_connection() {
     listener.set_nonblocking(true).expect("nonblocking probe");
     let url = format!("http://{}", listener.local_addr().expect("address"));
     assert!(agent(QUERY_TIMEOUT).get(&url).call().is_err());
-    assert_eq!(listener.accept().expect_err("no cleartext connection").kind(), io::ErrorKind::WouldBlock);
+    assert_eq!(
+        listener
+            .accept()
+            .expect_err("no cleartext connection")
+            .kind(),
+        io::ErrorKind::WouldBlock
+    );
 }
 
 #[test]

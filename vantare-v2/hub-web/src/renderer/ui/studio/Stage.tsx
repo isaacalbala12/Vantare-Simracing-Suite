@@ -194,6 +194,17 @@ export function Stage({
                 </Popover.Positioner>
               </Popover.Portal>
             </Popover.Root>
+            {real && photo.image && (
+              <div className="v-preview-metadata">
+                <span>
+                  {p.size(photo.image.width, photo.image.height, percent)}
+                </span>
+                <span>
+                  <i />
+                  {p.transparent}
+                </span>
+              </div>
+            )}
             {retry && (
               <Button
                 ref={retryButton}
@@ -269,17 +280,6 @@ export function Stage({
         <span className="v-sr-only" role="status" aria-atomic="true">
           {announcement}
         </span>
-        {real && photo.image && (
-          <div className="v-preview-metadata">
-            <span>
-              {p.size(photo.image.width, photo.image.height, percent)}
-            </span>
-            <span>
-              <i />
-              {p.transparent}
-            </span>
-          </div>
-        )}
         {canvasPreview}
         {!item.visible && (
           <div className="v-focus-hidden">

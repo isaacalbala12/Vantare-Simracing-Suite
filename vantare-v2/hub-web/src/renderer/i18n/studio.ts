@@ -33,7 +33,7 @@ export const studioText = {
       `Vista previa real de ${name}, foto con datos de ejemplo`,
     drawingLabel: (name: string) => `Dibujo orientativo de ${name}`,
     size: (width: number, height: number, percent: number) =>
-      `${width} × ${height} px · al ${percent} %${percent < 100 ? " para que quepa" : ""}`,
+      `${width} × ${height} px · ${percent < 100 ? `reducida al ${percent} %` : "al 100 %"}`,
     saved: "Se guarda solo · la foto se rehace al guardar cada cambio",
     conflictTitle: "El diseño ha cambiado en otro proceso.",
     conflictBody:

@@ -589,3 +589,47 @@ it("withdraws the photo and sends no preview request when the document becomes p
   ).toBeNull();
   expect(photos()).toHaveLength(1);
 });
+
+it("keeps photo metadata in the top row, after info and before the data controls", async () => {
+  await mount();
+  await photoReady();
+  const legend = stage()
+    .getByText("Transparente", { exact: true })
+    .closest(".v-preview-metadata");
+  const header = document.querySelector(".v-preview-stage > header");
+  const info = stage().getByRole("button", { name: "Qué estoy viendo" });
+  const example = stage().getByRole("button", { name: "Ejemplo" });
+  expect(legend).not.toBeNull();
+  if (!legend) throw Error("Missing photo metadata");
+  expect(header?.contains(legend)).toBe(true);
+  expect(
+    info.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
+  expect(
+    legend.compareDocumentPosition(example) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).not.toBe(0);
+  expect(
+    document.querySelector(".v-preview-stage > .v-preview-metadata"),
+  ).toBeNull();
+});
+
+it("describes a photo reduced to 68 percent without upscaling or another request", async () => {
+  const bounds = HTMLElement.prototype.getBoundingClientRect;
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+    function (this: HTMLElement) {
+      return this.classList.contains("v-preview-fit")
+        ? new DOMRect(0, 0, 230, 230)
+        : bounds.call(this);
+    },
+  );
+  intercept = async () => ({
+    method: "preview.render",
+    value: { width: 338, height: 304, pngBase64: previewTransparentPng },
+  });
+  await mount();
+  await photoReady();
+  expect(
+    stage().getByText("338 × 304 px · reducida al 68 %", { exact: true }),
+  ).toBeTruthy();
+  expect(photos()).toHaveLength(1);
+});

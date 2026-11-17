@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Browser, Page } from "playwright-core";
 import { studioText } from "../src/renderer/i18n/studio";
+import { until } from "./wait-for";
 
 const text = studioText.preview;
 const cases = [
@@ -149,6 +150,9 @@ export async function checkStudioPreview(
               .getAttribute("aria-disabled"),
             "true",
           );
+        await page.evaluate((theme) => {
+          document.documentElement.dataset.scheme = theme;
+        }, theme);
         const report = await new AxeBuilder({ page }).analyze();
         results.push({ theme, mode, violations: report.violations });
         await writeFile(
@@ -172,6 +176,29 @@ export async function checkStudioPreview(
             text.photoLabel("Standings"),
           );
           await page.setViewportSize({ width: 1280, height: 720 });
+          await until(
+            () =>
+              stage.locator(".v-preview-metadata").evaluate((node) => {
+                const box = node.getBoundingClientRect();
+                const header = node.closest("header");
+                const map = document
+                  .querySelector(".v-studio-minimap")
+                  ?.getBoundingClientRect();
+                const actions = document
+                  .querySelector(".v-studio-stage-actions")
+                  ?.getBoundingClientRect();
+                return (
+                  !!header &&
+                  !!map &&
+                  !!actions &&
+                  box.width > 0 &&
+                  box.bottom <= map.top &&
+                  box.right <= actions.left
+                );
+              }),
+            5000,
+            "photo metadata in top row without minimap or data overlap at 1280",
+          );
           await page.screenshot({
             path: resolve(evidence, `preview-photo-${theme}-1280.png`),
           });

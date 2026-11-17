@@ -166,7 +166,7 @@ fn a_v1_database_disables_metadata_without_failing_chunks_or_finish() {
     core.observe(observation(10, 7, 0, 0, 90.0)).unwrap();
     send(
         &worker,
-        SessionTracker::default().observe(core.snapshot(), 100),
+        SessionTracker::default().observe(&core.snapshot(), 100),
     );
     core.series_mut().flush();
     let attempted = core.series().publication_status().unwrap().attempted;

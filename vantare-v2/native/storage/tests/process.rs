@@ -1006,13 +1006,13 @@ fn session_close() -> Value {
 }
 
 fn lap_time() -> Value {
-    json!(["lap", {"epoch":1,"session":3,"car":7,"lap":0,"officialMs":112000,
+    json!(["lap", {"epoch":1,"session":3,"car":7,"lap":0,"officialMs":112_000,
         "sectorMs":[31200,47810,32990]}])
 }
 
-fn exchange(process: &mut Process, command: &Value, expected: Value) {
+fn exchange(process: &mut Process, command: &Value, expected: &Value) {
     process.send(command);
-    assert_eq!(process.response(), expected);
+    assert_eq!(&process.response(), expected);
 }
 
 #[test]
@@ -1020,49 +1020,53 @@ fn session_events_are_idempotent_and_sealing_prevents_every_new_write() {
     let db = Database::new();
     let mut owner = Process::start_mode(&db.0, Some("--create"));
     assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
-    exchange(&mut owner, &lap_time(), json!(["rejected", "missing"]));
-    exchange(&mut owner, &session_close(), json!(["rejected", "missing"]));
+    exchange(&mut owner, &lap_time(), &json!(["rejected", "missing"]));
+    exchange(
+        &mut owner,
+        &session_close(),
+        &json!(["rejected", "missing"]),
+    );
     for _ in 0..2 {
         exchange(
             &mut owner,
             &session_open(),
-            json!(["ack-session", "open", 1, 3]),
+            &json!(["ack-session", "open", 1, 3]),
         );
-        exchange(&mut owner, &lap_time(), json!(["ack-lap", 1, 3, 7, 0]));
+        exchange(&mut owner, &lap_time(), &json!(["ack-lap", 1, 3, 7, 0]));
     }
     let mut conflict = session_open();
     conflict[1]["vehicle"] = "changed".into();
-    exchange(&mut owner, &conflict, json!(["rejected", "conflict"]));
+    exchange(&mut owner, &conflict, &json!(["rejected", "conflict"]));
     let mut lap_conflict = lap_time();
     lap_conflict[1]["officialMs"] = Value::Null;
-    exchange(&mut owner, &lap_conflict, json!(["rejected", "conflict"]));
+    exchange(&mut owner, &lap_conflict, &json!(["rejected", "conflict"]));
     let mut sector_conflict = lap_time();
     sector_conflict[1]["sectorMs"] = json!([1, 2, 3]);
     exchange(
         &mut owner,
         &sector_conflict,
-        json!(["rejected", "conflict"]),
+        &json!(["rejected", "conflict"]),
     );
     for _ in 0..2 {
         exchange(
             &mut owner,
             &session_close(),
-            json!(["ack-session", "close", 1, 3]),
+            &json!(["ack-session", "close", 1, 3]),
         );
     }
     exchange(
         &mut owner,
         &session_open(),
-        json!(["ack-session", "open", 1, 3]),
+        &json!(["ack-session", "open", 1, 3]),
     );
-    exchange(&mut owner, &lap_time(), json!(["ack-lap", 1, 3, 7, 0]));
-    exchange(&mut owner, &lap_conflict, json!(["rejected", "sealed"]));
+    exchange(&mut owner, &lap_time(), &json!(["ack-lap", 1, 3, 7, 0]));
+    exchange(&mut owner, &lap_conflict, &json!(["rejected", "sealed"]));
     let mut next = lap_time();
     next[1]["lap"] = 1.into();
-    exchange(&mut owner, &next, json!(["rejected", "sealed"]));
+    exchange(&mut owner, &next, &json!(["rejected", "sealed"]));
     let mut changed = session_close();
-    changed[1]["bestLapMs"] = 112000.into();
-    exchange(&mut owner, &changed, json!(["rejected", "sealed"]));
+    changed[1]["bestLapMs"] = 112_000.into();
+    exchange(&mut owner, &changed, &json!(["rejected", "sealed"]));
     owner.send(&json!(["stop"]));
     assert!(owner.child.wait().unwrap().success());
     let mut reader = Process::start_mode(&db.0, Some("--read-only"));
@@ -1081,7 +1085,7 @@ fn session_events_are_idempotent_and_sealing_prevents_every_new_write() {
     exchange(
         &mut reader,
         &json!(["lap-times", 1, 3]),
-        json!(["lap-times", "series-laps.v1", 1, [lap_time()[1]]]),
+        &json!(["lap-times", "series-laps.v1", 1, [lap_time()[1]]]),
     );
 }
 
@@ -1095,17 +1099,17 @@ fn session_metadata_survives_kill_wal_read_only_and_resume_with_chunks() {
             exchange(
                 &mut owner,
                 &session_open(),
-                json!(["ack-session", "open", 1, 3]),
+                &json!(["ack-session", "open", 1, 3]),
             );
             let mut lap = lap_time();
             lap[1]["officialMs"] = Value::Null;
             lap[1]["sectorMs"] = Value::Null;
-            exchange(&mut owner, &lap, json!(["ack-lap", 1, 3, 7, 0]));
+            exchange(&mut owner, &lap, &json!(["ack-lap", 1, 3, 7, 0]));
             if sealed {
                 exchange(
                     &mut owner,
                     &session_close(),
-                    json!(["ack-session", "close", 1, 3]),
+                    &json!(["ack-session", "close", 1, 3]),
                 );
             }
             assert!(db.0.with_extension("duckdb.wal").exists());
@@ -1142,17 +1146,17 @@ fn session_metadata_survives_kill_wal_read_only_and_resume_with_chunks() {
         exchange(
             &mut resumed,
             &session_open(),
-            json!(["ack-session", "open", 1, 3]),
+            &json!(["ack-session", "open", 1, 3]),
         );
         exchange(
             &mut resumed,
             &json!(["append", payload()]),
-            json!(["ack", 1]),
+            &json!(["ack", 1]),
         );
         exchange(
             &mut resumed,
             &json!(["page", 0, 16]),
-            json!(["page", [payload()]]),
+            &json!(["page", [payload()]]),
         );
     }
 }
@@ -1175,12 +1179,12 @@ fn v1_metadata_is_unsupported_without_stopping_or_migrating_the_helper() {
             json!(["lap-times", 1, 3]),
             json!(["lap-times", 1, 3, null, 256]),
         ] {
-            exchange(&mut process, &command, json!(["unsupported", "meta"]));
+            exchange(&mut process, &command, &json!(["unsupported", "meta"]));
         }
         exchange(
             &mut process,
             &json!(["status"]),
-            json!(["status", 0, false, 0]),
+            &json!(["status", 0, false, 0]),
         );
         process.send(&json!(["stop"]));
         assert!(process.child.wait().unwrap().success());
@@ -1194,12 +1198,12 @@ fn v1_metadata_is_unsupported_without_stopping_or_migrating_the_helper() {
     exchange(
         &mut process,
         &json!(["append", payload()]),
-        json!(["ack", 1]),
+        &json!(["ack", 1]),
     );
     exchange(
         &mut process,
         &json!(["page", 0, 16]),
-        json!(["page", [payload()]]),
+        &json!(["page", [payload()]]),
     );
     process.send(&json!(["finish", 1]));
     assert_eq!(process.response(), json!(["finished", 1, true, 1]));
@@ -1233,28 +1237,28 @@ fn metadata_invalid_fields_and_frame_limits_never_receive_an_ack() {
         assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
         let mut event = session_open();
         event[1][field] = invalid;
-        exchange(&mut owner, &event, json!(["rejected", "invalid"]));
+        exchange(&mut owner, &event, &json!(["rejected", "invalid"]));
         exchange(
             &mut owner,
             &json!(["session-summaries"]),
-            json!(["session-summaries", "series-session.v1", 0, []]),
+            &json!(["session-summaries", "series-session.v1", 0, []]),
         );
         exchange(
             &mut owner,
             &session_open(),
-            json!(["ack-session", "open", 1, 3]),
+            &json!(["ack-session", "open", 1, 3]),
         );
         let mut invalid_lap = lap_time();
         invalid_lap[1]["sectorMs"] = json!([null]);
-        exchange(&mut owner, &invalid_lap, json!(["rejected", "invalid"]));
-        exchange(&mut owner, &lap_time(), json!(["ack-lap", 1, 3, 7, 0]));
+        exchange(&mut owner, &invalid_lap, &json!(["rejected", "invalid"]));
+        exchange(&mut owner, &lap_time(), &json!(["ack-lap", 1, 3, 7, 0]));
         let mut invalid_close = session_close();
         invalid_close[1]["endReason"] = json!("invalid");
-        exchange(&mut owner, &invalid_close, json!(["rejected", "invalid"]));
+        exchange(&mut owner, &invalid_close, &json!(["rejected", "invalid"]));
         exchange(
             &mut owner,
             &session_close(),
-            json!(["ack-session", "close", 1, 3]),
+            &json!(["ack-session", "close", 1, 3]),
         );
     }
     let db = Database::new();
@@ -1262,7 +1266,7 @@ fn metadata_invalid_fields_and_frame_limits_never_receive_an_ack() {
     assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
     let mut event = session_open();
     event[1]["trackName"] = "é".repeat(128).into();
-    exchange(&mut owner, &event, json!(["ack-session", "open", 1, 3]));
+    exchange(&mut owner, &event, &json!(["ack-session", "open", 1, 3]));
     // The existing transport cap applies before parsing every command, including metadata.
     let mut oversized = vec![b' '; 32768 + 129];
     oversized.push(b'\n');
@@ -1286,7 +1290,7 @@ fn metadata_round_trips_full_unsigned_keys_results_and_distinct_session_car_lap_
     exchange(
         &mut owner,
         &opened,
-        json!(["ack-session", "open", u64::MAX, u64::MAX]),
+        &json!(["ack-session", "open", u64::MAX, u64::MAX]),
     );
     let mut lap = lap_time();
     lap[1]["epoch"] = u64::MAX.into();
@@ -1298,7 +1302,7 @@ fn metadata_round_trips_full_unsigned_keys_results_and_distinct_session_car_lap_
     exchange(
         &mut owner,
         &lap,
-        json!(["ack-lap", u64::MAX, u64::MAX, u32::MAX, u32::MAX]),
+        &json!(["ack-lap", u64::MAX, u64::MAX, u32::MAX, u32::MAX]),
     );
     let mut closed = session_close();
     closed[1]["epoch"] = u64::MAX.into();
@@ -1318,19 +1322,19 @@ fn metadata_round_trips_full_unsigned_keys_results_and_distinct_session_car_lap_
         exchange(
             &mut owner,
             &closed,
-            json!(["ack-session", "close", u64::MAX, u64::MAX]),
+            &json!(["ack-session", "close", u64::MAX, u64::MAX]),
         );
     }
     exchange(
         &mut owner,
         &session_open(),
-        json!(["ack-session", "open", 1, 3]),
+        &json!(["ack-session", "open", 1, 3]),
     );
     for (car, number) in [(7, 0), (8, 0), (7, 1)] {
         let mut event = lap_time();
         event[1]["car"] = car.into();
         event[1]["lap"] = number.into();
-        exchange(&mut owner, &event, json!(["ack-lap", 1, 3, car, number]));
+        exchange(&mut owner, &event, &json!(["ack-lap", 1, 3, car, number]));
     }
     owner.send(&json!(["stop"]));
     assert!(owner.child.wait().unwrap().success());
@@ -1355,7 +1359,7 @@ fn metadata_round_trips_full_unsigned_keys_results_and_distinct_session_car_lap_
     exchange(
         &mut reader,
         &json!(["lap-times", u64::MAX, u64::MAX]),
-        json!(["lap-times", "series-laps.v1", 1, [lap[1]]]),
+        &json!(["lap-times", "series-laps.v1", 1, [lap[1]]]),
     );
     reader.send(&json!(["lap-times", 1, 3]));
     assert_eq!(reader.response()[2], 3);
@@ -1370,7 +1374,7 @@ fn read_only_metadata_write_is_rejected_without_changing_the_file() {
         exchange(
             &mut writer,
             &session_open(),
-            json!(["ack-session", "open", 1, 3]),
+            &json!(["ack-session", "open", 1, 3]),
         );
         writer.send(&json!(["stop"]));
         assert!(writer.child.wait().unwrap().success());

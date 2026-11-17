@@ -119,10 +119,15 @@ fn create_database(path: &Path) -> Result<()> {
     Ok(())
 }
 
+enum Format {
+    V1,
+    V2,
+}
+
 struct Store {
     connection: Connection,
     read_only: bool,
-    metadata: bool,
+    format: Format,
     watermark: u64,
     finished: bool,
     attempted: u64,
@@ -190,7 +195,11 @@ impl Store {
         let mut store = Self {
             connection,
             read_only,
-            metadata: schema == SCHEMA,
+            format: if schema == SCHEMA {
+                Format::V2
+            } else {
+                Format::V1
+            },
             watermark,
             finished,
             attempted,

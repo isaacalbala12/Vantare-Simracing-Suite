@@ -2,7 +2,7 @@
 use duckdb::{Connection, OptionalExt, Row, params};
 use serde_json::{Value, json};
 
-use super::{Result, Store};
+use super::{Format, Result, Store};
 
 pub(super) const TABLES: &str = "
 CREATE TABLE session_summaries (
@@ -115,7 +115,7 @@ fn same(previous: &Value, event: &Value, keys: &[&str]) -> bool {
 }
 
 pub(super) fn write(store: &mut Store, name: &str, event: &Value) -> Result<Value> {
-    if !store.metadata {
+    if matches!(store.format, Format::V1) {
         return Ok(json!(["unsupported", "meta"]));
     }
     if store.read_only || store.failed {
@@ -210,7 +210,7 @@ fn write_valid(connection: &Connection, name: &str, event: &Value) -> Result<Val
 
 // Igual que summaries v1: retención explícita y salida acotada, nunca SQL del cliente.
 pub(super) fn sessions(store: &Store) -> Result<Value> {
-    if !store.metadata {
+    if matches!(store.format, Format::V1) {
         return Ok(json!(["unsupported", "meta"]));
     }
     let total: u64 =
@@ -238,7 +238,7 @@ pub(super) fn laps(
     after: &Value,
     limit: &Value,
 ) -> Result<Value> {
-    if !store.metadata {
+    if matches!(store.format, Format::V1) {
         return Ok(json!(["unsupported", "meta"]));
     }
     let epoch = epoch.as_u64().ok_or("época inválida")?;

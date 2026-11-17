@@ -112,7 +112,7 @@ impl SeriesRecording {
             && let Some(worker) = &self.worker
             && worker.session_events_enabled()
         {
-            for event in self.tracker.observe(core.snapshot(), wall_ms()) {
+            for event in self.tracker.observe(&core.snapshot(), wall_ms()) {
                 worker.try_session_event(event);
             }
         }

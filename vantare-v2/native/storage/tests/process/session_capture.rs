@@ -72,7 +72,7 @@ fn core_tracker_and_real_helper_capture_two_sessions_and_complete_laps() {
         core.observe(frame).unwrap();
         send(
             &worker,
-            tracker.observe(core.snapshot(), u64::try_from(index).unwrap() * 100 + 100),
+            tracker.observe(&core.snapshot(), u64::try_from(index).unwrap() * 100 + 100),
         );
     }
     send(&worker, tracker.finish(500));
@@ -191,7 +191,7 @@ fn a_rejected_metadata_event_is_nonfatal_and_the_next_valid_event_is_persisted()
     let mut tracker = SessionTracker::default();
     let mut core = Core::new(17);
     core.observe(observation(10, 7, 0, 0, 90.0)).unwrap();
-    let opened = tracker.observe(core.snapshot(), 100);
+    let opened = tracker.observe(&core.snapshot(), 100);
     // Closing before opening gives rejected/missing; the pump must keep running.
     let close = tracker.finish(200);
     send(&worker, close.clone());
@@ -220,7 +220,7 @@ fn session_core_cut_fixture() {
     let mut tracker = SessionTracker::default();
     for frame in frames().into_iter().take(2) {
         core.observe(frame).unwrap();
-        send(&worker, tracker.observe(core.snapshot(), 100));
+        send(&worker, tracker.observe(&core.snapshot(), 100));
     }
     core.series_mut().flush();
     await_watermark(

@@ -143,8 +143,10 @@ it("opens the host mock, renders approximate reduced signals and closes its toke
     screen.getByRole("heading", { name: "Diferencia con tu mejor vuelta" }),
   ).toBeTruthy();
   expect(screen.getAllByRole("img")).toHaveLength(14);
-  expect(screen.queryByRole("button", { name: "Comparar A y B" })).toBeNull();
-  expect(screen.queryByRole("tab", { name: "Comparar" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Comparar A y B" })).toBeTruthy();
+  expect(
+    screen.getByRole("tab", { name: "Comparar" }).getAttribute("aria-disabled"),
+  ).toBeNull();
   expect(screen.getAllByText("Incompleta").length).toBeGreaterThan(0);
   expect(screen.getByText("Con huecos")).toBeTruthy();
   expect(screen.getByText("≈ parte estimada")).toBeTruthy();

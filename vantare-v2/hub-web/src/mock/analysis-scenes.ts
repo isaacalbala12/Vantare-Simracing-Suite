@@ -1,4 +1,5 @@
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
+import { comparisonScene } from "./analysis-comparison-scene";
 import type { MockContext } from "./context";
 import { create } from "./modules/analysis";
 export const analysisQaNow = Date.UTC(2026, 10, 17, 12);
@@ -16,6 +17,7 @@ export function analysisScene(context: MockContext, clock = Date.now) {
   if (context.settingsData)
     context.settingsData.general.grabacion = !name.startsWith("disabled");
   const mock = create(context);
+  const compare = comparisonScene(context, mock);
   let pendingOpen: Extract<UiToHost, { kind: "request" }>["id"] | undefined;
   return (value: UiToHost): HostToUi | null | undefined => {
     if (
@@ -43,6 +45,8 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     )
       return undefined;
     const { id, request } = value;
+    const comparison = compare(value);
+    if (comparison !== undefined) return comparison;
     if (request.method === "analysis.cancel" && pendingOpen !== undefined) {
       context.emit?.({
         kind: "failure",

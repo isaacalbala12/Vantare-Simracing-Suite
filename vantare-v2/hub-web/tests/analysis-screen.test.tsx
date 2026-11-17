@@ -202,7 +202,9 @@ it("keeps Laps and Map visible, keyboard reachable and inert before opening", as
       .getByRole("tab", { name: "Mapa · Próximamente" })
       .getAttribute("aria-disabled"),
   ).toBe("true");
-  expect(screen.queryByRole("tab", { name: "Comparar" })).toBeNull();
+  expect(
+    screen.getByRole("tab", { name: "Comparar" }).getAttribute("aria-disabled"),
+  ).toBe("true");
   expect(request.mock.calls.some(([r]) => r.method === "analysis.open")).toBe(
     false,
   );

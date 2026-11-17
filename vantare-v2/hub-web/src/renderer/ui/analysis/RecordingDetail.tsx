@@ -25,10 +25,12 @@ import {
   size,
   analysisText as t,
 } from "../../i18n/analysis.es";
+import { comparisonText } from "../../i18n/comparison.es";
 import { Button, IconButton } from "../Button";
 import { Badge, Card } from "../Data";
 import { TrackedCaps } from "../TrackedCaps";
 import { AnalysisError, AnalysisNotice, RecordingStrip } from "./Analysis";
+import { CompareAction, LapChoices } from "./LapChoices";
 import { RecordingChart } from "./RecordingChart";
 import { useRecordingClock } from "./useRecordingClock";
 
@@ -50,7 +52,17 @@ function Pedal({
     </span>
   );
 }
-function LapRow({ lap, best }: { lap: AnalysisLap; best: number | null }) {
+function LapRow({
+  lap,
+  best,
+  state,
+  controller,
+}: {
+  lap: AnalysisLap;
+  best: number | null;
+  state: AnalysisSnapshot;
+  controller?: AnalysisController;
+}) {
   const time = validLapTime(lap);
   const kind = lapDataKind(lap);
   const delta = time === null || best === null ? null : time - best;
@@ -87,6 +99,9 @@ function LapRow({ lap, best }: { lap: AnalysisLap; best: number | null }) {
         {estimatedLap(lap) && (
           <small className="v-an-lap-note">{t.estimatedData}</small>
         )}
+      </td>
+      <td>
+        <LapChoices lap={lap} state={state} controller={controller} />
       </td>
     </tr>
   );
@@ -226,12 +241,16 @@ export function AnalysisLaps({
             ))}
           </dl>
           <RecordingChart
+            pair={state.pair}
             laps={opened.laps}
             bestTime={summary.bestTime}
             bestLap={summary.best?.lap}
           />
           <div className="v-an-laps-card">
-            <Card title={<TrackedCaps>{t.laps}</TrackedCaps>}>
+            <Card
+              title={<TrackedCaps>{t.laps}</TrackedCaps>}
+              actions={<CompareAction state={state} controller={controller} />}
+            >
               <div className="v-an-tablewrap">
                 <table className="v-table v-an-table v-an-laps">
                   <caption className="v-sr-only">{`${t.laps} · ${t.approximate} · ${t.speed}`}</caption>
@@ -246,6 +265,7 @@ export function AnalysisLaps({
                         t.throttleColumn,
                         t.brakeColumn,
                         t.data,
+                        comparisonText.choices,
                       ].map((label, i) => (
                         <th
                           scope="col"
@@ -260,6 +280,8 @@ export function AnalysisLaps({
                   <tbody>
                     {opened.laps.map((lap) => (
                       <LapRow
+                        state={state}
+                        controller={controller}
                         key={lap.index}
                         lap={lap}
                         best={summary.bestTime}

@@ -232,6 +232,12 @@ try {
     );
   }
   await checkMainScreens(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  const { checkAnalysisComparison } = await import("./analysis-compare-web.ts");
+  await checkAnalysisComparison(
+    page,
+    server.resolvedUrls?.local[0] ?? "",
+    resolve(evidence, "analysis-comparison"),
+  );
   await checkStudioCanvas(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkStudioCatalogDrop(
     page,

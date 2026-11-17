@@ -68,6 +68,11 @@ foreach($marker in @('VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','HUB_QA_DRIVER')
     $archive=Join-Path $root ($marker+'.zip')
     New-BuildZip (Join-Path $root 'qa') $archive
     Reject {Assert-NativeDistributionArchive $archive}
+    $portable=Join-Path $root 'portable'
+    Put (Join-Path $portable 'generations/fixture/hub-ui/resources/app.asar') $marker
+    $portableZip=Join-Path $root ('portable-'+$marker+'.zip')
+    New-BuildZip $portable $portableZip
+    Reject {Assert-NativeDistributionArchive $portableZip}
 }
 'PASS public inventory: declared extra EXE/sidecar, sealed UI, tampering and QA ASAR'
 

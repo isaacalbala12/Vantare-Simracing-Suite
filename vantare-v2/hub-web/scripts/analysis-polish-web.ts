@@ -104,22 +104,6 @@ try {
               scene === "settings-protected",
             );
           }
-          if (width === 900) {
-            const toggle = page.locator(".v-titlebar").getByRole("button", {
-              name: shellText("shell.railToggle"),
-              exact: true,
-            });
-            if ((await toggle.getAttribute("aria-expanded")) === "true")
-              await toggle.click();
-            await page
-              .getByRole("tab", { name: "Privacidad", exact: true })
-              .scrollIntoViewIfNeeded();
-            await recording.scrollIntoViewIfNeeded();
-            if (scene !== "settings")
-              await page
-                .getByRole("button", { name: t.undo, exact: true })
-                .scrollIntoViewIfNeeded();
-          }
         } else if (scene !== "catalog") {
           await page
             .getByRole("button", { name: /Circuito sin identificar/ })
@@ -142,6 +126,32 @@ try {
           document.documentElement.style.zoom = "1";
           await document.fonts.ready;
         });
+        if (width === 900 && scene.startsWith("settings")) {
+          const toggle = page.locator(".v-titlebar").getByRole("button", {
+            name: shellText("shell.railToggle"),
+            exact: true,
+          });
+          if ((await toggle.getAttribute("aria-expanded")) === "true")
+            await toggle.click();
+          const privacy = page.getByRole("tab", {
+            name: "Privacidad",
+            exact: true,
+          });
+          await privacy.evaluate((tab) =>
+            tab.scrollIntoView({ inline: "center", block: "nearest" }),
+          );
+          await page.waitForFunction(
+            (tab) => !tab?.hasAttribute("data-clipped"),
+            await privacy.elementHandle(),
+          );
+          await page
+            .getByRole("switch", { name: t.record, exact: true })
+            .scrollIntoViewIfNeeded();
+          if (scene !== "settings")
+            await page
+              .getByRole("button", { name: t.undo, exact: true })
+              .scrollIntoViewIfNeeded();
+        }
         if (scene === "catalog") {
           await checkAnalysisDensity(page);
           assert.equal(

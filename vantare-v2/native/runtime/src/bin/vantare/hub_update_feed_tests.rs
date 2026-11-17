@@ -1,6 +1,7 @@
 use super::*;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use ed25519_dalek::{Signer, SigningKey};
+#[cfg(feature="hub-update-qa")]
 use std::cell::Cell;
 
 fn offer() -> Offer {
@@ -53,7 +54,7 @@ fn distribution_client_rejects_a_valid_qa_signed_hub_offer() { assert!(Offer::ve
 fn authenticated_preflight_makes_zero_zip_requests_and_no_staging_when_oversized() {
     for (compressed,expanded,want_download) in [(ZIP_LIMIT,EXPANDED_LIMIT,true),(ZIP_LIMIT+1,EXPANDED_LIMIT,false),(ZIP_LIMIT,EXPANDED_LIMIT+1,false)] {
         let mut candidate=offer();candidate.compressed_bytes=compressed;candidate.expanded_bytes=expanded;
-        let envelope=signed(&candidate);Offer::verify(&envelope).unwrap_or_else(|error| {assert!(!want_download);candidate.clone()});
+        let envelope=signed(&candidate);
         let root=qa_root();let downloads=Cell::new(0);
         let result=check_with("0.0.989",&root,&AtomicBool::new(false),None, |url,_| {
             if url.contains("api.github.com") {Ok(br#"[{"draft":false,"tag_name":"hub-beta-v0.0.990"}]"#.to_vec())}else{assert!(url.ends_with("/vantare-hub-beta.json"));Ok(envelope.clone())}
@@ -74,7 +75,7 @@ fn isolated_authority_accepts_qa_signature_and_rejects_modified_payload() {
 #[test]
 fn download_requires_exact_signed_length_and_hash() {
     use std::{net::TcpListener,time::Instant};
-    for length in [4,5,6] {
+    for (length,wrong_hash) in [(4,false),(5,false),(6,false),(5,true)] {
         let listener=TcpListener::bind("127.0.0.1:0").unwrap();listener.set_nonblocking(true).unwrap();
         let url=format!("http://{}",listener.local_addr().unwrap());
         let server=std::thread::spawn(move || {
@@ -88,7 +89,21 @@ fn download_requires_exact_signed_length_and_hash() {
         });
         let root=qa_root();fs::create_dir_all(&root).unwrap();let target=root.join("package.download");
         let mut expected=offer();expected.url=url;expected.compressed_bytes=length;expected.sha256=format!("{:x}",sha2::Sha256::digest(b"hello"));
+        if wrong_hash {expected.sha256="0".repeat(64);}
         let result=download(&agent(Duration::from_secs(3)),&expected,&target,&AtomicBool::new(false));
-        server.join().unwrap();assert_eq!(result.is_ok(),length==5);fs::remove_dir_all(root).unwrap();
+        server.join().unwrap();assert_eq!(result.is_ok(),length==5 && !wrong_hash);fs::remove_dir_all(root).unwrap();
     }
+}
+
+#[test]
+fn extracted_total_and_compressed_length_must_match_the_signed_sizes() {
+    let root=qa_root();fs::create_dir_all(&root).unwrap();
+    let raw=serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","version":"0.0.990","channel":"beta","data_schema":"opaque-v1","source_sha":"a".repeat(40),"source_dirty":false,"build_profile":"Debug","engine":2,"files":[{"path":"assets/test.txt","size":5,"sha256":"a".repeat(64)}]})).unwrap();
+    let manifest=Manifest::decode(&raw).unwrap();fs::write(root.join("manifest.json"),&raw).unwrap();
+    let mut expected=offer();expected.expanded_bytes=u64::try_from(raw.len()).unwrap()+5;
+    expected.verify_expanded(&root,&manifest).unwrap();expected.expanded_bytes+=1;
+    assert!(expected.verify_expanded(&root,&manifest).is_err());
+    let archive=root.join("archive.zip");fs::write(&archive,b"small").unwrap();expected.compressed_bytes=5;
+    expected.verify_archive_length(&archive).unwrap();expected.compressed_bytes=6;
+    assert!(expected.verify_archive_length(&archive).is_err());fs::remove_dir_all(root).unwrap();
 }

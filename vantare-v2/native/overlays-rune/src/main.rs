@@ -16,6 +16,10 @@ fn main() -> ExitCode {
         return ExitCode::from(6);
     }
 
+    if vantare_ipc::product::print_version() {
+        return ExitCode::SUCCESS;
+    }
+
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     if args.first().is_some_and(|a| a == "--capture-scene") {
         return match vantare_overlays_rune::capture::run(&args[1..]) {

@@ -1,10 +1,12 @@
 {
   "schema": 1,
   "artifact_overrides": {"vantare-hub.exe": "vantare-hub-host.exe"},
+  "external_bins": ["vantare-overlays-rune.exe"],
   "executables": [
     "vantare.exe",
     "vantare-core.exe",
     "vantare-overlays.exe",
+    "vantare-overlays-rune.exe",
     "vantare-hub.exe",
     "vantare-engineer.exe",
     "vantare-services.exe",

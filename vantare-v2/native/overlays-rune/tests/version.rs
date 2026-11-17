@@ -12,7 +12,12 @@ fn version_uses_the_shared_compile_time_identity() {
     assert!(output.status.success());
     assert_eq!(
         output.stdout,
-        format!("Vantare Native {} ({})\n", product::VERSION, product::CHANNEL).as_bytes()
+        format!(
+            "Vantare Native {} ({})\n",
+            product::VERSION,
+            product::CHANNEL
+        )
+        .as_bytes()
     );
     assert!(output.stderr.is_empty());
     if let Some(version) = option_env!("VANTARE_VERSION") {

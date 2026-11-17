@@ -88,6 +88,24 @@ try{
         $metadata=& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc|ConvertFrom-Json
         if($LASTEXITCODE){throw 'No se pudo leer cargo metadata'}
         Assert-NativeDistributionFeatures @($metadata.resolve.nodes|ForEach-Object {$_.features})
+        # Rune is isolated: validate the pin before allowing its one online fetch.
+        $runeLock=Join-Path $native 'overlays-rune/Cargo.lock'
+        $runeHash=Assert-RuneLock $runeLock
+        $oldOffline=$env:CARGO_NET_OFFLINE
+        try{
+            $env:CARGO_NET_OFFLINE='false'
+            & pwsh -NoProfile -File scripts/compilar.ps1 cargo fetch --locked --manifest-path overlays-rune/Cargo.toml
+            if($LASTEXITCODE){throw 'Falló el fetch bloqueado de Rune'}
+        }finally{$env:CARGO_NET_OFFLINE=$oldOffline}
+        $null=Assert-RuneLock $runeLock $runeHash
+        $runeArgs=@('build','--manifest-path','overlays-rune/Cargo.toml','--target','x86_64-pc-windows-msvc','--offline','--locked')
+        if($BuildProfile -ceq 'Release'){$runeArgs+='--release'}
+        & pwsh -NoProfile -File scripts/compilar.ps1 cargo @runeArgs
+        if($LASTEXITCODE){throw 'Falló la compilación offline de Rune'}
+        $null=Assert-RuneLock $runeLock $runeHash
+        $runeMetadata=& cargo metadata --manifest-path overlays-rune/Cargo.toml --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc|ConvertFrom-Json
+        if($LASTEXITCODE){throw 'No se pudo leer cargo metadata de Rune'}
+        Assert-NativeDistributionFeatures @($runeMetadata.resolve.nodes|ForEach-Object {$_.features})
     }finally{Pop-Location}
     $inventory=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'public-inventory.json') -Raw|ConvertFrom-Json
     $bins=@($inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)}|Sort-Object -Unique)
@@ -120,7 +138,7 @@ try{
     }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination (Join-Path $payload 'README.md')
     Copy-Item -LiteralPath (Join-Path $native 'ui/assets/fonts/OFL-Inter.txt') -Destination (Join-Path $payload 'licenses/OFL-Inter.txt')
-    $dependencies=@($metadata.packages|Sort-Object name,version|ForEach-Object {@{name=$_.name;version=$_.version;license=$_.license;source=$_.source}})
+    $dependencies=@(($metadata.packages+$runeMetadata.packages)|Sort-Object name,version,source -Unique|ForEach-Object {@{name=$_.name;version=$_.version;license=$_.license;source=$_.source}})
     Write-BuildJson (Join-Path $payload 'dependencies.json') $dependencies
     Copy-Item -LiteralPath $ui -Destination (Join-Path $payload 'hub-ui') -Recurse
     Write-HubNotices $web (Join-Path $payload 'licenses/hub-web-notices.txt')

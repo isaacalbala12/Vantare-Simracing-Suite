@@ -367,3 +367,116 @@ fn matching_review_proof_expires_before_the_resident_answers() {
     );
     assert!(f.owner.status.decision.is_some());
 }
+
+#[test]
+fn valid_review_reaches_the_chain_before_any_program_starts() {
+    const FIXTURE: &str = "VANTARE_TEST_REVIEW_RESIDENT_ROOT";
+    let Some(root) = std::env::var_os(FIXTURE) else {
+        let root = std::env::temp_dir().join(format!(
+            "resident-reviewed-{}",
+            vantare_services::random_id().unwrap()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let (_, module) = module_path!().split_once("::").unwrap();
+        let name = format!("{module}::valid_review_reaches_the_chain_before_any_program_starts");
+        let outcome = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", &name, "--nocapture"])
+            .env(FIXTURE, &root)
+            .env("VANTARE_NATIVE_DATA_ROOT", &root)
+            .output()
+            .unwrap();
+        fs::remove_dir_all(&root).unwrap();
+        assert!(
+            outcome.status.success()
+                && String::from_utf8_lossy(&outcome.stdout).contains("1 passed"),
+            "isolated review test failed: {} {}",
+            String::from_utf8_lossy(&outcome.stdout),
+            String::from_utf8_lossy(&outcome.stderr),
+        );
+        return;
+    };
+    run_import_review_fixture(PathBuf::from(root));
+}
+
+fn run_import_review_fixture(root: PathBuf) {
+    use vantare_ipc::launcher::{
+        answer::ReviewProof,
+        review::{frame_pages, review_pages},
+    };
+    let path = root.join("launcher.json");
+    let mut owner = Owner::new(path, false);
+    let mut profile = launcher::Profile::new("review-test".into(), "QA".into());
+    profile.imported = true;
+    profile.first_step_delay = 3600;
+    profile.steps.push(launcher::Step {
+        app_id: "obs".into(),
+        delay_seconds: 0,
+        args_override: None,
+    });
+    let mut discovery = launcher::discovery::Discovery::default();
+    discovery.apps.push(launcher::discovery::Detected {
+        id: "obs".into(),
+        executable: Some(root.join("never-created.exe")),
+        availability: launcher::discovery::Availability::default(),
+    });
+    owner.chain = Some(
+        Chain::start(
+            owner.document.clone(),
+            profile,
+            move |_| discovery,
+            owner.processes.clone(),
+            None,
+            &owner.path,
+        )
+        .unwrap(),
+    );
+    let question = loop {
+        let progress = owner
+            .chain
+            .as_ref()
+            .unwrap()
+            .progress
+            .recv_timeout(Duration::from_secs(5))
+            .unwrap();
+        if let Some(question) = progress.decision {
+            break question;
+        }
+    };
+    assert_eq!(question.actions, [Action::Trust, Action::Cancel]);
+    let pages_digest =
+        vantare_services::content_hash(&frame_pages(&review_pages(&question.message).unwrap()));
+    let run = owner.status.extension.as_mut().unwrap().begin().unwrap();
+    let mut authority = observed();
+    authority.policy.state = AccessState::Active;
+    authority.policy.checked_at_ms = 11_000;
+    let revision = "b".repeat(64);
+    owner.active_run = Some(run);
+    owner.active_scope = Some(ActiveScope {
+        account: authority.generation.clone(),
+        revision: revision.clone(),
+    });
+    owner.chain_decision = Some(question.id);
+    owner.status.decision = Some(vantare_ipc::launcher::Decision {
+        id: question.id,
+        message: question.message,
+        actions: question.actions,
+    });
+    let request = AnswerChecked {
+        request: "c".repeat(32).try_into().unwrap(),
+        instance: owner.status.extension.as_ref().unwrap().instance.clone(),
+        account: authority.generation.clone(),
+        run,
+        revision,
+        decision: owner.status.decision.as_ref().unwrap().id.to_string(),
+        action: Action::Trust,
+        review: Some(ReviewProof {
+            pages_digest,
+            issued_ms: 1_000,
+        }),
+    };
+    owner.answer_checked_with_clock(request, || Ok(Some(authority)), || Ok(11_000));
+    assert_eq!(receipt(&owner), OrderReceipt::Accepted { run });
+    assert!(owner.status.decision.is_none());
+    assert!(owner.active_run.is_some());
+    owner.chain.as_mut().unwrap().shutdown().unwrap();
+}

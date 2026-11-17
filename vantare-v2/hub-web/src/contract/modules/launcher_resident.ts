@@ -27,7 +27,7 @@ function question(value: unknown): boolean {
   return (
     record(value) &&
     exact(value, ["id", "kind", "actions", "review"]) &&
-    oneOf(value.review, ["available", "unavailable"]) &&
+    oneOf(value.review, ["available", "unavailable", "too-long"]) &&
     typeof value.id === "string" &&
     value.id.length <= residentIdLimit &&
     new RegExp(residentIdPattern).test(value.id) &&

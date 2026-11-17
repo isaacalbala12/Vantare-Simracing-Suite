@@ -64,11 +64,17 @@ export function isHostMessage(value: unknown): value is HostToUi {
   switch (value.kind) {
     case "reviewContent":
       return (
-        exact(value, ["kind", "text"]) &&
-        typeof value.text === "string" &&
-        value.text.length > 0 &&
-        !value.text.includes("\0") &&
-        new TextEncoder().encode(value.text).byteLength <= 64 * 1024
+        exact(value, ["kind", "pages"]) &&
+        Array.isArray(value.pages) &&
+        value.pages.length > 0 &&
+        value.pages.length <= 3 &&
+        value.pages.every(
+          (page) =>
+            typeof page === "string" &&
+            page.length > 0 &&
+            !page.includes("\0") &&
+            new TextEncoder().encode(page).byteLength <= 64 * 1024,
+        )
       );
     case "reviewFailure":
       return (

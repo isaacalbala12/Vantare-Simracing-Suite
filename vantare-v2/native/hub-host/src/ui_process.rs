@@ -258,13 +258,41 @@ impl Session {
             UiToHost::PickedExecutable(selection) => {
                 crate::launcher::apps::picked_executable(&mut self.app_picker, pipe, selection)?;
             }
-            UiToHost::ReviewContentRequest(_) | UiToHost::ReviewDecision(_) => {
+            UiToHost::ReviewContentRequest(request) => {
+                let result = if self.current.live {
+                    Err(crate::launcher_resident::ReviewFailure::Unavailable)
+                } else {
+                    self.launcher_resident_state.review.content(
+                        &self.launcher,
+                        self.core.account_observation().as_ref(),
+                        &request.ticket,
+                        Instant::now(),
+                    )
+                };
                 frame::write(
                     pipe,
-                    &HostToUi::ReviewFailure {
-                        reason: crate::launcher_resident::ReviewFailure::Unavailable,
+                    &match result {
+                        Ok(content) => HostToUi::ReviewContent(content),
+                        Err(reason) => HostToUi::ReviewFailure { reason },
                     },
                 )?;
+            }
+            UiToHost::ReviewDecision(decision) => {
+                let issued_ms = vantare_ipc::control::wall_ms().ok();
+                let result = if self.current.live {
+                    Err(crate::launcher_resident::ReviewFailure::Unavailable)
+                } else {
+                    self.launcher_resident_state.review.decide(
+                        &self.launcher,
+                        self.core.account_observation().as_ref(),
+                        decision,
+                        Instant::now(),
+                        issued_ms,
+                    )
+                };
+                if let Err(reason) = result {
+                    frame::write(pipe, &HostToUi::ReviewFailure { reason })?;
+                }
             }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe { topic } => {

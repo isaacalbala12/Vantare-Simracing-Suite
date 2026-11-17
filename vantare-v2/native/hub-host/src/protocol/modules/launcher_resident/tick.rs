@@ -1,5 +1,8 @@
 use super::{Event, HostToUi, Pipe, Session, Topic, frame, io};
 pub(super) fn tick(session: &mut Session, pipe: &mut Pipe) -> io::Result<()> {
+    if session.current.live {
+        session.launcher_resident_state.review.clear();
+    }
     if session.current.live || !session.subscriptions.contains(&Topic::LauncherResident) {
         session.launcher_resident_state.reset();
         return Ok(());

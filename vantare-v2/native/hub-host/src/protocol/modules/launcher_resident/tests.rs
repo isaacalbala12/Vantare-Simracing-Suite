@@ -356,7 +356,7 @@ fn trusted_review_wire_messages_are_closed_and_directional() {
         input["message"] = serde_json::json!("extra");
         assert!(serde_json::from_value::<UiToHost>(input).is_err());
     }
-    let output = serde_json::json!({"kind":"reviewContent","text":"private review"});
+    let output = serde_json::json!({"kind":"reviewContent","pages":["private review"]});
     assert!(serde_json::from_value::<HostToUi>(output.clone()).is_ok());
     assert!(serde_json::from_value::<UiToHost>(output).is_err());
 }

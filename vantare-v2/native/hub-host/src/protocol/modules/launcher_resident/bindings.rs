@@ -205,7 +205,9 @@ fn review_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
                 },
             },
         },
-        UiToHost::ReviewContentRequest(ReviewContentRequest { ticket: ticket.clone() }),
+        UiToHost::ReviewContentRequest(ReviewContentRequest {
+            ticket: ticket.clone(),
+        }),
         UiToHost::ReviewDecision(ReviewDecision {
             ticket: ticket.clone(),
             decision: ReviewChoice::Trust,
@@ -214,10 +216,16 @@ fn review_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
     host.extend([
         HostToUi::Response {
             id: 10,
-            result: Reply::LauncherResidentReviewOpen { value: ResidentReviewTicket { ticket } },
+            result: Reply::LauncherResidentReviewOpen {
+                value: ResidentReviewTicket { ticket },
+            },
         },
-        HostToUi::ReviewContent(ReviewContent { text: "Contenido sintético de revisión".into() }),
-        HostToUi::ReviewFailure { reason: ReviewFailure::Expired },
+        HostToUi::ReviewContent(ReviewContent {
+            pages: vec!["Contenido sintético de revisión".into()],
+        }),
+        HostToUi::ReviewFailure {
+            reason: ReviewFailure::Expired,
+        },
     ]);
 }
 

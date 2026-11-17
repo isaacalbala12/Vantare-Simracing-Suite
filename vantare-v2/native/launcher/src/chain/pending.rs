@@ -67,6 +67,21 @@ impl Pending {
         if action == Action::Trust {
             return Err(AnswerError::TrustRequiresEditor);
         }
+        self.commit(id, action, state)
+    }
+    fn answer_reviewed(
+        &self,
+        id: u64,
+        state: impl FnOnce() -> (bool, bool),
+    ) -> Result<(), AnswerError> {
+        self.commit(id, Action::Trust, state)
+    }
+    fn commit(
+        &self,
+        id: u64,
+        action: Action,
+        state: impl FnOnce() -> (bool, bool),
+    ) -> Result<(), AnswerError> {
         let mut slot = self.0.lock().map_err(|_| AnswerError::Unavailable)?;
         let q = slot.as_mut().ok_or(AnswerError::StaleQuestion)?;
         let (cancelled, shutdown) = state();
@@ -118,6 +133,20 @@ impl Pending {
         Ok(action)
     }
 }
+impl super::Chain {
+    /// Resident-only entry point after validating the review against its live mailbox.
+    pub fn answer_reviewed(&self, id: u64) -> Result<(), AnswerError> {
+        self.pending.answer_reviewed(id, || {
+            (
+                self.cancel.cancelled(),
+                self.cancel
+                    .shutdown
+                    .load(std::sync::atomic::Ordering::Acquire),
+            )
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -129,6 +158,27 @@ mod tests {
             Arc::new(move || Duration::from_secs(read.load(Ordering::Acquire))),
             elapsed,
         )
+    }
+    #[test]
+    fn reviewed_trust_only_commits_to_the_current_pending_question() {
+        let pending = Arc::new(Pending::default());
+        let (clock, _) = clock();
+        let _lease = pending
+            .open(4, &[Action::Trust, Action::Cancel], false, clock)
+            .unwrap();
+        assert_eq!(
+            pending.answer(4, Action::Trust, || (false, false)),
+            Err(AnswerError::TrustRequiresEditor)
+        );
+        assert_eq!(
+            pending.answer_reviewed(3, || (false, false)),
+            Err(AnswerError::StaleQuestion)
+        );
+        pending.answer_reviewed(4, || (false, false)).unwrap();
+        assert!(matches!(
+            pending.poll(4, true, None, || None).unwrap(),
+            Poll::Answer(Action::Trust)
+        ));
     }
     #[test]
     fn commitment_wins_over_later_expiry_and_cannot_be_replaced() {

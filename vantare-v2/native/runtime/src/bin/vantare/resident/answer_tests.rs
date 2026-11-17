@@ -269,3 +269,101 @@ fn continuing_requires_current_launch_permission_and_commits_only_that_question(
     );
     assert!(f.owner.status.decision.is_none());
 }
+
+#[test]
+fn reviewed_trust_rejects_a_changed_message_or_question_before_authority() {
+    for changed_question in [false, true] {
+        let mut f = fixture();
+        let question = f.owner.status.decision.as_mut().unwrap();
+        question.actions.push(Action::Trust);
+        question.message = serde_json::json!({
+            "name": "QA", "startup": false, "hotkey": "", "firstDelay": 0, "retries": 0,
+            "steps": [{"app": "QA", "path": "QA/app.exe", "args": [], "steam": false, "delay": 0}]
+        })
+        .to_string();
+        f.request.action = Action::Trust;
+        f.request.review = Some(vantare_ipc::launcher::answer::ReviewProof {
+            issued_ms: vantare_ipc::control::wall_ms().unwrap(),
+            pages_digest: if changed_question {
+                f.request.decision = "43".into();
+                vantare_services::content_hash(&vantare_ipc::launcher::review::frame_pages(
+                    &vantare_ipc::launcher::review::review_pages(&question.message).unwrap(),
+                ))
+            } else {
+                "0".repeat(64)
+            },
+        });
+        f.owner.answer_checked_with(f.request.clone(), || {
+            panic!("changed review must not observe authority")
+        });
+        assert_eq!(
+            receipt(&f.owner),
+            OrderReceipt::Rejected {
+                reason: AnswerRejection::StaleQuestion.into()
+            }
+        );
+        assert!(f.owner.status.decision.is_some());
+    }
+}
+
+#[test]
+fn legacy_trust_with_the_current_question_is_rejected_without_answering() {
+    let mut f = fixture();
+    f.owner
+        .status
+        .decision
+        .as_mut()
+        .unwrap()
+        .actions
+        .push(Action::Trust);
+    let before = f.owner.chain_decision;
+    let path = vantare_ipc::launcher::request_path(&f.owner.path);
+    fs::write(&path, br#"{"answer-v2":{"decision":42,"action":"trust"}}"#).unwrap();
+    f.owner.request();
+    assert!(!path.exists());
+    assert_eq!(f.owner.chain_decision, before);
+    assert!(f.owner.status.decision.is_some());
+    assert_eq!(
+        f.owner.status.error.as_deref(),
+        Some("trust-requires-editor")
+    );
+}
+
+#[test]
+fn matching_review_proof_expires_before_the_resident_answers() {
+    use vantare_ipc::launcher::{
+        answer::ReviewProof,
+        review::{frame_pages, review_pages},
+    };
+    let mut f = fixture();
+    let question = f.owner.status.decision.as_mut().unwrap();
+    question.actions.push(Action::Trust);
+    question.message = serde_json::json!({
+        "name": "QA", "startup": false, "hotkey": "", "firstDelay": 0, "retries": 0,
+        "steps": [{"app": "QA", "path": "QA/app.exe", "args": [], "steam": false, "delay": 0}]
+    })
+    .to_string();
+    let pages_digest =
+        vantare_services::content_hash(&frame_pages(&review_pages(&question.message).unwrap()));
+    f.request.action = Action::Trust;
+    f.request.review = Some(ReviewProof {
+        pages_digest,
+        issued_ms: 1_000,
+    });
+    assert_eq!(
+        f.owner.checked_answer_target(&f.request),
+        f.owner.chain_decision.ok_or(AnswerRejection::StaleQuestion)
+    );
+    let mut authority = observed();
+    authority.policy.state = AccessState::Active;
+    authority.policy.checked_at_ms = 11_001;
+    f.owner
+        .answer_checked_with_clock(f.request.clone(), || Ok(Some(authority)), || Ok(11_001));
+    assert_eq!(
+        receipt(&f.owner),
+        OrderReceipt::Rejected {
+            reason: AnswerRejection::StaleQuestion.into()
+        }
+    );
+    assert!(f.owner.status.decision.is_some());
+}

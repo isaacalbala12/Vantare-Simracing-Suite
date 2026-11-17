@@ -6,12 +6,24 @@ pub(super) fn dispatch(
     request: &Request,
 ) -> io::Result<()> {
     match request {
-        Request::LauncherResidentReviewOpen { .. } => {
+        Request::LauncherResidentReviewOpen { target } => {
+            let result = if session.current.live {
+                Err(crate::protocol::HostError::Denied)
+            } else {
+                session.launcher_resident_state.review.open(
+                    &session.launcher,
+                    session.core.account_observation().as_ref(),
+                    target,
+                )
+            };
             return frame::write(
                 pipe,
-                &HostToUi::Failure {
-                    id,
-                    error: crate::protocol::HostError::CoreUnavailable,
+                &match result {
+                    Ok(value) => HostToUi::Response {
+                        id,
+                        result: Reply::LauncherResidentReviewOpen { value },
+                    },
+                    Err(error) => HostToUi::Failure { id, error },
                 },
             );
         }

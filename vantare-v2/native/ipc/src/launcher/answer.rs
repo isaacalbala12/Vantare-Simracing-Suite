@@ -35,7 +35,8 @@ pub struct AnswerChecked {
 #[serde(deny_unknown_fields)]
 pub struct ReviewProof {
     #[serde(deserialize_with = "super::checked::revision")]
-    pub message_digest: String,
+    pub pages_digest: String,
+    pub issued_ms: u64,
 }
 
 pub fn permits_reviewed_trust(policy: &crate::control::Policy, now: u64) -> bool {

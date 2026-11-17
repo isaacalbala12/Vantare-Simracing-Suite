@@ -246,7 +246,9 @@
     },
     {
       "kind": "reviewContent",
-      "text": "Contenido sintético de revisión"
+      "pages": [
+        "Contenido sintético de revisión"
+      ]
     },
     {
       "kind": "reviewFailure",

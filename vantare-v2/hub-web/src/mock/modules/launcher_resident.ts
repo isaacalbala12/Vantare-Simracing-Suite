@@ -120,7 +120,7 @@ export function create(
     event: { topic: "launcherResident", value: structuredClone(view) },
   });
   let pending:
-    | { ticket: string; target: ResidentReviewTarget; deadline: number }
+    | { ticket: string; target: ResidentReviewTarget; deadline?: number }
     | undefined;
   const reviewRejection = (
     target: ResidentReviewTarget,
@@ -162,7 +162,7 @@ export function create(
           error: { kind: "residentAnswerRejected", reason },
         };
       const ticket = crypto.randomUUID().replaceAll("-", "");
-      pending = { ticket, target, deadline: performance.now() + 60_000 };
+      pending = { ticket, target };
       view.reviewOutcome = null;
       return {
         kind: "response",
@@ -177,17 +177,25 @@ export function create(
       if (!pending || pending.ticket !== message.ticket)
         return { kind: "reviewFailure", reason: "unavailable" };
       const { target, deadline } = pending;
-      if (message.kind === "reviewDecision") pending = undefined;
       const reason =
-        performance.now() >= deadline
+        deadline !== undefined && performance.now() >= deadline
           ? "expired"
           : reviewRejection(target)
             ? "changed"
             : undefined;
-      if (message.kind === "reviewContentRequest")
-        return reason
-          ? { kind: "reviewFailure", reason }
-          : { kind: "reviewContent", text: "Contenido sintético de revisión" };
+      if (message.kind === "reviewContentRequest") {
+        if (reason) return { kind: "reviewFailure", reason };
+        pending.deadline ??= performance.now() + 180_000;
+        return {
+          kind: "reviewContent",
+          pages: [
+            "Revisa el paso de este perfil importado\n   Programa: QA/app.exe",
+          ],
+        };
+      }
+      pending = undefined;
+      if (deadline === undefined)
+        return { kind: "reviewFailure", reason: "unavailable" };
       const state =
         reason ??
         (message.decision === "trust"

@@ -4,7 +4,8 @@ use vantare_ipc::{
     account_session::{self, AccountObservation},
     launcher::{
         Action, AnswerChecked,
-        answer::{AnswerRejection, OrderReceipt, permits_answer},
+        answer::{AnswerRejection, OrderReceipt, permits_answer, permits_reviewed_trust},
+        review::{authorization_current, can_trust, frame_pages, review_pages},
     },
 };
 impl Owner {
@@ -60,8 +61,19 @@ impl Owner {
         if !question.actions.contains(&request.action) {
             return Err(AnswerRejection::InvalidAction);
         }
-        if request.action == Action::Trust {
-            return Err(AnswerRejection::TrustRequiresEditor);
+        match (&request.action, &request.review) {
+            (Action::Trust, Some(review)) => {
+                let pages =
+                    review_pages(&question.message).map_err(|_| AnswerRejection::Unavailable)?;
+                if !can_trust(&pages)
+                    || vantare_services::content_hash(&frame_pages(&pages)) != review.pages_digest
+                {
+                    return Err(AnswerRejection::StaleQuestion);
+                }
+            }
+            (Action::Trust, None) => return Err(AnswerRejection::TrustRequiresEditor),
+            (_, None) => {}
+            (_, Some(_)) => return Err(AnswerRejection::InvalidAction),
         }
         Ok(local_id)
     }
@@ -69,6 +81,14 @@ impl Owner {
         &mut self,
         request: AnswerChecked,
         observe: impl FnOnce() -> std::io::Result<Option<AccountObservation>>,
+    ) {
+        self.answer_checked_with_clock(request, observe, vantare_ipc::control::wall_ms);
+    }
+    fn answer_checked_with_clock(
+        &mut self,
+        request: AnswerChecked,
+        observe: impl FnOnce() -> std::io::Result<Option<AccountObservation>>,
+        now: impl FnOnce() -> std::io::Result<u64>,
     ) {
         let Some(extension) = self.status.extension.as_ref() else {
             super::super::log("Launcher: answer-v3 descartado sin extension de ejecucion");
@@ -85,23 +105,37 @@ impl Owner {
             if observation.generation != request.account {
                 return Err(AnswerRejection::AccountChanged);
             }
-            if !vantare_ipc::control::wall_ms()
-                .is_ok_and(|now| permits_answer(&observation.policy, request.action, now))
+            let reviewed_trust = request.action == Action::Trust;
+            let now = now().map_err(|_| AnswerRejection::Denied)?;
+            if request
+                .review
+                .as_ref()
+                .is_some_and(|proof| !authorization_current(proof.issued_ms, now))
             {
+                return Err(AnswerRejection::StaleQuestion);
+            }
+            let permitted = if reviewed_trust {
+                permits_reviewed_trust(&observation.policy, now)
+            } else {
+                permits_answer(&observation.policy, request.action, now)
+            };
+            if !permitted {
                 return Err(AnswerRejection::Denied);
             }
-            self.chain
-                .as_ref()
-                .ok_or(AnswerRejection::WrongRun)?
-                .answer_checked(local_id, request.action)
-                .map_err(|error| match error {
-                    launcher::chain::AnswerError::StaleQuestion => AnswerRejection::StaleQuestion,
-                    launcher::chain::AnswerError::InvalidAction => AnswerRejection::InvalidAction,
-                    launcher::chain::AnswerError::TrustRequiresEditor => {
-                        AnswerRejection::TrustRequiresEditor
-                    }
-                    launcher::chain::AnswerError::Unavailable => AnswerRejection::Unavailable,
-                })
+            let chain = self.chain.as_ref().ok_or(AnswerRejection::WrongRun)?;
+            let answer = if reviewed_trust {
+                chain.answer_reviewed(local_id)
+            } else {
+                chain.answer_checked(local_id, request.action)
+            };
+            answer.map_err(|error| match error {
+                launcher::chain::AnswerError::StaleQuestion => AnswerRejection::StaleQuestion,
+                launcher::chain::AnswerError::InvalidAction => AnswerRejection::InvalidAction,
+                launcher::chain::AnswerError::TrustRequiresEditor => {
+                    AnswerRejection::TrustRequiresEditor
+                }
+                launcher::chain::AnswerError::Unavailable => AnswerRejection::Unavailable,
+            })
         })();
         if result.is_ok() {
             self.status.decision = None;

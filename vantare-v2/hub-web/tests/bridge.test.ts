@@ -215,7 +215,13 @@ describe("trusted launcher review messages", () => {
   });
 
   it("drops private host review content before writing the renderer port", () => {
-    const privateContent = { kind: "reviewContent", text: "private review" };
+    const privateContent = {
+      kind: "reviewContent",
+      pages: ["QA/private.exe --private"],
+    };
+    expect(
+      isHostMessage({ kind: "reviewContent", text: "private review" }),
+    ).toBe(false);
     const normal = { kind: "closeRequested", reason: "window" };
     expect(isHostMessage(privateContent)).toBe(true);
     expect(isUiMessage(privateContent)).toBe(false);

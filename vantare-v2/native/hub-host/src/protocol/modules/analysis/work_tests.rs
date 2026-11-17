@@ -215,3 +215,201 @@ fn full_channel_is_busy_and_late_results_cannot_resurrect_tokens() {
     assert!(state.session.is_none());
     assert!(state.paths.is_empty());
 }
+#[test]
+fn cancelling_inspect_or_nothing_preserves_the_open_session() {
+    for timeout in [false, true] {
+        let (mut state, commands, _done) = held();
+        let session_cancel = Arc::new(AtomicBool::new(false));
+        state.session = Some("f".repeat(64));
+        state.session_cancel = Some(session_cancel.clone());
+        assert!(!state.cancel());
+        assert_eq!(state.session.as_deref(), Some("f".repeat(64).as_str()));
+        assert!(!session_cancel.load(Ordering::Acquire));
+        let now = Instant::now();
+        state
+            .submit(
+                9,
+                worker::Operation::Inspect {
+                    id: "a".repeat(64),
+                    path: PathBuf::from("unused"),
+                    created: std::time::SystemTime::now(),
+                },
+                now,
+            )
+            .unwrap();
+        let worker::Command::Job(job) = commands.recv().unwrap() else {
+            panic!("job");
+        };
+        if !timeout {
+            assert!(state.cancel());
+        }
+        assert_eq!(
+            state.poll(
+                now + if timeout {
+                    Duration::from_secs(40)
+                } else {
+                    Duration::ZERO
+                },
+                true,
+                false
+            ),
+            Some((
+                9,
+                Err(if timeout {
+                    HostError::AnalysisTimeout
+                } else {
+                    HostError::AnalysisCancelled
+                })
+            ))
+        );
+        assert!(job.cancel.load(Ordering::Acquire));
+        assert!(!session_cancel.load(Ordering::Acquire));
+        assert!(state.session.is_some());
+    }
+}
+#[test]
+fn recording_stopped_and_different_file_do_not_mark_the_row() {
+    let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("a.duckdb"), []).unwrap();
+    std::fs::write(root.join("b.duckdb"), []).unwrap();
+    let mut state = State::new(root.clone());
+    for (status, file, count) in [
+        ("stopped", "a.duckdb", 0),
+        ("recording", "missing.duckdb", 0),
+        ("recording", "b.duckdb", 1),
+    ] {
+        std::fs::write(
+            root.join("recording-status.json"),
+            serde_json::to_vec(&serde_json::json!({"state":status,"file":file})).unwrap(),
+        )
+        .unwrap();
+        let rows = state.catalog().unwrap();
+        assert_eq!(rows.iter().filter(|row| row.recording).count(), count);
+        for row in rows.iter().filter(|row| row.recording) {
+            assert_eq!(state.paths[&row.id].file_name().unwrap(), "b.duckdb");
+        }
+    }
+    drop(state);
+    std::fs::remove_dir_all(root).unwrap();
+}
+#[test]
+fn start_reports_too_many_recordings_as_catalog_does() {
+    let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("a.duckdb"), []).unwrap();
+    let mut state = State::new(root.clone());
+    let id = state.catalog().unwrap()[0].id.clone();
+    for n in 0..256 {
+        std::fs::write(root.join(format!("extra-{n}.duckdb")), []).unwrap();
+    }
+    assert_eq!(
+        state.start(1, &Request::AnalysisInspect { id }, Instant::now()),
+        Err(HostError::AnalysisTooMany)
+    );
+    drop(state);
+    std::fs::remove_dir_all(root).unwrap();
+}
+#[cfg(windows)]
+#[test]
+fn disconnected_worker_is_recreated_after_submit_or_poll() {
+    for during_poll in [false, true] {
+        let (mut state, commands, results) = held();
+        let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+        std::fs::create_dir(&root).unwrap();
+        std::fs::write(
+            root.join("a.duckdb"),
+            include_bytes!("../../../analysis/fixtures/no-series.duckdb"),
+        )
+        .unwrap();
+        state.root = root.clone();
+        let exe = std::env::current_exe().unwrap();
+        state.helper_for_test(
+            exe.parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("vantare-storage.exe"),
+        );
+        let now = Instant::now();
+        if during_poll {
+            pending(&mut state, now);
+        }
+        drop(commands);
+        drop(results);
+        if during_poll {
+            assert_eq!(
+                state.poll(now, true, false),
+                Some((9, Err(HostError::AnalysisUnreadable)))
+            );
+        } else {
+            assert_eq!(
+                state.submit(9, worker::Operation::Close, now),
+                Err(HostError::AnalysisUnreadable)
+            );
+        }
+        assert!(state.worker.is_none());
+        let id = state.catalog().unwrap()[0].id.clone();
+        state
+            .start(10, &Request::AnalysisInspect { id }, now)
+            .unwrap();
+        state.wait_for_test();
+        assert!(matches!(
+            state.poll(now, true, false).unwrap().1,
+            Ok(Reply::AnalysisInspect {
+                state: AnalysisState::Incompatible,
+                ..
+            })
+        ));
+        drop(state);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+#[test]
+fn mismatched_result_does_not_leave_cancellation_latched() {
+    let (mut state, _commands, done) = held();
+    let now = Instant::now();
+    pending(&mut state, now);
+    done.send(worker::Completion {
+        id: 10,
+        result: Ok(Reply::AnalysisClose {}),
+    })
+    .unwrap();
+    assert_eq!(
+        state.poll(now, true, false),
+        Some((9, Err(HostError::AnalysisUnreadable)))
+    );
+    assert!(!state.cancelled);
+}
+#[test]
+fn worker_reports_too_many_if_catalog_grows_after_dispatch() {
+    let (mut state, commands, _results) = held();
+    let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+    std::fs::create_dir(&root).unwrap();
+    std::fs::write(root.join("a.duckdb"), []).unwrap();
+    state.root = root.clone();
+    let id = state.catalog().unwrap()[0].id.clone();
+    let now = Instant::now();
+    state
+        .start(1, &Request::AnalysisInspect { id }, now)
+        .unwrap();
+    let job = commands.recv().unwrap();
+    for n in 0..256 {
+        std::fs::write(root.join(format!("extra-{n}.duckdb")), []).unwrap();
+    }
+    state.worker = Some(worker::Worker::start(PathBuf::from("helper-must-not-be-opened")).unwrap());
+    state
+        .worker
+        .as_ref()
+        .unwrap()
+        .commands
+        .try_send(job)
+        .unwrap_or_else(|_| panic!("empty worker"));
+    state.wait_for_test();
+    assert_eq!(
+        state.poll(now, true, false),
+        Some((1, Err(HostError::AnalysisTooMany)))
+    );
+    drop(state);
+    std::fs::remove_dir_all(root).unwrap();
+}

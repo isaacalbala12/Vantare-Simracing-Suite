@@ -1,5 +1,5 @@
 //! One session-owned worker, bounded channels, and no bridge-thread Reader ownership.
-use super::{AnalysisLap, AnalysisSignal, AnalysisState, map_error};
+use super::{AnalysisLap, AnalysisSignal, AnalysisState, map_catalog_error, map_error};
 use crate::{
     analysis::{Cancel, Reader, Stamp, Summary, stamp},
     protocol::{HostError, Reply},
@@ -29,10 +29,17 @@ pub(super) enum Operation {
     },
     Close,
 }
+#[cfg(test)]
+pub(super) struct ReadPause {
+    pub ready: SyncSender<u32>,
+    pub wait: Receiver<()>,
+}
 pub(super) struct Job {
     pub id: u32,
     pub operation: Operation,
     pub cancel: Cancel,
+    #[cfg(test)]
+    pub pause: Option<ReadPause>,
 }
 pub(super) enum Command {
     Job(Job),
@@ -139,7 +146,9 @@ fn run(
             execute(helper, &job, &mut reader, &mut cache)
         };
         let result = if job.cancel.load(Ordering::Acquire) {
-            reader = None;
+            if matches!(job.operation, Operation::Open { .. }) {
+                reader = None;
+            }
             Err(HostError::AnalysisCancelled)
         } else {
             result
@@ -170,8 +179,8 @@ fn execute(
             {
                 return Ok(reply.clone());
             }
-            // Inspecting the already-open file uses a temporary reader; the session remains intact.
-            let result = read(helper, path, *created, job.cancel.clone());
+            // A temporary Reader uses this inspect job's cancellation flag, never the session's.
+            let result = read(helper, path, *created, job);
             let reply = match result {
                 Ok((_, summary)) => Reply::AnalysisInspect {
                     state: if summary.finished {
@@ -209,7 +218,7 @@ fn execute(
             created,
         } => {
             *reader = None;
-            let (opened, summary) = read(helper, path, *created, job.cancel.clone())?;
+            let (opened, summary) = read(helper, path, *created, job)?;
             let laps = summary
                 .laps
                 .iter()
@@ -245,21 +254,20 @@ fn read(
     helper: &std::path::Path,
     path: &std::path::Path,
     created: SystemTime,
-    cancel: Cancel,
+    job: &Job,
 ) -> Result<(Reader, Summary), HostError> {
+    let paths = crate::analysis::recordings(path.parent().ok_or(HostError::AnalysisChanged)?)
+        .map_err(|error| map_catalog_error(error.code))?;
+    if !paths.contains(&path.to_path_buf()) {
+        return Err(HostError::AnalysisChanged);
+    }
     let result = (|| {
-        if !crate::analysis::recordings(
-            path.parent()
-                .ok_or_else(|| crate::analysis::invalid("Missing parent"))?,
-        )?
-        .contains(&path.to_path_buf())
-        {
-            return Err(crate::analysis::error(
-                crate::analysis::ErrorCode::Changed,
-                "Recording root changed",
-            ));
+        let mut reader = Reader::open(helper, path, job.cancel.clone())?;
+        #[cfg(test)]
+        if let Some(pause) = &job.pause {
+            let _ = pause.ready.send(reader.child.id());
+            let _ = pause.wait.recv_timeout(Duration::from_secs(10));
         }
-        let mut reader = Reader::open(helper, path, cancel)?;
         if reader.stamp.created != created {
             return Err(crate::analysis::error(
                 crate::analysis::ErrorCode::Changed,

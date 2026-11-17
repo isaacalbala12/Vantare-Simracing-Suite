@@ -364,10 +364,8 @@ pub fn run(args: &Args) -> io::Result<u8> {
         }
         Ok(())
     })();
-    let exit_code = session_effects::finish_session(session.exit_code, || {
-        analysis::closing(&mut session, &mut pipe)?;
-        session.cancel_deferred(&mut pipe)
-    });
+    let exit_code =
+        session_effects::finish_session(session.exit_code, || session.cancel_pending(&mut pipe));
     run_result?;
     if child.0.try_wait()?.is_some_and(|status| !status.success()) {
         return Err(io::ErrorKind::BrokenPipe.into());
@@ -443,3 +441,6 @@ fn release_rejects_an_uninstalled_ui_target() {
     let result = ui_target(&std::env::current_exe().expect("image"));
     assert!(matches!(result,Err(error) if error.kind()==io::ErrorKind::PermissionDenied));
 }
+#[cfg(test)]
+#[path = "protocol/modules/analysis/cleanup_tests.rs"]
+mod analysis_cleanup_tests;

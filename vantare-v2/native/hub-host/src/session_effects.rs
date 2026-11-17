@@ -109,6 +109,11 @@ impl Session {
         }
         result
     }
+    pub(super) fn cancel_pending(&mut self, pipe: &mut Pipe) -> io::Result<()> {
+        let analysis = super::analysis::closing(self, pipe);
+        let deferred = self.cancel_deferred(pipe);
+        analysis.and(deferred)
+    }
     pub(super) fn request_close(&mut self, pipe: &mut Pipe, reason: CloseReason) -> io::Result<()> {
         self.request_close_at(pipe, reason, Instant::now())
     }
@@ -121,8 +126,7 @@ impl Session {
         if !close_can_advance(self.closing.map(|(reason, _)| reason), reason) {
             return Ok(());
         }
-        super::analysis::closing(self, pipe)?;
-        self.cancel_deferred(pipe)?;
+        self.cancel_pending(pipe)?;
         self.closing = Some((reason, now));
         super::calendar::launch_closing(self, pipe)?;
         frame::write(pipe, &HostToUi::CloseRequested { reason })

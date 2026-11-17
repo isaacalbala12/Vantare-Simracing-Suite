@@ -5,6 +5,7 @@ import { decimal } from "../src/contract/analysis-validation";
 import { analysisMethods } from "../src/contract/generated/analysis";
 import corpus from "../src/contract/generated/corpus/analysis.json";
 import { isError, isReply, isRequest } from "../src/contract/modules/analysis";
+import { isHostMessage } from "../src/contract/validation";
 import type { MockContext } from "../src/mock/context";
 import { create } from "../src/mock/modules/analysis";
 
@@ -59,7 +60,12 @@ describe("analysis contract", () => {
         method: "analysis.catalog",
         max: 256,
         recordings: [
-          { id: "a".repeat(64), startedAtMs: 0, sizeBytes: 2 ** 53 },
+          {
+            id: "a".repeat(64),
+            startedAtMs: 0,
+            sizeBytes: 2 ** 53,
+            recording: false,
+          },
         ],
       }),
     ).toBe(false);
@@ -75,42 +81,97 @@ describe("analysis contract", () => {
       }),
     ).toBe(false);
   });
-  it("mock checks every method and observes revoked access", () => {
+  it("requires a boolean recording flag independently of numeric validation", () => {
+    const row = {
+      id: "a".repeat(64),
+      startedAtMs: 0,
+      sizeBytes: 1,
+      recording: false,
+    };
+    for (const recording of [false, true])
+      expect(
+        isReply({
+          method: "analysis.catalog",
+          max: 256,
+          recordings: [{ ...row, recording }],
+        }),
+      ).toBe(true);
+    for (const recording of [undefined, null, "true", 1])
+      expect(
+        isReply({
+          method: "analysis.catalog",
+          max: 256,
+          recordings: [{ ...row, recording }],
+        }),
+      ).toBe(false);
+  });
+  it("mock exercises sessions, states and revoked access with valid wire messages", () => {
     const core = structuredClone(offline);
+    Object.assign(core.access, {
+      verified: true,
+      blocked: false,
+      analysis: true,
+    });
+    core.rights = "connected";
     const handler = create({ core } as MockContext);
-    for (const allowed of [false, true, false]) {
-      Object.assign(core.access, {
-        verified: true,
-        blocked: false,
-        analysis: allowed,
-      });
-      for (const request of [
-        { method: "analysis.catalog" },
-        { method: "analysis.inspect", id: "a".repeat(64) },
-        { method: "analysis.open", id: "a".repeat(64) },
-        { method: "analysis.close", session: "a".repeat(64) },
-        { method: "analysis.cancel" },
-      ] as const) {
-        const result = handler({ kind: "request", id: 1, request });
-        if (!allowed)
-          expect(result).toEqual({
-            kind: "failure",
-            id: 1,
-            error: { kind: "denied" },
-          });
-        else if (request.method === "analysis.catalog")
-          expect(result).toEqual({
-            kind: "response",
-            id: 1,
-            result: { method: "analysis.catalog", recordings: [], max: 256 },
-          });
-        else
-          expect(result).toEqual({
-            kind: "failure",
-            id: 1,
-            error: { kind: "unsupported" },
-          });
-      }
-    }
+    const send = (
+      request: import("../src/contract/generated/contract").Request,
+    ) => {
+      const message = handler({ kind: "request", id: 1, request });
+      expect(isHostMessage(message)).toBe(true);
+      return message;
+    };
+    const catalog = send({ method: "analysis.catalog" });
+    if (
+      catalog?.kind !== "response" ||
+      catalog.result.method !== "analysis.catalog"
+    )
+      throw new Error("catalog");
+    expect(catalog.result.recordings).toHaveLength(3);
+    expect(
+      catalog.result.recordings.filter((row) => row.recording),
+    ).toHaveLength(1);
+    const [complete, recording, locked] = catalog.result.recordings;
+    if (!complete || !recording || !locked) throw new Error("rows");
+    for (const row of catalog.result.recordings)
+      send({ method: "analysis.inspect", id: row.id });
+    expect(
+      send({ method: "analysis.inspect", id: recording.id }),
+    ).toMatchObject({ kind: "failure", error: { kind: "analysisLocked" } });
+    expect(send({ method: "analysis.inspect", id: locked.id })).toMatchObject({
+      kind: "response",
+      result: { state: "locked" },
+    });
+    const opened = send({ method: "analysis.open", id: complete.id });
+    if (opened?.kind !== "response" || opened.result.method !== "analysis.open")
+      throw new Error("open");
+    expect(opened.result.laps.length).toBeGreaterThan(0);
+    const session = opened.result.session;
+    expect(send({ method: "analysis.cancel" })).toMatchObject({
+      kind: "response",
+      result: { cancelled: false },
+    });
+    expect(send({ method: "analysis.close", session })).toMatchObject({
+      kind: "response",
+    });
+    expect(send({ method: "analysis.close", session })).toMatchObject({
+      kind: "failure",
+      error: { kind: "analysisNotFound" },
+    });
+    const reopened = send({ method: "analysis.open", id: complete.id });
+    core.access.analysis = false;
+    expect(send({ method: "analysis.cancel" })).toMatchObject({
+      kind: "failure",
+      error: { kind: "denied" },
+    });
+    core.access.analysis = true;
+    if (
+      reopened?.kind !== "response" ||
+      reopened.result.method !== "analysis.open"
+    )
+      throw new Error("open");
+    expect(
+      send({ method: "analysis.close", session: reopened.result.session }),
+    ).toMatchObject({ kind: "failure", error: { kind: "analysisNotFound" } });
   });
 });

@@ -11,10 +11,21 @@ use std::{
 #[path = "worker.rs"]
 mod worker;
 struct Pending {
-    id: Option<u32>,
-    wire_id: u32,
+    id: u32,
+    answered: bool,
+    opening: bool,
     started: Instant,
     cancel: super::Cancel,
+}
+impl Pending {
+    fn reply_id(&mut self) -> Option<u32> {
+        if self.answered {
+            None
+        } else {
+            self.answered = true;
+            Some(self.id)
+        }
+    }
 }
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf, time::UNIX_EPOCH};
@@ -35,6 +46,8 @@ pub struct State {
     cancelled: bool,
     #[cfg(test)]
     test_result: Option<worker::Completion>,
+    #[cfg(test)]
+    pause_next: Option<worker::ReadPause>,
 }
 impl State {
     pub fn new(root: PathBuf) -> Self {
@@ -50,12 +63,18 @@ impl State {
             cancelled: false,
             #[cfg(test)]
             test_result: None,
+            #[cfg(test)]
+            pause_next: None,
         }
     }
     pub fn clear(&mut self) {
         self.paths.clear();
         self.stamps.clear();
         self.cancel();
+        if let Some(cancel) = self.session_cancel.take() {
+            cancel.store(true, Ordering::Release);
+        }
+        self.session = None;
         if let Some(worker) = &self.worker {
             worker.reset.store(true, Ordering::Release);
         }
@@ -66,13 +85,8 @@ impl State {
         }
         self.paths.clear();
         self.stamps.clear();
-        let paths = crate::analysis::recordings(&self.root).map_err(|e| {
-            if e.code == crate::analysis::ErrorCode::Limit {
-                HostError::AnalysisTooMany
-            } else {
-                map_error(e.code)
-            }
-        })?;
+        let paths =
+            crate::analysis::recordings(&self.root).map_err(|e| map_catalog_error(e.code))?;
         let mut entries = Vec::new();
         for path in paths {
             let m = std::fs::symlink_metadata(&path).map_err(|_| HostError::AnalysisUnreadable)?;
@@ -149,7 +163,7 @@ impl State {
                         .ok_or(HostError::AnalysisNotFound)?
                         .clone();
                     if !super::recordings(&self.root)
-                        .map_err(|e| map_error(e.code))?
+                        .map_err(|e| map_catalog_error(e.code))?
                         .contains(&path)
                         || self.stamps.get(id).map(|stamp| stamp.created)
                             != Some(super::stamp(&path).map_err(|e| map_error(e.code))?.created)
@@ -214,10 +228,13 @@ impl State {
             self.worker = Some(worker::Worker::start(helper)?);
         }
         let cancel = Arc::new(AtomicBool::new(false));
+        let opening = matches!(operation, worker::Operation::Open { .. });
         let job = worker::Command::Job(worker::Job {
             id,
             operation,
             cancel: cancel.clone(),
+            #[cfg(test)]
+            pause: self.pause_next.take(),
         });
         match self
             .worker
@@ -228,8 +245,9 @@ impl State {
         {
             Ok(()) => {
                 self.pending = Some(Pending {
-                    id: Some(id),
-                    wire_id: id,
+                    id,
+                    answered: false,
+                    opening,
                     started: now,
                     cancel,
                 });
@@ -238,24 +256,28 @@ impl State {
             Err(mpsc::TrySendError::Full(_)) => Err(HostError::Busy),
             Err(mpsc::TrySendError::Disconnected(_)) => {
                 self.clear();
+                self.cancelled = false;
+                self.worker = None;
                 Err(HostError::AnalysisUnreadable)
             }
         }
     }
     pub fn cancel(&mut self) -> bool {
-        let active = self
-            .pending
-            .as_ref()
-            .is_some_and(|pending| pending.id.is_some());
-        if let Some(pending) = &self.pending {
-            pending.cancel.store(true, Ordering::Release);
+        let Some(pending) = &self.pending else {
+            return false;
+        };
+        if pending.answered {
+            return false;
         }
-        if let Some(cancel) = self.session_cancel.take() {
-            cancel.store(true, Ordering::Release);
+        pending.cancel.store(true, Ordering::Release);
+        if pending.opening {
+            if let Some(cancel) = self.session_cancel.take() {
+                cancel.store(true, Ordering::Release);
+            }
+            self.session = None;
         }
-        self.session = None;
-        self.cancelled |= active;
-        active
+        self.cancelled = true;
+        true
     }
     // The caller supplies a monotonic clock; tests advance it without waiting.
     pub fn poll(
@@ -285,7 +307,7 @@ impl State {
                 self.cancel();
             }
             self.cancelled = false;
-            if let Some(id) = self.pending.as_mut().and_then(|p| p.id.take()) {
+            if let Some(id) = self.pending.as_mut().and_then(Pending::reply_id) {
                 return Some((id, Err(error)));
             }
         }
@@ -306,24 +328,38 @@ impl State {
             Err(mpsc::TryRecvError::Empty) => return None,
             Err(mpsc::TryRecvError::Disconnected) => {
                 self.clear();
+                self.cancelled = false;
+                self.worker = None;
                 let pending = self.pending.take();
-                return pending
-                    .and_then(|p| p.id.map(|id| (id, Err(HostError::AnalysisUnreadable))));
+                return pending.and_then(|mut p| {
+                    p.reply_id()
+                        .map(|id| (id, Err(HostError::AnalysisUnreadable)))
+                });
             }
         };
-        let pending = self.pending.take()?;
-        if pending.wire_id != completion.id {
+        let mut pending = self.pending.take()?;
+        if pending.id != completion.id {
             self.clear();
+            self.cancelled = false;
             return pending
-                .id
+                .reply_id()
                 .map(|id| (id, Err(HostError::AnalysisUnreadable)));
         }
-        let id = pending.id?;
+        let id = pending.reply_id()?;
         if let Ok(Reply::AnalysisOpen { session, .. }) = &completion.result {
             self.session = Some(session.clone());
             self.session_cancel = Some(pending.cancel);
         }
         Some((id, completion.result))
+    }
+    #[cfg(test)]
+    pub(crate) fn pause_next_read_for_test(
+        &mut self,
+    ) -> (mpsc::Receiver<u32>, mpsc::SyncSender<()>) {
+        let (ready, opened) = mpsc::sync_channel(1);
+        let (resume, wait) = mpsc::sync_channel(1);
+        self.pause_next = Some(worker::ReadPause { ready, wait });
+        (opened, resume)
     }
     #[cfg(test)]
     pub(crate) fn helper_for_test(&mut self, helper: PathBuf) {
@@ -340,6 +376,13 @@ impl State {
                 .recv_timeout(Duration::from_secs(10))
                 .unwrap(),
         );
+    }
+}
+pub(super) fn map_catalog_error(code: crate::analysis::ErrorCode) -> HostError {
+    if code == crate::analysis::ErrorCode::Limit {
+        HostError::AnalysisTooMany
+    } else {
+        map_error(code)
     }
 }
 /// C1's Limit means reader size; catalog translates it to `TooMany` at its call site.

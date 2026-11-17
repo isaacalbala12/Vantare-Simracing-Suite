@@ -713,14 +713,21 @@ mod real {
         state.helper_for_test(exe());
         let id = state.catalog().unwrap()[0].id.clone();
         let now = Instant::now();
+        let (opened, resume) = state.pause_next_read_for_test();
         state.start(1, &Request::AnalysisOpen { id }, now).unwrap();
+        let process =
+            crate::test_support::process(opened.recv_timeout(Duration::from_secs(10)).unwrap())
+                .unwrap();
+        assert!(crate::test_support::running(&process));
         assert!(state.cancel());
+        resume.send(()).unwrap();
         assert_eq!(
             state.poll(now, true, false),
             Some((1, Err(HostError::AnalysisCancelled)))
         );
         state.wait_for_test();
         assert!(state.poll(now, true, false).is_none());
+        crate::test_support::terminated(&process);
         drop(state);
         let mut child = writer(&dir.db());
         let mut line = String::new();
@@ -730,5 +737,102 @@ mod real {
         assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
         drop(child.stdin.take());
         assert!(child.wait().unwrap().success());
+    }
+    #[test]
+    fn dropping_worker_with_an_open_helper_and_pending_work_reaps_it() {
+        use crate::analysis::catalog::State;
+        use crate::protocol::Request;
+        let dir = Directory::new();
+        fixture(&dir.db(), 7, 2, false);
+        let mut state = State::new(dir.0.clone());
+        state.helper_for_test(exe());
+        let id = state.catalog().unwrap()[0].id.clone();
+        let (opened, resume) = state.pause_next_read_for_test();
+        state
+            .start(1, &Request::AnalysisOpen { id }, Instant::now())
+            .unwrap();
+        let process =
+            crate::test_support::process(opened.recv_timeout(Duration::from_secs(10)).unwrap())
+                .unwrap();
+        assert!(crate::test_support::running(&process));
+        drop(resume); // Releases the test barrier; Drop cancels the real Reader.
+        drop(state);
+        crate::test_support::terminated(&process);
+        let mut child = writer(&dir.db());
+        let mut line = String::new();
+        BufReader::new(child.stdout.take().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        drop(child.stdin.take());
+        assert!(child.wait().unwrap().success());
+    }
+    #[test]
+    fn inspect_cancel_and_timeout_keep_the_previous_reader_alive() {
+        use crate::analysis::catalog::State;
+        use crate::protocol::{HostError, Reply, Request};
+        for mode in ["idle", "cancel", "timeout"] {
+            let dir = Directory::new();
+            fixture(&dir.db(), 7, 2, false);
+            let mut state = State::new(dir.0.clone());
+            state.helper_for_test(exe());
+            let id = state.catalog().unwrap()[0].id.clone();
+            let now = Instant::now();
+            let (opened, resume) = state.pause_next_read_for_test();
+            state
+                .start(1, &Request::AnalysisOpen { id: id.clone() }, now)
+                .unwrap();
+            let process =
+                crate::test_support::process(opened.recv_timeout(Duration::from_secs(10)).unwrap())
+                    .unwrap();
+            resume.send(()).unwrap();
+            state.wait_for_test();
+            let Ok(Reply::AnalysisOpen { session, .. }) = state.poll(now, true, false).unwrap().1
+            else {
+                panic!("open");
+            };
+            if mode == "idle" {
+                assert!(!state.cancel());
+            } else {
+                let (opened, resume) = state.pause_next_read_for_test();
+                state
+                    .start(2, &Request::AnalysisInspect { id }, now)
+                    .unwrap();
+                opened.recv_timeout(Duration::from_secs(10)).unwrap();
+                if mode == "cancel" {
+                    assert!(state.cancel());
+                }
+                let clock = now
+                    + if mode == "timeout" {
+                        Duration::from_secs(40)
+                    } else {
+                        Duration::ZERO
+                    };
+                assert_eq!(
+                    state.poll(clock, true, false),
+                    Some((
+                        2,
+                        Err(if mode == "timeout" {
+                            HostError::AnalysisTimeout
+                        } else {
+                            HostError::AnalysisCancelled
+                        })
+                    ))
+                );
+                resume.send(()).unwrap();
+                state.wait_for_test();
+                assert!(state.poll(now, true, false).is_none());
+            }
+            assert!(crate::test_support::running(&process));
+            state
+                .start(3, &Request::AnalysisClose { session }, now)
+                .unwrap();
+            state.wait_for_test();
+            assert_eq!(
+                state.poll(now, true, false).unwrap().1,
+                Ok(Reply::AnalysisClose {})
+            );
+            crate::test_support::terminated(&process);
+        }
     }
 }

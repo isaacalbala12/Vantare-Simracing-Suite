@@ -13,8 +13,8 @@ $system = @{os=@{name=[string]$os.Caption;version=[string]$os.Version;build=[str
     displays=@();overlays_active=@();obs_active=$false}
 } else { $system = @{} }
 $active = @()
-foreach ($entry in @(@('obs64','OBS'),@('Streamlabs OBS','Streamlabs'),@('SimHub','SimHub'),@('CrewChiefV4','CrewChief'),@('vantare-overlays','Vantare'))) {
-    if (Get-Process -Name $entry[0] -ErrorAction SilentlyContinue) { $active += $entry[1] }
+foreach ($entry in @(@('obs64','OBS'),@('Streamlabs OBS','Streamlabs'),@('SimHub','SimHub'),@('CrewChiefV4','CrewChief'),@('vantare-overlays','Vantare'),@('vantare-overlays-rune','Vantare'))) {
+    if ((Get-Process -Name $entry[0] -ErrorAction SilentlyContinue) -and $active -notcontains $entry[1]) { $active += $entry[1] }
 }
 $game = 'none'; $gameVersion = $null
 foreach ($entry in @(@('LeMansUltimate','lmu'),@('AC2-Win64-Shipping','acc'))) {

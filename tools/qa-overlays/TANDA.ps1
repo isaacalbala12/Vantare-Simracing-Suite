@@ -322,16 +322,18 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
  try {
   # Preparar ETW/Add-Type ANTES del replay, sin consumir sus cinco segundos.
   $rootInfo=Join-Path $round 'root-info.json'
-  $sampler=Start-TandaOwned (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'vantare-v2/native/pruebas-rune/muestreador/MUESTREAR.ps1'),'-RootInfoFile',$rootInfo,'-PresentMon',(Join-Path $Root 'bin/PresentMon-2.6.0-x64.exe'),'-OutputDirectory',(Join-Path $round 'muestreo'),'-Seconds','65','-ProcessOnly') (Join-Path $round 'sampler')
-  $sampler.stderr=$sampler.process.StandardError.ReadToEndAsync()
-  $ready=Join-Path $round 'muestreo/CAPTURA-LISTA.json'
-  $deadline=[DateTime]::UtcNow.AddSeconds(20)
-  while(-not(Test-Path -LiteralPath $ready)){
-   Assert-TandaUnattended
-   if($sampler.process.HasExited -or [DateTime]::UtcNow -ge $deadline){throw 'Sampler/ETW no está listo; no arrancar replay ni host'}
-   Start-Sleep -Milliseconds 50
+  if($Case.state -eq 'replay'){
+   $sampler=Start-TandaOwned (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'vantare-v2/native/pruebas-rune/muestreador/MUESTREAR.ps1'),'-RootInfoFile',$rootInfo,'-PresentMon',(Join-Path $Root 'bin/PresentMon-2.6.0-x64.exe'),'-OutputDirectory',(Join-Path $round 'muestreo'),'-Seconds','65','-ProcessOnly') (Join-Path $round 'sampler')
+   $sampler.stderr=$sampler.process.StandardError.ReadToEndAsync()
+   $ready=Join-Path $round 'muestreo/CAPTURA-LISTA.json'
+   $deadline=[DateTime]::UtcNow.AddSeconds(20)
+   while(-not(Test-Path -LiteralPath $ready)){
+    Assert-TandaUnattended
+    if($sampler.process.HasExited -or [DateTime]::UtcNow -ge $deadline){throw 'Sampler/ETW no está listo; no arrancar replay ni host'}
+    Start-Sleep -Milliseconds 50
+   }
+   if(-not (Read-TandaJson $ready).ready){throw 'Sampler no confirmó ETW listo'}
   }
-  if(-not (Read-TandaJson $ready).ready){throw 'Sampler no confirmó ETW listo'}
   $argsCore=if($Case.state -eq 'replay'){@('--replay',(Join-Path $Root 'inputs/lmu47-high-rate-60s.tar.gz'),'--velocidad','1','--pipe',$pipe)}else{@('--live','--simulator','lmu','--pipe',$pipe)}
   $launchQpc=[Diagnostics.Stopwatch]::GetTimestamp()
   $core=Start-TandaOwned (Join-Path $Root 'bin/vantare-core.exe') $argsCore (Join-Path $round 'core') @{VANTARE_PROFILE_PHASES='1';VANTARE_MEASUREMENT_TRACE='1'}
@@ -345,9 +347,16 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
   $hostRun.stderr=$hostRun.process.StandardError.ReadToEndAsync()
   $identity=Get-VantareObservedIdentity $hostRun.process.Id
   Write-TandaJson $identity (Join-Path $round 'identidad.json')
-  $rootData=@{};foreach($key in $identity.Keys){$rootData[$key]=$identity[$key]};$rootData.start_qpc=$hostStartQpc
-  Write-TandaJson $rootData ($rootInfo+'.tmp')
-  [IO.File]::Move($rootInfo+'.tmp',$rootInfo)
+  if($Case.state -eq 'replay'){
+   $rootData=@{};foreach($key in $identity.Keys){$rootData[$key]=$identity[$key]};$rootData.start_qpc=$hostStartQpc
+   Write-TandaJson $rootData ($rootInfo+'.tmp')
+   [IO.File]::Move($rootInfo+'.tmp',$rootInfo)
+  } else {
+   # Waiting no tiene límite de corpus: conserva cinco segundos de host caliente
+   # desde CAPTURA-LISTA, sin pasar un ReplayStartQpc artificial.
+   $sampler=Start-TandaOwned (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'vantare-v2/native/pruebas-rune/muestreador/MUESTREAR.ps1'),'-RootProcessId',[string]$hostRun.process.Id,'-PresentMon',(Join-Path $Root 'bin/PresentMon-2.6.0-x64.exe'),'-OutputDirectory',(Join-Path $round 'muestreo'),'-Seconds','60','-ProcessOnly') (Join-Path $round 'sampler')
+   $sampler.stderr=$sampler.process.StandardError.ReadToEndAsync()
+  }
   $until=[DateTime]::UtcNow.AddSeconds(100)
   while(-not $sampler.process.WaitForExit(500)){
    # No lanzar consultas CIM/PDH en cada muestra de rendimiento.
@@ -364,7 +373,7 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
   Close-TandaOwned $core;$core=$null
   $anchor=if($Case.state -eq 'replay'){Get-TandaReplayOrigin (Join-Path $round 'core.stderr.txt')}else{0}
   Write-TandaJson @{core_launch_qpc=$launchQpc;first_live_log_observed_qpc=$observed;first_core_observe_qpc=$anchor;frequency=[Diagnostics.Stopwatch]::Frequency;
-   origin='Primer span observe del núcleo (instrumentación paint-stats existente, idéntica en ambos motores)';
+   origin=if($Case.state -eq 'replay'){'Primer span observe del núcleo (paint-stats, idéntico en ambos motores)'}else{'Waiting: CAPTURA-LISTA del sampler, después del arranque del host'};
    core_launch_to_first_observe_s=if($anchor){($anchor-$launchQpc)/[Diagnostics.Stopwatch]::Frequency}else{$null};
    limitations='No es el reloj normalizado del inventario. Traza solo del núcleo, buffered; no se añade instrumentación ni E/S por frame al overlay.'} (Join-Path $round 'origen.json')
   $analysis=Invoke-TandaProcess 'python' @((Join-Path $Root 'tools/qa-overlays/medidas.py'),(Join-Path $round 'muestreo'),(Join-Path $round 'identidad.json'),(Join-Path $round 'resultado.json'),[string]$anchor) (Join-Path $round 'analisis') 30

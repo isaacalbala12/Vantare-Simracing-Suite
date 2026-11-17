@@ -244,3 +244,8 @@ cambio, sin limitar). Se registra el Hz efectivo en cada caso; no se modifica
 el perfil ni layout de Isaac. Las parejas incluyen superposición al 50 % y
 cajas alfa: un PNG transparente se revisa como ocultación esperada, no como
 aprobación de contenido por un diff cero.
+
+En Waiting el muestreador se inicia DESPUÉS del host, modo directo de 60 s:
+CAPTURA-LISTA vuelve a ser su origen y conserva cinco segundos completos de
+calentamiento del host. Nunca se pasa ReplayStartQpc en Waiting. PROBAR_RONDA
+ejecuta y comprueba ambas órdenes con procesos falsos y el rechazo de derechos.

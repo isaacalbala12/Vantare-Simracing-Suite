@@ -244,38 +244,61 @@ fn file_link(target: &Path, link: &Path) -> bool {
         Err(error) => panic!("crear symlink: {error}"),
     }
 }
-#[test]
-fn rejects_a_link_in_any_recordings_ancestor() {
-    let owned = Directory::new();
-    let target = owned.0.join("target");
-    let root = target.join("nested/recordings");
-    fs::create_dir_all(&root).unwrap();
+fn write_recording(root: &Path) {
+    fs::create_dir_all(root).unwrap();
     fs::write(
         root.join("recording-status.json"),
         serde_json::to_vec(&core()).unwrap(),
     )
     .unwrap();
-    let db = root.join("series-123-456.duckdb");
-    fs::write(&db, []).unwrap();
-    assert!(read(&root, &BTreeMap::new()).is_some());
-    assert_eq!(super::super::recordings(&root).unwrap(), vec![db]);
-    let link = owned.0.join("link");
-    directory_link(&target, &link);
-    assert!(super::super::reparse(&fs::symlink_metadata(&link).unwrap()));
-    let aliased = link.join("nested/recordings");
-    assert!(read(&aliased, &BTreeMap::new()).is_none());
+    fs::write(root.join("series-123-456.duckdb"), []).unwrap();
+}
+fn rejects_recording_directory(root: &Path) {
+    assert!(read(root, &BTreeMap::new()).is_none());
     assert_eq!(
-        super::super::recordings(&aliased).unwrap_err().code,
+        super::super::recordings(root).unwrap_err().code,
         super::super::ErrorCode::Unreadable
     );
     let error = super::super::Reader::open(
-        &owned.0.join("must-not-start.exe"),
-        &aliased.join("series-123-456.duckdb"),
+        &root.join("must-not-start.exe"),
+        &root.join("series-123-456.duckdb"),
         std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
     )
     .err()
-    .expect("reader rejects the linked ancestor before spawning");
+    .expect("reader rejects before spawning");
     assert_eq!(error.code, super::super::ErrorCode::Unreadable);
+}
+#[test]
+fn data_dir_inside_a_relocated_profile_keeps_status_catalog_and_stamps_working() {
+    let owned = Directory::new();
+    let profile = owned.0.join("physical-profile");
+    let root = profile.join("AppData/Vantare/native/recordings");
+    write_recording(&root);
+    let link = owned.0.join("relocated-profile");
+    directory_link(&profile, &link);
+    assert!(super::super::reparse(&fs::symlink_metadata(&link).unwrap()));
+    let aliased = link.join("AppData/Vantare/native/recordings");
+    assert!(read(&aliased, &BTreeMap::new()).is_some());
+    let paths = super::super::recordings(&aliased).unwrap();
+    assert_eq!(paths, vec![aliased.join("series-123-456.duckdb")]);
+    assert!(super::super::stamp(&paths[0]).is_ok());
+    let mut catalog = super::super::catalog::State::new(aliased);
+    assert_eq!(catalog.catalog().unwrap().len(), 1);
+    assert!(catalog.status().is_some());
+}
+#[test]
+fn rejects_a_link_at_recordings_or_between_data_dir_and_recordings() {
+    let owned = Directory::new();
+    let data = owned.0.join("data");
+    let physical = owned.0.join("physical");
+    write_recording(&physical.join("recordings"));
+    fs::create_dir(&data).unwrap();
+    let recordings_link = data.join("recordings");
+    directory_link(&physical.join("recordings"), &recordings_link);
+    rejects_recording_directory(&recordings_link);
+    let intermediate = data.join("intermediate");
+    directory_link(&physical, &intermediate);
+    rejects_recording_directory(&intermediate.join("recordings"));
 }
 #[test]
 fn rejects_file_links_including_a_swap_at_open_without_reading_the_target() {

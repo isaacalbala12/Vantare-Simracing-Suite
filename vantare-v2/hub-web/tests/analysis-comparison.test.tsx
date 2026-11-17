@@ -25,6 +25,7 @@ import {
 import * as host from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
+  SectionRailSlot,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
 import * as settings from "../src/renderer/app/SettingsState";
@@ -67,7 +68,7 @@ function bridge(scene = "compare") {
       }),
   );
 }
-function mount(request = bridge()) {
+function mount(request = bridge(), withRail = false) {
   vi.spyOn(host, "useHost").mockReturnValue({
     client: { request } as unknown as Client,
   });
@@ -92,6 +93,7 @@ function mount(request = bridge()) {
         <TooltipProvider>
           <SectionChromeProvider>
             <SectionTabsSlot />
+            {withRail && <SectionRailSlot fallback={null} />}
             <Analysis clock={() => analysisQaNow} timeZone="UTC" />
           </SectionChromeProvider>
         </TooltipProvider>
@@ -163,7 +165,9 @@ it("selects exclusive A/B, swaps them, allows sealed gaps, and describes inert i
   expect(paths[0].classList.contains("v-an-series-a")).toBe(true);
   expect(paths[1].classList.contains("v-an-series-b")).toBe(true);
   expect(paths[0].getAttribute("d")?.match(/M/g)).toHaveLength(2);
-  expect(screen.queryByText("Ver valores en tabla (cada 1 000 m)")).toBeNull();
+  expect(
+    document.querySelector(".v-an-values-table")?.hasAttribute("open"),
+  ).toBe(false);
 });
 it("compares and exchanges selectors using native keyboard controls and individual elapsed axes", async () => {
   const request = bridge();
@@ -425,7 +429,7 @@ it("shows the known pair while initially loading and never labels a failed new p
   );
   expect(screen.getByText(t.line(t.a, 9))).toBeTruthy();
   expect(screen.getByText(t.line(t.b, 7))).toBeTruthy();
-  expect(screen.getByText(t.loading)).toBeTruthy();
+  expect(screen.getAllByText(t.loading)).toHaveLength(2);
   c.compare();
   await waitFor(() => expect(c.snapshot().comparison).toBeTruthy());
   rail.rerender(
@@ -441,7 +445,7 @@ it("shows the known pair while initially loading and never labels a failed new p
   expect(screen.getByText(t.line(t.a, 7))).toBeTruthy();
   expect(screen.getByText(t.line(t.b, 9))).toBeTruthy();
   expect(screen.queryByText(t.line(t.a, 13))).toBeNull();
-  expect(screen.getByText(t.noDelta)).toBeTruthy();
+  expect(screen.getAllByText(t.noDelta)).toHaveLength(2);
   c.dispose();
 });
 it("waits for both the abandoned reader and cancel acknowledgement before reopening, ignoring a late result", async () => {
@@ -488,3 +492,92 @@ it("waits for both the abandoned reader and cancel acknowledgement before reopen
   expect(sessions[2]).not.toBe(sessions[1]);
   c.dispose();
 });
+
+it("exposes every trace value to keyboard and table, centers a 250 m window and resets the whole lap", async () => {
+  mount(bridge(), true);
+  await open();
+  await compare();
+  const slider = await screen.findByRole("slider", { name: t.cursor });
+  expect(slider.getAttribute("aria-valuetext")).toContain("Velocidad A");
+  expect(slider.getAttribute("aria-valuetext")).toContain("Freno B");
+  slider.focus();
+  await userEvent.keyboard("{ArrowRight}");
+  expect(
+    slider.getAttribute("aria-valuenow") ?? slider.getAttribute("value"),
+  ).toBe("1");
+  await userEvent.keyboard("{ArrowLeft}");
+  expect((slider as HTMLInputElement).value).toBe("0");
+  expect(document.activeElement).toBe(slider);
+  await userEvent.keyboard("{Escape}");
+  expect(slider.parentElement?.hasAttribute("data-cursor-dismissed")).toBe(
+    true,
+  );
+  await userEvent.keyboard("{ArrowRight}");
+  expect(slider.parentElement?.hasAttribute("data-cursor-dismissed")).toBe(
+    false,
+  );
+  const choices = screen.getAllByRole("button", { name: /km.*s$/ });
+  expect(choices).toHaveLength(3);
+  await userEvent.click(choices[0]);
+  const from = Number(slider.getAttribute("min"));
+  expect(Number(slider.getAttribute("max")) - from).toBe(250);
+  await userEvent.click(
+    document.querySelector(".v-an-values-table summary") as HTMLElement,
+  );
+  const table = screen.getByRole("table", { name: t.table });
+  expect(within(table).getAllByRole("columnheader")).toHaveLength(8);
+  expect(
+    within(table)
+      .getAllByRole("rowheader")
+      .map((cell) => cell.textContent),
+  ).toEqual(["0 m", "1 000 m", "2 000 m", "3 000 m", "4 000 m", "5 000 m"]);
+  await userEvent.click(screen.getByRole("button", { name: t.whole }));
+  expect(slider.getAttribute("min")).toBe("0");
+  expect(slider.getAttribute("max")).toBe("5000");
+});
+it.each([
+  [0, 5000, true],
+  [1000, 5000, false],
+] as const)(
+  "retains zoom only when contained in the new result %s–%s",
+  async (from, to, kept) => {
+    const real = bridge();
+    let release: ((r: Reply) => void) | undefined;
+    let result: Reply | undefined;
+    let count = 0;
+    const request = vi.fn(async (r: AnalysisRequest): Promise<Reply> => {
+      const reply = await real(r);
+      if (
+        r.method === "analysis.compare" &&
+        ++count === 2 &&
+        reply.method === "analysis.compare"
+      ) {
+        result = { ...reply, distanceRange: [from, to] };
+        return new Promise((done) => {
+          release = done;
+        });
+      }
+      return reply;
+    });
+    const c = new AnalysisController({ request });
+    c.load();
+    await waitFor(() => expect(c.snapshot().loading).toBe(false));
+    c.open(c.snapshot().rows[1]);
+    await waitFor(() => expect(c.snapshot().opened).toBeTruthy());
+    c.compare();
+    await waitFor(() => expect(c.snapshot().comparison).toBeTruthy());
+    c.zoom([250, 500]);
+    const old = c.snapshot().comparison;
+    c.select("a", 8);
+    await waitFor(() => expect(release).toBeDefined());
+    expect(c.snapshot().comparison).toBe(old);
+    expect(c.snapshot().zoom).toEqual([250, 500]);
+    expect(c.snapshot().comparing).toBe(true);
+    if (!release || !result) throw Error("missing pending result");
+    release(result);
+    await waitFor(() => expect(c.snapshot().comparing).toBe(false));
+    expect(c.snapshot().zoom).toEqual(kept ? [250, 500] : undefined);
+    expect(c.snapshot().comparison?.distanceRange).toEqual([from, to]);
+    c.dispose();
+  },
+);

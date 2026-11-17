@@ -9,6 +9,7 @@ import {
   comparable,
   initialPair,
   type Pair,
+  retainZoom,
   timedLaps,
 } from "./analysis-comparison";
 export type Compared = Extract<
@@ -26,6 +27,7 @@ export type AnalysisSnapshot = {
   comparing?: boolean;
   compareView?: boolean;
   compareError?: HostError["kind"];
+  zoom?: [number, number];
   rows: AnalysisRow[];
   inspections: Record<string, Inspection>;
   rowErrors: Record<string, HostError["kind"]>;
@@ -128,6 +130,7 @@ export class AnalysisController {
       comparing: false,
       compareView: false,
       compareError: undefined,
+      zoom: undefined,
     });
     const cancelled = this.interrupt();
     this.enqueue(async () => {
@@ -178,6 +181,7 @@ export class AnalysisController {
       opened: undefined,
       error: row.recording ? "analysisLocked" : undefined,
       opening: !row.recording,
+      zoom: undefined,
       pair: undefined,
       comparison: undefined,
       comparing: false,
@@ -232,6 +236,7 @@ export class AnalysisController {
     this.publish({ pair: { a: a.index, b: b.index } });
     this.compare();
   };
+  zoom = (zoom?: [number, number]) => this.publish({ zoom });
   cancelComparison = () => {
     if (!this.value.comparing) return;
     ++this.generation;
@@ -313,6 +318,7 @@ export class AnalysisController {
           this.publish({
             comparison: { ...result, a: a.index, b: b.index },
             comparing: false,
+            zoom: retainZoom(this.value.zoom, result.distanceRange),
           });
       } catch (error) {
         const kind = failure(error);

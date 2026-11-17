@@ -47,6 +47,15 @@ export const comparisonText = {
   common: "Tramo común",
   honesty: "En los tramos sin datos la línea se corta: no se inventa nada.",
   direction: "Por encima de 0, A pierde tiempo frente a B; por debajo, gana.",
+  table: "Ver valores en tabla (cada 1 000 m)",
+  tableHelp:
+    "Valores de la vuelta entera cada 1 000 m. — significa sin datos; no se extrapola ni se unen segmentos distintos.",
+  cursor: "Explorar todos los valores de A y B",
+  cursorHelp: "Usa las flechas izquierda y derecha para recorrer las trazas.",
+  changes: "Dónde cambia más",
+  whole: "Ver vuelta entera",
+  changesHelp:
+    "Tramos de 250 m con más diferencia. Pulsa uno para centrar las trazas. Los nombres de curva llegarán con el mapa.",
   summary: "Resumen",
   difference: "Diferencia",
   slower: "A es más lenta que B.",
@@ -72,3 +81,7 @@ export const axisLabel = (n: number, time: boolean) =>
   time ? `${decimal(n)} s` : n >= 1000 ? `${decimal(n / 1000)} km` : metres(n);
 export const seconds = (n: number | null | undefined) =>
   n == null ? t.dash : `${n >= 0 ? "+" : ""}${n.toFixed(3)} s`;
+export const compareValue = (n: number | null | undefined, unit: string) =>
+  n == null ? t.dash : `${decimal(n)} ${unit}`;
+export const distanceInterval = (from: number, to: number) =>
+  `${(from / 1000).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} – ${(to / 1000).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`;

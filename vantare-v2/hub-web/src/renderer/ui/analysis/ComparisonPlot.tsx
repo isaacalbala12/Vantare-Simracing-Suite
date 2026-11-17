@@ -1,6 +1,7 @@
 import { useId } from "react";
 import type { AnalysisPoint } from "../../../contract/generated/analysis";
 import type { Compared } from "../../app/AnalysisController";
+import { projectedGaps, windowPoints } from "../../app/analysis-comparison";
 import { analysisText, decimal } from "../../i18n/analysis.es";
 import { axisLabel, comparisonText as t } from "../../i18n/comparison.es";
 export const plotLeft = 112,
@@ -9,6 +10,7 @@ export type PlotAxis = {
   time: boolean;
   range: [number, number];
   distance: [number, number];
+  gaps?: { from: number; to: number }[];
 };
 export function plotCoordinate(point: AnalysisPoint, time: boolean) {
   return time ? point.elapsed : point.distance;
@@ -63,11 +65,12 @@ export function ComparisonPlot({
   const x = (n: number) =>
     plotLeft +
     ((n - axis.range[0]) / (axis.range[1] - axis.range[0] || 1)) * plotWidth;
+  const visiblePoints = windowPoints(points, axis.distance);
   const series = delta
-    ? [["delta", data.delta ?? []] as const]
+    ? [["delta", windowPoints(data.delta ?? [], axis.distance)] as const]
     : ([
-        ["a", data[signal].a],
-        ["b", data[signal].b],
+        ["a", windowPoints(data[signal].a, axis.distance)],
+        ["b", windowPoints(data[signal].b, axis.distance)],
       ] as const);
   const reason = data.deltaUnavailable ? t[data.deltaUnavailable] : t.noDelta;
   const step = Math.max(
@@ -167,22 +170,9 @@ export function ComparisonPlot({
         </g>
       ) : (
         <g clipPath={`url(#${id}-clip)`}>
-          {[
-            ...data.gaps.a.map((gap) => ({ ...gap, side: "a" as const })),
-            ...data.gaps.b.map((gap) => ({ ...gap, side: "b" as const })),
-          ].map((gap) => {
-            const from = axis.time
-              ? data.speed[gap.side]
-                  .filter((p) => p.distance <= gap.from && p.elapsed !== null)
-                  .at(-1)?.elapsed
-              : gap.from;
-            const to = axis.time
-              ? data.speed[gap.side].find(
-                  (p) => p.distance >= gap.to && p.elapsed !== null,
-                )?.elapsed
-              : gap.to;
-            return from == null || to == null ? null : (
-              <g key={`${gap.side}-${gap.from}-${gap.to}`}>
+          {(axis.gaps ?? projectedGaps(data, axis.distance, axis.time)).map(
+            ({ from, to }) => (
+              <g key={`${from}-${to}`}>
                 <rect
                   x={x(from)}
                   y={8}
@@ -194,15 +184,15 @@ export function ComparisonPlot({
                   {t.noData}
                 </text>
               </g>
-            );
-          })}
+            ),
+          )}
           {delta &&
-            points.every(
-              (p, i) => i === 0 || p.segment === points[i - 1].segment,
+            visiblePoints.every(
+              (p, i) => i === 0 || p.segment === visiblePoints[i - 1].segment,
             ) &&
-            (!axis.time || points.every((p) => p.elapsed !== null)) &&
-            [...new Set(points.map((p) => p.segment))].map((segment) => {
-              const values = points.filter(
+            (!axis.time || visiblePoints.every((p) => p.elapsed !== null)) &&
+            [...new Set(visiblePoints.map((p) => p.segment))].map((segment) => {
+              const values = visiblePoints.filter(
                 (p) =>
                   p.segment === segment &&
                   plotCoordinate(p, axis.time) !== null,

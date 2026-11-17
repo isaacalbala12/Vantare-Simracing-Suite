@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assertRendererIsolation } from "../scripts/preload-surface";
+import {
+  assertRendererIsolation,
+  assertWindowFitsScreen,
+} from "../scripts/preload-surface";
 
 const mocks = vi.hoisted(() => ({
   expose: vi.fn(),
@@ -82,5 +85,39 @@ describe("preload connection", () => {
     await retryFailure;
     expect(mocks.send).toHaveBeenCalledTimes(2);
     expect(mocks.remove).toHaveBeenCalledTimes(2);
+  });
+});
+describe("window geometry", () => {
+  it("accepts a window fitted to the work area whose page zoom widens the CSS viewport", () => {
+    // Measured in windows-smoke: 1024x720 work area, zoom clamped to 90 %,
+    // CSS viewport 1137x800 while the client area is still 1024x720.
+    expect(() =>
+      assertWindowFitsScreen(
+        { width: (1024 / 0.9) * 0.9, height: (720 / 0.9) * 0.9 },
+        { width: 1024, height: 720 },
+      ),
+    ).not.toThrow();
+  });
+  it("rounds subpixel client measurements after page zoom", () => {
+    expect(() =>
+      assertWindowFitsScreen(
+        { width: 1024.000048828125, height: 719.9999694824219 },
+        { width: 1024, height: 720 },
+      ),
+    ).not.toThrow();
+  });
+  it("rejects a client area wider or taller than the screen", () => {
+    expect(() =>
+      assertWindowFitsScreen(
+        { width: 1025, height: 720 },
+        { width: 1024, height: 720 },
+      ),
+    ).toThrow(/wider/);
+    expect(() =>
+      assertWindowFitsScreen(
+        { width: 1024, height: 721 },
+        { width: 1024, height: 720 },
+      ),
+    ).toThrow(/taller/);
   });
 });

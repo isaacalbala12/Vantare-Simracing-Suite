@@ -87,6 +87,8 @@ class InputsTests(unittest.TestCase):
             for case in manifest["measurements"]:
                 layout = json.loads((root / "output" / case["layout"]).read_text(encoding="utf-8"))
                 self.assertEqual(layout["performance"]["widgets"]["qa"], 15)
+                if case["kind"] in {"relative", "standings", "fuel-strategy", "delta"}:
+                    self.assertEqual(layout["instances"][0]["settings"]["contentVersion"], 1)
                 self.assertEqual(case["effective_host_hz"], 0 if case["kind"] == "racing-flags" else 15)
             self.assertFalse(manifest["production_rights_configured"])
             self.assertTrue(any(case["source_catalog_entry"] == "many-slots" for case in manifest["captures"]))

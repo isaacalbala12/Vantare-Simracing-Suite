@@ -75,7 +75,10 @@ $script:events=[Collections.Generic.List[string]]::new()
 function Assert-TandaSession {param($Expected,$ExpectedUser) $script:events.Add('session-check')}
 function Assert-TandaUnattended {$script:events.Add('unattended-check')}
 function Read-TandaPngSize {param($Path) @(10,10)}
-function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession)
+function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession,$Environment=@{})
+ if($Image -like '*vantare-overlays*.exe'){
+  foreach($key in @('VANTARE_NATIVE_DATA_ROOT','LOCALAPPDATA','APPDATA')){if(-not $Environment[$key] -or $Environment[$key] -notlike '*capture-data*'){throw 'Captura fuera de QA aislado'}}
+ }
  $script:events.Add('process:'+([IO.Path]::GetFileName($Image)))
  if($Arguments[0] -eq '--capture-batch'){
   if(-not (Get-Content -LiteralPath $Arguments[1] -Raw).TrimStart().StartsWith('[')){throw 'GPUI recibió objeto en vez de array de Request'}
@@ -95,18 +98,18 @@ $single=Read-TandaJson (Join-Path $root 'inputs/case/scene.json')
 if($single -isnot [array] -or $single.Count -ne 1){throw 'JSON de una foto perdió el array'}
 # Fallo de lifecycle: conservar evidencia, restaurar entorno y no medir después.
 $script:fakeProcess=${function:Invoke-TandaProcess}
-$beforeTemp=$env:TEMP;$beforePath=$env:PATH
-function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession)
+$beforeTemp=$env:TEMP;$beforePath=$env:PATH;$beforeNative=$env:VANTARE_NATIVE_DATA_ROOT
+function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession,$Environment=@{})
  if($Image -like '*lifecycle-rune-tests.exe'){return @{code=1;stderr='scenario failed';stdout='3 passed; 1 failed'}}
  & $script:fakeProcess @PSBoundParameters
 }
 $outputLifecycle=Join-Path $sandbox 'lifecycle-failed'
 Invoke-TandaWorker $root $outputLifecycle
 $state=Read-TandaJson (Join-Path $outputLifecycle 'estado.json')
-if($state.status -ne 'aborted' -or $state.measurements.Count -ne 0 -or $env:TEMP -cne $beforeTemp -or $env:PATH -cne $beforePath){throw 'Lifecycle fallido no abortó/restauró entorno'}
+if($state.status -ne 'aborted' -or $state.measurements.Count -ne 0 -or $env:TEMP -cne $beforeTemp -or $env:PATH -cne $beforePath -or $env:VANTARE_NATIVE_DATA_ROOT -cne $beforeNative){throw 'Lifecycle fallido no abortó/restauró entorno'}
 if(-not(Test-Path (Join-Path $outputLifecycle 'lifecycle/resultado.json'))){throw 'Falta evidencia de lifecycle fallido'}
 # La GPU ausente debe abortar sin pasar a GPUI/mediciones.
-function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession) if($Image -like '*rune.exe'){@{code=4;stderr='GPU_UNAVAILABLE detalle';stdout=''}}else{@{code=0;stderr='';stdout=''}}}
+function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession,$Environment=@{}) if($Image -like '*rune.exe'){@{code=4;stderr='GPU_UNAVAILABLE detalle';stdout=''}}else{@{code=0;stderr='';stdout=''}}}
 $outputNoGpu=Join-Path $sandbox 'sin-gpu'
 Invoke-TandaWorker $root $outputNoGpu
 $state=Read-TandaJson (Join-Path $outputNoGpu 'estado.json')
@@ -129,7 +132,7 @@ $ack=Read-TandaJson (Join-Path $output 'apagado.json')
 if($ack.accepted -or $script:shutdownCalls -ne 1){throw 'Apagó con actividad inesperada'}
 # Simulación completa del lado servidor: solo tar/copia LOCALES, nunca SSH real.
 function Assert-TandaSession {param($Expected,$ExpectedUser)}
-function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession) @{code=0;stderr='OK';stdout='4 passed; 0 failed'}}
+function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession,$Environment=@{}) @{code=0;stderr='OK';stdout='4 passed; 0 failed'}}
 $sourceEvidence=Join-Path $sandbox 'server-source'
 Invoke-TandaWorker $root $sourceEvidence
 $script:fakeArchive=Join-Path $sandbox 'fake.tar'

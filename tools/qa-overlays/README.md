@@ -264,3 +264,10 @@ Sin Machine aborta ANTES de entrar en cola/crear salida; probado con el token
 BLOCKED_LICENSE_CONFIG. Después hay que repetir dumpbin, preparar_tanda y
 TANDA -Modo Ensayo contra la nueva carpeta de binarios; no editar el manifiesto
 para cambiar production_rights_configured a mano.
+
+Capturas y lifecycle aíslan VANTARE_NATIVE_DATA_ROOT, LOCALAPPDATA y APPDATA
+en carpetas QA nuevas de la evidencia. Se restauran antes del rendimiento,
+que usa exclusivamente la autoridad Owner legítima del núcleo. Las bases de
+Relative/Standings/Fuel/Delta fijan contentVersion=1 para medir el producto
+actual y no activar por omisión el Eficiencia heredado; los escenarios del
+catálogo conservan sus ajustes y sus omisiones originales documentadas.

@@ -77,12 +77,13 @@ function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
  }
  $manifest
 }
-function Invoke-TandaProcess([string]$Image,[string[]]$Arguments,[string]$Log,[int]$Timeout=120,[switch]$WatchSession){
+function Invoke-TandaProcess([string]$Image,[string[]]$Arguments,[string]$Log,[int]$Timeout=120,[switch]$WatchSession,[hashtable]$Environment=@{}){
  # ArgumentList conserva rutas con espacios sin construir código de shell.
  $info=[Diagnostics.ProcessStartInfo]::new($Image)
  $info.UseShellExecute=$false;$info.CreateNoWindow=$true
  $info.RedirectStandardError=$true;$info.RedirectStandardOutput=$true
  foreach($argument in $Arguments){$info.ArgumentList.Add($argument)}
+ foreach($key in $Environment.Keys){$info.Environment[$key]=[string]$Environment[$key]}
  $p=[Diagnostics.Process]::new();$p.StartInfo=$info
  $started=$false
  try {
@@ -392,7 +393,7 @@ function Invoke-TandaLifecycle([string]$Root,[string]$Output){
  Assert-TandaUnattended
  $directory=Join-Path $Output 'lifecycle'
  $null=New-Item -ItemType Directory -Path (Join-Path $directory 'tmp') -Force
- $names=@('VANTARE_RUNE_OVERLAYS_EXE','VANTARE_LIFECYCLE_HARNESS','VANTARE_LIFECYCLE_LAUNCHER_EXE','VANTARE_LIFECYCLE_KEEP_ARTIFACTS','TEMP','TMP','PATH')
+ $names=@('VANTARE_RUNE_OVERLAYS_EXE','VANTARE_LIFECYCLE_HARNESS','VANTARE_LIFECYCLE_LAUNCHER_EXE','VANTARE_LIFECYCLE_KEEP_ARTIFACTS','TEMP','TMP','PATH','VANTARE_NATIVE_DATA_ROOT','LOCALAPPDATA','APPDATA')
  $prior=@{}
  foreach($name in $names){$prior[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
  try {
@@ -402,6 +403,10 @@ function Invoke-TandaLifecycle([string]$Root,[string]$Output){
   $env:VANTARE_LIFECYCLE_KEEP_ARTIFACTS='1'
   $env:PATH=(Join-Path $Root 'bin')+[IO.Path]::PathSeparator+$env:PATH
   $env:TEMP=Join-Path $directory 'tmp';$env:TMP=$env:TEMP
+  foreach($name in @('VANTARE_NATIVE_DATA_ROOT','LOCALAPPDATA','APPDATA')){
+   $qa=Join-Path $directory $name;$null=New-Item -ItemType Directory -Path $qa -Force
+   [Environment]::SetEnvironmentVariable($name,$qa,'Process')
+  }
   $result=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--ignored','--test-threads=1','--nocapture') (Join-Path $directory 'tests') 600 -WatchSession
   Write-TandaJson @{code=$result.code;stdout=$result.stdout;stderr=$result.stderr;selector='--overlays-bin';measurement=$false;scenario_core='synthetic lifecycle fixture, not LMU performance'} (Join-Path $directory 'resultado.json')
   if($result.code -ne 0 -or $result.stdout -notmatch '4 passed; 0 failed'){throw 'LIFECYCLE_FAILED: consultar lifecycle/tests y resultado.json'}
@@ -417,6 +422,11 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
  $null=New-Item -ItemType Directory -Path $Output
  foreach($dir in @('logs','gpui','rune','diff','perf','pares','texto')){$null=New-Item -ItemType Directory -Path (Join-Path $Output $dir)}
  Copy-Item -LiteralPath (Join-Path $Root 'manifiesto.json') -Destination (Join-Path $Output 'manifiesto-usado.json')
+ $captureEnvironment=@{}
+ foreach($name in @('VANTARE_NATIVE_DATA_ROOT','LOCALAPPDATA','APPDATA')){
+  $qa=Join-Path $Output ('capture-data/'+$name);$null=New-Item -ItemType Directory -Path $qa -Force
+  $captureEnvironment[$name]=$qa
+ }
  $state=@{source_sha=$manifest.source_sha;status='running';cleaned=$false;captures=@();measurements=@()}
  try {
   $python=Invoke-TandaProcess 'python' @('-c','import sys, PIL, numpy; print(sys.version); print(PIL.__version__); print(numpy.__version__)') (Join-Path $Output 'logs/python-preflight') 30
@@ -424,7 +434,7 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
   foreach($case in $manifest.captures){
    Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
    $id=$case.id
-   $rune=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays-rune.exe') @('--capture-scene','--layout',(Resolve-TandaPath $Root $case.layout),'--sequence',(Resolve-TandaPath $Root $case.sequence),'--at-ms',[string]$case.at_ms,'--motion',([string]$case.motion).ToLowerInvariant(),'--wall-ms',[string]$case.wall_ms,'--scale',[string]$case.scale,'--output',(Join-Path $Output "rune/$id.png")) (Join-Path $Output "logs/$id-rune") -WatchSession
+   $rune=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays-rune.exe') @('--capture-scene','--layout',(Resolve-TandaPath $Root $case.layout),'--sequence',(Resolve-TandaPath $Root $case.sequence),'--at-ms',[string]$case.at_ms,'--motion',([string]$case.motion).ToLowerInvariant(),'--wall-ms',[string]$case.wall_ms,'--scale',[string]$case.scale,'--output',(Join-Path $Output "rune/$id.png")) (Join-Path $Output "logs/$id-rune") -WatchSession -Environment $captureEnvironment
    $tokens=@{0='OK';2='INVALID_INPUT';3='NO_DEMO';4='GPU_UNAVAILABLE';5='CAPTURE_FAILED';6='GRAPHICS_DISABLED'}
    $token=if($tokens.ContainsKey([int]$rune.code)){$tokens[[int]$rune.code]}else{'UNEXPECTED_EXIT'}
    $state.captures+=@{id=$id;motor='rune';code=$rune.code;expected_token=$token;stderr=$rune.stderr}
@@ -434,7 +444,7 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
    if($rune.code -eq 0){$state.captures[-1].actual_png_size=Read-TandaPngSize (Join-Path $Output "rune/$id.png")}
    $batch=Join-Path $Output "logs/$id-batch.json"
    Write-TandaJson @(@{scene=(Resolve-TandaPath $Root $case.scene);output=(Join-Path $Output "gpui/$id.png");widget=$case.kind;settings=(Read-TandaJson (Resolve-TandaPath $Root $case.settings));parameters=@{language='es'}}) $batch
-   $gpui=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays.exe') @('--capture-batch',$batch) (Join-Path $Output "logs/$id-gpui") -WatchSession
+   $gpui=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays.exe') @('--capture-batch',$batch) (Join-Path $Output "logs/$id-gpui") -WatchSession -Environment $captureEnvironment
    $state.captures+=@{id=$id;motor='gpui';code=$gpui.code;stderr=$gpui.stderr}
    if($gpui.code -ne 0){throw 'CAPTURE_FAILED: GPUI no produjo la captura, abortar sin apagado'}
    if($gpui.code -eq 0){$state.captures[-1].actual_png_size=Read-TandaPngSize (Join-Path $Output "gpui/$id.png")}

@@ -221,6 +221,8 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
             tones = ("neo", "neutro") if look == "vantare" else ("original",)
             for tone in tones:
                 settings = {"kind": kind, **spec["settings"]}
+                if "catalog" not in spec and kind in {"relative", "standings", "fuel-strategy", "delta"}:
+                    settings.setdefault("contentVersion", 1)
                 if kind in LOOK_WIDGETS:
                     settings.update(designSystem=look, style="neo" if tone == "original" else tone, brandVisible=True)
                 tag = f"{look}-{tone}"
@@ -230,7 +232,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
                 write_json(output / layout_name, {"version": 1, "performance": {"level": "balanced", "widgets": {"qa": 15}}, "instances": [{"id": "qa", "x": 0, "y": 0, "settings": settings}]})
                 for count in counts:
                     manifest["captures"].append({"id": f"{kind}-{spec['name']}-{tag}-p{count}", "kind": kind,
-                        "look": look, "tone": tone, "settings": settings_name, "layout": layout_name,
+                        "look": look, "tone": tone, "content_model": "catalog defaults preserved" if "catalog" in spec else "current defaults", "settings": settings_name, "layout": layout_name,
                         "scene": f"{directory}/scene-p{count}.json", "sequence": f"{directory}/photos-p{count}.tsv", "scale": 1,
                         "at_ms": 0, "motion": False, "wall_ms": values[0]["epoch"] if kind == "session-alerts" else 1767225600000,
                         "expected_size_hint": spec.get("size_hint"), "size_contract": "natural size_for(snapshot); compare actual PNG dimensions",

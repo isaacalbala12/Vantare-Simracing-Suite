@@ -38,6 +38,7 @@ it("retries only Busy before dispatch, with a bounded cancellable backoff", asyn
         contextText: "",
       },
       exists: false,
+      revision: null,
       screenshots: [],
       message: "",
     },

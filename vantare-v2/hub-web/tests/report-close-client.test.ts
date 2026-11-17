@@ -98,6 +98,7 @@ function complete(h: ReturnType<typeof setup>, message: UiToHost) {
       value: {
         fields,
         exists: true,
+        revision: "a".repeat(32),
         screenshots: [],
         message: "",
         legacy: "none",
@@ -110,7 +111,7 @@ it("saves through the real port while ordinary requests stay busy, without dupli
     failed = vi.fn();
   h.client.setReportClosePreparation({
     prepare: async (save) => {
-      await save(fields);
+      await save(fields, "b".repeat(32));
       return "saved";
     },
     failed,
@@ -119,7 +120,7 @@ it("saves through the real port while ordinary requests stay busy, without dupli
   const request = await h.next();
   expect(request).toMatchObject({
     kind: "request",
-    request: { method: "draft.save", fields },
+    request: { method: "draft.save", fields, expectedRevision: "b".repeat(32) },
   });
   await expect(h.client.request({ method: "core.get" })).rejects.toEqual(
     new HostFailure({ kind: "busy" }),
@@ -136,7 +137,7 @@ it("vetoes a failed save and offers recovery through the registered failure hand
     failed = vi.fn();
   h.client.setReportClosePreparation({
     prepare: async (save) => {
-      await save(fields);
+      await save(fields, null);
       return "saved";
     },
     failed,
@@ -154,7 +155,7 @@ it("uses one injected five-second deadline and ignores a late successful save af
     failed = vi.fn();
   h.client.setReportClosePreparation({
     prepare: async (save) => {
-      await save(fields);
+      await save(fields, null);
       return "saved";
     },
     failed,
@@ -190,7 +191,7 @@ it.each(["live", "controlEof"] as const)(
     h.client.addCloseGuard(guard);
     h.client.setReportClosePreparation({
       prepare: async (save) => {
-        await save(fields);
+        await save(fields, null);
         return "saved";
       },
       failed,
@@ -244,7 +245,7 @@ it("counts waiting for an in-flight edit inside the same total deadline", async 
     prepare: async (save) => {
       entered();
       await gate;
-      await save(fields);
+      await save(fields, null);
       return "saved";
     },
     failed,
@@ -273,7 +274,7 @@ it("does not send an old-session save when invalidation happens while waiting", 
     prepare: async (save) => {
       entered();
       await gate;
-      await save(fields, session.signal);
+      await save(fields, null, session.signal);
       return "saved";
     },
     failed: vi.fn(),
@@ -290,7 +291,7 @@ it("owner shutdown cancels preparation without a failure dialog", async () => {
     failed = vi.fn();
   h.client.setReportClosePreparation({
     prepare: async (save) => {
-      await save(fields);
+      await save(fields, null);
       return "saved";
     },
     failed,
@@ -309,7 +310,7 @@ it("rejects a success after the deadline even if the event loop delayed its time
     failed = vi.fn();
   h.client.setReportClosePreparation({
     prepare: async (save) => {
-      await save(fields);
+      await save(fields, null);
       return "saved";
     },
     failed,
@@ -329,7 +330,7 @@ it("Restart cancels only report preparation and still honors every other screen 
   h.client.addCloseGuard(guard);
   h.client.setReportClosePreparation({
     prepare: async (save) => {
-      await save(fields);
+      await save(fields, null);
       return "saved";
     },
     failed,

@@ -74,6 +74,7 @@ fn session_testing_roundtrips_remove_prepare_and_send_and_ignores_late_ids() {
                 fields: fields.clone(),
             },
             services::Reply::Draft {
+                revision: None,
                 draft: None,
                 message: "Conservado".into(),
             },
@@ -173,6 +174,7 @@ fn a_reused_id_is_busy_until_the_cancelled_import_reply_is_retired() {
         .send((
             7,
             Ok(services::Reply::Draft {
+                revision: None,
                 draft: None,
                 message: String::new(),
             }),
@@ -202,6 +204,7 @@ fn a_reused_id_is_busy_until_the_cancelled_import_reply_is_retired() {
             &mut pipe,
             7,
             &Request::DraftSave {
+                expected_revision: None,
                 fields: fields.clone(),
             },
         )
@@ -224,6 +227,7 @@ fn a_reused_id_is_busy_until_the_cancelled_import_reply_is_retired() {
             &mut pipe,
             7,
             &Request::DraftSave {
+                expected_revision: None,
                 fields: fields.clone(),
             },
         )
@@ -247,6 +251,7 @@ fn a_reused_id_is_busy_until_the_cancelled_import_reply_is_retired() {
 
 fn saved_draft(fields: &crate::testing::ReportFields) -> services::Reply {
     services::Reply::Draft {
+        revision: Some("a".repeat(32)),
         draft: Some(report_document::Draft {
             schema_version: 1,
             idempotency_key: "qa-only".into(),

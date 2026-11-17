@@ -2,6 +2,7 @@ import type {
   CoreStatus,
   HostToUi,
   ReportDraftView,
+  ReportFields,
   ReportPreviewView,
   Request,
   TestingView,
@@ -25,11 +26,13 @@ export function createTestingMock(
       contextText: "",
     },
     exists: false,
+    revision: null,
     legacy: "none",
     screenshots: [],
     message: "",
   });
   let draft = empty();
+  let draftSequence = 0;
   if (scene === "testing-legacy-archived") draft.legacy = "archived";
   if (scene === "testing-legacy-imported") draft.legacy = "imported";
   if (scene === "testing-legacy-trimmed") draft.legacy = "importedTrimmed";
@@ -110,9 +113,23 @@ export function createTestingMock(
           result: { method: request.method, value: structuredClone(draft) },
         };
       case "draft.save":
+        if ((request.expectedRevision ?? null) !== draft.revision)
+          return {
+            kind: "failure",
+            id,
+            error: { kind: "draftConflict", current: structuredClone(draft) },
+          };
         if (scene === "testing-save-error")
           return { kind: "failure", id, error: { kind: "io" } };
+        if (
+          !draft.exists ||
+          !(Object.keys(draft.fields) as Array<keyof ReportFields>).every(
+            (key) => draft.fields[key] === request.fields[key],
+          )
+        )
+          draft.revision = (++draftSequence).toString(16).padStart(32, "0");
         draft = {
+          revision: draft.revision,
           fields: structuredClone(request.fields),
           exists: true,
           legacy: draft.legacy,
@@ -126,6 +143,12 @@ export function createTestingMock(
           result: { method: request.method, value: structuredClone(draft) },
         };
       case "draft.discard":
+        if ((request.expectedRevision ?? null) !== draft.revision)
+          return {
+            kind: "failure",
+            id,
+            error: { kind: "draftConflict", current: structuredClone(draft) },
+          };
         draft = { ...empty(), legacy: draft.legacy };
         preview = undefined;
         return {

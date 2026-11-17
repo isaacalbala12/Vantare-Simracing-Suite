@@ -4,6 +4,7 @@ export const reportCloseMethods = ["draft.save"] as const;
 export const reportCloseTimeoutMs = 5000;
 export type CloseDraftSave = (
   fields: ReportFields,
+  expectedRevision: string | null,
   session?: AbortSignal,
 ) => Promise<Extract<Reply, { method: "draft.save" }>>;
 export type ReportCloseVerdict = "saved" | "discard" | false;
@@ -64,7 +65,7 @@ export class ReportClosePreparation {
     };
     const timer = this.clock.set(() => finish(false), reportCloseTimeoutMs);
     this.active = { controller, timer, settle };
-    const save: CloseDraftSave = (fields, session) => {
+    const save: CloseDraftSave = (fields, expectedRevision, session) => {
       if (
         this.active?.controller !== controller ||
         controller.signal.aborted ||
@@ -73,6 +74,7 @@ export class ReportClosePreparation {
         return Promise.reject(new Error("report close preparation cancelled"));
       return send(
         fields,
+        expectedRevision,
         session
           ? AbortSignal.any([controller.signal, session])
           : controller.signal,

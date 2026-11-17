@@ -6,7 +6,8 @@ use std::io::{self, Read, Write};
 // v18 removed TransferRights. Admission observes the core without disk replay.
 // Mixed generations are transient failures;
 // no protocol error can invalidate the signed core policy.
-pub const VERSION: u32 = 20;
+// v21 adds draft revision CAS and the closed DraftConflict response.
+pub const VERSION: u32 = 21;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -90,8 +91,13 @@ pub enum Command {
     DraftLoad,
     DraftSave {
         fields: report_document::Fields,
+        #[serde(default)]
+        expected_revision: Option<String>,
     },
-    DraftDiscard,
+    DraftDiscard {
+        #[serde(default)]
+        expected_revision: Option<String>,
+    },
     ReportCapture {
         fields: report_document::Fields,
     },
@@ -238,7 +244,12 @@ pub enum Reply {
         message: String,
     },
     Closed,
+    DraftConflict {
+        draft: Option<report_document::Draft>,
+        message: String,
+    },
     Draft {
+        revision: Option<String>,
         draft: Option<report_document::Draft>,
         message: String,
     },
@@ -631,6 +642,45 @@ mod login_link_tests {
         let restored: Reply = serde_json::from_slice(&json).expect("decode");
         assert!(
             matches!(restored, Reply::AccountLink { url } if url.0.contains("state=private-fixture"))
+        );
+    }
+}
+
+#[cfg(test)]
+mod draft_cas_wire_tests {
+    use super::*;
+    #[test]
+    fn missing_expected_revision_means_absence_and_closed_conflict_roundtrips() {
+        let fields = report_document::Fields::default();
+        let old = serde_json::json!({"command":"DraftSave","fields":fields});
+        assert!(matches!(
+            serde_json::from_value::<Command>(old).expect("missing means absent"),
+            Command::DraftSave {
+                expected_revision: None,
+                ..
+            }
+        ));
+        let discard = serde_json::json!({"command":"DraftDiscard"});
+        assert!(matches!(
+            serde_json::from_value::<Command>(discard).expect("missing means absent"),
+            Command::DraftDiscard {
+                expected_revision: None
+            }
+        ));
+        let reply = Reply::DraftConflict {
+            draft: None,
+            message: String::new(),
+        };
+        assert!(matches!(
+            serde_json::from_slice::<Reply>(&serde_json::to_vec(&reply).expect("wire"))
+                .expect("reply"),
+            Reply::DraftConflict { draft: None, .. }
+        ));
+        assert!(
+            serde_json::from_value::<Reply>(
+                serde_json::json!({"result":"DraftConflict","draft":null,"message":"","extra":true})
+            )
+            .is_err()
         );
     }
 }

@@ -315,6 +315,7 @@ impl Editor {
         }
         options
     }
+    #[allow(clippy::too_many_lines)] // Conserva unido el formulario congelado al adaptar el contrato de guardado.
     fn form(&self, compact: bool, cx: &mut Context<Remote>) -> gpui::Div {
         let controls = self.module_control(cx);
         let fields = self.fields(cx);
@@ -396,7 +397,13 @@ impl Editor {
                 orbit::button("report-save", "Guardar borrador", cx).on_click(cx.listener(
                     |this, _, _, cx| {
                         let fields = this.editor.fields(cx);
-                        this.report_action(Command::DraftSave { fields }, cx);
+                        this.report_action(
+                            Command::DraftSave {
+                                fields,
+                                expected_revision: None,
+                            },
+                            cx,
+                        );
                     },
                 )),
             ));
@@ -476,9 +483,14 @@ impl Editor {
         };
         let discard = orbit::button("report-discard", "Descartar borrador", cx);
         let discard = if self.dirty {
-            discard.on_click(
-                cx.listener(|this, _, _, cx| this.report_action(Command::DraftDiscard, cx)),
-            )
+            discard.on_click(cx.listener(|this, _, _, cx| {
+                this.report_action(
+                    Command::DraftDiscard {
+                        expected_revision: None,
+                    },
+                    cx,
+                );
+            }))
         } else {
             orbit::disabled(discard, "Deshabilitado: no hay un borrador que descartar.")
         };

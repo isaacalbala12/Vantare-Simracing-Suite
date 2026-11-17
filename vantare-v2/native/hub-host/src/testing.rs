@@ -186,10 +186,11 @@ pub struct ReportDraftView {
     pub legacy: LegacyMigration,
     pub fields: ReportFields,
     pub exists: bool,
+    pub revision: Option<String>,
     pub screenshots: Vec<ReportScreenshot>,
     pub message: String,
 }
-pub fn draft(value: Option<&report_document::Draft>) -> ReportDraftView {
+pub fn draft(value: Option<&report_document::Draft>, revision: Option<String>) -> ReportDraftView {
     ReportDraftView {
         legacy: LegacyMigration::None,
         fields: value.map_or_else(
@@ -200,24 +201,44 @@ pub fn draft(value: Option<&report_document::Draft>) -> ReportDraftView {
             |draft| ReportFields::from(&draft.fields),
         ),
         exists: value.is_some(),
+        revision,
         screenshots: value.map_or_else(Vec::new, |d| screenshots(&d.screenshots)),
         message: String::new(),
     }
 }
+#[cfg(any(test, feature = "bindings"))]
+pub const DRAFT_REVISION_CASES: &[(Option<&str>, bool)] = &[
+    (None, true),
+    (Some("0123456789abcdef0123456789abcdef"), true),
+    (Some(""), false),
+    (Some("short"), false),
+    (Some("gggggggggggggggggggggggggggggggg"), false),
+];
+pub fn valid_draft_revision(value: Option<&str>) -> bool {
+    value.is_none_or(|value| {
+        value.len() == 32
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    })
+}
 pub fn allowed(access: &AccessView) -> bool {
     access.verified && !access.blocked
 }
-pub fn draft_save(access: &AccessView, fields: &ReportFields) -> Result<core::Command, HostError> {
+pub fn draft_save(
+    access: &AccessView,
+    fields: &ReportFields,
+    expected_revision: Option<&str>,
+) -> Result<core::Command, HostError> {
     if !allowed(access) {
         return Err(HostError::Denied);
     }
-    if !fields.valid() {
+    if !fields.valid() || !valid_draft_revision(expected_revision) {
         return Err(HostError::Rejected);
     }
-    // Existing Services contract has no expected revision. VANTA-138 explicitly
-    // preserves that guarantee provisionally; this is not cross-process CAS.
     Ok(core::Command::DraftSave {
         fields: fields.core(),
+        expected_revision: expected_revision.map(str::to_owned),
     })
 }
 
@@ -435,8 +456,23 @@ pub(crate) fn intent_with_note(
             },
         ),
         Request::DraftLoad {} => (Operation::Load, Command::DraftLoad),
-        Request::DraftSave { fields } => (Operation::Save, draft_save(access, fields)?),
-        Request::DraftDiscard {} => (Operation::Discard, Command::DraftDiscard),
+        Request::DraftSave {
+            fields,
+            expected_revision,
+        } => (
+            Operation::Save,
+            draft_save(access, fields, expected_revision.as_deref())?,
+        ),
+        Request::DraftDiscard { expected_revision }
+            if valid_draft_revision(expected_revision.as_deref()) =>
+        {
+            (
+                Operation::Discard,
+                Command::DraftDiscard {
+                    expected_revision: expected_revision.clone(),
+                },
+            )
+        }
         Request::ReportCapture { fields } if fields.valid() => (
             Operation::Capture,
             Command::ReportCapture {
@@ -489,17 +525,38 @@ pub fn complete(
                 _ => Err(HostError::Rejected),
             }
         }
-        core::Reply::Draft {
+        core::Reply::DraftConflict {
             draft: saved,
             message,
-        } => {
+        } if matches!(operation, Operation::Save | Operation::Discard) => {
             if saved
                 .as_ref()
                 .is_some_and(|draft| !valid_screenshots(&draft.screenshots))
             {
                 return Err(HostError::Rejected);
             }
-            let mut value = draft(saved.as_ref());
+            let revision = saved.as_ref().map(vantare_services::draft_revision);
+            let mut current = draft(saved.as_ref(), revision);
+            current.message = message;
+            Err(HostError::DraftConflict {
+                current: Box::new(current),
+            })
+        }
+        core::Reply::Draft {
+            draft: saved,
+            message,
+            revision,
+        } => {
+            if !valid_draft_revision(revision.as_deref()) || saved.is_some() != revision.is_some() {
+                return Err(HostError::Rejected);
+            }
+            if saved
+                .as_ref()
+                .is_some_and(|draft| !valid_screenshots(&draft.screenshots))
+            {
+                return Err(HostError::Rejected);
+            }
+            let mut value = draft(saved.as_ref(), revision);
             value.message = message;
             match operation {
                 Operation::Load => Ok(Reply::DraftLoad { value }),
@@ -649,7 +706,9 @@ mod tests {
         for tester in [false, true] {
             for request in [
                 Request::DraftLoad {},
-                Request::DraftDiscard {},
+                Request::DraftDiscard {
+                    expected_revision: None,
+                },
                 Request::ReportPrepare {},
                 Request::ReportRetryPrepare {},
                 Request::ReportSend {
@@ -719,23 +778,24 @@ mod tests {
             action_text: "ñ".repeat(FIELD_LIMITS[0] / 2),
             ..Default::default()
         };
-        assert!(draft_save(&access, &fields).is_ok());
-        assert!(draft_save(&AccessView::default(), &fields).is_err());
+        assert!(draft_save(&access, &fields, None).is_ok());
+        assert!(draft_save(&AccessView::default(), &fields, None).is_err());
         assert!(
             draft_save(
                 &AccessView {
                     blocked: true,
                     ..access.clone()
                 },
-                &fields
+                &fields,
+                None
             )
             .is_err()
         );
         fields.action_text.push('ñ');
-        assert!(draft_save(&access, &fields).is_err());
+        assert!(draft_save(&access, &fields, None).is_err());
         fields.action_text.clear();
         fields.module = "arbitrary".into();
-        assert!(draft_save(&access, &fields).is_err());
+        assert!(draft_save(&access, &fields, None).is_err());
     }
     #[test]
     fn answer_note_distinguishes_edit_delete_and_legacy_preservation() {
@@ -819,9 +879,12 @@ mod tests {
             screenshots: vec![],
         };
         assert!(
-            !serde_json::to_string(&super::draft(Some(&draft)))
-                .unwrap()
-                .contains("private key")
+            !serde_json::to_string(&super::draft(
+                Some(&draft),
+                Some(vantare_services::draft_revision(&draft))
+            ))
+            .unwrap()
+            .contains("private key")
         );
     }
     #[test]
@@ -852,6 +915,7 @@ mod tests {
             complete(
                 Operation::Send,
                 core::Reply::Draft {
+                    revision: None,
                     draft: None,
                     message: String::new()
                 }
@@ -909,6 +973,7 @@ mod tests {
         let reply = complete(
             Operation::Load,
             core::Reply::Draft {
+                revision: None,
                 draft: None,
                 message: "El borrador se conserva".into(),
             },
@@ -918,7 +983,7 @@ mod tests {
             matches!(reply,crate::protocol::Reply::DraftLoad{value} if value.message == "El borrador se conserva")
         );
         assert!(
-            matches!(complete(Operation::Capture,core::Reply::Draft {draft:None,message:String::new()}).expect("typed capture reply"),crate::protocol::Reply::ReportCapture {value} if !value.exists)
+            matches!(complete(Operation::Capture,core::Reply::Draft {revision: None, draft:None,message:String::new()}).expect("typed capture reply"),crate::protocol::Reply::ReportCapture {value} if !value.exists)
         );
     }
     #[test]
@@ -985,5 +1050,130 @@ mod tests {
             report_state: "submitted".into(),
             ..value
         }));
+    }
+}
+
+#[cfg(test)]
+mod draft_cas_tests {
+    use super::*;
+    fn saved() -> report_document::Draft {
+        report_document::Draft {
+            schema_version: 1,
+            idempotency_key: format!("draft_{}", "a".repeat(64)),
+            fields: ReportFields {
+                action_text: "A".into(),
+                module: "hub".into(),
+                ..Default::default()
+            }
+            .core(),
+            screenshots: vec![],
+        }
+    }
+    #[test]
+    fn typed_conflict_returns_current_text_and_fingerprint_without_the_private_key() {
+        let saved = saved();
+        for operation in [Operation::Save, Operation::Discard] {
+            let Err(HostError::DraftConflict { current }) = complete(
+                operation,
+                core::Reply::DraftConflict {
+                    draft: Some(saved.clone()),
+                    message: String::new(),
+                },
+            ) else {
+                panic!("typed conflict")
+            };
+            assert_eq!(current.fields.action_text, "A");
+            assert_eq!(
+                current.revision,
+                Some(vantare_services::content_hash(saved.idempotency_key.as_bytes())[..32].into())
+            );
+            let json = serde_json::to_string(&current).expect("projection");
+            assert!(!json.contains(&saved.idempotency_key));
+            assert!(!json.contains("idempotency"));
+        }
+        for operation in [Operation::Load, Operation::Send] {
+            assert_eq!(
+                complete(
+                    operation,
+                    core::Reply::DraftConflict {
+                        draft: Some(saved.clone()),
+                        message: String::new()
+                    }
+                ),
+                Err(HostError::Rejected)
+            );
+        }
+        assert_eq!(
+            complete(
+                Operation::Save,
+                core::Reply::Error {
+                    message: "conflicto de revisión".into()
+                }
+            ),
+            Err(HostError::Rejected)
+        );
+    }
+    #[test]
+    fn draft_revision_must_be_exactly_32_lowercase_hex_before_forwarding() {
+        for (value, valid) in DRAFT_REVISION_CASES {
+            assert_eq!(valid_draft_revision(*value), *valid);
+        }
+        let access = AccessView {
+            verified: true,
+            ..Default::default()
+        };
+        for revision in ["", "a", &"a".repeat(31), &"a".repeat(33), &"G".repeat(32)] {
+            for request in [
+                crate::protocol::Request::DraftSave {
+                    fields: ReportFields {
+                        module: "hub".into(),
+                        ..Default::default()
+                    },
+                    expected_revision: Some(revision.into()),
+                },
+                crate::protocol::Request::DraftDiscard {
+                    expected_revision: Some(revision.into()),
+                },
+            ] {
+                assert!(matches!(
+                    intent(&request, &access),
+                    Err(HostError::Rejected)
+                ));
+            }
+        }
+    }
+    #[test]
+    fn draft_reply_uses_the_authority_revision_and_rejects_invalid_presence() {
+        let observed = "0123456789abcdef0123456789abcdef".to_owned();
+        let reply = complete(
+            Operation::Load,
+            core::Reply::Draft {
+                draft: Some(saved()),
+                revision: Some(observed.clone()),
+                message: String::new(),
+            },
+        )
+        .expect("draft reply");
+        let crate::protocol::Reply::DraftLoad { value } = reply else {
+            panic!("draft load")
+        };
+        assert_eq!(value.revision, Some(observed.clone()));
+        for (draft, revision) in [
+            (Some(saved()), None),
+            (None, Some(observed)),
+            (Some(saved()), Some("malformed".into())),
+        ] {
+            assert_eq!(
+                complete(
+                    Operation::Load,
+                    core::Reply::Draft {
+                        draft,
+                        revision,
+                        message: String::new()
+                    }
+                ),
+                Err(HostError::Rejected)
+            );
+        }
     }
 }

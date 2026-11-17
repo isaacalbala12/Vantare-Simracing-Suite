@@ -84,10 +84,25 @@ function validFields(value: unknown, stored: boolean): boolean {
 export function isReportFields(value: unknown): boolean {
   return validFields(value, false);
 }
+export function isDraftRevision(value: unknown): boolean {
+  return (
+    value === null ||
+    (typeof value === "string" && /^[0-9a-f]{32}$/.test(value))
+  );
+}
 export function isReportDraft(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["fields", "exists", "screenshots", "legacy", "message"]) &&
+    exact(value, [
+      "fields",
+      "exists",
+      "screenshots",
+      "legacy",
+      "message",
+      "revision",
+    ]) &&
+    isDraftRevision(value.revision) &&
+    (value.exists ? value.revision !== null : value.revision === null) &&
     reportLegacyStates.some((state) => state === value.legacy) &&
     typeof value.message === "string" &&
     typeof value.exists === "boolean" &&

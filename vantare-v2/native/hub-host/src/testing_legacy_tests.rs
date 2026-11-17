@@ -72,6 +72,7 @@ fn local(root: &Path, title: &str, time: u64) -> PathBuf {
 }
 fn reply(fields: Option<ReportFields>) -> Reply {
     Reply::Draft {
+        revision: fields.as_ref().map(|_| "a".repeat(32)),
         draft: fields.map(|fields| Draft {
             schema_version: 1,
             idempotency_key: "private-core-key".into(),
@@ -82,7 +83,7 @@ fn reply(fields: Option<ReportFields>) -> Reply {
     }
 }
 fn import(state: &mut State) -> ReportFields {
-    let Next::Import(Command::DraftSave { fields }) = state
+    let Next::Import(Command::DraftSave { fields, .. }) = state
         .complete(Operation::Load, reply(None))
         .expect("local draft fixture")
     else {
@@ -198,6 +199,7 @@ fn corrupt_future_and_oversized_documents_are_left_in_place() {
         let Next::Complete(Reply::Draft {
             draft: None,
             message,
+            ..
         }) = state
             .complete(Operation::Load, reply(None))
             .expect("local draft fixture")
@@ -453,4 +455,30 @@ fn failed_archiving_is_not_retried_by_autosave_or_discard_until_load() {
     assert!(!path.exists() && archive.exists());
     assert!(state.warning.is_none());
     assert_eq!(state.legacy, LegacyMigration::Archived);
+}
+
+#[test]
+fn conflicted_import_releases_importing_without_archiving_the_original() {
+    let root = Root::new();
+    let path = editor(&root.path, "local loser", 100);
+    let original = fs::read(&path).expect("original");
+    let mut state = State::new(&root.path);
+    state.begin(Operation::Load);
+    import(&mut state);
+    assert!(state.importing);
+    let conflict = Reply::DraftConflict {
+        draft: None,
+        message: String::new(),
+    };
+    assert!(matches!(
+        state.complete(Operation::Load, conflict).expect("conflict"),
+        Next::Complete(Reply::DraftConflict { .. })
+    ));
+    assert!(!state.importing);
+    assert_eq!(fs::read(&path).expect("untouched"), original);
+    // Only a later, explicit load may start another import.
+    assert!(matches!(
+        state.complete(Operation::Load, reply(None)).expect("load"),
+        Next::Import(Command::DraftSave { .. })
+    ));
 }

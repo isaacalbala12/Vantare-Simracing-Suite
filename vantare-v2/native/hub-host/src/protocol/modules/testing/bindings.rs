@@ -23,6 +23,11 @@ pub(crate) fn typescript() -> String {
         "reportScreenshotsAvailable",
         crate::testing::SCREENSHOTS_AVAILABLE
     );
+    constants!(
+        &mut text,
+        "reportDraftRevisionCases",
+        crate::testing::DRAFT_REVISION_CASES
+    );
     append_testing_id_constants(&mut text);
     text
 }
@@ -32,6 +37,16 @@ pub(crate) fn corpus() -> serde_json::Value {
     host.push(HostToUi::Failure {
         id: 1,
         error: crate::protocol::HostError::EvidencePending,
+    });
+    let mut current = crate::testing::draft(None, None);
+    current.exists = true;
+    current.fields.action_text = "A".into();
+    current.revision = Some("a".repeat(32));
+    host.push(HostToUi::Failure {
+        id: 1,
+        error: crate::protocol::HostError::DraftConflict {
+            current: Box::new(current),
+        },
     });
     host.extend(testing_reply_samples().into_iter().map(sample_response));
     ui.extend(
@@ -91,8 +106,11 @@ pub(crate) fn testing_request_samples() -> Vec<Request> {
         },
         Request::TestingRefresh {},
         Request::DraftLoad {},
-        Request::DraftDiscard {},
+        Request::DraftDiscard {
+            expected_revision: None,
+        },
         Request::DraftSave {
+            expected_revision: None,
             fields: crate::testing::ReportFields {
                 module: "hub".into(),
                 ..Default::default()
@@ -141,10 +159,10 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
             },
         },
         Reply::ReportRemoveScreenshot {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
         Reply::ReportCapture {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
         Reply::TestingNoticeRead {
             value: crate::testing::TestingView::default(),
@@ -172,13 +190,13 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
             },
         },
         Reply::DraftLoad {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
         Reply::DraftSave {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
         Reply::DraftDiscard {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
     ]
 }

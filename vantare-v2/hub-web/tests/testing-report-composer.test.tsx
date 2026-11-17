@@ -247,6 +247,7 @@ it("keeps actions blocked while the initial host draft is pending", async () => 
           contextText: "",
         },
         exists: false,
+        revision: null,
         screenshots: [],
         message: "",
       },
@@ -288,6 +289,7 @@ it("keeps a legacy image on failure, then removes it once with the current local
             legacy: "none",
             fields,
             exists: true,
+            revision: "a".repeat(32),
             screenshots: [image],
             message: "",
           },
@@ -302,6 +304,7 @@ it("keeps a legacy image on failure, then removes it once with the current local
             legacy: "none",
             fields: request.fields,
             exists: true,
+            revision: "a".repeat(32),
             screenshots: [],
             message: "",
           },
@@ -422,6 +425,7 @@ it("keeps draft images separate from an original pending preview and revokes it 
             legacy: "none",
             fields,
             exists: true,
+            revision: "a".repeat(32),
             screenshots: [image],
             message: "",
           },
@@ -468,6 +472,7 @@ it("keeps draft images separate from an original pending preview and revokes it 
         legacy: "none",
         fields,
         exists: true,
+        revision: "a".repeat(32),
         screenshots: [],
         message: "",
       },
@@ -497,6 +502,7 @@ it("loading replaces every field and revokes the previous host review and consen
       fields,
       screenshots: [],
       exists: true,
+      revision: "a".repeat(32),
       legacy: "none",
       message: "",
     },
@@ -643,4 +649,61 @@ it("does not create an untouched draft when the window blurs", async () => {
     calls.mock.calls.some(([request]) => request.method === "draft.save"),
   ).toBe(false);
   expect(reports.fields.contextText).toBe("");
+});
+
+it.each([
+  "draftConflict",
+  "denied",
+  "coreUnavailable",
+  "evidencePending",
+  "io",
+] as const)("shows the approved conflict warning only for %s", async (kind) => {
+  const approved =
+    "Otro Hub cambió este borrador. Tu texto sigue aquí; si guardas, sustituirás el suyo.";
+  await mount();
+  edit();
+  const original = Client.prototype.request;
+  vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    request,
+  ): Promise<Reply> {
+    if (request.method !== "draft.save") return original.call(this, request);
+    const detail =
+      kind === "draftConflict"
+        ? {
+            kind,
+            current: {
+              legacy: "none" as const,
+              exists: false,
+              revision: null,
+              fields: {
+                module: "unknown",
+                actionText: "",
+                expectedText: "",
+                observedText: "",
+                contextText: "",
+              },
+              screenshots: [],
+              message: "",
+            },
+          }
+        : { kind };
+    return Promise.reject(new HostFailure(detail));
+  });
+  fireEvent.click(screen.getByRole("button", { name: text.save }));
+  const expected =
+    kind === "draftConflict"
+      ? approved
+      : kind === "denied"
+        ? text.denied
+        : kind === "coreUnavailable"
+          ? text.offline
+          : kind === "evidencePending"
+            ? text.evidencePending
+            : text.failed;
+  await waitFor(() =>
+    expect(screen.getAllByText(expected).length).toBeGreaterThan(0),
+  );
+  if (kind !== "draftConflict")
+    expect(screen.queryAllByText(approved)).toHaveLength(0);
 });

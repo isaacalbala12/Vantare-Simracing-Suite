@@ -144,7 +144,7 @@ public static class TandaIdle {
   bool found=false;try{for(int i=0;i<count;i++){
    var s=Marshal.PtrToStructure<Session>(IntPtr.Add(data,i*Marshal.SizeOf<Session>()));if(s.id<=0||s.state>=6)continue;
    IntPtr name;int bytes;if(!Query(IntPtr.Zero,s.id,5,out name,out bytes))throw new InvalidOperationException("WTSQuerySessionInformation");
-   try{var actual=Marshal.PtrToStringUni(name);if(String.IsNullOrEmpty(actual))continue;if(s.id!=expected||!String.Equals(actual,user,StringComparison.OrdinalIgnoreCase))return false;found=true;}finally{if(name!=IntPtr.Zero)WTSFreeMemory(name);}
+   try{var actual=Marshal.PtrToStringUni(name);if(String.IsNullOrEmpty(actual))continue;if(s.id!=expected||s.state!=0||!String.Equals(actual,user,StringComparison.OrdinalIgnoreCase))return false;found=true;}finally{if(name!=IntPtr.Zero)WTSFreeMemory(name);}
   }return found;}finally{WTSFreeMemory(data);}
  }
 }

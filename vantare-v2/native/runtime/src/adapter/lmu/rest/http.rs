@@ -299,22 +299,46 @@ mod tests {
 
     #[test]
     fn a_stalled_server_hits_the_request_deadline() {
+        use std::sync::mpsc;
+
+        // El plazo del cliente cubre toda la llamada, también conectar y enviar.
+        // Si la máquina deja el hilo sin CPU más de 750 ms, ureq vence antes de
+        // escribir la petición (pool.rs: `transmit_output` falla con el saldo a
+        // cero) y el servidor lee EOF: exigir aquí la línea GET convertía esa
+        // inanición en un falso rojo. Este banco exige lo que no depende de la
+        // planificación: el servidor aceptó la conexión, siguió mudo y abierto
+        // mientras el cliente agotaba su plazo y devolvía None. La petición GET
+        // concreta la cubren los bancos de respuesta, sin plazo global.
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let (release, hold) = std::sync::mpsc::channel::<()>();
+        let (accepted, accepted_by_server) = mpsc::channel();
+        let (release, hold) = mpsc::channel::<()>();
         let server = std::thread::spawn(move || {
+            // Escucha sin leer ni responder: el socket sigue abierto hasta que
+            // el test libera, para que el cliente no reciba un cierre prematuro.
             let socket = accept_for_test(&listener, Instant::now() + HARNESS_LIMIT).unwrap();
-            let request = read_request_line(&socket);
+            accepted.send(()).unwrap();
             hold.recv_timeout(HARNESS_LIMIT)
                 .expect("liberar el servidor después de vencer el cliente");
-            request
+            drop(socket);
         });
+        let started = Instant::now();
         let response = Client::new(port).fetch(Endpoint::Standings);
+        let waited = started.elapsed();
+        accepted_by_server
+            .recv_timeout(HARNESS_LIMIT)
+            .expect("el cliente no llegó a conectar con el servidor parado");
         let released = release.send(());
-        let request = join_for_test(server).unwrap();
+        join_for_test(server).unwrap();
         released.expect("el servidor seguía esperando la liberación explícita");
-        assert!(request.starts_with("GET /rest/watch/standings "));
         assert_eq!(response, None);
+        // Cota inferior: la llamada consumió su plazo en vez de fallar al instante.
+        // La planificación solo alarga la espera; el margen cubre el redondeo del
+        // temporizador del socket, no un plazo distinto.
+        assert!(
+            waited >= DEADLINE.saturating_sub(Duration::from_millis(50)),
+            "la petición no agotó su plazo: {waited:?}"
+        );
     }
 
     #[test]

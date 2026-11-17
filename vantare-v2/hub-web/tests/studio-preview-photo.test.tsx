@@ -17,11 +17,13 @@ import type {
   Reply,
   Request,
   StudioView,
+  WidgetSettings,
 } from "../src/contract/generated/contract";
 import {
   previewLimits,
   previewTransparentPng,
 } from "../src/contract/generated/preview";
+import { studioWidgetDefaults } from "../src/contract/generated/studio";
 import { coreKey, HostProvider } from "../src/renderer/app/Host";
 import { UiProvider } from "../src/renderer/app/UiState";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
@@ -31,6 +33,7 @@ import {
 } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
+import { previewFingerprint } from "../src/renderer/ui/studio/usePreviewPhoto";
 
 type PhotoRequest = Extract<Request, { method: "preview.render" }>;
 let cache: QueryClient;
@@ -786,4 +789,66 @@ it("regenerates explicitly with the latest global revision after an unrelated ed
     id: studio.selected,
     baseRevision: view().revision,
   });
+});
+
+it("fingerprints exactly kind and complete settings with stable nested key order", () => {
+  const item = {
+    kind: "standings" as const,
+    settings: structuredClone(studioWidgetDefaults.standings) as Extract<
+      WidgetSettings,
+      { kind: "standings" }
+    >,
+  };
+  const before = structuredClone(item);
+  const fingerprint = previewFingerprint(item);
+  const reordered = JSON.parse(
+    JSON.stringify(item.settings, (_key, value) =>
+      value && typeof value === "object" && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value).reverse())
+        : value,
+    ),
+  ) as typeof item.settings;
+  expect(Object.keys(reordered)).not.toEqual(Object.keys(item.settings));
+  expect(Object.keys(reordered.columns?.[0].format ?? {})).not.toEqual(
+    Object.keys(item.settings.columns?.[0].format ?? {}),
+  );
+  expect(previewFingerprint({ ...item, settings: reordered })).toBe(
+    fingerprint,
+  );
+  expect(previewFingerprint(item)).toBe(fingerprint);
+  expect(item).toEqual(before);
+  expect(previewFingerprint({ ...item, kind: "delta" })).not.toBe(fingerprint);
+  expect(
+    previewFingerprint({
+      ...item,
+      settings: { ...item.settings, accent: "green" },
+    }),
+  ).not.toBe(fingerprint);
+  const nested = structuredClone(item.settings);
+  if (!nested.columns?.length) throw Error("Missing column fixture");
+  nested.columns[0].format.decimals = 1;
+  expect(previewFingerprint({ ...item, settings: nested })).not.toBe(
+    fingerprint,
+  );
+  expect(
+    previewFingerprint({
+      ...item,
+      settings: { ...item.settings, columns: [...nested.columns].reverse() },
+    }),
+  ).not.toBe(previewFingerprint({ ...item, settings: nested }));
+  const placed = {
+    ...item,
+    id: "another-id",
+    x: -200,
+    y: 400,
+    size: { width: 800, height: 900 },
+    visible: false,
+    opacity: 20,
+    showIn: { practice: false, qualifying: false, race: false },
+    offTrack: "hide",
+    sizeMode: "explicit",
+    aspectLocked: false,
+    canvasPlacement: "outside",
+  };
+  expect(previewFingerprint(placed)).toBe(fingerprint);
 });

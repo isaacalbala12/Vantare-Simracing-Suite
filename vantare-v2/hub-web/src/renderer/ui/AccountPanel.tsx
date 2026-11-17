@@ -153,7 +153,9 @@ export function AccountPanel({
             tabIndex={demo ? -1 : undefined}
             onClick={() => action({ method: "account.check" })}
           >
-            {pending ? text.checking : text.check}
+            {pending && pendingMethod === "account.check"
+              ? text.checking
+              : text.check}
           </Button>
           {!demo &&
             accountOptions.products.map((product) => (

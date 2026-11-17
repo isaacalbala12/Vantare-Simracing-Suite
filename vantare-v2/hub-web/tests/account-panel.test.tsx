@@ -116,6 +116,48 @@ it("uses closed purchase identifiers and can stop checking a local checkout", as
   );
   expect(screen.queryByRole("button", { name: text.stopPurchase })).toBeNull();
 });
+it.each(["account.logout", "account.photoRefresh", "account.check"] as const)(
+  "labels only the access check as checking while %s is pending",
+  async (method) => {
+    const original = Client.prototype.request;
+    let rejectPending: ((error: unknown) => void) | undefined;
+    const calls = vi
+      .spyOn(Client.prototype, "request")
+      .mockImplementation(function (this: Client, request, onSent) {
+        if (request.method === method)
+          return new Promise<Reply>((_resolve, reject) => {
+            rejectPending = reject;
+          });
+        return original.call(this, request, onSent);
+      });
+    const user = mount();
+    const action =
+      method === "account.logout"
+        ? text.logout
+        : method === "account.photoRefresh"
+          ? text.refreshPhoto
+          : text.check;
+    await user.click(await screen.findByRole("button", { name: action }));
+    try {
+      expect(calls.mock.calls.map(([request]) => request.method)).toContain(
+        method,
+      );
+      expect(
+        screen.getByRole("button", {
+          name: method === "account.check" ? text.checking : text.check,
+        }),
+      ).toHaveProperty("disabled", true);
+    } finally {
+      await act(async () => rejectPending?.(new HostFailure({ kind: "busy" })));
+    }
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: text.check })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+  },
+);
 it("shows the authoritative signed-out state after logout", async () => {
   const calls = vi.spyOn(Client.prototype, "request");
   const user = mount();

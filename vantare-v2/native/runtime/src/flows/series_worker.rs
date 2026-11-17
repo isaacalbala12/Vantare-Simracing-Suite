@@ -372,7 +372,7 @@ impl SeriesWorker {
         }
         self.process
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .wait_until(deadline)?;
         Ok((state, self.analysis.load_full()))
     }
@@ -387,7 +387,7 @@ impl Drop for SeriesWorker {
         if let Err(error) = self
             .process
             .lock()
-            .unwrap_or_else(|e| e.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .abort()
         {
             eprintln!("parar worker de series: {error}");
@@ -636,7 +636,7 @@ mod poison_tests {
             // al fallar la prueba. Esta guarda no convierte el timeout en éxito.
             process
                 .lock()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .abort()
                 .expect("limpieza de emergencia");
         }
@@ -645,7 +645,7 @@ mod poison_tests {
         assert!(
             process
                 .lock()
-                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .child
                 .try_wait()
                 .expect("estado del hijo")

@@ -187,6 +187,7 @@ pub(crate) fn patch_samples() -> Vec<crate::settings::SettingsPatch> {
         crate::settings::SettingsPatch::Updates(false),
         crate::settings::SettingsPatch::Launcher(false),
         crate::settings::SettingsPatch::Toasts(true),
+        crate::settings::SettingsPatch::Grabacion(false),
         crate::settings::SettingsPatch::Palette(crate::settings::model::Palette::Vantare),
         crate::settings::SettingsPatch::Scheme(crate::settings::model::Scheme::System),
         crate::settings::SettingsPatch::Contrast(crate::settings::model::CONTRAST_MIN),

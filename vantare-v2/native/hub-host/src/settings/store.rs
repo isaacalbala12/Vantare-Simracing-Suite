@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use vantare_ipc::files::{self, Doc, Error, Mode, Options};
 
 const LIMIT: u64 = 32 * 1024;
-pub(crate) const FILE: &str = "hub-settings.json";
+pub(crate) use vantare_ipc::paths::HUB_SETTINGS_FILE as FILE;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Document {

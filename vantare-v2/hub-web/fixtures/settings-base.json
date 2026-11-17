@@ -5,7 +5,8 @@
     "minimized": false,
     "updates": true,
     "launcher": true,
-    "toasts": true
+    "toasts": true,
+    "grabacion": true
   },
   "appearance": {
     "palette": "vantare",

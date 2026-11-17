@@ -1640,6 +1640,23 @@ describe("honest notification preferences", () => {
       ).toHaveLength(2);
     },
   );
+  it("persists recording off and on with the next-start explanation", async () => {
+    const hook = mount("ajustes-base", <General />);
+    await loaded(hook);
+    const control = screen.getByRole("switch", {
+      name: t("general.grabacion"),
+    });
+    expect(hook.result.current.view?.general.grabacion).toBe(true);
+    expect(control.getAttribute("aria-description")).toBe(
+      t("general.grabacionHelp"),
+    );
+    for (const value of [false, true]) {
+      await userEvent.setup().click(control);
+      await waitFor(() =>
+        expect(hook.result.current.view?.general.grabacion).toBe(value),
+      );
+    }
+  });
   it("keeps the Windows switch editable for the manual test and explains its limit", async () => {
     const calls = vi.spyOn(Client.prototype, "request");
     const hook = mount("ajustes-base", <General />);

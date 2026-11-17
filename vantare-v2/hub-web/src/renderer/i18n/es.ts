@@ -359,6 +359,9 @@ export const settingsText = {
   "general.launcher": "Avisos del Launcher",
   "general.launcherHelp":
     "Avisa de fallos en el centro del Hub. Al terminar correctamente la cadena, avisa de aplicaciones listas; también en Windows si sus notificaciones están activadas.",
+  "general.grabacion": "Grabar telemetría",
+  "general.grabacionHelp":
+    "Guarda tus sesiones en este equipo para analizarlas. El cambio se aplica al siguiente arranque de Vantare.",
   "general.toasts": "Notificaciones de Windows",
   "general.toastsHelp":
     "Este interruptor gobierna todas las notificaciones de Windows del Hub, incluido el Calendario. Puedes comprobarlo con «Enviar prueba»; los canales del Calendario se configuran en Calendario › Avisos.",

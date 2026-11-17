@@ -409,3 +409,40 @@ fn legacy_general_without_toasts_keeps_the_preexisting_disabled_default() {
     assert!(!root.settings().view().general.toasts);
     assert_eq!(fs::read(root.0.join("general.json")).unwrap(), bytes);
 }
+
+#[test]
+fn old_document_defaults_recording_on_and_next_save_writes_it_without_version_change() {
+    let root = Root::new();
+    let mut doc = serde_json::to_value(store::Document::default()).unwrap();
+    doc["general"].as_object_mut().unwrap().remove("grabacion");
+    let path = root.0.join(store::FILE);
+    fs::write(&path, serde_json::to_vec(&doc).unwrap()).unwrap();
+    let mut settings = root.settings();
+    assert!(settings.view().general.grabacion);
+    assert!(!settings.view().protected);
+    let revision = settings.view().revision;
+    settings
+        .update(SettingsPatch::Minimized(true), &revision)
+        .unwrap();
+    let saved: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+    assert_eq!(saved["version"], 2);
+    assert_eq!(saved["general"]["grabacion"], true);
+}
+
+#[test]
+fn recording_choice_round_trips_through_settings_wire_and_store() {
+    let root = Root::new();
+    let mut settings = root.settings();
+    assert!(settings.view().general.grabacion);
+    for enabled in [false, true] {
+        let patch: SettingsPatch =
+            serde_json::from_value(serde_json::json!({"field":"grabacion", "value":enabled}))
+                .unwrap();
+        let revision = settings.view().revision;
+        let view = settings.update(patch, &revision).unwrap();
+        assert_eq!(view.general.grabacion, enabled);
+        assert_eq!(root.settings().view().general.grabacion, enabled);
+        let wire = serde_json::to_value(&view).unwrap();
+        assert_eq!(wire["general"]["grabacion"], enabled);
+    }
+}

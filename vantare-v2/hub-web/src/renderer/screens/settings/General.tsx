@@ -47,13 +47,15 @@ export function General() {
         hideLabel
         disabled={disabled}
         aria-description={
-          field === "updates"
-            ? t("general.updatesHelp")
-            : field === "launcher"
-              ? t("general.launcherHelp")
-              : field === "toasts"
-                ? t("general.toastsHelp")
-                : undefined
+          field === "grabacion"
+            ? t("general.grabacionHelp")
+            : field === "updates"
+              ? t("general.updatesHelp")
+              : field === "launcher"
+                ? t("general.launcherHelp")
+                : field === "toasts"
+                  ? t("general.toastsHelp")
+                  : undefined
         }
         pending={state.pending && state.field === field}
         onCheckedChange={(value) => {
@@ -133,6 +135,12 @@ export function General() {
           description={t("general.minimizedHelp")}
         >
           {toggle("minimized", t("general.minimized"), view.general.minimized)}
+        </SettingRow>
+        <SettingRow
+          label={t("general.grabacion")}
+          description={t("general.grabacionHelp")}
+        >
+          {toggle("grabacion", t("general.grabacion"), view.general.grabacion)}
         </SettingRow>
       </SettingGroup>
       <SettingGroup number={3} title={t("general.overlays")}>

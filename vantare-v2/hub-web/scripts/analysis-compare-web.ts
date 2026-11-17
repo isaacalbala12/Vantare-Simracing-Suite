@@ -601,6 +601,7 @@ export async function checkAnalysisComparison(
           JSON.stringify(report, null, 2),
         );
         await page.screenshot({ path: resolve(output, `${name}.png`) });
+        assert.deepEqual(report.violations, [], `${name}: axe violations`);
         const ref =
           scene === "selection"
             ? "02-grabacion"

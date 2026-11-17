@@ -109,10 +109,10 @@ export function ComparisonTable({ data }: { data: Compared }) {
     <details className="v-an-values-table">
       <summary>{t.table}</summary>
       <p id={help}>{t.tableHelp}</p>
-      <div
+      <section
         className="v-an-tablewrap"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: A scrollable table region needs keyboard focus, verified by axe.
         tabIndex={0}
-        role="region"
         aria-label={t.table}
       >
         <table className="v-table" aria-describedby={help}>
@@ -140,7 +140,7 @@ export function ComparisonTable({ data }: { data: Compared }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
     </details>
   );
 }

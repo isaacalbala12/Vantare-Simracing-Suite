@@ -68,6 +68,7 @@ fn fits_frame(profiles: &[ProfileShortcut]) -> bool {
         decision: Some(ResidentQuestion {
             id: u64::MAX.to_string(),
             kind: ResidentQuestionKind::AlreadyRunning,
+            review: super::ResidentReview::Unavailable,
             actions: ResidentAction::ALL
                 .into_iter()
                 .map(|id| ResidentChoice {

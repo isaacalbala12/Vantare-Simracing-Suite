@@ -46,9 +46,11 @@ function setup() {
     error: false,
     ownership: { kind: "unsupported" },
     registrations: [],
+    reviewOutcome: null,
     decision: {
       id: "2",
       kind: "alreadyRunning",
+      review: "unavailable",
       actions: [
         { id: "reuse", label: "Reutilizar" },
         { id: "cancel", label: "Cancelar" },

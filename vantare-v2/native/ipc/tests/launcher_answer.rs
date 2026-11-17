@@ -20,6 +20,7 @@ fn answer() -> AnswerChecked {
         revision: "d".repeat(64),
         decision: u64::MAX.to_string(),
         action: Action::Stop,
+        review: None,
     }
 }
 #[derive(Deserialize)]
@@ -141,4 +142,23 @@ fn answer_receipts_share_the_ring_cursor_and_do_not_imply_finished() {
         serde_json::from_slice::<ExecutionStatus>(&bytes).unwrap(),
         ring
     );
+}
+
+#[test]
+fn optional_review_proof_accepts_only_the_closed_digest_shape() {
+    let legacy = serde_json::to_value(launcher::Request::AnswerChecked(answer())).unwrap();
+    assert!(legacy["answer-v3"].get("review").is_none());
+    let mut reviewed = legacy.clone();
+    reviewed["answer-v3"]["action"] = serde_json::json!("trust");
+    reviewed["answer-v3"]["review"] = serde_json::json!({"message_digest": "0".repeat(64)});
+    let decoded: launcher::Request = serde_json::from_value(reviewed.clone()).unwrap();
+    assert_eq!(serde_json::to_value(decoded).unwrap(), reviewed);
+
+    for proof in [
+        serde_json::json!({"message_digest": "short"}),
+        serde_json::json!({"message_digest": "0".repeat(64), "message": "private"}),
+    ] {
+        reviewed["answer-v3"]["review"] = proof;
+        assert!(serde_json::from_value::<launcher::Request>(reviewed.clone()).is_err());
+    }
 }

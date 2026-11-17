@@ -258,6 +258,14 @@ impl Session {
             UiToHost::PickedExecutable(selection) => {
                 crate::launcher::apps::picked_executable(&mut self.app_picker, pipe, selection)?;
             }
+            UiToHost::ReviewContentRequest(_) | UiToHost::ReviewDecision(_) => {
+                frame::write(
+                    pipe,
+                    &HostToUi::ReviewFailure {
+                        reason: crate::launcher_resident::ReviewFailure::Unavailable,
+                    },
+                )?;
+            }
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,
             UiToHost::Subscribe { topic } => {
                 self.subscriptions.insert(*topic);

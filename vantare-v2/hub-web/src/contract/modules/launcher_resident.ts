@@ -26,7 +26,8 @@ export { launcher_residentMethods as methods } from "../generated/launcher_resid
 function question(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["id", "kind", "actions"]) &&
+    exact(value, ["id", "kind", "actions", "review"]) &&
+    oneOf(value.review, ["available", "unavailable"]) &&
     typeof value.id === "string" &&
     value.id.length <= residentIdLimit &&
     new RegExp(residentIdPattern).test(value.id) &&
@@ -57,6 +58,7 @@ export function isResident(value: unknown): boolean {
       "running",
       "error",
       "decision",
+      "reviewOutcome",
       "registrations",
       "ownership",
     ]) &&
@@ -75,6 +77,17 @@ export function isResident(value: unknown): boolean {
     typeof value.running === "boolean" &&
     typeof value.error === "boolean" &&
     (value.decision === null || question(value.decision)) &&
+    (value.reviewOutcome === null ||
+      (record(value.reviewOutcome) &&
+        exact(value.reviewOutcome, ["question", "state"]) &&
+        decimal(value.reviewOutcome.question) &&
+        oneOf(value.reviewOutcome.state, [
+          "trusted",
+          "declined",
+          "changed",
+          "expired",
+          "unavailable",
+        ]))) &&
     (value.online ||
       (!value.running && !value.error && value.decision === null)) &&
     isShortcutsReply({
@@ -148,8 +161,9 @@ export function isRequest(value: Record<string, unknown>): boolean {
     );
   }
 
+  const review = value.method === "launcher.resident.reviewOpen";
   if (
-    value.method !== "launcher.resident.answer" ||
+    (!review && value.method !== "launcher.resident.answer") ||
     !exact(value, ["method", "target"]) ||
     !record(value.target)
   )
@@ -162,17 +176,24 @@ export function isRequest(value: Record<string, unknown>): boolean {
       "run",
       "revision",
       "decision",
-      "action",
+      ...(review ? [] : ["action"]),
     ]) &&
     hex(target.instance, 64) &&
     hex(target.accountGeneration, 64) &&
     decimal(target.run) &&
     hex(target.revision, 64) &&
     decimal(target.decision) &&
-    oneOf(target.action, residentActions)
+    (review || oneOf(target.action, residentActions))
   );
 }
 export function isReply(value: Record<string, unknown>): boolean {
+  if (value.method === "launcher.resident.reviewOpen")
+    return (
+      exact(value, ["method", "value"]) &&
+      record(value.value) &&
+      exact(value.value, ["ticket"]) &&
+      hex(value.value.ticket, 32)
+    );
   if (
     value.method === "launcher.profile.removeChecked" ||
     value.method === "launcher.resident.answer" ||

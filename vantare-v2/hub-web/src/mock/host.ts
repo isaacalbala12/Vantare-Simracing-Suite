@@ -32,7 +32,7 @@ export function helloForScene(name?: string): typeof hello {
         }
       : hello;
 }
-export function createMockHost(
+export function createMockHostWithTrustedReview(
   sceneName = "ajustes-base",
   emit: (message: HostToUi) => void = () => {},
   analysisClock = Date.now,
@@ -80,8 +80,11 @@ export function createMockHost(
   };
   const handlers = mockModules.map((module) => module.create(context));
   const analysis = analysisScene(context, analysisClock);
-  return (value: unknown): HostToUi | null => {
+  const dispatch = (value: unknown, trusted: boolean): HostToUi | null => {
     if (!isUiMessage(value)) return null;
+    const review =
+      value.kind === "reviewContentRequest" || value.kind === "reviewDecision";
+    if (review !== trusted) return null;
     if (value.kind === "hello")
       return value.version === HOST_PROTOCOL_VERSION
         ? helloForScene(requestedScene)
@@ -127,5 +130,20 @@ export function createMockHost(
       ? { kind: "failure", id: value.id, error: { kind: "unsupported" } }
       : null;
   };
+  return Object.assign((value: unknown) => dispatch(value, false), {
+    trusted: (value: unknown) => dispatch(value, true),
+  });
+}
+export function createMockHost(
+  sceneName?: string,
+  emit?: (message: HostToUi) => void,
+  analysisClock?: () => number,
+): (value: unknown) => HostToUi | null {
+  const dispatch = createMockHostWithTrustedReview(
+    sceneName,
+    emit,
+    analysisClock,
+  );
+  return (value) => dispatch(value);
 }
 export const mockReply = (value: unknown) => createMockHost()(value);

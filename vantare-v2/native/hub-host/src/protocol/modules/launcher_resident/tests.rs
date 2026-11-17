@@ -320,3 +320,43 @@ fn repeated_status_deduplicates_and_restart_or_stale_status_cannot_reuse_a_recei
     assert!(!offline_view.online && offline_view.execution.is_none());
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn review_open_wire_accepts_only_the_scoped_target() {
+    use crate::protocol::UiToHost;
+    let mut wire = serde_json::json!({
+        "kind": "request",
+        "id": 1,
+        "request": {
+            "method": "launcher.resident.reviewOpen",
+            "target": {
+                "instance": "a".repeat(64),
+                "accountGeneration": "b".repeat(64),
+                "run": "1",
+                "revision": "c".repeat(64),
+                "decision": "2"
+            }
+        }
+    });
+    assert!(serde_json::from_value::<UiToHost>(wire.clone()).is_ok());
+    wire["request"]["target"]["action"] = serde_json::json!("trust");
+    assert!(serde_json::from_value::<UiToHost>(wire).is_err());
+}
+
+#[test]
+fn trusted_review_wire_messages_are_closed_and_directional() {
+    use crate::protocol::{HostToUi, UiToHost};
+    let ticket = "a".repeat(32);
+    for mut input in [
+        serde_json::json!({"kind":"reviewContentRequest","ticket":ticket}),
+        serde_json::json!({"kind":"reviewDecision","ticket":ticket,"decision":"trust"}),
+    ] {
+        assert!(serde_json::from_value::<UiToHost>(input.clone()).is_ok());
+        assert!(serde_json::from_value::<HostToUi>(input.clone()).is_err());
+        input["message"] = serde_json::json!("extra");
+        assert!(serde_json::from_value::<UiToHost>(input).is_err());
+    }
+    let output = serde_json::json!({"kind":"reviewContent","text":"private review"});
+    assert!(serde_json::from_value::<HostToUi>(output.clone()).is_ok());
+    assert!(serde_json::from_value::<UiToHost>(output).is_err());
+}

@@ -64,6 +64,7 @@ function setup(running = false) {
       })),
     },
     registrations: [],
+    reviewOutcome: null,
     decision: null,
     execution: {
       instance: "b".repeat(64),

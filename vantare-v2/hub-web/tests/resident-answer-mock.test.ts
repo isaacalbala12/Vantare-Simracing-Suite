@@ -5,6 +5,7 @@ import type {
   HostToUi,
   ResidentView,
 } from "../src/contract/generated/contract";
+import { createMockHostWithTrustedReview } from "../src/mock/host";
 import { create } from "../src/mock/modules/launcher_resident";
 
 function fixture(sceneName: string) {
@@ -109,5 +110,39 @@ it.each([
         },
       },
     },
+  });
+});
+
+it("serves review text only through the trusted mock entry point", () => {
+  const send = createMockHostWithTrustedReview("launcher-answer-trust");
+  const target = {
+    instance: "b".repeat(64),
+    accountGeneration: "a".repeat(64),
+    run: "1",
+    revision: "c".repeat(64),
+    decision: "2",
+  };
+  const opened = send({
+    kind: "request",
+    id: 1,
+    request: { method: "launcher.resident.reviewOpen", target },
+  });
+  expect(opened?.kind).toBe("response");
+  if (
+    opened?.kind !== "response" ||
+    opened.result.method !== "launcher.resident.reviewOpen"
+  )
+    throw new Error("expected review ticket");
+  const { ticket } = opened.result.value;
+  expect(ticket).toMatch(/^[a-f0-9]{32}$/);
+  const request = { kind: "reviewContentRequest", ticket };
+  expect(send(request)).toBeNull();
+  expect(send.trusted(request)).toMatchObject({ kind: "reviewContent" });
+  expect(
+    send.trusted({ kind: "reviewDecision", ticket, decision: "trust" }),
+  ).toBeNull();
+  expect(send.trusted(request)).toEqual({
+    kind: "reviewFailure",
+    reason: "unavailable",
   });
 });

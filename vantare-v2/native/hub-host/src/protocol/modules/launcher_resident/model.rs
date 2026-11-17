@@ -18,6 +18,13 @@ mod order_mailbox;
 pub(crate) mod ownership;
 #[path = "results.rs"]
 pub(crate) mod results;
+#[path = "review.rs"]
+pub(crate) mod review;
+pub use review::{
+    ResidentReview, ResidentReviewOutcome, ResidentReviewState, ResidentReviewTarget,
+    ResidentReviewTicket, ReviewChoice, ReviewContent, ReviewContentRequest, ReviewDecision,
+    ReviewFailure,
+};
 pub use answer::{ResidentAnswerTarget, ResidentQueued};
 pub use control::{
     ResidentActiveRun, ResidentCancelTarget, ResidentOrderRejection, ResidentRehearseTarget,
@@ -125,6 +132,7 @@ pub struct ResidentQuestion {
     pub id: String,
     pub kind: ResidentQuestionKind,
     pub actions: Vec<ResidentChoice>,
+    pub review: ResidentReview,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -138,6 +146,7 @@ pub struct ResidentView {
     pub running: bool,
     pub error: bool,
     pub decision: Option<ResidentQuestion>,
+    pub review_outcome: Option<ResidentReviewOutcome>,
     pub registrations: Vec<crate::shortcuts::ProfileShortcut>,
 }
 fn question(decision: &mailbox::Decision) -> Option<ResidentQuestion> {
@@ -166,6 +175,7 @@ fn question(decision: &mailbox::Decision) -> Option<ResidentQuestion> {
     Some(ResidentQuestion {
         id: decision.id.to_string(),
         kind,
+        review: ResidentReview::Unavailable,
         actions: decision
             .actions
             .iter()

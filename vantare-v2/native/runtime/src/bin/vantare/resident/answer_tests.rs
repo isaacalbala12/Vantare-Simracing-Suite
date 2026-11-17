@@ -38,6 +38,7 @@ fn fixture() -> Fixture {
         revision: "b".repeat(64),
         decision: "42".into(),
         action: Action::Stop,
+        review: None,
     };
     owner.active_run = Some(run);
     owner.active_scope = Some(ActiveScope {

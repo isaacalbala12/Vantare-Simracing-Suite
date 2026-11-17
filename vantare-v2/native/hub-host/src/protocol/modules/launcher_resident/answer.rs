@@ -121,6 +121,7 @@ pub(crate) fn answer(
             revision: scope.revision,
             decision: scope.decision,
             action,
+            review: None,
         })
     })
 }

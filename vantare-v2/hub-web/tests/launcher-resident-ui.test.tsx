@@ -23,6 +23,7 @@ const view: ResidentView = {
   decision: {
     id: "18446744073709551615",
     kind: "authorization",
+    review: "unavailable",
     actions: [
       { id: "trust", label: residentActionLabels.trust },
       { id: "cancel", label: residentActionLabels.cancel },
@@ -30,6 +31,7 @@ const view: ResidentView = {
   },
   ownership: { kind: "unsupported" },
   registrations: [],
+  reviewOutcome: null,
 };
 afterEach(cleanup);
 function mount(value: ResidentView) {

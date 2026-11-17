@@ -78,6 +78,10 @@ pub enum CloseReason {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostToUi {
+    ReviewContent(crate::launcher_resident::ReviewContent),
+    ReviewFailure {
+        reason: crate::launcher_resident::ReviewFailure,
+    },
     Hello {
         version: u32,
         theme: ThemeBoot,
@@ -105,6 +109,9 @@ pub enum HostToUi {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum UiToHost {
+    // Trusted main-process requests; never admitted by the renderer port guard.
+    ReviewContentRequest(crate::launcher_resident::ReviewContentRequest),
+    ReviewDecision(crate::launcher_resident::ReviewDecision),
     PickedExecutable(crate::launcher::apps::ExecutableSelection),
     Hello { version: u32 },
     Request { id: u32, request: Request },

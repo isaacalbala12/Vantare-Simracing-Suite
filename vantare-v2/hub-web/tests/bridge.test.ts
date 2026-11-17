@@ -1,5 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
+import {
+  isHostMessage,
+  isUiMessage,
+  postHostMessageToRenderer,
+} from "../src/contract/validation";
 import { isRendererMessage, mockAllowed } from "../src/main/security";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 
@@ -193,4 +198,36 @@ it("isolates throwing request observers at start and completion without delaying
   } finally {
     client.close();
   }
+});
+
+describe("trusted launcher review messages", () => {
+  it("admits trusted requests only on the main-to-host wire", () => {
+    const ticket = "a".repeat(32);
+    for (const message of [
+      { kind: "reviewContentRequest", ticket },
+      { kind: "reviewDecision", ticket, decision: "trust" },
+    ]) {
+      expect(isUiMessage(message)).toBe(true);
+      expect(isRendererMessage(message)).toBe(false);
+      expect(isHostMessage(message)).toBe(false);
+      expect(isUiMessage({ ...message, text: "extra" })).toBe(false);
+    }
+  });
+
+  it("drops private host review content before writing the renderer port", () => {
+    const privateContent = { kind: "reviewContent", text: "private review" };
+    const normal = { kind: "closeRequested", reason: "window" };
+    expect(isHostMessage(privateContent)).toBe(true);
+    expect(isUiMessage(privateContent)).toBe(false);
+    const postMessage = vi.fn();
+    for (const message of [
+      privateContent,
+      { kind: "reviewFailure", reason: "expired" },
+      normal,
+    ]) {
+      if (isHostMessage(message))
+        postHostMessageToRenderer(message, postMessage);
+    }
+    expect(postMessage.mock.calls).toEqual([[normal]]);
+  });
 });

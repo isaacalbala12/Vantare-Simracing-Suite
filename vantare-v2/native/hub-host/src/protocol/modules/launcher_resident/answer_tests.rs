@@ -229,3 +229,36 @@ fn failed_mailbox_write_returns_io_without_claiming_queued_or_replacing_existing
     assert!(mailbox.is_dir());
     assert_eq!(std::fs::read(sentinel).unwrap(), b"unchanged");
 }
+
+#[test]
+fn projects_review_only_when_the_private_message_and_scope_are_valid() {
+    use crate::launcher_resident::{ResidentReview, State};
+    use crate::protocol::{Event, HostToUi, Reply};
+
+    let mut f = fixture();
+    f.status.decision.as_mut().unwrap().actions = vec![native::Action::Trust, native::Action::Cancel];
+    let mut observation = observation();
+    observation.policy.state = AccessState::Active;
+    let mut state = State::new(f.path.clone());
+    f.save();
+    let view = state.view_for_account(Some(&observation));
+    assert_eq!(view.decision.as_ref().unwrap().review, ResidentReview::Available);
+    for message in [
+        HostToUi::Response { id: 1, result: Reply::LauncherResidentGet { value: view.clone() } },
+        HostToUi::Event { event: Event::LauncherResident { value: view } },
+        HostToUi::Failure { id: 2, error: rejected(AnswerRejection::StaleQuestion) },
+    ] {
+        assert!(!serde_json::to_string(&message).unwrap().contains("private path --args"));
+        assert!(!format!("{message:?}").contains("private path --args"));
+    }
+    assert_eq!(state.view().decision.unwrap().review, ResidentReview::Unavailable);
+
+    for bad in [String::new(), "bad\0message".into(), "x".repeat(64 * 1024 + 1)] {
+        f.status.decision.as_mut().unwrap().message = bad;
+        f.save();
+        assert_eq!(
+            state.view_for_account(Some(&observation)).decision.unwrap().review,
+            ResidentReview::Unavailable
+        );
+    }
+}

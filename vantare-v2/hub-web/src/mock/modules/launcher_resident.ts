@@ -1,4 +1,9 @@
-import type { HostToUi, ResidentView } from "../../contract/generated/contract";
+import type {
+  HostToUi,
+  ResidentAnswerRejection,
+  ResidentReviewTarget,
+  ResidentView,
+} from "../../contract/generated/contract";
 import { residentActionLabels } from "../../contract/generated/launcher_resident";
 import type { MockContext, MockHandler } from "../context";
 import { createLauncherNoticeMock } from "../launcher-notice";
@@ -17,6 +22,7 @@ export function create(
     running: false,
     error: false,
     decision: null,
+    reviewOutcome: null,
     execution: null,
     ownership: { kind: "unsupported" },
     registrations: [],
@@ -44,6 +50,7 @@ export function create(
     view.decision = {
       id: "18446744073709551615",
       kind: "authorization",
+      review: "unavailable",
       actions: [
         { id: "trust", label: residentActionLabels.trust },
         { id: "cancel", label: residentActionLabels.cancel },
@@ -84,21 +91,25 @@ export function create(
     view.decision = {
       id: "2",
       kind: "alreadyRunning",
+      review: "unavailable",
       actions: [
         { id: "reuse", label: residentActionLabels.reuse },
         { id: "restart", label: residentActionLabels.restart },
         { id: "cancel", label: residentActionLabels.cancel },
       ],
     };
-    if (context.sceneName === "launcher-answer-trust")
+    if (context.sceneName === "launcher-answer-trust") {
+      context.core.access.verified = true;
       view.decision = {
         id: "2",
         kind: "authorization",
+        review: "available",
         actions: [
           { id: "trust", label: residentActionLabels.trust },
           { id: "cancel", label: residentActionLabels.cancel },
         ],
       };
+    }
   }
   const control = createResidentControlMock(context, view, schedule);
   createLauncherNoticeMock(context, view, schedule);
@@ -108,7 +119,94 @@ export function create(
     kind: "event",
     event: { topic: "launcherResident", value: structuredClone(view) },
   });
+  let pending:
+    | { ticket: string; target: ResidentReviewTarget; deadline: number }
+    | undefined;
+  const reviewRejection = (
+    target: ResidentReviewTarget,
+  ): ResidentAnswerRejection | undefined => {
+    const execution = view.execution;
+    const scope = execution?.question;
+    if (!view.online || view.protected || !view.running || !execution || !scope)
+      return "unavailable";
+    if (target.instance !== execution.instance) return "wrong-instance";
+    if (
+      target.accountGeneration !== context.core.accountGeneration ||
+      target.accountGeneration !== scope.accountGeneration
+    )
+      return "account-changed";
+    if (target.run !== scope.run) return "wrong-run";
+    if (target.revision !== scope.revision) return "revision-mismatch";
+    if (
+      target.decision !== scope.decision ||
+      target.decision !== view.decision?.id
+    )
+      return "stale-question";
+    if (view.decision.review !== "available") return "unavailable";
+  };
   return (message) => {
+    if (
+      message.kind === "request" &&
+      message.request.method === "launcher.resident.reviewOpen"
+    ) {
+      const target = message.request.target;
+      const reason =
+        reviewRejection(target) ??
+        (!context.core.access.verified || context.core.access.blocked
+          ? "denied"
+          : undefined);
+      if (reason)
+        return {
+          kind: "failure",
+          id: message.id,
+          error: { kind: "residentAnswerRejected", reason },
+        };
+      const ticket = crypto.randomUUID().replaceAll("-", "");
+      pending = { ticket, target, deadline: performance.now() + 60_000 };
+      view.reviewOutcome = null;
+      return {
+        kind: "response",
+        id: message.id,
+        result: { method: "launcher.resident.reviewOpen", value: { ticket } },
+      };
+    }
+    if (
+      message.kind === "reviewContentRequest" ||
+      message.kind === "reviewDecision"
+    ) {
+      if (!pending || pending.ticket !== message.ticket)
+        return { kind: "reviewFailure", reason: "unavailable" };
+      const { target, deadline } = pending;
+      if (message.kind === "reviewDecision") pending = undefined;
+      const reason =
+        performance.now() >= deadline
+          ? "expired"
+          : reviewRejection(target)
+            ? "changed"
+            : undefined;
+      if (message.kind === "reviewContentRequest")
+        return reason
+          ? { kind: "reviewFailure", reason }
+          : { kind: "reviewContent", text: "Contenido sintético de revisión" };
+      const state =
+        reason ??
+        (message.decision === "trust"
+          ? context.core.access.verified && !context.core.access.blocked
+            ? "trusted"
+            : "unavailable"
+          : "declined");
+      view.reviewOutcome = { question: target.decision, state };
+      context.emit?.(event());
+      if (state === "trusted" || state === "declined")
+        schedule(() => {
+          if (view.decision?.id !== target.decision || !view.execution) return;
+          view.decision = null;
+          view.execution.question = null;
+          view.reviewOutcome = null;
+          context.emit?.(event());
+        }, 0);
+      return reason ? { kind: "reviewFailure", reason } : null;
+    }
     const removed = removal(message);
     if (removed) return removed;
     const retry = results(message);

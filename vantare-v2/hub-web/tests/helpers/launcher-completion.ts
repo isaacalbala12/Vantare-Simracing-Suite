@@ -34,6 +34,7 @@ export function residentCompletionView(
     error: false,
     decision: null,
     registrations: [],
+    reviewOutcome: null,
     ownership: {
       kind: "known",
       instance,

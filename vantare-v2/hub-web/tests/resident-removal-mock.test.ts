@@ -219,6 +219,7 @@ it.each([
     execution: null,
     decision: null,
     registrations: [],
+    reviewOutcome: null,
     ownership: { kind: "unknown" },
   };
   const handle = createResidentRemovalMock(

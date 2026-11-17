@@ -29,7 +29,8 @@
               }
             ],
             "id": "18446744073709551615",
-            "kind": "authorization"
+            "kind": "authorization",
+            "review": "available"
           },
           "error": false,
           "execution": {
@@ -73,6 +74,7 @@
           },
           "protected": false,
           "registrations": [],
+          "reviewOutcome": null,
           "running": true
         }
       }
@@ -93,7 +95,8 @@
               }
             ],
             "id": "18446744073709551615",
-            "kind": "authorization"
+            "kind": "authorization",
+            "review": "available"
           },
           "error": false,
           "execution": {
@@ -137,6 +140,7 @@
           },
           "protected": false,
           "registrations": [],
+          "reviewOutcome": null,
           "running": true
         }
       },
@@ -229,6 +233,24 @@
       },
       "id": 3,
       "kind": "failure"
+    },
+    {
+      "id": 10,
+      "kind": "response",
+      "result": {
+        "method": "launcher.resident.reviewOpen",
+        "value": {
+          "ticket": "ffffffffffffffffffffffffffffffff"
+        }
+      }
+    },
+    {
+      "kind": "reviewContent",
+      "text": "Contenido sintético de revisión"
+    },
+    {
+      "kind": "reviewFailure",
+      "reason": "expired"
     },
     {
       "id": 4,
@@ -436,6 +458,7 @@
           },
           "protected": false,
           "registrations": [],
+          "reviewOutcome": null,
           "running": true
         }
       },
@@ -518,6 +541,7 @@
           },
           "protected": false,
           "registrations": [],
+          "reviewOutcome": null,
           "running": false
         }
       },
@@ -585,6 +609,7 @@
           },
           "protected": false,
           "registrations": [],
+          "reviewOutcome": null,
           "running": false
         }
       },
@@ -709,6 +734,29 @@
     {
       "kind": "unsubscribe",
       "topic": "launcherResident"
+    },
+    {
+      "id": 10,
+      "kind": "request",
+      "request": {
+        "method": "launcher.resident.reviewOpen",
+        "target": {
+          "accountGeneration": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "decision": "2",
+          "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "revision": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "run": "1"
+        }
+      }
+    },
+    {
+      "kind": "reviewContentRequest",
+      "ticket": "ffffffffffffffffffffffffffffffff"
+    },
+    {
+      "decision": "trust",
+      "kind": "reviewDecision",
+      "ticket": "ffffffffffffffffffffffffffffffff"
     },
     {
       "id": 4,

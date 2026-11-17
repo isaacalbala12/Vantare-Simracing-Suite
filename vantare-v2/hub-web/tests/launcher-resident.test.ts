@@ -14,6 +14,7 @@ const view: ResidentView = {
   decision: {
     id: "18446744073709551615",
     kind: "authorization",
+    review: "unavailable",
     actions: [
       { id: "trust", label: residentActionLabels.trust },
       { id: "cancel", label: residentActionLabels.cancel },
@@ -21,6 +22,7 @@ const view: ResidentView = {
   },
   ownership: { kind: "unsupported" },
   registrations: [],
+  reviewOutcome: null,
 };
 describe("read-only resident mailbox", () => {
   it("admits only get and subscription, with no arguments, paths or answers", () => {

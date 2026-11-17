@@ -6,6 +6,15 @@ pub(super) fn dispatch(
     request: &Request,
 ) -> io::Result<()> {
     match request {
+        Request::LauncherResidentReviewOpen { .. } => {
+            return frame::write(
+                pipe,
+                &HostToUi::Failure {
+                    id,
+                    error: crate::protocol::HostError::CoreUnavailable,
+                },
+            );
+        }
         Request::LauncherProfileRemoveChecked { target } => {
             let result = crate::launcher_resident::ownership::remove(
                 &session.launcher,

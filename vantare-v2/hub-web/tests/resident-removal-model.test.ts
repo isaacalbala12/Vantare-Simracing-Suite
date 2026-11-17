@@ -16,6 +16,7 @@ function setup() {
     error: false,
     decision: null,
     registrations: [],
+    reviewOutcome: null,
     ownership: { kind: "unknown" },
     execution: {
       instance: "b".repeat(64),

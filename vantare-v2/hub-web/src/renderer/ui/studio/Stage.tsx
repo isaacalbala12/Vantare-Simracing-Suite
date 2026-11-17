@@ -154,7 +154,7 @@ export function Stage({
                       : real
                         ? "v-camera"
                         : failed || photo.status === "tooLarge"
-                          ? "alert"
+                          ? "warn"
                           : photo.status === "timeout" ||
                               photo.status === "busy"
                             ? "clock"

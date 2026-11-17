@@ -6,6 +6,7 @@ import { useUi } from "../../app/UiState";
 import { analysisText as t } from "../../i18n/analysis.es";
 import {
   AnalysisCatalog,
+  AnalysisLaps,
   AnalysisNotice,
   AnalysisRail,
 } from "../../ui/analysis/Analysis";
@@ -23,6 +24,7 @@ export default function Analysis({
   const navigate = useUi((s) => s.navigate);
   const cache = useQueryClient();
   const enabled = settings.view?.general.grabacion ?? true;
+  const current = state.selected ? "laps" : "recordings";
   const goSettings = (target: string) => {
     cache.setQueryData(["settings", "target"], target);
     navigate("settings");
@@ -39,12 +41,15 @@ export default function Analysis({
             id: "laps",
             etiqueta: t.laps,
             visible: true,
-            ariaDisabled: true,
-            description: t.openFirst,
+            ariaDisabled: !state.selected,
+            description: !state.selected ? t.openFirst : undefined,
           },
           { id: "map", etiqueta: t.map, visible: true, ariaDisabled: true },
         ]}
-        activeTab="recordings"
+        activeTab={current}
+        onTabChange={(id) => {
+          if (id === "recordings" && state.selected) state.controller?.load();
+        }}
         rail={
           <AnalysisRail
             enabled={enabled}
@@ -52,7 +57,7 @@ export default function Analysis({
           />
         }
       />
-      <SectionPanel activeTab="recordings">
+      <SectionPanel activeTab={current}>
         {denied ? (
           <>
             <SectionPageHeader title={t.recordings} description={t.intro} />
@@ -74,6 +79,12 @@ export default function Analysis({
               </Button>
             </AnalysisNotice>
           </>
+        ) : state.selected ? (
+          <AnalysisLaps
+            state={state}
+            controller={state.controller}
+            updates={() => goSettings("updates")}
+          />
         ) : (
           <AnalysisCatalog
             clock={clock}

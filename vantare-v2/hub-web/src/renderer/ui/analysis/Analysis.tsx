@@ -1,5 +1,10 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import type { AnalysisRow } from "../../../contract/generated/analysis";
+import type {
+  AnalysisLap,
+  AnalysisRow,
+  AnalysisSignal,
+} from "../../../contract/generated/analysis";
+import type { HostError } from "../../../contract/generated/contract";
 import type {
   AnalysisController,
   AnalysisSnapshot,
@@ -12,13 +17,14 @@ import {
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
+  decimal,
   lapTime,
   recordingDate,
   size,
   analysisText as t,
 } from "../../i18n/analysis.es";
 import { Button } from "../Button";
-import { Badge, Callout, Skeleton } from "../Data";
+import { Badge, Callout, Skeleton, Spinner } from "../Data";
 import { SearchInput } from "../Forms";
 import { RailBlock, SectionPageHeader } from "../Frame";
 import "./analysis.css";
@@ -45,16 +51,18 @@ export function AnalysisNotice({
   help,
   children,
   icon = "pulse",
+  loading = false,
 }: {
   title: string;
   icon?: IconName;
+  loading?: boolean;
   help?: string;
   children?: ReactNode;
 }) {
   return (
     <div className="v-card v-an-notice">
       <div>
-        <Icon name={icon} />
+        {loading ? <Spinner label={title} /> : <Icon name={icon} />}
         <h2>{title}</h2>
         {help && <p>{help}</p>}
         <div className="v-an-actions">{children}</div>
@@ -103,7 +111,7 @@ function RecordingRow({
             ? t.unreadable
             : t.dash;
   return (
-    <tr ref={ref}>
+    <tr ref={ref} onClick={() => controller?.open(row)}>
       <td>
         <time
           dateTime={new Date(row.startedAtMs).toISOString()}
@@ -113,10 +121,10 @@ function RecordingRow({
         </time>
       </td>
       <td>
-        <span className="v-an-open">
+        <button type="button" className="v-an-open" aria-description={date(row.startedAtMs, timeZone)} onClick={(event) => {event.stopPropagation(); controller?.open(row);}}> 
           <em>{t.track}</em>
           <em>{t.car}</em>
-        </span>
+        </button>
       </td>
       <td className="v-an-secondary">{readable ? inspection.laps : t.dash}</td>
       <td className="v-an-secondary v-an-number">
@@ -331,5 +339,252 @@ function CatalogColumns() {
         )}
       </tr>
     </thead>
+  );
+}
+
+export function AnalysisError({
+  kind,
+  recording,
+  back,
+  retry,
+  updates,
+}: {
+  kind: HostError["kind"];
+  recording: boolean;
+  back: () => void;
+  retry: () => void;
+  updates: () => void;
+}) {
+  const [title, help] = recording
+    ? [t.recordingTitle, t.recordingHelp]
+    : kind === "analysisLocked"
+      ? [t.lockedTitle, t.lockedHelp]
+      : kind === "analysisIncompatible"
+        ? [t.incompatibleTitle, t.incompatibleHelp]
+        : kind === "analysisNotFound"
+          ? [t.missingTitle, t.missingHelp]
+          : kind === "analysisChanged"
+            ? [t.changedTitle, t.changedHelp]
+            : kind === "analysisTooLarge"
+              ? [t.largeTitle, t.largeHelp]
+              : kind === "analysisTimeout"
+                ? [t.timeoutTitle, t.timeoutHelp]
+                : [t.unreadableTitle, t.unreadableHelp];
+  const onlyBack =
+    recording ||
+    ["analysisNotFound", "analysisChanged", "analysisTooLarge"].includes(kind);
+  return (
+    <AnalysisNotice
+      icon={recording || kind === "analysisLocked" ? "lock" : "x"}
+      title={title}
+      help={help}
+    >
+      {!onlyBack && (
+        <Button onClick={kind === "analysisIncompatible" ? updates : retry}>
+          {kind === "analysisIncompatible" ? t.updates : t.retry}
+        </Button>
+      )}
+      <Button onClick={back}>{t.back}</Button>
+    </AnalysisNotice>
+  );
+}
+
+function Signal({
+  signal,
+  factor,
+}: {
+  signal: AnalysisSignal;
+  factor: number;
+}) {
+  return (
+    <span
+      title={`${t.reliable}: ${signal.reliable}; ${t.estimated}: ${signal.estimated}; ${t.stale}: ${signal.stale}; ${t.unavailable}: ${signal.unavailable}`}
+    >
+      {[signal.min, signal.mean, signal.max]
+        .map((value) => (value === null ? t.dash : decimal(value * factor)))
+        .join(" / ")}
+      {signal.estimated || signal.stale ? " ≈" : ""}
+    </span>
+  );
+}
+export function AnalysisLaps({
+  state,
+  controller,
+  updates,
+}: {
+  state: AnalysisSnapshot;
+  controller?: AnalysisController;
+  updates: () => void;
+}) {
+  const opened = state.opened;
+  const back = () => controller?.load();
+  const times =
+    opened?.laps.flatMap((lap) =>
+      lap.sealed && !lap.gap && lap.lapTimeApproxMs !== null
+        ? [lap.lapTimeApproxMs]
+        : [],
+    ) ?? [];
+  const best = times.length ? Math.min(...times) : null;
+  const speeds =
+    opened?.laps.flatMap((lap) =>
+      lap.speed.max === null ? [] : [lap.speed.max * 3.6],
+    ) ?? [];
+  const validTime = (lap: AnalysisLap) =>
+    lap.sealed && !lap.gap ? lap.lapTimeApproxMs : null;
+  return (
+    <div className="v-an-layout">
+      <SectionPageHeader
+        title={t.track}
+        description={
+          state.selected
+            ? `${date(state.selected.startedAtMs)} · ${size(state.selected.sizeBytes)} · ${t.car}`
+            : t.intro
+        }
+      />
+      {opened && !state.error && <Button onClick={back}>{t.back}</Button>}
+      {state.opening ? (
+        <AnalysisNotice title={t.opening} help={t.openingHelp} loading>
+          <Button onClick={back}>{t.cancel}</Button>
+        </AnalysisNotice>
+      ) : state.error ? (
+        <AnalysisError
+          kind={state.error}
+          recording={!!state.selected?.recording}
+          back={back}
+          retry={() => {
+            if (state.selected) controller?.open(state.selected);
+          }}
+          updates={updates}
+        />
+      ) : opened ? (
+        <>
+          <div className="v-an-stats">
+            {[
+              [t.best, lapTime(best)],
+              [
+                t.mean,
+                lapTime(
+                  times.length
+                    ? times.reduce((a, b) => a + b, 0) / times.length
+                    : null,
+                ),
+              ],
+              [t.laps, opened.laps.length],
+              [
+                t.maxSpeed,
+                speeds.length
+                  ? `${decimal(Math.max(...speeds))} ${t.kmh}`
+                  : t.dash,
+              ],
+            ].map(([label, value]) => (
+              <div className="v-card" key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="v-card v-an-tablewrap">
+            <table className="v-table v-an-table">
+              <caption>{`${t.laps} · ${t.approximate} · ${t.range}`}</caption>
+              <thead>
+                <tr>
+                  {[
+                    t.lap,
+                    t.time,
+                    t.delta,
+                    t.speed,
+                    t.throttle,
+                    t.brake,
+                    t.data,
+                  ].map((label, i) => (
+                    <th
+                      scope="col"
+                      key={label}
+                      className={
+                        i === 4 || i === 5 ? "v-an-secondary" : undefined
+                      }
+                    >
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {opened.laps.map((lap) => (
+                  <tr
+                    key={lap.index}
+                    data-best={
+                      (validTime(lap) !== null && validTime(lap) === best) ||
+                      undefined
+                    }
+                  >
+                    <th scope="row">{`${t.lap} ${lap.lap}`}</th>
+                    <td className="v-an-number">{lapTime(validTime(lap))}</td>
+                    <td className="v-an-number">
+                      {validTime(lap) === null || best === null
+                        ? t.dash
+                        : validTime(lap) === best
+                          ? t.best
+                          : `≈+${(((validTime(lap) ?? best) - best) / 1000).toFixed(1)}`}
+                    </td>
+                    <td>
+                      <Signal signal={lap.speed} factor={3.6} />
+                    </td>
+                    <td className="v-an-secondary">
+                      <Signal signal={lap.throttle} factor={100} />
+                    </td>
+                    <td className="v-an-secondary">
+                      <Signal signal={lap.brake} factor={100} />
+                    </td>
+                    <td>
+                      {!lap.sealed
+                        ? t.unsealed
+                        : lap.gap
+                          ? t.gap
+                          : lap.lapTimeApproxMs === null
+                            ? t.incomplete
+                            : t.complete}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <details className="v-an-technical">
+              <summary>{t.technical}</summary>
+              <dl>
+                {[
+                  [t.watermark, opened.watermark],
+                  [t.attempted, opened.attempted],
+                  [t.total, opened.total],
+                  [t.finished, opened.finished ? t.yes : t.no],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {opened.laps.map((l) => (
+                <div key={l.index}>
+                  <strong>{`${t.lap} ${l.lap} · ${t.samples}: ${l.samples}`}</strong>
+                  {[t.speed, t.throttle, t.brake].map((label, i) => {
+                    const s = [l.speed, l.throttle, l.brake][i];
+                    return (
+                      <p
+                        key={label}
+                      >{`${label}: ${t.reliable} ${s.reliable}, ${t.estimated} ${s.estimated}, ${t.stale} ${s.stale}, ${t.unavailable} ${s.unavailable}`}</p>
+                    );
+                  })}
+                </div>
+              ))}
+            </details>
+          </div>
+        </>
+      ) : (
+        <AnalysisNotice title={t.empty} help={t.intro}>
+          <Button onClick={back}>{t.back}</Button>
+        </AnalysisNotice>
+      )}
+    </div>
   );
 }

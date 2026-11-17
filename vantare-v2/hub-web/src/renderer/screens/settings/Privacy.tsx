@@ -15,6 +15,7 @@ import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import { t } from "../../i18n/es";
 import { privacyText as text } from "../../i18n/privacy.es";
+import { RecordingSettings } from "../../ui/analysis/RecordingSettings";
 import { Button } from "../../ui/Button";
 import { Callout, SettingGroup, SettingRow, Skeleton } from "../../ui/Data";
 import { Switch } from "../../ui/Forms";
@@ -322,6 +323,7 @@ export function Privacy() {
       {policy.isError && (
         <Callout tone="err" title={t("privacy.policyFailed")} />
       )}
+      <RecordingSettings />
       <MailConsent
         message={
           changeMail.isPending

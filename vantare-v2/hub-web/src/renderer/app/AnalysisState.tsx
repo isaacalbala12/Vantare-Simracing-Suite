@@ -32,6 +32,7 @@ const empty = {
   inspections: {},
   rowErrors: {},
   loading: false,
+  opening: false,
 };
 const emptySnapshot = () => empty;
 const noop = () => () => {};

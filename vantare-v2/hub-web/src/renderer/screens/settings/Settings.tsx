@@ -190,7 +190,12 @@ export function Settings() {
           selected === "account" ? (
             <PilotRail />
           ) : selected === "general" ? (
-            <GeneralRail onUpdates={() => setTab("updates")} />
+            <GeneralRail
+              onUpdates={() => {
+                setSearch("");
+                setTab("updates");
+              }}
+            />
           ) : selected === "appearance" ? (
             <AppearanceRail />
           ) : selected === "performance" ? (

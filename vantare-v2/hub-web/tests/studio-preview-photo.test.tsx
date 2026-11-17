@@ -41,6 +41,7 @@ let studio: ReturnType<typeof useStudio>;
 let requests: Request[];
 let intercept: ((request: PhotoRequest) => Promise<Reply>) | undefined;
 let readState: StudioView["state"] | undefined;
+let readView: ((value: StudioView) => StudioView) | undefined;
 const clients = new Set<Client>();
 const decode = vi.fn<() => Promise<void>>();
 const decodeDescriptor = Object.getOwnPropertyDescriptor(
@@ -83,6 +84,7 @@ beforeEach(() => {
   requests = [];
   intercept = undefined;
   readState = undefined;
+  readView = undefined;
   decode.mockReset().mockResolvedValue(undefined);
   Object.defineProperty(HTMLImageElement.prototype, "decode", {
     configurable: true,
@@ -121,11 +123,14 @@ beforeEach(() => {
     if (value.method === "preview.render" && intercept) return intercept(value);
     const result = request.call(this, value, onSent);
     return value.method === "studio.get"
-      ? result.then((reply) =>
-          reply.method === "studio.get" && readState
-            ? { ...reply, value: { ...reply.value, state: readState } }
-            : reply,
-        )
+      ? result.then((reply) => {
+          if (reply.method !== "studio.get") return reply;
+          const value = readView ? readView(reply.value) : reply.value;
+          return {
+            ...reply,
+            value: readState ? { ...value, state: readState } : value,
+          };
+        })
       : result;
   });
   const connect = Client.connect;
@@ -851,4 +856,92 @@ it("fingerprints exactly kind and complete settings with stable nested key order
     canvasPlacement: "outside",
   };
   expect(previewFingerprint(placed)).toBe(fingerprint);
+});
+
+it("does not rerender automatically when conflict reconciliation returns changed settings", async () => {
+  intercept = async () => {
+    readView = (current) => ({
+      ...current,
+      revision: "c".repeat(64),
+      instances: current.instances.map((item) =>
+        item.kind === "standings"
+          ? {
+              ...item,
+              settings: {
+                ...item.settings,
+                kind: "standings",
+                accent: "green",
+              } as Extract<WidgetSettings, { kind: "standings" }>,
+            }
+          : item,
+      ),
+    });
+    throw new HostFailure({
+      kind: "studioConflict",
+      current: readView(view()),
+    });
+  };
+  await mount();
+  await waitFor(() => expect(view().revision).toBe("c".repeat(64)));
+  expect(photos()).toHaveLength(1);
+  expect(
+    requests.filter((request) => request.method === "studio.get"),
+  ).toHaveLength(2);
+  expect(
+    stage().getByText("· foto retirada porque el diseño cambió", {
+      exact: true,
+    }),
+  ).toBeTruthy();
+  expect(
+    stage().getByRole("button", {
+      name: "Volver a generar la vista previa real",
+    }),
+  ).toBeTruthy();
+  expect(
+    stage().queryByText("Preparando vista previa real…", { exact: true }),
+  ).toBeNull();
+});
+it("discards an in-flight photo when the selected settings change and sends one latest replacement", async () => {
+  const old = deferred(),
+    latest = deferred();
+  intercept = () => old.promise;
+  await mount();
+  await waitFor(() => expect(photos()).toHaveLength(1));
+  const id = studio.selected;
+  if (!id) throw Error("Missing selection");
+  intercept = () => latest.promise;
+  await act(async () => {
+    await studio.execute({
+      method: "studio.instance",
+      id,
+      baseRevision: view().revision,
+      patch: {
+        field: "settings",
+        value: { kind: "standings", accent: "green" },
+      },
+    });
+  });
+  expect(photos()).toHaveLength(1);
+  await act(async () =>
+    old.resolve({
+      method: "preview.render",
+      value: { width: 1, height: 1, pngBase64: previewTransparentPng },
+    }),
+  );
+  await waitFor(() => expect(photos()).toHaveLength(2));
+  expect(decode).not.toHaveBeenCalled();
+  expect(photos()[1].target).toEqual({
+    kind: "instance",
+    id,
+    baseRevision: view().revision,
+  });
+  await act(async () =>
+    latest.resolve({
+      method: "preview.render",
+      value: { width: 1, height: 1, pngBase64: previewTransparentPng },
+    }),
+  );
+  await photoReady();
+  expect(decode).toHaveBeenCalledTimes(1);
+  expect(photos()).toHaveLength(2);
 });

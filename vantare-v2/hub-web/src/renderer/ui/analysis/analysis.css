@@ -55,6 +55,12 @@
 .v-an-catalog :is(td, th):nth-child(2) {
   overflow-wrap: anywhere;
 }
+.v-an-catalog :is(td, th) {
+  border-bottom: 0;
+}
+.v-an-catalog tr {
+  border-bottom: 1px solid var(--line-1);
+}
 .v-an-catalog :is(td, th):nth-child(5) {
   width: 90px;
   white-space: nowrap;
@@ -179,6 +185,7 @@
   min-inline-size: 0;
   padding: var(--space-5) var(--space-7);
   display: grid;
+  align-content: start;
   gap: var(--space-2);
 }
 .v-an-stats dt {
@@ -210,9 +217,7 @@
 }
 .v-an-stats dd > small {
   line-height: var(--space-7);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
 }
 .v-an-stats strong small {
   font-size: var(--text-body);

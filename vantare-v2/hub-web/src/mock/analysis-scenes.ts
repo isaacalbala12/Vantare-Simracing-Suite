@@ -19,6 +19,25 @@ export function analysisScene(context: MockContext, clock = Date.now) {
   let pendingOpen: Extract<UiToHost, { kind: "request" }>["id"] | undefined;
   return (value: UiToHost): HostToUi | null | undefined => {
     if (
+      name === "settings-protected" &&
+      value.kind === "request" &&
+      value.request.method === "settings.update" &&
+      value.request.patch.field === "grabacion" &&
+      context.settingsData
+    ) {
+      const settings = context.settingsData;
+      settings.general.grabacion = value.request.patch.value;
+      settings.protected = true;
+      settings.revision = (BigInt(`0x${settings.revision}`) + 1n)
+        .toString(16)
+        .padStart(64, "0");
+      return {
+        kind: "response",
+        id: value.id,
+        result: { method: "settings.update", value: structuredClone(settings) },
+      };
+    }
+    if (
       value.kind !== "request" ||
       !value.request.method.startsWith("analysis.")
     )

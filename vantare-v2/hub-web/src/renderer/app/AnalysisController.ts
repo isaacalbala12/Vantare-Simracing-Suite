@@ -72,6 +72,10 @@ export class AnalysisController {
       .catch(() => undefined);
   }
   private async request(request: AnalysisRequest, generation: number) {
+    // Busy has no total retry cap: at most two retries/second, on this one lane.
+    // Its lifetime is bounded by the active screen/generation and, for inspect,
+    // row visibility. Exit/selection interrupts the wait and sends cancel.
+    // Busy alone must never be reported as an unreadable recording.
     while (
       this.active &&
       generation === this.generation &&

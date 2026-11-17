@@ -337,3 +337,33 @@ it("accepts the full 256-row catalog", async () => {
   await waitFor(() => expect(c.snapshot().rows).toHaveLength(256));
   c.dispose();
 });
+
+it("limits repeated Busy retries to 500ms and cancels without marking the file unreadable", async () => {
+  vi.useFakeTimers();
+  const real = bridge();
+  let attempts = 0;
+  const request = vi.fn(async (r: AnalysisRequest) => {
+    if (r.method === "analysis.inspect") {
+      attempts++;
+      throw new HostFailure({ kind: "busy" });
+    }
+    return real(r);
+  });
+  const controller = new AnalysisController({ request });
+  controller.load();
+  await vi.advanceTimersByTimeAsync(0);
+  controller.visibleRow("1".padStart(64, "0"), true);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(attempts).toBe(1);
+  for (const expected of [2, 3]) {
+    await vi.advanceTimersByTimeAsync(499);
+    expect(attempts).toBe(expected - 1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(attempts).toBe(expected);
+  }
+  expect(controller.snapshot().rowErrors).toEqual({});
+  controller.dispose();
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(attempts).toBe(3);
+  expect(request).toHaveBeenLastCalledWith({ method: "analysis.cancel" });
+});

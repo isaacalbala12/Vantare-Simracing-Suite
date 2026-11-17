@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+const LAP_START_MAX_ELAPSED_S: f64 = 0.25;
+
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct Signal {
     pub reliable: u32,
@@ -23,9 +25,25 @@ pub struct Lap {
     pub gap: bool,
     pub samples: u32,
     pub observed_span_s: Option<f64>,
+    #[serde(default)]
+    pub first_elapsed_s: Option<f64>,
+    #[serde(default)]
+    pub last_elapsed_s: Option<f64>,
     pub speed: Signal,
     pub throttle: Signal,
     pub brake: Signal,
+}
+
+impl Lap {
+    /// Tiempo aproximado de la última foto antes de meta, no el oficial del simulador.
+    /// Error <= una foto (aprox. 17 ms a 60 Hz por defecto).
+    pub fn lap_time_approx_s(&self) -> Option<f64> {
+        if self.sealed && !self.gap && self.first_elapsed_s? <= LAP_START_MAX_ELAPSED_S {
+            self.last_elapsed_s
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq)]

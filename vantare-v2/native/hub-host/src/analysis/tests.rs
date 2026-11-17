@@ -25,6 +25,54 @@ impl Drop for Directory {
 fn cancel() -> Cancel {
     Arc::new(AtomicBool::new(false))
 }
+
+fn timing_lap() -> Lap {
+    let signal = json!({"reliable":2,"estimated":0,"stale":0,"unavailable":0,
+        "mean":null,"min":null,"max":null});
+    serde_json::from_value(json!({
+        "epoch":1,"session":3,"car":7,"lap":5,"first_chunk":1,"next_chunk":null,
+        "sealed":true,"gap":false,"samples":2,"observed_span_s":89.75,
+        "first_elapsed_s":0.25,"last_elapsed_s":90.0,
+        "speed":signal,"throttle":signal,"brake":signal
+    }))
+    .unwrap()
+}
+
+#[test]
+fn approximate_time_requires_a_complete_lap_starting_near_the_line() {
+    let mut lap = timing_lap();
+    assert_eq!(lap.lap_time_approx_s(), Some(90.0));
+    lap.first_elapsed_s = Some(0.0);
+    assert_eq!(lap.lap_time_approx_s(), Some(90.0));
+    lap.sealed = false;
+    assert_eq!(lap.lap_time_approx_s(), None);
+    lap.sealed = true;
+    lap.gap = true;
+    assert_eq!(lap.lap_time_approx_s(), None);
+    lap.gap = false;
+    lap.first_elapsed_s = Some(0.251);
+    assert_eq!(lap.lap_time_approx_s(), None);
+    lap.first_elapsed_s = None;
+    assert_eq!(lap.lap_time_approx_s(), None);
+    lap.first_elapsed_s = Some(0.0);
+    lap.last_elapsed_s = None;
+    assert_eq!(lap.lap_time_approx_s(), None);
+}
+
+#[test]
+fn old_helper_summaries_default_to_unknown_elapsed_times() {
+    let signal = json!({"reliable":0,"estimated":0,"stale":0,"unavailable":0,
+        "mean":null,"min":null,"max":null});
+    let lap: Lap = serde_json::from_value(json!({
+        "epoch":1,"session":3,"car":7,"lap":5,"first_chunk":1,"next_chunk":null,
+        "sealed":true,"gap":false,"samples":0,"observed_span_s":null,
+        "speed":signal,"throttle":signal,"brake":signal
+    }))
+    .unwrap();
+    assert_eq!(lap.first_elapsed_s, None);
+    assert_eq!(lap.last_elapsed_s, None);
+    assert_eq!(lap.lap_time_approx_s(), None);
+}
 #[test]
 fn catalog_boundaries_and_absent_directory() {
     let dir = Directory::new();
@@ -159,6 +207,9 @@ mod real {
             (33, 1, true, 33)
         );
         assert_eq!(summary.laps[0].speed.mean, Some(50.0));
+        assert_eq!(summary.laps[0].first_elapsed_s, Some(0.0));
+        assert_eq!(summary.laps[0].last_elapsed_s, Some(32.0));
+        assert_eq!(summary.laps[0].lap_time_approx_s(), None); // Sin seal.
         let mut cursor = reader.cursor(&summary.laps[0]).unwrap();
         let mut counts = vec![];
         while !cursor.done() {

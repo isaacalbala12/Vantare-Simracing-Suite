@@ -39,6 +39,8 @@ fn lap(summary: &LapSummary) -> Value {
         "first_chunk": summary.first_chunk, "sealed": summary.sealed_at.is_some(),
         "gap": summary.gap, "samples": summary.samples,
         "observed_span_s": summary.continuous_span_s(),
+        "first_elapsed_s": summary.first_elapsed_s,
+        "last_elapsed_s": summary.last_elapsed_s,
         "speed": signal(summary.speed_mps), "throttle": signal(summary.throttle),
         "brake": signal(summary.brake)})
 }

@@ -213,7 +213,8 @@ if (import.meta.main) {
   let browser: Browser | undefined;
   try {
     browser = await chromium.launch({ timeout: 15000 });
-    const page = await browser.newPage();
+    const context = await browser.newContext();
+    const page = await context.newPage();
     await checkStudioPreview(
       page,
       server.resolvedUrls?.local[0] ?? "",

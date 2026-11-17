@@ -54,7 +54,13 @@ function useAnalysisRail() {
         toggle();
       }
     };
-    const adapt = () => set(body.clientWidth < 1100 || initial.current);
+    let narrow: boolean | undefined;
+    const adapt = () => {
+      const next = body.clientWidth < 1100;
+      if (next === narrow) return;
+      narrow = next;
+      set(next || initial.current);
+    };
     const observer = new ResizeObserver(adapt);
     observer.observe(body);
     adapt();

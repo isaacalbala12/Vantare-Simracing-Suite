@@ -389,6 +389,43 @@ export async function checkAnalysisComparison(
             "solid",
           );
         }
+        if (scene === "rail") {
+          const viewport = page.viewportSize();
+          assert.ok(viewport);
+          await page.setViewportSize({
+            ...viewport,
+            height: viewport.height + 1,
+          });
+          await page.evaluate(
+            () =>
+              new Promise<void>((done) =>
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => done()),
+                ),
+              ),
+          );
+          await page.setViewportSize(viewport);
+          await page.evaluate(
+            () =>
+              new Promise<void>((done) =>
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => done()),
+                ),
+              ),
+          );
+          assert.equal(
+            await page
+              .locator(".v-titlebar")
+              .getByRole("button", {
+                name: shellText("shell.railToggle"),
+                exact: true,
+              })
+              .getAttribute("aria-expanded"),
+            "true",
+            "Content resizing must preserve manual rail expansion",
+          );
+          assert.equal(await page.locator(".v-an-change").count(), 3);
+        }
         if (scene !== "selection")
           assert.equal(
             await page

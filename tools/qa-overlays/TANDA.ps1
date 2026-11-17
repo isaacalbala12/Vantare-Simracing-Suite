@@ -171,6 +171,8 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  if($list.code -ne 0 -or @($list.stdout -split "`n"|Where-Object {$_ -match '^rune_[a-z_]+: test\s*$'}).Count -ne 4){throw 'No se enumeraron exactamente cuatro tests lifecycle, sin ejecutarlos'}
  $fake=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_TANDA.ps1')) (Join-Path $Output 'controlador-falso') 90
  if($fake.code -ne 0){throw 'El ensayo del controlador falso falló'}
+ $round=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_RONDA.ps1')) (Join-Path $Output 'ronda-falsa') 30
+ if($round.code -ne 0){throw 'El ensayo de la ronda real con procesos falsos falló'}
  $csv=Invoke-TandaProcess 'python' @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_*.py') (Join-Path $Output 'csv-falsos') 60
  if($csv.code -ne 0){throw 'Las regresiones de CSV falsos fallaron'}
  Write-TandaJson @{source_sha=$manifest.source_sha;production_rights_configured=$manifest.production_rights_configured;guard_code=6;guard_token='GRAPHICS_DISABLED';input_hashes='PASS';captures=$manifest.captures.Count;measurements=$manifest.measurements.Count;gpu_executed=$false;shutdown_executed=$false;utc=[DateTime]::UtcNow.ToString('o')} (Join-Path $Output 'ensayo.json')
@@ -318,6 +320,18 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
  $pipe='vantare-tanda-'+[guid]::NewGuid().ToString('N')
  $core=$null;$hostRun=$null;$sampler=$null
  try {
+  # Preparar ETW/Add-Type ANTES del replay, sin consumir sus cinco segundos.
+  $rootInfo=Join-Path $round 'root-info.json'
+  $sampler=Start-TandaOwned (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'vantare-v2/native/pruebas-rune/muestreador/MUESTREAR.ps1'),'-RootInfoFile',$rootInfo,'-PresentMon',(Join-Path $Root 'bin/PresentMon-2.6.0-x64.exe'),'-OutputDirectory',(Join-Path $round 'muestreo'),'-Seconds','65','-ProcessOnly') (Join-Path $round 'sampler')
+  $sampler.stderr=$sampler.process.StandardError.ReadToEndAsync()
+  $ready=Join-Path $round 'muestreo/CAPTURA-LISTA.json'
+  $deadline=[DateTime]::UtcNow.AddSeconds(20)
+  while(-not(Test-Path -LiteralPath $ready)){
+   Assert-TandaUnattended
+   if($sampler.process.HasExited -or [DateTime]::UtcNow -ge $deadline){throw 'Sampler/ETW no está listo; no arrancar replay ni host'}
+   Start-Sleep -Milliseconds 50
+  }
+  if(-not (Read-TandaJson $ready).ready){throw 'Sampler no confirmó ETW listo'}
   $argsCore=if($Case.state -eq 'replay'){@('--replay',(Join-Path $Root 'inputs/lmu47-high-rate-60s.tar.gz'),'--velocidad','1','--pipe',$pipe)}else{@('--live','--simulator','lmu','--pipe',$pipe)}
   $launchQpc=[Diagnostics.Stopwatch]::GetTimestamp()
   $core=Start-TandaOwned (Join-Path $Root 'bin/vantare-core.exe') $argsCore (Join-Path $round 'core') @{VANTARE_PROFILE_PHASES='1';VANTARE_MEASUREMENT_TRACE='1'}
@@ -326,12 +340,14 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
   $null=Read-TandaPolicy $Root $pipe (Join-Path $round 'rights-before.json')
   Assert-TandaUnattended
   $image=if($Case.motor -eq 'rune'){'vantare-overlays-rune.exe'}else{'vantare-overlays.exe'}
+  $hostStartQpc=[Diagnostics.Stopwatch]::GetTimestamp()
   $hostRun=Start-TandaOwned (Join-Path $Root ('bin/'+$image)) @('--layout',$layout,'--fuente',('pipe:'+$pipe),'--control-stdin') (Join-Path $round 'overlay')
   $hostRun.stderr=$hostRun.process.StandardError.ReadToEndAsync()
   $identity=Get-VantareObservedIdentity $hostRun.process.Id
   Write-TandaJson $identity (Join-Path $round 'identidad.json')
-  $sampler=Start-TandaOwned (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'vantare-v2/native/pruebas-rune/muestreador/MUESTREAR.ps1'),'-RootProcessId',[string]$hostRun.process.Id,'-PresentMon',(Join-Path $Root 'bin/PresentMon-2.6.0-x64.exe'),'-OutputDirectory',(Join-Path $round 'muestreo'),'-Seconds','60','-ProcessOnly') (Join-Path $round 'sampler')
-  $sampler.stderr=$sampler.process.StandardError.ReadToEndAsync()
+  $rootData=@{};foreach($key in $identity.Keys){$rootData[$key]=$identity[$key]};$rootData.start_qpc=$hostStartQpc
+  Write-TandaJson $rootData ($rootInfo+'.tmp')
+  [IO.File]::Move($rootInfo+'.tmp',$rootInfo)
   $until=[DateTime]::UtcNow.AddSeconds(100)
   while(-not $sampler.process.WaitForExit(500)){
    # No lanzar consultas CIM/PDH en cada muestra de rendimiento.

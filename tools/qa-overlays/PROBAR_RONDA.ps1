@@ -1,0 +1,55 @@
+# Real controller round with fake processes/ETW/IPC. No GPU.
+$ErrorActionPreference='Stop'
+. "$PSScriptRoot/TANDA.ps1" -SoloFunciones
+$env:VANTARE_SIN_GRAFICOS='1'
+$base=Join-Path ([IO.Path]::GetTempPath()) ('vantare-round-test-'+[guid]::NewGuid().ToString('N'))
+$root=Join-Path $base 'kit';$output=Join-Path $base 'evidence'
+foreach($dir in @('tools/qa-overlays','inputs','bin')){$null=New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force}
+$null=New-Item -ItemType Directory -Path (Join-Path $output 'perf') -Force
+Write-TandaJson @{version=1;instances=@()} (Join-Path $root 'inputs/layout.json')
+@'
+function Get-VantareObservedIdentity {param($RootProcessId)
+ [ordered]@{process_id=$RootProcessId;created_utc='2026-11-17T00:00:00.0000000Z';image_name='fake-overlay.exe';image_sha256=('a'*64)}
+}
+'@ | Set-Content -LiteralPath (Join-Path $root 'tools/qa-overlays/OBSERVAR.ps1')
+$script:events=[Collections.Generic.List[string]]::new();$script:deny=$false
+function Assert-TandaUnattended {}
+function Start-TandaOwned {param($Image,$Arguments,$Log,$Environment=@{})
+ $name=Split-Path $Log -Leaf;$script:events.Add('start:'+ $name)
+ if($name -eq 'sampler'){
+  $i=[array]::IndexOf($Arguments,'-OutputDirectory');$dir=$Arguments[$i+1]
+  $null=New-Item -ItemType Directory -Path $dir
+  Write-TandaJson @{ready=$true} (Join-Path $dir 'CAPTURA-LISTA.json')
+  if($Arguments -notcontains '-RootInfoFile'){throw 'Missing deferred identity'}
+ }
+ if($name -eq 'core' -and $script:events.IndexOf('start:sampler') -lt 0){throw 'Replay before ETW'}
+ $process=[pscustomobject]@{Id=123;HasExited=$false;ExitCode=0;StandardError=[IO.StringReader]::new('')}
+ $process|Add-Member ScriptMethod WaitForExit {param($Milliseconds) $true}
+ @{process=$process;stderr=$null;log=$Log;closed=$false}
+}
+function Get-TandaLiveClock {param($Handle) $Handle.stderr=$true;[Diagnostics.Stopwatch]::GetTimestamp()}
+function Read-TandaPolicy {param($Root,$PhotoPipe,$Log)
+ if($script:deny){throw 'DENIED_FAKE'}
+ @{state=@{kind='active'}}
+}
+function Close-TandaOwned {param($Handle)
+ if(-not $Handle -or $Handle.closed){return};$Handle.closed=$true
+ $script:events.Add('close:'+(Split-Path $Handle.log -Leaf))
+ if($Handle.log.EndsWith('core')){
+  $f=[Diagnostics.Stopwatch]::Frequency;$q=[Diagnostics.Stopwatch]::GetTimestamp()
+  Set-Content -LiteralPath ($Handle.log+'.stderr.txt') "trace frequency=$f overflow=0`ntrace`tspan`tobserve`t$q`t$q`t0`t0`t0`ntrace_end events=1"
+ }
+}
+function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession)
+ $script:events.Add('analyze');@{code=0;stdout='';stderr=''}
+}
+Invoke-TandaMeasurement $root $output @{id='success';state='replay';motor='rune';layout='inputs/layout.json'}
+$prefix=@($script:events|Select-Object -First 3) -join ','
+if($prefix -ne 'start:sampler,start:core,start:overlay'){throw "Wrong order: $prefix"}
+$identity=Read-TandaJson (Join-Path $output 'perf/success/root-info.json')
+if($identity.process_id -ne 123 -or $identity.start_qpc -le 0 -or (Test-Path (Join-Path $output 'perf/success/root-info.json.tmp'))){throw 'Bad/non-atomic deferred identity'}
+if(@($script:events|Where-Object {$_ -like 'close:*'}).Count -ne 3){throw 'Missing cleanup'}
+$script:events.Clear();$script:deny=$true;$denied=$false
+try {Invoke-TandaMeasurement $root $output @{id='denied';state='waiting';motor='gpui';layout='inputs/layout.json'}} catch {$denied=$_.Exception.Message -eq 'DENIED_FAKE'}
+if(-not $denied -or $script:events.Contains('start:overlay') -or $script:events.Contains('analyze') -or -not $script:events.Contains('close:sampler') -or -not $script:events.Contains('close:core')){throw 'Denial failed to clean up before host/analysis'}
+"PASS: ETW ready before replay, deferred identity, cleanup and denial; no GPU; sandbox=$base"

@@ -212,3 +212,10 @@ las mediciones con el replay LMU y de la identidad legítima de Isaac. TEMP/TMP
 se sitúan dentro de la evidencia; se conservan logs y se cierran hijos propios.
 El ensayo del servidor solo enumera los tests de libtest (--list --ignored),
 nunca ejecuta los cuatro ignorados ni el arnés con su parser propio.
+
+El muestreador se prepara en su modo RootInfoFile existente ANTES de arrancar
+el replay: CAPTURA-LISTA confirma ETW y las clases de contadores ya preparadas.
+Se entrega atómicamente la identidad del host recién creado. ETW dura 65 s,
+pero solo se analizan [5,55) desde el primer observe real del núcleo. La ronda
+falsa PROBAR_RONDA comprueba este orden, la identidad y el cierre por denegación;
+no se desplaza la ventana si el host llega demasiado tarde.

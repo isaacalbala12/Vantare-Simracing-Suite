@@ -171,7 +171,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus):
     for file in sorted(output.rglob("*")):
         if file.is_file():
             manifest["files"].append({"path": file.relative_to(output).as_posix(), "sha256": digest(file)})
-    manifest["estimated_seconds"] = 60 * len(manifest["measurements"]) + 10 * len(manifest["captures"]) + 1200
+    manifest["estimated_seconds"] = 65 * len(manifest["measurements"]) + 10 * len(manifest["captures"]) + 1200
     write_json(output / "manifiesto.json", manifest)
     return manifest
 

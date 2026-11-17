@@ -41,30 +41,52 @@ fn enabled(hub: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use std::{fs, io, time::Duration};
+
+    struct TempDir(PathBuf);
+    impl TempDir {
+        fn new() -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "vantare-recording-{}-{}",
+                std::process::id(),
+                vantare_services::random_id().unwrap()
+            ));
+            fs::create_dir(&path).unwrap();
+            Self(path)
+        }
+        fn save(&self, bytes: impl AsRef<[u8]>) {
+            fs::write(self.0.join(HUB_SETTINGS_FILE), bytes).unwrap();
+        }
+        fn startup(&self, args: Vec<String>) -> Vec<String> {
+            startup_args(args, Ok(self.0.clone()))
+        }
+        fn expected(&self) -> Vec<String> {
+            vec![
+                "--live".into(),
+                "--series-dir".into(),
+                self.0.join("recordings").to_string_lossy().into_owned(),
+            ]
+        }
+    }
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let target = self.0.canonicalize().unwrap();
+            let parent = self.0.parent().unwrap().canonicalize().unwrap();
+            assert!(target.starts_with(&parent) && target != parent);
+            fs::remove_dir_all(target).unwrap();
+        }
+    }
 
     #[test]
-    fn only_valid_false_disables_recording_and_startup_reads_once() {
-        let root = vantare_ipc::paths::Root::from_env().unwrap();
-        let hub = root
-            .base()
-            .join(format!("g4b-{}", vantare_services::random_id().unwrap()));
-        fs::create_dir_all(&hub).unwrap();
-        let path = hub.join(vantare_ipc::paths::HUB_SETTINGS_FILE);
-        let expected = vec![
-            "--live".to_owned(),
-            "--series-dir".to_owned(),
-            hub.join("recordings").to_string_lossy().into_owned(),
-        ];
-        let startup = || {
-            let mut args = vec!["--live".into()];
-            configure(&mut args, &hub);
-            args
-        };
-        assert_eq!(startup(), expected); // Missing file.
+    fn startup_defaults_on_for_missing_invalid_and_unreadable_settings() {
+        let hub = TempDir::new();
+        let startup = || hub.startup(vec!["--live".into()]);
+        assert_eq!(startup(), hub.expected());
+        let path = hub.0.join(HUB_SETTINGS_FILE);
         fs::create_dir(&path).unwrap();
-        assert_eq!(startup(), expected); // Unreadable as a file.
-        fs::remove_dir(&path).unwrap();
+        // Exercises the real bounded I/O retries at startup, not a test synchronization wait.
+        assert_eq!(startup(), hub.expected());
+        fs::remove_dir(path).unwrap();
         for bytes in [
             "{}",
             "{",
@@ -74,25 +96,141 @@ mod tests {
             r#"{"general":{"grabacion":0}}"#,
             r#"{"general":{"grabacion":true}}"#,
         ] {
-            fs::write(&path, bytes).unwrap();
-            assert_eq!(startup(), expected, "{bytes}");
+            hub.save(bytes);
+            assert_eq!(startup(), hub.expected(), "{bytes}");
         }
-        fs::write(&path, r#"{"general":{"grabacion":false}}"#).unwrap();
-        let args = startup();
-        assert_eq!(args, ["--live"]);
-        fs::write(&path, r#"{"general":{"grabacion":true}}"#).unwrap();
-        assert_eq!(
-            args,
-            ["--live"],
-            "running program retains its startup arguments"
-        );
-        assert_eq!(
-            startup(),
-            expected,
-            "next startup observes the saved choice"
-        );
-        fs::remove_file(path).unwrap();
-        fs::remove_dir(hub).unwrap();
+    }
+
+    #[test]
+    fn real_startup_function_observes_the_choice_at_each_new_startup() {
+        let hub = TempDir::new();
+        hub.save(r#"{"general":{"grabacion":false}}"#);
+        assert_eq!(hub.startup(vec!["--live".into()]), ["--live"]);
+        hub.save(r#"{"general":{"grabacion":true}}"#);
+        assert_eq!(hub.startup(vec!["--live".into()]), hub.expected());
+    }
+
+    #[test]
+    fn explicit_directory_wins_even_when_recording_is_disabled() {
+        let hub = TempDir::new();
+        for enabled in [false, true] {
+            hub.save(format!(r#"{{"general":{{"grabacion":{enabled}}}}}"#));
+            let args = vec!["--series-dir".into(), "my development recordings".into()];
+            let mut configured = args.clone();
+            configure(&mut configured, &hub.0);
+            assert_eq!(configured, args);
+            assert_eq!(hub.startup(args.clone()), args);
+        }
+    }
+
+    #[test]
+    fn replay_keeps_its_arguments_without_automatic_recording() {
+        let hub = TempDir::new();
+        hub.save(r#"{"general":{"grabacion":true}}"#);
+        for args in [
+            vec!["--replay".into(), "session.lmu.gz".into()],
+            vec![
+                "--replay".into(),
+                "session.lmu.gz".into(),
+                "--series-dir".into(),
+                "explicit".into(),
+            ],
+        ] {
+            let mut configured = args.clone();
+            configure(&mut configured, &hub.0);
+            assert_eq!(configured, args);
+            assert_eq!(hub.startup(args.clone()), args);
+        }
+    }
+
+    #[test]
+    fn byte_limit_is_inclusive_and_a_leading_utf8_bom_is_accepted() {
+        let hub = TempDir::new();
+        let mut bytes = br#"{"general":{"grabacion":false}}"#.to_vec();
+        bytes.resize(32 * 1024, b' ');
+        hub.save(&bytes);
+        assert_eq!(hub.startup(vec!["--live".into()]), ["--live"]);
+        bytes.push(b' ');
+        hub.save(bytes);
+        assert_eq!(hub.startup(vec!["--live".into()]), hub.expected());
+        hub.save(b"\xef\xbb\xbf{\"general\":{\"grabacion\":false}}");
+        assert_eq!(hub.startup(vec!["--live".into()]), ["--live"]);
+    }
+
+    #[test]
+    fn unavailable_root_does_not_abort_startup_or_modify_explicit_arguments() {
+        for args in [
+            vec!["--live".into()],
+            vec!["--series-dir".into(), "explicit".into()],
+            vec!["--replay".into(), "session.lmu.gz".into()],
+        ] {
+            assert_eq!(
+                startup_args(args.clone(), Err(vantare_ipc::paths::Error::MissingBase)),
+                args
+            );
+        }
+    }
+
+    #[test]
+    fn missing_file_returns_immediately_without_retrying() {
+        let mut calls = 0;
+        assert!(enabled_with(
+            || {
+                calls += 1;
+                Err(io::Error::from(io::ErrorKind::NotFound))
+            },
+            |_| panic!("missing file must not wait"),
+        ));
+        assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn transient_io_failures_retry_three_times_and_can_recover_false() {
+        for failures in 1..=3 {
+            let mut calls = 0;
+            let mut delays = Vec::new();
+            assert!(!enabled_with(
+                || {
+                    calls += 1;
+                    if calls <= failures {
+                        Err(io::Error::from(io::ErrorKind::PermissionDenied))
+                    } else {
+                        Ok(br#"{"general":{"grabacion":false}}"#.to_vec())
+                    }
+                },
+                |duration| delays.push(duration),
+            ));
+            assert_eq!(calls, failures + 1);
+            assert_eq!(delays, vec![Duration::from_millis(20); failures]);
+        }
+    }
+
+    #[test]
+    fn persistent_io_failure_defaults_on_after_three_retries() {
+        let mut calls = 0;
+        let mut delays = Vec::new();
+        assert!(enabled_with(
+            || {
+                calls += 1;
+                Err(io::Error::from(io::ErrorKind::PermissionDenied))
+            },
+            |duration| delays.push(duration),
+        ));
+        assert_eq!(calls, 4);
+        assert_eq!(delays, vec![Duration::from_millis(20); 3]);
+    }
+
+    #[test]
+    fn invalid_json_does_not_retry_successful_io() {
+        let mut calls = 0;
+        assert!(enabled_with(
+            || {
+                calls += 1;
+                Ok(b"{".to_vec())
+            },
+            |_| panic!("successful read must not wait"),
+        ));
+        assert_eq!(calls, 1);
     }
 
     #[test]

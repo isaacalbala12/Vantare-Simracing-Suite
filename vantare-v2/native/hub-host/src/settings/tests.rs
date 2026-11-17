@@ -435,6 +435,7 @@ fn recording_choice_round_trips_through_settings_wire_and_store() {
     let mut settings = root.settings();
     assert!(settings.view().general.grabacion);
     for enabled in [false, true] {
+        let before = serde_json::to_value(settings.view()).unwrap();
         let patch: SettingsPatch =
             serde_json::from_value(serde_json::json!({"field":"grabacion", "value":enabled}))
                 .unwrap();
@@ -444,5 +445,58 @@ fn recording_choice_round_trips_through_settings_wire_and_store() {
         assert_eq!(root.settings().view().general.grabacion, enabled);
         let wire = serde_json::to_value(&view).unwrap();
         assert_eq!(wire["general"]["grabacion"], enabled);
+        let mut expected = before;
+        expected["general"]["grabacion"] = enabled.into();
+        expected["revision"] = wire["revision"].clone();
+        assert_eq!(wire, expected, "only the choice and CAS revision change");
     }
+}
+
+#[test]
+fn recording_patch_cannot_change_a_protected_document_or_its_other_fields() {
+    let root = Root::new();
+    let mut document = serde_json::to_value(store::Document::default()).unwrap();
+    document["version"] = 99.into();
+    let bytes = serde_json::to_vec(&document).unwrap();
+    let path = root.0.join(store::FILE);
+    fs::write(&path, &bytes).unwrap();
+    let mut settings = root.settings();
+    let before = settings.view();
+    assert!(before.protected);
+    assert!(
+        settings
+            .update(SettingsPatch::Grabacion(false), &before.revision)
+            .is_err()
+    );
+    assert_eq!(
+        serde_json::to_value(settings.view()).unwrap(),
+        serde_json::to_value(before).unwrap()
+    );
+    assert_eq!(fs::read(path).unwrap(), bytes);
+}
+
+#[test]
+fn legacy_v1_general_without_recording_migrates_to_v2_with_recording_enabled() {
+    let root = Root::new();
+    let general = serde_json::json!({
+        "onboarding_completed": true,
+        "density": "compact",
+        "minimized": true,
+        "updates": false,
+        "launcher": false,
+        "toasts": true
+    });
+    let bytes = serde_json::to_vec(&general).unwrap();
+    let legacy = root.0.join("general.json");
+    fs::write(&legacy, &bytes).unwrap();
+    let view = root.settings().view();
+    assert!(view.general.grabacion);
+    assert!(!view.protected);
+    let saved: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.0.join(store::FILE)).unwrap()).unwrap();
+    let mut expected = general;
+    expected["grabacion"] = true.into();
+    assert_eq!(saved["version"], 2);
+    assert_eq!(saved["general"], expected);
+    assert_eq!(fs::read(legacy).unwrap(), bytes);
 }

@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Browser, Page } from "playwright-core";
+import tokens from "../design/tokens.json";
 import { studioText } from "../src/renderer/i18n/studio";
 import { until } from "./wait-for";
 
@@ -53,18 +54,40 @@ export async function checkStudioPreview(
     await painter.close();
   }
   const results = [];
-  for (const theme of ["dark", "light"]) {
+  for (const theme of ["dark", "light"] as const) {
     for (const [mode, title] of cases) {
       const page = await parent.context().newPage();
       try {
         await page.setViewportSize({ width: 1440, height: 900 });
         await page.addInitScript(
-          ({ mode, png }) => {
+          ({ mode, png, theme }) => {
             const send = MessagePort.prototype.postMessage;
             let view: unknown;
             let count = 0;
             Reflect.set(window, "previewQaRequests", []);
             MessagePort.prototype.postMessage = function (message, options) {
+              if (message?.kind === "hello")
+                message = {
+                  ...message,
+                  theme: { ...message.theme, scheme: theme },
+                };
+              if (
+                message?.kind === "response" &&
+                message.result?.method === "settings.get"
+              )
+                message = {
+                  ...message,
+                  result: {
+                    ...message.result,
+                    value: {
+                      ...message.result.value,
+                      appearance: {
+                        ...message.result.value.appearance,
+                        scheme: theme,
+                      },
+                    },
+                  },
+                };
               if (
                 message?.kind === "request" &&
                 message.request?.method === "preview.render"
@@ -144,7 +167,7 @@ export async function checkStudioPreview(
               );
             };
           },
-          { mode, png },
+          { mode, png, theme },
         );
         await page.goto(`${base}?escena=preview-image`);
         await page
@@ -179,9 +202,20 @@ export async function checkStudioPreview(
               .getAttribute("aria-disabled"),
             "true",
           );
-        await page.evaluate((theme) => {
-          document.documentElement.dataset.scheme = theme;
-        }, theme);
+        const sealBackground = await stage
+          .locator(".v-preview-seal")
+          .evaluate((node) => getComputedStyle(node).backgroundColor);
+        const expectedColor = tokens.themes.vantare[theme]["surface-panel"];
+        assert.deepEqual(
+          sealBackground
+            .match(/[\d.]+/g)
+            ?.slice(0, 3)
+            .map(Number),
+          [1, 3, 5].map((offset) =>
+            parseInt(expectedColor.slice(offset, offset + 2), 16),
+          ),
+          `${theme}: effective surface-panel follows Settings, without mixed theme tokens`,
+        );
         const report = await new AxeBuilder({ page }).analyze();
         results.push({ theme, mode, violations: report.violations });
         await writeFile(

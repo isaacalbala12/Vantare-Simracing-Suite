@@ -115,7 +115,7 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
         scenes.snapshot(WidgetKind::Standings, "standings", 0),
         Err(PreviewError::InvalidInput)
     );
-    for i in 0..FILE_LIMIT + 1 {
+    for i in 0..=FILE_LIMIT {
         fs::hard_link(&real, root.join(format!("standings-{i}.snapshot.json"))).unwrap_or_else(
             |_| {
                 fs::copy(&real, root.join(format!("standings-{i}.snapshot.json"))).unwrap();

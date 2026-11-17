@@ -21,7 +21,7 @@ pub(crate) fn id_cases() -> [(String, bool); 9] {
     [
         ("standings-default".into(), true),
         ("a".repeat(96), true),
-        ("".into(), false),
+        (String::new(), false),
         ("../a".into(), false),
         ("a/b".into(), false),
         (r"a\b".into(), false),
@@ -214,12 +214,12 @@ impl Scenes {
                 .collect::<Vec<_>>();
             files.sort_unstable();
             for filename in files {
-                if let Some(entry) = load_entry(&root, filename) {
-                    if !entries.iter().any(|previous: &Entry| {
+                if let Some(entry) = load_entry(&root, filename)
+                    && !entries.iter().any(|previous: &Entry| {
                         previous.widget == entry.widget && previous.scene.id == entry.scene.id
-                    }) {
-                        entries.push(entry);
-                    }
+                    })
+                {
+                    entries.push(entry);
                 }
             }
         }

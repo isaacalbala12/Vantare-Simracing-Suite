@@ -433,7 +433,7 @@ describe("Studio Foco interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: t.add }));
     await screen.findByText(t.addedName(name));
     const catalog = screen.getByRole("button", {
-      name: new RegExp(`^${t.addShort} ${name}`),
+      name: new RegExp(`^${t.addShort} ${name}(?:,|$)`),
     });
     expect(
       catalog.querySelector(".v-studio-owned")?.getAttribute("data-label"),

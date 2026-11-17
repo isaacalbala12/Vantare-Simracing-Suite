@@ -588,6 +588,7 @@ mod real {
             attempted,
             total,
             laps,
+            sessions,
             ..
         } = first
         else {
@@ -597,10 +598,7 @@ mod real {
             (watermark.as_str(), attempted.as_str(), total.as_str()),
             ("2", "2", "1")
         );
-        assert_eq!(
-            sessions,
-            Vec::<crate::analysis::catalog::AnalysisSessionSummary>::new()
-        );
+        assert!(sessions.is_empty());
         assert_eq!(
             (laps[0].session, laps[0].lap_time_ms, &laps[0].sectors_ms),
             (None, None, &None)

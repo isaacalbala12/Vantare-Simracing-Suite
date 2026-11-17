@@ -1,6 +1,6 @@
 //! Propietario de una grabación por arranque, fuera del camino de adquisición.
 use crate::core::Core;
-use crate::flows::SeriesWorker;
+use crate::flows::{SeriesWorker, SessionTracker};
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::time::Duration;
@@ -17,10 +17,18 @@ mod recording_tests;
 
 const SERIES_QUEUE: usize = 32;
 /// Dentro de los 3 s del supervisor y los 4 s del watchdog del Core.
+#[cfg(not(test))]
 const SERIES_FINISH_TIMEOUT: Duration = Duration::from_secs(1);
+// Solo el arnés unitario amplía el plazo; el producto conserva 1 s.
+#[cfg(test)]
+const SERIES_FINISH_TIMEOUT: Duration = session_capture_tests::FINISH_TIMEOUT;
+#[cfg(test)]
+#[path = "series/session_capture_tests.rs"]
+mod session_capture_tests;
 
 pub struct SeriesRecording {
     worker: Option<SeriesWorker>,
+    tracker: SessionTracker,
     failed: bool,
     status: Option<Status>,
     pending_status: Option<PendingStatus>,
@@ -36,6 +44,7 @@ impl SeriesRecording {
     ) -> Self {
         let mut recording = Self {
             worker: None,
+            tracker: SessionTracker::default(),
             failed: false,
             status: None,
             pending_status: None,
@@ -106,6 +115,14 @@ impl SeriesRecording {
 
     fn check(&mut self, core: &Core) {
         self.check_with_delay(core, None);
+        if !self.failed
+            && let Some(worker) = &self.worker
+            && worker.session_events_enabled()
+        {
+            for event in self.tracker.observe(&core.snapshot(), wall_ms()) {
+                worker.try_session_event(event);
+            }
+        }
     }
     fn check_with_delay(&mut self, core: &Core, delay: Option<std::sync::mpsc::Receiver<()>>) {
         if !self.failed
@@ -140,7 +157,15 @@ impl SeriesRecording {
 
     fn finish(mut self, core: &mut Core) {
         // El bucle ya no llama al adaptador. Core conserva el sender hasta terminar finish.
-        self.check(core);
+        self.check_with_delay(core, None);
+        if !self.failed
+            && let Some(worker) = &self.worker
+            && worker.session_events_enabled()
+        {
+            for event in self.tracker.finish(wall_ms()) {
+                worker.try_session_event(event);
+            }
+        }
         core.series_mut().flush();
         if let Some(worker) = self.worker.take() {
             let database = worker.database.clone();
@@ -187,6 +212,14 @@ impl SeriesRecording {
             status.write_with_gate(gate.as_deref());
         }
     }
+}
+
+fn wall_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|time| u64::try_from(time.as_millis()).ok())
+        .unwrap_or(0)
 }
 
 /// Mismo bucle y resultado; el cierre se ejecuta también tras error de publicación.

@@ -330,3 +330,78 @@ igualdad exacta live/durable/replay. La vuelta parcial y gaps no se completan.
 tras EOF/caída; finished es cierre de productor, nunca promesa de sesión íntegra.
 El [crate storage](../../../storage/README.md) documenta protocolo y esquema.
 No dependencia de DuckDB en runtime: solo transporte stdio, con codec y análisis puros en `ipc::series`.
+
+
+## Captura del resumen de sesión — D8a-2 / #1974
+
+Con `--series-dir`, `SeriesRecording::check` entrega cada foto al tracker puro
+`SessionTracker::observe(snapshot, wall_ms)`. El reloj de pared es inyectado;
+no hay I/O en el tracker ni asignaciones en fotos sin eventos. La identidad del
+resumen es `(epoch, session.id)`; la apertura espera al jugador y su coche.
+`kind` solo procede de calidad Reliable; Other conserva su texto y los demás
+casos son unknown. Pista admite Stale; vehículo/clase son los de la apertura.
+Los textos se acotan a 256 bytes UTF-8.
+
+Si el jugador cambia de coche dentro de una sesión, el resumen describe el
+primer coche. No se cierra ni abre otro resumen: primero se entrega la vuelta
+pendiente del coche anterior y se reinician contador y last_lap_s del nuevo,
+sin inventar una vuelta por el salto. Cada vuelta conserva su propio `car`.
+`finalPosition`, `finalClassPosition`, `bestLapMs` y `lapsCompleted` pertenecen
+al ÚLTIMO coche observado del jugador; no se mezclan con los del primer coche.
+
+Al subir el contador de vueltas se espera al primer last_lap_s Reliable distinto
+del anterior. Se redondea a ms; los sectores solo se guardan si todos son
+Reliable. Tras 3 s del tiempo de origen de la foto (received_at si no hay
+source_time), la vuelta se entrega con tiempo null. Un salto del contador solo
+registra la última vuelta observada, no reconstruye las intermedias. `lap` es
+el contador completado menos uno, igual que el bloque de muestras que acaba.
+Antes de un cambio de sesión, coche o finish se entrega la pendiente con el
+valor disponible o null; nunca después de cerrar el resumen.
+
+El cambio de epoch/session emite sessionChanged usando el reloj de pared y los
+valores del ÚLTIMO fotograma observado de la sesión anterior. finish emite
+coreStopped con el reloj de pared de parada. Posiciones, vueltas y elapsed
+conservan el último valor conocido, incluido Stale; best_lap_s <= 0 queda null.
+Es la **posición al cerrar la sesión (no acredita el resultado oficial)**.
+No se captura Safety Rating, posición de salida ni X/Y.
+
+El transporte usa un segundo sync_channel de 64 eventos. El bucle solo hace
+try_send; cuenta descartes sin esperar al helper. El hilo series-storage, único
+dueño del pipe, envía comando/ACK secuencial junto a los chunks y avisa una vez
+si pierde eventos o recibe rejected. unsupported meta desactiva esos envíos en
+DB v1 sin interrumpir chunks. SQL/I/O o protocolo roto siguen siendo fatales
+para la grabación. En finish se encola Close antes de worker.finish y se drenan
+los eventos antes de confirmar. Vencido el plazo de 1 s pueden faltar vueltas
+o quedar una sesión SIN SELLAR; sealed/finished no garantizan cobertura.
+
+El tiempo oficial (best_lap_s/last_lap_s del juego) está PENDIENTE DE VERIFICAR
+con LMU real; medición en el PC de juego con Isaac. Los tests sintéticos y con
+helper real prueban reglas, persistencia y pérdidas, no esa validación física.
+
+
+### Limitaciones de captura y medición pendiente con LMU real
+
+- Un last_lap_s IDÉNTICO al de la vuelta anterior no se reconoce como nuevo:
+  la vuelta espera 3 s del reloj de origen y sale con `officialMs:null`.
+- Si last_lap_s cambia en una foto ANTERIOR a la que sube laps, ese valor ya
+  es la línea base cuando se detecta la vuelta. Si no llega otro valor distinto,
+  espera los mismos 3 s y sale con null. El orden de refresco de LMU no está
+  verificado; véase también `delayed_lap_counter` en este README para muestras.
+- Tipo de sesión, circuito, coche y clase se fijan en el primer fotograma con
+  jugador y su coche; no se refinan después, aunque fueran unknown o vacíos.
+  El helper rechaza otro open con datos distintos para la misma clave con
+  `rejected conflict`. Si el jugador cambia de coche dentro de una sesión,
+  el resumen describe el primer coche; los resultados de cierre usan el último.
+- Si laps baja y vuelve a subir en la misma sesión/coche, se reutiliza la clave
+  `(epoch,session,car,lap)`. Un valor distinto recibe `rejected conflict`,
+  conserva el primer valor y provoca un único aviso de rechazo en stderr del
+  pump. Un valor idéntico sigue siendo idempotente. Un salto del contador solo
+  registra la última vuelta observada; no reconstruye las intermedias.
+- `session_events_dropped` NO se expone en `recording-status.json`. La pérdida
+  se avisa en stderr y puede dejar una sesión sin sellar o sin vueltas; ese
+  archivo de estado no ofrece el contador ni garantiza cobertura completa.
+
+Estas limitaciones se deben contrastar al medir con LMU real en el PC de juego
+con Isaac: el tiempo oficial (best_lap_s/last_lap_s del juego) sigue PENDIENTE DE
+VERIFICAR. Los fixtures fijan el comportamiento actual, no el orden de refresco
+ni la correspondencia física con el cronómetro del juego.

@@ -13,9 +13,15 @@ use crate::core::Core;
 mod series;
 pub use series::{SeriesRecording, drive_core_recorded};
 
-/// Helper instalado junto al ejecutable del Core.
-#[cfg(windows)]
-const STORAGE_IMAGE: &str = "vantare-storage.exe";
+/// Helper instalado junto al ejecutable del Core, con extensión explícita en Windows.
+pub fn storage_helper_path() -> std::io::Result<std::path::PathBuf> {
+    let image = if cfg!(windows) {
+        "vantare-storage.exe"
+    } else {
+        "vantare-storage"
+    };
+    Ok(std::env::current_exe()?.with_file_name(image))
+}
 
 /// Espera cuando una vuelta no ha producido nada nuevo.
 const IDLE: Duration = Duration::from_millis(2);
@@ -126,7 +132,7 @@ pub fn run_controlled(
         &mut core,
         options.series_dir,
         epoch,
-        &std::env::current_exe()?.with_file_name(STORAGE_IMAGE),
+        &storage_helper_path()?,
     );
     drive_core_recorded(
         &mut core,
@@ -256,6 +262,17 @@ fn check_measurement_support(requested: bool) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn storage_helper_is_beside_core_with_the_platform_extension() {
+        let path = storage_helper_path().expect("ruta del helper");
+        let executable = std::env::current_exe().expect("ejecutable actual");
+        assert_eq!(path.parent(), executable.parent());
+        #[cfg(windows)]
+        assert_eq!(path.file_name().expect("nombre"), "vantare-storage.exe");
+        #[cfg(not(windows))]
+        assert_eq!(path.file_name().expect("nombre"), "vantare-storage");
+    }
 
     #[test]
     fn waits_follow_the_source_clock_without_delaying_stop_or_legacy_sources() {

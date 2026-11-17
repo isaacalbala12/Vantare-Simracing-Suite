@@ -171,3 +171,14 @@ mod tests {
         std::fs::remove_file(path).expect("cleanup");
     }
 }
+
+#[cfg(test)]
+mod hub_authority_tests {
+    use super::*;
+    #[test]
+    fn hub_qa_signature_never_changes_the_legacy_authority() {
+        let signed=sign(br#"{"schema":2,"product":"vantare-hub"}"#,&SigningKey::from_bytes(&[42;32])).unwrap();
+        assert!(verify(&signed).is_err());
+        assert_eq!(verify_hub_update(&signed).is_ok(),cfg!(feature="hub-update-qa"));
+    }
+}

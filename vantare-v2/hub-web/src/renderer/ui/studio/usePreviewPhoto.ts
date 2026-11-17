@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type {
+  CoreStatus,
   OverlayInstance,
   StudioView,
 } from "../../../contract/generated/contract";
@@ -36,6 +37,7 @@ type Photo = {
 // the latest selection can be sent; its pixels and announcements are discarded.
 export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
   const { client, issue } = useHost();
+  const cache = useQueryClient();
   const { execute } = useStudio();
   const { data: core = offline } = useQuery({
     queryKey: coreKey,
@@ -129,8 +131,21 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
       key,
       retrying: !!last && last.regeneration !== regeneration,
     });
-    const valid = () =>
-      alive.current && serial.current === token && currentKey.current === key;
+    const valid = () => {
+      // Query observers notify React asynchronously; authority may already have
+      // changed in the cache before the component gets its next render.
+      const authority = cache.getQueryData<CoreStatus>(coreKey);
+      return (
+        alive.current &&
+        serial.current === token &&
+        currentKey.current === key &&
+        authority?.accountGeneration === core.accountGeneration &&
+        !authority?.live &&
+        authority?.rights === "connected" &&
+        authority.access.verified &&
+        !authority.access.blocked
+      );
+    };
     const run = async () => {
       if (!valid()) return;
       active.current = true;
@@ -199,6 +214,7 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
     key,
     view.revision,
     execute,
+    cache,
   ]);
 
   return {

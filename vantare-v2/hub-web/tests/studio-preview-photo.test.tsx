@@ -629,7 +629,9 @@ it("describes a photo reduced to 68 percent without upscaling or another request
   await mount();
   await photoReady();
   expect(
-    stage().getByText("338 × 304 px · reducida al 68 %", { exact: true }),
+    await stage().findByText("338 × 304 px · reducida al 68 %", {
+      exact: true,
+    }),
   ).toBeTruthy();
   expect(photos()).toHaveLength(1);
 });

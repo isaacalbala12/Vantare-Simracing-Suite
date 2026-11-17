@@ -62,11 +62,31 @@ fn wal_path(path: &Path) -> PathBuf {
     wal.into()
 }
 
+fn cleanup_temporary(temporary: &Path) {
+    // Solo el alias y directorio reservados por esta creación; nunca un barrido.
+    if let Err(error) = std::fs::remove_file(temporary) {
+        let _written = writeln!(
+            io::stderr(),
+            "limpiar temporal {}: {error}",
+            temporary.display()
+        );
+    }
+    if let Some(directory) = temporary.parent()
+        && let Err(error) = std::fs::remove_dir(directory)
+    {
+        let _written = writeln!(
+            io::stderr(),
+            "limpiar directorio temporal {}: {error}",
+            directory.display()
+        );
+    }
+}
+
 fn create_database(path: &Path) -> Result<()> {
     require_missing(path)?;
     require_missing(&wal_path(path))?;
     let temporary = temporary_database(path)?;
-    // Ante error o caída se conserva el temporal para diagnóstico, sin reparación.
+    // Ante fallo no recuperable o caída se conserva el temporal, sin reparación.
     let store = Store::open(&temporary, false)?;
     store.connection.execute_batch("CHECKPOINT")?;
     store.connection.close().map_err(|(_, error)| error)?;
@@ -77,18 +97,23 @@ fn create_database(path: &Path) -> Result<()> {
         .sync_all()?;
     #[cfg(test)]
     tests::creation_step("before-publish");
-    require_missing(&wal_path(path))?;
     // hard_link crea el destino de forma atómica y falla si YA existe,
     // incluso si otro creador ganó después de symlink_metadata. A diferencia
     // de rename en Unix, nunca reemplaza. No se copia ni renombra una DB viva.
     // Si el volumen no soporta enlaces duros, falla conservando el temporal.
-    std::fs::hard_link(&temporary, path)?;
+    if let Err(error) =
+        require_missing(&wal_path(path)).and_then(|()| std::fs::hard_link(&temporary, path))
+    {
+        if error.kind() == io::ErrorKind::AlreadyExists {
+            cleanup_temporary(&temporary);
+        }
+        return Err(error.into());
+    }
     #[cfg(test)]
     tests::creation_step("after-publish");
-    // Retirar el alias ANTES de volver a abrir RW: nunca dos nombres vivos
-    // con WAL distintos para el mismo fichero. Si falla, no se abre el writer.
-    std::fs::remove_file(&temporary)?;
-    std::fs::remove_dir(temporary.parent().ok_or("temporal sin directorio")?)?;
+    // Publicar ya tuvo éxito: la limpieza es de mejor esfuerzo y no impide RW.
+    // Si queda un alias, es diagnóstico; no se abre como otra grabación.
+    cleanup_temporary(&temporary);
     Ok(())
 }
 

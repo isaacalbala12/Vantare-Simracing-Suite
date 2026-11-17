@@ -14,7 +14,13 @@ fn main() {
     vantare_services::diagnostics::install_panic_hook("vantare-storage");
     if let Err(error) = execute() {
         let _written = writeln!(std::io::stderr(), "almacenamiento: {error}");
-        std::process::exit(1);
+        let collision = std::env::args_os()
+            .nth(2)
+            .is_some_and(|mode| mode == "--create")
+            && error
+                .downcast_ref::<io::Error>()
+                .is_some_and(|error| error.kind() == io::ErrorKind::AlreadyExists);
+        std::process::exit(if collision { 3 } else { 1 });
     }
 }
 

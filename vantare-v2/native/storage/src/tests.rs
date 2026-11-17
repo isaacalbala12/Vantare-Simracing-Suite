@@ -819,3 +819,28 @@ fn resume_after_publication_crash_uses_the_final_name_and_serves_data() {
         "resume no barre alias huérfanos: corresponde a G4a"
     );
 }
+
+#[test]
+fn non_collision_publication_failure_keeps_the_temporary_database_for_diagnosis() {
+    let db = Database::new();
+    let mut child = creation_fixture(&db.0, "before-publish");
+    let root = db.0.parent().unwrap();
+    let temporary = database_files(root)
+        .into_keys()
+        .find(|path| path.components().count() == 2)
+        .unwrap();
+    let alias = root.join(temporary);
+    let retained = alias.with_file_name("retained.duckdb");
+    let original = std::fs::read(&alias).unwrap();
+    // Fallo real NotFound de hard_link, distinto de perder el nombre destino.
+    std::fs::rename(&alias, &retained).unwrap();
+    child
+        .stdin
+        .as_mut()
+        .unwrap()
+        .write_all(b"continue\n")
+        .unwrap();
+    assert!(!child.wait().unwrap().success());
+    assert!(!db.0.exists());
+    assert_eq!(std::fs::read(retained).unwrap(), original);
+}

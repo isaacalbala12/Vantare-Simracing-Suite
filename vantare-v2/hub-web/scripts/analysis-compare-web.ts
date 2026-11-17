@@ -544,13 +544,22 @@ export async function checkAnalysisComparison(
           assert.equal(
             await rows
               .nth(1)
-              .evaluate(
-                (node) =>
+              .evaluate((node) => {
+                const css = getComputedStyle(node);
+                const scale =
+                  Number.parseFloat(
+                    getComputedStyle(document.documentElement).zoom,
+                  ) * devicePixelRatio;
+                // Like the Studio QA, account for Chromium rounding the Hub's
+                // 2 px outline to whole device pixels at CSS zoom.
+                const paintedWidth = Math.floor(2 * scale) / scale;
+                return (
                   document.activeElement === node &&
                   node.matches(":focus-visible") &&
-                  getComputedStyle(node).outlineStyle !== "none" &&
-                  Number.parseFloat(getComputedStyle(node).outlineWidth) >= 2,
-              ),
+                  css.outlineStyle !== "none" &&
+                  Number.parseFloat(css.outlineWidth) >= paintedWidth - 0.02
+                );
+              }),
             true,
             "Change rows need visible keyboard focus",
           );

@@ -300,18 +300,17 @@ fn rejects_file_links_including_a_swap_at_open_without_reading_the_target() {
     );
 }
 #[test]
-fn checks_the_opened_handle_size_even_if_the_checked_path_was_small() {
+fn opened_handle_remains_authoritative_after_atomic_path_replacement() {
     let owned = Directory::new();
     let path = owned.0.join("recording-status.json");
     fs::write(&path, serde_json::to_vec(&core()).unwrap()).unwrap();
-    let oversized = owned.0.join("oversized.json");
-    fs::write(&oversized, vec![b' '; usize::try_from(LIMIT + 1).unwrap()]).unwrap();
-    // No bytes may be read from an oversized handle, even if a valid path was checked.
-    assert!(
-        read_with(&owned.0, &BTreeMap::new(), |_| {
-            fs::File::open(&oversized)
-        })
-        .is_none()
-    );
-    assert!(read(&owned.0, &BTreeMap::new()).is_some());
+    let status = read_with(&owned.0, &BTreeMap::new(), |path| {
+        let file = open_status(path)?;
+        fs::rename(path, owned.0.join("previous.json")).unwrap();
+        fs::write(path, vec![b' '; usize::try_from(LIMIT + 1).unwrap()]).unwrap();
+        Ok(file)
+    })
+    .expect("read metadata and bytes from the original handle, not its replaced path");
+    assert_eq!(status.started_at_ms, 42);
+    assert!(read(&owned.0, &BTreeMap::new()).is_none());
 }

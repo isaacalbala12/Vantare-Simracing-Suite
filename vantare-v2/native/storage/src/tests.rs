@@ -647,8 +647,15 @@ fn two_publishers_racing_after_initialization_never_replace_the_winner() {
 #[test]
 fn explicit_resume_requires_an_existing_valid_prefix_and_preserves_bad_originals() {
     let db = Database::new();
-    assert!(serve_mode(&db.0, OpenMode::Resume, &b""[..], Vec::new()).is_err());
-    assert!(!db.0.exists());
+    for mode in [OpenMode::ReadOnly, OpenMode::Resume] {
+        let error = serve_mode(&db.0, mode, &b""[..], Vec::new()).unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<io::Error>().unwrap().kind(),
+            io::ErrorKind::NotFound
+        );
+        assert_eq!(inspection::open_error(error.as_ref())[1], "missing");
+        assert!(!db.0.exists());
+    }
     std::fs::write(&db.0, b"not a database").unwrap();
     for mode in [OpenMode::Create, OpenMode::Resume] {
         assert!(serve_mode(&db.0, mode, &b""[..], Vec::new()).is_err());

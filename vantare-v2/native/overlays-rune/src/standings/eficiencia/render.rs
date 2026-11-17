@@ -374,7 +374,6 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
         nodes.push(
             rect(c.width + pose.pit_dx, y, w, h)
                 .key(format!("pit-badge-{index}"))
-                .opacity(alpha)
                 .corners([0.0, s.geometry.pit_radius, s.geometry.pit_radius, 0.0])
                 .shadow(
                     0.0,
@@ -383,7 +382,8 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
                 )
                 .fill(color(s.colors.gold.0, 1.0))
                 .border_sides([2.0, 2.0, 2.0, 1.0], color(s.colors.pit_ink.0, 1.0))
-                .child(label(&format!("pit-label-{index}"), "PIT", tx, base, font)),
+                .child(label(&format!("pit-label-{index}"), "PIT", tx, base, font))
+                .dim(alpha),
         );
     }
     nodes

@@ -257,6 +257,7 @@ fn best_marker_retargets_for_220_ms_and_pit_channels_for_200_ms() {
 }
 #[test]
 fn reduced_always_returns_idle_without_even_a_notice_expiry_wake() {
+    let _fonts=rune::text::with_families("Inter W400","Inter W400");
     let settings = Settings::eficiencia();
     let mut w = Eficiencia::new(&settings, Preferences::default());
     let mut photo = vantare_ipc::snapshot_from_json(include_str!(
@@ -290,6 +291,7 @@ fn reduced_always_returns_idle_without_even_a_notice_expiry_wake() {
 }
 #[test]
 fn painted_effects_copy_gpui_hex_geometry_glyph_and_layer_order() {
+    let _fonts=rune::text::with_families("Inter W400","Inter W400");
     let mut v = paint_tests::visual();
     let mut p = (*v.content_plan).clone();
     p.rows.truncate(1);
@@ -329,9 +331,11 @@ fn painted_effects_copy_gpui_hex_geometry_glyph_and_layer_order() {
     near(named("best-marker").rect[1],46.0);
     assert_eq!(named("battle-underline").rect,[68.0,70.0,184.0,2.0]);
     assert_eq!(named("best-sweep").rect,[352.0,44.0,88.0,28.0]);
-    for (rect,angle,hex,alpha) in [([68.0,70.0,184.0,2.0],90.0,"#e2c568",0.55),
-        ([352.0,44.0,88.0,28.0],100.0,"#b990e8",0.0)] {
-        let grad=rt.instances.iter().find(|i|i.rect==rect&&i.params[3]==1.0&&i.uv[0]!=0.0).unwrap();
+    for (rect,angle,hex,alpha,stop,end_alpha) in [([68.0,70.0,184.0,2.0],90.0,"#e2c568",0.55,0.8,0.10),
+        ([352.0,44.0,88.0,28.0],100.0,"#b990e8",0.0,0.5,0.45*0.7)] {
+        let grad=rt.instances.iter().find(|i|i.rect==rect&&i.params[3]==stop&&i.uv[0]!=0.0).unwrap();
+        assert_eq!(grad.params[0],0.0);
+        assert_eq!(grad.border,rune::color::hex(hex).unwrap().premul(end_alpha));
         near(grad.uv[0].atan2(-grad.uv[1]).to_degrees().rem_euclid(360.0),angle);
         assert_eq!(grad.fill,rune::color::hex(hex).unwrap().premul(alpha));
     }
@@ -363,6 +367,7 @@ fn battle_prefers_the_player_over_a_smaller_gap_and_rejects_invalid_candidates()
 }
 #[test]
 fn loss_chip_and_pit_offset_glow_are_painted_in_the_literal_box() {
+    let _fonts=rune::text::with_families("Inter W400","Inter W400");
     let mut v=paint_tests::visual(); let mut p=(*v.content_plan).clone();p.rows.truncate(1);p.status=Status::Ready;
     Arc::make_mut(&mut p.rows[0].row).in_pits=true;v.ingest(Arc::new(p.clone()));
     let mut frame=Frame::default();frame.vis.insert(p.rows[0].id,Pose{flash:1.0,flash_up:false,chip:Some((-1,1.0)),
@@ -370,7 +375,7 @@ fn loss_chip_and_pit_offset_glow_are_painted_in_the_literal_box() {
     let size=v.size();let mut rt=paint_tests::paint(v,Language::En);crate::testdata::assert_inside_window(&mut rt,size);
     let es=rt.elements();let named=|key:&str|es.iter().find(|e|e.key.as_deref()==Some(key)).unwrap();
     assert_eq!(named("position-flash").fill.hex(),"#d953601f");assert_eq!(named("position-chip").text.as_deref(),Some("−1"));
-    assert_eq!(named("pit-badge-0").rect,[438.0,44.0,34.0,26.0]);near(named("pit-badge-0").opacity,0.5);
+    assert_eq!(named("pit-badge-0").rect,[438.0,44.0,34.0,26.0]);near(named("pit-badge-0").opacity,1.0); // dim afecta las primitivas, no la opacidad de grupo.
     assert!(rt.instances.iter().any(|i|i.params[1]==1.0&&i.params[2]==2.0&&i.fill==rune::color::hex("#e2c568").unwrap().premul(0.11)));
 }
 
@@ -389,4 +394,15 @@ fn resume_samples_expired_channels_even_when_the_board_arc_is_unchanged() {
     assert!(Arc::ptr_eq(&board,&w.visual.content_plan.board));
     assert_ne!(*frozen,*w.visual.frame);near(w.visual.frame.row(photo.state.cars[0].id).offset,0.0);
     assert!(w.motion.next_wake(3.0,60).is_none());
+}
+
+#[test]
+fn row_fade_multiplies_each_gpui_primitive_without_an_opacity_group() {
+    let _fonts=rune::text::with_families("Inter W400","Inter W400");
+    let mut v=paint_tests::visual();Arc::make_mut(&mut v.config).study="default".into();
+    let mut p=(*v.content_plan).clone();p.rows.truncate(1);p.status=Status::Ready;
+    Arc::make_mut(&mut p.rows[0].row).is_player=false;v.ingest(Arc::new(p.clone()));
+    let mut frame=Frame::default();frame.vis.insert(p.rows[0].id,Pose{alpha:0.5,..Pose::default()});v.frame=Arc::new(frame);
+    let mut rt=paint_tests::paint(v,Language::Es);let size=(474.0,364.0);crate::testdata::assert_inside_window(&mut rt,size);
+    assert!(rt.instances.iter().any(|i|i.rect==[0.0,43.0,440.0,30.0]&&i.fill==rune::color::hex("#ffffff").unwrap().premul(0.03*0.5)));
 }

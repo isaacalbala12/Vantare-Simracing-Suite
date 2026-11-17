@@ -131,7 +131,7 @@ Los colores se comparan con hex sRGB literal. Tras #2496 (c58a05690), el dorsal
 es #a5a5abff, no el #d2d2d6ff que producía el helper anterior: el oráculo no cambia.
 Sin reloj de animación en E3, con o sin movimiento reducido. E5 conecta Tween compartido.
 E4 retira las marcas dead_code puntuales al portar pies/bandas/ausencia/rail;
-E6 añade flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
+E6 conecta flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
 testers hasta completar E5/E6 y la comparación física de píxeles pendiente.
 
 ## Revisión E3 en el mismo PR
@@ -215,7 +215,7 @@ Motion::update: Visual::ingest conserva same_visible, como eficiencia.rs:50–70
 Sin canales, Frame no recorre las presencias; el reposo reutiliza el mismo Arc.
 Los tests usan Runtime CPU, pin y assert_inside_window durante FLIP/ghosts;
 el reloj acaba exactamente al final de sus canales y reducido nunca lo arma.
-No se modifica Motion de Vantare ni sus tests. E6 sigue pendiente (efectos y PIT).
+No se modifica Motion de Vantare ni sus tests. Los efectos y PIT se conectan en E6.
 La entrada de handoff de E5 se entrega en el cuerpo del futuro PR, por orden de Isaac.
 
 Seguimientos de revisión E5: GPUI sigue alimentando Motion::update con las
@@ -242,3 +242,42 @@ sin ejecutarlo. Política de distribución compilada con debug-assertions=no:
 5 tests PASS. Clasificadores/tokens/licencias: 51 tests Python, generador --check
 y auditoría de dependencias PASS. Comparación física y CI Windows pendientes.
 E5 permanece local hasta la fusión de E4; el target propio se borra al terminar.
+
+## E6: efectos de Eficiencia
+
+| GPUI | Rune E6 |
+| --- | --- |
+| derive_events/priority (motion.rs:209–309) | Motion: mismas prioridades, clases, umbral de mejora 0,0005 y continuity de E5 |
+| select_battle (321–386) | Función literal, clase normalizada, class_position consecutiva, gaps y preferencia/retención |
+| admisión/clear_notice (597–641,704–708) | Máximo tres avisos, caducidad 1200, expulsión por prioridad y borrado conjunto de flash/chip |
+| targets batalla/PIT/rombo (643–691) | Tween compartido: EASE 200/200/220 ms; semilla final sin animar |
+| frame (741–782) | Canales independientes de flash/chip/sweep/battle/best_marker/pit_alpha/pit_dx en Pose |
+| wake (804–830) | Frame con canales activos/barrido; At con solo aviso quieto; Idle tras caducidad |
+| eficiencia.rs:111–117 | Reducido: Frame de Motion nuevo, Idle SIEMPRE, sin despertar de caducidad |
+| view.rs:1036–1050,1222–1246 | Flash de fila bajo filetes; chip y batalla en DriverName, con fuentes/posiciones literales |
+| view.rs:1325–1362,1384–1431 | Barrido bajo cápsula/texto y rombo sobre el tiempo BestLap; misma máscara/degradados |
+| view.rs:1714–1786 | PIT hereda alfa de fila y canal PIT, dx −5↔0, mismo rail/glow/bordes de E4 |
+
+El flash Eficiencia CRECE de 0 a 1 durante 500 ms EASE_OUT y permanece con su aviso
+hasta 1200 ms, como GPUI; no se confunde con el flash propio de Vantare. El chip
+crece 180 ms EASE y conserva signo «+»/«−». Pose guarda places numérico y el pintor
+forma el mismo texto al dibujar. Sweep usa el progreso EASE_OUT, dos degradados
+100° bajo una máscara inset 1, y acaba 800 ms después del aviso. Rombo «◆» de 6 px.
+Chip, barrido, subrayado de batalla, rombo y rail PIT son del pintor Eficiencia;
+no se añaden al pintor Vantare ni se cambian sus tests. Lead/Pit se conservan
+como variantes de GPUI: solo se construyen al restaurar avisos entre Looks en
+GPUI, ruta que Rune no tiene. Sus ramas se prueban y llevan allow(dead_code)
+limitado a esas dos variantes, sin inventar eventos nuevos en derive_events.
+El reposo vuelve a compartir Arc; sequence no decide la proyección ni repintado.
+Al salir de pausa se muestrea el frame final incluso con el mismo Board, como
+Visual::frame del host GPUI; pausa y reducido siguen sin frames de animación.
+Handoff y evidencia final de E6 se entregan en el cuerpo del futuro PR, sin
+editar el handoff vivo. E6 sigue solo local hasta la fusión de E5 #2511.
+
+## Erratas del plan/inventario E6 contrastadas con GPUI
+
+- Paso 7 decía un despertar de caducidad en reducido; GPUI devuelve Wake::Idle SIEMPRE en eficiencia.rs:111–117 (decisión del orquestador).
+- Paso 3/inventario decía pico del barrido a 320 ms; GPUI aplica EASE_OUT antes de los keyframes, así que el pico ocurre cuando EASE_OUT(t)=0,4, aproximadamente212,864 ms; a 320 ms ya ha pasado el pico (motion.rs:764–778).
+- Inventario indicaba glifo «?»; GPUI dibuja «◆» en view.rs:1357–1362.
+- La cantera usa límites de batalla 2,5/1 s (y+0,5 retenido); GPUI usa 0,8 nuevo/1,2 retenido, con class_position consecutiva y diferencia de gaps, en motion.rs:321–386. Se copia GPUI completo.
+- Inventario llama a la batalla subrayado del gap y al chip texto junto a posición; GPUI pinta ambos dentro de DriverName, en view.rs:1222–1246.

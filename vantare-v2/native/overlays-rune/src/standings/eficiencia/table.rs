@@ -143,12 +143,11 @@ fn row_layer(v: &Visual, row: &Row, top: f32, pose: super::motion::Pose, last: b
     let y = top + pose.offset * s.geometry.row_height / model::ROW_HEIGHT;
     let mut layer = rect(0.0, y, v.config.width, s.geometry.row_height)
         .key(format!("efficiency-row-{}", row.id.0));
-    if pose.alpha < 0.999 {
-        layer = layer.opacity(pose.alpha.max(0.0));
-    }
     for node in paint_row(v, row, pose, last) {
         layer = layer.child(node);
     }
+    // GPUI with_opacity multiplica cada primitiva, sin componer un grupo.
+    if pose.alpha < 0.999 {layer=layer.dim(pose.alpha.max(0.0));}
     layer
 }
 fn column_label(v: &Visual, language: Language, column: Column, x: f32, w: f32) -> El {

@@ -482,10 +482,17 @@ impl Motion {
     }
     fn admit(&mut self, event: Event, now: f64) {
         let priority = event.kind.priority();
-        if !self.notices.contains_key(&event.row_id) && self.notices.len() >= 3
-            && let Some((id, lowest)) = self.notices.iter().min_by_key(|(_,n)|n.priority).map(|(id,n)|(*id,n.priority))
+        if !self.notices.contains_key(&event.row_id)
+            && self.notices.len() >= 3
+            && let Some((id, lowest)) = self
+                .notices
+                .iter()
+                .min_by_key(|(_, n)| n.priority)
+                .map(|(id, n)| (*id, n.priority))
         {
-            if lowest >= priority {return;}
+            if lowest >= priority {
+                return;
+            }
             self.clear_notice(id);
         }
         if self

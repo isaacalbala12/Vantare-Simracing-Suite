@@ -69,8 +69,11 @@ fn pause_retains_live_projection_and_adds_only_the_twenty_two_pixel_host_band() 
     assert!(Arc::ptr_eq(&plan, &widget.visual.content_plan));
     assert_eq!(widget.size().height, live.height + 22.0);
     assert!(!widget.update(&photo, 0.2).build);
-    assert!(widget.policy(true, 20, 0.3).build,"reducido retira el rombo de E6, como Motion::new().frame en GPUI");
-    assert!(!widget.policy(true,20,0.4).build);
+    assert!(
+        widget.policy(true, 20, 0.3).build,
+        "reducido retira el rombo de E6, como Motion::new().frame en GPUI"
+    );
+    assert!(!widget.policy(true, 20, 0.4).build);
 }
 
 #[test]

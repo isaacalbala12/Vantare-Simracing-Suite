@@ -259,7 +259,7 @@ fn animated_rows_and_ghosts_stay_inside_the_window() {
                 let ghost = ghost.expect("el fantasma se pinta durante los 200 ms");
                 close(ghost.rect[1], v.plan.table_top + v.plan.head_row + 60.0);
                 close(
-                    ghost.opacity,
+                    v.frame.ghosts[0].pose.alpha,
                     1.0 - gpui_bezier([0.0, 0.0, 0.58, 1.0], ((clock - 1.0) / 0.2) as f32),
                 );
             } else {

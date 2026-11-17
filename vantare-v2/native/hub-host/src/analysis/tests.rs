@@ -97,7 +97,7 @@ mod real {
     use super::*;
     use std::os::windows::fs::OpenOptionsExt;
     use windows_sys::Win32::Storage::FileSystem::FILE_WRITE_ATTRIBUTES;
-    fn exe() -> PathBuf {
+    pub(super) fn exe() -> PathBuf {
         let path = std::env::current_exe()
             .unwrap()
             .parent()
@@ -119,7 +119,7 @@ mod real {
             .spawn()
             .unwrap()
     }
-    fn fixture(db: &Path, car: u32, chunks: u64, gap: bool) {
+    pub(super) fn fixture(db: &Path, car: u32, chunks: u64, gap: bool) {
         fixture_ids(
             db,
             &vec![(1, 3, car); usize::try_from(chunks).unwrap()],
@@ -358,7 +358,7 @@ mod real {
             );
         }
     }
-    fn status(reader: &Reader) -> Value {
+    pub(super) fn status(reader: &Reader) -> Value {
         json!([
             "status",
             reader.summary.watermark,
@@ -369,10 +369,14 @@ mod real {
     fn plot_chunk(index: u64, offset: usize) -> Value {
         json!({"index":index,"offset":offset,"epoch":1,"session":3,"car":7,"lap":5,"gap":false,"samples":[{"speed":50.0}]})
     }
-    fn inject(reader: &mut Reader, frames: Vec<Result<Value>>) {
+    pub(super) fn inject(reader: &mut Reader, frames: Vec<Result<Value>>) {
         inject_with_delay(reader, frames, Duration::ZERO);
     }
-    fn inject_with_delay(reader: &mut Reader, frames: Vec<Result<Value>>, delay: Duration) {
+    pub(super) fn inject_with_delay(
+        reader: &mut Reader,
+        frames: Vec<Result<Value>>,
+        delay: Duration,
+    ) {
         let (sender, receiver) = mpsc::channel();
         let original = std::mem::replace(&mut reader.output, receiver);
         let pump = reader.pump.take().unwrap();
@@ -838,3 +842,7 @@ mod real {
         }
     }
 }
+
+#[cfg(windows)]
+#[path = "session_tests.rs"]
+mod session_tests;

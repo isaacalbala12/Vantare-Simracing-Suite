@@ -6,6 +6,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as t } from "../src/renderer/i18n/analysis.es.ts";
+import { t as shellText } from "../src/renderer/i18n/es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { checkAnalysisDensity } from "./check-analysis-density.ts";
 import { webQaPreview } from "./web-qa.ts";
@@ -104,8 +105,9 @@ try {
             );
           }
           if (width === 900) {
-            const toggle = page.getByRole("button", {
-              name: /^(Contraer|Expandir) panel derecho$/,
+            const toggle = page.locator(".v-titlebar").getByRole("button", {
+              name: shellText("shell.railToggle"),
+              exact: true,
             });
             if ((await toggle.getAttribute("aria-expanded")) === "true")
               await toggle.click();

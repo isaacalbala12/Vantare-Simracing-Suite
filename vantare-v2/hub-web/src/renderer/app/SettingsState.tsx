@@ -31,6 +31,7 @@ function settingsReply(reply: Reply): SettingsView {
 }
 interface State {
   view?: SettingsView;
+  recordingAtStart?: boolean;
   loading: boolean;
   pending: boolean;
   field?: SettingsPatch["field"];
@@ -62,6 +63,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       return settingsReply(await client.request({ method: "settings.get" }));
     },
   });
+  // This provider outlives navigation; Privacy may unmount between visits.
+  const [recordingAtStart, setRecordingAtStart] = useState<boolean>();
+  useEffect(() => {
+    if (query.data)
+      setRecordingAtStart((initial) => initial ?? query.data.general.grabacion);
+  }, [query.data]);
   const mutation = useMutation({
     mutationFn: async (
       action: { patch: SettingsPatch } | { retry: true } | { discard: true },
@@ -149,6 +156,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }
   const state: State = {
     view: query.data,
+    recordingAtStart,
     loading: query.isPending,
     pending: mutation.isPending,
     field:

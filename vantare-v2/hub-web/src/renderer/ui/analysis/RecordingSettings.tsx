@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useSettings } from "../../app/SettingsState";
 import { analysisText as t } from "../../i18n/analysis.es";
 import { Button } from "../Button";
@@ -7,9 +6,8 @@ import { Switch } from "../Forms";
 import { ActionGroup } from "../ShellLayout";
 export function RecordingSettings() {
   const state = useSettings();
-  const [initial, setInitial] = useState(state.view?.general.grabacion);
+  const initial = state.recordingAtStart;
   const value = state.view?.general.grabacion;
-  if (initial === undefined && value !== undefined) setInitial(value);
   return (
     <SettingGroup number={2} title={t.recordingGroup}>
       <SettingRow label={t.record} description={t.recordHelp}>
@@ -31,7 +29,9 @@ export function RecordingSettings() {
           actions={
             <ActionGroup>
               <Button
-                disabled={state.pending || !!state.error}
+                disabled={
+                  state.pending || state.view?.protected || !!state.error
+                }
                 onClick={() =>
                   state.update({ field: "grabacion", value: initial })
                 }

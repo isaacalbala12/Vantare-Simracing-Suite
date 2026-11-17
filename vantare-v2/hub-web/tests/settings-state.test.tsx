@@ -11,14 +11,19 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   CoreStatus,
   LauncherView,
 } from "../src/contract/generated/contract";
 import { AccountProvider } from "../src/renderer/app/AccountState";
-import { coreKey, HostProvider, useHost } from "../src/renderer/app/Host";
+import {
+  coreKey,
+  HostProvider,
+  settingsKey,
+  useHost,
+} from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import {
   SectionRailSlot,
@@ -47,6 +52,7 @@ import { Privacy } from "../src/renderer/screens/settings/Privacy";
 import { Settings } from "../src/renderer/screens/settings/Settings";
 import { Shortcuts } from "../src/renderer/screens/settings/Shortcuts";
 import { Updates } from "../src/renderer/screens/settings/Updates";
+import { RecordingSettings } from "../src/renderer/ui/analysis/RecordingSettings";
 import {
   ToastProvider,
   ToastViewport,
@@ -1692,4 +1698,77 @@ it("saves recording through the settings CAS independently of analysis access an
   expect(
     screen.queryByText("Se apagará la próxima vez que arranque Vantare"),
   ).toBeNull();
+});
+
+function RecordingReturn() {
+  const [visible, setVisible] = useState(true);
+  return (
+    <>
+      <button type="button" onClick={() => setVisible(!visible)}>
+        Toggle recording settings
+      </button>
+      {visible && <RecordingSettings />}
+    </>
+  );
+}
+it("keeps the next-start recording notice and its undo value after leaving Privacy", async () => {
+  const hook = mount("ajustes-base", <RecordingReturn />);
+  await loaded(hook);
+  const recording = await screen.findByRole("switch", {
+    name: "Grabar mis vueltas",
+  });
+  fireEvent.click(recording);
+  await waitFor(() =>
+    expect(hook.result.current.view?.general.grabacion).toBe(false),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Toggle recording settings" }),
+  );
+  expect(
+    screen.queryByText("Se apagará la próxima vez que arranque Vantare"),
+  ).toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Toggle recording settings" }),
+  );
+  expect(
+    screen.getByText("Se apagará la próxima vez que arranque Vantare"),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Deshacer" }));
+  await waitFor(() =>
+    expect(hook.result.current.view?.general.grabacion).toBe(true),
+  );
+  expect(
+    screen.queryByText("Se apagará la próxima vez que arranque Vantare"),
+  ).toBeNull();
+});
+it("disables recording Undo when the confirmed settings become protected", async () => {
+  const hook = mount("ajustes-base", <RecordingSettings />);
+  await loaded(hook);
+  fireEvent.click(
+    await screen.findByRole("switch", { name: "Grabar mis vueltas" }),
+  );
+  await waitFor(() =>
+    expect(hook.result.current.view?.general.grabacion).toBe(false),
+  );
+  await act(async () => {
+    caches[caches.length - 1].setQueryData(settingsKey, {
+      ...hook.result.current.view,
+      protected: true,
+    });
+  });
+  const undo = screen.getByRole("button", {
+    name: "Deshacer",
+  }) as HTMLButtonElement;
+  await waitFor(() => {
+    expect(hook.result.current.view?.protected).toBe(true);
+    expect(undo.disabled).toBe(true);
+  });
+  const before = postedMethods.filter(
+    (method) => method === "settings.update",
+  ).length;
+  await userEvent.click(undo);
+  expect(
+    postedMethods.filter((method) => method === "settings.update"),
+  ).toHaveLength(before);
+  expect(hook.result.current.view?.general.grabacion).toBe(false);
 });

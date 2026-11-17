@@ -484,3 +484,63 @@ it.each([
     expect(reads()).toBe(before + 1);
   },
 );
+
+it.each([text.retry, text.reload])(
+  "clears a resolved catalog read error after %s",
+  async (action) => {
+    const requests = vi.spyOn(Client.prototype, "request");
+    mount();
+    await screen.findByRole("button", { name: /^Editar OBS Studio/ });
+    await act(async () => {
+      await Promise.all(requests.mock.results.map((result) => result.value));
+    });
+    requests.mockRejectedValueOnce(new HostFailure({ kind: "io" }));
+    fireEvent.click(screen.getByRole("button", { name: text.reload }));
+    await screen.findByText(text.failed);
+    const fixture = (await import("../fixtures/launcher-apps.json")).default;
+    requests.mockResolvedValueOnce({
+      method: "launcher.catalog",
+      value: {
+        ...fixture,
+        apps: fixture.apps.map((app) =>
+          app.id === "obs" ? { ...app, name: "OBS recuperado" } : app,
+        ),
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    await screen.findByRole("button", { name: /^Editar OBS recuperado/ });
+    expect(screen.queryByText(text.failed)).toBeNull();
+    expect(screen.queryByRole("button", { name: text.retry })).toBeNull();
+  },
+);
+
+it("keeps an editor save error when an automatic catalog read succeeds", async () => {
+  const listeners = vi.spyOn(Client.prototype, "listen");
+  const requests = vi.spyOn(Client.prototype, "request");
+  mount();
+  await screen.findByRole("button", { name: /^Editar OBS Studio/ });
+  await act(async () => {
+    await Promise.all(requests.mock.results.map((result) => result.value));
+  });
+  const { launcherKey } = await import("../src/renderer/screens/launcher/state");
+  const current = caches[0].getQueryData<
+    import("../src/contract/generated/contract").LauncherView
+  >(launcherKey);
+  if (!current) throw Error("Launcher initial snapshot");
+  fireEvent.click(screen.getByRole("button", { name: /^Editar OBS Studio/ }));
+  const dialog = await screen.findByRole("dialog", { name: text.editor });
+  fireEvent.change(within(dialog).getByRole("textbox", { name: text.name }), {
+    target: { value: "Borrador que falla" },
+  });
+  requests.mockRejectedValueOnce(new HostFailure({ kind: "io" }));
+  fireEvent.click(within(dialog).getByRole("button", { name: text.save }));
+  await within(dialog).findByText(text.failed);
+  await act(async () => {
+    for (const [receive] of listeners.mock.calls)
+      receive({ kind: "event", event: { topic: "launcher", value: current } });
+  });
+  await act(async () => {
+    await Promise.allSettled(requests.mock.results.map((result) => result.value));
+  });
+  expect(within(dialog).getByText(text.failed)).toBeTruthy();
+});

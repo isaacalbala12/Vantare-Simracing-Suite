@@ -62,9 +62,11 @@ Reject {Assert-HubPackage $ui $receiptPath '0.0.989' ('a'*40) $false}
 [IO.File]::Delete((Join-Path $ui 'unlisted.dll'))
 # QA bytes in web assets must fail even with no EXE in the tree/archive.
 $qa=Join-Path $root 'qa/hub-ui/resources/app.asar'
-Put $qa (('x'*65533)+'VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916')
-Reject {Assert-NativeDistributionTree (Join-Path $root 'qa')}
-$archive=Join-Path $root 'qa.zip'
-New-BuildZip (Join-Path $root 'qa') $archive
-Reject {Assert-NativeDistributionArchive $archive}
+foreach($marker in @('VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','HUB_QA_DRIVER')){
+    Put $qa (('x'*65533)+$marker)
+    Reject {Assert-NativeDistributionTree (Join-Path $root 'qa')}
+    $archive=Join-Path $root ($marker+'.zip')
+    New-BuildZip (Join-Path $root 'qa') $archive
+    Reject {Assert-NativeDistributionArchive $archive}
+}
 'PASS public inventory: declared extra EXE/sidecar, sealed UI, tampering and QA ASAR'

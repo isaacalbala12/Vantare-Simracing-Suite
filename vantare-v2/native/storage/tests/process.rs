@@ -724,13 +724,16 @@ fn recorded_drive_finishes_even_when_publication_returns_error() {
         recording,
         |core| {
             if core.snapshot().sequence >= 70 {
-                Err("publication failed")
+                Err(vantare_ipc::Error::TooLarge { len: 123 })
             } else {
                 Ok(())
             }
         },
     );
-    assert_eq!(result, Err("publication failed"));
+    assert!(matches!(
+        result,
+        Err(vantare_ipc::Error::TooLarge { len: 123 })
+    ));
     let path = dir.join(format!("series-9-{}.duckdb", std::process::id()));
     let reader =
         SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &path).unwrap();
@@ -984,7 +987,7 @@ fn missing_helper_or_invalid_directory_degrades_without_stopping_photos() {
                 &AtomicBool::new(true),
                 None,
                 recording,
-                |_| Ok::<_, ()>(())
+                |_| Ok(())
             )
             .is_ok()
         );

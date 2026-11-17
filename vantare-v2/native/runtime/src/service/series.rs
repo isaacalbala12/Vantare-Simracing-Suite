@@ -76,15 +76,15 @@ impl SeriesRecording {
 
 /// Mismo bucle y resultado; el cierre se ejecuta también tras error de publicación.
 #[allow(clippy::too_many_arguments)]
-pub fn drive_core_recorded<E>(
+pub fn drive_core_recorded(
     core: &mut Core,
     adapter: &mut dyn Adapter,
     speed: f64,
     stop: &AtomicBool,
     demand: Option<&vantare_ipc::DemandSource>,
     mut recording: SeriesRecording,
-    mut publish: impl FnMut(&Core) -> Result<(), E>,
-) -> Result<(), E> {
+    mut publish: impl FnMut(&Core) -> Result<(), vantare_ipc::Error>,
+) -> Result<(), vantare_ipc::Error> {
     let result = super::drive_core_demanded(core, adapter, speed, stop, demand, |core| {
         recording.check(core);
         publish(core)

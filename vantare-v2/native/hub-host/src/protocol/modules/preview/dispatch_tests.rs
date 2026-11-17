@@ -59,3 +59,43 @@ fn full_image_response_fits_the_frame_and_oversized_envelope_is_typed() {
         }
     );
 }
+
+#[test]
+fn scene_targets_use_the_same_authority_gate_and_reject_extra_wire_fields() {
+    for (verified, blocked, live) in [
+        (false, false, false),
+        (true, true, false),
+        (true, false, true),
+        (true, false, false),
+    ] {
+        let fixture = Fixture::new();
+        let mut session = fixture.session();
+        session.current.access.verified = verified;
+        session.current.access.blocked = blocked;
+        session.current.live = live;
+        let request = serde_json::json!({"method":"preview.render","scene":"demo","scale":"1",
+            "target":{"kind":"scene","widget":"standings","sceneId":"standings-default","frame":0}});
+        let mut extra = request.clone();
+        extra["target"]["path"] = "private".into();
+        assert!(serde_json::from_value::<Request>(extra).is_err());
+        let mut pipe = Pipe::new(Vec::new());
+        preview::dispatch(
+            &mut session,
+            &mut pipe,
+            12,
+            &serde_json::from_value(request).unwrap(),
+        )
+        .unwrap();
+        let response: HostToUi = frame::Reader::default()
+            .next(&mut Pipe::new(pipe.into_inner()))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            response,
+            HostToUi::Failure {
+                id: 12,
+                error: HostError::Denied
+            }
+        );
+    }
+}

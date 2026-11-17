@@ -6,10 +6,10 @@ import type {
   StudioView,
 } from "../../../contract/generated/contract";
 import type { PreviewImage } from "../../../contract/generated/preview";
-import { isReply } from "../../../contract/modules/preview";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure } from "../../bridge/client";
 import { useStudio } from "../../screens/studio/state";
+import { decodePhoto, previewAuthority } from "./previewPhoto";
 
 export type PhotoStatus =
   | "preparing"
@@ -150,11 +150,7 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
         alive.current &&
         serial.current === token &&
         currentKey.current === key &&
-        authority?.accountGeneration === core.accountGeneration &&
-        !authority?.live &&
-        authority?.rights === "connected" &&
-        authority.access.verified &&
-        !authority.access.blocked
+        previewAuthority(authority, core.accountGeneration)
       );
     };
     const run = async () => {
@@ -172,24 +168,16 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
           scale: "1",
         });
         if (!valid()) return;
-        if (reply.method !== "preview.render" || !isReply(reply)) {
-          setPhoto({ status: "invalidInput", key });
-          return;
-        }
-        const src = `data:image/png;base64,${reply.value.pngBase64}`;
-        const image = new Image();
-        image.src = src;
-        try {
-          await image.decode();
-        } catch {
+        const decoded = await decodePhoto(reply);
+        if (!decoded) {
           if (valid()) setPhoto({ status: "invalidInput", key });
           return;
         }
         if (valid())
           setPhoto({
             status: "photo",
-            image: { width: reply.value.width, height: reply.value.height },
-            src,
+            image: { width: decoded.width, height: decoded.height },
+            src: decoded.src,
             key,
           });
       } catch (error) {

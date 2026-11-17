@@ -1,4 +1,7 @@
 export const studioCatalogText = {
+  photo: "Foto",
+  photoHelp:
+    "el widget real con datos y ajustes de ejemplo. Sin esa marca, es un dibujo orientativo.",
   moreMark: "⋯",
   catalogHelp:
     "Se añade a «Layout local» en un hueco libre. Luego lo colocas sobre el juego.",

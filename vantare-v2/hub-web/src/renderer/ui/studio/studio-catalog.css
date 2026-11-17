@@ -175,12 +175,111 @@
   opacity: 0;
 }
 .v-studio-catalog-preview {
+  position: relative;
   height: 92px;
+  flex: none;
+  width: 100%;
   border-radius: var(--radius-md);
   background: var(--ill-ground);
   display: block;
   padding: 12px;
   overflow: hidden;
+}
+.v-studio-catalog-photo {
+  position: absolute;
+  inset: 0;
+  padding: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--ill-ground);
+  animation: v-catalog-photo-in 180ms ease-out;
+}
+.v-studio-catalog-photo > img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px var(--ill-shadow));
+}
+.v-studio-catalog-photo-mark {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--edge);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.v-studio-catalog-photo-mark > svg {
+  width: 12px;
+  height: 12px;
+}
+.v-studio-catalog-photo-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-caption);
+  padding: 0 24px 6px;
+}
+.v-studio-catalog-photo-legend > .v-studio-catalog-photo-mark {
+  position: static;
+  flex: none;
+}
+.v-studio-catalog-photo-wait {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-panel);
+}
+.v-studio-catalog-photo-wait > i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-3);
+  border-top-color: var(--text-1);
+  animation: v-catalog-photo-spin 800ms linear infinite;
+}
+@keyframes v-catalog-photo-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes v-catalog-photo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-studio-catalog-photo {
+    animation: none;
+  }
+  .v-studio-catalog-photo-wait > i {
+    animation-duration: 2400ms;
+  }
+}
+[data-motion="reduced"] .v-studio-catalog-photo {
+  animation: none;
+}
+[data-motion="reduced"] .v-studio-catalog-photo-wait > i {
+  animation-duration: 2400ms;
 }
 .v-studio-catalog-preview > :is(svg, img) {
   width: 100%;

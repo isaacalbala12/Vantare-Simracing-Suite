@@ -14,7 +14,6 @@ import type {
   Reply,
   Request,
   WidgetInfo,
-  WidgetKind,
 } from "../src/contract/generated/contract";
 import {
   previewLimits,
@@ -26,7 +25,7 @@ import { HostFailure } from "../src/renderer/bridge/client";
 import { useCatalogPhotos } from "../src/renderer/ui/studio/useCatalogPhotos";
 
 const host = vi.hoisted(() => ({
-  client: { request: vi.fn() },
+  client: { request: vi.fn<(request: Request) => Promise<Reply>>() },
   issue: undefined as string | undefined,
 }));
 vi.mock("../src/renderer/app/Host", async (original) => ({
@@ -90,11 +89,19 @@ async function visible(...indices: number[]) {
   await act(async () =>
     observer(
       observed.map(
-        (target, index) =>
+        (target) =>
           ({
             target,
-            isIntersecting: indices.includes(index),
-            intersectionRatio: indices.includes(index) ? 1 : 0,
+            isIntersecting: indices.some(
+              (index) =>
+                document.querySelectorAll("[data-kind]")[index] === target,
+            ),
+            intersectionRatio: indices.some(
+              (index) =>
+                document.querySelectorAll("[data-kind]")[index] === target,
+            )
+              ? 1
+              : 0,
           }) as IntersectionObserverEntry,
       ),
       {} as IntersectionObserver,
@@ -102,7 +109,7 @@ async function visible(...indices: number[]) {
   );
 }
 function kinds() {
-  return host.client.request.mock.calls.map(([r]: [Request]) =>
+  return host.client.request.mock.calls.map(([r]) =>
     r.method === "preview.render" && r.target.kind === "catalog"
       ? r.target.widget
       : r.method,
@@ -245,7 +252,7 @@ it.each(["close", "account", "live", "disconnect", "unmount"])(
         core = { ...core, accountGeneration: "b".repeat(64) };
       if (mode === "live") core = { ...core, live: true };
       if (mode === "disconnect") {
-        core = { ...core, rights: "disconnected" };
+        core = { ...core, rights: "unavailable" };
         host.issue = "offline";
       }
       act(() => cache.setQueryData(coreKey, core));
@@ -295,14 +302,12 @@ it("decodes transparent PNGs, never announces or moves focus, and only sends pre
   expect(screen.queryByRole("status")).toBeNull();
   expect(decode).toHaveBeenCalledTimes(2);
   expect(host.client.request.mock.calls.map(([request]) => request)).toEqual(
-    cards
-      .slice(0, 2)
-      .map((widget) => ({
-        method: "preview.render",
-        target: { kind: "catalog", widget: widget.kind },
-        scene: "demo",
-        scale: "1",
-      })),
+    cards.slice(0, 2).map((widget) => ({
+      method: "preview.render",
+      target: { kind: "catalog", widget: widget.kind },
+      scene: "demo",
+      scale: "1",
+    })),
   );
 });
 it("retains the illustration for corrupt PNG or reply beyond generated limits", async () => {

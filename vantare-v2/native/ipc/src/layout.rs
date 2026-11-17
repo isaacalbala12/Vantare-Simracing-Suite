@@ -326,17 +326,11 @@ fn modified(path: &Path) -> Option<SystemTime> {
         .ok()
 }
 
-/// Cada cuántas lecturas sin cambio de mtime se comparan los bytes: cubre FS
-/// de resolución gruesa o editores que conservan la marca (~10 s a la
-/// cadencia de 500 ms del host sin releer el fichero en cada vuelta).
-const VERIFY_EVERY: u64 = 20;
-
 /// Conserva los bytes originales para detectar conflictos y el último layout válido.
 pub struct Document {
     path: PathBuf,
     bytes: Option<Vec<u8>>,
     modified: Option<SystemTime>,
-    unchanged: u64,
     layout: Layout,
     preserve_backup: bool,
 }
@@ -365,7 +359,6 @@ impl Document {
             path,
             bytes,
             modified: stamp,
-            unchanged: 0,
             layout: layout.normalized()?,
             preserve_backup,
         })
@@ -384,23 +377,16 @@ impl Document {
     /// El host deduplica sus errores; nunca se sustituye el último layout válido.
     pub fn poll(&mut self) -> Result<bool, Error> {
         let stamp = modified(&self.path);
-        if stamp == self.modified {
-            // La mtime puede redondearse o conservarse tras reemplazar el
-            // contenido: cada N lecturas se comparan los bytes para no servir
-            // overlays antiguos. Sin diferencias sigue sin releer de verdad.
-            self.unchanged = self.unchanged.wrapping_add(1);
-            if !self.unchanged.is_multiple_of(VERIFY_EVERY) {
-                return Ok(false);
-            }
-            if read(&self.path)? == self.bytes {
-                return Ok(false);
-            }
-            // Contenido distinto con la misma marca: cae a la vía normal
-            // (adoptar si parsea; error sin sustituir el último válido).
-        } else {
-            self.unchanged = 0;
+        let bytes = read(&self.path)?;
+        // La marca del fichero no basta: dos guardados seguidos pueden compartir
+        // mtime (el reloj del fichero avanza por milisegundos) y mover un widget
+        // no cambia el tamaño. Comparar el contenido cuesta una lectura de un
+        // fichero pequeño por vuelta y evita servir overlays antiguos (#2560,
+        // #1540).
+        if stamp == self.modified && bytes == self.bytes {
+            return Ok(false);
         }
-        let bytes = read(&self.path)?.ok_or(Error::Invalid("layout desaparecido"))?;
+        let bytes = bytes.ok_or(Error::Invalid("layout desaparecido"))?;
         let layout = Layout::from_json(&bytes)?;
         self.modified = stamp;
         let changed = layout != self.layout;
@@ -838,7 +824,8 @@ mod tests {
     }
 
     /// Dos reemplazos con la misma marca (FS de resolución gruesa o editor
-    /// que conserva mtime) no pueden dejar overlays antiguos (#1540).
+    /// que conserva mtime) no pueden dejar overlays antiguos: la primera
+    /// lectura ya ve el contenido nuevo (#1540, #2560).
     #[test]
     fn same_mtime_content_replacement_is_detected() {
         let dir = directory();
@@ -855,16 +842,50 @@ mod tests {
             .expect("abrir para fijar mtime")
             .set_modified(stamp)
             .expect("misma marca que el contenido anterior");
-        let mut detected = false;
-        for _ in 0..VERIFY_EVERY {
-            detected |= document.poll().expect("vigilar");
-        }
         assert!(
-            detected,
+            document.poll().expect("vigilar"),
             "reemplazo con la misma mtime deja overlays antiguos"
         );
         assert_eq!(document.layout(), &changed);
         assert!(!document.poll().expect("sin cambios tras adoptar"));
+        fs::remove_dir_all(dir).expect("limpiar");
+    }
+
+    /// Dos guardados atómicos seguidos pueden compartir marca y tamaño aunque
+    /// el contenido cambie: el reloj del fichero avanza por milisegundos. La
+    /// huella no puede depender solo de la marca (#2560).
+    #[test]
+    fn atomic_replacement_with_the_same_mtime_and_size_is_seen_on_the_first_poll() {
+        let dir = directory();
+        let path = dir.join("layout.json");
+        let mut initial = Layout::from_json(FIXTURE).expect("fixture");
+        initial.instances[0].x = 100.0;
+        let mut studio = Document::open(path.clone()).expect("estudio");
+        studio.save(&initial).expect("documento inicial");
+        let mut overlays = Document::open(path.clone()).expect("overlays");
+        let stamp = modified(&path).expect("marca observada por overlays");
+        let size = fs::metadata(&path).expect("metadatos").len();
+        let mut changed = initial.clone();
+        changed.instances[0].x = 125.0;
+        studio.save(&changed).expect("guardado atómico");
+        assert_eq!(
+            fs::metadata(&path).expect("metadatos").len(),
+            size,
+            "el guardado no cambia el tamaño del documento"
+        );
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("abrir para fijar mtime")
+            .set_modified(stamp)
+            .expect("reloj de fichero que repite la marca");
+        assert_eq!(modified(&path), Some(stamp), "misma marca");
+        assert_ne!(overlays.layout(), &changed);
+        assert!(
+            overlays.poll().expect("mostrar cambio en pista"),
+            "un guardado con la misma marca y tamaño deja overlays antiguos"
+        );
+        assert_eq!(overlays.layout(), &changed);
         fs::remove_dir_all(dir).expect("limpiar");
     }
 

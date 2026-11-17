@@ -252,12 +252,12 @@ export async function checkStudioComposition(parent: Page, base: string) {
                   await stage.evaluate(
                     (node) => getComputedStyle(node).minHeight,
                   ),
-                  "170px",
+                  "300px",
                 );
                 const bounds = await stage.boundingBox();
                 assert.ok(
-                  bounds && bounds.height >= 170,
-                  "The decorative drawing retains its useful minimum",
+                  bounds && bounds.height >= 300,
+                  "The approved photo Stage retains its 300px useful minimum",
                 );
               }
               const actions = page.locator(".v-studio-state-actions .v-button");

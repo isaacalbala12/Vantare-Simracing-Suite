@@ -10,6 +10,7 @@ export function StudioStage({ model }: { model: ReturnTypeOfStudioFocus }) {
   const canvas = view.canvas;
   return (
     <Stage
+      view={view}
       item={selected}
       name={widgetName(selected, view)}
       blocked={model.blocked}

@@ -1,4 +1,4 @@
-# Inert files only: never launches Electron, a host or a renderer.
+﻿# Inert files only: never launches Electron, a host or a renderer.
 #requires -Version 5.1
 param([Parameter(Mandatory)][string]$QaRoot)
 $ErrorActionPreference='Stop'

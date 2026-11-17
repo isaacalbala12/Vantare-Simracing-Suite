@@ -38,3 +38,30 @@ Al terminar la revisión y medición, Isaac puede eliminar exclusivamente las ra
 El paquete conserva únicamente es y en-US. RunAsNode, NodeOptions, CLI inspect y privilegios extra de file están cerrados; carga exclusiva desde asar e integridad embebida están activadas. El CDP del candidato solo existe en la compilación QA, no en distribución.
 
 La prueba de Windows 10 está en [windows-10-qa.md](windows-10-qa.md). Las cifras de rendimiento deben salir de mediciones repetidas con la cola vacía; no usar tiempos del smoke como rendimiento de producto.
+
+## P1 · Carpeta Electron versionada (VANTA-138)
+
+El build y package.ts usan VANTARE_VERSION (por defecto 0.0.0 para desarrollo;
+el builder completo debe pasar su versión antes de ambos comandos). La versión
+se escribe en package.json dentro del asar y en ProductVersion/FileVersion del
+EXE de Electron. No cambia la identidad de Windows ni el protocolo del Hub.
+
+El build emite out/main/package-build.json (out-qa para QA): versión, modo QA,
+SHA fuente, estado sucio real y huella de los archivos fuente del Hub, incluidos
+los no confirmados/no rastreados y excluidos los outputs ignorados. package.ts
+rechaza un build de otra versión, modo, commit o contenido de fuentes. Ante ese
+error hay que repetir build; no editar el recibo. No es una atestación firmada.
+
+Tras aplicar los fuses, el empaquetador relee los siete y los dos locales,
+crea los sidecars de cada EXE y calcula tamaño/SHA-256 de TODOS los recursos.
+release/package/package-inventory.json (package-qa en QA) es un recibo de tooling
+fuera de la carpeta distribuible: incluye bytes totales y de app.asar. No es un
+nuevo esquema del instalador ni su autorización de paquete. El builder de P3
+consumirá la carpeta comprobada; P1 no cambia Setup ni sustituye al GPUI.
+La comprobación de archivos rechaza ausentes, añadidos y modificaciones; enlaces
+y nombres .env se rechazan antes de leer. Los fuses no sustituyen Authenticode.
+
+P1 se verifica sin lanzar Electron. El smoke gráfico queda fuera del servidor.
+P2 medirá ZIP y reducción con esta misma salida; no se amplían topes en P1.
+Rollback: revertir el PR y reconstruir la carpeta desde el SHA anterior; no se
+ha modificado ninguna instalación, generación, cuenta ni dato de usuario.

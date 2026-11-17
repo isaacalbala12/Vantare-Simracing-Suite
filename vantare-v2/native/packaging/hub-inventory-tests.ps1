@@ -1,4 +1,4 @@
-﻿# Inert files only: never launches Electron, a host or a renderer.
+# Inert files only: never launches Electron, a host or a renderer.
 #requires -Version 5.1
 param([Parameter(Mandatory)][string]$QaRoot)
 $ErrorActionPreference='Stop'
@@ -46,17 +46,25 @@ Write-BuildJson $receiptPath $receipt
 $null=Assert-HubPackage $ui $receiptPath '0.0.989' ('a'*40) $false
 Copy-Item $ui (Join-Path $payload 'hub-ui') -Recurse
 Assert-PublicInventory $payload $inventory $files
-# M4 adds a single executable name and its sidecar, without changing the validator.
-$extra=$inventory|ConvertTo-Json -Depth 20|ConvertFrom-Json
-$extra.executables+=@('vantare-overlays-rune.exe')
-Put (Join-Path $payload 'bin/vantare-overlays-rune.exe') 'future inert executable'
-Put (Join-Path $payload 'bin/vantare-overlays-rune.exe.sha256') "$(Get-NativeHash (Join-Path $payload 'bin/vantare-overlays-rune.exe'))  vantare-overlays-rune.exe`n"
-Assert-PublicInventory $payload $extra $files
+# External Rune remains mandatory in the payload, including its exact hash sidecar.
+$rune=Join-Path $payload 'bin/vantare-overlays-rune.exe'
+$bytes=[IO.File]::ReadAllBytes($rune)
+[IO.File]::Delete($rune)
 Reject {Assert-PublicInventory $payload $inventory $files}
-Put (Join-Path $payload 'bin/vantare-overlays-rune.exe.sha256') ('0'*64)
-Reject {Assert-PublicInventory $payload $extra $files}
-[IO.File]::Delete((Join-Path $payload 'bin/vantare-overlays-rune.exe.sha256'))
-Reject {Assert-PublicInventory $payload $extra $files}
+[IO.File]::WriteAllBytes($rune,$bytes)
+$sidecar=[IO.File]::ReadAllText("$rune.sha256")
+Put "$rune.sha256" ('0'*64)
+Reject {Assert-PublicInventory $payload $inventory $files}
+[IO.File]::Delete("$rune.sha256")
+Reject {Assert-PublicInventory $payload $inventory $files}
+Put "$rune.sha256" $sidecar
+foreach($external in @('vantare-core.exe','foreign.exe')){
+    $bad=$inventory|ConvertTo-Json -Depth 20|ConvertFrom-Json
+    $bad.external_bins=@($external)
+    Reject {Assert-PublicInventory $payload $bad $files}
+    Reject {Assert-PublicBins @() $bad}
+}
+Assert-PublicInventory $payload $inventory $files
 $duplicate=$inventory|ConvertTo-Json -Depth 20|ConvertFrom-Json
 $duplicate.executables+=@('vantare-hub.exe')
 Reject {Assert-PublicInventory $payload $duplicate $files}

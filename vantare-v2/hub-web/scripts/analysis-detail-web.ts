@@ -8,16 +8,20 @@ import { analysisText as t } from "../src/renderer/i18n/analysis.es.ts";
 import { webQaPreview } from "./web-qa.ts";
 
 const output = "D:/VantareServer/evidence/analisis/p1/p1b";
-const technicalOnly = process.argv.includes("--technical-only");
+const subset = process.argv.includes("--technical-only")
+  ? "technical"
+  : process.argv.includes("--settings-only")
+    ? "settings"
+    : undefined;
 await mkdir(output, { recursive: true });
-const results: { name: string; violations: unknown[] }[] = technicalOnly
+const results: { name: string; violations: unknown[] }[] = subset
   ? JSON.parse(
       await readFile(resolve(output, "axe-summary.json"), "utf8"),
     ).filter(
-      (result: { name: string }) => !result.name.startsWith("technical-"),
+      (result: { name: string }) => !result.name.startsWith(`${subset}-`),
     )
   : [];
-if (technicalOnly) assert.equal(results.length, 60);
+if (subset) assert.equal(results.length, subset === "technical" ? 60 : 52);
 const server = await webQaPreview();
 const browser = await chromium.launch({
   executablePath: process.env.VANTARE_HUB_BROWSER,
@@ -54,7 +58,7 @@ try {
   for (const width of [1280, 900])
     for (const theme of ["dark", "light"])
       for (const [scene, sheet] of Object.entries(scenes)) {
-        if (technicalOnly && scene !== "technical") continue;
+        if (subset && !scene.startsWith(subset)) continue;
         console.log(`Captura ${scene} ${theme} ${width}`);
         await page.setViewportSize({ width, height: 900 });
         const mock =
@@ -173,10 +177,23 @@ try {
             ),
           );
         }
-        if (scene.startsWith("settings"))
+        if (scene.startsWith("settings")) {
+          if (width === 900) {
+            const toggle = page.locator(".v-titlebar").getByRole("button", {
+              name: "Contraer o ampliar información",
+              exact: true,
+            });
+            if ((await toggle.getAttribute("aria-expanded")) === "true")
+              await toggle.click();
+            await page.locator(".v-context--collapsed").waitFor();
+          }
+          await page
+            .getByRole("tab", { name: "Privacidad", exact: true })
+            .scrollIntoViewIfNeeded();
           await page
             .getByRole("switch", { name: t.record, exact: true })
             .scrollIntoViewIfNeeded();
+        }
         const name = `${scene}-${theme}-${width}`;
         const audit = await new AxeBuilder({ page })
           .include(".v-shell")
@@ -208,7 +225,7 @@ try {
           `<section><h2>${name}</h2><p>Referencia aprobada oscura (${sheet}). ${theme === "light" ? "Variante clara por tokens del Hub. " : ""}P1b: nombres sin identificar y estadísticas reducidas del contrato. Sin Comparar, mapa, cuota, borrados ni estado futuro. Los errores siguen el molde 05c y los textos aprobados; el detalle técnico se captura también desplegado.</p><div><figure><figcaption>Maqueta</figcaption><img alt="Maqueta" src="${refName}"></figure><figure><figcaption>P1b · Chromium QA · zoom 100%</figcaption><img alt="Implementación" src="${name}.png"></figure></div></section>`,
         );
       }
-  if (!technicalOnly)
+  if (!subset)
     await writeFile(
       resolve(output, "comparacion.html"),
       `<!doctype html><html lang="es"><meta charset="utf-8"><title>VANTA-133 · P1b</title><style>body{font:16px system-ui;margin:24px}section>div{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}img{width:100%}section{margin-block:40px}</style><h1>Análisis · P1b frente a maquetas aprobadas</h1>${figures.join("")}</html>`,

@@ -1,4 +1,4 @@
-//! Pintura literal de view.rs de GPUI; movimiento/efectos se conectan en E5/E6.
+//! Pintura literal de view.rs de GPUI; efectos independientes en E6.
 use super::{
     Visual,
     model::{self, Status},
@@ -335,12 +335,32 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
         s.colors.pit_ink.0,
     );
     let mut nodes = Vec::new();
-    for (index, row) in v.content_plan.rows.iter().take(p.visible_rows).enumerate() {
-        // E4: estado final del badge; E5/E6 aportan alfa y desplazamiento del Frame.
-        if !row.in_pits {
+    let rows = v
+        .frame
+        .ghosts
+        .iter()
+        .map(|g| {
+            (
+                &g.row,
+                origin + g.top * s.geometry.row_height / model::ROW_HEIGHT,
+                g.pose,
+            )
+        })
+        .chain(
+            v.content_plan
+                .rows
+                .iter()
+                .take(p.visible_rows)
+                .enumerate()
+                .map(|(i, row)| (row, origin + p.row_tops[i], v.frame.row(row.id))),
+        );
+    for (index, (row, top, pose)) in rows.enumerate() {
+        let alpha = if row.in_pits { pose.alpha } else { 0.0 };
+        if alpha <= 0.001 {
             continue;
         }
-        let top = origin + p.row_tops[index];
+        // E6 añade el canal independiente de entrada/salida de boxes.
+        let top = top + pose.offset * s.geometry.row_height / model::ROW_HEIGHT;
         let y = top + s.geometry.row_height / 2.0 - s.geometry.pit_badge_height / 2.0;
         let w = s.geometry.pit_rail_width;
         let h = s.geometry.pit_badge_height;
@@ -355,6 +375,7 @@ fn paint_pit_rail(v: &Visual) -> Vec<El> {
         nodes.push(
             rect(c.width, y, w, h)
                 .key(format!("pit-badge-{index}"))
+                .opacity(alpha)
                 .corners([0.0, s.geometry.pit_radius, s.geometry.pit_radius, 0.0])
                 .shadow(
                     0.0,

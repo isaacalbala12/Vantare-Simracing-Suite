@@ -1,5 +1,5 @@
 //! Port de paint_table/paint_column_label/paint_row/paint_cell de GPUI.
-//! Los canales de Motion y los efectos entran en E5/E6.
+//! FLIP/presencia de E5; efectos independientes en E6.
 use super::{
     Visual,
     model::{self, Align, Column, Metric, Row},
@@ -97,9 +97,14 @@ pub(super) fn paint(v: &Visual, language: Language) -> Vec<El> {
                     [(0.0, color(rgb, alpha)), (1.0, color(rgb, 0.0))],
                 ),
         );
-        nodes.push(rect(0.0, y, c.width, 1.0).fill(color(s.colors.ink.0, 0.10)));
+        nodes.push(
+            rect(0.0, y, c.width, 1.0)
+                .key(format!("class-band-top-rule-{index}"))
+                .fill(color(s.colors.ink.0, 0.10)),
+        );
         nodes.push(
             rect(0.0, y + s.geometry.class_band_height - 1.0, c.width, 1.0)
+                .key(format!("class-band-bottom-rule-{index}"))
                 .fill(color(s.colors.ink.0, 0.10)),
         );
         nodes.push(
@@ -107,24 +112,44 @@ pub(super) fn paint(v: &Visual, language: Language) -> Vec<El> {
                 .key(format!("class-band-tick-{index}"))
                 .fill(color(rgb, 1.0)),
         );
-        nodes.push(label(
-            &format!("class-band-label-{index}"),
-            &id,
-            20.0,
-            y + 18.0,
-            ink(s, s.fonts.badge_size, s.fonts.bold_weight, 0.14, rgb),
-        ));
+        if !id.is_empty() {
+            nodes.push(label(
+                &format!("class-band-label-{index}"),
+                &id,
+                20.0,
+                y + 18.0,
+                ink(s, s.fonts.badge_size, s.fonts.bold_weight, 0.14, rgb),
+            ));
+        }
+    }
+    for ghost in &v.frame.ghosts {
+        let top = body_top + ghost.top * s.geometry.row_height / model::ROW_HEIGHT;
+        nodes.push(row_layer(v, &ghost.row, top, ghost.pose, true));
     }
     for (i, row) in v.content_plan.rows.iter().take(p.visible_rows).enumerate() {
         let top = body_top + p.row_tops[i];
-        let mut layer = rect(0.0, top, c.width, s.geometry.row_height)
-            .key(format!("efficiency-row-{}", row.id.0));
-        for node in paint_row(v, row, i + 1 == p.visible_rows) {
-            layer = layer.child(node);
-        }
-        nodes.push(layer);
+        nodes.push(row_layer(
+            v,
+            row,
+            top,
+            v.frame.row(row.id),
+            i + 1 == p.visible_rows,
+        ));
     }
     nodes
+}
+fn row_layer(v: &Visual, row: &Row, top: f32, pose: super::motion::Pose, last: bool) -> El {
+    let s = &v.config.style;
+    let y = top + pose.offset * s.geometry.row_height / model::ROW_HEIGHT;
+    let mut layer = rect(0.0, y, v.config.width, s.geometry.row_height)
+        .key(format!("efficiency-row-{}", row.id.0));
+    if pose.alpha < 0.999 {
+        layer = layer.opacity(pose.alpha.max(0.0));
+    }
+    for node in paint_row(v, row, last) {
+        layer = layer.child(node);
+    }
+    layer
 }
 fn column_label(v: &Visual, language: Language, column: Column, x: f32, w: f32) -> El {
     let (c, p) = (&v.config, &v.plan);

@@ -393,6 +393,8 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
  Copy-Item -LiteralPath (Join-Path $Root 'manifiesto.json') -Destination (Join-Path $Output 'manifiesto-usado.json')
  $state=@{source_sha=$manifest.source_sha;status='running';cleaned=$false;captures=@();measurements=@()}
  try {
+  $python=Invoke-TandaProcess 'python' @('-c','import sys, PIL, numpy; print(sys.version); print(PIL.__version__); print(numpy.__version__)') (Join-Path $Output 'logs/python-preflight') 30
+  if($python.code -ne 0){throw 'BLOCKED_PYTHON: faltan Python/Pillow/numpy ya instalados; no instalar durante la tanda'}
   foreach($case in $manifest.captures){
    Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
    $id=$case.id

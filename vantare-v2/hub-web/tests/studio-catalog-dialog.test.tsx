@@ -448,8 +448,9 @@ it("shows the photo legend only after at least one catalogue photo arrives", asy
     },
   });
   if (photo?.kind !== "response") throw Error("missing mock PNG");
-  let release!: (reply: typeof photo.result) => void;
-  const pending = new Promise<typeof photo.result>((done) => {
+  const result = photo.result;
+  let release!: (reply: typeof result) => void;
+  const pending = new Promise<typeof result>((done) => {
     release = done;
   });
   const original = Client.prototype.request;
@@ -472,7 +473,7 @@ it("shows the photo legend only after at least one catalogue photo arrives", asy
       ).toBe(true),
     );
     expect(dialog.querySelector(".v-studio-catalog-photo-legend")).toBeNull();
-    await act(async () => release(photo.result));
+    await act(async () => release(result));
     await waitFor(() =>
       expect(
         dialog.querySelector(".v-studio-catalog-photo-legend")?.textContent,

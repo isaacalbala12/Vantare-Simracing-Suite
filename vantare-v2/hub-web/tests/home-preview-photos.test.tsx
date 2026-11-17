@@ -17,6 +17,7 @@ import { HostProvider, offline } from "../src/renderer/app/Host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { HomeLayout, type HomeProps } from "../src/renderer/ui/home/HomeLayout";
 import { useHomePhotos } from "../src/renderer/ui/home/useHomePhotos";
+import type { PreviewPhoto } from "../src/renderer/ui/studio/previewPhoto";
 
 let cache: QueryClient;
 let core: CoreStatus;
@@ -68,7 +69,9 @@ function readLayout(): HomeLayoutView {
   };
 }
 function Probe({ value = layout }: { value?: HomeLayoutView }) {
-  const composition = useHomePhotos(value);
+  const composition:
+    | { snapshot: StudioView; photos: Map<string, PreviewPhoto> }
+    | undefined = useHomePhotos(value);
   return (
     <div data-testid="composition">
       {composition?.snapshot.instances.map((item) => (
@@ -286,7 +289,7 @@ it("reuses exactly the last complete set across visits when only position/revisi
     .getAllByRole("img")
     .map((node) => node.getAttribute("src"));
   const count = photos().length;
-  ui.rerender(<></>);
+  ui.rerender(null);
   snapshot.revision = "b".repeat(64);
   snapshot.instances[0].x += 125;
   snapshot.instances[0].size.width += 10;
@@ -302,7 +305,7 @@ it("invalidates the complete set after a settings fingerprint changes", async ()
   const ui = mount();
   await ready();
   const count = photos().length;
-  ui.rerender(<></>);
+  ui.rerender(null);
   snapshot.revision = "c".repeat(64);
   const item = snapshot.instances[0];
   if (item.settings?.kind !== "standings") throw Error("expected Standings");
@@ -326,7 +329,7 @@ it.each(["live", "account", "disconnected"])(
     const ui = mount();
     await ready();
     const count = photos().length;
-    ui.rerender(<></>);
+    ui.rerender(null);
     const changed = structuredClone(core);
     if (mode === "live") changed.live = true;
     if (mode === "account") changed.accountGeneration = "d".repeat(64);
@@ -349,7 +352,7 @@ it.each(["unmount", "account", "live", "disconnected"])(
     );
     const ui = mount();
     await waitFor(() => expect(photos()).toHaveLength(1));
-    if (mode === "unmount") ui.rerender(<></>);
+    if (mode === "unmount") ui.rerender(null);
     else {
       const changed = structuredClone(core);
       if (mode === "account") changed.accountGeneration = "f".repeat(64);
@@ -419,7 +422,7 @@ it("invalidates the retained composition when the instance list changes", async 
   const ui = mount();
   await ready();
   const previous = photos().length;
-  ui.rerender(<></>);
+  ui.rerender(null);
   snapshot.instances[0].id = "replacement";
   snapshot.revision = "e".repeat(64);
   ui.rerender(<Probe />);

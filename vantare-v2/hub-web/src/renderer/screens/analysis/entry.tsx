@@ -6,10 +6,10 @@ import { useUi } from "../../app/UiState";
 import { analysisText as t } from "../../i18n/analysis.es";
 import {
   AnalysisCatalog,
-  AnalysisLaps,
   AnalysisNotice,
   AnalysisRail,
 } from "../../ui/analysis/Analysis";
+import { AnalysisLaps } from "../../ui/analysis/RecordingDetail";
 import { Button } from "../../ui/Button";
 import { SectionPageHeader } from "../../ui/Frame";
 export default function Analysis({
@@ -53,6 +53,7 @@ export default function Analysis({
         rail={
           <AnalysisRail
             enabled={enabled}
+            state={state}
             recording={state.rows.some((r) => r.recording)}
           />
         }

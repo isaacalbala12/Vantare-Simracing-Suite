@@ -118,10 +118,31 @@ it("opens the host mock, renders approximate reduced signals and closes its toke
     screen.getByRole("tab", { name: "Vueltas" }).getAttribute("aria-disabled"),
   ).toBeNull();
   expect(screen.getByText("≈1:51.6", { selector: "strong" })).toBeTruthy();
-  expect(screen.getAllByText("126 / 183,6 / 270").length).toBeGreaterThan(0);
-  expect(screen.getAllByText("0 / 70 / 100").length).toBeGreaterThan(0);
+  const bestRow = screen
+    .getByRole("rowheader", { name: "Vuelta 7" })
+    .closest("tr");
+  if (!bestRow) throw Error("missing best row");
+  expect(within(bestRow).getByText("mejor")).toBeTruthy();
+  expect(within(bestRow).getByText("183,6")).toBeTruthy();
+  expect(within(bestRow).getByText("70 %")).toBeTruthy();
+  expect(
+    within(bestRow)
+      .getByRole("meter", { name: "Acelerador %" })
+      .getAttribute("value"),
+  ).toBe("0.7");
+  expect(screen.getByText("de 10 vueltas completas")).toBeTruthy();
+  expect(
+    screen.getByText("10 completas · 1 con huecos · 3 sin tiempo"),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Diferencia con tu mejor vuelta" }),
+  ).toBeTruthy();
+  expect(screen.getAllByRole("img")).toHaveLength(14);
+  expect(screen.queryByRole("button", { name: "Comparar A y B" })).toBeNull();
+  expect(screen.queryByRole("tab", { name: "Comparar" })).toBeNull();
   expect(screen.getAllByText("Incompleta").length).toBeGreaterThan(0);
   expect(screen.getByText("Con huecos")).toBeTruthy();
+  expect(screen.getByText("≈ parte estimada")).toBeTruthy();
   expect(screen.getByText("Sin cerrar")).toBeTruthy();
   await userEvent.click(
     screen.getByRole("button", { name: "Volver a la lista" }),

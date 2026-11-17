@@ -5,9 +5,10 @@ import { pathToFileURL } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
 import { analysisText as t } from "../src/renderer/i18n/analysis.es.ts";
+import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { webQaPreview } from "./web-qa.ts";
 
-const output = "D:/VantareServer/evidence/analisis/p1/p1b";
+const output = "D:/VantareServer/evidence/analisis/p1/p1b/revision-visual";
 const subset = process.argv.includes("--technical-only")
   ? "technical"
   : process.argv.includes("--settings-only")
@@ -55,12 +56,21 @@ try {
   await reference.setViewportSize({ width: 1400, height: 1000 });
   const base = server.resolvedUrls?.local[0];
   assert.ok(base);
+  console.log(`Preview ${base}`);
   for (const width of [1280, 900])
     for (const theme of ["dark", "light"])
       for (const [scene, sheet] of Object.entries(scenes)) {
         if (subset && !scene.startsWith(subset)) continue;
         console.log(`Captura ${scene} ${theme} ${width}`);
-        await page.setViewportSize({ width, height: 900 });
+        await page.setViewportSize({
+          width,
+          height:
+            scene === "laps" || scene === "technical"
+              ? width === 1280
+                ? 1196
+                : 1355
+              : 900,
+        });
         const mock =
           scene === "cancelled"
             ? "opening"
@@ -194,6 +204,27 @@ try {
             .getByRole("switch", { name: t.record, exact: true })
             .scrollIntoViewIfNeeded();
         }
+        if (scene === "laps" || scene === "technical") {
+          assert.equal(await page.locator(".v-an-stats strong").count(), 4);
+          assert.equal(await page.locator(".v-an-chart svg").count(), 14);
+          assert.equal(
+            await page
+              .getByRole("button", { name: "Comparar A y B", exact: true })
+              .count(),
+            0,
+          );
+          const table = page.locator(".v-an-laps");
+          const columns = await table.locator("thead th").all();
+          let visible = 0;
+          for (const column of columns) if (await column.isVisible()) visible++;
+          assert.equal(visible, width === 900 ? 5 : 8);
+          if (width === 1280)
+            await page.getByText(t.thisRecording, { exact: true }).waitFor();
+          if (scene === "laps")
+            await page.locator(".v-shell-main").evaluate((element) => {
+              element.scrollTop = 0;
+            });
+        }
         const name = `${scene}-${theme}-${width}`;
         const audit = await new AxeBuilder({ page })
           .include(".v-shell")
@@ -222,12 +253,12 @@ try {
             .screenshot({ path: resolve(output, refName) });
         }
         figures.push(
-          `<section><h2>${name}</h2><p>Referencia aprobada oscura (${sheet}). ${theme === "light" ? "Variante clara por tokens del Hub. " : ""}P1b: nombres sin identificar y estadísticas reducidas del contrato. Sin Comparar, mapa, cuota, borrados ni estado futuro. Los errores siguen el molde 05c y los textos aprobados; el detalle técnico se captura también desplegado.</p><div><figure><figcaption>Maqueta</figcaption><img alt="Maqueta" src="${refName}"></figure><figure><figcaption>P1b · Chromium QA · zoom 100%</figcaption><img alt="Implementación" src="${name}.png"></figure></div></section>`,
+          `<section><h2>${name}</h2><p>Referencia aprobada oscura (${sheet}). ${theme === "light" ? "Variante clara por tokens del Hub. " : ""}P1b: nombres sin identificar y estadísticas reducidas del contrato. Vueltas usa el alto de referencia (1196/1355 px) para comparar la vista completa; Ajustes estrecho contrae el carril con el control real del Hub. Sin Comparar, mapa, cuota, borrados ni estado futuro. Los errores siguen el molde 05c y los textos aprobados; el detalle técnico se captura también desplegado.</p><div><figure><figcaption>Maqueta</figcaption><img alt="Maqueta" src="${refName}"></figure><figure><figcaption>P1b · Chromium QA · zoom 100%</figcaption><img alt="Implementación" src="${name}.png"></figure></div></section>`,
         );
       }
   if (!subset)
-    await writeFile(
-      resolve(output, "comparacion.html"),
+    await writeAnalysisSheet(
+      output,
       `<!doctype html><html lang="es"><meta charset="utf-8"><title>VANTA-133 · P1b</title><style>body{font:16px system-ui;margin:24px}section>div{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}img{width:100%}section{margin-block:40px}</style><h1>Análisis · P1b frente a maquetas aprobadas</h1>${figures.join("")}</html>`,
     );
   await writeFile(

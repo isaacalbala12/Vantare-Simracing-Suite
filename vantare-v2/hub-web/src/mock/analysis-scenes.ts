@@ -136,15 +136,38 @@ export function analysisScene(context: MockContext, clock = Date.now) {
           result: {
             ...original.result,
             watermark: "18446744073709551615",
-            laps: Array.from({ length: 14 }, (_, i) => ({
-              ...base[i % base.length],
-              index: i,
-              lap: i + 1,
-              sealed: i !== 13,
-              gap: i === 4,
-              lapTimeApproxMs:
-                i === 0 || i === 4 || i === 13 ? null : 111600 + (i % 7) * 199,
-            })),
+            laps: Array.from({ length: 14 }, (_, i) => {
+              const lap = base[i % base.length];
+              return {
+                ...lap,
+                index: i,
+                lap: i + 1,
+                sealed: i !== 13,
+                gap: i === 4,
+                lapTimeApproxMs: [
+                  null,
+                  113904,
+                  112881,
+                  112410,
+                  null,
+                  112097,
+                  111600,
+                  112544,
+                  111815,
+                  112302,
+                  null,
+                  112733,
+                  112661,
+                  null,
+                ][i],
+                speed: {
+                  ...lap.speed,
+                  max: (i === 3 ? 276 : 274 + (i % 2)) / 3.6,
+                  reliable: i === 11 ? 6975 : 7200,
+                  estimated: i === 11 ? 225 : 0,
+                },
+              };
+            }),
           },
         };
       }

@@ -91,7 +91,7 @@ export const analysisText = {
   samples: "Muestras",
   lap: "Vuelta",
   time: "Tiempo",
-  delta: "Δ a mejor",
+  delta: "Δ mejor",
   speed: "Velocidad km/h",
   throttle: "Acelerador %",
   brake: "Freno %",
@@ -108,6 +108,23 @@ export const analysisText = {
   maxSpeed: "Velocidad máx.",
   kmh: "km/h",
   approximate: "Tiempos aproximados, no oficiales.",
+  fastest: "mejor",
+  speedMax: "Vel. máx.",
+  speedMean: "Vel. media",
+  throttleColumn: "Acelerador",
+  brakeColumn: "Freno",
+  circuit: "Circuito",
+  carLabel: "Coche",
+  thisRecording: "Esta grabación",
+  chartTitle: "Diferencia con tu mejor vuelta",
+  chartMissing: "sin barra = vuelta sin tiempo",
+  estimatedData: "≈ parte estimada",
+  lapNumber: (lap: number) => `vuelta ${lap}`,
+  meanHelp: (count: number) => `de ${count} vueltas completas`,
+  lapCounts: (complete: number, gaps: number, without: number) =>
+    `${complete} completas · ${gaps} con huecos · ${without} sin tiempo`,
+  chartHelp: (lap: number) =>
+    `segundos más lenta que la vuelta ${lap} · sin barra = vuelta sin tiempo`,
   recordingGroup: "Grabación de vueltas",
   record: "Grabar mis vueltas",
   recordHelp:
@@ -128,6 +145,9 @@ export function lapTime(ms: number | null | undefined) {
 export const decimal = (n: number) =>
   n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
 export const size = (bytes: number) => `${decimal(bytes / 1_000_000)} MB`;
+export const deltaTime = (ms: number) =>
+  `≈${ms >= 0 ? "+" : ""}${(ms / 1000).toFixed(1)}`;
+export const percentage = (value: number) => `${decimal(value * 100)} %`;
 export const date = (ms: number, timeZone = recordingZone()) =>
   new Date(ms).toLocaleString("es-ES", {
     timeZone,
@@ -160,4 +180,10 @@ export function recordingDate(
     })
     .replaceAll(".", "");
   return `${prefix}, ${time}`;
+}
+export function recordingDateLabel(ms: number, nowMs: number) {
+  const group = recordingGroup(ms, nowMs);
+  return group === "today" || group === "yesterday"
+    ? `${analysisText[group]}, ${recordingDate(ms, nowMs)}`
+    : recordingDate(ms, nowMs);
 }

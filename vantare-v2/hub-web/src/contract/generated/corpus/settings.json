@@ -18,6 +18,7 @@
           "canRetry": false,
           "general": {
             "density": "balanced",
+            "grabacion": true,
             "launcher": true,
             "minimized": false,
             "onboarding_completed": true,
@@ -62,6 +63,7 @@
           "canRetry": false,
           "general": {
             "density": "balanced",
+            "grabacion": true,
             "launcher": true,
             "minimized": false,
             "onboarding_completed": true,
@@ -106,6 +108,7 @@
           "canRetry": false,
           "general": {
             "density": "balanced",
+            "grabacion": true,
             "launcher": true,
             "minimized": false,
             "onboarding_completed": true,
@@ -150,6 +153,7 @@
           "canRetry": false,
           "general": {
             "density": "balanced",
+            "grabacion": true,
             "launcher": true,
             "minimized": false,
             "onboarding_completed": true,
@@ -191,6 +195,7 @@
           "canRetry": true,
           "general": {
             "density": "balanced",
+            "grabacion": true,
             "launcher": true,
             "minimized": false,
             "onboarding_completed": true,
@@ -300,6 +305,18 @@
         "patch": {
           "field": "toasts",
           "value": true
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "baseRevision": "0000000000000000000000000000000000000000000000000000000000000000",
+        "method": "settings.update",
+        "patch": {
+          "field": "grabacion",
+          "value": false
         }
       }
     },

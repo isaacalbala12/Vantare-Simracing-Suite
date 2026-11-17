@@ -35,6 +35,15 @@ vi.mock("../src/renderer/app/Host", async (original) => ({
   ...(await original<typeof import("../src/renderer/app/Host")>()),
   useHost: () => ({ client: fake.client }),
 }));
+// These tests isolate mail's account generation races. Recording uses the
+// independent settings module, exercised with its real CAS in settings-state.
+vi.mock("../src/renderer/app/SettingsState", () => ({
+  useSettings: () => ({
+    view: { general: { grabacion: true } },
+    pending: false,
+    update: vi.fn(),
+  }),
+}));
 let session: ReturnType<typeof createAccountSession>;
 let cache: QueryClient;
 function confirm() {

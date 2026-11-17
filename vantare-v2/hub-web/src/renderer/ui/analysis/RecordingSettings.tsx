@@ -4,6 +4,7 @@ import { analysisText as t } from "../../i18n/analysis.es";
 import { Button } from "../Button";
 import { Badge, Callout, SettingGroup, SettingRow } from "../Data";
 import { Switch } from "../Forms";
+import { ActionGroup } from "../ShellLayout";
 export function RecordingSettings() {
   const state = useSettings();
   const [initial, setInitial] = useState(state.view?.general.grabacion);
@@ -28,14 +29,16 @@ export function RecordingSettings() {
           tone="warn"
           title={value ? t.pendingOn : t.pendingOff}
           actions={
-            <Button
-              disabled={state.pending || !!state.error}
-              onClick={() =>
-                state.update({ field: "grabacion", value: initial })
-              }
-            >
-              {t.undo}
-            </Button>
+            <ActionGroup>
+              <Button
+                disabled={state.pending || !!state.error}
+                onClick={() =>
+                  state.update({ field: "grabacion", value: initial })
+                }
+              >
+                {t.undo}
+              </Button>
+            </ActionGroup>
           }
         />
       )}

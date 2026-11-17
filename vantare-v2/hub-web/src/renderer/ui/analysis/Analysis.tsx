@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type {
   AnalysisLap,
   AnalysisRow,
@@ -27,6 +27,7 @@ import { Button } from "../Button";
 import { Badge, Callout, Skeleton, Spinner } from "../Data";
 import { SearchInput } from "../Forms";
 import { RailBlock, SectionPageHeader } from "../Frame";
+import { ActionGroup } from "../ShellLayout";
 import "./analysis.css";
 import { useRecordingClock } from "./useRecordingClock";
 export function AnalysisRail({
@@ -84,6 +85,7 @@ function RecordingRow({
   timeZone: string;
 }) {
   const ref = useRef<HTMLTableRowElement>(null);
+  const dateId = useId();
   useEffect(() => {
     if (!ref.current || row.recording || !controller) return;
     const observer = new IntersectionObserver(([entry]) =>
@@ -441,7 +443,11 @@ export function AnalysisLaps({
             : t.intro
         }
       />
-      {opened && !state.error && <Button onClick={back}>{t.back}</Button>}
+      {opened && !state.error && (
+        <ActionGroup>
+          <Button onClick={back}>{t.back}</Button>
+        </ActionGroup>
+      )}
       {state.opening ? (
         <AnalysisNotice title={t.opening} help={t.openingHelp} loading>
           <Button onClick={back}>{t.cancel}</Button>

@@ -81,7 +81,9 @@ try {
           await page.keyboard.press("Enter");
           await page.keyboard.press("Space");
           assert.equal(await recordings.getAttribute("aria-selected"), "true");
-          await laps.click();
+          // Playwright treats aria-disabled as non-actionable. Send the real
+          // pointer click anyway to verify the application keeps it inert.
+          await laps.click({ force: true });
           assert.equal(await recordings.getAttribute("aria-selected"), "true");
           await page.getByText(t.complete, { exact: true }).first().waitFor();
         } else if (scene.startsWith("settings")) {
@@ -103,10 +105,13 @@ try {
             assert.equal(await recording.getAttribute("aria-checked"), "false");
           }
         } else {
-          await page
+          const row = page
             .getByRole("button", { name: /Circuito sin identificar/ })
-            .nth(scene === "recording" ? 0 : 1)
-            .click();
+            .nth(scene === "recording" ? 0 : 1);
+          if (scene === "laps") {
+            await row.focus();
+            await page.keyboard.press("Enter");
+          } else await row.click();
           if (scene === "cancelled") {
             await page
               .getByRole("button", { name: t.cancel, exact: true })

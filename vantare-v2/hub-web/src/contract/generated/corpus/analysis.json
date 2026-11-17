@@ -1,0 +1,259 @@
+{
+  "host": [
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "max": 256,
+        "method": "analysis.catalog",
+        "recordings": [
+          {
+            "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "sizeBytes": 9007199254740991,
+            "startedAtMs": 1700000000000
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "attempted": "18446744073709551615",
+        "finished": true,
+        "laps": [
+          {
+            "brake": {
+              "estimated": 1,
+              "max": 2,
+              "mean": 1.5,
+              "min": 1,
+              "reliable": 7,
+              "stale": 2,
+              "unavailable": 3
+            },
+            "car": 7,
+            "gap": false,
+            "index": 0,
+            "lap": 1,
+            "lapTimeApproxMs": 111600,
+            "samples": 13,
+            "sealed": true,
+            "speed": {
+              "estimated": 1,
+              "max": 2,
+              "mean": 1.5,
+              "min": 1,
+              "reliable": 7,
+              "stale": 2,
+              "unavailable": 3
+            },
+            "throttle": {
+              "estimated": 1,
+              "max": 2,
+              "mean": 1.5,
+              "min": 1,
+              "reliable": 7,
+              "stale": 2,
+              "unavailable": 3
+            }
+          }
+        ],
+        "method": "analysis.open",
+        "session": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "total": "18446744073709551615",
+        "watermark": "18446744073709551615"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "analysis.close"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "cancelled": false,
+        "method": "analysis.cancel"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "attempted": "0",
+        "finished": false,
+        "laps": [],
+        "method": "analysis.open",
+        "session": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "total": "0",
+        "watermark": "0"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "bestLapApproxMs": 111600,
+        "laps": 1,
+        "method": "analysis.inspect",
+        "state": "complete"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "bestLapApproxMs": 111600,
+        "laps": 1,
+        "method": "analysis.inspect",
+        "state": "unconfirmed"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "bestLapApproxMs": 111600,
+        "laps": 1,
+        "method": "analysis.inspect",
+        "state": "locked"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "bestLapApproxMs": 111600,
+        "laps": 1,
+        "method": "analysis.inspect",
+        "state": "incompatible"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "bestLapApproxMs": 111600,
+        "laps": 1,
+        "method": "analysis.inspect",
+        "state": "unreadable"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "laps": 0,
+        "method": "analysis.inspect",
+        "state": "complete"
+      }
+    },
+    {
+      "error": {
+        "kind": "analysisNotFound"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "analysisLocked"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "analysisIncompatible"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "analysisUnreadable"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "analysisChanged"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "analysisTooMany"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "analysisTooLarge"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "analysisCancelled"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "analysisTimeout"
+      },
+      "id": 1,
+      "kind": "failure"
+    }
+  ],
+  "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "analysis.catalog"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method": "analysis.inspect"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "method": "analysis.open"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "analysis.close",
+        "session": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "analysis.cancel"
+      }
+    }
+  ]
+}

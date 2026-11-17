@@ -31,6 +31,7 @@ pub enum Reply {
         state: crate::analysis::catalog::AnalysisState,
         laps: u32,
         #[serde(rename = "bestLapApproxMs", skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(any(test, feature = "bindings"), ts(optional = nullable))]
         best_lap_approx_ms: Option<u32>,
     },
     #[serde(rename = "analysis.open")]

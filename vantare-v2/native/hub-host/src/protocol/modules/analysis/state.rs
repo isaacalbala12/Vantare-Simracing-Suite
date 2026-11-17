@@ -199,6 +199,12 @@ impl State {
                         }
                     }
                 }
+                Request::AnalysisCompare { session, a, b } => {
+                    if self.session.as_ref() != Some(session) {
+                        return Err(HostError::AnalysisNotFound);
+                    }
+                    worker::Operation::Compare { a: *a, b: *b }
+                }
                 Request::AnalysisClose { session } => {
                     if self.session.as_ref() != Some(session) {
                         return Err(HostError::AnalysisNotFound);
@@ -228,11 +234,15 @@ impl State {
             self.worker = Some(worker::Worker::start(helper)?);
         }
         let cancel = Arc::new(AtomicBool::new(false));
-        let opening = matches!(operation, worker::Operation::Open { .. });
+        let opening = matches!(
+            operation,
+            worker::Operation::Open { .. } | worker::Operation::Compare { .. }
+        );
         let job = worker::Command::Job(worker::Job {
             id,
             operation,
             cancel: cancel.clone(),
+            deadline: now + Duration::from_secs(40),
             #[cfg(test)]
             pause: self.pause_next.take(),
         });
@@ -349,6 +359,17 @@ impl State {
         if let Ok(Reply::AnalysisOpen { session, .. }) = &completion.result {
             self.session = Some(session.clone());
             self.session_cancel = Some(pending.cancel);
+        }
+        if matches!(
+            completion.result,
+            Err(HostError::AnalysisChanged
+                | HostError::AnalysisCancelled
+                | HostError::AnalysisTimeout
+                | HostError::AnalysisUnreadable)
+        ) && pending.opening
+        {
+            self.session = None;
+            self.session_cancel = None;
         }
         Some((id, completion.result))
     }

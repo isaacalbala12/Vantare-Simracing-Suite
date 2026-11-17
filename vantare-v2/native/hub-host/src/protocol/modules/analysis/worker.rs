@@ -27,6 +27,10 @@ pub(super) enum Operation {
         token: String,
         created: SystemTime,
     },
+    Compare {
+        a: u32,
+        b: u32,
+    },
     Close,
 }
 #[cfg(test)]
@@ -38,6 +42,7 @@ pub(super) struct Job {
     pub id: u32,
     pub operation: Operation,
     pub cancel: Cancel,
+    pub deadline: Instant,
     #[cfg(test)]
     pub pause: Option<ReadPause>,
 }
@@ -146,7 +151,10 @@ fn run(
             execute(helper, &job, &mut reader, &mut cache)
         };
         let result = if job.cancel.load(Ordering::Acquire) {
-            if matches!(job.operation, Operation::Open { .. }) {
+            if matches!(
+                job.operation,
+                Operation::Open { .. } | Operation::Compare { .. }
+            ) {
                 reader = None;
             }
             Err(HostError::AnalysisCancelled)
@@ -165,6 +173,7 @@ fn execute(
     cache: &mut BTreeMap<String, (Stamp, Reply)>,
 ) -> Result<Reply, HostError> {
     match &job.operation {
+        Operation::Compare { a, b } => compare(reader, job, *a, *b, &Instant::now),
         Operation::Close => {
             *reader = None;
             Ok(Reply::AnalysisClose {})
@@ -313,3 +322,101 @@ fn signal(value: &crate::analysis::Signal) -> AnalysisSignal {
         max: value.max.and_then(serde_json::Number::from_f64),
     }
 }
+
+fn check_job(job: &Job, now: Instant) -> Result<(), HostError> {
+    if job.cancel.load(Ordering::Acquire) {
+        Err(HostError::AnalysisCancelled)
+    } else if now >= job.deadline {
+        Err(HostError::AnalysisTimeout)
+    } else {
+        Ok(())
+    }
+}
+fn samples(
+    reader: &mut Reader,
+    lap: &crate::analysis::Lap,
+    job: &Job,
+    now: &impl Fn() -> Instant,
+) -> Result<Vec<Option<crate::analysis::Sample>>, HostError> {
+    let mut cursor = reader.cursor(lap).map_err(|e| map_error(e.code))?;
+    let mut result = Vec::new();
+    while !cursor.done() {
+        check_job(job, now())?;
+        let page = reader.read_page(
+            &mut cursor,
+            16,
+            job.deadline.min(now() + Duration::from_secs(30)),
+        );
+        let page = reader.finish_result(page).map_err(|e| map_error(e.code))?;
+        if result.len() + page.samples.len() > crate::analysis::projection::MAX_SAMPLES {
+            return Err(HostError::AnalysisTooLarge);
+        }
+        result.extend(page.samples);
+    }
+    check_job(job, now())?;
+    Ok(result)
+}
+
+fn compare(
+    reader: &mut Option<(Reader, Cancel)>,
+    job: &Job,
+    a: u32,
+    b: u32,
+    now: &impl Fn() -> Instant,
+) -> Result<Reply, HostError> {
+    let (opened, session_cancel) = reader.as_mut().ok_or(HostError::AnalysisNotFound)?;
+    let la = opened
+        .summary
+        .laps
+        .get(a as usize)
+        .ok_or(HostError::AnalysisNotFound)?
+        .clone();
+    let lb = opened
+        .summary
+        .laps
+        .get(b as usize)
+        .ok_or(HostError::AnalysisNotFound)?
+        .clone();
+    if (la.epoch, la.session, la.car) != (lb.epoch, lb.session, lb.car) {
+        return Err(HostError::AnalysisIncomparable);
+    }
+    #[cfg(test)]
+    if let Some(pause) = &job.pause {
+        let _ = pause.ready.send(opened.child.id());
+        let _ = pause.wait.recv_timeout(Duration::from_secs(10));
+    }
+    opened.cancel = job.cancel.clone();
+    let result = (|| {
+        let sa = samples(opened, &la, job, now)?;
+        let sb = if a == b {
+            None
+        } else {
+            Some(samples(opened, &lb, job, now)?)
+        };
+        let p = crate::analysis::projection::project(&la, &lb, &sa, sb.as_deref().unwrap_or(&sa))?;
+        check_job(job, now())?;
+        Ok(Reply::AnalysisCompare {
+            distance_range: p.distance_range,
+            speed: p.speed,
+            throttle: p.throttle,
+            brake: p.brake,
+            delta: p.delta,
+            delta_unavailable: p.delta_unavailable,
+            gaps: p.gaps,
+        })
+    })();
+    opened.cancel = session_cancel.clone();
+    if opened.closed
+        || matches!(
+            result,
+            Err(HostError::AnalysisCancelled | HostError::AnalysisTimeout)
+        )
+    {
+        *reader = None;
+    }
+    result
+}
+
+#[cfg(all(test, windows))]
+#[path = "worker_tests.rs"]
+mod tests;

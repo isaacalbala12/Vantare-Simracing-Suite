@@ -20,7 +20,7 @@ servidor exclusivo y comprobación de PID e imagen del hijo. La autenticación
 usa un valor aleatorio de un solo arranque que Electron elimina del entorno
 antes de crear el renderer. No se registra el valor.
 
-El protocolo actual del puente es v49 (ajuste grabacion).
+El protocolo actual del puente es v50 (analysis compare).
 El formato es JSON precedido por longitud u32 little endian, máximo 1 MiB.
 Cada pantalla aporta su contrato en `src/protocol/modules/<id>/`.
 `build.rs` descubre los módulos y ensambla enums, modelos, estado y tabla de
@@ -720,3 +720,7 @@ ambas formas de bloqueo. Esto no añade campos ni modifica la versión del wire.
 `cancelled: false`. Cancelar o agotar el plazo de un inspect cancela su lector
 temporal y conserva el Reader de la sesión; cancelar un open cierra esa apertura.
 La pérdida de derecho/feed y el cierre del host siguen invalidando todo.
+
+Cancelar o agotar el plazo de `analysis.compare` invalida la sesión abierta y
+cierra su Reader. El Hub debe volver a abrir la grabación con `analysis.open`
+antes de intentar otra comparación; el token anterior devuelve `analysisNotFound`.

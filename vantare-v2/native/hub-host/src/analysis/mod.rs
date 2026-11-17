@@ -472,3 +472,5 @@ mod tests;
 
 #[path = "../protocol/modules/analysis/state.rs"]
 pub mod catalog;
+
+pub mod projection;

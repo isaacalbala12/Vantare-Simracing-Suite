@@ -155,6 +155,13 @@
     },
     {
       "error": {
+        "kind": "analysisIncomparable"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
         "kind": "analysisNotFound"
       },
       "id": 1,
@@ -215,6 +222,212 @@
       },
       "id": 1,
       "kind": "failure"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "brake": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        },
+        "delta": [
+          {
+            "distance": 0,
+            "elapsed": 0,
+            "segment": 0,
+            "value": 180
+          }
+        ],
+        "distanceRange": [
+          0,
+          100
+        ],
+        "gaps": {
+          "a": [],
+          "b": []
+        },
+        "method": "analysis.compare",
+        "speed": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        },
+        "throttle": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "brake": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        },
+        "delta": null,
+        "deltaUnavailable": "gapInA",
+        "distanceRange": [
+          0,
+          100
+        ],
+        "gaps": {
+          "a": [],
+          "b": []
+        },
+        "method": "analysis.compare",
+        "speed": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        },
+        "throttle": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "brake": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        },
+        "delta": null,
+        "deltaUnavailable": "gapInB",
+        "distanceRange": [
+          0,
+          100
+        ],
+        "gaps": {
+          "a": [],
+          "b": []
+        },
+        "method": "analysis.compare",
+        "speed": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        },
+        "throttle": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "brake": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        },
+        "delta": null,
+        "deltaUnavailable": "noCommonRange",
+        "distanceRange": [
+          0,
+          100
+        ],
+        "gaps": {
+          "a": [],
+          "b": []
+        },
+        "method": "analysis.compare",
+        "speed": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        },
+        "throttle": {
+          "a": [
+            {
+              "distance": 0,
+              "elapsed": 0,
+              "segment": 0,
+              "value": 180
+            }
+          ],
+          "b": []
+        }
+      }
     }
   ],
   "ui": [
@@ -246,6 +459,16 @@
       "kind": "request",
       "request": {
         "method": "analysis.close",
+        "session": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "a": 0,
+        "b": 1,
+        "method": "analysis.compare",
         "session": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     },

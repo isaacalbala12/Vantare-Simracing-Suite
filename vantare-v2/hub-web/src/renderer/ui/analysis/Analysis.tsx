@@ -71,6 +71,20 @@ export function AnalysisNotice({
     </div>
   );
 }
+function RecordingStrip({
+  enabled,
+  recording,
+}: {
+  enabled: boolean;
+  recording: boolean;
+}) {
+  return (
+    <div className="v-an-strip" role="status">
+      {`${t.automatic}: ${enabled ? t.enabled : t.disabled}`}
+      {recording && <strong>{t.recording}</strong>}
+    </div>
+  );
+}
 function RecordingRow({
   row,
   state,
@@ -215,10 +229,10 @@ export function AnalysisCatalog({
           )
         }
       />
-      <div className="v-an-strip" role="status">
-        {`${t.automatic}: ${enabled ? t.enabled : t.disabled}`}
-        {state.rows.some((r) => r.recording) && <strong>{t.recording}</strong>}
-      </div>
+      <RecordingStrip
+        enabled={enabled}
+        recording={state.rows.some((r) => r.recording)}
+      />
       {!enabled && state.rows.length > 0 && (
         <Callout
           title={t.off}
@@ -413,10 +427,12 @@ export function AnalysisLaps({
   state,
   controller,
   updates,
+  enabled,
 }: {
   state: AnalysisSnapshot;
   controller?: AnalysisController;
   updates: () => void;
+  enabled: boolean;
 }) {
   const opened = state.opened;
   const back = () => controller?.load();
@@ -442,6 +458,10 @@ export function AnalysisLaps({
             ? `${date(state.selected.startedAtMs)} · ${size(state.selected.sizeBytes)} · ${t.car}`
             : t.intro
         }
+      />
+      <RecordingStrip
+        enabled={enabled}
+        recording={state.rows.some((r) => r.recording)}
       />
       {opened && !state.error && (
         <ActionGroup>

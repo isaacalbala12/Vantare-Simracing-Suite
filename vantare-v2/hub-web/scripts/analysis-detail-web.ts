@@ -156,6 +156,14 @@ try {
         });
         if (width === 900 && !scene.startsWith("settings"))
           await page.locator(".v-context--collapsed").waitFor();
+        if (width === 900 && !scene.startsWith("settings")) {
+          await page.locator(".v-an-strip").waitFor();
+          assert.ok(
+            (await page.locator(".v-an-strip").textContent())?.includes(
+              t.automatic,
+            ),
+          );
+        }
         if (scene.startsWith("settings"))
           await page
             .getByRole("switch", { name: t.record, exact: true })

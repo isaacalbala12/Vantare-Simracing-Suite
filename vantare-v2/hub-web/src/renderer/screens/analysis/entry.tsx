@@ -83,6 +83,7 @@ export default function Analysis({
           <AnalysisLaps
             state={state}
             controller={state.controller}
+            enabled={enabled}
             updates={() => goSettings("updates")}
           />
         ) : (

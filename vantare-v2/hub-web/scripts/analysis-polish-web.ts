@@ -105,8 +105,7 @@ try {
           }
           if (width === 900) {
             const toggle = page.getByRole("button", {
-              name: "Contraer panel derecho",
-              exact: true,
+              name: /^(Contraer|Expandir) panel derecho$/,
             });
             if ((await toggle.getAttribute("aria-expanded")) === "true")
               await toggle.click();
@@ -171,6 +170,17 @@ try {
             true,
             "Whole lap counts must fit within two lines",
           );
+          const tops = await page
+            .locator(".v-an-stats strong")
+            .evaluateAll((nodes) =>
+              nodes.map((node) => node.getBoundingClientRect().top),
+            );
+          const columns = width === 900 ? 2 : 4;
+          for (let i = 0; i < tops.length; i++)
+            assert.ok(
+              Math.abs(tops[i] - tops[i - (i % columns)]) < 1,
+              "Summary values must stay aligned",
+            );
         }
         const name = `${scene}-${theme}-${width}`;
         const audit = await new AxeBuilder({ page })

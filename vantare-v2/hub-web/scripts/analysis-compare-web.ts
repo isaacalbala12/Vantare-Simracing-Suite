@@ -177,12 +177,10 @@ export async function checkAnalysisComparison(
               await page
                 .getByRole("button", { name: t.time, exact: true })
                 .click();
-            const railToggle = page
-              .locator(".v-titlebar")
-              .getByRole("button", {
-                name: shellText("shell.railToggle"),
-                exact: true,
-              });
+            const railToggle = page.locator(".v-titlebar").getByRole("button", {
+              name: shellText("shell.railToggle"),
+              exact: true,
+            });
             if (scene === "rail" || scene.startsWith("zoom")) {
               if ((await railToggle.getAttribute("aria-expanded")) === "false")
                 await railToggle.click();
@@ -397,10 +395,19 @@ export async function checkAnalysisComparison(
               .getByRole("combobox", { name: t.a, exact: true })
               .evaluate((node) => {
                 const value = node.firstElementChild;
+                const icon = node.lastElementChild;
+                const style = getComputedStyle(node);
+                const available =
+                  node.clientWidth -
+                  Number.parseFloat(style.paddingLeft) -
+                  Number.parseFloat(style.paddingRight) -
+                  (Number.parseFloat(style.columnGap) || 0) -
+                  (icon && icon !== value
+                    ? icon.getBoundingClientRect().width
+                    : 0);
                 return (
                   !!value &&
-                  value.getBoundingClientRect().width >
-                    node.getBoundingClientRect().width * 0.7 &&
+                  value.getBoundingClientRect().width >= available - 1 &&
                   getComputedStyle(value).textAlign === "center"
                 );
               }),

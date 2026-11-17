@@ -412,6 +412,25 @@ export async function checkAnalysisComparison(
             box.y + 30,
           );
           assert.equal(await page.locator(".v-an-cursor-values dd").count(), 7);
+          assert.equal(
+            await page.locator(".v-an-trace-cursor").evaluateAll(
+              (lines, fraction) =>
+                lines.every((node) => {
+                  if (!(node instanceof SVGElement) || !node.ownerSVGElement)
+                    return false;
+                  const box = node.ownerSVGElement.getBoundingClientRect();
+                  return (
+                    Math.abs(
+                      node.getBoundingClientRect().x -
+                        (box.x + (box.width * (112 + 640 * fraction)) / 800),
+                    ) <= 1
+                  );
+                }),
+              scene === "gaps-cursor" ? 0.485 : 0.3,
+            ),
+            true,
+            "The shared cursor must keep the same position in every SVG",
+          );
           if (scene === "gaps-cursor")
             assert.ok(
               (

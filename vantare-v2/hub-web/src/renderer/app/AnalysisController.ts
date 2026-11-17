@@ -58,6 +58,7 @@ export class AnalysisController {
   private timer?: ReturnType<typeof setTimeout>;
   private wake?: () => void;
   private session?: string;
+  private comparingSession?: string;
   constructor(private client: Bridge) {}
   snapshot = () => this.value;
   subscribe = (fn: () => void) => {
@@ -84,8 +85,18 @@ export class AnalysisController {
     clearTimeout(this.timer);
     this.wake?.();
     this.wake = undefined;
+    const session = this.comparingSession;
     return this.client
       .request({ method: "analysis.cancel" })
+      .then((reply) => {
+        if (
+          reply.method === "analysis.cancel" &&
+          reply.cancelled &&
+          session &&
+          this.session === session
+        )
+          this.session = undefined;
+      })
       .catch(() => undefined);
   }
   private async request(request: AnalysisRequest, generation: number) {
@@ -99,12 +110,29 @@ export class AnalysisController {
       (request.method !== "analysis.inspect" || this.visible.has(request.id))
     ) {
       try {
+        if (request.method === "analysis.compare")
+          this.comparingSession = request.session;
         return await this.client.request(request);
       } catch (e) {
+        const kind = failure(e);
+        if (
+          request.method === "analysis.compare" &&
+          (kind === "analysisCancelled" ||
+            kind === "analysisTimeout" ||
+            kind === "analysisNotFound") &&
+          this.session === request.session
+        )
+          this.session = undefined;
         if (!this.active || generation !== this.generation) return undefined;
-        if (failure(e) !== "busy") throw e;
-        await this.pause();
+        if (kind !== "busy") throw e;
+      } finally {
+        if (
+          request.method === "analysis.compare" &&
+          this.comparingSession === request.session
+        )
+          this.comparingSession = undefined;
       }
+      await this.pause();
     }
     return undefined;
   }
@@ -321,6 +349,7 @@ export class AnalysisController {
             zoom: retainZoom(this.value.zoom, result.distanceRange),
           });
       } catch (error) {
+        if (!this.active || generation !== this.generation) return;
         const kind = failure(error);
         if (kind === "analysisCancelled" || kind === "analysisTimeout") {
           await this.interrupt();

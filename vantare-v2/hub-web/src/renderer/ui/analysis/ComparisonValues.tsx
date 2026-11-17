@@ -1,4 +1,4 @@
-import { type CSSProperties, useId } from "react";
+import { useId } from "react";
 import type { Compared } from "../../app/AnalysisController";
 import {
   type DistanceWindow,
@@ -62,19 +62,14 @@ export function ComparisonValues({
   coordinate,
   time,
   window,
-  position,
 }: {
   data: Compared;
   coordinate: number;
   time: boolean;
   window?: DistanceWindow;
-  position?: number;
 }) {
   return (
-    <div
-      className="v-an-cursor-values"
-      style={{ "--cursor-position": `${position ?? 50}%` } as CSSProperties}
-    >
+    <div className="v-an-cursor-values">
       <p>{time ? axisLabel(coordinate, true) : metres(coordinate)}</p>
       <dl>
         {valuesAt(data, coordinate, time, window).map(
@@ -95,6 +90,18 @@ export function ComparisonValues({
     </div>
   );
 }
+const gapNotes = (data: Compared) =>
+  (["a", "b"] as const).flatMap((side) =>
+    data.gaps[side].map(({ from, to }) => t.gapNotice(from, to, t[side])),
+  );
+export function ComparisonGapNotes({ data }: { data: Compared }) {
+  const notes = gapNotes(data);
+  return notes.length ? (
+    <p className="v-an-common v-an-gap-notes" role="status">
+      {notes.join(". ")}
+    </p>
+  ) : null;
+}
 export function ComparisonTable({ data }: { data: Compared }) {
   const help = useId();
   const rows: number[] = [];
@@ -108,12 +115,21 @@ export function ComparisonTable({ data }: { data: Compared }) {
   return (
     <details className="v-an-values-table">
       <summary>{t.table}</summary>
-      <p id={help}>{t.tableHelp}</p>
+      <p id={help}>
+        {[
+          t.tableHelp,
+          ...gapNotes(data).map((note) => `${note}.`),
+          data.deltaUnavailable ? t[data.deltaUnavailable] : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      </p>
       <section
         className="v-an-tablewrap"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: A scrollable table region needs keyboard focus, verified by axe.
         tabIndex={0}
         aria-label={t.table}
+        aria-describedby={help}
       >
         <table className="v-table" aria-describedby={help}>
           <caption className="v-sr-only">{t.table}</caption>
@@ -134,7 +150,12 @@ export function ComparisonTable({ data }: { data: Compared }) {
               <tr key={distance}>
                 <th scope="row">{metres(distance)}</th>
                 {valuesAt(data, distance).map(({ label, value }) => (
-                  <td key={label}>{value}</td>
+                  <td
+                    key={label}
+                    aria-label={value === at.dash ? t.noData : undefined}
+                  >
+                    {value}
+                  </td>
                 ))}
               </tr>
             ))}

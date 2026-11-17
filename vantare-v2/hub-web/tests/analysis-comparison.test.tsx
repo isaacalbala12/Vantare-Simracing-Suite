@@ -379,6 +379,7 @@ it("never bridges segments or missing elapsed; subtracts overlapping gaps withou
   if (!data) throw Error("missing comparison");
   const axis = {
     time: false,
+    gaps: [],
     range: [0, 30] as [number, number],
     distance: [0, 30] as [number, number],
   };
@@ -644,6 +645,7 @@ it("does not traverse trace points when the shared cursor moves; data and zoom s
   const data = { ...original, speed: { ...original.speed, a: watched } };
   const axis = {
     time: false,
+    gaps: [],
     distance: data.distanceRange,
     range: data.distanceRange,
   };
@@ -814,6 +816,26 @@ it("an obsolete timeout cannot send a new cancel after another pair was selected
   h.finish();
   await nextTurn();
   expect(c.snapshot().comparison?.a).toBe(8);
+  c.dispose();
+  await nextTurn();
+  expect(h.outstanding.size).toBe(0);
+});
+
+it("forgets a session the host no longer recognizes before returning to the list", async () => {
+  const h = controlledAnalysisHost();
+  const c = new AnalysisController({ request: h.request });
+  c.load();
+  await waitFor(() => expect(c.snapshot().loading).toBe(false));
+  c.open(c.snapshot().rows[1]);
+  await waitFor(() => expect(c.snapshot().opened).toBeTruthy());
+  c.compare();
+  await waitFor(() => expect(h.pending()).toBe(true));
+  h.fail("analysisNotFound");
+  await nextTurn();
+  expect(c.snapshot().compareError).toBe("analysisNotFound");
+  c.load();
+  await waitFor(() => expect(c.snapshot().loading).toBe(false));
+  expect(h.closes()).toEqual([]);
   c.dispose();
   await nextTurn();
   expect(h.outstanding.size).toBe(0);

@@ -37,6 +37,8 @@ export const comparisonText = {
   delta: "Diferencia A−B",
   positive: "s · + A pierde",
   noData: "sin datos",
+  gapNotice: (from: number, to: number, side: string) =>
+    `Sin datos entre ${metres(from)} y ${metres(to)} en ${side}`,
   noDelta: "Diferencia no disponible",
   gapInA:
     "La vuelta A tiene huecos sin datos. Puedes ver sus trazas, pero no cuánto tiempo pierde.",
@@ -85,3 +87,6 @@ export const compareValue = (n: number | null | undefined, unit: string) =>
   n == null ? t.dash : `${decimal(n)} ${unit}`;
 export const distanceInterval = (from: number, to: number) =>
   `${(from / 1000).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} – ${(to / 1000).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km`;
+
+export const changeSeconds = (n: number) =>
+  `${n < 0 ? "−" : "+"}${Math.abs(n).toFixed(2)} s`;

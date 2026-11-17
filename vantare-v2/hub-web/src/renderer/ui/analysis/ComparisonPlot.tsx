@@ -1,7 +1,7 @@
-import { useId } from "react";
+import { memo, useId, useMemo } from "react";
 import type { AnalysisPoint } from "../../../contract/generated/analysis";
 import type { Compared } from "../../app/AnalysisController";
-import { projectedGaps, windowPoints } from "../../app/analysis-comparison";
+import { windowPoints } from "../../app/analysis-comparison";
 import { analysisText, decimal } from "../../i18n/analysis.es";
 import {
   axisLabel,
@@ -14,14 +14,14 @@ export type PlotAxis = {
   time: boolean;
   range: [number, number];
   distance: [number, number];
-  gaps?: { from: number; to: number }[];
+  gaps: { from: number; to: number }[];
 };
 export function plotCoordinate(point: AnalysisPoint, time: boolean) {
   return time ? point.elapsed : point.distance;
 }
 export function tracePath(
   points: AnalysisPoint[],
-  axis: PlotAxis,
+  axis: Omit<PlotAxis, "gaps">,
   y: (n: number) => number,
 ) {
   let segment: number | undefined;
@@ -42,18 +42,8 @@ export function tracePath(
     })
     .join(" ");
 }
-export function ComparisonPlot({
-  data,
-  signal,
-  axis,
-  cursor,
-}: {
-  data: Compared;
-  signal: "speed" | "throttle" | "brake" | "delta";
-  axis: PlotAxis;
-  cursor?: number;
-}) {
-  const id = useId();
+type Signal = "speed" | "throttle" | "brake" | "delta";
+function preparePlot(data: Compared, signal: Signal, axis: PlotAxis) {
   const delta = signal === "delta";
   const height = signal === "speed" ? 164 : delta ? 140 : 96;
   const points = delta
@@ -96,6 +86,86 @@ export function ComparisonPlot({
         },
         (_, i) => firstTick + i * step,
       );
+
+  const paths = series.map(([side, values]) => ({
+    side,
+    d: tracePath(values, axis, y),
+  }));
+  const first = visiblePoints[0],
+    last = visiblePoints.at(-1);
+  const from = first ? plotCoordinate(first, axis.time) : null,
+    to = last ? plotCoordinate(last, axis.time) : null;
+  const area =
+    delta &&
+    first &&
+    last &&
+    from !== null &&
+    to !== null &&
+    visiblePoints.every((p) => p.segment === first.segment) &&
+    (!axis.time || visiblePoints.every((p) => p.elapsed !== null))
+      ? `${tracePath(visiblePoints, axis, y)} L${x(to)},${y(0)} L${x(from)},${y(0)} Z`
+      : undefined;
+  const labels = series.flatMap(([side, values]) => {
+    if (side === "delta") return [];
+    const last = values
+      .filter((p) => {
+        const coordinate = plotCoordinate(p, axis.time);
+        return coordinate !== null && coordinate <= axis.range[1];
+      })
+      .at(-1);
+    if (!last) return [];
+    const coordinate = plotCoordinate(last, axis.time);
+    if (coordinate === null) return [];
+    return [
+      {
+        side,
+        x: Math.min(plotLeft + plotWidth - 16, x(coordinate) + 8),
+        y: Math.max(
+          side === "a" ? 14 : 28,
+          Math.min(height - 16, y(last.value) + (side === "a" ? -8 : 12)),
+        ),
+      },
+    ];
+  });
+  return {
+    delta,
+    height,
+    min,
+    max,
+    y,
+    x,
+    reason,
+    ticks,
+    paths,
+    area,
+    labels,
+    gaps: axis.gaps,
+  };
+}
+export const ComparisonPlot = memo(function ComparisonPlot({
+  data,
+  signal,
+  axis,
+}: {
+  data: Compared;
+  signal: Signal;
+  axis: PlotAxis;
+}) {
+  const id = useId();
+  const {
+    delta,
+    height,
+    min,
+    max,
+    y,
+    x,
+    reason,
+    ticks,
+    paths,
+    area,
+    labels,
+    gaps,
+  } = useMemo(() => preparePlot(data, signal, axis), [data, signal, axis]);
   return (
     <svg
       className="v-an-trace"
@@ -174,88 +244,49 @@ export function ComparisonPlot({
         </g>
       ) : (
         <g clipPath={`url(#${id}-clip)`}>
-          {(axis.gaps ?? projectedGaps(data, axis.distance, axis.time)).map(
-            ({ from, to }) => (
-              <g key={`${from}-${to}`}>
-                <rect
-                  x={x(from)}
-                  y={8}
-                  width={Math.max(0, x(to) - x(from))}
-                  height={height - 30}
-                  className="v-an-trace-gap"
-                />
-                <text x={x((from + to) / 2)} y={height / 2} textAnchor="middle">
-                  {t.noData}
-                </text>
-              </g>
-            ),
+          {gaps.map(({ from, to }) => (
+            <g key={`${from}-${to}`}>
+              <rect
+                x={x(from)}
+                y={8}
+                width={Math.max(0, x(to) - x(from))}
+                height={height - 30}
+                className="v-an-trace-gap"
+              />
+              <text x={x((from + to) / 2)} y={height / 2} textAnchor="middle">
+                {t.noData}
+              </text>
+            </g>
+          ))}
+          {area && (
+            <path
+              className="v-an-delta-area"
+              fill={`url(#${id}-delta)`}
+              d={area}
+            />
           )}
-          {delta &&
-            visiblePoints.every(
-              (p, i) => i === 0 || p.segment === visiblePoints[i - 1].segment,
-            ) &&
-            (!axis.time || visiblePoints.every((p) => p.elapsed !== null)) &&
-            [...new Set(visiblePoints.map((p) => p.segment))].map((segment) => {
-              const values = visiblePoints.filter(
-                (p) =>
-                  p.segment === segment &&
-                  plotCoordinate(p, axis.time) !== null,
-              );
-              const first = values[0],
-                last = values.at(-1);
-              return first && last ? (
-                <path
-                  key={segment}
-                  className="v-an-delta-area"
-                  fill={`url(#${id}-delta)`}
-                  d={`${tracePath(values, axis, y)} L${x(plotCoordinate(last, axis.time) ?? 0)},${y(0)} L${x(plotCoordinate(first, axis.time) ?? 0)},${y(0)} Z`}
-                />
-              ) : null;
-            })}
-          {series.map(([side, values]) => (
+          {paths.map(({ side, d }) => (
             <path
               key={side}
-              d={tracePath(values, axis, y)}
+              d={d}
               className={`v-an-trace-line v-an-series-${side}`}
               style={delta ? { stroke: `url(#${id}-delta)` } : undefined}
             />
           ))}
-          {cursor !== undefined && (
-            <line
-              x1={x(cursor)}
-              x2={x(cursor)}
-              y1={0}
-              y2={height - 20}
-              className="v-an-trace-cursor"
-            />
-          )}
+          <line
+            x1={0}
+            x2={0}
+            y1={0}
+            y2={height - 20}
+            className="v-an-trace-cursor"
+          />
         </g>
       )}
-      {!delta &&
-        series.map(([side, values]) => {
-          const last = values
-            .filter((p) => {
-              const v = plotCoordinate(p, axis.time);
-              return v !== null && v <= axis.range[1];
-            })
-            .at(-1);
-          return last ? (
-            <text
-              key={side}
-              x={Math.min(
-                plotLeft + plotWidth - 16,
-                x(plotCoordinate(last, axis.time) ?? 0) + 8,
-              )}
-              y={Math.max(
-                side === "a" ? 14 : 28,
-                Math.min(height - 16, y(last.value) + (side === "a" ? -8 : 12)),
-              )}
-              className={`v-an-series-${side}`}
-            >
-              {side === "a" ? t.a : t.b}
-            </text>
-          ) : null;
-        })}
+      {labels.map(({ side, x, y }) => (
+        <text key={side} x={x} y={y} className={`v-an-series-${side}`}>
+          {t[side]}
+        </text>
+      ))}
       {delta &&
         (ticks.length >= 2 ? ticks : axis.range).map((tick) => (
           <text key={tick} x={x(tick)} y={height - 2} textAnchor="middle">
@@ -266,4 +297,4 @@ export function ComparisonPlot({
         ))}
     </svg>
   );
-}
+});

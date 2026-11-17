@@ -72,7 +72,7 @@ export function controlledAnalysisHost(invalidateOnCancel = false) {
       job = undefined;
       old.resolve(old.result);
     },
-    fail(kind: "analysisCancelled" | "analysisTimeout") {
+    fail(kind: "analysisCancelled" | "analysisTimeout" | "analysisNotFound") {
       const old = job;
       if (!old) throw Error("No compare awaiting delivery");
       job = undefined;

@@ -6,6 +6,7 @@ import type {
 import { biggestChanges } from "../../app/analysis-comparison";
 import { analysisText, lapTime } from "../../i18n/analysis.es";
 import {
+  changeSeconds,
   distanceInterval,
   seconds,
   comparisonText as t,
@@ -54,27 +55,37 @@ export function ComparisonRail({
         </p>
       </RailBlock>
       <RailBlock icon="pulse" title={t.changes}>
-        {changes.map((range) => (
-          <Button
-            key={range.from}
-            variant="ghost"
-            size="sm"
-            className="v-an-change"
-            aria-pressed={
-              state.zoom?.[0] === range.from && state.zoom?.[1] === range.to
-            }
-            onClick={() => controller?.zoom([range.from, range.to])}
-          >
-            <span>{distanceInterval(range.from, range.to)}</span>
-            <strong
-              className={
-                range.delta < 0 ? "v-an-compare-gain" : "v-an-compare-loss"
-              }
-            >
-              {seconds(range.delta)}
-            </strong>
-          </Button>
-        ))}
+        {changes.length > 0 && (
+          <ul className="v-an-changes" aria-label={t.changes}>
+            {changes.map((range) => (
+              <li key={range.from}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="v-an-change"
+                  aria-pressed={
+                    state.zoom?.[0] === range.from &&
+                    state.zoom?.[1] === range.to
+                  }
+                  onClick={() => controller?.zoom([range.from, range.to])}
+                >
+                  <span>{distanceInterval(range.from, range.to)}</span>
+                  <span
+                    className={
+                      range.delta < 0
+                        ? "v-an-compare-gain"
+                        : range.delta > 0
+                          ? "v-an-compare-loss"
+                          : undefined
+                    }
+                  >
+                    {changeSeconds(range.delta)}
+                  </span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
         <p>
           {state.comparing && !data
             ? t.loading

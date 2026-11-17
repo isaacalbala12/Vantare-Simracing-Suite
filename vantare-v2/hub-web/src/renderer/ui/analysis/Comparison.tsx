@@ -1,4 +1,11 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   AnalysisController,
   AnalysisSnapshot,
@@ -19,6 +26,7 @@ import { Segmented, Select } from "../Forms";
 import { AnalysisError, AnalysisNotice, RecordingStrip } from "./Analysis";
 import { ComparisonPlot, plotLeft, plotWidth } from "./ComparisonPlot";
 import {
+  ComparisonGapNotes,
   ComparisonTable,
   ComparisonValues,
   cursorDescription,
@@ -45,6 +53,7 @@ export function Comparison({
   useEffect(() => heading.current?.focus(), []);
   const [time, setTime] = useState(false);
   const data = state.comparison;
+  const common = useMemo(() => (data ? commonRanges(data) : []), [data]);
   const laps = state.opened?.laps ?? [];
   const best = Math.min(...laps.map((lap) => validLapTime(lap) ?? Infinity));
   const help = useId();
@@ -56,6 +65,7 @@ export function Comparison({
         ? comparisonAxis(data, state.zoom ?? data.distanceRange, time)
         : {
             time,
+            gaps: [],
             distance: [0, 1] as [number, number],
             range: [0, 1] as [number, number],
           },
@@ -205,6 +215,11 @@ export function Comparison({
             </p>
             <div
               className="v-an-traces"
+              style={
+                {
+                  "--cursor-position": `${((plotLeft + fraction * plotWidth) / 800) * 100}%`,
+                } as CSSProperties
+              }
               data-updating={state.comparing || undefined}
               data-cursor-dismissed={dismissed || undefined}
             >
@@ -215,7 +230,6 @@ export function Comparison({
                     data={data}
                     signal={signal}
                     axis={axis}
-                    cursor={coordinate}
                   />
                 ),
               )}
@@ -274,7 +288,6 @@ export function Comparison({
                 coordinate={coordinate}
                 time={time}
                 window={axis.distance}
-                position={((plotLeft + fraction * plotWidth) / 800) * 100}
               />
             </div>
             {state.comparing && (
@@ -289,10 +302,11 @@ export function Comparison({
               </div>
             )}
             <p className="v-an-common">{`${t.common}: ${
-              commonRanges(data)
+              common
                 .map(([from, to]) => `${metres(from)} – ${metres(to)}`)
                 .join(" · ") || at.dash
             }. ${data.delta ? t.direction : t.honesty}`}</p>
+            <ComparisonGapNotes data={data} />
             <ComparisonTable data={data} />
           </div>
         </>

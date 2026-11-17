@@ -3503,3 +3503,41 @@ PARIDAD documenta primer plano heredado y CPU pendiente del PC. Head/checks en P
 Test del límite con reloj absoluto y pasos binarios, sin suma 31+1 ms.
 Test y PARIDAD fijan ocultar/volver con tecla pulsada: dispara el primer flanco
 de la instancia nueva. Cause::Input no existe; Data y producción quedan intactos.
+
+## VANTA-144 · Standings Eficiencia E3–E6 en Rune (17/11/2026)
+
+Standings Eficiencia queda completo en nightly por port literal de GPUI
+(E3 #2501 `5f7cc4486`, E4 #2506 `5cb825650`, E5 #2511 `5aa79a733`, E6 #2515
+`fb2e2e520`). Pendiente común: comparación física de píxeles en el PC de juego
+y aceptación visual antes de promover a testers. Entradas trasladadas desde
+los cuerpos de los PR (los workers no editan el handoff vivo).
+
+### E4 · bandas, pies y rail PIT (#2506)
+Bandas de clase de 28 px (paleta por clase, texto 9 px), pie clásico y de slots
+con reflow, rail PIT estático (34×26, borde 2/2/2/1, glow 4 al 22 %) y ausencia
+ES/EN. Siete filas Signature sin pie: ventana 252 y última fila 253; el host
+recorta 1 px (test 30 de caja / 29 visibles; `assert_inside_window` intacto).
+Erratas sobre inventario/plan, ya en PARIDAD: 252/274; texto de banda 9; slots
+#b9b9bd/#f5f5f5; badge PIT en y44 (origen 42 +2), cabecera Broadcast 24; paso de
+slots 15 a ancho 440; etiqueta 8,8; clásico sin dato «—»; `fit` reserva 22 y
+deja 274 aunque la reserva de slots dé 43; cabecera real 43 frente a reserva 42.
+
+### E5 · movimiento (#2511)
+`Motion` propio de Eficiencia (el de Vantare no se toca): FLIP por distancia
+(30 px = 313 ms, máx. 460 ms), fundidos EASE_OUT de 200 ms, fantasmas en su
+posición viva, semilla sin animar, `motion_continues` con `sequence >=` solo como
+continuidad literal de GPUI, reposo con `Arc` cacheado y reducido sin reloj.
+Errata: FLIP(0,5) = 0,9485925 (no ≈0,93). P3 posteriores: literales de curvas,
+tests de `control.rs`, y PARIDAD con diferencias (GPUI alimenta `Motion::update`
+en reducido; `Tween::active` frente a `running`; fantasmas por id; fundido por grupo).
+
+### E6 · efectos (#2515)
+Avisos por prioridad (máx. 3, 1200 ms), destello 500 ms, chip 180 ms, barrido
+800 ms, batalla con histéresis 0,8/1,2 s, rombo 220 ms y badge PIT 200 ms
+(dx −5↔0). Reducido devuelve `Wake::Idle` siempre (eficiencia.rs:111–117).
+Alfa de fila/PIT por primitiva (`El::dim`) para igualar `with_opacity`. Erratas:
+pico del barrido cuando EASE_OUT(t)=0,4 (≈212,9 ms); glifo «◆», no «?»; batalla
+0,8/1,2 s (la cantera usaba otros valores); chip y batalla en DriverName.
+Revisión Sonnet: primer frame PIT corregido (`row.in_pits` conserva `Pose`);
+reentrada 1,0→1,0 sin tween frente a 200 ms de GPUI; color rasterizado del tramo
+0,8–1,0 del degradado pendiente de captura en el PC.

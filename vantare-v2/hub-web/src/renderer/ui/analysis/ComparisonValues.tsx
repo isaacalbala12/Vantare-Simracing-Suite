@@ -1,6 +1,10 @@
 import { useId } from "react";
 import type { Compared } from "../../app/AnalysisController";
-import { pointAt } from "../../app/analysis-comparison";
+import {
+  type DistanceWindow,
+  pointAt,
+  windowPoints,
+} from "../../app/analysis-comparison";
 import { analysisText as at } from "../../i18n/analysis.es";
 import {
   axisLabel,
@@ -11,14 +15,21 @@ import {
 } from "../../i18n/comparison.es";
 
 const signals = ["speed", "throttle", "brake"] as const;
-export function valuesAt(data: Compared, coordinate: number, time = false) {
+export function valuesAt(
+  data: Compared,
+  coordinate: number,
+  time = false,
+  window?: DistanceWindow,
+) {
+  const read = (points: Parameters<typeof pointAt>[0]) =>
+    pointAt(window ? windowPoints(points, window) : points, coordinate, time);
   return signals
     .flatMap((signal) =>
       (["a", "b"] as const).map((side) => ({
         label: `${t[signal]} ${t[side]}`,
         side,
         value: compareValue(
-          pointAt(data[signal][side], coordinate, time)?.value,
+          read(data[signal][side])?.value,
           signal === "speed" ? at.kmh : "%",
         ),
       })),
@@ -26,18 +37,20 @@ export function valuesAt(data: Compared, coordinate: number, time = false) {
     .concat({
       label: t.delta,
       side: "a",
-      value: seconds(pointAt(data.delta ?? [], coordinate, time)?.value),
+      value: seconds(read(data.delta ?? [])?.value),
     });
 }
 export function cursorDescription(
   data: Compared,
   coordinate: number,
   time: boolean,
+  window?: DistanceWindow,
 ) {
   return `${time ? axisLabel(coordinate, true) : metres(coordinate)} · ${valuesAt(
     data,
     coordinate,
     time,
+    window,
   )
     .map(
       ({ label, value }) => `${label}: ${value === at.dash ? t.noData : value}`,
@@ -48,25 +61,31 @@ export function ComparisonValues({
   data,
   coordinate,
   time,
+  window,
 }: {
   data: Compared;
   coordinate: number;
   time: boolean;
+  window?: DistanceWindow;
 }) {
   return (
     <div className="v-an-cursor-values">
       <p>{time ? axisLabel(coordinate, true) : metres(coordinate)}</p>
       <dl>
-        {valuesAt(data, coordinate, time).map(({ label, value, side }) => (
-          <div key={label}>
-            <dt
-              className={label === t.delta ? undefined : `v-an-series-${side}`}
-            >
-              {label}
-            </dt>
-            <dd>{value}</dd>
-          </div>
-        ))}
+        {valuesAt(data, coordinate, time, window).map(
+          ({ label, value, side }) => (
+            <div key={label}>
+              <dt
+                className={
+                  label === t.delta ? undefined : `v-an-series-${side}`
+                }
+              >
+                {label}
+              </dt>
+              <dd>{value}</dd>
+            </div>
+          ),
+        )}
       </dl>
     </div>
   );

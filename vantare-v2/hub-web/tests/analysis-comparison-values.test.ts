@@ -59,6 +59,7 @@ it("uses each series' own elapsed and keeps the delta on elapsed A", () => {
   expect(values[0].value).toBe("50 km/h");
   expect(values[1].value).toBe("25 km/h");
   expect(values[6].value).toBe("+50.000 s");
+  expect(valuesAt(view, 150, true, [1000, 1250])[0].value).toBe("—");
   expect(comparisonAxis(view, [1000, 1250], true).range).toEqual([100, 250]);
   expect(
     valuesAt({ ...view, delta: null }, 3000).every((v) => v.value === "—"),

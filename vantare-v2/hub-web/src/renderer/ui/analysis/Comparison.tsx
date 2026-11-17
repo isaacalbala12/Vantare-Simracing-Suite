@@ -228,7 +228,12 @@ export function Comparison({
                 max={axis.range[1]}
                 step="any"
                 value={coordinate}
-                aria-valuetext={cursorDescription(data, coordinate, time)}
+                aria-valuetext={cursorDescription(
+                  data,
+                  coordinate,
+                  time,
+                  axis.distance,
+                )}
                 onChange={(event) =>
                   setFraction(
                     (Number(event.target.value) - axis.range[0]) / span,
@@ -268,6 +273,7 @@ export function Comparison({
                 data={data}
                 coordinate={coordinate}
                 time={time}
+                window={axis.distance}
               />
             </div>
             {state.comparing && (

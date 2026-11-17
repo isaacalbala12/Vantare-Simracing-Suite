@@ -15,6 +15,9 @@ foreach($name in @('iRacingSim64DX11','AC2-Win64-Shipping','AssettoCorsaEVO','AM
  Require (@(Find-TandaGameActivity @(@{Name=$name;CommandLine=''})).Count -eq 1) "Game omitted: $name"
 }
 Require (@(Find-TandaGameActivity @(@{Name='steam';CommandLine='steam.exe -gamepadui'})).Count -eq 1) 'Big Picture omitted'
+foreach($flag in @('-bigpicture','--gamepadui','-tenfoot')){
+ Require (@(Find-TandaGameActivity @(@{Name='steam';CommandLine="steam.exe $flag"})).Count -eq 1) "Big Picture flag omitted: $flag"
+}
 Require (@(Find-TandaGameActivity @(@{Name='steam';CommandLine='steam.exe -silent'},@{Name='notepad';CommandLine=''})).Count -eq 0) 'Launcher falsely identified as game'
 $definitions=@(Get-TandaSamplerDefinitions 'C:/VantareQA/kit' 'C:/VantareQA/evidence' 'Vantare-tanda-20261117T220000Z' @(@{id='one';state='replay'},@{id='two';state='waiting'}))
 Require ($definitions.Count -eq 2 -and @($definitions|Where-Object run_level -ne 'Highest').Count -eq 0) 'Sampler elevation missing'
@@ -56,6 +59,12 @@ Require (($script:requests -join '|') -eq '/s|/t|60|/c|Tanda QA de Vantare: apag
 $script:time=0.0;$script:cancels=0
 $result=Invoke-TandaShutdownCountdown $request $cancel {} $sleep $clock
 Require ($result.accepted -and -not $result.cancelled -and $script:cancels -eq 0 -and $script:time -ge 60) 'Unattended countdown incomplete'
+$script:requests=@();$script:cancels=0
+$result=Invoke-TandaShutdownCountdown $request $cancel {throw 'activity before scheduling'} $sleep $clock
+Require (-not $result.accepted -and $script:requests.Count -eq 0 -and $script:cancels -eq 0) 'Active session scheduled shutdown'
+$script:time=0.0
+$result=Invoke-TandaShutdownCountdown $request {throw 'cancel failed'} $check $sleep $clock
+Require (-not $result.accepted -and -not $result.cancelled -and $result.cancel_error) 'Failed cancellation reported accepted'
 # Reject symlinks AND hardlinks before creating the extraction destination.
 foreach($type in @([System.Formats.Tar.TarEntryType]::SymbolicLink,[System.Formats.Tar.TarEntryType]::HardLink)){
  $archive=Join-Path $base ($type.ToString()+'.tar')

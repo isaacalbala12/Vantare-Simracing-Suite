@@ -9,7 +9,10 @@ use std::{
 };
 
 fn compressed_capacity(bytes: u64) -> Result<()> {
-    ensure(bytes <= 256 * 1024 * 1024, "ZIP comprimido supera el límite")
+    ensure(
+        bytes <= 256 * 1024 * 1024,
+        "ZIP comprimido supera el límite",
+    )
 }
 
 fn expanded_capacity(member: u64, total: u64) -> Result<()> {

@@ -72,7 +72,7 @@ function Assert-NativeDistributionStream([IO.Stream]$Stream, [string]$ExpectedRe
         if(-not $ExpectedRegistry){throw 'Missing configured license registry.'}
         Assert-NativeDistributionLicenseRegistry $ExpectedRegistry
     }
-    $markers=@('qa-e2e','VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','qa-rfc8032','VANTARE_QA_','qa-fixture-public')
+    $markers=@('HUB_QA_','qa-e2e','VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','qa-rfc8032','VANTARE_QA_','qa-fixture-public')
     $markers+=@(Get-NativeKnownTestLicenseMarkers)
     # Hex has case-insensitive spelling; base64 remains case-sensitive.
     $hexMarkers=@($markers|Where-Object {$_ -cmatch '^[0-9A-F]{64}$'})
@@ -116,7 +116,7 @@ function Assert-NativeDistributionArchive([string]$Path, [string]$Registry) {
     $zip=[IO.Compression.ZipFile]::OpenRead($Path)
     try {
         foreach($entry in $zip.Entries) {
-            if(-not $entry.FullName.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase)){continue}
+            if(-not ($entry.FullName.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase) -or $entry.FullName.StartsWith('hub-ui/',[StringComparison]::OrdinalIgnoreCase))){continue}
             $name=[IO.Path]::GetFileName($entry.FullName)
             $stream=$entry.Open()
             try {
@@ -131,7 +131,7 @@ function Assert-NativeDistributionArchive([string]$Path, [string]$Registry) {
 }
 
 function Assert-NativeDistributionTree([string]$Directory) {
-    foreach($exe in Get-ChildItem -LiteralPath $Directory -Filter '*.exe' -File -Recurse) {
+    foreach($exe in Get-ChildItem -LiteralPath $Directory -File -Recurse | Where-Object {$_.Extension -ieq '.exe' -or $_.FullName -match '[\\/]hub-ui[\\/]' -or $_.Name -ceq 'app.asar'}) {
         Assert-NativeDistributionBinary $exe.FullName
     }
 }

@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "artifact_overrides": {"vantare-hub.exe": "vantare-hub-host.exe"},
   "executables": [
     "vantare.exe",
     "vantare-core.exe",

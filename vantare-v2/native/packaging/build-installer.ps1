@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Debug','Release')][string]$BuildProfile = 'Release',
     [switch]$TestInstaller,
+    [switch]$InBuildSlot,
     [string]$ConfigFile,
     [ValidateSet('nightly','testers','master','beta')][string]$Channel='beta',
     [Parameter(ValueFromRemainingArguments)][string[]]$Defines = @()
@@ -31,7 +32,19 @@ $oldTarget=$env:CARGO_TARGET_DIR
 $previousConfig=Import-NativeBuildConfig $ConfigFile
 try {
 if($Channel -ieq 'beta'){Assert-NativeDistributionLicenseRegistry $env:VANTARE_LICENSE_PUBLIC_KEYS -Required}
-if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $output 'target-installer'}
+
+if(-not $InBuildSlot){
+    $forward=@('-Version',$Version,'-OutputDirectory',$output,'-BuildProfile',$BuildProfile,'-Channel',$Channel,'-InBuildSlot')
+    if($ConfigFile){$forward+=@('-ConfigFile',([IO.Path]::GetFullPath($ConfigFile)))}
+    if($TestInstaller){$forward+='-TestInstaller'}
+    if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath @forward}
+    else{
+        & pwsh -NoProfile -File (Join-Path $PSScriptRoot '../scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
+        if($LASTEXITCODE){throw 'Falló Setup dentro del slot'}
+    }
+    return
+}
+if(-not $env:VANTARE_CARGO_QUEUE_OWNER -or -not $env:CARGO_TARGET_DIR){throw 'Setup exige el slot de compilación'}
 $null=Test-BuildPackage $archive $Version $Channel
 Assert-NativeDistributionArchive $archive -Registry $env:VANTARE_LICENSE_PUBLIC_KEYS
 foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
@@ -45,7 +58,7 @@ $names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINST
 foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 Push-Location $native
 try {
-    if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $output 'target-installer'}
+
     $env:VANTARE_VERSION=$Version
     # Setup debe abrirse antes de instalar el payload, también sin VC Redist.
     # CRT estático del toolchain ya existente; no redistribuye otra dependencia.

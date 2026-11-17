@@ -482,6 +482,7 @@ mod compare_real {
                 let d = f64::from(i) * 100.0;
                 let elapsed = f64::from(i) * if lap == 0 { 1.2 } else { 1.0 };
                 let seq = lap * 34 + i + 1;
+                let sealed_at = (i == 33).then_some(seq + 1);
                 let chunk = serde_json::json!([
                     "vantare.series-chunk.v1",
                     index,
@@ -493,7 +494,7 @@ mod compare_real {
                         3,
                         7,
                         lap,
-                        null,
+                        sealed_at,
                         gap && lap == 0 && i == 16,
                         [[seq, [1, d], [1, elapsed], [1, 50.0], [1, 0.5], [1, 0.25]]]
                     ]
@@ -540,6 +541,9 @@ mod compare_real {
             panic!("open")
         };
         assert_eq!(laps.len(), 2);
+        assert!(laps.iter().all(|lap| lap.sealed));
+        assert_eq!(laps[0].gap, gap);
+        assert!(!laps[1].gap);
         (root, state, session)
     }
     #[test]

@@ -16,14 +16,13 @@ const browser = await chromium.launch({
 const results: { name: string; violations: unknown[] }[] = [];
 const figures: string[] = [];
 try {
-  const page = await browser.newPage({
+  const context = await browser.newContext({
     reducedMotion: "reduce",
     deviceScaleFactor: 1,
   });
-  const reference = await browser.newPage({
-    viewport: { width: 1400, height: 1000 },
-    reducedMotion: "reduce",
-  });
+  const page = await context.newPage();
+  const reference = await context.newPage();
+  await reference.setViewportSize({ width: 1400, height: 1000 });
   const base = server.resolvedUrls?.local[0];
   assert.ok(base);
   const scenes = {
@@ -40,6 +39,7 @@ try {
   for (const width of [1280, 900])
     for (const theme of ["dark", "light"])
       for (const [scene, sheet] of Object.entries(scenes)) {
+        console.log(`Captura ${scene} ${theme} ${width}`);
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${base}?escena=analysis-qa-${scene}`);
         await page
@@ -54,10 +54,27 @@ try {
             .first()
             .waitFor();
         else await page.locator(".v-an-notice h2").waitFor();
-        await page.evaluate(async (theme) => {
-          document.documentElement.dataset.scheme = theme;
+        if (theme === "light") {
+          await page
+            .getByRole("button", {
+              name: "Cambiar tema claro u oscuro",
+              exact: true,
+            })
+            .click();
+          await page.waitForFunction(
+            () => document.documentElement.dataset.scheme === "light",
+          );
+        }
+        // Compare CSS layouts at the mockup's 100% zoom; the existing Hub window
+        // policy otherwise scales a 900px client to 90%. Product zoom is unchanged.
+        await page.evaluate(async () => {
+          document.documentElement.style.zoom = "1";
           await document.fonts.ready;
-        }, theme);
+        });
+        if (width === 900)
+          await page.locator(".v-context--collapsed").waitFor();
+        if (["catalog", "recording", "disabled"].includes(scene))
+          await checkAnalysisDensity(page);
         const name = `${scene}-${theme}-${width}`;
         const audit = await new AxeBuilder({ page })
           .include(".v-shell-main")
@@ -82,7 +99,7 @@ try {
             .screenshot({ path: resolve(output, refName) });
         }
         figures.push(
-          `<section><h2>${name}</h2><p>Referencia aprobada oscura. ${theme === "light" ? "Variante clara mediante tokens del Hub. " : ""}P1a muestra solo el explorador: apertura e interruptor van en P1b; cuota y borrados, en P1c. Circuito/coche desconocidos y tiempos ≈ por contrato actual.</p><div><figure><figcaption>Maqueta</figcaption><img alt="Maqueta" src="${refName}"></figure><figure><figcaption>P1a · Chromium QA</figcaption><img alt="Implementación" src="${name}.png"></figure></div></section>`,
+          `<section><h2>${name}</h2><p>Referencia aprobada oscura. ${theme === "light" ? "Variante clara mediante tokens del Hub. " : ""}P1a muestra solo el explorador: apertura e interruptor van en P1b; cuota y borrados, en P1c. Circuito/coche desconocidos y tiempos ≈ por contrato actual.</p><div><figure><figcaption>Maqueta</figcaption><img alt="Maqueta" src="${refName}"></figure><figure><figcaption>P1a · Chromium QA · zoom 100%</figcaption><img alt="Implementación" src="${name}.png"></figure></div></section>`,
         );
       }
   await writeFile(

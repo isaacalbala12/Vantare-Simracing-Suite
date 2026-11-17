@@ -41,6 +41,7 @@ export default function Analysis() {
           <>
             <SectionPageHeader title={t.recordings} description={t.intro} />
             <AnalysisNotice
+              icon="lock"
               title={
                 state.access.verified && !state.access.blocked
                   ? t.denied
@@ -52,7 +53,9 @@ export default function Analysis() {
                   : t.signInHelp
               }
             >
-              <Button onClick={() => goSettings("account")}>{t.account}</Button>
+              <Button variant="primary" onClick={() => goSettings("account")}>
+                {t.account}
+              </Button>
             </AnalysisNotice>
           </>
         ) : (

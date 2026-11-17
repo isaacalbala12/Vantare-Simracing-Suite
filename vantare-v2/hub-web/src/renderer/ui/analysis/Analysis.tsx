@@ -4,7 +4,7 @@ import type {
   AnalysisController,
   AnalysisSnapshot,
 } from "../../app/AnalysisController";
-import { Icon } from "../../assets/icons/Icon";
+import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
   day,
@@ -38,15 +38,17 @@ export function AnalysisNotice({
   title,
   help,
   children,
+  icon = "pulse",
 }: {
   title: string;
+  icon?: IconName;
   help?: string;
   children?: ReactNode;
 }) {
   return (
     <div className="v-card v-an-notice">
       <div>
-        <Icon name="pulse" />
+        <Icon name={icon} />
         <h2>{title}</h2>
         {help && <p>{help}</p>}
         <div className="v-an-actions">{children}</div>
@@ -223,15 +225,19 @@ export function AnalysisCatalog({
           </>
         ) : null
       ) : state.error ? (
-        <AnalysisNotice title={t.catalogTitle} help={t.catalogHelp}>
+        <AnalysisNotice icon="x" title={t.catalogTitle} help={t.catalogHelp}>
           <Button onClick={controller?.load}>{t.retry}</Button>
         </AnalysisNotice>
       ) : !state.rows.length ? (
         <AnalysisNotice
+          icon={enabled ? "pulse" : "stop"}
           title={enabled ? t.empty : t.off}
           help={enabled ? t.emptyHelp : t.offHelp}
         >
-          <Button onClick={enabled ? () => setHow(!how) : settings}>
+          <Button
+            variant={enabled ? "neutral" : "primary"}
+            onClick={enabled ? () => setHow(!how) : settings}
+          >
             {enabled ? t.how : t.settings}
           </Button>
           {how && <p>{t.steps}</p>}

@@ -26,6 +26,10 @@ New-BuildZip $source $baseline
 $output=Join-Path $root 'result'
 & (Join-Path $PSScriptRoot 'measure-hub-package.ps1') -PackageDirectory $source -BaselineZip $baseline -BaselineSha256 (Get-NativeHash $baseline) -OutputDirectory $output
 $result=Get-Content -LiteralPath (Join-Path $output 'measurement.json') -Raw|ConvertFrom-Json
+if($result.optimalZipSeconds -lt 0 -or $result.smallestZipSeconds -lt 0){throw 'ZIP timing missing'}
+if($result.recommendedCompression -cne (Get-BuildCompressionChoice $result.optimalZipSeconds $result.smallestZipSeconds)){throw 'Compression recommendation wrong'}
+Assert-BuildPackageCapacity (Join-Path $output 'optimal.zip')
+Assert-BuildPackageCapacity (Join-Path $output 'reduced.zip')
 if($result.removedMaps -ne 1 -or $result.removedLocales -ne 1){throw 'Pruning measurement wrong'}
 if($result.afterZipBytes -ge $result.beforeZipBytes){throw 'Pruning did not reduce the fixture ZIP'}
 if($result.asarGzipHeaderValid -or -not $result.asarGzipRoundTrip){throw 'Gzip was confused with a loadable ASAR'}

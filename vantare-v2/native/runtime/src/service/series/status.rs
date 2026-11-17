@@ -97,11 +97,13 @@ impl Status {
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
+        let mut created = false;
         let result = (|| {
             let mut file = OpenOptions::new()
                 .write(true)
                 .create_new(true)
                 .open(&temporary)?;
+            created = true;
             file.write_all(&serde_json::to_vec(self)?)?;
             file.sync_all()?;
             drop(file);
@@ -118,7 +120,8 @@ impl Status {
             }
             fs::rename(&temporary, path)
         })();
-        if let Err(error) = fs::remove_file(&temporary)
+        if created
+            && let Err(error) = fs::remove_file(&temporary)
             && error.kind() != io::ErrorKind::NotFound
         {
             eprintln!("limpiar temporal de estado: {error}");

@@ -97,6 +97,20 @@ export async function checkAnalysisComparison(
         const hovered = await selectedB.evaluate(
           (node) => getComputedStyle(node).backgroundColor,
         );
+        assert.equal(
+          await selectedB.evaluate((node) => {
+            const cell = node.closest("td");
+            return (
+              !!cell &&
+              node.getBoundingClientRect().right <=
+                cell.getBoundingClientRect().right -
+                  Number.parseFloat(getComputedStyle(cell).paddingRight) +
+                  0.5
+            );
+          }),
+          true,
+          "The B control must fit inside its cell padding",
+        );
         await page.mouse.move(width - 1, 979);
         assert.equal(
           await selectedB.evaluate(

@@ -42,7 +42,7 @@
   color: inherit;
 }
 .v-an-laps :is(td, th):last-child {
-  inline-size: calc(var(--space-9) * 2 + var(--space-3));
+  inline-size: calc(var(--space-9) * 2 + var(--space-5) * 2);
 }
 .v-an-laps :is(td, th):nth-child(8) {
   inline-size: var(--field-w);

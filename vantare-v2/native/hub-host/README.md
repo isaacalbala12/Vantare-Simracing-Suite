@@ -721,6 +721,6 @@ ambas formas de bloqueo. Esto no a帽ade campos ni modifica la versi贸n del wire.
 temporal y conserva el Reader de la sesi贸n; cancelar un open cierra esa apertura.
 La p茅rdida de derecho/feed y el cierre del host siguen invalidando todo.
 
-Cancelar o agotar el plazo de `analysis.compare` invalida la sesi髇 abierta y
-cierra su Reader. El Hub debe volver a abrir la grabaci髇 con `analysis.open`
-antes de intentar otra comparaci髇; el token anterior devuelve `analysisNotFound`.
+Cancelar o agotar el plazo de `analysis.compare` invalida la sesi贸n abierta y
+cierra su Reader. El Hub debe volver a abrir la grabaci贸n con `analysis.open`
+antes de intentar otra comparaci贸n; el token anterior devuelve `analysisNotFound`.

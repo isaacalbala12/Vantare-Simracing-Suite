@@ -252,3 +252,17 @@ resolverla desactiva únicamente la grabación. Si el helper falla al arrancar
 tras suscribir, el muestreo continúa: no se desuscribe el feed. Se conserva
 el plazo de finish de 1 s. El cierre recupera el proceso incluso si su Mutex
 quedó envenenado, para poder matar y recoger al hijo antes de unir el hilo.
+
+
+### Resumen de sesión y vueltas (D8a-2)
+
+`--series-dir` captura session-open/lap/session-close mediante el tracker puro y
+la cola acotada de eventos documentados en [flows](src/flows/README.md#captura-del-resumen-de-sesión--d8a-2--1974).
+La posición guardada es la **posición al cerrar la sesión (no acredita el
+resultado oficial)**. Si el jugador cambia de coche dentro de una sesión, el
+resumen describe el primer coche; los valores de cierre proceden del último.
+
+El tiempo oficial (best_lap_s/last_lap_s del juego) está PENDIENTE DE VERIFICAR
+con LMU real; medición en el PC de juego con Isaac. No se capturan Safety Rating,
+posición de salida ni X/Y. Un helper lento no bloquea las fotos; cola llena o
+el plazo de finish de 1 s pueden dejar vueltas ausentes o una sesión sin sellar.

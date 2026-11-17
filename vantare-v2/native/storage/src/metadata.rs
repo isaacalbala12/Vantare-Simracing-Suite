@@ -201,7 +201,7 @@ fn write_valid(connection: &Connection, name: &str, event: &Value) -> Result<Val
             return Ok(json!(["rejected", "sealed"]));
         }
         connection.execute(
-            "INSERT OR IGNORE INTO lap_times VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO lap_times (epoch, session, car, lap, official_ms, sector_ms) VALUES (?, ?, ?, ?, ?, ?)",
             params![epoch, session, car, lap, official, sectors],
         )?;
     }

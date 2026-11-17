@@ -155,8 +155,9 @@ Las DB nuevas (`--create` y creación histórica sin modo) usan v2. Las DB v1
 siguen sirviendo `append`, `page`, `summaries`, `plot-page`, `finish` y `--resume`
 sin cambios. Los comandos nuevos sobre v1 responden `["unsupported","meta"]`
 y el proceso sigue vivo: no disponer de tablas de resumen no implica corrupción.
-El codec de muestras `vantare.player-lap.v1` no cambia. D8a-2 conectará estos
-eventos en Core; este paso solo implementa el helper.
+El codec de muestras `vantare.player-lap.v1` no cambia. D8a-2 conecta estos
+eventos desde el Core. Un helper antiguo que solo conoce DB v1 rechaza una
+DB v2 como `incompatible`; la compatibilidad de lectura es del helper nuevo.
 
 `session_summaries` tiene clave `(epoch, session)` y columnas `kind`,
 `kind_text`, `track_name`, `vehicle`, `class_name`, `started_at_ms`,
@@ -184,7 +185,8 @@ UTF-8; `sectorMs` admite null o un array de hasta 16 enteros u32 (JSON de hasta
 - `["session-close", {epoch, session, endedAtMs, simElapsedS, finalPosition, finalClassPosition, lapsCompleted, bestLapMs, endReason}]`
   responde `["ack-session","close",epoch,session]` tras sellar una sola vez.
   `endReason`: `sessionChanged|coreStopped`. Repetir el mismo cierre es seguro;
-  modificar un cierre ya sellado devuelve `["rejected","sealed"]`.
+  modificar un cierre ya sellado devuelve `["rejected","sealed"]`. No se valida
+  semánticamente que `endedAtMs >= startedAtMs` (el reloj de pared puede cambiar).
 - Vuelta/cierre sin sesión devuelve `["rejected","missing"]`. Un objeto mal
   formado o fuera de los límites anteriores devuelve `["rejected","invalid"]`,
   sin tocar la DB ni detener el proceso; un evento válido posterior funciona.
@@ -218,8 +220,29 @@ Lecturas disponibles tanto en read-only como al reanudar:
 
 Las versiones de respuesta `series-session.v1` / `series-laps.v1` son
 independientes del formato DB v2 y del codec de muestras v1. El lector debe
-validarlas. No se admite SQL, filtros o nombres de columna arbitrarios.
+validarlas. No se admite SQL, filtros o nombres de columna arbitrarios. Las
+lecturas mal formadas, incluidos parámetros inválidos de `lap-times`, son
+fatales sin ACK; `rejected invalid` corresponde a los eventos de escritura.
 
 **Tiempo oficial pendiente de verificar con LMU real.** Los tests con fixtures,
 helper real y kill/WAL no demuestran que los tiempos coincidan con el cronómetro
 del juego. La posición guardada al cerrar tampoco acredita el resultado oficial.
+
+
+## Pérdida de eventos
+
+El Core usa una cola de 64 eventos de sesión y solo `try_send`: un helper lento
+no bloquea las fotos. Los descartes por cola llena/desconectada tienen contador
+y un único aviso en stderr. El pump posee el pipe y envía cada comando seguido
+de su ACK, junto a los chunks; `rejected` se registra una vez y permite continuar.
+`unsupported meta` desactiva los eventos para esa DB v1 y conserva los chunks.
+
+El Core envía las vueltas ANTES del cierre. Al parar, emite `coreStopped` antes
+de `worker.finish`; el pump drena la cola de eventos antes de confirmar finish.
+El plazo total de cierre sigue siendo 1 s. Los eventos descartados por `try_send`
+o por ese plazo pueden verse como sesión SIN SELLAR o sin vueltas; si se pierde
+la apertura puede faltar el resumen. Ni `finished` ni `sealed` acreditan ausencia
+de pérdidas. Una caída conserva solo los eventos cuyo COMMIT llegó al disco.
+
+El tiempo oficial viene de best_lap_s/last_lap_s del juego y está PENDIENTE DE
+VERIFICAR con LMU real (medición en el PC de juego con Isaac).

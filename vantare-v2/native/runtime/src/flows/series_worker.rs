@@ -3,14 +3,72 @@
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use super::{LapSummary, MAX_ANALYZED_LAPS, MAX_CHUNK_BYTES, SeriesAnalysis, SeriesChunk};
+use super::{
+    LapSummary, MAX_ANALYZED_LAPS, MAX_CHUNK_BYTES, SeriesAnalysis, SeriesChunk, SessionEvent,
+};
 use arc_swap::ArcSwap;
 use serde_json::{Value, json};
+
+const SESSION_QUEUE: usize = 64;
+
+#[derive(Default)]
+struct SessionDelivery {
+    enabled: AtomicBool,
+    dropped: AtomicU64,
+}
+
+struct SessionPump {
+    receiver: mpsc::Receiver<SessionEvent>,
+    delivery: Arc<SessionDelivery>,
+    rejected_warned: bool,
+    loss_warned: bool,
+}
+
+impl SessionPump {
+    fn warn_loss(&mut self) {
+        if !self.loss_warned && self.delivery.dropped.load(Ordering::Relaxed) > 0 {
+            eprintln!("grabación: eventos de sesión descartados por cola llena/desconectada");
+            self.loss_warned = true;
+        }
+    }
+
+    fn drain(&mut self, pipe: &mut Pipe) -> io::Result<()> {
+        self.warn_loss();
+        for _ in 0..SESSION_QUEUE {
+            let Ok(event) = self.receiver.try_recv() else {
+                break;
+            };
+            if !self.delivery.enabled.load(Ordering::Acquire) {
+                continue;
+            }
+            pipe.send(&event.command())?;
+            let response = pipe.response()?;
+            if response == event.acknowledgment() {
+                continue;
+            }
+            match response.as_array().map(Vec::as_slice) {
+                Some([Value::String(kind), Value::String(reason)])
+                    if kind == "unsupported" && reason == "meta" =>
+                {
+                    self.delivery.enabled.store(false, Ordering::Release);
+                }
+                Some([Value::String(kind), Value::String(reason)]) if kind == "rejected" => {
+                    if !self.rejected_warned {
+                        eprintln!("grabación: evento de sesión rechazado: {reason}");
+                        self.rejected_warned = true;
+                    }
+                }
+                _ => return Err(invalid("ACK de sesión desconocido")),
+            }
+        }
+        Ok(())
+    }
+}
 
 pub const MAX_STORAGE_PAGE_CHUNKS: usize = 16;
 const MAX_RESPONSE_BYTES: usize = MAX_CHUNK_BYTES * MAX_STORAGE_PAGE_CHUNKS + 128;
@@ -249,6 +307,8 @@ pub struct SeriesWorker {
     analysis: Arc<ArcSwap<RecordedSeriesSummary>>,
     failed: Arc<AtomicBool>,
     cancelled: Arc<AtomicBool>,
+    session_events: mpsc::SyncSender<SessionEvent>,
+    session_delivery: Arc<SessionDelivery>,
     pub(crate) database: Arc<ArcSwap<PathBuf>>,
 }
 
@@ -287,6 +347,17 @@ impl SeriesWorker {
         let database = database.to_owned();
         let (finish, control) = mpsc::channel();
         let (result, done) = mpsc::channel();
+        let (session_events, event_receiver) = mpsc::sync_channel(SESSION_QUEUE);
+        let session_delivery = Arc::new(SessionDelivery {
+            enabled: AtomicBool::new(true),
+            dropped: AtomicU64::new(0),
+        });
+        let mut sessions = SessionPump {
+            receiver: event_receiver,
+            delivery: Arc::clone(&session_delivery),
+            rejected_warned: false,
+            loss_warned: false,
+        };
         let analysis = Arc::new(ArcSwap::from_pointee(RecordedSeriesSummary::default()));
         let summaries = Arc::clone(&analysis);
         let failed = Arc::new(AtomicBool::new(false));
@@ -311,8 +382,16 @@ impl SeriesWorker {
                             ready,
                         );
                     }
-                    pump(&mut pipe, &receiver, &control, &summaries, ready?)
+                    pump(
+                        &mut pipe,
+                        &receiver,
+                        &control,
+                        &summaries,
+                        ready?,
+                        &mut sessions,
+                    )
                 })();
+                sessions.warn_loss();
                 failure.store(outcome.is_err(), Ordering::Release);
                 // El propietario puede haber agotado su plazo; no hay receptor que avisar.
                 if result.send(outcome).is_err() {
@@ -327,8 +406,32 @@ impl SeriesWorker {
             analysis,
             failed,
             cancelled,
+            session_events,
+            session_delivery,
             database: current_database,
         })
+    }
+
+    /// Nunca espera al helper ni a un hueco en la cola.
+    pub fn try_session_event(&self, event: SessionEvent) -> bool {
+        if !self.session_events_enabled() {
+            return false;
+        }
+        if self.session_events.try_send(event).is_ok() {
+            return true;
+        }
+        self.session_delivery
+            .dropped
+            .fetch_add(1, Ordering::Relaxed);
+        false
+    }
+
+    pub fn session_events_dropped(&self) -> u64 {
+        self.session_delivery.dropped.load(Ordering::Relaxed)
+    }
+
+    pub fn session_events_enabled(&self) -> bool {
+        self.session_delivery.enabled.load(Ordering::Acquire)
     }
 
     /// Solo chunks cuyo ACK se recibió; la cola volátil no cuenta como durable.
@@ -421,6 +524,7 @@ fn pump(
     control: &mpsc::Receiver<Option<u64>>,
     latest: &ArcSwap<RecordedSeriesSummary>,
     ready: SeriesStorageState,
+    sessions: &mut SessionPump,
 ) -> io::Result<SeriesStorageState> {
     let mut analysis = SeriesAnalysis::new(MAX_ANALYZED_LAPS)?;
     let mut watermark = 0;
@@ -438,6 +542,8 @@ fn pump(
     loop {
         match control.try_recv() {
             Ok(Some(attempted)) => {
+                // El productor ya paró: como máximo 64 eventos, vueltas antes de Close.
+                sessions.drain(pipe)?;
                 while let Ok(chunk) = receiver.try_recv() {
                     let confirmed = pipe.append(&chunk)?;
                     if chunk.index > watermark {
@@ -459,8 +565,10 @@ fn pump(
             }
             Err(mpsc::TryRecvError::Empty) => {}
         }
+        sessions.drain(pipe)?;
         match receiver.recv_timeout(Duration::from_millis(20)) {
             Ok(chunk) => {
+                sessions.drain(pipe)?;
                 let confirmed = pipe.append(&chunk)?;
                 if chunk.index > watermark {
                     analysis.consume(&chunk)?;
@@ -631,6 +739,8 @@ mod poison_tests {
             analysis: Arc::new(ArcSwap::from_pointee(RecordedSeriesSummary::default())),
             failed: Arc::new(AtomicBool::new(false)),
             cancelled: Arc::new(AtomicBool::new(false)),
+            session_events: mpsc::sync_channel(SESSION_QUEUE).0,
+            session_delivery: Arc::new(SessionDelivery::default()),
             database: Arc::new(ArcSwap::from_pointee(PathBuf::new())),
         };
         let poisoned = Arc::clone(&process);
@@ -671,3 +781,7 @@ mod poison_tests {
         );
     }
 }
+
+#[cfg(all(test, windows))]
+#[path = "series_session_transport_tests.rs"]
+mod session_transport_tests;

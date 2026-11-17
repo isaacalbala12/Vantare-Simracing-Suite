@@ -273,7 +273,6 @@ fn received_clock_is_used_when_source_clock_is_absent_and_text_is_bounded_utf8()
     assert_eq!(events[0][1]["officialMs"], Value::Null);
 }
 
-
 #[test]
 fn reliable_zero_last_time_and_sectors_remain_values_but_zero_best_is_null() {
     let mut tracker = SessionTracker::default();
@@ -284,6 +283,9 @@ fn reliable_zero_last_time_and_sectors_remain_values_but_zero_best_is_null() {
     next.state.cars[0].best_lap_s = Quality::Reliable(0.0);
     let events = commands(&tracker.observe(&next, 200));
     assert_eq!(events[0][1]["officialMs"], 0);
-    assert_eq!(events[0][1]["sectorMs"], json!([0,0,0]));
-    assert_eq!(commands(&tracker.finish(300))[0][1]["bestLapMs"], Value::Null);
+    assert_eq!(events[0][1]["sectorMs"], json!([0, 0, 0]));
+    assert_eq!(
+        commands(&tracker.finish(300))[0][1]["bestLapMs"],
+        Value::Null
+    );
 }

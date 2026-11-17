@@ -217,29 +217,40 @@ pub fn read(root: &Path, paths: &BTreeMap<String, PathBuf>) -> Option<AnalysisRe
     read_with(root, paths, open_status)
 }
 fn open_status(path: &Path) -> std::io::Result<fs::File> {
-    fs::File::open(path)
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        // Open the reparse point itself so handle metadata can reject it.
+        options.custom_flags(windows_sys::Win32::Storage::FileSystem::FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        // O_NOFOLLOW | O_NONBLOCK: do not follow a swapped link or block on a FIFO.
+        #[cfg(target_os = "linux")]
+        options.custom_flags(0x20000 | 0x800);
+        #[cfg(target_os = "macos")]
+        options.custom_flags(0x100 | 0x4);
+    }
+    options.open(path)
 }
 fn read_with(
     root: &Path,
     paths: &BTreeMap<String, PathBuf>,
     open: impl FnOnce(&Path) -> std::io::Result<fs::File>,
 ) -> Option<AnalysisRecordingStatus> {
-    let metadata = fs::symlink_metadata(root).ok()?;
-    if !metadata.is_dir() || super::reparse(&metadata) {
-        return None;
-    }
+    super::regular_directory(root).ok()?;
     let path = root.join("recording-status.json");
-    let metadata = fs::symlink_metadata(&path).ok()?;
+    // std OpenOptions on Windows keeps FILE_SHARE_DELETE for atomic Core replacement.
+    let file = open(&path).ok()?;
+    let metadata = file.metadata().ok()?;
     if !metadata.is_file() || super::reparse(&metadata) || metadata.len() > LIMIT {
         return None;
     }
-    // std File::open on Windows includes FILE_SHARE_DELETE for atomic Core replacement.
     let mut bytes = Vec::new();
-    open(&path)
-        .ok()?
-        .take(LIMIT + 1)
-        .read_to_end(&mut bytes)
-        .ok()?;
+    file.take(LIMIT + 1).read_to_end(&mut bytes).ok()?;
     if bytes.len() as u64 > LIMIT {
         return None;
     }

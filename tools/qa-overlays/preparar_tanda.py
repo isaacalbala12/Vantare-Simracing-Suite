@@ -64,7 +64,7 @@ def prefixes(count):
     return sorted({value for value in (1, 3, 10, 121, 197, count) if value <= count})
 
 
-def prepare(repo, output, binary_directory, presentmon, corpus):
+def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
     repo, output = Path(repo), Path(output)
     if subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip() != SOURCE_SHA:
         raise ValueError("Base distinta del SHA congelado")
@@ -76,8 +76,14 @@ def prepare(repo, output, binary_directory, presentmon, corpus):
                                "url": "https://github.com/GameTechDev/PresentMon/releases/download/v2.6.0/PresentMon-2.6.0-x64.exe",
                                "sha256": PRESENTMON_SHA}, "files": [],
                 "measurement": {"warmup_seconds": 5, "central_seconds": 50,
-                                "classification": "comparación acotada", "cold_host_each_round": True},
-                "limitations": ["Tamaños orientativos: el resultado registra los tamaños PNG reales; jamás redimensionar.",
+                                "classification": "comparación acotada", "cold_host_each_round": True,
+                                "inventory_report": "inputs/INVENTARIO-LMU47-HISTORICO.md",
+                                "inventory_basis_sha": "4625463bc6ad15bb86813b49bd70b7259f935415",
+                                "inventory_origin": "primer evento grabado, distinto del QPC observe de esta tanda",
+                                "not_yet_inventoried_types": ["standings", "delta"]},
+                "limitations": ["LMU47: jugador siempre en boxes, combustible constante, sin banderas/delta/daños estructurales/avisos. No acredita carrera variada.",
+                                "Matriz histórica de 17 proyecciones adjunta; Standings y Delta se miden sin presumir cobertura de señales.",
+                                "Tamaños orientativos: el resultado registra los tamaños PNG reales; jamás redimensionar.",
                                 "Capturas asentadas; no acreditan paridad de fase de animaciones.",
                                 "Avisos: GPUI no expone wall-ms; conservar esa diferencia y no aprobar paridad temporal.",
                                 "Texto: revisión humana separada de las parejas al 100 %, nunca aprobar solo por el porcentaje."]}
@@ -116,6 +122,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus):
     if digest(corpus) != "c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c":
         raise ValueError("Corpus distinto del inventariado")
     shutil.copyfile(corpus, output / "inputs/lmu47-high-rate-60s.tar.gz")
+    shutil.copyfile(inventory, output / "inputs/INVENTARIO-LMU47-HISTORICO.md")
     fixtures = repo / "vantare-v2/native/ui/fixtures"
     for number, (kind, (filename, size)) in enumerate(SCENES.items()):
         source = fixtures / filename
@@ -178,7 +185,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    for arg in ("repo", "output", "binary-directory", "presentmon", "corpus"):
+    for arg in ("repo", "output", "binary-directory", "presentmon", "corpus", "inventory"):
         p.add_argument("--" + arg, required=True)
     a = p.parse_args()
-    prepare(a.repo, a.output, a.binary_directory, a.presentmon, a.corpus)
+    prepare(a.repo, a.output, a.binary_directory, a.presentmon, a.corpus, a.inventory)

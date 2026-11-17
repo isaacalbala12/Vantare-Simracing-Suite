@@ -4,7 +4,6 @@ use std::{
     env, fs,
     path::PathBuf,
     process::Command,
-    time::{SystemTime, UNIX_EPOCH},
 };
 struct Sandbox(PathBuf);
 impl Drop for Sandbox {
@@ -17,12 +16,11 @@ impl Drop for Sandbox {
 }
 #[test]
 fn inherited_rune_environment_reaches_parse_and_missing_image_is_logged_without_fallback() {
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
+    let mut bytes = [0; 8];
+    getrandom::fill(&mut bytes).unwrap();
+    let nonce = u64::from_le_bytes(bytes);
     let sandbox = Sandbox(env::temp_dir().join(format!(
-        "vantare-engine-process-{}-{nonce}",
+        "vantare-engine-process-{}-{nonce:016x}",
         std::process::id()
     )));
     fs::create_dir(&sandbox.0).unwrap();

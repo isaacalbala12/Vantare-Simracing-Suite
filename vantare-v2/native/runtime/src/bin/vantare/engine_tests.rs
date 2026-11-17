@@ -1,18 +1,13 @@
 //! Contrato M1: elección del ejecutable sin cambiar el motor por defecto.
 use super::*;
-use std::{
-    ffi::OsStr,
-    fs,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{ffi::OsStr, fs};
 struct BinDir(PathBuf);
 impl BinDir {
     fn new(rune: bool) -> Self {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let root = env::temp_dir().join(format!("vantare-engine-{}-{nonce}", std::process::id()));
+        let mut bytes = [0; 8];
+        getrandom::fill(&mut bytes).unwrap();
+        let nonce = u64::from_le_bytes(bytes);
+        let root = env::temp_dir().join(format!("vantare-engine-{}-{nonce:016x}", std::process::id()));
         fs::create_dir(&root).unwrap();
         fs::write(root.join(binary_name("vantare-overlays")), b"GPUI presente").unwrap();
         if rune {

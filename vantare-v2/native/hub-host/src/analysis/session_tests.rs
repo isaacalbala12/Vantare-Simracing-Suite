@@ -377,10 +377,9 @@ fn index_reuses_cache_invalidates_file_changes_and_exposes_only_file_names() {
         .unwrap()
         .set_times(fs::FileTimes::new().set_modified(original + Duration::from_secs(1)))
         .unwrap();
-    assert_eq!(
-        index.refresh(&missing, &dir.0, cancel()).unwrap_err().code,
-        ErrorCode::Io
-    );
+    let stale = index.refresh(&missing, &dir.0, cancel()).unwrap();
+    assert!(!stale[0].readable);
+    assert!(!stale[0].locked);
     let refreshed = index.refresh(&exe(), &dir.0, cancel()).unwrap();
     assert_ne!(refreshed[0].modified, row.modified);
     let mut writer = Writer::open(&dir.db(), "--resume");
@@ -426,13 +425,15 @@ fn unfinished_recordings_are_not_cached_and_cancelled_index_does_not_start_work(
     let rows = index.refresh(&exe(), &dir.0, cancel()).unwrap();
     assert!(rows[0].readable);
     assert!(!rows[0].sessions[0].sealed);
-    assert_eq!(
-        index
-            .refresh(&dir.0.join("missing.exe"), &dir.0, cancel())
-            .unwrap_err()
-            .code,
-        ErrorCode::Io
-    );
+    let ready = dir.0.join("finished.duckdb");
+    metadata_fixture(&ready);
+    index.refresh(&exe(), &dir.0, cancel()).unwrap();
+    let refreshed = index
+        .refresh(&dir.0.join("missing.exe"), &dir.0, cancel())
+        .unwrap();
+    assert!(refreshed[0].readable);
+    assert!(!refreshed[1].readable);
+    assert!(!refreshed[1].locked);
     let token = cancel();
     token.store(true, Ordering::Release);
     assert_eq!(
@@ -445,4 +446,26 @@ fn unfinished_recordings_are_not_cached_and_cancelled_index_does_not_start_work(
         Vec::<RecordingSessions>::new()
     );
     assert!(!empty.exists());
+}
+
+#[test]
+fn sessions_rejects_a_truncated_catalog_instead_of_returning_a_partial_list() {
+    let dir = Directory::new();
+    metadata_fixture(&dir.db());
+    let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+    let before = status(&reader);
+    inject(
+        &mut reader,
+        vec![
+            Ok(before),
+            Ok(json!([
+                "session-summaries",
+                "series-session.v1",
+                257,
+                [session_row()]
+            ])),
+        ],
+    );
+    assert_eq!(reader.sessions().unwrap_err().code, ErrorCode::Limit);
+    reaped(&mut reader);
 }

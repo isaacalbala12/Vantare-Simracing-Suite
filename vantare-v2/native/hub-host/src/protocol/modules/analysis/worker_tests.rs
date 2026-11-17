@@ -9,6 +9,16 @@ fn fixture(
     count: u32,
     gap: bool,
 ) -> (PathBuf, Option<(Reader, Cancel)>) {
+    fixture_with_metadata(ids, chunks, count, gap, &[])
+}
+
+fn fixture_with_metadata(
+    ids: &[(u64, u64, u32)],
+    chunks: u32,
+    count: u32,
+    gap: bool,
+    commands: &[serde_json::Value],
+) -> (PathBuf, Option<(Reader, Cancel)>) {
     let helper = std::env::current_exe()
         .unwrap()
         .parent()
@@ -21,6 +31,7 @@ fn fixture(
     let db = root.join("recording.duckdb");
     let mut writer = Command::new(&helper)
         .arg(&db)
+        .arg("--create")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -80,6 +91,18 @@ fn fixture(
                 "{line}"
             );
         }
+    }
+    for command in commands {
+        writeln!(writer.stdin.as_mut().unwrap(), "{command}").unwrap();
+        line.clear();
+        output.read_line(&mut line).unwrap();
+        assert!(
+            serde_json::from_str::<serde_json::Value>(&line).unwrap()[0]
+                .as_str()
+                .unwrap()
+                .starts_with("ack-"),
+            "{line}"
+        );
     }
     writeln!(
         writer.stdin.as_mut().unwrap(),
@@ -179,5 +202,106 @@ fn compare_absolute_deadline_uses_injected_clock_between_pages_and_drops_session
     );
     assert!(calls.get() >= 3);
     assert!(reader.is_none());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn inspect_and_open_join_real_metadata_by_full_key() {
+    use serde_json::json;
+    let mut commands = Vec::new();
+    for (epoch, session) in [(1, 3), (2, 3)] {
+        commands.push(json!(["session-open", {
+            "epoch":epoch,"session":session,"kind":"race","kindText":"","trackName":"Spa",
+            "vehicle":"Porsche","className":"GT3","startedAtMs":epoch * 1000
+        }]));
+    }
+    for (epoch, car, lap, ms) in [(1, 7, 0, 90_125), (2, 7, 1, 91_250), (2, 99, 2, 92_000)] {
+        commands.push(
+            json!(["lap", {"epoch":epoch,"session":3,"car":car,"lap":lap,
+            "officialMs":ms,"sectorMs":[31_000,30_000,29_125]}]),
+        );
+    }
+    commands.push(
+        json!(["session-close", {"epoch":1,"session":3,"endedAtMs":1900,
+        "simElapsedS":90.125,"finalPosition":3,"finalClassPosition":2,
+        "lapsCompleted":1,"bestLapMs":90_125,"endReason":"sessionChanged"}]),
+    );
+    let (root, reader) =
+        fixture_with_metadata(&[(1, 3, 7), (2, 3, 7), (2, 3, 8)], 1, 2, false, &commands);
+    let helper = reader.as_ref().unwrap().0.child.id();
+    assert_ne!(helper, 0);
+    drop(reader);
+    let exe = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("vantare-storage.exe");
+    let path = root.join("recording.duckdb");
+    let created = stamp(&path).unwrap().created;
+    let mut current = None;
+    let mut cache = BTreeMap::new();
+    let mut request = job(0, 0);
+    request.operation = Operation::Inspect {
+        id: "id".into(),
+        path: path.clone(),
+        created,
+    };
+    let inspect = execute(&exe, &request, &mut current, &mut cache).unwrap();
+    assert_eq!(
+        execute(&exe, &request, &mut current, &mut cache).unwrap(),
+        inspect
+    );
+    let Reply::AnalysisInspect { sessions, .. } = inspect else {
+        panic!("inspect")
+    };
+    assert_eq!(sessions.len(), 2);
+    assert_eq!(
+        (
+            sessions[0].index,
+            sessions[0].sealed,
+            sessions[0].kind_text.as_deref()
+        ),
+        (0, false, None)
+    );
+    assert_eq!(
+        (
+            sessions[1].index,
+            sessions[1].sealed,
+            sessions[1].position_at_close
+        ),
+        (1, true, Some(3))
+    );
+    request.operation = Operation::Open {
+        path,
+        created,
+        token: "token".into(),
+    };
+    let Reply::AnalysisOpen {
+        sessions: opened,
+        laps,
+        ..
+    } = execute(&exe, &request, &mut current, &mut cache).unwrap()
+    else {
+        panic!("open")
+    };
+    assert_eq!(opened, sessions);
+    assert_eq!(
+        laps.iter()
+            .map(|lap| (lap.session, lap.lap_time_ms))
+            .collect::<Vec<_>>(),
+        [
+            (Some(1), Some(90_125)),
+            (Some(0), Some(91_250)),
+            (Some(0), None)
+        ]
+    );
+    assert_eq!(
+        laps[0].sectors_ms.as_deref(),
+        Some([31_000, 30_000, 29_125].as_slice())
+    );
+    assert_eq!(laps[2].sectors_ms, None);
+    drop(current);
     std::fs::remove_dir_all(root).unwrap();
 }

@@ -347,3 +347,28 @@ it("mock status preserves catalog ids and supports missing status", () => {
     });
   }
 });
+
+it("rejects incomplete session metadata, invalid indices and oversized sectors", () => {
+  const message = corpus.host.find(
+    (v) => v.kind === "response" && v.result?.method === "analysis.open" &&
+      "sessions" in v.result && Array.isArray(v.result.sessions) && v.result.sessions.length > 0,
+  );
+  expect(message).toBeDefined();
+  const reply = JSON.parse(JSON.stringify(message)).result;
+  expect(isReply(reply)).toBe(true);
+  const session = reply.sessions[0];
+  const lap = reply.laps[0];
+  for (const bad of [
+    { ...reply, sessions: undefined },
+    { ...reply, sessions: Array(257).fill(session) },
+    { ...reply, sessions: [{ ...session, epoch: "42" }] },
+    { ...reply, sessions: [{ ...session, kind: "warmup" }] },
+    { ...reply, sessions: [{ ...session, endReason: "unexpected" }] },
+    { ...reply, sessions: [{ ...session, trackName: "é".repeat(129) }] },
+    { ...reply, sessions: [{ ...session, startedAtMs: 2 ** 53 }] },
+    { ...reply, laps: [{ ...lap, session: reply.sessions.length }] },
+    { ...reply, laps: [{ ...lap, sectorsMs: Array(17).fill(1) }] },
+    { ...reply, laps: [{ ...lap, sectorsMs: [1.5] }] },
+    { ...reply, laps: [{ ...lap, lapTimeMs: undefined }] },
+  ]) expect(isReply(bad)).toBe(false);
+});

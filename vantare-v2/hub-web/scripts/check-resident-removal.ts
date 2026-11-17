@@ -14,7 +14,7 @@ export async function prepareResidentRemoval(page: Page, state: string) {
   await observeResidentControls(page);
   if (state === "timeout" || state === "accepted-expired")
     await page.clock.install();
-  await page.getByRole("button", { name: /^Launcher ?\d*$/ }).click();
+  await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
   await page
     .getByRole("heading", { name: "Creador de Contenido", exact: true })
     .waitFor();
@@ -59,7 +59,7 @@ export async function prepareResidentRemoval(page: Page, state: string) {
         await until(
           () =>
             page
-              .getByRole("heading", { name: /^Launcher ?\d*$/ })
+              .getByRole("heading", { name: /^Launcher(, ?\d+)?$/ })
               .evaluate((node) => node === document.activeElement),
           5000,
           "removed origin returns focus to heading",

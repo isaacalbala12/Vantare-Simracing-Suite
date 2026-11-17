@@ -425,7 +425,10 @@ export function LauncherProfiles({
                         ))}
                       </div>
                     </div>
-                    <strong>{item.name}</strong>
+                    <strong>
+                      {item.name}
+                      <span className="v-a11y-separator">{","}</span>
+                    </strong>{" "}
                     <small>
                       {text.appCount(item.apps.length, item.favorite)}
                     </small>

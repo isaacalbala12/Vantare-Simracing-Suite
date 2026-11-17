@@ -34,7 +34,7 @@ export function CalendarFrame({
           <Button
             onClick={onAlerts}
             disabled={!onAlerts}
-            aria-label={`${text.alerts} ${count}`}
+            aria-label={`${text.alerts}, ${count}`}
             aria-describedby={alertsCountId}
           >
             <Icon name="bell-fill" />

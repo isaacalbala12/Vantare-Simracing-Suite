@@ -110,7 +110,7 @@ describe("launcher profile list", () => {
         text.missing(["Le Mans Ultimate", "OBS Studio", "Spotify"]),
       ),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /^Pro ?\d+ apps/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Pro, \d+ apps/ }));
     expect(onSelect).toHaveBeenCalledWith("pro");
     expect(onLaunch).not.toHaveBeenCalled();
   });

@@ -313,10 +313,10 @@ export async function checkCalendarDialogSafety(owner: Page, base: string) {
     await positiveLaunch(page);
 
     await page.goto(`${base}?escena=launcher-aplicaciones`);
-    await page.getByRole("button", { name: /^Launcher ?\d*$/ }).click();
+    await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
     await page.getByRole("tab", { name: "Aplicaciones", exact: true }).click();
     const origin = page.getByRole("button", {
-      name: /^OBS Studio/,
+      name: /^Editar OBS Studio/,
       exact: true,
     });
     await origin.click();

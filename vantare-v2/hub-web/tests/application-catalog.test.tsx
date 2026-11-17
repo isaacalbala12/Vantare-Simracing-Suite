@@ -113,7 +113,9 @@ describe("application catalog", () => {
   it("allows restart when the application editor has no unsaved changes", async () => {
     const registrations = vi.spyOn(Client.prototype, "addCloseGuard");
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: /^OBS Studio/ }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Editar OBS Studio/ }),
+    );
     await screen.findByRole("dialog", { name: text.editor });
     const guard = registrations.mock.calls.at(-1)?.[0];
     if (!guard) throw new Error("missing application close guard");
@@ -129,7 +131,7 @@ describe("application catalog", () => {
       const requests = vi.spyOn(Client.prototype, "request");
       mount();
       fireEvent.click(
-        await screen.findByRole("button", { name: /^OBS Studio/ }),
+        await screen.findByRole("button", { name: /^Editar OBS Studio/ }),
       );
       const dialog = await screen.findByRole("dialog", { name: text.editor });
       fireEvent.change(
@@ -162,7 +164,7 @@ describe("application catalog", () => {
   it("restores the catalog search when the editor origin disappears", async () => {
     mount();
     const trigger = await screen.findByRole("button", {
-      name: /^OBS Studio/,
+      name: /^Editar OBS Studio/,
     });
     trigger.focus();
     fireEvent.click(trigger);
@@ -178,7 +180,9 @@ describe("application catalog", () => {
   it("cannot replay a closed conflicted editor save through the catalog retry", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("launcher-aplicaciones-conflicto");
-    fireEvent.click(await screen.findByRole("button", { name: /^OBS Studio/ }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Editar OBS Studio/ }),
+    );
     const editor = await screen.findByRole("dialog", { name: text.editor });
     fireEvent.change(within(editor).getByRole("textbox", { name: text.name }), {
       target: { value: "Borrador que se descarta" },
@@ -193,7 +197,7 @@ describe("application catalog", () => {
     fireEvent.click(screen.getByRole("button", { name: text.reload }));
     await screen.findByText(text.failed);
     fireEvent.click(screen.getByRole("button", { name: text.retry }));
-    await screen.findByRole("button", { name: /^OBS Studio/ });
+    await screen.findByRole("button", { name: /^Editar OBS Studio/ });
     expect(
       requests.mock.calls.filter(
         ([request]) => request.method === "launcher.app.save",
@@ -205,7 +209,7 @@ describe("application catalog", () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
     const trigger = await screen.findByRole("button", {
-      name: /^OBS Studio/,
+      name: /^Editar OBS Studio/,
     });
     trigger.focus();
     fireEvent.click(trigger);
@@ -227,7 +231,9 @@ describe("application catalog", () => {
   it("rereads after conflict before warning about newly added private profile options", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("launcher-aplicaciones-args-conflicto");
-    fireEvent.click(await screen.findByRole("button", { name: /^OBS Studio/ }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Editar OBS Studio/ }),
+    );
     await screen.findByText(text.defaultArguments);
     fireEvent.click(screen.getByRole("button", { name: text.pick }));
     await screen.findByText("Aplicación QA.exe");
@@ -244,7 +250,7 @@ describe("application catalog", () => {
     fireEvent.click(
       screen.getByRole("button", { name: text.confirmArgumentReset }),
     );
-    await screen.findByRole("button", { name: /^OBS Studio/ });
+    await screen.findByRole("button", { name: /^Editar OBS Studio/ });
     expect(
       requests.mock.calls.filter(
         ([request]) => request.method === "launcher.app.save",
@@ -255,7 +261,9 @@ describe("application catalog", () => {
   it("warns before replacing an app executable discards its saved arguments", async () => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount("launcher-aplicaciones-args");
-    fireEvent.click(await screen.findByRole("button", { name: /^OBS Studio/ }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Editar OBS Studio/ }),
+    );
     await screen.findByText(text.customArguments);
     fireEvent.click(screen.getByRole("button", { name: text.pick }));
     await screen.findByText("Aplicación QA.exe");
@@ -280,14 +288,14 @@ describe("application catalog", () => {
     fireEvent.click(
       screen.getByRole("button", { name: text.confirmArgumentReset }),
     );
-    await screen.findByRole("button", { name: /^OBS Studio/ });
+    await screen.findByRole("button", { name: /^Editar OBS Studio/ });
     expect(
       requests.mock.calls.filter(
         ([request]) => request.method === "launcher.app.save",
       ),
     ).toHaveLength(1);
     const editAgain = screen.getByRole("button", {
-      name: /^OBS Studio/,
+      name: /^Editar OBS Studio/,
     });
     await waitFor(() => expect(editAgain.hasAttribute("disabled")).toBe(false));
     fireEvent.click(editAgain);
@@ -297,19 +305,21 @@ describe("application catalog", () => {
 
   it("filters names and categories without exposing executable paths", async () => {
     mount();
-    await screen.findByRole("button", { name: /^Vantare Overlay/ });
+    await screen.findByRole("button", { name: /^Editar Vantare Overlay/ });
     expect(screen.getAllByText(text.installed)).toHaveLength(8);
     fireEvent.change(screen.getByRole("searchbox", { name: text.search }), {
       target: { value: " TELEMETRÍA " },
     });
-    expect(screen.getByRole("button", { name: /^SimHub/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^MoTeC/ })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /^Spotify/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /^Editar SimHub/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Editar MoTeC/ })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: /^Editar Spotify/ }),
+    ).toBeNull();
     fireEvent.change(screen.getByRole("searchbox", { name: text.search }), {
       target: { value: " TELE METRÍA " },
     });
-    expect(screen.queryByRole("button", { name: /^SimHub/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^MoTeC/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Editar SimHub/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Editar MoTeC/ })).toBeNull();
     expect(screen.getByText(text.empty)).toBeTruthy();
     expect(document.body.textContent).not.toContain(".exe");
   });
@@ -337,12 +347,12 @@ describe("application catalog", () => {
       target: { value: "Último cambio QA" },
     });
     fireEvent.click(within(form).getByRole("button", { name: text.retry }));
-    await screen.findByRole("button", { name: /^Último cambio QA/ });
+    await screen.findByRole("button", { name: /^Editar Último cambio QA/ });
     expect(screen.queryByRole("dialog", { name: text.editor })).toBeNull();
   });
   it("asks before removing a custom app and leaves official apps without a delete action", async () => {
     mount();
-    await screen.findByRole("button", { name: /^Vantare Overlay/ });
+    await screen.findByRole("button", { name: /^Editar Vantare Overlay/ });
     expect(
       screen.queryByRole("button", { name: "Eliminar Le Mans Ultimate" }),
     ).toBeNull();
@@ -356,7 +366,7 @@ describe("application catalog", () => {
     fireEvent.click(within(drawer).getByRole("button", { name: text.cancel }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(
-      screen.getByRole("button", { name: /^Vantare Overlay/ }),
+      screen.getByRole("button", { name: /^Editar Vantare Overlay/ }),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Eliminar Vantare Overlay" }),
@@ -365,7 +375,7 @@ describe("application catalog", () => {
     fireEvent.click(within(confirm).getByRole("button", { name: text.remove }));
     await waitFor(() =>
       expect(
-        screen.queryByRole("button", { name: /^Vantare Overlay/ }),
+        screen.queryByRole("button", { name: /^Editar Vantare Overlay/ }),
       ).toBeNull(),
     );
   });
@@ -381,7 +391,7 @@ it.each([false, true])(
     const listeners = vi.spyOn(Client.prototype, "listen");
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
-    await screen.findByRole("button", { name: /^OBS Studio/ });
+    await screen.findByRole("button", { name: /^Editar OBS Studio/ });
     // Finish bootstrap RPCs before injecting a later event through the listener.
     await act(async () => {
       await Promise.all(requests.mock.results.map((result) => result.value));
@@ -416,11 +426,13 @@ it.each([false, true])(
     });
     if (failure) {
       expect(await screen.findByText(text.failed)).toBeTruthy();
-      expect(screen.getByRole("button", { name: /^OBS Studio/ })).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: /^Editar OBS Studio/ }),
+      ).toBeTruthy();
     } else
       expect(
         await screen.findByRole("button", {
-          name: /^OBS actualizado/,
+          name: /^Editar OBS actualizado/,
         }),
       ).toBeTruthy();
     expect(
@@ -439,7 +451,7 @@ it.each([
   async ({ action, method }) => {
     const requests = vi.spyOn(Client.prototype, "request");
     mount();
-    await screen.findByRole("button", { name: /^OBS Studio/ });
+    await screen.findByRole("button", { name: /^Editar OBS Studio/ });
     await act(async () => {
       await Promise.all(requests.mock.results.map((result) => result.value));
     });

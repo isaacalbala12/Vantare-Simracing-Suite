@@ -71,7 +71,7 @@ const screens: Screen[] = [
 
     prepare: async (page) => {
       await mainNav(page)
-        .getByRole("button", { name: /^Launcher ?\d*$/ })
+        .getByRole("button", { name: /^Launcher(, ?\d+)?$/ })
         .click();
       await page.locator(".v-launcher-profiles").waitFor();
       await selectTab(page, "Perfiles");
@@ -84,7 +84,7 @@ const screens: Screen[] = [
 
     prepare: async (page) => {
       await mainNav(page)
-        .getByRole("button", { name: /^Launcher ?\d*$/ })
+        .getByRole("button", { name: /^Launcher(, ?\d+)?$/ })
         .click();
       await page.locator(".v-launcher-profiles").waitFor();
       await selectTab(page, "Aplicaciones");

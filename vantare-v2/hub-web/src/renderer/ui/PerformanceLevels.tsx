@@ -95,7 +95,10 @@ export function PerformanceLevels({
           aria-description={studioLock}
           onClick={onStudio}
         >
-          <strong>{t("track.custom")}</strong>
+          <strong>
+            {t("track.custom")}
+            <span className="v-a11y-separator">{","}</span>
+          </strong>{" "}
           <small>{text.customHelp}</small>
         </button>
       )}

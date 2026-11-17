@@ -157,7 +157,15 @@ export function Sidebar({
                   </span>
                 )}
               </span>
-              {!collapsed && <span className="v-nav-name">{item.label}</span>}
+              {!collapsed && (
+                <span className="v-nav-name">
+                  {item.label}
+                  {item.badge ? (
+                    <span className="v-a11y-separator">{","}</span>
+                  ) : null}
+                </span>
+              )}
+              {!collapsed && item.badge ? " " : null}
               {!collapsed && item.badge}
               {!collapsed && item.locked && <Icon name="v-lock" />}
             </Button>

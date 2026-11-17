@@ -181,7 +181,7 @@ it.each(["protected", "unavailable"] as const)(
     });
     render(content());
     await act(async () => {});
-    const trigger = screen.getByRole("button", { name: /^Avisos ?\d*$/ });
+    const trigger = screen.getByRole("button", { name: /^Avisos\b/ });
     trigger.focus();
     fireEvent.click(trigger);
     expect(
@@ -242,7 +242,7 @@ it.each([true, false])(
     );
     render(content());
     await act(async () => {});
-    fireEvent.click(screen.getByRole("button", { name: /^Avisos ?\d*$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: text.test }));
     });
@@ -286,7 +286,7 @@ it("persists desktop channels with the observed revision and blocks duplicate wr
   );
   render(content());
   await act(async () => {});
-  fireEvent.click(screen.getByRole("button", { name: /^Avisos ?\d*$/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
   await vi.waitFor(() =>
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: text.close }),
@@ -420,7 +420,7 @@ it.each([false, true])(
     expect(week.getAttribute("aria-checked")).toBe("true");
     expect(week.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(week);
-    fireEvent.click(screen.getByRole("button", { name: /^Avisos ?\d*$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
     await act(async () => {});
     for (const label of [text.windows, text.sound]) {
       const channel = screen.getByRole("checkbox", { name: label });
@@ -475,7 +475,7 @@ it.each(["loading", "error"] as const)(
     });
     render(content());
     await act(async () => {});
-    fireEvent.click(screen.getByRole("button", { name: /^Avisos ?\d*$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
     await act(async () => {});
     expect(
       screen.getAllByText(
@@ -505,7 +505,7 @@ it("gates noticeTest at the entry while General is off and re-enables it live", 
   });
   const ui = render(content());
   await act(async () => {});
-  fireEvent.click(screen.getByRole("button", { name: /^Avisos ?\d*$/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
   await act(async () => {});
   expect(api.noticeAllowed).toHaveBeenLastCalledWith(false);
   expect(screen.queryByText(text.sample)).toBeNull();
@@ -581,7 +581,7 @@ it("deactivation waits for a fresh config and saves false with that revision", a
   });
   render(content());
   await act(async () => {});
-  fireEvent.click(screen.getByRole("button", { name: /^Avisos ?\d*$/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
   await act(async () =>
     fireEvent.click(
       screen.getByRole("switch", { name: /Lanzar .* autom\u00e1ticamente/u }),
@@ -633,7 +633,7 @@ it("warns instead of silently ignoring deactivation when the fresh alerts revisi
   }));
   render(content());
   await act(async () => {});
-  fireEvent.click(screen.getByRole("button", { name: /^Avisos ?\d*$/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
   await act(async () =>
     fireEvent.click(
       screen.getByRole("switch", { name: /Lanzar .* autom\u00e1ticamente/u }),
@@ -697,7 +697,7 @@ it("a new installation can use Windows alerts without an off-in-General warning"
   });
   render(content());
   await act(async () => {});
-  fireEvent.click(screen.getByRole("button", { name: /^Avisos ?\d*$/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Avisos\b/ }));
   await act(async () => {});
   expect(screen.queryByText(text.windowsDisabled)).toBeNull();
   expect(

@@ -617,6 +617,17 @@ textarea.v-input:read-only {
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * Punctuation that screen readers read but that takes no visual space, so an
+ * accessible name built from content can separate its fragments without
+ * changing the layout. `sr-only` is not usable here: axe's visible-text
+ * computation skips clipped nodes, which would break Label in Name.
+ */
+.v-a11y-separator {
+  font-size: 0;
+  line-height: 0;
+}
 .v-zoom {
   display: flex;
   align-items: center;

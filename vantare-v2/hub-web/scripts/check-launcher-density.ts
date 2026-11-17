@@ -18,7 +18,7 @@ export async function checkLauncherDensity(
     ]) {
       await page.setViewportSize({ width, height });
       await page.goto(`${base}?escena=launcher-base`);
-      await page.getByRole("button", { name: /^Launcher ?\d*$/ }).click();
+      await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
       await page.locator(".v-launcher-profiles").waitFor();
       for (const expanded of [false, true]) {
         const sidebar = page.locator(".v-sidebar");
@@ -124,7 +124,7 @@ export async function checkLauncherDensity(
           .getByRole("button", { name: /Creador de Contenido/ });
         await first.focus();
         await page.keyboard.press("Tab");
-        const next = page.getByRole("button", { name: /^Pro ?\d+ apps/ });
+        const next = page.getByRole("button", { name: /^Pro, \d+ apps/ });
         assert.ok(
           await next.evaluate(
             (node) =>
@@ -137,7 +137,7 @@ export async function checkLauncherDensity(
     }
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`${base}?escena=launcher-aplicaciones`);
-    await page.getByRole("button", { name: /^Launcher ?\d*$/ }).click();
+    await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
     await page.getByRole("tab", { name: "Aplicaciones", exact: true }).click();
     const catalog = page.locator(".v-launcher-catalog");
     await catalog.waitFor();
@@ -163,7 +163,9 @@ export async function checkLauncherDensity(
       "Compact catalogue reaches its footer without inheriting profile spacing",
     );
     assert.ok(
-      await page.getByRole("button", { name: /^Vantare Overlay/ }).isVisible(),
+      await page
+        .getByRole("button", { name: /^Editar Vantare Overlay/ })
+        .isVisible(),
     );
     await page.getByRole("tab", { name: "Perfiles", exact: true }).click();
     await page

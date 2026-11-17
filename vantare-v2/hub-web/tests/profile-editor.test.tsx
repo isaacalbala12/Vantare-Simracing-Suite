@@ -439,7 +439,7 @@ describe("profile editor", () => {
     const creator = await screen.findByRole("button", {
       name: /Creador de Contenido/,
     });
-    const pro = screen.getByRole("button", { name: /^Pro ?\d+ apps/ });
+    const pro = screen.getByRole("button", { name: /^Pro, \d+ apps/ });
     fireEvent.contextMenu(pro);
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.favorite }),
@@ -491,7 +491,7 @@ describe("profile editor", () => {
   });
   it("keeps an action after conflict and only saves on explicit retry", async () => {
     mount("launcher-actions-conflicto");
-    const pro = await screen.findByRole("button", { name: /^Pro ?\d+ apps/ });
+    const pro = await screen.findByRole("button", { name: /^Pro, \d+ apps/ });
     fireEvent.contextMenu(pro);
     fireEvent.click(
       await screen.findByRole("menuitem", { name: actionText.favorite }),

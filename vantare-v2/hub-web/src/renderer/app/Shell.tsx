@@ -635,9 +635,15 @@ function ShellContent() {
                     src={profilePhoto}
                   />
                   <span className="v-sidebar-account-copy">
-                    <span>{profileName || t("shell.anonymous")}</span>
+                    <span>
+                      {profileName || t("shell.anonymous")}
+                      <span className="v-a11y-separator">{","}</span>
+                    </span>{" "}
                     <small>
-                      <b>{t("shell.beta")}</b>
+                      <b>
+                        {t("shell.beta")}
+                        <span className="v-a11y-separator">{","}</span>
+                      </b>{" "}
                       {core.access.tester
                         ? shellText.testerAccess
                         : shellText.freeBeta}
